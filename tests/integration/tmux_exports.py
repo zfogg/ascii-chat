@@ -6,13 +6,15 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import run_cli
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import json
 from pathlib import Path
 import subprocess
 import time
-from tmux_rendering import Pane
+from ascii_chat_tests.tmux import Pane
 
 
 def main():
@@ -30,7 +32,7 @@ def main():
         output.unlink(missing_ok=True)
         p = None
         try:
-            p = Pane(name, [binary, "--no-check-update", "--log-file", str(root / name / "application.log"), "--log-level", "warn", *mirror, "--render-file", str(output)], root, 80, 30)
+            p = Pane(name, cli_command(binary, "--log-file", str(root / name / "application.log"), "--log-level", "warn", *mirror, "--render-file", str(output)), root, 80, 30)
             deadline = time.monotonic() + 45
             while not (p.directory / "exit").exists() and time.monotonic() < deadline:
                 time.sleep(.2)
@@ -53,7 +55,7 @@ def main():
     for render in ["foreground", "background", "half-block"]:
         name = "snapshot-" + render
         try:
-            result = subprocess.run([binary, "--no-check-update", "--log-file", str(root / (name + ".log")), "--log-level", "warn", *mirror, "--render-mode", render, "--color-mode", "none", "--strip-ansi"], capture_output=True, timeout=30)
+            result = run_cli(binary, "--log-file", str(root / (name + ".log")), "--log-level", "warn", *mirror, "--render-mode", render, "--color-mode", "none", "--strip-ansi", capture_output=True, timeout=30)
             (root / (name + ".txt")).write_bytes(result.stdout)
             assert result.returncode == 0 and result.stdout.strip(), result.stderr[-2000:]
             assert b"Terminal too small" not in result.stdout and b"\x1b" not in result.stdout

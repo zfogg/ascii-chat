@@ -12,7 +12,7 @@ import argparse
 import sounddevice as sd
 import soundfile as sf
 import numpy as np
-from test_spectral import load, Processor
+from ascii_chat_tests.audio_spectral import load, Processor
 
 parser = argparse.ArgumentParser(
     description="Play attributed speech and record the microphone through the compiled DSP"

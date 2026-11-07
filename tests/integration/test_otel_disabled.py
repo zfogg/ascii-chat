@@ -3,6 +3,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment
+from ascii_chat_tests.process import free_port
 from itertools import product
 import os
 import http.client
@@ -41,9 +42,7 @@ def main():
         assert result.returncode == 0, result.stderr.decode(errors="replace")[-3000:]
         assert b'"result"' in result.stdout
         assert not receiver.records, "MCP test sent OTLP to the collector"
-        with socket.socket() as sock:
-            sock.bind(("127.0.0.1", 0))
-            port = sock.getsockname()[1]
+        port = free_port()
         process = subprocess.Popen([binary, "--otel-endpoint", receiver.url, "--otel-enabled-telemetry", "traces,logs,metrics",
                                     "mcp-server", "--transport", "http", "--address", "127.0.0.1", "--port", str(port), "--status-screen=false"],
                                    env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

@@ -5,6 +5,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import clean_environment
 
 import os
 from pathlib import Path
@@ -33,7 +34,7 @@ def main():
     binary = Path(sys.argv[1]).resolve()
     with tempfile.TemporaryDirectory(prefix="ascii-manpage-") as tmp:
         directory = Path(tmp)
-        env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
+        env = clean_environment()
         env.update(CLAUDECODE="1", HOME=tmp, USERPROFILE=tmp, APPDATA=tmp, XDG_CONFIG_HOME=tmp)
 
         def run(*args, answer=None, success=True):

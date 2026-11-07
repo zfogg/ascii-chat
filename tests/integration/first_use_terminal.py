@@ -3,6 +3,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import importlib.util
@@ -16,7 +17,8 @@ from pathlib import Path
 if os.name == "nt" and importlib.util.find_spec("winpty") is None:
     print("SKIP: first-use terminal tests need pywinpty")
     raise SystemExit(77)
-from terminal_ui import Terminal, free_port
+from ascii_chat_tests.terminal import Terminal
+from ascii_chat_tests.process import free_port
 
 
 def main():
@@ -26,8 +28,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix="ascii-first-use-") as temp:
         root = Path(temp)
         env = {"ASCII_CHAT_DISABLE_FIRST_USE": "0", "ASCII_CHAT_FIRST_USE_DIR": str(root)}
-        base = [binary, "--no-check-update", "--utf8=true", "--color=true", "--color-mode=truecolor",
-                "--log-file", str(root / "app.log")]
+        base = cli_command(binary, "--utf8=true", "--color=true", "--color-mode=truecolor",
+                "--log-file", str(root / "app.log"))
         mirror = ["mirror", "--test-pattern", "--audio=false", "--splash-screen=false"]
 
         def finish(term):

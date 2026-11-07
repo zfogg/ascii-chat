@@ -11,7 +11,7 @@ import re
 import sys
 import tempfile
 import time
-from server_lifecycle import Service, free_port
+from ascii_chat_tests.process import Service, free_port
 
 
 def exercise(binary, directory):

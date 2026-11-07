@@ -9,6 +9,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 
 import argparse
@@ -20,17 +22,17 @@ import subprocess
 import tempfile
 import time
 
-from terminal_ui import Terminal, free_port
+from ascii_chat_tests.terminal import Terminal
+from ascii_chat_tests.process import free_port
 
 
 def capability_smoke(binary, artifacts):
     for utf8 in ("false", "true"):
-        term = Terminal([
-            str(binary.resolve()), "--no-check-update", "--log-file",
+        term = Terminal(cli_command(str(binary.resolve()), "--log-file",
             str((artifacts / f"utf8-{utf8}.log").resolve()), "mirror", "--test-pattern", "0",
             "--splash-screen=false", "--audio=false", "--color-mode", "none", f"--utf8={utf8}",
             "--fps", "10",
-        ], rows=24, cols=100)
+        ), rows=24, cols=100)
         try:
             term.expect(lambda text: len(text.strip()) > 100, "Expected test pattern")
             term.pump(0.3)
@@ -52,11 +54,10 @@ def capability_smoke(binary, artifacts):
             os.environ["TERM"] = "dumb"
             os.environ.pop("COLORTERM", None)
             os.environ.pop("CLAUDECODE", None)
-            term = Terminal([
-                str(binary.resolve()), "--no-check-update", "--log-file",
+            term = Terminal(cli_command(str(binary.resolve()), "--log-file",
                 str((artifacts / "auto-monochrome.log").resolve()), "mirror", "--test-pattern", "0",
                 "--splash-screen=false", "--audio=false", "--color-mode", "auto", "--fps", "10",
-            ], rows=24, cols=100)
+            ), rows=24, cols=100)
             try:
                 term.expect(lambda text: len(text.strip()) > 100, "Expected monochrome test pattern")
                 term.write("\x1b[B")
@@ -76,7 +77,7 @@ def capability_smoke(binary, artifacts):
 def network_smoke(binary, media, artifacts, directory):
     """Exercise the shared feedback through TCP client and discovery mode input."""
     # Loopback UI fixtures do not need credentials or changes to the user's known_hosts.
-    base = [str(binary.resolve()), "--no-check-update", "--no-encrypt", "--no-auth"]
+    base = cli_command(str(binary.resolve()), "--no-encrypt", "--no-auth")
     port, ws_port, acds_port, acds_ws = (free_port() for _ in range(4))
     services = []
     terms = []
@@ -163,18 +164,13 @@ def main():
         capability_smoke(args.binary, args.artifacts)
     with tempfile.TemporaryDirectory(prefix="volume-bar-") as directory:
         media = Path(directory) / "test.mp4"
-        subprocess.run([
-            "ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
-            "testsrc2=size=160x120:rate=10", "-t", "5", "-c:v", "mpeg4",
-            "-pix_fmt", "yuv420p", str(media)
-        ], check=True)
+        lavfi_fixture(["testsrc2=size=160x120:rate=10"], str(media), ffmpeg_options=["-hide_banner", "-loglevel", "error"], output_options=["-t", "5", "-c:v", "mpeg4", "-pix_fmt", "yuv420p"])
         for mode in args.modes:
-            term = Terminal([
-                str(args.binary.resolve()), "--no-check-update", "--log-file",
+            term = Terminal(cli_command(str(args.binary.resolve()), "--log-file",
                 str((args.artifacts / f"{mode}.log").resolve()), "mirror", "--file", str(media),
                 "--loop", "--splash-screen=false", "--audio=false", "--color-mode", mode,
                 "--width", "100" if mode == "16" else "60", "--height", "20",
-            ], rows=24, cols=100)
+            ), rows=24, cols=100)
 
             def save(name):
                 (args.artifacts / f"{mode}-{name}.txt").write_text(

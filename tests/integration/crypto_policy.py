@@ -9,6 +9,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import clean_environment
 
 import os
 from contextlib import contextmanager
@@ -17,7 +18,7 @@ import subprocess
 import sys
 import tempfile
 
-from server_lifecycle import Service, free_port, server_options
+from ascii_chat_tests.process import Service, free_port, server_options
 
 
 @contextmanager
@@ -34,7 +35,7 @@ def running(*args):
 
 
 def run_client(binary, directory, name, address, options, mode, success=True):
-    env = {k: v for k, v in os.environ.items() if not k.startswith("ASCII_CHAT_")}
+    env = clean_environment()
     env.update(CLAUDECODE="1", HOME=str(directory), USERPROFILE=str(directory),
                APPDATA=str(directory), XDG_CONFIG_HOME=str(directory),
                ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
@@ -89,7 +90,7 @@ def main():
             assert result.returncode != 0 and any(message in output for message in
                 ("Cannot use", "mutually exclusive", "Authentication material cannot be used")), (ordered, output[-3000:])
         print(f"PASS CLI conflict: {flags}", flush=True)
-    clean_env = {k: v for k, v in os.environ.items() if not k.startswith("ASCII_CHAT_")}
+    clean_env = clean_environment()
     for configured, environment, flags in [
         ("encrypt", {}, ["--no-encrypt"]),
         ("no_encrypt", {}, ["--encrypt"]),

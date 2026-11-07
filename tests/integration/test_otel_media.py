@@ -5,6 +5,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import ppm_image, write_pcm_wav
 
 from pathlib import Path
 import os
@@ -29,13 +30,9 @@ with Collector() as collector, tempfile.TemporaryDirectory() as temporary:
     env = {k:v for k,v in os.environ.items() if not k.startswith(('OTEL_', 'ASCII_CHAT_OTEL_'))}
     env['ASCII_CHAT_OTEL_FIXTURE_ENDPOINT'] = collector.url
     video = Path(temporary) / 'video.ppm'
-    video.write_bytes(b'P6\n16 16\n255\n' + bytes([32, 64, 128]) * 256)
+    video.write_bytes(ppm_image(16, 16, bytes([32, 64, 128]) * 256))
     audio = Path(temporary) / 'audio.wav'
-    with wave.open(str(audio), 'wb') as wav:
-        wav.setnchannels(1)
-        wav.setsampwidth(2)
-        wav.setframerate(16000)
-        wav.writeframes(struct.pack('<16000h', *([1000, -1000] * 8000)))
+    write_pcm_wav(audio, struct.pack('<16000h', *([1000, -1000] * 8000)), sample_rate=16000)
     env['ASCII_CHAT_OTEL_FIXTURE_VIDEO'] = str(video)
     env['ASCII_CHAT_OTEL_FIXTURE_AUDIO'] = str(audio)
     result = subprocess.run([sys.argv[1]], env=env, capture_output=True, timeout=30)

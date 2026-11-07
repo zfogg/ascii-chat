@@ -5,6 +5,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.process import hidden_console_options
 
 import ctypes as c
 from ctypes import wintypes as w
@@ -13,7 +14,7 @@ import subprocess
 import time
 
 from pyte.screens import Char
-from terminal_ui import CaptureScreen
+from ascii_chat_tests.terminal import CaptureScreen
 
 
 class Coord(c.Structure):
@@ -55,12 +56,9 @@ class WindowsConsole:
         self.screen = CaptureScreen(cols, rows)
         self.raw, self.output = [], queue.Queue()
         self.rows, self.cols = rows, cols
-        startup = subprocess.STARTUPINFO()
-        startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startup.wShowWindow = subprocess.SW_HIDE
         # A second child must not inherit the parent fixture's Ctrl+C ignore flag.
         self.kernel.SetConsoleCtrlHandler(None, False)
-        self.process = subprocess.Popen(argv, startupinfo=startup, creationflags=subprocess.CREATE_NEW_CONSOLE)
+        self.process = subprocess.Popen(argv, **hidden_console_options())
         self.kernel.FreeConsole()
         for _ in range(100):
             if self.kernel.AttachConsole(self.process.pid):

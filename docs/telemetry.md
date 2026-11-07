@@ -91,7 +91,7 @@ After configuring the native build, run the checker in its pinned Python
 environment:
 
 ```sh
-uv run --no-project --with-requirements tests/requirements-telemetry.txt python tests/scripts/check_query_names.py --build-dir build
+uv run --project tests/ascii_chat_tests --extra telemetry python tests/scripts/check_query_names.py --build-dir build
 ```
 
 Install the matching Spaniel verifier at its immutable source revision and make

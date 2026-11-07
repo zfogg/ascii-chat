@@ -6,6 +6,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import json
@@ -14,8 +16,8 @@ import re
 import subprocess
 import time
 
-import tmux_rendering
-from tmux_rendering import Pane as BasePane
+from ascii_chat_tests import tmux as tmux_rendering
+from ascii_chat_tests.tmux import Pane as BasePane
 
 
 class Pane(BasePane):
@@ -50,8 +52,7 @@ def main():
     root.mkdir(parents=True, exist_ok=True)
     binary = str(args.binary.resolve())
     media = root / "media.mp4"
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i",
-                    "testsrc2=size=640x360:rate=60", "-t", "3", "-c:v", "mpeg4", str(media)], check=True)
+    lavfi_fixture(["testsrc2=size=640x360:rate=60"], str(media), ffmpeg_options=["-y", "-loglevel", "error"], output_options=["-t", "3", "-c:v", "mpeg4"])
     help_text = subprocess.check_output([binary, "mirror", "--help"], text=True)
     (root / "help.txt").write_text(help_text)
     options = re.findall(r"^\s+(?:-[^\s,]+,\s+)?(--[\w-]+)", help_text, re.M)
@@ -60,10 +61,10 @@ def main():
     results = []
     for render in ["foreground", "background", "half-block"]:
         name = "controls-" + render
-        argv = [binary, "--no-check-update", "--log-level", "debug", "--log-file",
+        argv = cli_command(binary, "--log-level", "debug", "--log-file",
                 str(root / name / "application.log"), "mirror", "--file", str(media), "--loop",
                 "--fps", "60", "--audio=false", "--splash-screen=false", "--render-mode", render,
-                "--color-mode", "truecolor"]
+                "--color-mode", "truecolor")
         pane = Pane(name, argv, root, cols=120, rows=50)
         try:
             pane.expect(lambda s: len(s.strip()) > 1000 and "[" not in s and fps(s) is None, "default-off")
@@ -105,10 +106,10 @@ def main():
             pane.close()
     for cols, rows in [(120, 40), (160, 50)]:
         name = f"benchmark-{cols}x{rows}"
-        argv = [binary, "--no-check-update", "--log-level", "debug", "--log-file",
+        argv = cli_command(binary, "--log-level", "debug", "--log-file",
                 str(root / name / "application.log"), "mirror", "--file", str(media), "--loop",
                 "--fps", "60", "--fps-counter=true", "--audio=false", "--splash-screen=false",
-                "--color-mode", "truecolor"]
+                "--color-mode", "truecolor")
         pane = Pane(name, argv, root, cols=cols, rows=rows)
         try:
             pane.expect(lambda s: (fps(s) or 0) > 0, "startup")
@@ -124,9 +125,9 @@ def main():
         frames = sum(s[0] for s in samples)
         results.append({"case": name, "fps": frames * 1000 / sum(s[1] for s in samples),
                         "mean_write_ms": sum(s[2] for s in samples) / frames, "samples": samples})
-    output = subprocess.check_output([binary, "--no-check-update", "--log-level", "error", "mirror",
+    output = subprocess.check_output(cli_command(binary, "--log-level", "error", "mirror",
                                       "--file", str(media), "--audio=false", "--snapshot", "--snapshot-delay", "0",
-                                      "--fps-counter", "--width", "80", "--height", "24", "--color-mode", "none"],
+                                      "--fps-counter", "--width", "80", "--height", "24", "--color-mode", "none"),
                                      stderr=subprocess.DEVNULL)
     # The renderer may use ANSI repeat-character compression even without color.
     assert b"FPS:" not in output and b"\x1b7" not in output and b"\x1b8" not in output

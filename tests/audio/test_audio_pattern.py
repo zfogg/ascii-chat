@@ -5,6 +5,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import write_pcm_wav
 
 
 import argparse
@@ -13,7 +14,7 @@ from pathlib import Path
 import wave
 
 import numpy as np
-from test_spectral import load
+from ascii_chat_tests.audio_spectral import load
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("library")
@@ -47,6 +48,21 @@ for rate in (44100, 48000):
         assert np.array_equal(
             render(start, 1024, rate), np.r_[signal, signal][start : start + 1024]
         )
+    # The noise hash is intentionally computed modulo 2^32. Check its output
+    # independently at positions that overflow both multiplications.
+    for position in (12 * rate + rate // 8, 13 * rate + rate // 4):
+        h = (position * 747796405 + 2891336453) & 0xffffffff
+        h = (((h >> ((h >> 28) + 4)) ^ h) * 277803737) & 0xffffffff
+        h = (h >> 22) ^ h
+        u = position / rate - 12
+        beat = u % 1
+        envelope = np.sin(2 * np.pi * beat) if beat < 0.5 else 0
+        expected = 0.045 * (h / 2147483648.0 - 1) * envelope * envelope
+        assert np.isclose(render(position, 1, rate)[0], expected, atol=1e-7)
+    # Sample positions wrap at UINT64_MAX just as uint64_t addition does.
+    last = (1 << 64) - 1
+    assert np.array_equal(render(last - 1, 4, rate),
+                          np.r_[render(last - 1, 2, rate), render(0, 2, rate)])
     # Every audible section has meaningful energy, at conservative levels.
     for start, end in ((0, 4), (4, 8), (8, 12), (12, 16), (16, 18)):
         rms = np.sqrt(np.mean(signal[start * rate : end * rate] ** 2))
@@ -61,9 +77,7 @@ for rate in (44100, 48000):
         )
         assert abs(peak - expected) < 60, (second, peak)
 if args.wav:
-    with wave.open(args.wav, "wb") as wav:
-        wav.setparams((1, 2, 48000, 0, "NONE", "not compressed"))
-        wav.writeframes((signal * 32767).astype("<i2").tobytes())
+    write_pcm_wav(args.wav, (signal * 32767).astype("<i2").tobytes(), sample_rate=48000)
 print(
     "PASS: peak/RMS bounds, quiet rest, repeat, arbitrary block boundaries, sweep, 44.1/48 kHz"
 )

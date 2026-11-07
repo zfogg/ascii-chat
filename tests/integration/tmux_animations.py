@@ -6,6 +6,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import ppm_image
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import hashlib
@@ -13,7 +15,7 @@ import json
 import subprocess
 from pathlib import Path
 import time
-from tmux_rendering import Pane
+from ascii_chat_tests.tmux import Pane
 
 ap = argparse.ArgumentParser(description=__doc__)
 ap.add_argument("--binary", type=Path, required=True)
@@ -24,8 +26,8 @@ root = args.artifacts.resolve()
 root.mkdir(parents=True, exist_ok=True)
 # Stationary input makes changes in Matrix/rainbow output attributable to the effect.
 fixture = root / "still.ppm"
-fixture.write_bytes(b"P6\n160 120\n255\n" + bytes(v for y in range(120) for x in range(160)
-    for v in ((x * 255 // 159), (y * 255 // 119), (x + y) * 255 // 278)))
+fixture.write_bytes(ppm_image(160, 120, bytes(v for y in range(120) for x in range(160)
+    for v in ((x * 255 // 159), (y * 255 // 119), (x + y) * 255 // 278))))
 video = root / "still.mp4"
 subprocess.run(["ffmpeg", "-v", "error", "-y", "-loop", "1", "-i", str(fixture),
                 "-t", "6", "-r", "20", "-pix_fmt", "yuv420p", str(video)], check=True)
@@ -37,8 +39,8 @@ for name, flags in [("splash", []), ("matrix", ["--matrix"]),
                     ("test-pattern-1", ["--test-pattern=1"])]:
     directory = root / ("anim-" + name)
     directory.mkdir(parents=True, exist_ok=True)
-    base = [str(args.binary.resolve()), "--no-check-update", "--log-level", "warn",
-            "--log-file", str(directory / "application.log")]
+    base = cli_command(str(args.binary.resolve()), "--log-level", "warn",
+            "--log-file", str(directory / "application.log"))
     source = flags if name.startswith("test-pattern-") else ["--file", str(video), "--loop", *flags]
     argv = ([str(args.probe.resolve()), "splash", str(directory / "application.log")] if name == "splash" else
             base + ["mirror", "--fps", "20", "--audio=false", "--splash-screen=false",

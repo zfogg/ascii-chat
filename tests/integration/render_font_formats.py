@@ -4,6 +4,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _environment  # noqa: F401,E402
+from ascii_chat_tests.cli import run_cli
+from ascii_chat_tests.cli import cli_command
 
 import os
 import struct
@@ -18,11 +20,10 @@ def main():
 
         def render(font, name):
             output = root / f"{name}.png"
-            result = subprocess.run(
-                [binary, "--no-check-update", "mirror", "--test-pattern", "--audio=false",
+            result = run_cli(binary, "mirror", "--test-pattern", "--audio=false",
                  "--snapshot", "--snapshot-delay", "0", "--splash-screen=false",
                  "--width", "40", "--height", "20", "--render-font", str(font),
-                 "--render-file", str(output)], capture_output=True, timeout=45, cwd=root)
+                 "--render-file", str(output), capture_output=True, timeout=45, cwd=root)
             return result, output
 
         def supported(font, name):

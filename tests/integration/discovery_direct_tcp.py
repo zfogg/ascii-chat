@@ -11,7 +11,7 @@ import re
 import sys
 import tempfile
 
-from server_lifecycle import Service, free_port, server_options
+from ascii_chat_tests.process import Service, free_port, server_options
 
 
 def main():

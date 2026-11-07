@@ -5,6 +5,9 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import run_cli
+from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import cli_command
 
 import os
 import contextlib
@@ -15,7 +18,7 @@ import subprocess
 import sys
 import tempfile
 
-from server_lifecycle import Service, free_port, server_options
+from ascii_chat_tests.process import Service, free_port, server_options
 
 
 def exercise(binary, root):
@@ -46,15 +49,15 @@ def exercise(binary, root):
                     before_pin = server.text().count("Unknown pinned server identity")
                     before_rejected = server.text().count("Client Ed25519 key not in whitelist")
                     log = root / "identity-client.log"
-                    env = {k: v for k, v in os.environ.items() if not k.startswith("ASCII_CHAT_")}
+                    env = clean_environment()
                     env.pop("CLAUDECODE", None)
                     env.update(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root), XDG_CONFIG_HOME=str(root))
-                    result = subprocess.run([str(binary), "--no-check-update", "--log-level", "debug",
+                    result = run_cli(str(binary), "--log-level", "debug",
                         "--log-file", str(log), "client", destination, "--key", str(root / key),
                         "--server-key", str(root / (expected_server + ".pub")), *password,
                         "--test-pattern", "--audio=false", "--video-codec", "raw", "--snapshot",
                         "--snapshot-delay", "0", "--width", "40", "--height", "12", "--color-mode", "none",
-                        "--splash-screen=false"], env=env, cwd=root, capture_output=True, timeout=25)
+                        "--splash-screen=false", env=env, cwd=root, capture_output=True, timeout=25)
                     text = log.read_text(errors="replace")
                     assert server.process.poll() is None, server.text()[-5000:]
                     if succeeds:

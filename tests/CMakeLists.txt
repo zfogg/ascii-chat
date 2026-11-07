@@ -45,6 +45,9 @@ if(BUILD_TESTS)
             ${Python3_EXECUTABLE} ${script} ${ARGN})
     endfunction()
 
+    asciichat_add_python_test(python-test-helpers ${CMAKE_SOURCE_DIR}/tests/test_ascii_chat_tests.py)
+    set_tests_properties(python-test-helpers PROPERTIES LABELS "unit;python" TIMEOUT 30)
+
     # These dependency-isolated build matrices compile selected production
     # sources directly. The shared wrapper retains their profiles under the
     # active build tree when coverage is enabled.
@@ -2229,6 +2232,10 @@ endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat-shared)
     set(shared_api_tests options-metadata)
+    asciichat_add_python_test(audio-test-pattern-native
+        ${CMAKE_CURRENT_SOURCE_DIR}/audio/test_audio_pattern_native.py $<TARGET_FILE:ascii-chat-shared>)
+    set_tests_properties(audio-test-pattern-native PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
+    list(APPEND shared_api_tests audio-test-pattern-native)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         asciichat_add_python_test(symbolizer-offline
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/symbolizer_offline.py

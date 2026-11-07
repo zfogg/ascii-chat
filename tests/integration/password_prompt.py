@@ -6,6 +6,8 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import run_cli, start_cli
+from ascii_chat_tests.cli import cli_command
 import argparse
 import os
 import re
@@ -13,8 +15,10 @@ import shutil
 import socket
 import subprocess
 import tempfile
+import threading
 import time
-from terminal_ui import Terminal, free_port
+from ascii_chat_tests.terminal import Terminal
+from ascii_chat_tests.process import free_port
 
 SECRET = 's3\ncret!'
 SHIFT_ENTER = '\x1b[13;2u'
@@ -82,10 +86,13 @@ def main():
             environment.pop(key, None)
             os.environ.pop(key, None)
         terminals, services = [], []
+        stun_socket = None
+        stun_stop = threading.Event()
+        stun_thread = None
         def terminal(name, mode_args, password=False):
             env = {**environment, **({'ASCII_CHAT_PASSWORD': SECRET} if password else {})}
-            term = Terminal([binary, '--no-check-update', '--log-level', 'info', '--log-file',
-                             str(root / (name + '.log')), *mode_args], rows=30, cols=100,
+            term = Terminal(cli_command(binary, '--log-level', 'info', '--log-file',
+                             str(root / (name + '.log')), *mode_args), rows=30, cols=100,
                             terminal_replies=True, environment=env)
             terminals.append(term)
             return term
@@ -264,18 +271,44 @@ def main():
             server.close()
 
             acds_port = free_port()
-            acds = subprocess.Popen([binary, '--no-check-update', '--log-file', str(root / 'acds.log'),
+            acds = start_cli(binary, '--log-file', str(root / 'acds.log'),
                                      'discovery-service', '--port', str(acds_port), '--websocket-port', str(free_port()),
-                                     '--database', str(root / 'acds.db'), '--status-screen=false'],
+                                     '--database', str(root / 'acds.db'), '--status-screen=false',
                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=environment)
             services.append(acds)
             time.sleep(1)
             assert acds.poll() is None, 'ACDS failed to start'
+            # A malformed local STUN response exercises the fallback without
+            # allowing this fixture to contact a public service.
+            stun_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            stun_socket.bind(('127.0.0.1', 0))
+            stun_socket.settimeout(.2)
+            stun_port = stun_socket.getsockname()[1]
+            stun_probe_seen = threading.Event()
+            def respond_to_stun():
+                while not stun_stop.is_set():
+                    try:
+                        request, peer = stun_socket.recvfrom(2048)
+                    except socket.timeout:
+                        continue
+                    except OSError:
+                        return
+                    if len(request) >= 20 and request[8:20] == b'\xaa' * 12:
+                        stun_probe_seen.set()
+                        try:
+                            stun_socket.sendto(b'\x01\x01\x00\x00' + request[4:20], peer)
+                        except OSError:
+                            if not stun_stop.is_set():
+                                raise
+            stun_thread = threading.Thread(target=respond_to_stun, daemon=True)
+            stun_thread.start()
             discovery = ['--discovery-service', '127.0.0.1', '--discovery-service-port', str(acds_port),
-                         '--port', str(free_port()), '--splash-screen=true', '--stun-servers', 'stun:127.0.0.1:9',
+                         '--port', str(free_port()), '--splash-screen=true', '--stun-servers', f'stun:127.0.0.1:{stun_port}',
                          '--turn-servers', 'turn:127.0.0.1:9', *common]
             host = terminal('host', discovery, password=True)
             invitation = host.expect(lambda s: 'Run: ascii-chat ' in s, 'Host invitation missing', timeout=35)
+            assert stun_probe_seen.wait(10), 'NAT detection ignored the configured local STUN server'
+            assert 'ERROR_FORMAT' not in host.pump(.1), 'Recoverable STUN failure opened an error popup'
             session = re.search(r'Run: ascii-chat ([a-z]+-[a-z]+-[a-z]+)', invitation).group(1)
             joiner = terminal('discovery-retry', [session, *discovery])
             prompt(joiner)
@@ -292,7 +325,7 @@ def main():
             assert joiner.process.isalive()
             assert SECRET not in ''.join(joiner.raw)
             headless_log = root / 'discovery-headless.log'
-            headless = subprocess.run([binary, '--no-check-update', '--log-file', str(headless_log), session, *discovery],
+            headless = run_cli(binary, '--log-file', str(headless_log), session, *discovery,
                                       stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                       env=environment, timeout=25)
             assert headless.returncode != 0, 'Missing headless password unexpectedly succeeded'
@@ -305,6 +338,11 @@ def main():
                 wait_exit(cancelled)
             print('PASS discovery: missing password, wrong password, corrected session join, Esc, Cancel', flush=True)
         finally:
+            stun_stop.set()
+            if stun_socket:
+                stun_socket.close()
+            if stun_thread:
+                stun_thread.join(timeout=2)
             for term in reversed(terminals):
                 term.close()
             for service in services:

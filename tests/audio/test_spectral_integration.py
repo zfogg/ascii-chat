@@ -10,7 +10,7 @@ import _environment  # noqa: F401
 from pathlib import Path
 import ctypes as c, sys, os, tempfile
 import numpy as np
-from test_spectral import load
+from ascii_chat_tests.audio_spectral import load
 
 library_path = Path(sys.argv[1]).resolve()
 original_cwd = Path.cwd()

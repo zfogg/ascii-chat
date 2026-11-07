@@ -7,13 +7,15 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 
 import argparse
 import os
 from pathlib import Path
 import time
-from terminal_ui import Terminal, free_port
+from ascii_chat_tests.terminal import Terminal
+from ascii_chat_tests.process import free_port
 
 
 def main():
@@ -37,13 +39,10 @@ def main():
 
     def launch(name, argv):
         p = Terminal(
-            [
-                binary,
-                "--no-check-update",
-                "--log-file",
+            cli_command(binary, "--log-file",
                 str(root / (name + ".log")),
                 *argv,
-            ],
+            ),
             46,
             110,
         )

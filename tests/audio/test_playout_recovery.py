@@ -11,7 +11,7 @@ import ctypes as c
 from pathlib import Path
 import sys
 import numpy as np
-from test_spectral import load
+from ascii_chat_tests.audio_spectral import load
 
 library = Path(sys.argv[1]).resolve()
 lib = load(library)
