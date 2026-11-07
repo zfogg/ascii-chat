@@ -34,36 +34,23 @@ function(ascii_defer_apply_target target)
             continue()
         endif()
         set(_generated "${CMAKE_BINARY_DIR}/defer_transformed/${target}/${_relative}")
-        set(_depfile "${_generated}.d")
-        get_filename_component(_output_dir "${_generated}" DIRECTORY)
         get_filename_component(_original_dir "${_absolute}" DIRECTORY)
-        add_custom_command(
-            OUTPUT "${_generated}"
-            COMMAND "${CMAKE_COMMAND}" -E make_directory "${_output_dir}"
-            COMMAND "${ASCIICHAT_PYTHON3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/src/tooling/defer/defer.py"
-                --libclang "${ASCIICHAT_LIBCLANG_PATH}"
-                --compilation-database "${CMAKE_BINARY_DIR}"
-                --depfile "${_depfile}"
-                "${_absolute}" "${_generated}"
-            DEPENDS "${_absolute}" "${CMAKE_SOURCE_DIR}/src/tooling/defer/defer.py"
-                "${CMAKE_SOURCE_DIR}/src/tooling/defer/vendor/clang/cindex.py"
-                "${CMAKE_BINARY_DIR}/compile_commands.json"
-            DEPFILE "${_depfile}"
-            COMMENT "Transforming defer statements in ${_relative}"
-            VERBATIM
-        )
-        # The target can live in a subdirectory while this command is defined
-        # here. An explicit target dependency makes the generator rule visible
-        # across directory scopes.
-        string(MD5 _defer_id "${target}|${_absolute}")
-        add_custom_target("ascii-defer-${_defer_id}" DEPENDS "${_generated}")
+        # Targets with identical prerequisites share a batch. This avoids introducing
+        # dependencies between unrelated build stages or cycles through linked targets.
+        set(_batch_prerequisites "")
         if(_prerequisites)
-            add_dependencies("ascii-defer-${_defer_id}" ${_prerequisites})
+            set(_batch_prerequisites ${_prerequisites})
         endif()
-        if(TARGET generate_version AND NOT "generate_version" IN_LIST _prerequisites)
-            add_dependencies("ascii-defer-${_defer_id}" generate_version)
+        if(TARGET generate_version AND NOT "generate_version" IN_LIST _batch_prerequisites)
+            list(APPEND _batch_prerequisites generate_version)
         endif()
-        add_dependencies("${target}" "ascii-defer-${_defer_id}")
+        list(SORT _batch_prerequisites)
+        string(MD5 _batch_id "${_batch_stage}|${_batch_prerequisites}")
+        set_property(GLOBAL APPEND PROPERTY ASCII_DEFER_BATCH_IDS "${_batch_id}")
+        set_property(GLOBAL APPEND PROPERTY "ASCII_DEFER_${_batch_id}_SOURCES" "${_absolute}")
+        set_property(GLOBAL APPEND PROPERTY "ASCII_DEFER_${_batch_id}_OUTPUTS" "${_generated}")
+        set_property(GLOBAL APPEND PROPERTY "ASCII_DEFER_${_batch_id}_TARGETS" "${target}")
+        set_property(GLOBAL PROPERTY "ASCII_DEFER_${_batch_id}_PREREQUISITES" "${_batch_prerequisites}")
         set_source_files_properties("${_generated}" TARGET_DIRECTORY "${target}"
             PROPERTIES GENERATED TRUE SKIP_UNITY_BUILD_INCLUSION TRUE
             INCLUDE_DIRECTORIES "${_original_dir}")
@@ -72,7 +59,53 @@ function(ascii_defer_apply_target target)
     set_property(TARGET "${target}" PROPERTY SOURCES "${_new_sources}")
 endfunction()
 
+function(ascii_defer_finish_batches)
+    get_property(_ids GLOBAL PROPERTY ASCII_DEFER_BATCH_IDS)
+    list(REMOVE_DUPLICATES _ids)
+    foreach(_id IN LISTS _ids)
+        get_property(_sources GLOBAL PROPERTY "ASCII_DEFER_${_id}_SOURCES")
+        get_property(_outputs GLOBAL PROPERTY "ASCII_DEFER_${_id}_OUTPUTS")
+        get_property(_targets GLOBAL PROPERTY "ASCII_DEFER_${_id}_TARGETS")
+        get_property(_prerequisites GLOBAL PROPERTY "ASCII_DEFER_${_id}_PREREQUISITES")
+        set(_manifest "${CMAKE_BINARY_DIR}/defer_transformed/batch-${_id}.txt")
+        set(_depfile "${CMAKE_BINARY_DIR}/defer_transformed/batch-${_id}.d")
+        set(_content "")
+        list(LENGTH _sources _count)
+        math(EXPR _last "${_count} - 1")
+        foreach(_index RANGE ${_last})
+            list(GET _sources ${_index} _source)
+            list(GET _outputs ${_index} _output)
+            string(APPEND _content "${_source}\t${_output}\n")
+        endforeach()
+        file(GENERATE OUTPUT "${_manifest}" CONTENT "${_content}")
+        add_custom_command(
+            OUTPUT ${_outputs}
+            COMMAND "${ASCIICHAT_PYTHON3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/src/tooling/defer/defer.py"
+                --batch "${_manifest}" --libclang "${ASCIICHAT_LIBCLANG_PATH}"
+                --compilation-database "${CMAKE_BINARY_DIR}" --depfile "${_depfile}"
+            DEPENDS ${_sources} "${_manifest}" "${CMAKE_SOURCE_DIR}/src/tooling/defer/defer.py"
+                "${CMAKE_SOURCE_DIR}/src/tooling/defer/vendor/clang/cindex.py"
+                "${CMAKE_BINARY_DIR}/compile_commands.json"
+            DEPFILE "${_depfile}"
+            COMMENT "Transforming defer source batch"
+            VERBATIM)
+        add_custom_target("ascii-defer-${_id}" DEPENDS ${_outputs})
+        if(_prerequisites)
+            add_dependencies("ascii-defer-${_id}" ${_prerequisites})
+        endif()
+        list(REMOVE_DUPLICATES _targets)
+        foreach(_target IN LISTS _targets)
+            add_dependencies("${_target}" "ascii-defer-${_id}")
+        endforeach()
+        foreach(_key SOURCES OUTPUTS TARGETS PREREQUISITES)
+            set_property(GLOBAL PROPERTY "ASCII_DEFER_${_id}_${_key}" "")
+        endforeach()
+    endforeach()
+    set_property(GLOBAL PROPERTY ASCII_DEFER_BATCH_IDS "")
+endfunction()
+
 function(ascii_defer_prepare)
+    set(_batch_stage production)
     if(NOT CMAKE_EXPORT_COMPILE_COMMANDS)
         message(FATAL_ERROR "defer requires CMAKE_EXPORT_COMPILE_COMMANDS=ON")
     endif()
@@ -119,11 +152,14 @@ function(ascii_defer_prepare)
             ascii_defer_apply_target("${_target}")
         endif()
     endforeach()
+    ascii_defer_finish_batches()
 endfunction()
 
 function(ascii_defer_prepare_tests)
+    set(_batch_stage tests)
     get_property(_test_targets DIRECTORY "${CMAKE_SOURCE_DIR}/tests" PROPERTY BUILDSYSTEM_TARGETS)
     foreach(_target IN LISTS _test_targets)
         ascii_defer_apply_target("${_target}")
     endforeach()
+    ascii_defer_finish_batches()
 endfunction()

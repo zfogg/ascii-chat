@@ -520,6 +520,51 @@ def compilation_arguments(directory: Path, generated: Path, source: Path) -> lis
     return result
 
 
+def batch_main() -> int:
+    """Transform a CMake batch in one interpreter and emit one combined depfile."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--batch", type=Path, required=True)
+    parser.add_argument("--libclang", type=Path, required=True)
+    parser.add_argument("--compilation-database", type=Path, required=True)
+    parser.add_argument("--depfile", type=Path, required=True)
+    args = parser.parse_args()
+    cindex.Config.set_library_file(str(args.libclang.resolve()))
+    manifest = args.batch.resolve()
+    database = args.compilation_database.resolve()
+    depfile = args.depfile.resolve()
+    original_cwd = Path.cwd()
+    original_argv = sys.argv
+    dependencies: list[str] = []
+    primary = ""
+    try:
+        for line in manifest.read_text(encoding="utf-8").splitlines():
+            source, output = line.split("\t")
+            part = Path(output + ".d")
+            sys.argv = [
+                original_argv[0],
+                "--compilation-database",
+                str(database),
+                "--depfile",
+                str(part),
+                source,
+                output,
+            ]
+            os.chdir(original_cwd)
+            if main() != 0:
+                return 1
+            target, inputs = part.read_text(encoding="utf-8").split(": ", 1)
+            if not primary:
+                primary = target
+            dependencies.append(inputs.strip())
+        depfile.write_text(
+            primary + ": " + " ".join(dependencies) + "\n", encoding="utf-8"
+        )
+        return 0
+    finally:
+        sys.argv = original_argv
+        os.chdir(original_cwd)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--compilation-database", type=Path)
@@ -599,4 +644,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(batch_main() if "--batch" in sys.argv[1:] else main())

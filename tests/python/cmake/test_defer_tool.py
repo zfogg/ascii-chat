@@ -202,6 +202,12 @@ def test_cmake_discovers_defer_and_tracks_headers(
     tool_dir.mkdir(parents=True)
     shutil.copy2(TOOL, tool_dir / "defer.py")
     shutil.copytree(TOOL.parent / "vendor" / "clang", tool_dir / "vendor" / "clang")
+    second = source_dir / "second.c"
+    second.write_text(
+        '#include "ascii-chat/tooling/defer/defer.h"\n'
+        "void second(void) { defer((void)0); }\n",
+        encoding="utf-8",
+    )
     main = source_dir / "main.c"
     main.write_text("int main(void) { return 0; }\n", encoding="utf-8")
     header = source_dir / "value.h"
@@ -224,7 +230,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
         encoding="utf-8",
     )
     (source_dir / "CMakeLists.txt").write_text(
-        "add_executable(ascii-chat-probe main.c)\n"
+        "add_executable(ascii-chat-probe main.c second.c)\n"
         "set_target_properties(ascii-chat-probe PROPERTIES UNITY_BUILD ON)\n"
         "add_dependencies(ascii-chat-probe generate_version)\n"
         f'target_include_directories(ascii-chat-probe PRIVATE "{include_dir}" "${{CMAKE_BINARY_DIR}}")\n',
@@ -232,11 +238,12 @@ def test_cmake_discovers_defer_and_tracks_headers(
     )
     build = project / "out"
 
-    def run(*args: str) -> None:
+    def run(*args: str) -> str:
         result = subprocess.run(
             args, capture_output=True, text=True, env=compiler_environment, check=False
         )
         assert result.returncode == 0, result.stdout + result.stderr
+        return result.stdout
 
     run(
         cmake,
@@ -256,7 +263,11 @@ def test_cmake_discovers_defer_and_tracks_headers(
         encoding="utf-8",
     )
     (build / "ready.h").unlink()
-    run(cmake, "--build", str(build))
+    output = run(cmake, "--build", str(build))
+    assert output.count("Transforming defer source batch") == 1
+    assert (
+        build / "defer_transformed" / "ascii-chat-probe" / "src" / "second.c"
+    ).is_file()
     generated = build / "defer_transformed" / "ascii-chat-probe" / "src" / "main.c"
     assert generated.is_file()
     assert "defer\n (n = VALUE)" in main.read_text(encoding="utf-8")
@@ -276,6 +287,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
     run(cmake, "--build", str(build))
     assert generated.stat().st_mtime_ns > before
     run(str(executable))
+    assert "Transforming defer source batch" not in run(cmake, "--build", str(build))
 
 
 def test_source_cannot_be_overwritten(
