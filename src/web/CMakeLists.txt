@@ -580,6 +580,7 @@ set(EXPORTED_FUNCTIONS_MIRROR
     # Frame processing for JavaScript control
     _mirror_init_with_args
     _mirror_cleanup
+    _mirror_reset_stabilizer
     _mirror_convert_frame
     _mirror_submit_audio_samples
     _mirror_render_audio_visualization

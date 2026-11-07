@@ -86,6 +86,11 @@ int mirror_init_with_args(const char *args_json) {
 }
 
 EMSCRIPTEN_KEEPALIVE
+void mirror_reset_stabilizer(void) {
+  ascii_stabilizer_reset(&g_stabilizer);
+}
+
+EMSCRIPTEN_KEEPALIVE
 void mirror_cleanup(void) {
   ascii_stabilizer_reset(&g_stabilizer);
   errno_destroy();
