@@ -68,6 +68,7 @@ class Stream {
 }
 
 const source = { connect: vi.fn(), disconnect: vi.fn() };
+const splitterConnect = vi.fn();
 const resume = vi.fn().mockResolvedValue(undefined);
 const closeAudio = vi.fn().mockResolvedValue(undefined);
 const getUserMedia = vi.fn();
@@ -135,6 +136,10 @@ beforeEach(() => {
       resume = resume;
       close = closeAudio;
       createMediaStreamSource = vi.fn(() => source);
+      createChannelSplitter = vi.fn(() => ({
+        connect: splitterConnect,
+        disconnect: vi.fn(),
+      }));
       createAnalyser = vi.fn(() => ({
         fftSize: 512,
         getFloatTimeDomainData: (samples: Float32Array) =>
@@ -166,6 +171,25 @@ afterEach(() => {
 });
 
 describe("Device setup with unavailable inputs", () => {
+  it("meters only the selected microphone channels", async () => {
+    render(<DeviceSetupModal open onClose={vi.fn()} />);
+    await waitFor(() => expect(splitterConnect).toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText("First microphone input"), {
+      target: { value: "3" },
+    });
+    fireEvent.change(screen.getByLabelText("Microphone layout"), {
+      target: { value: "2" },
+    });
+    await waitFor(() => {
+      expect(getUserMedia).toHaveBeenCalledWith(
+        expect.objectContaining({
+          audio: expect.objectContaining({ channelCount: { ideal: 4 } }),
+        }),
+      );
+      expect(splitterConnect).toHaveBeenCalledWith(expect.anything(), 2);
+      expect(splitterConnect).toHaveBeenCalledWith(expect.anything(), 3);
+    });
+  });
   it("persists microphone layout only on Done and reloads it on reopening", async () => {
     const view = render(<DeviceSetupModal open onClose={vi.fn()} />);
     const layout = screen.getByLabelText("Microphone layout");
@@ -777,7 +801,9 @@ it("offers System default for both inputs and preserves it after preview and sav
     screen.getAllByRole("option", { name: "System default" }),
   ).toHaveLength(3);
   const requests = getUserMedia.mock.calls.map(([constraints]) => constraints);
-  expect(requests.find((constraints) => constraints.audio).audio).toBe(true);
+  expect(requests.find((constraints) => constraints.audio).audio).toEqual({
+    channelCount: { ideal: 1 },
+  });
   expect(
     requests.find((constraints) => constraints.video).video,
   ).not.toHaveProperty("deviceId");
