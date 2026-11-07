@@ -1616,7 +1616,8 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
 
   if (capture_output) {
     startup_info.hStdOutput = stdout_write;
-    startup_info.hStdError = stdout_write;
+    startup_info.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+    startup_info.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
     startup_info.dwFlags |= STARTF_USESTDHANDLES;
   }
 
@@ -1674,6 +1675,7 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
   bool cancelled = false;
   DWORD wait_result = WAIT_TIMEOUT;
   bool exited = false;
+  bool pipe_closed = !capture_output;
   for (;;) {
     if (cancel && cancel(data)) {
       cancelled = true;
@@ -1684,7 +1686,12 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
     }
     if (capture_output && stdout_read) {
       DWORD available = 0;
-      if (PeekNamedPipe(stdout_read, NULL, 0, NULL, &available, NULL) && available) {
+      BOOL peeked = PeekNamedPipe(stdout_read, NULL, 0, NULL, &available, NULL);
+      if (!peeked) {
+        pipe_closed = true;
+        if (GetLastError() != ERROR_BROKEN_PIPE)
+          capture_failed = true;
+      } else if (available) {
         char chunk[4096];
         DWORD bytes_read = 0;
         DWORD request = available < sizeof(chunk) ? available : sizeof(chunk);
@@ -1699,8 +1706,12 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
         }
       }
     }
-    if (exited)
-      break;
+    if (exited) {
+      if (pipe_closed)
+        break;
+      Sleep(50);
+      continue;
+    }
     wait_result = WaitForSingleObject(process_info.hProcess, 50);
     if (wait_result == WAIT_OBJECT_0)
       exited = true;

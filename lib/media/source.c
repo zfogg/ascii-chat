@@ -191,6 +191,8 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
     log_debug("yt-dlp successfully extracted stream URL");
     return ASCIICHAT_OK;
   }
+  if (yt_dlp_result == ERROR_NOT_SUPPORTED)
+    return SET_ERRNO(ERROR_NOT_SUPPORTED, "The selected yt-dlp proxy cannot be used for media requests");
   audio_url[0] = '\0';
   memset(video_request, 0, sizeof(*video_request));
   memset(audio_request, 0, sizeof(*audio_request));
@@ -333,7 +335,8 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     // This allows independent read rates and avoids lock contention
     asciichat_errno_scope_t decoder_scope = errno_checkpoint();
     source->video_decoder = ffmpeg_decoder_create_with_request_options(
-        effective_path, cancel, data, video_request.headers, video_request.cookies, video_request.proxy);
+        effective_path, cancel, data, video_request.headers, video_request.cookies,
+        video_request.proxy_specified ? video_request.proxy : NULL);
     if (!source->video_decoder) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: video decoder could not open input");
       if (!cancel)
@@ -354,7 +357,8 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     const char *audio_path = resolved_audio_url[0] ? resolved_audio_url : effective_path;
     const yt_dlp_request_options_t *audio_settings = resolved_audio_url[0] ? &audio_request : &video_request;
     source->audio_decoder = ffmpeg_decoder_create_with_request_options(
-        audio_path, cancel, data, audio_settings->headers, audio_settings->cookies, audio_settings->proxy);
+        audio_path, cancel, data, audio_settings->headers, audio_settings->cookies,
+        audio_settings->proxy_specified ? audio_settings->proxy : NULL);
     if (!source->audio_decoder) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: audio decoder could not open input");
       LOG_ERRNO_IF_SET("Media initialization failed");

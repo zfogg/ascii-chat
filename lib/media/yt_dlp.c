@@ -265,8 +265,10 @@ static char *yt_dlp_next_cookie_attribute(char **cursor) {
       return start;
     }
   }
+  if (quoted)
+    return NULL;
   *cursor = NULL;
-  return quoted ? NULL : start;
+  return start;
 }
 
 // FFmpeg expects CRLF-terminated request headers and newline-separated cookies.
@@ -410,8 +412,35 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
   if (!yt_dlp_parse_options(yt_dlp_options, option_storage, sizeof(option_storage), argv, &argc, YT_DLP_MAX_ARGS - 5)) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid or too long yt-dlp options");
   }
+  // Pass the explicit yt-dlp proxy to the independent FFmpeg requests.
+  bool skip_proxy_value = false;
+  for (size_t i = 0; i < argc; ++i) {
+    if (skip_proxy_value) {
+      skip_proxy_value = false;
+      continue;
+    }
+    const char *proxy = NULL;
+    if (!strcmp(argv[i], "--proxy") && i + 1 < argc) {
+      proxy = argv[i + 1];
+      skip_proxy_value = true;
+    } else if (!strncmp(argv[i], "--proxy=", sizeof("--proxy=") - 1)) {
+      proxy = argv[i] + sizeof("--proxy=") - 1;
+    }
+    if (proxy) {
+      const size_t proxy_length = strlen(proxy);
+      if (proxy_length >= sizeof(video_request->proxy))
+        return SET_ERRNO(ERROR_NOT_SUPPORTED, "yt-dlp proxy is too long for media requests");
+      memcpy(video_request->proxy, proxy, proxy_length + sizeof(char));
+      memcpy(audio_request->proxy, proxy, proxy_length + sizeof(char));
+      video_request->proxy_specified = audio_request->proxy_specified = true;
+    }
+  }
+  if (video_request->proxy_specified && video_request->proxy[0] && strncmp(video_request->proxy, "http://", 7))
+    return SET_ERRNO(ERROR_NOT_SUPPORTED,
+                     "FFmpeg media requests require an HTTP proxy; the yt-dlp proxy is unsupported");
   argv[argc++] = "--print";
-  argv[argc++] = "%(.{url,requested_formats,http_headers,cookies})j";
+  argv[argc++] =
+      "{\"base\":%(.{url,http_headers,cookies})j,\"formats\":%(requested_formats.:.{url,http_headers,cookies}|null)j}";
   argv[argc++] = "--";
   argv[argc++] = url;
   argv[argc] = NULL;
@@ -434,15 +463,18 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
   size_t count = 0;
   yyjson_doc *doc = yyjson_read(output, strlen(output), 0);
   yyjson_val *root = doc ? yyjson_doc_get_root(doc) : NULL;
-  yyjson_val *formats = root ? yyjson_obj_get(root, "requested_formats") : NULL;
+  yyjson_val *base = root ? yyjson_obj_get(root, "base") : NULL;
+  yyjson_val *formats = root ? yyjson_obj_get(root, "formats") : NULL;
+  if (!yyjson_is_arr(formats))
+    formats = NULL;
   size_t total = yyjson_is_arr(formats) ? yyjson_arr_size(formats) : 1;
-  if (!root || total > 2) {
+  if (!yyjson_is_obj(base) || total > 2) {
     if (doc)
       yyjson_doc_free(doc);
     return SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned invalid stream metadata");
   }
   for (size_t i = 0; i < total; ++i) {
-    yyjson_val *format = formats ? yyjson_arr_get(formats, i) : root;
+    yyjson_val *format = formats ? yyjson_arr_get(formats, i) : base;
     yyjson_val *stream_value = yyjson_obj_get(format, "url");
     const char *stream = yyjson_get_str(stream_value);
     char *dest = i == 0 ? output_url : audio_url;
@@ -450,7 +482,7 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
     yt_dlp_request_options_t *request = i == 0 ? video_request : audio_request;
     const size_t stream_length = stream ? strlen(stream) : 0;
     if (!stream || stream_length != yyjson_get_len(stream_value) || !yt_dlp_is_stream_url(stream) ||
-        stream_length >= capacity || !yt_dlp_parse_request(format, root, stream, request)) {
+        stream_length >= capacity || !yt_dlp_parse_request(format, base, stream, request)) {
       yyjson_doc_free(doc);
       output_url[0] = audio_url[0] = '\0';
       return SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned invalid stream metadata");
@@ -459,28 +491,6 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
     ++count;
   }
   yyjson_doc_free(doc);
-  // Pass the explicit yt-dlp proxy to the independent FFmpeg requests.
-  bool skip_proxy_value = false;
-  for (size_t i = 0; i < argc; ++i) {
-    if (skip_proxy_value) {
-      skip_proxy_value = false;
-      continue;
-    }
-    const char *proxy = NULL;
-    if (!strcmp(argv[i], "--proxy") && i + 1 < argc) {
-      proxy = argv[i + 1];
-      skip_proxy_value = true;
-    } else if (!strncmp(argv[i], "--proxy=", sizeof("--proxy=") - 1)) {
-      proxy = argv[i] + sizeof("--proxy=") - 1;
-    }
-    if (proxy) {
-      const size_t proxy_length = strlen(proxy);
-      if (proxy_length >= sizeof(video_request->proxy))
-        return SET_ERRNO(ERROR_INVALID_PARAM, "yt-dlp proxy is too long");
-      memcpy(video_request->proxy, proxy, proxy_length + sizeof(char));
-      memcpy(audio_request->proxy, proxy, proxy_length + sizeof(char));
-    }
-  }
   if (count == 0) {
     static_mutex_lock_named(&g_yt_dlp_cache_lock, "yt_dlp_cache");
     yt_dlp_cache_set(url, yt_dlp_options, NULL, NULL, video_request, audio_request);

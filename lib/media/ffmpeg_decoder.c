@@ -819,7 +819,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, b
         av_dict_set(&options, "headers", headers, 0);
       if (cookies && *cookies)
         av_dict_set(&options, "cookies", cookies, 0);
-      if (proxy && *proxy)
+      if (proxy)
         av_dict_set(&options, "http_proxy", proxy, 0);
       // Limit probing to 32KB for faster format detection
       av_dict_set(&options, "probesize", "32768", 0);

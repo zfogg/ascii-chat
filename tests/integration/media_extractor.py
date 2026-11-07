@@ -156,6 +156,24 @@ class MediaExtractor(unittest.TestCase):
                 self.assertTrue(any(path.endswith("/video.ppm") for path in self.requests), self.requests)
                 self.assertTrue(any(path.endswith("/audio.wav") for path in self.requests), self.requests)
 
+    def test_empty_proxy_overrides_environment(self):
+        self.env.update(http_proxy="http://127.0.0.1:1", no_proxy="")
+        result = self.run_mirror("combined", "--proxy ''")
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
+        self.assertIn("/video.ppm", self.requests)
+
+    def test_extractor_stderr_does_not_corrupt_metadata(self):
+        self.env["FAKE_YTDLP_DIAGNOSTIC"] = "1"
+        result = self.run_mirror("combined", "--verbose")
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
+
+    @unittest.skipUnless(os.name == "nt", "Windows pipe inheritance")
+    def test_extractor_drains_output_after_parent_exits(self):
+        env = dict(self.env, FAKE_YTDLP_MODE="delayed")
+        result = subprocess.run([AUDIO_PROBE, self.base + "/watch", self.base + "/video.ppm"],
+                                env=env, cwd=self.root, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
+
     def test_extracted_rtmp_stream_is_returned(self):
         """Accept RTMP streams supplied by the extractor."""
         stream = "rtmp://stream.example.test/live/example"
@@ -172,6 +190,20 @@ class MediaExtractor(unittest.TestCase):
                 result = subprocess.run([AUDIO_PROBE, self.base + "/watch", "--expect-error"],
                                         env=env, cwd=self.root, capture_output=True, timeout=45)
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
+
+    def test_unterminated_cookie_is_rejected(self):
+        env = dict(self.env, FAKE_YTDLP_MODE="combined", FAKE_YTDLP_COOKIE='session="unterminated')
+        result = subprocess.run([AUDIO_PROBE, self.base + "/watch", "--expect-error"],
+                                env=env, cwd=self.root, capture_output=True, timeout=45)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
+
+    def test_unsupported_proxy_does_not_open_media(self):
+        cmd = [BINARY, "--no-check-update", "mirror", self.base + "/watch", "--snapshot",
+               "--splash-screen=false", "--audio=false", "--yt-dlp-options=--proxy socks5://127.0.0.1:1080"]
+        result = subprocess.run(cmd, env=self.env, cwd=self.root, capture_output=True, timeout=45)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("/video.ppm", self.requests)
+        self.assertNotIn("/audio.wav", self.requests)
 
     def test_unrelated_extraction_failure_does_not_retry(self):
         """Do not retry extraction after an unrelated failure."""

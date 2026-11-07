@@ -365,6 +365,8 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     if (existing_error == ASCIICHAT_OK) {
       SET_ERRNO(ERROR_MEDIA_INIT, "Failed to create media source");
     }
+    if (config->type == MEDIA_SOURCE_FILE && !playback_cancelled(ctx))
+      NOTICE(WARNING, "MEDIA COULD NOT BE OPENED", "Failed to open media: %s", config->path ? config->path : "");
     if (ctx->media_locks_ready) {
       mutex_destroy(&ctx->load_mutex);
       mutex_destroy(&ctx->source_mutex);

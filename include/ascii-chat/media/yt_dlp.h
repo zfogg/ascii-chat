@@ -18,6 +18,7 @@ typedef struct {
   char headers[YT_DLP_HEADERS_CAPACITY];
   char cookies[YT_DLP_COOKIES_CAPACITY];
   char proxy[YT_DLP_PROXY_CAPACITY];
+  bool proxy_specified;
 } yt_dlp_request_options_t;
 
 #ifdef __cplusplus

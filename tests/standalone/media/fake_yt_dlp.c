@@ -1,5 +1,6 @@
 /* A deterministic yt-dlp stand-in for media integration tests. */
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef _WIN32
@@ -27,6 +28,11 @@ static void json_format(const char *url) {
 }
 
 int main(int argc, char **argv) {
+#ifdef _WIN32
+  bool delayed_child = argc == 2 && strcmp(argv[1], "--delayed-child") == 0;
+  if (delayed_child)
+    Sleep(300);
+#endif
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "--version") == 0) {
       puts("fixture");
@@ -44,6 +50,23 @@ int main(int argc, char **argv) {
     fclose(file);
   }
   const char *mode = getenv("FAKE_YTDLP_MODE");
+#ifdef _WIN32
+  if (mode && strcmp(mode, "delayed") == 0 && !delayed_child) {
+    char executable[MAX_PATH], command[MAX_PATH + 32];
+    if (!GetModuleFileNameA(NULL, executable, sizeof(executable)))
+      return 4;
+    snprintf(command, sizeof(command), "\"%s\" --delayed-child", executable);
+    STARTUPINFOA startup = {.cb = sizeof(startup)};
+    PROCESS_INFORMATION process = {0};
+    if (!CreateProcessA(NULL, command, NULL, NULL, TRUE, 0, NULL, NULL, &startup, &process))
+      return 5;
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+    return 0;
+  }
+#endif
+  if (getenv("FAKE_YTDLP_DIAGNOSTIC"))
+    fputs("fixture diagnostic on stderr\n", stderr);
   if (mode && strcmp(mode, "hang") == 0) {
 #ifdef _WIN32
     Sleep(30000);
@@ -60,20 +83,21 @@ int main(int argc, char **argv) {
   if (!video)
     return 3;
   if (mode && strcmp(mode, "reversed") == 0 && audio) {
-    fputs("{\"requested_formats\":[", stdout);
+    fputs("{\"base\":{},\"formats\":[", stdout);
     json_format(audio);
     putchar(',');
     json_format(video);
     puts("]}");
   } else if (mode && strcmp(mode, "split") == 0 && audio) {
-    fputs("{\"requested_formats\":[", stdout);
+    fputs("{\"base\":{},\"formats\":[", stdout);
     json_format(video);
     putchar(',');
     json_format(audio);
     puts("]}");
   } else {
+    fputs("{\"base\":", stdout);
     json_format(video);
-    putchar('\n');
+    puts(",\"formats\":null}");
   }
   return 0;
 }
