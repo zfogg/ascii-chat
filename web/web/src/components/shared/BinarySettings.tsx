@@ -146,6 +146,10 @@ export function BinarySettings({
           palette: "custom",
           paletteChars: value,
         });
+      } else {
+        setPaletteDraft(
+          configRef.current.paletteChars ?? DEFAULT_PALETTE_CHARS,
+        );
       }
     }, PALETTE_INPUT_DEBOUNCE_MS);
   };
@@ -468,10 +472,18 @@ export function BinarySettings({
                 Palette
               </label>
               <select
+                aria-label="Palette"
                 value={config.palette}
-                onChange={(e) =>
-                  updateConfig({ palette: e.target.value as Palette })
-                }
+                onChange={(e) => {
+                  if (paletteTimerRef.current !== null) {
+                    clearTimeout(paletteTimerRef.current);
+                    paletteTimerRef.current = null;
+                    setPaletteDraft(
+                      config.paletteChars ?? DEFAULT_PALETTE_CHARS,
+                    );
+                  }
+                  updateConfig({ palette: e.target.value as Palette });
+                }}
                 disabled={disabled}
                 className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
               >

@@ -45,9 +45,10 @@ ascii-chat client localhost --audio=true
 ascii-chat client localhost --spectral-audio=false
 ```
 
-Server mixing does not apply spectral processing by default, including when a
-discovery client hosts the call. `--audio-spectral-mixer=true` explicitly enables
-processing of the entire mixed output, including any media/test sources. This is
+Server mixing does not apply spectral processing by default. In server mode,
+`--audio-spectral-mixer=true` explicitly enables processing of the entire mixed
+output, including any media/test sources. Discovery hosts do not support this
+option. This is
 separate from `--spectral-audio`, which controls microphone capture only. Enabling
 both adds both processors' latency. Existing server configurations that used
 `--audio-spectral=true` for mix processing must switch to the new mixer flag.
@@ -81,6 +82,11 @@ serialized because FFTW's planner is shared; processing uses no allocations or
 locks. Each processor has one owner thread. Each mixer recipient has its own
 history, and removing a recipient resets that history. Mixer access remains
 serialized to protect mutable DSP state.
+
+For stereo capture and stereo server mixes, spectral AGC, multiband compression,
+and spectral gating are disabled to avoid independent gains shifting the stereo
+image. Stereo capture instead retains its shared broadband dynamics; stereo mixer
+output retains the existing mixer dynamics. The spectral EQ remains available.
 
 The gate learns a startup noise estimate over approximately 250 ms, then adapts
 asymmetrically with attack/release smoothing and a default maximum reduction of

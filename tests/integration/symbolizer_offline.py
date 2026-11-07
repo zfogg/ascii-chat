@@ -22,10 +22,6 @@ import uuid
 
 
 def worker(library, fixture, name):
-    # The worker intentionally receives a mock debuginfod URL from the parent
-    # to verify application symbolization remains local. Sanitizer teardown is
-    # outside that contract and must not query it for the ASan runtime.
-    os.environ['DEBUGINFOD_URLS'] = ''
     api = c.CDLL(str(library))
     api.log_init.argtypes = [c.c_char_p, c.c_int, c.c_bool, c.c_bool]
     api.log_init(None, 4, True, False)
@@ -59,7 +55,11 @@ def main():
     parser.add_argument('--worker', nargs=2, metavar=('FIXTURE', 'NAME'))
     args = parser.parse_args()
     if args.worker:
-        worker(args.library.resolve(), Path(args.worker[0]), args.worker[1])
+        try:
+            worker(args.library.resolve(), Path(args.worker[0]), args.worker[1])
+        finally:
+            # Sanitizer teardown is outside the symbolization contract.
+            os.environ['DEBUGINFOD_URLS'] = ''
         return
     symbolizer = shutil.which(args.symbolizer)
     if not symbolizer:

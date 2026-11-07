@@ -72,6 +72,10 @@ libasciichat.")
 set(CPACK_RPM_DEVELOPMENTGROUP_PACKAGE_REQUIRES
     "ascii-chat = ${PROJECT_VERSION}, libsodium, libzstd, portaudio, opus, pcre2, sqlite-libs, freetype, fontconfig, openssl-libs, miniupnpc-libs, libwebsockets, libuv, ffmpeg-free-libs")
 
+if(NOT USE_MUSL)
+    string(APPEND CPACK_RPM_DEVELOPMENTGROUP_PACKAGE_REQUIRES ", fftw-devel")
+endif()
+
 # =============================================================================
 # Documentation Package (libasciichat-doc) - HTML docs
 # =============================================================================

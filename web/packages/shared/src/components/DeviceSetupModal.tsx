@@ -48,6 +48,7 @@ export interface DeviceSetupModalProps {
     loading: boolean;
     supportedEncodings: ("hevc" | "h264" | "raw")[];
     selectedEncoding: "hevc" | "h264" | "raw";
+    preference: VideoEncoding;
     bestEncoding: "hevc" | "h264" | "raw";
     selectEncoding: (encoding: VideoEncoding) => void;
     source?: string;
@@ -487,6 +488,7 @@ export function DeviceSetupModal({
         setError(describeDeviceError(cause));
       }
       setEncodingDraft(null);
+      setMicrophoneLayout(getMicrophoneLayout());
       const preferences = readPreferences();
       setPreferences(preferences);
       if (
@@ -555,6 +557,12 @@ export function DeviceSetupModal({
     try {
       if (encodingDraft !== null) videoEncodings?.selectEncoding(encodingDraft);
       savePreferences(preferences);
+      const savedLayout = getMicrophoneLayout();
+      if (
+        savedLayout.channels !== microphoneLayout.channels ||
+        savedLayout.firstChannel !== microphoneLayout.firstChannel
+      )
+        saveMicrophoneLayout(microphoneLayout);
       onClose();
     } catch (cause) {
       setError(
@@ -756,7 +764,7 @@ export function DeviceSetupModal({
                   className="w-full rounded border border-gray-500 bg-gray-950 px-3 py-2 text-gray-100 focus:border-cyan-400 focus:outline-none"
                   aria-label="Video encoding"
                   disabled={videoEncodings.loading}
-                  value={encodingDraft ?? videoEncodings.selectedEncoding}
+                  value={encodingDraft ?? videoEncodings.preference}
                   onChange={(event) =>
                     setEncodingDraft(event.currentTarget.value as VideoEncoding)
                   }
@@ -862,7 +870,6 @@ export function DeviceSetupModal({
                         : (1 as const),
                   };
                   setMicrophoneLayout(next);
-                  saveMicrophoneLayout(next);
                 }}
               >
                 <option value={1}>Mono speech</option>
@@ -889,7 +896,6 @@ export function DeviceSetupModal({
                     return;
                   const next = { ...microphoneLayout, firstChannel };
                   setMicrophoneLayout(next);
-                  saveMicrophoneLayout(next);
                 }}
               />
             </label>

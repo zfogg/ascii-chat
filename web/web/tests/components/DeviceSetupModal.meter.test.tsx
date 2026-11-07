@@ -22,6 +22,7 @@ vi.mock("../../src/hooks/useVideoEncodings", () => ({
     loading: false,
     supportedEncodings: ["raw"],
     selectedEncoding: "raw",
+    preference: "auto",
     bestEncoding: "raw",
     selectEncoding: vi.fn(),
   }),

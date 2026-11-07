@@ -396,6 +396,7 @@ export class AudioPipeline {
   }
 
   private releaseCaptureGraph(): void {
+    this.displaySource?.disconnect();
     ++this.processorGeneration;
     this.processor?.close();
     this.processor = null;

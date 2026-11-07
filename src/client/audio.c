@@ -458,7 +458,7 @@ void audio_process_received_samples(client_connection_t *connection, const float
   // Log latency after writing to playback buffer
   if (connection->audio_context->playback_buffer) {
     size_t buffer_samples = audio_ring_buffer_available_read(connection->audio_context->playback_buffer);
-    float buffer_latency_ms = (float)buffer_samples / 48.0f;
+    float buffer_latency_ms = (float)buffer_samples * 1000.0f / (AUDIO_SAMPLE_RATE * AUDIO_CHANNELS);
     log_dev_every(500 * US_PER_MS_INT, "LATENCY: Client playback buffer after recv: %.1fms (%zu samples)",
                   buffer_latency_ms, buffer_samples);
   }

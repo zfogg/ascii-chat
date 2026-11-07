@@ -22,6 +22,7 @@ vi.mock("../../src/hooks/useVideoEncodings", () => ({
     loading: false,
     supportedEncodings: ["raw"],
     selectedEncoding: "raw",
+    preference: "auto",
     bestEncoding: "raw",
     selectEncoding: vi.fn(),
   }),
@@ -165,6 +166,34 @@ afterEach(() => {
 });
 
 describe("Device setup with unavailable inputs", () => {
+  it("persists microphone layout only on Done and reloads it on reopening", async () => {
+    const view = render(<DeviceSetupModal open onClose={vi.fn()} />);
+    const layout = screen.getByLabelText("Microphone layout");
+    fireEvent.change(layout, { target: { value: "2" } });
+    expect(localStorage.getItem("ascii-chat.microphone-layout")).toBeNull();
+    view.rerender(<DeviceSetupModal open={false} onClose={vi.fn()} />);
+    localStorage.setItem(
+      "ascii-chat.microphone-layout",
+      JSON.stringify({ channels: 1, firstChannel: 2 }),
+    );
+    view.rerender(<DeviceSetupModal open onClose={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByLabelText("Microphone layout")).toHaveValue("1"),
+    );
+    fireEvent.change(screen.getByLabelText("Microphone layout"), {
+      target: { value: "2" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(
+      JSON.parse(localStorage.getItem("ascii-chat.microphone-layout")!),
+    ).toEqual({ channels: 2, firstChannel: 2 });
+  });
+
+  it("shows the automatic upload preference rather than the resolved codec", () => {
+    render(<DeviceSetupModal open onClose={vi.fn()} />);
+    expect(screen.getByLabelText("Video encoding")).toHaveValue("auto");
+  });
+
   it("meters quiet input automatically and keeps the displayed and accessible levels in sync", async () => {
     render(<DeviceSetupModal open onClose={vi.fn()} />);
     await screen.findByRole("button", { name: "Stop test" });

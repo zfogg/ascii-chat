@@ -1052,7 +1052,7 @@ if(TARGET ascii-chat-static)
         endif()
         if(UNIX AND TARGET ascii-chat)
             set(errno_smoke_args $<TARGET_FILE:ascii-chat>)
-            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
                 list(APPEND errno_smoke_args --debug-sync)
             endif()
             asciichat_add_python_test(errno-smoke

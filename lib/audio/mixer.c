@@ -471,6 +471,7 @@ void mixer_remove_source(mixer_t *mixer, const char *client_id) {
           SAFE_FREE(mixer->listener_buffers[j][i]);
       }
       spectral_reset(mixer->spectral[i]);
+      spectral_reset(mixer->spectral_right[i]);
       mixer->source_buffers[i] = NULL;
       // Free the allocated client_id string
       SAFE_FREE(mixer->source_ids[i]);

@@ -82,3 +82,46 @@ test("resets the debounce while the user continues typing", () => {
     paletteChars: " .#",
   });
 });
+
+test("choosing a preset cancels an uncommitted edit", () => {
+  vi.useFakeTimers();
+  const onChange = vi.fn();
+  render(
+    <BinarySettings
+      config={DEFAULT_SETTINGS}
+      mode={AsciiChatMode.MIRROR}
+      onChange={onChange}
+    />,
+    { wrapper: HeadingProvider },
+  );
+  fireEvent.change(screen.getByLabelText("Palette characters"), {
+    target: { value: " .#" },
+  });
+  fireEvent.change(screen.getByLabelText("Palette"), {
+    target: { value: "blocks" },
+  });
+  act(() => vi.advanceTimersByTime(PALETTE_INPUT_DEBOUNCE_MS));
+  expect(onChange).toHaveBeenCalledOnce();
+  expect(onChange).toHaveBeenCalledWith({
+    ...DEFAULT_SETTINGS,
+    palette: "blocks",
+  });
+});
+
+test("restores the configured palette after an empty edit", () => {
+  vi.useFakeTimers();
+  const onChange = vi.fn();
+  render(
+    <BinarySettings
+      config={DEFAULT_SETTINGS}
+      mode={AsciiChatMode.MIRROR}
+      onChange={onChange}
+    />,
+    { wrapper: HeadingProvider },
+  );
+  const input = screen.getByLabelText("Palette characters");
+  fireEvent.change(input, { target: { value: "" } });
+  act(() => vi.advanceTimersByTime(PALETTE_INPUT_DEBOUNCE_MS));
+  expect((input as HTMLInputElement).value).toBe(DEFAULT_PALETTE_CHARS);
+  expect(onChange).not.toHaveBeenCalled();
+});
