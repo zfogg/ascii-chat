@@ -3,7 +3,7 @@ name: ascii-chat-web-deploy
 description: Deploy or repair the three ascii-chat Vercel websites and their Cloudflare DNS. Use for releases to ascii-chat.com, web.ascii-chat.com, or discovery.ascii-chat.com; not for the ACDS server itself.
 ---
 
-# Ascii Chat Web Deploy
+# ascii-chat Web Deploy
 
 Use this skill when publishing or diagnosing the public ascii-chat websites.
 

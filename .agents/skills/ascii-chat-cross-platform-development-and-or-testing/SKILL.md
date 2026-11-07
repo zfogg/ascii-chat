@@ -1,9 +1,9 @@
 ---
-name: ascii-chat-cross-platform
+name: ascii-chat-cross-platform-development-and-or-testing
 description: Set up and use ascii-chat Linux Docker and macOS SSH environments from Windows, preserving source changes, compiler selection, and build caches. Use for cross-platform development and artifact inspection.
 ---
 
-# Cross-platform ascii-chat development
+# ascii-chat Cross Platform Development and/or Testing
 
 Use Linux containers for Linux work and the user's Mac for native macOS work. These environments support development and investigation as well as tests and artifact checks; using them does not itself authorize a release or deployment. Read `AGENTS.md` and inspect current presets and Docker definitions before adapting commands.
 

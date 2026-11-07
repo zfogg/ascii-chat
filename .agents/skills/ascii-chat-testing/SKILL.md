@@ -40,7 +40,7 @@ ctest --test-dir build -L '^performance$' --no-tests=error --output-on-failure -
 
 Criterion works natively on **macOS, including Intel, and glibc Linux**. This supersedes older Intel-Mac Docker-only testing guidance. Windows and musl builds disable Criterion; from Windows use Linux Docker. Release/RelWithDebInfo disable it by default: add `-DASCIICHAT_FORCE_CRITERION_TESTS=ON` with `BUILD_TESTS=ON` on supported platforms. Verify discovery; zero selected tests is not a pass.
 
-Read [running-tests.md](references/running-tests.md) for focused Criterion commands, Windows Docker, Python harnesses, and standalone fixtures. Read [coverage-and-ci.md](references/coverage-and-ci.md) for XML generation, Codecov uploads, and CI diagnostics. Use [ascii-chat-cross-platform](../ascii-chat-cross-platform/SKILL.md) for SSH, source transfer, compiler setup, and persistent environments.
+Read [running-tests.md](references/running-tests.md) for focused Criterion commands, Windows Docker, Python harnesses, and standalone fixtures. Read [coverage-and-ci.md](references/coverage-and-ci.md) for XML generation, Codecov uploads, and CI diagnostics. Use [ascii-chat Cross Platform Development and/or Testing](../ascii-chat-cross-platform-development-and-or-testing/SKILL.md) for SSH, source transfer, compiler setup, and persistent environments.
 
 ## Python tests
 
