@@ -17,6 +17,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <uv.h>
+#include <ascii-chat/platform/stat.h>
 
 typedef struct {
   char *body, *response;
@@ -53,6 +55,39 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     if (!h)
       return -1;
     clear_session(h);
+    if (s->policy.restricted && !strncmp((const char *)in, "/downloads/", 11)) {
+      if (lws_hdr_total_length(wsi, WSI_TOKEN_GET_URI) <= 0)
+        return respond(wsi, h, 405, NULL);
+      const char *name = (const char *)in + 11;
+      int64_t expires;
+      if (!mcp_download_name(name, &expires))
+        return respond(wsi, h, 404, NULL);
+      char path[PLATFORM_MAX_PATH_LENGTH];
+      int n = safe_snprintf(path, sizeof(path), "%s/%s", s->policy.downloads_dir, name);
+      if (n < 0 || (size_t)n >= sizeof(path))
+        return respond(wsi, h, 404, NULL);
+      uv_fs_t fs;
+      if (expires <= (int64_t)time(NULL)) {
+        uv_fs_unlink(NULL, &fs, path, NULL);
+        uv_fs_req_cleanup(&fs);
+        return respond(wsi, h, 404, NULL);
+      }
+      int rc = uv_fs_lstat(NULL, &fs, path, NULL);
+      bool regular = rc == 0 && S_ISREG(fs.statbuf.st_mode);
+      uv_fs_req_cleanup(&fs);
+      if (!regular)
+        return respond(wsi, h, 404, NULL);
+      const char *ext = strrchr(name, '.');
+      const char *mime = !strcmp(ext, ".png")    ? "image/png"
+                         : !strcmp(ext, ".jpg")  ? "image/jpeg"
+                         : !strcmp(ext, ".gif")  ? "image/gif"
+                         : !strcmp(ext, ".mp4")  ? "video/mp4"
+                         : !strcmp(ext, ".webm") ? "video/webm"
+                                                 : "video/x-matroska";
+      static const char headers[] = "cache-control: no-store\r\n";
+      rc = lws_serve_http_file(wsi, path, mime, headers, (int)strlen(headers));
+      return rc < 0 ? -1 : 0;
+    }
     if (!origin_allowed(wsi, &s->policy))
       return respond(wsi, h, 403, NULL);
     if (strcmp((const char *)in, "/mcp"))
@@ -111,6 +146,15 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
         if (j->started && j->connection == wsi && atomic_load_bool(&j->done)) {
           h->pending = false;
           h->status = 200;
+          if (s->policy.restricted &&
+              mcp_download_finalize(&s->policy, j->response, (int64_t)time(NULL)) != ASCIICHAT_OK) {
+            yyjson_mut_val *root = yyjson_mut_doc_get_root(j->response);
+            yyjson_mut_obj_remove_str(root, "result");
+            yyjson_mut_val *error = yyjson_mut_obj(j->response);
+            yyjson_mut_obj_add_int(j->response, error, "code", -32603);
+            yyjson_mut_obj_add_str(j->response, error, "message", "Cannot publish download");
+            yyjson_mut_obj_add_val(j->response, root, "error", error);
+          }
           h->response = yyjson_mut_write(j->response, 0, &h->response_size);
           j->connection = NULL;
           mcp_jobs_reap(s, false);
@@ -153,6 +197,8 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     lws_callback_on_writable(wsi);
     return 0;
   }
+  case LWS_CALLBACK_HTTP_FILE_COMPLETION:
+    return lws_http_transaction_completed(wsi) ? -1 : 0;
   case LWS_CALLBACK_CLOSED_HTTP:
     for (int i = 0; i < MCP_MAX_JOBS; ++i)
       if (s->jobs[i].started && s->jobs[i].connection == wsi) {
@@ -238,8 +284,14 @@ asciichat_error_t mcp_http_run(mcp_server_t *s) {
   SAFE_SNPRINTF(status.ipv6_address, sizeof(status.ipv6_address), "[%s]:%d", addresses[1], s->policy.port);
   http_pulse_t pulse = {.context = context};
   lws_sul_schedule(context, 0, &pulse.timer, http_pulse, 16000);
+  int64_t last_prune = 0;
   while (!atomic_load_bool(&s->stopping) && !APP_CALLBACK_BOOL(should_exit)) {
     lws_service(context, 16);
+    int64_t now = (int64_t)time(NULL);
+    if (s->policy.restricted && (last_prune == 0 || now - last_prune >= 1)) {
+      mcp_download_prune(s->policy.downloads_dir, now);
+      last_prune = now;
+    }
     mcp_jobs_reap(s, false);
     if (mapping && time_get_ns() >= mapping->refresh_at_ns) {
       asciichat_error_t e = nat_upnp_refresh(mapping);

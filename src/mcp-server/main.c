@@ -28,7 +28,38 @@ int mcp_server_main(void) {
                              .tls_cert = GET_OPTION(http_tls_cert),
                              .tls_key = GET_OPTION(http_tls_key),
                              .tls_password = GET_OPTION(http_tls_key_password),
-                             .max_jobs = (unsigned)GET_OPTION(max_clients)};
+                             .max_jobs = (unsigned)GET_OPTION(max_clients),
+                             .downloads_url_prefix = GET_OPTION(mcp_downloads_url_prefix)};
+  if (s->policy.restricted && s->policy.downloads_url_prefix && *s->policy.downloads_url_prefix) {
+    const char *prefix = s->policy.downloads_url_prefix;
+    const char *authority = !strncmp(prefix, "https://", 8)  ? prefix + 8
+                            : !strncmp(prefix, "http://", 7) ? prefix + 7
+                                                             : NULL;
+    if (!authority || !*authority || *authority == '/' || strpbrk(prefix, " \t\r\n?#")) {
+      SAFE_FREE(s);
+      return SET_ERRNO(ERROR_CONFIG, "--downloads-url-prefix must be an HTTP(S) URL without query or fragment");
+    }
+  }
+  if (s->policy.restricted) {
+    const char *override = GET_OPTION(mcp_downloads_dir);
+    char *data_dir = NULL;
+    if (override && *override) {
+      SAFE_STRNCPY(s->policy.downloads_dir, override, sizeof(s->policy.downloads_dir));
+    } else {
+      data_dir = platform_get_data_dir();
+      if (!data_dir) {
+        SAFE_FREE(s);
+        return SET_ERRNO(ERROR_CONFIG, "Cannot determine MCP data directory");
+      }
+      SAFE_SNPRINTF(s->policy.downloads_dir, sizeof(s->policy.downloads_dir), "%s/downloads", data_dir);
+      SAFE_FREE(data_dir);
+    }
+    asciichat_error_t directory_error = platform_mkdir_recursive(s->policy.downloads_dir, 0700);
+    if (directory_error != ASCIICHAT_OK) {
+      SAFE_FREE(s);
+      return directory_error;
+    }
+  }
   log_set_terminal_output(s->policy.hosted);
   if (!s->policy.max_jobs || s->policy.max_jobs > MCP_MAX_JOBS)
     s->policy.max_jobs = MCP_MAX_JOBS;

@@ -316,3 +316,78 @@ Test(mcp_requests, device_results_include_defaults_and_report_partial_enumeratio
   cr_assert(yyjson_mut_is_null(yyjson_mut_obj_get(data, "default_audio_device")));
   yyjson_mut_doc_free(response);
 }
+
+#include "../../../src/mcp-server/downloads.c"
+
+Test(mcp_requests, hosted_download_names_are_strict_and_expiration_is_anchored_at_publication) {
+  const char *name = "1700000000-0123456789abcdef0123456789abcdef.png";
+  int64_t expiry = 0;
+  cr_assert(mcp_download_name(name, &expiry));
+  cr_assert_eq(expiry, 1700000000);
+  cr_assert_not(mcp_download_name("../1700000000-0123456789abcdef0123456789abcdef.png", NULL));
+  cr_assert_not(mcp_download_name("1700000000-0123456789abcdef0123456789abcdeg.png", NULL));
+  cr_assert_not(mcp_download_name("1700000000-0123456789abcdef0123456789abcdef.html", NULL));
+  cr_assert_not(mcp_download_name("1700000000-0123456789abcdef0123456789abcdef.png/other", NULL));
+
+  char directory[PLATFORM_MAX_PATH_LENGTH], path[PLATFORM_MAX_PATH_LENGTH];
+  cr_assert_eq(platform_mkdtemp(directory, sizeof(directory), "mcp-download-contract"), ASCIICHAT_OK);
+  SAFE_SNPRINTF(path, sizeof(path), "%s/%s", directory, name);
+  FILE *f = platform_fopen("download-contract", path, "wb");
+  cr_assert_not_null(f);
+  cr_assert_eq(fwrite("image", 1, 5, f), 5);
+  cr_assert_eq(fclose(f), 0);
+  mcp_policy_t policy = {.downloads_url_prefix = "https://example.test/assets/"};
+  SAFE_STRNCPY(policy.downloads_dir, directory, sizeof(policy.downloads_dir));
+  yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+  yyjson_mut_val *root = yyjson_mut_obj(doc), *result = yyjson_mut_obj(doc), *data = yyjson_mut_obj(doc),
+                 *files = yyjson_mut_arr(doc), *content = yyjson_mut_arr(doc), *item = yyjson_mut_obj(doc);
+  yyjson_mut_doc_set_root(doc, root);
+  yyjson_mut_obj_add_val(doc, root, "result", result);
+  yyjson_mut_obj_add_val(doc, result, "structuredContent", data);
+  yyjson_mut_obj_add_val(doc, result, "content", content);
+  yyjson_mut_arr_add_val(content, item);
+  yyjson_mut_obj_add_str(doc, item, "text", "old");
+  yyjson_mut_obj_add_val(doc, data, "saved_files", files);
+  yyjson_mut_arr_add_strcpy(doc, files, path);
+  cr_assert_eq(mcp_download_finalize(&policy, doc, 1700000100), ASCIICHAT_OK);
+  cr_assert_str_eq(yyjson_mut_get_str(yyjson_mut_obj_get(data, "expires_at")), "2023-11-14T22:45:00Z");
+  cr_assert_str_eq(yyjson_mut_get_str(yyjson_mut_obj_get(data, "download_url")),
+                   "https://example.test/assets/1700001900-0123456789abcdef0123456789abcdef.png");
+  cr_assert_neq(platform_access(path, PLATFORM_ACCESS_EXISTS), 0);
+  SAFE_SNPRINTF(path, sizeof(path), "%s/1700001900-0123456789abcdef0123456789abcdef.png", directory);
+  cr_assert_eq(platform_access(path, PLATFORM_ACCESS_EXISTS), 0);
+  char unrelated[PLATFORM_MAX_PATH_LENGTH];
+  SAFE_SNPRINTF(unrelated, sizeof(unrelated), "%s/notes.png", directory);
+  f = platform_fopen("unrelated-file", unrelated, "wb");
+  cr_assert_not_null(f);
+  cr_assert_eq(fclose(f), 0);
+  mcp_download_prune(directory, 1700001899);
+  cr_assert_eq(platform_access(path, PLATFORM_ACCESS_EXISTS), 0);
+  mcp_download_prune(directory, 1700001900);
+  cr_assert_neq(platform_access(path, PLATFORM_ACCESS_EXISTS), 0);
+  cr_assert_eq(platform_access(unrelated, PLATFORM_ACCESS_EXISTS), 0);
+  uv_fs_t unlink_request;
+  cr_assert_eq(uv_fs_unlink(NULL, &unlink_request, unrelated, NULL), 0);
+  uv_fs_req_cleanup(&unlink_request);
+  yyjson_mut_doc_free(doc);
+  cr_assert_eq(platform_rmdir_recursive(directory), ASCIICHAT_OK);
+}
+
+Test(mcp_requests, hosted_profile_accepts_url_and_stages_requested_media_format) {
+  char directory[PLATFORM_MAX_PATH_LENGTH];
+  cr_assert_eq(platform_mkdtemp(directory, sizeof(directory), "mcp-hosted-contract"), ASCIICHAT_OK);
+  mcp_policy_t policy = {.hosted = true, .restricted = true};
+  SAFE_STRNCPY(policy.downloads_dir, directory, sizeof(policy.downloads_dir));
+  yyjson_doc *doc =
+      read_json("{\"url\":\"https://example.test/"
+                "upload.mp4\",\"output_format\":\"mp4\",\"options\":{\"snapshot-delay\":2,\"audio\":true}}");
+  mcp_render_request_t request;
+  cr_assert_eq(mcp_request_parse(&policy, MCP_URL, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK);
+  cr_assert(has_arg(&request, "--url=https://example.test/upload.mp4"));
+  cr_assert(has_arg(&request, "--audio=true"));
+  cr_assert(strstr(request.stage_file, ".mp4"));
+  cr_assert(mcp_download_name(strrchr(request.output_path, '/') + 1, NULL));
+  mcp_request_destroy(&request);
+  yyjson_doc_free(doc);
+  cr_assert_eq(platform_rmdir_recursive(directory), ASCIICHAT_OK);
+}
