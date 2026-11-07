@@ -112,7 +112,7 @@ static pcre2_singleton_t *g_url_regex = NULL;
  */
 static pcre2_code *url_regex_get(void) {
   if (g_url_regex == NULL) {
-    g_url_regex = asciichat_pcre2_singleton_compile(URL_REGEX_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
+    g_url_regex = asciichat_pcre2_singleton_compile_owned(URL_REGEX_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF, &g_url_regex);
   }
   return asciichat_pcre2_singleton_get_code(g_url_regex);
 }

@@ -65,3 +65,19 @@ Test(regex_fallback, session_strings_validate_without_jit) {
   cr_assert_not(is_session_string("happy--dog"));
   cr_assert_not(is_session_string("happy-cat-dog-extra"));
 }
+
+Test(regex_fallback, singleton_cleanup_allows_cached_validators_to_reinitialize) {
+  cr_assert(url_is_valid("https://example.com/video.mp4"));
+  asciichat_pcre2_cleanup_all();
+  cr_assert(url_is_valid("https://example.com/video.mp4"));
+  asciichat_pcre2_cleanup_all();
+  cr_assert(url_is_valid("https://127.0.0.1/video.mp4"));
+  asciichat_pcre2_cleanup_all();
+}
+
+Test(regex_fallback, individually_freed_singleton_is_removed_from_registry) {
+  pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile("test", 0);
+  cr_assert_not_null(singleton);
+  asciichat_pcre2_singleton_free(singleton);
+  asciichat_pcre2_cleanup_all();
+}

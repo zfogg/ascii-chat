@@ -28,6 +28,7 @@ typedef struct pcre2_singleton {
   pcre2_jit_stack *jit_stack;   ///< JIT stack for performance
   char *pattern;                ///< Pattern string (owned by singleton, dynamically allocated)
   uint32_t flags;               ///< PCRE2 compile flags
+  struct pcre2_singleton **owner; ///< Optional persistent owner slot
   struct pcre2_singleton *next; ///< Next singleton in global registry
 } pcre2_singleton_t;
 
@@ -75,6 +76,7 @@ pcre2_singleton_t *asciichat_pcre2_singleton_compile(const char *pattern, uint32
   atomic_store_u64(&singleton->code, 0);
   singleton->jit_stack = NULL;
   singleton->flags = flags;
+  singleton->owner = NULL;
 
   /* Register singleton in global list for automatic cleanup */
   singleton->next = g_singleton_registry;
@@ -83,6 +85,18 @@ pcre2_singleton_t *asciichat_pcre2_singleton_compile(const char *pattern, uint32
   /* Mark registry as initialized (one-time per process) */
   lifecycle_init(&g_registry_lc, "pcre2_registry");
 
+  return singleton;
+}
+
+pcre2_singleton_t *asciichat_pcre2_singleton_compile_owned(const char *pattern, uint32_t flags,
+                                                             pcre2_singleton_t **owner) {
+  if (!owner) {
+    return NULL;
+  }
+  pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile(pattern, flags);
+  if (singleton) {
+    singleton->owner = owner;
+  }
   return singleton;
 }
 
@@ -190,6 +204,17 @@ void asciichat_pcre2_singleton_free(pcre2_singleton_t *singleton) {
     return;
   }
 
+  pcre2_singleton_t **link = &g_singleton_registry;
+  while (*link && *link != singleton) {
+    link = &(*link)->next;
+  }
+  if (*link == singleton) {
+    *link = singleton->next;
+  }
+  if (singleton->owner && *singleton->owner == singleton) {
+    *singleton->owner = NULL;
+  }
+
   /* Free compiled code if it exists */
   pcre2_code *code = (pcre2_code *)(uintptr_t)atomic_load_u64(&singleton->code);
   if (code) {
@@ -233,25 +258,7 @@ void asciichat_pcre2_cleanup_all(void) {
   while (current) {
     pcre2_singleton_t *next = current->next;
 
-    /* Free compiled code */
-    pcre2_code *code = (pcre2_code *)(uintptr_t)atomic_load_u64(&current->code);
-    if (code) {
-      pcre2_code_free(code);
-      atomic_store_u64(&current->code, 0);
-    }
-
-    /* Free JIT stack */
-    if (current->jit_stack) {
-      pcre2_jit_stack_free(current->jit_stack);
-      current->jit_stack = NULL;
-    }
-
-    /* Free pattern string */
-    SAFE_FREE(current->pattern);
-
-    /* Do not free the singleton struct itself - static pointers in other
-     * modules (path.c, url.c, etc.) may still reference it during late
-     * shutdown logging. The struct is tiny and harmless to leak at exit. */
+    asciichat_pcre2_singleton_free(current);
 
     current = next;
   }

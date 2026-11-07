@@ -91,8 +91,7 @@ static pcre2_singleton_t *g_gpg_keygrip_regex = NULL;
  */
 static pcre2_code *crypto_regex_get_known_hosts(void) {
   if (g_known_hosts_regex == NULL) {
-    g_known_hosts_regex =
-        asciichat_pcre2_singleton_compile(KNOWN_HOSTS_REGEX_PATTERN, PCRE2_MULTILINE | PCRE2_UCP | PCRE2_UTF);
+    g_known_hosts_regex = asciichat_pcre2_singleton_compile_owned(KNOWN_HOSTS_REGEX_PATTERN, PCRE2_MULTILINE | PCRE2_UCP | PCRE2_UTF, &g_known_hosts_regex);
   }
   return asciichat_pcre2_singleton_get_code(g_known_hosts_regex);
 }
@@ -102,8 +101,7 @@ static pcre2_code *crypto_regex_get_known_hosts(void) {
  */
 static pcre2_code *crypto_regex_get_ssh_public_key(void) {
   if (g_ssh_public_key_regex == NULL) {
-    g_ssh_public_key_regex =
-        asciichat_pcre2_singleton_compile(SSH_PUBLIC_KEY_REGEX_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
+    g_ssh_public_key_regex = asciichat_pcre2_singleton_compile_owned(SSH_PUBLIC_KEY_REGEX_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF, &g_ssh_public_key_regex);
   }
   return asciichat_pcre2_singleton_get_code(g_ssh_public_key_regex);
 }
@@ -113,8 +111,8 @@ static pcre2_code *crypto_regex_get_ssh_public_key(void) {
  */
 static pcre2_code *crypto_regex_get_openssh_pem(void) {
   if (g_openssh_pem_regex == NULL) {
-    g_openssh_pem_regex = asciichat_pcre2_singleton_compile(OPENSSH_PEM_REGEX_PATTERN,
-                                                            PCRE2_MULTILINE | PCRE2_DOTALL | PCRE2_UCP | PCRE2_UTF);
+    g_openssh_pem_regex = asciichat_pcre2_singleton_compile_owned(OPENSSH_PEM_REGEX_PATTERN,
+                                                            PCRE2_MULTILINE | PCRE2_DOTALL | PCRE2_UCP | PCRE2_UTF, &g_openssh_pem_regex);
   }
   return asciichat_pcre2_singleton_get_code(g_openssh_pem_regex);
 }
@@ -124,7 +122,7 @@ static pcre2_code *crypto_regex_get_openssh_pem(void) {
  */
 static pcre2_code *crypto_regex_get_gpg_keygrip(void) {
   if (g_gpg_keygrip_regex == NULL) {
-    g_gpg_keygrip_regex = asciichat_pcre2_singleton_compile(GPG_KEYGRIP_REGEX_PATTERN, PCRE2_UCP | PCRE2_UTF);
+    g_gpg_keygrip_regex = asciichat_pcre2_singleton_compile_owned(GPG_KEYGRIP_REGEX_PATTERN, PCRE2_UCP | PCRE2_UTF, &g_gpg_keygrip_regex);
   }
   return asciichat_pcre2_singleton_get_code(g_gpg_keygrip_regex);
 }

@@ -244,7 +244,7 @@ static pcre2_singleton_t *g_port_regex = NULL;
 static pcre2_code *port_regex_get(void) {
   if (g_port_regex == NULL) {
     const char *port_pattern = "^(0|[1-9]\\d{0,3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5])$";
-    g_port_regex = asciichat_pcre2_singleton_compile(port_pattern, 0);
+    g_port_regex = asciichat_pcre2_singleton_compile_owned(port_pattern, 0, &g_port_regex);
   }
   return asciichat_pcre2_singleton_get_code(g_port_regex);
 }

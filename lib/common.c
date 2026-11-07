@@ -304,9 +304,11 @@ void asciichat_shared_destroy(void) {
   debug_sync_final_cleanup();
 #endif
 
+  // Release regex caches before reporting live allocations. Owner slots are reset
+  // so any later shutdown code can safely recreate a cache if needed.
+  asciichat_pcre2_cleanup_all();
+
   // 14. Memory stats (debug builds only) - runs with colors still available
-  //     Note: PCRE2 singletons are cleaned up later via atexit handler (runs after this function)
-  //     This ensures code can still use PCRE2 during normal program shutdown
   //     Note: debug_memory_report() is also called manually during shutdown in server_main()
   //     The function is safe to call multiple times with polling-based locking
 #if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
@@ -333,7 +335,6 @@ void asciichat_shared_destroy(void) {
 
 #ifndef NDEBUG
   // 19. Named registry - cleanup all registered thread names and debug entries
-  // Must come BEFORE PCRE2 cleanup since named_destroy() uses path normalization which needs PCRE2
   named_destroy();
 #endif
 

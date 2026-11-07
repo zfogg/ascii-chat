@@ -59,7 +59,7 @@ static pcre2_singleton_t *g_setting_regex = NULL;
  */
 static pcre2_code *setting_regex_get(void) {
   if (g_setting_regex == NULL) {
-    g_setting_regex = asciichat_pcre2_singleton_compile(SETTING_PATTERN, 0);
+    g_setting_regex = asciichat_pcre2_singleton_compile_owned(SETTING_PATTERN, 0, &g_setting_regex);
   }
   return asciichat_pcre2_singleton_get_code(g_setting_regex);
 }

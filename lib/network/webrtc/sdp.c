@@ -382,7 +382,7 @@ static pcre2_singleton_t *g_sdp_fmtp_video_regex = NULL;
  */
 static pcre2_code *sdp_fmtp_video_regex_get(void) {
   if (g_sdp_fmtp_video_regex == NULL) {
-    g_sdp_fmtp_video_regex = asciichat_pcre2_singleton_compile(SDP_FMTP_VIDEO_PATTERN, PCRE2_DOTALL);
+    g_sdp_fmtp_video_regex = asciichat_pcre2_singleton_compile_owned(SDP_FMTP_VIDEO_PATTERN, PCRE2_DOTALL, &g_sdp_fmtp_video_regex);
   }
   return asciichat_pcre2_singleton_get_code(g_sdp_fmtp_video_regex);
 }

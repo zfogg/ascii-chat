@@ -51,6 +51,11 @@ typedef struct pcre2_singleton pcre2_singleton_t;
  */
 pcre2_singleton_t *asciichat_pcre2_singleton_compile(const char *pattern, uint32_t flags);
 
+/** Register a static owner slot, which is cleared when the singleton is freed.
+ * The slot must remain valid until cleanup, and cleanup must not race with users. */
+pcre2_singleton_t *asciichat_pcre2_singleton_compile_owned(const char *pattern, uint32_t flags,
+                                                             pcre2_singleton_t **owner);
+
 /**
  * @brief Get the compiled pcre2_code from a singleton handle
  *

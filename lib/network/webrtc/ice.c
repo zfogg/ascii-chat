@@ -177,7 +177,7 @@ static pcre2_singleton_t *g_ice_candidate_regex = NULL;
  */
 static pcre2_code *ice_candidate_regex_get(void) {
   if (g_ice_candidate_regex == NULL) {
-    g_ice_candidate_regex = asciichat_pcre2_singleton_compile(ICE_CANDIDATE_PATTERN, PCRE2_CASELESS);
+    g_ice_candidate_regex = asciichat_pcre2_singleton_compile_owned(ICE_CANDIDATE_PATTERN, PCRE2_CASELESS, &g_ice_candidate_regex);
   }
   return asciichat_pcre2_singleton_get_code(g_ice_candidate_regex);
 }

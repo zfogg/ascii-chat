@@ -56,7 +56,7 @@ static pcre2_singleton_t *g_ipv4_regex = NULL;
  */
 static pcre2_code *ipv4_regex_get(void) {
   if (g_ipv4_regex == NULL) {
-    g_ipv4_regex = asciichat_pcre2_singleton_compile(IPV4_PATTERN, 0);
+    g_ipv4_regex = asciichat_pcre2_singleton_compile_owned(IPV4_PATTERN, 0, &g_ipv4_regex);
   }
   return asciichat_pcre2_singleton_get_code(g_ipv4_regex);
 }
