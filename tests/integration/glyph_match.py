@@ -34,8 +34,11 @@ with tempfile.TemporaryDirectory() as temp:
     assert default == capture(["--renderer=luminance"]), "default must be luminance"
     glyph = capture(["--renderer=glyph"])
     assert glyph != default, "glyph mode did not change the frame"
-    restricted = capture(["--renderer=glyph", "--palette-chars=@#"])
     import re
+    standard_chars = set(b"   ...',;:clodxkO0KXNWM")
+    glyph_chars = set(b"".join(re.sub(rb"\x1b\[[0-9;]*[a-zA-Z]", b"", line) for line in glyph))
+    assert glyph_chars - standard_chars, "default glyph mode should use the 95-glyph atlas"
+    restricted = capture(["--renderer=glyph", "--palette-chars=@#"])
     for line in restricted:
         # Monochrome rows may use CSI repeat to compress a run.
         assert set(re.sub(rb"\x1b\[[0-9;]*[a-zA-Z]", b"", line)) <= set(b"@#"), line
