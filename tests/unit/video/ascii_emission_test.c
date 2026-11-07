@@ -710,6 +710,24 @@ Test(ascii_emission, capability_conversion_stabilizes_all_render_modes) {
 }
 #endif
 
+Test(ascii_emission, glyph_dark_detail_is_opt_in) {
+  rgb_pixel_t pixels[64];
+  image_t image = {.w = 8, .h = 8, .pixels = pixels};
+  bool changed = false;
+  for (int level = 8; level < 100; ++level) {
+    for (int i = 0; i < 64; ++i)
+      pixels[i] = (rgb_pixel_t){level, level, level};
+    char *normal = ascii_render_glyph_match_enhanced(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL, false, false);
+    char *enhanced = ascii_render_glyph_match_enhanced(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL, false, true);
+    cr_assert_not_null(normal);
+    cr_assert_not_null(enhanced);
+    changed |= strcmp(normal, enhanced) != 0;
+    SAFE_FREE(normal);
+    SAFE_FREE(enhanced);
+  }
+  cr_assert(changed, "dark enhancement must affect glyph density");
+}
+
 Test(ascii_emission, optimized_glyph_scoring_matches_reference) {
   rgb_pixel_t pixels[64];
   image_t image = {.w = 8, .h = 8, .pixels = pixels};

@@ -580,6 +580,15 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
 
 char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, const simd_cells_t *ops,
                                     const char *palette, bool background) {
+  return ascii_render_glyph_match_enhanced(image, mode, ops, palette, background, false);
+}
+
+static int glyph_lift_luma(int luma, bool enhance) {
+  return enhance ? luma + (luma * (255 - luma) + 256) / 512 : luma;
+}
+
+char *ascii_render_glyph_match_enhanced(const image_t *image, ascii_color_t mode, const simd_cells_t *ops,
+                                        const char *palette, bool background, bool enhance) {
   if (!image || !image->pixels || !ops || image->w <= 0 || image->h <= 0 || image->w % 8 || image->h % 8 ||
       mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid glyph matching input");
@@ -659,7 +668,7 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
           int red = (a.r + b.r + c.r + d.r) / 4;
           int green = (a.g + b.g + c.g + d.g) / 4;
           int blue = (a.b + b.b + c.b + d.b) / 4;
-          patch[i] = (uint8_t)((77 * red + 150 * green + 29 * blue) >> 8);
+          patch[i] = (uint8_t)glyph_lift_luma((77 * red + 150 * green + 29 * blue) >> 8, enhance);
           samples[0][i] = (int16_t)red;
           samples[1][i] = (int16_t)green;
           samples[2][i] = (int16_t)blue;
@@ -751,7 +760,7 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
             const rgb_pixel_t *row = image->pixels + (size_t)(y * 8 + sy) * (size_t)image->w + (size_t)x * 8;
             for (int sx = 0; sx < 8; ++sx) {
               rgb_pixel_t p = row[sx];
-              int luma = (77 * p.r + 150 * p.g + 29 * p.b) >> 8;
+              int luma = glyph_lift_luma((77 * p.r + 150 * p.g + 29 * p.b) >> 8, enhance);
               int delta = (luma - sample_mean) - ((int)glyphs[index].fine[sy * 8 + sx] - fine_mean);
               fine_error += (uint64_t)(delta * delta);
             }

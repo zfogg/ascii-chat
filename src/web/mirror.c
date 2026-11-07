@@ -151,6 +151,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
   caps.render_mode = (render_mode_t)GET_OPTION(render_mode);
   caps.text_renderer = GET_OPTION(renderer);
   caps.stabilize = GET_OPTION(stabilize);
+  caps.glyph_enhance = GET_OPTION(glyph_enhance);
   caps.palette_explicit = GET_OPTION(palette_explicit);
   caps.wants_background = (caps.render_mode == RENDER_MODE_BACKGROUND);
   caps.wants_padding = true;

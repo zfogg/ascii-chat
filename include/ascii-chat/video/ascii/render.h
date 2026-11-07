@@ -54,6 +54,8 @@ bool ascii_glyph_palette_supported(const char *palette);
 char *ascii_render_glyph_match(const image_t *image, ascii_color_t color, const simd_cells_t *ops, const char *palette);
 char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t color, const simd_cells_t *ops,
                                     const char *palette, bool background);
+char *ascii_render_glyph_match_enhanced(const image_t *image, ascii_color_t color, const simd_cells_t *ops,
+                                        const char *palette, bool background, bool enhance);
 
 /** Two source rows per terminal row; the supplied backend processes both rows. */
 char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int stride_bytes, ascii_color_t color,

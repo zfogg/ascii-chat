@@ -716,15 +716,15 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
       if (!caps.stabilize)
         host_forget_viewer_history(host, viewer_id);
       int cached = 0;
-      while (cached < grid_count &&
-             (grids[cached].caps.stabilize != caps.stabilize ||
-              (caps.stabilize && grids[cached].viewer_id != viewer_id) || grids[cached].width != width ||
-              grids[cached].height != height || grids[cached].caps.render_mode != caps.render_mode ||
-              grids[cached].caps.text_renderer != caps.text_renderer ||
-              grids[cached].caps.palette_explicit != caps.palette_explicit ||
-              grids[cached].caps.color_level != caps.color_level ||
-              grids[cached].caps.utf8_support != caps.utf8_support ||
-              grids[cached].caps.color_filter != caps.color_filter || strcmp(grids[cached].palette, palette) != 0))
+      while (
+          cached < grid_count &&
+          (grids[cached].caps.glyph_enhance != caps.glyph_enhance || grids[cached].caps.stabilize != caps.stabilize ||
+           (caps.stabilize && grids[cached].viewer_id != viewer_id) || grids[cached].width != width ||
+           grids[cached].height != height || grids[cached].caps.render_mode != caps.render_mode ||
+           grids[cached].caps.text_renderer != caps.text_renderer ||
+           grids[cached].caps.palette_explicit != caps.palette_explicit ||
+           grids[cached].caps.color_level != caps.color_level || grids[cached].caps.utf8_support != caps.utf8_support ||
+           grids[cached].caps.color_filter != caps.color_filter || strcmp(grids[cached].palette, palette) != 0))
         ++cached;
       if (cached == grid_count) {
         grids[cached].viewer_id = viewer_id;
@@ -1551,6 +1551,7 @@ static asciichat_error_t native_display_config(void *context, session_host_rende
   config->caps.render_mode = GET_OPTION(render_mode);
   config->caps.text_renderer = GET_OPTION(renderer);
   config->caps.stabilize = GET_OPTION(stabilize);
+  config->caps.glyph_enhance = GET_OPTION(glyph_enhance);
   config->caps.palette_explicit = GET_OPTION(palette_explicit);
   config->caps.wants_background = config->caps.render_mode == RENDER_MODE_BACKGROUND;
   if (GET_OPTION(color_mode) != TERM_COLOR_AUTO)

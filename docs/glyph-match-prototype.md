@@ -9,6 +9,9 @@ receives a dark tint derived from the cell's average color. Terminal color
 quantization happens after glyph selection. The default luminance renderer is
 unchanged.
 
+`--glyph-enhance` lifts dark luminance before glyph selection, while preserving
+the source colors. It is off by default and applies only to the glyph renderer.
+
 The design was informed by [Chafa](https://github.com/hpjansson/chafa), inspected
 at `c897fce60cc4e947a254770ea1c2e320d58e7dce`. Chafa uses 8×8 symbol
 coverage, selects candidates (or evaluates the whole set), estimates colors and

@@ -748,6 +748,7 @@ typedef struct {
   render_mode_t render_mode;
   int text_renderer;
   bool stabilize;
+  bool glyph_enhance;
   bool palette_explicit;
   /** @brief $TERM environment variable value (for debugging) */
   char term_type[PLATFORM_TERMINAL_TERM_TYPE_BUFFER_SIZE];
