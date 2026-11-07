@@ -108,6 +108,8 @@ typedef struct session_display_ctx {
 
   /** @brief Digital rain effect context (NULL if disabled) */
   digital_rain_t *digital_rain;
+  ascii_stabilizer_t stabilizer;
+  ascii_stabilizer_t recording_stabilizer;
   outbuf_t ascii_workspace;
   image_t *resize_workspace;
   image_t *flip_workspace;
@@ -446,6 +448,8 @@ void session_display_destroy(session_display_ctx_t *ctx) {
   image_destroy(ctx->filter_workspace);
   ctx->resize_workspace = ctx->flip_workspace = ctx->filter_workspace = NULL;
   SAFE_FREE(ctx->tty_frame_buffer);
+  ascii_stabilizer_reset(&ctx->stabilizer);
+  ascii_stabilizer_reset(&ctx->recording_stabilizer);
   SAFE_FREE(ctx->ascii_workspace.buf);
   ctx->initialized = false;
 
@@ -625,6 +629,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   // Re-evaluate render_mode and color_level on every frame to pick up live changes
   caps_copy.render_mode = (render_mode_t)GET_OPTION(render_mode);
   caps_copy.text_renderer = GET_OPTION(renderer);
+  caps_copy.stabilize = GET_OPTION(stabilize);
   caps_copy.palette_explicit = GET_OPTION(palette_explicit);
   terminal_color_mode_t color_mode_opt = (terminal_color_mode_t)GET_OPTION(color_mode);
   if (color_mode_opt != TERM_COLOR_AUTO) {
@@ -723,10 +728,16 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   outbuf_t *output = reuse && !ctx->render_file && color_filter == COLOR_FILTER_NONE && !matrix_rain_enabled
                          ? &ctx->ascii_workspace
                          : NULL;
-  // Call the standard ASCII conversion using the filtered (or original) image
-  char *result =
-      ascii_convert_with_buffers(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio, stretch,
-                                 ctx->palette_chars, false, ctx->render_file ? NULL : &ctx->resize_workspace, output);
+  // Recording and live display run on separate threads and own separate histories.
+  bool recording = ctx->render_file && !reuse;
+  ascii_stabilizer_t *history = recording ? &ctx->recording_stabilizer : &ctx->stabilizer;
+  if (recording && ctx->render_fps)
+    history->fixed_step_ns = NS_PER_SEC_INT / ctx->render_fps;
+  char *result = ascii_convert_with_buffers_stabilized(
+      ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio, stretch, ctx->palette_chars, false,
+      ctx->render_file ? NULL : &ctx->resize_workspace, output, caps_copy.stabilize ? history : NULL);
+  if (!caps_copy.stabilize)
+    ascii_stabilizer_reset(history);
   uint64_t t_convert_end = time_get_ns();
 
   // Apply rainbow color filter to ANSI output by replacing RGB values

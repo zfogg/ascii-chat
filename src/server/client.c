@@ -857,6 +857,7 @@ void cleanup_client_packet_queues(client_info_t *client) {
  * @param client Client to clean up
  */
 static inline void cleanup_client_all_buffers(client_info_t *client) {
+  ascii_stabilizer_reset(&client->render_stabilizer);
   cleanup_client_media_buffers(client);
   cleanup_client_packet_queues(client);
 }

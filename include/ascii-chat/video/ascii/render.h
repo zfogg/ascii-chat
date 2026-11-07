@@ -30,6 +30,8 @@ typedef struct {
   size_t width, height;
   uint64_t configuration;
   uint64_t elapsed_ns;
+  uint64_t last_timestamp_ns;
+  uint64_t fixed_step_ns;
 } ascii_stabilizer_t;
 
 /** Prepare history for a viewport and rendering contract, resetting it on change. */
@@ -63,6 +65,7 @@ typedef struct {
   ascii_stabilizer_t *stabilizer;
   size_t row;
   bool temporal_preselected;
+  bool dithered;
   // A terminal row normally fits on the stack; unusually wide images retain
   // the heap fallback. Each invocation owns its scratch, including reentry.
   _Alignas(64) uint32_t inline_scratch[ASCII_INLINE_SCRATCH_COLUMNS * ASCII_SCRATCH_PLANES];

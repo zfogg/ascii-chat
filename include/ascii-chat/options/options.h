@@ -1107,6 +1107,7 @@ typedef struct options_state {
   // ============================================================================
   // Image Options
   // ============================================================================
+  bool stabilize;                                    ///< Reduce frame-to-frame character flicker
   ascii_renderer_t renderer;                         ///< Character selection algorithm
   bool stretch;                                      ///< Allow aspect ratio distortion
   char video_codec[OPTIONS_VIDEO_CODEC_BUFFER_SIZE]; ///< Video codec (auto, hevc, h264, raw) - default: auto

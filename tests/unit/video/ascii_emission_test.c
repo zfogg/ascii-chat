@@ -472,6 +472,9 @@ Test(ascii_emission, temporal_history_tracks_motion_and_configuration) {
   memset(samples, 200, sizeof(samples));
   cr_assert_eq(ascii_stabilizer_choose(&state.cells[0], samples, 'C', 100, 101, 0xc8c8c8, 16000000, &color), 'C');
   cr_assert_eq(color, 0xc8c8c8);
+  // A long interruption must not hold the previous glyph or color.
+  cr_assert_eq(ascii_stabilizer_choose(&state.cells[0], samples, 'D', 100, 101, 0xc9c9c9, 300000000, &color), 'D');
+  cr_assert_eq(color, 0xc9c9c9);
   cr_assert_eq(ascii_stabilizer_prepare(&state, 2, 1, 2), ASCIICHAT_OK);
   cr_assert(!state.cells[0].valid);
   ascii_stabilizer_reset(&state);
@@ -523,6 +526,26 @@ Test(ascii_emission, temporal_stabilization_reduces_threshold_flicker) {
     SAFE_FREE(initial);
     ascii_stabilizer_reset(&state);
   }
+}
+
+Test(ascii_emission, temporal_first_frame_preserves_dithered_colors) {
+  rgb_pixel_t pixels[16];
+  for (int i = 0; i < 16; ++i)
+    pixels[i] = (rgb_pixel_t){(uint8_t)(50 + i * 10), (uint8_t)(80 + i * 5), (uint8_t)(110 + i * 3)};
+  image_t image = {.w = 4, .h = 4, .pixels = pixels};
+  char *baseline = ascii_render(&image, " .#@", ASCII_COLOR_16, false, true, &simd_cells_scalar);
+  cr_assert_not_null(baseline);
+  ascii_stabilizer_t state = {0};
+  cr_assert_eq(ascii_stabilizer_prepare(&state, 4, 4, 1), ASCIICHAT_OK);
+  state.elapsed_ns = 16666667;
+  ascii_stabilizer_t *prior = ascii_stabilizer_set_target(&state);
+  char *stabilized = ascii_render(&image, " .#@", ASCII_COLOR_16, false, true, &simd_cells_scalar);
+  ascii_stabilizer_set_target(prior);
+  cr_assert_not_null(stabilized);
+  cr_assert_str_eq(baseline, stabilized);
+  SAFE_FREE(baseline);
+  SAFE_FREE(stabilized);
+  ascii_stabilizer_reset(&state);
 }
 
 Test(ascii_emission, rejects_invalid_input) {
@@ -626,6 +649,7 @@ int main(int argc, char **argv) {
   ascii_emission_rejects_invalid_input();
   ascii_emission_temporal_history_tracks_motion_and_configuration();
   ascii_emission_temporal_stabilization_reduces_threshold_flicker();
+  ascii_emission_temporal_first_frame_preserves_dithered_colors();
   ascii_emission_capability_dispatch_preserves_background();
   ascii_emission_glyph_matching_uses_shape_and_rejects_invalid_sizes();
   simd_caches_destroy_all();

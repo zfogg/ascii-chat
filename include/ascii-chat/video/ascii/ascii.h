@@ -201,6 +201,8 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
                                           const terminal_capabilities_t *caps, const bool use_aspect_ratio,
                                           const bool stretch, const char *palette_chars, const bool contain);
 
+#include <ascii-chat/video/ascii/render.h>
+
 /** Caller owns the reusable resize image; calls using it must be serialized. */
 char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t width, const ssize_t height,
                                                 const terminal_capabilities_t *caps, const bool use_aspect_ratio,
@@ -213,6 +215,12 @@ char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t
 char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const ssize_t height,
                                  const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
                                  const char *palette_chars, const bool contain, image_t **workspace, outbuf_t *output);
+
+/** Convert with a history owned by this stream; reset it when the source changes. */
+char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t width, const ssize_t height,
+                                            const terminal_capabilities_t *caps, const bool use_aspect_ratio,
+                                            const bool stretch, const char *palette_chars, const bool contain,
+                                            image_t **workspace, outbuf_t *output, ascii_stabilizer_t *stabilizer);
 
 /**
  * @brief Convert image to ASCII art with terminal capabilities

@@ -818,8 +818,11 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
   width = rendering.width;
   height = rendering.height;
   uint64_t convert_start_ns = time_get_ns();
-  char *ascii_frame =
-      ascii_convert_with_capabilities(composite, width, height, &caps_snapshot, true, false, rendering.palette);
+  char *ascii_frame = ascii_convert_with_buffers_stabilized(
+      composite, width, height, &caps_snapshot, true, false, rendering.palette, false, NULL, NULL,
+      caps_snapshot.stabilize ? &render_client->render_stabilizer : NULL);
+  if (!caps_snapshot.stabilize)
+    ascii_stabilizer_reset(&render_client->render_stabilizer);
   uint64_t convert_end_ns = time_get_ns();
   uint64_t convert_duration_ns = convert_end_ns - convert_start_ns;
 

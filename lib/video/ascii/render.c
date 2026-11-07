@@ -47,6 +47,8 @@ asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t wid
   state->width = width;
   state->height = height;
   state->configuration = configuration;
+  state->last_timestamp_ns = 0;
+  state->elapsed_ns = UINT64_MAX;
   return ASCIICHAT_OK;
 }
 
@@ -63,7 +65,8 @@ uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samp
   uint32_t output_color = color;
   if (cell->valid && motion <= 8 && elapsed_ns <= 250000000ULL) {
     uint64_t margin = candidate_error / 8 + 128;
-    if (previous_error <= candidate_error || previous_error - candidate_error <= margin)
+    if (previous_error != UINT64_MAX &&
+        (previous_error <= candidate_error || previous_error - candidate_error <= margin))
       result = cell->glyph;
     // Weight depends on elapsed time, avoiding a different response at each FPS.
     uint64_t weight = elapsed_ns * 256 / (elapsed_ns + 50000000ULL);
@@ -188,6 +191,7 @@ char *ascii_render(const image_t *image, const char *palette, ascii_color_t mode
   rgb_error_t *errors = NULL;
   if (mode == ASCII_COLOR_16 && dither)
     errors = SAFE_CALLOC((size_t)image->w * (size_t)image->h, sizeof(rgb_error_t), rgb_error_t *);
+  frame.dithered = errors != NULL;
   for (int y = 0; y < image->h; ++y) {
     const uint8_t *source = (const uint8_t *)(image->pixels + (size_t)y * frame.width);
     ops->luminance(source, frame.luma, frame.width);
@@ -302,18 +306,22 @@ void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool backgro
       uint8_t samples[16];
       memset(samples, frame->luma[x], sizeof(samples));
       uint64_t best_error = UINT64_MAX, previous_error = UINT64_MAX;
-      for (size_t i = 0; i < 64; ++i) {
-        int delta = (int)frame->luma[x] - ((int)i * 4 + 2);
-        uint64_t error = (uint64_t)(delta * delta);
-        if (frame->table[i] == frame->glyph[x] && error < best_error)
-          best_error = error;
-        if (cell->valid && frame->table[i] == cell->glyph && error < previous_error)
-          previous_error = error;
+      if (cell->valid && cell->glyph == frame->glyph[x]) {
+        best_error = previous_error = 0;
+      } else {
+        for (size_t i = 0; i < 64; ++i) {
+          int delta = (int)frame->luma[x] - ((int)i * 4 + 2);
+          uint64_t error = (uint64_t)(delta * delta);
+          if (frame->table[i] == frame->glyph[x] && error < best_error)
+            best_error = error;
+          if (cell->valid && frame->table[i] == cell->glyph && error < previous_error)
+            previous_error = error;
+        }
       }
       frame->glyph[x] = ascii_stabilizer_choose(cell, samples, frame->glyph[x], best_error, previous_error,
                                                 frame->packed[x], frame->stabilizer->elapsed_ns, &frame->packed[x]);
     }
-    if (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256)
+    if (!frame->dithered && (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256))
       ops->quantize(frame->packed, frame->index, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
   }
   for (size_t x = 0; x < frame->width; ++x) {

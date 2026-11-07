@@ -36,6 +36,7 @@ static double g_last_rain_update_time = 0.0;
 
 // Frame counter for time-based effects (emscripten_get_now is unreliable in pthreads builds)
 static uint32_t g_frame_count = 0;
+static ascii_stabilizer_t g_stabilizer;
 
 // ============================================================================
 // Initialization
@@ -86,6 +87,7 @@ int mirror_init_with_args(const char *args_json) {
 
 EMSCRIPTEN_KEEPALIVE
 void mirror_cleanup(void) {
+  ascii_stabilizer_reset(&g_stabilizer);
   errno_destroy();
   if (g_digital_rain) {
     digital_rain_destroy(g_digital_rain);
@@ -141,6 +143,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
   caps.detection_reliable = true;
   caps.render_mode = (render_mode_t)GET_OPTION(render_mode);
   caps.text_renderer = GET_OPTION(renderer);
+  caps.stabilize = GET_OPTION(stabilize);
   caps.palette_explicit = GET_OPTION(palette_explicit);
   caps.wants_background = (caps.render_mode == RENDER_MODE_BACKGROUND);
   caps.wants_padding = true;
@@ -210,8 +213,11 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
   }
 
   // Convert to ASCII using capability-aware function
-  char *ascii_output = ascii_convert_with_capabilities_fit(&img, dst_width, dst_height, &caps, preserve_aspect_ratio,
-                                                           stretch, palette_chars, contain != 0);
+  char *ascii_output = ascii_convert_with_buffers_stabilized(&img, dst_width, dst_height, &caps, preserve_aspect_ratio,
+                                                             stretch, palette_chars, contain != 0, NULL, NULL,
+                                                             caps.stabilize ? &g_stabilizer : NULL);
+  if (!caps.stabilize)
+    ascii_stabilizer_reset(&g_stabilizer);
 
   // Clean up
   SAFE_FREE(rgb_pixels);

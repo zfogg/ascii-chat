@@ -267,7 +267,14 @@ char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t
 char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const ssize_t height,
                                  const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
                                  const char *palette_chars, const bool contain, image_t **workspace, outbuf_t *output) {
+  return ascii_convert_with_buffers_stabilized(original, width, height, caps, use_aspect_ratio, stretch, palette_chars,
+                                               contain, workspace, output, NULL);
+}
 
+char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t width, const ssize_t height,
+                                            const terminal_capabilities_t *caps, const bool use_aspect_ratio,
+                                            const bool stretch, const char *palette_chars, const bool contain,
+                                            image_t **workspace, outbuf_t *output, ascii_stabilizer_t *stabilizer) {
   if (original == NULL || caps == NULL) {
     log_error("Invalid parameters for ascii_convert_with_capabilities");
     return NULL;
@@ -411,6 +418,43 @@ char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const s
   }
 
   // Use the capability-aware image printing function with client's palette
+  // History belongs to this stream and is scoped to the current thread's conversion.
+  ascii_stabilizer_t *active_stabilizer = NULL;
+  if (stabilizer && caps->render_mode == RENDER_MODE_FOREGROUND) {
+    uint64_t configuration = 1469598103934665603ULL;
+    const unsigned values[] = {(unsigned)caps->text_renderer,
+                               (unsigned)caps->color_level,
+                               (unsigned)caps->render_mode,
+                               (unsigned)explicit_palette,
+                               (unsigned)use_aspect_ratio,
+                               (unsigned)stretch,
+                               (unsigned)contain,
+                               (unsigned)original->w,
+                               (unsigned)original->h};
+    for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
+      configuration ^= values[i];
+      configuration *= 1099511628211ULL;
+    }
+    if (palette_chars) {
+      for (const unsigned char *p = (const unsigned char *)palette_chars; *p; ++p) {
+        configuration ^= *p;
+        configuration *= 1099511628211ULL;
+      }
+    }
+    if (ascii_stabilizer_prepare(stabilizer, (size_t)width, (size_t)height, configuration) == ASCIICHAT_OK) {
+      uint64_t now = time_get_ns();
+      stabilizer->elapsed_ns = stabilizer->fixed_step_ns
+                                   ? stabilizer->fixed_step_ns
+                                   : (stabilizer->last_timestamp_ns && now >= stabilizer->last_timestamp_ns
+                                          ? now - stabilizer->last_timestamp_ns
+                                          : UINT64_MAX);
+      stabilizer->last_timestamp_ns = now;
+      active_stabilizer = stabilizer;
+    }
+  } else if (stabilizer) {
+    ascii_stabilizer_reset(stabilizer);
+  }
+  ascii_stabilizer_t *previous_stabilizer = ascii_stabilizer_set_target(active_stabilizer);
   outbuf_t *previous_output = ascii_render_set_output_target(output);
   ascii_color_t glyph_color = caps->color_level == TERM_COLOR_TRUECOLOR ? ASCII_COLOR_TRUE
                               : caps->color_level == TERM_COLOR_256     ? ASCII_COLOR_256
@@ -420,6 +464,7 @@ char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const s
                                                        explicit_palette ? palette_chars : NULL)
                             : image_print_with_capabilities(resized, caps, palette_chars);
   ascii_render_set_output_target(previous_output);
+  ascii_stabilizer_set_target(previous_stabilizer);
 
   uint64_t prof_print_end_ns = time_get_ns();
 
