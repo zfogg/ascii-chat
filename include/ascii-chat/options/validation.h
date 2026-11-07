@@ -30,6 +30,9 @@
 extern "C" {
 #endif
 
+/** Validate the selected glyph palette after options have been normalized. */
+ASCIICHAT_API asciichat_error_t validate_glyph_palette(const options_t *opts);
+
 /**
  * @name Validation Functions
  * @{

@@ -467,27 +467,40 @@ ascii-chat is built on operating system code and several libraries.
 
 - [**musl libc**](https://musl.libc.org/) - Static builds (Linux releases)
 - [**mimalloc**](https://github.com/microsoft/mimalloc) - High-performance memory allocator (release builds)
+- [**libuv**](https://libuv.org/) - Cross-platform asynchronous networking and event-loop support
 - [**PortAudio**](http://www.portaudio.com/) - Cross-platform audio I/O
+- [**FFTW3**](https://www.fftw.org/) - Fast Fourier transforms used by audio processing
+- [**ALSA**](https://www.alsa-project.org/) - Linux audio backend used by PortAudio (Linux only)
 - [**tomlc17**](https://github.com/cktan/tomlc17) - ascii-chat has TOML config files
 - [**uthash**](https://troydhanson.github.io/uthash/) - ascii-chat uses hash tables normally for a few different things
 - [**utf8proc**](https://github.com/JuliaStrings/utf8proc) - UTF-8 support even though it's named ascii-chat
 - [**PCRE2**](https://www.pcre.org/) - Regular expressions for strings; validation and parsing and search
+- [**ICU**](https://icu.unicode.org/) - Unicode and locale support
 - [**libsodium**](https://libsodium.org/) - End-to-end encryption and authentication
 - [**libsodium-bcrypt-pbkdf**](https://github.com/imaami/libsodium-bcrypt-pbkdf) - Decrypt password-protected SSH Ed25519 keys
+- [**OpenSSL**](https://www.openssl.org/) - TLS and cryptographic support for WebRTC, WebSockets, and TURN credentials
 - [**BearSSL**](https://bearssl.org/) - HTTPS client for GitHub/GitLab key fetching; AES for SSH key decryption
+- [**zlib**](https://zlib.net/) - Compression support required by libwebsockets and FFmpeg
 - [**zstd**](https://facebook.github.io/zstd/) - Network data compression
 - [**Opus**](https://opus-codec.org/) - Audio codec for low-latency voice transmission
+- [**Abseil**](https://abseil.io/) - C++ support library used by WebRTC audio processing
 - [**WebRTC AEC3**](https://github.com/nicnacnic/webrtc_AEC3) - WebRTC acoustic echo cancellation so you can talk to each other without hearing yourself
 - [**Sokol**](https://github.com/floooh/sokol) - Header-only cross-platform utilities (timing, audio)
 - [**SQLite3**](https://www.sqlite.org/) - Database for discovery service session storage
 - [**libdatachannel**](https://github.com/paullouisageneau/libdatachannel) - WebRTC DataChannels
 - [**libwebsockets**](https://libwebsockets.org/) - WebSocket server for browser clients
 - [**miniupnpc**](https://miniupnp.tuxfamily.org/) - Opens ports in your router to ascii-chat so clients can connect
+- [**mDNS**](https://github.com/avahi/avahi) - Local-network service discovery
+- [**yyjson**](https://github.com/ibireme/yyjson) - Fast JSON parsing for structured data and logging
 - [**FFmpeg**](https://ffmpeg.org/) - Media support for `--file` and `--url`. Direct handling of FFmpeg-supported formats, protocols (HTTP, RTSP, RTMP), and files
+- [**x264**](https://www.videolan.org/developers/x264.html) - H.264 encoder used by FFmpeg when enabled
+- [**x265**](https://www.videolan.org/developers/x265.html) - HEVC encoder used by FFmpeg when enabled
 - [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) - Supports 1000+ streaming sites for `--url` (YouTube, TikTok, Twitch, etc.). Optional; ascii-chat falls back to FFmpeg for direct streams (optional)
 - [**libvterm**](http://www.leonerd.org.uk/code/libvterm/) - Terminal emulation for `--render-file` pixel output
 - [**FreeType2**](https://freetype.org/) - Font rasterization for `--render-file` glyph rendering
 - [**fontconfig**](https://www.freedesktop.org/wiki/Software/fontconfig/) - Font resolution and configuration for `--render-file`
+- [**libexecinfo**](https://github.com/termux/libexecinfo) - Backtrace support for musl builds (musl only)
+- [**Criterion**](https://criterion.readthedocs.io/en/master/) - C test framework (Unix test builds only)
 - [**ssh-agent**](https://linux.die.net/man/1/ssh-agent) - SSH key agent authentication (optional)
 - [**gpg-agent**](https://linux.die.net/man/1/gpg-agent) - GPG key agent authentication (optional)
 

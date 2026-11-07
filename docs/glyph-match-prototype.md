@@ -1,13 +1,13 @@
 # Experimental glyph matching
 
-`--renderer=glyph` enables a prototype foreground renderer in mirror, client,
-discovery, and MCP rendering. It fits
-an 8×8 pixel patch per terminal cell, averages that patch to 4×4, and compares
-its luminance and local structure with 95 printable ASCII glyph masks generated
-from DejaVu Sans Mono 2.37. The score balances normalized glyph density against
-per-sample deviations from the cell's mean. Foreground color uses the same
-nearest-neighbor sample as the current renderer. The default luminance renderer
-is unchanged.
+`--renderer=glyph` enables experimental glyph matching in mirror, client,
+discovery, and MCP rendering. It samples an 8×8 pixel patch per terminal cell,
+averages the patch to 4×4, and matches both luminance and local shape to glyph
+masks. It colors the selected character using its covered pixels, boosting dim
+colors to keep the ink visible. With `--render-mode=background`, the background
+receives a dark tint derived from the cell's average color. Terminal color
+quantization happens after glyph selection. The default luminance renderer is
+unchanged.
 
 The design was informed by [Chafa](https://github.com/hpjansson/chafa), inspected
 at `c897fce60cc4e947a254770ea1c2e320d58e7dce`. Chafa uses 8×8 symbol
@@ -16,18 +16,19 @@ scores the reconstructed cell. This prototype is an independent, smaller
 implementation; it does not copy Chafa code or glyph definitions. The generated
 font masks carry the license in `lib/video/ascii/DEJAVU-LICENSE`.
 
-The atlas assumes DejaVu Sans Mono and a dark background. Other fonts, terminal
-color themes, and glyph rasterization can change the result. The prototype
-supports printable ASCII palettes. It falls back to luminance
-for Unicode palettes and in background and half-block modes. Optional `--stabilize`
-reduces frame-to-frame flicker in foreground, background, and half-block modes. The 8× sampling limits the
-viewport to 480×270 cells under the current image size limit; larger viewports
-fall back to the current renderer. It is a visual experiment, not a replacement
-for the default renderer.
+ASCII masks are generated from DejaVu Sans Mono 2.37; block-element masks use
+their defined geometry. Other fonts and terminal rasterization can change the
+result. The default palette contains the 95 printable ASCII characters. An
+explicit palette restricts candidates to its unique characters and may include
+Unicode block elements U+2580–U+2593. Palettes containing other characters are
+rejected with an error. Half-block mode and viewports larger than 480×270 cells
+use the luminance renderer. Optional `--stabilize` reduces frame-to-frame
+flicker in foreground, background, and half-block modes.
 
 ## Visual comparison
 
-These are side-by-side captures from Windows x64 debug builds at 80×32 cells,
+These historical side-by-side captures predate the current glyph scoring and
+Unicode block support. They were made with Windows x64 debug builds at 80×32 cells,
 truecolor, 8 fps. The emitted terminal frames were rasterized with Pillow and
 the same DejaVu font used for the atlas. The app-produced GIFs repeated their
 first image in this run, so they were not used for the comparisons. The left
@@ -43,10 +44,8 @@ latter is `web/www/public/assets/demo-video-white-knuckles.webm`. Each side was
 captured separately at 8 fps and combined by frame index, so small differences
 in capture timing remain. The generated media is kept outside the repository.
 
-The current renderer uses the standard 23-character ramp. The prototype searches
-95 printable glyphs by default and scores their local shapes. An explicitly
-selected ASCII palette restricts the candidates; a Unicode palette currently
-uses luminance rendering. Both preserve the sampled foreground color.
+The historical comparison used the standard 23-character ramp for luminance
+and 95 printable glyphs for glyph matching.
 
 Matching sometimes introduces directional glyphs at shape boundaries, while
 flat bands gain conspicuous repeated characters. The examples do not establish an overall quality improvement; font, image content,
@@ -78,6 +77,20 @@ python scripts/render_ansi_video.py baseline.log glyph.log website-demo.mp4 Deja
 ```
 
 ## Renderer-only timing
+
+On the development machine, a Linux x86-64 Docker run using Clang 23, Release
+`-O3`, and AVX2 rendered an 80×32 truecolor gradient in 6.7 ms per frame over
+200 measured frames after five warmups. A separate run of the previous glyph
+matcher on the same input measured 1.1 ms per frame. These are renderer-only
+measurements under shared load, not an end-to-end video throughput guarantee;
+the color fitting adds substantial work. A smaller selected palette evaluates
+fewer candidates, and truecolor scoring skips remaining channels once a
+candidate cannot beat the best score.
+
+### Historical renderer-only timing
+
+These measurements predate reconstructed-pixel color fitting; they are not a
+performance measurement of the current implementation.
 
 On a Ryzen 7 5800X, WSL2 x86-64 Linux, Clang 14, Release `-O3`, AVX2 dispatch,
 80×32 truecolor cells, three runs of 200 measured iterations after five warmups:
