@@ -98,3 +98,18 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  notify:
+    name: Send container publication notification
+    if: always() && needs.build-and-push.result != 'skipped'
+    needs: [build-and-push]
+    uses: ./.github/workflows/notify.yml
+    secrets: inherit
+    with:
+      subject: "${{ needs.build-and-push.result == 'success' && '✅' || '❌' }} ascii-chat container publication - ${{ needs.build-and-push.result == 'success' && 'SUCCESS' || 'FAILED' }}"
+      body: |
+        ascii-chat container publication: ${{ needs.build-and-push.result == 'success' && 'SUCCESS' || 'FAILED' }}
+
+        Image: ghcr.io/${{ github.repository }}
+        Workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        Build job: ${{ needs.build-and-push.result }}
