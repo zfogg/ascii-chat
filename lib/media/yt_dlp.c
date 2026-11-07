@@ -294,13 +294,14 @@ static bool yt_dlp_parse_request(yyjson_val *format, yyjson_val *root, const cha
     cookie_value = yyjson_obj_get(root, "cookies");
   const char *cookies = yyjson_get_str(cookie_value);
   if (cookies && *cookies) {
-    if (strlen(cookies) != yyjson_get_len(cookie_value) || strlen(cookies) >= sizeof(request->cookies) ||
+    const size_t cookie_length = strlen(cookies);
+    if (cookie_length != yyjson_get_len(cookie_value) || cookie_length >= sizeof(request->cookies) ||
         strpbrk(cookies, "\r\n"))
       return false;
     // yt-dlp serializes scoped cookies as semicolon-separated attributes.
     // Start a new Set-Cookie line at each cookie name, retaining its scope.
     char copy[YT_DLP_COOKIES_CAPACITY];
-    memcpy(copy, cookies, strlen(cookies) + 1);
+    memcpy(copy, cookies, cookie_length + sizeof(char));
     url_parts_t parts = {0};
     asciichat_errno_scope_t scope = errno_scope_begin();
     int port = url_parse(stream, &parts) == ASCIICHAT_OK ? parts.port : 0;
@@ -447,28 +448,37 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
     char *dest = i == 0 ? output_url : audio_url;
     size_t capacity = i == 0 ? output_size : audio_size;
     yt_dlp_request_options_t *request = i == 0 ? video_request : audio_request;
-    if (!stream || strlen(stream) != yyjson_get_len(stream_value) || !yt_dlp_is_stream_url(stream) ||
-        strlen(stream) >= capacity || !yt_dlp_parse_request(format, root, stream, request)) {
+    const size_t stream_length = stream ? strlen(stream) : 0;
+    if (!stream || stream_length != yyjson_get_len(stream_value) || !yt_dlp_is_stream_url(stream) ||
+        stream_length >= capacity || !yt_dlp_parse_request(format, root, stream, request)) {
       yyjson_doc_free(doc);
       output_url[0] = audio_url[0] = '\0';
       return SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned invalid stream metadata");
     }
-    memcpy(dest, stream, strlen(stream) + 1);
+    memcpy(dest, stream, stream_length + sizeof(char));
     ++count;
   }
   yyjson_doc_free(doc);
   // Pass the explicit yt-dlp proxy to the independent FFmpeg requests.
+  bool skip_proxy_value = false;
   for (size_t i = 0; i < argc; ++i) {
+    if (skip_proxy_value) {
+      skip_proxy_value = false;
+      continue;
+    }
     const char *proxy = NULL;
-    if (!strcmp(argv[i], "--proxy") && i + 1 < argc)
-      proxy = argv[++i];
-    else if (!strncmp(argv[i], "--proxy=", 8))
-      proxy = argv[i] + 8;
+    if (!strcmp(argv[i], "--proxy") && i + 1 < argc) {
+      proxy = argv[i + 1];
+      skip_proxy_value = true;
+    } else if (!strncmp(argv[i], "--proxy=", sizeof("--proxy=") - 1)) {
+      proxy = argv[i] + sizeof("--proxy=") - 1;
+    }
     if (proxy) {
-      if (strlen(proxy) >= sizeof(video_request->proxy))
+      const size_t proxy_length = strlen(proxy);
+      if (proxy_length >= sizeof(video_request->proxy))
         return SET_ERRNO(ERROR_INVALID_PARAM, "yt-dlp proxy is too long");
-      memcpy(video_request->proxy, proxy, strlen(proxy) + 1);
-      memcpy(audio_request->proxy, proxy, strlen(proxy) + 1);
+      memcpy(video_request->proxy, proxy, proxy_length + sizeof(char));
+      memcpy(audio_request->proxy, proxy, proxy_length + sizeof(char));
     }
   }
   if (count == 0) {

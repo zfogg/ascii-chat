@@ -15,6 +15,7 @@ import subprocess
 import tempfile
 import threading
 import unittest
+import urllib.parse
 import wave
 
 
@@ -45,6 +46,8 @@ class MediaExtractor(unittest.TestCase):
                 """Record each media request before serving it."""
                 requests.append(self.path)
                 request_headers.append(dict(self.headers))
+                if self.path.startswith("http://"):
+                    self.path = urllib.parse.urlsplit(self.path).path
                 if fixture.require_auth and (self.headers.get("X-Test") != "fixture" or
                                              "session=fixture" not in self.headers.get("Cookie", "")):
                     self.send_error(403)
@@ -139,6 +142,19 @@ class MediaExtractor(unittest.TestCase):
         self.assertIn("/audio.wav", self.requests)
         self.assertTrue(all(h.get("X-Test") == "fixture" and "session=fixture" in h.get("Cookie", "")
                             for h in self.request_headers))
+
+    def test_explicit_http_proxy_is_used_for_both_streams(self):
+        """Forward both supported --proxy forms to the media decoders."""
+        self.env.update(FAKE_YTDLP_VIDEO="http://unresolvable.invalid/video.ppm",
+                        FAKE_YTDLP_AUDIO="http://unresolvable.invalid/audio.wav", FAKE_YTDLP_COOKIE="")
+        for option in (f"--proxy {self.base}", f"--proxy={self.base}"):
+            with self.subTest(option=option):
+                self.trace.unlink(missing_ok=True)
+                self.requests.clear()
+                result = self.run_mirror("split", option)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
+                self.assertTrue(any(path.endswith("/video.ppm") for path in self.requests), self.requests)
+                self.assertTrue(any(path.endswith("/audio.wav") for path in self.requests), self.requests)
 
     def test_extracted_rtmp_stream_is_returned(self):
         """Accept RTMP streams supplied by the extractor."""
