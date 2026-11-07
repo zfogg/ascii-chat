@@ -278,15 +278,36 @@ def test_cmake_discovers_defer_and_tracks_headers(
         / ("ascii-chat-probe.exe" if sys.platform == "win32" else "ascii-chat-probe")
     )
     run(str(executable))
+    other_generated = (
+        build / "defer_transformed" / "ascii-chat-probe" / "src" / "second.c"
+    )
+    objects = list(
+        (build / "src" / "CMakeFiles" / "ascii-chat-probe.dir").rglob(
+            "*.obj" if sys.platform == "win32" else "*.o"
+        )
+    )
+    other_object = next(path for path in objects if "second.c" in path.name)
     before = generated.stat().st_mtime_ns
+    other_before = other_generated.stat().st_mtime_ns
+    object_before = other_object.stat().st_mtime_ns
     # Some filesystems have coarse timestamp resolution.
     import time
 
     time.sleep(1.1)
     header.write_text("#define VALUE 2\n", encoding="utf-8")
     run(cmake, "--build", str(build))
-    assert generated.stat().st_mtime_ns > before
+    assert generated.stat().st_mtime_ns == before
+    assert other_generated.stat().st_mtime_ns == other_before
+    assert other_object.stat().st_mtime_ns == object_before
     run(str(executable))
+    time.sleep(1.1)
+    main.write_text(
+        main.read_text(encoding="utf-8") + "\n/* changed */\n", encoding="utf-8"
+    )
+    run(cmake, "--build", str(build))
+    assert generated.stat().st_mtime_ns > before
+    assert other_generated.stat().st_mtime_ns == other_before
+    assert other_object.stat().st_mtime_ns == object_before
     assert "Transforming defer source batch" not in run(cmake, "--build", str(build))
 
 

@@ -606,9 +606,10 @@ def main() -> int:
         )
         output = Transformer(args.source, source, tu).transform()
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        temporary = args.output.with_name(args.output.name + f".{os.getpid()}.tmp")
-        temporary.write_bytes(output)
-        temporary.replace(args.output)
+        if not args.output.exists() or args.output.read_bytes() != output:
+            temporary = args.output.with_name(args.output.name + f".{os.getpid()}.tmp")
+            temporary.write_bytes(output)
+            temporary.replace(args.output)
         if args.depfile:
 
             def escape(path: str) -> str:
