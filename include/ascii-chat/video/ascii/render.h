@@ -20,6 +20,7 @@ typedef enum { ASCII_COLOR_NONE, ASCII_COLOR_16, ASCII_COLOR_256, ASCII_COLOR_TR
 /** A renderer-owned history; one instance must not be shared by independent streams. */
 typedef struct {
   uint8_t samples[16];
+  uint8_t rgb_samples[3][16];
   uint32_t glyph;
   uint32_t color;
   uint32_t background;

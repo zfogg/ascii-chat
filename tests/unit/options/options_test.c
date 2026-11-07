@@ -1442,3 +1442,17 @@ Test(options, url_first_playlist_does_not_gain_file_priority) {
   cr_assert_str_eq(opts->media_url, "https://example.com/first.webm");
   cr_assert_str_empty(opts->media_file);
 }
+
+Test(options, rejected_glyph_palette_is_not_published) {
+  cr_assert_eq(options_state_init(), ASCIICHAT_OK);
+  options_t *before = SAFE_MALLOC(sizeof(*before), options_t *);
+  *before = *options_get();
+  char *argv[] = {"program", "mirror", "--renderer=glyph", "--palette=digital", NULL};
+  optind = 1;
+  cr_assert_neq(options_init(4, argv), ASCIICHAT_OK);
+  cr_assert_eq(options_get()->renderer, before->renderer);
+  cr_assert_eq(options_get()->palette_type, before->palette_type);
+  SAFE_FREE(before);
+  CLEAR_ERRNO_ALL();
+  options_state_destroy();
+}

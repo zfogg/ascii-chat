@@ -991,8 +991,27 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   cr_assert_not_null(next_fitted);
   terminal_cell_t stable_cell[1] = {0};
   decode(next_fitted, stable_cell, 1, 1, true);
-  cr_assert((stable_cell[0].bg & 255) > 12);
-  cr_assert_lt(stable_cell[0].bg & 255, 15);
+  cr_assert_eq(stable_cell[0].bg & 255, 12, "substantial color motion must not blend the old background");
+  SAFE_FREE(next_fitted);
+  ascii_stabilizer_set_target(old_target);
+  ascii_stabilizer_reset(&fitted_history);
+
+  for (int i = 0; i < 64; ++i)
+    split_pixels[i] = (rgb_pixel_t){150, 0, 0};
+  cr_assert_eq(ascii_stabilizer_prepare(&fitted_history, 1, 1, 7), ASCIICHAT_OK);
+  fitted_history.elapsed_ns = 16000000;
+  old_target = ascii_stabilizer_set_target(&fitted_history);
+  first_fitted = ascii_render_glyph_match_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "@", true);
+  cr_assert_not_null(first_fitted);
+  SAFE_FREE(first_fitted);
+  for (int i = 0; i < 64; ++i)
+    split_pixels[i] = (rgb_pixel_t){0, 77, 0};
+  next_fitted = ascii_render_glyph_match_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "@", true);
+  cr_assert_not_null(next_fitted);
+  decode(next_fitted, stable_cell, 1, 1, true);
+  cr_assert_eq((stable_cell[0].fg >> 16) & 255, 0, "isoluminant color changes must not blend old ink");
+  cr_assert_eq((stable_cell[0].bg >> 16) & 255, 0, "isoluminant color changes must not blend old background");
+  cr_assert((stable_cell[0].fg & 0xff00) != 0);
   SAFE_FREE(next_fitted);
   ascii_stabilizer_set_target(old_target);
   ascii_stabilizer_reset(&fitted_history);

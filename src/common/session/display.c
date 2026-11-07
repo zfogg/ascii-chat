@@ -31,6 +31,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/tui/splash.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/options/runtime.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -596,10 +597,31 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
     return NULL;
   }
 
-  // Get conversion parameters from command-line options
-  unsigned short int width = GET_OPTION(width);
-  unsigned short int height = GET_OPTION(height);
-  bool stretch = GET_OPTION(stretch);
+  // Read the renderer and palette from the same committed options revision.
+  options_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot), options_snapshot_t *);
+  if (!snapshot)
+    return NULL;
+  if (options_read_snapshot(snapshot) != ASCIICHAT_OK) {
+    SAFE_FREE(snapshot);
+    return NULL;
+  }
+  const options_t *values = &snapshot->values;
+  unsigned short int width = values->width;
+  unsigned short int height = values->height;
+  bool stretch = values->stretch;
+  terminal_capabilities_t caps_copy = ctx->caps;
+  caps_copy.render_mode = (render_mode_t)values->render_mode;
+  caps_copy.text_renderer = values->renderer;
+  caps_copy.stabilize = values->stabilize;
+  caps_copy.palette_explicit = values->palette_explicit;
+  terminal_color_mode_t color_mode_opt = (terminal_color_mode_t)values->color_mode;
+  const palette_def_t *builtin = get_builtin_palette(values->palette_type);
+  const char *selected_palette = values->palette_type == PALETTE_CUSTOM ? values->palette_custom
+                                 : builtin                              ? builtin->chars
+                                                                        : ctx->palette_chars;
+  char palette_chars[ASCII_PALETTE_BUFFER_SIZE];
+  SAFE_STRNCPY(palette_chars, selected_palette, sizeof(palette_chars));
+  SAFE_FREE(snapshot);
   bool preserve_aspect_ratio = !stretch;
 
   // Determine if we should apply flip_x and flip_y
@@ -635,14 +657,6 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   }
 
   // Make a mutable copy of terminal capabilities for ascii_convert_with_capabilities
-  terminal_capabilities_t caps_copy = ctx->caps;
-
-  // Re-evaluate render_mode and color_level on every frame to pick up live changes
-  caps_copy.render_mode = (render_mode_t)GET_OPTION(render_mode);
-  caps_copy.text_renderer = GET_OPTION(renderer);
-  caps_copy.stabilize = GET_OPTION(stabilize);
-  caps_copy.palette_explicit = GET_OPTION(palette_explicit);
-  terminal_color_mode_t color_mode_opt = (terminal_color_mode_t)GET_OPTION(color_mode);
   if (color_mode_opt != TERM_COLOR_AUTO) {
     caps_copy.color_level = color_mode_opt;
   }
@@ -746,7 +760,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   if (recording && ctx->render_fps)
     history->fixed_step_ns = NS_PER_SEC_INT / ctx->render_fps;
   char *result = ascii_convert_with_buffers_stabilized(
-      ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio, stretch, ctx->palette_chars, false,
+      ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio, stretch, palette_chars, false,
       ctx->render_file ? NULL : &ctx->resize_workspace, output, caps_copy.stabilize ? history : NULL);
   if (!caps_copy.stabilize)
     ascii_stabilizer_reset(history);
@@ -800,8 +814,8 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   bool glyph_match = caps_copy.text_renderer == ASCII_RENDERER_GLYPH &&
                      caps_copy.render_mode != RENDER_MODE_HALF_BLOCK && width > 0 && height > 0 &&
                      width <= IMAGE_MAX_WIDTH / 8 && height <= IMAGE_MAX_HEIGHT / 8 &&
-                     (!explicit_palette || ascii_glyph_palette_supported(ctx->palette_chars));
-  if (result && !glyph_match && (size_t)utf8_display_width(ctx->palette_chars) != utf8_char_count(ctx->palette_chars)) {
+                     (!explicit_palette || ascii_glyph_palette_supported(palette_chars));
+  if (result && !glyph_match && (size_t)utf8_display_width(palette_chars) != utf8_char_count(palette_chars)) {
     ascii_frame_source_t source = {.frame_data = result, .frame_size = strlen(result)};
     size_t normalized_size;
     char *rectangular = ascii_create_grid(&source, 1, width, height, &normalized_size);
@@ -813,7 +827,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
     const char *contract_palette =
         glyph_match && !explicit_palette
             ? " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
-            : ctx->palette_chars;
+            : palette_chars;
     SAFE_STRNCPY(rendering.palette, contract_palette, sizeof(rendering.palette));
     uint32_t effects = ctx->digital_rain ? FRAME_RENDER_CONTRACT_RAIN : 0;
     if (session_frame_validate_contract(result, strlen(result), width, height, &rendering, effects) != ASCIICHAT_OK) {

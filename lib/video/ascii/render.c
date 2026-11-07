@@ -556,6 +556,7 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
   }
   bool allowed[GLYPH_COUNT] = {false};
   int candidates[GLYPH_COUNT];
+  // Restrict the atlas to unique palette entries before scoring any cells.
   size_t candidate_count = 0;
   int (*shape_correlation)(const int16_t[16], const int16_t[16]) =
       ops->glyph_shape_correlation ? ops->glyph_shape_correlation : glyph_shape_correlation_scalar;
@@ -581,6 +582,7 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
   }
   // Prepare coverage and its sufficient statistics once per frame.
   glyph_candidate_t glyphs[GLYPH_COUNT];
+  // Precompute each mask's brightness and centered shape for correlation.
   for (size_t c = 0; c < candidate_count; ++c) {
     int g = candidates[c];
     glyph_candidate_t *glyph = &glyphs[c];
@@ -633,6 +635,7 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
             sums[channel] += samples[channel][i];
         }
       }
+      // Compare local shape independently of the patch's average brightness.
       sample_mean /= 16;
       int16_t centered_samples[16];
       int sample_energy = 0;
@@ -649,6 +652,7 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
         bool is_previous = previous && previous->valid && previous->glyph == glyphs[c].key;
         int tone_delta = sample_mean - glyphs[c].tone;
         int tone_error = 16 * tone_delta * tone_delta;
+        // Shape error cannot lower the score below the brightness error.
         if (!is_previous && (uint64_t)tone_error > best_error)
           continue;
         int dot = shape_correlation(centered_samples, glyphs[c].centered);
@@ -669,21 +673,33 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
       if (previous) {
         ascii_temporal_cell_t old = *previous;
         unsigned motion = 0;
+        unsigned color_motion = 0;
         for (int i = 0; i < 16; ++i)
           motion += (unsigned)abs((int)patch[i] - (int)old.samples[i]);
+        if (old.valid && mode != ASCII_COLOR_NONE) {
+          for (int channel = 0; channel < 3; ++channel)
+            for (int i = 0; i < 16; ++i)
+              color_motion += (unsigned)abs(samples[channel][i] - (int)old.rgb_samples[channel][i]);
+          color_motion /= 48;
+        }
+        uint64_t elapsed = frame.stabilizer->elapsed_ns;
+        uint64_t effective_elapsed = color_motion > ASCII_TEMPORAL_MOTION_LIMIT ? UINT64_MAX : elapsed;
         selected = ascii_stabilizer_choose(previous, patch, selected, best_error, previous_error, rgb,
-                                           frame.stabilizer->elapsed_ns, &rgb);
+                                           effective_elapsed, &rgb);
         if (selected != glyphs[best].key) {
           *previous = old;
           selected = ascii_stabilizer_choose(previous, patch, glyphs[best].key, best_error, previous_error,
                                              glyph_foreground(&glyphs[previous_index], samples, sums),
-                                             frame.stabilizer->elapsed_ns, &rgb);
+                                             effective_elapsed, &rgb);
         }
-        uint64_t elapsed = frame.stabilizer->elapsed_ns;
-        if (old.valid && motion / 16 <= ASCII_TEMPORAL_MOTION_LIMIT && elapsed <= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
+        if (old.valid && motion / 16 <= ASCII_TEMPORAL_MOTION_LIMIT && color_motion <= ASCII_TEMPORAL_MOTION_LIMIT &&
+            elapsed <= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
           unsigned weight = (unsigned)(elapsed * 256 / (elapsed + ASCII_TEMPORAL_COLOR_TIME_NS));
           bg_rgb = temporal_blend_color(old.background, bg_rgb, weight);
         }
+        for (int channel = 0; channel < 3; ++channel)
+          for (int i = 0; i < 16; ++i)
+            previous->rgb_samples[channel][i] = (uint8_t)samples[channel][i];
         previous->background = bg_rgb;
       }
       frame.glyph[x] = selected;
