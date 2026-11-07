@@ -8,6 +8,8 @@ cd  "$(dirname "$0")/.."
 # Build ascii-chat and generate manpages
 # Now we're in web/www so root is ../../
 REPO_ROOT="$(cd ../.. && pwd)"
+node_command=node
+if command -v node.exe >/dev/null 2>&1; then node_command=node.exe; fi
 if [ -d "$REPO_ROOT" ]; then
   man1_just_edited=$(perl -e 'exit(time - (stat($ARGV[0]))[9] <= 2 ? 0 : 1)' "$REPO_ROOT/share/man/man1/ascii-chat.1.in"; echo $?)
   man5_just_edited=$(perl -e 'exit(time - (stat($ARGV[0]))[9] <= 2 ? 0 : 1)' "$REPO_ROOT/share/man/man5/ascii-chat.5.in"; echo $?)
@@ -32,6 +34,14 @@ if [ -d "$REPO_ROOT" ]; then
   mandoc -Thtml "$BUILD_DIR/share/man/man5/ascii-chat.5" > public/ascii-chat-man5.html
   echo "📜 man(5) page updated"
 
+  # Use the repository Oxfmt configuration for generated HTML.
+  (
+    cd "$REPO_ROOT"
+    "$node_command" node_modules/vite-plus/bin/vp fmt \
+      --config .oxfmtrc.json --ignore-path scripts/format-empty-ignore \
+      web/www/public/ascii-chat-man1.html web/www/public/ascii-chat-man5.html
+  )
+
   # Generate man(3) pages from Doxygen (man pages only, no HTML)
   echo "📚 Generating man(3) pages from Doxygen..."
   rm -f "$BUILD_DIR/.man3.done"
@@ -41,7 +51,7 @@ if [ -d "$REPO_ROOT" ]; then
   if [ -d "$BUILD_DIR/share/man/man3" ]; then
     # Generate a complete replacement before changing the published pages.
     mkdir -p public/man3
-    staging_dir=$(mktemp -d "${TMPDIR:-/tmp}/ascii-chat-man3.XXXXXXXX")
+    staging_dir=$(mktemp -d "$REPO_ROOT/web/www/public/.man3-stage.XXXXXXXX")
     trap 'rm -rf "$staging_dir"' EXIT
     for manfile in "$BUILD_DIR/share/man/man3"/*.3; do
       if [ -f "$manfile" ]; then
@@ -52,6 +62,14 @@ if [ -d "$REPO_ROOT" ]; then
         perl -pi -e 's/[ \t]+$//' "$htmlfile"
       fi
     done
+
+    # Format the staged man(3) pages before publishing them.
+    (
+      cd "$REPO_ROOT"
+      "$node_command" node_modules/vite-plus/bin/vp fmt \
+        --config .oxfmtrc.json --ignore-path scripts/format-empty-ignore \
+        "$staging_dir"
+    )
 
     BUILD_DIR="$BUILD_DIR" MAN3_HTML_DIR="$staging_dir" python3 scripts/generate_man3.py
 
