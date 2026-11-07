@@ -47,6 +47,12 @@
   <br/>
   const char * <b>codes_truecolor</b> [8]
   <br/>
+  char <b>foreground_16</b> [16]
+  <br/>
+  char <b>foreground_256</b> [24]
+  <br/>
+  char <b>foreground_truecolor</b> [32]
+  <br/>
   <br/>
 </p>
 </section>
@@ -58,7 +64,7 @@
 <p class="Pp">Contains pre-compiled ANSI escape codes for all log colors in
     different terminal color modes. Stores pointers to allocated strings rather
     than inline char arrays, matching the interface expected by callers.</p>
-<p class="Pp">Definition at line <b>85</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Definition at line <b>96</b> of file <b>colorscheme.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -67,7 +73,7 @@
 <h2 class="Ss" id="const_char*_compiled_color_scheme_t::codes_16_8_"><a class="permalink" href="#const_char*_compiled_color_scheme_t::codes_16_8_">const
   char* compiled_color_scheme_t::codes_16[8]</a></h2>
 <p class="Pp">Array of 16-color ANSI code strings</p>
-<p class="Pp">Definition at line <b>86</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Definition at line <b>97</b> of file <b>colorscheme.h</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_cleanup_compiled()</b>, and
     <b>colorscheme_compile_scheme()</b>.</p>
 </section>
@@ -75,7 +81,7 @@
 <h2 class="Ss" id="const_char*_compiled_color_scheme_t::codes_256_8_"><a class="permalink" href="#const_char*_compiled_color_scheme_t::codes_256_8_">const
   char* compiled_color_scheme_t::codes_256[8]</a></h2>
 <p class="Pp">Array of 256-color ANSI code strings</p>
-<p class="Pp">Definition at line <b>87</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Definition at line <b>98</b> of file <b>colorscheme.h</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_cleanup_compiled()</b>, and
     <b>colorscheme_compile_scheme()</b>.</p>
 </section>
@@ -83,9 +89,28 @@
 <h2 class="Ss" id="const_char*_compiled_color_scheme_t::codes_truecolor_8_"><a class="permalink" href="#const_char*_compiled_color_scheme_t::codes_truecolor_8_">const
   char* compiled_color_scheme_t::codes_truecolor[8]</a></h2>
 <p class="Pp">Array of 24-bit truecolor ANSI code strings</p>
-<p class="Pp">Definition at line <b>88</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Definition at line <b>99</b> of file <b>colorscheme.h</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_cleanup_compiled()</b>, and
     <b>colorscheme_compile_scheme()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_compiled_color_scheme_t::foreground_16_16_"><a class="permalink" href="#char_compiled_color_scheme_t::foreground_16_16_">char
+  compiled_color_scheme_t::foreground_16[16]</a></h2>
+<p class="Pp">Scheme neutral text color, not an ANSI reset</p>
+<p class="Pp">Definition at line <b>101</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Referenced by <b>colorscheme_compile_scheme()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_compiled_color_scheme_t::foreground_256_24_"><a class="permalink" href="#char_compiled_color_scheme_t::foreground_256_24_">char
+  compiled_color_scheme_t::foreground_256[24]</a></h2>
+<p class="Pp">Definition at line <b>102</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Referenced by <b>colorscheme_compile_scheme()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_compiled_color_scheme_t::foreground_truecolor_32_"><a class="permalink" href="#char_compiled_color_scheme_t::foreground_truecolor_32_">char
+  compiled_color_scheme_t::foreground_truecolor[32]</a></h2>
+<p class="Pp">Definition at line <b>103</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Referenced by <b>colorscheme_compile_scheme()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -96,7 +121,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -57,10 +57,10 @@
 <p class="Pp">
   <br/>
   <br/>
-  #define <b>cond_wait</b>(cond, <b>mutex</b>)
+  #define <b>cond_wait</b>(cond, mutex)
   <br/>
   Wait on a condition variable (with debug tracking in debug builds). #define
-    <b>cond_timedwait</b>(cond, <b>mutex</b>, timeout_ns)
+    <b>cond_timedwait</b>(cond, mutex, timeout_ns)
   <br/>
   Wait on a condition variable with timeout (with debug tracking in debug
     builds).
@@ -77,11 +77,11 @@
     (<b>cond_t</b> *cond)
   <br/>
   Destroy a condition variable. int <b>cond_wait_impl</b> (<b>cond_t</b> *cond,
-    <b>mutex_t</b> *<b>mutex</b>)
+    <b>mutex_t</b> *mutex)
   <br/>
   Wait on a condition variable (blocking) - implementation function. int
-    <b>cond_timedwait_impl</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
-    *<b>mutex</b>, <b>uint64_t</b> timeout_ns)
+    <b>cond_timedwait_impl</b> (<b>cond_t</b> *cond, <b>mutex_t</b> *mutex,
+    <b>uint64_t</b> timeout_ns)
   <br/>
   Wait on a condition variable with timeout - implementation function. int
     <b>cond_signal</b> (<b>cond_t</b> *cond)
@@ -90,16 +90,21 @@
     <b>cond_broadcast</b> (<b>cond_t</b> *cond)
   <br/>
   Broadcast to a condition variable (wake all waiting threads). void
-    <b>cond_on_wait</b> (<b>cond_t</b> *cond, <b>mutex_t</b> *<b>mutex</b>,
+    <b>cond_on_wait</b> (<b>cond_t</b> *cond, <b>mutex_t</b> *mutex, const char
+    *file, int line, const char *func)
+  <br/>
+  Hook called when a thread waits on a condition variable. void
+    <b>cond_on_wait_end</b> (<b>cond_t</b> *cond)
+  <br/>
+  <b>bool</b> <b>cond_total_wait_ns</b> (const <b>cond_t</b> *cond,
+    <b>uint64_t</b> now_ns, <b>uint64_t</b> *total_ns)
+  <br/>
+  int <b>debug_sync_cond_wait</b> (<b>cond_t</b> *cond, <b>mutex_t</b> *mutex,
     const char *file, int line, const char *func)
   <br/>
-  Hook called when a thread waits on a condition variable. int
-    <b>debug_sync_cond_wait</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
-    *<b>mutex</b>, const char *file, int line, const char *func)
-  <br/>
   int <b>debug_sync_cond_timedwait</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
-    *<b>mutex</b>, <b>uint64_t</b> timeout_ns, const char *file, int line, const
-    char *func)
+    *mutex, <b>uint64_t</b> timeout_ns, const char *file, int line, const char
+    *func)
   <br/>
   <b>bool</b> <b>debug_sync_is_initialized</b> (void)
   <br/>
@@ -131,7 +136,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -80,8 +80,11 @@
   Writer API: Commit the frame and swap buffers. const <b>video_frame_t</b> *
     <b>video_frame_get_latest</b> (<b>video_frame_buffer_t</b> *vfb)
   <br/>
-  Reader API: Get latest frame if available. void <b>video_frame_get_stats</b>
-    (<b>video_frame_buffer_t</b> *vfb, <b>video_frame_stats_t</b> *<b>stats</b>)
+  Reader API: Get latest frame if available. const <b>video_frame_t</b> *
+    <b>video_frame_peek_latest</b> (<b>video_frame_buffer_t</b> *vfb)
+  <br/>
+  void <b>video_frame_get_stats</b> (<b>video_frame_buffer_t</b> *vfb,
+    <b>video_frame_stats_t</b> *stats)
   <br/>
   Get frame statistics for quality monitoring. <b>simple_frame_swap_t</b> *
     <b>simple_frame_swap_create</b> (void)
@@ -108,7 +111,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

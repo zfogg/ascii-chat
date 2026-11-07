@@ -98,13 +98,14 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success</div>
 <p class="Pp">Width is auto-detected from the first frame's line length.</p>
-<p class="Pp">Definition at line <b>52</b> of file
+<p class="Pp">Definition at line <b>51</b> of file
     <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>52                                                                                                   {
-53   (void)fd;
-54   (void)frame_height;
-55   if (out) *out = NULL;
-56   return ASCIICHAT_OK;  // Stub - no stdin available in WASM
+<pre>51                                                                                                   {
+52   (void)fd;
+53   (void)frame_height;
+54   if (out)
+55     *out = NULL;
+56   return ASCIICHAT_OK; // Stub - no stdin available in WASM
 57 }</pre>
 <pre></pre>
 <p class="Pp"></p>
@@ -145,9 +146,10 @@
     <b>platform/wasm/stubs/terminal.c</b>.</p>
 <pre>64                                                                                           {
 65   (void)reader;
-66   if (out_frame) *out_frame = NULL;  // Signal EOF immediately
-67   return ASCIICHAT_OK;
-68 }</pre>
+66   if (out_frame)
+67     *out_frame = NULL; // Signal EOF immediately
+68   return ASCIICHAT_OK;
+69 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
@@ -316,7 +318,7 @@ unsigned short int width = terminal_get_effective_width();
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.11.25</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -49,7 +49,16 @@
   <br/>
   Hash table of peer connections. <b>mutex_t</b> <b>peers_mutex</b>
   <br/>
-  Protect peers hash table.
+  Protect peers hash table. <b>mutex_t</b> <b>signaling_mutex</b>
+  <br/>
+  Serialize SDP and ICE updates for each peer. <b>pending_ice_candidate_t</b> *
+    <b>pending_ice</b>
+  <br/>
+  ICE delivered before the peer's remote SDP. size_t <b>pending_ice_count</b>
+  <br/>
+  <b>thread_id_t</b> <b>owner_thread</b>
+  <br/>
+  Thread responsible for delivering ready transports.
   <br/>
 </p>
 </section>
@@ -58,7 +67,7 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">WebRTC peer manager structure.</p>
-<p class="Pp">Definition at line <b>39</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Definition at line <b>66</b> of file <b>peer_manager.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -67,35 +76,61 @@
 <h2 class="Ss"><b>webrtc_peer_manager_config_t</b>
   webrtc_peer_manager::config</h2>
 <p class="Pp">Manager configuration.</p>
-<p class="Pp">Definition at line <b>41</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Definition at line <b>68</b> of file <b>peer_manager.c</b>.</p>
 <p class="Pp">Referenced by
-    <b>webrtc_peer_manager_check_gathering_timeouts()</b>, and
-    <b>webrtc_peer_manager_create()</b>.</p>
+    <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
+    <b>webrtc_peer_manager_create()</b>, and
+    <b>webrtc_peer_manager_dispatch_ready()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>thread_id_t</b> webrtc_peer_manager::owner_thread</h2>
+<p class="Pp">Thread responsible for delivering ready transports.</p>
+<p class="Pp">Definition at line <b>75</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_peer_manager_create()</b>, and
+    <b>webrtc_peer_manager_dispatch_ready()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>peer_entry_t</b>* webrtc_peer_manager::peers</h2>
 <p class="Pp">Hash table of peer connections.</p>
-<p class="Pp">Definition at line <b>43</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>peer_manager.c</b>.</p>
 <p class="Pp">Referenced by
     <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
     <b>webrtc_peer_manager_create()</b>, <b>webrtc_peer_manager_destroy()</b>,
-    and <b>webrtc_peer_manager_handle_sdp()</b>.</p>
+    <b>webrtc_peer_manager_dispatch_ready()</b>, and
+    <b>webrtc_peer_manager_handle_sdp()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> webrtc_peer_manager::peers_mutex</h2>
 <p class="Pp">Protect peers hash table.</p>
-<p class="Pp">Definition at line <b>44</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Definition at line <b>71</b> of file <b>peer_manager.c</b>.</p>
 <p class="Pp">Referenced by
     <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
     <b>webrtc_peer_manager_connect()</b>, <b>webrtc_peer_manager_create()</b>,
     <b>webrtc_peer_manager_destroy()</b>,
-    <b>webrtc_peer_manager_handle_ice()</b>, and
-    <b>webrtc_peer_manager_handle_sdp()</b>.</p>
+    <b>webrtc_peer_manager_dispatch_ready()</b>,
+    <b>webrtc_peer_manager_get_state()</b>,
+    <b>webrtc_peer_manager_handle_ice()</b>,
+    <b>webrtc_peer_manager_handle_sdp()</b>, and
+    <b>webrtc_peer_manager_remove_peer()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>pending_ice_candidate_t</b>*
+  webrtc_peer_manager::pending_ice</h2>
+<p class="Pp">ICE delivered before the peer's remote SDP.</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_peer_manager_create()</b>, and
+    <b>webrtc_peer_manager_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_webrtc_peer_manager::pending_ice_count"><a class="permalink" href="#size_t_webrtc_peer_manager::pending_ice_count">size_t
+  webrtc_peer_manager::pending_ice_count</a></h2>
+<p class="Pp">Definition at line <b>74</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_peer_manager_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>webrtc_peer_role_t</b> webrtc_peer_manager::role</h2>
 <p class="Pp">Session role.</p>
-<p class="Pp">Definition at line <b>40</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Definition at line <b>67</b> of file <b>peer_manager.c</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_peer_manager_connect()</b>,
     <b>webrtc_peer_manager_create()</b>, and
     <b>webrtc_peer_manager_handle_sdp()</b>.</p>
@@ -104,8 +139,19 @@
 <h2 class="Ss"><b>webrtc_signaling_callbacks_t</b>
   webrtc_peer_manager::signaling</h2>
 <p class="Pp">Signaling callbacks.</p>
-<p class="Pp">Definition at line <b>42</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Definition at line <b>69</b> of file <b>peer_manager.c</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_peer_manager_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>mutex_t</b> webrtc_peer_manager::signaling_mutex</h2>
+<p class="Pp">Serialize SDP and ICE updates for each peer.</p>
+<p class="Pp">Definition at line <b>72</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Referenced by
+    <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
+    <b>webrtc_peer_manager_create()</b>, <b>webrtc_peer_manager_destroy()</b>,
+    <b>webrtc_peer_manager_handle_ice()</b>,
+    <b>webrtc_peer_manager_handle_sdp()</b>, and
+    <b>webrtc_peer_manager_remove_peer()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -116,7 +162,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

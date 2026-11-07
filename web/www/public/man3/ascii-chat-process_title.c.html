@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>process_title.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">process_title.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">process_title.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">process_title.c - Process titles with preserved application
+    arguments and environment.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>title_writer_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>PLATFORM_PROCESS_TITLE_SHORT_NAME_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>TITLE_ENVIRON</b> <b>environ</b>
+  <br/>
+  #define <b>PROCESS_TITLE_MAX</b> 32768
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>platform_process_title_init</b> (int
+    argc, char ***argv)
+  <br/>
+  Reserve process-title storage before option parsing or environment use. void
+    <b>platform_process_title_destroy</b> (void)
+  <br/>
+  Restore Unix argument storage and release title allocations.
+    <b>asciichat_error_t</b> <b>platform_process_title_set</b> (const char
+    *title)
+  <br/>
+  Update the OS process naming surfaces through one platform API.
+    <b>asciichat_error_t</b> <b>platform_process_title_set_args</b> (const char
+    *mode, int argc, char **argv, int mode_arg_index)
+  <br/>
+  Set
+    <i>ascii-chat:</i>&lt;mode&gt;<i>mode</i>-<i>&lt;arguments&gt;&quot;</i>with<i>secret</i>values<i>redacted.</i>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">char ** <b>environ</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Process titles with preserved application arguments and
+    environment.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>process_title.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_PROCESS_TITLE_SHORT_NAME_BUFFER_SIZE___64"><a class="permalink" href="#_define_PLATFORM_PROCESS_TITLE_SHORT_NAME_BUFFER_SIZE___64">#define
+  PLATFORM_PROCESS_TITLE_SHORT_NAME_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>process_title.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_process_title_set_args()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PROCESS_TITLE_MAX___32768"><a class="permalink" href="#_define_PROCESS_TITLE_MAX___32768">#define
+  PROCESS_TITLE_MAX 32768</a></h2>
+<p class="Pp">Definition at line <b>155</b> of file <b>process_title.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_process_title_set_args()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TITLE_ENVIRON___"><a class="permalink" href="#_define_TITLE_ENVIRON___">#define
+  TITLE_ENVIRON <b>environ</b></a></h2>
+<p class="Pp">Definition at line <b>22</b> of file <b>process_title.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_process_title_destroy()</b>, and
+    <b>platform_process_title_init()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char**_environ"><a class="permalink" href="#char**_environ">char**
+  environ [extern]</a></h2>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

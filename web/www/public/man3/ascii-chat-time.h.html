@@ -55,7 +55,13 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>TIME_ATOMIC_UINT64</b> <b>atomic_t</b>
+<p class="Pp">#define <b>TIME_DURATION_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>UTIL_TIME_TIMER_NAME_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>UTIL_TIME_TIMER_NAME_WITH_TID_BUFFER_SIZE</b> 280
+  <br/>
+  #define <b>TIME_ATOMIC_UINT64</b> <b>atomic_t</b>
   <br/>
   #define <b>TIME_ATOMIC_UINT64_INIT</b>(val)
   <br/>
@@ -155,26 +161,26 @@
     <b>timer_is_initialized</b> (void)
   <br/>
   Check if timing system is initialized. int <b>time_pretty</b> (<b>uint64_t</b>
-    nanoseconds, int decimals, char *buffer, size_t <b>buffer_size</b>)
+    nanoseconds, int decimals, char *buffer, size_t buffer_size)
   <br/>
-  Format nanoseconds as pretty duration with spaces and configurable precision.
-    int <b>time_pretty_now</b> (int decimals, char *buffer, size_t
-    <b>buffer_size</b>)
+  Format nanoseconds as a compact duration with configurable sub-minute
+    precision. int <b>time_pretty_now</b> (int decimals, char *buffer, size_t
+    buffer_size)
   <br/>
   Format current monotonic time as pretty duration. int
     <b>time_human_readable</b> (int64_t nanoseconds, char *buffer, size_t
-    <b>buffer_size</b>)
+    buffer_size)
   <br/>
   Format nanoseconds as human-readable relative duration (moment.js style). int
     <b>time_human_readable_unsigned</b> (<b>uint64_t</b> nanoseconds, char
-    *buffer, size_t <b>buffer_size</b>)
+    *buffer, size_t buffer_size)
   <br/>
   Format elapsed time as human-readable relative duration (unsigned version).
-    int <b>time_human_readable_now</b> (char *buffer, size_t <b>buffer_size</b>)
+    int <b>time_human_readable_now</b> (char *buffer, size_t buffer_size)
   <br/>
   Format current monotonic time as human-readable relative duration. int
     <b>format_uptime_hms</b> (int hours, int minutes, int seconds, char *buffer,
-    size_t <b>buffer_size</b>)
+    size_t buffer_size)
   <br/>
   Format uptime as HH:MM:SS string. void <b>adaptive_sleep_init</b>
     (<b>adaptive_sleep_state_t</b> *state, const <b>adaptive_sleep_config_t</b>
@@ -224,7 +230,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

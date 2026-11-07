@@ -35,11 +35,23 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>TURN_URL_BUFFER_SIZE</b> 64
+  <br/>
+  TURN server configuration with credentials. #define
+    <b>TURN_USERNAME_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>TURN_CREDENTIAL_BUFFER_SIZE</b> 64
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">struct <b>__attribute__</b> ((packed))
   <br/>
-  TURN server configuration with credentials.
   <br/>
 </p>
 </section>
@@ -59,13 +71,7 @@
   <br/>
   Standard TURN port (RFC 5766). #define <b>TURN_TLS_DEFAULT_PORT</b> 5349
   <br/>
-  TURN over TLS port (RFC 5766). #define <b>TURN_MAX_URL_LEN</b> 64
-  <br/>
-  Maximum TURN URL length. #define <b>TURN_MAX_USERNAME_LEN</b> 32
-  <br/>
-  Maximum TURN username length. #define <b>TURN_MAX_CREDENTIAL_LEN</b> 64
-  <br/>
-  Maximum TURN credential length. #define <b>TURN_CREDENTIAL_EXPIRY_SECS</b> (24
+  TURN over TLS port (RFC 5766). #define <b>TURN_CREDENTIAL_EXPIRY_SECS</b> (24
     * 60 * 60)
   <br/>
   Recommended credential expiration time (seconds).
@@ -127,12 +133,19 @@
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="_define_TURN_CREDENTIAL_BUFFER_SIZE___64"><a class="permalink" href="#_define_TURN_CREDENTIAL_BUFFER_SIZE___64">#define
+  TURN_CREDENTIAL_BUFFER_SIZE 64</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>97</b> of file <b>turn.h</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="_define_TURN_CREDENTIAL_EXPIRY_SECS___(24_*_60_*_60)"><a class="permalink" href="#_define_TURN_CREDENTIAL_EXPIRY_SECS___(24_*_60_*_60)">#define
   TURN_CREDENTIAL_EXPIRY_SECS (24 * 60 * 60)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
 <p class="Pp">Recommended credential expiration time (seconds).</p>
-<p class="Pp">Definition at line <b>125</b> of file <b>turn.h</b>.</p>
+<p class="Pp">Definition at line <b>121</b> of file <b>turn.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_TURN_DEFAULT_PORT___3478"><a class="permalink" href="#_define_TURN_DEFAULT_PORT___3478">#define
@@ -140,31 +153,7 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
 <p class="Pp">Standard TURN port (RFC 5766).</p>
-<p class="Pp">Definition at line <b>110</b> of file <b>turn.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TURN_MAX_CREDENTIAL_LEN___64"><a class="permalink" href="#_define_TURN_MAX_CREDENTIAL_LEN___64">#define
-  TURN_MAX_CREDENTIAL_LEN 64</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
-<p class="Pp">Maximum TURN credential length.</p>
-<p class="Pp">Definition at line <b>122</b> of file <b>turn.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TURN_MAX_URL_LEN___64"><a class="permalink" href="#_define_TURN_MAX_URL_LEN___64">#define
-  TURN_MAX_URL_LEN 64</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
-<p class="Pp">Maximum TURN URL length.</p>
-<p class="Pp">Definition at line <b>116</b> of file <b>turn.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_TURN_MAX_USERNAME_LEN___32"><a class="permalink" href="#_define_TURN_MAX_USERNAME_LEN___32">#define
-  TURN_MAX_USERNAME_LEN 32</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
-<p class="Pp">Maximum TURN username length.</p>
-<p class="Pp">Definition at line <b>119</b> of file <b>turn.h</b>.</p>
+<p class="Pp">Definition at line <b>115</b> of file <b>turn.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_TURN_TLS_DEFAULT_PORT___5349"><a class="permalink" href="#_define_TURN_TLS_DEFAULT_PORT___5349">#define
@@ -172,15 +161,11 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
 <p class="Pp">TURN over TLS port (RFC 5766).</p>
-<p class="Pp">Definition at line <b>113</b> of file <b>turn.h</b>.</p>
+<p class="Pp">Definition at line <b>118</b> of file <b>turn.h</b>.</p>
 </section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="struct___attribute___((packed)_)"><a class="permalink" href="#struct___attribute___((packed)_)">struct
-  __attribute__ ((packed) )</a></h2>
+<h2 class="Ss" id="_define_TURN_URL_BUFFER_SIZE___64"><a class="permalink" href="#_define_TURN_URL_BUFFER_SIZE___64">#define
+  TURN_URL_BUFFER_SIZE 64</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
 <p class="Pp">TURN server configuration with credentials. Used in ACDS
@@ -225,7 +210,26 @@
 </pre>
 <p class="Pp">
   <br/>
-   &lt; Length of URL string (actual length)</p>
+   TURN wire string capacities in bytes, including NUL.</p>
+<p class="Pp">Definition at line <b>95</b> of file <b>turn.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TURN_USERNAME_BUFFER_SIZE___32"><a class="permalink" href="#_define_TURN_USERNAME_BUFFER_SIZE___32">#define
+  TURN_USERNAME_BUFFER_SIZE 32</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>96</b> of file <b>turn.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="struct___attribute___((packed)_)"><a class="permalink" href="#struct___attribute___((packed)_)">struct
+  __attribute__ ((packed) )</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b>&lt; Length of URL
+    string (actual length)</b></p>
 <p class="Pp"></p>
 <p class="Pp">&lt; TURN server URL (e.g.,
     &quot;turn:discovery.ascii.chat:3478&quot;)</p>
@@ -238,14 +242,14 @@
 <p class="Pp"></p>
 <p class="Pp">&lt; Time-limited TURN credential/password</p>
 <p class="Pp">Definition at line <b>1</b> of file <b>turn.h</b>.</p>
-<pre>94                                        {
-95   uint8_t url_len;        
-96   char url[64];           
-97   uint8_t username_len;   
-98   char username[32];      
-99   uint8_t credential_len; 
-100   char credential[64];    
-101 } turn_server_t;</pre>
+<pre>99                                        {
+100   uint8_t url_len;
+101   char url[TURN_URL_BUFFER_SIZE];
+102   uint8_t username_len;
+103   char username[TURN_USERNAME_BUFFER_SIZE];
+104   uint8_t credential_len;
+105   char credential[TURN_CREDENTIAL_BUFFER_SIZE];
+106 } turn_server_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -257,7 +261,8 @@
 <h2 class="Ss" id="turn_server_t"><a class="permalink" href="#turn_server_t">turn_server_t</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/network/webrtc/turn.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>101</b> of file <b>turn.h</b>.</p>
+<p class="Pp">Definition at line <b>106</b> of file <b>turn.h</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -267,7 +272,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

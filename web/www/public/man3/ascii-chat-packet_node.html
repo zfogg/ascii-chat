@@ -30,22 +30,18 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">packet_node - Node in the packet queue linked list.</p>
-<p class="Pp"></p>
+<p class="Pp">packet_node</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/network/packet/queue.h&gt;</p>
 <section class="Ss">
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
 <p class="Pp"><b>queued_packet_t</b> <b>packet</b>
   <br/>
-  The queued packet data. <b>atomic_ptr_t</b> <b>next</b>
+  struct <b>packet_node</b> * <b>next</b>
   <br/>
-  Pointer to next node in linked list (NULL for tail) - atomic for lock-free
-    operations.
   <br/>
 </p>
 </section>
@@ -53,11 +49,23 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Node in the packet queue linked list.</p>
-<p class="Pp">Linked list node containing a queued packet and pointer to next
-    node. Nodes are allocated from a pool to reduce malloc/free overhead.</p>
-<p class="Pp">Definition at line <b>147</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Definition at line <b>8</b> of file <b>queue.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
+  <b>packet_node</b>* packet_node::next</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>queue.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>queued_packet_t</b> packet_node::packet</h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>queue.c</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_clear()</b>, and
+    <b>packet_queue_try_dequeue()</b>.</p>
 <p class="Pp"></p>
+</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
@@ -66,7 +74,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

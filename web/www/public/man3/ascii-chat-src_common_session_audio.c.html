@@ -51,7 +51,8 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>SESSION_AUDIO_MAX_SOURCES</b> 32
+<p class="Pp">#define <b>SESSION_AUDIO_MAX_SOURCES</b>
+    <b>MAX_SESSION_PARTICIPANTS</b>
   <br/>
   Maximum number of audio sources for mixing.
   <br/>
@@ -104,7 +105,12 @@
     <b>session_audio_mix_excluding</b> (<b>session_audio_ctx_t</b> *ctx,
     <b>uint32_t</b> exclude_id, float *output, size_t num_samples)
   <br/>
-  Mix all sources except one and return the result (host only).
+  Mix all sources except one and return the result (host only). void
+    <b>session_audio_set_capture_source</b> (<b>session_audio_ctx_t</b> *ctx,
+    void *source)
+  <br/>
+  void * <b>session_audio_get_context</b> (<b>session_audio_ctx_t</b> *ctx)
+  <br/>
   <br/>
 </p>
 </section>
@@ -126,15 +132,58 @@
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="_define_SESSION_AUDIO_MAX_SOURCES___32"><a class="permalink" href="#_define_SESSION_AUDIO_MAX_SOURCES___32">#define
-  SESSION_AUDIO_MAX_SOURCES 32</a></h2>
+<h2 class="Ss" id="_define_SESSION_AUDIO_MAX_SOURCES___"><a class="permalink" href="#_define_SESSION_AUDIO_MAX_SOURCES___">#define
+  SESSION_AUDIO_MAX_SOURCES <b>MAX_SESSION_PARTICIPANTS</b></a></h2>
 <p class="Pp">Maximum number of audio sources for mixing.</p>
-<p class="Pp">Definition at line <b>27</b> of file
+<p class="Pp">Definition at line <b>29</b> of file
     <b>src/common/session/audio.c</b>.</p>
 <p class="Pp">Referenced by <b>session_audio_add_source()</b>,
     <b>session_audio_create()</b>, <b>session_audio_destroy()</b>,
     <b>session_audio_mix_excluding()</b>, <b>session_audio_remove_source()</b>,
     and <b>session_audio_write_source()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_*_session_audio_get_context_("><a class="permalink" href="#void_*_session_audio_get_context_(">void
+  * session_audio_get_context (<b>session_audio_ctx_t</b> * ctx)</a></h2>
+<p class="Pp">Definition at line <b>378</b> of file
+    <b>src/common/session/audio.c</b>.</p>
+<pre>378                                                           {
+379   return ctx ? &amp;ctx-&gt;audio_ctx : NULL;
+380 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_audio_ctx::audio_ctx</b>, and
+    <b>session_audio_get_context()</b>.</p>
+<p class="Pp">Referenced by <b>session_audio_get_context()</b>, and
+    <b>session_participant_start_audio()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_audio_set_capture_source_("><a class="permalink" href="#void_session_audio_set_capture_source_(">void
+  session_audio_set_capture_source (<b>session_audio_ctx_t</b> * ctx, void *
+  source)</a></h2>
+<p class="Pp">Definition at line <b>369</b> of file
+    <b>src/common/session/audio.c</b>.</p>
+<pre>369                                                                               {
+370   if (ctx &amp;&amp; !ctx-&gt;running) {
+371     audio_set_pipeline(&amp;ctx-&gt;audio_ctx, NULL);
+372     client_audio_pipeline_destroy(ctx-&gt;pipeline);
+373     ctx-&gt;pipeline = NULL;
+374     ctx-&gt;audio_ctx.capture_media_source = source;
+375   }
+376 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_audio_ctx::audio_ctx</b>,
+    <b>audio_set_pipeline()</b>, <b>audio_context_t::capture_media_source</b>,
+    <b>client_audio_pipeline_destroy()</b>, <b>session_audio_ctx::pipeline</b>,
+    <b>session_audio_ctx::running</b>, and
+    <b>session_audio_set_capture_source()</b>.</p>
+<p class="Pp">Referenced by <b>session_audio_set_capture_source()</b>, and
+    <b>session_participant_start_audio()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -144,7 +193,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

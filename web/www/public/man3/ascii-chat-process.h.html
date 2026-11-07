@@ -37,6 +37,15 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>platform_process_stats_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
 <p class="Pp">typedef struct platform_process <b>platform_process_t</b>
@@ -48,10 +57,32 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">pid_t <b>platform_get_pid</b> (void)
+<p class="Pp"><b>asciichat_error_t</b> <b>platform_process_stats</b>
+    (<b>platform_process_stats_t</b> *out)
   <br/>
-  Get the current process ID. <b>asciichat_error_t</b> <b>platform_popen</b>
-    (const char *name, const char *command, const char *mode, FILE **out_stream)
+  <b>asciichat_error_t</b> <b>process_utf8_arguments</b> (int *argc, char
+    ***argv)
+  <br/>
+  pid_t <b>platform_get_pid</b> (void)
+  <br/>
+  Get the current process ID. <b>asciichat_error_t</b>
+    <b>platform_process_title_init</b> (int argc, char ***argv)
+  <br/>
+  Reserve process-title storage before option parsing or environment use.
+    <b>asciichat_error_t</b> <b>platform_process_title_set</b> (const char
+    *title)
+  <br/>
+  Update the OS process naming surfaces through one platform API.
+    <b>asciichat_error_t</b> <b>platform_process_title_set_args</b> (const char
+    *mode, int argc, char **argv, int mode_arg_index)
+  <br/>
+  Set
+    <i>ascii-chat:</i>&lt;mode&gt;<i>mode</i>-<i>&lt;arguments&gt;&quot;</i>with<i>secret</i>values<i>redacted.</i>
+    void <b>platform_process_title_destroy</b> (void)
+  <br/>
+  Restore Unix argument storage and release title allocations.
+    <b>asciichat_error_t</b> <b>platform_popen</b> (const char *name, const char
+    *command, const char *mode, FILE **out_stream)
   <br/>
   Execute a command and return a file stream for reading/writing.
     <b>asciichat_error_t</b> <b>platform_pclose</b> (FILE **stream_ptr)
@@ -93,7 +124,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -91,17 +91,17 @@
 78   if (!name || !input || !transport_out) {
 79     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid connection factory parameters&quot;);
 80   }
-81 
+81
 82   *transport_out = NULL;
-83 
+83
 84   connection_endpoint_t endpoint = {0};
 85   asciichat_error_t resolve_result = connection_endpoint_resolve(input, default_port, &amp;endpoint);
 86   if (resolve_result != ASCIICHAT_OK) {
 87     return resolve_result;
 88   }
-89 
+89
 90   acip_transport_t *transport = NULL;
-91 
+91
 92   switch (endpoint.protocol) {
 93   case CONNECTION_ENDPOINT_WEBSOCKET:
 94     transport = acip_websocket_client_transport_create(name, endpoint.input, crypto_ctx);
@@ -109,18 +109,18 @@
 96       return SET_ERRNO(ERROR_NETWORK_CONNECT, &quot;Failed to create WebSocket transport&quot;);
 97     }
 98     break;
-99 
+99
 100   case CONNECTION_ENDPOINT_TCP:
 101     resolve_result = connection_factory_open_tcp(name, &amp;endpoint, crypto_ctx, &amp;transport);
 102     if (resolve_result != ASCIICHAT_OK) {
 103       return resolve_result;
 104     }
 105     break;
-106 
+106
 107   default:
 108     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unsupported endpoint protocol&quot;);
 109   }
-110 
+110
 111   if (endpoint_out) {
 112     *endpoint_out = endpoint;
 113   }
@@ -145,7 +145,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.11.25</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

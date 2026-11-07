@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ui_viewport_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ui_viewport_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ui_viewport_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ui_viewport_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/ui/viewport.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">size_t <b>selected</b>
+  <br/>
+  size_t <b>first_visible</b>
+  <br/>
+  size_t <b>page_size</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Selection is an absolute item index; first_visible is relative to
+    its page. A zero page_size means one page containing the complete data
+  set.</p>
+<p class="Pp">Definition at line <b>8</b> of file <b>viewport.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ui_viewport_t::first_visible"><a class="permalink" href="#size_t_ui_viewport_t::first_visible">size_t
+  ui_viewport_t::first_visible</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>viewport.h</b>.</p>
+<p class="Pp">Referenced by <b>ui_selectable_list_keep_visible()</b>,
+    <b>ui_table_render()</b>, <b>ui_viewport_key()</b>, and
+    <b>ui_viewport_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ui_viewport_t::page_size"><a class="permalink" href="#size_t_ui_viewport_t::page_size">size_t
+  ui_viewport_t::page_size</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>viewport.h</b>.</p>
+<p class="Pp">Referenced by <b>ui_sync_handle_key()</b>,
+    <b>ui_viewport_key()</b>, and <b>ui_viewport_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ui_viewport_t::selected"><a class="permalink" href="#size_t_ui_viewport_t::selected">size_t
+  ui_viewport_t::selected</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>viewport.h</b>.</p>
+<p class="Pp">Referenced by <b>ui_selectable_list_keep_visible()</b>,
+    <b>ui_sync_handle_key()</b>, <b>ui_table_render()</b>,
+    <b>ui_viewport_key()</b>, and <b>ui_viewport_update()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

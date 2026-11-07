@@ -42,7 +42,29 @@
 <br/>
 <p class="Pp">struct <b>binary_level_opts_t</b>
   <br/>
-  Create a new <b>options_t</b> struct with all defaults set.
+  Create a new <b>options_t</b> struct with all defaults set. struct
+    <b>binary_actions_t</b>
+  <br/>
+  struct <b>mode_arguments_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>OPTIONS_OPT_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>OPTIONS_LOG_FILENAME_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>OPTIONS_RESULT_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>OPTIONS_LONG_FORM_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>OPTIONS_LONG_FORM_EQ_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>OPTIONS_NORMALIZED_URL_BUFFER_SIZE</b> 2048
+  <br/>
   <br/>
 </p>
 </section>
@@ -61,7 +83,8 @@
     <b>asciichat_error_t</b> <b>options_init</b> (int argc, char **argv)
   <br/>
   Initialize options by parsing command-line arguments with unified mode
-    detection.
+    detection. void <b>options_resolve_flip_x</b> (<b>options_t</b> *opts)
+  <br/>
   <br/>
 </p>
 </section>
@@ -90,75 +113,34 @@
   <dt>6.</dt>
   <dd><b>Publishes</b> options via RCU for lock-free thread-safe access</dd>
 </dl>
-<p class="Pp"><b>Architecture</b>:</p>
-<p class="Pp"></p>
-<p class="Pp">The parsing flow is:</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<pre>options_init(argc, argv)
-<br/>
-  &#x251C;&#x2500; Mode Detection
-<br/>
-  &#x2502;  &#x2514;&#x2500; Checks for --help, --version, mode keywords, session strings
-<br/>
-  &#x251C;&#x2500; Binary-Level Option Parsing
-<br/>
-  &#x2502;  &#x2514;&#x2500; Handles: --help, --version, --log-file, --verbose, --quiet, etc.
-<br/>
-  &#x251C;&#x2500; Get Mode-Specific Preset (unified)
-<br/>
-  &#x2502;  &#x2514;&#x2500; Uses options_preset_unified() from presets.h
-<br/>
-  &#x251C;&#x2500; Mode-Specific Option Parsing
-<br/>
-  &#x2502;  &#x2514;&#x2500; Builder parses remaining args for the detected mode
-<br/>
-  &#x251C;&#x2500; Configuration File Loading (if --config specified)
-<br/>
-  &#x2502;  &#x2514;&#x2500; Loads and merges TOML config file
-<br/>
-  &#x251C;&#x2500; Validation
-<br/>
-  &#x2502;  &#x2514;&#x2500; Applies defaults, validates ranges, cross-field checks
-<br/>
-  &#x2514;&#x2500; RCU Publishing
-<br/>
-     &#x2514;&#x2500; Makes options available via options_get() and GET_OPTION()</pre>
-<p class="Pp"><b>Key Components</b>:</p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>detect_mode_and_parse_binary_options(): Mode detection and binary-level
-      parsing</li>
-  <li><b>options_preset_unified()</b><b>: Preset config for all modes (from
-      </b><b>presets.h</b><b>)</b></li>
-  <li>options_config_parse_args(): Builder-based parsing of mode-specific
-      options</li>
-  <li>Configuration file loading (if --config specified)</li>
-  <li><b>options_state_init()</b><b> and </b><b>options_state_set()</b><b>: RCU
-      publishing</b></li>
-</ul>
-<p class="Pp"><b>Option Lifecycle</b> in <b>options_init()</b><b>:</b></p>
+<p class="Pp"><b>Initialization order</b>:</p>
 <p class="Pp"></p>
 <dl class="Bl-tag">
   <dt>1.</dt>
-  <dd>Create default options via <b>options_t_new()</b><b></b></dd>
+  <dd>Validate argv and initialize RCU state.</dd>
   <dt>2.</dt>
-  <dd>Detect mode from argv</dd>
+  <dd>Handle help, scan binary actions, and detect the mode.</dd>
   <dt>3.</dt>
-  <dd>Parse binary-level options (may exit for --help, --version)</dd>
+  <dd>Parse binary options and build argv for the selected mode.</dd>
   <dt>4.</dt>
-  <dd>Get mode-specific preset from registry</dd>
+  <dd>Initialize mode defaults, build the schema, and load configuration
+    files.</dd>
   <dt>5.</dt>
-  <dd>Parse mode-specific options into options struct</dd>
+  <dd>Parse mode options while preserving binary settings and track explicit
+      flags.</dd>
   <dt>6.</dt>
-  <dd>Load config file if specified</dd>
+  <dd>Publish options for cleanup, validate them, and apply mode defaults.</dd>
   <dt>7.</dt>
-  <dd>Validate all options with defaults</dd>
+  <dd>Finalize identity keys, dimensions, and media settings.</dd>
   <dt>8.</dt>
-  <dd>Initialize RCU state</dd>
-  <dt>9.</dt>
-  <dd>Publish options for lock-free access</dd>
+  <dd>Publish final options, apply the logging color scheme, and run deferred
+      actions.</dd>
 </dl>
+<p class="Pp">The stage helpers borrow options and parser state.
+    <b>options_init()</b><b> owns the unified configuration and filtered argv
+    array and releases both on errors. The configuration is released after
+    validation; argv survives deferred actions.</b></p>
+<p class="Pp"></p>
 <p class="Pp"><b>Error Handling</b>:</p>
 <p class="Pp"></p>
 <ul class="Bl-bullet">
@@ -185,8 +167,68 @@
 <p class="Pp">Definition in file <b>lib/options/options.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_LOG_FILENAME_BUFFER_SIZE___256"><a class="permalink" href="#_define_OPTIONS_LOG_FILENAME_BUFFER_SIZE___256">#define
+  OPTIONS_LOG_FILENAME_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>50</b> of file
+  <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_LONG_FORM_BUFFER_SIZE___256"><a class="permalink" href="#_define_OPTIONS_LONG_FORM_BUFFER_SIZE___256">#define
+  OPTIONS_LONG_FORM_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>52</b> of file
+  <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_LONG_FORM_EQ_BUFFER_SIZE___256"><a class="permalink" href="#_define_OPTIONS_LONG_FORM_EQ_BUFFER_SIZE___256">#define
+  OPTIONS_LONG_FORM_EQ_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>53</b> of file
+  <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_NORMALIZED_URL_BUFFER_SIZE___2048"><a class="permalink" href="#_define_OPTIONS_NORMALIZED_URL_BUFFER_SIZE___2048">#define
+  OPTIONS_NORMALIZED_URL_BUFFER_SIZE 2048</a></h2>
+<p class="Pp">Definition at line <b>54</b> of file
+  <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_OPT_BUFFER_SIZE___64"><a class="permalink" href="#_define_OPTIONS_OPT_BUFFER_SIZE___64">#define
+  OPTIONS_OPT_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>49</b> of file
+  <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_RESULT_BUFFER_SIZE___512"><a class="permalink" href="#_define_OPTIONS_RESULT_BUFFER_SIZE___512">#define
+  OPTIONS_RESULT_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>51</b> of file
+  <b>lib/options/options.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_options_resolve_flip_x_("><a class="permalink" href="#void_options_resolve_flip_x_(">void
+  options_resolve_flip_x (<b>options_t</b> * opts)</a></h2>
+<p class="Pp">Resolve source defaults without turning them into a user
+    selection.</p>
+<p class="Pp">Definition at line <b>2445</b> of file
+    <b>lib/options/options.c</b>.</p>
+<pre>2445                                              {
+2446   if (!opts-&gt;flip_x_explicit)
+2447     opts-&gt;flip_x = !opts-&gt;media_input &amp;&amp; !opts-&gt;test_pattern &amp;&amp; !opts-&gt;waveform &amp;&amp; !opts-&gt;fft;
+2448 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_state::fft</b>,
+    <b>options_state::flip_x</b>, <b>options_state::flip_x_explicit</b>,
+    <b>options_state::media_input</b>, <b>options_resolve_flip_x()</b>,
+    <b>options_state::test_pattern</b>, and <b>options_state::waveform</b>.</p>
+<p class="Pp">Referenced by <b>options_prepare_patch()</b>,
+    <b>options_resolve_flip_x()</b>, and <b>options_state_set()</b>.</p>
+</section>
 <section class="Ss">
 <h2 class="Ss"><b>options_t</b> options_t_new_preserve_binary (const
   <b>options_t</b> * source)</h2>
@@ -203,24 +245,25 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">New <b>options_t</b> with defaults and binary-level
   fields preserved</div>
-<p class="Pp">Definition at line <b>709</b> of file
+<p class="Pp">Definition at line <b>744</b> of file
     <b>lib/options/options.c</b>.</p>
-<pre>709                                                                  {
-710   // Extract binary-level options before reset
-711   binary_level_opts_t binary = extract_binary_level(source);
-712 
-713   // Create fresh options with all defaults
-714   options_t opts = options_t_new();
-715 
-716   // Restore binary-level options (overwrite defaults)
-717   restore_binary_level(&amp;opts, &amp;binary);
-718 
-719   return opts;
-720 }</pre>
+<pre>744                                                                  {
+745   // Extract binary-level options before reset
+746   binary_level_opts_t binary = extract_binary_level(source);
+747
+748   // Create fresh options with all defaults
+749   options_t opts = options_t_new();
+750
+751   // Restore binary-level options (overwrite defaults)
+752   restore_binary_level(&amp;opts, &amp;binary);
+753
+754   return opts;
+755 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>options_t_new()</b>.</p>
-<p class="Pp">Referenced by <b>options_init()</b>.</p>
+<p class="Pp">References <b>options_t_new()</b>, and
+    <b>options_t_new_preserve_binary()</b>.</p>
+<p class="Pp">Referenced by <b>options_t_new_preserve_binary()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -230,7 +273,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

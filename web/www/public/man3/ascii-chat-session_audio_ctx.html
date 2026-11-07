@@ -41,7 +41,10 @@
 <br/>
 <p class="Pp"><b>audio_context_t</b> <b>audio_ctx</b>
   <br/>
-  Underlying audio context from lib/audio. <b>bool</b> <b>is_host</b>
+  Underlying audio context from lib/audio. <b>client_audio_pipeline_t</b> *
+    <b>pipeline</b>
+  <br/>
+  <b>bool</b> <b>is_host</b>
   <br/>
   True if this is a host context (has mixing capabilities). <b>bool</b>
     <b>running</b>
@@ -49,7 +52,7 @@
   Audio streams are currently running. <b>bool</b> <b>initialized</b>
   <br/>
   Context is fully initialized. <b>session_audio_source_t</b> <b>sources</b>
-    [32]
+    [<b>MAX_SESSION_PARTICIPANTS</b>]
   <br/>
   Audio sources for mixing (host only). int <b>source_count</b>
   <br/>
@@ -68,7 +71,7 @@
 <p class="Pp">Internal session audio context structure.</p>
 <p class="Pp">Contains the underlying audio context plus optional mixing state
     for host mode.</p>
-<p class="Pp">Definition at line <b>44</b> of file
+<p class="Pp">Definition at line <b>46</b> of file
     <b>src/common/session/audio.c</b>.</p>
 </section>
 <section class="Sh">
@@ -77,17 +80,19 @@
 <section class="Ss">
 <h2 class="Ss"><b>audio_context_t</b> session_audio_ctx::audio_ctx</h2>
 <p class="Pp">Underlying audio context from lib/audio.</p>
-<p class="Pp">Definition at line <b>46</b> of file
+<p class="Pp">Definition at line <b>48</b> of file
     <b>src/common/session/audio.c</b>.</p>
 <p class="Pp">Referenced by <b>session_audio_create()</b>,
-    <b>session_audio_destroy()</b>, <b>session_audio_read_captured()</b>,
+    <b>session_audio_destroy()</b>, <b>session_audio_get_context()</b>,
+    <b>session_audio_read_captured()</b>,
+    <b>session_audio_set_capture_source()</b>,
     <b>session_audio_start_duplex()</b>, <b>session_audio_stop()</b>, and
     <b>session_audio_write_playback()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_audio_ctx::initialized</h2>
 <p class="Pp">Context is fully initialized.</p>
-<p class="Pp">Definition at line <b>55</b> of file
+<p class="Pp">Definition at line <b>58</b> of file
     <b>src/common/session/audio.c</b>.</p>
 <p class="Pp">Referenced by <b>session_audio_add_source()</b>,
     <b>session_audio_create()</b>, <b>session_audio_destroy()</b>,
@@ -101,7 +106,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_audio_ctx::is_host</h2>
 <p class="Pp">True if this is a host context (has mixing capabilities).</p>
-<p class="Pp">Definition at line <b>49</b> of file
+<p class="Pp">Definition at line <b>52</b> of file
     <b>src/common/session/audio.c</b>.</p>
 <p class="Pp">Referenced by <b>session_audio_add_source()</b>,
     <b>session_audio_create()</b>, <b>session_audio_destroy()</b>,
@@ -112,7 +117,7 @@
 <h2 class="Ss" id="float*_session_audio_ctx::mix_buffer"><a class="permalink" href="#float*_session_audio_ctx::mix_buffer">float*
   session_audio_ctx::mix_buffer</a></h2>
 <p class="Pp">Temporary buffer for mixing operations.</p>
-<p class="Pp">Definition at line <b>64</b> of file
+<p class="Pp">Definition at line <b>67</b> of file
     <b>src/common/session/audio.c</b>.</p>
 <p class="Pp">Referenced by <b>session_audio_create()</b>,
     <b>session_audio_destroy()</b>, and
@@ -122,33 +127,43 @@
 <h2 class="Ss" id="size_t_session_audio_ctx::mix_buffer_size"><a class="permalink" href="#size_t_session_audio_ctx::mix_buffer_size">size_t
   session_audio_ctx::mix_buffer_size</a></h2>
 <p class="Pp">Size of mix buffer in samples.</p>
-<p class="Pp">Definition at line <b>67</b> of file
+<p class="Pp">Definition at line <b>70</b> of file
     <b>src/common/session/audio.c</b>.</p>
 <p class="Pp">Referenced by <b>session_audio_create()</b>, and
     <b>session_audio_mix_excluding()</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss"><b>client_audio_pipeline_t</b>* session_audio_ctx::pipeline</h2>
+<p class="Pp">Definition at line <b>49</b> of file
+    <b>src/common/session/audio.c</b>.</p>
+<p class="Pp">Referenced by <b>session_audio_destroy()</b>,
+    <b>session_audio_set_capture_source()</b>, and
+    <b>session_audio_start_duplex()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss"><b>bool</b> session_audio_ctx::running</h2>
 <p class="Pp">Audio streams are currently running.</p>
-<p class="Pp">Definition at line <b>52</b> of file
+<p class="Pp">Definition at line <b>55</b> of file
     <b>src/common/session/audio.c</b>.</p>
 <p class="Pp">Referenced by <b>session_audio_create()</b>,
     <b>session_audio_destroy()</b>, <b>session_audio_is_running()</b>,
+    <b>session_audio_set_capture_source()</b>,
     <b>session_audio_start_duplex()</b>, and <b>session_audio_stop()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_session_audio_ctx::source_count"><a class="permalink" href="#int_session_audio_ctx::source_count">int
   session_audio_ctx::source_count</a></h2>
 <p class="Pp">Number of active sources (host only).</p>
-<p class="Pp">Definition at line <b>61</b> of file
+<p class="Pp">Definition at line <b>64</b> of file
     <b>src/common/session/audio.c</b>.</p>
 <p class="Pp">Referenced by <b>session_audio_add_source()</b>,
     <b>session_audio_create()</b>, and <b>session_audio_remove_source()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>session_audio_source_t</b> session_audio_ctx::sources[32]</h2>
+<h2 class="Ss"><b>session_audio_source_t</b>
+  session_audio_ctx::sources[<b>MAX_SESSION_PARTICIPANTS</b>]</h2>
 <p class="Pp">Audio sources for mixing (host only).</p>
-<p class="Pp">Definition at line <b>58</b> of file
+<p class="Pp">Definition at line <b>61</b> of file
     <b>src/common/session/audio.c</b>.</p>
 <p class="Pp">Referenced by <b>session_audio_add_source()</b>,
     <b>session_audio_create()</b>, <b>session_audio_destroy()</b>,
@@ -164,7 +179,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -38,7 +38,15 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>symbol_cache_init</b> (void)
+<p class="Pp"><b>bool</b> <b>symbol_module_is_project</b> (const char
+    *module_name)
+  <br/>
+  Check whether a module belongs to ascii-chat. <b>asciichat_error_t</b>
+    <b>symbol_format_source_path</b> (const char *module_name, const char
+    *source_path, char *output, size_t output_size, <b>bool</b> *external)
+  <br/>
+  Format a source path for a symbolized frame. <b>asciichat_error_t</b>
+    <b>symbol_cache_init</b> (void)
   <br/>
   Initialize the symbol cache. void <b>symbol_cache_destroy</b> (void)
   <br/>
@@ -80,7 +88,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

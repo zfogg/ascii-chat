@@ -60,7 +60,7 @@
   Description</a></h1>
 <p class="Pp">Remote log packet structure carrying log level and message
   text.</p>
-<p class="Pp">Definition at line <b>741</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>751</b> of file <b>packet.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -68,14 +68,14 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> remote_log_packet_t::direction</h2>
 <p class="Pp">Direction hint so receivers can annotate origin.</p>
-<p class="Pp">Definition at line <b>745</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>755</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_remote_log()</b>,
     <b>packet_parse_remote_log()</b>, and <b>packet_send_remote_log()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> remote_log_packet_t::flags</h2>
 <p class="Pp">Additional flags (REMOTE_LOG_FLAG_*).</p>
-<p class="Pp">Definition at line <b>747</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>757</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_remote_log()</b>,
     <b>packet_parse_remote_log()</b>, and <b>packet_send_remote_log()</b>.</p>
 </section>
@@ -83,14 +83,14 @@
 <h2 class="Ss"><b>uint8_t</b> remote_log_packet_t::log_level</h2>
 <p class="Pp">Log level associated with the message (<b>log_level_t</b> cast to
     <b>uint8_t</b>).</p>
-<p class="Pp">Definition at line <b>743</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>753</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_remote_log()</b>,
     <b>packet_parse_remote_log()</b>, and <b>packet_send_remote_log()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> remote_log_packet_t::message_length</h2>
 <p class="Pp">Message payload length in bytes (0-512).</p>
-<p class="Pp">Definition at line <b>749</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>759</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_remote_log()</b>,
     <b>packet_parse_remote_log()</b>, and <b>packet_send_remote_log()</b>.</p>
 <p class="Pp"></p>
@@ -103,7 +103,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -79,7 +79,7 @@
 152   if (!resources) {
 153     return;
 154   }
-155 
+155
 156   // Only free content if it was allocated (i.e., loaded from filesystem in debug builds)
 157   if (resources-&gt;allocated) {
 158 #ifndef NDEBUG
@@ -94,7 +94,7 @@
 167     }
 168 #endif
 169   }
-170 
+170
 171   // Clear the structure
 172   resources-&gt;template_content = NULL;
 173   resources-&gt;template_len = 0;
@@ -108,10 +108,11 @@
 <p class="Pp">References <b>manpage_resources_t::allocated</b>,
     <b>manpage_resources_t::content_len</b>,
     <b>manpage_resources_t::content_sections</b>,
-    <b>manpage_resources_t::is_embedded</b>, <b>SAFE_FREE</b>,
-    <b>manpage_resources_t::template_content</b>, and
+    <b>manpage_resources_t::is_embedded</b>, <b>manpage_resources_destroy()</b>,
+    <b>SAFE_FREE</b>, <b>manpage_resources_t::template_content</b>, and
     <b>manpage_resources_t::template_len</b>.</p>
-<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>.</p>
+<p class="Pp">Referenced by <b>manpage_resources_destroy()</b>, and
+    <b>options_config_generate_manpage_merged()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> manpage_resources_is_valid (const
@@ -128,15 +129,17 @@
 181   if (!resources) {
 182     return false;
 183   }
-184 
+184
 185   // Resources are valid if template is loaded (content is now optional/merged into template)
 186   return resources-&gt;template_content != NULL &amp;&amp; resources-&gt;template_len &gt; 0;
 187 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>manpage_resources_t::template_content</b>, and
+<p class="Pp">References <b>manpage_resources_is_valid()</b>,
+    <b>manpage_resources_t::template_content</b>, and
     <b>manpage_resources_t::template_len</b>.</p>
-<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>.</p>
+<p class="Pp">Referenced by <b>manpage_resources_is_valid()</b>, and
+    <b>options_config_generate_manpage_merged()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> manpage_resources_load
@@ -175,7 +178,7 @@
 108   if (!resources) {
 109     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;resources pointer cannot be NULL&quot;);
 110   }
-111 
+111
 112   // Initialize to safe state
 113   resources-&gt;template_content = NULL;
 114   resources-&gt;template_len = 0;
@@ -183,19 +186,19 @@
 116   resources-&gt;content_len = 0;
 117   resources-&gt;is_embedded = false;
 118   resources-&gt;allocated = false;
-119 
+119
 120   // Load template resource
 121   asciichat_error_t err = load_single_resource(&amp;resources-&gt;template_content, &amp;resources-&gt;template_len,
 122                                                get_manpage_template, &quot;man page template&quot;);
 123   if (err != ASCIICHAT_OK) {
 124     return err;
 125   }
-126 
+126
 127   // Content is now merged into template - no separate content file needed
 128   // Set to NULL so cleanup doesn't try to free a string literal
 129   resources-&gt;content_sections = NULL;
 130   resources-&gt;content_len = 0;
-131 
+131
 132   // Determine if resources came from embedded binary
 133   // In production (NDEBUG), both would be embedded; in development, both would be files
 134 #ifdef NDEBUG
@@ -203,14 +206,14 @@
 136 #else
 137   resources-&gt;is_embedded = false;
 138 #endif
-139 
+139
 140   // Mark that we may have allocated memory (only in debug builds for filesystem reads)
 141 #ifdef NDEBUG
 142   resources-&gt;allocated = false;
 143 #else
 144   resources-&gt;allocated = true;
 145 #endif
-146 
+146
 147   log_debug(&quot;Resources loaded successfully (embedded=%d, allocated=%d)&quot;, resources-&gt;is_embedded, resources-&gt;allocated);
 148   return ASCIICHAT_OK;
 149 }</pre>
@@ -220,10 +223,11 @@
     <b>ASCIICHAT_OK</b>, <b>manpage_resources_t::content_len</b>,
     <b>manpage_resources_t::content_sections</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>get_manpage_template()</b>, <b>manpage_resources_t::is_embedded</b>,
-    <b>log_debug</b>, <b>SET_ERRNO</b>,
+    <b>log_debug</b>, <b>manpage_resources_load()</b>, <b>SET_ERRNO</b>,
     <b>manpage_resources_t::template_content</b>, and
     <b>manpage_resources_t::template_len</b>.</p>
-<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>.</p>
+<p class="Pp">Referenced by <b>manpage_resources_load()</b>, and
+    <b>options_config_generate_manpage_merged()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -233,7 +237,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -67,15 +67,16 @@
     <b>ERROR_INVALID_PASSWORD</b> = 49, <b>ERROR_INVALID_SIGNATURE</b> = 50,
     <b>ERROR_ACDS_STRING_TAKEN</b> = 51, <b>ERROR_ACDS_STRING_INVALID</b> = 52,
     <b>ERROR_INTERNAL</b> = 53, <b>ERROR_UNKNOWN_PACKET</b> = 54,
-    <b>ERROR_CRYPTO</b> = 60, <b>ERROR_CRYPTO_KEY</b> = 61,
-    <b>ERROR_CRYPTO_AUTH</b> = 62, <b>ERROR_CRYPTO_HANDSHAKE</b> = 63,
-    <b>ERROR_CRYPTO_VERIFICATION</b> = 64, <b>ERROR_THREAD</b> = 80,
-    <b>ERROR_BUFFER</b> = 81, <b>ERROR_BUFFER_FULL</b> = 82,
-    <b>ERROR_BUFFER_OVERFLOW</b> = 83, <b>ERROR_DISPLAY</b> = 84,
+    <b>ERROR_NETWORK_INCOMPLETE</b> = 55, <b>ERROR_CRYPTO</b> = 60,
+    <b>ERROR_CRYPTO_KEY</b> = 61, <b>ERROR_CRYPTO_AUTH</b> = 62,
+    <b>ERROR_CRYPTO_HANDSHAKE</b> = 63, <b>ERROR_CRYPTO_VERIFICATION</b> = 64,
+    <b>ERROR_THREAD</b> = 80, <b>ERROR_BUFFER</b> = 81, <b>ERROR_BUFFER_FULL</b>
+    = 82, <b>ERROR_BUFFER_OVERFLOW</b> = 83, <b>ERROR_DISPLAY</b> = 84,
     <b>ERROR_INVALID_STATE</b> = 85, <b>ERROR_INVALID_PARAM</b> = 86,
     <b>ERROR_INVALID_FRAME</b> = 87, <b>ERROR_RESOURCE_EXHAUSTED</b> = 88,
-    <b>ERROR_FORMAT</b> = 89, <b>ERROR_STRING</b> = 90, <b>ERROR_NOT_FOUND</b> =
-    91, <b>ERROR_SIGNAL_INTERRUPT</b> = 100, <b>ERROR_SIGNAL_CRASH</b> = 101,
+    <b>ERROR_FORMAT</b> = 89, <b>ERROR_STRING</b> = 90,
+    <b>ERROR_PROMPT_TIMEOUT</b> = 92, <b>ERROR_NOT_FOUND</b> = 91,
+    <b>ERROR_SIGNAL_INTERRUPT</b> = 100, <b>ERROR_SIGNAL_CRASH</b> = 101,
     <b>ERROR_ASSERTION_FAILED</b> = 102, <b>ERROR_COMPRESSION</b> = 103,
     <b>ERROR_DECOMPRESSION</b> = 104, <b>ERROR_FILE_OPERATION</b> = 105,
     <b>ERROR_FILE_NOT_FOUND</b> = 106, <b>ERROR_PROCESS_FAILED</b> = 110,
@@ -229,6 +230,9 @@
   <dt id="ERROR_UNKNOWN_PACKET"><a class="permalink" href="#ERROR_UNKNOWN_PACKET"><b><i>ERROR_UNKNOWN_PACKET
     </i></b></a></dt>
   <dd>Unknown packet type received</dd>
+  <dt id="ERROR_NETWORK_INCOMPLETE"><a class="permalink" href="#ERROR_NETWORK_INCOMPLETE"><b><i>ERROR_NETWORK_INCOMPLETE
+    </i></b></a></dt>
+  <dd>Incomplete buffered message; retry within the receive deadline</dd>
   <dt id="ERROR_CRYPTO"><a class="permalink" href="#ERROR_CRYPTO"><b><i>ERROR_CRYPTO
     </i></b></a></dt>
   <dd>Cryptographic operation failed</dd>
@@ -277,6 +281,9 @@
   <dt id="ERROR_STRING"><a class="permalink" href="#ERROR_STRING"><b><i>ERROR_STRING
     </i></b></a></dt>
   <dd>String manipulation operation failed</dd>
+  <dt id="ERROR_PROMPT_TIMEOUT"><a class="permalink" href="#ERROR_PROMPT_TIMEOUT"><b><i>ERROR_PROMPT_TIMEOUT
+    </i></b></a></dt>
+  <dd>Interactive prompt deadline expired</dd>
   <dt id="ERROR_NOT_FOUND"><a class="permalink" href="#ERROR_NOT_FOUND"><b><i>ERROR_NOT_FOUND
     </i></b></a></dt>
   <dd>Resource not found in registry or lookup</dd>
@@ -320,101 +327,104 @@
     </i></b></a></dt>
   <dd>YouTube support not compiled in (requires libytdl)</dd>
 </dl>
-<p class="Pp">Definition at line <b>49</b> of file <b>error_codes.h</b>.</p>
-<pre>49              {
-50   /* Standard codes (0-2) - Unix conventions */
-51   ASCIICHAT_OK = 0,  
-52   ERROR_GENERAL = 1, 
-53   ERROR_USAGE = 2,   
-54 
-55   /* Initialization failures (3-19) */
-56   ERROR_MEMORY = 3,        
-57   ERROR_CONFIG = 4,        
-58   ERROR_CRYPTO_INIT = 5,   
-59   ERROR_LOGGING_INIT = 6,  
-60   ERROR_PLATFORM_INIT = 7, 
-61   ERROR_INIT = 8,          
-62 
-63   /* Hardware/Device errors (20-39) */
-64   ERROR_WEBCAM = 20,            
-65   ERROR_WEBCAM_IN_USE = 21,     
-66   ERROR_WEBCAM_PERMISSION = 22, 
-67   ERROR_AUDIO = 23,             
-68   ERROR_AUDIO_IN_USE = 24,      
-69   ERROR_TERMINAL = 25,          
-70   ERROR_MEDIA_INIT = 26,        
-71   ERROR_MEDIA_OPEN = 27,        
-72   ERROR_MEDIA_DECODE = 28,      
-73   ERROR_MEDIA_SEEK = 29,        
-74   ERROR_NOT_SUPPORTED = 30,     
-75 
-76   /* Network errors (40-59) */
-77   ERROR_NETWORK = 40,          
-78   ERROR_NETWORK_BIND = 41,     
-79   ERROR_NETWORK_CONNECT = 42,  
-80   ERROR_NETWORK_TIMEOUT = 43,  
-81   ERROR_NETWORK_PROTOCOL = 44, 
-82   ERROR_NETWORK_SIZE = 45,     
-83 
-84   /* Session and protocol errors (46-55) */
-85   ERROR_RATE_LIMITED = 46,        
-86   ERROR_SESSION_NOT_FOUND = 47,   
-87   ERROR_SESSION_FULL = 48,        
-88   ERROR_INVALID_PASSWORD = 49,    
-89   ERROR_INVALID_SIGNATURE = 50,   
-90   ERROR_ACDS_STRING_TAKEN = 51,   
-91   ERROR_ACDS_STRING_INVALID = 52, 
-92   ERROR_INTERNAL = 53,            
-93   ERROR_UNKNOWN_PACKET = 54,      
-94 
-95   /* Security/Crypto errors (60-79) */
-96   ERROR_CRYPTO = 60,              
-97   ERROR_CRYPTO_KEY = 61,          
-98   ERROR_CRYPTO_AUTH = 62,         
-99   ERROR_CRYPTO_HANDSHAKE = 63,    
-100   ERROR_CRYPTO_VERIFICATION = 64, 
-101 
-102   /* Runtime errors (80-99) */
-103   ERROR_THREAD = 80,             
-104   ERROR_BUFFER = 81,             
-105   ERROR_BUFFER_FULL = 82,        
-106   ERROR_BUFFER_OVERFLOW = 83,    
-107   ERROR_DISPLAY = 84,            
-108   ERROR_INVALID_STATE = 85,      
-109   ERROR_INVALID_PARAM = 86,      
-110   ERROR_INVALID_FRAME = 87,      
-111   ERROR_RESOURCE_EXHAUSTED = 88, 
-112   ERROR_FORMAT = 89,             
-113   ERROR_STRING = 90,             
-114   ERROR_NOT_FOUND = 91,          
-115 
-116   /* Signal/Crash handlers (100-127) */
-117   ERROR_SIGNAL_INTERRUPT = 100, 
-118   ERROR_SIGNAL_CRASH = 101,     
-119   ERROR_ASSERTION_FAILED = 102, 
-120 
-121   /* Compression errors (103-104) */
-122   ERROR_COMPRESSION = 103,   
-123   ERROR_DECOMPRESSION = 104, 
-124 
-125   /* File system errors (105-109) */
-126   ERROR_FILE_OPERATION = 105, 
-127   ERROR_FILE_NOT_FOUND = 106, 
-128 
-129   /* Process errors (110-119) */
-130   ERROR_PROCESS_FAILED = 110, 
-131 
-132   /* YouTube/URL streaming errors (111-116) */
-133   ERROR_YOUTUBE_INVALID_URL = 111,    
-134   ERROR_YOUTUBE_EXTRACT_FAILED = 112, 
-135   ERROR_YOUTUBE_UNPLAYABLE = 113,     
-136   ERROR_YOUTUBE_NETWORK = 114,        
-137   ERROR_YOUTUBE_NOT_SUPPORTED = 115,  
-138 
-139   /* Reserved (128-255) - Should not be used */
-140   /* 128+N typically means &quot;terminated by signal N&quot; on Unix systems */
-141 
-142 } asciichat_error_t;</pre>
+<p class="Pp">Definition at line <b>44</b> of file <b>error_codes.h</b>.</p>
+<pre>44              {
+45   /* Standard codes (0-2) - Unix conventions */
+46   ASCIICHAT_OK = 0,
+47   ERROR_GENERAL = 1,
+48   ERROR_USAGE = 2,
+49
+50   /* Initialization failures (3-19) */
+51   ERROR_MEMORY = 3,
+52   ERROR_CONFIG = 4,
+53   ERROR_CRYPTO_INIT = 5,
+54   ERROR_LOGGING_INIT = 6,
+55   ERROR_PLATFORM_INIT = 7,
+56   ERROR_INIT = 8,
+57
+58   /* Hardware/Device errors (20-39) */
+59   ERROR_WEBCAM = 20,
+60   ERROR_WEBCAM_IN_USE = 21,
+61   ERROR_WEBCAM_PERMISSION = 22,
+62   ERROR_AUDIO = 23,
+63   ERROR_AUDIO_IN_USE = 24,
+64   ERROR_TERMINAL = 25,
+65   ERROR_MEDIA_INIT = 26,
+66   ERROR_MEDIA_OPEN = 27,
+67   ERROR_MEDIA_DECODE = 28,
+68   ERROR_MEDIA_SEEK = 29,
+69   ERROR_NOT_SUPPORTED = 30,
+70
+71   /* Network errors (40-59) */
+72   ERROR_NETWORK = 40,
+73   ERROR_NETWORK_BIND = 41,
+74   ERROR_NETWORK_CONNECT = 42,
+75   ERROR_NETWORK_TIMEOUT = 43,
+76   ERROR_NETWORK_PROTOCOL = 44,
+77   ERROR_NETWORK_SIZE = 45,
+78
+79   /* Session and protocol errors (46-55) */
+80   ERROR_RATE_LIMITED = 46,
+81   ERROR_SESSION_NOT_FOUND = 47,
+82   ERROR_SESSION_FULL = 48,
+83   ERROR_INVALID_PASSWORD = 49,
+84   ERROR_INVALID_SIGNATURE = 50,
+85   ERROR_ACDS_STRING_TAKEN = 51,
+86   ERROR_ACDS_STRING_INVALID = 52,
+87   ERROR_INTERNAL = 53,
+88   ERROR_UNKNOWN_PACKET = 54,
+89
+90   ERROR_NETWORK_INCOMPLETE = 55,
+91
+92   /* Security/Crypto errors (60-79) */
+93   ERROR_CRYPTO = 60,
+94   ERROR_CRYPTO_KEY = 61,
+95   ERROR_CRYPTO_AUTH = 62,
+96   ERROR_CRYPTO_HANDSHAKE = 63,
+97   ERROR_CRYPTO_VERIFICATION = 64,
+98
+99   /* Runtime errors (80-99) */
+100   ERROR_THREAD = 80,
+101   ERROR_BUFFER = 81,
+102   ERROR_BUFFER_FULL = 82,
+103   ERROR_BUFFER_OVERFLOW = 83,
+104   ERROR_DISPLAY = 84,
+105   ERROR_INVALID_STATE = 85,
+106   ERROR_INVALID_PARAM = 86,
+107   ERROR_INVALID_FRAME = 87,
+108   ERROR_RESOURCE_EXHAUSTED = 88,
+109   ERROR_FORMAT = 89,
+110   ERROR_STRING = 90,
+111   ERROR_PROMPT_TIMEOUT = 92,
+112   ERROR_NOT_FOUND = 91,
+113
+114   /* Signal/Crash handlers (100-127) */
+115   ERROR_SIGNAL_INTERRUPT = 100,
+116   ERROR_SIGNAL_CRASH = 101,
+117   ERROR_ASSERTION_FAILED = 102,
+118
+119   /* Compression errors (103-104) */
+120   ERROR_COMPRESSION = 103,
+121   ERROR_DECOMPRESSION = 104,
+122
+123   /* File system errors (105-109) */
+124   ERROR_FILE_OPERATION = 105,
+125   ERROR_FILE_NOT_FOUND = 106,
+126
+127   /* Process errors (110-119) */
+128   ERROR_PROCESS_FAILED = 110,
+129
+130   /* YouTube/URL streaming errors (111-116) */
+131   ERROR_YOUTUBE_INVALID_URL = 111,
+132   ERROR_YOUTUBE_EXTRACT_FAILED = 112,
+133   ERROR_YOUTUBE_UNPLAYABLE = 113,
+134   ERROR_YOUTUBE_NETWORK = 114,
+135   ERROR_YOUTUBE_NOT_SUPPORTED = 115,
+136
+137   /* Reserved (128-255) - Should not be used */
+138   /* 128+N typically means &quot;terminated by signal N&quot; on Unix systems */
+139
+140 } asciichat_error_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -426,7 +436,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

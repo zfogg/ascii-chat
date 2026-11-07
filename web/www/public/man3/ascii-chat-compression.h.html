@@ -36,6 +36,15 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>compression_workspace_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <p class="Pp"><b>Compression Settings</b></p>
 <p class="Pp">
@@ -62,10 +71,21 @@
     <b>asciichat_error_t</b> <b>decompress_data</b> (const void *input, size_t
     input_size, void *output, size_t output_size)
   <br/>
-  Decompress data using zstd. <b>bool</b> <b>should_compress</b> (size_t
-    original_size, size_t compressed_size)
+  Decompress data using zstd. <b>asciichat_error_t</b>
+    <b>decompress_data_exact</b> (const void *input, size_t input_size, void
+    *output, size_t expected_size)
+  <br/>
+  <b>bool</b> <b>should_compress</b> (size_t original_size, size_t
+    compressed_size)
   <br/>
   Determine if compression should be used for given data sizes.
+    <b>asciichat_error_t</b> <b>compress_workspace</b>
+    (<b>compression_workspace_t</b> *workspace, const void *input, size_t size,
+    int level)
+  <br/>
+  void <b>compression_workspace_destroy</b> (<b>compression_workspace_t</b>
+    *workspace)
+  <br/>
   <br/>
 </p>
 </section>
@@ -79,13 +99,88 @@
 <p class="Pp">Definition in file <b>compression.h</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> compress_workspace
+  (<b>compression_workspace_t</b> * workspace, const void * input, size_t size,
+  int level)</h2>
+<p class="Pp">Definition at line <b>131</b> of file <b>compression.c</b>.</p>
+<pre>131                                                                                                                     {
+132   ASCII_OTEL_SCOPE(ZSTD_COMPRESS_WORKSPACE);
+133   ASCII_OTEL_ATTR_STRING(&quot;compression.algorithm&quot;, &quot;zstd&quot;);
+134   ASCII_OTEL_ATTR_STRING(&quot;compression.library.version&quot;, ZSTD_versionString());
+135   ASCII_OTEL_ATTR_INT(&quot;compression.level&quot;, level);
+136   ASCII_OTEL_ATTR_INT(&quot;compression.input.size&quot;, (int64_t)size);
+137   if (!workspace || !input || !size || level &lt; 1 || level &gt; 9)
+138     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid compression workspace request&quot;);
+139   workspace-&gt;output.length = 0;
+140   size_t bound = ZSTD_compressBound(size);
+141   if (!bound || bound &gt; 256 * 1024 * 1024)
+142     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Compression workspace exceeds maximum size&quot;);
+143   asciichat_error_t result = buffer_workspace_reserve(&amp;workspace-&gt;output, NULL, bound);
+144   if (result != ASCIICHAT_OK)
+145     return result;
+146   if (!workspace-&gt;codec)
+147     workspace-&gt;codec = ZSTD_createCCtx();
+148   if (!workspace-&gt;codec)
+149     return SET_ERRNO(ERROR_MEMORY, &quot;Cannot create compression context&quot;);
+150   size_t written = ZSTD_compressCCtx(workspace-&gt;codec, workspace-&gt;output.data, buffer_capacity(workspace-&gt;output.data),
+151                                      input, size, level);
+152   if (ZSTD_isError(written))
+153     return SET_ERRNO(ERROR_GENERAL, &quot;Compression failed: %s&quot;, ZSTD_getErrorName(written));
+154   workspace-&gt;output.length = written;
+155   result = buffer_set_size(workspace-&gt;output.data, written);
+156   if (result == ASCIICHAT_OK) {
+157     ASCII_OTEL_ATTR_INT(&quot;compression.output.size&quot;, (int64_t)written);
+158     ASCII_OTEL_ATTR_INT(&quot;compression.ratio.permille&quot;, (int64_t)(1000.0 * (double)written / (double)size));
+159     compression_measure(size, written, true);
+160   }
+161   return result;
+162 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_OTEL_ATTR_INT</b>,
+    <b>ASCII_OTEL_ATTR_STRING</b>, <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+    <b>buffer_capacity()</b>, <b>buffer_set_size()</b>,
+    <b>buffer_workspace_reserve()</b>, <b>compression_workspace_t::codec</b>,
+    <b>compress_workspace()</b>, <b>buffer_workspace_t::data</b>,
+    <b>ERROR_GENERAL</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+    <b>buffer_workspace_t::length</b>, <b>compression_workspace_t::output</b>,
+    and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_ascii_frame_contract()</b>, and
+    <b>compress_workspace()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_compression_workspace_destroy_("><a class="permalink" href="#void_compression_workspace_destroy_(">void
+  compression_workspace_destroy (<b>compression_workspace_t</b> *
+  workspace)</a></h2>
+<p class="Pp">Definition at line <b>164</b> of file <b>compression.c</b>.</p>
+<pre>164                                                                        {
+165   if (!workspace)
+166     return;
+167   ZSTD_freeCCtx(workspace-&gt;codec);
+168   workspace-&gt;codec = NULL;
+169   buffer_workspace_destroy(&amp;workspace-&gt;output);
+170 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_workspace_destroy()</b>,
+    <b>compression_workspace_t::codec</b>,
+    <b>compression_workspace_destroy()</b>, and
+    <b>compression_workspace_t::output</b>.</p>
+<p class="Pp">Referenced by <b>acip_frame_workspace_destroy()</b>, and
+    <b>compression_workspace_destroy()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

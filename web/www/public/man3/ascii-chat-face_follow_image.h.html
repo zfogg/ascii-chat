@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>face_follow_image.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">face_follow_image.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">face_follow_image.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">face_follow_image.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>face_follow_image</b> <b>face_follow_image_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>image_t</b> * <b>face_follow_image_process</b>
+    (<b>face_follow_image_t</b> **context, <b>image_t</b> *source, double now,
+    <b>bool</b> enabled, <b>bool</b> debug, int max_width, int max_height)
+  <br/>
+  void <b>face_follow_image_destroy</b> (<b>face_follow_image_t</b> *context)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>face_follow_image</b> <b>face_follow_image_t</b></a></h2>
+<p class="Pp">Definition at line <b>4</b> of file
+  <b>face_follow_image.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_face_follow_image_destroy_("><a class="permalink" href="#void_face_follow_image_destroy_(">void
+  face_follow_image_destroy (<b>face_follow_image_t</b> * context)</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file
+  <b>face_follow_image.c</b>.</p>
+<pre>14                                                              {
+15   if (!context)
+16     return;
+17   image_destroy(context-&gt;output);
+18   context-&gt;output = NULL;
+19   SAFE_FREE(context);
+20 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>face_follow_image_destroy()</b>,
+    <b>image_destroy()</b>, <b>face_follow_image::output</b>, and
+    <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_image_destroy()</b>, and
+    <b>session_capture_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>image_t</b> * face_follow_image_process
+  (<b>face_follow_image_t</b> ** context, <b>image_t</b> * source, double now,
+  <b>bool</b> enabled, <b>bool</b> debug, int max_width, int max_height)</h2>
+<p class="Pp">Output is borrowed until the next call; the source image is never
+    modified.</p>
+<p class="Pp">Definition at line <b>22</b> of file
+  <b>face_follow_image.c</b>.</p>
+<pre>23                                                                   {
+24   if (!source || source-&gt;w &lt;= 0 || source-&gt;h &lt;= 0)
+25     return source;
+26   if (!*context &amp;&amp; !enabled &amp;&amp; !debug)
+27     return source;
+28   if (!*context) {
+29     *context = SAFE_CALLOC(1, sizeof(face_follow_image_t), face_follow_image_t *);
+30     if (!*context)
+31       return source;
+32     face_follow_init(&amp;(*context)-&gt;state);
+33   }
+34   face_follow_image_t *ctx = *context;
+35   if (source-&gt;w != ctx-&gt;source_width || source-&gt;h != ctx-&gt;source_height) {
+36     face_follow_init(&amp;ctx-&gt;state);
+37     ctx-&gt;last_detection = -1;
+38     ctx-&gt;source_width = source-&gt;w;
+39     ctx-&gt;source_height = source-&gt;h;
+40   }
+41   if ((enabled || debug) &amp;&amp; now - ctx-&gt;last_detection &gt;= 0.1) {
+42     float scale = fminf((float)FACE_FOLLOW_DETECT_WIDTH / source-&gt;w, (float)FACE_FOLLOW_DETECT_HEIGHT / source-&gt;h);
+43     int width = (int)fmaxf(1, source-&gt;w * scale), height = (int)fmaxf(1, source-&gt;h * scale);
+44     for (int y = 0; y &lt; height; y++) {
+45       for (int x = 0; x &lt; width; x++) {
+46         rgb_pixel_t p = source-&gt;pixels[(size_t)(y * source-&gt;h / height) * source-&gt;w + x * source-&gt;w / width];
+47         size_t offset = ((size_t)y * width + x) * 3;
+48         ctx-&gt;bgr[offset] = p.b;
+49         ctx-&gt;bgr[offset + 1] = p.g;
+50         ctx-&gt;bgr[offset + 2] = p.r;
+51       }
+52     }
+53     face_follow_detection_t faces[FACE_FOLLOW_MAX_DETECTIONS];
+54     size_t count;
+55     face_follow_detect(ctx-&gt;results, ctx-&gt;bgr, width, height, faces, FACE_FOLLOW_MAX_DETECTIONS, &amp;count);
+56     face_follow_observe(&amp;ctx-&gt;state, faces, count, now);
+57     ctx-&gt;last_detection = now;
+58   }
+59   face_follow_tick(&amp;ctx-&gt;state, now, enabled);
+60   if (!enabled &amp;&amp; !debug &amp;&amp; ctx-&gt;state.crop.w == 1)
+61     return source;
+62   // Keep output geometry stable while bounding the cost of high-resolution cameras.
+63   float output_scale = fminf(1, fminf((float)max_width / source-&gt;w, (float)max_height / source-&gt;h));
+64   int output_width = (int)fmaxf(1, source-&gt;w * output_scale);
+65   int output_height = (int)fmaxf(1, source-&gt;h * output_scale);
+66   if (!ctx-&gt;output || ctx-&gt;output-&gt;w != output_width || ctx-&gt;output-&gt;h != output_height) {
+67     image_destroy(ctx-&gt;output);
+68     ctx-&gt;output = image_new(output_width, output_height);
+69     if (!ctx-&gt;output)
+70       return source;
+71   }
+72   face_follow_rect_t crop = ctx-&gt;state.crop;
+73   face_follow_rect_t face = ctx-&gt;state.face;
+74   float side = fmaxf(face.w * source-&gt;w, face.h * source-&gt;h);
+75   float fx = (face.x + face.w * 0.5f) * source-&gt;w, fy = (face.y + face.h * 0.5f) * source-&gt;h;
+76   float thickness = 2 * fmaxf(3, source-&gt;w * crop.w / 90);
+77   for (int y = 0; y &lt; output_height; y++) {
+78     int sy = (int)fminf(source-&gt;h - 1, (crop.y + (float)y / output_height * crop.h) * source-&gt;h);
+79     for (int x = 0; x &lt; output_width; x++) {
+80       int sx = (int)fminf(source-&gt;w - 1, (crop.x + (float)x / output_width * crop.w) * source-&gt;w);
+81       rgb_pixel_t p = source-&gt;pixels[(size_t)sy * source-&gt;w + sx];
+82       if (debug &amp;&amp; ctx-&gt;state.detected &amp;&amp; now - ctx-&gt;state.last_seen &lt; 0.3) {
+83         float dx = fabsf(sx - fx), dy = fabsf(sy - fy);
+84         if ((fabsf(dx - side * 0.5f) &lt; thickness &amp;&amp; dy &lt;= side * 0.5f + thickness) ||
+85             (fabsf(dy - side * 0.5f) &lt; thickness &amp;&amp; dx &lt;= side * 0.5f + thickness))
+86           p = (rgb_pixel_t){255, 0, 0};
+87       }
+88       ctx-&gt;output-&gt;pixels[(size_t)y * output_width + x] = p;
+89     }
+90   }
+91   return ctx-&gt;output;
+92 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rgb_pixel_t::b</b>, <b>face_follow_image::bgr</b>,
+    <b>face_follow_state_t::crop</b>, <b>face_follow_state_t::detected</b>,
+    <b>face_follow_state_t::face</b>, <b>face_follow_detect()</b>,
+    <b>FACE_FOLLOW_DETECT_HEIGHT</b>, <b>FACE_FOLLOW_DETECT_WIDTH</b>,
+    <b>face_follow_image_process()</b>, <b>face_follow_init()</b>,
+    <b>FACE_FOLLOW_MAX_DETECTIONS</b>, <b>face_follow_observe()</b>,
+    <b>face_follow_tick()</b>, <b>rgb_pixel_t::g</b>,
+    <b>face_follow_rect_t::h</b>, <b>image_t::h</b>, <b>image_destroy()</b>,
+    <b>image_new()</b>, <b>face_follow_image::last_detection</b>,
+    <b>face_follow_state_t::last_seen</b>, <b>face_follow_image::output</b>,
+    <b>image_t::pixels</b>, <b>rgb_pixel_t::r</b>,
+    <b>face_follow_image::results</b>, <b>SAFE_CALLOC</b>,
+    <b>face_follow_image::source_height</b>,
+    <b>face_follow_image::source_width</b>, <b>face_follow_image::state</b>,
+    <b>face_follow_rect_t::w</b>, <b>image_t::w</b>,
+    <b>face_follow_rect_t::x</b>, and <b>face_follow_rect_t::y</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_image_process()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

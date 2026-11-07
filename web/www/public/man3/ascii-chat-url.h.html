@@ -48,9 +48,12 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>bool</b> <b>url_is_valid</b> (const char *url)
+<p class="Pp"><b>asciichat_error_t</b> <b>hostname_to_ascii</b> (const char
+    *hostname, char *output, size_t capacity)
   <br/>
-  Fast URL validation using production-grade regex (HTTP/HTTPS/WebSocket/TCP).
+  <b>bool</b> <b>url_is_valid</b> (const char *url)
+  <br/>
+  URL validation using shared parsing and ICU hostname checks.
     <b>asciichat_error_t</b> <b>url_parse</b> (const char *url,
     <b>url_parts_t</b> *parts_out)
   <br/>
@@ -74,7 +77,9 @@
   Check if a URL string is a valid TCP URL. <b>bool</b>
     <b>url_looks_like_tcp</b> (const char *url)
   <br/>
-  Quick check if a string is a TCP URL.
+  Quick check if a string is a TCP URL. void <b>url_redact_diagnostic</b> (char
+    *text, <b>bool</b> truncated)
+  <br/>
   <br/>
 </p>
 </section>
@@ -94,7 +99,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

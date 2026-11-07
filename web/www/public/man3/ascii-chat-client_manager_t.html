@@ -114,8 +114,8 @@
 <p class="Pp"></p>
 <p class="Pp">next_client_id is atomic for thread-safe ID assignment.</p>
 <p class="Pp"></p>
-<p class="Pp">All client access should go through <b>find_client_by_id()</b> or
-    <b>find_client_by_socket()</b> to ensure proper locking.</p>
+<p class="Pp">All client access should go through <b>find_client_by_id()</b> to
+    ensure proper locking.</p>
 </div>
 <p class="Pp">Definition at line <b>63</b> of file
   <b>src/server/client.h</b>.</p>
@@ -129,6 +129,7 @@
 <p class="Pp">Current number of active clients.</p>
 <p class="Pp">Definition at line <b>69</b> of file
   <b>src/server/client.h</b>.</p>
+<p class="Pp">Referenced by <b>add_transport_client()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>client_info_t</b>
@@ -136,6 +137,9 @@
 <p class="Pp">Array of <b>client_info_t</b> structures (backing storage).</p>
 <p class="Pp">Definition at line <b>65</b> of file
   <b>src/server/client.h</b>.</p>
+<p class="Pp">Referenced by <b>add_transport_client()</b>,
+    <b>any_clients_sending_video()</b>, <b>send_server_state_to_client()</b>,
+    and <b>stats_logger_thread()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>client_info_t</b>* client_manager_t::clients_by_id</h2>
@@ -143,6 +147,8 @@
     lookups</p>
 <p class="Pp">Definition at line <b>67</b> of file
   <b>src/server/client.h</b>.</p>
+<p class="Pp">Referenced by <b>add_transport_client()</b>, and
+    <b>find_client_by_id()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> client_manager_t::mutex</h2>
@@ -159,7 +165,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

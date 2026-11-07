@@ -39,11 +39,17 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>UPDATE_CHECK_CACHE_FILENAME</b> 'last_update_check'
+<p class="Pp">#define <b>NETWORK_UPDATE_CHECKER_LINE_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>NETWORK_UPDATE_CHECKER_LATEST_TAG_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>NETWORK_UPDATE_CHECKER_LINE_SHORT_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>NETWORK_UPDATE_CHECKER_SUGGESTION_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>UPDATE_CHECK_CACHE_FILENAME</b> 'last_update_check'
   <br/>
   #define <b>UPDATE_CHECK_CACHE_MAX_AGE_SECONDS</b> (7 * 24 * 60 * 60)
-  <br/>
-  #define <b>DNS_TIMEOUT_SECONDS</b> 2
   <br/>
   #define <b>GITHUB_API_HOSTNAME</b> 'api.github.com'
   <br/>
@@ -65,19 +71,31 @@
     <b>update_check_is_cache_fresh</b> (const <b>update_check_result_t</b>
     *result)
   <br/>
-  Check if cache is fresh (&lt; 7 days old). <b>asciichat_error_t</b>
-    <b>update_check_perform</b> (<b>update_check_result_t</b> *result)
+  Check if cache is fresh (&lt; 7 days old). void
+    <b>update_check_dismiss_for_a_week</b> (<b>update_check_result_t</b>
+    *result)
+  <br/>
+  <b>bool</b> <b>update_check_is_dismissed</b> (const
+    <b>update_check_result_t</b> *result)
+  <br/>
+  <b>bool</b> <b>update_check_try_fresh_cache</b> (<b>update_check_result_t</b>
+    *result)
+  <br/>
+  <b>asciichat_error_t</b> <b>update_check_perform</b>
+    (<b>update_check_result_t</b> *result)
   <br/>
   Check for updates from GitHub releases API. <b>install_method_t</b>
     <b>update_check_detect_install_method</b> (void)
   <br/>
-  Detect installation method. void <b>update_check_get_upgrade_suggestion</b>
-    (<b>install_method_t</b> method, const char *latest_version, char *buffer,
-    size_t <b>buffer_size</b>)
+  Detect installation method. const char * <b>update_check_get_aur_helper</b>
+    (void)
+  <br/>
+  void <b>update_check_get_upgrade_suggestion</b> (<b>install_method_t</b>
+    method, const char *latest_version, char *buffer, size_t buffer_size)
   <br/>
   Get upgrade suggestion string. void <b>update_check_format_notification</b>
     (const <b>update_check_result_t</b> *result, char *buffer, size_t
-    <b>buffer_size</b>)
+    buffer_size)
   <br/>
   Format update notification message. <b>asciichat_error_t</b>
     <b>update_check_startup</b> (<b>update_check_result_t</b> *result)
@@ -100,32 +118,51 @@
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="_define_DNS_TIMEOUT_SECONDS___2"><a class="permalink" href="#_define_DNS_TIMEOUT_SECONDS___2">#define
-  DNS_TIMEOUT_SECONDS 2</a></h2>
-<p class="Pp">Definition at line <b>35</b> of file <b>update_checker.c</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="_define_GITHUB_API_HOSTNAME___'api"><a class="permalink" href="#_define_GITHUB_API_HOSTNAME___'api">#define
   GITHUB_API_HOSTNAME 'api.github.com'</a></h2>
-<p class="Pp">Definition at line <b>38</b> of file <b>update_checker.c</b>.</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>update_checker.c</b>.</p>
 <p class="Pp">Referenced by <b>update_check_perform()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_GITHUB_RELEASES_PATH___'/repos/zfogg/ascii"><a class="permalink" href="#_define_GITHUB_RELEASES_PATH___'/repos/zfogg/ascii">#define
   GITHUB_RELEASES_PATH '/repos/zfogg/ascii-chat/releases/latest'</a></h2>
-<p class="Pp">Definition at line <b>39</b> of file <b>update_checker.c</b>.</p>
+<p class="Pp">Definition at line <b>45</b> of file <b>update_checker.c</b>.</p>
 <p class="Pp">Referenced by <b>update_check_perform()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NETWORK_UPDATE_CHECKER_LATEST_TAG_BUFFER_SIZE___64"><a class="permalink" href="#_define_NETWORK_UPDATE_CHECKER_LATEST_TAG_BUFFER_SIZE___64">#define
+  NETWORK_UPDATE_CHECKER_LATEST_TAG_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>update_checker.c</b>.</p>
+<p class="Pp">Referenced by <b>update_check_perform()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NETWORK_UPDATE_CHECKER_LINE_BUFFER_SIZE___512"><a class="permalink" href="#_define_NETWORK_UPDATE_CHECKER_LINE_BUFFER_SIZE___512">#define
+  NETWORK_UPDATE_CHECKER_LINE_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>update_checker.c</b>.</p>
+<p class="Pp">Referenced by <b>update_check_load_cache()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NETWORK_UPDATE_CHECKER_LINE_SHORT_BUFFER_SIZE___256"><a class="permalink" href="#_define_NETWORK_UPDATE_CHECKER_LINE_SHORT_BUFFER_SIZE___256">#define
+  NETWORK_UPDATE_CHECKER_LINE_SHORT_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>update_checker.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NETWORK_UPDATE_CHECKER_SUGGESTION_BUFFER_SIZE___512"><a class="permalink" href="#_define_NETWORK_UPDATE_CHECKER_SUGGESTION_BUFFER_SIZE___512">#define
+  NETWORK_UPDATE_CHECKER_SUGGESTION_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>update_checker.c</b>.</p>
+<p class="Pp">Referenced by <b>update_check_format_notification()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_UPDATE_CHECK_CACHE_FILENAME___'last_update_check'"><a class="permalink" href="#_define_UPDATE_CHECK_CACHE_FILENAME___'last_update_check'">#define
   UPDATE_CHECK_CACHE_FILENAME 'last_update_check'</a></h2>
-<p class="Pp">Definition at line <b>29</b> of file <b>update_checker.c</b>.</p>
+<p class="Pp">Definition at line <b>36</b> of file <b>update_checker.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_UPDATE_CHECK_CACHE_MAX_AGE_SECONDS___(7_*_24_*_60_*_60)"><a class="permalink" href="#_define_UPDATE_CHECK_CACHE_MAX_AGE_SECONDS___(7_*_24_*_60_*_60)">#define
   UPDATE_CHECK_CACHE_MAX_AGE_SECONDS (7 * 24 * 60 * 60)</a></h2>
-<p class="Pp">Definition at line <b>32</b> of file <b>update_checker.c</b>.</p>
-<p class="Pp">Referenced by <b>update_check_is_cache_fresh()</b>.</p>
+<p class="Pp">Definition at line <b>39</b> of file <b>update_checker.c</b>.</p>
+<p class="Pp">Referenced by <b>update_check_dismiss_for_a_week()</b>, and
+    <b>update_check_is_cache_fresh()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -135,7 +172,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -43,7 +43,11 @@
   <br/>
   Registry entry for uthash. struct <b>named_registry_t</b>
   <br/>
-  Global registry with uthash and rwlock. struct <b>named_iter_entry_t</b>
+  Global registry with uthash and rwlock. struct <b>named_metadata_entry_t</b>
+  <br/>
+  struct <b>named_metadata_cache_t</b>
+  <br/>
+  struct <b>named_iter_entry_t</b>
   <br/>
   <br/>
 </p>
@@ -51,7 +55,13 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>MAX_NAME_LEN</b> 256
+<p class="Pp">#define <b>DEBUG_NAMED_FINAL_BASE_NAME_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>uthash_malloc</b>(sz)
+  <br/>
+  #define <b>uthash_free</b>(ptr, sz)
+  <br/>
+  #define <b>MAX_NAME_LEN</b> 256
   <br/>
   #define <b>DESCRIBE_BUFFER_SIZE</b> 768
   <br/>
@@ -70,7 +80,10 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>named_init</b> (void)
+<p class="Pp"><b>bool</b> <b>named_metadata_copy</b> (uintptr_t key,
+    <b>named_metadata_t</b> *output)
+  <br/>
+  <b>asciichat_error_t</b> <b>named_init</b> (void)
   <br/>
   Initialize the named object registry. void <b>named_destroy</b> (void)
   <br/>
@@ -93,8 +106,10 @@
   Update the registered name for a resource with a new base name. const char *
     <b>named_get</b> (uintptr_t key)
   <br/>
-  Look up the registered name for a resource. const char * <b>named_get_type</b>
-    (uintptr_t key)
+  Look up the registered name for a resource. <b>bool</b>
+    <b>named_registry_has_type</b> (const char *type, size_t length)
+  <br/>
+  const char * <b>named_get_type</b> (uintptr_t key)
   <br/>
   Look up the registered type for a resource. const char *
     <b>named_get_format_spec</b> (uintptr_t key)
@@ -105,12 +120,24 @@
   Format a description string for logging. const char *
     <b>named_describe_thread</b> (void *thread)
   <br/>
-  Describe a thread for logging (function wrapper). void
+  Describe a thread for logging (function wrapper). <b>asciichat_error_t</b>
     <b>named_registry_for_each</b> (<b>named_iter_callback_t</b> callback, void
-    *user_data)
+    *user_data, <b>bool</b> *completed)
   <br/>
-  Iterate through all registered entries. const char *
-    <b>named_search_by_type_id</b> (const char *type, void *id)
+  Iterate through all registered entries. <b>asciichat_error_t</b>
+    <b>named_registry_try_snapshot</b> (size_t capacity, size_t *required,
+    <b>bool</b> *completed, <b>named_snapshot_fn</b> copy, void *data)
+  <br/>
+  <b>bool</b> <b>named_registry_read</b> (uintptr_t key, const char *type,
+    void(*read_object)(uintptr_t, void *), void *user_data)
+  <br/>
+  const char * <b>named_search_by_type_id</b> (const char *type, void *id)
+  <br/>
+  <b>bool</b> <b>named_fd_metadata_copy</b> (int fd, <b>named_metadata_t</b>
+    *output)
+  <br/>
+  <b>bool</b> <b>named_packet_metadata_copy</b> (int packet_type,
+    <b>named_metadata_t</b> *output)
   <br/>
   const char * <b>named_register_fd</b> (int fd, const char *name, const char
     *file, int line, const char *func)
@@ -134,7 +161,9 @@
   Get the format specifier for a registered packet type. void
     <b>named_registry_register_packet_types</b> (void)
   <br/>
-  Register all packet types from <b>packet_type_t</b> enum.
+  Register all packet types from <b>packet_type_t</b> enum. void
+    <b>named_print_hash_stats</b> (void)
+  <br/>
   <br/>
 </p>
 </section>
@@ -152,16 +181,41 @@
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_NAMED_FINAL_BASE_NAME_BUFFER_SIZE___256"><a class="permalink" href="#_define_DEBUG_NAMED_FINAL_BASE_NAME_BUFFER_SIZE___256">#define
+  DEBUG_NAMED_FINAL_BASE_NAME_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>debug/named.c</b>.</p>
+<p class="Pp">Referenced by <b>named_register()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="_define_DESCRIBE_BUFFER_SIZE___768"><a class="permalink" href="#_define_DESCRIBE_BUFFER_SIZE___768">#define
   DESCRIBE_BUFFER_SIZE 768</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>debug/named.c</b>.</p>
+<p class="Pp">Definition at line <b>37</b> of file <b>debug/named.c</b>.</p>
 <p class="Pp">Referenced by <b>named_describe()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_MAX_NAME_LEN___256"><a class="permalink" href="#_define_MAX_NAME_LEN___256">#define
   MAX_NAME_LEN 256</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>debug/named.c</b>.</p>
-<p class="Pp">Referenced by <b>named_registry_for_each()</b>.</p>
+<p class="Pp">Definition at line <b>36</b> of file <b>debug/named.c</b>.</p>
+<p class="Pp">Referenced by <b>named_registry_for_each()</b>, and
+    <b>named_update_name()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_uthash_free(_ptr,__sz)"><a class="permalink" href="#_define_uthash_free(_ptr,__sz)">#define
+  uthash_free( ptr, sz)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>free(ptr)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>34</b> of file <b>debug/named.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_uthash_malloc(_sz)"><a class="permalink" href="#_define_uthash_malloc(_sz)">#define
+  uthash_malloc( sz)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>malloc(sz)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>33</b> of file <b>debug/named.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -179,14 +233,16 @@
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_named_search_by_type_id_(const_char_*_type,_void_*_id)"><a class="permalink" href="#const_char_*_named_search_by_type_id_(const_char_*_type,_void_*_id)">const
   char * named_search_by_type_id (const char * type, void * id)</a></h2>
-<p class="Pp">Definition at line <b>421</b> of file <b>debug/named.c</b>.</p>
-<pre>421                                                                 {
-422   (void)type;
-423   (void)id;
-424   return NULL;
-425 }</pre>
+<p class="Pp">Definition at line <b>680</b> of file <b>debug/named.c</b>.</p>
+<pre>680                                                                 {
+681   (void)type;
+682   (void)id;
+683   return NULL;
+684 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>named_search_by_type_id()</b>.</p>
+<p class="Pp">Referenced by <b>named_search_by_type_id()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -196,7 +252,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

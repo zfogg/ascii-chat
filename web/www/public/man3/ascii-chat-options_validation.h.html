@@ -75,10 +75,11 @@
   Validate volume value (0.0-1.0). int <b>validate_opt_fps</b> (const char
     *value_str, char *error_msg, size_t error_msg_size)
   <br/>
-  Validate FPS value (1-144). int <b>validate_opt_max_clients</b> (const char
-    *value_str, char *error_msg, size_t error_msg_size)
+  Validate FPS value (0 for auto, otherwise 1-144). int
+    <b>validate_opt_max_clients</b> (const char *value_str, char *error_msg,
+    size_t error_msg_size)
   <br/>
-  Validate max clients value (1-32). int <b>validate_opt_compression_level</b>
+  Validate max clients value (1-128). int <b>validate_opt_compression_level</b>
     (const char *value_str, char *error_msg, size_t error_msg_size)
   <br/>
   Validate compression level (1-9). int <b>validate_opt_reconnect</b> (const
@@ -118,7 +119,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

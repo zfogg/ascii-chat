@@ -37,28 +37,31 @@
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <p class="Pp">#include &lt;include/ascii-chat/crypto/key_types.h&gt;</p>
 <section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">union <b>[union].key</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
 <p class="Pp"><b>key_type_t</b> <b>type</b>
   <br/>
-  union {
-  <br/>
-   <b>uint8_t</b> <b>private_key_t::ed25519</b> [64]
-  <br/>
-   <b>uint8_t</b> <b>private_key_t::x25519</b> [32]
-  <br/>
-  } <b>key</b>
+  <b>union </b> <b>key</b>
   <br/>
   <b>bool</b> <b>use_ssh_agent</b>
   <br/>
   <b>bool</b> <b>use_gpg_agent</b>
   <br/>
-  <b>uint8_t</b> <b>public_key</b> [32]
+  <b>uint8_t</b> <b>public_key</b> [<b>CRYPTO_PUBLIC_KEY_SIZE</b>]
   <br/>
-  char <b>key_comment</b> [256]
+  char <b>key_comment</b> [<b>MAX_COMMENT_LEN</b>]
   <br/>
-  char <b>gpg_keygrip</b> [64]
+  char <b>gpg_keygrip</b> [<b>MAX_GPG_KEYGRIP_LEN</b>]
   <br/>
   <br/>
 </p>
@@ -87,7 +90,7 @@
 <div class="Bd-indent">GPG agent: use_gpg_agent flag exists but functionality is
   currently disabled. Setting use_gpg_agent=true will not work until GPG support
   is re-enabled.</div>
-<p class="Pp">Definition at line <b>91</b> of file <b>key_types.h</b>.</p>
+<p class="Pp">Definition at line <b>92</b> of file <b>key_types.h</b>.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
@@ -97,7 +100,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

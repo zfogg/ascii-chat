@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>establish.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">establish.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">establish.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">establish.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SESSION_ESTABLISH_TARGET_BUFFER_SIZE</b> 320
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>session_connection_establish</b>
+    (const char *name, const char *address, <b>uint16_t</b> port, const
+    <b>network_connect_config_t</b> *config, <b>network_connection_t</b>
+    **owner, char *password, size_t capacity,
+    <b>network_connection_prepare_fn</b> prepare, void(*detach)(void *), void
+    *context)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_SESSION_ESTABLISH_TARGET_BUFFER_SIZE___320"><a class="permalink" href="#_define_SESSION_ESTABLISH_TARGET_BUFFER_SIZE___320">#define
+  SESSION_ESTABLISH_TARGET_BUFFER_SIZE 320</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file
+    <b>src/common/session/establish.c</b>.</p>
+<p class="Pp">Referenced by <b>session_connection_establish()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> session_connection_establish (const char
+  * name, const char * address, <b>uint16_t</b> port, const
+  <b>network_connect_config_t</b> * config, <b>network_connection_t</b> **
+  owner, char * password, size_t capacity, <b>network_connection_prepare_fn</b>
+  prepare, void(* detach )(void *), void * context)</h2>
+<p class="Pp">Definition at line <b>11</b> of file
+    <b>src/common/session/establish.c</b>.</p>
+<pre>14                                                                                       {
+15   if (!owner || *owner || !password || capacity &lt; PASSWORD_BUFFER_SIZE || !prepare)
+16     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid session establishment parameters&quot;);
+17   for (;;) {
+18     network_establish_config_t settings = {.name = name,
+19                                            .address = address,
+20                                            .default_port = port,
+21                                            .connect = config,
+22                                            .password = password[0] ? password : NULL,
+23                                            .protocol = NETWORK_PROTOCOL_MEDIA,
+24                                            .authenticate = !GET_OPTION(no_auth),
+25                                            .prepare = prepare,
+26                                            .context = context};
+27     network_establish_result_t attempt;
+28     asciichat_errno_scope_t attempt_errors = errno_scope_begin();
+29     asciichat_error_t result = network_connection_establish(&amp;settings, owner, &amp;attempt);
+30     if (result == ASCIICHAT_OK) {
+31       errno_scope_end(attempt_errors, ASCIICHAT_ERRNO_HANDLED);
+32       return ASCIICHAT_OK;
+33     }
+34     if (!attempt.password_failure)
+35       return result;
+36     // Recover only the rejected negotiation; caller and cleanup errors remain pending.
+37     errno_scope_end(attempt_errors, ASCIICHAT_ERRNO_DISMISSED);
+38     if (detach)
+39       detach(context);
+40     network_connection_destroy(owner);
+41     char target[SESSION_ESTABLISH_TARGET_BUFFER_SIZE];
+42     snprintf(target, sizeof(target), &quot;%s:%u&quot;, attempt.endpoint.host, attempt.endpoint.port);
+43     result = ui_input_password(target, password, capacity, attempt.password_failure &amp; AUTH_FAIL_PASSWORD_INCORRECT);
+44     if (result != ASCIICHAT_OK)
+45       return result;
+46   }
+47 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_DISMISSED</b>,
+    <b>ASCIICHAT_ERRNO_HANDLED</b>, <b>ASCIICHAT_OK</b>,
+    <b>AUTH_FAIL_PASSWORD_INCORRECT</b>,
+    <b>network_establish_result_t::endpoint</b>, <b>errno_scope_begin()</b>,
+    <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>, <b>GET_OPTION</b>,
+    <b>connection_endpoint_t::host</b>, <b>network_connection_destroy()</b>,
+    <b>network_connection_establish()</b>, <b>NETWORK_PROTOCOL_MEDIA</b>,
+    <b>PASSWORD_BUFFER_SIZE</b>,
+    <b>network_establish_result_t::password_failure</b>,
+    <b>connection_endpoint_t::port</b>, <b>session_connection_establish()</b>,
+    <b>SESSION_ESTABLISH_TARGET_BUFFER_SIZE</b>, <b>SET_ERRNO</b>, and
+    <b>ui_input_password()</b>.</p>
+<p class="Pp">Referenced by <b>client_connection_start()</b>,
+    <b>session_connection_establish()</b>, and
+    <b>session_participant_connect()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

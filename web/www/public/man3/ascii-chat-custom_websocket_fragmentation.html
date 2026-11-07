@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>custom_websocket_fragmentation(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">custom_websocket_fragmentation(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">custom_websocket_fragmentation(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">custom_websocket_fragmentation - WebSocket Fragmentation Crash
+    Analysis</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="WebSocket_Fragmentation_Crash_Analysis"><a class="permalink" href="#WebSocket_Fragmentation_Crash_Analysis">WebSocket
+  Fragmentation Crash Analysis</a></h1>
+<p class="Pp"><b>Issue</b>: SIGABRT crash during multi-fragment WebSocket
+    transmission</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Reproduction_Steps"><a class="permalink" href="#Reproduction_Steps">Reproduction
+  Steps</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Run scripts/test-websocket-server-client.sh</dd>
+  <dt>2.</dt>
+  <dd>Server starts and WebSocket server initializes</dd>
+  <dt>3.</dt>
+  <dd>Client connects and completes handshake</dd>
+  <dt>4.</dt>
+  <dd>Client sends capabilities packet (26 bytes) - succeeds</dd>
+  <dt>5.</dt>
+  <dd>Client attempts to send large video frame (230+ KB)</dd>
+  <dt>6.</dt>
+  <dd>Frame is fragmented into 4096-byte chunks</dd>
+  <dt>7.</dt>
+  <dd>Fragment 1 sends successfully</dd>
+  <dt>8.</dt>
+  <dd><b>Fragment 2 causes SIGABRT crash</b></dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Root_Cause"><a class="permalink" href="#Root_Cause">Root
+  Cause</a></h2>
+<p class="Pp">The crash occurs in libwebsockets' rops_handle_POLLIN_ws() which
+    asserts a failure condition during frame processing. The backtrace
+  shows:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>Signal 6 (SIGABRT)
+<br/>
+  &#x2193;
+rops_handle_POLLIN_ws()          (libwebsockets frame handling)
+<br/>
+  &#x2193;
+websocket_send()                 (ascii-chat: lib/network/websocket/transport.c)
+<br/>
+  &#x2193;
+lws_write() returning 4096       (First fragment OK)
+<br/>
+  [State not properly managed]
+<br/>
+  &#x2193;
+lws_write() for Fragment 2       (Fails assertion)</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Key_Evidence_from_Logs"><a class="permalink" href="#Key_Evidence_from_Logs">Key
+  Evidence from Logs</a></h2>
+<p class="Pp"><b>Fragment 1 Success</b>:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>[19:29:17.407846] WEBSOCKET_SEND: lws_write returned 4096 (requested 4096 bytes)
+[19:29:17.418... Fragment 1 SUCCESS - sent 4096 bytes (total progress: 4096/230446)</pre>
+<p class="Pp"><b>Fragment 2 Crash</b>:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>[19:29:17.422565] Fragment 2 - offset=4096, chunk=4096 bytes, flags=LWS_WRITE_CONTINUATION
+[19:29:17.424751] ERROR: CRASH DETECTED - Signal 6 (SIGABRT)</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Associated_Issues"><a class="permalink" href="#Associated_Issues">Associated
+  Issues</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Session String Validation</b>: Random generation creates 4-char strings
+      (valid range: 5-47)</dd>
+  <dt>2.</dt>
+  <dd><b>Server State Transmission</b>: &quot;Failed to send initial server
+      state: Invalid parameter&quot;</dd>
+  <dt>3.</dt>
+  <dd><b>Thread Cleanup</b>: Threads don't terminate cleanly, require force-kill
+      after 5 retries</dd>
+  <dt>4.</dt>
+  <dd><b>Lock Contention</b>: Multiple locks held 2-40x longer than
+    threshold</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Investigation_Notes"><a class="permalink" href="#Investigation_Notes">Investigation
+  Notes</a></h2>
+<ul class="Bl-bullet">
+  <li>The websocket_send() function in
+      <b>lib/network/websocket/transport.c</b><b> manages fragmentation</b></li>
+  <li>Each fragment is sent via lws_write() with different flags:</li>
+</ul>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Fragment 1: LWS_WRITE_BINARY with start=1, final=0</dd>
+  <dt> &#x2022;</dt>
+  <dd>Fragment 2+: LWS_WRITE_CONTINUATION with start=0, final=0</dd>
+  <dt> &#x2022;</dt>
+  <dd>Final: LWS_WRITE_CONTINUATION with final=1</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>The issue appears to be in state management between fragment calls</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Next_Steps"><a class="permalink" href="#Next_Steps">Next
+  Steps</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Review <b>lib/network/websocket/transport.c</b>:websocket_send()<b>
+      fragmentation logic</b></dd>
+  <dt>2.</dt>
+  <dd>Check libwebsockets version and API compliance</dd>
+  <dt>3.</dt>
+  <dd>Verify buffer lifecycle and ownership</dd>
+  <dt>4.</dt>
+  <dd>Test with smaller payloads to find threshold</dd>
+  <dt>5.</dt>
+  <dd>Add more detailed logging around lws_write() calls</dd>
+</dl>
+</section>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

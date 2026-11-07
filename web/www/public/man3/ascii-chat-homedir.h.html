@@ -123,14 +123,14 @@ gpg_homedir_destroy(homedir);
 25     log_error(&quot;Failed to allocate memory for GPG homedir handle&quot;);
 26     return NULL;
 27   }
-28 
+28
 29   /* Create temporary directory using platform abstraction */
 30   if (platform_mkdtemp(homedir-&gt;path, sizeof(homedir-&gt;path), &quot;ascii-chat-gpg&quot;) != 0) {
 31     log_error(&quot;Failed to create temporary GPG homedir&quot;);
 32     SAFE_FREE(homedir);
 33     return NULL;
 34   }
-35 
+35
 36   /* Restrict permissions to owner only (mode 0700) using platform abstraction */
 37   if (platform_chmod(homedir-&gt;path, 0700) != 0) {
 38     log_warn(&quot;Failed to set permissions on GPG homedir, attempting cleanup&quot;);
@@ -138,16 +138,17 @@ gpg_homedir_destroy(homedir);
 40     SAFE_FREE(homedir);
 41     return NULL;
 42   }
-43 
+43
 44   log_debug(&quot;Created temporary GPG homedir: %s&quot;, homedir-&gt;path);
 45   return homedir;
 46 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, <b>log_error</b>, <b>log_warn</b>,
-    <b>platform_chmod()</b>, <b>platform_mkdtemp()</b>,
-    <b>platform_rmdir_recursive()</b>, <b>SAFE_FREE</b>, and
-  <b>SAFE_MALLOC</b>.</p>
+<p class="Pp">References <b>gpg_homedir_create()</b>, <b>log_debug</b>,
+    <b>log_error</b>, <b>log_warn</b>, <b>platform_chmod()</b>,
+    <b>platform_mkdtemp()</b>, <b>platform_rmdir_recursive()</b>,
+    <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.</p>
+<p class="Pp">Referenced by <b>gpg_homedir_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_gpg_homedir_destroy_("><a class="permalink" href="#void_gpg_homedir_destroy_(">void
@@ -164,20 +165,22 @@ gpg_homedir_destroy(homedir);
 56   if (!homedir) {
 57     return;
 58   }
-59 
+59
 60   /* Recursively delete the entire directory and all contents using platform abstraction */
 61   if (platform_rmdir_recursive(homedir-&gt;path) != 0) {
 62     log_warn(&quot;Failed to completely clean up GPG homedir: %s&quot;, homedir-&gt;path);
 63   } else {
 64     log_debug(&quot;Cleaned up temporary GPG homedir: %s&quot;, homedir-&gt;path);
 65   }
-66 
+66
 67   SAFE_FREE(homedir);
 68 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, <b>log_warn</b>,
-    <b>platform_rmdir_recursive()</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">References <b>gpg_homedir_destroy()</b>, <b>log_debug</b>,
+    <b>log_warn</b>, <b>platform_rmdir_recursive()</b>, and
+  <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>gpg_homedir_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_gpg_homedir_path_(const_"><a class="permalink" href="#const_char_*_gpg_homedir_path_(const_">const
@@ -202,6 +205,8 @@ gpg_homedir_destroy(homedir);
 53 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>gpg_homedir_path()</b>.</p>
+<p class="Pp">Referenced by <b>gpg_homedir_path()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -211,7 +216,7 @@ gpg_homedir_destroy(homedir);
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

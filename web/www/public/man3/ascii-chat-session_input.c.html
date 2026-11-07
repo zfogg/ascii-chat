@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_input.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_input.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_input.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_input.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>ui_session_action_t</b> <b>ui_session_key</b>
+    (<b>keyboard_key_t</b> key, double *saved_volume)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>ui_session_action_t</b> ui_session_key (<b>keyboard_key_t</b>
+  key, double * saved_volume)</h2>
+<p class="Pp">Mutates shared options for settings keys; returns an action for
+    the host.</p>
+<p class="Pp">Definition at line <b>105</b> of file <b>session_input.c</b>.</p>
+<pre>105                                                                              {
+106   switch ((int)key) {
+107   case KEY_QUESTION:
+108     return UI_ACTION_HELP;
+109   case '[':
+110     return UI_ACTION_TOGGLE_MEDIA;
+111   case ']':
+112     return UI_ACTION_LOGS;
+113   case KEY_ESCAPE:
+114     return UI_ACTION_CLOSE;
+115   case KEY_LEFT:
+116     return UI_ACTION_SEEK_BACK;
+117   case KEY_RIGHT:
+118     return UI_ACTION_SEEK_FORWARD;
+119   case KEY_SPACE:
+120     return UI_ACTION_PAUSE;
+121   case KEY_BACKTICK:
+122     return UI_ACTION_DEBUG;
+123   // ===== VOLUME CONTROLS =====
+124   case KEY_DOWN: { // Decrease volume 10%
+125     double current_volume = GET_OPTION(speakers_volume);
+126     double new_volume = clamp_volume(current_volume - 0.1);
+127     options_adjust(&quot;speakers_volume&quot;, key == KEY_DOWN ? -0.1 : 0.1);
+128
+129     double verify_volume = GET_OPTION(speakers_volume);
+130     log_info(&quot;Volume DOWN: %.0f%% &#x2192; %.0f%% (verified: %.0f%%)&quot;, current_volume * 100.0, new_volume * 100.0,
+131              verify_volume * 100.0);
+132     return UI_ACTION_VOLUME;
+133   }
+134
+135   case KEY_UP: { // Increase volume 10%
+136     double current_volume = GET_OPTION(speakers_volume);
+137     double new_volume = clamp_volume(current_volume + 0.1);
+138     options_adjust(&quot;speakers_volume&quot;, key == KEY_DOWN ? -0.1 : 0.1);
+139
+140     double verify_volume = GET_OPTION(speakers_volume);
+141     log_info(&quot;Volume UP: %.0f%% &#x2192; %.0f%% (verified: %.0f%%)&quot;, current_volume * 100.0, new_volume * 100.0,
+142              verify_volume * 100.0);
+143     return UI_ACTION_SETTINGS;
+144   }
+145
+146   // ===== COLOR MODE CONTROL =====
+147   case KEY_C:
+148   case 'C': {
+149     int current_mode = (int)GET_OPTION(color_mode);
+150     int next_mode = next_color_mode(current_mode);
+151     options_cycle(&quot;color_mode&quot;, 4);
+152
+153     const char *mode_names[] = {&quot;Mono&quot;, &quot;16-color&quot;, &quot;256-color&quot;, &quot;Truecolor&quot;};
+154     if (next_mode &gt;= 0 &amp;&amp; next_mode &lt;= 3) {
+155       log_info(&quot;Color mode: %s&quot;, mode_names[next_mode]);
+156     }
+157     return UI_ACTION_SETTINGS;
+158   }
+159
+160   // ===== MUTE CONTROL =====
+161   case KEY_M:
+162   case 'M': {
+163     if (toggle_mute(saved_volume) != ASCIICHAT_OK)
+164       log_warn(&quot;Could not toggle mute&quot;);
+165
+166     return UI_ACTION_SETTINGS;
+167   }
+168
+169   // ===== RENDER MODE CONTROL =====
+170   case KEY_R:
+171   case 'R': {
+172     int current_mode = (int)GET_OPTION(render_mode);
+173     int next_mode = next_render_mode(current_mode);
+174     options_cycle(&quot;render_mode&quot;, 3);
+175
+176     const char *mode_names[] = {&quot;Foreground&quot;, &quot;Background&quot;, &quot;Half-block&quot;};
+177     if (next_mode &gt;= 0 &amp;&amp; next_mode &lt;= 2) {
+178       log_info(&quot;Render mode: %s&quot;, mode_names[next_mode]);
+179     }
+180     return UI_ACTION_SETTINGS;
+181   }
+182
+183   // ===== COLOR FILTER CONTROL =====
+184   case KEY_F:
+185   case 'F': {
+186     int current_filter = (int)GET_OPTION(color_filter);
+187     int next_filter = next_color_filter(current_filter);
+188     options_cycle(&quot;color_filter&quot;, 13);
+189
+190     if (next_filter &gt;= 0 &amp;&amp; next_filter &lt; (int)COLOR_FILTER_COUNT) {
+191       log_info(&quot;Color filter: %s&quot;, COLOR_FILTER_NAMES[next_filter]);
+192     }
+193     return UI_ACTION_SETTINGS;
+194   }
+195
+196   // ===== HORIZONTAL FLIP CONTROL =====
+197   case 'X':
+198   case 'x': {
+199     log_info(&quot;&#x2713; X KEY PRESSED - handling horizontal flip&quot;);
+200     bool current_flip_x = (bool)GET_OPTION(flip_x);
+201     options_toggle(&quot;flip_x&quot;);
+202     log_info(&quot;Horizontal flip: %s (was: %s)&quot;, !current_flip_x ? &quot;enabled&quot; : &quot;disabled&quot;,
+203              current_flip_x ? &quot;enabled&quot; : &quot;disabled&quot;);
+204     return UI_ACTION_SETTINGS;
+205   }
+206
+207   // ===== VERTICAL FLIP CONTROL =====
+208   case 'Y':
+209   case 'y': {
+210     bool current_flip_y = (bool)GET_OPTION(flip_y);
+211     options_toggle(&quot;flip_y&quot;);
+212     log_info(&quot;Vertical flip: %s&quot;, !current_flip_y ? &quot;enabled&quot; : &quot;disabled&quot;);
+213     return UI_ACTION_SETTINGS;
+214   }
+215
+216   // ===== MATRIX RAIN EFFECT CONTROL =====
+217   case KEY_1: {
+218     bool current_matrix = (bool)GET_OPTION(matrix_rain);
+219     if (options_toggle(&quot;matrix_rain&quot;) != ASCIICHAT_OK)
+220       return UI_ACTION_SETTINGS;
+221     log_info(&quot;Matrix rain effect: %s&quot;, !current_matrix ? &quot;enabled&quot; : &quot;disabled&quot;);
+222     return UI_ACTION_SETTINGS;
+223   }
+224
+225   case KEY_2: {
+226     if (!GET_OPTION(audio_enabled)) {
+227       log_info(&quot;Audio waveform requires audio to be enabled&quot;);
+228       return UI_ACTION_SETTINGS;
+229     }
+230     bool enabled = !GET_OPTION(waveform);
+231     if (options_toggle(&quot;waveform&quot;) != ASCIICHAT_OK)
+232       return UI_ACTION_SETTINGS;
+233     log_info(&quot;Audio waveform: %s&quot;, enabled ? &quot;enabled&quot; : &quot;disabled&quot;);
+234     return UI_ACTION_SETTINGS;
+235   }
+236
+237   case KEY_3: {
+238     if (!GET_OPTION(audio_enabled)) {
+239       log_info(&quot;Audio frequency display requires audio to be enabled&quot;);
+240       return UI_ACTION_SETTINGS;
+241     }
+242     bool enabled = !GET_OPTION(fft);
+243     if (options_toggle(&quot;fft&quot;) != ASCIICHAT_OK)
+244       return UI_ACTION_SETTINGS;
+245     log_info(&quot;Audio frequency display: %s&quot;, enabled ? &quot;enabled&quot; : &quot;disabled&quot;);
+246     return UI_ACTION_SETTINGS;
+247   }
+248
+249   case 'w':
+250   case 'W': {
+251     if (options_toggle(&quot;face_follow&quot;) == ASCIICHAT_OK)
+252       log_info(&quot;Face follow: %s&quot;, GET_OPTION(face_follow) ? &quot;enabled&quot; : &quot;disabled&quot;);
+253     return UI_ACTION_SETTINGS;
+254   }
+255
+256   case 'z':
+257   case 'Z': {
+258     if (options_set_int(&quot;zalgo&quot;, GET_OPTION(zalgo) ? 0 : 8) == ASCIICHAT_OK)
+259       log_info(&quot;Zalgo intensity: %d&quot;, GET_OPTION(zalgo));
+260     return UI_ACTION_SETTINGS;
+261   }
+262
+263   // ===== FPS COUNTER TOGGLE =====
+264   case KEY_MINUS: {
+265     bool current = (bool)GET_OPTION(fps_counter);
+266     options_toggle(&quot;fps_counter&quot;);
+267     log_info(&quot;FPS counter: %s&quot;, !current ? &quot;enabled&quot; : &quot;disabled&quot;);
+268     return UI_ACTION_SETTINGS;
+269   }
+270
+271   default:
+272     return UI_ACTION_NONE;
+273   }
+274 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>bool</b>,
+    <b>COLOR_FILTER_COUNT</b>, <b>GET_OPTION</b>, <b>KEY_1</b>, <b>KEY_2</b>,
+    <b>KEY_3</b>, <b>KEY_BACKTICK</b>, <b>KEY_C</b>, <b>KEY_DOWN</b>,
+    <b>KEY_ESCAPE</b>, <b>KEY_F</b>, <b>KEY_LEFT</b>, <b>KEY_M</b>,
+    <b>KEY_MINUS</b>, <b>KEY_QUESTION</b>, <b>KEY_R</b>, <b>KEY_RIGHT</b>,
+    <b>KEY_SPACE</b>, <b>KEY_UP</b>, <b>log_info</b>, <b>log_warn</b>,
+    <b>options_adjust()</b>, <b>options_cycle()</b>, <b>options_set_int()</b>,
+    <b>options_toggle()</b>, <b>UI_ACTION_CLOSE</b>, <b>UI_ACTION_DEBUG</b>,
+    <b>UI_ACTION_HELP</b>, <b>UI_ACTION_LOGS</b>, <b>UI_ACTION_NONE</b>,
+    <b>UI_ACTION_PAUSE</b>, <b>UI_ACTION_SEEK_BACK</b>,
+    <b>UI_ACTION_SEEK_FORWARD</b>, <b>UI_ACTION_SETTINGS</b>,
+    <b>UI_ACTION_TOGGLE_MEDIA</b>, <b>UI_ACTION_VOLUME</b>, and
+    <b>ui_session_key()</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_input()</b>, and
+    <b>ui_session_key()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

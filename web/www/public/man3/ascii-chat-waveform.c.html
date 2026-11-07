@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>waveform.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">waveform.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">waveform.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">waveform.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">char * <b>audio_visualization_render_waveform</b> (unsigned int
+    width, unsigned int height, <b>audio_visualization_source_t</b> source,
+    <b>bool</b> use_color, int color_mode, <b>bool</b> flip_x, <b>bool</b>
+    flip_y)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_*_audio_visualization_render_waveform_(unsigned_int_width,_unsigned_int_height,_"><a class="permalink" href="#char_*_audio_visualization_render_waveform_(unsigned_int_width,_unsigned_int_height,_">char
+  * audio_visualization_render_waveform (unsigned int width, unsigned int
+  height, <b>audio_visualization_source_t</b> source, <b>bool</b> use_color, int
+  color_mode, <b>bool</b> flip_x, <b>bool</b> flip_y)</a></h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>waveform.c</b>.</p>
+<pre>40                                                                                                     {
+41   if (width &lt; 8 || height &lt; 4 || width &gt; MAX_TERMINAL_WIDTH || height &gt; MAX_TERMINAL_HEIGHT ||
+42       source &lt; AUDIO_VISUALIZATION_SOURCE_MIC || source &gt; AUDIO_VISUALIZATION_SOURCE_MIX)
+43     return NULL;
+44
+45   /* Keep a fixed one-second view so new audio enters on the right smoothly. */
+46   const size_t sample_count = VISUALIZATION_HISTORY;
+47   float *samples = SAFE_MALLOC(sample_count * sizeof(float), float *);
+48   if (!samples)
+49     return NULL;
+50   audio_visualization_read(source, samples, sample_count);
+51
+52   const unsigned int grid_height = GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK ? height * 2 : height;
+53   const unsigned int center = grid_height / 2;
+54   const unsigned int half_height = grid_height - 1 - center;
+55   const size_t cell_count = (size_t)width * grid_height;
+56   char *cells = SAFE_MALLOC(cell_count, char *);
+57   if (!cells) {
+58     SAFE_FREE(samples);
+59     return NULL;
+60   }
+61   memset(cells, ' ', cell_count);
+62   unsigned char palette[MAX_TERMINAL_WIDTH][3] = {{0}};
+63
+64   float positive_peak = 0.0f;
+65   float negative_peak = 0.0f;
+66   size_t x = 0;
+67
+68   for (size_t i = 0; i &lt; sample_count; i++) {
+69     float sample = samples[i];
+70     positive_peak = fmaxf(positive_peak, sample);
+71     negative_peak = fmaxf(negative_peak, -sample);
+72
+73     size_t next_bucket = ((i + 1) * width) / sample_count;
+74     if (next_bucket != x || i + 1 == sample_count) {
+75       size_t begin = x * sample_count / width;
+76       size_t end = (x + 1) * sample_count / width;
+77       size_t bucket_center = begin + (end - begin) / 2;
+78       float centroid = waveform_spectral_centroid(samples, sample_count, bucket_center);
+79       /* A gentle square-root scale keeps speech visible without flattening loud peaks. */
+80       float level = sqrtf(fminf(fmaxf(positive_peak, negative_peak), 1.0f));
+81       visualization_color_for_level(centroid, level, color_mode, &amp;palette[x][0], &amp;palette[x][1], &amp;palette[x][2]);
+82       unsigned int positive_amplitude = (unsigned int)lrintf(sqrtf(fminf(positive_peak, 1.0f)) * (float)half_height);
+83       unsigned int negative_amplitude = (unsigned int)lrintf(sqrtf(fminf(negative_peak, 1.0f)) * (float)half_height);
+84       if (positive_amplitude &gt; half_height)
+85         positive_amplitude = half_height;
+86       if (negative_amplitude &gt; half_height)
+87         negative_amplitude = half_height;
+88       unsigned int top = center - positive_amplitude;
+89       unsigned int bottom = center + negative_amplitude;
+90       for (unsigned int y = top; y &lt;= bottom; y++) {
+91         char ch = (y == top || y == bottom) ? '+' : '#';
+92         cells[(size_t)y * width + x] = ch;
+93       }
+94
+95       /* Advance to the next time slice in the left-to-right history. */
+96       positive_peak = 0.0f;
+97       negative_peak = 0.0f;
+98       x = next_bucket;
+99     }
+100   }
+101
+102   char *frame = visualization_encode(cells, &amp;palette[0][0], true, width, grid_height, use_color, flip_x, flip_y);
+103   SAFE_FREE(cells);
+104   SAFE_FREE(samples);
+105   return frame;
+106 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>audio_visualization_read()</b>,
+    <b>audio_visualization_render_waveform()</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_MIX</b>, <b>GET_OPTION</b>,
+    <b>MAX_TERMINAL_HEIGHT</b>, <b>MAX_TERMINAL_WIDTH</b>,
+    <b>RENDER_MODE_HALF_BLOCK</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>visualization_color_for_level()</b>, <b>visualization_encode()</b>, and
+    <b>VISUALIZATION_HISTORY</b>.</p>
+<p class="Pp">Referenced by <b>audio_visualization_render_waveform()</b>, and
+    <b>mirror_render_audio_visualization()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

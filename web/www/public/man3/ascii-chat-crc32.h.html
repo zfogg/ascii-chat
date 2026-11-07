@@ -47,11 +47,16 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>uint32_t</b> <b>asciichat_crc32_hw</b> (const void *data,
-    size_t len)
+<p class="Pp"><b>uint32_t</b> <b>asciichat_crc32_update</b> (<b>uint32_t</b>
+    previous, const void *data, size_t len)
   <br/>
   Compute CRC32 checksum with hardware acceleration (if available).
-    <b>uint32_t</b> <b>asciichat_crc32_sw</b> (const void *data, size_t len)
+    <b>uint32_t</b> <b>asciichat_crc32_sw_update</b> (<b>uint32_t</b> previous,
+    const void *data, size_t len)
+  <br/>
+  <b>uint32_t</b> <b>asciichat_crc32_hw</b> (const void *data, size_t len)
+  <br/>
+  <b>uint32_t</b> <b>asciichat_crc32_sw</b> (const void *data, size_t len)
   <br/>
   Compute CRC32 checksum using software implementation only. <b>bool</b>
     <b>crc32_hw_is_available</b> (void)
@@ -76,7 +81,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

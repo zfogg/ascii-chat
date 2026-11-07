@@ -37,6 +37,42 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>DEBUG_MEMORY_THREAD_NAME_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>DEBUG_MEMORY_MISMATCH_DETAILS_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>DEBUG_MEMORY_PRETTY_TOTAL_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>DEBUG_MEMORY_PRETTY_FREED_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>DEBUG_MEMORY_PRETTY_CURRENT_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>DEBUG_MEMORY_PRETTY_PEAK_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>DEBUG_MEMORY_MALLOC_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>DEBUG_MEMORY_CALLOC_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>DEBUG_MEMORY_FREE_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>DEBUG_MEMORY_PRETTY_SUPPRESSED_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>DEBUG_MEMORY_SUPPRESSIONS_BUFFER_SIZE</b> 128
+  <br/>
+  #define <b>DEBUG_MEMORY_DIFF_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>DEBUG_MEMORY_PRETTY_BYTES_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>DEBUG_MEMORY_LINE_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>DEBUG_MEMORY_COUNT_BUFFER_SIZE</b> 32
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">void <b>debug_memory_ensure_init</b> (void)
@@ -91,143 +127,246 @@
 <p class="Pp">Definition in file <b>debug/memory.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_CALLOC_BUFFER_SIZE___32"><a class="permalink" href="#_define_DEBUG_MEMORY_CALLOC_BUFFER_SIZE___32">#define
+  DEBUG_MEMORY_CALLOC_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_COUNT_BUFFER_SIZE___32"><a class="permalink" href="#_define_DEBUG_MEMORY_COUNT_BUFFER_SIZE___32">#define
+  DEBUG_MEMORY_COUNT_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_DIFF_BUFFER_SIZE___32"><a class="permalink" href="#_define_DEBUG_MEMORY_DIFF_BUFFER_SIZE___32">#define
+  DEBUG_MEMORY_DIFF_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_FREE_BUFFER_SIZE___32"><a class="permalink" href="#_define_DEBUG_MEMORY_FREE_BUFFER_SIZE___32">#define
+  DEBUG_MEMORY_FREE_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_LINE_BUFFER_SIZE___32"><a class="permalink" href="#_define_DEBUG_MEMORY_LINE_BUFFER_SIZE___32">#define
+  DEBUG_MEMORY_LINE_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_MALLOC_BUFFER_SIZE___32"><a class="permalink" href="#_define_DEBUG_MEMORY_MALLOC_BUFFER_SIZE___32">#define
+  DEBUG_MEMORY_MALLOC_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_MISMATCH_DETAILS_BUFFER_SIZE___256"><a class="permalink" href="#_define_DEBUG_MEMORY_MISMATCH_DETAILS_BUFFER_SIZE___256">#define
+  DEBUG_MEMORY_MISMATCH_DETAILS_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_PRETTY_BYTES_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_MEMORY_PRETTY_BYTES_BUFFER_SIZE___64">#define
+  DEBUG_MEMORY_PRETTY_BYTES_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_PRETTY_CURRENT_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_MEMORY_PRETTY_CURRENT_BUFFER_SIZE___64">#define
+  DEBUG_MEMORY_PRETTY_CURRENT_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_PRETTY_FREED_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_MEMORY_PRETTY_FREED_BUFFER_SIZE___64">#define
+  DEBUG_MEMORY_PRETTY_FREED_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_PRETTY_PEAK_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_MEMORY_PRETTY_PEAK_BUFFER_SIZE___64">#define
+  DEBUG_MEMORY_PRETTY_PEAK_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_PRETTY_SUPPRESSED_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_MEMORY_PRETTY_SUPPRESSED_BUFFER_SIZE___64">#define
+  DEBUG_MEMORY_PRETTY_SUPPRESSED_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_PRETTY_TOTAL_BUFFER_SIZE___64"><a class="permalink" href="#_define_DEBUG_MEMORY_PRETTY_TOTAL_BUFFER_SIZE___64">#define
+  DEBUG_MEMORY_PRETTY_TOTAL_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>5</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_SUPPRESSIONS_BUFFER_SIZE___128"><a class="permalink" href="#_define_DEBUG_MEMORY_SUPPRESSIONS_BUFFER_SIZE___128">#define
+  DEBUG_MEMORY_SUPPRESSIONS_BUFFER_SIZE 128</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEBUG_MEMORY_THREAD_NAME_BUFFER_SIZE___256"><a class="permalink" href="#_define_DEBUG_MEMORY_THREAD_NAME_BUFFER_SIZE___256">#define
+  DEBUG_MEMORY_THREAD_NAME_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>debug/memory.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="void_*_debug_calloc_(size_t_count,_size_t_size,_const_char_*_file,_int_line)"><a class="permalink" href="#void_*_debug_calloc_(size_t_count,_size_t_size,_const_char_*_file,_int_line)">void
   * debug_calloc (size_t count, size_t size, const char * file, int
   line)</a></h2>
-<p class="Pp">Definition at line <b>1457</b> of file <b>debug/memory.c</b>.</p>
-<pre>1457                                                                           {
-1458   (void)file;
-1459   (void)line;
-1460   return calloc(count, size);
-1461 }</pre>
+<p class="Pp">Definition at line <b>1495</b> of file <b>debug/memory.c</b>.</p>
+<pre>1495                                                                           {
+1496   (void)file;
+1497   (void)line;
+1498   return calloc(count, size);
+1499 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>debug_calloc()</b>.</p>
+<p class="Pp">Referenced by <b>debug_calloc()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_free_(void_*_ptr,_const_char_*_file,_int_line)"><a class="permalink" href="#void_debug_free_(void_*_ptr,_const_char_*_file,_int_line)">void
   debug_free (void * ptr, const char * file, int line)</a></h2>
-<p class="Pp">Definition at line <b>1469</b> of file <b>debug/memory.c</b>.</p>
-<pre>1469                                                        {
-1470   (void)file;
-1471   (void)line;
-1472   free(ptr);
-1473 }</pre>
+<p class="Pp">Definition at line <b>1507</b> of file <b>debug/memory.c</b>.</p>
+<pre>1507                                                        {
+1508   (void)file;
+1509   (void)line;
+1510   free(ptr);
+1511 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>debug_free()</b>.</p>
+<p class="Pp">Referenced by <b>debug_free()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_*_debug_malloc_(size_t_size,_const_char_*_file,_int_line)"><a class="permalink" href="#void_*_debug_malloc_(size_t_size,_const_char_*_file,_int_line)">void
   * debug_malloc (size_t size, const char * file, int line)</a></h2>
-<p class="Pp">Definition at line <b>1451</b> of file <b>debug/memory.c</b>.</p>
-<pre>1451                                                             {
-1452   (void)file;
-1453   (void)line;
-1454   return malloc(size);
-1455 }</pre>
+<p class="Pp">Definition at line <b>1489</b> of file <b>debug/memory.c</b>.</p>
+<pre>1489                                                             {
+1490   (void)file;
+1491   (void)line;
+1492   return malloc(size);
+1493 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>debug_malloc()</b>.</p>
+<p class="Pp">Referenced by <b>debug_malloc()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_memory_report_(void_)"><a class="permalink" href="#void_debug_memory_report_(void_)">void
   debug_memory_report (void )</a></h2>
-<p class="Pp">Definition at line <b>1431</b> of file <b>debug/memory.c</b>.</p>
-<pre>1431                                {
-1432   // No-op in release builds
-1433 }</pre>
+<p class="Pp">Definition at line <b>1469</b> of file <b>debug/memory.c</b>.</p>
+<pre>1469                                {
+1470   // No-op in release builds
+1471 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+<p class="Pp">References <b>debug_memory_report()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
+    <b>debug_memory_report()</b>, and <b>debug_stats_poll()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_memory_set_quiet_mode_("><a class="permalink" href="#void_debug_memory_set_quiet_mode_(">void
   debug_memory_set_quiet_mode (<b>bool</b> quiet)</a></h2>
-<p class="Pp">Definition at line <b>1426</b> of file <b>debug/memory.c</b>.</p>
-<pre>1426                                              {
-1427   (void)quiet;
-1428   // No-op in release builds
-1429 }</pre>
+<p class="Pp">Definition at line <b>1464</b> of file <b>debug/memory.c</b>.</p>
+<pre>1464                                              {
+1465   (void)quiet;
+1466   // No-op in release builds
+1467 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>main()</b>, and <b>options_init()</b>.</p>
+<p class="Pp">References <b>debug_memory_set_quiet_mode()</b>.</p>
+<p class="Pp">Referenced by <b>debug_memory_set_quiet_mode()</b>, and
+    <b>main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_memory_thread_cleanup_(void_)"><a class="permalink" href="#void_debug_memory_thread_cleanup_(void_)">void
   debug_memory_thread_cleanup (void )</a></h2>
-<p class="Pp">Definition at line <b>1447</b> of file <b>debug/memory.c</b>.</p>
-<pre>1447                                        {
-1448   // No-op in release builds
-1449 }</pre>
+<p class="Pp">Definition at line <b>1485</b> of file <b>debug/memory.c</b>.</p>
+<pre>1485                                        {
+1486   // No-op in release builds
+1487 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+<p class="Pp">References <b>debug_memory_thread_cleanup()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>, and
+    <b>debug_memory_thread_cleanup()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_debug_memory_thread_init_(void_)"><a class="permalink" href="#int_debug_memory_thread_init_(void_)">int
   debug_memory_thread_init (void )</a></h2>
-<p class="Pp">Definition at line <b>1435</b> of file <b>debug/memory.c</b>.</p>
-<pre>1435                                    {
-1436   return 0;
-1437 }</pre>
+<p class="Pp">Definition at line <b>1473</b> of file <b>debug/memory.c</b>.</p>
+<pre>1473                                    {
+1474   return 0;
+1475 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>debug_memory_thread_init()</b>.</p>
+<p class="Pp">Referenced by <b>debug_memory_thread_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_debug_memory_thread_start_(void_)"><a class="permalink" href="#int_debug_memory_thread_start_(void_)">int
   debug_memory_thread_start (void )</a></h2>
-<p class="Pp">Definition at line <b>1439</b> of file <b>debug/memory.c</b>.</p>
-<pre>1439                                     {
-1440   return 0;
-1441 }</pre>
+<p class="Pp">Definition at line <b>1477</b> of file <b>debug/memory.c</b>.</p>
+<pre>1477                                     {
+1478   return 0;
+1479 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>debug_memory_thread_start()</b>.</p>
+<p class="Pp">Referenced by <b>debug_memory_thread_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_memory_trigger_report_(void_)"><a class="permalink" href="#void_debug_memory_trigger_report_(void_)">void
   debug_memory_trigger_report (void )</a></h2>
-<p class="Pp">Definition at line <b>1443</b> of file <b>debug/memory.c</b>.</p>
-<pre>1443                                        {
-1444   // No-op in release builds
-1445 }</pre>
+<p class="Pp">Definition at line <b>1481</b> of file <b>debug/memory.c</b>.</p>
+<pre>1481                                        {
+1482   // No-op in release builds
+1483 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>debug_memory_trigger_report()</b>.</p>
+<p class="Pp">Referenced by <b>debug_memory_trigger_report()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_*_debug_realloc_(void_*_ptr,_size_t_size,_const_char_*_file,_int_line)"><a class="permalink" href="#void_*_debug_realloc_(void_*_ptr,_size_t_size,_const_char_*_file,_int_line)">void
   * debug_realloc (void * ptr, size_t size, const char * file, int
   line)</a></h2>
-<p class="Pp">Definition at line <b>1463</b> of file <b>debug/memory.c</b>.</p>
-<pre>1463                                                                         {
-1464   (void)file;
-1465   (void)line;
-1466   return realloc(ptr, size);
-1467 }</pre>
+<p class="Pp">Definition at line <b>1501</b> of file <b>debug/memory.c</b>.</p>
+<pre>1501                                                                         {
+1502   (void)file;
+1503   (void)line;
+1504   return realloc(ptr, size);
+1505 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>debug_realloc()</b>.</p>
+<p class="Pp">Referenced by <b>debug_realloc()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_sync_symbolize_allocations_(void_)"><a class="permalink" href="#void_debug_sync_symbolize_allocations_(void_)">void
   debug_sync_symbolize_allocations (void )</a></h2>
-<p class="Pp">Definition at line <b>1484</b> of file <b>debug/memory.c</b>.</p>
-<pre>1484 {}</pre>
+<p class="Pp">Definition at line <b>1522</b> of file <b>debug/memory.c</b>.</p>
+<pre>1522 {}</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>debug_sync_symbolize_allocations()</b>.</p>
+<p class="Pp">Referenced by <b>debug_sync_symbolize_allocations()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_track_aligned_(void_*_ptr,_size_t_size,_const_char_*_file,_int_line)"><a class="permalink" href="#void_debug_track_aligned_(void_*_ptr,_size_t_size,_const_char_*_file,_int_line)">void
   debug_track_aligned (void * ptr, size_t size, const char * file, int
   line)</a></h2>
-<p class="Pp">Definition at line <b>1475</b> of file <b>debug/memory.c</b>.</p>
-<pre>1475                                                                              {
-1476   (void)ptr;
-1477   (void)size;
-1478   (void)file;
-1479   (void)line;
-1480 }</pre>
+<p class="Pp">Definition at line <b>1513</b> of file <b>debug/memory.c</b>.</p>
+<pre>1513                                                                              {
+1514   (void)ptr;
+1515   (void)size;
+1516   (void)file;
+1517   (void)line;
+1518 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>debug_track_aligned()</b>.</p>
+<p class="Pp">Referenced by <b>debug_track_aligned()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -235,7 +374,7 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> g_in_debug_memory = <b>false</b></h2>
-<p class="Pp">Definition at line <b>1482</b> of file <b>debug/memory.c</b>.</p>
+<p class="Pp">Definition at line <b>1520</b> of file <b>debug/memory.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -245,7 +384,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

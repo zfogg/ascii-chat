@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>prompt.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">prompt.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">prompt.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">prompt.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>prompt_snapshot_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>TUI_PROMPT_CENTERED_BUFFER_SIZE</b> 2048
+  <br/>
+  #define <b>TUI_PROMPT_TARGET_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>TUI_PROMPT_SHORTCUTS_BUFFER_SIZE</b> 1024
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>ui_media_panel_render</b> (<b>frame_buffer_t</b> *buffer,
+    <b>terminal_size_t</b> size, const char *title, const char *instruction,
+    const char *text, size_t cursor)
+  <br/>
+  const char * <b>ui_prompt_title</b> (const void *data)
+  <br/>
+  const char * <b>ui_prompt_usage_name</b> (const void *data)
+  <br/>
+  const char * <b>ui_prompt_kind_name</b> (<b>ui_prompt_kind_t</b> kind)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_prompt_present</b> (const char *prompt, const
+    char *visible, size_t cursor, <b>bool</b> secret)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_prompt_present_kind</b> (const char *prompt,
+    const char *visible, size_t cursor, <b>bool</b> secret,
+    <b>ui_prompt_kind_t</b> kind)
+  <br/>
+  void <b>ui_prompt_dismiss</b> (int previous)
+  <br/>
+  void <b>ui_prompt_remove</b> (void)
+  <br/>
+  int <b>ui_prompt_required_rows</b> (const void *data, int cols)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_media_loading_present</b> (void)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_password_prompt_present</b> (const char
+    *target, const char *masked, size_t cursor, size_t selected_button,
+    <b>bool</b> incorrect, <b>bool</b> can_confirm, <b>bool</b> newline_limit)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_PROMPT_CENTERED_BUFFER_SIZE___2048"><a class="permalink" href="#_define_TUI_PROMPT_CENTERED_BUFFER_SIZE___2048">#define
+  TUI_PROMPT_CENTERED_BUFFER_SIZE 2048</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>prompt.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_PROMPT_SHORTCUTS_BUFFER_SIZE___1024"><a class="permalink" href="#_define_TUI_PROMPT_SHORTCUTS_BUFFER_SIZE___1024">#define
+  TUI_PROMPT_SHORTCUTS_BUFFER_SIZE 1024</a></h2>
+<p class="Pp">Definition at line <b>5</b> of file <b>prompt.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_PROMPT_TARGET_BUFFER_SIZE___256"><a class="permalink" href="#_define_TUI_PROMPT_TARGET_BUFFER_SIZE___256">#define
+  TUI_PROMPT_TARGET_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>prompt.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_media_loading_present (void )</h2>
+<p class="Pp">Present the media-loading screen while capture resolves its next
+    source.</p>
+<p class="Pp">Definition at line <b>325</b> of file <b>prompt.c</b>.</p>
+<pre>325                                                  {
+326   return ui_controller_submit(UI_SCREEN_RENDER_PROGRESS, STDERR_FILENO, (terminal_size_t){.cols = 40, .rows = 8},
+327                               render_media_loading, &quot;&quot;, 1);
+328 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_submit()</b>,
+    <b>ui_media_loading_present()</b>, and <b>UI_SCREEN_RENDER_PROGRESS</b>.</p>
+<p class="Pp">Referenced by <b>ui_media_loading_present()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_media_panel_render_("><a class="permalink" href="#void_ui_media_panel_render_(">void
+  ui_media_panel_render (<b>frame_buffer_t</b> * buffer, <b>terminal_size_t</b>
+  size, const char * title, const char * instruction, const char * text, size_t
+  cursor)</a></h2>
+<p class="Pp">Shared centered media panel with the animated splash logo. NULL
+    text shows loading.</p>
+<p class="Pp">Definition at line <b>67</b> of file <b>prompt.c</b>.</p>
+<pre>68                                                             {
+69   bool compact = size.cols &lt; 52;
+70   int logo_rows = compact ? 1 : 4;
+71   int lines = 1;
+72   if (text) {
+73     for (size_t i = 0; text[i]; ++i) {
+74       if (text[i] == '\n') {
+75         ++lines;
+76       }
+77     }
+78   }
+79   int available = size.rows - logo_rows - 5;
+80   if (available &lt; 1)
+81     available = 1;
+82   int shown = text ? (lines &lt; available ? lines : available) : 0;
+83   int height = logo_rows + 3 + (text ? 1 + shown : 0);
+84   int top = (size.rows - height) / 2 + 1;
+85   if (top &lt; 1)
+86     top = 1;
+87   bool colors = !GET_OPTION(strip_ansi) &amp;&amp; terminal_should_color_output(frame_buffer_get_screen_output_fd());
+88   frame_buffer_append(buffer, &quot;\033[0m\033[H\033[?25l&quot;, 13);
+89   frame_buffer_printf(buffer, &quot;\033[%d;1H&quot;, top);
+90   const animation_sample_t *sample = ui_controller_animation_sample();
+91   int tick = sample ? (int)(sample-&gt;seconds * 60) : (int)((time_get_ns() / NS_PER_MS_INT / 16) % 100000);
+92   invitation_render_logo(buffer, size.cols, tick, colors, compact);
+93   media_center_line(buffer, title, top + logo_rows + 1, size.cols);
+94   media_center_line(buffer, instruction, top + logo_rows + 2, size.cols);
+95   if (!text) {
+96     media_panel_clear_background(buffer, size, top, logo_rows, 0);
+97     return;
+98   }
+99   int width = size.cols - 6;
+100   if (width &gt; 76)
+101     width = 76;
+102   int longest = 20;
+103   const char *line = text;
+104   for (const char *p = text;; ++p) {
+105     if (!*p || *p == '\n') {
+106       int n = utf8_display_width_n(line, (size_t)(p - line));
+107       if (n &gt; longest)
+108         longest = n;
+109       if (!*p)
+110         break;
+111       line = p + 1;
+112     }
+113   }
+114   if (longest &lt; width)
+115     width = longest;
+116   int col = (size.cols - (width + 2)) / 2 + 1;
+117   for (int i = 0; i &lt; shown; ++i)
+118     frame_buffer_printf(buffer, &quot;\033[%d;1H\033[K&quot;, top + logo_rows + 4 + i);
+119   ui_input_render(buffer, top + logo_rows + 4, col, width, shown, text, cursor, true);
+120   media_panel_clear_background(buffer, size, top, logo_rows, shown);
+121 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_size_t::cols</b>,
+    <b>frame_buffer_append()</b>, <b>frame_buffer_get_screen_output_fd()</b>,
+    <b>frame_buffer_printf()</b>, <b>GET_OPTION</b>,
+    <b>invitation_render_logo()</b>, <b>NS_PER_MS_INT</b>,
+    <b>terminal_size_t::rows</b>, <b>animation_sample_t::seconds</b>,
+    <b>terminal_should_color_output()</b>, <b>time_get_ns()</b>,
+    <b>ui_controller_animation_sample()</b>, <b>ui_input_render()</b>,
+    <b>ui_media_panel_render()</b>, and <b>utf8_display_width_n()</b>.</p>
+<p class="Pp">Referenced by <b>ui_media_panel_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_password_prompt_present (const char *
+  target, const char * masked, size_t cursor, size_t selected_button,
+  <b>bool</b> incorrect, <b>bool</b> can_confirm, <b>bool</b>
+  newline_limit)</h2>
+<p class="Pp">The snapshot contains masked text only. Selection: confirm=0,
+    cancel=1.</p>
+<p class="Pp">Definition at line <b>330</b> of file <b>prompt.c</b>.</p>
+<pre>332                                                                  {
+333   if (!target || !masked || selected_button &gt; 1)
+334     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid password presentation&quot;);
+335   size_t target_bytes = strlen(target) + 1, masked_bytes = strlen(masked) + 1;
+336   size_t bytes = sizeof(prompt_snapshot_t) + target_bytes + masked_bytes;
+337   prompt_snapshot_t *s = SAFE_CALLOC(1, bytes, prompt_snapshot_t *);
+338   if (!s)
+339     return SET_ERRNO(ERROR_MEMORY, &quot;Cannot allocate password presentation&quot;);
+340   s-&gt;prompt_bytes = target_bytes;
+341   s-&gt;cursor = cursor;
+342   s-&gt;selected_button = selected_button;
+343   s-&gt;kind = UI_PROMPT_PASSWORD;
+344   s-&gt;password_dialog = true;
+345   s-&gt;secret = true;
+346   s-&gt;incorrect = incorrect;
+347   s-&gt;can_confirm = can_confirm;
+348   s-&gt;newline_limit = newline_limit;
+349   s-&gt;color = !GET_OPTION(strip_ansi) &amp;&amp; terminal_should_color_output(prompt_fd());
+350   memcpy(s-&gt;text, target, target_bytes);
+351   memcpy(s-&gt;text + target_bytes, masked, masked_bytes);
+352   asciichat_error_t result = ui_controller_submit(UI_SCREEN_PROMPT, prompt_fd(),
+353                                                   (terminal_size_t){.cols = 40, .rows = 19}, render_prompt, s, bytes);
+354   SAFE_FREE(s);
+355   return result;
+356 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>prompt_snapshot_t::can_confirm</b>,
+    <b>prompt_snapshot_t::color</b>, <b>prompt_snapshot_t::cursor</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>GET_OPTION</b>,
+    <b>prompt_snapshot_t::incorrect</b>, <b>prompt_snapshot_t::kind</b>,
+    <b>prompt_snapshot_t::newline_limit</b>,
+    <b>prompt_snapshot_t::password_dialog</b>,
+    <b>prompt_snapshot_t::prompt_bytes</b>, <b>SAFE_CALLOC</b>,
+    <b>SAFE_FREE</b>, <b>prompt_snapshot_t::secret</b>,
+    <b>prompt_snapshot_t::selected_button</b>, <b>SET_ERRNO</b>,
+    <b>terminal_should_color_output()</b>, <b>prompt_snapshot_t::text</b>,
+    <b>ui_controller_submit()</b>, <b>ui_password_prompt_present()</b>,
+    <b>UI_PROMPT_PASSWORD</b>, and <b>UI_SCREEN_PROMPT</b>.</p>
+<p class="Pp">Referenced by <b>ui_password_prompt_present()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_prompt_dismiss_(int_previous)"><a class="permalink" href="#void_ui_prompt_dismiss_(int_previous)">void
+  ui_prompt_dismiss (int previous)</a></h2>
+<p class="Pp">Dismiss a prompt and restore its previous interactive owner, if
+    still live.</p>
+<p class="Pp">Definition at line <b>294</b> of file <b>prompt.c</b>.</p>
+<pre>294                                      {
+295   ui_controller_dismiss(UI_SCREEN_PROMPT, previous);
+296   if (!ui_controller_is_presenting())
+297     ui_controller_write(prompt_fd(), &quot;\r\n&quot;, 2);
+298 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_dismiss()</b>,
+    <b>ui_controller_is_presenting()</b>, <b>ui_controller_write()</b>,
+    <b>ui_prompt_dismiss()</b>, and <b>UI_SCREEN_PROMPT</b>.</p>
+<p class="Pp">Referenced by <b>ui_prompt_dismiss()</b>, and
+    <b>ui_prompt_remove()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_ui_prompt_kind_name_("><a class="permalink" href="#const_char_*_ui_prompt_kind_name_(">const
+  char * ui_prompt_kind_name (<b>ui_prompt_kind_t</b> kind)</a></h2>
+<p class="Pp">Definition at line <b>229</b> of file <b>prompt.c</b>.</p>
+<pre>229                                                        {
+230   switch (kind) {
+231   case UI_PROMPT_PASSWORD:
+232     return &quot;password_prompt&quot;;
+233   case UI_PROMPT_MEDIA_INPUT:
+234     return &quot;media_input_prompt&quot;;
+235   case UI_PROMPT_CONFIRMATION:
+236     return &quot;confirmation_prompt&quot;;
+237   case UI_PROMPT_SSH_PASSPHRASE:
+238     return &quot;ssh_passphrase_prompt&quot;;
+239   case UI_PROMPT_GPG_PASSPHRASE:
+240     return &quot;gpg_passphrase_prompt&quot;;
+241   case UI_PROMPT_TRUST_HOST:
+242     return &quot;trust_host_prompt&quot;;
+243   case UI_PROMPT_UNVERIFIED_HOST:
+244     return &quot;unverified_host_prompt&quot;;
+245   case UI_PROMPT_DISCOVERY_KEY_CHANGE:
+246     return &quot;discovery_key_change_prompt&quot;;
+247   case UI_PROMPT_IP_DISCLOSURE:
+248     return &quot;ip_disclosure_prompt&quot;;
+249   case UI_PROMPT_CONFIG_OVERWRITE:
+250     return &quot;config_overwrite_prompt&quot;;
+251   case UI_PROMPT_MANPAGE_OVERWRITE:
+252     return &quot;manpage_overwrite_prompt&quot;;
+253   case UI_PROMPT_COMPLETION_OVERWRITE:
+254     return &quot;completion_overwrite_prompt&quot;;
+255   default:
+256     return &quot;input_prompt&quot;;
+257   }
+258 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>UI_PROMPT_COMPLETION_OVERWRITE</b>,
+    <b>UI_PROMPT_CONFIG_OVERWRITE</b>, <b>UI_PROMPT_CONFIRMATION</b>,
+    <b>UI_PROMPT_DISCOVERY_KEY_CHANGE</b>, <b>UI_PROMPT_GPG_PASSPHRASE</b>,
+    <b>UI_PROMPT_IP_DISCLOSURE</b>, <b>ui_prompt_kind_name()</b>,
+    <b>UI_PROMPT_MANPAGE_OVERWRITE</b>, <b>UI_PROMPT_MEDIA_INPUT</b>,
+    <b>UI_PROMPT_PASSWORD</b>, <b>UI_PROMPT_SSH_PASSPHRASE</b>,
+    <b>UI_PROMPT_TRUST_HOST</b>, and <b>UI_PROMPT_UNVERIFIED_HOST</b>.</p>
+<p class="Pp">Referenced by <b>ui_prompt_kind_name()</b>, and
+    <b>ui_prompt_usage_name()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_prompt_present (const char * prompt,
+  const char * visible, size_t cursor, <b>bool</b> secret)</h2>
+<p class="Pp">Only display-safe text crosses this boundary; never pass an
+    unmasked password.</p>
+<p class="Pp">Definition at line <b>260</b> of file <b>prompt.c</b>.</p>
+<pre>260                                                                                                          {
+261   return ui_prompt_present_kind(prompt, visible, cursor, secret, secret ? UI_PROMPT_PASSWORD : UI_PROMPT_INPUT);
+262 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>UI_PROMPT_INPUT</b>, <b>UI_PROMPT_PASSWORD</b>,
+    <b>ui_prompt_present()</b>, and <b>ui_prompt_present_kind()</b>.</p>
+<p class="Pp">Referenced by <b>ui_prompt_present()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_prompt_present_kind (const char *
+  prompt, const char * visible, size_t cursor, <b>bool</b> secret,
+  <b>ui_prompt_kind_t</b> kind)</h2>
+<p class="Pp">Definition at line <b>264</b> of file <b>prompt.c</b>.</p>
+<pre>265                                                                 {
+266   size_t prompt_bytes = strlen(prompt) + 1;
+267   size_t visible_bytes = strlen(visible) + 1;
+268   prompt_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot) + prompt_bytes + visible_bytes, prompt_snapshot_t *);
+269   if (!snapshot)
+270     return SET_ERRNO(ERROR_MEMORY, &quot;Cannot allocate prompt presentation&quot;);
+271   snapshot-&gt;kind = kind;
+272   snapshot-&gt;password_dialog = snapshot-&gt;incorrect = snapshot-&gt;can_confirm = snapshot-&gt;newline_limit = false;
+273   snapshot-&gt;selected_button = 0;
+274   snapshot-&gt;prompt_bytes = prompt_bytes;
+275   snapshot-&gt;cursor = cursor;
+276   snapshot-&gt;secret = secret;
+277   snapshot-&gt;severity = ui_notice_prompt_severity();
+278   bool media = strncmp(prompt, &quot;Open media:&quot;, 11) == 0;
+279   snapshot-&gt;color = !media &amp;&amp; !GET_OPTION(strip_ansi) &amp;&amp; terminal_should_color_output(prompt_fd());
+280   snapshot-&gt;unicode = !media &amp;&amp; terminal_should_use_utf8();
+281   memcpy(snapshot-&gt;text, prompt, prompt_bytes);
+282   memcpy(snapshot-&gt;text + prompt_bytes, visible, visible_bytes);
+283   // Height is measured at the minimum width, so every larger terminal fits.
+284   terminal_size_t minimum = {.cols = 40,
+285                              .rows = ui_notice_render(NULL, prompt, snapshot-&gt;severity, 40, false, false) + 3};
+286   if (media)
+287     minimum.rows = 8;
+288   asciichat_error_t result = ui_controller_submit(UI_SCREEN_PROMPT, prompt_fd(), minimum, render_prompt, snapshot,
+289                                                   sizeof(*snapshot) + prompt_bytes + visible_bytes);
+290   SAFE_FREE(snapshot);
+291   return result;
+292 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>prompt_snapshot_t::can_confirm</b>,
+    <b>prompt_snapshot_t::color</b>, <b>prompt_snapshot_t::cursor</b>,
+    <b>ERROR_MEMORY</b>, <b>GET_OPTION</b>, <b>prompt_snapshot_t::incorrect</b>,
+    <b>prompt_snapshot_t::kind</b>, <b>prompt_snapshot_t::newline_limit</b>,
+    <b>prompt_snapshot_t::password_dialog</b>,
+    <b>prompt_snapshot_t::prompt_bytes</b>, <b>terminal_size_t::rows</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>prompt_snapshot_t::secret</b>,
+    <b>prompt_snapshot_t::selected_button</b>, <b>SET_ERRNO</b>,
+    <b>prompt_snapshot_t::severity</b>, <b>terminal_should_color_output()</b>,
+    <b>terminal_should_use_utf8()</b>, <b>prompt_snapshot_t::text</b>,
+    <b>ui_controller_submit()</b>, <b>ui_notice_prompt_severity()</b>,
+    <b>ui_notice_render()</b>, <b>ui_prompt_present_kind()</b>,
+    <b>UI_SCREEN_PROMPT</b>, and <b>prompt_snapshot_t::unicode</b>.</p>
+<p class="Pp">Referenced by <b>ui_input_media_begin()</b>,
+    <b>ui_input_read_key()</b>, <b>ui_prompt_present()</b>, and
+    <b>ui_prompt_present_kind()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_prompt_remove_(void_)"><a class="permalink" href="#void_ui_prompt_remove_(void_)">void
+  ui_prompt_remove (void )</a></h2>
+<p class="Pp">Remove an asynchronous prompt without restoring an earlier
+    interactive view.</p>
+<p class="Pp">Definition at line <b>300</b> of file <b>prompt.c</b>.</p>
+<pre>300                             {
+301   ui_prompt_dismiss(-1);
+302 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_prompt_dismiss()</b>, and
+    <b>ui_prompt_remove()</b>.</p>
+<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>,
+    <b>ui_input_read_key()</b>, and <b>ui_prompt_remove()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ui_prompt_required_rows_(const_void_*_data,_int_cols)"><a class="permalink" href="#int_ui_prompt_required_rows_(const_void_*_data,_int_cols)">int
+  ui_prompt_required_rows (const void * data, int cols)</a></h2>
+<p class="Pp">Definition at line <b>304</b> of file <b>prompt.c</b>.</p>
+<pre>304                                                         {
+305   const prompt_snapshot_t *snapshot = data;
+306   if (snapshot-&gt;password_dialog) {
+307     int rows = 15 + password_lines(snapshot);
+308     return rows &lt; 19 ? 19 : rows;
+309   }
+310   if (strncmp(snapshot-&gt;text, &quot;Open media:&quot;, 11) == 0)
+311     return cols &lt; 52 ? 8 : 11;
+312   return ui_notice_render(NULL, snapshot-&gt;text, snapshot-&gt;severity, cols, false, false) + 3;
+313 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>prompt_snapshot_t::password_dialog</b>,
+    <b>prompt_snapshot_t::severity</b>, <b>prompt_snapshot_t::text</b>,
+    <b>ui_notice_render()</b>, and <b>ui_prompt_required_rows()</b>.</p>
+<p class="Pp">Referenced by <b>ui_prompt_required_rows()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_ui_prompt_title_(const_void_*_data)"><a class="permalink" href="#const_char_*_ui_prompt_title_(const_void_*_data)">const
+  char * ui_prompt_title (const void * data)</a></h2>
+<p class="Pp">Definition at line <b>177</b> of file <b>prompt.c</b>.</p>
+<pre>177                                               {
+178   const prompt_snapshot_t *snapshot = data;
+179   if (strncmp(snapshot-&gt;text, &quot;Open media:&quot;, 11) == 0)
+180     return &quot;load file/url&quot;;
+181   if (strstr(snapshot-&gt;text, &quot;(y/N)&quot;) || strstr(snapshot-&gt;text, &quot;(Y/n)&quot;))
+182     return &quot;confirmation&quot;;
+183   if (snapshot-&gt;secret)
+184     return &quot;password required&quot;;
+185   return &quot;input&quot;;
+186 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>prompt_snapshot_t::secret</b>,
+    <b>prompt_snapshot_t::text</b>, and <b>ui_prompt_title()</b>.</p>
+<p class="Pp">Referenced by <b>ui_prompt_title()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_ui_prompt_usage_name_(const_void_*_data)"><a class="permalink" href="#const_char_*_ui_prompt_usage_name_(const_void_*_data)">const
+  char * ui_prompt_usage_name (const void * data)</a></h2>
+<p class="Pp">Definition at line <b>222</b> of file <b>prompt.c</b>.</p>
+<pre>222                                                    {
+223   const prompt_snapshot_t *snapshot = data;
+224   if (!snapshot)
+225     return &quot;input_prompt&quot;;
+226   return ui_prompt_kind_name(snapshot-&gt;kind);
+227 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>prompt_snapshot_t::kind</b>,
+    <b>ui_prompt_kind_name()</b>, and <b>ui_prompt_usage_name()</b>.</p>
+<p class="Pp">Referenced by <b>ui_prompt_usage_name()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

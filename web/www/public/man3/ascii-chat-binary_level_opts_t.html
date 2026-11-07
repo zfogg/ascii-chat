@@ -62,6 +62,26 @@
   <br/>
   <b>bool</b> <b>log_format_console_only</b>
   <br/>
+  <b>bool</b> <b>no_check_update</b>
+  <br/>
+  char <b>otel_log_level</b> [<b>OPTIONS_BUFF_SIZE</b>]
+  <br/>
+  char <b>otel_endpoint</b> [<b>OPTIONS_BUFF_SIZE</b>]
+  <br/>
+  char <b>otel_ca_file</b> [<b>OPTIONS_BUFF_SIZE</b>]
+  <br/>
+  char <b>otel_enabled_telemetry</b> [<b>OPTIONS_BUFF_SIZE</b>]
+  <br/>
+  double <b>otel_realtime_sample_rate</b>
+  <br/>
+  int <b>otel_realtime_max_per_second</b>
+  <br/>
+  int <b>otel_metrics_interval</b>
+  <br/>
+  int <b>otel_timeout</b>
+  <br/>
+  int <b>otel_queue_capacity</b>
+  <br/>
   <br/>
 </p>
 </section>
@@ -79,7 +99,7 @@
 <p class="Pp">Binary-level options are parsed first (STAGE 1) and should never
     be reset by subsequent stages. This helper extracts them so they can be
     preserved across <b>options_t_new()</b> calls.</p>
-<p class="Pp">Definition at line <b>476</b> of file
+<p class="Pp">Definition at line <b>460</b> of file
     <b>lib/options/options.c</b>.</p>
 </section>
 <section class="Sh">
@@ -88,60 +108,119 @@
 <section class="Ss">
 <h2 class="Ss" id="int_binary_level_opts_t::color"><a class="permalink" href="#int_binary_level_opts_t::color">int
   binary_level_opts_t::color</a></h2>
-<p class="Pp">Definition at line <b>485</b> of file
+<p class="Pp">Definition at line <b>469</b> of file
     <b>lib/options/options.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_binary_level_opts_t::config_file_"><a class="permalink" href="#char_binary_level_opts_t::config_file_">char
   binary_level_opts_t::config_file[<b>OPTIONS_BUFF_SIZE</b>]</a></h2>
-<p class="Pp">Definition at line <b>483</b> of file
+<p class="Pp">Definition at line <b>467</b> of file
     <b>lib/options/options.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_mode_t</b> binary_level_opts_t::detected_mode</h2>
-<p class="Pp">Definition at line <b>484</b> of file
+<p class="Pp">Definition at line <b>468</b> of file
     <b>lib/options/options.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> binary_level_opts_t::help</h2>
-<p class="Pp">Definition at line <b>481</b> of file
+<p class="Pp">Definition at line <b>465</b> of file
     <b>lib/options/options.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> binary_level_opts_t::json</h2>
-<p class="Pp">Definition at line <b>486</b> of file
+<p class="Pp">Definition at line <b>470</b> of file
     <b>lib/options/options.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_binary_level_opts_t::log_file_"><a class="permalink" href="#char_binary_level_opts_t::log_file_">char
   binary_level_opts_t::log_file[<b>OPTIONS_BUFF_SIZE</b>]</a></h2>
-<p class="Pp">Definition at line <b>480</b> of file
+<p class="Pp">Definition at line <b>464</b> of file
     <b>lib/options/options.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> binary_level_opts_t::log_format_console_only</h2>
-<p class="Pp">Definition at line <b>487</b> of file
+<p class="Pp">Definition at line <b>471</b> of file
     <b>lib/options/options.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>log_level_t</b> binary_level_opts_t::log_level</h2>
+<p class="Pp">Definition at line <b>461</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> binary_level_opts_t::no_check_update</h2>
+<p class="Pp">Definition at line <b>472</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_binary_level_opts_t::otel_ca_file_"><a class="permalink" href="#char_binary_level_opts_t::otel_ca_file_">char
+  binary_level_opts_t::otel_ca_file[<b>OPTIONS_BUFF_SIZE</b>]</a></h2>
+<p class="Pp">Definition at line <b>475</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_binary_level_opts_t::otel_enabled_telemetry_"><a class="permalink" href="#char_binary_level_opts_t::otel_enabled_telemetry_">char
+  binary_level_opts_t::otel_enabled_telemetry[<b>OPTIONS_BUFF_SIZE</b>]</a></h2>
+<p class="Pp">Definition at line <b>476</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_binary_level_opts_t::otel_endpoint_"><a class="permalink" href="#char_binary_level_opts_t::otel_endpoint_">char
+  binary_level_opts_t::otel_endpoint[<b>OPTIONS_BUFF_SIZE</b>]</a></h2>
+<p class="Pp">Definition at line <b>474</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_binary_level_opts_t::otel_log_level_"><a class="permalink" href="#char_binary_level_opts_t::otel_log_level_">char
+  binary_level_opts_t::otel_log_level[<b>OPTIONS_BUFF_SIZE</b>]</a></h2>
+<p class="Pp">Definition at line <b>473</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_binary_level_opts_t::otel_metrics_interval"><a class="permalink" href="#int_binary_level_opts_t::otel_metrics_interval">int
+  binary_level_opts_t::otel_metrics_interval</a></h2>
+<p class="Pp">Definition at line <b>479</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_binary_level_opts_t::otel_queue_capacity"><a class="permalink" href="#int_binary_level_opts_t::otel_queue_capacity">int
+  binary_level_opts_t::otel_queue_capacity</a></h2>
+<p class="Pp">Definition at line <b>481</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_binary_level_opts_t::otel_realtime_max_per_second"><a class="permalink" href="#int_binary_level_opts_t::otel_realtime_max_per_second">int
+  binary_level_opts_t::otel_realtime_max_per_second</a></h2>
+<p class="Pp">Definition at line <b>478</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_binary_level_opts_t::otel_realtime_sample_rate"><a class="permalink" href="#double_binary_level_opts_t::otel_realtime_sample_rate">double
+  binary_level_opts_t::otel_realtime_sample_rate</a></h2>
 <p class="Pp">Definition at line <b>477</b> of file
     <b>lib/options/options.c</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="int_binary_level_opts_t::otel_timeout"><a class="permalink" href="#int_binary_level_opts_t::otel_timeout">int
+  binary_level_opts_t::otel_timeout</a></h2>
+<p class="Pp">Definition at line <b>480</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss"><b>bool</b> binary_level_opts_t::quiet</h2>
-<p class="Pp">Definition at line <b>479</b> of file
+<p class="Pp">Definition at line <b>463</b> of file
     <b>lib/options/options.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_short_int_binary_level_opts_t::verbose_level"><a class="permalink" href="#unsigned_short_int_binary_level_opts_t::verbose_level">unsigned
   short int binary_level_opts_t::verbose_level</a></h2>
-<p class="Pp">Definition at line <b>478</b> of file
+<p class="Pp">Definition at line <b>462</b> of file
     <b>lib/options/options.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> binary_level_opts_t::version</h2>
-<p class="Pp">Definition at line <b>482</b> of file
+<p class="Pp">Definition at line <b>466</b> of file
     <b>lib/options/options.c</b>.</p>
 <p class="Pp"></p>
 </section>
@@ -153,7 +232,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

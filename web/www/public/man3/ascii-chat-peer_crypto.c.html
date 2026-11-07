@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>peer_crypto.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">peer_crypto.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">peer_crypto.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">peer_crypto.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>peer_output</b>
+  <br/>
+  struct <b>browser_peer_crypto_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>peer_output</b> <b>peer_output_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>EMSCRIPTEN_KEEPALIVE</b> const char * <b>peer_crypto_error</b>
+    (void)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> void <b>peer_crypto_output_pop</b>
+    (<b>browser_peer_crypto_t</b> *peer)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> void <b>peer_crypto_destroy</b>
+    (<b>browser_peer_crypto_t</b> *peer)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> <b>browser_peer_crypto_t</b> *
+    <b>peer_crypto_create</b> (<b>bool</b> server, int encryption, const char
+    *password, const <b>uint8_t</b> *identity, const <b>uint8_t</b>
+    *expected_key)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> <b>bool</b> <b>peer_crypto_ready</b>
+    (<b>browser_peer_crypto_t</b> *peer)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> const void * <b>peer_crypto_output_data</b>
+    (<b>browser_peer_crypto_t</b> *peer)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> size_t <b>peer_crypto_output_size</b>
+    (<b>browser_peer_crypto_t</b> *peer)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> const void * <b>peer_crypto_received_data</b>
+    (<b>browser_peer_crypto_t</b> *peer)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> size_t <b>peer_crypto_received_size</b>
+    (<b>browser_peer_crypto_t</b> *peer)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b> <b>peer_crypto_send</b>
+    (<b>browser_peer_crypto_t</b> *peer, const void *data, size_t length)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+    <b>peer_crypto_receive</b> (<b>browser_peer_crypto_t</b> *peer, const void
+    *data, size_t length)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>peer_output</b> <b>peer_output_t</b></a></h2>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>browser_peer_crypto_t</b> *
+  peer_crypto_create (<b>bool</b> server, int encryption, const char * password,
+  const <b>uint8_t</b> * identity, const <b>uint8_t</b> * expected_key)</h2>
+<p class="Pp">Definition at line <b>97</b> of file <b>peer_crypto.c</b>.</p>
+<pre>98                                                                                                                      {
+99   browser_peer_crypto_t *peer = SAFE_CALLOC(1, sizeof(*peer), browser_peer_crypto_t *);
+100   if (!peer)
+101     return NULL;
+102   crypto_policy_t policy = {.transport_secure = true,
+103                             .encrypt = encryption == 1,
+104                             .no_encrypt = encryption == 0,
+105                             .has_password = password &amp;&amp; password[0],
+106                             .has_identity = identity != NULL,
+107                             .has_verification_key = expected_key != NULL};
+108   asciichat_error_t result = crypto_policy_resolve(&amp;policy, &amp;peer-&gt;security.mode);
+109   peer-&gt;security.forbid_encryption = policy.no_encrypt;
+110   peer-&gt;security.require_encryption = policy.encrypt;
+111   crypto_handshake_context_t *ctx = &amp;peer-&gt;security.handshake;
+112   if (result == ASCIICHAT_OK)
+113     result = policy.has_password ? crypto_handshake_init_with_password(&quot;browser_peer&quot;, ctx, server, password)
+114                                  : crypto_handshake_init(&quot;browser_peer&quot;, ctx, server);
+115   if (result != ASCIICHAT_OK) {
+116     peer_crypto_destroy(peer);
+117     return NULL;
+118   }
+119   if (identity) {
+120     private_key_t *key = server ? &amp;ctx-&gt;server_private_key : &amp;ctx-&gt;client_private_key;
+121     public_key_t *public_key = server ? &amp;ctx-&gt;server_public_key : &amp;ctx-&gt;client_public_key;
+122     key-&gt;type = KEY_TYPE_ED25519;
+123     memcpy(key-&gt;key.ed25519, identity, ED25519_PRIVATE_KEY_SIZE);
+124     memcpy(key-&gt;public_key, identity + ED25519_SEED_SIZE, ED25519_PUBLIC_KEY_SIZE);
+125     public_key-&gt;type = KEY_TYPE_ED25519;
+126     memcpy(public_key-&gt;key, identity + ED25519_SEED_SIZE, ED25519_PUBLIC_KEY_SIZE);
+127   }
+128   if (expected_key &amp;&amp; server) {
+129     ctx-&gt;client_whitelist = SAFE_CALLOC(1, sizeof(public_key_t), public_key_t *);
+130     if (!ctx-&gt;client_whitelist) {
+131       peer_crypto_destroy(peer);
+132       return NULL;
+133     }
+134     ctx-&gt;client_whitelist[0].type = KEY_TYPE_ED25519;
+135     memcpy(ctx-&gt;client_whitelist[0].key, expected_key, ED25519_PUBLIC_KEY_SIZE);
+136     ctx-&gt;num_whitelisted_clients = 1;
+137     ctx-&gt;require_client_auth = true;
+138   } else if (expected_key) {
+139     ctx-&gt;verify_server_key = true;
+140     ctx-&gt;expected_server_key_bytes_set = true;
+141     memcpy(ctx-&gt;expected_server_key_bytes, expected_key, ED25519_PUBLIC_KEY_SIZE);
+142   }
+143   peer-&gt;transport.methods = &amp;peer_methods;
+144   peer-&gt;transport.impl_data = peer;
+145   if (acip_security_start(&amp;peer-&gt;security, &amp;peer-&gt;transport) != ASCIICHAT_OK) {
+146     peer_crypto_destroy(peer);
+147     return NULL;
+148   }
+149   return peer;
+150 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_security_start()</b>, <b>ASCIICHAT_OK</b>,
+    <b>crypto_handshake_context_t::client_private_key</b>,
+    <b>crypto_handshake_context_t::client_public_key</b>,
+    <b>crypto_handshake_context_t::client_whitelist</b>,
+    <b>crypto_handshake_init()</b>,
+    <b>crypto_handshake_init_with_password()</b>,
+    <b>crypto_policy_resolve()</b>, <b>ED25519_PRIVATE_KEY_SIZE</b>,
+    <b>ED25519_PUBLIC_KEY_SIZE</b>, <b>ED25519_SEED_SIZE</b>,
+    <b>EMSCRIPTEN_KEEPALIVE</b>, <b>crypto_policy_t::encrypt</b>,
+    <b>crypto_handshake_context_t::expected_server_key_bytes</b>,
+    <b>crypto_handshake_context_t::expected_server_key_bytes_set</b>,
+    <b>acip_security::forbid_encryption</b>, <b>acip_security::handshake</b>,
+    <b>crypto_policy_t::has_password</b>, <b>acip_transport::impl_data</b>,
+    <b>private_key_t::key</b>, <b>public_key_t::key</b>,
+    <b>KEY_TYPE_ED25519</b>, <b>acip_transport::methods</b>,
+    <b>acip_security::mode</b>, <b>crypto_policy_t::no_encrypt</b>,
+    <b>crypto_handshake_context_t::num_whitelisted_clients</b>,
+    <b>peer_crypto_create()</b>, <b>peer_crypto_destroy()</b>,
+    <b>private_key_t::public_key</b>,
+    <b>crypto_handshake_context_t::require_client_auth</b>,
+    <b>acip_security::require_encryption</b>, <b>SAFE_CALLOC</b>,
+    <b>browser_peer_crypto_t::security</b>,
+    <b>crypto_handshake_context_t::server_private_key</b>,
+    <b>crypto_handshake_context_t::server_public_key</b>,
+    <b>browser_peer_crypto_t::transport</b>, <b>private_key_t::type</b>,
+    <b>public_key_t::type</b>, and
+    <b>crypto_handshake_context_t::verify_server_key</b>.</p>
+<p class="Pp">Referenced by <b>peer_crypto_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> void peer_crypto_destroy
+  (<b>browser_peer_crypto_t</b> * peer)</h2>
+<p class="Pp">Definition at line <b>87</b> of file <b>peer_crypto.c</b>.</p>
+<pre>87                                                                            {
+88   if (!peer)
+89     return;
+90   while (peer-&gt;output)
+91     peer_crypto_output_pop(peer);
+92   buffer_release(peer-&gt;received);
+93   acip_security_cleanup(&amp;peer-&gt;security);
+94   SAFE_FREE(peer);
+95 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_security_cleanup()</b>, <b>buffer_release</b>,
+    <b>EMSCRIPTEN_KEEPALIVE</b>, <b>browser_peer_crypto_t::output</b>,
+    <b>peer_crypto_destroy()</b>, <b>peer_crypto_output_pop()</b>,
+    <b>browser_peer_crypto_t::received</b>, <b>SAFE_FREE</b>, and
+    <b>browser_peer_crypto_t::security</b>.</p>
+<p class="Pp">Referenced by <b>peer_crypto_create()</b>, and
+    <b>peer_crypto_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> const char * peer_crypto_error (void
+  )</h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>peer_crypto.c</b>.</p>
+<pre>24                                                          {
+25   static asciichat_error_context_t error;
+26   return HAS_ERRNO(&amp;error) ? error.context_message : &quot;Peer security operation failed&quot;;
+27 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_error_context_t::context_message</b>,
+    <b>EMSCRIPTEN_KEEPALIVE</b>, <b>HAS_ERRNO</b>, and
+    <b>peer_crypto_error()</b>.</p>
+<p class="Pp">Referenced by <b>peer_crypto_error()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> const void * peer_crypto_output_data
+  (<b>browser_peer_crypto_t</b> * peer)</h2>
+<p class="Pp">Definition at line <b>156</b> of file <b>peer_crypto.c</b>.</p>
+<pre>156                                                                                       {
+157   return peer &amp;&amp; peer-&gt;output ? peer-&gt;output-&gt;data : NULL;
+158 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>peer_output::data</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>browser_peer_crypto_t::output</b>, and
+  <b>peer_crypto_output_data()</b>.</p>
+<p class="Pp">Referenced by <b>peer_crypto_output_data()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> void peer_crypto_output_pop
+  (<b>browser_peer_crypto_t</b> * peer)</h2>
+<p class="Pp">Definition at line <b>76</b> of file <b>peer_crypto.c</b>.</p>
+<pre>76                                                                               {
+77   if (!peer || !peer-&gt;output)
+78     return;
+79   peer_output_t *output = peer-&gt;output;
+80   peer-&gt;output = output-&gt;next;
+81   if (!peer-&gt;output)
+82     peer-&gt;tail = NULL;
+83   buffer_release(output-&gt;data);
+84   SAFE_FREE(output);
+85 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_release</b>, <b>peer_output::data</b>,
+    <b>EMSCRIPTEN_KEEPALIVE</b>, <b>peer_output::next</b>,
+    <b>browser_peer_crypto_t::output</b>, <b>peer_crypto_output_pop()</b>,
+    <b>SAFE_FREE</b>, and <b>browser_peer_crypto_t::tail</b>.</p>
+<p class="Pp">Referenced by <b>peer_crypto_destroy()</b>, and
+    <b>peer_crypto_output_pop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> size_t peer_crypto_output_size
+  (<b>browser_peer_crypto_t</b> * peer)</h2>
+<p class="Pp">Definition at line <b>160</b> of file <b>peer_crypto.c</b>.</p>
+<pre>160                                                                                  {
+161   return peer &amp;&amp; peer-&gt;output ? peer-&gt;output-&gt;length : 0;
+162 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>peer_output::length</b>, <b>browser_peer_crypto_t::output</b>, and
+    <b>peer_crypto_output_size()</b>.</p>
+<p class="Pp">Referenced by <b>peer_crypto_output_size()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>bool</b> peer_crypto_ready
+  (<b>browser_peer_crypto_t</b> * peer)</h2>
+<p class="Pp">Definition at line <b>152</b> of file <b>peer_crypto.c</b>.</p>
+<pre>152                                                                          {
+153   return peer &amp;&amp; peer-&gt;security.ready;
+154 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>peer_crypto_ready()</b>, <b>acip_security::ready</b>, and
+    <b>browser_peer_crypto_t::security</b>.</p>
+<p class="Pp">Referenced by <b>peer_crypto_ready()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+  peer_crypto_receive (<b>browser_peer_crypto_t</b> * peer, const void * data,
+  size_t length)</h2>
+<p class="Pp">Definition at line <b>178</b> of file <b>peer_crypto.c</b>.</p>
+<pre>179                                                                           {
+180   if (!peer || !data || length &lt; sizeof(packet_header_t))
+181     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid peer packet&quot;);
+182   buffer_release(peer-&gt;received);
+183   peer-&gt;received = NULL;
+184   peer-&gt;received_length = 0;
+185   packet_header_t header;
+186   memcpy(&amp;header, data, sizeof(header));
+187   size_t payload_length = length - sizeof(header);
+188   const void *payload = (const uint8_t *)data + sizeof(header);
+189   packet_type_t type = NET_TO_HOST_U16(header.type);
+190   if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC || NET_TO_HOST_U32(header.length) != payload_length ||
+191       asciichat_crc32(payload, payload_length) != NET_TO_HOST_U32(header.crc32))
+192     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid peer packet framing&quot;);
+193   if (!peer-&gt;security.ready)
+194     return acip_security_receive(&amp;peer-&gt;security, &amp;peer-&gt;transport, type, payload, payload_length);
+195   bool encrypt = ACIP_CRYPTO_HAS_ENCRYPT(peer-&gt;security.mode);
+196   if (packet_is_handshake_type(type) || (encrypt != (type == PACKET_TYPE_ENCRYPTED)))
+197     return SET_ERRNO(ERROR_CRYPTO, &quot;Peer packet does not match negotiated security&quot;);
+198   size_t capacity = length;
+199   peer-&gt;received = buffer_alloc(NULL, capacity);
+200   if (!peer-&gt;received)
+201     return SET_ERRNO(ERROR_MEMORY, &quot;Cannot allocate peer input&quot;);
+202   if (!encrypt) {
+203     memcpy(peer-&gt;received, data, length);
+204     peer-&gt;received_length = length;
+205     return ASCIICHAT_OK;
+206   }
+207   crypto_result_t result = crypto_decrypt(&amp;peer-&gt;security.handshake.crypto_ctx, payload, payload_length, peer-&gt;received,
+208                                           capacity, &amp;peer-&gt;received_length);
+209   if (result != CRYPTO_OK)
+210     return SET_ERRNO(ERROR_CRYPTO, &quot;Cannot decrypt peer packet&quot;);
+211   if (peer-&gt;received_length &lt; sizeof(header))
+212     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Incomplete decrypted peer packet&quot;);
+213   memcpy(&amp;header, peer-&gt;received, sizeof(header));
+214   type = NET_TO_HOST_U16(header.type);
+215   payload_length = peer-&gt;received_length - sizeof(header);
+216   if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC || NET_TO_HOST_U32(header.length) != payload_length ||
+217       asciichat_crc32((uint8_t *)peer-&gt;received + sizeof(header), payload_length) != NET_TO_HOST_U32(header.crc32) ||
+218       type == PACKET_TYPE_ENCRYPTED || packet_is_handshake_type(type))
+219     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid decrypted peer packet&quot;);
+220   return ASCIICHAT_OK;
+221 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACIP_CRYPTO_HAS_ENCRYPT</b>,
+    <b>acip_security_receive()</b>, <b>asciichat_crc32</b>, <b>ASCIICHAT_OK</b>,
+    <b>buffer_alloc()</b>, <b>buffer_release</b>, <b>packet_header_t::crc32</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>, <b>crypto_decrypt()</b>,
+    <b>CRYPTO_OK</b>, <b>EMSCRIPTEN_KEEPALIVE</b>, <b>ERROR_CRYPTO</b>,
+    <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+    <b>acip_security::handshake</b>, <b>packet_header_t::length</b>,
+    <b>packet_header_t::magic</b>, <b>acip_security::mode</b>,
+    <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>, <b>NET_TO_HOST_U64</b>,
+    <b>PACKET_MAGIC</b>, <b>PACKET_TYPE_ENCRYPTED</b>,
+    <b>peer_crypto_receive()</b>, <b>acip_security::ready</b>,
+    <b>browser_peer_crypto_t::received</b>,
+    <b>browser_peer_crypto_t::received_length</b>,
+    <b>browser_peer_crypto_t::security</b>, <b>SET_ERRNO</b>,
+    <b>browser_peer_crypto_t::transport</b>, and
+  <b>packet_header_t::type</b>.</p>
+<p class="Pp">Referenced by <b>peer_crypto_receive()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> const void *
+  peer_crypto_received_data (<b>browser_peer_crypto_t</b> * peer)</h2>
+<p class="Pp">Definition at line <b>164</b> of file <b>peer_crypto.c</b>.</p>
+<pre>164                                                                                         {
+165   return peer ? peer-&gt;received : NULL;
+166 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>peer_crypto_received_data()</b>, and
+    <b>browser_peer_crypto_t::received</b>.</p>
+<p class="Pp">Referenced by <b>peer_crypto_received_data()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> size_t peer_crypto_received_size
+  (<b>browser_peer_crypto_t</b> * peer)</h2>
+<p class="Pp">Definition at line <b>168</b> of file <b>peer_crypto.c</b>.</p>
+<pre>168                                                                                    {
+169   return peer ? peer-&gt;received_length : 0;
+170 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>peer_crypto_received_size()</b>, and
+    <b>browser_peer_crypto_t::received_length</b>.</p>
+<p class="Pp">Referenced by <b>peer_crypto_received_size()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+  peer_crypto_send (<b>browser_peer_crypto_t</b> * peer, const void * data,
+  size_t length)</h2>
+<p class="Pp">Definition at line <b>172</b> of file <b>peer_crypto.c</b>.</p>
+<pre>172                                                                                                                       {
+173   if (!peer || !peer-&gt;security.ready)
+174     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Peer security is not ready&quot;);
+175   return peer_send(&amp;peer-&gt;transport, data, length);
+176 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>peer_crypto_send()</b>,
+    <b>acip_security::ready</b>, <b>browser_peer_crypto_t::security</b>,
+    <b>SET_ERRNO</b>, and <b>browser_peer_crypto_t::transport</b>.</p>
+<p class="Pp">Referenced by <b>peer_crypto_send()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

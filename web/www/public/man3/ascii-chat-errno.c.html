@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>errno.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">errno.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">errno.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">errno.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>debug_errno_init</b> (void)
+  <br/>
+  void <b>debug_errno_print</b> (void)
+  <br/>
+  void <b>debug_errno_print_delayed</b> (<b>uint64_t</b> delay)
+  <br/>
+  void <b>debug_errno_trigger_print</b> (void)
+  <br/>
+  <b>bool</b> <b>debug_errno_is_cleanup_in_progress</b> (void)
+  <br/>
+  void <b>debug_errno_poll</b> (void)
+  <br/>
+  <b>asciichat_error_t</b> <b>debug_errno_start_thread</b> (void)
+  <br/>
+  void <b>debug_errno_cleanup_thread</b> (void)
+  <br/>
+  void <b>debug_errno_destroy</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_errno_cleanup_thread_(void_)"><a class="permalink" href="#void_debug_errno_cleanup_thread_(void_)">void
+  debug_errno_cleanup_thread (void )</a></h2>
+<p class="Pp">Definition at line <b>110</b> of file <b>errno.c</b>.</p>
+<pre>110                                       {
+111   if (!g_debug_errno_started)
+112     return;
+113   atomic_store_bool_impl(&amp;g_debug_errno_cleaning, true);
+114   mutex_lock(&amp;g_debug_errno_mutex);
+115   atomic_store_bool_impl(&amp;g_debug_errno_exiting, true);
+116   cond_signal(&amp;g_debug_errno_condition);
+117   mutex_unlock(&amp;g_debug_errno_mutex);
+118 #ifndef EMSCRIPTEN_BUILD
+119   // Join fully: diagnostic data must not be destroyed while a reader is alive.
+120   if (thread_join(&amp;g_debug_errno_thread, NULL) != 0)
+121     FATAL(ERROR_THREAD, &quot;Cannot join diagnostics worker&quot;);
+122 #endif
+123   g_debug_errno_started = false;
+124 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool_impl()</b>, <b>cond_signal()</b>,
+    <b>debug_errno_cleanup_thread()</b>, <b>ERROR_THREAD</b>, <b>FATAL</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, and <b>thread_join</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
+    <b>debug_errno_cleanup_thread()</b>, and <b>debug_errno_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_errno_destroy_(void_)"><a class="permalink" href="#void_debug_errno_destroy_(void_)">void
+  debug_errno_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>125</b> of file <b>errno.c</b>.</p>
+<pre>125                                {
+126   debug_errno_cleanup_thread();
+127   if (g_debug_errno_initialized) {
+128     cond_destroy(&amp;g_debug_errno_condition);
+129     mutex_destroy(&amp;g_debug_errno_mutex);
+130     g_debug_errno_initialized = false;
+131     atomic_store_bool_impl(&amp;g_debug_errno_signal, false);
+132     g_debug_errno_errno_deadline = 0;
+133   }
+134 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool_impl()</b>, <b>cond_destroy()</b>,
+    <b>debug_errno_cleanup_thread()</b>, <b>debug_errno_destroy()</b>, and
+    <b>mutex_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>, and
+    <b>debug_errno_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> debug_errno_init (void )</h2>
+<p class="Pp">Definition at line <b>20</b> of file <b>errno.c</b>.</p>
+<pre>20                                          {
+21   if (g_debug_errno_initialized)
+22     return ASCIICHAT_OK;
+23   if (mutex_init(&amp;g_debug_errno_mutex, &quot;debug_errno&quot;) != 0)
+24     return SET_ERRNO(ERROR_THREAD, &quot;Cannot initialize diagnostics mutex&quot;);
+25   if (cond_init(&amp;g_debug_errno_condition, &quot;debug_errno&quot;) != 0) {
+26     mutex_destroy(&amp;g_debug_errno_mutex);
+27     return SET_ERRNO(ERROR_THREAD, &quot;Cannot initialize diagnostics condition&quot;);
+28   }
+29   g_debug_errno_initialized = true;
+30   atomic_store_bool_impl(&amp;g_debug_errno_cleaning, false);
+31   return ASCIICHAT_OK;
+32 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool_impl()</b>,
+    <b>cond_init()</b>, <b>debug_errno_init()</b>, <b>ERROR_THREAD</b>,
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>debug_errno_init()</b>, and
+    <b>debug_errno_start_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> debug_errno_is_cleanup_in_progress (void )</h2>
+<p class="Pp">Definition at line <b>52</b> of file <b>errno.c</b>.</p>
+<pre>52                                               {
+53   return atomic_load_bool_impl(&amp;g_debug_errno_cleaning);
+54 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool_impl()</b>, and
+    <b>debug_errno_is_cleanup_in_progress()</b>.</p>
+<p class="Pp">Referenced by <b>debug_errno_is_cleanup_in_progress()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_errno_poll_(void_)"><a class="permalink" href="#void_debug_errno_poll_(void_)">void
+  debug_errno_poll (void )</a></h2>
+<p class="Pp">Definition at line <b>55</b> of file <b>errno.c</b>.</p>
+<pre>55                             {
+56   if (!g_debug_errno_initialized)
+57     return;
+58   uint64_t now = time_get_ns();
+59   bool all = atomic_exchange_bool_impl(&amp;g_debug_errno_signal, false);
+60   mutex_lock(&amp;g_debug_errno_mutex);
+61   bool errors = g_debug_errno_errno_deadline &amp;&amp; now &gt;= g_debug_errno_errno_deadline;
+62   if (errors)
+63     g_debug_errno_errno_deadline = 0;
+64   mutex_unlock(&amp;g_debug_errno_mutex);
+65   if (all || errors)
+66     debug_errno_print_errno();
+67 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_exchange_bool_impl()</b>,
+    <b>debug_errno_poll()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>, and
+    <b>time_get_ns()</b>.</p>
+<p class="Pp">Referenced by <b>debug_errno_poll()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_errno_print_(void_)"><a class="permalink" href="#void_debug_errno_print_(void_)">void
+  debug_errno_print (void )</a></h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>errno.c</b>.</p>
+<pre>39                              {
+40   debug_errno_print_errno();
+41 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>debug_errno_print()</b>.</p>
+<p class="Pp">Referenced by <b>debug_errno_print()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_errno_print_delayed_("><a class="permalink" href="#void_debug_errno_print_delayed_(">void
+  debug_errno_print_delayed (<b>uint64_t</b> delay)</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>errno.c</b>.</p>
+<pre>42                                                {
+43   if (!g_debug_errno_initialized)
+44     return;
+45   debug_report_schedule(&amp;g_debug_errno_mutex, &amp;g_debug_errno_condition, &amp;g_debug_errno_errno_deadline, delay);
+46 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>debug_errno_print_delayed()</b>, and
+    <b>debug_report_schedule()</b>.</p>
+<p class="Pp">Referenced by <b>debug_errno_print_delayed()</b>, and
+    <b>debug_errno_start_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> debug_errno_start_thread (void )</h2>
+<p class="Pp">Definition at line <b>90</b> of file <b>errno.c</b>.</p>
+<pre>90                                                  {
+91   if (g_debug_errno_started)
+92     return ASCIICHAT_OK;
+93   asciichat_error_t result = debug_errno_init();
+94   if (result != ASCIICHAT_OK)
+95     return result;
+96   atomic_store_bool_impl(&amp;g_debug_errno_exiting, false);
+97   atomic_store_bool_impl(&amp;g_debug_errno_cleaning, false);
+98   options_t *opts = options_get();
+99   if (opts) {
+100     if (IS_OPTION_EXPLICIT(debug_errno_stacks_time, opts))
+101       debug_errno_print_delayed((uint64_t)(opts-&gt;debug_errno_stacks_time * NS_PER_SEC_INT));
+102   }
+103 #ifndef EMSCRIPTEN_BUILD
+104   if (acthread_create(&amp;g_debug_errno_thread, &quot;debug_errno&quot;, debug_errno_worker, NULL) != 0)
+105     return SET_ERRNO(ERROR_THREAD, &quot;Cannot start diagnostics worker&quot;);
+106 #endif
+107   g_debug_errno_started = true;
+108   return ASCIICHAT_OK;
+109 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acthread_create</b>, <b>ASCIICHAT_OK</b>,
+    <b>atomic_store_bool_impl()</b>, <b>debug_errno_init()</b>,
+    <b>debug_errno_print_delayed()</b>,
+    <b>options_state::debug_errno_stacks_time</b>,
+    <b>debug_errno_start_thread()</b>, <b>ERROR_THREAD</b>,
+    <b>IS_OPTION_EXPLICIT</b>, <b>NS_PER_SEC_INT</b>, <b>options_get()</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>debug_errno_start_thread()</b>, and
+    <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_errno_trigger_print_(void_)"><a class="permalink" href="#void_debug_errno_trigger_print_(void_)">void
+  debug_errno_trigger_print (void )</a></h2>
+<p class="Pp">Definition at line <b>47</b> of file <b>errno.c</b>.</p>
+<pre>47                                      {
+48   // Do not signal a condition variable or invoke diagnostic hooks in a signal
+49   // handler. The worker checks this flag at most 100ms after its next wakeup.
+50   atomic_store_bool_impl(&amp;g_debug_errno_signal, true);
+51 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool_impl()</b>, and
+    <b>debug_errno_trigger_print()</b>.</p>
+<p class="Pp">Referenced by <b>debug_errno_trigger_print()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

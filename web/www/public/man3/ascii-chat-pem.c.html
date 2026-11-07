@@ -130,13 +130,6 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>68</b> of file <b>pem.c</b>.</p>
-<pre>68 #define VEC_ADD(vec, x)                                                                                                \
-69   do {                                                                                                                 \
-70     (vec).buf = vector_expand((vec).buf, sizeof *((vec).buf), &amp;(vec).ptr, &amp;(vec).len, 1);                              \
-71     (vec).buf[(vec).ptr++] = (x);                                                                                      \
-72   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
 </section>
 <section class="Ss">
@@ -156,15 +149,6 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>74</b> of file <b>pem.c</b>.</p>
-<pre>74 #define VEC_ADDMANY(vec, xp, num)                                                                                      \
-75   do {                                                                                                                 \
-76     size_t vec_num = (num);                                                                                            \
-77     (vec).buf = vector_expand((vec).buf, sizeof *((vec).buf), &amp;(vec).ptr, &amp;(vec).len, vec_num);                        \
-78     memcpy((vec).buf + (vec).ptr, (xp), vec_num * sizeof *((vec).buf));                                                \
-79     (vec).ptr += vec_num;                                                                                              \
-80   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
 </section>
 <section class="Ss">
@@ -184,15 +168,6 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>51</b> of file <b>pem.c</b>.</p>
-<pre>51 #define VEC_CLEAR(vec)                                                                                                 \
-52   do {                                                                                                                 \
-53     SAFE_FREE((vec).buf);                                                                                              \
-54     (vec).buf = NULL;                                                                                                  \
-55     (vec).ptr = 0;                                                                                                     \
-56     (vec).len = 0;                                                                                                     \
-57   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
 </section>
 <section class="Ss">
@@ -214,16 +189,6 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>59</b> of file <b>pem.c</b>.</p>
-<pre>59 #define VEC_CLEAREXT(vec, fun)                                                                                         \
-60   do {                                                                                                                 \
-61     size_t vec_tmp;                                                                                                    \
-62     for (vec_tmp = 0; vec_tmp &lt; (vec).ptr; vec_tmp++) {                                                                \
-63       (fun)(&amp;(vec).buf[vec_tmp]);                                                                                      \
-64     }                                                                                                                  \
-65     VEC_CLEAR(vec);                                                                                                    \
-66   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
 </section>
 <section class="Ss">
@@ -273,13 +238,6 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>41</b> of file <b>pem.c</b>.</p>
-<pre>41 #define VECTOR(type)                                                                                                   \
-42   struct {                                                                                                             \
-43     type *buf;                                                                                                         \
-44     size_t ptr, len;                                                                                                   \
-45   }</pre>
-<pre></pre>
-<p class="Pp"></p>
 </section>
 </section>
 <section class="Sh">
@@ -289,7 +247,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

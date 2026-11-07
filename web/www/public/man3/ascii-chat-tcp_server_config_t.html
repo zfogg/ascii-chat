@@ -30,8 +30,7 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">tcp_server_config_t - TCP server configuration.</p>
-<p class="Pp"></p>
+<p class="Pp">tcp_server_config_t</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
@@ -51,20 +50,18 @@
   <br/>
   Whether to bind IPv4 socket. <b>bool</b> <b>bind_ipv6</b>
   <br/>
-  Whether to bind IPv6 socket. double <b>accept_timeout_sec</b>
+  Whether to bind IPv6 socket. <b>platform_event_accept_fn</b>
+    <b>event_handler</b>
   <br/>
-  select() timeout in seconds (supports decimals, e.g. 0.05 for 50ms)
-    <b>tcp_client_handler_fn</b> <b>client_handler</b>
+  Required asynchronous accept handler. void(*) <b>tick_fn</b> (void
+    *<b>user_data</b>)
   <br/>
-  Client handler callback. void * <b>user_data</b>
+  Optional periodic callback on the tcp_server_run thread. void *
+    <b>tick_user_data</b>
   <br/>
-  User data passed to each client handler. <b>tcp_status_update_fn</b>
-    <b>status_update_fn</b>
+  void * <b>user_data</b>
   <br/>
-  Optional status update callback (called on timeout, NULL to disable). void *
-    <b>status_update_data</b>
-  <br/>
-  User data passed to status update callback.
+  User data passed to each client handler.
   <br/>
 </p>
 </section>
@@ -72,42 +69,31 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">TCP server configuration.</p>
-<p class="Pp">Configures server binding, timeouts, and client handler.</p>
-<p class="Pp">Definition at line <b>138</b> of file
+<p class="Pp">Definition at line <b>17</b> of file
     <b>include/ascii-chat/network/tcp/server.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="double_tcp_server_config_t::accept_timeout_sec"><a class="permalink" href="#double_tcp_server_config_t::accept_timeout_sec">double
-  tcp_server_config_t::accept_timeout_sec</a></h2>
-<p class="Pp">select() timeout in seconds (supports decimals, e.g. 0.05 for
-    50ms)</p>
-<p class="Pp">Definition at line <b>144</b> of file
-    <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_server_run()</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss"><b>bool</b> tcp_server_config_t::bind_ipv4</h2>
 <p class="Pp">Whether to bind IPv4 socket.</p>
-<p class="Pp">Definition at line <b>142</b> of file
+<p class="Pp">Definition at line <b>21</b> of file
     <b>include/ascii-chat/network/tcp/server.h</b>.</p>
 <p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> tcp_server_config_t::bind_ipv6</h2>
 <p class="Pp">Whether to bind IPv6 socket.</p>
-<p class="Pp">Definition at line <b>143</b> of file
+<p class="Pp">Definition at line <b>22</b> of file
     <b>include/ascii-chat/network/tcp/server.h</b>.</p>
 <p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>tcp_client_handler_fn</b>
-  tcp_server_config_t::client_handler</h2>
-<p class="Pp">Client handler callback.</p>
-<p class="Pp">Definition at line <b>145</b> of file
+<h2 class="Ss"><b>platform_event_accept_fn</b>
+  tcp_server_config_t::event_handler</h2>
+<p class="Pp">Required asynchronous accept handler.</p>
+<p class="Pp">Definition at line <b>23</b> of file
     <b>include/ascii-chat/network/tcp/server.h</b>.</p>
 <p class="Pp">Referenced by <b>tcp_server_run()</b>.</p>
 </section>
@@ -115,7 +101,7 @@
 <h2 class="Ss" id="const_char*_tcp_server_config_t::ipv4_address"><a class="permalink" href="#const_char*_tcp_server_config_t::ipv4_address">const
   char* tcp_server_config_t::ipv4_address</a></h2>
 <p class="Pp">IPv4 bind address (NULL or empty = don't bind).</p>
-<p class="Pp">Definition at line <b>140</b> of file
+<p class="Pp">Definition at line <b>19</b> of file
     <b>include/ascii-chat/network/tcp/server.h</b>.</p>
 <p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
 </section>
@@ -123,7 +109,7 @@
 <h2 class="Ss" id="const_char*_tcp_server_config_t::ipv6_address"><a class="permalink" href="#const_char*_tcp_server_config_t::ipv6_address">const
   char* tcp_server_config_t::ipv6_address</a></h2>
 <p class="Pp">IPv6 bind address (NULL or empty = don't bind).</p>
-<p class="Pp">Definition at line <b>141</b> of file
+<p class="Pp">Definition at line <b>20</b> of file
     <b>include/ascii-chat/network/tcp/server.h</b>.</p>
 <p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
 </section>
@@ -131,34 +117,29 @@
 <h2 class="Ss" id="int_tcp_server_config_t::port"><a class="permalink" href="#int_tcp_server_config_t::port">int
   tcp_server_config_t::port</a></h2>
 <p class="Pp">TCP listen port.</p>
-<p class="Pp">Definition at line <b>139</b> of file
+<p class="Pp">Definition at line <b>18</b> of file
     <b>include/ascii-chat/network/tcp/server.h</b>.</p>
 <p class="Pp">Referenced by <b>tcp_server_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void*_tcp_server_config_t::status_update_data"><a class="permalink" href="#void*_tcp_server_config_t::status_update_data">void*
-  tcp_server_config_t::status_update_data</a></h2>
-<p class="Pp">User data passed to status update callback.</p>
-<p class="Pp">Definition at line <b>148</b> of file
+<h2 class="Ss" id="void(*)_tcp_server_config_t::tick_fn(void_*"><a class="permalink" href="#void(*)_tcp_server_config_t::tick_fn(void_*">void(*)
+  tcp_server_config_t::tick_fn(void *<b>user_data</b>)</a></h2>
+<p class="Pp">Optional periodic callback on the tcp_server_run thread.</p>
+<p class="Pp">Definition at line <b>24</b> of file
     <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_server_run()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>tcp_status_update_fn</b>
-  tcp_server_config_t::status_update_fn</h2>
-<p class="Pp">Optional status update callback (called on timeout, NULL to
-    disable).</p>
-<p class="Pp">Definition at line <b>147</b> of file
+<h2 class="Ss" id="void*_tcp_server_config_t::tick_user_data"><a class="permalink" href="#void*_tcp_server_config_t::tick_user_data">void*
+  tcp_server_config_t::tick_user_data</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file
     <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_server_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_tcp_server_config_t::user_data"><a class="permalink" href="#void*_tcp_server_config_t::user_data">void*
   tcp_server_config_t::user_data</a></h2>
 <p class="Pp">User data passed to each client handler.</p>
-<p class="Pp">Definition at line <b>146</b> of file
+<p class="Pp">Definition at line <b>26</b> of file
     <b>include/ascii-chat/network/tcp/server.h</b>.</p>
-<p class="Pp">Referenced by <b>tcp_server_run()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -169,7 +150,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

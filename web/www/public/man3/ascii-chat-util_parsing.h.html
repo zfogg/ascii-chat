@@ -99,30 +99,31 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid
   input or out of range</div>
-<p class="Pp">Definition at line <b>304</b> of file <b>util/parsing.c</b>.</p>
-<pre>304                                                                                                          {
-305   if (!str) {
-306     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
-307   }
-308 
-309   if (!out_value) {
-310     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
-311   }
-312 
-313   long value;
-314   asciichat_error_t err = parse_long(str, &amp;value, (long)min_value, (long)max_value);
-315   if (err != ASCIICHAT_OK) {
-316     return err;
-317   }
-318 
-319   *out_value = (int32_t)value;
-320   return ASCIICHAT_OK;
-321 }</pre>
+<p class="Pp">Definition at line <b>254</b> of file <b>util/parsing.c</b>.</p>
+<pre>254                                                                                                          {
+255   if (!str) {
+256     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
+257   }
+258
+259   if (!out_value) {
+260     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
+261   }
+262
+263   long value;
+264   asciichat_error_t err = parse_long(str, &amp;value, (long)min_value, (long)max_value);
+265   if (err != ASCIICHAT_OK) {
+266     return err;
+267   }
+268
+269   *out_value = (int32_t)value;
+270   return ASCIICHAT_OK;
+271 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>parse_long()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>strtoint_safe()</b>.</p>
+    <b>parse_int32()</b>, <b>parse_long()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>parse_int32()</b>, and
+  <b>strtoint_safe()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> parse_long (const char * str, long *
@@ -146,47 +147,47 @@
 99   if (!str) {
 100     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
 101   }
-102 
+102
 103   if (!out_value) {
 104     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
 105   }
-106 
+106
 107   if (*str == '\0') {
 108     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty string cannot be parsed as integer&quot;);
 109   }
-110 
+110
 111   // Clear errno before calling strtol to detect errors
 112   errno = 0;
 113   char *endptr = NULL;
 114   long value = strtol(str, &amp;endptr, 10);
-115 
+115
 116   // Check for conversion errors
 117   if (errno == ERANGE) {
 118     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value out of range: %s&quot;, str);
 119   }
-120 
+120
 121   // Check that entire string was consumed (no extra characters)
 122   if (endptr == str || *endptr != '\0') {
 123     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid integer format: %s&quot;, str);
 124   }
-125 
+125
 126   // Check user-specified range
 127   if (value &lt; min_value) {
 128     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value %ld is below minimum %ld&quot;, value, min_value);
 129   }
-130 
+130
 131   if (value &gt; max_value) {
 132     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value %ld exceeds maximum %ld&quot;, value, max_value);
 133   }
-134 
+134
 135   *out_value = value;
 136   return ASCIICHAT_OK;
 137 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERANGE</b>, <b>errno</b>,
-    <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>parse_int32()</b>.</p>
+    <b>ERROR_INVALID_PARAM</b>, <b>parse_long()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>parse_int32()</b>, and <b>parse_long()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> parse_port (const char * str,
@@ -200,66 +201,45 @@
 <div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid
   input or out of range</div>
 <p class="Pp">Convenience function for parsing TCP/UDP port numbers.</p>
-<p class="Pp">Definition at line <b>252</b> of file <b>util/parsing.c</b>.</p>
-<pre>252                                                                   {
-253   if (!str) {
-254     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
-255   }
-256 
-257   if (!out_port) {
-258     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
-259   }
-260 
-261   if (*str == '\0') {
-262     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty string cannot be parsed as port&quot;);
-263   }
-264 
-265   pcre2_code *regex = port_regex_get();
-266   if (!regex) {
-267     /* Fallback: use original parse_ulong method if PCRE2 not available */
-268     unsigned long port_ulong;
-269     asciichat_error_t err = parse_ulong(str, &amp;port_ulong, 0, 65535);
-270     if (err != ASCIICHAT_OK) {
-271       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid port number: %s (must be 0-65535)&quot;, str);
-272     }
-273     *out_port = (uint16_t)port_ulong;
-274     return ASCIICHAT_OK;
-275   }
-276 
-277   /* Validate port using PCRE2 regex */
-278   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
-279   if (!match_data) {
-280     log_error(&quot;Failed to allocate match data for port validation&quot;);
-281     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid port number: %s (must be 0-65535)&quot;, str);
-282   }
-283 
-284   int match_result = pcre2_jit_match(regex, (PCRE2_SPTR8)str, strlen(str), 0, 0, match_data, NULL);
-285   pcre2_match_data_free(match_data);
-286 
-287   if (match_result &lt; 0) {
-288     /* Format validation failed */
-289     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid port number: %s (must be 0-65535)&quot;, str);
-290   }
-291 
-292   /* Extract matched port string and convert to uint16_t */
-293   char *endptr = NULL;
-294   unsigned long port_value = strtoul(str, &amp;endptr, 10);
-295 
-296   if (port_value &lt; 0 || port_value &gt; 65535) {
-297     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Port out of range: %lu&quot;, port_value);
-298   }
-299 
-300   *out_port = (uint16_t)port_value;
-301   return ASCIICHAT_OK;
-302 }</pre>
+<p class="Pp">Definition at line <b>223</b> of file <b>util/parsing.c</b>.</p>
+<pre>223                                                                   {
+224   if (!str) {
+225     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
+226   }
+227
+228   if (!out_port) {
+229     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
+230   }
+231
+232   if (*str == '\0') {
+233     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty string cannot be parsed as port&quot;);
+234   }
+235
+236   if (str[0] == '0' &amp;&amp; str[1] != '\0') {
+237     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid port number: %s (leading zeros)&quot;, str);
+238   }
+239   unsigned long port_value = 0;
+240   for (const char *p = str; *p; p++) {
+241     if (*p &lt; '0' || *p &gt; '9') {
+242       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid port number: %s (must be 0-65535)&quot;, str);
+243     }
+244     port_value = port_value * 10 + (unsigned long)(*p - '0');
+245     if (port_value &gt; 65535) {
+246       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid port number: %s (must be 0-65535)&quot;, str);
+247     }
+248   }
+249
+250   *out_port = (uint16_t)port_value;
+251   return ASCIICHAT_OK;
+252 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>log_error</b>, <b>parse_ulong()</b>, and <b>SET_ERRNO</b>.</p>
+    <b>parse_port()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>main()</b>,
     <b>parse_address_with_optional_port()</b>, <b>parse_ip_with_port()</b>,
-    <b>parse_port_option()</b>, <b>validate_opt_port()</b>, and
-    <b>validate_port_opt()</b>.</p>
+    <b>parse_port()</b>, <b>parse_port_option()</b>, <b>validate_opt_port()</b>,
+    and <b>validate_port_opt()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> parse_uint32 (const char * str,
@@ -277,29 +257,30 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid
   input or out of range</div>
-<p class="Pp">Definition at line <b>323</b> of file <b>util/parsing.c</b>.</p>
-<pre>323                                                                                                              {
-324   if (!str) {
-325     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
-326   }
-327 
-328   if (!out_value) {
-329     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
-330   }
-331 
-332   unsigned long value;
-333   asciichat_error_t err = parse_ulong(str, &amp;value, (unsigned long)min_value, (unsigned long)max_value);
-334   if (err != ASCIICHAT_OK) {
-335     return err;
-336   }
-337 
-338   *out_value = (uint32_t)value;
-339   return ASCIICHAT_OK;
-340 }</pre>
+<p class="Pp">Definition at line <b>273</b> of file <b>util/parsing.c</b>.</p>
+<pre>273                                                                                                              {
+274   if (!str) {
+275     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
+276   }
+277
+278   if (!out_value) {
+279     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
+280   }
+281
+282   unsigned long value;
+283   asciichat_error_t err = parse_ulong(str, &amp;value, (unsigned long)min_value, (unsigned long)max_value);
+284   if (err != ASCIICHAT_OK) {
+285     return err;
+286   }
+287
+288   *out_value = (uint32_t)value;
+289   return ASCIICHAT_OK;
+290 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>parse_ulong()</b>, and <b>SET_ERRNO</b>.</p>
+    <b>parse_uint32()</b>, <b>parse_ulong()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>parse_uint32()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> parse_ulong (const char * str, unsigned
@@ -321,48 +302,48 @@
 141   if (!str) {
 142     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
 143   }
-144 
+144
 145   if (!out_value) {
 146     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
 147   }
-148 
+148
 149   if (*str == '\0') {
 150     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty string cannot be parsed as integer&quot;);
 151   }
-152 
+152
 153   // Clear errno before calling strtoul to detect errors
 154   errno = 0;
 155   char *endptr = NULL;
 156   unsigned long value = strtoul(str, &amp;endptr, 10);
-157 
+157
 158   // Check for conversion errors
 159   if (errno == ERANGE) {
 160     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value out of range: %s&quot;, str);
 161   }
-162 
+162
 163   // Check that entire string was consumed (no extra characters)
 164   if (endptr == str || *endptr != '\0') {
 165     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid integer format: %s&quot;, str);
 166   }
-167 
+167
 168   // Check user-specified range
 169   if (value &lt; min_value) {
 170     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value %lu is below minimum %lu&quot;, value, min_value);
 171   }
-172 
+172
 173   if (value &gt; max_value) {
 174     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value %lu exceeds maximum %lu&quot;, value, max_value);
 175   }
-176 
+176
 177   *out_value = value;
 178   return ASCIICHAT_OK;
 179 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERANGE</b>, <b>errno</b>,
-    <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>, <b>parse_port()</b>, and
-    <b>parse_uint32()</b>.</p>
+    <b>ERROR_INVALID_PARAM</b>, <b>parse_ulong()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, <b>parse_uint32()</b>, and
+    <b>parse_ulong()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> parse_ulonglong (const char * str,
@@ -385,46 +366,48 @@
 183   if (!str) {
 184     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
 185   }
-186 
+186
 187   if (!out_value) {
 188     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
 189   }
-190 
+190
 191   if (*str == '\0') {
 192     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty string cannot be parsed as integer&quot;);
 193   }
-194 
+194
 195   // Clear errno before calling strtoull to detect errors
 196   errno = 0;
 197   char *endptr = NULL;
 198   unsigned long long value = strtoull(str, &amp;endptr, 10);
-199 
+199
 200   // Check for conversion errors
 201   if (errno == ERANGE) {
 202     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value out of range: %s&quot;, str);
 203   }
-204 
+204
 205   // Check that entire string was consumed (no extra characters)
 206   if (endptr == str || *endptr != '\0') {
 207     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid integer format: %s&quot;, str);
 208   }
-209 
+209
 210   // Check user-specified range
 211   if (value &lt; min_value) {
 212     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value too small (below minimum)&quot;);
 213   }
-214 
+214
 215   if (value &gt; max_value) {
 216     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value too large (exceeds maximum)&quot;);
 217   }
-218 
+218
 219   *out_value = value;
 220   return ASCIICHAT_OK;
 221 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERANGE</b>, <b>errno</b>,
-    <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
+    <b>ERROR_INVALID_PARAM</b>, <b>parse_ulonglong()</b>, and
+  <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>parse_ulonglong()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -434,7 +417,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

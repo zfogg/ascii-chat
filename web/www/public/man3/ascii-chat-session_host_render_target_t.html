@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_host_render_target_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_host_render_target_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_host_render_target_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_host_render_target_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/common/session/host.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint32_t</b> <b>client_id</b>
+  <br/>
+  <b>asciichat_error_t</b>(*) <b>get_config</b> (void *<b>context</b>,
+    <b>session_host_render_config_t</b> *config)
+  <br/>
+  void(*) <b>render_frame</b> (void *<b>context</b>, const char *frame, size_t
+    size, int width, int height)
+  <br/>
+  void * <b>context</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Local output can use a registered client's capabilities/transport,
+    or a display backend. Callbacks execute under the host client lock and must
+    not call host APIs.</p>
+<p class="Pp">Definition at line <b>435</b> of file <b>host.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> session_host_render_target_t::client_id</h2>
+<p class="Pp">Definition at line <b>436</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_remove_client()</b>, and
+    <b>session_host_set_render_target()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_host_render_target_t::context"><a class="permalink" href="#void*_session_host_render_target_t::context">void*
+  session_host_render_target_t::context</a></h2>
+<p class="Pp">Definition at line <b>439</b> of file <b>host.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b>(*)
+  session_host_render_target_t::get_config(void *<b>context</b>,
+  <b>session_host_render_config_t</b> *config)</h2>
+<p class="Pp">Definition at line <b>437</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_set_render_target()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*)_session_host_render_target_t::render_frame(void_*"><a class="permalink" href="#void(*)_session_host_render_target_t::render_frame(void_*">void(*)
+  session_host_render_target_t::render_frame(void *<b>context</b>, const char
+  *frame, size_t size, int width, int height)</a></h2>
+<p class="Pp">Definition at line <b>438</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_set_render_target()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

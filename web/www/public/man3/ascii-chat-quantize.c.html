@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>quantize.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">quantize.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">quantize.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">quantize.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>simd_quantize_SIMD_CELL_ISA</b> (const <b>uint32_t</b>
+    *rgb, <b>uint32_t</b> *out, size_t count, unsigned colors)
+  <br/>
+  size_t <b>simd_run_SIMD_CELL_ISA</b> (const <b>uint32_t</b> *glyph, const
+    <b>uint32_t</b> *fg, const <b>uint32_t</b> *bg, size_t count)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_simd_quantize_SIMD_CELL_ISA_(const_"><a class="permalink" href="#void_simd_quantize_SIMD_CELL_ISA_(const_">void
+  simd_quantize_SIMD_CELL_ISA (const <b>uint32_t</b> * rgb, <b>uint32_t</b> *
+  out, size_t count, unsigned colors)</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>quantize.c</b>.</p>
+<pre>4                                                                                            {
+5   static const int palette[16][3] = {{0, 0, 0},       {128, 0, 0},   {0, 128, 0},   {128, 128, 0},
+6                                      {0, 0, 128},     {128, 0, 128}, {0, 128, 128}, {192, 192, 192},
+7                                      {128, 128, 128}, {255, 0, 0},   {0, 255, 0},   {255, 255, 0},
+8                                      {0, 0, 255},     {255, 0, 255}, {0, 255, 255}, {255, 255, 255}};
+9   size_t i = 0;
+10   for (; HAS_BLOCK; i += LANES) {
+11     BEGIN_BLOCK;
+12     (void)active;
+13     vec_t packed = LOAD(rgb + i);
+14     vec_t r = AND(SHR(packed, 16), SET(255)), g = AND(SHR(packed, 8), SET(255)), b = AND(packed, SET(255));
+15     vec_t index = SET(0);
+16     if (colors == 16) {
+17       vec_t best = SET(0x7fffffff);
+18       for (int c = 0; c &lt; 16; ++c) {
+19         vec_t dr = SUB(r, SET(palette[c][0])), dg = SUB(g, SET(palette[c][1])), db = SUB(b, SET(palette[c][2]));
+20         vec_t distance = ADD(ADD(SQUARE(dr), SQUARE(dg)), SQUARE(db));
+21         index = SELECT(LT(distance, best), SET(c), index);
+22         best = SELECT(LT(distance, best), distance, best);
+23       }
+24     } else {
+25       // Exact nearest nonuniform xterm cube, with ties choosing the lower level.
+26       vec_t ri = SET(0), gi = SET(0), bi = SET(0);
+27       const int thresholds[5] = {47, 115, 155, 195, 235};
+28       for (int c = 0; c &lt; 5; ++c) {
+29         ri = ADD(ri, SELECT(LT(SET(thresholds[c]), r), SET(1), SET(0)));
+30         gi = ADD(gi, SELECT(LT(SET(thresholds[c]), g), SET(1), SET(0)));
+31         bi = ADD(bi, SELECT(LT(SET(thresholds[c]), b), SET(1), SET(0)));
+32       }
+33       vec_t rl = SELECT(EQ(ri, SET(0)), SET(0), ADD(SET(55), MUL(ri, SET(40))));
+34       vec_t gl = SELECT(EQ(gi, SET(0)), SET(0), ADD(SET(55), MUL(gi, SET(40))));
+35       vec_t bl = SELECT(EQ(bi, SET(0)), SET(0), ADD(SET(55), MUL(bi, SET(40))));
+36       vec_t dr = SUB(r, rl), dg = SUB(g, gl), db = SUB(b, bl);
+37       vec_t error = ADD(ADD(SQUARE(dr), SQUARE(dg)), SQUARE(db));
+38       index = ADD(SET(16), ADD(MUL(ri, SET(36)), ADD(MUL(gi, SET(6)), bi)));
+39       vec_t gray = DIV(SUB(ADD(ADD(r, g), b), SET(9)), 30);
+40       gray = SELECT(LT(gray, SET(0)), SET(0), gray);
+41       gray = SELECT(LT(SET(23), gray), SET(23), gray);
+42       vec_t level = ADD(SET(8), MUL(gray, SET(10)));
+43       dr = SUB(r, level);
+44       dg = SUB(g, level);
+45       db = SUB(b, level);
+46       vec_t gray_error = ADD(ADD(SQUARE(dr), SQUARE(dg)), SQUARE(db));
+47       index = SELECT(LT(gray_error, error), ADD(SET(232), gray), index);
+48     }
+49     STORE(out + i, index);
+50   }
+51   if (i &lt; count)
+52     simd_quantize_scalar(rgb + i, out + i, count - i, colors);
+53 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ADD</b>, <b>AND</b>, <b>BEGIN_BLOCK</b>, <b>DIV</b>,
+    <b>EQ</b>, <b>FN</b>, <b>HAS_BLOCK</b>, <b>LANES</b>, <b>LOAD</b>,
+    <b>LT</b>, <b>MUL</b>, <b>SELECT</b>, <b>SET</b>, <b>SHR</b>,
+    <b>simd_quantize_scalar()</b>, <b>SQUARE</b>, <b>STORE</b>, and
+  <b>SUB</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_simd_run_SIMD_CELL_ISA_(const_"><a class="permalink" href="#size_t_simd_run_SIMD_CELL_ISA_(const_">size_t
+  simd_run_SIMD_CELL_ISA (const <b>uint32_t</b> * glyph, const <b>uint32_t</b> *
+  fg, const <b>uint32_t</b> * bg, size_t count)</a></h2>
+<p class="Pp">Definition at line <b>55</b> of file <b>quantize.c</b>.</p>
+<pre>55                                                                                                   {
+56   if (!count)
+57     return 0;
+58   size_t i = 0;
+59   for (; HAS_BLOCK; i += LANES) {
+60     BEGIN_BLOCK;
+61     (void)active;
+62     vec_t ga = LOAD(glyph + i), fa = LOAD(fg + i), ba = LOAD(bg + i);
+63 #if defined(SIMD_CELL_SVE)
+64     svbool_t equal =
+65         BOTH(EQ(ga, SET((int32_t)glyph[0])), BOTH(EQ(fa, SET((int32_t)fg[0])), EQ(ba, SET((int32_t)bg[0]))));
+66     if (svcntp_b32(pg, equal) == active)
+67       continue;
+68     uint32_t flags[64];
+69     svst1_u32(pg, flags, svsel_u32(equal, svdup_u32(1), svdup_u32(0)));
+70     for (size_t j = 0; j &lt; active; ++j)
+71       if (!flags[j])
+72         return i + j;
+73 #else
+74     vec_t equal = BOTH(EQ(ga, SET((int32_t)glyph[0])), BOTH(EQ(fa, SET((int32_t)fg[0])), EQ(ba, SET((int32_t)bg[0]))));
+75 #if defined(SIMD_CELL_AVX2)
+76     unsigned mask = (unsigned)_mm256_movemask_ps((__m256)equal);
+77     if (mask != 255)
+78       return i + (size_t)__builtin_ctz((~mask) &amp; 255);
+79 #elif !defined(SIMD_CELL_NEON)
+80     unsigned mask = (unsigned)_mm_movemask_ps((__m128)equal);
+81     if (mask != 15)
+82       return i + (size_t)__builtin_ctz((~mask) &amp; 15);
+83 #else
+84     uint32x4_t lanes = (uint32x4_t)equal;
+85     uint32x2_t minimum = vmin_u32(vget_low_u32(lanes), vget_high_u32(lanes));
+86     minimum = vpmin_u32(minimum, minimum);
+87     if (vget_lane_u32(minimum, 0) == UINT32_MAX)
+88       continue;
+89     uint32_t flags[4];
+90     STORE(flags, equal);
+91     for (size_t j = 0; j &lt; active; ++j)
+92       if (!flags[j])
+93         return i + j;
+94 #endif
+95 #endif
+96   }
+97   for (; i &lt; count &amp;&amp; glyph[i] == glyph[0] &amp;&amp; fg[i] == fg[0] &amp;&amp; bg[i] == bg[0]; ++i) {
+98   }
+99   return i &lt; count ? i : count;
+100 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>BEGIN_BLOCK</b>, <b>BOTH</b>, <b>EQ</b>, <b>FN</b>,
+    <b>HAS_BLOCK</b>, <b>LANES</b>, <b>LOAD</b>, <b>SET</b>, and
+  <b>STORE</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

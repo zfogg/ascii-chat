@@ -37,6 +37,16 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>[struct].g_session_context</b>
+  <br/>
+  Local session context.
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>webrtc_signaling_callbacks_t</b>
@@ -47,7 +57,8 @@
   <br/>
   Set the ACDS transport for signaling callbacks. void
     <b>webrtc_set_session_context</b> (const <b>uint8_t</b>
-    <b>session_id</b>[16], const <b>uint8_t</b> <b>participant_id</b>[16])
+    session_id[<b>SESSION_ID_SIZE</b>], const <b>uint8_t</b>
+    participant_id[<b>SESSION_ID_SIZE</b>])
   <br/>
   Set session and participant IDs for signaling. void
     <b>webrtc_set_transport</b> (<b>acip_transport_t</b> *transport)
@@ -110,23 +121,32 @@
 <p class="Pp">Actual transport cleanup (closing sockets, freeing peer manager)
     should be done by the caller before calling this</p>
 </div>
-<p class="Pp">Definition at line <b>359</b> of file
+<p class="Pp">Clears the WebRTC transport. Called on disconnect or fallback.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe - uses internal mutex protection
+<p class="Pp"></p>
+<p class="Pp">Actual transport cleanup (closing connections, freeing resources)
+    should be done by caller before calling this</p>
+</div>
+<p class="Pp">Definition at line <b>364</b> of file
   <b>src/client/webrtc.c</b>.</p>
-<pre>359                                     {
-360   ensure_mutex_initialized();
-361   mutex_lock(&amp;g_signaling_mutex);
-362 
-363   if (g_webrtc_transport) {
-364     log_debug(&quot;Cleaning up WebRTC data channel transport&quot;);
-365     g_webrtc_transport = NULL;
-366   }
-367 
-368   mutex_unlock(&amp;g_signaling_mutex);
-369 }</pre>
+<pre>364                                     {
+365   ensure_mutex_initialized();
+366   mutex_lock(&amp;g_signaling_mutex);
+367
+368   if (g_webrtc_transport) {
+369     log_debug(&quot;Cleaning up WebRTC data channel transport&quot;);
+370     g_webrtc_transport = NULL;
+371   }
+372
+373   mutex_unlock(&amp;g_signaling_mutex);
+374 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, <b>mutex_lock</b>, and
-    <b>mutex_unlock</b>.</p>
+<p class="Pp">References <b>log_debug</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, and <b>webrtc_cleanup_transport()</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_cleanup_transport()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>webrtc_signaling_callbacks_t</b>
@@ -145,18 +165,20 @@
 <p class="Pp"></p>
 <p class="Pp">Callbacks will fail if ACDS connection is not active.</p>
 </div>
-<p class="Pp">Definition at line <b>259</b> of file
+<p class="Pp">Definition at line <b>263</b> of file
   <b>src/client/webrtc.c</b>.</p>
-<pre>259                                                                   {
-260   ensure_mutex_initialized();
-261 
-262   webrtc_signaling_callbacks_t callbacks = {
-263       .send_sdp = client_send_sdp, .send_ice = client_send_ice, .user_data = NULL};
-264 
-265   return callbacks;
-266 }</pre>
+<pre>263                                                                   {
+264   ensure_mutex_initialized();
+265
+266   webrtc_signaling_callbacks_t callbacks = {
+267       .send_sdp = client_send_sdp, .send_ice = client_send_ice, .user_data = NULL};
+268
+269   return callbacks;
+270 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>webrtc_get_signaling_callbacks()</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_get_signaling_callbacks()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>acip_transport_t</b> * webrtc_get_transport (void )</h2>
@@ -171,21 +193,34 @@
 <p class="Pp">Pointer is valid only until webrtc_set_transport(NULL) is
   called</p>
 </div>
-<p class="Pp">Definition at line <b>338</b> of file
+<p class="Pp">Retrieves the active WebRTC transport for peer-to-peer
+    communication.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Current WebRTC transport pointer (NULL if not set)</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe - uses internal mutex protection
+<p class="Pp"></p>
+<p class="Pp">Pointer is valid only until webrtc_set_transport(NULL) is
+  called</p>
+</div>
+<p class="Pp">Definition at line <b>343</b> of file
   <b>src/client/webrtc.c</b>.</p>
-<pre>338                                              {
-339   ensure_mutex_initialized();
-340   mutex_lock(&amp;g_signaling_mutex);
-341 
-342   acip_transport_t *transport = g_webrtc_transport;
-343 
-344   mutex_unlock(&amp;g_signaling_mutex);
-345 
-346   return transport;
-347 }</pre>
+<pre>343                                              {
+344   ensure_mutex_initialized();
+345   mutex_lock(&amp;g_signaling_mutex);
+346
+347   acip_transport_t *transport = g_webrtc_transport;
+348
+349   mutex_unlock(&amp;g_signaling_mutex);
+350
+351   return transport;
+352 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>mutex_lock</b>, and <b>mutex_unlock</b>.</p>
+<p class="Pp">References <b>mutex_lock</b>, <b>mutex_unlock</b>, and
+    <b>webrtc_get_transport()</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_get_transport()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_webrtc_set_acds_transport_("><a class="permalink" href="#void_webrtc_set_acds_transport_(">void
@@ -202,71 +237,72 @@
 <p class="Pp">Callbacks will fail with ERROR_INVALID_STATE if transport is
   NULL.</p>
 </div>
-<p class="Pp">Definition at line <b>268</b> of file
+<p class="Pp">Definition at line <b>272</b> of file
   <b>src/client/webrtc.c</b>.</p>
-<pre>268                                                             {
-269   ensure_mutex_initialized();
-270   mutex_lock(&amp;g_signaling_mutex);
-271 
-272   g_acds_transport = transport;
-273 
-274   if (transport) {
-275     log_debug(&quot;ACDS transport set for WebRTC signaling&quot;);
-276   } else {
-277     log_debug(&quot;ACDS transport cleared for WebRTC signaling&quot;);
-278   }
-279 
-280   mutex_unlock(&amp;g_signaling_mutex);
-281 }</pre>
+<pre>272                                                             {
+273   ensure_mutex_initialized();
+274   mutex_lock(&amp;g_signaling_mutex);
+275
+276   g_acds_transport = transport;
+277
+278   if (transport) {
+279     log_debug(&quot;ACDS transport set for WebRTC signaling&quot;);
+280   } else {
+281     log_debug(&quot;ACDS transport cleared for WebRTC signaling&quot;);
+282   }
+283
+284   mutex_unlock(&amp;g_signaling_mutex);
+285 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, <b>mutex_lock</b>, and
-    <b>mutex_unlock</b>.</p>
+<p class="Pp">References <b>log_debug</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, and <b>webrtc_set_acds_transport()</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_set_acds_transport()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_webrtc_set_session_context_(const_"><a class="permalink" href="#void_webrtc_set_session_context_(const_">void
-  webrtc_set_session_context (const <b>uint8_t</b> session_id[16], const
-  <b>uint8_t</b> participant_id[16])</a></h2>
+  webrtc_set_session_context (const <b>uint8_t</b> session_id[SESSION_ID_SIZE],
+  const <b>uint8_t</b> participant_id[SESSION_ID_SIZE])</a></h2>
 <p class="Pp">Set session and participant IDs for signaling. Configures the
     session context used when sending SDP/ICE messages. Must be called after
     successful ACDS session join.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>session_id</b><i></i><b> Session UUID (16
-  bytes, copied)</b>
+<div class="Bd-indent"><i>session_id</i> Session UUID (16 bytes, copied)
 <br/>
-<i></i><b>participant_id</b><i></i><b> Local participant UUID (16 bytes,
-  copied)</b></div>
+<i>participant_id</i> Local participant UUID (16 bytes, copied)</div>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">This is called automatically when joining ACDS session.
 <p class="Pp"></p>
 <p class="Pp">Callbacks will fail with ERROR_INVALID_STATE if IDs are not
   set.</p>
 </div>
-<p class="Pp">Definition at line <b>283</b> of file
+<p class="Pp">Definition at line <b>287</b> of file
   <b>src/client/webrtc.c</b>.</p>
-<pre>283                                                                                                 {
-284   if (!session_id || !participant_id) {
-285     log_error(&quot;Invalid session context parameters&quot;);
-286     return;
-287   }
-288 
-289   ensure_mutex_initialized();
-290   mutex_lock(&amp;g_signaling_mutex);
-291 
-292   memcpy(g_session_context.session_id, session_id, 16);
-293   memcpy(g_session_context.participant_id, participant_id, 16);
-294   g_session_context.is_set = true;
-295 
-296   log_info(&quot;Session context set for WebRTC signaling (session=%.8s..., participant=%.8s...)&quot;, (const char *)session_id,
-297            (const char *)participant_id);
-298 
-299   mutex_unlock(&amp;g_signaling_mutex);
-300 }</pre>
+<pre>288                                                                                {
+289   if (!session_id || !participant_id) {
+290     log_error(&quot;Invalid session context parameters&quot;);
+291     return;
+292   }
+293
+294   ensure_mutex_initialized();
+295   mutex_lock(&amp;g_signaling_mutex);
+296
+297   memcpy(g_session_context.session_id, session_id, SESSION_ID_SIZE);
+298   memcpy(g_session_context.participant_id, participant_id, SESSION_ID_SIZE);
+299   g_session_context.is_set = true;
+300
+301   log_info(&quot;Session context set for WebRTC signaling (session=%.8s..., participant=%.8s...)&quot;, (const char *)session_id,
+302            (const char *)participant_id);
+303
+304   mutex_unlock(&amp;g_signaling_mutex);
+305 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_error</b>, <b>log_info</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>participant_id</b>, and <b>session_id</b>.</p>
+    <b>mutex_unlock</b>, <b>SESSION_ID_SIZE</b>, and
+    <b>webrtc_set_session_context()</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_set_session_context()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_webrtc_set_transport_("><a class="permalink" href="#void_webrtc_set_transport_(">void
@@ -285,67 +321,34 @@
 <p class="Pp">If NULL is passed, the transport is cleared (e.g., on
   disconnect)</p>
 </div>
-<p class="Pp">Definition at line <b>313</b> of file
+<p class="Pp">Stores the active WebRTC transport for peer-to-peer communication.
+    Separate from ACDS signaling transport.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> WebRTC transport (NULL to clear)</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Thread-safe - uses internal mutex protection</div>
+<p class="Pp">Definition at line <b>318</b> of file
   <b>src/client/webrtc.c</b>.</p>
-<pre>313                                                        {
-314   ensure_mutex_initialized();
-315   mutex_lock(&amp;g_signaling_mutex);
-316 
-317   g_webrtc_transport = transport;
-318 
-319   if (transport) {
-320     log_debug(&quot;WebRTC data channel transport set&quot;);
-321   } else {
-322     log_debug(&quot;WebRTC data channel transport cleared&quot;);
-323   }
-324 
-325   mutex_unlock(&amp;g_signaling_mutex);
-326 }</pre>
+<pre>318                                                        {
+319   ensure_mutex_initialized();
+320   mutex_lock(&amp;g_signaling_mutex);
+321
+322   g_webrtc_transport = transport;
+323
+324   if (transport) {
+325     log_debug(&quot;WebRTC data channel transport set&quot;);
+326   } else {
+327     log_debug(&quot;WebRTC data channel transport cleared&quot;);
+328   }
+329
+330   mutex_unlock(&amp;g_signaling_mutex);
+331 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, <b>mutex_lock</b>, and
-    <b>mutex_unlock</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> is_set</h2>
-<p class="Pp">Definition at line <b>65</b> of file
-  <b>src/client/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>options_config_validate()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> participant_id[16]</h2>
-<p class="Pp">Definition at line <b>64</b> of file
-  <b>src/client/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>consensus_election_verify()</b>,
-    <b>database_session_join()</b>, <b>database_session_leave()</b>,
-    <b>discovery_webrtc_get_direct_signaling_callbacks()</b>,
-    <b>discovery_webrtc_set_session_context()</b>, <b>nat_quality_to_acip()</b>,
-    <b>negotiate_init()</b>, <b>session_host_add_memory_participant()</b>,
-    <b>session_host_inject_audio()</b>, <b>session_host_inject_frame()</b>,
-    <b>webrtc_peer_manager_connect()</b>,
-    <b>webrtc_peer_manager_handle_sdp()</b>, and
-    <b>webrtc_set_session_context()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> session_id[16]</h2>
-<p class="Pp">Definition at line <b>63</b> of file
-  <b>src/client/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>consensus_create_for_discovery()</b>,
-    <b>database_session_clear_host()</b>, <b>database_session_create()</b>,
-    <b>database_session_find_by_id()</b>,
-    <b>database_session_is_migration_ready()</b>,
-    <b>database_session_leave()</b>, <b>database_session_start_migration()</b>,
-    <b>database_session_update_host()</b>,
-    <b>discovery_webrtc_get_direct_signaling_callbacks()</b>,
-    <b>discovery_webrtc_set_session_context()</b>, <b>nat_quality_to_acip()</b>,
-    <b>negotiate_init()</b>, <b>signaling_broadcast()</b>,
-    <b>signaling_relay_network_quality()</b>,
-    <b>turn_generate_credentials()</b>, <b>webrtc_peer_manager_connect()</b>,
-    and <b>webrtc_set_session_context()</b>.</p>
+<p class="Pp">References <b>log_debug</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, and <b>webrtc_set_transport()</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_set_transport()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -355,7 +358,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

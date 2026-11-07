@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>process_title_internal.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">process_title_internal.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">process_title_internal.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">process_title_internal.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>platform_process_title_native_set</b>
+    (const char *title, const char *short_name)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_process_title_native_set (const
+  char * title, const char * short_name)</h2>
+<p class="Pp">Definition at line <b>7</b> of file
+  <b>linux/process_title.c</b>.</p>
+<pre>7                                                                                                {
+8   (void)title;
+9   if (syscall(SYS_gettid) != getpid()) {
+10     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Process title must be set by the main thread&quot;);
+11   }
+12   // PR_SET_NAME truncates to 15 bytes and changes only the calling thread.
+13   // On the main thread this also updates /proc/PID/comm.
+14   if (prctl(PR_SET_NAME, short_name, 0UL, 0UL, 0UL) != 0) {
+15     return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, &quot;Failed to set Linux process comm&quot;);
+16   }
+17   return ASCIICHAT_OK;
+18 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>ERROR_MEMORY</b>, <b>ERROR_PLATFORM_INIT</b>,
+    <b>PLATFORM_MACOS_PROCESS_TITLE_THREAD_NAME_BUFFER_SIZE</b>,
+    <b>platform_process_title_native_set()</b>, <b>SET_ERRNO</b>, and
+    <b>SET_ERRNO_SYS</b>.</p>
+<p class="Pp">Referenced by <b>platform_process_title_native_set()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

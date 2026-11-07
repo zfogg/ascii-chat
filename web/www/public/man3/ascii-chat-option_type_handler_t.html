@@ -40,20 +40,20 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">void(* <b>extract</b> )(toml_datum_t datum, char *value_str, int
+<p class="Pp">void(*) <b>extract</b> (toml_datum_t datum, char *value_str, int
     *int_val, <b>bool</b> *bool_val, double *double_val, <b>bool</b> *has_value)
   <br/>
-  Extract value from TOML datum. <b>asciichat_error_t</b>(*
-    <b>parse_validate</b> )(const char *value_str, const
+  Extract value from TOML datum. <b>asciichat_error_t</b>(*)
+    <b>parse_validate</b> (const char *value_str, const
     <b>config_option_metadata_t</b> *meta, <b>option_parsed_value_t</b> *parsed,
     char *error_msg, size_t error_size)
   <br/>
-  Parse and validate value. <b>asciichat_error_t</b>(* <b>write_to_struct</b>
-    )(const <b>option_parsed_value_t</b> *parsed, const
+  Parse and validate value. <b>asciichat_error_t</b>(*) <b>write_to_struct</b>
+    (const <b>option_parsed_value_t</b> *parsed, const
     <b>config_option_metadata_t</b> *meta, <b>options_t</b> *opts, char
     *error_msg, size_t error_size)
   <br/>
-  Write to options struct. void(* <b>format_output</b> )(const char *field_ptr,
+  Write to options struct. void(*) <b>format_output</b> (const char *field_ptr,
     size_t field_size, const <b>config_option_metadata_t</b> *meta, char *buf,
     size_t bufsize)
   <br/>
@@ -84,41 +84,42 @@
 <p class="Pp">Function pointers for TOML extraction, validation, writing to
     options struct, and formatting output for each option type (bool, int,
     string, double).</p>
-<p class="Pp">Definition at line <b>144</b> of file <b>config.c</b>.</p>
+<p class="Pp">Definition at line <b>157</b> of file <b>config.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void(*_option_type_handler_t::extract)_(toml_datum_t_datum,_char_*value_str,_int_*int_val,_"><a class="permalink" href="#void(*_option_type_handler_t::extract)_(toml_datum_t_datum,_char_*value_str,_int_*int_val,_">void(*
-  option_type_handler_t::extract) (toml_datum_t datum, char *value_str, int
+<h2 class="Ss" id="void(*)_option_type_handler_t::extract(toml_datum_t_datum,_char_*value_str,_int_*int_val,_"><a class="permalink" href="#void(*)_option_type_handler_t::extract(toml_datum_t_datum,_char_*value_str,_int_*int_val,_">void(*)
+  option_type_handler_t::extract(toml_datum_t datum, char *value_str, int
   *int_val, <b>bool</b> *bool_val, double *double_val, <b>bool</b>
   *has_value)</a></h2>
 <p class="Pp">Extract value from TOML datum.</p>
-<p class="Pp">Definition at line <b>145</b> of file <b>config.c</b>.</p>
+<p class="Pp">Definition at line <b>158</b> of file <b>config.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_option_type_handler_t::format_output)_(const_char_*field_ptr,_size_t_field_size,_const_"><a class="permalink" href="#void(*_option_type_handler_t::format_output)_(const_char_*field_ptr,_size_t_field_size,_const_">void(*
-  option_type_handler_t::format_output) (const char *field_ptr, size_t
-  field_size, const <b>config_option_metadata_t</b> *meta, char *buf, size_t
+<h2 class="Ss" id="void(*)_option_type_handler_t::format_output(const_char_*field_ptr,_size_t_field_size,_const_"><a class="permalink" href="#void(*)_option_type_handler_t::format_output(const_char_*field_ptr,_size_t_field_size,_const_">void(*)
+  option_type_handler_t::format_output(const char *field_ptr, size_t field_size,
+  const <b>config_option_metadata_t</b> *meta, char *buf, size_t
   bufsize)</a></h2>
 <p class="Pp">Format for TOML output.</p>
-<p class="Pp">Definition at line <b>153</b> of file <b>config.c</b>.</p>
+<p class="Pp">Definition at line <b>166</b> of file <b>config.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b>(* option_type_handler_t::parse_validate)
-  (const char *value_str, const <b>config_option_metadata_t</b> *meta,
-  <b>option_parsed_value_t</b> *parsed, char *error_msg, size_t error_size)</h2>
+<h2 class="Ss"><b>asciichat_error_t</b>(*)
+  option_type_handler_t::parse_validate(const char *value_str, const
+  <b>config_option_metadata_t</b> *meta, <b>option_parsed_value_t</b> *parsed,
+  char *error_msg, size_t error_size)</h2>
 <p class="Pp">Parse and validate value.</p>
-<p class="Pp">Definition at line <b>147</b> of file <b>config.c</b>.</p>
+<p class="Pp">Definition at line <b>160</b> of file <b>config.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b>(*
-  option_type_handler_t::write_to_struct) (const <b>option_parsed_value_t</b>
+<h2 class="Ss"><b>asciichat_error_t</b>(*)
+  option_type_handler_t::write_to_struct(const <b>option_parsed_value_t</b>
   *parsed, const <b>config_option_metadata_t</b> *meta, <b>options_t</b> *opts,
   char *error_msg, size_t error_size)</h2>
 <p class="Pp">Write to options struct.</p>
-<p class="Pp">Definition at line <b>150</b> of file <b>config.c</b>.</p>
+<p class="Pp">Definition at line <b>163</b> of file <b>config.c</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -129,7 +130,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

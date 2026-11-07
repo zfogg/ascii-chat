@@ -55,7 +55,10 @@
   <br/>
   GitHub release page URL. time_t <b>last_check_time</b>
   <br/>
-  Timestamp of last check. <b>bool</b> <b>check_succeeded</b>
+  Timestamp of last check. time_t <b>dismissed_until</b>
+  <br/>
+  Suppress this available release until this time. <b>bool</b>
+    <b>check_succeeded</b>
   <br/>
   True if check completed (even if no update).
   <br/>
@@ -66,7 +69,7 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">Update check result data.</p>
-<p class="Pp">Definition at line <b>30</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Definition at line <b>37</b> of file <b>update_checker.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -74,35 +77,42 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> update_check_result_t::check_succeeded</h2>
 <p class="Pp">True if check completed (even if no update).</p>
-<p class="Pp">Definition at line <b>38</b> of file <b>update_checker.h</b>.</p>
-<p class="Pp">Referenced by <b>update_check_load_cache()</b>, and
-    <b>update_check_perform()</b>.</p>
+<p class="Pp">Definition at line <b>46</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Referenced by <b>update_banner_set_result()</b>,
+    <b>update_check_load_cache()</b>, and <b>update_check_perform()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_update_check_result_t::current_sha_41_"><a class="permalink" href="#char_update_check_result_t::current_sha_41_">char
   update_check_result_t::current_sha[41]</a></h2>
 <p class="Pp">Current commit SHA.</p>
-<p class="Pp">Definition at line <b>35</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>update_checker.h</b>.</p>
 <p class="Pp">Referenced by <b>action_check_update_immediate()</b>,
-    <b>update_banner_show_prompt()</b>, <b>update_check_load_cache()</b>, and
-    <b>update_check_perform()</b>.</p>
+    <b>update_check_load_cache()</b>, and <b>update_check_perform()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_update_check_result_t::current_version_64_"><a class="permalink" href="#char_update_check_result_t::current_version_64_">char
   update_check_result_t::current_version[64]</a></h2>
 <p class="Pp">Current version string.</p>
-<p class="Pp">Definition at line <b>34</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Definition at line <b>41</b> of file <b>update_checker.h</b>.</p>
 <p class="Pp">Referenced by <b>action_check_update_immediate()</b>,
     <b>update_banner_print_instructions()</b>,
-    <b>update_banner_show_prompt()</b>,
     <b>update_check_format_notification()</b>, <b>update_check_load_cache()</b>,
     and <b>update_check_perform()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="time_t_update_check_result_t::dismissed_until"><a class="permalink" href="#time_t_update_check_result_t::dismissed_until">time_t
+  update_check_result_t::dismissed_until</a></h2>
+<p class="Pp">Suppress this available release until this time.</p>
+<p class="Pp">Definition at line <b>45</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Referenced by <b>update_check_dismiss_for_a_week()</b>,
+    <b>update_check_is_dismissed()</b>, <b>update_check_load_cache()</b>,
+    <b>update_check_perform()</b>, and <b>update_check_save_cache()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="time_t_update_check_result_t::last_check_time"><a class="permalink" href="#time_t_update_check_result_t::last_check_time">time_t
   update_check_result_t::last_check_time</a></h2>
 <p class="Pp">Timestamp of last check.</p>
-<p class="Pp">Definition at line <b>37</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>update_checker.h</b>.</p>
 <p class="Pp">Referenced by <b>update_check_is_cache_fresh()</b>,
     <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
     <b>update_check_save_cache()</b>, and <b>update_check_startup()</b>.</p>
@@ -111,7 +121,7 @@
 <h2 class="Ss" id="char_update_check_result_t::latest_sha_41_"><a class="permalink" href="#char_update_check_result_t::latest_sha_41_">char
   update_check_result_t::latest_sha[41]</a></h2>
 <p class="Pp">Latest release commit SHA (full 40 chars + null).</p>
-<p class="Pp">Definition at line <b>33</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>update_checker.h</b>.</p>
 <p class="Pp">Referenced by <b>update_check_load_cache()</b>,
     <b>update_check_perform()</b>, and <b>update_check_save_cache()</b>.</p>
 </section>
@@ -119,9 +129,8 @@
 <h2 class="Ss" id="char_update_check_result_t::latest_version_64_"><a class="permalink" href="#char_update_check_result_t::latest_version_64_">char
   update_check_result_t::latest_version[64]</a></h2>
 <p class="Pp">Latest version tag (e.g., &quot;v0.9.0&quot;).</p>
-<p class="Pp">Definition at line <b>32</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Definition at line <b>39</b> of file <b>update_checker.h</b>.</p>
 <p class="Pp">Referenced by <b>update_banner_print_instructions()</b>,
-    <b>update_banner_show_prompt()</b>,
     <b>update_check_format_notification()</b>, <b>update_check_load_cache()</b>,
     <b>update_check_perform()</b>, and <b>update_check_save_cache()</b>.</p>
 </section>
@@ -129,17 +138,19 @@
 <h2 class="Ss" id="char_update_check_result_t::release_url_512_"><a class="permalink" href="#char_update_check_result_t::release_url_512_">char
   update_check_result_t::release_url[512]</a></h2>
 <p class="Pp">GitHub release page URL.</p>
-<p class="Pp">Definition at line <b>36</b> of file <b>update_checker.h</b>.</p>
-<p class="Pp">Referenced by <b>update_banner_print_instructions()</b>, and
-    <b>update_check_perform()</b>.</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Referenced by <b>update_banner_print_instructions()</b>,
+    <b>update_check_format_notification()</b>, <b>update_check_load_cache()</b>,
+    <b>update_check_perform()</b>, and <b>update_check_save_cache()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> update_check_result_t::update_available</h2>
 <p class="Pp">True if newer version exists.</p>
-<p class="Pp">Definition at line <b>31</b> of file <b>update_checker.h</b>.</p>
+<p class="Pp">Definition at line <b>38</b> of file <b>update_checker.h</b>.</p>
 <p class="Pp">Referenced by <b>action_check_update_immediate()</b>,
-    <b>update_banner_set_result()</b>, <b>update_check_load_cache()</b>, and
-    <b>update_check_perform()</b>.</p>
+    <b>update_banner_handle_key()</b>, <b>update_banner_has_update()</b>,
+    <b>update_banner_install_update()</b>, <b>update_banner_set_result()</b>,
+    <b>update_check_load_cache()</b>, and <b>update_check_perform()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -150,7 +161,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

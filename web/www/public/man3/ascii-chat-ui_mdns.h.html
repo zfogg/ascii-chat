@@ -96,8 +96,10 @@
 <section class="Ss">
 <h2 class="Ss" id="void_ui_mdns_free_results_("><a class="permalink" href="#void_ui_mdns_free_results_(">void
   ui_mdns_free_results (<b>ui_mdns_server_t</b> * servers)</a></h2>
-<p class="Pp">Free results from TUI discovery query. Releases memory allocated
-    by <b>ui_mdns_query()</b>.</p>
+<p class="Pp">Free results from TUI discovery query. Free results from mDNS
+    discovery.</p>
+<p class="Pp"></p>
+<p class="Pp">Releases memory allocated by <b>ui_mdns_query()</b>.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>servers</i> Pointer to server array (safe to pass
@@ -117,9 +119,11 @@
 <h2 class="Ss" id="const_char_*_ui_mdns_get_best_address_(const_"><a class="permalink" href="#const_char_*_ui_mdns_get_best_address_(const_">const
   char * ui_mdns_get_best_address (const <b>ui_mdns_server_t</b> *
   server)</a></h2>
-<p class="Pp">Get best address representation for a discovered server. Returns
-    the most suitable address representation (IPv4 &gt; hostname &gt; IPv6) for
-    connecting to a discovered server.</p>
+<p class="Pp">Get best address representation for a discovered server. Get best
+    address for a server.</p>
+<p class="Pp"></p>
+<p class="Pp">Returns the most suitable address representation (IPv4 &gt;
+    hostname &gt; IPv6) for connecting to a discovered server.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Selection Priority:</b></p>
 <dl class="Bl-tag">
@@ -136,25 +140,25 @@
 <div class="Bd-indent">Pointer to best address string (points to field in server
   struct)</div>
 <p class="Pp">Get best address representation for a discovered server.</p>
-<p class="Pp">Definition at line <b>236</b> of file <b>ui/mdns.c</b>.</p>
-<pre>236                                                                      {
-237   if (!server) {
-238     return &quot;&quot;;
-239   }
-240 
-241   // Prefer IPv4 &gt; name &gt; IPv6
-242   if (server-&gt;ipv4[0] != '\0') {
-243     return server-&gt;ipv4;
+<p class="Pp">Definition at line <b>233</b> of file <b>ui/mdns.c</b>.</p>
+<pre>233                                                                      {
+234   if (!server) {
+235     return &quot;&quot;;
+236   }
+237
+238   // Prefer IPv4 &gt; name &gt; IPv6
+239   if (server-&gt;ipv4[0] != '\0') {
+240     return server-&gt;ipv4;
+241   }
+242   if (server-&gt;name[0] != '\0') {
+243     return server-&gt;name;
 244   }
-245   if (server-&gt;name[0] != '\0') {
-246     return server-&gt;name;
+245   if (server-&gt;ipv6[0] != '\0') {
+246     return server-&gt;ipv6;
 247   }
-248   if (server-&gt;ipv6[0] != '\0') {
-249     return server-&gt;ipv6;
-250   }
-251 
-252   return server-&gt;address; // Fallback to address field
-253 }</pre>
+248
+249   return server-&gt;address; // Fallback to address field
+250 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ui_mdns_server_t::address</b>,
@@ -231,9 +235,11 @@
 <h2 class="Ss" id="int_ui_mdns_prompt_selection_(const_"><a class="permalink" href="#int_ui_mdns_prompt_selection_(const_">int
   ui_mdns_prompt_selection (const <b>ui_mdns_server_t</b> * servers, int
   count)</a></h2>
-<p class="Pp">Display discovered servers to user and prompt for selection. Shows
-    a numbered list of discovered servers and prompts user to select one.
-    Handles invalid input with re-prompting.</p>
+<p class="Pp">Display discovered servers to user and prompt for selection.
+    Interactive server selection.</p>
+<p class="Pp"></p>
+<p class="Pp">Shows a numbered list of discovered servers and prompts user to
+    select one. Handles invalid input with re-prompting.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>User Experience:</b></p>
 <p class="Pp"></p>
@@ -273,7 +279,7 @@ Select server (1-3) or press Enter to cancel: _
 85   if (!servers || count &lt;= 0) {
 86     return -1;
 87   }
-88 
+88
 89   // Display available servers
 90   printf(&quot;\nAvailable ascii-chat servers on LAN:\n&quot;);
 91   for (int i = 0; i &lt; count; i++) {
@@ -281,33 +287,33 @@ Select server (1-3) or press Enter to cancel: _
 93     const char *addr = ui_mdns_get_best_address(srv);
 94     printf(&quot;  %d. %s (%s:%u)\n&quot;, i + 1, srv-&gt;name, addr, srv-&gt;port);
 95   }
-96 
+96
 97   // Prompt for selection
 98   printf(&quot;\nSelect server (1-%d) or press Enter to cancel: &quot;, count);
 99   fflush(stdout);
-100 
+100
 101   // Read user input
 102   char input[32];
 103   if (fgets(input, sizeof(input), stdin) == NULL) {
 104     printf(&quot;\n&quot;);
 105     return -1; // EOF or error
 106   }
-107 
+107
 108   // Check for empty input (Enter pressed)
 109   if (input[0] == '\n' || input[0] == '\r' || input[0] == '\0') {
 110     return -1; // User cancelled
 111   }
-112 
+112
 113   // Parse input as number
 114   char *endptr;
 115   long selection = strtol(input, &amp;endptr, 10);
-116 
+116
 117   // Validate input
 118   if (selection &lt; 1 || selection &gt; count) {
 119     printf(&quot;&#x26A0;&#xFE0F;  Invalid selection. Please enter a number between 1 and %d\n&quot;, count);
 120     return ui_mdns_prompt_selection(servers, count); // Re-prompt
 121   }
-122 
+122
 123   return (int)(selection - 1); // Convert to 0-based index
 124 }</pre>
 <pre></pre>
@@ -320,9 +326,12 @@ Select server (1-3) or press Enter to cancel: _
 <section class="Ss">
 <h2 class="Ss"><b>ui_mdns_server_t</b> * ui_mdns_query (const
   <b>ui_mdns_config_t</b> * config, int * out_count)</h2>
-<p class="Pp">Discover ascii-chat servers on the local network via mDNS.
-    Performs an mDNS query for _ascii-chat._tcp services on the local network.
-    Collects responses and returns discovered servers to the caller.</p>
+<p class="Pp">Discover ascii-chat servers on the local network via mDNS. TUI
+    wrapper around core mDNS discovery.</p>
+<p class="Pp"></p>
+<p class="Pp">Performs an mDNS query for _ascii-chat._tcp services on the local
+    network. Collects responses and returns discovered servers to the
+  caller.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Behavior:</b></p>
 <ul class="Bl-bullet">
@@ -352,8 +361,8 @@ Select server (1-3) or press Enter to cancel: _
   <li>Does not spawn background threads</li>
 </ul>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Discovery
-  configuration (NULL uses defaults)</b>
+<div class="Bd-indent"><i>config</i> Discovery configuration (NULL uses
+  defaults)
 <br/>
 <i>out_count</i> Output parameter: number of discovered servers</div>
 <p class="Pp"><b>Returns</b></p>
@@ -394,14 +403,14 @@ if (servers &amp;&amp; count &gt; 0) {
 59     SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_count pointer is NULL&quot;);
 60     return NULL;
 61   }
-62 
+62
 63   *out_count = 0;
-64 
+64
 65   // Apply defaults if needed
 66   int timeout_ms = (config &amp;&amp; config-&gt;timeout_ms &gt; 0) ? config-&gt;timeout_ms : 2000;
 67   int max_servers = (config &amp;&amp; config-&gt;max_servers &gt; 0) ? config-&gt;max_servers : 20;
 68   bool quiet = (config &amp;&amp; config-&gt;quiet);
-69 
+69
 70   // Call the core mDNS discovery function from discovery.c
 71   return discovery_mdns_query(timeout_ms, max_servers, quiet, out_count);
 72 }</pre>
@@ -453,26 +462,12 @@ Enter server number (1-3) or press Enter to cancel:
 <i>count</i> Number of servers (0 for &quot;no results&quot;)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0-based index of selected server, or -1 to cancel</div>
-<p class="Pp">Displays discovered servers in a terminal UI with the following
-    features:</p>
-<ul class="Bl-bullet">
-  <li>Clears terminal and displays formatted server list</li>
-  <li>Shows &quot;No results&quot; message if no servers available</li>
-  <li>Allows numeric input for selection</li>
-  <li>Shows helpful prompts and icons</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>servers</i> Array of discovered servers
-<br/>
-<i>count</i> Number of servers</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0-based index of selected server, or -1 to cancel</div>
-<p class="Pp">Definition at line <b>154</b> of file <b>misc.c</b>.</p>
-<pre>154                                                                {
-155   (void)servers;
-156   (void)count;
-157   return -1;
-158 }</pre>
+<p class="Pp">Definition at line <b>149</b> of file <b>misc.c</b>.</p>
+<pre>149                                                                {
+150   (void)servers;
+151   (void)count;
+152   return -1;
+153 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>colored_string()</b>, <b>LOG_COLOR_DEBUG</b>,
@@ -492,7 +487,7 @@ Enter server number (1-3) or press Enter to cancel:
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.11.25</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

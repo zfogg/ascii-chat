@@ -193,11 +193,11 @@
 121     log_warn(&quot;ascii_renderer_init called but renderer already initialized&quot;);
 122     return;
 123   }
-124 
+124
 125   renderer.width_px = pixel_width;
 126   renderer.height_px = pixel_height;
 127   renderer.pitch = ((pixel_width * 3 + 3) / 4) * 4; /* Align to 4 bytes */
-128 
+128
 129   /* Allocate framebuffer */
 130   renderer.framebuffer =
 131       SAFE_MALLOC(renderer.pitch * pixel_height, uint8_t *);
@@ -206,14 +206,14 @@
 134     return;
 135   }
 136   memset(renderer.framebuffer, 0, renderer.pitch * pixel_height);
-137 
+137
 138   /* Initialize FreeType */
 139   if (FT_Init_FreeType(&amp;renderer.ft_lib)) {
 140     log_error(&quot;Failed to initialize FreeType&quot;);
 141     SAFE_FREE(renderer.framebuffer);
 142     return;
 143   }
-144 
+144
 145   /* Load embedded DejaVu Sans Mono font */
 146   if (FT_New_Memory_Face(renderer.ft_lib, g_font_default,
 147                           (FT_Long)g_font_default_size, 0, &amp;renderer.ft_face)) {
@@ -222,27 +222,27 @@
 150     SAFE_FREE(renderer.framebuffer);
 151     return;
 152   }
-153 
+153
 154   /* Set font size: 12pt at 96 DPI */
 155   FT_Set_Char_Size(renderer.ft_face, 0, 12 * 64, 96, 96);
-156 
+156
 157   /* Measure cell dimensions using 'M' */
 158   FT_Load_Char(renderer.ft_face, 'M', FT_LOAD_RENDER);
-159 
+159
 160   renderer.cell_w = renderer.ft_face-&gt;glyph-&gt;advance.x &gt;&gt; 6;
 161   renderer.cell_h = renderer.ft_face-&gt;glyph-&gt;bitmap.rows;
 162   renderer.baseline = (3 * renderer.cell_h) / 4;
-163 
+163
 164   /* Adjust height for 2:1 aspect ratio */
 165   renderer.cell_h = renderer.cell_w * 2;
-166 
+166
 167   renderer.cols = pixel_width / renderer.cell_w;
 168   renderer.rows = pixel_height / renderer.cell_h;
-169 
+169
 170   log_info(&quot;ASCII renderer initialized: %dx%d pixels, %dx%d cells, font size %dx%d&quot;,
 171            pixel_width, pixel_height, renderer.cols, renderer.rows,
 172            renderer.cell_w, renderer.cell_h);
-173 
+173
 174   /* Initialize libvterm */
 175   renderer.vt = vterm_new(renderer.rows, renderer.cols);
 176   if (!renderer.vt) {
@@ -252,11 +252,11 @@
 180     SAFE_FREE(renderer.framebuffer);
 181     return;
 182   }
-183 
+183
 184   renderer.vts = vterm_obtain_screen(renderer.vt);
-185 
+185
 186   /* Renderer dimensions are initialized before displaying frames. */
-188 
+188
 189 }</pre>
 <pre></pre>
 <p class="Pp"></p>
@@ -275,39 +275,39 @@
 <p class="Pp">Definition at line <b>199</b> of file <b>ascii_renderer.c</b>.</p>
 <pre>199                                                                  {
 200   log_debug(&quot;[ascii_renderer_render_frame] Called with ansi_data=%p, len=%d&quot;, ansi_data, len);
-201 
+201
 202   if (!renderer.vt || !renderer.framebuffer) {
 203     log_warn(&quot;ascii_renderer_render_frame: renderer not initialized&quot;);
 204     return;
 205   }
-206 
+206
 207   if (!ansi_data || len &lt;= 0) {
 208     log_warn(&quot;ascii_renderer_render_frame: empty ANSI input&quot;);
 209     return;
 210   }
-211 
+211
 212   /* Feed ANSI data to vterm for parsing and cell state updates */
 213   vterm_input_write(renderer.vt, ansi_data, len);
-214 
+214
 215   /* Clear framebuffer to black background */
 216   memset(renderer.framebuffer, 0, renderer.pitch * renderer.height_px);
-217 
+217
 218   /* Render each cell from the vterm screen state */
 219   for (int row = 0; row &lt; renderer.rows; row++) {
 220     for (int col = 0; col &lt; renderer.cols; col++) {
 221       VTermPos pos = {row, col};
 222       VTermScreenCell cell;
 223       vterm_screen_get_cell(renderer.vts, pos, &amp;cell);
-224 
+224
 225       /* Skip empty cells */
 226       if (cell.chars[0] == 0) {
 227         continue;
 228       }
-229 
+229
 230       /* Calculate pixel coordinates for this cell */
 231       int cell_x = col * renderer.cell_w;
 232       int cell_y = row * renderer.cell_h;
-233 
+233
 234       /* Extract background color */
 235       uint8_t bg_r = 0, bg_g = 0, bg_b = 0;
 236       if (VTERM_COLOR_IS_RGB(&amp;cell.bg)) {
@@ -315,11 +315,11 @@
 238         bg_g = cell.bg.rgb.green;
 239         bg_b = cell.bg.rgb.blue;
 240       }
-241 
+241
 242       /* Fill cell background */
 243       fill_rect(renderer.framebuffer, renderer.pitch, cell_x, cell_y,
 244                 renderer.cell_w, renderer.cell_h, bg_r, bg_g, bg_b);
-245 
+245
 246       /* Extract foreground color (default white) */
 247       uint8_t fg_r = 255, fg_g = 255, fg_b = 255;
 248       if (VTERM_COLOR_IS_RGB(&amp;cell.fg)) {
@@ -327,33 +327,33 @@
 250         fg_g = cell.fg.rgb.green;
 251         fg_b = cell.fg.rgb.blue;
 252       }
-253 
+253
 254       /* Load and render glyph */
 255       uint32_t codepoint = cell.chars[0];
 256       if (FT_Load_Char(renderer.ft_face, (unsigned long)codepoint, 4)) {  /* FT_LOAD_RENDER = 4 */
 257         continue;
 258       }
-259 
+259
 260       /* Get glyph bitmap */
 261       FT_Glyph glyph;
 262       if (FT_Get_Glyph(renderer.ft_face-&gt;glyph, &amp;glyph)) {
 263         continue;
 264       }
-265 
+265
 266       FT_BitmapGlyph bitmap_glyph = (FT_BitmapGlyph)glyph;
-267 
+267
 268       /* Calculate glyph position with baseline adjustment */
 269       int glyph_x = cell_x + bitmap_glyph-&gt;left;
 270       int glyph_y = cell_y + renderer.baseline - bitmap_glyph-&gt;top;
-271 
+271
 272       /* Composite glyph onto framebuffer */
 273       blit_glyph(&amp;bitmap_glyph-&gt;bitmap, glyph_x, glyph_y,
 274                   fg_r, fg_g, fg_b, bg_r, bg_g, bg_b);
-275 
+275
 276       FT_Done_Glyph(glyph);
 277     }
 278   }
-279 
+279
 280   /* JavaScript displays the framebuffer using Canvas 2D. */
 284 }</pre>
 <pre></pre>
@@ -374,22 +374,22 @@
 296     log_warn(&quot;ascii_renderer_resize: renderer not initialized&quot;);
 297     return;
 298   }
-299 
+299
 300   if (pixel_width == renderer.width_px &amp;&amp; pixel_height == renderer.height_px) {
 301     return;
 302   }
-303 
+303
 304   log_info(&quot;ascii_renderer_resize: %dx%d -&gt; %dx%d&quot;, renderer.width_px,
 305            renderer.height_px, pixel_width, pixel_height);
-306 
+306
 307   /* Note: Texture management removed for WASM - no window context in browser */
-308 
+308
 309   /* Reallocate framebuffer */
 310   SAFE_FREE(renderer.framebuffer);
 311   renderer.width_px = pixel_width;
 312   renderer.height_px = pixel_height;
 313   renderer.pitch = ((pixel_width * 3 + 3) / 4) * 4;
-314 
+314
 315   renderer.framebuffer =
 316       SAFE_MALLOC(renderer.pitch * pixel_height, uint8_t *);
 317   if (!renderer.framebuffer) {
@@ -397,20 +397,20 @@
 319     return;
 320   }
 321   memset(renderer.framebuffer, 0, renderer.pitch * pixel_height);
-322 
+322
 323   /* Update terminal dimensions */
 324   int new_cols = pixel_width / renderer.cell_w;
 325   int new_rows = pixel_height / renderer.cell_h;
-326 
+326
 327   if (new_cols != renderer.cols || new_rows != renderer.rows) {
 328     renderer.cols = new_cols;
 329     renderer.rows = new_rows;
 330     vterm_set_size(renderer.vt, new_rows, new_cols);
 331   }
-332 
+332
 333   /* Note: Texture creation removed for WASM - no window context in browser.
 334    * Framebuffer is maintained for JavaScript to read via getter functions. */
-335 
+335
 336   log_info(&quot;ascii_renderer_resize complete: %dx%d cells&quot;, renderer.cols,
 337            renderer.rows);
 338 }</pre>
@@ -426,24 +426,24 @@
 <p class="Pp">Definition at line <b>412</b> of file <b>ascii_renderer.c</b>.</p>
 <pre>412                                    {
 413   /* Note: Texture cleanup removed for WASM - no window context in browser */
-414 
+414
 415   if (renderer.vt) {
 416     vterm_free(renderer.vt);
 417     renderer.vt = NULL;
 418   }
-419 
+419
 420   if (renderer.ft_face) {
 421     FT_Done_Face(renderer.ft_face);
 422   }
-423 
+423
 424   if (renderer.ft_lib) {
 425     FT_Done_FreeType(renderer.ft_lib);
 426   }
-427 
+427
 428   if (renderer.framebuffer) {
 429     SAFE_FREE(renderer.framebuffer);
 430   }
-431 
+431
 432   memset(&amp;renderer, 0, sizeof(renderer));
 433   log_info(&quot;ASCII renderer shut down&quot;);
 434 }</pre>

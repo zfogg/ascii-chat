@@ -37,7 +37,11 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>PACKET_MAX_FRAME_SIZE</b> (256 * 1024 * 1024)
+<p class="Pp">#define <b>NETWORK_PACKET_PARSING_SIZE_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>NETWORK_PACKET_PARSING_HEX_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>PACKET_MAX_FRAME_SIZE</b> (256 * 1024 * 1024)
   <br/>
   Maximum frame size (256MB) - prevents memory exhaustion attacks. #define
     <b>PACKET_MAX_DIMENSION</b> 32768
@@ -49,9 +53,9 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">char * <b>packet_decode_frame_data_malloc</b> (const char
-    *frame_data_ptr, size_t frame_data_len, <b>bool</b> is_compressed,
-    <b>uint32_t</b> original_size, <b>uint32_t</b> compressed_size)
+<p class="Pp">char * <b>packet_decode_frame_data_malloc</b> (const char *data,
+    size_t length, <b>bool</b> compressed, <b>uint32_t</b> original_size,
+    <b>uint32_t</b> compressed_size)
   <br/>
   Decode frame data (malloc version for client handlers).
     <b>asciichat_error_t</b> <b>packet_decode_frame_data_buffer</b> (const char
@@ -60,7 +64,12 @@
     <b>uint32_t</b> compressed_size)
   <br/>
   Decode frame data (fixed buffer version for server handlers).
-    <b>asciichat_error_t</b> <b>packet_validate_frame_dimensions</b>
+    <b>asciichat_error_t</b> <b>packet_decode_frame_data_workspace</b>
+    (<b>buffer_workspace_t</b> *workspace, const void *data, size_t length,
+    <b>bool</b> compressed, <b>uint32_t</b> original_size, <b>uint32_t</b>
+    compressed_size)
+  <br/>
+  <b>asciichat_error_t</b> <b>packet_validate_frame_dimensions</b>
     (<b>uint32_t</b> width, <b>uint32_t</b> height, size_t *out_rgb_size)
   <br/>
   Validate frame dimensions and calculate RGB buffer size.
@@ -75,13 +84,31 @@
 </section>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_NETWORK_PACKET_PARSING_HEX_BUFFER_SIZE___256"><a class="permalink" href="#_define_NETWORK_PACKET_PARSING_HEX_BUFFER_SIZE___256">#define
+  NETWORK_PACKET_PARSING_HEX_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file
+    <b>network/packet/parsing.c</b>.</p>
+<p class="Pp">Referenced by <b>packet_parse_opus_batch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NETWORK_PACKET_PARSING_SIZE_BUFFER_SIZE___32"><a class="permalink" href="#_define_NETWORK_PACKET_PARSING_SIZE_BUFFER_SIZE___32">#define
+  NETWORK_PACKET_PARSING_SIZE_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file
+    <b>network/packet/parsing.c</b>.</p>
+<p class="Pp">Referenced by <b>packet_validate_frame_dimensions()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -47,7 +47,14 @@
   Calculate terminal display width of a UTF-8 string. int
     <b>utf8_display_width_n</b> (const char *str, size_t max_bytes)
   <br/>
-  Calculate terminal display width of a UTF-8 string up to byte limit.
+  Calculate terminal display width of a UTF-8 string up to byte limit. size_t
+    <b>utf8_prefix_bytes_for_width</b> (const char *str, size_t max_bytes, int
+    max_width)
+  <br/>
+  Return the byte length of a prefix fitting a terminal column limit.
+    <b>bool</b> <b>utf8_output_enabled</b> (void)
+  <br/>
+  Return whether terminal output should use UTF-8 according to --utf8.
     <b>bool</b> <b>utf8_is_valid</b> (const char *str)
   <br/>
   Check if a string is valid UTF-8. <b>bool</b> <b>utf8_is_ascii_only</b> (const
@@ -62,16 +69,8 @@
   Convert UTF-8 string to array of Unicode codepoints. int
     <b>utf8_next_char_bytes</b> (const char *str, size_t max_bytes)
   <br/>
-  Get byte length of next UTF-8 character. int
-    <b>utf8_continuation_bytes_needed</b> (unsigned char first_byte)
-  <br/>
-  Determine how many additional bytes are needed to complete a UTF-8 character.
-    int <b>utf8_read_and_insert_continuation_bytes</b> (char *buffer, size_t
-    *cursor, size_t *len, size_t max_len, int continuation_bytes,
-    int(*read_byte_fn)(void))
-  <br/>
-  Read continuation bytes and insert them into buffer at cursor position. const
-    char * <b>utf8_strcasestr</b> (const char *haystack, const char *needle)
+  Get byte length of next UTF-8 character. const char * <b>utf8_strcasestr</b>
+    (const char *haystack, const char *needle)
   <br/>
   Case-insensitive substring search with full Unicode support. void
     <b>utf8_write_lowercase</b> (FILE *output, const char *text)
@@ -137,13 +136,49 @@
 <p class="Pp">Definition in file <b>utf8.h</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="size_t_utf8_prefix_bytes_for_width_(const_char_*_str,_size_t_max_bytes,_int_max_width)"><a class="permalink" href="#size_t_utf8_prefix_bytes_for_width_(const_char_*_str,_size_t_max_bytes,_int_max_width)">size_t
+  utf8_prefix_bytes_for_width (const char * str, size_t max_bytes, int
+  max_width)</a></h2>
+<p class="Pp">Return the byte length of a prefix fitting a terminal column
+    limit.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>str</i> Input string or bounded slice (may be NULL)
+<br/>
+<i>max_bytes</i> Maximum readable bytes
+<br/>
+<i>max_width</i> Maximum terminal columns; negative values return zero</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Prefix length in bytes, without modifying the input</div>
+<p class="Pp">Stops at NUL, invalid/incomplete UTF-8, or an
+    incomplete/unsupported escape. Complete ANSI CSI sequences consume zero
+    columns. Codepoints are never split; combining marks and trailing CSI
+    sequences are included even at the width limit. Widths follow
+    utf8proc_charwidth(), not grapheme-cluster or terminal-specific emoji
+    shaping. A zero-column limit may include leading zero-width tokens.</p>
+<p class="Pp">Definition at line <b>93</b> of file <b>utf8.c</b>.</p>
+<pre>93                                                                                      {
+94   int width;
+95   return utf8_prefix_scan(str, max_bytes, max_width, &amp;width);
+96 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>utf8_prefix_bytes_for_width()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_create_grid()</b>,
+    <b>truncate_with_ellipsis_mode()</b>, and
+    <b>utf8_prefix_bytes_for_width()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

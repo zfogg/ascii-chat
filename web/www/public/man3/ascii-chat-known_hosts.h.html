@@ -46,8 +46,12 @@
     <b>uint16_t</b> port, const <b>uint8_t</b> server_key[32])
   <br/>
   Check if server key is in known_hosts. <b>asciichat_error_t</b>
-    <b>check_known_host_no_identity</b> (const char *server_ip, <b>uint16_t</b>
-    port)
+    <b>check_known_host_with_key</b> (const char *server_ip, <b>uint16_t</b>
+    port, const <b>uint8_t</b> server_key[32], <b>uint8_t</b> expected_key[32],
+    <b>bool</b> *has_expected_key)
+  <br/>
+  <b>asciichat_error_t</b> <b>check_known_host_no_identity</b> (const char
+    *server_ip, <b>uint16_t</b> port)
   <br/>
   Check known_hosts for servers without identity key (no-identity entries).
   <br/>
@@ -96,7 +100,7 @@
   <br/>
   <br/>
   void <b>compute_key_fingerprint</b> (const <b>uint8_t</b> key[32], char
-    fingerprint[65])
+    fingerprint[(32 *2+1)])
   <br/>
   Compute SHA256 fingerprint of Ed25519 key for display.
   <br/>
@@ -129,7 +133,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

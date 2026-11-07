@@ -30,9 +30,7 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">server_like.h - Shared initialization, networking, and teardown
-    for server-like modes.</p>
-<p class="Pp"></p>
+<p class="Pp">server_like.h</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
@@ -48,14 +46,14 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef <b>asciichat_error_t</b>(*
-    <b>session_server_like_init_fn</b>) (void *user_data)
+<p class="Pp">typedef <b>asciichat_error_t</b>(*)
+    <b>session_server_like_init_fn</b>(void *user_data)
   <br/>
-  typedef void(* <b>session_server_like_interrupt_fn</b>) (int sig)
+  typedef void(*) <b>session_server_like_interrupt_fn</b>(int sig)
   <br/>
-  typedef void(* <b>session_server_like_cleanup_fn</b>) (void *user_data)
+  typedef void(*) <b>session_server_like_cleanup_fn</b>(void *user_data)
   <br/>
-  typedef void(* <b>session_server_like_status_fn</b>) (void *user_data,
+  typedef void(*) <b>session_server_like_status_fn</b>(void *user_data,
     <b>ui_status_t</b> *out_status)
   <br/>
   typedef struct <b>session_server_like_config</b>
@@ -70,238 +68,59 @@
 <p class="Pp"><b>asciichat_error_t</b> <b>session_server_like_run</b> (const
     <b>session_server_like_config_t</b> *config)
   <br/>
-  <b>tcp_server_t</b> * <b>session_server_like_get_tcp_server</b> (void)
+  <b>network_server_t</b> * <b>session_server_like_get_network_server</b> (void)
   <br/>
   <b>asciichat_mdns_t</b> * <b>session_server_like_get_mdns_ctx</b> (void)
   <br/>
   <b>nat_upnp_context_t</b> * <b>session_server_like_get_upnp_ctx</b> (void)
   <br/>
-  <b>websocket_server_t</b> * <b>session_server_like_get_websocket_server</b>
-    (void)
-  <br/>
   <b>asciichat_error_t</b> <b>session_server_like_mdns_advertise</b> (const char
     *name, const char *type, <b>uint16_t</b> port, const char **txt, size_t
     txt_count)
   <br/>
-  <b>asciichat_error_t</b> <b>session_server_like_handshake</b>
-    (<b>crypto_handshake_context_t</b> *ctx, <b>acip_transport_t</b> *transport)
-  <br/>
   <b>bool</b> <b>session_server_like_shutdown_requested</b> (void)
+  <br/>
+  void <b>session_server_like_request_shutdown</b> (void)
   <br/>
   <br/>
 </p>
 </section>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Shared initialization, networking, and teardown for server-like
-    modes.</p>
-<p class="Pp">Provides a unified lifecycle for modes that act as servers
-    (accepting client connections). Both the main ascii-chat server and the
-    discovery-service (ACDS) use this layer, analogous to how client_like serves
-    mirror/client/discovery.</p>
-<p class="Pp"></p>
-<section class="Ss">
-<h2 class="Ss" id="Modes_Supported"><a class="permalink" href="#Modes_Supported">Modes
-  Supported</a></h2>
-<ul class="Bl-bullet">
-  <li><b>Server mode</b>: TCP/WebSocket server with audio mixing and H.265
-      encoding</li>
-  <li><b>Discovery-Service mode</b>: ACDS session discovery and WebRTC
-    signaling</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Shared_Responsibilities"><a class="permalink" href="#Shared_Responsibilities">Shared
-  Responsibilities</a></h2>
-<p class="Pp">This layer owns and manages:</p>
-<ul class="Bl-bullet">
-  <li>TCP server lifecycle (init, accept loop, destroy)</li>
-  <li>WebSocket server lifecycle (init, event loop thread, destroy)</li>
-  <li>mDNS context and service advertisement</li>
-  <li>UPnP port mapping</li>
-  <li>Per-client crypto handshake (single shared implementation)</li>
-  <li>Signal handler registration (SIGINT, SIGTERM, SIGPIPE) with persistent
-      shutdown flag</li>
-  <li>Keepawake system (platform sleep prevention)</li>
-  <li>Status screen thread with keyboard input and grep mode</li>
-  <li>File descriptor limit raising</li>
-  <li>Proper cleanup ordering with partial-init safety</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Mode-Specific_Responsibilities"><a class="permalink" href="#Mode-Specific_Responsibilities">Mode-Specific
-  Responsibilities</a></h2>
-<p class="Pp">Mode files provide callbacks for:</p>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>init_fn: Mode-specific setup (crypto keys, rate limiter, mixer, DB,
-    etc.)</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Called AFTER network infrastructure is ready but BEFORE WebSocket thread
-      starts</dd>
-  <dt> &#x2022;</dt>
-  <dd>Can detect early shutdown via
-      <b>session_server_like_shutdown_requested()</b></dd>
-  <dt> &#x2022;</dt>
-  <dd>Failure triggers clean shutdown (cleanup still runs)</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>interrupt_fn(int sig): Async-signal-safe shutdown (close sockets, set exit
-      flag)</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Called from signal handler (SIGINT/SIGTERM)</dd>
-  <dt> &#x2022;</dt>
-  <dd>Must use only async-signal-safe operations</dd>
-  <dt> &#x2022;</dt>
-  <dd>Receives signal number as parameter</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>cleanup_fn: Mode-specific teardown (clients, threads, resources)</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Called after WebSocket event loop stops</dd>
-  <dt> &#x2022;</dt>
-  <dd>TCP registry still available for iteration</dd>
-  <dt> &#x2022;</dt>
-  <dd>Only called if config provided (safe against NULL)</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt>&#x2022;</dt>
-  <dd>status_fn: Optional status screen data population</dd>
-</dl>
-<dl class="Bl-tag">
-  <dt> &#x2022;</dt>
-  <dd>Called at <b>GET_OPTION(fps)</b> Hz by dedicated status thread</dd>
-  <dt> &#x2022;</dt>
-  <dd>Receives pre-zeroed <b>ui_status_t</b> struct to populate</dd>
-  <dt> &#x2022;</dt>
-  <dd>NULL = no status screen even if --status-screen is set</dd>
-</dl>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Memory_and_Lifecycle"><a class="permalink" href="#Memory_and_Lifecycle">Memory
-  and Lifecycle</a></h2>
-<p class="Pp">server_like owns TCP server, WebSocket server, mDNS context, and
-    UPnP context. Modes access these via accessors (e.g.,
-    <b>session_server_like_get_tcp_server()</b>). Mode-specific state (clients,
-    mixer, DB) is owned by the mode.</p>
-<p class="Pp"></p>
-<p class="Pp">CRITICAL SAFETY GUARANTEES:</p>
-<ul class="Bl-bullet">
-  <li>Cleanup operations only destroy resources that were successfully
-      initialized</li>
-  <li>Mode init failures do not cause undefined behavior during cleanup</li>
-  <li>Early SIGINT/SIGTERM during init is preserved and detectable</li>
-  <li>WebSocket callbacks do not run before mode init completes</li>
-  <li>Signal handler type is correct (void(*)(int)) with no casts</li>
-</ul>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">April 2026 (Refactored)</div>
-<p class="Pp">Definition in file <b>server_like.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="typedef_void(*_session_server_like_cleanup_fn)_(void_*user_data)"><a class="permalink" href="#typedef_void(*_session_server_like_cleanup_fn)_(void_*user_data)">typedef
-  void(* session_server_like_cleanup_fn) (void *user_data)</a></h2>
-<p class="Pp">Mode-specific teardown callback.</p>
-<p class="Pp"></p>
-<p class="Pp">Called after WebSocket server is stopped but before WebSocket/TCP
-    servers are destroyed. The TCP client registry is still available for
-    iteration (e.g., to disconnect all clients gracefully).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>user_data</i> Opaque pointer from
-  config.cleanup_user_data</div>
-<p class="Pp">Definition at line <b>120</b> of file <b>server_like.h</b>.</p>
+<h2 class="Ss" id="typedef_void(*)_session_server_like_cleanup_fn(void_*user_data)"><a class="permalink" href="#typedef_void(*)_session_server_like_cleanup_fn(void_*user_data)">typedef
+  void(*) session_server_like_cleanup_fn(void *user_data)</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>server_like.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
   struct <b>session_server_like_config</b>
   <b>session_server_like_config_t</b></a></h2>
-<p class="Pp">Configuration for <b>session_server_like_run()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp">Network settings (port, address, WebSocket port, TLS paths) are
-    read from <b>GET_OPTION()</b> automatically. Callers provide callbacks,
-    handler functions, and feature toggles.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
-  <b>asciichat_error_t</b>(* session_server_like_init_fn) (void
+  <b>asciichat_error_t</b>(*) session_server_like_init_fn(void
   *user_data)</a></h2>
-<p class="Pp">Mode-specific initialization callback.</p>
-<p class="Pp"></p>
-<p class="Pp">Called once after shared infrastructure is up (TCP server bound,
-    WebSocket started, mDNS/UPnP configured). Should set up mode-specific state:
-    crypto keys, rate limiter, mixer, database, etc.</p>
-<p class="Pp"></p>
-<p class="Pp">The TCP server is accessible via
-    <b>session_server_like_get_tcp_server()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>user_data</i> Opaque pointer from
-  config.init_user_data</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK, or error code to abort (cleanup still
-  runs)</div>
-<p class="Pp">Definition at line <b>94</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Shared server-mode orchestration. Networking is owned by
+    <b>network_server_t</b>; modes supply one callback set for TCP, WebSocket,
+    and authenticated peers. Listeners are constructed before init_fn and
+    started only after it succeeds. All connections drain before cleanup_fn
+    releases mode dependencies. The interrupt callback only publishes atomic
+    shutdown requests.</p>
+<p class="Pp">Definition at line <b>19</b> of file <b>server_like.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="typedef_void(*_session_server_like_interrupt_fn)_(int_sig)"><a class="permalink" href="#typedef_void(*_session_server_like_interrupt_fn)_(int_sig)">typedef
-  void(* session_server_like_interrupt_fn) (int sig)</a></h2>
-<p class="Pp">Async-signal-safe interrupt callback.</p>
-<p class="Pp"></p>
-<p class="Pp">Called from signal handler context (SIGINT / SIGTERM) with the
-    signal number. Must only use async-signal-safe operations. Responsible
-  for:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Setting the mode's shutdown flag (atomic)</dd>
-  <dt>2.</dt>
-  <dd>Closing TCP listen sockets to unblock accept loop</dd>
-  <dt>3.</dt>
-  <dd>Optionally stopping WebSocket server</dd>
-</dl>
-<p class="Pp">Use <b>session_server_like_get_tcp_server()</b> to access listen
-    sockets.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>sig</i> Signal number (SIGINT=2, SIGTERM=15)</div>
-<p class="Pp">Definition at line <b>109</b> of file <b>server_like.h</b>.</p>
+<h2 class="Ss" id="typedef_void(*)_session_server_like_interrupt_fn(int_sig)"><a class="permalink" href="#typedef_void(*)_session_server_like_interrupt_fn(int_sig)">typedef
+  void(*) session_server_like_interrupt_fn(int sig)</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file <b>server_like.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="typedef_void(*_session_server_like_status_fn)_(void_*user_data,_"><a class="permalink" href="#typedef_void(*_session_server_like_status_fn)_(void_*user_data,_">typedef
-  void(* session_server_like_status_fn) (void *user_data, <b>ui_status_t</b>
+<h2 class="Ss" id="typedef_void(*)_session_server_like_status_fn(void_*user_data,_"><a class="permalink" href="#typedef_void(*)_session_server_like_status_fn(void_*user_data,_">typedef
+  void(*) session_server_like_status_fn(void *user_data, <b>ui_status_t</b>
   *out_status)</a></h2>
-<p class="Pp">Status screen data callback.</p>
-<p class="Pp"></p>
-<p class="Pp">Called at <b>GET_OPTION(fps)</b> Hz by the status screen thread.
-    Should fill *out_status with current state for <b>ui_status_display()</b>.
-    If NULL in config, the status screen is not shown even if --status-screen is
-    set.</p>
-<p class="Pp"></p>
-<p class="Pp">The callback receives a zeroed <b>ui_status_t</b> and must
-    populate ALL fields it wants displayed.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>user_data</i> Opaque pointer from
-  config.status_user_data
-<br/>
-<i>out_status</i> Output struct to populate (pre-zeroed by caller)</div>
-<p class="Pp">Definition at line <b>135</b> of file <b>server_like.h</b>.</p>
+<p class="Pp">Definition at line <b>25</b> of file <b>server_like.h</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -310,670 +129,420 @@
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_mdns_t</b> * session_server_like_get_mdns_ctx (void
   )</h2>
-<p class="Pp">Get the mDNS context owned by server_like.</p>
-<p class="Pp"></p>
-<p class="Pp">READINESS GUARANTEE: Available from step 6 onward (during init_fn
-    and after). Use for deferred advertisement when service_name is not known at
-    config time. NULL if mDNS is disabled or initialization failed
-  (non-fatal).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to mDNS context, or NULL if not initialized or
-  disabled</div>
-<p class="Pp">Definition at line <b>266</b> of file <b>server_like.c</b>.</p>
-<pre>266                                                          {
-267   return g_mdns_ctx;
-268 }</pre>
+<p class="Pp">Definition at line <b>165</b> of file <b>server_like.c</b>.</p>
+<pre>165                                                          {
+166   return g_mdns_ctx;
+167 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>session_server_like_get_mdns_ctx()</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_get_mdns_ctx()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>tcp_server_t</b> * session_server_like_get_tcp_server (void
-  )</h2>
-<p class="Pp">Get the TCP server instance owned by server_like.</p>
-<p class="Pp"></p>
-<p class="Pp">READINESS GUARANTEE: Available from step 4 onward (during init_fn,
-    interrupt_fn, cleanup_fn). Modes use this for client registry operations and
-    to close listen sockets in interrupt_fn. The TCP server is guaranteed to be
-    valid during init_fn and in interrupt_fn (async-signal context).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to TCP server (never NULL after step 4), or NULL
-  if called before TCP init</div>
-<p class="Pp">Definition at line <b>262</b> of file <b>server_like.c</b>.</p>
-<pre>262                                                        {
-263   return g_tcp_server_initialized ? &amp;g_tcp_server : NULL;
-264 }</pre>
+<h2 class="Ss"><b>network_server_t</b> * session_server_like_get_network_server
+  (void )</h2>
+<p class="Pp">Definition at line <b>161</b> of file <b>server_like.c</b>.</p>
+<pre>161                                                                {
+162   return g_network_server;
+163 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>acds_server_init()</b>.</p>
+<p class="Pp">References <b>session_server_like_get_network_server()</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_init()</b>,
+    <b>broadcast_server_state_to_all_clients()</b>, and
+    <b>session_server_like_get_network_server()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>nat_upnp_context_t</b> * session_server_like_get_upnp_ctx
   (void )</h2>
-<p class="Pp">Get the UPnP context owned by server_like.</p>
-<p class="Pp"></p>
-<p class="Pp">READINESS GUARANTEE: Available from step 5 onward (during init_fn
-    and after). Use for querying the public address. NULL if port mapping failed
-    or was disabled. Failure to map UPnP is non-fatal; WebRTC fallback will be
-    used.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to UPnP context, or NULL if not initialized or
-  disabled</div>
-<p class="Pp">Definition at line <b>270</b> of file <b>server_like.c</b>.</p>
-<pre>270                                                            {
-271   return g_upnp_ctx;
-272 }</pre>
+<p class="Pp">Definition at line <b>169</b> of file <b>server_like.c</b>.</p>
+<pre>169                                                            {
+170   return g_upnp_ctx;
+171 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>websocket_server_t</b> *
-  session_server_like_get_websocket_server (void )</h2>
-<p class="Pp">Get the WebSocket server instance owned by server_like.</p>
-<p class="Pp"></p>
-<p class="Pp">READINESS GUARANTEE: WebSocket object is constructed at step 7,
-    but the event loop thread does NOT start until after mode init succeeds
-    (step 9). Callbacks will not run until after init_fn returns successfully.
-    This prevents client connections before mode state is ready.</p>
-<p class="Pp"></p>
-<p class="Pp">Available for configuration during init_fn, and for state queries
-    after init_fn succeeds. The WebSocket object is valid for the lifetime of
-    the <b>session_server_like_run()</b> call.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to WebSocket server, or NULL if not initialized
-  or disabled</div>
-<p class="Pp">Definition at line <b>274</b> of file <b>server_like.c</b>.</p>
-<pre>274                                                                    {
-275   return g_websocket_thread_started ? &amp;g_websocket_server : NULL;
-276 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> session_server_like_handshake
-  (<b>crypto_handshake_context_t</b> * ctx, <b>acip_transport_t</b> *
-  transport)</h2>
-<p class="Pp">Perform the server-side crypto handshake on a transport.</p>
-<p class="Pp"></p>
-<p class="Pp">Runs the full handshake sequence: receive PROTOCOL_VERSION, send
-    parameters, key exchange, auth challenge, and completion. Both server and
-    discovery-service modes use this single implementation.</p>
-<p class="Pp"></p>
-<p class="Pp">The caller must initialize the handshake context
-    (crypto_handshake_init or crypto_handshake_init_with_password) and configure
-    keys/whitelist on it before calling this function.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>ctx</i> Initialized handshake context with keys/auth
-  configured
-<br/>
-<i>transport</i> ACIP transport for the client connection</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on handshake
-  failure</div>
-<p class="Pp">Definition at line <b>323</b> of file <b>server_like.c</b>.</p>
-<pre>323                                                                                                               {
-324   if (!ctx || !transport) {
-325     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;handshake context or transport is NULL&quot;);
-326   }
-327 
-328   asciichat_error_t result;
-329 
-330   // Step 0: Receive PROTOCOL_VERSION from client
-331   {
-332     packet_type_t pkt_type;
-333     void *pkt_data = NULL;
-334     size_t pkt_len = 0;
-335     void *alloc_buffer = NULL;
-336 
-337     result = packet_receive_via_transport(transport, &amp;pkt_type, &amp;pkt_data, &amp;pkt_len, &amp;alloc_buffer);
-338     if (result != ASCIICHAT_OK) {
-339       log_warn(&quot;Failed to receive PROTOCOL_VERSION from client&quot;);
-340       return result;
-341     }
-342 
-343     if (pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
-344       log_warn(&quot;Expected PROTOCOL_VERSION, got packet type %u&quot;, pkt_type);
-345       buffer_pool_free(NULL, alloc_buffer, 0);
-346       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Expected PROTOCOL_VERSION packet&quot;);
-347     }
-348 
-349     buffer_pool_free(NULL, alloc_buffer, 0);
-350     log_debug(&quot;Received PROTOCOL_VERSION from client&quot;);
-351   }
-352 
-353   // Step 1: Send crypto parameters
-354   result = crypto_handshake_server_send_parameters(ctx, transport);
-355   if (result != ASCIICHAT_OK) {
-356     log_warn(&quot;Crypto parameters send failed&quot;);
-357     return result;
-358   }
-359 
-360   // Step 2: Key exchange (send server key)
-361   result = crypto_handshake_server_start(ctx, transport);
-362   if (result != ASCIICHAT_OK) {
-363     log_warn(&quot;Crypto handshake start failed&quot;);
-364     return result;
-365   }
-366 
-367   // Step 3: Receive client key exchange response, send auth challenge
-368   {
-369     packet_type_t pkt_type;
-370     void *pkt_data = NULL;
-371     size_t pkt_len = 0;
-372     void *alloc_buffer = NULL;
-373 
-374     result = packet_receive_via_transport(transport, &amp;pkt_type, &amp;pkt_data, &amp;pkt_len, &amp;alloc_buffer);
-375     if (result != ASCIICHAT_OK) {
-376       log_warn(&quot;Failed to receive KEY_EXCHANGE_RESPONSE&quot;);
-377       return result;
-378     }
-379 
-380     result = crypto_handshake_server_auth_challenge(ctx, transport, pkt_type, pkt_data, pkt_len);
-381     buffer_pool_free(NULL, alloc_buffer, 0);
-382 
-383     if (result != ASCIICHAT_OK) {
-384       log_warn(&quot;Crypto auth challenge failed&quot;);
-385       return result;
-386     }
-387   }
-388 
-389   // Step 4: Complete handshake (skip if already complete from auth challenge)
-390   if (ctx-&gt;state != CRYPTO_HANDSHAKE_READY) {
-391     packet_type_t pkt_type;
-392     void *pkt_data = NULL;
-393     size_t pkt_len = 0;
-394     void *alloc_buffer = NULL;
-395 
-396     result = packet_receive_via_transport(transport, &amp;pkt_type, &amp;pkt_data, &amp;pkt_len, &amp;alloc_buffer);
-397     if (result != ASCIICHAT_OK) {
-398       log_warn(&quot;Failed to receive AUTH_RESPONSE&quot;);
-399       return result;
-400     }
-401 
-402     result = crypto_handshake_server_complete(ctx, transport, pkt_type, pkt_data, pkt_len);
-403     buffer_pool_free(NULL, alloc_buffer, 0);
-404 
-405     if (result != ASCIICHAT_OK) {
-406       log_warn(&quot;Crypto handshake completion failed&quot;);
-407       return result;
-408     }
-409   }
-410 
-411   log_info(&quot;Crypto handshake complete&quot;);
-412   return ASCIICHAT_OK;
-413 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_free()</b>,
-    <b>CRYPTO_HANDSHAKE_READY</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_complete()</b>,
-    <b>crypto_handshake_server_send_parameters()</b>,
-    <b>crypto_handshake_server_start()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK_PROTOCOL</b>, <b>log_debug</b>, <b>log_info</b>,
-    <b>log_warn</b>, <b>packet_receive_via_transport()</b>,
-    <b>PACKET_TYPE_PROTOCOL_VERSION</b>, <b>SET_ERRNO</b>, and
-    <b>crypto_handshake_context_t::state</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>, and
-    <b>acds_websocket_client_handler()</b>.</p>
+<p class="Pp">References <b>session_server_like_get_upnp_ctx()</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_get_upnp_ctx()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> session_server_like_mdns_advertise
   (const char * name, const char * type, <b>uint16_t</b> port, const char **
   txt, size_t txt_count)</h2>
-<p class="Pp">Advertise or re-advertise an mDNS service.</p>
-<p class="Pp"></p>
-<p class="Pp">Convenience wrapper for modes that need deferred or updated
-    advertisement (e.g., server mode advertises after ACDS registration provides
-    session string).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>name</i> Service instance name
-<br/>
-<i>type</i> Service type (e.g., &quot;_ascii-chat._tcp&quot;)
-<br/>
-<i>port</i> Service port
-<br/>
-<i>txt</i> Optional TXT records (NULL-terminated array), or NULL
-<br/>
-<i>txt_count</i> Number of TXT records</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error if mDNS is not
-  initialized</div>
-<p class="Pp">Definition at line <b>282</b> of file <b>server_like.c</b>.</p>
-<pre>283                                                                                          {
-284   if (!g_mdns_ctx) {
-285     return SET_ERRNO(ERROR_INVALID_STATE, &quot;mDNS context not initialized&quot;);
-286   }
-287 
-288   char hostname[256] = {0};
-289   gethostname(hostname, sizeof(hostname) - 1);
-290 
-291   asciichat_mdns_service_t service = {
-292       .name = name,
-293       .type = type,
-294       .host = hostname,
-295       .port = port,
-296       .txt_records = txt,
-297       .txt_count = txt_count,
-298   };
-299 
-300   asciichat_error_t result = asciichat_mdns_advertise(g_mdns_ctx, &amp;service);
-301   if (result != ASCIICHAT_OK) {
-302     LOG_ERRNO_IF_SET(&quot;Failed to advertise mDNS service&quot;);
-303     log_warn(&quot;mDNS advertising failed - LAN discovery disabled&quot;);
-304   } else {
-305     log_info(&quot;mDNS: Service advertised as '%s' type '%s' (port=%d)&quot;, name, type, port);
-306   }
-307 
-308   return result;
-309 }</pre>
+<p class="Pp">Definition at line <b>177</b> of file <b>server_like.c</b>.</p>
+<pre>178                                                                                          {
+179   if (!g_mdns_ctx) {
+180     return SET_ERRNO(ERROR_INVALID_STATE, &quot;mDNS context not initialized&quot;);
+181   }
+182
+183   char hostname[HOSTNAME_BUFFER_SIZE] = {0};
+184   gethostname(hostname, sizeof(hostname) - 1);
+185
+186   asciichat_mdns_service_t service = {
+187       .name = name,
+188       .type = type,
+189       .host = hostname,
+190       .port = port,
+191       .txt_records = txt,
+192       .txt_count = txt_count,
+193   };
+194
+195   asciichat_error_t result = asciichat_mdns_advertise(g_mdns_ctx, &amp;service);
+196   if (result != ASCIICHAT_OK) {
+197     LOG_ERRNO_IF_SET(&quot;Failed to advertise mDNS service&quot;);
+198     log_warn(&quot;mDNS advertising failed - LAN discovery disabled&quot;);
+199   } else {
+200     log_info(&quot;mDNS: Service advertised as '%s' type '%s' (port=%d)&quot;, name, type, port);
+201   }
+202
+203   return result;
+204 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_mdns_advertise()</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>LOG_ERRNO_IF_SET</b>, <b>log_info</b>,
-    <b>log_warn</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_run()</b>.</p>
+    <b>ERROR_INVALID_STATE</b>, <b>HOSTNAME_BUFFER_SIZE</b>,
+    <b>LOG_ERRNO_IF_SET</b>, <b>log_info</b>, <b>log_warn</b>,
+    <b>session_server_like_mdns_advertise()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_mdns_advertise()</b>, and
+    <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_server_like_request_shutdown_(void_)"><a class="permalink" href="#void_session_server_like_request_shutdown_(void_)">void
+  session_server_like_request_shutdown (void )</a></h2>
+<p class="Pp">Definition at line <b>210</b> of file <b>server_like.c</b>.</p>
+<pre>210                                                 {
+211   server_like_signal_handler(SIGINT);
+212 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_server_like_request_shutdown()</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, and
+    <b>session_server_like_request_shutdown()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> session_server_like_run (const
   <b>session_server_like_config_t</b> * config)</h2>
-<p class="Pp">Run a server-like mode with unified lifecycle management.</p>
-<p class="Pp"></p>
-<p class="Pp">Orchestrates the complete lifecycle with proper initialization
-    ordering to ensure mode-specific state is ready before external clients can
-    connect.</p>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Initialization_Sequence"><a class="permalink" href="#Initialization_Sequence">Initialization
-  Sequence</a></h2>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Keepawake validation and setup</dd>
-  <dt>2.</dt>
-  <dd>File descriptor limit raising (if configured)</dd>
-  <dt>3.</dt>
-  <dd>Signal handler registration (SIGINT, SIGTERM, SIGPIPE) with shutdown
-      persistence</dd>
-  <dt>4.</dt>
-  <dd>TCP server init (binds to GET_OPTION port/address)</dd>
-  <dt>5.</dt>
-  <dd>UPnP port mapping (if enabled)</dd>
-  <dt>6.</dt>
-  <dd>mDNS context init and optional immediate advertisement</dd>
-  <dt>7.</dt>
-  <dd>WebSocket server construction (object created, event loop thread
-    deferred)</dd>
-  <dt>8.</dt>
-  <dd>Mode-specific init_fn() - mode initializes its state (crypto keys, rate
-      limiter, DB, etc.)</dd>
-  <dt>9.</dt>
-  <dd>WebSocket event loop thread start (only if mode init succeeds)</dd>
-  <dt>10.</dt>
-  <dd>Status screen and keyboard threads (if status_fn provided)</dd>
-  <dt>11.</dt>
-  <dd>TCP accept loop (blocks until shutdown)</dd>
-</dl>
-<p class="Pp">CRITICAL ORDERING NOTES:</p>
-<ul class="Bl-bullet">
-  <li>WebSocket event loop thread ONLY starts after mode init succeeds (step 9,
-      not step 7)</li>
-  <li>This prevents clients from arriving before mode state is ready</li>
-  <li>If SIGINT/SIGTERM arrives during init, subsequent steps are skipped</li>
-  <li>Mode-specific init can check
-      <b>session_server_like_shutdown_requested()</b> for early shutdowns</li>
-</ul>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Cleanup_(always_runs,_in_order,_guarded_against_partial_init)"><a class="permalink" href="#Cleanup_(always_runs,_in_order,_guarded_against_partial_init)">Cleanup
-  (always runs, in order, guarded against partial init)</a></h2>
-<dl class="Bl-tag">
-  <dt>12.</dt>
-  <dd>Join status screen and keyboard threads</dd>
-  <dt>13.</dt>
-  <dd>Stop WebSocket server (only if thread was started, atomic stop, cancel,
-      join with 500ms timeout)</dd>
-  <dt>14.</dt>
-  <dd>Mode-specific cleanup_fn() (TCP registry still available, guarded by mode
-      state flags)</dd>
-  <dt>15.</dt>
-  <dd>Destroy WebSocket server (only if successfully initialized)</dd>
-  <dt>16.</dt>
-  <dd>Destroy TCP server</dd>
-  <dt>17.</dt>
-  <dd>Close UPnP port mapping</dd>
-  <dt>18.</dt>
-  <dd>Destroy mDNS context</dd>
-  <dt>19.</dt>
-  <dd>Disable keepawake</dd>
-</dl>
-<p class="Pp">SAFETY GUARANTEES:</p>
-<ul class="Bl-bullet">
-  <li>Cleanup operations only touch resources that were successfully
-    initialized</li>
-  <li>Signal handler safely sets shutdown flag during early initialization</li>
-  <li>Modes can detect early shutdown via
-      <b>session_server_like_shutdown_requested()</b></li>
-  <li>Partial initialization failures do not trigger undefined behavior in
-      cleanup</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Mode configuration
-  (must not be NULL)</b></div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, or first error from init or
-  accept loop</div>
-<p class="Pp">Definition at line <b>419</b> of file <b>server_like.c</b>.</p>
-<pre>419                                                                                       {
-420   if (!config) {
-421     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;config is NULL&quot;);
-422   }
-423   if (!config-&gt;init_fn) {
-424     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;init_fn is NULL&quot;);
-425   }
-426   if (!config-&gt;interrupt_fn) {
-427     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;interrupt_fn is NULL&quot;);
-428   }
-429   if (!config-&gt;tcp_handler) {
-430     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;tcp_handler is NULL&quot;);
-431   }
-432 
-433   g_config = config;
-434   asciichat_error_t result = ASCIICHAT_OK;
-435 
-436   /* === 1. Keepawake === */
-437 
-438   bool keepawake_enabled = GET_OPTION(enable_keepawake);
-439   bool keepawake_disabled = GET_OPTION(disable_keepawake);
-440   if (keepawake_enabled &amp;&amp; keepawake_disabled) {
-441     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Cannot specify both --keepawake and --no-keepawake&quot;);
-442   }
-443   if (keepawake_enabled) {
-444     platform_enable_keepawake();
-445   }
-446 
-447   /* === 2. File descriptor limit === */
-448 
-449   if (config-&gt;raise_fd_limit) {
-450     platform_raise_fd_limit(config-&gt;fd_limit_target);
-451   }
-452 
-453   /* === 3. Signal handlers === */
-454 
-455   atomic_store_u64(&amp;g_shutdown_requested, 0);
-456   g_interrupt_fn = config-&gt;interrupt_fn;
-457   platform_signal(SIGINT, server_like_signal_handler);
-458   platform_signal(SIGTERM, server_like_signal_handler);
-459 #ifndef _WIN32
-460   platform_signal(SIGPIPE, SIG_IGN);
-461 #endif
-462 
-463   /* === 4. TCP server init === */
-464 
-465   int port = GET_OPTION(port);
-466   const char *address = GET_OPTION(address);
-467   const char *address6 = GET_OPTION(address6);
-468 
-469   bool ipv4_has_value = (address &amp;&amp; strlen(address) &gt; 0);
-470   bool ipv6_has_value = (address6 &amp;&amp; strlen(address6) &gt; 0);
-471 
-472   tcp_server_config_t tcp_config = {
-473       .port = port,
-474       .ipv4_address = ipv4_has_value ? address : NULL,
-475       .ipv6_address = ipv6_has_value ? address6 : NULL,
-476       .bind_ipv4 = ipv4_has_value || !ipv6_has_value,
-477       .bind_ipv6 = ipv6_has_value || !ipv4_has_value,
-478       .accept_timeout_sec = 1,
-479       .client_handler = config-&gt;tcp_handler,
-480       .user_data = config-&gt;tcp_user_data,
-481       .status_update_fn = NULL,
-482       .status_update_data = NULL,
-483   };
-484 
-485   result = tcp_server_init(&amp;g_tcp_server, &amp;tcp_config);
-486   if (result != ASCIICHAT_OK) {
-487     log_error(&quot;Failed to initialize TCP server on port %d&quot;, port);
-488     goto cleanup;
-489   }
-490   g_tcp_server_initialized = true;
-491   log_info(&quot;TCP server initialized on port %d&quot;, port);
-492 
-493   /* === 5. UPnP port mapping === */
-494 
-495   if (config-&gt;upnp.enabled &amp;&amp; GET_OPTION(enable_upnp)) {
-496     asciichat_error_t upnp_result = nat_upnp_open(port, config-&gt;upnp.description, &amp;g_upnp_ctx);
-497 
-498     if (upnp_result == ASCIICHAT_OK &amp;&amp; g_upnp_ctx) {
-499       char public_addr[22];
-500       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
-501         char msg[256];
-502         safe_snprintf(msg, sizeof(msg), &quot;Public endpoint: %s (direct TCP)&quot;, public_addr);
-503         log_console(LOG_INFO, msg);
-504         log_info(&quot;UPnP: Port mapping successful, public endpoint: %s&quot;, public_addr);
-505       }
-506     } else {
-507       log_info(&quot;UPnP: Port mapping unavailable or failed - will use WebRTC fallback&quot;);
-508     }
-509   }
-510 
-511   /* === 6. mDNS === */
-512 
-513   if (config-&gt;mdns.enabled) {
-514     g_mdns_ctx = asciichat_mdns_init();
-515     if (!g_mdns_ctx) {
-516       LOG_ERRNO_IF_SET(&quot;Failed to initialize mDNS (non-fatal, LAN discovery disabled)&quot;);
-517       log_warn(&quot;mDNS disabled - LAN discovery will not be available&quot;);
-518     } else if (config-&gt;mdns.service_name) {
-519       // Immediate advertisement if service_name is provided
-520       session_server_like_mdns_advertise(config-&gt;mdns.service_name, config-&gt;mdns.service_type, port, NULL, 0);
-521     }
-522   }
-523 
-524   /* === 7. WebSocket server construction (thread deferred until after mode init) === */
-525 
-526   if (config-&gt;websocket.enabled) {
-527     websocket_server_config_t ws_config = {
-528         .port = GET_OPTION(websocket_port),
-529         .client_handler = config-&gt;websocket.handler,
-530         .user_data = config-&gt;websocket.user_data,
-531         .tls_cert_path = GET_OPTION(websocket_tls_cert),
-532         .tls_key_path = GET_OPTION(websocket_tls_key),
-533     };
-534 
-535     memset(&amp;g_websocket_server, 0, sizeof(g_websocket_server));
-536     asciichat_error_t ws_result = websocket_server_init(&amp;g_websocket_server, &amp;ws_config);
-537     if (ws_result != ASCIICHAT_OK) {
-538       log_warn(&quot;Failed to initialize WebSocket server - browser clients will not be supported&quot;);
-539     } else {
-540       g_websocket_initialized = true;
-541       log_info(&quot;WebSocket server initialized on port %d (event loop deferred until after mode init)&quot;,
-542                GET_OPTION(websocket_port));
-543     }
-544   }
-545 
-546   /* === 8. Mode-specific init === */
-547 
-548   result = config-&gt;init_fn(config-&gt;init_user_data);
-549   if (result != ASCIICHAT_OK) {
-550     log_error(&quot;Mode initialization failed&quot;);
-551     goto cleanup;
-552   }
-553 
-554   /* === 8b. WebSocket event loop thread start (after mode init succeeds) === */
-555 
-556   if (g_websocket_initialized &amp;&amp; !atomic_load_u64(&amp;g_shutdown_requested)) {
-557     if (acthread_create(&amp;g_websocket_thread, &quot;websocket_event_loop&quot;, websocket_server_thread_wrapper,
-558                                 &amp;g_websocket_server) == 0) {
-559       g_websocket_thread_started = true;
-560       log_info(&quot;WebSocket event loop thread started&quot;);
-561     } else {
-562       log_error(&quot;Failed to start WebSocket event loop thread&quot;);
-563     }
-564   }
-565 
-566   /* === 9. Status screen === */
-567 
-568   if (config-&gt;status_fn) {
-569     bool status_opt = GET_OPTION(status_screen);
-570     bool status_explicit = GET_OPTION(status_screen_explicitly_set);
-571     if ((status_opt &amp;&amp; terminal_is_interactive()) || (status_explicit &amp;&amp; status_opt)) {
-572       atomic_store_bool(&amp;g_status_should_exit, false);
-573       ui_status_log_init();
-574 
-575       // Store callback and user data for status thread (avoids reliance on g_config lifetime)
-576       g_status_fn = config-&gt;status_fn;
-577       g_status_user_data = config-&gt;status_user_data;
-578 
-579       if (acthread_create(&amp;g_status_screen_thread, &quot;status_screen&quot;, status_screen_thread_func, NULL) == 0) {
-580         g_status_screen_thread_started = true;
-581         log_info(&quot;Status screen thread started&quot;);
-582       } else {
-583         log_error(&quot;Failed to start status screen thread&quot;);
-584         ui_status_log_destroy();
-585         g_status_fn = NULL;
-586         g_status_user_data = NULL;
-587       }
-588     }
-589   }
-590 
-591   /* === 10. TCP accept loop (blocks) === */
-592 
-593   log_info(&quot;Server accepting connections on port %d&quot;, port);
-594   result = tcp_server_run(&amp;g_tcp_server);
-595   if (result != ASCIICHAT_OK) {
-596     log_error(&quot;TCP server exited with error&quot;);
-597   }
-598 
-599   /* === CLEANUP === */
-600 
-601 cleanup:
-602   g_config = NULL;
-603 
-604   /* 11. Stop status screen */
-605   if (g_status_screen_thread_started) {
-606     atomic_store_bool(&amp;g_status_should_exit, true);
-607     int join_result = thread_join_timeout(&amp;g_status_screen_thread, NULL, 2000 * NS_PER_MS_INT);
-608     if (join_result != 0) {
-609       log_warn(&quot;Status screen thread did not exit within 2s&quot;);
-610     }
-611     g_status_screen_thread_started = false;
-612     g_status_fn = NULL;
-613     g_status_user_data = NULL;
-614     ui_status_log_destroy();
-615   }
-616 
-617   /* 12. Stop WebSocket server (only if thread was started, i.e., init succeeded) */
-618   if (g_websocket_thread_started) {
-619     atomic_store_bool(&amp;g_websocket_server.running, false);
-620     websocket_server_cancel_service(&amp;g_websocket_server);
-621     int ws_join = thread_join_timeout(&amp;g_websocket_thread, NULL, 500 * NS_PER_MS_INT);
-622     if (ws_join != 0) {
-623       log_warn(&quot;WebSocket event loop thread did not exit within 500ms&quot;);
-624     }
-625     g_websocket_thread_started = false;
-626   }
-627 
-628   /* 13. Mode-specific cleanup (only call if config provided) */
-629   if (config &amp;&amp; config-&gt;cleanup_fn) {
-630     config-&gt;cleanup_fn(config-&gt;cleanup_user_data);
-631   }
-632 
-633   /* 14. Destroy WebSocket server (only if successfully initialized) */
-634   if (g_websocket_initialized) {
-635     websocket_server_destroy(&amp;g_websocket_server);
-636     g_websocket_initialized = false;
-637     log_debug(&quot;WebSocket server destroyed&quot;);
-638   }
-639 
-640   /* 15. Destroy TCP server */
-641   if (g_tcp_server_initialized) {
-642     tcp_server_destroy(&amp;g_tcp_server);
-643     g_tcp_server_initialized = false;
-644     log_debug(&quot;TCP server destroyed&quot;);
-645   }
-646 
-647   /* 16. UPnP cleanup */
-648   if (g_upnp_ctx) {
-649     nat_upnp_close(&amp;g_upnp_ctx);
-650     log_debug(&quot;UPnP port mapping closed&quot;);
-651   }
-652 
-653   /* 17. mDNS cleanup */
-654   if (g_mdns_ctx) {
-655     asciichat_mdns_destroy(g_mdns_ctx);
-656     g_mdns_ctx = NULL;
-657     log_debug(&quot;mDNS context destroyed&quot;);
-658   }
-659 
-660   /* 18. Keepawake */
-661   if (keepawake_enabled) {
-662     platform_disable_keepawake();
-663   }
-664 
-665   return result;
-666 }</pre>
+<p class="Pp">Definition at line <b>222</b> of file <b>server_like.c</b>.</p>
+<pre>222                                                                                       {
+223   if (!config) {
+224     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;config is NULL&quot;);
+225   }
+226   if (!config-&gt;init_fn) {
+227     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;init_fn is NULL&quot;);
+228   }
+229   if (!config-&gt;interrupt_fn) {
+230     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;interrupt_fn is NULL&quot;);
+231   }
+232   if (!config-&gt;connections.packet) {
+233     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;connection packet callback is NULL&quot;);
+234   }
+235
+236   asciichat_error_t result = ASCIICHAT_OK;
+237
+238   /* === 1. Keepawake === */
+239
+240   bool keepawake_enabled = GET_OPTION(enable_keepawake);
+241   bool keepawake_disabled = GET_OPTION(disable_keepawake);
+242   if (keepawake_enabled &amp;&amp; keepawake_disabled) {
+243     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Cannot specify both --keepawake and --no-keepawake&quot;);
+244   }
+245   if (keepawake_enabled) {
+246     asciichat_errno_scope_t scope = errno_scope_begin();
+247     bool suppressed = errno_notifications_suppress(true);
+248     asciichat_error_t keepawake_result = platform_enable_keepawake();
+249     errno_notifications_suppress(suppressed);
+250     if (keepawake_result != ASCIICHAT_OK) {
+251       log_warn(&quot;Unable to inhibit system sleep: %s&quot;, asciichat_error_string(keepawake_result));
+252     }
+253     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+254   }
+255
+256   /* === 2. File descriptor limit === */
+257
+258   if (config-&gt;raise_fd_limit) {
+259     platform_raise_fd_limit(config-&gt;fd_limit_target);
+260   }
+261
+262   /* === 3. Signal handlers === */
+263
+264   atomic_store_u64(&amp;g_shutdown_requested, 0);
+265   g_interrupt_fn = config-&gt;interrupt_fn;
+266   platform_signal(SIGINT, server_like_signal_handler);
+267   platform_signal(SIGTERM, server_like_signal_handler);
+268 #ifndef _WIN32
+269   platform_signal(SIGPIPE, SIG_IGN);
+270 #endif
+271
+272   /* === 4. TCP server init === */
+273
+274   int port = GET_OPTION(port);
+275   const char *address = GET_OPTION(address);
+276   const char *address6 = GET_OPTION(address6);
+277
+278   bool ipv4_has_value = (address &amp;&amp; strlen(address) &gt; 0);
+279   bool ipv6_has_value = (address6 &amp;&amp; strlen(address6) &gt; 0);
+280
+281   network_server_config_t tcp_config = {
+282       .port = port,
+283       .ipv4_address = ipv4_has_value ? address : NULL,
+284       .ipv6_address = ipv6_has_value ? address6 : NULL,
+285       .bind_ipv4 = ipv4_has_value || !ipv6_has_value,
+286       .bind_ipv6 = ipv6_has_value || !ipv4_has_value,
+287       .callbacks = config-&gt;connections,
+288       .max_payload = config-&gt;max_payload,
+289       .partial_timeout_ms = config-&gt;partial_timeout_ms,
+290       .idle_timeout_ms = config-&gt;idle_timeout_ms,
+291       .websocket_enabled = config-&gt;websocket_enabled,
+292       .websocket_port = GET_OPTION(websocket_port),
+293       .tls_cert_path = GET_OPTION(websocket_tls_cert),
+294       .tls_key_path = GET_OPTION(websocket_tls_key),
+295       .tick = config-&gt;tick_fn,
+296       .tick_context = config-&gt;tick_user_data,
+297       .user_data = config-&gt;connection_user_data,
+298   };
+299
+300   result = network_server_create(&amp;tcp_config, &amp;g_network_server);
+301   if (result != ASCIICHAT_OK) {
+302     log_error(&quot;Failed to initialize TCP server on port %d&quot;, port);
+303     goto cleanup;
+304   }
+305   log_info(&quot;TCP server initialized on port %d&quot;, port);
+306
+307   /* === 5. UPnP port mapping === */
+308
+309   bool upnp_requested = config-&gt;upnp.enabled &amp;&amp; GET_OPTION(enable_upnp);
+310   bool ipv4_loopback = ipv4_has_value &amp;&amp; is_localhost_ipv4(address);
+311   bool ipv4_listener = tcp_config.bind_ipv4 &amp;&amp; !ipv4_loopback;
+312   if (upnp_requested &amp;&amp; ipv4_listener) {
+313     log_info(&quot;UPnP status: discovering (TCP port %d)&quot;, port);
+314     asciichat_errno_scope_t mapping_scope = errno_scope_begin();
+315     asciichat_error_t upnp_result = nat_upnp_open(port, config-&gt;upnp.description, &amp;g_upnp_ctx);
+316     if (upnp_result == ASCIICHAT_OK &amp;&amp; !nat_upnp_matches_bind_address(g_upnp_ctx, tcp_config.ipv4_address)) {
+317       log_warn(&quot;NAT: gateway mapping does not target the bound IPv4 listener; removing it&quot;);
+318       nat_upnp_close(&amp;g_upnp_ctx);
+319       upnp_result = ERROR_NETWORK;
+320     }
+321     if (upnp_result == ASCIICHAT_OK &amp;&amp; nat_upnp_is_active(g_upnp_ctx)) {
+322       char public_addr[SESSION_SERVER_LIKE_PUBLIC_ADDR_BUFFER_SIZE];
+323       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
+324         log_info(&quot;UPnP status: mapped at %s (external reachability unverified)&quot;, public_addr);
+325       }
+326     } else {
+327       log_warn(&quot;UPnP status: unavailable. Listener remains enabled; for Internet access, &quot;
+328                &quot;check router support or manually forward TCP port %d. External reachability is unverified.&quot;,
+329                port);
+330     }
+331     errno_scope_end(mapping_scope, ASCIICHAT_ERRNO_HANDLED);
+332   } else if (upnp_requested) {
+333     log_info(&quot;UPnP status: disabled (requires a non-loopback IPv4 listener)&quot;);
+334   } else {
+335     log_info(&quot;UPnP status: disabled&quot;);
+336     if (ipv4_listener &amp;&amp; (!ipv4_has_value || strcmp(address, &quot;0.0.0.0&quot;) == 0 || is_lan_ipv4(address))) {
+337       log_info(&quot;For connections from outside your LAN, try --port-forwarding or forward TCP port %d on your router.&quot;,
+338                port);
+339     }
+340   }
+341
+342   /* === 6. mDNS === */
+343
+344   if (config-&gt;mdns.enabled) {
+345     g_mdns_ctx = asciichat_mdns_init();
+346     if (!g_mdns_ctx) {
+347       LOG_ERRNO_IF_SET(&quot;Failed to initialize mDNS (non-fatal, LAN discovery disabled)&quot;);
+348       log_warn(&quot;mDNS disabled - LAN discovery will not be available&quot;);
+349     } else if (config-&gt;mdns.service_name) {
+350       // Immediate advertisement if service_name is provided
+351       session_server_like_mdns_advertise(config-&gt;mdns.service_name, config-&gt;mdns.service_type, port, NULL, 0);
+352     }
+353   }
+354
+355   /* === 8. Mode-specific init === */
+356
+357   result = config-&gt;init_fn(config-&gt;init_user_data);
+358   if (result != ASCIICHAT_OK) {
+359     log_error(&quot;Mode initialization failed&quot;);
+360     goto cleanup;
+361   }
+362
+363   /* === 8b. WebSocket event loop thread start (after mode init succeeds) === */
+364
+365   if (!atomic_load_u64(&amp;g_shutdown_requested)) {
+366     result = network_server_start(g_network_server);
+367     if (result != ASCIICHAT_OK)
+368       goto cleanup;
+369   } else {
+370     goto cleanup;
+371   }
+372
+373   if (upnp_requested &amp;&amp; network_server_websocket_enabled(g_network_server)) {
+374     // WebSocket binds independently of the raw TCP listener's address.
+375     asciichat_errno_scope_t ws_mapping_scope = errno_scope_begin();
+376     if (nat_upnp_open((uint16_t)GET_OPTION(websocket_port), &quot;ascii-chat WebSocket&quot;, &amp;g_ws_upnp_ctx) != ASCIICHAT_OK) {
+377       log_warn(&quot;WebSocket mapping unavailable; manually forward TCP port %d if needed&quot;, GET_OPTION(websocket_port));
+378     }
+379     errno_scope_end(ws_mapping_scope, ASCIICHAT_ERRNO_HANDLED);
+380   }
+381
+382   if (g_upnp_ctx || g_ws_upnp_ctx) {
+383     atomic_store_bool(&amp;g_upnp_stop, false);
+384     atomic_store_bool(&amp;g_upnp_ready, false);
+385     if (acthread_create(&amp;g_upnp_thread, &quot;upnp_renewal&quot;, upnp_renewal_thread, NULL) == 0) {
+386       g_upnp_thread_started = true;
+387     } else {
+388       log_warn(&quot;NAT: could not start lease renewal; removing the temporary mapping&quot;);
+389       nat_upnp_close(&amp;g_upnp_ctx);
+390       nat_upnp_close(&amp;g_ws_upnp_ctx);
+391     }
+392   }
+393
+394   // Keep bounded log capture available even when only the stats overlay is used.
+395   ui_status_log_init();
+396   /* === 9. Status screen === */
+397
+398   if (config-&gt;status_fn) {
+399     bool status_opt = GET_OPTION(status_screen);
+400     bool status_explicit = GET_OPTION(status_screen_explicitly_set);
+401     if ((status_opt &amp;&amp; terminal_is_interactive()) || (status_explicit &amp;&amp; status_opt)) {
+402       atomic_store_bool(&amp;g_status_should_exit, false);
+403
+404       // Store callback and user data for the lifetime of the status thread.
+405       g_status_fn = config-&gt;status_fn;
+406       g_status_user_data = config-&gt;status_user_data;
+407
+408       if (acthread_create(&amp;g_status_screen_thread, &quot;status_screen&quot;, status_screen_thread_func, NULL) == 0) {
+409         g_status_screen_thread_started = true;
+410         log_info(&quot;Status screen thread started&quot;);
+411       } else {
+412         log_error(&quot;Failed to start status screen thread&quot;);
+413         ui_status_log_destroy();
+414         g_status_fn = NULL;
+415         g_status_user_data = NULL;
+416       }
+417     }
+418   }
+419
+420   atomic_store_bool(&amp;g_upnp_ready, true);
+421
+422   /* === 10. TCP accept loop (blocks) === */
+423
+424   log_info(&quot;Server accepting connections on port %d&quot;, port);
+425   ui_controller_title_ready();
+426   result = network_server_run(g_network_server);
+427   if (result != ASCIICHAT_OK) {
+428     log_error(&quot;TCP server exited with error&quot;);
+429   }
+430
+431   /* === CLEANUP === */
+432
+433 cleanup:
+434   if (g_upnp_thread_started) {
+435     atomic_store_bool(&amp;g_upnp_stop, true);
+436     thread_join(&amp;g_upnp_thread, NULL);
+437     g_upnp_thread_started = false;
+438   }
+439
+440   // Remove the mapping before mode teardown, which can wait on other services.
+441   if (g_upnp_ctx) {
+442     nat_upnp_close(&amp;g_upnp_ctx);
+443     log_debug(&quot;UPnP port mapping closed&quot;);
+444   }
+445
+446   nat_upnp_close(&amp;g_ws_upnp_ctx);
+447
+448   /* 11. Stop status screen */
+449   if (g_status_screen_thread_started) {
+450     atomic_store_bool(&amp;g_status_should_exit, true);
+451     int join_result = thread_join_timeout(&amp;g_status_screen_thread, NULL, 2000 * NS_PER_MS_INT);
+452     if (join_result != 0) {
+453       log_warn(&quot;Status screen thread did not exit within 2s&quot;);
+454     }
+455     g_status_screen_thread_started = false;
+456     g_status_fn = NULL;
+457     g_status_user_data = NULL;
+458   }
+459   ui_status_log_destroy();
+460
+461   asciichat_error_t stopped = network_server_stop(g_network_server);
+462   if (stopped != ASCIICHAT_OK)
+463     return stopped;
+464
+465   /* 13. Mode-specific cleanup (only call if config provided) */
+466   if (config &amp;&amp; config-&gt;cleanup_fn) {
+467     config-&gt;cleanup_fn(config-&gt;cleanup_user_data);
+468   }
+469
+470   network_server_destroy(&amp;g_network_server);
+471
+472   /* 17. mDNS cleanup */
+473   if (g_mdns_ctx) {
+474     asciichat_mdns_destroy(g_mdns_ctx);
+475     g_mdns_ctx = NULL;
+476     log_debug(&quot;mDNS context destroyed&quot;);
+477   }
+478
+479   /* 18. Keepawake */
+480   if (keepawake_enabled) {
+481     platform_disable_keepawake();
+482   }
+483
+484   return result;
+485 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_mdns_destroy()</b>,
-    <b>asciichat_mdns_init()</b>, <b>ASCIICHAT_OK</b>,
-    <b>acthread_create</b>, <b>thread_join_timeout()</b>,
-    <b>atomic_load_u64()</b>, <b>atomic_store_bool()</b>,
-    <b>atomic_store_u64()</b>, <b>session_server_like_config::cleanup_fn</b>,
+<p class="Pp">References <b>acthread_create</b>, <b>ASCIICHAT_ERRNO_HANDLED</b>,
+    <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_init()</b>,
+    <b>ASCIICHAT_OK</b>, <b>atomic_load_u64()</b>, <b>atomic_store_bool()</b>,
+    <b>atomic_store_u64()</b>, <b>network_server_config_t::bind_ipv4</b>,
+    <b>session_server_like_config::cleanup_fn</b>,
     <b>session_server_like_config::cleanup_user_data</b>,
-    <b>session_server_like_config::description</b>,
-    <b>session_server_like_config::enabled</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>session_server_like_config::connection_user_data</b>,
+    <b>session_server_like_config::connections</b>,
+    <b>errno_notifications_suppress()</b>, <b>errno_scope_begin()</b>,
+    <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
     <b>session_server_like_config::fd_limit_target</b>, <b>GET_OPTION</b>,
-    <b>session_server_like_config::handler</b>,
+    <b>session_server_like_config::idle_timeout_ms</b>,
     <b>session_server_like_config::init_fn</b>,
     <b>session_server_like_config::init_user_data</b>,
-    <b>session_server_like_config::interrupt_fn</b>, <b>log_console</b>,
-    <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>,
-    <b>LOG_INFO</b>, <b>log_info</b>, <b>log_warn</b>,
+    <b>session_server_like_config::interrupt_fn</b>,
+    <b>network_server_config_t::ipv4_address</b>, <b>is_lan_ipv4()</b>,
+    <b>is_localhost_ipv4()</b>, <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+    <b>session_server_like_config::max_payload</b>,
     <b>session_server_like_config::mdns</b>, <b>nat_upnp_close()</b>,
-    <b>nat_upnp_get_address()</b>, <b>nat_upnp_open()</b>, <b>NS_PER_MS_INT</b>,
+    <b>nat_upnp_get_address()</b>, <b>nat_upnp_is_active()</b>,
+    <b>nat_upnp_matches_bind_address()</b>, <b>nat_upnp_open()</b>,
+    <b>network_server_create()</b>, <b>network_server_destroy()</b>,
+    <b>network_server_run()</b>, <b>network_server_start()</b>,
+    <b>network_server_stop()</b>, <b>network_server_websocket_enabled()</b>,
+    <b>NS_PER_MS_INT</b>, <b>network_connection_callbacks_t::packet</b>,
+    <b>session_server_like_config::partial_timeout_ms</b>,
     <b>platform_disable_keepawake()</b>, <b>platform_enable_keepawake()</b>,
     <b>platform_raise_fd_limit()</b>, <b>platform_signal()</b>,
-    <b>session_server_like_config::raise_fd_limit</b>, <b>safe_snprintf()</b>,
-    <b>session_server_like_config::service_name</b>,
-    <b>session_server_like_config::service_type</b>,
-    <b>session_server_like_mdns_advertise()</b>, <b>SET_ERRNO</b>,
+    <b>session_server_like_config::raise_fd_limit</b>,
+    <b>session_server_like_mdns_advertise()</b>,
+    <b>SESSION_SERVER_LIKE_PUBLIC_ADDR_BUFFER_SIZE</b>,
+    <b>session_server_like_run()</b>, <b>SET_ERRNO</b>,
     <b>session_server_like_config::status_fn</b>,
     <b>session_server_like_config::status_user_data</b>,
-    <b>session_server_like_config::tcp_handler</b>, <b>tcp_server_destroy()</b>,
-    <b>tcp_server_init()</b>, <b>tcp_server_run()</b>,
-    <b>session_server_like_config::tcp_user_data</b>,
-    <b>terminal_is_interactive()</b>, <b>ui_status_log_destroy()</b>,
-    <b>ui_status_log_init()</b>, <b>session_server_like_config::upnp</b>,
-    <b>session_server_like_config::user_data</b>,
-    <b>session_server_like_config::websocket</b>,
-    <b>websocket_server_cancel_service()</b>, <b>websocket_server_destroy()</b>,
-    and <b>websocket_server_init()</b>.</p>
-<p class="Pp">Referenced by <b>acds_main()</b>, and <b>server_main()</b>.</p>
+    <b>terminal_is_interactive()</b>, <b>thread_join</b>,
+    <b>thread_join_timeout()</b>, <b>session_server_like_config::tick_fn</b>,
+    <b>session_server_like_config::tick_user_data</b>,
+    <b>ui_controller_title_ready()</b>, <b>ui_status_log_destroy()</b>,
+    <b>ui_status_log_init()</b>, <b>session_server_like_config::upnp</b>, and
+    <b>session_server_like_config::websocket_enabled</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, <b>server_main()</b>, and
+    <b>session_server_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_server_like_shutdown_requested (void )</h2>
-<p class="Pp">Check if a shutdown request was received during
-  initialization.</p>
-<p class="Pp"></p>
-<p class="Pp">Modes can use this during init_fn to detect early SIGINT/SIGTERM
-    signals and exit gracefully instead of proceeding with partial
-    initialization.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if SIGINT or SIGTERM was received, false
-  otherwise</div>
-<p class="Pp">Definition at line <b>315</b> of file <b>server_like.c</b>.</p>
-<pre>315                                                   {
-316   return (bool)atomic_load_u64(&amp;g_shutdown_requested);
-317 }</pre>
+<p class="Pp">Definition at line <b>214</b> of file <b>server_like.c</b>.</p>
+<pre>214                                                   {
+215   return (bool)atomic_load_u64(&amp;g_shutdown_requested);
+216 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>.</p>
+<p class="Pp">References <b>atomic_load_u64()</b>, and
+    <b>session_server_like_shutdown_requested()</b>.</p>
+<p class="Pp">Referenced by <b>session_server_like_shutdown_requested()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -983,7 +552,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

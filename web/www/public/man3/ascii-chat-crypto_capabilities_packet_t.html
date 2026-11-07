@@ -76,7 +76,7 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">This packet must be sent UNENCRYPTED (handshake
   packet).</div>
-<p class="Pp">Definition at line <b>952</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>963</b> of file <b>packet.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -84,59 +84,49 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> crypto_capabilities_packet_t::preferred_auth</h2>
 <p class="Pp">Preferred authentication algorithm (AUTH_ALGO_*).</p>
-<p class="Pp">Definition at line <b>964</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
-    <b>discovery_session_process()</b>.</p>
+<p class="Pp">Definition at line <b>975</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_handshake_receive()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b>
   crypto_capabilities_packet_t::preferred_cipher</h2>
 <p class="Pp">Preferred cipher algorithm (CIPHER_ALGO_*).</p>
-<p class="Pp">Definition at line <b>966</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
-    <b>discovery_session_process()</b>.</p>
+<p class="Pp">Definition at line <b>977</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_handshake_receive()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> crypto_capabilities_packet_t::preferred_kex</h2>
 <p class="Pp">Preferred key exchange algorithm (KEX_ALGO_*).</p>
-<p class="Pp">Definition at line <b>962</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
-    <b>discovery_session_process()</b>.</p>
+<p class="Pp">Definition at line <b>973</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_handshake_receive()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b>
   crypto_capabilities_packet_t::requires_verification</h2>
 <p class="Pp">Server verification requirement flag (1=required, 0=optional).</p>
-<p class="Pp">Definition at line <b>960</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
-    <b>discovery_session_process()</b>.</p>
+<p class="Pp">Definition at line <b>971</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_handshake_receive()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b>
   crypto_capabilities_packet_t::supported_auth_algorithms</h2>
 <p class="Pp">Supported authentication algorithms bitmask (AUTH_ALGO_*).</p>
-<p class="Pp">Definition at line <b>956</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>discovery_session_process()</b>, and
-  <b>server_crypto_handshake()</b>.</p>
+<p class="Pp">Definition at line <b>967</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_handshake_receive()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b>
   crypto_capabilities_packet_t::supported_cipher_algorithms</h2>
 <p class="Pp">Supported cipher algorithms bitmask (CIPHER_ALGO_*).</p>
-<p class="Pp">Definition at line <b>958</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>discovery_session_process()</b>, and
-  <b>server_crypto_handshake()</b>.</p>
+<p class="Pp">Definition at line <b>969</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_handshake_receive()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b>
   crypto_capabilities_packet_t::supported_kex_algorithms</h2>
 <p class="Pp">Supported key exchange algorithms bitmask (KEX_ALGO_*).</p>
-<p class="Pp">Definition at line <b>954</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>discovery_session_process()</b>, and
-  <b>server_crypto_handshake()</b>.</p>
+<p class="Pp">Definition at line <b>965</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>client_handshake_receive()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -147,7 +137,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

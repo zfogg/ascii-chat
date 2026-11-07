@@ -38,23 +38,21 @@
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">char * <b>rgb_to_truecolor_halfblocks_scalar</b> (const
-    <b>uint8_t</b> *rgb, int width, int height, int stride_bytes)
+    <b>uint8_t</b> *rgb, int width, int height, int stride)
   <br/>
-  Scalar truecolor halfblock renderer. char * <b>rgb_to_halfblocks_scalar</b>
-    (const <b>uint8_t</b> *rgb, int width, int height, int stride_bytes, const
-    char *palette)
-  <br/>
-  Scalar monochrome halfblock renderer (no color codes). char *
-    <b>rgb_to_16color_halfblocks_scalar</b> (const <b>uint8_t</b> *rgb, int
-    width, int height, int stride_bytes, const char *palette)
-  <br/>
-  Scalar 16-color halfblock renderer Uses 16-color ANSI codes for foreground
-    (top) and implicit background (bottom). char *
+  Convert RGB to truecolor half-blocks using scalar code. char *
     <b>rgb_to_256color_halfblocks_scalar</b> (const <b>uint8_t</b> *rgb, int
-    width, int height, int stride_bytes, const char *palette)
+    width, int height, int stride, const char *palette)
   <br/>
-  Scalar 256-color halfblock renderer Uses 256-color ANSI codes for foreground
-    (top) and implicit background (bottom).
+  Convert RGB to 256-color half-blocks using scalar code. char *
+    <b>rgb_to_16color_halfblocks_scalar</b> (const <b>uint8_t</b> *rgb, int
+    width, int height, int stride, const char *palette)
+  <br/>
+  Convert RGB to 16-color half-blocks using scalar code. char *
+    <b>rgb_to_halfblocks_scalar</b> (const <b>uint8_t</b> *rgb, int width, int
+    height, int stride, const char *palette)
+  <br/>
+  Convert RGB to monochrome (grayscale) half-blocks using scalar code.
   <br/>
 </p>
 </section>
@@ -66,7 +64,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

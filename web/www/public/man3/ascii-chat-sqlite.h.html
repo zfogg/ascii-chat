@@ -77,27 +77,29 @@
   in-memory)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Backend instance or NULL on failure</div>
-<p class="Pp">Definition at line <b>145</b> of file <b>sqlite.c</b>.</p>
-<pre>145                                                  {
-146   (void)db_path; // Database is provided externally, not created here
-147 
-148   sqlite_backend_t *backend = malloc(sizeof(sqlite_backend_t));
-149   if (!backend) {
-150     log_error(&quot;Failed to allocate SQLite backend&quot;);
-151     return NULL;
-152   }
-153 
-154   memset(backend, 0, sizeof(*backend));
-155 
-156   // Database handle will be set after creation by ACDS
-157   // This is a placeholder backend that will be initialized later
-158   log_debug(&quot;SQLite rate limiter backend allocated (database will be set externally)&quot;);
-159   return backend;
-160 }</pre>
+<p class="Pp">Definition at line <b>149</b> of file <b>sqlite.c</b>.</p>
+<pre>149                                                  {
+150   (void)db_path; // Database is provided externally, not created here
+151
+152   sqlite_backend_t *backend = malloc(sizeof(sqlite_backend_t));
+153   if (!backend) {
+154     log_error(&quot;Failed to allocate SQLite backend&quot;);
+155     return NULL;
+156   }
+157
+158   memset(backend, 0, sizeof(*backend));
+159
+160   // Database handle will be set after creation by ACDS
+161   // This is a placeholder backend that will be initialized later
+162   log_debug(&quot;SQLite rate limiter backend allocated (database will be set externally)&quot;);
+163   return backend;
+164 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, and <b>log_error</b>.</p>
-<p class="Pp">Referenced by <b>rate_limiter_create_sqlite()</b>.</p>
+<p class="Pp">References <b>log_debug</b>, <b>log_error</b>, and
+    <b>sqlite_backend_create()</b>.</p>
+<p class="Pp">Referenced by <b>rate_limiter_create_sqlite()</b>, and
+    <b>sqlite_backend_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_sqlite_backend_set_db_(void_*_backend_data,_sqlite3_*_db)"><a class="permalink" href="#void_sqlite_backend_set_db_(void_*_backend_data,_sqlite3_*_db)">void
@@ -112,17 +114,19 @@
 <br/>
 <i>db</i> SQLite database handle</div>
 <p class="Pp">Called by ACDS after opening the database.</p>
-<p class="Pp">Definition at line <b>167</b> of file <b>sqlite.c</b>.</p>
-<pre>167                                                             {
-168   sqlite_backend_t *backend = (sqlite_backend_t *)backend_data;
-169   if (backend) {
-170     backend-&gt;db = db;
-171   }
-172 }</pre>
+<p class="Pp">Definition at line <b>171</b> of file <b>sqlite.c</b>.</p>
+<pre>171                                                             {
+172   sqlite_backend_t *backend = (sqlite_backend_t *)backend_data;
+173   if (backend) {
+174     backend-&gt;db = db;
+175   }
+176 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>sqlite_backend_t::db</b>.</p>
-<p class="Pp">Referenced by <b>rate_limiter_set_sqlite_db()</b>.</p>
+<p class="Pp">References <b>sqlite_backend_t::db</b>, and
+    <b>sqlite_backend_set_db()</b>.</p>
+<p class="Pp">Referenced by <b>rate_limiter_set_sqlite_db()</b>, and
+    <b>sqlite_backend_set_db()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -132,13 +136,13 @@
 <h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
   <b>rate_limiter_backend_ops_t</b> sqlite_backend_ops [extern]</a></h2>
 <p class="Pp">SQLite backend operations vtable.</p>
-<p class="Pp">Definition at line <b>174</b> of file <b>sqlite.c</b>.</p>
-<pre>174                                                     {
-175     .check = sqlite_check,
-176     .record = sqlite_record,
-177     .cleanup = sqlite_cleanup,
-178     .destroy = sqlite_destroy,
-179 };</pre>
+<p class="Pp">Definition at line <b>178</b> of file <b>sqlite.c</b>.</p>
+<pre>178                                                     {
+179     .check = sqlite_check,
+180     .record = sqlite_record,
+181     .cleanup = sqlite_cleanup,
+182     .destroy = sqlite_destroy,
+183 };</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>rate_limiter_create_sqlite()</b>.</p>
@@ -151,7 +155,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

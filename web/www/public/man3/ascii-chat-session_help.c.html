@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_help.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_help.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_help.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_help.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>TUI_SESSION_HELP_SETTINGS_COUNT</b> 20
+  <br/>
+  #define <b>TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>TUI_SESSION_HELP_KEY_STORAGE_COUNT</b> 40
+  <br/>
+  #define <b>TUI_SESSION_HELP_FOOTER_BUFFER_SIZE</b> 128
+  <br/>
+  #define <b>SESSION_HELP_SETTING_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>SESSION_HELP_KEY_BUFFER_SIZE</b> 48
+  <br/>
+  #define <b>SESSION_HELP_ENTRY_CAPACITY</b> 40
+  <br/>
+  #define <b>ENABLED_COLOR</b> <b>LOG_COLOR_INFO</b>
+  <br/>
+  #define <b>DISABLED_COLOR</b> <b>LOG_COLOR_ERROR</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>ui_session_help_free</b> (char *text)
+  <br/>
+  char * <b>ui_session_help_render</b> (<b>terminal_size_t</b> size, <b>bool</b>
+    has_media, <b>bool</b> browser, <b>terminal_size_t</b> *minimum)
+  <br/>
+  char * <b>ui_session_context_help_render</b> (<b>terminal_size_t</b> size,
+    <b>ui_screen_t</b> screen, <b>terminal_size_t</b> *minimum)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_DISABLED_COLOR___"><a class="permalink" href="#_define_DISABLED_COLOR___">#define
+  DISABLED_COLOR <b>LOG_COLOR_ERROR</b></a></h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>session_help.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ENABLED_COLOR___"><a class="permalink" href="#_define_ENABLED_COLOR___">#define
+  ENABLED_COLOR <b>LOG_COLOR_INFO</b></a></h2>
+<p class="Pp">Definition at line <b>30</b> of file <b>session_help.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SESSION_HELP_ENTRY_CAPACITY___40"><a class="permalink" href="#_define_SESSION_HELP_ENTRY_CAPACITY___40">#define
+  SESSION_HELP_ENTRY_CAPACITY 40</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file <b>session_help.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SESSION_HELP_KEY_BUFFER_SIZE___48"><a class="permalink" href="#_define_SESSION_HELP_KEY_BUFFER_SIZE___48">#define
+  SESSION_HELP_KEY_BUFFER_SIZE 48</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>session_help.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SESSION_HELP_SETTING_BUFFER_SIZE___256"><a class="permalink" href="#_define_SESSION_HELP_SETTING_BUFFER_SIZE___256">#define
+  SESSION_HELP_SETTING_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>session_help.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_SESSION_HELP_FOOTER_BUFFER_SIZE___128"><a class="permalink" href="#_define_TUI_SESSION_HELP_FOOTER_BUFFER_SIZE___128">#define
+  TUI_SESSION_HELP_FOOTER_BUFFER_SIZE 128</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file <b>session_help.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_context_help_render()</b>, and
+    <b>ui_session_help_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_SESSION_HELP_KEY_STORAGE_COUNT___40"><a class="permalink" href="#_define_TUI_SESSION_HELP_KEY_STORAGE_COUNT___40">#define
+  TUI_SESSION_HELP_KEY_STORAGE_COUNT 40</a></h2>
+<p class="Pp">Definition at line <b>5</b> of file <b>session_help.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_SESSION_HELP_SETTINGS_COUNT___20"><a class="permalink" href="#_define_TUI_SESSION_HELP_SETTINGS_COUNT___20">#define
+  TUI_SESSION_HELP_SETTINGS_COUNT 20</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>session_help.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE___32"><a class="permalink" href="#_define_TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE___32">#define
+  TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>session_help.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_help_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_*_ui_session_context_help_render_("><a class="permalink" href="#char_*_ui_session_context_help_render_(">char
+  * ui_session_context_help_render (<b>terminal_size_t</b> size,
+  <b>ui_screen_t</b> screen, <b>terminal_size_t</b> * minimum)</a></h2>
+<p class="Pp">Definition at line <b>250</b> of file <b>session_help.c</b>.</p>
+<pre>250                                                                                                          {
+251   if (!minimum) {
+252     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Help minimum geometry output is required&quot;);
+253     return NULL;
+254   }
+255   static const ui_help_entry_t sync[] = {{&quot;0 / Esc&quot;, &quot;Close sync viewer&quot;},
+256                                          {&quot;Up / Down&quot;, &quot;Select primitive&quot;},
+257                                          {&quot;Left / Right&quot;, &quot;Previous/next page&quot;},
+258                                          {&quot;Home / End&quot;, &quot;First/last primitive&quot;},
+259                                          {&quot;=&quot;, &quot;Running app statistics&quot;},
+260                                          {&quot;]&quot;, &quot;Log viewer&quot;},
+261                                          {&quot;?&quot;, &quot;Close this help&quot;}};
+262   static const ui_help_entry_t stats[] = {{&quot;= / Esc&quot;, &quot;Close statistics&quot;},
+263                                           {&quot;Tab / Left / Right&quot;, &quot;Switch data page&quot;},
+264                                           {&quot;Up / Down&quot;, &quot;Select and scroll rows&quot;},
+265                                           {&quot;Home / End&quot;, &quot;First/last row&quot;},
+266                                           {&quot;0&quot;, &quot;Sync primitives&quot;},
+267                                           {&quot;]&quot;, &quot;Log viewer&quot;},
+268                                           {&quot;?&quot;, &quot;Close this help&quot;}};
+269   static const ui_help_entry_t errors[] = {
+270       {&quot;` / Esc&quot;, &quot;Close error stacks&quot;}, {&quot;Tab&quot;, &quot;Current/history page&quot;}, {&quot;Up / Down&quot;, &quot;Select and scroll errors&quot;},
+271       {&quot;s&quot;, &quot;Change sort order&quot;},        {&quot;x&quot;, &quot;Clear selected error&quot;},   {&quot;=&quot;, &quot;Running app statistics&quot;},
+272       {&quot;0&quot;, &quot;Sync primitives&quot;},          {&quot;?&quot;, &quot;Close this help&quot;}};
+273   static const ui_help_entry_t update[] = {{&quot;F12 / Esc&quot;, &quot;Close update checker&quot;},
+274                                            {&quot;Left / Right / Tab&quot;, &quot;Select button&quot;},
+275                                            {&quot;Enter&quot;, &quot;Activate selected button&quot;},
+276                                            {&quot;O&quot;, &quot;Open release page&quot;},
+277                                            {&quot;R&quot;, &quot;Check again&quot;},
+278                                            {&quot;?&quot;, &quot;Close this help&quot;}};
+279   static const ui_help_entry_t lan[] = {{&quot;Up / Down / j / k&quot;, &quot;Select LAN server&quot;},
+280                                         {&quot;0-9&quot;, &quot;Enter server number&quot;},
+281                                         {&quot;Enter&quot;, &quot;Connect to selected server&quot;},
+282                                         {&quot;Esc&quot;, &quot;Cancel LAN selection&quot;},
+283                                         {&quot;=&quot;, &quot;Running app statistics&quot;},
+284                                         {&quot;0&quot;, &quot;Sync primitives&quot;},
+285                                         {&quot;?&quot;, &quot;Close this help&quot;}};
+286   static const ui_help_entry_t media[] = {
+287       {&quot;Enter&quot;, &quot;Play the entered paths or URLs&quot;},  {&quot;Esc / Ctrl-O&quot;, &quot;Cancel media input&quot;},
+288       {&quot;Left / Right&quot;, &quot;Move the text cursor&quot;},     {&quot;Home / End&quot;, &quot;Beginning/end of input&quot;},
+289       {&quot;Backspace / Delete&quot;, &quot;Delete a character&quot;}, {&quot;?&quot;, &quot;Help when the input is empty&quot;}};
+290   const ui_help_entry_t *entries = NULL;
+291   size_t count = 0;
+292   const char *title = NULL;
+293   switch (screen) {
+294   case UI_SCREEN_ERROR: {
+295     static const ui_help_entry_t popup[] = {{&quot;Left / Right&quot;, &quot;Previous / next error&quot;},
+296                                             {&quot;Home / End&quot;, &quot;First / last error&quot;},
+297                                             {&quot;Up / Down&quot;, &quot;Scroll error details&quot;},
+298                                             {&quot;PgUp / PgDn&quot;, &quot;Scroll a page&quot;},
+299                                             {&quot;Enter / Esc&quot;, &quot;Dismiss all errors&quot;},
+300                                             {&quot;q&quot;, &quot;Dismiss all errors&quot;},
+301                                             {&quot;?&quot;, &quot;Close this help&quot;}};
+302     entries = popup;
+303     count = sizeof(popup) / sizeof(*popup);
+304     title = &quot;Error Popup Keyboard Shortcuts&quot;;
+305     break;
+306   }
+307   case UI_SCREEN_SYNC:
+308     entries = sync;
+309     count = sizeof(sync) / sizeof(*sync);
+310     title = &quot;Sync Viewer Keyboard Shortcuts&quot;;
+311     break;
+312   case UI_SCREEN_STATS:
+313     entries = stats;
+314     count = sizeof(stats) / sizeof(*stats);
+315     title = &quot;Statistics Keyboard Shortcuts&quot;;
+316     break;
+317   case UI_SCREEN_ERRNO:
+318     entries = errors;
+319     count = sizeof(errors) / sizeof(*errors);
+320     title = &quot;Error Stacks Keyboard Shortcuts&quot;;
+321     break;
+322   case UI_SCREEN_PROMPT:
+323     entries = media;
+324     count = sizeof(media) / sizeof(*media);
+325     title = &quot;Media Input Keyboard Shortcuts&quot;;
+326     break;
+327   case UI_SCREEN_MDNS:
+328     entries = lan;
+329     count = sizeof(lan) / sizeof(*lan);
+330     title = &quot;LAN Selection Keyboard Shortcuts&quot;;
+331     break;
+332   case UI_SCREEN_UPDATE:
+333     entries = update;
+334     count = sizeof(update) / sizeof(*update);
+335     title = &quot;Update Checker Keyboard Shortcuts&quot;;
+336     break;
+337   default:
+338     return ui_session_help_render(size, GET_OPTION(media_file)[0] || GET_OPTION(media_url)[0], false, minimum);
+339   }
+340   char footer[TUI_SESSION_HELP_FOOTER_BUFFER_SIZE];
+341   snprintf(footer, sizeof(footer), &quot;Press %s to close&quot;, colored_string(LOG_COLOR_WARN, &quot;?&quot;));
+342   ui_help_menu_t menu = {.title = title, .entries = entries, .count = count, .footer = footer, .top_margin = 0};
+343   *minimum = ui_help_menu_measure(&amp;menu);
+344   frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
+345   if (!buffer)
+346     return NULL;
+347   ui_help_menu_render(buffer, size, &amp;menu);
+348   size_t length = frame_buffer_get_length(buffer);
+349   char *result = SAFE_MALLOC(length + 1, char *);
+350   memcpy(result, frame_buffer_get_content(buffer), length);
+351   result[length] = '\0';
+352   frame_buffer_destroy(buffer);
+353   return result;
+354 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colored_string()</b>, <b>terminal_size_t::cols</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>frame_buffer_create()</b>,
+    <b>frame_buffer_destroy()</b>, <b>frame_buffer_get_content()</b>,
+    <b>frame_buffer_get_length()</b>, <b>GET_OPTION</b>, <b>LOG_COLOR_WARN</b>,
+    <b>terminal_size_t::rows</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
+    <b>TUI_SESSION_HELP_FOOTER_BUFFER_SIZE</b>, <b>ui_help_menu_measure()</b>,
+    <b>ui_help_menu_render()</b>, <b>UI_SCREEN_ERRNO</b>,
+    <b>UI_SCREEN_ERROR</b>, <b>UI_SCREEN_MDNS</b>, <b>UI_SCREEN_PROMPT</b>,
+    <b>UI_SCREEN_STATS</b>, <b>UI_SCREEN_SYNC</b>, <b>UI_SCREEN_UPDATE</b>,
+    <b>ui_session_context_help_render()</b>, and
+    <b>ui_session_help_render()</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_help_toggle_terminal()</b>, and
+    <b>ui_session_context_help_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_session_help_free_(char_*_text)"><a class="permalink" href="#void_ui_session_help_free_(char_*_text)">void
+  ui_session_help_free (char * text)</a></h2>
+<p class="Pp">Release rendered help with the same allocator that created it.</p>
+<p class="Pp">Definition at line <b>33</b> of file <b>session_help.c</b>.</p>
+<pre>33                                       {
+34   SAFE_FREE(text);
+35 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>, and
+  <b>ui_session_help_free()</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_help_free()</b>, and
+    <b>ui_session_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_ui_session_help_render_("><a class="permalink" href="#char_*_ui_session_help_render_(">char
+  * ui_session_help_render (<b>terminal_size_t</b> size, <b>bool</b> has_media,
+  <b>bool</b> browser, <b>terminal_size_t</b> * minimum)</a></h2>
+<p class="Pp">Returns owned ANSI text, released with SAFE_FREE.</p>
+<p class="Pp">Definition at line <b>124</b> of file <b>session_help.c</b>.</p>
+<pre>124                                                                                                            {
+125   if (!minimum) {
+126     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Help minimum geometry output is required&quot;);
+127     return NULL;
+128   }
+129   const char *navigation[] = {
+130       &quot;Navigation &amp; Control:&quot;,
+131       &quot;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&quot;,
+132       &quot;?      Toggle this help screen TUI&quot;,
+133       &quot;Esc    Close overlay / Quit app&quot;,
+134       browser ? NULL : &quot;v      Open from clipboard&quot;,
+135       browser ? NULL : &quot;Paste  Queue dropped/pasted media&quot;,
+136       browser ? NULL : &quot;&lt; / &gt;  Previous/next media (restart)&quot;,
+137       has_media ? &quot;Space  Play/Pause (files only)&quot; : NULL,
+138       has_media ? &quot;[      Toggle Media Playback&quot; : NULL,
+139       has_media ? (terminal_should_use_utf8() ? &quot;&#x2190; / &#x2192;  Seek backward/forward 30s&quot;
+140                                               : &quot;Left / Right  Seek backward/forward 30s&quot;)
+141                 : NULL,
+142       &quot;m / M  Mute/Unmute audio&quot;,
+143       terminal_should_use_utf8() ? &quot;&#x2191; / &#x2193;  Volume up/down (10%)&quot; : &quot;Up / Down  Volume up/down (10%)&quot;,
+144       &quot;c / C  Cycle color mode&quot;,
+145       &quot;f / F  Cycle color filter&quot;,
+146       &quot;x / X  Flip webcam horizontally&quot;,
+147       &quot;y / Y  Flip webcam vertically&quot;,
+148       &quot;w / W  Toggle Face Follow&quot;,
+149       &quot;r / R  Cycle render mode&quot;,
+150       &quot;-      FPS counter&quot;,
+151 #if defined(ASCIICHAT_DIAGNOSTIC_UI)
+152       browser ? NULL : &quot;`      Error stacks diagnostic TUI&quot;,
+153 #endif
+154       browser ? NULL : &quot;o      TUI to open media from path or url&quot;,
+155       &quot;]      Live log viewer/searcher TUI&quot;,
+156       &quot;F12    Version update checker TUI&quot;,
+157       browser ? NULL : &quot;=      Running app statistics TUI&quot;,
+158 #ifndef NDEBUG
+159       browser ? NULL : &quot;0      C code sync primitives TUI&quot;,
+160 #endif
+161   };
+162   char settings[TUI_SESSION_HELP_SETTINGS_COUNT][SESSION_HELP_SETTING_BUFFER_SIZE] = {&quot;Current Settings:&quot;, &quot;&quot;};
+163   char volume_bar[TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE];
+164   format_volume_bar(GET_OPTION(speakers_volume), volume_bar, sizeof(volume_bar));
+165   snprintf(settings[2], sizeof(settings[2]), &quot;Audio  : %s&quot;, status_indicator(GET_OPTION(audio_enabled)));
+166   snprintf(settings[3], sizeof(settings[3]), &quot;Volume : %s&quot;, volume_bar);
+167   snprintf(settings[4], sizeof(settings[4]), &quot;Color  : %s&quot;, color_mode_to_string(GET_OPTION(color_mode)));
+168   snprintf(settings[5], sizeof(settings[5]), &quot;Filter : %s&quot;, color_filter_to_string(GET_OPTION(color_filter)));
+169   snprintf(settings[6], sizeof(settings[6]), &quot;Render : %s&quot;, render_mode_to_string(GET_OPTION(render_mode)));
+170   snprintf(settings[7], sizeof(settings[7]), &quot;Flip   : rows=%s cols=%s&quot;, status_indicator(GET_OPTION(flip_y)),
+171            status_indicator(GET_OPTION(flip_x)));
+172   snprintf(settings[8], sizeof(settings[8]), &quot;Face Follow : %s&quot;, status_indicator(GET_OPTION(face_follow)));
+173   int settings_count = 9;
+174   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;Animations (number key toggle):&quot;);
+175   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;-------------------------------&quot;);
+176   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;(1) Matrix \&quot;Digital Rain\&quot; : %s&quot;,
+177            status_indicator(GET_OPTION(matrix_rain)));
+178   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;(2) Audio Waveform : %s&quot;,
+179            status_indicator(GET_OPTION(waveform)));
+180   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;(3) Audio Frequencies (FFT) : %s&quot;,
+181            status_indicator(GET_OPTION(fft)));
+182   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;(z) Zalgo intensity : %d&quot;, GET_OPTION(zalgo));
+183   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;(-) FPS Counter : %s&quot;,
+184            status_indicator(GET_OPTION(fps_counter)));
+185   bool server = !browser &amp;&amp; (GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_MCP_SERVER);
+186   bool discovery = !browser &amp;&amp; GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE;
+187   ui_help_entry_t entries[SESSION_HELP_ENTRY_CAPACITY];
+188   char key_storage[TUI_SESSION_HELP_KEY_STORAGE_COUNT][SESSION_HELP_KEY_BUFFER_SIZE];
+189   size_t count = 0;
+190   for (size_t i = 0; i &lt; sizeof(navigation) / sizeof(navigation[0]); ++i) {
+191     const char *line = navigation[i];
+192     if (!line || i == 1)
+193       continue;
+194     if (line[0] == '?' || line[0] == ']' || line[0] == '=' || line[0] == '0' || line[0] == '`' || line[0] == 'o' ||
+195         !strncmp(line, &quot;F12&quot;, 3))
+196       continue;
+197     if ((server || discovery) &amp;&amp; i &gt; 1 &amp;&amp; line[0] != '?' &amp;&amp; strncmp(line, &quot;Esc&quot;, 3) &amp;&amp; line[0] != ']' &amp;&amp;
+198         line[0] != '=' &amp;&amp; line[0] != '0' &amp;&amp; line[0] != '`' &amp;&amp; strncmp(line, &quot;F12&quot;, 3))
+199       continue;
+200     const char *end = strstr(line, &quot;  &quot;);
+201     if (end) {
+202       size_t length = (size_t)(end - line);
+203       if (length &gt;= sizeof(key_storage[0]))
+204         length = sizeof(key_storage[0]) - 1;
+205       memcpy(key_storage[count], line, length);
+206       key_storage[count][length] = '\0';
+207       while (*end == ' ')
+208         ++end;
+209       entries[count] = (ui_help_entry_t){.keys = key_storage[count], .description = end};
+210     } else
+211       entries[count] = (ui_help_entry_t){.description = line};
+212     ++count;
+213   }
+214   count += tui_shortcut_help(entries + count, 40 - count, server || discovery, browser);
+215   if (server || discovery) {
+216     settings_count = 4;
+217     snprintf(settings[0], sizeof(settings[0]), &quot;%s&quot;, discovery ? &quot;Discovery service:&quot; : &quot;Server:&quot;);
+218     snprintf(settings[1], sizeof(settings[1]), &quot;Port : %d&quot;, GET_OPTION(port));
+219     snprintf(settings[2], sizeof(settings[2]), &quot;Status screen : %s&quot;, status_indicator(GET_OPTION(status_screen)));
+220     snprintf(settings[3], sizeof(settings[3]), &quot;Log level : %d&quot;, GET_OPTION(log_level));
+221   }
+222   const char *settings_text[TUI_SESSION_HELP_SETTINGS_COUNT];
+223   for (int i = 0; i &lt; settings_count; ++i)
+224     settings_text[i] = settings[i];
+225   char footer[TUI_SESSION_HELP_FOOTER_BUFFER_SIZE];
+226   snprintf(footer, sizeof(footer), &quot;Press %s to close&quot;, colored_string(LOG_COLOR_WARN, &quot;?&quot;));
+227   ui_help_menu_t menu = {.title = discovery ? &quot;ascii-chat Discovery Service Keyboard Shortcuts&quot;
+228                                   : server  ? &quot;ascii-chat Server Keyboard Shortcuts&quot;
+229                                             : &quot;ascii-chat Keyboard Shortcuts&quot;,
+230                          .entries = entries,
+231                          .count = count,
+232                          .settings = settings_text,
+233                          .settings_count = (size_t)settings_count,
+234                          .footer = footer,
+235                          // Browser sessions draw a four-row animated logo above the popup.
+236                          .top_margin = browser ? 6 : 0};
+237   *minimum = ui_help_menu_measure(&amp;menu);
+238   frame_buffer_t *output = frame_buffer_create(size.rows, size.cols);
+239   if (!output)
+240     return NULL;
+241   ui_help_menu_render(output, size, &amp;menu);
+242   size_t length = frame_buffer_get_length(output);
+243   char *result = SAFE_MALLOC(length + 1, char *);
+244   memcpy(result, frame_buffer_get_content(output), length);
+245   result[length] = '\0';
+246   frame_buffer_destroy(output);
+247   return result;
+248 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>color_mode_to_string()</b>, <b>colored_string()</b>,
+    <b>terminal_size_t::cols</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>frame_buffer_create()</b>, <b>frame_buffer_destroy()</b>,
+    <b>frame_buffer_get_content()</b>, <b>frame_buffer_get_length()</b>,
+    <b>GET_OPTION</b>, <b>LOG_COLOR_WARN</b>, <b>MODE_DISCOVERY_SERVICE</b>,
+    <b>MODE_MCP_SERVER</b>, <b>MODE_SERVER</b>, <b>render_mode_to_string()</b>,
+    <b>terminal_size_t::rows</b>, <b>SAFE_MALLOC</b>,
+    <b>SESSION_HELP_ENTRY_CAPACITY</b>, <b>SESSION_HELP_KEY_BUFFER_SIZE</b>,
+    <b>SESSION_HELP_SETTING_BUFFER_SIZE</b>, <b>SET_ERRNO</b>,
+    <b>terminal_should_use_utf8()</b>,
+    <b>TUI_SESSION_HELP_FOOTER_BUFFER_SIZE</b>,
+    <b>TUI_SESSION_HELP_KEY_STORAGE_COUNT</b>,
+    <b>TUI_SESSION_HELP_SETTINGS_COUNT</b>,
+    <b>TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE</b>, <b>tui_shortcut_help()</b>,
+    <b>ui_help_menu_measure()</b>, <b>ui_help_menu_render()</b>, and
+    <b>ui_session_help_render()</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_context_help_render()</b>,
+    <b>ui_session_help_render()</b>, and <b>ui_session_tick()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

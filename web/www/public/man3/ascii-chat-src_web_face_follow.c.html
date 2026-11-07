@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>face_follow.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">face_follow.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">face_follow.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">face_follow.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>FACE_WEB_OUTPUT_FIELD_COUNT</b> 11
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>EMSCRIPTEN_KEEPALIVE</b> void <b>face_web_reset</b> (void)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> unsigned char * <b>face_web_input</b> (void)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> void <b>face_web_detect</b> (int width, int
+    height, double now)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> float * <b>face_web_tick</b> (double now, int
+    enabled)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_FACE_WEB_OUTPUT_FIELD_COUNT___11"><a class="permalink" href="#_define_FACE_WEB_OUTPUT_FIELD_COUNT___11">#define
+  FACE_WEB_OUTPUT_FIELD_COUNT 11</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file
+  <b>src/web/face_follow.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> void face_web_detect (int width, int
+  height, double now)</h2>
+<p class="Pp">Definition at line <b>23</b> of file
+  <b>src/web/face_follow.c</b>.</p>
+<pre>23                                                                              {
+24   if (width &lt; 1 || height &lt; 1 || width &gt; FACE_FOLLOW_DETECT_WIDTH || height &gt; FACE_FOLLOW_DETECT_HEIGHT)
+25     return;
+26   for (int i = 0; i &lt; width * height; i++) {
+27     bgr[i * 3] = rgba[i * 4 + 2];
+28     bgr[i * 3 + 1] = rgba[i * 4 + 1];
+29     bgr[i * 3 + 2] = rgba[i * 4];
+30   }
+31   face_follow_detection_t faces[FACE_FOLLOW_MAX_DETECTIONS];
+32   face_follow_detect(results, bgr, width, height, faces, FACE_FOLLOW_MAX_DETECTIONS, &amp;face_count);
+33   face_follow_observe(&amp;state, faces, face_count, now);
+34 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>face_follow_detect()</b>, <b>FACE_FOLLOW_DETECT_HEIGHT</b>,
+    <b>FACE_FOLLOW_DETECT_WIDTH</b>, <b>FACE_FOLLOW_MAX_DETECTIONS</b>,
+    <b>face_follow_observe()</b>, and <b>face_web_detect()</b>.</p>
+<p class="Pp">Referenced by <b>face_web_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> unsigned char * face_web_input (void
+  )</h2>
+<p class="Pp">Definition at line <b>19</b> of file
+  <b>src/web/face_follow.c</b>.</p>
+<pre>19                                                          {
+20   return rgba;
+21 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>EMSCRIPTEN_KEEPALIVE</b>, and
+    <b>face_web_input()</b>.</p>
+<p class="Pp">Referenced by <b>face_web_input()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> void face_web_reset (void )</h2>
+<p class="Pp">Definition at line <b>14</b> of file
+  <b>src/web/face_follow.c</b>.</p>
+<pre>14                                                {
+15   face_follow_init(&amp;state);
+16   face_count = 0;
+17 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>face_follow_init()</b>,
+    and <b>face_web_reset()</b>.</p>
+<p class="Pp">Referenced by <b>face_web_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> float * face_web_tick (double now,
+  int enabled)</h2>
+<p class="Pp">Definition at line <b>36</b> of file
+  <b>src/web/face_follow.c</b>.</p>
+<pre>36                                                                    {
+37   face_follow_tick(&amp;state, now, enabled != 0);
+38   output[0] = state.crop.x;
+39   output[1] = state.crop.y;
+40   output[2] = state.crop.w;
+41   output[3] = state.crop.h;
+42   output[4] = state.face.x;
+43   output[5] = state.face.y;
+44   output[6] = state.face.w;
+45   output[7] = state.face.h;
+46   output[8] = state.detected &amp;&amp; now - state.last_seen &lt; 0.3;
+47   output[9] = (float)face_count;
+48   output[10] = state.tracking &amp;&amp; now - state.last_seen &lt;= 0.7;
+49   return output;
+50 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>face_follow_state_t::crop</b>,
+    <b>face_follow_state_t::detected</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>face_follow_state_t::face</b>, <b>face_follow_tick()</b>,
+    <b>face_web_tick()</b>, <b>face_follow_rect_t::h</b>,
+    <b>face_follow_state_t::last_seen</b>, <b>face_follow_state_t::tracking</b>,
+    <b>face_follow_rect_t::w</b>, <b>face_follow_rect_t::x</b>, and
+    <b>face_follow_rect_t::y</b>.</p>
+<p class="Pp">Referenced by <b>face_web_tick()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>md_docs_2audio-reliability(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">md_docs_2audio-reliability(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">md_docs_2audio-reliability(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">md_docs_2audio-reliability - Audio reliability and validation</p>
+<p class="Pp">Opus is the wire codec at 48 kHz with 20 ms packets. Native and
+    browser paths use stereo codecs for centered speech and stereo media; see
+    <b>audio channels</b> for device routing, stereo negotiation, and
+    hardware-free regression coverage.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Behavior"><a class="permalink" href="#Behavior">Behavior</a></h1>
+<ul class="Bl-bullet">
+  <li>Microphones use the speech Opus application at 32 kbit/s. Media and
+      generated test audio use the audio application at 128 kbit/s. Native
+      encoders share checked bitrate/VBR/DTX configuration; DTX is off by
+      default. Both explicit client and discovery paths select this profile
+      using the opened media source: video-only media with automatic microphone
+      fallback stays in speech mode.</li>
+  <li>Decoded playback is no longer noise-gated. Quiet media is preserved;
+      microphone capture processing, including the default spectral stage,
+      remains separate.</li>
+  <li>Playback starts with 60 ms buffered audio. Actual underruns raise the
+      refill target by 20 ms, bounded at 160 ms; stable playback lowers it
+      toward the initial target. Short tails fade out and refilled playback
+      fades in.</li>
+  <li>Bounded sample interpolation compensates for independent device clocks, up
+      to 1000 ppm. Capture queues remain sample-exact.</li>
+  <li>Invalid Opus frames can use decoder concealment instead of abandoning the
+      rest of their batch. This is not recovery of missing transport
+    packets.</li>
+  <li>Configuration fields now say milliseconds where milliseconds are actually
+      used. The echo-filter hint remains reserved; AEC3 controls its own filter
+      configuration.</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Reproducible_compiled-library_checks"><a class="permalink" href="#Reproducible_compiled-library_checks">Reproducible
+  compiled-library checks</a></h1>
+<p class="Pp">Install NumPy for the Python interpreter, build the native shared
+    library, then run:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>python tests/audio/probe_opus_profiles.py PATH_TO_SHARED_LIBRARY
+python tests/audio/probe_playout_recovery.py PATH_TO_SHARED_LIBRARY
+python tests/audio/probe_spectral_integration.py PATH_TO_SHARED_LIBRARY
+python tests/audio/probe_aec3_echo.py PATH_TO_SHARED_LIBRARY</pre>
+<p class="Pp">The library is build/bin/asciichat.dll on Windows,
+    build/lib/libasciichat.dylib on macOS, and build/lib/libasciichat.so on
+    Linux. ASan builds loaded into Python require the matching sanitizer runtime
+    preloaded.</p>
+<p class="Pp"></p>
+<p class="Pp">The checks cover ten accelerated minutes at each of -200/+200 ppm,
+    bursty 10&#x2013;40 ms delivery, actual underrun/refill, restart, unchanged
+    capture queues, independent mixed recipient streams, the production capture
+    pipeline, quiet playback compared sample-for-sample with an independent Opus
+    decoder, decoder concealment, and AEC3 echo-only/double-talk signals.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Earlier_mono_baseline_measurements"><a class="permalink" href="#Earlier_mono_baseline_measurements">Earlier
+  mono baseline measurements</a></h1>
+<p class="Pp">Native builds and compiled audio checks passed on Windows, Intel
+    macOS, and Linux. The clock-skew queues stayed within 2399&#x2013;3361
+    samples without underruns. The deterministic acoustic model measured
+    approximately 16.7 dB and 22.8 dB echo reduction for 40 ms and 100 ms
+    echoes; near-end correlation was 0.976 and 0.937. These synthetic results
+    are not physical-room certification.</p>
+<p class="Pp"></p>
+<p class="Pp">A five-minute Windows &#x2194; Intel Mac call used generated test
+    audio on both ends and an SSH-forwarded TCP connection. Both clients exited
+    0 and the server stayed running. Received PCM contained 293.84 seconds on
+    Windows and 293.26 seconds on macOS at 48 kHz, with finite nonzero samples.
+    Startup and shutdown account for part of the difference from wall time;
+    these recordings do not prove gap-free speaker output. Recordings are local
+    test artifacts and are not committed.</p>
+<p class="Pp"></p>
+<p class="Pp">A headless Chromium browser connected over WebSocket to the
+    updated native server alongside a native TCP client. With generated input
+    enabled, a 15-second measurement sent 725 browser Opus frames and played 739
+    received frames (709,440 samples), with zero reported playback underruns and
+    no page errors. The browser screenshot showed a connected client with active
+    capture/playback levels. Canonical client/mirror WASM artifacts were rebuilt
+    from this source and their manifest was regenerated and verified before the
+    check.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Boundaries"><a class="permalink" href="#Boundaries">Boundaries</a></h1>
+<p class="Pp">The packet format still has no sequence/timestamp contract for
+    unreliable audio; FEC and a lossy transport require a separate protocol
+    change. Physical Bluetooth, device unplug/replug, speaker-to-microphone AEC,
+    and overnight soak coverage are not established by the synthetic tests or
+    the five-minute call. The SSH Mac test intentionally bypasses microphone
+    permission restrictions with generated audio.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -63,73 +63,49 @@
 <h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
   <b>registry_entry_t</b> g_database_entries[]</a></h2>
 <p class="Pp"><b>Initial value:</b></p>
-<pre>
+<pre>= {
 <br/>
-                                      = {
-{&quot;database&quot;,
+     {&quot;database&quot;,
 <br/>
- '\0',
+      '\0',
 <br/>
- OPTION_TYPE_STRING,
+      OPTION_TYPE_STRING,
 <br/>
- offsetof(options_t, discovery_database_path),
+      offsetof(options_t, discovery_database_path),
 <br/>
- &quot;&quot;,
+      &quot;&quot;,
 <br/>
- 0,
+      0,
 <br/>
- &quot;Path to SQLite database for discovery session storage.&quot;,
+      &quot;Path to SQLite database for discovery session storage.&quot;,
 <br/>
- &quot;DATABASE&quot;,
+      &quot;DATABASE&quot;,
 <br/>
- NULL,
+      NULL,
 <br/>
- false,
+      false,
 <br/>
- &quot;ASCII_CHAT_DATABASE&quot;,
+      &quot;ASCII_CHAT_DATABASE&quot;,
 <br/>
- NULL,
+      NULL,
 <br/>
- NULL,
+      NULL,
 <br/>
- false,
+      false,
 <br/>
- false,
+      false,
 <br/>
- OPTION_MODE_DISCOVERY_SVC,
+      OPTION_MODE_DISCOVERY_SVC,
 <br/>
- {0},
+      {.input_type = OPTION_INPUT_FILEPATH},
 <br/>
- NULL},
-REGISTRY_TERMINATOR()}</pre>
+      NULL},
+<br/>
+     REGISTRY_TERMINATOR()}</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>17</b> of file
     <b>options/registry/database.c</b>.</p>
-<pre>17                                             {
-18     // DATABASE GROUP - ACDS Server Specific Options
-19     {&quot;database&quot;,
-20      '\0',
-21      OPTION_TYPE_STRING,
-22      offsetof(options_t, discovery_database_path),
-23      &quot;&quot;,
-24      0,
-25      &quot;Path to SQLite database for discovery session storage.&quot;,
-26      &quot;DATABASE&quot;,
-27      NULL,
-28      false,
-29      &quot;ASCII_CHAT_DATABASE&quot;,
-30      NULL,
-31      NULL,
-32      false,
-33      false,
-34      OPTION_MODE_DISCOVERY_SVC,
-35      {0},
-36      NULL},
-37 
-38     REGISTRY_TERMINATOR()};</pre>
-<pre></pre>
-<p class="Pp"></p>
 </section>
 </section>
 <section class="Sh">
@@ -139,7 +115,7 @@ REGISTRY_TERMINATOR()}</pre>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

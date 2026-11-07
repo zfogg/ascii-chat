@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>queries.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">queries.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">queries.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">queries.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SELECT_SESSION_BASE</b>
+  <br/>
+  #define <b>DATABASE_QUERY</b>(name, sql)
+  <br/>
+  #define <b>RATE_LIMIT_QUERY</b>(name, sql)
+  <br/>
+  #define <b>DATABASE_QUERY</b>(name, sql)
+  <br/>
+  #define <b>RATE_LIMIT_QUERY</b>(name, sql)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>database_query_id_t</b> { <b>QUERY_CreateSession</b>,
+    <b>QUERY_LookupSession</b>, <b>QUERY_InsertParticipant</b>,
+    <b>QUERY_IncrementParticipants</b>, <b>QUERY_SetSessionInitiator</b>,
+    <b>QUERY_LookupSessionString</b>, <b>QUERY_DeleteParticipant</b>,
+    <b>QUERY_DecrementParticipants</b>, <b>QUERY_GetParticipantCount</b>,
+    <b>QUERY_DeleteSession</b>, <b>QUERY_FindExpiredSessions</b>,
+    <b>QUERY_DeleteExpiredSessions</b>, <b>QUERY_UpdateHost</b>,
+    <b>QUERY_ClearHost</b>, <b>QUERY_StartMigration</b>,
+    <b>QUERY_GetMigrationState</b>, <b>QUERY_AddSessionKey</b>,
+    <b>QUERY_RevokeSessionKey</b>, <b>QUERY_VerifySessionKey</b>,
+    <b>QUERY_GetSessionKeys</b>, <b>QUERY_GetStatsSnapshot</b>,
+    <b>QUERY_GetSessionParticipants</b>, <b>QUERY_GetSessionById</b>,
+    <b>QUERY_GetSessionByString</b>, <b>QUERY_CountSessions</b>,
+    <b>QUERY_CountUniqueClients</b>, <b>QUERY_BeginTransaction</b>,
+    <b>QUERY_CommitTransaction</b>, <b>QUERY_RollbackTransaction</b>,
+    <b>QUERY_EnableWAL</b>, <b>QUERY_EnableForeignKeys</b>,
+    <b>QUERY_SchemaSessions</b>, <b>QUERY_SchemaParticipants</b>,
+    <b>QUERY_SchemaRateEvents</b>, <b>QUERY_SchemaIdxSessionsId</b>,
+    <b>QUERY_SchemaIdxSessionsActivity</b>,
+    <b>QUERY_SchemaIdxParticipantsSession</b>, <b>QUERY_SchemaIdxRateEvents</b>,
+    <b>QUERY_SchemaKeyPolicy</b>, <b>QUERY_SchemaIdentityKeys</b>,
+    <b>QUERY_BackfillSessionIdentityKeys</b>,
+    <b>QUERY_BackfillSessionKeyPolicy</b>, <b>QUERY_ImportLegacySessionKeys</b>,
+    <b>QUERY_HasLegacySessionKeys</b>, <b>QUERY_InsertSessionKeyPolicy</b>,
+    <b>QUERY_GetSessionKeyPolicy</b>, <b>QUERY_BeginKeySet</b>,
+    <b>QUERY_CommitKeySet</b>, <b>QUERY_RollbackToKeySet</b>,
+    <b>QUERY_CountRateEvents</b>, <b>QUERY_InsertRateEvent</b>,
+    <b>QUERY_DeleteRateEvents</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">#define DATABASE_QUERY( name, sql)</h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>[QUERY_##name] = {#name, sql},</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>34</b> of file <b>queries.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">#define DATABASE_QUERY( name, sql)</h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>QUERY_##name,</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>34</b> of file <b>queries.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">#define RATE_LIMIT_QUERY( name, sql)</h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>DATABASE_QUERY(name, sql)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>296</b> of file <b>queries.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">#define RATE_LIMIT_QUERY( name, sql)</h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>DATABASE_QUERY(name, sql)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>296</b> of file <b>queries.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SELECT_SESSION_BASE"><a class="permalink" href="#_define_SELECT_SESSION_BASE">#define
+  SELECT_SESSION_BASE</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>&quot;SELECT\n&quot;                                                                                                           \
+&quot;  session_string,\n&quot;                                                                                                \
+&quot;  session_id,\n&quot;                                                                                                    \
+&quot;  host_pubkey,\n&quot;                                                                                                   \
+&quot;  password_hash,\n&quot;                                                                                                 \
+&quot;  max_participants,\n&quot;                                                                                              \
+&quot;  current_participants,\n&quot;                                                                                          \
+&quot;  capabilities,\n&quot;                                                                                                  \
+&quot;  has_password,\n&quot;                                                                                                  \
+&quot;  expose_ip_publicly,\n&quot;                                                                                            \
+&quot;  session_type,\n&quot;                                                                                                  \
+&quot;  server_address,\n&quot;                                                                                                \
+&quot;  server_port,\n&quot;                                                                                                   \
+&quot;  created_at,\n&quot;                                                                                                    \
+&quot;  expires_at,\n&quot;                                                                                                    \
+&quot;  last_activity_at,\n&quot;                                                                                              \
+&quot;  initiator_id,\n&quot;                                                                                                  \
+&quot;  host_established,\n&quot;                                                                                              \
+&quot;  host_participant_id,\n&quot;                                                                                           \
+&quot;  host_address,\n&quot;                                                                                                  \
+&quot;  host_port,\n&quot;                                                                                                     \
+&quot;  host_connection_type,\n&quot;                                                                                          \
+&quot;  in_migration,\n&quot;                                                                                                  \
+&quot;  migration_start_ns\n&quot;                                                                                             \
+&quot;FROM sessions&quot;</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>6</b> of file <b>queries.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>database_query_id_t</b></a></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="QUERY_CreateSession"><a class="permalink" href="#QUERY_CreateSession"><b><i>QUERY_CreateSession
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_LookupSession"><a class="permalink" href="#QUERY_LookupSession"><b><i>QUERY_LookupSession
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_InsertParticipant"><a class="permalink" href="#QUERY_InsertParticipant"><b><i>QUERY_InsertParticipant
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_IncrementParticipants"><a class="permalink" href="#QUERY_IncrementParticipants"><b><i>QUERY_IncrementParticipants
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_SetSessionInitiator"><a class="permalink" href="#QUERY_SetSessionInitiator"><b><i>QUERY_SetSessionInitiator
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_LookupSessionString"><a class="permalink" href="#QUERY_LookupSessionString"><b><i>QUERY_LookupSessionString
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_DeleteParticipant"><a class="permalink" href="#QUERY_DeleteParticipant"><b><i>QUERY_DeleteParticipant
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_DecrementParticipants"><a class="permalink" href="#QUERY_DecrementParticipants"><b><i>QUERY_DecrementParticipants
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_GetParticipantCount"><a class="permalink" href="#QUERY_GetParticipantCount"><b><i>QUERY_GetParticipantCount
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_DeleteSession"><a class="permalink" href="#QUERY_DeleteSession"><b><i>QUERY_DeleteSession
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_FindExpiredSessions"><a class="permalink" href="#QUERY_FindExpiredSessions"><b><i>QUERY_FindExpiredSessions
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_DeleteExpiredSessions"><a class="permalink" href="#QUERY_DeleteExpiredSessions"><b><i>QUERY_DeleteExpiredSessions
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_UpdateHost"><a class="permalink" href="#QUERY_UpdateHost"><b><i>QUERY_UpdateHost
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_ClearHost"><a class="permalink" href="#QUERY_ClearHost"><b><i>QUERY_ClearHost
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_StartMigration"><a class="permalink" href="#QUERY_StartMigration"><b><i>QUERY_StartMigration
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_GetMigrationState"><a class="permalink" href="#QUERY_GetMigrationState"><b><i>QUERY_GetMigrationState
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_AddSessionKey"><a class="permalink" href="#QUERY_AddSessionKey"><b><i>QUERY_AddSessionKey
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_RevokeSessionKey"><a class="permalink" href="#QUERY_RevokeSessionKey"><b><i>QUERY_RevokeSessionKey
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_VerifySessionKey"><a class="permalink" href="#QUERY_VerifySessionKey"><b><i>QUERY_VerifySessionKey
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_GetSessionKeys"><a class="permalink" href="#QUERY_GetSessionKeys"><b><i>QUERY_GetSessionKeys
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_GetStatsSnapshot"><a class="permalink" href="#QUERY_GetStatsSnapshot"><b><i>QUERY_GetStatsSnapshot
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_GetSessionParticipants"><a class="permalink" href="#QUERY_GetSessionParticipants"><b><i>QUERY_GetSessionParticipants
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_GetSessionById"><a class="permalink" href="#QUERY_GetSessionById"><b><i>QUERY_GetSessionById
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_GetSessionByString"><a class="permalink" href="#QUERY_GetSessionByString"><b><i>QUERY_GetSessionByString
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_CountSessions"><a class="permalink" href="#QUERY_CountSessions"><b><i>QUERY_CountSessions
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_CountUniqueClients"><a class="permalink" href="#QUERY_CountUniqueClients"><b><i>QUERY_CountUniqueClients
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_BeginTransaction"><a class="permalink" href="#QUERY_BeginTransaction"><b><i>QUERY_BeginTransaction
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_CommitTransaction"><a class="permalink" href="#QUERY_CommitTransaction"><b><i>QUERY_CommitTransaction
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_RollbackTransaction"><a class="permalink" href="#QUERY_RollbackTransaction"><b><i>QUERY_RollbackTransaction
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_EnableWAL"><a class="permalink" href="#QUERY_EnableWAL"><b><i>QUERY_EnableWAL
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_EnableForeignKeys"><a class="permalink" href="#QUERY_EnableForeignKeys"><b><i>QUERY_EnableForeignKeys
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_SchemaSessions"><a class="permalink" href="#QUERY_SchemaSessions"><b><i>QUERY_SchemaSessions
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_SchemaParticipants"><a class="permalink" href="#QUERY_SchemaParticipants"><b><i>QUERY_SchemaParticipants
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_SchemaRateEvents"><a class="permalink" href="#QUERY_SchemaRateEvents"><b><i>QUERY_SchemaRateEvents
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_SchemaIdxSessionsId"><a class="permalink" href="#QUERY_SchemaIdxSessionsId"><b><i>QUERY_SchemaIdxSessionsId
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_SchemaIdxSessionsActivity"><a class="permalink" href="#QUERY_SchemaIdxSessionsActivity"><b><i>QUERY_SchemaIdxSessionsActivity
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_SchemaIdxParticipantsSession"><a class="permalink" href="#QUERY_SchemaIdxParticipantsSession"><b><i>QUERY_SchemaIdxParticipantsSession
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_SchemaIdxRateEvents"><a class="permalink" href="#QUERY_SchemaIdxRateEvents"><b><i>QUERY_SchemaIdxRateEvents
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_SchemaKeyPolicy"><a class="permalink" href="#QUERY_SchemaKeyPolicy"><b><i>QUERY_SchemaKeyPolicy
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_SchemaIdentityKeys"><a class="permalink" href="#QUERY_SchemaIdentityKeys"><b><i>QUERY_SchemaIdentityKeys
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_BackfillSessionIdentityKeys"><a class="permalink" href="#QUERY_BackfillSessionIdentityKeys"><b><i>QUERY_BackfillSessionIdentityKeys
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_BackfillSessionKeyPolicy"><a class="permalink" href="#QUERY_BackfillSessionKeyPolicy"><b><i>QUERY_BackfillSessionKeyPolicy
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_ImportLegacySessionKeys"><a class="permalink" href="#QUERY_ImportLegacySessionKeys"><b><i>QUERY_ImportLegacySessionKeys
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_HasLegacySessionKeys"><a class="permalink" href="#QUERY_HasLegacySessionKeys"><b><i>QUERY_HasLegacySessionKeys
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_InsertSessionKeyPolicy"><a class="permalink" href="#QUERY_InsertSessionKeyPolicy"><b><i>QUERY_InsertSessionKeyPolicy
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_GetSessionKeyPolicy"><a class="permalink" href="#QUERY_GetSessionKeyPolicy"><b><i>QUERY_GetSessionKeyPolicy
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_BeginKeySet"><a class="permalink" href="#QUERY_BeginKeySet"><b><i>QUERY_BeginKeySet
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_CommitKeySet"><a class="permalink" href="#QUERY_CommitKeySet"><b><i>QUERY_CommitKeySet
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_RollbackToKeySet"><a class="permalink" href="#QUERY_RollbackToKeySet"><b><i>QUERY_RollbackToKeySet
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_CountRateEvents"><a class="permalink" href="#QUERY_CountRateEvents"><b><i>QUERY_CountRateEvents
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_InsertRateEvent"><a class="permalink" href="#QUERY_InsertRateEvent"><b><i>QUERY_InsertRateEvent
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="QUERY_DeleteRateEvents"><a class="permalink" href="#QUERY_DeleteRateEvents"><b><i>QUERY_DeleteRateEvents
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>33</b> of file <b>queries.h</b>.</p>
+<pre>33              {
+34 #define DATABASE_QUERY(name, sql) QUERY_##name,
+35 #include &quot;queries.def&quot;
+36 #undef DATABASE_QUERY
+37 } database_query_id_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -23,8 +23,8 @@ Use a separate compatible build tree when changing instrumentation, libc or opti
 
 ```sh
 cmake --preset default -B build_coverage \
-  -DBUILD_TESTS=ON -DASCIICHAT_FORCE_CRITERION_TESTS=ON \
-  -DASCIICHAT_ENABLE_COVERAGE=ON -DUSE_MUSL=OFF
+  -DBUILD_TESTS=ON \
+  -DASCIICHAT_ENABLE_COVERAGE=ON
 cmake --build build_coverage --target ascii-chat tests
 ctest --test-dir build_coverage -L '^unit$' --no-tests=error \
   --output-junit Testing/ctest-results.xml --output-on-failure --parallel

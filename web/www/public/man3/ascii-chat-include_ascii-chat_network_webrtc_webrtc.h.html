@@ -54,33 +54,32 @@
   <br/>
   typedef struct <b>webrtc_data_channel</b> <b>webrtc_data_channel_t</b>
   <br/>
-  typedef void(* <b>webrtc_state_callback_t</b>)
-    (<b>webrtc_peer_connection_t</b> *pc, <b>webrtc_state_t</b> state, void
-    *user_data)
+  typedef void(*) <b>webrtc_state_callback_t</b>(<b>webrtc_peer_connection_t</b>
+    *pc, <b>webrtc_state_t</b> state, void *user_data)
   <br/>
-  Callback for state changes. typedef void(*
-    <b>webrtc_local_description_callback_t</b>) (<b>webrtc_peer_connection_t</b>
+  Callback for state changes. typedef void(*)
+    <b>webrtc_local_description_callback_t</b>(<b>webrtc_peer_connection_t</b>
     *pc, const char *sdp, const char *type, void *user_data)
   <br/>
-  Callback for local SDP offer/answer generation. typedef void(*
-    <b>webrtc_local_candidate_callback_t</b>) (<b>webrtc_peer_connection_t</b>
+  Callback for local SDP offer/answer generation. typedef void(*)
+    <b>webrtc_local_candidate_callback_t</b>(<b>webrtc_peer_connection_t</b>
     *pc, const char *candidate, const char *mid, void *user_data)
   <br/>
-  Callback for local ICE candidate discovery. typedef void(*
-    <b>webrtc_gathering_state_callback_t</b>) (<b>webrtc_peer_connection_t</b>
+  Callback for local ICE candidate discovery. typedef void(*)
+    <b>webrtc_gathering_state_callback_t</b>(<b>webrtc_peer_connection_t</b>
     *pc, <b>webrtc_gathering_state_t</b> state, void *user_data)
   <br/>
-  Callback for ICE gathering state changes. typedef void(*
-    <b>webrtc_datachannel_open_callback_t</b>) (<b>webrtc_data_channel_t</b>
-    *dc, void *user_data)
+  Callback for ICE gathering state changes. typedef void(*)
+    <b>webrtc_datachannel_open_callback_t</b>(<b>webrtc_data_channel_t</b> *dc,
+    void *user_data)
   <br/>
-  Callback for DataChannel open event. typedef void(*
-    <b>webrtc_datachannel_message_callback_t</b>) (<b>webrtc_data_channel_t</b>
+  Callback for DataChannel open event. typedef void(*)
+    <b>webrtc_datachannel_message_callback_t</b>(<b>webrtc_data_channel_t</b>
     *dc, const <b>uint8_t</b> *data, size_t size, void *user_data)
   <br/>
-  Callback for DataChannel message received. typedef void(*
-    <b>webrtc_datachannel_error_callback_t</b>) (<b>webrtc_data_channel_t</b>
-    *dc, const char *error, void *user_data)
+  Callback for DataChannel message received. typedef void(*)
+    <b>webrtc_datachannel_error_callback_t</b>(<b>webrtc_data_channel_t</b> *dc,
+    const char *error, void *user_data)
   <br/>
   Callback for DataChannel error.
   <br/>
@@ -148,8 +147,15 @@
     <b>webrtc_datachannel_send</b> (<b>webrtc_data_channel_t</b> *dc, const
     <b>uint8_t</b> *data, size_t size)
   <br/>
-  Send data over DataChannel. <b>bool</b> <b>webrtc_datachannel_is_open</b>
-    (<b>webrtc_data_channel_t</b> *dc)
+  Send data over DataChannel. <b>asciichat_error_t</b>
+    <b>webrtc_datachannel_get_buffered_amount</b> (<b>webrtc_data_channel_t</b>
+    *dc, size_t *amount)
+  <br/>
+  <b>asciichat_error_t</b> <b>webrtc_datachannel_get_max_message_size</b>
+    (<b>webrtc_data_channel_t</b> *dc, size_t *size)
+  <br/>
+  <b>bool</b> <b>webrtc_datachannel_is_open</b> (<b>webrtc_data_channel_t</b>
+    *dc)
   <br/>
   Check if DataChannel is open and ready. void
     <b>webrtc_datachannel_set_open_state</b> (<b>webrtc_data_channel_t</b> *dc,
@@ -189,7 +195,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

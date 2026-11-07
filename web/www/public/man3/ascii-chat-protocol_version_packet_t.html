@@ -79,7 +79,7 @@
 <p class="Pp"></p>
 <p class="Pp">Structure is 16 bytes total (packed).</p>
 </div>
-<p class="Pp">Definition at line <b>818</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>829</b> of file <b>packet.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -88,53 +88,41 @@
 <h2 class="Ss"><b>uint8_t</b>
   protocol_version_packet_t::compression_algorithms</h2>
 <p class="Pp">Supported compression algorithms bitmask (COMPRESS_ALGO_*).</p>
-<p class="Pp">Definition at line <b>826</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>discovery_session_process()</b>, <b>discovery_session_start()</b>,
-    <b>handle_protocol_version_packet()</b>, and
-    <b>server_crypto_handshake()</b>.</p>
+<p class="Pp">Definition at line <b>837</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_protocol_version_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b>
   protocol_version_packet_t::compression_threshold</h2>
 <p class="Pp">Compression threshold percentage (0-100, e.g., 80 = compress if
     &gt;80% size reduction).</p>
-<p class="Pp">Definition at line <b>828</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>discovery_session_process()</b>, <b>discovery_session_start()</b>, and
-    <b>server_crypto_handshake()</b>.</p>
+<p class="Pp">Definition at line <b>839</b> of file <b>packet.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> protocol_version_packet_t::feature_flags</h2>
 <p class="Pp">Feature flags bitmask (FEATURE_RLE_ENCODING, etc.).</p>
-<p class="Pp">Definition at line <b>830</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>discovery_session_process()</b>, <b>discovery_session_start()</b>,
-    <b>handle_protocol_version_packet()</b>, and
-    <b>server_crypto_handshake()</b>.</p>
+<p class="Pp">Definition at line <b>841</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_protocol_version_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> protocol_version_packet_t::protocol_revision</h2>
 <p class="Pp">Minor protocol revision (server can be newer).</p>
-<p class="Pp">Definition at line <b>822</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>discovery_session_process()</b>, <b>discovery_session_start()</b>,
-    <b>handle_protocol_version_packet()</b>, and
-    <b>server_crypto_handshake()</b>.</p>
+<p class="Pp">Definition at line <b>833</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_protocol_version_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> protocol_version_packet_t::protocol_version</h2>
 <p class="Pp">Major protocol version (must match for compatibility).</p>
-<p class="Pp">Definition at line <b>820</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>discovery_session_process()</b>, <b>discovery_session_start()</b>,
-    <b>handle_protocol_version_packet()</b>, and
-    <b>server_crypto_handshake()</b>.</p>
+<p class="Pp">Definition at line <b>831</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_handshake_begin()</b>,
+    <b>acip_security_receive()</b>, <b>acip_security_start()</b>,
+    <b>client_handshake_receive()</b>, <b>handle_protocol_version_packet()</b>,
+    and <b>network_negotiation_receive()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> protocol_version_packet_t::reserved[7]</h2>
 <p class="Pp">Reserved bytes for future expansion (must be zero).</p>
-<p class="Pp">Definition at line <b>832</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>843</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_protocol_version_packet()</b>.</p>
 </section>
 <section class="Ss">
@@ -142,11 +130,11 @@
   protocol_version_packet_t::supports_encryption</h2>
 <p class="Pp">Encryption &amp; authentication mode bitmask (ACIP_CRYPTO_*
     constants: NONE, ENCRYPT, AUTH, or FULL).</p>
-<p class="Pp">Definition at line <b>824</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
-    <b>discovery_session_process()</b>, <b>discovery_session_start()</b>,
-    <b>handle_protocol_version_packet()</b>, and
-    <b>server_crypto_handshake()</b>.</p>
+<p class="Pp">Definition at line <b>835</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_handshake_begin()</b>,
+    <b>acip_security_receive()</b>, <b>acip_security_start()</b>,
+    <b>client_handshake_receive()</b>, <b>handle_protocol_version_packet()</b>,
+    and <b>network_negotiation_receive()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -157,7 +145,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

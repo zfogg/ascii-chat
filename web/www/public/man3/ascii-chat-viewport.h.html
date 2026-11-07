@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>viewport.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">viewport.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">viewport.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">viewport.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>ui_viewport_t</b>
+  <br/>
+  struct <b>ui_viewport_range_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>ui_viewport_range_t</b> <b>ui_viewport_update</b>
+    (<b>ui_viewport_t</b> *view, size_t count, size_t rows)
+  <br/>
+  <b>bool</b> <b>ui_viewport_key</b> (<b>ui_viewport_t</b> *view, size_t count,
+    size_t rows, <b>keyboard_key_t</b> key)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_viewport_key (<b>ui_viewport_t</b> * view, size_t
+  count, size_t rows, <b>keyboard_key_t</b> key)</h2>
+<p class="Pp">Definition at line <b>38</b> of file <b>viewport.c</b>.</p>
+<pre>38                                                                                       {
+39   if (!v) {
+40     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Viewport state is NULL&quot;);
+41     return false;
+42   }
+43   ui_viewport_range_t r = ui_viewport_update(v, count, rows);
+44   size_t step = v-&gt;page_size ? v-&gt;page_size : (rows ? rows : 1);
+45   switch ((int)key) {
+46   case KEY_UP:
+47     if (v-&gt;selected)
+48       --v-&gt;selected;
+49     break;
+50   case KEY_DOWN:
+51     if (count &amp;&amp; v-&gt;selected &lt; count - 1)
+52       ++v-&gt;selected;
+53     break;
+54   case KEY_HOME:
+55     v-&gt;selected = v-&gt;first_visible = 0;
+56     break;
+57   case KEY_END:
+58     v-&gt;selected = count ? count - 1 : 0;
+59     break;
+60   case KEY_LEFT:
+61     if (v-&gt;page_size) {
+62       if (r.page)
+63         v-&gt;selected -= step;
+64     } else
+65       v-&gt;selected = v-&gt;selected &gt; step ? v-&gt;selected - step : 0;
+66     break;
+67   case KEY_RIGHT:
+68     if (count &amp;&amp; (!v-&gt;page_size || r.page + 1 &lt; r.pages))
+69       v-&gt;selected = step &lt; count - v-&gt;selected ? v-&gt;selected + step : count - 1;
+70     break;
+71   default:
+72     return false;
+73   }
+74   ui_viewport_update(v, count, rows);
+75   return true;
+76 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>ui_viewport_t::first_visible</b>, <b>KEY_DOWN</b>, <b>KEY_END</b>,
+    <b>KEY_HOME</b>, <b>KEY_LEFT</b>, <b>KEY_RIGHT</b>, <b>KEY_UP</b>,
+    <b>ui_viewport_range_t::page</b>, <b>ui_viewport_t::page_size</b>,
+    <b>ui_viewport_range_t::pages</b>, <b>ui_viewport_t::selected</b>,
+    <b>SET_ERRNO</b>, <b>ui_viewport_key()</b>, and
+  <b>ui_viewport_update()</b>.</p>
+<p class="Pp">Referenced by <b>ui_sync_handle_key()</b>, and
+    <b>ui_viewport_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ui_viewport_range_t</b> ui_viewport_update
+  (<b>ui_viewport_t</b> * view, size_t count, size_t rows)</h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>viewport.c</b>.</p>
+<pre>4                                                                                     {
+5   ui_viewport_range_t r = {.pages = 1};
+6   if (!v) {
+7     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Viewport state is NULL&quot;);
+8     return r;
+9   }
+10   if (!count) {
+11     v-&gt;selected = v-&gt;first_visible = 0;
+12     return r;
+13   }
+14   if (!rows)
+15     rows = 1;
+16   if (v-&gt;selected &gt;= count)
+17     v-&gt;selected = count - 1;
+18   size_t page_size = v-&gt;page_size ? v-&gt;page_size : count;
+19   r.page = v-&gt;selected / page_size;
+20   r.pages = 1 + (count - 1) / page_size;
+21   r.page_first = r.page * page_size;
+22   r.page_count = count - r.page_first &lt; page_size ? count - r.page_first : page_size;
+23   size_t selected = v-&gt;selected - r.page_first;
+24   size_t last = r.page_count &gt; rows ? r.page_count - rows : 0;
+25   if (v-&gt;first_visible &gt; last)
+26     v-&gt;first_visible = last;
+27   if (selected &lt; v-&gt;first_visible)
+28     v-&gt;first_visible = selected;
+29   if (selected - v-&gt;first_visible &gt;= rows)
+30     v-&gt;first_visible = selected - rows + 1;
+31   r.first = r.page_first + v-&gt;first_visible;
+32   r.count = r.page_count - v-&gt;first_visible;
+33   if (r.count &gt; rows)
+34     r.count = rows;
+35   return r;
+36 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_viewport_range_t::count</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ui_viewport_range_t::first</b>,
+    <b>ui_viewport_t::first_visible</b>, <b>ui_viewport_range_t::page</b>,
+    <b>ui_viewport_range_t::page_count</b>,
+    <b>ui_viewport_range_t::page_first</b>, <b>ui_viewport_t::page_size</b>,
+    <b>ui_viewport_range_t::pages</b>, <b>ui_viewport_t::selected</b>,
+    <b>SET_ERRNO</b>, and <b>ui_viewport_update()</b>.</p>
+<p class="Pp">Referenced by <b>ui_selectable_list_keep_visible()</b>,
+    <b>ui_table_render()</b>, <b>ui_viewport_key()</b>, and
+    <b>ui_viewport_update()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

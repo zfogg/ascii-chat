@@ -152,7 +152,7 @@
     (<b>framebuffer_t</b> *fb, const char *frame_data, size_t frame_size)
   <br/>
   Write a frame to the buffer. <b>bool</b> <b>framebuffer_read_frame</b>
-    (<b>framebuffer_t</b> *fb, <b>frame_t</b> *<b>frame</b>)
+    (<b>framebuffer_t</b> *fb, <b>frame_t</b> *frame)
   <br/>
   Read a frame from the buffer. void <b>framebuffer_clear</b>
     (<b>framebuffer_t</b> *fb)
@@ -164,11 +164,11 @@
   <br/>
   Write a multi-source frame to the buffer (for multi-user support). <b>bool</b>
     <b>framebuffer_read_multi_frame</b> (<b>framebuffer_t</b> *fb,
-    <b>multi_source_frame_t</b> *<b>frame</b>)
+    <b>multi_source_frame_t</b> *frame)
   <br/>
   Read a multi-source frame from the buffer. <b>bool</b>
     <b>framebuffer_peek_latest_multi_frame</b> (<b>framebuffer_t</b> *fb,
-    <b>multi_source_frame_t</b> *<b>frame</b>)
+    <b>multi_source_frame_t</b> *frame)
   <br/>
   Peek at the latest multi-source frame without removing it.
   <br/>
@@ -190,7 +190,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

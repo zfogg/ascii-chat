@@ -42,8 +42,8 @@
 <br/>
 <p class="Pp"><b>HttpResponse</b> ()=default
   <br/>
-  <b>HttpResponse</b> (int code, std::string <b>text</b>, std::string
-    content_type, std::string response_body)
+  <b>HttpResponse</b> (int code, std::string text, std::string content_type,
+    std::string response_body)
   <br/>
   <b>HttpResponse</b> &amp; <b>setHeader</b> (const std::string &amp;name, const
     std::string &amp;value)
@@ -59,13 +59,13 @@
   Public Member Functions</a></h2>
 <br/>
 <p class="Pp">static <b>HttpResponse</b> <b>ok</b> (const std::string
-    &amp;content_type, const std::string &amp;<b>body</b>)
+    &amp;content_type, const std::string &amp;body)
   <br/>
-  static <b>HttpResponse</b> <b>json</b> (const std::string &amp;<b>body</b>)
+  static <b>HttpResponse</b> <b>json</b> (const std::string &amp;body)
   <br/>
-  static <b>HttpResponse</b> <b>html</b> (const std::string &amp;<b>body</b>)
+  static <b>HttpResponse</b> <b>html</b> (const std::string &amp;body)
   <br/>
-  static <b>HttpResponse</b> <b>text</b> (const std::string &amp;<b>body</b>)
+  static <b>HttpResponse</b> <b>text</b> (const std::string &amp;body)
   <br/>
   static <b>HttpResponse</b> <b>notFound</b> (const std::string
     &amp;message='Not Found')
@@ -207,51 +207,51 @@
 <h2 class="Ss" id="std::string_ascii_query::HttpResponse::serialize_()_const"><a class="permalink" href="#std::string_ascii_query::HttpResponse::serialize_()_const">std::string
   ascii_query::HttpResponse::serialize () const [nodiscard]</a></h2>
 <p class="Pp">Serialize response to HTTP/1.1 format.</p>
-<p class="Pp">Definition at line <b>62</b> of file <b>http_server.cpp</b>.</p>
-<pre>62                                         {
-63     std::ostringstream oss;
-64 
-65     // Status line
-66     oss &lt;&lt; &quot;HTTP/1.1 &quot; &lt;&lt; status_code &lt;&lt; &quot; &quot; &lt;&lt; status_text &lt;&lt; &quot;\r\n&quot;;
-67 
-68     // Headers
-69     bool has_content_length = false;
-70     bool has_connection = false;
-71 
-72     for (const auto &amp;[key, value] : headers) {
-73         oss &lt;&lt; key &lt;&lt; &quot;: &quot; &lt;&lt; value &lt;&lt; &quot;\r\n&quot;;
-74         std::string lower_key = key;
-75         std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
-76                        [](unsigned char c) { return std::tolower(c); });
-77         if (lower_key == &quot;content-length&quot;)
-78             has_content_length = true;
-79         if (lower_key == &quot;connection&quot;)
-80             has_connection = true;
-81     }
-82 
-83     // Add Content-Length if not present
-84     if (!has_content_length) {
-85         oss &lt;&lt; &quot;Content-Length: &quot; &lt;&lt; body.size() &lt;&lt; &quot;\r\n&quot;;
-86     }
-87 
-88     // Add Connection: close if not present
-89     if (!has_connection) {
-90         oss &lt;&lt; &quot;Connection: close\r\n&quot;;
-91     }
-92 
-93     // CORS headers for browser access
-94     oss &lt;&lt; &quot;Access-Control-Allow-Origin: *\r\n&quot;;
-95     oss &lt;&lt; &quot;Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\n&quot;;
-96     oss &lt;&lt; &quot;Access-Control-Allow-Headers: Content-Type\r\n&quot;;
-97 
-98     // End headers
-99     oss &lt;&lt; &quot;\r\n&quot;;
-100 
-101     // Body
-102     oss &lt;&lt; body;
-103 
-104     return oss.str();
-105 }</pre>
+<p class="Pp">Definition at line <b>65</b> of file <b>http_server.cpp</b>.</p>
+<pre>65                                         {
+66   std::ostringstream oss;
+67
+68   // Status line
+69   oss &lt;&lt; &quot;HTTP/1.1 &quot; &lt;&lt; status_code &lt;&lt; &quot; &quot; &lt;&lt; status_text &lt;&lt; &quot;\r\n&quot;;
+70
+71   // Headers
+72   bool has_content_length = false;
+73   bool has_connection = false;
+74
+75   for (const auto &amp;[key, value] : headers) {
+76     oss &lt;&lt; key &lt;&lt; &quot;: &quot; &lt;&lt; value &lt;&lt; &quot;\r\n&quot;;
+77     std::string lower_key = key;
+78     std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
+79                    [](unsigned char c) { return std::tolower(c); });
+80     if (lower_key == &quot;content-length&quot;)
+81       has_content_length = true;
+82     if (lower_key == &quot;connection&quot;)
+83       has_connection = true;
+84   }
+85
+86   // Add Content-Length if not present
+87   if (!has_content_length) {
+88     oss &lt;&lt; &quot;Content-Length: &quot; &lt;&lt; body.size() &lt;&lt; &quot;\r\n&quot;;
+89   }
+90
+91   // Add Connection: close if not present
+92   if (!has_connection) {
+93     oss &lt;&lt; &quot;Connection: close\r\n&quot;;
+94   }
+95
+96   // CORS headers for browser access
+97   oss &lt;&lt; &quot;Access-Control-Allow-Origin: *\r\n&quot;;
+98   oss &lt;&lt; &quot;Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\n&quot;;
+99   oss &lt;&lt; &quot;Access-Control-Allow-Headers: Content-Type\r\n&quot;;
+100
+101   // End headers
+102   oss &lt;&lt; &quot;\r\n&quot;;
+103
+104   // Body
+105   oss &lt;&lt; body;
+106
+107   return oss.str();
+108 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>body</b>, <b>headers</b>, <b>status_code</b>, and
@@ -335,7 +335,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>runtime.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">runtime.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">runtime.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">runtime.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>stats_view_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>STATS_RUNTIME_MODE_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>STATS_VIEW_LINE_BUFFER_SIZE</b> 160
+  <br/>
+  #define <b>STATS_VIEW_LINES</b> 128
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>stats_peer</b> <b>stats_peer_t</b>
+  <br/>
+  typedef void(*) <b>stats_provider_fn</b>(<b>stats_view_t</b> *view, void
+    *data)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>stats_runtime_start</b> (const char
+    *mode, unsigned interval_seconds)
+  <br/>
+  void <b>stats_runtime_stop</b> (void)
+  <br/>
+  <b>stats_scope_t</b> * <b>stats_runtime_scope</b> (void)
+  <br/>
+  void <b>stats_runtime_set_provider</b> (<b>stats_provider_fn</b> provider,
+    void *data)
+  <br/>
+  void <b>stats_view_add</b> (<b>stats_view_t</b> *view, const char *format,...)
+  <br/>
+  void <b>stats_view_add_header</b> (<b>stats_view_t</b> *view, const char
+    *format,...)
+  <br/>
+  void <b>stats_runtime_toggle</b> (void)
+  <br/>
+  <b>bool</b> <b>stats_runtime_active</b> (void)
+  <br/>
+  <b>stats_peer_t</b> * <b>stats_runtime_peer_open</b> (const char *transport)
+  <br/>
+  void <b>stats_runtime_peer_close</b> (<b>stats_peer_t</b> *peer)
+  <br/>
+  <b>stats_scope_t</b> * <b>stats_runtime_peer_scope</b> (<b>stats_peer_t</b>
+    *peer)
+  <br/>
+  void <b>stats_runtime_packet</b> (<b>stats_peer_t</b> *peer, unsigned type,
+    size_t payload_bytes, <b>bool</b> sent, <b>bool</b> success)
+  <br/>
+  void <b>stats_runtime_connection_state</b> (const char *state)
+  <br/>
+  void <b>stats_runtime_media</b> (unsigned width, unsigned height, double
+    position, double duration)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_STATS_RUNTIME_MODE_BUFFER_SIZE___32"><a class="permalink" href="#_define_STATS_RUNTIME_MODE_BUFFER_SIZE___32">#define
+  STATS_RUNTIME_MODE_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>stats/runtime.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_STATS_VIEW_LINE_BUFFER_SIZE___160"><a class="permalink" href="#_define_STATS_VIEW_LINE_BUFFER_SIZE___160">#define
+  STATS_VIEW_LINE_BUFFER_SIZE 160</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>stats/runtime.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_STATS_VIEW_LINES___128"><a class="permalink" href="#_define_STATS_VIEW_LINES___128">#define
+  STATS_VIEW_LINES 128</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>stats/runtime.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>stats_peer</b> <b>stats_peer_t</b></a></h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>stats/runtime.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void(*)_stats_provider_fn("><a class="permalink" href="#typedef_void(*)_stats_provider_fn(">typedef
+  void(*) stats_provider_fn(<b>stats_view_t</b> *view, void *data)</a></h2>
+<p class="Pp">Provider runs on the stats worker; unregister before destroying
+    its data. Never call <b>stats_runtime_set_provider()</b> from a
+  provider.</p>
+<p class="Pp">Definition at line <b>27</b> of file <b>stats/runtime.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> stats_runtime_active (void )</h2>
+<p class="Pp">Definition at line <b>26</b> of file
+    <b>lib/platform/wasm/stubs/stats.c</b>.</p>
+<pre>26                                 {
+27   return false;
+28 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool_impl()</b>,
+    <b>keyboard_help_previous_interactive()</b>, <b>stats_runtime_active()</b>,
+    <b>ui_controller_interactive_screen()</b>, <b>UI_SCREEN_HELP</b>, and
+    <b>UI_SCREEN_STATS</b>.</p>
+<p class="Pp">Referenced by <b>stats_runtime_active()</b>, and
+    <b>stats_runtime_toggle()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_runtime_connection_state_(const_char_*_state)"><a class="permalink" href="#void_stats_runtime_connection_state_(const_char_*_state)">void
+  stats_runtime_connection_state (const char * state)</a></h2>
+<p class="Pp">Definition at line <b>43</b> of file
+    <b>lib/platform/wasm/stubs/stats.c</b>.</p>
+<pre>43                                                        {
+44   (void)state;
+45 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mutex_lock</b>, <b>mutex_unlock</b>, and
+    <b>stats_runtime_connection_state()</b>.</p>
+<p class="Pp">Referenced by <b>stats_runtime_connection_state()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_runtime_media_(unsigned_width,_unsigned_height,_double_position,_double_duration)"><a class="permalink" href="#void_stats_runtime_media_(unsigned_width,_unsigned_height,_double_position,_double_duration)">void
+  stats_runtime_media (unsigned width, unsigned height, double position, double
+  duration)</a></h2>
+<p class="Pp">Definition at line <b>46</b> of file
+    <b>lib/platform/wasm/stubs/stats.c</b>.</p>
+<pre>46                                                                                             {
+47   (void)width;
+48   (void)height;
+49   (void)position;
+50   (void)duration;
+51 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64_impl()</b>, and
+    <b>stats_runtime_media()</b>.</p>
+<p class="Pp">Referenced by <b>stats_runtime_media()</b>, and
+    <b>stats_runtime_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_runtime_packet_("><a class="permalink" href="#void_stats_runtime_packet_(">void
+  stats_runtime_packet (<b>stats_peer_t</b> * peer, unsigned type, size_t
+  payload_bytes, <b>bool</b> sent, <b>bool</b> success)</a></h2>
+<p class="Pp">Application packet boundary, after decryption on receive. Header
+    bytes are included internally.</p>
+<p class="Pp">Definition at line <b>36</b> of file
+    <b>lib/platform/wasm/stubs/stats.c</b>.</p>
+<pre>36                                                                                                     {
+37   (void)peer;
+38   (void)type;
+39   (void)bytes;
+40   (void)sent;
+41   (void)success;
+42 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_otel_metric()</b>,
+    <b>PACKET_TYPE_ASCII_FRAME</b>, <b>PACKET_TYPE_ERROR_MESSAGE</b>,
+    <b>PACKET_TYPE_IMAGE_FRAME</b>, <b>PACKET_TYPE_IMAGE_FRAME_H264</b>,
+    <b>PACKET_TYPE_IMAGE_FRAME_H265</b>, <b>stats_peer::scope</b>,
+    <b>stats_counter_add()</b>, <b>STATS_COUNTER_BYTES_RECEIVED</b>,
+    <b>STATS_COUNTER_BYTES_SENT</b>, <b>STATS_COUNTER_FRAMES_RECEIVED</b>,
+    <b>STATS_COUNTER_FRAMES_SENT</b>, <b>STATS_COUNTER_PACKETS_RECEIVED</b>,
+    <b>STATS_COUNTER_PACKETS_SENT</b>, <b>STATS_COUNTER_RECEIVE_ERRORS</b>,
+    <b>STATS_COUNTER_REQUEST_FAILURES</b>, <b>STATS_COUNTER_SEND_ERRORS</b>, and
+    <b>stats_runtime_packet()</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_packet()</b>,
+    <b>acip_handle_acds_packet()</b>, <b>acip_handle_client_packet()</b>,
+    <b>acip_handle_server_packet()</b>,
+    <b>acip_server_receive_and_dispatch()</b>,
+    <b>packet_receive_via_transport()</b>, <b>packet_send_via_transportv()</b>,
+    <b>stats_runtime_packet()</b>, and <b>stats_runtime_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_runtime_peer_close_("><a class="permalink" href="#void_stats_runtime_peer_close_(">void
+  stats_runtime_peer_close (<b>stats_peer_t</b> * peer)</a></h2>
+<p class="Pp">Definition at line <b>33</b> of file
+    <b>lib/platform/wasm/stubs/stats.c</b>.</p>
+<pre>33                                                   {
+34   (void)peer;
+35 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>SAFE_FREE</b>, <b>stats_peer::sampler</b>, <b>stats_peer::scope</b>,
+    <b>STATS_GAUGE_CONNECTIONS_ACTIVE</b>, <b>stats_gauge_set()</b>,
+    <b>STATS_PEER_CAPACITY</b>, <b>stats_runtime_peer_close()</b>,
+    <b>stats_sampler_destroy()</b>, and <b>stats_scope_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>acip_transport_destroy()</b>,
+    <b>acip_websocket_client_transport_create()</b>, and
+    <b>stats_runtime_peer_close()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>stats_peer_t</b> * stats_runtime_peer_open (const char *
+  transport)</h2>
+<p class="Pp">Definition at line <b>29</b> of file
+    <b>lib/platform/wasm/stubs/stats.c</b>.</p>
+<pre>29                                                              {
+30   (void)transport;
+31   return NULL;
+32 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>stats_peer::id</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>NS_PER_MS_INT</b>,
+    <b>NS_PER_SEC_INT</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>stats_peer::sampler</b>, <b>stats_peer::scope</b>,
+    <b>STATS_GAUGE_CONNECTIONS_ACTIVE</b>, <b>stats_gauge_set()</b>,
+    <b>STATS_PEER_CAPACITY</b>, <b>stats_runtime_peer_open()</b>,
+    <b>stats_sampler_create()</b>, <b>stats_scope_create()</b>,
+    <b>stats_scope_destroy()</b>, and <b>stats_peer::transport</b>.</p>
+<p class="Pp">Referenced by <b>acip_async_tcp_transport_create()</b>,
+    <b>acip_tcp_transport_create()</b>,
+    <b>acip_websocket_client_transport_create()</b>,
+    <b>acip_websocket_server_transport_create()</b>, and
+    <b>stats_runtime_peer_open()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>stats_scope_t</b> * stats_runtime_peer_scope
+  (<b>stats_peer_t</b> * peer)</h2>
+<p class="Pp">Definition at line <b>13</b> of file
+    <b>lib/platform/wasm/stubs/stats.c</b>.</p>
+<pre>13                                                             {
+14   (void)peer;
+15   return NULL;
+16 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>stats_peer::scope</b>, and
+    <b>stats_runtime_peer_scope()</b>.</p>
+<p class="Pp">Referenced by <b>stats_runtime_peer_scope()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>stats_scope_t</b> * stats_runtime_scope (void )</h2>
+<p class="Pp">Definition at line <b>10</b> of file
+    <b>lib/platform/wasm/stubs/stats.c</b>.</p>
+<pre>10                                          {
+11   return NULL;
+12 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>stats_runtime_scope()</b>.</p>
+<p class="Pp">Referenced by <b>acip_handle_acds_packet()</b>,
+    <b>acip_send_session_joined()</b>, <b>client_audio_render_thread()</b>,
+    <b>client_video_render_thread()</b>,
+    <b>database_session_cleanup_expired()</b>,
+    <b>database_session_update_host()</b>, <b>database_stats_snapshot()</b>,
+    <b>h265_decode()</b>, <b>h265_encode()</b>, <b>h265_encoder_flush()</b>,
+    <b>mcp_dispatch()</b>, <b>mcp_error()</b>,
+    <b>packet_decode_frame_data_malloc()</b>,
+    <b>packet_decode_frame_data_workspace()</b>, <b>rate_limiter_check()</b>,
+    <b>server_connection_pong_received()</b>,
+    <b>session_display_encode_frame()</b>, <b>session_host_render_audio()</b>,
+    <b>stats_runtime_scope()</b>, <b>update_server_stats()</b>, and
+    <b>video_frame_commit()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_runtime_set_provider_("><a class="permalink" href="#void_stats_runtime_set_provider_(">void
+  stats_runtime_set_provider (<b>stats_provider_fn</b> provider, void *
+  data)</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file
+    <b>lib/platform/wasm/stubs/stats.c</b>.</p>
+<pre>17                                                                         {
+18   (void)provider;
+19   (void)data;
+20 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mutex_lock</b>, <b>mutex_unlock</b>, and
+    <b>stats_runtime_set_provider()</b>.</p>
+<p class="Pp">Referenced by <b>mcp_server_main()</b>, and
+    <b>stats_runtime_set_provider()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> stats_runtime_start (const char * mode,
+  unsigned interval_seconds)</h2>
+<p class="Pp">Definition at line <b>4</b> of file
+    <b>lib/platform/wasm/stubs/stats.c</b>.</p>
+<pre>4                                                                                    {
+5   (void)mode;
+6   (void)interval_seconds;
+7   return SET_ERRNO(ERROR_INVALID_STATE, &quot;Native statistics runtime is unavailable in browsers&quot;);
+8 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acthread_create</b>,
+    <b>ascii_otel_stats_attach()</b>, <b>ASCIICHAT_OK</b>,
+    <b>atomic_store_bool_impl()</b>, <b>stats_capabilities_t::counters</b>,
+    <b>ui_presentation_state_t::covered</b>,
+    <b>stats_capabilities_t::durations</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>ERROR_THREAD</b>,
+    <b>stats_capabilities_t::gauges</b>, <b>GET_OPTION</b>,
+    <b>keyboard_destroy()</b>, <b>keyboard_init()</b>, <b>LOG_ERRNO_IF_SET</b>,
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>NS_PER_MS_INT</b>,
+    <b>NS_PER_SEC_INT</b>, <b>platform_isatty()</b>, <b>platform_sleep_ms()</b>,
+    <b>ui_presentation_state_t::screen</b>, <b>SET_ERRNO</b>,
+    <b>shutdown_is_requested()</b>, <b>STATS_COUNTER_AUDIO_OVERRUNS</b>,
+    <b>STATS_COUNTER_AUDIO_UNDERRUNS</b>, <b>STATS_COUNTER_FRAMES_DECODED</b>,
+    <b>STATS_COUNTER_FRAMES_DROPPED</b>, <b>STATS_COUNTER_FRAMES_ENCODED</b>,
+    <b>STATS_COUNTER_FRAMES_ENQUEUED</b>, <b>STATS_COUNTER_FRAMES_RECEIVED</b>,
+    <b>STATS_COUNTER_FRAMES_SENT</b>, <b>STATS_COUNTER_HOST_MIGRATIONS</b>,
+    <b>STATS_COUNTER_MCP_HTTP_RESPONSES</b>, <b>STATS_COUNTER_MCP_REQUESTS</b>,
+    <b>STATS_COUNTER_MIGRATION_FAILURES</b>, <b>STATS_COUNTER_QUEUE_DROPS</b>,
+    <b>STATS_COUNTER_RATE_LIMIT_REJECTIONS</b>, <b>STATS_COUNTER_RECONNECTS</b>,
+    <b>STATS_COUNTER_RECORDING_FRAMES</b>, <b>STATS_COUNTER_SESSION_CREATES</b>,
+    <b>STATS_DURATION_AUDIO_MIX</b>, <b>STATS_DURATION_CONNECTION_SETUP</b>,
+    <b>STATS_DURATION_DECODE</b>, <b>STATS_DURATION_ENCODE</b>,
+    <b>STATS_DURATION_MCP_RENDER</b>, <b>STATS_DURATION_RECORDING</b>,
+    <b>STATS_DURATION_REQUEST</b>, <b>STATS_DURATION_RTT</b>,
+    <b>STATS_DURATION_TERMINAL_WRITE</b>,
+    <b>STATS_GAUGE_AUDIO_BUFFERED_SAMPLES</b>,
+    <b>STATS_GAUGE_CONNECTIONS_ACTIVE</b>,
+    <b>STATS_GAUGE_PARTICIPANTS_ACTIVE</b>, <b>STATS_GAUGE_SESSIONS_ACTIVE</b>,
+    <b>STATS_GAUGE_VIDEO_QUEUE_DEPTH</b>, <b>stats_runtime_media()</b>,
+    <b>stats_runtime_start()</b>, <b>stats_sampler_create()</b>,
+    <b>stats_sampler_destroy()</b>, <b>stats_scope_create()</b>,
+    <b>stats_scope_destroy()</b>, <b>ui_controller_screen_live()</b>,
+    <b>ui_controller_start_terminal()</b>, <b>ui_controller_state()</b>, and
+    <b>UI_SCREEN_NOTICE</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, and <b>stats_runtime_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_runtime_stop_(void_)"><a class="permalink" href="#void_stats_runtime_stop_(void_)">void
+  stats_runtime_stop (void )</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file
+    <b>lib/platform/wasm/stubs/stats.c</b>.</p>
+<pre>9 {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool_impl()</b>,
+    <b>keyboard_destroy()</b>, <b>mutex_destroy()</b>,
+    <b>stats_runtime_stop()</b>, <b>stats_sampler_destroy()</b>,
+    <b>stats_scope_destroy()</b>, <b>thread_join</b>, and
+    <b>ui_controller_shutdown()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>, <b>main()</b>,
+    and <b>stats_runtime_stop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_runtime_toggle_(void_)"><a class="permalink" href="#void_stats_runtime_toggle_(void_)">void
+  stats_runtime_toggle (void )</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file
+    <b>lib/platform/wasm/stubs/stats.c</b>.</p>
+<pre>25 {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool_impl()</b>, <b>log_debug</b>,
+    <b>stats_runtime_active()</b>, <b>stats_runtime_toggle()</b>,
+    <b>ui_controller_select_interactive()</b>, and <b>UI_SCREEN_STATS</b>.</p>
+<p class="Pp">Referenced by <b>stats_runtime_toggle()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_view_add_("><a class="permalink" href="#void_stats_view_add_(">void
+  stats_view_add (<b>stats_view_t</b> * view, const char * format, ...)</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file
+    <b>lib/platform/wasm/stubs/stats.c</b>.</p>
+<pre>21                                                                  {
+22   (void)view;
+23   (void)format;
+24 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>stats_view_add()</b>.</p>
+<p class="Pp">Referenced by <b>stats_view_add()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_view_add_header_("><a class="permalink" href="#void_stats_view_add_header_(">void
+  stats_view_add_header (<b>stats_view_t</b> * view, const char * format,
+  ...)</a></h2>
+<p class="Pp">Definition at line <b>110</b> of file <b>runtime.c</b>.</p>
+<pre>110                                                                         {
+111   va_list args;
+112   va_start(args, format);
+113   stats_view_vadd(view, true, format, args);
+114   va_end(args);
+115 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>stats_view_add_header()</b>.</p>
+<p class="Pp">Referenced by <b>stats_view_add_header()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

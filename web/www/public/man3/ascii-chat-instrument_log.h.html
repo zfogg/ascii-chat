@@ -48,7 +48,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
 <br/>
-<p class="Pp">enum { <b>ASCII_INSTR_SOURCE_PRINT_MACRO_NONE</b> = 0u,
+<p class="Pp"><b>enum </b>{ <b>ASCII_INSTR_SOURCE_PRINT_MACRO_NONE</b> = 0u,
     <b>ASCII_INSTR_SOURCE_PRINT_MACRO_EXPANSION</b> = 1u,
     <b>ASCII_INSTR_SOURCE_PRINT_MACRO_INVOCATION</b> = 2u }
   <br/>
@@ -70,9 +70,9 @@
     <b>asciichat_instr_runtime_global_destroy</b> (void)
   <br/>
   Global shutdown of the instrumentation system. void
-    <b>asciichat_instr_log_line</b> (const char *<b>file_path</b>,
-    <b>uint32_t</b> line_number, const char *function_name, const char *snippet,
-    <b>uint8_t</b> is_macro_expansion)
+    <b>asciichat_instr_log_line</b> (const char *file_path, <b>uint32_t</b>
+    line_number, const char *function_name, const char *snippet, <b>uint8_t</b>
+    is_macro_expansion)
   <br/>
   Log a source line execution event. <b>bool</b>
     <b>asciichat_instr_coverage_enabled</b> (void)
@@ -101,7 +101,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

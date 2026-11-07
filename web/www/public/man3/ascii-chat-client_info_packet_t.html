@@ -59,7 +59,7 @@
 <p class="Pp">Client information packet structure.</p>
 <p class="Pp">Contains client identification and capability information. Used in
     multi-user protocol for client join/leave notifications.</p>
-<p class="Pp">Definition at line <b>653</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>663</b> of file <b>packet.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -68,14 +68,14 @@
 <h2 class="Ss"><b>uint32_t</b> client_info_packet_t::capabilities</h2>
 <p class="Pp">Client capabilities bitmask (CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO |
     CLIENT_CAP_COLOR | CLIENT_CAP_STRETCH).</p>
-<p class="Pp">Definition at line <b>660</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>670</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_client_join_packet()</b>, and
     <b>threaded_send_client_join_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> client_info_packet_t::client_id</h2>
 <p class="Pp">Unique client identifier (1-9, 0 = server).</p>
-<p class="Pp">Definition at line <b>655</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>665</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>threaded_send_client_join_packet()</b>.</p>
 </section>
 <section class="Ss">
@@ -83,7 +83,7 @@
   client_info_packet_t::display_name[32]</a></h2>
 <p class="Pp">User display name (null-terminated, max MAX_DISPLAY_NAME_LEN
     bytes).</p>
-<p class="Pp">Definition at line <b>657</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>667</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>handle_client_join_packet()</b>, and
     <b>threaded_send_client_join_packet()</b>.</p>
 <p class="Pp"></p>
@@ -96,7 +96,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

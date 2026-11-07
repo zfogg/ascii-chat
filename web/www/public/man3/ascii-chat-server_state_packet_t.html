@@ -59,7 +59,7 @@
 <p class="Pp">Server state packet structure.</p>
 <p class="Pp">Server broadcasts current connection state to all clients. Sent
     when client count or active stream count changes.</p>
-<p class="Pp">Definition at line <b>706</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>716</b> of file <b>packet.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -67,27 +67,23 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> server_state_packet_t::active_client_count</h2>
 <p class="Pp">Number of clients actively sending video/audio streams.</p>
-<p class="Pp">Definition at line <b>710</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>add_webrtc_client()</b>,
-    <b>broadcast_server_state_to_all_clients()</b>, and
-    <b>send_server_state_to_client()</b>.</p>
+<p class="Pp">Definition at line <b>720</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>send_server_state_to_client()</b>, and
+    <b>session_host_set_client_transport()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b>
   server_state_packet_t::connected_client_count</h2>
 <p class="Pp">Total number of currently connected clients.</p>
-<p class="Pp">Definition at line <b>708</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>add_webrtc_client()</b>,
-    <b>broadcast_server_state_to_all_clients()</b>, and
-    <b>send_server_state_to_client()</b>.</p>
+<p class="Pp">Definition at line <b>718</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>send_server_state_to_client()</b>, and
+    <b>session_host_set_client_transport()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> server_state_packet_t::reserved[6]</h2>
 <p class="Pp">Reserved fields for future use (must be zero).</p>
-<p class="Pp">Definition at line <b>712</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>add_webrtc_client()</b>,
-    <b>broadcast_server_state_to_all_clients()</b>, and
-    <b>send_server_state_to_client()</b>.</p>
+<p class="Pp">Definition at line <b>722</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>send_server_state_to_client()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -98,7 +94,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

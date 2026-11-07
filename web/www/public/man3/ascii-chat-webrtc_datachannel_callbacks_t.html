@@ -41,16 +41,16 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">void(* <b>on_open</b> )(<b>webrtc_data_channel_t</b> *dc, void
+<p class="Pp">void(*) <b>on_open</b> (<b>webrtc_data_channel_t</b> *dc, void
     *<b>user_data</b>)
   <br/>
-  Channel opened. void(* <b>on_close</b> )(<b>webrtc_data_channel_t</b> *dc,
+  Channel opened. void(*) <b>on_close</b> (<b>webrtc_data_channel_t</b> *dc,
     void *<b>user_data</b>)
   <br/>
-  Channel closed. void(* <b>on_error</b> )(<b>webrtc_data_channel_t</b> *dc,
+  Channel closed. void(*) <b>on_error</b> (<b>webrtc_data_channel_t</b> *dc,
     const char *error, void *<b>user_data</b>)
   <br/>
-  Error occurred. void(* <b>on_message</b> )(<b>webrtc_data_channel_t</b> *dc,
+  Error occurred. void(*) <b>on_message</b> (<b>webrtc_data_channel_t</b> *dc,
     const <b>uint8_t</b> *data, size_t len, void *<b>user_data</b>)
   <br/>
   Message received. void * <b>user_data</b>
@@ -67,45 +67,45 @@
 <p class="Pp">Callbacks for DataChannel events (open, close, error, message).
     Used with <b>webrtc_datachannel_set_callbacks()</b> to register per-channel
     callbacks.</p>
-<p class="Pp">Definition at line <b>319</b> of file
+<p class="Pp">Definition at line <b>326</b> of file
     <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void(*_webrtc_datachannel_callbacks_t::on_close)_("><a class="permalink" href="#void(*_webrtc_datachannel_callbacks_t::on_close)_(">void(*
-  webrtc_datachannel_callbacks_t::on_close) (<b>webrtc_data_channel_t</b> *dc,
+<h2 class="Ss" id="void(*)_webrtc_datachannel_callbacks_t::on_close("><a class="permalink" href="#void(*)_webrtc_datachannel_callbacks_t::on_close(">void(*)
+  webrtc_datachannel_callbacks_t::on_close(<b>webrtc_data_channel_t</b> *dc,
   void *<b>user_data</b>)</a></h2>
 <p class="Pp">Channel closed.</p>
-<p class="Pp">Definition at line <b>321</b> of file
+<p class="Pp">Definition at line <b>328</b> of file
     <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_datachannel_set_callbacks()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_webrtc_datachannel_callbacks_t::on_error)_("><a class="permalink" href="#void(*_webrtc_datachannel_callbacks_t::on_error)_(">void(*
-  webrtc_datachannel_callbacks_t::on_error) (<b>webrtc_data_channel_t</b> *dc,
+<h2 class="Ss" id="void(*)_webrtc_datachannel_callbacks_t::on_error("><a class="permalink" href="#void(*)_webrtc_datachannel_callbacks_t::on_error(">void(*)
+  webrtc_datachannel_callbacks_t::on_error(<b>webrtc_data_channel_t</b> *dc,
   const char *error, void *<b>user_data</b>)</a></h2>
 <p class="Pp">Error occurred.</p>
-<p class="Pp">Definition at line <b>322</b> of file
+<p class="Pp">Definition at line <b>329</b> of file
     <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_datachannel_set_callbacks()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_webrtc_datachannel_callbacks_t::on_message)_("><a class="permalink" href="#void(*_webrtc_datachannel_callbacks_t::on_message)_(">void(*
-  webrtc_datachannel_callbacks_t::on_message) (<b>webrtc_data_channel_t</b> *dc,
+<h2 class="Ss" id="void(*)_webrtc_datachannel_callbacks_t::on_message("><a class="permalink" href="#void(*)_webrtc_datachannel_callbacks_t::on_message(">void(*)
+  webrtc_datachannel_callbacks_t::on_message(<b>webrtc_data_channel_t</b> *dc,
   const <b>uint8_t</b> *data, size_t len, void *<b>user_data</b>)</a></h2>
 <p class="Pp">Message received.</p>
-<p class="Pp">Definition at line <b>323</b> of file
+<p class="Pp">Definition at line <b>330</b> of file
     <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_datachannel_set_callbacks()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_webrtc_datachannel_callbacks_t::on_open)_("><a class="permalink" href="#void(*_webrtc_datachannel_callbacks_t::on_open)_(">void(*
-  webrtc_datachannel_callbacks_t::on_open) (<b>webrtc_data_channel_t</b> *dc,
-  void *<b>user_data</b>)</a></h2>
+<h2 class="Ss" id="void(*)_webrtc_datachannel_callbacks_t::on_open("><a class="permalink" href="#void(*)_webrtc_datachannel_callbacks_t::on_open(">void(*)
+  webrtc_datachannel_callbacks_t::on_open(<b>webrtc_data_channel_t</b> *dc, void
+  *<b>user_data</b>)</a></h2>
 <p class="Pp">Channel opened.</p>
-<p class="Pp">Definition at line <b>320</b> of file
+<p class="Pp">Definition at line <b>327</b> of file
     <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_datachannel_set_callbacks()</b>.</p>
 </section>
@@ -113,7 +113,7 @@
 <h2 class="Ss" id="void*_webrtc_datachannel_callbacks_t::user_data"><a class="permalink" href="#void*_webrtc_datachannel_callbacks_t::user_data">void*
   webrtc_datachannel_callbacks_t::user_data</a></h2>
 <p class="Pp">Passed to all callbacks.</p>
-<p class="Pp">Definition at line <b>324</b> of file
+<p class="Pp">Definition at line <b>331</b> of file
     <b>include/ascii-chat/network/webrtc/webrtc.h</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_datachannel_set_callbacks()</b>.</p>
 <p class="Pp"></p>
@@ -126,7 +126,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

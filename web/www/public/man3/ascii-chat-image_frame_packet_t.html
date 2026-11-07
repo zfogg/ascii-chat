@@ -47,7 +47,7 @@
   <br/>
   Image height in pixels. <b>uint32_t</b> <b>pixel_format</b>
   <br/>
-  Pixel format enum (0=RGB24, 1=RGBA32, 2=BGR24, etc.). <b>uint32_t</b>
+  Pixel format enum (1=RGB24, 2=RGBA32, 3=BGR24, 4=BGRA32). <b>uint32_t</b>
     <b>compressed_size</b>
   <br/>
   Compressed data size (0 = not compressed, &gt;0 = compressed). <b>uint32_t</b>
@@ -75,7 +75,7 @@
 <p class="Pp"></p>
 <p class="Pp">Pixel formats are defined in common.h</p>
 </div>
-<p class="Pp">Definition at line <b>876</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>887</b> of file <b>packet.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -83,44 +83,47 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> image_frame_packet_t::checksum</h2>
 <p class="Pp">CRC32 checksum of pixel data.</p>
-<p class="Pp">Definition at line <b>886</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>897</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_image_frame()</b>, and
     <b>send_image_frame_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> image_frame_packet_t::compressed_size</h2>
 <p class="Pp">Compressed data size (0 = not compressed, &gt;0 = compressed).</p>
-<p class="Pp">Definition at line <b>884</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>895</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_image_frame()</b>, and
     <b>send_image_frame_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> image_frame_packet_t::height</h2>
 <p class="Pp">Image height in pixels.</p>
-<p class="Pp">Definition at line <b>880</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_image_frame()</b>, and
-    <b>send_image_frame_packet()</b>.</p>
+<p class="Pp">Definition at line <b>891</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_image_frame()</b>,
+    <b>send_image_frame_packet()</b>, and
+  <b>session_host_receive_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> image_frame_packet_t::pixel_format</h2>
-<p class="Pp">Pixel format enum (0=RGB24, 1=RGBA32, 2=BGR24, etc.).</p>
-<p class="Pp">Definition at line <b>882</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_image_frame()</b>, and
-    <b>send_image_frame_packet()</b>.</p>
+<p class="Pp">Pixel format enum (1=RGB24, 2=RGBA32, 3=BGR24, 4=BGRA32).</p>
+<p class="Pp">Definition at line <b>893</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_image_frame()</b>,
+    <b>send_image_frame_packet()</b>, and
+  <b>session_host_receive_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> image_frame_packet_t::timestamp</h2>
 <p class="Pp">Timestamp when frame was captured (milliseconds since epoch).</p>
-<p class="Pp">Definition at line <b>888</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>899</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_image_frame()</b>, and
     <b>send_image_frame_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> image_frame_packet_t::width</h2>
 <p class="Pp">Image width in pixels.</p>
-<p class="Pp">Definition at line <b>878</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_image_frame()</b>, and
-    <b>send_image_frame_packet()</b>.</p>
+<p class="Pp">Definition at line <b>889</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_image_frame()</b>,
+    <b>send_image_frame_packet()</b>, and
+  <b>session_host_receive_packet()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -131,7 +134,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

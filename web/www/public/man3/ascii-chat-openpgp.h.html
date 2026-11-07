@@ -84,10 +84,17 @@
     *armored_text, <b>uint8_t</b> ed25519_pk[32])
   <br/>
   Parse PGP armored key block and extract Ed25519 public key.
-    <b>asciichat_error_t</b> <b>openpgp_parse_armored_seckey</b> (const char
+    <b>asciichat_error_t</b> <b>openpgp_parse_binary_pubkey</b> (const
+    <b>uint8_t</b> *data, size_t data_len, <b>uint8_t</b> ed25519_pk[32])
+  <br/>
+  <b>asciichat_error_t</b> <b>openpgp_parse_armored_seckey</b> (const char
     *armored_text, <b>uint8_t</b> ed25519_pk[32], <b>uint8_t</b> ed25519_sk[32])
   <br/>
   Parse PGP armored secret key block and extract Ed25519 keypair.
+    <b>asciichat_error_t</b> <b>openpgp_parse_binary_seckey</b> (const
+    <b>uint8_t</b> *data, size_t data_len, <b>uint8_t</b> ed25519_pk[32],
+    <b>uint8_t</b> ed25519_sk[32])
+  <br/>
   <br/>
   <br/>
 </p>
@@ -143,7 +150,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

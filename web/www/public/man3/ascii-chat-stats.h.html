@@ -159,7 +159,7 @@
 556   if (!lifecycle_is_initialized(&amp;g_stats_lc)) {
 557     return; // Mutex not initialized, skip logging
 558   }
-559 
+559
 560   // Now safe to use the mutex
 561   mutex_lock(&amp;g_stats_mutex);
 562   log_info(&quot;Server Statistics:\n&quot;
@@ -372,19 +372,19 @@
 <p class="Pp">Definition at line <b>327</b> of file <b>stats.c</b>.</p>
 <pre>327                                      {
 328   (void)arg;
-329 
+329
 330   while (!atomic_load_bool(&amp;g_should_exit)) {
 331     // Log buffer pool statistics every 10 seconds with fast exit checking (10ms intervals)
 332     for (int i = 0; i &lt; 1000 &amp;&amp; !atomic_load_bool(&amp;g_should_exit); i++) {
 333       platform_sleep_us(10 * US_PER_MS_INT); // 10ms sleep
 334     }
-335 
+335
 336     // Check exit condition before proceeding with statistics logging
 337     // Check multiple times to avoid accessing freed resources during shutdown.
 338     if (atomic_load_bool(&amp;g_should_exit)) {
 339       break;
 340     }
-341 
+341
 342     // Collect all statistics data first
 343 #ifndef NDEBUG
 344     char lock_debug_info[BUFFER_SIZE_MEDIUM] = {0};
@@ -394,7 +394,7 @@
 348       uint64_t total_acquired = 0, total_released = 0;
 349       uint32_t currently_held = 0;
 350       debug_sync_get_stats(&amp;total_acquired, &amp;total_released, &amp;currently_held);
-351 
+351
 352       safe_snprintf(lock_debug_info, sizeof(lock_debug_info),
 353                     &quot;Historical Mutex/RWLock Statistics:\n&quot;
 354                     &quot;  Total locks acquired: %llu\n&quot;
@@ -405,21 +405,21 @@
 359                     (long long)total_acquired - (long long)total_released);
 360     }
 361 #endif
-362 
+362
 363     // Collect client statistics
 364     // Check exit condition again before accessing rwlock.
 365     // rwlock might be destroyed during shutdown.
 366     if (atomic_load_bool(&amp;g_should_exit)) {
 367       break;
 368     }
-369 
+369
 370     rwlock_rdlock(&amp;g_client_manager_rwlock);
 371     int active_clients = 0;
 372     int clients_with_audio = 0;
 373     int clients_with_video = 0;
 374     char client_details[BUFFER_SIZE_XLARGE] = {0};
 375     int client_details_len = 0;
-376 
+376
 377     for (int i = 0; i &lt; MAX_CLIENTS; i++) {
 378       if (atomic_load_bool(&amp;g_client_manager.clients[i].active)) {
 379         active_clients++;
@@ -431,13 +431,13 @@
 385         }
 386       }
 387     }
-388 
+388
 389     // Collect per-client details
 390     for (int i = 0; i &lt; MAX_CLIENTS; i++) {
 391       client_info_t *client = &amp;g_client_manager.clients[i];
 392       bool is_active = atomic_load_bool(&amp;client-&gt;active);
 393       const char *client_id_snapshot = client-&gt;client_id;
-394 
+394
 395       if (is_active &amp;&amp; client_id_snapshot != 0) {
 396         // Check audio queue stats
 397         if (client-&gt;audio_queue) {
@@ -470,27 +470,27 @@
 424       }
 425     }
 426     rwlock_rdunlock(&amp;g_client_manager_rwlock);
-427 
+427
 428     // Single comprehensive log statement
 429     if (client_details_len &gt; 0) {
 430       log_info(&quot;Stats: Clients: %d, Audio: %d, Video: %d\n%s&quot;, active_clients, clients_with_audio, clients_with_video,
 431                client_details);
 432     }
 433   }
-434 
+434
 435   log_server_stats();
-436 
+436
 437   asciichat_error_stats_print();
-438 
+438
 439   // Clean up thread-local error context before exit
-440   errno_destroy();
-441 
+440   asciichat_errno_destroy();
+441
 442   return NULL;
 443 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>client_info::active</b>,
-    <b>errno_destroy()</b>, <b>asciichat_error_stats_print()</b>,
+    <b>asciichat_errno_destroy()</b>, <b>asciichat_error_stats_print()</b>,
     <b>atomic_load_bool()</b>, <b>client_info::audio_queue</b>,
     <b>BUFFER_SIZE_MEDIUM</b>, <b>BUFFER_SIZE_XLARGE</b>,
     <b>client_info::client_id</b>, <b>debug_sync_get_stats()</b>,
@@ -532,9 +532,7 @@
 <ul class="Bl-bullet">
   <li>Called by render threads when updating frame counts</li>
   <li>Invoked by client management code for connection metrics</li>
-  <li>Used by packet queue systems for throughput tracking
-    <p class="Pp"></p>
-  </li>
+  <li>Used by packet queue systems for throughput tracking</li>
 </ul>
 <p class="Pp"><b>Todo</b></p>
 <div class="Bd-indent">Implement comprehensive statistics aggregation</div>
@@ -546,16 +544,16 @@
 474   // Aggregate statistics from all active clients
 475   uint64_t total_frames_sent = 0;
 476   uint64_t total_frames_dropped = 0;
-477 
+477
 478   // Read-lock to safely iterate over all clients
 479   rwlock_rdlock(&amp;g_client_manager_rwlock);
-480 
+480
 481   for (int i = 0; i &lt; MAX_CLIENTS; i++) {
 482     client_info_t *client = &amp;g_client_manager.clients[i];
 483     if (client-&gt;client_id[0] != '\0' &amp;&amp; atomic_load_bool(&amp;client-&gt;active)) {
 484       // Aggregate frames sent to all clients
 485       total_frames_sent += client-&gt;frames_sent;
-486 
+486
 487       // Get dropped frame statistics from outgoing video buffer
 488       if (client-&gt;outgoing_video_buffer) {
 489         video_frame_stats_t stats;
@@ -564,20 +562,20 @@
 492       }
 493     }
 494   }
-495 
+495
 496   rwlock_rdunlock(&amp;g_client_manager_rwlock);
-497 
+497
 498   // Update global statistics atomically
 499   mutex_lock(&amp;g_stats_mutex);
 500   g_stats.frames_sent = total_frames_sent;
 501   g_stats.frames_dropped = total_frames_dropped;
-502 
+502
 503   // Calculate frames_captured from frames_sent and frames_dropped
 504   // frames_captured = frames_sent + frames_dropped (total output frames)
 505   if (total_frames_sent &gt; 0 || total_frames_dropped &gt; 0) {
 506     g_stats.frames_captured = total_frames_sent + total_frames_dropped;
 507   }
-508 
+508
 509   mutex_unlock(&amp;g_stats_mutex);
 510 }</pre>
 <pre></pre>
@@ -637,7 +635,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.11.25</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

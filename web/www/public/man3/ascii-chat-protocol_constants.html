@@ -76,13 +76,18 @@
   <br/>
   Frame data is RLE compressed. #define <b>FRAME_FLAG_IS_STRETCHED</b> 0x08
   <br/>
-  Frame was stretched (aspect adjusted). #define <b>PIXEL_FORMAT_RGB</b> 0
+  Frame was stretched (aspect adjusted). #define
+    <b>FRAME_FLAG_RENDER_CONTRACT</b> 0x10
   <br/>
-  RGB pixel format. #define <b>PIXEL_FORMAT_RGBA</b> 1
+  Explicit versioned render contract precedes encoded ASCII text. #define
+    <b>PIXEL_FORMAT_RGB</b> 1
   <br/>
-  RGBA pixel format. #define <b>PIXEL_FORMAT_BGR</b> 2
+  Packed RGB24 pixel format used by ACIP image-frame senders. #define
+    <b>PIXEL_FORMAT_RGBA</b> 2
   <br/>
-  BGR pixel format. #define <b>PIXEL_FORMAT_BGRA</b> 3
+  Packed RGBA32 pixel format. #define <b>PIXEL_FORMAT_BGR</b> 3
+  <br/>
+  BGR pixel format. #define <b>PIXEL_FORMAT_BGRA</b> 4
   <br/>
   BGRA pixel format.
   <br/>
@@ -171,6 +176,8 @@
 <p class="Pp">Frame data is compressed.</p>
 <p class="Pp">Definition at line <b>62</b> of file
   <b>protocol_constants.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_ascii_frame_contract()</b>, and
+    <b>client_validate_frame()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_FRAME_FLAG_IS_STRETCHED___0x08"><a class="permalink" href="#_define_FRAME_FLAG_IS_STRETCHED___0x08">#define
@@ -182,6 +189,18 @@
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="_define_FRAME_FLAG_RENDER_CONTRACT___0x10"><a class="permalink" href="#_define_FRAME_FLAG_RENDER_CONTRACT___0x10">#define
+  FRAME_FLAG_RENDER_CONTRACT 0x10</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
+<p class="Pp">Explicit versioned render contract precedes encoded ASCII
+  text.</p>
+<p class="Pp">Definition at line <b>71</b> of file
+  <b>protocol_constants.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_ascii_frame_contract()</b>, and
+    <b>client_validate_frame()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="_define_FRAME_FLAG_RLE_COMPRESSED___0x04"><a class="permalink" href="#_define_FRAME_FLAG_RLE_COMPRESSED___0x04">#define
   FRAME_FLAG_RLE_COMPRESSED 0x04</a></h2>
 <p class="Pp">#include
@@ -191,40 +210,44 @@
   <b>protocol_constants.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_PIXEL_FORMAT_BGR___2"><a class="permalink" href="#_define_PIXEL_FORMAT_BGR___2">#define
-  PIXEL_FORMAT_BGR 2</a></h2>
+<h2 class="Ss" id="_define_PIXEL_FORMAT_BGR___3"><a class="permalink" href="#_define_PIXEL_FORMAT_BGR___3">#define
+  PIXEL_FORMAT_BGR 3</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">BGR pixel format.</p>
-<p class="Pp">Definition at line <b>81</b> of file
+<p class="Pp">Definition at line <b>84</b> of file
   <b>protocol_constants.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_receive_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_PIXEL_FORMAT_BGRA___3"><a class="permalink" href="#_define_PIXEL_FORMAT_BGRA___3">#define
-  PIXEL_FORMAT_BGRA 3</a></h2>
+<h2 class="Ss" id="_define_PIXEL_FORMAT_BGRA___4"><a class="permalink" href="#_define_PIXEL_FORMAT_BGRA___4">#define
+  PIXEL_FORMAT_BGRA 4</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
 <p class="Pp">BGRA pixel format.</p>
-<p class="Pp">Definition at line <b>84</b> of file
+<p class="Pp">Definition at line <b>87</b> of file
   <b>protocol_constants.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_receive_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_PIXEL_FORMAT_RGB___0"><a class="permalink" href="#_define_PIXEL_FORMAT_RGB___0">#define
-  PIXEL_FORMAT_RGB 0</a></h2>
+<h2 class="Ss" id="_define_PIXEL_FORMAT_RGB___1"><a class="permalink" href="#_define_PIXEL_FORMAT_RGB___1">#define
+  PIXEL_FORMAT_RGB 1</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
-<p class="Pp">RGB pixel format.</p>
-<p class="Pp">Definition at line <b>75</b> of file
-  <b>protocol_constants.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_PIXEL_FORMAT_RGBA___1"><a class="permalink" href="#_define_PIXEL_FORMAT_RGBA___1">#define
-  PIXEL_FORMAT_RGBA 1</a></h2>
-<p class="Pp">#include
-    &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
-<p class="Pp">RGBA pixel format.</p>
+<p class="Pp">Packed RGB24 pixel format used by ACIP image-frame senders.</p>
 <p class="Pp">Definition at line <b>78</b> of file
   <b>protocol_constants.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_receive_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PIXEL_FORMAT_RGBA___2"><a class="permalink" href="#_define_PIXEL_FORMAT_RGBA___2">#define
+  PIXEL_FORMAT_RGBA 2</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/common/protocol_constants.h</b>&gt;<b></b></p>
+<p class="Pp">Packed RGBA32 pixel format.</p>
+<p class="Pp">Definition at line <b>81</b> of file
+  <b>protocol_constants.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_receive_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_PROTOCOL_VERSION_MAJOR___2"><a class="permalink" href="#_define_PROTOCOL_VERSION_MAJOR___2">#define
@@ -234,7 +257,8 @@
 <p class="Pp">Major protocol version number.</p>
 <p class="Pp">Definition at line <b>20</b> of file
   <b>protocol_constants.h</b>.</p>
-<p class="Pp">Referenced by <b>handle_protocol_version_packet()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_otel_packet()</b>, and
+    <b>handle_protocol_version_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_PROTOCOL_VERSION_MINOR___2"><a class="permalink" href="#_define_PROTOCOL_VERSION_MINOR___2">#define
@@ -244,7 +268,8 @@
 <p class="Pp">Minor protocol version number.</p>
 <p class="Pp">Definition at line <b>23</b> of file
   <b>protocol_constants.h</b>.</p>
-<p class="Pp">Referenced by <b>handle_protocol_version_packet()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_otel_packet()</b>, and
+    <b>handle_protocol_version_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_PROTOCOL_VERSION_PATCH___1"><a class="permalink" href="#_define_PROTOCOL_VERSION_PATCH___1">#define
@@ -254,6 +279,7 @@
 <p class="Pp">Patch protocol version number.</p>
 <p class="Pp">Definition at line <b>26</b> of file
   <b>protocol_constants.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_otel_packet()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -263,7 +289,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

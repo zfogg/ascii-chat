@@ -37,6 +37,15 @@
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <p class="Pp">#include &lt;include/ascii-chat/options/builder.h&gt;</p>
 <section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>[struct].numeric_range</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
@@ -51,15 +60,7 @@
     <b>enum_integer_values</b>
   <br/>
   Actual enum integer values (e.g., {-1, 0, 1, 2, 3} for non-sequential enums).
-    struct {
-  <br/>
-   int <b>min</b>
-  <br/>
-  Minimum value (or 0 if no limit). int <b>max</b>
-  <br/>
-  Maximum value (or 0 if no limit). int <b>step</b>
-  <br/>
-  Step size (0 = no step, continuous). } <b>numeric_range</b>
+    <b>struct </b> <b>numeric_range</b>
   <br/>
   const char ** <b>examples</b>
   <br/>
@@ -106,7 +107,9 @@
 <p class="Pp">Descriptions parallel to enum_values (null-terminated, e.g.,
     &quot;Auto-detect from terminal&quot;).</p>
 <p class="Pp">Definition at line <b>197</b> of file <b>builder.h</b>.</p>
-<p class="Pp">Referenced by <b>options_builder_set_enum_values()</b>, and
+<p class="Pp">Referenced by <b>options_builder_set_enum_values()</b>,
+    <b>options_get_enum_entries()</b>,
+    <b>options_registry_add_all_to_builder()</b>, and
     <b>options_registry_get_enum_values()</b>.</p>
 </section>
 <section class="Ss">
@@ -115,7 +118,8 @@
 <p class="Pp">Actual enum integer values (e.g., {-1, 0, 1, 2, 3} for
     non-sequential enums).</p>
 <p class="Pp">Definition at line <b>198</b> of file <b>builder.h</b>.</p>
-<p class="Pp">Referenced by <b>format_option_default_value_str()</b>.</p>
+<p class="Pp">Referenced by <b>format_option_default_value_str()</b>, and
+    <b>options_get_enum_entries()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char*_*_option_metadata_t::enum_values"><a class="permalink" href="#const_char*_*_option_metadata_t::enum_values">const
@@ -126,7 +130,8 @@
 <p class="Pp">Definition at line <b>195</b> of file <b>builder.h</b>.</p>
 <p class="Pp">Referenced by <b>format_option_default_value_str()</b>,
     <b>get_option_help_placeholder_str()</b>,
-    <b>options_builder_set_enum_values()</b>,
+    <b>options_builder_set_enum_values()</b>, <b>options_get_enum_entries()</b>,
+    <b>options_json_schema_for_option()</b>,
     <b>options_registry_add_all_to_builder()</b>, and
     <b>options_registry_get_enum_values()</b>.</p>
 </section>
@@ -143,6 +148,7 @@
 <p class="Pp">What kind of input this option expects.</p>
 <p class="Pp">Definition at line <b>214</b> of file <b>builder.h</b>.</p>
 <p class="Pp">Referenced by <b>options_builder_set_input_type()</b>,
+    <b>options_registry_add_all_to_builder()</b>,
     <b>options_registry_get_enum_values()</b>,
     <b>options_registry_get_input_type()</b>, and
     <b>options_registry_get_numeric_range()</b>.</p>
@@ -155,41 +161,13 @@
 <p class="Pp">Referenced by <b>options_builder_mark_as_list()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_option_metadata_t::max"><a class="permalink" href="#int_option_metadata_t::max">int
-  option_metadata_t::max</a></h2>
-<p class="Pp">Maximum value (or 0 if no limit).</p>
-<p class="Pp">Definition at line <b>203</b> of file <b>builder.h</b>.</p>
+<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
+  <b>option_metadata_t::[struct].numeric_range</b>
+  option_metadata_t::numeric_range</a></h2>
 <p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
     <b>format_option_default_value_str()</b>,
     <b>options_builder_set_numeric_range()</b>,
     <b>options_registry_add_all_to_builder()</b>, and
-    <b>options_registry_get_numeric_range()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_option_metadata_t::min"><a class="permalink" href="#int_option_metadata_t::min">int
-  option_metadata_t::min</a></h2>
-<p class="Pp">Minimum value (or 0 if no limit).</p>
-<p class="Pp">Definition at line <b>202</b> of file <b>builder.h</b>.</p>
-<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
-    <b>format_option_default_value_str()</b>,
-    <b>options_builder_set_numeric_range()</b>, and
-    <b>options_registry_get_numeric_range()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="struct____"><a class="permalink" href="#struct____">struct {
-  ... } option_metadata_t::numeric_range</a></h2>
-<p class="Pp">Referenced by <b>config_schema_build_from_configs()</b>,
-    <b>format_option_default_value_str()</b>,
-    <b>options_builder_set_numeric_range()</b>,
-    <b>options_registry_add_all_to_builder()</b>, and
-    <b>options_registry_get_numeric_range()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_option_metadata_t::step"><a class="permalink" href="#int_option_metadata_t::step">int
-  option_metadata_t::step</a></h2>
-<p class="Pp">Step size (0 = no step, continuous).</p>
-<p class="Pp">Definition at line <b>204</b> of file <b>builder.h</b>.</p>
-<p class="Pp">Referenced by <b>options_builder_set_numeric_range()</b>, and
     <b>options_registry_get_numeric_range()</b>.</p>
 </section>
 <section class="Ss">
@@ -207,7 +185,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

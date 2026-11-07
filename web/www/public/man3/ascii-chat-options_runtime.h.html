@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>runtime.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">runtime.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">runtime.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">runtime.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>options_edit_t</b>
+  <br/>
+  struct <b>options_patch_t</b>
+  <br/>
+  struct <b>options_patch_result_t</b>
+  <br/>
+  struct <b>options_snapshot_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>OPTIONS_REVISION_ANY</b> UINT64_MAX
+  <br/>
+  #define <b>OPTIONS_PATCH_MAX_EDITS</b> 32
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>options_value_type_t</b> { <b>OPTIONS_VALUE_INT</b>,
+    <b>OPTIONS_VALUE_BOOL</b>, <b>OPTIONS_VALUE_DOUBLE</b>,
+    <b>OPTIONS_VALUE_STRING</b> }
+  <br/>
+  enum <b>options_operation_t</b> { <b>OPTIONS_ASSIGN</b>,
+    <b>OPTIONS_TOGGLE</b>, <b>OPTIONS_ADD</b>, <b>OPTIONS_CYCLE</b> }
+  <br/>
+  enum <b>options_origin_t</b> { <b>OPTIONS_ORIGIN_LOCAL</b>,
+    <b>OPTIONS_ORIGIN_REMOTE</b>, <b>OPTIONS_ORIGIN_CONFIG</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>options_apply_patch</b> (const
+    <b>options_patch_t</b> *patch, <b>options_patch_result_t</b> *result)
+  <br/>
+  <b>asciichat_error_t</b> <b>options_prepare_patch</b> (const <b>options_t</b>
+    *current, const <b>options_patch_t</b> *patch, <b>options_t</b> *candidate,
+    <b>bool</b> remote_only)
+  <br/>
+  <b>asciichat_error_t</b> <b>options_read_snapshot</b>
+    (<b>options_snapshot_t</b> *snapshot)
+  <br/>
+  <b>uint64_t</b> <b>options_revision</b> (void)
+  <br/>
+  <b>asciichat_error_t</b> <b>options_toggle</b> (const char *name)
+  <br/>
+  <b>asciichat_error_t</b> <b>options_adjust</b> (const char *name, double
+    amount)
+  <br/>
+  <b>asciichat_error_t</b> <b>options_cycle</b> (const char *name, int count)
+  <br/>
+  <b>bool</b> <b>options_remote_render_field</b> (const char *name)
+  <br/>
+  <b>asciichat_error_t</b> <b>options_prepare_json</b> (const <b>options_t</b>
+    *current, const char *json, size_t length, <b>options_t</b> *candidate,
+    <b>bool</b> remote_only)
+  <br/>
+  <b>asciichat_error_t</b> <b>options_apply_json</b> (const char *json, size_t
+    length, <b>uint64_t</b> expected_revision, <b>options_origin_t</b> origin,
+    <b>options_patch_result_t</b> *result)
+  <br/>
+  char * <b>options_values_json</b> (const <b>options_t</b> *values, <b>bool</b>
+    remote_only)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_PATCH_MAX_EDITS___32"><a class="permalink" href="#_define_OPTIONS_PATCH_MAX_EDITS___32">#define
+  OPTIONS_PATCH_MAX_EDITS 32</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>options/runtime.h</b>.</p>
+<p class="Pp">Referenced by <b>options_apply_json()</b>,
+    <b>options_apply_patch()</b>, <b>options_prepare_json()</b>, and
+    <b>options_prepare_patch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_REVISION_ANY___UINT64_MAX"><a class="permalink" href="#_define_OPTIONS_REVISION_ANY___UINT64_MAX">#define
+  OPTIONS_REVISION_ANY UINT64_MAX</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>options/runtime.h</b>.</p>
+<p class="Pp">Referenced by <b>options_apply_patch()</b>,
+    <b>options_prepare_json()</b>, and <b>wasm_options_patch()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">enum <b>options_operation_t</b></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="OPTIONS_ASSIGN"><a class="permalink" href="#OPTIONS_ASSIGN"><b><i>OPTIONS_ASSIGN
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="OPTIONS_TOGGLE"><a class="permalink" href="#OPTIONS_TOGGLE"><b><i>OPTIONS_TOGGLE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="OPTIONS_ADD"><a class="permalink" href="#OPTIONS_ADD"><b><i>OPTIONS_ADD
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="OPTIONS_CYCLE"><a class="permalink" href="#OPTIONS_CYCLE"><b><i>OPTIONS_CYCLE
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>8</b> of file <b>options/runtime.h</b>.</p>
+<pre>8 { OPTIONS_ASSIGN, OPTIONS_TOGGLE, OPTIONS_ADD, OPTIONS_CYCLE } options_operation_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">enum <b>options_origin_t</b></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="OPTIONS_ORIGIN_LOCAL"><a class="permalink" href="#OPTIONS_ORIGIN_LOCAL"><b><i>OPTIONS_ORIGIN_LOCAL
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="OPTIONS_ORIGIN_REMOTE"><a class="permalink" href="#OPTIONS_ORIGIN_REMOTE"><b><i>OPTIONS_ORIGIN_REMOTE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="OPTIONS_ORIGIN_CONFIG"><a class="permalink" href="#OPTIONS_ORIGIN_CONFIG"><b><i>OPTIONS_ORIGIN_CONFIG
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>9</b> of file <b>options/runtime.h</b>.</p>
+<pre>9 { OPTIONS_ORIGIN_LOCAL, OPTIONS_ORIGIN_REMOTE, OPTIONS_ORIGIN_CONFIG } options_origin_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">enum <b>options_value_type_t</b></h2>
+<p class="Pp">Runtime edits are applied to the latest snapshot under the writer
+    mutex.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="OPTIONS_VALUE_INT"><a class="permalink" href="#OPTIONS_VALUE_INT"><b><i>OPTIONS_VALUE_INT
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="OPTIONS_VALUE_BOOL"><a class="permalink" href="#OPTIONS_VALUE_BOOL"><b><i>OPTIONS_VALUE_BOOL
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="OPTIONS_VALUE_DOUBLE"><a class="permalink" href="#OPTIONS_VALUE_DOUBLE"><b><i>OPTIONS_VALUE_DOUBLE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="OPTIONS_VALUE_STRING"><a class="permalink" href="#OPTIONS_VALUE_STRING"><b><i>OPTIONS_VALUE_STRING
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>7</b> of file <b>options/runtime.h</b>.</p>
+<pre>7 { OPTIONS_VALUE_INT, OPTIONS_VALUE_BOOL, OPTIONS_VALUE_DOUBLE, OPTIONS_VALUE_STRING } options_value_type_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> options_adjust (const char * name,
+  double amount)</h2>
+<p class="Pp">Definition at line <b>869</b> of file <b>rcu.c</b>.</p>
+<pre>869                                                                   {
+870   return apply_one(
+871       (options_edit_t){.name = name, .type = OPTIONS_VALUE_DOUBLE, .operation = OPTIONS_ADD, .value.number = amount});
+872 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>OPTIONS_ADD</b>, <b>options_adjust()</b>, and
+    <b>OPTIONS_VALUE_DOUBLE</b>.</p>
+<p class="Pp">Referenced by <b>options_adjust()</b>, and
+    <b>ui_session_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> options_apply_json (const char * json,
+  size_t length, <b>uint64_t</b> expected_revision, <b>options_origin_t</b>
+  origin, <b>options_patch_result_t</b> * result)</h2>
+<p class="Pp">Definition at line <b>955</b> of file <b>rcu.c</b>.</p>
+<pre>956                                                                                               {
+957   yyjson_doc *doc = NULL;
+958   options_edit_t edits[OPTIONS_PATCH_MAX_EDITS];
+959   size_t count = 0;
+960   asciichat_error_t error = parse_json_edits(json, length, &amp;doc, edits, &amp;count);
+961   options_patch_t patch = {.edits = edits, .count = count, .expected_revision = expected_revision, .origin = origin};
+962   if (error == ASCIICHAT_OK)
+963     error = options_apply_patch(&amp;patch, result);
+964   yyjson_doc_free(doc);
+965   return error;
+966 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>options_apply_json()</b>,
+    <b>options_apply_patch()</b>, and <b>OPTIONS_PATCH_MAX_EDITS</b>.</p>
+<p class="Pp">Referenced by <b>options_apply_json()</b>, and
+    <b>wasm_options_patch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> options_apply_patch (const
+  <b>options_patch_t</b> * patch, <b>options_patch_result_t</b> * result)</h2>
+<p class="Pp">No observer callbacks or network I/O run under the writer mutex. A
+    rejected patch publishes nothing.</p>
+<p class="Pp">Definition at line <b>792</b> of file <b>rcu.c</b>.</p>
+<pre>792                                                                                                     {
+793   if (!patch || !patch-&gt;edits || !patch-&gt;count || patch-&gt;count &gt; OPTIONS_PATCH_MAX_EDITS)
+794     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid options patch&quot;);
+795   if (!lifecycle_is_initialized(&amp;g_options_lifecycle))
+796     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Options are not initialized&quot;);
+797   mutex_lock(&amp;g_options_write_mutex);
+798   if (result)
+799     *result = (options_patch_result_t){.revision = g_revision};
+800   if (patch-&gt;expected_revision != OPTIONS_REVISION_ANY &amp;&amp; patch-&gt;expected_revision != g_revision) {
+801     mutex_unlock(&amp;g_options_write_mutex);
+802     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Options changed; refresh and retry&quot;);
+803   }
+804   options_t *current = atomic_ptr_load(&amp;g_options);
+805   options_t *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+806   asciichat_error_t error = options_prepare_patch(current, patch, candidate, false);
+807   if (error == ASCIICHAT_OK &amp;&amp; memcmp(current, candidate, sizeof(*current))) {
+808     atomic_ptr_store(&amp;g_options, candidate);
+809     deferred_free_add(current);
+810     ++g_revision;
+811     g_origin = patch-&gt;origin;
+812     if (result)
+813       *result = (options_patch_result_t){.revision = g_revision, .changed = true};
+814   } else
+815     SAFE_FREE(candidate);
+816   mutex_unlock(&amp;g_options_write_mutex);
+817   return error;
+818 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_ptr_load()</b>,
+    <b>atomic_ptr_store()</b>, <b>options_patch_t::count</b>,
+    <b>options_patch_t::edits</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>options_patch_t::expected_revision</b>,
+    <b>lifecycle_is_initialized()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>options_apply_patch()</b>, <b>OPTIONS_PATCH_MAX_EDITS</b>,
+    <b>options_prepare_patch()</b>, <b>OPTIONS_REVISION_ANY</b>,
+    <b>options_patch_t::origin</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_apply_json()</b>, and
+    <b>options_apply_patch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> options_cycle (const char * name, int
+  count)</h2>
+<p class="Pp">Definition at line <b>873</b> of file <b>rcu.c</b>.</p>
+<pre>873                                                              {
+874   return apply_one(
+875       (options_edit_t){.name = name, .type = OPTIONS_VALUE_INT, .operation = OPTIONS_CYCLE, .value.integer = count});
+876 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>OPTIONS_CYCLE</b>, <b>options_cycle()</b>, and
+    <b>OPTIONS_VALUE_INT</b>.</p>
+<p class="Pp">Referenced by <b>options_cycle()</b>, and
+  <b>ui_session_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> options_prepare_json (const
+  <b>options_t</b> * current, const char * json, size_t length, <b>options_t</b>
+  * candidate, <b>bool</b> remote_only)</h2>
+<p class="Pp">Definition at line <b>942</b> of file <b>rcu.c</b>.</p>
+<pre>943                                                          {
+944   yyjson_doc *doc = NULL;
+945   options_edit_t edits[OPTIONS_PATCH_MAX_EDITS];
+946   size_t count = 0;
+947   asciichat_error_t error = parse_json_edits(json, length, &amp;doc, edits, &amp;count);
+948   options_patch_t patch = {.edits = edits, .count = count, .expected_revision = OPTIONS_REVISION_ANY};
+949   if (error == ASCIICHAT_OK)
+950     error = options_prepare_patch(current, &amp;patch, candidate, remote_only);
+951   yyjson_doc_free(doc);
+952   return error;
+953 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>OPTIONS_PATCH_MAX_EDITS</b>,
+    <b>options_prepare_json()</b>, <b>options_prepare_patch()</b>, and
+    <b>OPTIONS_REVISION_ANY</b>.</p>
+<p class="Pp">Referenced by <b>acip_settings_request()</b>,
+    <b>client_settings_receive()</b>, <b>options_prepare_json()</b>,
+    <b>session_participant_receive_settings()</b>, and
+    <b>session_protocol_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> options_prepare_patch (const
+  <b>options_t</b> * current, const <b>options_patch_t</b> * patch,
+  <b>options_t</b> * candidate, <b>bool</b> remote_only)</h2>
+<p class="Pp">Prepare caller-owned state. The owner serializes access; remote
+    edits use an allowlist.</p>
+<p class="Pp">Definition at line <b>768</b> of file <b>rcu.c</b>.</p>
+<pre>769                                                           {
+770   if (!current || !candidate || current == candidate || !patch || !patch-&gt;edits || !patch-&gt;count ||
+771       patch-&gt;count &gt; OPTIONS_PATCH_MAX_EDITS)
+772     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid options patch&quot;);
+773   *candidate = *current;
+774   for (size_t i = 0; i &lt; patch-&gt;count; ++i) {
+775     if (remote_only &amp;&amp;
+776         (!options_remote_render_field(patch-&gt;edits[i].name) || patch-&gt;edits[i].operation != OPTIONS_ASSIGN))
+777       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option is not a remote render preference&quot;);
+778     asciichat_error_t error = edit_candidate(candidate, &amp;patch-&gt;edits[i]);
+779     if (error != ASCIICHAT_OK)
+780       return error;
+781   }
+782   for (size_t i = 0; i &lt; patch-&gt;count; ++i) {
+783     asciichat_error_t error = validate_field(find_field(patch-&gt;edits[i].name), candidate);
+784     if (error != ASCIICHAT_OK)
+785       return error;
+786   }
+787   candidate-&gt;flip_x_explicit |= current-&gt;flip_x_explicit;
+788   options_resolve_flip_x(candidate);
+789   return ASCIICHAT_OK;
+790 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>options_patch_t::count</b>,
+    <b>options_patch_t::edits</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>options_state::flip_x_explicit</b>, <b>options_edit_t::name</b>,
+    <b>options_edit_t::operation</b>, <b>OPTIONS_ASSIGN</b>,
+    <b>OPTIONS_PATCH_MAX_EDITS</b>, <b>options_prepare_patch()</b>,
+    <b>options_remote_render_field()</b>, <b>options_resolve_flip_x()</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_apply_patch()</b>,
+    <b>options_prepare_json()</b>, and <b>options_prepare_patch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> options_read_snapshot
+  (<b>options_snapshot_t</b> * snapshot)</h2>
+<p class="Pp">Capture values and revision together. Callers own the copied
+    snapshot.</p>
+<p class="Pp">Definition at line <b>820</b> of file <b>rcu.c</b>.</p>
+<pre>820                                                                       {
+821   if (!snapshot || !lifecycle_is_initialized(&amp;g_options_lifecycle))
+822     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Options are not initialized&quot;);
+823   mutex_lock(&amp;g_options_write_mutex);
+824   snapshot-&gt;values = *(options_t *)atomic_ptr_load(&amp;g_options);
+825   snapshot-&gt;revision = g_revision;
+826   snapshot-&gt;origin = g_origin;
+827   mutex_unlock(&amp;g_options_write_mutex);
+828   return ASCIICHAT_OK;
+829 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_ptr_load()</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>lifecycle_is_initialized()</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>options_read_snapshot()</b>,
+    <b>options_snapshot_t::origin</b>, <b>options_snapshot_t::revision</b>,
+    <b>SET_ERRNO</b>, and <b>options_snapshot_t::values</b>.</p>
+<p class="Pp">Referenced by <b>options_read_snapshot()</b>,
+    <b>session_protocol_update_settings()</b>,
+    <b>session_settings_from_options()</b>, and
+  <b>wasm_options_values()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> options_remote_render_field (const char * name)</h2>
+<p class="Pp">Only explicitly exposed fields may enter a remote rendering
+  patch.</p>
+<p class="Pp">Definition at line <b>643</b> of file <b>rcu.c</b>.</p>
+<pre>643                                                    {
+644   const runtime_field_t *field = find_field(name);
+645   if (!field)
+646     return false;
+647   const char *allowed[] = {
+648       &quot;width&quot;,          &quot;height&quot;,           &quot;fps&quot;,      &quot;color_mode&quot;, &quot;color_filter&quot;, &quot;render_mode&quot;, &quot;palette_type&quot;,
+649       &quot;palette_custom&quot;, &quot;palette_explicit&quot;, &quot;renderer&quot;, &quot;stabilize&quot;,  &quot;matrix_rain&quot;};
+650   for (size_t i = 0; i &lt; sizeof(allowed) / sizeof(*allowed); ++i)
+651     if (!strcmp(field-&gt;name, allowed[i]))
+652       return true;
+653   return false;
+654 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>runtime_field_t::name</b>, and
+    <b>options_remote_render_field()</b>.</p>
+<p class="Pp">Referenced by <b>options_prepare_patch()</b>,
+    <b>options_remote_render_field()</b>, and <b>options_values_json()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> options_revision (void )</h2>
+<p class="Pp">Observers coalesce changes by reading a new snapshot when this
+    revision changes.</p>
+<p class="Pp">Definition at line <b>831</b> of file <b>rcu.c</b>.</p>
+<pre>831                                 {
+832   if (!lifecycle_is_initialized(&amp;g_options_lifecycle))
+833     return 0;
+834   mutex_lock(&amp;g_options_write_mutex);
+835   uint64_t revision = g_revision;
+836   mutex_unlock(&amp;g_options_write_mutex);
+837   return revision;
+838 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, and <b>options_revision()</b>.</p>
+<p class="Pp">Referenced by <b>options_revision()</b>,
+    <b>session_protocol_update_settings()</b>, and
+    <b>wasm_options_revision()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> options_toggle (const char * name)</h2>
+<p class="Pp">Definition at line <b>866</b> of file <b>rcu.c</b>.</p>
+<pre>866                                                    {
+867   return apply_one((options_edit_t){.name = name, .type = OPTIONS_VALUE_BOOL, .operation = OPTIONS_TOGGLE});
+868 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>OPTIONS_TOGGLE</b>, <b>options_toggle()</b>, and
+    <b>OPTIONS_VALUE_BOOL</b>.</p>
+<p class="Pp">Referenced by <b>options_toggle()</b>, and
+    <b>ui_session_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_options_values_json_(const_"><a class="permalink" href="#char_*_options_values_json_(const_">char
+  * options_values_json (const <b>options_t</b> * values, <b>bool</b>
+  remote_only)</a></h2>
+<p class="Pp">Caller releases JSON with SAFE_FREE. Only public runtime fields
+    are serialized.</p>
+<p class="Pp">Definition at line <b>968</b> of file <b>rcu.c</b>.</p>
+<pre>968                                                                      {
+969   yyjson_mut_doc *doc = yyjson_mut_doc_new(&amp;runtime_json_allocator);
+970   if (!doc)
+971     return NULL;
+972   yyjson_mut_val *root = yyjson_mut_obj(doc);
+973   yyjson_mut_doc_set_root(doc, root);
+974   for (size_t i = 0; i &lt; sizeof(runtime_fields) / sizeof(*runtime_fields); ++i) {
+975     const runtime_field_t *field = &amp;runtime_fields[i];
+976     bool exposed = options_remote_render_field(field-&gt;name);
+977     if (!remote_only &amp;&amp; (!strcmp(field-&gt;name, &quot;flip_x&quot;) || !strcmp(field-&gt;name, &quot;flip_x_explicit&quot;) ||
+978                          !strcmp(field-&gt;name, &quot;media_input&quot;) || !strcmp(field-&gt;name, &quot;flip_y&quot;) ||
+979                          !strcmp(field-&gt;name, &quot;waveform&quot;) || !strcmp(field-&gt;name, &quot;fft&quot;) ||
+980                          !strcmp(field-&gt;name, &quot;fps_counter&quot;) || !strcmp(field-&gt;name, &quot;speakers_volume&quot;) ||
+981                          !strcmp(field-&gt;name, &quot;microphone_sensitivity&quot;) || !strcmp(field-&gt;name, &quot;audio_enabled&quot;)))
+982       exposed = true;
+983     if (!exposed)
+984       continue;
+985     const char *ptr = (const char *)values + field-&gt;offset;
+986     switch (field-&gt;type) {
+987     case OPTIONS_VALUE_INT:
+988       yyjson_mut_obj_add_int(doc, root, field-&gt;name, *(const int *)ptr);
+989       break;
+990     case OPTIONS_VALUE_BOOL:
+991       yyjson_mut_obj_add_bool(doc, root, field-&gt;name, *(const bool *)ptr);
+992       break;
+993     case OPTIONS_VALUE_DOUBLE:
+994       yyjson_mut_obj_add_real(doc, root, field-&gt;name,
+995                               field-&gt;size == sizeof(float) ? *(const float *)ptr : *(const double *)ptr);
+996       break;
+997     case OPTIONS_VALUE_STRING:
+998       yyjson_mut_obj_add_str(doc, root, field-&gt;name, ptr);
+999       break;
+1000     }
+1001   }
+1002   char *json = yyjson_mut_write_opts(doc, 0, &amp;runtime_json_allocator, NULL, NULL);
+1003   yyjson_mut_doc_free(doc);
+1004   return json;
+1005 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>runtime_field_t::name</b>,
+    <b>runtime_field_t::offset</b>, <b>options_remote_render_field()</b>,
+    <b>OPTIONS_VALUE_BOOL</b>, <b>OPTIONS_VALUE_DOUBLE</b>,
+    <b>OPTIONS_VALUE_INT</b>, <b>OPTIONS_VALUE_STRING</b>,
+    <b>options_values_json()</b>, <b>runtime_field_t::size</b>, and
+    <b>runtime_field_t::type</b>.</p>
+<p class="Pp">Referenced by <b>acip_settings_request()</b>,
+    <b>acip_settings_send()</b>, <b>client_settings_values()</b>,
+    <b>options_values_json()</b>, and <b>wasm_options_values()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -47,7 +47,7 @@
   <br/>
   Validate ACIP session join request. <b>asciichat_error_t</b>
     <b>acip_server_send_error</b> (<b>socket_t</b> sockfd,
-    <b>acip_error_code_t</b> <b>error_code</b>, const char *error_message)
+    <b>acip_error_code_t</b> error_code, const char *error_message)
   <br/>
   Send ACIP error response to client.
   <br/>
@@ -64,7 +64,7 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>sockfd</i> Client socket
 <br/>
-<i></i><b>error_code</b><i></i><b> ACIP error code</b>
+<i>error_code</i> ACIP error code
 <br/>
 <i>error_message</i> Human-readable error message (max 255 chars)</div>
 <p class="Pp"><b>Returns</b></p>
@@ -72,42 +72,43 @@
 <p class="Pp">Sends PACKET_TYPE_ACIP_ERROR response to client with specified
     error code and message. Message will be truncated if longer than 255
     characters.</p>
-<p class="Pp">Definition at line <b>74</b> of file <b>acds_server.c</b>.</p>
-<pre>74                                                                                                                    {
-75   if (sockfd == INVALID_SOCKET_VALUE) {
-76     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket&quot;);
-77   }
-78 
-79   if (!error_message) {
-80     error_message = &quot;Unknown error&quot;;
-81   }
-82 
-83   acip_error_t error_packet;
-84   memset(&amp;error_packet, 0, sizeof(error_packet));
-85   error_packet.error_code = (uint8_t)error_code;
-86 
-87   // Safely copy error message (truncate if needed)
-88   size_t msg_len = strlen(error_message);
-89   if (msg_len &gt;= sizeof(error_packet.error_message)) {
-90     msg_len = sizeof(error_packet.error_message) - 1;
-91   }
-92   memcpy(error_packet.error_message, error_message, msg_len);
-93   error_packet.error_message[msg_len] = '\0';
-94 
-95   // Send ACIP_ERROR packet
-96   int result = send_packet(sockfd, PACKET_TYPE_ACIP_ERROR, &amp;error_packet, sizeof(error_packet));
-97   if (result &lt; 0) {
-98     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send ACIP error packet&quot;);
-99   }
-100 
-101   return ASCIICHAT_OK;
-102 }</pre>
+<p class="Pp">Definition at line <b>79</b> of file <b>acds_server.c</b>.</p>
+<pre>79                                                                                                                    {
+80   if (sockfd == INVALID_SOCKET_VALUE) {
+81     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket&quot;);
+82   }
+83
+84   if (!error_message) {
+85     error_message = &quot;Unknown error&quot;;
+86   }
+87
+88   acip_error_t error_packet;
+89   memset(&amp;error_packet, 0, sizeof(error_packet));
+90   error_packet.error_code = (uint8_t)error_code;
+91
+92   // Safely copy error message (truncate if needed)
+93   size_t msg_len = strlen(error_message);
+94   if (msg_len &gt;= sizeof(error_packet.error_message)) {
+95     msg_len = sizeof(error_packet.error_message) - 1;
+96   }
+97   memcpy(error_packet.error_message, error_message, msg_len);
+98   error_packet.error_message[msg_len] = '\0';
+99
+100   // Send ACIP_ERROR packet
+101   int result = send_packet(sockfd, PACKET_TYPE_ACIP_ERROR, &amp;error_packet, sizeof(error_packet));
+102   if (result &lt; 0) {
+103     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send ACIP error packet&quot;);
+104   }
+105
+106   return ASCIICHAT_OK;
+107 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>acip_error_t</b>, <b>ASCIICHAT_OK</b>,
-    <b>error_code</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
+<p class="Pp">References <b>acip_error_t</b>, <b>acip_server_send_error()</b>,
+    <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>,
     <b>INVALID_SOCKET_VALUE</b>, <b>PACKET_TYPE_ACIP_ERROR</b>,
     <b>send_packet()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acip_server_send_error()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> acip_server_validate_session_create
@@ -119,35 +120,42 @@
 <div class="Bd-indent">ASCIICHAT_OK if valid, error code if invalid</div>
 <p class="Pp">Validates that a SESSION_CREATE request has all required fields
     populated correctly (identity, signature, capabilities, etc.).</p>
-<p class="Pp">Definition at line <b>27</b> of file <b>acds_server.c</b>.</p>
-<pre>27                                                                                         {
-28   if (!req) {
-29     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session create request is NULL&quot;);
-30   }
-31 
-32   // Validate capabilities (only bits 0-1 should be set)
-33   if (req-&gt;capabilities &amp; ~0x03) {
-34     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid capabilities bits (only 0-1 allowed)&quot;);
+<p class="Pp">Definition at line <b>28</b> of file <b>acds_server.c</b>.</p>
+<pre>28                                                                                         {
+29   if (!req) {
+30     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session create request is NULL&quot;);
+31   }
+32
+33   if (req-&gt;total_keys &gt; MAX_SESSION_KEYS || req-&gt;key_index &gt;= (req-&gt;total_keys ? req-&gt;total_keys : 1)) {
+34     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid session key count/index&quot;);
 35   }
-36 
-37   // Validate max_participants (1-8)
-38   if (req-&gt;max_participants &lt; 1 || req-&gt;max_participants &gt; 8) {
-39     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid max_participants (must be 1-8)&quot;);
+36
+37   // Validate capabilities (only bits 0-1 should be set)
+38   if (req-&gt;capabilities &amp; ~0x03) {
+39     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid capabilities bits (only 0-1 allowed)&quot;);
 40   }
-41 
-42   // Server address can be empty - ACDS will auto-detect from connection source IP
-43 
-44   // Validate server port is non-zero
-45   if (req-&gt;server_port == 0) {
-46     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Server port is zero&quot;);
-47   }
-48 
-49   return ASCIICHAT_OK;
-50 }</pre>
+41
+42   // Validate max_participants (1-128)
+43   if (req-&gt;max_participants &lt; 1 || req-&gt;max_participants &gt; MAX_SESSION_PARTICIPANTS) {
+44     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid max_participants (must be 1-%d)&quot;, MAX_SESSION_PARTICIPANTS);
+45   }
+46
+47   // Server address can be empty - ACDS will auto-detect from connection source IP
+48
+49   // Validate server port is non-zero
+50   if (req-&gt;server_port == 0) {
+51     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Server port is zero&quot;);
+52   }
+53
+54   return ASCIICHAT_OK;
+55 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>acip_session_create_t</b>, <b>ASCIICHAT_OK</b>,
-    <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>acip_server_validate_session_create()</b>,
+    <b>acip_session_create_t</b>, <b>ASCIICHAT_OK</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>MAX_SESSION_KEYS</b>,
+    <b>MAX_SESSION_PARTICIPANTS</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acip_server_validate_session_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> acip_server_validate_session_join (const
@@ -159,29 +167,30 @@
 <div class="Bd-indent">ASCIICHAT_OK if valid, error code if invalid</div>
 <p class="Pp">Validates that a SESSION_JOIN request has all required fields
     populated correctly (session string, identity, signature, etc.).</p>
-<p class="Pp">Definition at line <b>52</b> of file <b>acds_server.c</b>.</p>
-<pre>52                                                                                     {
-53   if (!req) {
-54     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session join request is NULL&quot;);
-55   }
-56 
-57   // Validate session string length
-58   if (req-&gt;session_string_len == 0 || req-&gt;session_string_len &gt; ACIP_MAX_SESSION_STRING_LEN) {
-59     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid session string length&quot;);
+<p class="Pp">Definition at line <b>57</b> of file <b>acds_server.c</b>.</p>
+<pre>57                                                                                     {
+58   if (!req) {
+59     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session join request is NULL&quot;);
 60   }
-61 
-62   // Validate session string is not empty
-63   if (req-&gt;session_string[0] == '\0') {
-64     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string is empty&quot;);
+61
+62   // Validate session string length
+63   if (req-&gt;session_string_len == 0 || req-&gt;session_string_len &gt; ACIP_MAX_SESSION_STRING_LEN) {
+64     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid session string length&quot;);
 65   }
-66 
-67   return ASCIICHAT_OK;
-68 }</pre>
+66
+67   // Validate session string is not empty
+68   if (req-&gt;session_string[0] == '\0') {
+69     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string is empty&quot;);
+70   }
+71
+72   return ASCIICHAT_OK;
+73 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ACIP_MAX_SESSION_STRING_LEN</b>,
-    <b>acip_session_join_t</b>, <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    and <b>SET_ERRNO</b>.</p>
+    <b>acip_server_validate_session_join()</b>, <b>acip_session_join_t</b>,
+    <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acip_server_validate_session_join()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -191,7 +200,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

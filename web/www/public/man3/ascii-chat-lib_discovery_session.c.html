@@ -59,25 +59,26 @@
 16   if (!entry) {
 17     return;
 18   }
-19 
+19
 20   // Free all participants
-21   for (size_t i = 0; i &lt; MAX_PARTICIPANTS; i++) {
+21   for (size_t i = 0; i &lt; MAX_SESSION_PARTICIPANTS; i++) {
 22     if (entry-&gt;participants[i]) {
 23       SAFE_FREE(entry-&gt;participants[i]);
 24     }
 25   }
-26 
+26
 27   // Free the entry itself
 28   SAFE_FREE(entry);
 29 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>MAX_PARTICIPANTS</b>,
-    <b>session_entry::participants</b>, and <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>database_session_join()</b>,
-    <b>signaling_broadcast()</b>, <b>signaling_relay_ice()</b>,
-    <b>signaling_relay_network_quality()</b>, and
-  <b>signaling_relay_sdp()</b>.</p>
+<p class="Pp">References <b>MAX_SESSION_PARTICIPANTS</b>,
+    <b>session_entry::participants</b>, <b>SAFE_FREE</b>, and
+    <b>session_entry_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>acds_send_current_host()</b>,
+    <b>database_session_join()</b>, <b>session_entry_destroy()</b>,
+    <b>signaling_broadcast()</b>, <b>signaling_relay_ice()</b>, and
+    <b>signaling_relay_sdp()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -87,7 +88,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

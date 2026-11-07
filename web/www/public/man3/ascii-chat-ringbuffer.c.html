@@ -37,6 +37,14 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>RINGBUFFER_CLIENT_ID_BUFFER_SIZE</b> 64
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>ringbuffer_t</b> * <b>ringbuffer_create</b> (size_t
@@ -79,7 +87,7 @@
     (<b>framebuffer_t</b> *fb, const char *frame_data, size_t frame_size)
   <br/>
   Write a frame to the buffer. <b>bool</b> <b>framebuffer_read_frame</b>
-    (<b>framebuffer_t</b> *fb, <b>frame_t</b> *<b>frame</b>)
+    (<b>framebuffer_t</b> *fb, <b>frame_t</b> *frame)
   <br/>
   Read a frame from the buffer. void <b>framebuffer_clear</b>
     (<b>framebuffer_t</b> *fb)
@@ -91,11 +99,11 @@
   <br/>
   Write a multi-source frame to the buffer (for multi-user support). <b>bool</b>
     <b>framebuffer_read_multi_frame</b> (<b>framebuffer_t</b> *fb,
-    <b>multi_source_frame_t</b> *<b>frame</b>)
+    <b>multi_source_frame_t</b> *frame)
   <br/>
   Read a multi-source frame from the buffer. <b>bool</b>
     <b>framebuffer_peek_latest_multi_frame</b> (<b>framebuffer_t</b> *fb,
-    <b>multi_source_frame_t</b> *<b>frame</b>)
+    <b>multi_source_frame_t</b> *frame)
   <br/>
   Peek at the latest multi-source frame without removing it.
   <br/>
@@ -112,13 +120,23 @@
 <p class="Pp">Definition in file <b>ringbuffer.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_RINGBUFFER_CLIENT_ID_BUFFER_SIZE___64"><a class="permalink" href="#_define_RINGBUFFER_CLIENT_ID_BUFFER_SIZE___64">#define
+  RINGBUFFER_CLIENT_ID_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>ringbuffer.c</b>.</p>
+<p class="Pp">Referenced by <b>framebuffer_write_multi_frame()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

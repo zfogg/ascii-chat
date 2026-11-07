@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>stats_sampler(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">stats_sampler(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">stats_sampler(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">stats_sampler</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>stats_sampler_config_t</b> <b>config</b>
+  <br/>
+  <b>stats_snapshot_t</b> * <b>history</b>
+  <br/>
+  <b>stats_snapshot_t</b> <b>latest</b>
+  <br/>
+  size_t <b>capacity</b>
+  <br/>
+  size_t <b>head</b>
+  <br/>
+  size_t <b>count</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>38</b> of file <b>lib/stats/stats.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="size_t_stats_sampler::capacity"><a class="permalink" href="#size_t_stats_sampler::capacity">size_t
+  stats_sampler::capacity</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>lib/stats/stats.c</b>.</p>
+<p class="Pp">Referenced by <b>stats_sampler_create()</b>, and
+    <b>stats_sampler_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>stats_sampler_config_t</b> stats_sampler::config</h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>lib/stats/stats.c</b>.</p>
+<p class="Pp">Referenced by <b>stats_sampler_create()</b>, and
+    <b>stats_sampler_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_stats_sampler::count"><a class="permalink" href="#size_t_stats_sampler::count">size_t
+  stats_sampler::count</a></h2>
+<p class="Pp">Definition at line <b>44</b> of file <b>lib/stats/stats.c</b>.</p>
+<p class="Pp">Referenced by <b>stats_sampler_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_stats_sampler::head"><a class="permalink" href="#size_t_stats_sampler::head">size_t
+  stats_sampler::head</a></h2>
+<p class="Pp">Definition at line <b>43</b> of file <b>lib/stats/stats.c</b>.</p>
+<p class="Pp">Referenced by <b>stats_sampler_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>stats_snapshot_t</b>* stats_sampler::history</h2>
+<p class="Pp">Definition at line <b>40</b> of file <b>lib/stats/stats.c</b>.</p>
+<p class="Pp">Referenced by <b>stats_sampler_create()</b>,
+    <b>stats_sampler_destroy()</b>, and <b>stats_sampler_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>stats_snapshot_t</b> stats_sampler::latest</h2>
+<p class="Pp">Definition at line <b>41</b> of file <b>lib/stats/stats.c</b>.</p>
+<p class="Pp">Referenced by <b>stats_sampler_update()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

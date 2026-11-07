@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_splash.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_splash.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_splash.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_splash.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE</b>
+    128
+  <br/>
+  #define <b>TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE</b> 1024
+  <br/>
+  #define <b>TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE</b> 512
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>ui_session_splash_render</b> (<b>frame_buffer_t</b> *buf,
+    <b>terminal_size_t</b> term_size, void *user_data)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE___512">#define
+  TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file <b>session_splash.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE___512">#define
+  TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>session_splash.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE___1024"><a class="permalink" href="#_define_TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE___1024">#define
+  TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE 1024</a></h2>
+<p class="Pp">Definition at line <b>5</b> of file <b>session_splash.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE___128"><a class="permalink" href="#_define_TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE___128">#define
+  TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE 128</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>session_splash.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_session_splash_render_("><a class="permalink" href="#void_ui_session_splash_render_(">void
+  ui_session_splash_render (<b>frame_buffer_t</b> * buf, <b>terminal_size_t</b>
+  term_size, void * user_data)</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file <b>session_splash.c</b>.</p>
+<pre>19                                                                                                {
+20   const ui_splash_view_t *ctx = (const ui_splash_view_t *)user_data;
+21   if (!ctx) {
+22     return;
+23   }
+24   bool unicode = terminal_should_use_utf8();
+25
+26   if (ctx-&gt;discovery.enabled) {
+27     invitation_render(buf, term_size, ctx-&gt;discovery.session_string, ctx-&gt;discovery.joining,
+28                       (int)(ctx-&gt;animation.seconds * 60), ctx-&gt;use_colors);
+29     return;
+30   }
+31
+32   char tagline_with_version[TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE];
+33   snprintf(tagline_with_version, sizeof(tagline_with_version), &quot;Video chat in your terminal + %s&quot;,
+34            ASCII_CHAT_VERSION_STRING);
+35   const char *tagline = tagline_with_version;
+36   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, ctx-&gt;use_colors);
+37   invitation_render_logo(buf, term_size.cols - 1, (int)(ctx-&gt;animation.seconds * 60), ctx-&gt;use_colors, false);
+38
+39   // Line 6: Tagline (centered, truncated if too long)
+40   char plain_tagline[TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE];
+41   int tagline_len = (int)strlen(tagline);
+42   int tagline_pad = (term_size.cols - tagline_len) / 2;
+43   if (tagline_pad &lt; 0) {
+44     tagline_pad = 0;
+45   }
+46
+47   int tpos = 0;
+48   for (int j = 0; j &lt; tagline_pad &amp;&amp; tpos &lt; (int)sizeof(plain_tagline) - 1; j++) {
+49     plain_tagline[tpos++] = ' ';
+50   }
+51   snprintf(plain_tagline + tpos, sizeof(plain_tagline) - tpos, &quot;%s&quot;, tagline);
+52
+53   // Check visible width and truncate if needed
+54   int tagline_visible_width = display_width(plain_tagline);
+55   if (tagline_visible_width &lt; 0) {
+56     tagline_visible_width = (int)strlen(plain_tagline);
+57   }
+58   if (term_size.cols &gt; 0 &amp;&amp; tagline_visible_width &gt;= term_size.cols) {
+59     plain_tagline[term_size.cols - 1] = '\0';
+60   }
+61
+62   frame_buffer_printf(buf, &quot;%s\n&quot;, plain_tagline);
+63
+64   // Line 7: Update notification (if available)
+65   if (ctx-&gt;update_notification[0] != '\0') {
+66     char plain_update[TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE];
+67     int update_len = (int)strlen(ctx-&gt;update_notification);
+68     int update_pad = (term_size.cols - update_len) / 2;
+69     if (update_pad &lt; 0) {
+70       update_pad = 0;
+71     }
+72
+73     int upos = 0;
+74     for (int j = 0; j &lt; update_pad &amp;&amp; upos &lt; (int)sizeof(plain_update) - 1; j++) {
+75       plain_update[upos++] = ' ';
+76     }
+77     snprintf(plain_update + upos, sizeof(plain_update) - upos, &quot;%s&quot;, ctx-&gt;update_notification);
+78
+79     // Check visible width and truncate if needed
+80     int update_visible_width = display_width(plain_update);
+81     if (update_visible_width &lt; 0) {
+82       update_visible_width = (int)strlen(plain_update);
+83     }
+84     if (term_size.cols &gt; 0 &amp;&amp; update_visible_width &gt;= term_size.cols) {
+85       plain_update[term_size.cols - 1] = '\0';
+86     }
+87
+88     // Print in yellow/warning color
+89     frame_buffer_printf(buf, &quot;%s\n&quot;, colored_string(LOG_COLOR_WARN, plain_update));
+90   }
+91
+92   // Line 8 (or 7 if no update): Connection target (centered, truncated if too long)
+93   const char *connection_target = ctx-&gt;connection_target;
+94
+95   char plain_connection[TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE];
+96   int connection_len = (int)strlen(connection_target);
+97   int connection_pad = (term_size.cols - connection_len) / 2;
+98   if (connection_pad &lt; 0) {
+99     connection_pad = 0;
+100   }
+101
+102   int cpos = 0;
+103   for (int j = 0; j &lt; connection_pad &amp;&amp; cpos &lt; (int)sizeof(plain_connection) - 1; j++) {
+104     plain_connection[cpos++] = ' ';
+105   }
+106   snprintf(plain_connection + cpos, sizeof(plain_connection) - cpos, &quot;%s&quot;, connection_target);
+107
+108   // Check visible width and truncate if needed
+109   int connection_visible_width = display_width(plain_connection);
+110   if (connection_visible_width &lt; 0) {
+111     connection_visible_width = (int)strlen(plain_connection);
+112   }
+113   if (term_size.cols &gt; 0 &amp;&amp; connection_visible_width &gt;= term_size.cols) {
+114     plain_connection[term_size.cols - 1] = '\0';
+115   }
+116
+117   frame_buffer_printf(buf, &quot;%s\n&quot;, plain_connection);
+118
+119   if (update_banner_is_checking()) {
+120     static const char spin[] = &quot;|/-\\&quot;;
+121     const char *text = &quot;Checking for updates...&quot;;
+122     int pad = term_size.cols - (int)strlen(text) - 3;
+123     if (pad &lt; 0)
+124       pad = 0;
+125     frame_buffer_printf(buf, &quot;%*s%c %s\n&quot;, pad, &quot;&quot;, spin[((int)(ctx-&gt;animation.seconds * 8)) % 4], text);
+126   }
+127
+128   // Bottom border
+129   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, ctx-&gt;use_colors);
+130 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_splash_view_t::animation</b>,
+    <b>ASCII_CHAT_VERSION_STRING</b>, <b>colored_string()</b>,
+    <b>terminal_size_t::cols</b>, <b>ui_splash_view_t::connection_target</b>,
+    <b>ui_splash_view_t::discovery</b>, <b>display_width()</b>,
+    <b>ui_discovery_view_t::enabled</b>, <b>frame_buffer_printf()</b>,
+    <b>frame_buffer_render_divider()</b>, <b>invitation_render()</b>,
+    <b>invitation_render_logo()</b>, <b>ui_discovery_view_t::joining</b>,
+    <b>LOG_COLOR_WARN</b>, <b>animation_sample_t::seconds</b>,
+    <b>ui_discovery_view_t::session_string</b>,
+    <b>terminal_should_use_utf8()</b>,
+    <b>TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE</b>,
+    <b>TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE</b>,
+    <b>TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE</b>,
+    <b>TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE</b>,
+    <b>ui_session_splash_render()</b>, <b>update_banner_is_checking()</b>,
+    <b>ui_splash_view_t::update_notification</b>, and
+    <b>ui_splash_view_t::use_colors</b>.</p>
+<p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

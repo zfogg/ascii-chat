@@ -53,6 +53,34 @@
   <br/>
   #define <b>ADDR2LINE_BIN</b> 'addr2line'
   <br/>
+  #define <b>PLATFORM_SYMBOLS_FUNC_NAME_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>PLATFORM_SYMBOLS_FILE_LOCATION_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>PLATFORM_SYMBOLS_REL_PATH_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>PLATFORM_SYMBOLS_CLEAN_FUNC_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>PLATFORM_SYMBOLS_CMD_BUFFER_SIZE</b> 8192
+  <br/>
+  #define <b>PLATFORM_SYMBOLS_CMD_SHORT_BUFFER_SIZE</b> 4096
+  <br/>
+  #define <b>PLATFORM_SYMBOLS_FUNC_NAME_SHORT_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>PLATFORM_SYMBOLS_FILE_LINE_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>SYMBOL_BATCH_FRAME_CAPACITY</b> 64
+  <br/>
+  #define <b>SYMBOL_ADDRESS_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>SYMBOL_FALLBACK_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>SYMBOL_DESCRIPTION_BUFFER_SIZE</b> 1024
+  <br/>
+  #define <b>SYMBOL_BATCH_BINARY_CAPACITY</b> 8
+  <br/>
+  #define <b>SYMBOL_SEPARATOR_BUFFER_SIZE</b> 8
+  <br/>
   #define <b>NULL_SENTINEL</b> '[NULL]'
   <br/>
   <br/>
@@ -70,7 +98,15 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>symbol_cache_init</b> (void)
+<p class="Pp"><b>bool</b> <b>symbol_module_is_project</b> (const char
+    *module_name)
+  <br/>
+  Check whether a module belongs to ascii-chat. <b>asciichat_error_t</b>
+    <b>symbol_format_source_path</b> (const char *module_name, const char
+    *source_path, char *output, size_t output_size, <b>bool</b> *external)
+  <br/>
+  Format a source path for a symbolized frame. <b>asciichat_error_t</b>
+    <b>symbol_cache_init</b> (void)
   <br/>
   Initialize the symbol cache. void <b>symbol_cache_destroy</b> (void)
   <br/>
@@ -122,8 +158,79 @@
 <section class="Ss">
 <h2 class="Ss" id="_define_NULL_SENTINEL___'_NULL_'"><a class="permalink" href="#_define_NULL_SENTINEL___'_NULL_'">#define
   NULL_SENTINEL '[NULL]'</a></h2>
-<p class="Pp">Definition at line <b>46</b> of file <b>symbols.c</b>.</p>
+<p class="Pp">Definition at line <b>141</b> of file <b>symbols.c</b>.</p>
 <p class="Pp">Referenced by <b>symbol_cache_resolve_batch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_SYMBOLS_CLEAN_FUNC_BUFFER_SIZE___512"><a class="permalink" href="#_define_PLATFORM_SYMBOLS_CLEAN_FUNC_BUFFER_SIZE___512">#define
+  PLATFORM_SYMBOLS_CLEAN_FUNC_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>22</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_SYMBOLS_CMD_BUFFER_SIZE___8192"><a class="permalink" href="#_define_PLATFORM_SYMBOLS_CMD_BUFFER_SIZE___8192">#define
+  PLATFORM_SYMBOLS_CMD_BUFFER_SIZE 8192</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_SYMBOLS_CMD_SHORT_BUFFER_SIZE___4096"><a class="permalink" href="#_define_PLATFORM_SYMBOLS_CMD_SHORT_BUFFER_SIZE___4096">#define
+  PLATFORM_SYMBOLS_CMD_SHORT_BUFFER_SIZE 4096</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_SYMBOLS_FILE_LINE_BUFFER_SIZE___512"><a class="permalink" href="#_define_PLATFORM_SYMBOLS_FILE_LINE_BUFFER_SIZE___512">#define
+  PLATFORM_SYMBOLS_FILE_LINE_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>26</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_SYMBOLS_FILE_LOCATION_BUFFER_SIZE___512"><a class="permalink" href="#_define_PLATFORM_SYMBOLS_FILE_LOCATION_BUFFER_SIZE___512">#define
+  PLATFORM_SYMBOLS_FILE_LOCATION_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>20</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_SYMBOLS_FUNC_NAME_BUFFER_SIZE___512"><a class="permalink" href="#_define_PLATFORM_SYMBOLS_FUNC_NAME_BUFFER_SIZE___512">#define
+  PLATFORM_SYMBOLS_FUNC_NAME_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_SYMBOLS_FUNC_NAME_SHORT_BUFFER_SIZE___256"><a class="permalink" href="#_define_PLATFORM_SYMBOLS_FUNC_NAME_SHORT_BUFFER_SIZE___256">#define
+  PLATFORM_SYMBOLS_FUNC_NAME_SHORT_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_SYMBOLS_REL_PATH_BUFFER_SIZE___512"><a class="permalink" href="#_define_PLATFORM_SYMBOLS_REL_PATH_BUFFER_SIZE___512">#define
+  PLATFORM_SYMBOLS_REL_PATH_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SYMBOL_ADDRESS_BUFFER_SIZE___32"><a class="permalink" href="#_define_SYMBOL_ADDRESS_BUFFER_SIZE___32">#define
+  SYMBOL_ADDRESS_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>symbols.c</b>.</p>
+<p class="Pp">Referenced by <b>symbol_cache_resolve_batch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SYMBOL_BATCH_BINARY_CAPACITY___8"><a class="permalink" href="#_define_SYMBOL_BATCH_BINARY_CAPACITY___8">#define
+  SYMBOL_BATCH_BINARY_CAPACITY 8</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SYMBOL_BATCH_FRAME_CAPACITY___64"><a class="permalink" href="#_define_SYMBOL_BATCH_FRAME_CAPACITY___64">#define
+  SYMBOL_BATCH_FRAME_CAPACITY 64</a></h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SYMBOL_DESCRIPTION_BUFFER_SIZE___1024"><a class="permalink" href="#_define_SYMBOL_DESCRIPTION_BUFFER_SIZE___1024">#define
+  SYMBOL_DESCRIPTION_BUFFER_SIZE 1024</a></h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SYMBOL_FALLBACK_BUFFER_SIZE___256"><a class="permalink" href="#_define_SYMBOL_FALLBACK_BUFFER_SIZE___256">#define
+  SYMBOL_FALLBACK_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SYMBOL_SEPARATOR_BUFFER_SIZE___8"><a class="permalink" href="#_define_SYMBOL_SEPARATOR_BUFFER_SIZE___8">#define
+  SYMBOL_SEPARATOR_BUFFER_SIZE 8</a></h2>
+<p class="Pp">Definition at line <b>38</b> of file <b>symbols.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -146,12 +253,12 @@
     </i></b></a></dt>
   <dd></dd>
 </dl>
-<p class="Pp">Definition at line <b>52</b> of file <b>symbols.c</b>.</p>
-<pre>52              {
-53   SYMBOLIZER_NONE = 0,      // No symbolizer available, use raw addresses
-54   SYMBOLIZER_LLVM = 1,      // llvm-symbolizer (preferred on all platforms)
-55   SYMBOLIZER_ADDR2LINE = 2, // addr2line (fallback)
-56 } symbolizer_type_t;</pre>
+<p class="Pp">Definition at line <b>147</b> of file <b>symbols.c</b>.</p>
+<pre>147              {
+148   SYMBOLIZER_NONE = 0,      // No symbolizer available, use raw addresses
+149   SYMBOLIZER_LLVM = 1,      // llvm-symbolizer (preferred on all platforms)
+150   SYMBOLIZER_ADDR2LINE = 2, // addr2line (fallback)
+151 } symbolizer_type_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -163,7 +270,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

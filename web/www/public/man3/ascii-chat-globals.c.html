@@ -54,7 +54,6 @@
 <br/>
 <p class="Pp"><b>atomic_t</b> <b>g_should_exit</b> = {0}
   <br/>
-  Global application exit flag (shared across all modes).
   <br/>
 </p>
 </section>
@@ -83,7 +82,7 @@
 <p class="Pp">Definition at line <b>21</b> of file <b>globals.c</b>.</p>
 <pre>21                                                                      {
 22   platform_setenv(&quot;TESTING&quot;, &quot;1&quot;);
-23 
+23
 24   // Initialize options RCU system with defaults for tests
 25   // This must happen before any code calls options_get()
 26   options_state_init();
@@ -99,21 +98,21 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> g_should_exit = {0}</h2>
-<p class="Pp">Global application exit flag (shared across all modes). Global
-    shutdown flag referenced by lib/logging.c and lib/debug/lock.c In production
-    builds, this is defined in main.c and set during shutdown. For tests, we
-    stub it out as false (tests don't perform shutdown).</p>
-<p class="Pp">Definition at line <b>34</b> of file <b>globals.c</b>.</p>
-<pre>34 {0};</pre>
-<pre></pre>
+<p class="Pp">Global shutdown flag referenced by lib/logging.c and
+    lib/debug/lock.c In production builds, this is defined in main.c and set
+    during shutdown. For tests, we stub it out as false (tests don't perform
+    shutdown).</p>
 <p class="Pp"></p>
+<p class="Pp">Global exit flag used by all modes</p>
+<p class="Pp"></p>
+<p class="Pp">Set to true when the application should exit (SIGTERM, Ctrl+C,
+    error, etc). All modes check this flag regularly to exit gracefully.</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>globals.c</b>.</p>
 <p class="Pp">Referenced by <b>ATOMIC_INIT_AUTO()</b>,
-    <b>client_audio_render_thread()</b>, <b>client_dispatch_thread()</b>,
-    <b>client_receive_thread()</b>, <b>client_send_thread_func()</b>,
-    <b>client_video_render_thread()</b>,
+    <b>client_audio_render_thread()</b>, <b>client_video_render_thread()</b>,
     <b>handle_image_frame_h265_packet()</b>, <b>handle_image_frame_packet()</b>,
-    <b>server_main()</b>, <b>should_exit()</b>, <b>signal_exit()</b>,
-    <b>stats_logger_thread()</b>, and <b>stop_client_render_threads()</b>.</p>
+    <b>server_main()</b>, <b>should_exit()</b>, <b>signal_exit()</b>, and
+    <b>stats_logger_thread()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -123,7 +122,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

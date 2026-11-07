@@ -87,33 +87,36 @@
 <div class="Bd-indent"><i>out_names</i> Output array of mode name pointers</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of mode names</div>
-<p class="Pp">Definition at line <b>85</b> of file <b>options/strings.c</b>.</p>
-<pre>85                                                                {
-86   static const char *names[32]; // Max 32 modes
-87   size_t count = 0;
-88 
-89   for (size_t i = 0; mode_registry[i].name != NULL &amp;&amp; count &lt; 32; i++) {
-90     // Skip duplicates (like &quot;acds&quot; alias)
-91     bool duplicate = false;
-92     for (size_t j = 0; j &lt; count; j++) {
-93       if (strcmp(names[j], mode_registry[i].name) == 0) {
-94         duplicate = true;
-95         break;
-96       }
-97     }
-98     if (!duplicate) {
-99       names[count++] = mode_registry[i].name;
-100     }
-101   }
-102 
-103   if (out_names) {
-104     *out_names = names;
+<p class="Pp">Definition at line <b>89</b> of file <b>options/strings.c</b>.</p>
+<pre>89                                                                {
+90   static const char *names[MODE_NAME_CAPACITY]; // Max 32 modes
+91   size_t count = 0;
+92
+93   for (size_t i = 0; mode_registry[i].name != NULL &amp;&amp; count &lt; MODE_NAME_CAPACITY; i++) {
+94     // Skip duplicates (like &quot;acds&quot; alias)
+95     bool duplicate = false;
+96     for (size_t j = 0; j &lt; count; j++) {
+97       if (strcmp(names[j], mode_registry[i].name) == 0) {
+98         duplicate = true;
+99         break;
+100       }
+101     }
+102     if (!duplicate) {
+103       names[count++] = mode_registry[i].name;
+104     }
 105   }
-106   return count;
-107 }</pre>
+106
+107   if (out_names) {
+108     *out_names = names;
+109   }
+110   return count;
+111 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>asciichat_suggest_mode()</b>.</p>
+<p class="Pp">References <b>asciichat_get_all_mode_strings()</b>, and
+    <b>MODE_NAME_CAPACITY</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_get_all_mode_strings()</b>, and
+    <b>asciichat_suggest_mode()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> asciichat_is_valid_mode_string (const char *
@@ -123,14 +126,15 @@
 <div class="Bd-indent"><i>str</i> String to check</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if valid mode name, false otherwise</div>
-<p class="Pp">Definition at line <b>81</b> of file <b>options/strings.c</b>.</p>
-<pre>81                                                      {
-82   return asciichat_string_to_mode(str) != MODE_INVALID;
-83 }</pre>
+<p class="Pp">Definition at line <b>85</b> of file <b>options/strings.c</b>.</p>
+<pre>85                                                      {
+86   return asciichat_string_to_mode(str) != MODE_INVALID;
+87 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_string_to_mode()</b>, and
-    <b>MODE_INVALID</b>.</p>
+<p class="Pp">References <b>asciichat_is_valid_mode_string()</b>,
+    <b>asciichat_string_to_mode()</b>, and <b>MODE_INVALID</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_is_valid_mode_string()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_asciichat_mode_to_string_("><a class="permalink" href="#const_char_*_asciichat_mode_to_string_(">const
@@ -141,23 +145,25 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Mode name string (e.g., &quot;server&quot;,
   &quot;client&quot;, &quot;mirror&quot;)</div>
-<p class="Pp">Definition at line <b>53</b> of file <b>options/strings.c</b>.</p>
-<pre>53                                                             {
-54   // Special case: MODE_DISCOVERY is the default mode, show as &quot;default&quot; to users
-55   if (mode == MODE_DISCOVERY) {
-56     return &quot;default&quot;;
-57   }
-58 
-59   for (size_t i = 0; mode_registry[i].name != NULL; i++) {
-60     if (mode_registry[i].mode == mode) {
-61       return mode_registry[i].name;
-62     }
-63   }
-64   return &quot;unknown&quot;;
-65 }</pre>
+<p class="Pp">Definition at line <b>57</b> of file <b>options/strings.c</b>.</p>
+<pre>57                                                             {
+58   // Special case: MODE_DISCOVERY is the default mode, show as &quot;default&quot; to users
+59   if (mode == MODE_DISCOVERY) {
+60     return &quot;default&quot;;
+61   }
+62
+63   for (size_t i = 0; mode_registry[i].name != NULL; i++) {
+64     if (mode_registry[i].mode == mode) {
+65       return mode_registry[i].name;
+66     }
+67   }
+68   return &quot;unknown&quot;;
+69 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>MODE_DISCOVERY</b>.</p>
+<p class="Pp">References <b>asciichat_mode_to_string()</b>, and
+    <b>MODE_DISCOVERY</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_mode_to_string()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_mode_t</b> asciichat_string_to_mode (const char *
@@ -167,24 +173,26 @@
 <div class="Bd-indent"><i>str</i> Mode name string</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Mode enum value, or MODE_UNKNOWN if invalid</div>
-<p class="Pp">Definition at line <b>67</b> of file <b>options/strings.c</b>.</p>
-<pre>67                                                            {
-68   if (!str) {
-69     return MODE_INVALID;
-70   }
-71 
-72   for (size_t i = 0; mode_registry[i].name != NULL; i++) {
-73     if (strcmp(mode_registry[i].name, str) == 0) {
-74       return mode_registry[i].mode;
-75     }
-76   }
-77 
-78   return MODE_INVALID;
-79 }</pre>
+<p class="Pp">Definition at line <b>71</b> of file <b>options/strings.c</b>.</p>
+<pre>71                                                            {
+72   if (!str) {
+73     return MODE_INVALID;
+74   }
+75
+76   for (size_t i = 0; mode_registry[i].name != NULL; i++) {
+77     if (strcmp(mode_registry[i].name, str) == 0) {
+78       return mode_registry[i].mode;
+79     }
+80   }
+81
+82   return MODE_INVALID;
+83 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>MODE_INVALID</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_is_valid_mode_string()</b>.</p>
+<p class="Pp">References <b>asciichat_string_to_mode()</b>, and
+    <b>MODE_INVALID</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_is_valid_mode_string()</b>, and
+    <b>asciichat_string_to_mode()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_asciichat_suggest_enum_value_(const_char_*_option_name,_const_char_*_input)"><a class="permalink" href="#const_char_*_asciichat_suggest_enum_value_(const_char_*_option_name,_const_char_*_input)">const
@@ -198,35 +206,25 @@
 <i>input</i> Invalid enum value string</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Suggested enum value, or NULL if no close match</div>
-<p class="Pp">Definition at line <b>192</b> of file
+<p class="Pp">Definition at line <b>196</b> of file
   <b>options/strings.c</b>.</p>
-<pre>192                                                                                      {
-193   if (!option_name || !input) {
-194     return NULL;
-195   }
-196 
-197   size_t value_count = 0;
-198   const char **values = options_get_enum_values(option_name, &amp;value_count);
-199 
-200   if (!values || value_count == 0) {
-201     return NULL;
-202   }
-203 
-204   // Create NULL-terminated array for levenshtein_find_similar
-205   static const char *null_terminated[64]; // Max 64 enum values
-206   for (size_t i = 0; i &lt; value_count &amp;&amp; i &lt; 63; i++) {
-207     null_terminated[i] = values[i];
-208   }
-209   null_terminated[value_count] = NULL;
-210 
-211   return levenshtein_find_similar(input, null_terminated);
-212 }</pre>
+<pre>196                                                                                      {
+197   if (!option_name || !input) {
+198     return NULL;
+199   }
+200
+201   size_t value_count = 0;
+202   const char **values = options_registry_get_enum_values(option_name, NULL, &amp;value_count);
+203   return values ? levenshtein_find_similar(input, values) : NULL;
+204 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>levenshtein_find_similar()</b>, and
-    <b>options_get_enum_values()</b>.</p>
-<p class="Pp">Referenced by <b>parse_color_mode()</b>,
-    <b>parse_palette_type()</b>, and <b>parse_render_mode()</b>.</p>
+<p class="Pp">References <b>asciichat_suggest_enum_value()</b>,
+    <b>levenshtein_find_similar()</b>, and
+    <b>options_registry_get_enum_values()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_suggest_enum_value()</b>,
+    <b>parse_color_mode()</b>, <b>parse_palette_type()</b>, and
+    <b>parse_render_mode()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_asciichat_suggest_mode_(const_char_*_input)"><a class="permalink" href="#const_char_*_asciichat_suggest_mode_(const_char_*_input)">const
@@ -236,29 +234,31 @@
 <div class="Bd-indent"><i>input</i> Invalid mode string</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Suggested mode name, or NULL if no close match</div>
-<p class="Pp">Definition at line <b>109</b> of file
+<p class="Pp">Definition at line <b>113</b> of file
   <b>options/strings.c</b>.</p>
-<pre>109                                                       {
-110   if (!input) {
-111     return NULL;
-112   }
-113 
-114   const char **names = NULL;
-115   size_t count = asciichat_get_all_mode_strings(&amp;names);
-116 
-117   // Create NULL-terminated array for levenshtein_find_similar
-118   static const char *null_terminated[33]; // Max 32 modes + NULL
-119   for (size_t i = 0; i &lt; count &amp;&amp; i &lt; 32; i++) {
-120     null_terminated[i] = names[i];
-121   }
-122   null_terminated[count] = NULL;
-123 
-124   return levenshtein_find_similar(input, null_terminated);
-125 }</pre>
+<pre>113                                                       {
+114   if (!input) {
+115     return NULL;
+116   }
+117
+118   const char **names = NULL;
+119   size_t count = asciichat_get_all_mode_strings(&amp;names);
+120
+121   // Create NULL-terminated array for levenshtein_find_similar
+122   static const char *null_terminated[MODE_NAME_CAPACITY + 1]; // Max 32 modes + NULL
+123   for (size_t i = 0; i &lt; count &amp;&amp; i &lt; MODE_NAME_CAPACITY; i++) {
+124     null_terminated[i] = names[i];
+125   }
+126   null_terminated[count] = NULL;
+127
+128   return levenshtein_find_similar(input, null_terminated);
+129 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_get_all_mode_strings()</b>, and
-    <b>levenshtein_find_similar()</b>.</p>
+<p class="Pp">References <b>asciichat_get_all_mode_strings()</b>,
+    <b>asciichat_suggest_mode()</b>, <b>levenshtein_find_similar()</b>, and
+    <b>MODE_NAME_CAPACITY</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_suggest_mode()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_color_mode_to_string_("><a class="permalink" href="#const_char_*_color_mode_to_string_(">const
@@ -269,30 +269,34 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Color mode string (e.g., &quot;auto&quot;,
   &quot;256&quot;, &quot;truecolor&quot;)</div>
-<p class="Pp">Definition at line <b>131</b> of file
+<p class="Pp">Definition at line <b>135</b> of file
   <b>options/strings.c</b>.</p>
-<pre>131                                                              {
-132   switch (mode) {
-133   case TERM_COLOR_AUTO:
-134     return &quot;auto&quot;;
-135   case TERM_COLOR_NONE:
-136     return &quot;none&quot;;
-137   case TERM_COLOR_16:
-138     return &quot;16&quot;;
-139   case TERM_COLOR_256:
-140     return &quot;256&quot;;
-141   case TERM_COLOR_TRUECOLOR:
-142     return &quot;truecolor&quot;;
-143   default:
-144     return &quot;unknown&quot;;
-145   }
-146 }</pre>
+<pre>135                                                              {
+136   switch (mode) {
+137   case TERM_COLOR_AUTO:
+138     return OPT_COLOR_MODE_AUTO;
+139   case TERM_COLOR_NONE:
+140     return OPT_COLOR_MODE_NONE;
+141   case TERM_COLOR_16:
+142     return OPT_COLOR_MODE_16;
+143   case TERM_COLOR_256:
+144     return OPT_COLOR_MODE_256;
+145   case TERM_COLOR_TRUECOLOR:
+146     return OPT_COLOR_MODE_TRUECOLOR;
+147   default:
+148     return &quot;unknown&quot;;
+149   }
+150 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>TERM_COLOR_16</b>, <b>TERM_COLOR_256</b>,
-    <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>, and
+<p class="Pp">References <b>color_mode_to_string()</b>,
+    <b>OPT_COLOR_MODE_16</b>, <b>OPT_COLOR_MODE_256</b>,
+    <b>OPT_COLOR_MODE_AUTO</b>, <b>OPT_COLOR_MODE_NONE</b>,
+    <b>OPT_COLOR_MODE_TRUECOLOR</b>, <b>TERM_COLOR_16</b>,
+    <b>TERM_COLOR_256</b>, <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>, and
     <b>TERM_COLOR_TRUECOLOR</b>.</p>
-<p class="Pp">Referenced by <b>keyboard_help_render()</b>.</p>
+<p class="Pp">Referenced by <b>color_mode_to_string()</b>, and
+    <b>ui_session_help_render()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_palette_type_to_string_("><a class="permalink" href="#const_char_*_palette_type_to_string_(">const
@@ -303,31 +307,35 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Palette type string (e.g., &quot;standard&quot;,
   &quot;blocks&quot;, &quot;cool&quot;)</div>
-<p class="Pp">Definition at line <b>169</b> of file
+<p class="Pp">Definition at line <b>173</b> of file
   <b>options/strings.c</b>.</p>
-<pre>169                                                         {
-170   switch (type) {
-171   case PALETTE_STANDARD:
-172     return &quot;standard&quot;;
-173   case PALETTE_BLOCKS:
-174     return &quot;blocks&quot;;
-175   case PALETTE_DIGITAL:
-176     return &quot;digital&quot;;
-177   case PALETTE_MINIMAL:
-178     return &quot;minimal&quot;;
-179   case PALETTE_COOL:
-180     return &quot;cool&quot;;
-181   case PALETTE_CUSTOM:
-182     return &quot;custom&quot;;
-183   default:
-184     return &quot;unknown&quot;;
-185   }
-186 }</pre>
+<pre>173                                                         {
+174   switch (type) {
+175   case PALETTE_STANDARD:
+176     return OPT_PALETTE_STANDARD;
+177   case PALETTE_BLOCKS:
+178     return OPT_PALETTE_BLOCKS;
+179   case PALETTE_DIGITAL:
+180     return OPT_PALETTE_DIGITAL;
+181   case PALETTE_MINIMAL:
+182     return OPT_PALETTE_MINIMAL;
+183   case PALETTE_COOL:
+184     return OPT_PALETTE_COOL;
+185   case PALETTE_CUSTOM:
+186     return OPT_PALETTE_CUSTOM;
+187   default:
+188     return &quot;unknown&quot;;
+189   }
+190 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>PALETTE_BLOCKS</b>, <b>PALETTE_COOL</b>,
-    <b>PALETTE_CUSTOM</b>, <b>PALETTE_DIGITAL</b>, <b>PALETTE_MINIMAL</b>, and
-    <b>PALETTE_STANDARD</b>.</p>
+<p class="Pp">References <b>OPT_PALETTE_BLOCKS</b>, <b>OPT_PALETTE_COOL</b>,
+    <b>OPT_PALETTE_CUSTOM</b>, <b>OPT_PALETTE_DIGITAL</b>,
+    <b>OPT_PALETTE_MINIMAL</b>, <b>OPT_PALETTE_STANDARD</b>,
+    <b>PALETTE_BLOCKS</b>, <b>PALETTE_COOL</b>, <b>PALETTE_CUSTOM</b>,
+    <b>PALETTE_DIGITAL</b>, <b>PALETTE_MINIMAL</b>, <b>PALETTE_STANDARD</b>, and
+    <b>palette_type_to_string()</b>.</p>
+<p class="Pp">Referenced by <b>palette_type_to_string()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -337,7 +345,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

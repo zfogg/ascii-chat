@@ -75,7 +75,12 @@
   Notify splash that the first frame has been rendered. <b>bool</b>
     <b>splash_is_running</b> (void)
   <br/>
-  Check if splash screen animation is currently running.
+  Check if splash screen animation is currently running. void
+    <b>splash_set_discovery_session</b> (const char *session_string, <b>bool</b>
+    joining)
+  <br/>
+  void <b>splash_clear_discovery_session</b> (void)
+  <br/>
   <br/>
 </p>
 </section>
@@ -105,13 +110,65 @@
 <p class="Pp">Definition in file <b>splash.h</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_splash_clear_discovery_session_(void_)"><a class="permalink" href="#void_splash_clear_discovery_session_(void_)">void
+  splash_clear_discovery_session (void )</a></h2>
+<p class="Pp">Reset discovery presentation after the animation has been
+  joined.</p>
+<p class="Pp">Definition at line <b>102</b> of file <b>splash.c</b>.</p>
+<pre>102                                           {
+103   discovery_splash_init();
+104   mutex_lock(&amp;g_discovery_splash_mutex);
+105   memset(&amp;g_discovery_splash, 0, sizeof(g_discovery_splash));
+106   ui_controller_title_activity(UI_TITLE_ACTIVITY_IDLE);
+107   mutex_unlock(&amp;g_discovery_splash_mutex);
+108 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>splash_clear_discovery_session()</b>,
+    <b>ui_controller_title_activity()</b>, and
+  <b>UI_TITLE_ACTIVITY_IDLE</b>.</p>
+<p class="Pp">Referenced by <b>discovery_main()</b>,
+    <b>splash_clear_discovery_session()</b>, and
+    <b>splash_notify_first_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_splash_set_discovery_session_(const_char_*_session_string,_"><a class="permalink" href="#void_splash_set_discovery_session_(const_char_*_session_string,_">void
+  splash_set_discovery_session (const char * session_string, <b>bool</b>
+  joining)</a></h2>
+<p class="Pp">Store discovery presentation before or during splash startup. The
+    string is copied.</p>
+<p class="Pp">Definition at line <b>92</b> of file <b>splash.c</b>.</p>
+<pre>92                                                                      {
+93   discovery_splash_init();
+94   mutex_lock(&amp;g_discovery_splash_mutex);
+95   g_discovery_splash.enabled = true;
+96   g_discovery_splash.joining = joining;
+97   ui_controller_title_discovery(session &amp;&amp; session[0], joining);
+98   SAFE_STRNCPY(g_discovery_splash.session_string, session ? session : &quot;&quot;, sizeof(g_discovery_splash.session_string));
+99   mutex_unlock(&amp;g_discovery_splash_mutex);
+100 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>SAFE_STRNCPY</b>, <b>splash_set_discovery_session()</b>, and
+    <b>ui_controller_title_discovery()</b>.</p>
+<p class="Pp">Referenced by <b>discovery_main()</b>,
+    <b>splash_notify_first_frame()</b>, and
+    <b>splash_set_discovery_session()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

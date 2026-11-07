@@ -62,8 +62,8 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef const void *(* <b>mode_default_getter_fn</b>)
-    (<b>asciichat_mode_t</b> mode)
+<p class="Pp">typedef const void *(*)
+    <b>mode_default_getter_fn</b>(<b>asciichat_mode_t</b> mode)
   <br/>
   Mode-aware default value getter function type.
   <br/>
@@ -130,35 +130,14 @@
     designated initializers to properly initialize all fields to zero/NULL.</p>
 <p class="Pp">Definition at line <b>65</b> of file
     <b>options/registry/common.h</b>.</p>
-<pre>65 #define REGISTRY_TERMINATOR()                                                                                          \
-66   {.long_name = NULL,                                                                                                  \
-67    .short_name = '\0',                                                                                                 \
-68    .type = OPTION_TYPE_BOOL,                                                                                           \
-69    .offset = 0,                                                                                                        \
-70    .default_value = NULL,                                                                                              \
-71    .mode_default_getter = NULL,                                                                                        \
-72    .default_value_size = 0,                                                                                            \
-73    .help_text = NULL,                                                                                                  \
-74    .group = NULL,                                                                                                      \
-75    .arg_placeholder = NULL,                                                                                            \
-76    .required = false,                                                                                                  \
-77    .env_var_name = NULL,                                                                                               \
-78    .validate_fn = NULL,                                                                                                \
-79    .parse_fn = NULL,                                                                                                   \
-80    .owns_memory = false,                                                                                               \
-81    .optional_arg = false,                                                                                              \
-82    .mode_bitmask = OPTION_MODE_NONE,                                                                                   \
-83    .metadata = {0}}</pre>
-<pre></pre>
-<p class="Pp"></p>
 </section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="typedef_const_void_*(*_mode_default_getter_fn)_("><a class="permalink" href="#typedef_const_void_*(*_mode_default_getter_fn)_(">typedef
-  const void *(* mode_default_getter_fn) (<b>asciichat_mode_t</b> mode)</a></h2>
+<h2 class="Ss" id="typedef_const_void_*(*)_mode_default_getter_fn("><a class="permalink" href="#typedef_const_void_*(*)_mode_default_getter_fn(">typedef
+  const void *(*) mode_default_getter_fn(<b>asciichat_mode_t</b> mode)</a></h2>
 <p class="Pp">Mode-aware default value getter function type. Returns the default
     value for an option based on the current mode. Used for options that have
     different defaults per mode (e.g., log-file, port, websocket-port).</p>
@@ -179,7 +158,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

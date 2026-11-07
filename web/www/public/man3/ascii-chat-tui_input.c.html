@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>input.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">input.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">input.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">input.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>input_editor_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>TUI_INPUT_MESSAGE_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>TUI_INPUT_BURST_BUFFER_SIZE</b> 8192
+  <br/>
+  #define <b>TUI_INPUT_BUFFER_BUFFER_SIZE</b> 8192
+  <br/>
+  #define <b>TUI_INPUT_TIMED_PROMPT_BUFFER_SIZE</b> 8192
+  <br/>
+  #define <b>TUI_INPUT_PASTED_BUFFER_SIZE</b> 8192
+  <br/>
+  #define <b>TUI_SYNC_KEY_CAPACITY</b> 256
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>ui_input_deadline</b> (unsigned seconds)
+  <br/>
+  <b>bool</b> <b>ui_input_expired</b> (<b>uint64_t</b> deadline)
+  <br/>
+  void <b>ui_input_timeout_report</b> (unsigned seconds, const char
+    *consequence)
+  <br/>
+  <b>keyboard_key_t</b> <b>tui_input_events_read</b> (<b>tui_input_events_t</b>
+    *s, <b>keyboard_key_t</b>(*read_key)(void),
+    <b>bool</b>(*classify_paste)(const char *))
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_input_take_paste</b> (char *buffer, size_t
+    capacity)
+  <br/>
+  void <b>ui_input_poll_sync</b> (void)
+  <br/>
+  <b>keyboard_key_t</b> <b>ui_input_read_key</b> (<b>ui_screen_t</b> screen)
+  <br/>
+  <b>keyboard_key_t</b> <b>ui_input_wait_key</b> (<b>ui_screen_t</b> screen,
+    unsigned timeout_ms)
+  <br/>
+  void <b>ui_input_shutdown</b> (void)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_input_prompt_prefilled</b> (const char *prompt,
+    char *buffer, size_t max_len, <b>prompt_opts_t</b> opts)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_input_password</b> (const char *target, char
+    *buffer, size_t capacity, <b>bool</b> incorrect)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_input_prompt</b> (const char *prompt, char
+    *buffer, size_t max_len, <b>prompt_opts_t</b> opts)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_input_media_begin</b> (const char *text)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_input_media_take</b> (char *output, size_t
+    capacity)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_INPUT_BUFFER_BUFFER_SIZE___8192"><a class="permalink" href="#_define_TUI_INPUT_BUFFER_BUFFER_SIZE___8192">#define
+  TUI_INPUT_BUFFER_BUFFER_SIZE 8192</a></h2>
+<p class="Pp">Definition at line <b>5</b> of file <b>tui/input.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_INPUT_BURST_BUFFER_SIZE___8192"><a class="permalink" href="#_define_TUI_INPUT_BURST_BUFFER_SIZE___8192">#define
+  TUI_INPUT_BURST_BUFFER_SIZE 8192</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>tui/input.c</b>.</p>
+<p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_INPUT_MESSAGE_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_INPUT_MESSAGE_BUFFER_SIZE___512">#define
+  TUI_INPUT_MESSAGE_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>tui/input.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_input_timeout_report()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_INPUT_PASTED_BUFFER_SIZE___8192"><a class="permalink" href="#_define_TUI_INPUT_PASTED_BUFFER_SIZE___8192">#define
+  TUI_INPUT_PASTED_BUFFER_SIZE 8192</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>tui/input.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_INPUT_TIMED_PROMPT_BUFFER_SIZE___8192"><a class="permalink" href="#_define_TUI_INPUT_TIMED_PROMPT_BUFFER_SIZE___8192">#define
+  TUI_INPUT_TIMED_PROMPT_BUFFER_SIZE 8192</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file <b>tui/input.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_SYNC_KEY_CAPACITY___256"><a class="permalink" href="#_define_TUI_SYNC_KEY_CAPACITY___256">#define
+  TUI_SYNC_KEY_CAPACITY 256</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>tui/input.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_input_poll_sync()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>keyboard_key_t</b> tui_input_events_read
+  (<b>tui_input_events_t</b> * state, <b>keyboard_key_t</b>(* read_key )(void),
+  <b>bool</b>(* classify_paste )(const char *))</h2>
+<p class="Pp">Collect paste boundaries and optional application-classified text
+    bursts. Once ready, the caller consumes/clears paste before reading another
+    event.</p>
+<p class="Pp">Definition at line <b>78</b> of file <b>tui/input.c</b>.</p>
+<pre>79                                                                            {
+80   if (s-&gt;ready)
+81     return KEY_NONE;
+82   for (unsigned i = 0; i &lt; 1024; ++i) {
+83     bool buffered = s-&gt;count != 0;
+84     keyboard_key_t key = buffered ? s-&gt;keys[s-&gt;head++] : read_key();
+85     if (buffered)
+86       --s-&gt;count;
+87     if (key == KEY_NONE)
+88       return KEY_NONE;
+89     if (key == KEY_PASTE_BEGIN) {
+90       s-&gt;pasting = true;
+91       s-&gt;invalid = false;
+92       s-&gt;length = 0;
+93       continue;
+94     }
+95     if (key == KEY_PASTE_END) {
+96       if (!s-&gt;pasting)
+97         continue;
+98       s-&gt;pasting = false;
+99       s-&gt;paste[s-&gt;length] = '\0';
+100       s-&gt;ready = true;
+101       return KEY_PASTE;
+102     }
+103     char text[UTF8_BUFFER_SIZE];
+104     size_t bytes = keyboard_text_encode(key, text);
+105     if (s-&gt;pasting) {
+106       // Paste payloads remain raw UTF-8 bytes until whole-paste validation.
+107       if (key &gt;= 128 &amp;&amp; key &lt;= 255) {
+108         text[0] = (char)key;
+109         bytes = 1;
+110       }
+111       if (!bytes || (key &lt; 32 &amp;&amp; key != '\r' &amp;&amp; key != '\n' &amp;&amp; key != '\t') || key == 127 ||
+112           bytes &gt;= sizeof(s-&gt;paste) - s-&gt;length)
+113         s-&gt;invalid = true;
+114       else {
+115         memcpy(s-&gt;paste + s-&gt;length, text, bytes);
+116         s-&gt;length += bytes;
+117       }
+118       continue;
+119     }
+120     if (buffered || !bytes || key &lt; 32 || key == 127)
+121       return key;
+122     s-&gt;head = 0;
+123     s-&gt;keys[0] = key;
+124     size_t count = 1;
+125     keyboard_key_t next;
+126     while (count &lt; 8192 &amp;&amp; (next = read_key()) != KEY_NONE) {
+127       s-&gt;keys[count++] = next;
+128       if (next == KEY_PASTE_BEGIN || next == KEY_PASTE_END)
+129         break;
+130     }
+131     bool boundary = s-&gt;keys[count - 1] == KEY_PASTE_BEGIN || s-&gt;keys[count - 1] == KEY_PASTE_END;
+132     size_t consumed = boundary ? count - 1 : count;
+133     size_t text_count = consumed;
+134     while (text_count &amp;&amp; (s-&gt;keys[text_count - 1] == '\r' || s-&gt;keys[text_count - 1] == '\n'))
+135       --text_count;
+136     char burst[TUI_INPUT_BURST_BUFFER_SIZE];
+137     size_t length = 0;
+138     bool valid = true;
+139     for (size_t n = 0; n &lt; text_count; ++n) {
+140       bytes = keyboard_text_encode(s-&gt;keys[n], text);
+141       if (!bytes || s-&gt;keys[n] &lt; 32 || s-&gt;keys[n] == 127 || bytes &gt;= sizeof(burst) - length) {
+142         valid = false;
+143         break;
+144       }
+145       memcpy(burst + length, text, bytes);
+146       length += bytes;
+147     }
+148     burst[length] = '\0';
+149     if (text_count &gt; 1 &amp;&amp; classify_paste &amp;&amp; classify_paste(burst)) {
+150       // Keep the delimiter queued so the following payload remains framed.
+151       s-&gt;head = consumed;
+152       s-&gt;count = count - consumed;
+153       s-&gt;invalid = !valid;
+154       s-&gt;length = valid ? length : 0;
+155       memcpy(s-&gt;paste, burst, s-&gt;length);
+156       s-&gt;paste[s-&gt;length] = '\0';
+157       s-&gt;ready = true;
+158       return KEY_PASTE;
+159     }
+160     s-&gt;head = 1;
+161     s-&gt;count = count - 1;
+162     return key;
+163   }
+164   return KEY_NONE;
+165 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>tui_input_events_t::count</b>,
+    <b>tui_input_events_t::head</b>, <b>tui_input_events_t::invalid</b>,
+    <b>KEY_NONE</b>, <b>KEY_PASTE</b>, <b>KEY_PASTE_BEGIN</b>,
+    <b>KEY_PASTE_END</b>, <b>keyboard_text_encode()</b>,
+    <b>tui_input_events_t::keys</b>, <b>tui_input_events_t::length</b>,
+    <b>tui_input_events_t::paste</b>, <b>tui_input_events_t::pasting</b>,
+    <b>tui_input_events_t::ready</b>, <b>TUI_INPUT_BURST_BUFFER_SIZE</b>,
+    <b>tui_input_events_read()</b>, and <b>UTF8_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>tui_input_events_read()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> ui_input_deadline (unsigned seconds)</h2>
+<p class="Pp">Absolute monotonic deadline; user activity never extends it.</p>
+<p class="Pp">Definition at line <b>46</b> of file <b>tui/input.c</b>.</p>
+<pre>46                                              {
+47   return time_get_ns() + (uint64_t)seconds * NS_PER_SEC_INT;
+48 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>NS_PER_SEC_INT</b>, <b>time_get_ns()</b>, and
+    <b>ui_input_deadline()</b>.</p>
+<p class="Pp">Referenced by <b>ui_input_deadline()</b>,
+    <b>ui_input_media_begin()</b>, and <b>ui_mdns_select()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_input_expired (<b>uint64_t</b> deadline)</h2>
+<p class="Pp">Definition at line <b>50</b> of file <b>tui/input.c</b>.</p>
+<pre>50                                          {
+51   return time_get_ns() &gt;= deadline;
+52 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>time_get_ns()</b>, and
+  <b>ui_input_expired()</b>.</p>
+<p class="Pp">Referenced by <b>ui_input_expired()</b>, and
+    <b>ui_input_read_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_input_media_begin (const char *
+  text)</h2>
+<p class="Pp">Begin media text entry without blocking capture or network
+    processing.</p>
+<p class="Pp">Definition at line <b>755</b> of file <b>tui/input.c</b>.</p>
+<pre>755                                                          {
+756   if (!text || !utf8_is_valid(text) || strlen(text) &gt;= sizeof(g_media_editor.buffer) || !input_initialize())
+757     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid media prompt text&quot;);
+758   mutex_lock(&amp;g_input_mutex);
+759   memset(&amp;g_media_editor, 0, sizeof(g_media_editor));
+760   memcpy(g_media_editor.buffer, text, strlen(text) + 1);
+761   g_media_editor.length = g_media_editor.cursor = strlen(text);
+762   g_media_editor.deadline = ui_input_deadline(120);
+763   asciichat_error_t result =
+764       ui_prompt_present_kind(&quot;Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels&quot;,
+765                              g_media_editor.buffer, g_media_editor.cursor, false, UI_PROMPT_MEDIA_INPUT);
+766   g_media_editor.active = result == ASCIICHAT_OK;
+767   input_unlock();
+768   return result;
+769 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>mutex_lock</b>, <b>SET_ERRNO</b>, <b>ui_input_deadline()</b>,
+    <b>ui_input_media_begin()</b>, <b>UI_PROMPT_MEDIA_INPUT</b>,
+    <b>ui_prompt_present_kind()</b>, and <b>utf8_is_valid()</b>.</p>
+<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>, and
+    <b>ui_input_media_begin()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_input_media_take (char * output,
+  size_t capacity)</h2>
+<p class="Pp">Consume the value signaled by KEY_MEDIA_SUBMIT.</p>
+<p class="Pp">Definition at line <b>771</b> of file <b>tui/input.c</b>.</p>
+<pre>771                                                                      {
+772   if (!output || !input_initialize())
+773     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid media prompt destination&quot;);
+774   mutex_lock(&amp;g_input_mutex);
+775   asciichat_error_t result = ASCIICHAT_OK;
+776   if (!g_media_editor.submitted || g_media_editor.length &gt;= capacity)
+777     result = SET_ERRNO(ERROR_INVALID_STATE, &quot;No submitted media prompt&quot;);
+778   else {
+779     memcpy(output, g_media_editor.buffer, g_media_editor.length + 1);
+780     asciichat_errno_scope_t scope = errno_scope_begin();
+781     media_playlist_t playlist = {0};
+782     if (media_playlist_parse(output, &amp;playlist) == ASCIICHAT_OK) {
+783       bool file = false, url = false;
+784       for (size_t i = 0; i &lt; playlist.count; ++i) {
+785         file |= !playlist.urls[i];
+786         url |= playlist.urls[i];
+787       }
+788       if (file)
+789         ascii_otel_ui_usage(&quot;media_input_prompt&quot;, &quot;source_file&quot;, 0);
+790       if (url)
+791         ascii_otel_ui_usage(&quot;media_input_prompt&quot;, &quot;source_url&quot;, 0);
+792       ascii_otel_ui_usage(&quot;media_input_prompt&quot;, &quot;queue_submitted&quot;, 0);
+793     } else {
+794       ascii_otel_ui_usage(&quot;media_input_prompt&quot;, &quot;rejected&quot;, 0);
+795     }
+796     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+797   }
+798   g_media_editor.submitted = false;
+799   input_unlock();
+800   return result;
+801 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_otel_ui_usage()</b>,
+    <b>ASCIICHAT_ERRNO_DISMISSED</b>, <b>ASCIICHAT_OK</b>,
+    <b>media_playlist_t::count</b>, <b>errno_scope_begin()</b>,
+    <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>media_playlist_parse()</b>,
+    <b>mutex_lock</b>, <b>SET_ERRNO</b>, <b>ui_input_media_take()</b>, and
+    <b>media_playlist_t::urls</b>.</p>
+<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>, and
+    <b>ui_input_media_take()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_input_password (const char * target,
+  char * buffer, size_t capacity, <b>bool</b> incorrect)</h2>
+<p class="Pp">Server password dialog; cancellation requests normal application
+    shutdown.</p>
+<p class="Pp">Definition at line <b>732</b> of file <b>tui/input.c</b>.</p>
+<pre>732                                                                                                        {
+733   if (!target || !buffer || capacity &lt; 2)
+734     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid password dialog&quot;);
+735   sodium_memzero(buffer, capacity);
+736   if (env_pop_prompt_response(buffer, capacity))
+737     return ASCIICHAT_OK;
+738   if (!platform_is_interactive())
+739     return SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Server password requires an interactive terminal or --password&quot;);
+740   asciichat_error_t result = input_prompt(target, buffer, capacity, PROMPT_OPTS_PASSWORD, true, incorrect);
+741   if (result != ASCIICHAT_OK) {
+742     shutdown_request();
+743     APP_CALLBACK_VOID(signal_exit);
+744     return SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Password entry cancelled&quot;);
+745   }
+746   return result;
+747 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>APP_CALLBACK_VOID</b>, <b>ASCIICHAT_OK</b>,
+    <b>env_pop_prompt_response()</b>, <b>ERROR_CRYPTO_AUTH</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>platform_is_interactive()</b>,
+    <b>PROMPT_OPTS_PASSWORD</b>, <b>SET_ERRNO</b>, <b>shutdown_request()</b>,
+    <b>signal_exit()</b>, and <b>ui_input_password()</b>.</p>
+<p class="Pp">Referenced by <b>session_connection_establish()</b>, and
+    <b>ui_input_password()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_input_poll_sync_(void_)"><a class="permalink" href="#void_ui_input_poll_sync_(void_)">void
+  ui_input_poll_sync (void )</a></h2>
+<p class="Pp">Poll debug controls without waiting for another input reader.</p>
+<p class="Pp">Definition at line <b>275</b> of file <b>tui/input.c</b>.</p>
+<pre>275                               {
+276 #ifndef NDEBUG
+277   if (atomic_load_u64(&amp;g_input_lifecycle.state) == LIFECYCLE_INITIALIZING || !input_initialize() || !input_ready() ||
+278       mutex_trylock(&amp;g_input_mutex) != 0)
+279     return;
+280   if (g_switch_pending) {
+281     input_unlock();
+282     return;
+283   }
+284   int screen = ui_controller_current_screen();
+285   if (screen &gt;= 0 &amp;&amp; screen &lt;= UI_SCREEN_SYNC &amp;&amp; !ui_controller_is_blocked()) {
+286     keyboard_key_t key = input_read_event();
+287     if (key != KEY_PASTE &amp;&amp; !log_search_is_entering())
+288       key = ui_sync_handle_key(key);
+289     if (key &amp;&amp; g_sync_key_count &lt; TUI_SYNC_KEY_CAPACITY) {
+290       g_sync_keys[(g_sync_key_head + g_sync_key_count++) % 256] = key;
+291       g_switch_pending = input_switch_key(key);
+292     }
+293   }
+294   input_unlock();
+295 #endif
+296 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>, <b>KEY_PASTE</b>,
+    <b>LIFECYCLE_INITIALIZING</b>, <b>log_search_is_entering()</b>,
+    <b>mutex_trylock</b>, <b>TUI_SYNC_KEY_CAPACITY</b>,
+    <b>ui_controller_current_screen()</b>, <b>ui_controller_is_blocked()</b>,
+    <b>ui_input_poll_sync()</b>, <b>UI_SCREEN_SYNC</b>, and
+    <b>ui_sync_handle_key()</b>.</p>
+<p class="Pp">Referenced by <b>ui_input_poll_sync()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_input_prompt (const char * prompt,
+  char * buffer, size_t max_len, <b>prompt_opts_t</b> opts)</h2>
+<p class="Pp">Definition at line <b>749</b> of file <b>tui/input.c</b>.</p>
+<pre>749                                                                                                         {
+750   if (buffer &amp;&amp; max_len)
+751     buffer[0] = '\0';
+752   return ui_input_prompt_prefilled(prompt, buffer, max_len, opts);
+753 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_input_prompt()</b>, and
+    <b>ui_input_prompt_prefilled()</b>.</p>
+<p class="Pp">Referenced by <b>ui_input_prompt()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_input_prompt_prefilled (const char *
+  prompt, char * buffer, size_t max_len, <b>prompt_opts_t</b> opts)</h2>
+<p class="Pp">Editable prompt initialized with buffer contents.</p>
+<p class="Pp">Definition at line <b>728</b> of file <b>tui/input.c</b>.</p>
+<pre>728                                                                                                                   {
+729   return input_prompt(prompt, buffer, max_len, opts, false, false);
+730 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_input_prompt_prefilled()</b>.</p>
+<p class="Pp">Referenced by <b>ui_input_prompt()</b>, and
+    <b>ui_input_prompt_prefilled()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>keyboard_key_t</b> ui_input_read_key (<b>ui_screen_t</b>
+  screen)</h2>
+<p class="Pp">Input policy is separate from presentation. Covered controls are
+    consumed and discarded.</p>
+<p class="Pp">Definition at line <b>342</b> of file <b>tui/input.c</b>.</p>
+<pre>342                                                      {
+343   if (!input_initialize())
+344     return KEY_NONE;
+345   if (!input_ready()) {
+346     // Once recovery has an empty input queue, the next key is a fresh action.
+347     if (atomic_load(&amp;g_discarding_covered_input) &amp;&amp; !ui_controller_state().covered)
+348       atomic_store(&amp;g_discarding_covered_input, false);
+349     return KEY_NONE;
+350   }
+351   mutex_lock(&amp;g_input_mutex);
+352   ui_presentation_state_t state = ui_controller_state();
+353   // The previous event has now been dispatched by the session. Background
+354   // polling must not overtake a pending switch with the next shortcut.
+355   g_switch_pending = false;
+356   if (input_discard_covered(state.covered)) {
+357     input_unlock();
+358     return KEY_NONE;
+359   }
+360   if (state.screen == UI_SCREEN_HELP &amp;&amp;
+361       (ui_error_popup_visible() || keyboard_help_parent_screen() == UI_SCREEN_ERROR)) {
+362     keyboard_key_t key = keyboard_help_check_signal_cancel() ? KEY_ESCAPE : input_next_key();
+363     if (key == KEY_ESCAPE || key == KEY_QUESTION)
+364       keyboard_help_toggle_terminal(ui_controller_active_fd());
+365     if (key == KEY_PASTE)
+366       g_events.ready = false;
+367     input_unlock();
+368     return KEY_NONE;
+369   }
+370   if (state.screen == UI_SCREEN_ERROR &amp;&amp; terminal_screen_logs_help_open()) {
+371     keyboard_key_t key = input_next_key();
+372     if (key != KEY_NONE)
+373       terminal_screen_logs_handle_key(key);
+374     if (key == KEY_PASTE)
+375       g_events.ready = false;
+376     input_unlock();
+377     return KEY_NONE;
+378   }
+379   if (state.screen == UI_SCREEN_ERROR) {
+380     keyboard_key_t key = input_next_key();
+381     if (key == KEY_QUESTION)
+382       keyboard_help_toggle_terminal(ui_controller_active_fd());
+383     else if (key != KEY_NONE &amp;&amp; key != KEY_PASTE &amp;&amp; key != 3)
+384       ui_error_popup_key(key);
+385     if (key == KEY_PASTE)
+386       g_events.ready = false;
+387     input_unlock();
+388     return key == 3 ? key : KEY_NONE;
+389   }
+390   if (state.screen == UI_SCREEN_NOTICE) {
+391     g_events.ready = false;
+392     g_sync_key_count = 0;
+393     keyboard_key_t notice_key = input_read_event();
+394     if (notice_key == KEY_PASTE)
+395       g_events.ready = false;
+396     bool first_use = ui_controller_first_use_key(notice_key);
+397     if (!first_use &amp;&amp;
+398         (notice_key == KEY_ESCAPE || notice_key == '\r' || notice_key == '\n' || notice_key == 'q' || notice_key == 3))
+399       ui_controller_remove(UI_SCREEN_NOTICE);
+400     input_unlock();
+401     return notice_key == 'q' || notice_key == 3 ? notice_key : KEY_NONE;
+402   }
+403   if (state.screen == UI_SCREEN_UPDATE &amp;&amp; update_banner_is_overlay_open()) {
+404     keyboard_key_t update_key = input_read_event();
+405     if (update_key == '=' || update_key == KEY_0 || update_key == KEY_QUESTION || update_key == ']') {
+406       if (update_key != KEY_QUESTION)
+407         update_banner_toggle_overlay();
+408       if (update_key == KEY_QUESTION) {
+409         keyboard_help_toggle_terminal(ui_controller_active_fd());
+410       } else {
+411         update_key = input_common_key(update_key, UI_SCREEN_UPDATE);
+412         (void)ui_sync_handle_key(update_key);
+413       }
+414     } else if (update_key != KEY_NONE)
+415       (void)update_banner_handle_key(update_key);
+416     input_unlock();
+417     return KEY_NONE;
+418   }
+419   if (screen == UI_SCREEN_MEDIA &amp;&amp; g_media_editor.active &amp;&amp; state.screen == UI_SCREEN_PROMPT) {
+420     keyboard_key_t key = input_next_key();
+421     bool switch_screen = input_switch_key(key) &amp;&amp; key != '=' &amp;&amp; (g_media_editor.length == 0 || key == 15);
+422 #ifndef NDEBUG
+423     switch_screen |= key == KEY_0 &amp;&amp; g_media_editor.length == 0;
+424 #endif
+425     if (switch_screen) {
+426       // Keep the old prompt on screen until its replacement is published.
+427       if (key != KEY_QUESTION)
+428         g_media_editor.active = false;
+429       if (key == KEY_0)
+430         key = ui_sync_handle_key(key);
+431       key = input_common_key(key, state.screen);
+432       g_switch_pending = input_switch_key(key);
+433       input_unlock();
+434       return key;
+435     }
+436     if (key == KEY_ESCAPE || key == 3 || ui_input_expired(g_media_editor.deadline)) {
+437       if (key == KEY_PASTE)
+438         g_events.ready = false;
+439       ascii_otel_ui_usage(&quot;media_input_prompt&quot;, ui_input_expired(g_media_editor.deadline) ? &quot;timed_out&quot; : &quot;cancelled&quot;,
+440                           0);
+441       g_media_editor.active = false;
+442       ui_prompt_remove();
+443     } else if (key == '\r' || key == '\n') {
+444       g_media_editor.active = false;
+445       g_media_editor.submitted = true;
+446       ascii_otel_ui_usage(&quot;media_input_prompt&quot;, &quot;submitted&quot;, 0);
+447       input_unlock();
+448       return KEY_MEDIA_SUBMIT;
+449     } else if (key != KEY_NONE) {
+450       if (key == KEY_PASTE)
+451         ascii_otel_ui_usage(&quot;media_input_prompt&quot;, &quot;paste&quot;, 0);
+452       if (key == KEY_PASTE) {
+453         if (!g_events.invalid &amp;&amp; utf8_is_valid(g_events.paste)) {
+454           media_playlist_t items = {0}, added = {0};
+455           bool valid = !g_media_editor.length || media_playlist_parse(g_media_editor.buffer, &amp;items) == ASCIICHAT_OK;
+456           valid = valid &amp;&amp; media_playlist_parse(g_events.paste, &amp;added) == ASCIICHAT_OK;
+457           if (valid) {
+458             for (size_t i = 0; i &lt; added.count &amp;&amp; valid; ++i)
+459               valid = media_playlist_append(&amp;items, added.paths[i], added.urls[i]) == ASCIICHAT_OK;
+460             char formatted[sizeof(g_media_editor.buffer)];
+461             valid = valid &amp;&amp; media_playlist_format(&amp;items, formatted, sizeof(formatted)) == ASCIICHAT_OK;
+462             if (valid) {
+463               memcpy(g_media_editor.buffer, formatted, strlen(formatted) + 1);
+464               g_media_editor.length = g_media_editor.cursor = strlen(formatted);
+465             }
+466           }
+467           if (valid)
+468             ascii_otel_ui_usage(&quot;media_input_prompt&quot;, &quot;queue_changed&quot;, 0);
+469           CLEAR_ERRNO();
+470         }
+471         g_events.ready = false;
+472         g_media_editor.pasted = true;
+473       } else if (!(key == ' ' &amp;&amp; g_media_editor.pasted &amp;&amp; g_media_editor.cursor == g_media_editor.length)) {
+474         g_media_editor.pasted = false;
+475         ui_input_edit_key(g_media_editor.buffer, sizeof(g_media_editor.buffer), &amp;g_media_editor.length,
+476                           &amp;g_media_editor.cursor, key);
+477       }
+478       if (ui_prompt_present_kind(&quot;Open media: files or URLs\nDrop more files to queue; Enter plays; Esc cancels&quot;,
+479                                  g_media_editor.buffer, g_media_editor.cursor, false,
+480                                  UI_PROMPT_MEDIA_INPUT) != ASCIICHAT_OK) {
+481         g_media_editor.active = false;
+482         ui_prompt_remove();
+483         CLEAR_ERRNO();
+484       }
+485     }
+486     input_unlock();
+487     return KEY_NONE;
+488   }
+489   bool primary =
+490       screen == UI_SCREEN_MEDIA || screen == UI_SCREEN_SPLASH || screen == UI_SCREEN_STATUS || screen == UI_SCREEN_MDNS;
+491   bool server = GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE ||
+492                 GET_OPTION(detected_mode) == MODE_MCP_SERVER;
+493   bool server_owner = screen == UI_SCREEN_STATS &amp;&amp; server &amp;&amp; !ui_controller_screen_live(UI_SCREEN_STATUS);
+494   bool active = state.screen &lt; 0 || state.screen == (int)screen ||
+495                 ((primary || server_owner) &amp;&amp; state.screen &lt;= UI_SCREEN_SYNC &amp;&amp; state.screen != UI_SCREEN_STATS);
+496   keyboard_key_t key = KEY_NONE;
+497   if (active) {
+498     if (g_sync_key_count) {
+499       key = g_sync_keys[g_sync_key_head];
+500       g_sync_key_head = (g_sync_key_head + 1) % 256;
+501       --g_sync_key_count;
+502     }
+503     if (key == KEY_NONE)
+504       key = state.screen == UI_SCREEN_HELP &amp;&amp; keyboard_help_check_signal_cancel() ? KEY_QUESTION : input_read_event();
+505     if (key == KEY_F12) {
+506       // Synchronous prompts own their input, including function keys.
+507       // Opening the update checker here would suspend credential entry.
+508       if (screen != UI_SCREEN_PROMPT)
+509         update_banner_handle_key(key);
+510       key = KEY_NONE;
+511     }
+512     if (screen != UI_SCREEN_PROMPT) {
+513       key = input_common_key(key, state.screen);
+514       if (key != KEY_PASTE &amp;&amp; !log_search_is_entering() &amp;&amp;
+515           !(screen == UI_SCREEN_MDNS &amp;&amp; state.screen == UI_SCREEN_MDNS))
+516         key = ui_sync_handle_key(key);
+517     }
+518   }
+519   if (key == KEY_PASTE &amp;&amp; log_search_is_entering()) {
+520     if (!g_events.invalid)
+521       (void)log_search_insert_text(g_events.paste);
+522     g_events.ready = false;
+523     key = KEY_NONE;
+524   }
+525   if (key == KEY_PASTE &amp;&amp; screen != UI_SCREEN_MEDIA &amp;&amp; screen != UI_SCREEN_PROMPT) {
+526     g_events.ready = false;
+527     key = KEY_NONE;
+528   }
+529   if (screen != UI_SCREEN_PROMPT &amp;&amp; key != KEY_NONE &amp;&amp; update_banner_handle_key(key))
+530     key = KEY_NONE;
+531   g_switch_pending |= input_switch_key(key);
+532   input_unlock();
+533   return key;
+534 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_otel_ui_usage()</b>, <b>ASCIICHAT_OK</b>,
+    <b>CLEAR_ERRNO</b>, <b>ui_presentation_state_t::covered</b>,
+    <b>GET_OPTION</b>, <b>KEY_0</b>, <b>KEY_ESCAPE</b>, <b>KEY_F12</b>,
+    <b>KEY_MEDIA_SUBMIT</b>, <b>KEY_NONE</b>, <b>KEY_PASTE</b>,
+    <b>KEY_QUESTION</b>, <b>keyboard_help_check_signal_cancel()</b>,
+    <b>keyboard_help_parent_screen()</b>,
+    <b>keyboard_help_toggle_terminal()</b>, <b>log_search_insert_text()</b>,
+    <b>log_search_is_entering()</b>, <b>media_playlist_append()</b>,
+    <b>media_playlist_format()</b>, <b>media_playlist_parse()</b>,
+    <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_MCP_SERVER</b>, <b>MODE_SERVER</b>,
+    <b>mutex_lock</b>, <b>media_playlist_t::paths</b>,
+    <b>ui_presentation_state_t::screen</b>,
+    <b>terminal_screen_logs_handle_key()</b>,
+    <b>terminal_screen_logs_help_open()</b>, <b>ui_controller_active_fd()</b>,
+    <b>ui_controller_first_use_key()</b>, <b>ui_controller_remove()</b>,
+    <b>ui_controller_screen_live()</b>, <b>ui_controller_state()</b>,
+    <b>ui_error_popup_key()</b>, <b>ui_error_popup_visible()</b>,
+    <b>ui_input_edit_key()</b>, <b>ui_input_expired()</b>,
+    <b>ui_input_read_key()</b>, <b>UI_PROMPT_MEDIA_INPUT</b>,
+    <b>ui_prompt_present_kind()</b>, <b>ui_prompt_remove()</b>,
+    <b>UI_SCREEN_ERROR</b>, <b>UI_SCREEN_HELP</b>, <b>UI_SCREEN_MDNS</b>,
+    <b>UI_SCREEN_MEDIA</b>, <b>UI_SCREEN_NOTICE</b>, <b>UI_SCREEN_PROMPT</b>,
+    <b>UI_SCREEN_SPLASH</b>, <b>UI_SCREEN_STATS</b>, <b>UI_SCREEN_STATUS</b>,
+    <b>UI_SCREEN_SYNC</b>, <b>UI_SCREEN_UPDATE</b>, <b>ui_sync_handle_key()</b>,
+    <b>update_banner_handle_key()</b>, <b>update_banner_is_overlay_open()</b>,
+    <b>update_banner_toggle_overlay()</b>, and <b>utf8_is_valid()</b>.</p>
+<p class="Pp">Referenced by <b>display_poll_keyboard()</b>,
+    <b>session_render_loop()</b>, <b>ui_input_read_key()</b>,
+    <b>ui_input_wait_key()</b>, and <b>ui_status_display_interactive()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_input_shutdown_(void_)"><a class="permalink" href="#void_ui_input_shutdown_(void_)">void
+  ui_input_shutdown (void )</a></h2>
+<p class="Pp">Definition at line <b>547</b> of file <b>tui/input.c</b>.</p>
+<pre>547                              {
+548   if (!lifecycle_destroy_once(&amp;g_input_lifecycle))
+549     return;
+550   mutex_destroy(&amp;g_input_prompt_mutex);
+551   mutex_destroy(&amp;g_input_mutex);
+552   NAMED_UNREGISTER(&amp;g_input_lifecycle.state);
+553   lifecycle_destroy_commit(&amp;g_input_lifecycle);
+554 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_destroy_commit()</b>,
+    <b>lifecycle_destroy_once()</b>, <b>mutex_destroy()</b>,
+    <b>NAMED_UNREGISTER</b>, and <b>ui_input_shutdown()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>, and
+    <b>ui_input_shutdown()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_input_take_paste (char * buffer,
+  size_t capacity)</h2>
+<p class="Pp">Copy a complete paste event. Invalid/oversized payloads fail
+    without truncation.</p>
+<p class="Pp">Definition at line <b>259</b> of file <b>tui/input.c</b>.</p>
+<pre>259                                                                      {
+260   if (!buffer || !capacity || !input_initialize())
+261     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid paste buffer&quot;);
+262   mutex_lock(&amp;g_input_mutex);
+263   asciichat_error_t result = ASCIICHAT_OK;
+264   if (g_events.invalid || g_events.length &gt;= capacity || !utf8_is_valid(g_events.paste))
+265     result = SET_ERRNO(ERROR_INVALID_PARAM, &quot;Paste media paths or URLs without terminal controls (maximum 8191 bytes)&quot;);
+266   else
+267     memcpy(buffer, g_events.paste, g_events.length + 1);
+268   g_events.length = 0;
+269   sodium_memzero(g_events.paste, sizeof(g_events.paste));
+270   g_events.ready = false;
+271   input_unlock();
+272   return result;
+273 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>mutex_lock</b>, <b>SET_ERRNO</b>, <b>ui_input_take_paste()</b>, and
+    <b>utf8_is_valid()</b>.</p>
+<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>, and
+    <b>ui_input_take_paste()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_input_timeout_report_(unsigned_seconds,_const_char_*_consequence)"><a class="permalink" href="#void_ui_input_timeout_report_(unsigned_seconds,_const_char_*_consequence)">void
+  ui_input_timeout_report (unsigned seconds, const char * consequence)</a></h2>
+<p class="Pp">Definition at line <b>54</b> of file <b>tui/input.c</b>.</p>
+<pre>54                                                                         {
+55   char message[TUI_INPUT_MESSAGE_BUFFER_SIZE];
+56   int length = snprintf(message, sizeof(message), &quot;\nPrompt timed out after %u seconds; %s.\n&quot;, seconds, consequence);
+57   // This diagnostic must remain visible even while a background screen owns the terminal.
+58   if (length &gt; 0)
+59     platform_write_all(STDERR_FILENO, message, (size_t)length &lt; sizeof(message) ? (size_t)length : sizeof(message) - 1);
+60   SET_ERRNO(ERROR_PROMPT_TIMEOUT, &quot;Prompt timed out after %u seconds: %s&quot;, seconds, consequence);
+61 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_PROMPT_TIMEOUT</b>,
+    <b>platform_write_all()</b>, <b>SET_ERRNO</b>,
+    <b>TUI_INPUT_MESSAGE_BUFFER_SIZE</b>, and
+  <b>ui_input_timeout_report()</b>.</p>
+<p class="Pp">Referenced by <b>ui_input_timeout_report()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>keyboard_key_t</b> ui_input_wait_key (<b>ui_screen_t</b>
+  screen, unsigned timeout_ms)</h2>
+<p class="Pp">Definition at line <b>536</b> of file <b>tui/input.c</b>.</p>
+<pre>536                                                                           {
+537   uint64_t deadline = time_get_ns() + (uint64_t)timeout_ms * NS_PER_MS_INT;
+538   do {
+539     keyboard_key_t key = ui_input_read_key(screen);
+540     if (key != KEY_NONE || shutdown_is_requested())
+541       return key;
+542     platform_sleep_ns(NS_PER_MS_INT);
+543   } while (time_get_ns() &lt; deadline);
+544   return KEY_NONE;
+545 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>KEY_NONE</b>, <b>NS_PER_MS_INT</b>,
+    <b>platform_sleep_ns()</b>, <b>shutdown_is_requested()</b>,
+    <b>time_get_ns()</b>, <b>ui_input_read_key()</b>, and
+    <b>ui_input_wait_key()</b>.</p>
+<p class="Pp">Referenced by <b>ui_input_wait_key()</b>, and
+    <b>update_banner_show_prompt()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

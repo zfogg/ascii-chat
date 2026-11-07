@@ -251,13 +251,13 @@ websocket_client_destroy(&amp;ws_client);</pre>
 137   if (!client) {
 138     return;
 139   }
-140 
+140
 141   log_debug(&quot;Closing WebSocket client&quot;);
-142 
+142
 143   if (client-&gt;transport) {
 144     acip_transport_close(client-&gt;transport);
 145   }
-146 
+146
 147   atomic_store_bool(&amp;client-&gt;connection_active, false);
 148 }</pre>
 <pre></pre>
@@ -302,12 +302,12 @@ websocket_client_destroy(&amp;ws_client);</pre>
 180     log_error(&quot;Invalid arguments to websocket_client_connect&quot;);
 181     return NULL;
 182   }
-183 
+183
 184   log_info(&quot;Connecting WebSocket client to %s&quot;, url);
-185 
+185
 186   // Store URL for reference
 187   SAFE_STRNCPY(client-&gt;url, url, sizeof(client-&gt;url));
-188 
+188
 189   // Create transport using ACIP layer
 190   acip_transport_t *transport = acip_websocket_client_transport_create(&quot;client&quot;, url, crypto_ctx);
 191   if (!transport) {
@@ -315,28 +315,28 @@ websocket_client_destroy(&amp;ws_client);</pre>
 193     atomic_store_bool(&amp;client-&gt;connection_lost, true);
 194     return NULL;
 195   }
-196 
+196
 197   // Derive client ID from URL hash using FNV-1a (proper implementation with 64-bit arithmetic)
 198   // This provides a stable, unique ID per connection URL without undefined behavior
 199   client-&gt;my_client_id = fnv1a_hash_string(url);
-200 
+200
 201   // Update registration name now that we have a client ID
 202   {
 203     char client_name[64];
 204     SAFE_SNPRINTF(client_name, sizeof(client_name), &quot;websocket_client_%u&quot;, client-&gt;my_client_id);
 205     named_update_name((uintptr_t)client, client_name);
 206   }
-207 
+207
 208   // Mark encryption as enabled if crypto context provided
 209   client-&gt;encryption_enabled = (crypto_ctx != NULL);
-210 
+210
 211   // Store transport and mark as active
 212   client-&gt;transport = transport;
 213   atomic_store_bool(&amp;client-&gt;connection_active, true);
 214   atomic_store_bool(&amp;client-&gt;connection_lost, false);
-215 
+215
 216   log_info(&quot;WebSocket client connected to %s (ID: %u)&quot;, url, client-&gt;my_client_id);
-217 
+217
 218   return transport;
 219 }</pre>
 <pre></pre>
@@ -351,7 +351,9 @@ websocket_client_destroy(&amp;ws_client);</pre>
 <section class="Ss">
 <h2 class="Ss"><b>websocket_client_t</b> * websocket_client_create (const char *
   name)</h2>
-<p class="Pp">Create and initialize a named WebSocket client instance.</p>
+<p class="Pp">Create and initialize a named WebSocket client instance. Create
+    and initialize named WebSocket client.</p>
+<p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>name</i> Debug name for the WebSocket client</div>
 <p class="Pp">Allocates a new <b>websocket_client_t</b> structure and
@@ -375,16 +377,16 @@ websocket_client_destroy(&amp;ws_client);</pre>
 29     log_error(&quot;WebSocket client name is required&quot;);
 30     return NULL;
 31   }
-32 
+32
 33   websocket_client_t *client = SAFE_MALLOC(sizeof(websocket_client_t), websocket_client_t *);
 34   if (!client) {
 35     log_error(&quot;Failed to allocate websocket_client_t&quot;);
 36     return NULL;
 37   }
-38 
+38
 39   // Zero-initialize all fields
 40   memset(client, 0, sizeof(*client));
-41 
+41
 42   // Initialize connection state
 43   atomic_store_bool(&amp;client-&gt;connection_active, false);
 44   atomic_store_bool(&amp;client-&gt;connection_lost, false);
@@ -392,24 +394,24 @@ websocket_client_destroy(&amp;ws_client);</pre>
 46   client-&gt;my_client_id = 0;
 47   client-&gt;encryption_enabled = false;
 48   atomic_store_bool(&amp;client-&gt;should_reconnect, false);
-49 
+49
 50   // Initialize thread-safe mutex for packet transmission
 51   if (mutex_init(&amp;client-&gt;send_mutex, &quot;client_send&quot;) != 0) {
 52     log_error(&quot;Failed to initialize send_mutex&quot;);
 53     SAFE_FREE(client);
 54     return NULL;
 55   }
-56 
+56
 57   // Register WebSocket client with debug naming system
 58   NAMED_REGISTER_WEBSOCKET(client, name, NULL);
-59 
+59
 60   // Register atomic fields for sync state monitoring - descriptive names showing control purpose
 61   NAMED_REGISTER_ATOMIC(&amp;client-&gt;connection_active, &quot;connection_is_active&quot;, (uintptr_t)(const void *)(client));
 62   NAMED_REGISTER_ATOMIC(&amp;client-&gt;connection_lost, &quot;connection_was_lost&quot;, (uintptr_t)(const void *)(client));
 63   NAMED_REGISTER_ATOMIC(&amp;client-&gt;should_reconnect, &quot;needs_reconnection_attempt&quot;, (uintptr_t)(const void *)(client));
-64 
+64
 65   log_debug(&quot;WebSocket client created&quot;);
-66 
+66
 67   return client;
 68 }</pre>
 <pre></pre>
@@ -424,9 +426,11 @@ websocket_client_destroy(&amp;ws_client);</pre>
 <section class="Ss">
 <h2 class="Ss" id="void_websocket_client_destroy_("><a class="permalink" href="#void_websocket_client_destroy_(">void
   websocket_client_destroy (<b>websocket_client_t</b> ** client_ptr)</a></h2>
-<p class="Pp">Destroy WebSocket client and free all resources. Destroys the
-    transport and frees the client structure. Must be called AFTER the transport
-    is no longer in use.</p>
+<p class="Pp">Destroy WebSocket client and free all resources. Destroy WebSocket
+    client and free resources.</p>
+<p class="Pp"></p>
+<p class="Pp">Destroys the transport and frees the client structure. Must be
+    called AFTER the transport is no longer in use.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>client_ptr</i> Pointer to client pointer (set to NULL
@@ -443,27 +447,27 @@ websocket_client_destroy(&amp;ws_client);</pre>
 74   if (!client_ptr || !*client_ptr) {
 75     return; // No-op if NULL
 76   }
-77 
+77
 78   websocket_client_t *client = *client_ptr;
-79 
+79
 80   log_debug(&quot;Destroying WebSocket client&quot;);
-81 
+81
 82   // Note: Do NOT destroy the transport. The transport is created and owned by the
 83   // connection layer (acip_websocket_client_transport_create). The WebSocket client
 84   // is just a thin wrapper that holds a reference. The transport will be destroyed
 85   // by the connection context or server connection cleanup code.
 86   client-&gt;transport = NULL;
-87 
+87
 88   // Unregister atomic fields
 89   NAMED_UNREGISTER(&amp;client-&gt;connection_active);
 90   NAMED_UNREGISTER(&amp;client-&gt;connection_lost);
 91   NAMED_UNREGISTER(&amp;client-&gt;should_reconnect);
-92 
+92
 93   NAMED_UNREGISTER(client);
-94 
+94
 95   // Destroy mutex
 96   mutex_destroy(&amp;client-&gt;send_mutex);
-97 
+97
 98   SAFE_FREE(*client_ptr);
 99 }</pre>
 <pre></pre>
@@ -628,28 +632,28 @@ websocket_client_destroy(&amp;ws_client);</pre>
 238   if (!client) {
 239     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL client&quot;);
 240   }
-241 
+241
 242   if (!atomic_load_bool(&amp;client-&gt;connection_active)) {
 243     return SET_ERRNO(ERROR_NETWORK, &quot;Connection not active&quot;);
 244   }
-245 
+245
 246   if (!client-&gt;transport) {
 247     return SET_ERRNO(ERROR_NETWORK, &quot;No active transport&quot;);
 248   }
-249 
+249
 250   // Acquire send mutex for thread-safe transmission
 251   mutex_lock(&amp;client-&gt;send_mutex);
-252 
+252
 253   // Send packet through transport with client ID
 254   asciichat_error_t result = packet_send_via_transport(client-&gt;transport, type, data, len, client-&gt;my_client_id);
-255 
+255
 256   mutex_unlock(&amp;client-&gt;send_mutex);
-257 
+257
 258   if (result != ASCIICHAT_OK) {
 259     log_debug(&quot;Failed to send packet type %d: %s&quot;, type, asciichat_error_string(result));
 260     return -1;
 261   }
-262 
+262
 263   return 0;
 264 }</pre>
 <pre></pre>
@@ -727,7 +731,9 @@ websocket_client_destroy(&amp;ws_client);</pre>
 <section class="Ss">
 <h2 class="Ss" id="void_websocket_client_shutdown_("><a class="permalink" href="#void_websocket_client_shutdown_(">void
   websocket_client_shutdown (<b>websocket_client_t</b> * client)</a></h2>
-<p class="Pp">Shutdown connection forcefully (for signal handlers).</p>
+<p class="Pp">Shutdown connection forcefully (for signal handlers). Shutdown
+    connection forcefully.</p>
+<p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>client</i> WebSocket client instance</div>
 <p class="Pp">Shutdown connection forcefully (for signal handlers).</p>
@@ -737,14 +743,14 @@ websocket_client_destroy(&amp;ws_client);</pre>
 154   if (!client) {
 155     return;
 156   }
-157 
+157
 158   log_debug(&quot;Shutting down WebSocket client&quot;);
-159 
+159
 160   // Force close the transport
 161   if (client-&gt;transport) {
 162     acip_transport_close(client-&gt;transport);
 163   }
-164 
+164
 165   atomic_store_bool(&amp;client-&gt;connection_active, false);
 166   atomic_store_bool(&amp;client-&gt;connection_lost, true);
 167 }</pre>
@@ -755,7 +761,9 @@ websocket_client_destroy(&amp;ws_client);</pre>
 <section class="Ss">
 <h2 class="Ss" id="void_websocket_client_signal_lost_("><a class="permalink" href="#void_websocket_client_signal_lost_(">void
   websocket_client_signal_lost (<b>websocket_client_t</b> * client)</a></h2>
-<p class="Pp">Signal that connection was lost (triggers reconnection).</p>
+<p class="Pp">Signal that connection was lost (triggers reconnection). Signal
+    that connection was lost.</p>
+<p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>client</i> WebSocket client instance</div>
 <p class="Pp">Signal that connection was lost (triggers reconnection).</p>
@@ -789,7 +797,7 @@ websocket_client_destroy(&amp;ws_client);</pre>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.11.25</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

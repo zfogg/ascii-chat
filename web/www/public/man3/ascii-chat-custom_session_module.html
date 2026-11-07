@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>custom_session_module(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">custom_session_module(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">custom_session_module(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">custom_session_module - Session Module Documentation</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Session_Module_Documentation"><a class="permalink" href="#Session_Module_Documentation">Session
+  Module Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Overview"><a class="permalink" href="#Overview">Overview</a></h2>
+<p class="Pp">The <b>session module</b> (src/common/session/) provides a unified
+    abstraction for managing real-time audio-video sessions in ascii-chat. It
+    encapsulates:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Server-side session hosting</b> (client management, media mixing,
+      broadcast)</li>
+  <li><b>Client-side session participation</b> (connection management, media
+      streaming)</li>
+  <li><b>Shared session infrastructure</b> (capture, rendering, display, audio
+      handling)</li>
+  <li><b>Interactive controls</b> (keyboard input, help screens, status
+      displays)</li>
+</ul>
+<p class="Pp">The module is used by all display modes:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Server mode</b>: Hosts sessions with multiple connected clients</li>
+  <li><b>Client mode</b>: Connects to a server and streams media</li>
+  <li><b>Mirror mode</b>: Local testing without networking</li>
+  <li><b>Discovery mode</b>: P2P session discovery and establishment</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Participant_protocol"><a class="permalink" href="#Participant_protocol">Participant
+  protocol</a></h2>
+<p class="Pp">protocol.c and protocol.h provide the participant protocol used by
+    native client mode and the discovery WebRTC receiver. Each receive worker
+    has its own <b>session_protocol_t</b><b>: packet/frame/audio counters,
+    server participant count, and pending layout state. The protocol borrows its
+    transport until the worker joins.</b></p>
+<p class="Pp"></p>
+<p class="Pp">The ACIP receive layer validates packet envelopes and decrypts
+    them before the session protocol dispatches media and control messages.
+    Shared media handling validates and decompresses ASCII frames, checks frame
+    CRCs, dequantizes PCM, and validates Opus batch boundaries before decoding.
+    Decoded buffers are borrowed only for the duration of a callback; a mode
+    that defers presentation must copy them. Callback failures propagate through
+    the receive result, and packet allocations are released on success and
+    failure.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>src/client/protocol_adapter.c</b><b> retains client worker
+    startup, snapshot/display effects, and crypto/control callbacks. Discovery
+    retains negotiation, host migration, audio-device effects, and newest-frame
+    presentation. Both call </b><b>network_connection_run()</b><b> and
+    </b><b>session_protocol_dispatch()</b><b>; neither implements its own media
+    packet parser. Mirror mode does not use this network protocol.</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Core_Components"><a class="permalink" href="#Core_Components">Core
+  Components</a></h2>
+<pre>&#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;
+&#x2502;                    Session Module                           &#x2502;
+&#x251C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2524;
+&#x2502;                                                              &#x2502;
+&#x2502;  &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;      &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;   &#x2502;
+&#x2502;  &#x2502;   Host-Side (Server) &#x2502;      &#x2502; Client-Side (Participant) &#x2502;
+&#x2502;  &#x251C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2524;      &#x251C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2524;   &#x2502;
+&#x2502;  &#x2502; session_host_t       &#x2502;      &#x2502; session_participant_t &#x2502;   &#x2502;
+&#x2502;  &#x2502; - Client management  &#x2502;      &#x2502; - Connection mgmt    &#x2502;   &#x2502;
+&#x2502;  &#x2502; - Media mixing       &#x2502;      &#x2502; - Stream control     &#x2502;   &#x2502;
+&#x2502;  &#x2502; - Broadcasting       &#x2502;      &#x2502; - Frame rendering    &#x2502;   &#x2502;
+&#x2502;  &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;      &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;   &#x2502;
+&#x2502;           &#x2502;                               &#x2502;                 &#x2502;
+&#x2502;           &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x252C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;                 &#x2502;
+&#x2502;                           &#x2502;                                  &#x2502;
+&#x2502;           &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;V&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;               &#x2502;
+&#x2502;           &#x2502;   Shared Infrastructure       &#x2502;               &#x2502;
+&#x2502;           &#x251C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2524;               &#x2502;
+&#x2502;           &#x2502; - Capture (capture.h)         &#x2502;               &#x2502;
+&#x2502;           &#x2502; - Display (display.h)         &#x2502;               &#x2502;
+&#x2502;           &#x2502; - Render loop (render.h)      &#x2502;               &#x2502;
+&#x2502;           &#x2502; - Audio handling (audio.h)    &#x2502;               &#x2502;
+&#x2502;           &#x2502; - Keyboard input (keyboard_handler.h) &#x2502;       &#x2502;
+&#x2502;           &#x2502; - Session settings (settings.h)      &#x2502;       &#x2502;
+&#x2502;           &#x2502; - Consensus protocol (consensus.h)   &#x2502;       &#x2502;
+&#x2502;           &#x2502; - Logging (session_log_buffer.h)     &#x2502;       &#x2502;
+&#x2502;           &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;               &#x2502;
+&#x2502;                                                              &#x2502;
+&#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Component_Breakdown"><a class="permalink" href="#Component_Breakdown">Component
+  Breakdown</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>Host-Side (</b><b>host.h</b><b>)</b></h2>
+<p class="Pp">Server abstractions for managing client sessions:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Lifecycle</b>: Create &#x2192; Start &#x2192; Stop &#x2192;
+    Destroy</li>
+  <li><b>Client Management</b>: Add, remove, find, list clients</li>
+  <li><b>Media Injection</b>: For host's own webcam/audio participation</li>
+  <li><b>Broadcasting</b>: Send ASCII frames to individual clients or broadcast
+      to all</li>
+  <li><b>Callbacks</b>: Join/leave events, frame/audio received, errors</li>
+  <li><b>Transport Abstraction</b>: Support for TCP sockets, WebRTC
+      DataChannels, WebSockets</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>Client-Side (</b><b>participant.h</b><b>)</b></h2>
+<p class="Pp">Client abstractions for connecting to sessions:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Lifecycle</b>: Create &#x2192; Connect &#x2192; Disconnect &#x2192;
+      Destroy</li>
+  <li><b>Stream Control</b>: Start/stop video and audio streaming</li>
+  <li><b>Media Reception</b>: Receive mixed ASCII frames and audio from
+    server</li>
+  <li><b>Callbacks</b>: Connected/disconnected events, frame/audio received,
+      errors</li>
+  <li><b>Reconnection</b>: Automatic reconnection on network failure</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>Shared Client-Like Framework
+  (</b><b>client_like.h</b><b>)</b></h2>
+<p class="Pp">Unified initialization framework for client-like modes:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Handles boilerplate setup for mirror, client, and discovery modes</li>
+  <li>Media source selection and FPS detection</li>
+  <li>Audio initialization and lifecycle</li>
+  <li>Terminal management and keepawake</li>
+  <li>Splash screen lifecycle</li>
+  <li>Keyboard input integration</li>
+  <li>Proper resource cleanup ordering</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Session_Lifecycle"><a class="permalink" href="#Session_Lifecycle">Session
+  Lifecycle</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Host-Side_Lifecycle"><a class="permalink" href="#Host-Side_Lifecycle">Host-Side
+  Lifecycle</a></h2>
+<pre>1. Configuration
+<br/>
+   session_host_config_t config = { ... };
+2. Creation
+<br/>
+   host = session_host_create(&amp;config);
+<br/>
+   &#x2192; Host is ready but not accepting connections
+3. Start Server
+<br/>
+   session_host_start(host);
+<br/>
+   &#x2192; Listen for incoming client connections
+<br/>
+   &#x2192; Accept loop running
+4. Client Connection
+<br/>
+   session_host_add_client(host, transport, ACIP_TRANSPORT_BORROWED, ip, port);
+<br/>
+   &#x2192; on_client_join() callback fired
+<br/>
+   &#x2192; Client registered and ready
+5. Media Handling
+<br/>
+   session_host_inject_frame(host, client_id, frame);
+<br/>
+   &#x2192; Frame from host's own webcam
+<br/>
+   On frame received from client:
+<br/>
+   &#x2192; on_frame_received() callback
+6. Rendering (Optional)
+<br/>
+   session_host_start_render(host);
+<br/>
+   &#x2192; Render thread mixing video/audio
+<br/>
+   &#x2192; Broadcasting frames to all clients
+7. Client Disconnection
+<br/>
+   session_host_remove_client(host, client_id);
+<br/>
+   &#x2192; on_client_leave() callback fired
+8. Stop Server
+<br/>
+   session_host_stop(host);
+<br/>
+   &#x2192; Stop accepting connections
+<br/>
+   &#x2192; Disconnect remaining clients
+9. Cleanup
+<br/>
+   session_host_destroy(host);
+<br/>
+   &#x2192; Free all resources</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Client-Side_Lifecycle"><a class="permalink" href="#Client-Side_Lifecycle">Client-Side
+  Lifecycle</a></h2>
+<pre>1. Configuration
+<br/>
+   session_participant_config_t config = { ... };
+2. Creation
+<br/>
+   participant = session_participant_create(&amp;config);
+<br/>
+   &#x2192; Participant object created
+3. Connection
+<br/>
+   session_participant_connect(participant);
+<br/>
+   &#x2192; Establish connection to server
+<br/>
+   &#x2192; Crypto handshake
+<br/>
+   &#x2192; on_connected() callback fired with assigned ID
+4. Stream Control
+<br/>
+   session_participant_start_video(participant);
+<br/>
+   session_participant_start_audio(participant);
+<br/>
+   &#x2192; Begin streaming media to server
+5. Receiving
+<br/>
+   Continuously receive frames/audio via callbacks:
+<br/>
+   &#x2192; on_frame_received()
+<br/>
+   &#x2192; on_audio_received()
+6. Stream Control
+<br/>
+   session_participant_stop_video(participant);
+<br/>
+   session_participant_stop_audio(participant);
+<br/>
+   &#x2192; Stop streaming (optional)
+7. Disconnection
+<br/>
+   session_participant_disconnect(participant);
+<br/>
+   &#x2192; Close connection to server
+<br/>
+   &#x2192; on_disconnected() callback fired
+8. Cleanup
+<br/>
+   session_participant_destroy(participant);
+<br/>
+   &#x2192; Free all resources</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Client-Like_Mode_Lifecycle"><a class="permalink" href="#Client-Like_Mode_Lifecycle">Client-Like
+  Mode Lifecycle</a></h2>
+<pre>1. Configuration
+<br/>
+   session_client_like_config_t config = {
+<br/>
+     .media_source = { ... },
+<br/>
+     .run_fn = mode_specific_main_loop,
+<br/>
+     ...
+<br/>
+   };
+2. Initialization
+<br/>
+   session_client_like_run(&amp;config)
+<br/>
+   &#x2192; Terminal output check
+<br/>
+   &#x2192; Keepawake system
+<br/>
+   &#x2192; Media source selection
+<br/>
+   &#x2192; FPS probing
+<br/>
+   &#x2192; Audio initialization
+<br/>
+   &#x2192; Display creation
+<br/>
+   &#x2192; Splash screen animation
+3. Mode-Specific Loop
+<br/>
+   mode_specific_main_loop(capture, display, user_data)
+<br/>
+   &#x2192; Network loop (client mode)
+<br/>
+   &#x2192; Render loop (mirror/discovery)
+<br/>
+   &#x2192; Keyboard input handling
+<br/>
+   &#x2192; Protocol handling
+4. Cleanup (Automatic)
+<br/>
+   &#x2190; Teardown in correct order:
+<br/>
+   &#x2192; Stop render loop
+<br/>
+   &#x2192; Close display
+<br/>
+   &#x2192; Shutdown audio
+<br/>
+   &#x2192; Close media
+<br/>
+   &#x2192; Disable keepawake
+<br/>
+   &#x2192; Restore terminal</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Shared_Data_Structures"><a class="permalink" href="#Shared_Data_Structures">Shared
+  Data Structures</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Opaque_Handles"><a class="permalink" href="#Opaque_Handles">Opaque
+  Handles</a></h2>
+<p class="Pp">These are opaque forward-declared types. Implementation details
+    are hidden.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Host side
+typedef struct session_host session_host_t;
+// Client side
+typedef struct session_participant session_participant_t;
+// Shared
+typedef struct session_capture_ctx session_capture_ctx_t;
+typedef struct session_display_ctx session_display_ctx_t;
+typedef struct session_log_buffer session_log_buffer_t;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Configuration_Structures"><a class="permalink" href="#Configuration_Structures">Configuration
+  Structures</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>Host Configuration</b> (<b>host.h</b><b>)</b></h2>
+<pre>typedef struct {
+<br/>
+  int port;                           // Listen port (27224)
+<br/>
+  const char *ipv4_address;          // IPv4 bind address
+<br/>
+  const char *ipv6_address;          // IPv6 bind address
+<br/>
+  int max_clients;                   // Max concurrent clients
+<br/>
+  bool encryption_enabled;            // E2E encryption
+<br/>
+  const char *key_path;              // Server identity key
+<br/>
+  const char *password;              // Optional password auth
+<br/>
+  session_host_callbacks_t callbacks; // Event callbacks
+<br/>
+  void *user_data;                   // Context for callbacks
+} session_host_config_t;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>Participant Configuration</b>
+  (<b>participant.h</b><b>)</b></h2>
+<pre>typedef struct {
+<br/>
+  const char *address;               // Server address
+<br/>
+  int port;                          // Server port
+<br/>
+  bool encryption_enabled;            // E2E encryption
+<br/>
+  const char *key_path;              // Client key (optional)
+<br/>
+  const char *password;              // Password auth (optional)
+<br/>
+  session_participant_callbacks_t callbacks;
+<br/>
+  void *user_data;                   // Context for callbacks
+} session_participant_config_t;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>Client-Like Configuration</b>
+  (<b>client_like.h</b><b>)</b></h2>
+<pre>typedef struct {
+<br/>
+  session_media_source_t media_source;  // What to capture
+<br/>
+  session_client_like_run_fn run_fn;    // Mode-specific loop
+<br/>
+  void *run_user_data;                  // Context for run_fn
+<br/>
+  // ... audio, display, keyboard config ...
+} session_client_like_config_t;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Callback_Structures"><a class="permalink" href="#Callback_Structures">Callback
+  Structures</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>Host Callbacks</b></h2>
+<pre>typedef struct {
+<br/>
+  void (*on_client_join)(session_host_t *h, uint32_t client_id, void *data);
+<br/>
+  void (*on_client_leave)(session_host_t *h, uint32_t client_id, void *data);
+<br/>
+  void (*on_frame_received)(session_host_t *h, uint32_t client_id,
+<br/>
+                           const image_t *frame, void *data);
+<br/>
+  void (*on_audio_received)(session_host_t *h, uint32_t client_id,
+<br/>
+                           const float *samples, size_t count, void *data);
+<br/>
+  void (*on_error)(session_host_t *h, asciichat_error_t error,
+<br/>
+                  const char *message, void *data);
+} session_host_callbacks_t;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>Participant Callbacks</b></h2>
+<pre>typedef struct {
+<br/>
+  void (*on_connected)(session_participant_t *p, uint32_t id, void *data);
+<br/>
+  void (*on_disconnected)(session_participant_t *p, void *data);
+<br/>
+  void (*on_frame_received)(session_participant_t *p, const char *frame, void *data);
+<br/>
+  void (*on_audio_received)(session_participant_t *p,
+<br/>
+                           const float *samples, size_t count, void *data);
+<br/>
+  void (*on_error)(session_participant_t *p, asciichat_error_t error,
+<br/>
+                  const char *message, void *data);
+} session_participant_callbacks_t;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Log_Entry_Structure"><a class="permalink" href="#Log_Entry_Structure">Log
+  Entry Structure</a></h2>
+<pre>typedef struct {
+<br/>
+  char message[SESSION_LOG_LINE_MAX];  // Formatted log (with ANSI colors)
+<br/>
+  uint64_t sequence;                  // Monotonic ordering sequence
+} session_log_entry_t;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Common_Patterns_and_Utilities"><a class="permalink" href="#Common_Patterns_and_Utilities">Common
+  Patterns and Utilities</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Capture_("><a class="permalink" href="#Capture_(">Capture
+  (capture.h)</a></h2>
+<p class="Pp"><b>Purpose</b>: Abstract media source reading (webcam, files,
+    URLs)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Functions</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>session_capture_open() - Open media source</li>
+  <li>session_capture_close() - Close media source</li>
+  <li><b>session_capture_read_frame()</b><b> - Get next frame</b></li>
+  <li><b>session_capture_sleep_for_fps()</b><b> - Frame rate limiting</b></li>
+  <li>session_capture_toggle_pause() - Pause/resume</li>
+  <li>session_capture_seek_relative() - Seek in files</li>
+</ul>
+<p class="Pp"><b>Supported Sources</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Webcam (platform-specific)</li>
+  <li>Local files (MP4, MKV, etc. via FFmpeg)</li>
+  <li>URLs (HTTP/HTTPS/RTSP/DASH/HLS)</li>
+  <li>YouTube/TikTok (via yt-dlp)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Display_("><a class="permalink" href="#Display_(">Display
+  (display.h)</a></h2>
+<p class="Pp"><b>Purpose</b>: Terminal abstraction and ASCII rendering</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Functions</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>session_display_create()</b><b> - Initialize terminal</b></li>
+  <li><b>session_display_destroy()</b><b> - Cleanup terminal</b></li>
+  <li><b>session_display_convert_to_ascii()</b><b> - Convert frames to
+    ASCII</b></li>
+  <li><b>session_display_render_frame()</b><b> - Draw to terminal</b></li>
+  <li>session_display_set_color_mode() - Set palette (mono/16/256/true
+    color)</li>
+</ul>
+<p class="Pp"><b>Features</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Terminal capability detection (ANSI support)</li>
+  <li>Color palette selection</li>
+  <li>Snapshot mode support</li>
+  <li>Help screen integration</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Render_Loop_("><a class="permalink" href="#Render_Loop_(">Render
+  Loop (render.h)</a></h2>
+<p class="Pp"><b>Purpose</b>: Unified frame processing for all display modes</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Two Modes</b>:</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Synchronous Mode</b> (with capture context)
+    <p class="Pp"></p>
+  </dd>
+</dl>
+<p class="Pp"></p>
+<pre>session_render_loop(capture, display, should_exit_fn,
+<br/>
+                   NULL, NULL, keyboard_handler, user_data);</pre>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Capture &#x2192; ASCII conversion &#x2192; Render loop</dd>
+  <dt> &#x2022;</dt>
+  <dd>Frame rate driven by media source</dd>
+  <dt>2.</dt>
+  <dd><b>Event-Driven Mode</b> (with callbacks, no capture)</dd>
+</dl>
+<p class="Pp"></p>
+<pre>session_render_loop(NULL, display, should_exit_fn,
+<br/>
+                   capture_fn, sleep_fn, keyboard_handler, user_data);
+</pre>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Custom frame/sleep callbacks</dd>
+  <dt> &#x2022;</dt>
+  <dd>Protocol-driven (client mode)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Audio_("><a class="permalink" href="#Audio_(">Audio
+  (audio.h)</a></h2>
+<p class="Pp"><b>Purpose</b>: Audio capture, processing, and playback</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Functions</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>session_audio_capture_init() - Start audio input</li>
+  <li>session_audio_capture_read() - Get audio samples</li>
+  <li>session_audio_playback_init() - Start audio output</li>
+  <li>session_audio_playback_write() - Send audio samples</li>
+  <li>Volume control and mixing</li>
+</ul>
+<p class="Pp"><b>Features</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Platform abstraction (PortAudio)</li>
+  <li>Format conversion (PCM float)</li>
+  <li>Volume normalization</li>
+  <li>Optional JACK audio system support</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Keyboard_Input_("><a class="permalink" href="#Keyboard_Input_(">Keyboard
+  Input (<b>keyboard_handler.h</b><b>)</b></a></h2>
+<p class="Pp"><b>Purpose</b>: Interactive session controls</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Supported Controls</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>? - Toggle help screen</li>
+  <li> (spacebar) - Play/pause</li>
+  <li>&#x2190; / &#x2192; - Seek &#x00B1;30s</li>
+  <li>&#x2191; / &#x2193; - Volume &#x00B1;10%</li>
+  <li>m - Mute toggle</li>
+  <li>c - Cycle color modes</li>
+  <li>f - Flip webcam (mirror mode)</li>
+</ul>
+<p class="Pp"><b>Thread-Safe</b>: Can be called from any thread</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Session_Log_Buffer_("><a class="permalink" href="#Session_Log_Buffer_(">Session
+  Log Buffer (session_log_buffer.h)</a></h2>
+<p class="Pp"><b>Purpose</b>: Capture logs for status/splash screens</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Functions</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>session_log_buffer_init() - Create circular buffer</li>
+  <li><b>session_log_buffer_append()</b><b> - Add log entry</b></li>
+  <li><b>session_log_buffer_get_recent()</b><b> - Retrieve entries</b></li>
+  <li><b>session_log_buffer_clear()</b><b> - Clear all entries</b></li>
+</ul>
+<p class="Pp"><b>Features</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Thread-safe circular buffer</li>
+  <li>ANSI color support</li>
+  <li>Automatic sequence numbering</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Settings_("><a class="permalink" href="#Settings_(">Settings
+  (settings.h)</a></h2>
+<p class="Pp"><b>Purpose</b>: Session-wide configuration and state</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Manages</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Color mode</li>
+  <li>Pause state</li>
+  <li>Volume level</li>
+  <li>Flip state (for webcam)</li>
+  <li>Help screen visibility</li>
+</ul>
+<p class="Pp"><b>Thread-Safe</b>: Uses RCU (Read-Copy-Update) for atomic
+  access</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="State_Management"><a class="permalink" href="#State_Management">State
+  Management</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Host_State_Transitions"><a class="permalink" href="#Host_State_Transitions">Host
+  State Transitions</a></h2>
+<pre>INIT &#x2192; RUNNING &#x2192; STOPPED &#x2192; DESTROYED
+With clients:
+RUNNING:
+<br/>
+  - Clients can join/leave
+<br/>
+  - Media accepted from clients
+<br/>
+  - Frames broadcast to all
+<br/>
+  - Optional rendering thread</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Participant_State_Transitions"><a class="permalink" href="#Participant_State_Transitions">Participant
+  State Transitions</a></h2>
+<pre>INIT &#x2192; CONNECTING &#x2192; CONNECTED &#x2192; STREAMING &#x2192; DISCONNECTED &#x2192; DESTROYED
+CONNECTED:
+<br/>
+  - Ready to send/receive frames
+<br/>
+  - Streams can be started/stopped
+STREAMING:
+<br/>
+  - Actively sending/receiving media</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Settings_State_(Thread-Safe)"><a class="permalink" href="#Settings_State_(Thread-Safe)">Settings
+  State (Thread-Safe)</a></h2>
+<p class="Pp">All settings use RCU for lock-free reads:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Read (lock-free)
+session_settings_get_volume();
+// Write (brief lock, copies old data)
+session_settings_set_color_mode(COLOR_MODE_256);</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Encryption_and_Authentication"><a class="permalink" href="#Encryption_and_Authentication">Encryption
+  and Authentication</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Default_Behavior"><a class="permalink" href="#Default_Behavior">Default
+  Behavior</a></h2>
+<p class="Pp">All connections are <b>encrypted by default</b> using:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>X25519</b> - Key exchange</li>
+  <li><b>XSalsa20-Poly1305</b> - AEAD symmetric cipher</li>
+  <li><b>Ed25519</b> - Signature verification</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Authentication_Methods"><a class="permalink" href="#Authentication_Methods">Authentication
+  Methods</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Ephemeral DH</b> (default)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Encrypted but no identity verification</dd>
+  <dt> &#x2022;</dt>
+  <dd>Keys negotiated at connection time</dd>
+  <dt>2.</dt>
+  <dd><b>Password Authentication</b></dd>
+  <dt> &#x2022;</dt>
+  <dd>Both sides prove knowledge of password</dd>
+  <dt> &#x2022;</dt>
+  <dd>No long-term keys needed</dd>
+  <dt>3.</dt>
+  <dd><b>SSH Key Authentication</b></dd>
+  <dt> &#x2022;</dt>
+  <dd>Server authenticates with Ed25519 key</dd>
+  <dt> &#x2022;</dt>
+  <dd>Client verifies against known_hosts</dd>
+  <dt> &#x2022;</dt>
+  <dd>TOFU (Trust On First Use) supported</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Configuration"><a class="permalink" href="#Configuration">Configuration</a></h2>
+<pre>// Ephemeral (default)
+config.encryption_enabled = true;
+// Password
+config.password = &quot;secret&quot;;
+// SSH key
+config.key_path = &quot;~/.ssh/id_ed25519&quot;;
+// Disable (testing only)
+config.encryption_enabled = false;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Error_Handling"><a class="permalink" href="#Error_Handling">Error
+  Handling</a></h2>
+<p class="Pp">All functions return <b>asciichat_error_t</b><b>:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>asciichat_error_t result = session_host_start(host);
+if (result != ASCIICHAT_OK) {
+<br/>
+  asciichat_error_context_t ctx;
+<br/>
+  if (HAS_ERRNO(&amp;ctx)) {
+<br/>
+    log_error(&quot;Failed: %s&quot;, ctx.context_message);
+<br/>
+  }
+<br/>
+  return result;
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Consensus_Protocol_("><a class="permalink" href="#Consensus_Protocol_(">Consensus
+  Protocol (<b>consensus.h</b><b>)</b></a></h2>
+<p class="Pp">The session module implements a <b>consensus protocol</b> for
+    coordinating state across participants:</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Purpose"><a class="permalink" href="#Purpose">Purpose</a></h2>
+<ul class="Bl-bullet">
+  <li>Synchronize pause/play state</li>
+  <li>Coordinate media timing</li>
+  <li>Handle late-join clients</li>
+  <li>Support participant discovery</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Key_Concepts"><a class="permalink" href="#Key_Concepts">Key
+  Concepts</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Sequence Numbers</b>: Track state changes</li>
+  <li><b>Vector Clocks</b>: Causal ordering</li>
+  <li><b>Gossip Protocol</b>: Distributed state propagation</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typical_Usage_Patterns"><a class="permalink" href="#Typical_Usage_Patterns">Typical
+  Usage Patterns</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Server_with_Client_Hosting"><a class="permalink" href="#Server_with_Client_Hosting">Server
+  with Client Hosting</a></h2>
+<pre>// Create server host
+session_host_config_t config = {
+<br/>
+  .port = 27224,
+<br/>
+  .max_clients = 32,
+<br/>
+  .callbacks = {
+<br/>
+    .on_client_join = handle_client_join,
+<br/>
+    .on_frame_received = handle_frame,
+<br/>
+    // ...
+<br/>
+  },
+<br/>
+  .user_data = app_context
+};
+session_host_t *host = session_host_create(&amp;config);
+// Start accepting clients
+session_host_start(host);
+// Add host's own participation (optional)
+uint32_t host_id = session_host_add_memory_participant(host);
+// Start rendering thread (mixes video/audio)
+session_host_start_render(host);
+// Cleanup
+session_host_stop_render(host);
+session_host_stop(host);
+session_host_destroy(host);</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Client_Connection"><a class="permalink" href="#Client_Connection">Client
+  Connection</a></h2>
+<pre>// Create client participant
+session_participant_config_t config = {
+<br/>
+  .address = &quot;127.0.0.1&quot;,
+<br/>
+  .port = 27224,
+<br/>
+  .callbacks = {
+<br/>
+    .on_connected = handle_connected,
+<br/>
+    .on_frame_received = render_frame,
+<br/>
+    // ...
+<br/>
+  },
+<br/>
+  .user_data = app_context
+};
+session_participant_t *p = session_participant_create(&amp;config);
+// Connect to server
+session_participant_connect(p);
+// Start streaming (automatic after connect)
+session_participant_start_video(p);
+session_participant_start_audio(p);
+// Cleanup
+session_participant_disconnect(p);
+session_participant_destroy(p);</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Mirror/Discovery_Mode_(via_client_like)"><a class="permalink" href="#Mirror/Discovery_Mode_(via_client_like)">Mirror/Discovery
+  Mode (via client_like)</a></h2>
+<pre>// Configure media source
+session_media_source_t source = {
+<br/>
+  .type = MEDIA_SOURCE_WEBCAM
+};
+// Configure client-like framework
+session_client_like_config_t config = {
+<br/>
+  .media_source = source,
+<br/>
+  .run_fn = my_render_loop,
+<br/>
+  .run_user_data = my_context,
+<br/>
+  // ... audio, display config ...
+};
+// Run unified initialization and mode loop
+asciichat_error_t result = session_client_like_run(&amp;config);
+// All initialization, teardown, and cleanup handled automatically</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Key_Implementation_Details"><a class="permalink" href="#Key_Implementation_Details">Key
+  Implementation Details</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Thread_Safety"><a class="permalink" href="#Thread_Safety">Thread
+  Safety</a></h2>
+<p class="Pp"><b>Host</b>: Thread-safe for all operations</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Client operations are atomic</li>
+  <li>Callbacks can be from any thread</li>
+  <li>Safe to call from audio/video threads</li>
+</ul>
+<p class="Pp"><b>Participant</b>: Thread-safe for stream control</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Send operations are async</li>
+  <li>Receive callbacks from dedicated thread</li>
+  <li>Settings updates are RCU-protected</li>
+</ul>
+<p class="Pp"><b>Render Loop</b>: Single-threaded by design</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Keyboard input can be called from any thread</li>
+  <li>Frame operations must be synchronized by caller</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Memory_Management"><a class="permalink" href="#Memory_Management">Memory
+  Management</a></h2>
+<p class="Pp">All allocations tracked with SAFE_MALLOC/CALLOC/FREE:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Automatic leak detection in debug builds</li>
+  <li>Memory reports printed at exit</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Event_Loop_Integration"><a class="permalink" href="#Event_Loop_Integration">Event
+  Loop Integration</a></h2>
+<p class="Pp">Host and participant both provide callback-based interfaces for
+    integration with custom event loops:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>No internal threads required</li>
+  <li>Can be used with epoll/kqueue/select</li>
+  <li>Suitable for embedded systems</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Files_Overview"><a class="permalink" href="#Files_Overview">Files
+  Overview</a></h2>
+<p class="Pp">File Purpose <b></b><b>host.h</b><b></b><b> Server session
+    management </b><b></b><b>participant.h</b><b></b><b> Client session
+    participation </b><b></b><b>client_like.h</b><b></b><b> Unified client-like
+    mode framework </b><b>capture.h</b><b> Media source abstraction
+    </b><b>display.h</b><b> Terminal abstraction and rendering
+    </b><b>render.h</b><b> Unified render loop </b><b>audio.h</b><b> Audio
+    capture/playback </b><b></b><b>keyboard_handler.h</b><b></b><b> Interactive
+    controls </b><b>session_log_buffer.h</b><b> Log capture for screens
+    </b><b>settings.h</b><b> Thread-safe session settings
+    </b><b></b><b>consensus.h</b><b></b><b> State coordination protocol
+    </b><b></b><b>consensus_integration.h</b><b></b><b> Consensus integration
+    helpers</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="See_Also"><a class="permalink" href="#See_Also">See
+  Also</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Crypto Protocol</b>: docs/crypto.md - Detailed cryptographic
+    handshake</li>
+  <li><b>Network Protocol</b>: lib/network/ - ACIP packet protocol</li>
+  <li><b>Platform Abstraction</b>: lib/platform/ - Cross-platform internals</li>
+  <li><b>Media Resolution</b>: lib/media/ - FFmpeg/yt-dlp integration</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Participant_media_lifecycle"><a class="permalink" href="#Participant_media_lifecycle">Participant
+  media lifecycle</a></h2>
+<p class="Pp">Use session_participant_start_video/audio() and
+    session_participant_stop_video/audio(). The duplicate _capture entry points
+    have been removed. Start creates the device context and worker, and reports
+    active only after successful startup. Repeated start is idempotent; stop
+    joins the worker before releasing capture and codec resources. Disconnect
+    and destruction stop streams even after a partial connection failure. When
+    audio borrows a video's file source, stopping video first stops audio. ACIP
+    transports have explicit owned or borrowed semantics; replace a transport
+    only after stopping its workers. Borrowed transports must remain valid until
+    detached. Serialize participant control calls on its owning thread.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>session/av_state.c</b><b> is the shared audio/video run state
+    machine for native participant workers and browser camera/microphone
+    adapters. A startup token covers asynchronous device permission and encoder
+    setup; stopped or superseded tokens cannot activate a stream. Browser
+    adapters call this same C implementation through WASM, keeping DOM/device
+    operations outside the core. A future iOS adapter can use the same
+    begin/complete/stop contract with AVFoundation callbacks; it must stop
+    callbacks before finishing teardown. No iOS device adapter is supplied by
+    this change.</b></p>
+<p class="Pp"></p>
+<p class="Pp">Check every start result before claiming streaming success:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>asciichat_error_t error = session_participant_start_video(participant);
+if (error != ASCIICHAT_OK) {
+<br/>
+    session_participant_destroy(participant);
+<br/>
+    return error;
+}</pre>
+</section>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

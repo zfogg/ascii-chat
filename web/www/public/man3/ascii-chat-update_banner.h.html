@@ -51,13 +51,25 @@
   Show the update prompt screen and wait for user input. void
     <b>update_banner_print_instructions</b> (void)
   <br/>
-  Print upgrade instructions to stdout and prepare for clean exit. void
-    <b>update_banner_start_check</b> (void)
+  Print upgrade instructions to stdout and prepare for clean exit. <b>bool</b>
+    <b>update_banner_install_update</b> (void)
+  <br/>
+  void <b>update_banner_start_check</b> (void)
   <br/>
   Start the background update check thread. void
     <b>update_banner_wait_for_check</b> (void)
   <br/>
-  Wait for the background update check thread to finish.
+  Wait for the background update check thread to finish. void
+    <b>update_banner_cancel_check</b> (void)
+  <br/>
+  void <b>update_banner_toggle_overlay</b> (void)
+  <br/>
+  <b>bool</b> <b>update_banner_handle_key</b> (int key)
+  <br/>
+  <b>bool</b> <b>update_banner_is_checking</b> (void)
+  <br/>
+  <b>bool</b> <b>update_banner_is_overlay_open</b> (void)
+  <br/>
   <br/>
 </p>
 </section>
@@ -77,7 +89,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

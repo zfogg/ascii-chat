@@ -117,13 +117,13 @@
 137   if (!client) {
 138     return;
 139   }
-140 
+140
 141   log_debug(&quot;Closing WebSocket client&quot;);
-142 
+142
 143   if (client-&gt;transport) {
 144     acip_transport_close(client-&gt;transport);
 145   }
-146 
+146
 147   atomic_store_bool(&amp;client-&gt;connection_active, false);
 148 }</pre>
 <pre></pre>
@@ -141,6 +141,26 @@
   <li>WebSocket handshake</li>
   <li>Transport setup and lifecycle</li>
 </ul>
+<p class="Pp">Performs full connection lifecycle including URL resolution and
+    WebSocket handshake. Does NOT perform crypto handshake - that's application
+    responsibility.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client</i> WebSocket client instance
+<br/>
+<i>url</i> WebSocket server URL (e.g., &quot;ws://localhost:27226&quot;)
+<br/>
+<i>crypto_ctx</i> Cryptographic context for encrypted connections</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent"><b>acip_transport_t</b> pointer on success, NULL on
+  failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">The returned transport is owned by
+  <b>websocket_client_t</b>
+<p class="Pp"></p>
+<p class="Pp">Call <b>websocket_client_is_active()</b> after connecting to
+    verify success</p>
+</div>
 <p class="Pp">Definition at line <b>177</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
 <pre>178                                                                                 {
@@ -148,12 +168,12 @@
 180     log_error(&quot;Invalid arguments to websocket_client_connect&quot;);
 181     return NULL;
 182   }
-183 
+183
 184   log_info(&quot;Connecting WebSocket client to %s&quot;, url);
-185 
+185
 186   // Store URL for reference
 187   SAFE_STRNCPY(client-&gt;url, url, sizeof(client-&gt;url));
-188 
+188
 189   // Create transport using ACIP layer
 190   acip_transport_t *transport = acip_websocket_client_transport_create(&quot;client&quot;, url, crypto_ctx);
 191   if (!transport) {
@@ -161,28 +181,28 @@
 193     atomic_store_bool(&amp;client-&gt;connection_lost, true);
 194     return NULL;
 195   }
-196 
+196
 197   // Derive client ID from URL hash using FNV-1a (proper implementation with 64-bit arithmetic)
 198   // This provides a stable, unique ID per connection URL without undefined behavior
 199   client-&gt;my_client_id = fnv1a_hash_string(url);
-200 
+200
 201   // Update registration name now that we have a client ID
 202   {
 203     char client_name[64];
 204     SAFE_SNPRINTF(client_name, sizeof(client_name), &quot;websocket_client_%u&quot;, client-&gt;my_client_id);
 205     named_update_name((uintptr_t)client, client_name);
 206   }
-207 
+207
 208   // Mark encryption as enabled if crypto context provided
 209   client-&gt;encryption_enabled = (crypto_ctx != NULL);
-210 
+210
 211   // Store transport and mark as active
 212   client-&gt;transport = transport;
 213   atomic_store_bool(&amp;client-&gt;connection_active, true);
 214   atomic_store_bool(&amp;client-&gt;connection_lost, false);
-215 
+215
 216   log_info(&quot;WebSocket client connected to %s (ID: %u)&quot;, url, client-&gt;my_client_id);
-217 
+217
 218   return transport;
 219 }</pre>
 <pre></pre>
@@ -199,6 +219,24 @@
   name)</h2>
 <p class="Pp">Create and initialize named WebSocket client. Create and
     initialize a named WebSocket client instance.</p>
+<p class="Pp"></p>
+<p class="Pp">Create and initialize named WebSocket client.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Debug name for the WebSocket client</div>
+<p class="Pp">Allocates a new <b>websocket_client_t</b> structure and
+    initializes all fields to safe defaults. The transport remains NULL until
+    <b>websocket_client_connect()</b> is called. The client is automatically
+    registered with the debug naming system.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to initialized client, or NULL on failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Caller must call <b>websocket_client_destroy()</b> when
+  done</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>websocket_client_destroy()</b> For proper
+  cleanup</div>
 <p class="Pp">Definition at line <b>27</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
 <pre>27                                                               {
@@ -206,16 +244,16 @@
 29     log_error(&quot;WebSocket client name is required&quot;);
 30     return NULL;
 31   }
-32 
+32
 33   websocket_client_t *client = SAFE_MALLOC(sizeof(websocket_client_t), websocket_client_t *);
 34   if (!client) {
 35     log_error(&quot;Failed to allocate websocket_client_t&quot;);
 36     return NULL;
 37   }
-38 
+38
 39   // Zero-initialize all fields
 40   memset(client, 0, sizeof(*client));
-41 
+41
 42   // Initialize connection state
 43   atomic_store_bool(&amp;client-&gt;connection_active, false);
 44   atomic_store_bool(&amp;client-&gt;connection_lost, false);
@@ -223,24 +261,24 @@
 46   client-&gt;my_client_id = 0;
 47   client-&gt;encryption_enabled = false;
 48   atomic_store_bool(&amp;client-&gt;should_reconnect, false);
-49 
+49
 50   // Initialize thread-safe mutex for packet transmission
 51   if (mutex_init(&amp;client-&gt;send_mutex, &quot;client_send&quot;) != 0) {
 52     log_error(&quot;Failed to initialize send_mutex&quot;);
 53     SAFE_FREE(client);
 54     return NULL;
 55   }
-56 
+56
 57   // Register WebSocket client with debug naming system
 58   NAMED_REGISTER_WEBSOCKET(client, name, NULL);
-59 
+59
 60   // Register atomic fields for sync state monitoring - descriptive names showing control purpose
 61   NAMED_REGISTER_ATOMIC(&amp;client-&gt;connection_active, &quot;connection_is_active&quot;, (uintptr_t)(const void *)(client));
 62   NAMED_REGISTER_ATOMIC(&amp;client-&gt;connection_lost, &quot;connection_was_lost&quot;, (uintptr_t)(const void *)(client));
 63   NAMED_REGISTER_ATOMIC(&amp;client-&gt;should_reconnect, &quot;needs_reconnection_attempt&quot;, (uintptr_t)(const void *)(client));
-64 
+64
 65   log_debug(&quot;WebSocket client created&quot;);
-66 
+66
 67   return client;
 68 }</pre>
 <pre></pre>
@@ -257,33 +295,47 @@
   websocket_client_destroy (<b>websocket_client_t</b> ** client_ptr)</a></h2>
 <p class="Pp">Destroy WebSocket client and free resources. Destroy WebSocket
     client and free all resources.</p>
+<p class="Pp"></p>
+<p class="Pp">Destroy WebSocket client and free resources.</p>
+<p class="Pp"></p>
+<p class="Pp">Destroys the transport and frees the client structure. Must be
+    called AFTER the transport is no longer in use.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client_ptr</i> Pointer to client pointer (set to NULL
+  after free)</div>
+<p class="Pp"><b>Warning</b></p>
+<div class="Bd-indent">All operations on transport must be complete before
+  calling</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">No-op if client_ptr is NULL or *client_ptr is NULL</div>
 <p class="Pp">Definition at line <b>73</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
 <pre>73                                                                {
 74   if (!client_ptr || !*client_ptr) {
 75     return; // No-op if NULL
 76   }
-77 
+77
 78   websocket_client_t *client = *client_ptr;
-79 
+79
 80   log_debug(&quot;Destroying WebSocket client&quot;);
-81 
+81
 82   // Note: Do NOT destroy the transport. The transport is created and owned by the
 83   // connection layer (acip_websocket_client_transport_create). The WebSocket client
 84   // is just a thin wrapper that holds a reference. The transport will be destroyed
 85   // by the connection context or server connection cleanup code.
 86   client-&gt;transport = NULL;
-87 
+87
 88   // Unregister atomic fields
 89   NAMED_UNREGISTER(&amp;client-&gt;connection_active);
 90   NAMED_UNREGISTER(&amp;client-&gt;connection_lost);
 91   NAMED_UNREGISTER(&amp;client-&gt;should_reconnect);
-92 
+92
 93   NAMED_UNREGISTER(client);
-94 
+94
 95   // Destroy mutex
 96   mutex_destroy(&amp;client-&gt;send_mutex);
-97 
+97
 98   SAFE_FREE(*client_ptr);
 99 }</pre>
 <pre></pre>
@@ -398,34 +450,54 @@
 <p class="Pp">Send a packet through WebSocket connection (thread-safe). Acquires
     send_mutex, transmits packet via transport, releases mutex. Checks
     connection state before sending.</p>
+<p class="Pp"></p>
+<p class="Pp">Acquires send_mutex, transmits packet, releases mutex. Checks
+    connection state before sending.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client</i> WebSocket client instance
+<br/>
+<i>type</i> Packet type to send
+<br/>
+<i>data</i> Packet payload (NULL for empty packets)
+<br/>
+<i>len</i> Payload length in bytes</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Equivalent to <b>tcp_client_send_packet()</b> for API
+  compatibility
+<p class="Pp"></p>
+<p class="Pp">Thread-safe: multiple threads can call concurrently</p>
+</div>
 <p class="Pp">Definition at line <b>237</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
 <pre>237                                                                                                                {
 238   if (!client) {
 239     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL client&quot;);
 240   }
-241 
+241
 242   if (!atomic_load_bool(&amp;client-&gt;connection_active)) {
 243     return SET_ERRNO(ERROR_NETWORK, &quot;Connection not active&quot;);
 244   }
-245 
+245
 246   if (!client-&gt;transport) {
 247     return SET_ERRNO(ERROR_NETWORK, &quot;No active transport&quot;);
 248   }
-249 
+249
 250   // Acquire send mutex for thread-safe transmission
 251   mutex_lock(&amp;client-&gt;send_mutex);
-252 
+252
 253   // Send packet through transport with client ID
 254   asciichat_error_t result = packet_send_via_transport(client-&gt;transport, type, data, len, client-&gt;my_client_id);
-255 
+255
 256   mutex_unlock(&amp;client-&gt;send_mutex);
-257 
+257
 258   if (result != ASCIICHAT_OK) {
 259     log_debug(&quot;Failed to send packet type %d: %s&quot;, type, asciichat_error_string(result));
 260     return -1;
 261   }
-262 
+262
 263   return 0;
 264 }</pre>
 <pre></pre>
@@ -442,6 +514,17 @@
   websocket_client_send_ping (<b>websocket_client_t</b> * client)</a></h2>
 <p class="Pp">Send ping frame (keepalive heartbeat). Routes through
     <b>websocket_client_send_packet()</b> with PACKET_TYPE_PING.</p>
+<p class="Pp"></p>
+<p class="Pp">Routes through <b>websocket_client_send_packet()</b> with
+    PACKET_TYPE_PING.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client</i> WebSocket client instance</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Equivalent to <b>tcp_client_send_ping()</b> for API
+  compatibility</div>
 <p class="Pp">Definition at line <b>271</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
 <pre>271                                                            {
@@ -459,6 +542,17 @@
   websocket_client_send_pong (<b>websocket_client_t</b> * client)</a></h2>
 <p class="Pp">Send pong frame (keepalive response). Routes through
     <b>websocket_client_send_packet()</b> with PACKET_TYPE_PONG.</p>
+<p class="Pp"></p>
+<p class="Pp">Routes through <b>websocket_client_send_packet()</b> with
+    PACKET_TYPE_PONG.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client</i> WebSocket client instance</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, -1 on failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Equivalent to <b>tcp_client_send_pong()</b> for API
+  compatibility</div>
 <p class="Pp">Definition at line <b>282</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
 <pre>282                                                            {
@@ -476,20 +570,25 @@
   websocket_client_shutdown (<b>websocket_client_t</b> * client)</a></h2>
 <p class="Pp">Shutdown connection forcefully. Shutdown connection forcefully
     (for signal handlers).</p>
+<p class="Pp"></p>
+<p class="Pp">Shutdown connection forcefully.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client</i> WebSocket client instance</div>
 <p class="Pp">Definition at line <b>153</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
 <pre>153                                                            {
 154   if (!client) {
 155     return;
 156   }
-157 
+157
 158   log_debug(&quot;Shutting down WebSocket client&quot;);
-159 
+159
 160   // Force close the transport
 161   if (client-&gt;transport) {
 162     acip_transport_close(client-&gt;transport);
 163   }
-164 
+164
 165   atomic_store_bool(&amp;client-&gt;connection_active, false);
 166   atomic_store_bool(&amp;client-&gt;connection_lost, true);
 167 }</pre>
@@ -502,6 +601,11 @@
   websocket_client_signal_lost (<b>websocket_client_t</b> * client)</a></h2>
 <p class="Pp">Signal that connection was lost. Signal that connection was lost
     (triggers reconnection).</p>
+<p class="Pp"></p>
+<p class="Pp">Signal that connection was lost.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client</i> WebSocket client instance</div>
 <p class="Pp">Definition at line <b>124</b> of file
     <b>lib/network/websocket/client.c</b>.</p>
 <pre>124                                                               {
@@ -524,7 +628,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.11.25</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

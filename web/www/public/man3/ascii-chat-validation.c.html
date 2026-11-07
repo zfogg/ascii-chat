@@ -41,7 +41,7 @@
     *error_msg, size_t error_msg_size)
   <br/>
   Validate port number (1-65535). <b>bool</b> <b>validate_port_callback</b>
-    (const void *options_struct, char **error_msg)
+    (const void *options_struct)
   <br/>
   int <b>validate_opt_positive_int</b> (const char *value_str, char *error_msg,
     size_t error_msg_size)
@@ -74,14 +74,15 @@
   Validate volume value (0.0-1.0). int <b>validate_opt_max_clients</b> (const
     char *value_str, char *error_msg, size_t error_msg_size)
   <br/>
-  Validate max clients value (1-32). int <b>validate_opt_compression_level</b>
+  Validate max clients value (1-128). int <b>validate_opt_compression_level</b>
     (const char *value_str, char *error_msg, size_t error_msg_size)
   <br/>
   Validate compression level (1-9). int <b>validate_opt_fps</b> (const char
     *value_str, char *error_msg, size_t error_msg_size)
   <br/>
-  Validate FPS value (1-144). int <b>validate_opt_reconnect</b> (const char
-    *value_str, char *error_msg, size_t error_msg_size)
+  Validate FPS value (0 for auto, otherwise 1-144). int
+    <b>validate_opt_reconnect</b> (const char *value_str, char *error_msg,
+    size_t error_msg_size)
   <br/>
   Validate reconnect value. int <b>validate_opt_device_index</b> (const char
     *value_str, char *error_msg, size_t error_msg_size)
@@ -105,34 +106,33 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> validate_port_callback (const void * options_struct,
-  char ** error_msg)</h2>
+<h2 class="Ss"><b>bool</b> validate_port_callback (const void *
+  options_struct)</h2>
 <p class="Pp">Validate port option callback (matches option_descriptor validate
     signature) Used during options parsing to validate port values with
   PCRE2</p>
-<p class="Pp">Definition at line <b>97</b> of file <b>validation.c</b>.</p>
-<pre>97                                                                           {
-98   const options_t *opts = (const options_t *)options_struct;
-99 
-100   // Port is stored as an int, but we need to validate it as a string
-101   // The issue is that strtol() already accepted invalid formats like &quot; 80&quot;, &quot;+80&quot;, &quot;0123&quot;
-102   // So we can't validate after parsing - we need to prevent the parse in the first place
-103   // This callback runs AFTER parsing, so it's too late
-104 
-105   // Instead, check if the port value is in range (this will catch the range but not format issues)
-106   if (opts-&gt;port &lt; 1 || opts-&gt;port &gt; 65535) {
-107     if (error_msg) {
-108       *error_msg = platform_strdup(&quot;Port must be between 1 and 65535&quot;);
-109     }
+<p class="Pp">Definition at line <b>99</b> of file <b>validation.c</b>.</p>
+<pre>99                                                         {
+100   const options_t *opts = (const options_t *)options_struct;
+101
+102   // Port is stored as an int, but we need to validate it as a string
+103   // The issue is that strtol() already accepted invalid formats like &quot; 80&quot;, &quot;+80&quot;, &quot;0123&quot;
+104   // So we can't validate after parsing - we need to prevent the parse in the first place
+105   // This callback runs AFTER parsing, so it's too late
+106
+107   // Instead, check if the port value is in range (this will catch the range but not format issues)
+108   if (opts-&gt;port &lt; 1 || opts-&gt;port &gt; 65535) {
+109     SET_ERRNO(ERROR_USAGE, &quot;Port must be between 1 and 65535&quot;);
 110     return false;
 111   }
-112 
+112
 113   return true;
 114 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_strdup()</b>, and
-    <b>options_state::port</b>.</p>
+<p class="Pp">References <b>ERROR_USAGE</b>, <b>options_state::port</b>,
+    <b>SET_ERRNO</b>, and <b>validate_port_callback()</b>.</p>
+<p class="Pp">Referenced by <b>validate_port_callback()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -142,7 +142,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

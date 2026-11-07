@@ -37,11 +37,45 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>PLATFORM_WASM_TERMINAL_BUF_BUFFER_SIZE</b> 32
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">int <b>platform_get_terminal_size</b> (int *cols, int *rows)
+<p class="Pp">void <b>terminal_get_default_foreground_color</b> (int theme,
+    <b>uint8_t</b> *r, <b>uint8_t</b> *g, <b>uint8_t</b> *b)
   <br/>
-  int <b>platform_write_terminal</b> (const char *data, size_t len)
+  Get theme-aware default foreground color for pixel renderers. void
+    <b>terminal_get_default_background_color</b> (int theme, <b>uint8_t</b> *r,
+    <b>uint8_t</b> *g, <b>uint8_t</b> *b)
+  <br/>
+  Get theme-aware default background color for pixel renderers. int
+    <b>platform_get_terminal_size</b> (int *cols, int *rows)
+  <br/>
+  <b>asciichat_error_t</b> <b>terminal_get_size_fd</b> (int fd,
+    <b>terminal_size_t</b> *size)
+  <br/>
+  <b>asciichat_error_t</b> <b>terminal_get_size</b> (<b>terminal_size_t</b>
+    *size)
+  <br/>
+  Get terminal size. <b>asciichat_error_t</b> <b>terminal_cursor_hide</b> (void)
+  <br/>
+  Hide terminal cursor. <b>asciichat_error_t</b> <b>terminal_cursor_show</b>
+    (void)
+  <br/>
+  Show terminal cursor. unsigned short int <b>terminal_get_effective_width</b>
+    (void)
+  <br/>
+  Get effective terminal width with fallback priority. unsigned short int
+    <b>terminal_get_effective_height</b> (void)
+  <br/>
+  Get effective terminal height with fallback priority. int
+    <b>platform_write_terminal</b> (const char *data, size_t len)
   <br/>
   int <b>platform_set_terminal_raw_mode</b> (<b>bool</b> enable)
   <br/>
@@ -57,7 +91,9 @@
     unsigned short int *height)
   <br/>
   Get terminal size with multiple fallback methods. <b>bool</b>
-    <b>terminal_supports_utf8</b> (void)
+    <b>terminal_should_use_utf8</b> (void)
+  <br/>
+  <b>bool</b> <b>terminal_supports_utf8</b> (void)
   <br/>
   Check if terminal supports UTF-8. <b>bool</b> <b>terminal_is_piped_output</b>
     (void)
@@ -65,7 +101,10 @@
   Check if stdout is piped or redirected. <b>bool</b>
     <b>terminal_should_color_output</b> (int fd)
   <br/>
-  Determine if color output should be used. <b>bool</b>
+  Determine if color output should be used. <b>terminal_color_mode_t</b>
+    <b>terminal_get_effective_color_mode</b> (void)
+  <br/>
+  Get current color mode considering all overrides. <b>bool</b>
     <b>terminal_is_stdin_tty</b> (void)
   <br/>
   Check if stdin is connected to a TTY. <b>bool</b>
@@ -97,8 +136,7 @@
     *bg_g, <b>uint8_t</b> *bg_b)
   <br/>
   Query terminal background color using OSC 11 escape sequence.
-    <b>asciichat_error_t</b> <b>terminal_set_echo</b> (<b>bool</b>
-    <b>enabled</b>)
+    <b>asciichat_error_t</b> <b>terminal_set_echo</b> (<b>bool</b> enabled)
   <br/>
   Set terminal echo mode. <b>bool</b>
     <b>terminal_should_use_control_sequences</b> (int fd)
@@ -112,7 +150,29 @@
   Move cursor to home position (top-left). <b>asciichat_error_t</b>
     <b>terminal_move_cursor_relative</b> (int offset)
   <br/>
-  Move cursor relative to current position.
+  Move cursor relative to current position. <b>asciichat_error_t</b>
+    <b>terminal_fd_reader_create</b> (int fd, int frame_height,
+    <b>terminal_fd_reader_t</b> **out)
+  <br/>
+  Create a terminal FD reader from a file descriptor. void
+    <b>terminal_fd_reader_destroy</b> (<b>terminal_fd_reader_t</b> *reader)
+  <br/>
+  Destroy terminal FD reader. <b>asciichat_error_t</b>
+    <b>terminal_fd_reader_next</b> (<b>terminal_fd_reader_t</b> *reader, char
+    **out_frame)
+  <br/>
+  Read next frame from file descriptor. <b>bool</b>
+    <b>ui_controller_is_presenting</b> (void)
+  <br/>
+  <b>bool</b> <b>ui_controller_is_owner</b> (void)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_controller_write</b> (int fd, const char *data,
+    size_t len)
+  <br/>
+  void <b>ui_controller_title_ready</b> (void)
+  <br/>
+  void <b>ui_controller_title_activity</b> (<b>ui_title_activity_t</b> activity)
+  <br/>
   <br/>
 </p>
 </section>
@@ -124,6 +184,17 @@
 <p class="Pp"></p>
 <p class="Pp"></p>
 <p class="Pp">Definition in file <b>platform/wasm/terminal.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_WASM_TERMINAL_BUF_BUFFER_SIZE___32"><a class="permalink" href="#_define_PLATFORM_WASM_TERMINAL_BUF_BUFFER_SIZE___32">#define
+  PLATFORM_WASM_TERMINAL_BUF_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<p class="Pp">Referenced by <b>terminal_move_cursor_relative()</b>.</p>
+</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
@@ -158,32 +229,35 @@
 <p class="Pp">Use <b>apply_color_mode_override()</b> to apply command-line
     overrides.</p>
 </div>
-<p class="Pp">Definition at line <b>148</b> of file
+<p class="Pp">Definition at line <b>219</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>148                                                            {
-149   terminal_capabilities_t caps = {0};
-150   caps.color_level = TERM_COLOR_TRUECOLOR;
-151   caps.capabilities = 0;
-152   caps.color_count = 16777216;
-153   caps.utf8_support = true;
-154   caps.detection_reliable = true;
-155   caps.render_mode = RENDER_MODE_FOREGROUND; // Default to foreground mode
-156   platform_strlcpy(caps.term_type, &quot;xterm-256color&quot;, sizeof(caps.term_type));
-157   platform_strlcpy(caps.colorterm, &quot;truecolor&quot;, sizeof(caps.colorterm));
-158   caps.wants_background = true;
-159   caps.palette_type = 0; // Default palette
-160   caps.desired_fps = 30;
-161   caps.color_filter = COLOR_FILTER_NONE;
-162   return caps;
-163 }</pre>
+<pre>219                                                            {
+220   terminal_capabilities_t caps = {0};
+221   caps.color_level = TERM_COLOR_TRUECOLOR;
+222   caps.capabilities = 0;
+223   caps.color_count = 16777216;
+224   caps.utf8_support = true;
+225   caps.detection_reliable = true;
+226   caps.render_mode = RENDER_MODE_FOREGROUND; // Default to foreground mode
+227   platform_strlcpy(caps.term_type, &quot;xterm-256color&quot;, sizeof(caps.term_type));
+228   platform_strlcpy(caps.colorterm, &quot;truecolor&quot;, sizeof(caps.colorterm));
+229   caps.wants_background = true;
+230   caps.palette_type = 0; // Default palette
+231   // Browser rendering uses requestAnimationFrame and supports the same
+232   // 60 FPS default as the native terminal paths.
+233   caps.desired_fps = DEFAULT_MAX_FPS;
+234   caps.color_filter = COLOR_FILTER_NONE;
+235   return caps;
+236 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>terminal_capabilities_t::capabilities</b>,
     <b>terminal_capabilities_t::color_count</b>,
     <b>terminal_capabilities_t::color_filter</b>, <b>COLOR_FILTER_NONE</b>,
     <b>terminal_capabilities_t::color_level</b>,
-    <b>terminal_capabilities_t::colorterm</b>,
+    <b>terminal_capabilities_t::colorterm</b>, <b>DEFAULT_MAX_FPS</b>,
     <b>terminal_capabilities_t::desired_fps</b>,
+    <b>detect_terminal_capabilities()</b>,
     <b>terminal_capabilities_t::detection_reliable</b>,
     <b>terminal_capabilities_t::palette_type</b>, <b>platform_strlcpy()</b>,
     <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_FOREGROUND</b>,
@@ -191,9 +265,13 @@
     <b>terminal_capabilities_t::utf8_support</b>, and
     <b>terminal_capabilities_t::wants_background</b>.</p>
 <p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
+    <b>detect_terminal_capabilities()</b>,
     <b>log_redetect_terminal_capabilities()</b>, <b>main()</b>,
-    <b>session_display_create()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+    <b>session_display_create()</b>,
+    <b>session_participant_request_settings()</b>,
+    <b>session_protocol_build_capabilities()</b>,
+    <b>session_protocol_update_settings()</b>, <b>tui_stats_render()</b>,
+    <b>ui_session_render()</b>, and <b>ui_sync_render()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> get_terminal_size (unsigned short int *
@@ -225,118 +303,133 @@
 <p class="Pp">This function is more reliable than <b>terminal_get_size()</b> due
     to fallbacks.</p>
 </div>
-<p class="Pp">Definition at line <b>82</b> of file
+<p class="Pp">Definition at line <b>143</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>82                                                                                            {
-83   if (!width || !height) {
-84     return ERROR_INVALID_PARAM;
-85   }
-86   int cols, rows;
-87   if (platform_get_terminal_size(&amp;cols, &amp;rows) != 0) {
-88     return ERROR_PLATFORM_INIT;
-89   }
-90   *width = (unsigned short int)cols;
-91   *height = (unsigned short int)rows;
-92   return ASCIICHAT_OK;
-93 }</pre>
+<pre>143                                                                                            {
+144   if (!width || !height) {
+145     return ERROR_INVALID_PARAM;
+146   }
+147   int cols, rows;
+148   if (platform_get_terminal_size(&amp;cols, &amp;rows) != 0) {
+149     return ERROR_PLATFORM_INIT;
+150   }
+151   *width = (unsigned short int)cols;
+152   *height = (unsigned short int)rows;
+153   return ASCIICHAT_OK;
+154 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_PLATFORM_INIT</b>, and <b>platform_get_terminal_size()</b>.</p>
-<p class="Pp">Referenced by <b>session_render_loop()</b>,
-    <b>update_dimensions_for_full_height()</b>, and
+    <b>ERROR_PLATFORM_INIT</b>, <b>get_terminal_size()</b>, and
+    <b>platform_get_terminal_size()</b>.</p>
+<p class="Pp">Referenced by <b>get_terminal_size()</b>,
+    <b>is_valid_tty_path()</b>, <b>update_dimensions_for_full_height()</b>, and
     <b>update_dimensions_to_terminal_size()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_get_cursor_position_(int_*_row,_int_*_col)"><a class="permalink" href="#int_platform_get_cursor_position_(int_*_row,_int_*_col)">int
   platform_get_cursor_position (int * row, int * col)</a></h2>
-<p class="Pp">Definition at line <b>69</b> of file
+<p class="Pp">Definition at line <b>130</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>69                                                      {
-70   (void)row;
-71   (void)col;
-72   return -1; // Not supported in WASM
-73 }</pre>
+<pre>130                                                      {
+131   (void)row;
+132   (void)col;
+133   return -1; // Not supported in WASM
+134 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>platform_get_cursor_position()</b>.</p>
+<p class="Pp">Referenced by <b>platform_get_cursor_position()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_get_terminal_size_(int_*_cols,_int_*_rows)"><a class="permalink" href="#int_platform_get_terminal_size_(int_*_cols,_int_*_rows)">int
   platform_get_terminal_size (int * cols, int * rows)</a></h2>
-<p class="Pp">Definition at line <b>35</b> of file
+<p class="Pp">Definition at line <b>62</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>35                                                      {
-36   if (!cols || !rows) {
-37     return -1;
-38   }
-39   *cols = js_get_terminal_cols();
-40   *rows = js_get_terminal_rows();
-41   return 0;
-42 }</pre>
+<pre>62                                                      {
+63   if (!cols || !rows) {
+64     return -1;
+65   }
+66   *cols = js_get_terminal_cols();
+67   *rows = js_get_terminal_rows();
+68   return 0;
+69 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>get_terminal_size()</b>.</p>
+<p class="Pp">References <b>platform_get_terminal_size()</b>.</p>
+<p class="Pp">Referenced by <b>get_terminal_size()</b>, and
+    <b>platform_get_terminal_size()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> platform_is_terminal (int fd)</h2>
-<p class="Pp">Definition at line <b>64</b> of file
+<p class="Pp">Definition at line <b>125</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>64                                   {
-65   (void)fd;
-66   return true; // Always true for WASM terminal
-67 }</pre>
+<pre>125                                   {
+126   (void)fd;
+127   return true; // Always true for WASM terminal
+128 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>platform_is_terminal()</b>.</p>
+<p class="Pp">Referenced by <b>platform_is_terminal()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_read_keyboard_(char_*_buffer,_size_t_len)"><a class="permalink" href="#int_platform_read_keyboard_(char_*_buffer,_size_t_len)">int
   platform_read_keyboard (char * buffer, size_t len)</a></h2>
-<p class="Pp">Definition at line <b>58</b> of file
+<p class="Pp">Definition at line <b>119</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>58                                                      {
-59   (void)buffer;
-60   (void)len;
-61   return -1; // Not supported: use JavaScript event listeners
-62 }</pre>
+<pre>119                                                      {
+120   (void)buffer;
+121   (void)len;
+122   return -1; // Not supported: use JavaScript event listeners
+123 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>platform_read_keyboard()</b>.</p>
+<p class="Pp">Referenced by <b>platform_read_keyboard()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_set_cursor_position_(int_row,_int_col)"><a class="permalink" href="#int_platform_set_cursor_position_(int_row,_int_col)">int
   platform_set_cursor_position (int row, int col)</a></h2>
-<p class="Pp">Definition at line <b>75</b> of file
+<p class="Pp">Definition at line <b>136</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>75                                                    {
-76   (void)row;
-77   (void)col;
-78   return -1; // Not supported in WASM
-79 }</pre>
+<pre>136                                                    {
+137   (void)row;
+138   (void)col;
+139   return -1; // Not supported in WASM
+140 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>platform_set_cursor_position()</b>.</p>
+<p class="Pp">Referenced by <b>platform_set_cursor_position()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_set_terminal_raw_mode_("><a class="permalink" href="#int_platform_set_terminal_raw_mode_(">int
   platform_set_terminal_raw_mode (<b>bool</b> enable)</a></h2>
-<p class="Pp">Definition at line <b>53</b> of file
+<p class="Pp">Definition at line <b>114</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>53                                                 {
-54   (void)enable;
-55   return 0;
-56 }</pre>
+<pre>114                                                 {
+115   (void)enable;
+116   return 0;
+117 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>platform_set_terminal_raw_mode()</b>.</p>
+<p class="Pp">Referenced by <b>platform_set_terminal_raw_mode()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_write_terminal_(const_char_*_data,_size_t_len)"><a class="permalink" href="#int_platform_write_terminal_(const_char_*_data,_size_t_len)">int
   platform_write_terminal (const char * data, size_t len)</a></h2>
-<p class="Pp">Definition at line <b>47</b> of file
+<p class="Pp">Definition at line <b>108</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>47                                                           {
-48   js_terminal_write(data, (int)len);
-49   return (int)len;
-50 }</pre>
+<pre>108                                                           {
+109   js_terminal_write(data, (int)len);
+110   return (int)len;
+111 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>platform_write_terminal()</b>.</p>
+<p class="Pp">Referenced by <b>platform_write_terminal()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_can_prompt_user (void )</h2>
@@ -386,13 +479,366 @@
 <p class="Pp"></p>
 <p class="Pp">When false, yes/no prompts should use default value or deny</p>
 </div>
-<p class="Pp">Definition at line <b>132</b> of file
+<p class="Pp">Definition at line <b>203</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>132                                     {
-133   return false; // Cannot prompt in WASM
-134 }</pre>
+<pre>203                                     {
+204   return false; // Cannot prompt in WASM
+205 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_can_prompt_user()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> terminal_fd_reader_create (int fd, int
+  frame_height, <b>terminal_fd_reader_t</b> ** out)</h2>
+<p class="Pp">Create a terminal FD reader from a file descriptor.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor to read from (e.g.,
+  STDIN_FILENO, open file)
+<br/>
+<i>frame_height</i> Number of lines per frame (required - used for frame
+  boundaries)
+<br/>
+<i>out</i> Pointer to store reader context</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success</div>
+<p class="Pp">Width is auto-detected from the first frame's line length.</p>
+<p class="Pp">Definition at line <b>309</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>309                                                                                                   {
+310   (void)fd;
+311   (void)frame_height;
+312   if (out)
+313     *out = NULL;
+314   return ASCIICHAT_OK;
+315 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, and
+    <b>terminal_fd_reader_create()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_fd_reader_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_terminal_fd_reader_destroy_("><a class="permalink" href="#void_terminal_fd_reader_destroy_(">void
+  terminal_fd_reader_destroy (<b>terminal_fd_reader_t</b> * reader)</a></h2>
+<p class="Pp">Destroy terminal FD reader.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>reader</i> Reader context to destroy</div>
+<p class="Pp">Definition at line <b>317</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>317                                                               {
+318   (void)reader;
+319 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_fd_reader_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_fd_reader_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> terminal_fd_reader_next
+  (<b>terminal_fd_reader_t</b> * reader, char ** out_frame)</h2>
+<p class="Pp">Read next frame from file descriptor. Reads frame_height lines
+    from the FD and returns them as a single frame string. Returns NULL in
+    out_frame when EOF is reached.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>reader</i> Reader context
+<br/>
+<i>out_frame</i> Pointer to store frame data (NULL when EOF, must free with
+  SAFE_FREE)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success (including EOF)</div>
+<p class="Pp">Definition at line <b>321</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>321                                                                                           {
+322   (void)reader;
+323   if (out_frame)
+324     *out_frame = NULL;
+325   return ASCIICHAT_OK;
+326 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, and
+    <b>terminal_fd_reader_next()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_fd_reader_next()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_terminal_get_default_background_color_(int_theme,_"><a class="permalink" href="#void_terminal_get_default_background_color_(int_theme,_">void
+  terminal_get_default_background_color (int theme, <b>uint8_t</b> * r,
+  <b>uint8_t</b> * g, <b>uint8_t</b> * b)</a></h2>
+<p class="Pp">Get theme-aware default background color for pixel renderers. Get
+    theme-aware default background color for the renderer.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>theme</i> Terminal theme (0=dark, 1=light, 2=auto)
+<br/>
+<i>out_r</i> Pointer to store red component (0-255)
+<br/>
+<i>out_g</i> Pointer to store green component (0-255)
+<br/>
+<i>out_b</i> Pointer to store blue component (0-255)</div>
+<p class="Pp">Used by both Linux and macOS renderers for consistent color
+    selection. Returns appropriate background color based on terminal theme.</p>
+<p class="Pp"></p>
+<p class="Pp">Get theme-aware default background color for pixel renderers.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>theme</i> Terminal theme (dark or light)
+<br/>
+<i>out_r</i> Pointer to store red component (0-255)
+<br/>
+<i>out_g</i> Pointer to store green component (0-255)
+<br/>
+<i>out_b</i> Pointer to store blue component (0-255)</div>
+<p class="Pp">Returns appropriate default background color based on terminal
+    theme. Light theme uses white background, dark theme uses black
+  background.</p>
+<p class="Pp">Definition at line <b>52</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>52                                                                                           {
+53   uint8_t value = theme == 1 ? TERMINAL_COLOR_THEME_LIGHT_BG_R : TERMINAL_COLOR_THEME_DARK_BG_R;
+54   if (r)
+55     *r = value;
+56   if (g)
+57     *g = value;
+58   if (b)
+59     *b = value;
+60 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>TERMINAL_COLOR_THEME_DARK_BG_R</b>,
+    <b>TERMINAL_COLOR_THEME_LIGHT_BG_R</b>, and
+    <b>terminal_get_default_background_color()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_terminal_get_default_foreground_color_(int_theme,_"><a class="permalink" href="#void_terminal_get_default_foreground_color_(int_theme,_">void
+  terminal_get_default_foreground_color (int theme, <b>uint8_t</b> * r,
+  <b>uint8_t</b> * g, <b>uint8_t</b> * b)</a></h2>
+<p class="Pp">Get theme-aware default foreground color for pixel renderers. Get
+    theme-aware default foreground color for the renderer.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>theme</i> Terminal theme (0=dark, 1=light, 2=auto)
+<br/>
+<i>out_r</i> Pointer to store red component (0-255)
+<br/>
+<i>out_g</i> Pointer to store green component (0-255)
+<br/>
+<i>out_b</i> Pointer to store blue component (0-255)</div>
+<p class="Pp">Used by both Linux and macOS renderers for consistent color
+    selection. Returns appropriate text color based on terminal theme.</p>
+<p class="Pp"></p>
+<p class="Pp">Get theme-aware default foreground color for pixel renderers.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>theme</i> Terminal theme (dark or light)
+<br/>
+<i>out_r</i> Pointer to store red component (0-255)
+<br/>
+<i>out_g</i> Pointer to store green component (0-255)
+<br/>
+<i>out_b</i> Pointer to store blue component (0-255)</div>
+<p class="Pp">Returns appropriate default text color based on terminal theme.
+    Both Linux and macOS renderers use this for consistent color selection.</p>
+<p class="Pp">Definition at line <b>42</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>42                                                                                           {
+43   uint8_t value = theme == 1 ? TERMINAL_COLOR_THEME_LIGHT_FG_R : TERMINAL_COLOR_THEME_DARK_FG_R;
+44   if (r)
+45     *r = value;
+46   if (g)
+47     *g = value;
+48   if (b)
+49     *b = value;
+50 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>TERMINAL_COLOR_THEME_DARK_FG_R</b>,
+    <b>TERMINAL_COLOR_THEME_LIGHT_FG_R</b>, and
+    <b>terminal_get_default_foreground_color()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>terminal_color_mode_t</b> terminal_get_effective_color_mode
+  (void )</h2>
+<p class="Pp">Get current color mode considering all overrides. Determines
+    effective color mode by checking:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>--color flag (force enable)</dd>
+  <dt>2.</dt>
+  <dd>--color-mode option (none/16/256/truecolor)</dd>
+  <dt>3.</dt>
+  <dd>Terminal capability detection</dd>
+</dl>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Effective <b>terminal_color_mode_t</b> to use</div>
+<p class="Pp">Definition at line <b>176</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>176                                                               {
+177   // Browser output supports color; retain the explicit option or AUTO so the
+178   // caller can resolve it using the JavaScript-managed terminal capabilities.
+179   return GET_OPTION(color_mode);
+180 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>GET_OPTION</b>, and
+    <b>terminal_get_effective_color_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="unsigned_short_int_terminal_get_effective_height_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_height_(void_)">unsigned
+  short int terminal_get_effective_height (void )</a></h2>
+<p class="Pp">Get effective terminal height with fallback priority.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Terminal height in characters with priority: option
+  &#x2192; detected &#x2192; default</div>
+<p class="Pp">Returns the effective terminal height to use, checking in priority
+    order:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Option value</b>: If --height was set to a non-zero value, return
+    it</dd>
+  <dt>2.</dt>
+  <dd><b>Detected size</b>: Try to detect actual terminal height via
+      <b>terminal_get_size()</b><b></b></dd>
+  <dt>3.</dt>
+  <dd><b>Default</b>: Return <b>OPT_HEIGHT_DEFAULT</b><b> (70) as final
+      fallback</b></dd>
+</dl>
+<p class="Pp">This function simplifies the common pattern of &quot;use option if
+    set, else detect,else use default&quot; that appears throughout the codebase
+    for terminal dimension handling.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Safe to call from any thread (uses lock-free option
+  access)
+<p class="Pp"></p>
+<p class="Pp">Detection may fail on non-TTY output (piped/redirected), falls
+    back gracefully</p>
+<p class="Pp"></p>
+<p class="Pp">Height option defaults to 0, so non-zero means it was explicitly
+    set</p>
+</div>
+<p class="Pp"><b>Usage Example:</b></p>
+<p class="Pp"></p>
+<pre>// Old pattern (scattered throughout code):
+unsigned short int height = GET_OPTION(height);
+if (height == 0) {
+<br/>
+    terminal_size_t size;
+<br/>
+    if (terminal_get_size(&amp;size) == ASCIICHAT_OK) {
+<br/>
+        height = size.rows;
+<br/>
+    } else {
+<br/>
+        height = OPT_HEIGHT_DEFAULT;
+<br/>
+    }
+}
+// New pattern (unified):
+unsigned short int height = terminal_get_effective_height();
+</pre>
+<p class="Pp">Returns height in priority order:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Option height if set to non-zero value</dd>
+  <dt>2.</dt>
+  <dd>Detected terminal height</dd>
+  <dt>3.</dt>
+  <dd>OPT_HEIGHT_DEFAULT fallback</dd>
+</dl>
+<p class="Pp">Definition at line <b>97</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>97                                                        {
+98   int height = GET_OPTION(height);
+99   if (height &gt; 0) {
+100     return (unsigned short int)height;
+101   }
+102   return OPT_HEIGHT_DEFAULT;
+103 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>GET_OPTION</b>, <b>OPT_HEIGHT_DEFAULT</b>, and
+    <b>terminal_get_effective_height()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="unsigned_short_int_terminal_get_effective_width_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_width_(void_)">unsigned
+  short int terminal_get_effective_width (void )</a></h2>
+<p class="Pp">Get effective terminal width with fallback priority.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Terminal width in characters with priority: option
+  &#x2192; detected &#x2192; default</div>
+<p class="Pp">Returns the effective terminal width to use, checking in priority
+    order:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Option value</b>: If --width was set to a non-zero value, return
+    it</dd>
+  <dt>2.</dt>
+  <dd><b>Detected size</b>: Try to detect actual terminal width via
+      <b>terminal_get_size()</b><b></b></dd>
+  <dt>3.</dt>
+  <dd><b>Default</b>: Return <b>OPT_WIDTH_DEFAULT</b><b> (110) as final
+      fallback</b></dd>
+</dl>
+<p class="Pp">This function simplifies the common pattern of &quot;use option if
+    set, else detect,else use default&quot; that appears throughout the codebase
+    for terminal dimension handling.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Safe to call from any thread (uses lock-free option
+  access)
+<p class="Pp"></p>
+<p class="Pp">Detection may fail on non-TTY output (piped/redirected), falls
+    back gracefully</p>
+<p class="Pp"></p>
+<p class="Pp">Width option defaults to 0, so non-zero means it was explicitly
+    set</p>
+</div>
+<p class="Pp"><b>Usage Example:</b></p>
+<p class="Pp"></p>
+<pre>// Old pattern (scattered throughout code):
+unsigned short int width = GET_OPTION(width);
+if (width == 0) {
+<br/>
+    terminal_size_t size;
+<br/>
+    if (terminal_get_size(&amp;size) == ASCIICHAT_OK) {
+<br/>
+        width = size.cols;
+<br/>
+    } else {
+<br/>
+        width = OPT_WIDTH_DEFAULT;
+<br/>
+    }
+}
+// New pattern (unified):
+unsigned short int width = terminal_get_effective_width();
+</pre>
+<p class="Pp">Returns width in priority order:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Option width if set to non-zero value</dd>
+  <dt>2.</dt>
+  <dd>Detected terminal width</dd>
+  <dt>3.</dt>
+  <dd>OPT_WIDTH_DEFAULT fallback</dd>
+</dl>
+<p class="Pp">Definition at line <b>89</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>89                                                       {
+90   int width = GET_OPTION(width);
+91   if (width &gt; 0) {
+92     return (unsigned short int)width;
+93   }
+94   return OPT_WIDTH_DEFAULT;
+95 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>GET_OPTION</b>, <b>OPT_WIDTH_DEFAULT</b>, and
+    <b>terminal_get_effective_width()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_has_dark_background (void )</h2>
@@ -429,14 +875,17 @@
 <p class="Pp"></p>
 <p class="Pp">User can override via TERM_BACKGROUND environment variable</p>
 </div>
-<p class="Pp">Definition at line <b>137</b> of file
+<p class="Pp">Definition at line <b>208</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>137                                         {
-138   return true; // Default to dark background for terminals
-139 }</pre>
+<pre>208                                         {
+209   return true; // Default to dark background for terminals
+210 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>detect_terminal_background()</b>.</p>
+<p class="Pp">References <b>terminal_has_dark_background()</b>.</p>
+<p class="Pp">Referenced by <b>detect_terminal_background()</b>,
+    <b>terminal_has_dark_background()</b>, and
+    <b>test_terminal_output_modes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_interactive (void )</h2>
@@ -473,13 +922,14 @@
 <p class="Pp">Snapshot mode is checked separately via
     <b>GET_OPTION(snapshot_mode)</b></p>
 </div>
-<p class="Pp">Definition at line <b>124</b> of file
+<p class="Pp">Definition at line <b>195</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>124                                    {
-125   return false; // WASM mirror mode is not interactive
-126 }</pre>
+<pre>195                                    {
+196   return false; // WASM mirror mode is not interactive
+197 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_is_interactive()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_piped_output (void )</h2>
@@ -508,13 +958,14 @@
 <p class="Pp">Common pattern: force stderr when piped to prevent data
   corruption</p>
 </div>
-<p class="Pp">Definition at line <b>101</b> of file
+<p class="Pp">Definition at line <b>166</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>101                                     {
-102   return false; // WASM mirror mode is not piped
-103 }</pre>
+<pre>166                                     {
+167   return false; // WASM mirror mode is not piped
+168 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_is_piped_output()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_stderr_tty (void )</h2>
@@ -532,13 +983,14 @@
 <p class="Pp"></p>
 <p class="Pp">stderr is often a TTY even when stdout is piped</p>
 </div>
-<p class="Pp">Definition at line <b>120</b> of file
+<p class="Pp">Definition at line <b>191</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>120                                   {
-121   return true;
-122 }</pre>
+<pre>191                                   {
+192   return true;
+193 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_is_stderr_tty()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_stdin_tty (void )</h2>
@@ -558,13 +1010,14 @@
 <p class="Pp">Returns false in non-interactive environments (CI, scripts,
   pipes)</p>
 </div>
-<p class="Pp">Definition at line <b>112</b> of file
+<p class="Pp">Definition at line <b>183</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>112                                  {
-113   return false; // No stdin in WASM
-114 }</pre>
+<pre>183                                  {
+184   return false; // No stdin in WASM
+185 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_is_stdin_tty()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_stdout_tty (void )</h2>
@@ -587,13 +1040,14 @@
 <p class="Pp">Returns false in piped contexts (e.g., ascii-chat client |
   less)</p>
 </div>
-<p class="Pp">Definition at line <b>116</b> of file
+<p class="Pp">Definition at line <b>187</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>116                                   {
-117   return true;
-118 }</pre>
+<pre>187                                   {
+188   return true;
+189 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_is_stdout_tty()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_query_background_color (<b>uint8_t</b> *
@@ -619,20 +1073,23 @@
 <p class="Pp"></p>
 <p class="Pp">Only works if stdout is a TTY</p>
 </div>
-<p class="Pp">Definition at line <b>166</b> of file
+<p class="Pp">Definition at line <b>239</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>166                                                                                   {
-167   // Return dark background (black)
-168   if (bg_r)
-169     *bg_r = 0;
-170   if (bg_g)
-171     *bg_g = 0;
-172   if (bg_b)
-173     *bg_b = 0;
-174   return true;
-175 }</pre>
+<pre>239                                                                                   {
+240   // Return dark background (black)
+241   if (bg_r)
+242     *bg_r = 0;
+243   if (bg_g)
+244     *bg_g = 0;
+245   if (bg_b)
+246     *bg_b = 0;
+247   return true;
+248 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_query_background_color()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_query_background_color()</b>, and
+    <b>test_terminal_output_modes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_should_color_output (int fd)</h2>
@@ -655,14 +1112,15 @@
   STDERR_FILENO)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if colors should be used, false otherwise</div>
-<p class="Pp">Definition at line <b>106</b> of file
+<p class="Pp">Definition at line <b>171</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>106                                           {
-107   (void)fd;
-108   return true; // WASM mirror mode supports color
-109 }</pre>
+<pre>171                                           {
+172   (void)fd;
+173   return true; // WASM mirror mode supports color
+174 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_should_color_output()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_should_force_stderr (void )</h2>
@@ -701,13 +1159,14 @@
 <p class="Pp">Typical usage: if (<b>terminal_should_force_stderr()</b>)
     log_set_force_stderr(true);</p>
 </div>
-<p class="Pp">Definition at line <b>128</b> of file
+<p class="Pp">Definition at line <b>199</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>128                                         {
-129   return false; // Don't force stderr in WASM
-130 }</pre>
+<pre>199                                         {
+200   return false; // Don't force stderr in WASM
+201 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_should_force_stderr()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_should_use_control_sequences (int fd)</h2>
@@ -755,14 +1214,101 @@
 <p class="Pp"></p>
 <p class="Pp">Note: This does NOT control ANSI COLOR CODES, which are controlled
     by --color-mode option and may be sent to pipes if explicitly requested.</p>
-<p class="Pp">Definition at line <b>194</b> of file
+<p class="Pp">Definition at line <b>267</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>194                                                    {
-195   (void)fd;
-196   return true; // Always use ANSI sequences in browser
-197 }</pre>
+<pre>267                                                    {
+268   (void)fd;
+269   return true; // Always use ANSI sequences in browser
+270 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_should_use_control_sequences()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_controller_is_owner (void )</h2>
+<p class="Pp">Definition at line <b>332</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>332                                   {
+333   return false;
+334 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_is_owner()</b>.</p>
+<p class="Pp">Referenced by <b>log_console_impl()</b>,
+    <b>ui_controller_is_owner()</b>, and <b>ui_notice_present()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_controller_is_presenting (void )</h2>
+<p class="Pp">Lock-free query for console logging, including logs from rendering
+    callbacks.</p>
+<p class="Pp">Definition at line <b>328</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>328                                        {
+329   return false;
+330 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_is_presenting()</b>.</p>
+<p class="Pp">Referenced by <b>log_console_impl()</b>, <b>log_msg()</b>,
+    <b>ui_controller_is_presenting()</b>, <b>ui_controller_write()</b>,
+    <b>ui_notice_present()</b>, and <b>ui_prompt_dismiss()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_title_activity_("><a class="permalink" href="#void_ui_controller_title_activity_(">void
+  ui_controller_title_activity (<b>ui_title_activity_t</b> activity)</a></h2>
+<p class="Pp">Definition at line <b>345</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>345                                                                 {
+346   (void)activity;
+347 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_title_activity()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_write_ascii_frame()</b>,
+    <b>splash_clear_discovery_session()</b>,
+    <b>ui_controller_title_activity()</b>, and
+    <b>ui_controller_title_discovery()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_title_ready_(void_)"><a class="permalink" href="#void_ui_controller_title_ready_(void_)">void
+  ui_controller_title_ready (void )</a></h2>
+<p class="Pp">Definition at line <b>344</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>344 {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_title_ready()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_write_ascii_frame()</b>,
+    <b>session_server_like_run()</b>, <b>ui_controller_title_ready()</b>, and
+    <b>ui_controller_title_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_controller_write (int fd, const char
+  * data, size_t len)</h2>
+<p class="Pp">Final output sink. Live screen writes must originate in a
+    presentation callback. Other terminal text is suppressed while a screen owns
+    the terminal; non-TTY output remains synchronous.</p>
+<p class="Pp">Definition at line <b>336</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>336                                                                             {
+337   if (!data || !len)
+338     return ASCIICHAT_OK;
+339   if (platform_write_all(fd, data, len) != len)
+340     return SET_ERRNO(ERROR_FILE_OPERATION, &quot;Failed to write browser log output&quot;);
+341   return ASCIICHAT_OK;
+342 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_FILE_OPERATION</b>,
+    <b>platform_write_all()</b>, <b>SET_ERRNO</b>, and
+    <b>ui_controller_write()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_write()</b>, <b>ascii_write_destroy()</b>,
+    <b>ascii_write_init()</b>, <b>log_console_impl()</b>, <b>main()</b>,
+    <b>session_display_write_ascii_frame()</b>,
+    <b>session_display_write_raw()</b>, <b>tui_stats_render()</b>,
+    <b>ui_controller_printf()</b>, <b>ui_controller_restore_terminal()</b>,
+    <b>ui_controller_write()</b>, <b>ui_notice_present()</b>,
+    <b>ui_prompt_dismiss()</b>, and <b>ui_sync_render()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -772,7 +1318,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

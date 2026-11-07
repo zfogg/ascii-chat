@@ -30,9 +30,7 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">queued_packet_t - Single packet ready to send (header already in
-    network byte order).</p>
-<p class="Pp"></p>
+<p class="Pp">queued_packet_t</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
@@ -43,17 +41,10 @@
 <br/>
 <p class="Pp"><b>packet_header_t</b> <b>header</b>
   <br/>
-  Complete packet header (already in network byte order). void * <b>data</b>
+  const void * <b>data</b>
   <br/>
-  Packet payload data (can be NULL for header-only packets). size_t
-    <b>data_len</b>
+  size_t <b>data_len</b>
   <br/>
-  Length of payload data in bytes. <b>bool</b> <b>owns_data</b>
-  <br/>
-  If true, free data when packet is freed. <b>buffer_pool_t</b> *
-    <b>buffer_pool</b>
-  <br/>
-  Pool that allocated the data (NULL if malloc'd).
   <br/>
 </p>
 </section>
@@ -61,23 +52,32 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Single packet ready to send (header already in network byte
-    order).</p>
-<p class="Pp">Represents a complete packet with header and optional payload
-    data. The packet header should already be in network byte order before
-    enqueueing.</p>
+<p class="Pp">A dequeued packet owns its immutable payload until
+    <b>packet_queue_free_packet()</b>.</p>
+<p class="Pp">Definition at line <b>6</b> of file <b>queue.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_void*_queued_packet_t::data"><a class="permalink" href="#const_void*_queued_packet_t::data">const
+  void* queued_packet_t::data</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_free_packet()</b>, and
+    <b>packet_queue_validate_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_queued_packet_t::data_len"><a class="permalink" href="#size_t_queued_packet_t::data_len">size_t
+  queued_packet_t::data_len</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_validate_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>packet_header_t</b> queued_packet_t::header</h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>queue.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_validate_packet()</b>.</p>
 <p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">If owns_data is true, the packet queue will free the data
-  when the packet is freed (either via <b>packet_queue_free_packet()</b> or
-  queue destruction).
-<p class="Pp"></p>
-<p class="Pp"><b>buffer_pool</b> tracks which pool allocated the data (if any)
-    for proper return to the pool. NULL means data was allocated with
-  malloc().</p>
-</div>
-<p class="Pp">Definition at line <b>120</b> of file <b>queue.h</b>.</p>
-<p class="Pp"></p>
+</section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
@@ -86,7 +86,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

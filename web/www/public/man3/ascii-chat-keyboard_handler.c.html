@@ -36,11 +36,21 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SESSION_KEYBOARD_HANDLER_INPUT_BUFFER_SIZE</b> 8192
+  <br/>
+  #define <b>SESSION_KEYBOARD_HANDLER_NORMALIZED_BUFFER_SIZE</b> 8192
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">void <b>session_handle_keyboard_input</b>
     (<b>session_capture_ctx_t</b> *capture, <b>session_display_ctx_t</b>
-    *display, keyboard_key_t key)
+    *display, <b>keyboard_key_t</b> key)
   <br/>
   Handle keyboard input in a session.
   <br/>
@@ -56,13 +66,29 @@
 <p class="Pp">Definition in file <b>keyboard_handler.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_SESSION_KEYBOARD_HANDLER_INPUT_BUFFER_SIZE___8192"><a class="permalink" href="#_define_SESSION_KEYBOARD_HANDLER_INPUT_BUFFER_SIZE___8192">#define
+  SESSION_KEYBOARD_HANDLER_INPUT_BUFFER_SIZE 8192</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>keyboard_handler.c</b>.</p>
+<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SESSION_KEYBOARD_HANDLER_NORMALIZED_BUFFER_SIZE___8192"><a class="permalink" href="#_define_SESSION_KEYBOARD_HANDLER_NORMALIZED_BUFFER_SIZE___8192">#define
+  SESSION_KEYBOARD_HANDLER_NORMALIZED_BUFFER_SIZE 8192</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>keyboard_handler.c</b>.</p>
+<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

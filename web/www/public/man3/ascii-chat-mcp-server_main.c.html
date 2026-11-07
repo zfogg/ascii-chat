@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>main.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">main.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">main.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">main.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>mcp_server_main</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_mcp_server_main_(void_)"><a class="permalink" href="#int_mcp_server_main_(void_)">int
+  mcp_server_main (void )</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file <b>mcp-server/main.c</b>.</p>
+<pre>19                           {
+20   if (strcmp(GET_OPTION(mcp_transport), &quot;http&quot;) &amp;&amp; strcmp(GET_OPTION(mcp_transport), &quot;stdio&quot;))
+21     return SET_ERRNO(ERROR_CONFIG, &quot;--transport must be http or stdio&quot;);
+22   mcp_server_t *s = SAFE_CALLOC(1, sizeof(*s), mcp_server_t *);
+23   s-&gt;policy = (mcp_policy_t){.hosted = !strcmp(GET_OPTION(mcp_transport), &quot;http&quot;),
+24                              .restricted = GET_OPTION(mcp_server_restricted),
+25                              .address = GET_OPTION(address),
+26                              .address6 = GET_OPTION(address6),
+27                              .port = GET_OPTION(port),
+28                              .origin = GET_OPTION(http_origin),
+29                              .tls_cert = GET_OPTION(http_tls_cert),
+30                              .tls_key = GET_OPTION(http_tls_key),
+31                              .tls_password = GET_OPTION(http_tls_key_password),
+32                              .max_jobs = (unsigned)GET_OPTION(max_clients)};
+33   log_set_terminal_output(s-&gt;policy.hosted);
+34   unsigned available_cpus = uv_available_parallelism();
+35   if (!available_cpus)
+36     available_cpus = 1;
+37   if (!s-&gt;policy.max_jobs || s-&gt;policy.max_jobs &gt; available_cpus)
+38     s-&gt;policy.max_jobs = available_cpus;
+39   if (s-&gt;policy.hosted &amp;&amp; (!!s-&gt;policy.tls_cert[0] != !!s-&gt;policy.tls_key[0])) {
+40     asciichat_error_t err = SET_ERRNO(ERROR_CONFIG, &quot;MCP HTTPS requires both --http-tls-cert and --http-tls-key&quot;);
+41     log_error(&quot;MCP HTTPS requires both --http-tls-cert and --http-tls-key&quot;);
+42     SAFE_FREE(s);
+43     return err;
+44   }
+45   // Initialize immutable registry metadata before worker threads are started.
+46   registry_init_size();
+47   if (sodium_init() &lt; 0 || mutex_init(&amp;s-&gt;output_mutex, &quot;mcp.output&quot;)) {
+48     SAFE_FREE(s);
+49     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Cannot initialize MCP server&quot;);
+50   }
+51   s-&gt;jobs = SAFE_CALLOC(s-&gt;policy.max_jobs, sizeof(*s-&gt;jobs), mcp_job_t *);
+52   if (!s-&gt;jobs) {
+53     mutex_destroy(&amp;s-&gt;output_mutex);
+54     SAFE_FREE(s);
+55     return SET_ERRNO(ERROR_MEMORY, &quot;Cannot allocate MCP render jobs&quot;);
+56   }
+57   log_info(&quot;MCP server started (%s, %s capabilities, %u render jobs)&quot;, s-&gt;policy.hosted ? &quot;HTTP&quot; : &quot;stdio&quot;,
+58            s-&gt;policy.restricted ? &quot;restricted&quot; : &quot;local&quot;, s-&gt;policy.max_jobs);
+59   stats_runtime_set_provider(mcp_stats_view, s);
+60   asciichat_error_t err = s-&gt;policy.hosted ? mcp_http_run(s) : mcp_stdio_run(s);
+61   stats_runtime_set_provider(NULL, NULL);
+62   for (unsigned i = 0; i &lt; s-&gt;policy.max_jobs; ++i)
+63     if (s-&gt;jobs[i].started)
+64       atomic_store_bool(&amp;s-&gt;jobs[i].cancelled, true);
+65   mcp_jobs_reap(s, true);
+66   mcp_stdio_release();
+67   mutex_destroy(&amp;s-&gt;output_mutex);
+68   SAFE_FREE(s-&gt;jobs);
+69   SAFE_FREE(s);
+70   return err;
+71 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>, <b>mcp_job::cancelled</b>,
+    <b>ERROR_CONFIG</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
+    <b>GET_OPTION</b>, <b>mcp_policy_t::hosted</b>, <b>mcp_server::jobs</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>log_set_terminal_output()</b>,
+    <b>mcp_policy_t::max_jobs</b>, <b>mcp_http_run()</b>,
+    <b>mcp_jobs_reap()</b>, <b>mcp_server_main()</b>,
+    <b>mcp_stdio_release()</b>, <b>mcp_stdio_run()</b>, <b>mutex_destroy()</b>,
+    <b>mutex_init()</b>, <b>mcp_server::output_mutex</b>,
+    <b>mcp_server::policy</b>, <b>registry_init_size()</b>,
+    <b>mcp_policy_t::restricted</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>SET_ERRNO</b>, <b>mcp_job::started</b>,
+    <b>stats_runtime_set_provider()</b>, <b>mcp_policy_t::tls_cert</b>, and
+    <b>mcp_policy_t::tls_key</b>.</p>
+<p class="Pp">Referenced by <b>mcp_server_main()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>network_server_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">network_server_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">network_server_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">network_server_config_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/connection.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">int <b>port</b>
+  <br/>
+  const char * <b>ipv4_address</b>
+  <br/>
+  const char * <b>ipv6_address</b>
+  <br/>
+  <b>bool</b> <b>bind_ipv4</b>
+  <br/>
+  <b>bool</b> <b>bind_ipv6</b>
+  <br/>
+  <b>bool</b> <b>websocket_enabled</b>
+  <br/>
+  int <b>websocket_port</b>
+  <br/>
+  const char * <b>tls_cert_path</b>
+  <br/>
+  const char * <b>tls_key_path</b>
+  <br/>
+  <b>network_connection_callbacks_t</b> <b>callbacks</b>
+  <br/>
+  void * <b>user_data</b>
+  <br/>
+  void(*) <b>tick</b> (void *)
+  <br/>
+  void * <b>tick_context</b>
+  <br/>
+  size_t <b>max_connections</b>
+  <br/>
+  size_t <b>max_payload</b>
+  <br/>
+  <b>uint64_t</b> <b>handshake_timeout_ms</b>
+  <br/>
+  <b>uint64_t</b> <b>partial_timeout_ms</b>
+  <br/>
+  <b>uint64_t</b> <b>idle_timeout_ms</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>30</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> network_server_config_t::bind_ipv4</h2>
+<p class="Pp">Definition at line <b>33</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+<p class="Pp">Referenced by <b>network_server_create()</b>, and
+    <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> network_server_config_t::bind_ipv6</h2>
+<p class="Pp">Definition at line <b>33</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+<p class="Pp">Referenced by <b>network_server_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>network_connection_callbacks_t</b>
+  network_server_config_t::callbacks</h2>
+<p class="Pp">Definition at line <b>37</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+<p class="Pp">Referenced by <b>network_server_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b>
+  network_server_config_t::handshake_timeout_ms</h2>
+<p class="Pp">Definition at line <b>42</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+<p class="Pp">Referenced by <b>network_server_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> network_server_config_t::idle_timeout_ms</h2>
+<p class="Pp">Definition at line <b>42</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_network_server_config_t::ipv4_address"><a class="permalink" href="#const_char*_network_server_config_t::ipv4_address">const
+  char* network_server_config_t::ipv4_address</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+<p class="Pp">Referenced by <b>network_server_create()</b>, and
+    <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_network_server_config_t::ipv6_address"><a class="permalink" href="#const_char_*_network_server_config_t::ipv6_address">const
+  char * network_server_config_t::ipv6_address</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+<p class="Pp">Referenced by <b>network_server_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_network_server_config_t::max_connections"><a class="permalink" href="#size_t_network_server_config_t::max_connections">size_t
+  network_server_config_t::max_connections</a></h2>
+<p class="Pp">Definition at line <b>41</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+<p class="Pp">Referenced by <b>network_server_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_network_server_config_t::max_payload"><a class="permalink" href="#size_t_network_server_config_t::max_payload">size_t
+  network_server_config_t::max_payload</a></h2>
+<p class="Pp">Definition at line <b>41</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> network_server_config_t::partial_timeout_ms</h2>
+<p class="Pp">Definition at line <b>42</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+<p class="Pp">Referenced by <b>network_server_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_network_server_config_t::port"><a class="permalink" href="#int_network_server_config_t::port">int
+  network_server_config_t::port</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+<p class="Pp">Referenced by <b>network_server_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*)_network_server_config_t::tick(void_*)"><a class="permalink" href="#void(*)_network_server_config_t::tick(void_*)">void(*)
+  network_server_config_t::tick(void *)</a></h2>
+<p class="Pp">Definition at line <b>39</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_network_server_config_t::tick_context"><a class="permalink" href="#void*_network_server_config_t::tick_context">void*
+  network_server_config_t::tick_context</a></h2>
+<p class="Pp">Definition at line <b>40</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_network_server_config_t::tls_cert_path"><a class="permalink" href="#const_char*_network_server_config_t::tls_cert_path">const
+  char* network_server_config_t::tls_cert_path</a></h2>
+<p class="Pp">Definition at line <b>36</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+<p class="Pp">Referenced by <b>network_server_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_network_server_config_t::tls_key_path"><a class="permalink" href="#const_char_*_network_server_config_t::tls_key_path">const
+  char * network_server_config_t::tls_key_path</a></h2>
+<p class="Pp">Definition at line <b>36</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+<p class="Pp">Referenced by <b>network_server_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_network_server_config_t::user_data"><a class="permalink" href="#void*_network_server_config_t::user_data">void*
+  network_server_config_t::user_data</a></h2>
+<p class="Pp">Definition at line <b>38</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> network_server_config_t::websocket_enabled</h2>
+<p class="Pp">Definition at line <b>34</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+<p class="Pp">Referenced by <b>network_server_create()</b>, and
+    <b>network_server_websocket_enabled()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_network_server_config_t::websocket_port"><a class="permalink" href="#int_network_server_config_t::websocket_port">int
+  network_server_config_t::websocket_port</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file
+    <b>include/ascii-chat/network/connection.h</b>.</p>
+<p class="Pp">Referenced by <b>network_server_create()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

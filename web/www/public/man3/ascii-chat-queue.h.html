@@ -40,140 +40,470 @@
 <br/>
 <p class="Pp">struct <b>queued_packet_t</b>
   <br/>
-  Single packet ready to send (header already in network byte order). struct
-    <b>packet_node</b>
+  struct <b>packet_queue_config_t</b>
   <br/>
-  Node in the packet queue linked list. struct <b>node_pool</b>
-  <br/>
-  Memory pool for packet nodes to reduce malloc/free overhead. struct
-    <b>packet_queue_t</b>
-  <br/>
-  Thread-safe packet queue for producer-consumer communication.
   <br/>
 </p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef struct <b>packet_node</b> <b>packet_node_t</b>
+<p class="Pp">typedef struct <b>packet_queue</b> <b>packet_queue_t</b>
   <br/>
-  Forward declaration for packet queue node. typedef struct <b>node_pool</b>
-    <b>node_pool_t</b>
   <br/>
-  Memory pool for packet nodes to reduce malloc/free overhead.
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>packet_queue_overflow_t</b> { <b>PACKET_QUEUE_REJECT</b>,
+    <b>PACKET_QUEUE_DROP_OLDEST</b> }
+  <br/>
   <br/>
 </p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<p class="Pp"><b>Node Pool Functions</b></p>
-<p class="Pp">
+<br/>
+<p class="Pp"><b>packet_queue_t</b> * <b>packet_queue_create</b> (size_t
+    max_packets)
   <br/>
-  <br/>
-  <b>node_pool_t</b> * <b>node_pool_create</b> (size_t pool_size)
-  <br/>
-  Create a memory pool for packet queue nodes. void <b>node_pool_destroy</b>
-    (<b>node_pool_t</b> *<b>pool</b>)
-  <br/>
-  Destroy a node pool and free all memory. <b>packet_node_t</b> *
-    <b>node_pool_get</b> (<b>node_pool_t</b> *<b>pool</b>)
-  <br/>
-  Get a free node from the pool. void <b>node_pool_put</b> (<b>node_pool_t</b>
-    *<b>pool</b>, <b>packet_node_t</b> *node)
-  <br/>
-  Return a node to the pool.
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Queue Management Functions</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  <b>packet_queue_t</b> * <b>packet_queue_create</b> (size_t max_size)
-  <br/>
-  Create a new packet queue. <b>packet_queue_t</b> *
-    <b>packet_queue_create_with_pool</b> (size_t max_size, size_t pool_size)
-  <br/>
-  Create a packet queue with node pool. <b>packet_queue_t</b> *
-    <b>packet_queue_create_with_pools</b> (size_t max_size, size_t
-    node_pool_size, <b>bool</b> use_buffer_pool)
-  <br/>
-  Create a packet queue with both node and buffer pools. void
-    <b>packet_queue_stop</b> (<b>packet_queue_t</b> *queue)
-  <br/>
-  Destroy a packet queue and free all resources.
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Queue Operations</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  int <b>packet_queue_enqueue</b> (<b>packet_queue_t</b> *queue,
-    <b>packet_type_t</b> type, const void *data, size_t data_len,
-    <b>uint32_t</b> client_id, <b>bool</b> copy_data)
-  <br/>
-  Enqueue a packet into the queue. int <b>packet_queue_enqueue_packet</b>
-    (<b>packet_queue_t</b> *queue, const <b>queued_packet_t</b> *packet)
-  <br/>
-  Enqueue a pre-built packet (for special cases like compressed frames).
-    <b>queued_packet_t</b> * <b>packet_queue_dequeue</b> (<b>packet_queue_t</b>
-    *queue)
-  <br/>
-  Dequeue a packet from the queue (non-blocking). <b>queued_packet_t</b> *
-    <b>packet_queue_try_dequeue</b> (<b>packet_queue_t</b> *queue)
-  <br/>
-  Try to dequeue a packet without blocking. void <b>packet_queue_free_packet</b>
-    (<b>queued_packet_t</b> *packet)
-  <br/>
-  Free a dequeued packet.
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Queue Status Functions</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  size_t <b>packet_queue_size</b> (<b>packet_queue_t</b> *queue)
-  <br/>
-  Get current number of packets in queue. <b>bool</b>
-    <b>packet_queue_is_empty</b> (<b>packet_queue_t</b> *queue)
-  <br/>
-  Check if queue is empty. <b>bool</b> <b>packet_queue_is_full</b>
-    (<b>packet_queue_t</b> *queue)
-  <br/>
-  Check if queue is full.
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Queue Control Functions</b></p>
-<p class="Pp">
-  <br/>
+  <b>packet_queue_t</b> * <b>packet_queue_create_config</b> (const
+    <b>packet_queue_config_t</b> *config)
   <br/>
   void <b>packet_queue_destroy</b> (<b>packet_queue_t</b> *queue)
   <br/>
-  Signal queue shutdown (causes dequeue to return NULL). void
-    <b>packet_queue_clear</b> (<b>packet_queue_t</b> *queue)
+  void <b>packet_queue_stop</b> (<b>packet_queue_t</b> *queue)
   <br/>
-  Clear all packets from queue.
+  void <b>packet_queue_clear</b> (<b>packet_queue_t</b> *queue)
   <br/>
+  <b>asciichat_error_t</b> <b>packet_queue_push_copy</b> (<b>packet_queue_t</b>
+    *queue, <b>packet_type_t</b> type, const void *data, size_t length,
+    <b>uint32_t</b> client_id)
   <br/>
-</p>
-<p class="Pp"><b>Statistics Functions</b></p>
-<p class="Pp">
+  <b>asciichat_error_t</b> <b>packet_queue_push_take</b> (<b>packet_queue_t</b>
+    *queue, <b>packet_type_t</b> type, void **data, size_t length,
+    <b>uint32_t</b> client_id)
   <br/>
+  <b>asciichat_error_t</b> <b>packet_queue_push_shared</b>
+    (<b>packet_queue_t</b> *queue, <b>packet_type_t</b> type, const void *data,
+    size_t length, <b>uint32_t</b> client_id)
+  <br/>
+  <b>queued_packet_t</b> * <b>packet_queue_dequeue</b> (<b>packet_queue_t</b>
+    *queue)
+  <br/>
+  <b>queued_packet_t</b> * <b>packet_queue_try_dequeue</b>
+    (<b>packet_queue_t</b> *queue)
+  <br/>
+  void <b>packet_queue_free_packet</b> (<b>queued_packet_t</b> *packet)
+  <br/>
+  size_t <b>packet_queue_size</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  <b>bool</b> <b>packet_queue_is_empty</b> (<b>packet_queue_t</b> *queue)
+  <br/>
+  <b>bool</b> <b>packet_queue_is_full</b> (<b>packet_queue_t</b> *queue)
   <br/>
   void <b>packet_queue_get_stats</b> (<b>packet_queue_t</b> *queue,
     <b>uint64_t</b> *enqueued, <b>uint64_t</b> *dequeued, <b>uint64_t</b>
     *dropped)
   <br/>
-  Get queue statistics. <b>bool</b> <b>packet_queue_validate_packet</b> (const
-    <b>queued_packet_t</b> *packet)
-  <br/>
-  Validate packet integrity.
+  <b>bool</b> <b>packet_queue_validate_packet</b> (const <b>queued_packet_t</b>
+    *packet)
   <br/>
   <br/>
 </p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>packet_queue</b> <b>packet_queue_t</b></a></h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>queue.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>packet_queue_overflow_t</b></a></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="PACKET_QUEUE_REJECT"><a class="permalink" href="#PACKET_QUEUE_REJECT"><b><i>PACKET_QUEUE_REJECT
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="PACKET_QUEUE_DROP_OLDEST"><a class="permalink" href="#PACKET_QUEUE_DROP_OLDEST"><b><i>PACKET_QUEUE_DROP_OLDEST
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>13</b> of file <b>queue.h</b>.</p>
+<pre>13 { PACKET_QUEUE_REJECT, PACKET_QUEUE_DROP_OLDEST } packet_queue_overflow_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_packet_queue_clear_("><a class="permalink" href="#void_packet_queue_clear_(">void
+  packet_queue_clear (<b>packet_queue_t</b> * queue)</a></h2>
+<p class="Pp">Definition at line <b>184</b> of file <b>queue.c</b>.</p>
+<pre>184                                                {
+185   if (!queue)
+186     return;
+187   mutex_lock(&amp;queue-&gt;mutex);
+188   packet_node_t *node;
+189   while ((node = pop_locked(queue)))
+190     packet_queue_free_packet(&amp;node-&gt;packet);
+191   mutex_unlock(&amp;queue-&gt;mutex);
+192 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue::mutex</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>packet_node::packet</b>,
+    <b>packet_queue_clear()</b>, and <b>packet_queue_free_packet()</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_clear()</b>, and
+    <b>packet_queue_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>packet_queue_t</b> * packet_queue_create (size_t
+  max_packets)</h2>
+<p class="Pp">Defaults: 16 MiB byte limit and rejection on overflow. Zero packet
+    count disables only the item limit, never the byte limit or memory
+  budget.</p>
+<p class="Pp">Definition at line <b>48</b> of file <b>queue.c</b>.</p>
+<pre>48                                                         {
+49   packet_queue_config_t config = {max_packets, 16 * 1024 * 1024, PACKET_QUEUE_REJECT};
+50   return packet_queue_create_config(&amp;config);
+51 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue_create()</b>,
+    <b>packet_queue_create_config()</b>, and <b>PACKET_QUEUE_REJECT</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>packet_queue_t</b> * packet_queue_create_config (const
+  <b>packet_queue_config_t</b> * config)</h2>
+<p class="Pp">Definition at line <b>27</b> of file <b>queue.c</b>.</p>
+<pre>27                                                                                 {
+28   if (!config || !config-&gt;max_bytes ||
+29       (config-&gt;overflow != PACKET_QUEUE_REJECT &amp;&amp; config-&gt;overflow != PACKET_QUEUE_DROP_OLDEST)) {
+30     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Queue needs a byte limit and a valid overflow policy&quot;);
+31     return NULL;
+32   }
+33   packet_queue_t *queue = SAFE_CALLOC(1, sizeof(*queue), packet_queue_t *);
+34   queue-&gt;config = *config;
+35   if (mutex_init(&amp;queue-&gt;mutex, &quot;packet_queue&quot;) != 0) {
+36     SAFE_FREE(queue);
+37     return NULL;
+38   }
+39   buffer_domain_config_t memory = {64 * 1024 * 1024, 8 * 1024 * 1024, 5000000000ULL, false};
+40   if (buffer_domain_create(&amp;memory, &amp;queue-&gt;domain) != ASCIICHAT_OK) {
+41     mutex_destroy(&amp;queue-&gt;mutex);
+42     SAFE_FREE(queue);
+43     return NULL;
+44   }
+45   return queue;
+46 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_domain_create()</b>,
+    <b>packet_queue::config</b>, <b>packet_queue::domain</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>packet_queue_config_t::max_bytes</b>,
+    <b>packet_queue::mutex</b>, <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+    <b>packet_queue_config_t::overflow</b>, <b>packet_queue_create_config()</b>,
+    <b>PACKET_QUEUE_DROP_OLDEST</b>, <b>PACKET_QUEUE_REJECT</b>,
+    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_create()</b>, and
+    <b>packet_queue_create_config()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>queued_packet_t</b> * packet_queue_dequeue
+  (<b>packet_queue_t</b> * queue)</h2>
+<p class="Pp">Definition at line <b>180</b> of file <b>queue.c</b>.</p>
+<pre>180                                                              {
+181   return packet_queue_try_dequeue(queue);
+182 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue_dequeue()</b>, and
+    <b>packet_queue_try_dequeue()</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_packet_queue_destroy_("><a class="permalink" href="#void_packet_queue_destroy_(">void
+  packet_queue_destroy (<b>packet_queue_t</b> * queue)</a></h2>
+<p class="Pp">Join queue users before destruction. Dequeued packets may outlive
+    the queue.</p>
+<p class="Pp">Definition at line <b>202</b> of file <b>queue.c</b>.</p>
+<pre>202                                                  {
+203   if (!queue)
+204     return;
+205   packet_queue_stop(queue);
+206   packet_queue_clear(queue);
+207   buffer_domain_close(&amp;queue-&gt;domain);
+208   mutex_destroy(&amp;queue-&gt;mutex);
+209   SAFE_FREE(queue);
+210 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_domain_close()</b>,
+    <b>packet_queue::domain</b>, <b>packet_queue::mutex</b>,
+    <b>mutex_destroy()</b>, <b>packet_queue_clear()</b>,
+    <b>packet_queue_destroy()</b>, <b>packet_queue_stop()</b>, and
+    <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_packet_queue_free_packet_("><a class="permalink" href="#void_packet_queue_free_packet_(">void
+  packet_queue_free_packet (<b>queued_packet_t</b> * packet)</a></h2>
+<p class="Pp">Definition at line <b>67</b> of file <b>queue.c</b>.</p>
+<pre>67                                                        {
+68   if (!packet)
+69     return;
+70   buffer_release(packet-&gt;data);
+71   /* packet is the first member of the owning node allocation. */
+72   buffer_release(packet);
+73 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_release</b>, <b>queued_packet_t::data</b>,
+    and <b>packet_queue_free_packet()</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_clear()</b>,
+    <b>packet_queue_free_packet()</b>, and
+  <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_packet_queue_get_stats_("><a class="permalink" href="#void_packet_queue_get_stats_(">void
+  packet_queue_get_stats (<b>packet_queue_t</b> * queue, <b>uint64_t</b> *
+  enqueued, <b>uint64_t</b> * dequeued, <b>uint64_t</b> * dropped)</a></h2>
+<p class="Pp">Definition at line <b>235</b> of file <b>queue.c</b>.</p>
+<pre>235                                                                                                               {
+236   if (!queue)
+237     return;
+238   mutex_lock(&amp;queue-&gt;mutex);
+239   if (enqueued)
+240     *enqueued = queue-&gt;enqueued;
+241   if (dequeued)
+242     *dequeued = queue-&gt;dequeued;
+243   if (dropped)
+244     *dropped = queue-&gt;dropped;
+245   mutex_unlock(&amp;queue-&gt;mutex);
+246 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue::dequeued</b>,
+    <b>packet_queue::dropped</b>, <b>packet_queue::enqueued</b>,
+    <b>packet_queue::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>, and
+    <b>packet_queue_get_stats()</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_get_stats()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> packet_queue_is_empty (<b>packet_queue_t</b> *
+  queue)</h2>
+<p class="Pp">Definition at line <b>221</b> of file <b>queue.c</b>.</p>
+<pre>221                                                   {
+222   return packet_queue_size(queue) == 0;
+223 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue_is_empty()</b>, and
+    <b>packet_queue_size()</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_is_empty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> packet_queue_is_full (<b>packet_queue_t</b> *
+  queue)</h2>
+<p class="Pp">Definition at line <b>225</b> of file <b>queue.c</b>.</p>
+<pre>225                                                  {
+226   if (!queue)
+227     return false;
+228   mutex_lock(&amp;queue-&gt;mutex);
+229   bool full = (queue-&gt;config.max_packets &amp;&amp; queue-&gt;count &gt;= queue-&gt;config.max_packets) ||
+230               queue-&gt;bytes &gt;= queue-&gt;config.max_bytes;
+231   mutex_unlock(&amp;queue-&gt;mutex);
+232   return full;
+233 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue::bytes</b>,
+    <b>packet_queue::config</b>, <b>packet_queue::count</b>,
+    <b>packet_queue_config_t::max_bytes</b>,
+    <b>packet_queue_config_t::max_packets</b>, <b>packet_queue::mutex</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, and
+  <b>packet_queue_is_full()</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_is_full()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> packet_queue_push_copy
+  (<b>packet_queue_t</b> * queue, <b>packet_type_t</b> type, const void * data,
+  size_t length, <b>uint32_t</b> client_id)</h2>
+<p class="Pp">Copy a borrowed view into queue-owned storage.</p>
+<p class="Pp">Definition at line <b>149</b> of file <b>queue.c</b>.</p>
+<pre>150                                                              {
+151   if (!queue || (length &amp;&amp; !data) || length &gt; queue-&gt;config.max_bytes)
+152     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid packet copy&quot;);
+153   void *copy = NULL;
+154   if (length) {
+155     copy = buffer_alloc(queue-&gt;domain, length);
+156     if (!copy)
+157       return SET_ERRNO(ERROR_MEMORY, &quot;Cannot copy packet within memory budget&quot;);
+158     memcpy(copy, data, length);
+159   }
+160   asciichat_error_t result = packet_queue_push_take(queue, type, &amp;copy, length, client_id);
+161   buffer_release(copy);
+162   return result;
+163 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_alloc()</b>, <b>buffer_release</b>,
+    <b>packet_queue::config</b>, <b>packet_queue::domain</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+    <b>packet_queue_config_t::max_bytes</b>, <b>packet_queue_push_copy()</b>,
+    <b>packet_queue_push_take()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_push_copy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> packet_queue_push_shared
+  (<b>packet_queue_t</b> * queue, <b>packet_type_t</b> type, const void * data,
+  size_t length, <b>uint32_t</b> client_id)</h2>
+<p class="Pp">Queue a shared immutable buffer, retaining an independent
+    reference.</p>
+<p class="Pp">Definition at line <b>136</b> of file <b>queue.c</b>.</p>
+<pre>137                                                                {
+138   if (length &gt; buffer_capacity(data))
+139     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Shared packet exceeds buffer capacity&quot;);
+140   const void *shared = buffer_share(data);
+141   if (data &amp;&amp; !shared)
+142     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Cannot share packet buffer&quot;);
+143   asciichat_error_t result = push(queue, type, shared, length, client_id);
+144   if (result != ASCIICHAT_OK)
+145     buffer_release(shared);
+146   return result;
+147 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_capacity()</b>,
+    <b>buffer_release</b>, <b>buffer_share()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>packet_queue_push_shared()</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_push_shared()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> packet_queue_push_take
+  (<b>packet_queue_t</b> * queue, <b>packet_type_t</b> type, void ** data,
+  size_t length, <b>uint32_t</b> client_id)</h2>
+<p class="Pp">On success, transfers the owning buffer pointer and clears *data.
+    On any error, the caller retains ownership and *data is unchanged.</p>
+<p class="Pp">Definition at line <b>126</b> of file <b>queue.c</b>.</p>
+<pre>127                                                              {
+128   if (!data || (length &amp;&amp; !*data) || length &gt; buffer_capacity(*data))
+129     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid owned packet buffer&quot;);
+130   asciichat_error_t result = push(queue, type, *data, length, client_id);
+131   if (result == ASCIICHAT_OK)
+132     *data = NULL;
+133   return result;
+134 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_capacity()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>packet_queue_push_take()</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_push_copy()</b>, and
+    <b>packet_queue_push_take()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_packet_queue_size_("><a class="permalink" href="#size_t_packet_queue_size_(">size_t
+  packet_queue_size (<b>packet_queue_t</b> * queue)</a></h2>
+<p class="Pp">Definition at line <b>212</b> of file <b>queue.c</b>.</p>
+<pre>212                                                 {
+213   if (!queue)
+214     return 0;
+215   mutex_lock(&amp;queue-&gt;mutex);
+216   size_t count = queue-&gt;count;
+217   mutex_unlock(&amp;queue-&gt;mutex);
+218   return count;
+219 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue::count</b>, <b>packet_queue::mutex</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, and <b>packet_queue_size()</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_is_empty()</b>, and
+    <b>packet_queue_size()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_packet_queue_stop_("><a class="permalink" href="#void_packet_queue_stop_(">void
+  packet_queue_stop (<b>packet_queue_t</b> * queue)</a></h2>
+<p class="Pp">Definition at line <b>194</b> of file <b>queue.c</b>.</p>
+<pre>194                                               {
+195   if (!queue)
+196     return;
+197   mutex_lock(&amp;queue-&gt;mutex);
+198   queue-&gt;stopped = true;
+199   mutex_unlock(&amp;queue-&gt;mutex);
+200 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue::mutex</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>packet_queue_stop()</b>, and
+    <b>packet_queue::stopped</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_destroy()</b>, and
+    <b>packet_queue_stop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>queued_packet_t</b> * packet_queue_try_dequeue
+  (<b>packet_queue_t</b> * queue)</h2>
+<p class="Pp">Definition at line <b>165</b> of file <b>queue.c</b>.</p>
+<pre>165                                                                  {
+166   if (!queue)
+167     return NULL;
+168   mutex_lock(&amp;queue-&gt;mutex);
+169   packet_node_t *node = queue-&gt;stopped ? NULL : pop_locked(queue);
+170   if (node)
+171     queue-&gt;dequeued++;
+172   mutex_unlock(&amp;queue-&gt;mutex);
+173   if (node &amp;&amp; !packet_queue_validate_packet(&amp;node-&gt;packet)) {
+174     packet_queue_free_packet(&amp;node-&gt;packet);
+175     return NULL;
+176   }
+177   return node ? &amp;node-&gt;packet : NULL;
+178 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_queue::dequeued</b>,
+    <b>packet_queue::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>packet_node::packet</b>, <b>packet_queue_free_packet()</b>,
+    <b>packet_queue_try_dequeue()</b>, <b>packet_queue_validate_packet()</b>,
+    and <b>packet_queue::stopped</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_dequeue()</b>, and
+    <b>packet_queue_try_dequeue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> packet_queue_validate_packet (const
+  <b>queued_packet_t</b> * packet)</h2>
+<p class="Pp">Definition at line <b>248</b> of file <b>queue.c</b>.</p>
+<pre>248                                                                  {
+249   return packet &amp;&amp; NET_TO_HOST_U64(packet-&gt;header.magic) == PACKET_MAGIC &amp;&amp; NET_TO_HOST_U16(packet-&gt;header.type) &gt; 0 &amp;&amp;
+250          NET_TO_HOST_U16(packet-&gt;header.type) &lt;= 10000 &amp;&amp; NET_TO_HOST_U32(packet-&gt;header.length) == packet-&gt;data_len &amp;&amp;
+251          (!packet-&gt;data_len ||
+252           (packet-&gt;data &amp;&amp; NET_TO_HOST_U32(packet-&gt;header.crc32) == asciichat_crc32(packet-&gt;data, packet-&gt;data_len)));
+253 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_crc32</b>, <b>packet_header_t::crc32</b>,
+    <b>queued_packet_t::data</b>, <b>queued_packet_t::data_len</b>,
+    <b>queued_packet_t::header</b>, <b>packet_header_t::length</b>,
+    <b>packet_header_t::magic</b>, <b>NET_TO_HOST_U16</b>,
+    <b>NET_TO_HOST_U32</b>, <b>NET_TO_HOST_U64</b>, <b>PACKET_MAGIC</b>,
+    <b>packet_queue_validate_packet()</b>, and <b>packet_header_t::type</b>.</p>
+<p class="Pp">Referenced by <b>packet_queue_try_dequeue()</b>, and
+    <b>packet_queue_validate_packet()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -183,7 +513,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

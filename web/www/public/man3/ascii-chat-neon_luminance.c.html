@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>luminance.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">luminance.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">luminance.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">luminance.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>simd_luminance_neon</b> (const <b>uint8_t</b> *rgb,
+    <b>uint8_t</b> *out, size_t width)
+  <br/>
+  int <b>glyph_shape_correlation_neon</b> (const int16_t samples[16], const
+    int16_t mask[16])
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_glyph_shape_correlation_neon_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"><a class="permalink" href="#int_glyph_shape_correlation_neon_(const_int16_t_samples_16_,_const_int16_t_mask_16_)">int
+  glyph_shape_correlation_neon (const int16_t samples[16], const int16_t
+  mask[16])</a></h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>neon/luminance.c</b>.</p>
+<pre>33                                                                                     {
+34   int16x8_t a0 = vld1q_s16(samples), a1 = vld1q_s16(samples + 8);
+35   int16x8_t b0 = vld1q_s16(mask), b1 = vld1q_s16(mask + 8);
+36   int32x4_t sums = vmull_s16(vget_low_s16(a0), vget_low_s16(b0));
+37   sums = vmlal_s16(sums, vget_high_s16(a0), vget_high_s16(b0));
+38   sums = vmlal_s16(sums, vget_low_s16(a1), vget_low_s16(b1));
+39   sums = vmlal_s16(sums, vget_high_s16(a1), vget_high_s16(b1));
+40   int32_t lanes[4];
+41   vst1q_s32(lanes, sums);
+42   return lanes[0] + lanes[1] + lanes[2] + lanes[3];
+43 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>glyph_shape_correlation_neon()</b>.</p>
+<p class="Pp">Referenced by <b>glyph_shape_correlation_neon()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_simd_luminance_neon_(const_"><a class="permalink" href="#void_simd_luminance_neon_(const_">void
+  simd_luminance_neon (const <b>uint8_t</b> * rgb, <b>uint8_t</b> * out, size_t
+  width)</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file <b>neon/luminance.c</b>.</p>
+<pre>6                                                                          {
+7   const rgb_pixel_t *row = (const rgb_pixel_t *)rgb;
+8   size_t x = 0;
+9   for (; width - x &gt;= 16; x += 16) {
+10     // Load 16 RGB pixels (48 bytes)
+11     uint8x16x3_t pixels = vld3q_u8((const uint8_t *)(row + x));
+12
+13     // Calculate luminance for all 16 pixels: (77*R + 150*G + 29*B + 128) &gt;&gt; 8
+14     uint16x8_t luma_lo = vmull_u8(vget_low_u8(pixels.val[0]), vdup_n_u8(LUMA_RED)); // R * 77
+15     luma_lo = vmlal_u8(luma_lo, vget_low_u8(pixels.val[1]), vdup_n_u8(LUMA_GREEN)); // + G * 150
+16     luma_lo = vmlal_u8(luma_lo, vget_low_u8(pixels.val[2]), vdup_n_u8(LUMA_BLUE));  // + B * 29
+17     luma_lo = vaddq_u16(luma_lo, vdupq_n_u16(128));                                 // + 128 (rounding)
+18     luma_lo = vshrq_n_u16(luma_lo, 8);                                              // &gt;&gt; 8
+19
+20     uint16x8_t luma_hi = vmull_u8(vget_high_u8(pixels.val[0]), vdup_n_u8(LUMA_RED));
+21     luma_hi = vmlal_u8(luma_hi, vget_high_u8(pixels.val[1]), vdup_n_u8(LUMA_GREEN));
+22     luma_hi = vmlal_u8(luma_hi, vget_high_u8(pixels.val[2]), vdup_n_u8(LUMA_BLUE));
+23     luma_hi = vaddq_u16(luma_hi, vdupq_n_u16(128));
+24     luma_hi = vshrq_n_u16(luma_hi, 8);
+25
+26     // Convert 16-bit luminance back to 8-bit
+27     uint8x16_t luminance = vcombine_u8(vmovn_u16(luma_lo), vmovn_u16(luma_hi));
+28
+29     vst1q_u8(out + x, luminance);
+30   }
+31   simd_luminance_scalar((const uint8_t *)(row + x), out + x, width - x);
+32 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>LUMA_BLUE</b>, <b>LUMA_GREEN</b>, <b>LUMA_RED</b>,
+    <b>simd_luminance_neon()</b>, and <b>simd_luminance_scalar()</b>.</p>
+<p class="Pp">Referenced by <b>simd_luminance_neon()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

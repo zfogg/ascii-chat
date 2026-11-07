@@ -70,11 +70,14 @@
   Ring buffer for render reference (separate streams mode).
     <b>asciichat_thread_t</b> <b>worker_thread</b>
   <br/>
-  Worker thread for audio processing. <b>mutex_t</b> <b>worker_mutex</b>
+  Worker thread for audio processing. <b>mutex_t</b>
+    <b>audio_processing_wait_guard</b>
   <br/>
-  Mutex protecting worker state. <b>cond_t</b> <b>worker_cond</b>
+  Coordinates device-worker sleep with shutdown. <b>cond_t</b>
+    <b>audio_processing_wakeup</b>
   <br/>
-  Condition variable for worker signaling. <b>bool</b> <b>worker_running</b>
+  Capture/AEC work, monitor refill, or shutdown notification. <b>bool</b>
+    <b>worker_running</b>
   <br/>
   True if worker thread is running. <b>atomic_t</b> <b>worker_should_stop</b>
   <br/>
@@ -103,17 +106,48 @@
   <br/>
   Mutex protecting context state. void * <b>audio_pipeline</b>
   <br/>
-  Client audio pipeline for AEC3 echo cancellation (opaque pointer). void *
-    <b>media_source</b>
+  Client audio pipeline for AEC3 echo cancellation (opaque pointer). <b>bool</b>
+    <b>monitor_local_media</b>
   <br/>
-  Media source for direct audio reading in mirror mode (opaque pointer). double
+  Play local file audio in solo sessions. <b>uint64_t</b>
+    <b>test_audio_playback_position</b>
+  <br/>
+  Output callback's synthesized monitor sample clock. void *
+    <b>capture_media_source</b>
+  <br/>
+  Borrowed local media audio; configure before starting duplex. double
     <b>sample_rate</b>
   <br/>
-  Actual sample rate of streams (48kHz). double <b>input_device_rate</b>
+  Actual sample rate of streams (48kHz). unsigned <b>input_device_channels</b>
+  <br/>
+  unsigned <b>output_device_channels</b>
+  <br/>
+  <b>audio_resampler_t</b> <b>capture_resampler</b>
+  <br/>
+  <b>audio_resampler_t</b> <b>playback_resampler</b>
+  <br/>
+  double <b>input_device_rate</b>
   <br/>
   Native sample rate of input device. double <b>output_device_rate</b>
   <br/>
-  Native sample rate of output device.
+  Native sample rate of output device. double <b>input_resample_phase</b>
+  <br/>
+  Source position carried between native-rate input blocks. float
+    <b>input_resample_previous</b>
+  <br/>
+  Last input sample used at a block boundary. <b>bool</b>
+    <b>input_resample_has_previous</b>
+  <br/>
+  Whether a prior input block has been processed. double
+    <b>output_resample_phase</b>
+  <br/>
+  48 kHz source position carried between output callbacks float
+    <b>output_resample_previous</b>
+  <br/>
+  Last source sample used at an output boundary. <b>bool</b>
+    <b>output_resample_has_previous</b>
+  <br/>
+  Whether a prior output block has been processed.
   <br/>
 </p>
 </section>
@@ -128,16 +162,17 @@
     enabling perfect timing for WebRTC AEC3 echo cancellation.</p>
 <p class="Pp"></p>
 <p class="Pp">WORKER THREAD ARCHITECTURE: The audio system now uses a dedicated
-    worker thread to move ALL heavy processing (AEC3, resampling, RMS
-    calculations) out of the real-time PortAudio callbacks. This ensures
-    callbacks complete in &lt;2ms (was 50-80ms).</p>
+    worker thread to move ALL heavy processing (AEC3 and RMS calculations) out
+    of the real-time PortAudio callbacks. This ensures callbacks complete in
+    &lt;2ms (was 50-80ms).</p>
 <p class="Pp"></p>
 <p class="Pp">Architecture:</p>
 <ul class="Bl-bullet">
   <li>PortAudio Callback (Real-Time, &lt;2ms): Lock-free ring buffer copies
     only</li>
-  <li>Worker Thread (Non-Real-Time): Heavy processing (AEC3, filters,
-      resampling)</li>
+  <li>Audio callbacks: Bounded stateful sample-rate conversion when device rates
+      differ</li>
+  <li>Worker Thread (Non-Real-Time): Heavy processing (AEC3, filters)</li>
 </ul>
 <p class="Pp">Ring Buffers:</p>
 <ul class="Bl-bullet">
@@ -159,7 +194,7 @@
 <p class="Pp"></p>
 <p class="Pp">State is protected by state_mutex for thread-safe operations.</p>
 </div>
-<p class="Pp">Definition at line <b>128</b> of file
+<p class="Pp">Definition at line <b>116</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 </section>
 <section class="Sh">
@@ -170,23 +205,55 @@
   audio_context_t::audio_pipeline</a></h2>
 <p class="Pp">Client audio pipeline for AEC3 echo cancellation (opaque
   pointer).</p>
-<p class="Pp">Definition at line <b>165</b> of file
+<p class="Pp">Definition at line <b>153</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_set_pipeline()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>mutex_t</b> audio_context_t::audio_processing_wait_guard</h2>
+<p class="Pp">Coordinates device-worker sleep with shutdown.</p>
+<p class="Pp">Definition at line <b>134</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_init()</b>, and
+    <b>audio_stop_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>cond_t</b> audio_context_t::audio_processing_wakeup</h2>
+<p class="Pp">Capture/AEC work, monitor refill, or shutdown notification.</p>
+<p class="Pp">Definition at line <b>135</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_init()</b>,
+    <b>audio_stop_duplex()</b>, and <b>audio_stop_thread()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>audio_ring_buffer_t</b>* audio_context_t::capture_buffer</h2>
 <p class="Pp">OLD: Worker &#x2192; Network (will become
   processed_capture_rb).</p>
-<p class="Pp">Definition at line <b>140</b> of file
+<p class="Pp">Definition at line <b>128</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_init()</b>,
-    <b>audio_read_samples()</b>, and <b>session_capture_read_audio()</b>.</p>
+    <b>audio_read_samples()</b>, and <b>session_audio_read_captured()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_audio_context_t::capture_media_source"><a class="permalink" href="#void*_audio_context_t::capture_media_source">void*
+  audio_context_t::capture_media_source</a></h2>
+<p class="Pp">Borrowed local media audio; configure before starting duplex.</p>
+<p class="Pp">Definition at line <b>156</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_init()</b>, <b>audio_start_duplex()</b>,
+    <b>client_protocol_start()</b>, <b>session_audio_set_capture_source()</b>,
+    and <b>session_audio_start_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>audio_resampler_t</b> audio_context_t::capture_resampler</h2>
+<p class="Pp">Definition at line <b>160</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>PaStream</b>* audio_context_t::duplex_stream</h2>
 <p class="Pp">PortAudio full-duplex stream (simultaneous input+output).</p>
-<p class="Pp">Definition at line <b>130</b> of file
+<p class="Pp">Definition at line <b>118</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_start_duplex()</b>, and
     <b>audio_stop_duplex()</b>.</p>
@@ -194,50 +261,111 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> audio_context_t::initialized</h2>
 <p class="Pp">True if context has been initialized.</p>
-<p class="Pp">Definition at line <b>157</b> of file
+<p class="Pp">Definition at line <b>145</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_destroy()</b>,
-    <b>audio_flush_playback_buffers()</b>, <b>audio_init()</b>,
-    <b>audio_read_samples()</b>, <b>audio_start_duplex()</b>,
-    <b>audio_stop_duplex()</b>, and <b>audio_write_samples()</b>.</p>
+<p class="Pp">Referenced by <b>audio_connection_init()</b>,
+    <b>audio_destroy()</b>, <b>audio_flush_playback_buffers()</b>,
+    <b>audio_init()</b>, <b>audio_read_samples()</b>,
+    <b>audio_start_duplex()</b>, <b>audio_stop_duplex()</b>,
+    <b>audio_stop_thread()</b>, <b>audio_write_samples()</b>, and
+    <b>client_protocol_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="unsigned_audio_context_t::input_device_channels"><a class="permalink" href="#unsigned_audio_context_t::input_device_channels">unsigned
+  audio_context_t::input_device_channels</a></h2>
+<p class="Pp">Definition at line <b>158</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="double_audio_context_t::input_device_rate"><a class="permalink" href="#double_audio_context_t::input_device_rate">double
   audio_context_t::input_device_rate</a></h2>
 <p class="Pp">Native sample rate of input device.</p>
-<p class="Pp">Definition at line <b>168</b> of file
+<p class="Pp">Definition at line <b>162</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> audio_context_t::input_resample_has_previous</h2>
+<p class="Pp">Whether a prior input block has been processed.</p>
+<p class="Pp">Definition at line <b>166</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_audio_context_t::input_resample_phase"><a class="permalink" href="#double_audio_context_t::input_resample_phase">double
+  audio_context_t::input_resample_phase</a></h2>
+<p class="Pp">Source position carried between native-rate input blocks.</p>
+<p class="Pp">Definition at line <b>164</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_audio_context_t::input_resample_previous"><a class="permalink" href="#float_audio_context_t::input_resample_previous">float
+  audio_context_t::input_resample_previous</a></h2>
+<p class="Pp">Last input sample used at a block boundary.</p>
+<p class="Pp">Definition at line <b>165</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>PaStream</b>* audio_context_t::input_stream</h2>
 <p class="Pp">Separate input stream (when full-duplex unavailable).</p>
-<p class="Pp">Definition at line <b>131</b> of file
+<p class="Pp">Definition at line <b>119</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_start_duplex()</b>, and
     <b>audio_stop_duplex()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void*_audio_context_t::media_source"><a class="permalink" href="#void*_audio_context_t::media_source">void*
-  audio_context_t::media_source</a></h2>
-<p class="Pp">Media source for direct audio reading in mirror mode (opaque
-    pointer).</p>
-<p class="Pp">Definition at line <b>166</b> of file
+<h2 class="Ss"><b>bool</b> audio_context_t::monitor_local_media</h2>
+<p class="Pp">Play local file audio in solo sessions.</p>
+<p class="Pp">Definition at line <b>154</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
-<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
+<p class="Pp">Referenced by <b>audio_init()</b>, and
+    <b>audio_start_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="unsigned_audio_context_t::output_device_channels"><a class="permalink" href="#unsigned_audio_context_t::output_device_channels">unsigned
+  audio_context_t::output_device_channels</a></h2>
+<p class="Pp">Definition at line <b>159</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="double_audio_context_t::output_device_rate"><a class="permalink" href="#double_audio_context_t::output_device_rate">double
   audio_context_t::output_device_rate</a></h2>
 <p class="Pp">Native sample rate of output device.</p>
+<p class="Pp">Definition at line <b>163</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> audio_context_t::output_resample_has_previous</h2>
+<p class="Pp">Whether a prior output block has been processed.</p>
 <p class="Pp">Definition at line <b>169</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_audio_context_t::output_resample_phase"><a class="permalink" href="#double_audio_context_t::output_resample_phase">double
+  audio_context_t::output_resample_phase</a></h2>
+<p class="Pp">48 kHz source position carried between output callbacks</p>
+<p class="Pp">Definition at line <b>167</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_audio_context_t::output_resample_previous"><a class="permalink" href="#float_audio_context_t::output_resample_previous">float
+  audio_context_t::output_resample_previous</a></h2>
+<p class="Pp">Last source sample used at an output boundary.</p>
+<p class="Pp">Definition at line <b>168</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>PaStream</b>* audio_context_t::output_stream</h2>
 <p class="Pp">Separate output stream (when full-duplex unavailable).</p>
-<p class="Pp">Definition at line <b>132</b> of file
+<p class="Pp">Definition at line <b>120</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_start_duplex()</b>, and
     <b>audio_stop_duplex()</b>.</p>
@@ -246,27 +374,33 @@
 <h2 class="Ss"><b>audio_ring_buffer_t</b>* audio_context_t::playback_buffer</h2>
 <p class="Pp">OLD: Network &#x2192; Worker (will become
   network_playback_rb).</p>
-<p class="Pp">Definition at line <b>141</b> of file
+<p class="Pp">Definition at line <b>129</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_destroy()</b>,
-    <b>audio_flush_playback_buffers()</b>, <b>audio_init()</b>,
-    <b>audio_stop_duplex()</b>, <b>audio_write_samples()</b>,
-    <b>media_source_seek()</b>, <b>session_client_like_run()</b>, and
+<p class="Pp">Referenced by <b>audio_connection_init()</b>,
+    <b>audio_destroy()</b>, <b>audio_flush_playback_buffers()</b>,
+    <b>audio_init()</b>, <b>audio_process_received_samples()</b>,
+    <b>audio_start_duplex()</b>, <b>audio_stop_duplex()</b>,
+    <b>audio_write_samples()</b>, <b>media_source_seek()</b>, and
     <b>session_display_write_audio()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> audio_context_t::playback_only</h2>
 <p class="Pp">True for playback-only mode (mirror), skip microphone capture.</p>
-<p class="Pp">Definition at line <b>160</b> of file
+<p class="Pp">Definition at line <b>148</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_start_duplex()</b>, and
-    <b>session_client_like_run()</b>.</p>
+<p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>audio_resampler_t</b> audio_context_t::playback_resampler</h2>
+<p class="Pp">Definition at line <b>161</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>audio_ring_buffer_t</b>*
   audio_context_t::processed_playback_rb</h2>
 <p class="Pp">Worker &#x2192; Callback: Ready for speakers.</p>
-<p class="Pp">Definition at line <b>137</b> of file
+<p class="Pp">Definition at line <b>125</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>,
     <b>audio_flush_playback_buffers()</b>, and <b>audio_init()</b>.</p>
@@ -274,7 +408,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>audio_ring_buffer_t</b>* audio_context_t::raw_capture_rb</h2>
 <p class="Pp">Callback &#x2192; Worker: Raw mic samples (no processing).</p>
-<p class="Pp">Definition at line <b>135</b> of file
+<p class="Pp">Definition at line <b>123</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>, and <b>audio_init()</b>.</p>
 </section>
@@ -282,7 +416,7 @@
 <h2 class="Ss"><b>audio_ring_buffer_t</b>* audio_context_t::raw_render_rb</h2>
 <p class="Pp">Callback &#x2192; Worker: Raw speaker samples (AEC3
   reference).</p>
-<p class="Pp">Definition at line <b>136</b> of file
+<p class="Pp">Definition at line <b>124</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>,
     <b>audio_flush_playback_buffers()</b>, and <b>audio_init()</b>.</p>
@@ -290,7 +424,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>audio_ring_buffer_t</b>* audio_context_t::render_buffer</h2>
 <p class="Pp">Ring buffer for render reference (separate streams mode).</p>
-<p class="Pp">Definition at line <b>142</b> of file
+<p class="Pp">Definition at line <b>130</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>,
     <b>audio_flush_playback_buffers()</b>, <b>audio_start_duplex()</b>, and
@@ -299,7 +433,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> audio_context_t::running</h2>
 <p class="Pp">True if duplex stream is active.</p>
-<p class="Pp">Definition at line <b>158</b> of file
+<p class="Pp">Definition at line <b>146</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_start_duplex()</b>,
     and <b>audio_stop_duplex()</b>.</p>
@@ -308,14 +442,14 @@
 <h2 class="Ss" id="double_audio_context_t::sample_rate"><a class="permalink" href="#double_audio_context_t::sample_rate">double
   audio_context_t::sample_rate</a></h2>
 <p class="Pp">Actual sample rate of streams (48kHz).</p>
-<p class="Pp">Definition at line <b>167</b> of file
+<p class="Pp">Definition at line <b>157</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> audio_context_t::separate_streams</h2>
 <p class="Pp">True if using separate input/output streams.</p>
-<p class="Pp">Definition at line <b>159</b> of file
+<p class="Pp">Definition at line <b>147</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_start_duplex()</b>, and
     <b>audio_stop_duplex()</b>.</p>
@@ -323,39 +457,33 @@
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> audio_context_t::shutting_down</h2>
 <p class="Pp">True when shutdown started - callback outputs silence.</p>
-<p class="Pp">Definition at line <b>161</b> of file
+<p class="Pp">Definition at line <b>149</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_init()</b>, <b>audio_stop_duplex()</b>, and
+<p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_init()</b>,
+    <b>audio_start_duplex()</b>, <b>audio_stop_duplex()</b>, and
     <b>audio_write_samples()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> audio_context_t::state_mutex</h2>
 <p class="Pp">Mutex protecting context state.</p>
-<p class="Pp">Definition at line <b>162</b> of file
+<p class="Pp">Definition at line <b>150</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_init()</b>,
     <b>audio_start_duplex()</b>, and <b>audio_stop_duplex()</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss"><b>uint64_t</b>
+  audio_context_t::test_audio_playback_position</h2>
+<p class="Pp">Output callback's synthesized monitor sample clock.</p>
+<p class="Pp">Definition at line <b>155</b> of file
+    <b>include/ascii-chat/audio/audio.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="float*_audio_context_t::worker_capture_batch"><a class="permalink" href="#float*_audio_context_t::worker_capture_batch">float*
   audio_context_t::worker_capture_batch</a></h2>
 <p class="Pp">Pre-allocated buffer for batch capture processing.</p>
-<p class="Pp">Definition at line <b>152</b> of file
-    <b>include/ascii-chat/audio/audio.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_destroy()</b>, and <b>audio_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>cond_t</b> audio_context_t::worker_cond</h2>
-<p class="Pp">Condition variable for worker signaling.</p>
-<p class="Pp">Definition at line <b>147</b> of file
-    <b>include/ascii-chat/audio/audio.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_init()</b>, and
-    <b>audio_stop_duplex()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>mutex_t</b> audio_context_t::worker_mutex</h2>
-<p class="Pp">Mutex protecting worker state.</p>
-<p class="Pp">Definition at line <b>146</b> of file
+<p class="Pp">Definition at line <b>140</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>, and <b>audio_init()</b>.</p>
 </section>
@@ -363,7 +491,7 @@
 <h2 class="Ss" id="float*_audio_context_t::worker_playback_batch"><a class="permalink" href="#float*_audio_context_t::worker_playback_batch">float*
   audio_context_t::worker_playback_batch</a></h2>
 <p class="Pp">Pre-allocated buffer for batch playback processing.</p>
-<p class="Pp">Definition at line <b>154</b> of file
+<p class="Pp">Definition at line <b>142</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>, and <b>audio_init()</b>.</p>
 </section>
@@ -371,14 +499,14 @@
 <h2 class="Ss" id="float*_audio_context_t::worker_render_batch"><a class="permalink" href="#float*_audio_context_t::worker_render_batch">float*
   audio_context_t::worker_render_batch</a></h2>
 <p class="Pp">Pre-allocated buffer for batch render processing.</p>
-<p class="Pp">Definition at line <b>153</b> of file
+<p class="Pp">Definition at line <b>141</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>, and <b>audio_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> audio_context_t::worker_running</h2>
 <p class="Pp">True if worker thread is running.</p>
-<p class="Pp">Definition at line <b>148</b> of file
+<p class="Pp">Definition at line <b>136</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_init()</b>,
     <b>audio_start_duplex()</b>, and <b>audio_stop_duplex()</b>.</p>
@@ -386,15 +514,16 @@
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> audio_context_t::worker_should_stop</h2>
 <p class="Pp">Signal worker thread to exit.</p>
-<p class="Pp">Definition at line <b>149</b> of file
+<p class="Pp">Definition at line <b>137</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_init()</b>,
-    <b>audio_start_duplex()</b>, and <b>audio_stop_duplex()</b>.</p>
+    <b>audio_start_duplex()</b>, <b>audio_stop_duplex()</b>, and
+    <b>audio_stop_thread()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> audio_context_t::worker_thread</h2>
 <p class="Pp">Worker thread for audio processing.</p>
-<p class="Pp">Definition at line <b>145</b> of file
+<p class="Pp">Definition at line <b>133</b> of file
     <b>include/ascii-chat/audio/audio.h</b>.</p>
 <p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_start_duplex()</b>,
     and <b>audio_stop_duplex()</b>.</p>
@@ -408,7 +537,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

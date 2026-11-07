@@ -75,8 +75,9 @@
 78 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
+<p class="Pp">References <b>manpage_content_free_positional()</b>, and
+    <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_free_positional()</b>, and
     <b>options_config_generate_manpage_template()</b>.</p>
 </section>
 <section class="Ss">
@@ -88,8 +89,8 @@
     formatting and examples.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
-  configuration with positional descriptors</b></div>
+<div class="Bd-indent"><i>config</i> Options configuration with positional
+  descriptors</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Newly allocated content string (caller must free)</div>
 <p class="Pp">Definition at line <b>15</b> of file <b>positional.c</b>.</p>
@@ -99,7 +100,7 @@
 18     buffer[0] = '\0';
 19     return buffer;
 20   }
-21 
+21
 22   if (config-&gt;num_positional_args == 0) {
 23     // Generate fallback content when no positional arguments are defined
 24     size_t buffer_capacity = 256;
@@ -109,29 +110,29 @@
 28     log_debug(&quot;Generated POSITIONAL ARGUMENTS section (fallback - no args found)&quot;);
 29     return buffer;
 30   }
-31 
+31
 32   // Allocate growing buffer for positional section
 33   size_t buffer_capacity = 4096;
 34   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
 35   size_t offset = 0;
-36 
+36
 37   for (size_t i = 0; i &lt; config-&gt;num_positional_args; i++) {
 38     const positional_arg_descriptor_t *pos_arg = &amp;config-&gt;positional_args[i];
-39 
+39
 40     // Ensure buffer is large enough
 41     if (offset + 512 &gt;= buffer_capacity) {
 42       buffer_capacity *= 2;
 43       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
 44     }
-45 
+45
 46     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.TP\n&quot;);
 47     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B %s\n&quot;, pos_arg-&gt;name);
-48 
+48
 49     if (pos_arg-&gt;help_text) {
 50       offset +=
 51           safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;, escape_groff_special(pos_arg-&gt;help_text));
 52     }
-53 
+53
 54     // Add examples if present
 55     if (pos_arg-&gt;num_examples &gt; 0) {
 56       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RS\n&quot;);
@@ -147,21 +148,22 @@
 66       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RE\n&quot;);
 67     }
 68   }
-69 
+69
 70   log_debug(&quot;Generated POSITIONAL ARGUMENTS section (%zu bytes)&quot;, offset);
 71   return buffer;
 72 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>escape_groff_special()</b>,
-    <b>positional_arg_descriptor_t::examples</b>,
+<p class="Pp">References <b>buffer_capacity()</b>,
+    <b>escape_groff_special()</b>, <b>positional_arg_descriptor_t::examples</b>,
     <b>positional_arg_descriptor_t::help_text</b>, <b>log_debug</b>,
+    <b>manpage_content_generate_positional()</b>,
     <b>positional_arg_descriptor_t::name</b>,
     <b>positional_arg_descriptor_t::num_examples</b>,
     <b>options_config_t::num_positional_args</b>,
     <b>options_config_t::positional_args</b>, <b>SAFE_MALLOC</b>,
     <b>SAFE_REALLOC</b>, and <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
+<p class="Pp">Referenced by <b>manpage_content_generate_positional()</b>, and
     <b>options_config_generate_manpage_template()</b>.</p>
 </section>
 </section>
@@ -172,7 +174,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

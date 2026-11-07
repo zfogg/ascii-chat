@@ -35,6 +35,18 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>CRYPTO_HTTPS_KEYS_IMPORT_OUTPUT_BUFFER_SIZE</b> 2048
+  <br/>
+  #define <b>CRYPTO_HTTPS_KEYS_KEY_IDS_COUNT</b> 16
+  <br/>
+  #define <b>CRYPTO_HTTPS_KEYS_LIST_OUTPUT_BUFFER_SIZE</b> 4096
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>asciichat_error_t</b> <b>build_github_ssh_url</b> (const char
@@ -92,13 +104,35 @@
 </section>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_CRYPTO_HTTPS_KEYS_IMPORT_OUTPUT_BUFFER_SIZE___2048"><a class="permalink" href="#_define_CRYPTO_HTTPS_KEYS_IMPORT_OUTPUT_BUFFER_SIZE___2048">#define
+  CRYPTO_HTTPS_KEYS_IMPORT_OUTPUT_BUFFER_SIZE 2048</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>https_keys.c</b>.</p>
+<p class="Pp">Referenced by <b>parse_gpg_keys_from_response()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CRYPTO_HTTPS_KEYS_KEY_IDS_COUNT___16"><a class="permalink" href="#_define_CRYPTO_HTTPS_KEYS_KEY_IDS_COUNT___16">#define
+  CRYPTO_HTTPS_KEYS_KEY_IDS_COUNT 16</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>https_keys.c</b>.</p>
+<p class="Pp">Referenced by <b>parse_gpg_keys_from_response()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CRYPTO_HTTPS_KEYS_LIST_OUTPUT_BUFFER_SIZE___4096"><a class="permalink" href="#_define_CRYPTO_HTTPS_KEYS_LIST_OUTPUT_BUFFER_SIZE___4096">#define
+  CRYPTO_HTTPS_KEYS_LIST_OUTPUT_BUFFER_SIZE 4096</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>https_keys.c</b>.</p>
+<p class="Pp">Referenced by <b>parse_gpg_keys_from_response()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

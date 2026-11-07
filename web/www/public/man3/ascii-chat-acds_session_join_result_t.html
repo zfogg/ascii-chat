@@ -48,13 +48,13 @@
   <br/>
   Session UUID (if success). <b>uint8_t</b> <b>error_code</b>
   <br/>
-  Error code (if !success). char <b>error_message</b> [129]
+  Error code (if !success). char <b>error_message</b> [128+1]
   <br/>
   Error message (if !success, null-terminated). <b>uint8_t</b>
     <b>session_type</b>
   <br/>
   <b>acds_session_type_t</b>: 0=DIRECT_TCP, 1=WEBRTC (if success) char
-    <b>server_address</b> [65]
+    <b>server_address</b> [64+1]
   <br/>
   Server IP/hostname (if success, null-terminated). <b>uint16_t</b>
     <b>server_port</b>
@@ -71,7 +71,7 @@
 <p class="Pp">Server connection information is ONLY included after successful
     authentication. This prevents IP address leakage to unauthenticated
   clients.</p>
-<p class="Pp">Definition at line <b>245</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Definition at line <b>262</b> of file <b>acds_client.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -79,53 +79,53 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> acds_session_join_result_t::error_code</h2>
 <p class="Pp">Error code (if !success).</p>
-<p class="Pp">Definition at line <b>249</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Definition at line <b>266</b> of file <b>acds_client.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_join()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="char_acds_session_join_result_t::error_message_129_"><a class="permalink" href="#char_acds_session_join_result_t::error_message_129_">char
-  acds_session_join_result_t::error_message[129]</a></h2>
+<h2 class="Ss" id="char_acds_session_join_result_t::error_message_128+1_"><a class="permalink" href="#char_acds_session_join_result_t::error_message_128+1_">char
+  acds_session_join_result_t::error_message[128+1]</a></h2>
 <p class="Pp">Error message (if !success, null-terminated).</p>
-<p class="Pp">Definition at line <b>250</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Definition at line <b>267</b> of file <b>acds_client.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_join()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b>
   acds_session_join_result_t::participant_id[16]</h2>
 <p class="Pp">Participant UUID (if success).</p>
-<p class="Pp">Definition at line <b>247</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Definition at line <b>264</b> of file <b>acds_client.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_join()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="char_acds_session_join_result_t::server_address_65_"><a class="permalink" href="#char_acds_session_join_result_t::server_address_65_">char
-  acds_session_join_result_t::server_address[65]</a></h2>
+<h2 class="Ss" id="char_acds_session_join_result_t::server_address_64+1_"><a class="permalink" href="#char_acds_session_join_result_t::server_address_64+1_">char
+  acds_session_join_result_t::server_address[64+1]</a></h2>
 <p class="Pp">Server IP/hostname (if success, null-terminated).</p>
-<p class="Pp">Definition at line <b>252</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Definition at line <b>269</b> of file <b>acds_client.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_join()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> acds_session_join_result_t::server_port</h2>
 <p class="Pp">Server port (if success).</p>
-<p class="Pp">Definition at line <b>253</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Definition at line <b>270</b> of file <b>acds_client.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_join()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> acds_session_join_result_t::session_id[16]</h2>
 <p class="Pp">Session UUID (if success).</p>
-<p class="Pp">Definition at line <b>248</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Definition at line <b>265</b> of file <b>acds_client.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_join()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> acds_session_join_result_t::session_type</h2>
 <p class="Pp"><b>acds_session_type_t</b>: 0=DIRECT_TCP, 1=WEBRTC (if
   success)</p>
-<p class="Pp">Definition at line <b>251</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Definition at line <b>268</b> of file <b>acds_client.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_join()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> acds_session_join_result_t::success</h2>
 <p class="Pp">Join succeeded.</p>
-<p class="Pp">Definition at line <b>246</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Definition at line <b>263</b> of file <b>acds_client.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_session_join()</b>.</p>
 <p class="Pp"></p>
 </section>
@@ -137,7 +137,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

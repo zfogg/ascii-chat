@@ -93,200 +93,203 @@
 <section class="Ss">
 <h2 class="Ss" id="void_SHA1Final_(unsigned_char_digest_20_,_"><a class="permalink" href="#void_SHA1Final_(unsigned_char_digest_20_,_">void
   SHA1Final (unsigned char digest[20], <b>SHA1_CTX</b> * context)</a></h2>
-<p class="Pp">Definition at line <b>219</b> of file <b>sha1.c</b>.</p>
-<pre>219                                                                             {
-220   unsigned int i;
-221   unsigned char finalcount[8];
-222 
-223   for (i = 0; i &lt; 8; i++) {
-224     finalcount[i] = (unsigned char)((context-&gt;count &gt;&gt; ((7 - (i &amp; 7)) * 8)) &amp; 255); /* Endian independent */
-225   }
-226   SHA1Update(context, &quot;\200&quot;, 1);
-227   while ((context-&gt;count &amp; 504) != 448) {
-228     SHA1Update(context, &quot;\0&quot;, 1);
-229   }
-230   SHA1Update(context, finalcount, 8); /* Should cause a SHA1Transform() */
-231 
-232   for (i = 0; i &lt; SHA1_DIGEST_LENGTH; i++) {
-233     digest[i] = (unsigned char)((context-&gt;state[i &gt;&gt; 2] &gt;&gt; ((3 - (i &amp; 3)) * 8)) &amp; 255);
-234   }
-235   memset(&amp;finalcount, 0, sizeof(finalcount));
-236   memset(context, 0, sizeof(*context));
-237 }</pre>
+<p class="Pp">Definition at line <b>221</b> of file <b>sha1.c</b>.</p>
+<pre>221                                                                             {
+222   unsigned int i;
+223   unsigned char finalcount[8];
+224
+225   for (i = 0; i &lt; 8; i++) {
+226     finalcount[i] = (unsigned char)((context-&gt;count &gt;&gt; ((7 - (i &amp; 7)) * 8)) &amp; 255); /* Endian independent */
+227   }
+228   SHA1Update(context, &quot;\200&quot;, 1);
+229   while ((context-&gt;count &amp; 504) != 448) {
+230     SHA1Update(context, &quot;\0&quot;, 1);
+231   }
+232   SHA1Update(context, finalcount, 8); /* Should cause a SHA1Transform() */
+233
+234   for (i = 0; i &lt; SHA1_DIGEST_LENGTH; i++) {
+235     digest[i] = (unsigned char)((context-&gt;state[i &gt;&gt; 2] &gt;&gt; ((3 - (i &amp; 3)) * 8)) &amp; 255);
+236   }
+237   memset(&amp;finalcount, 0, sizeof(finalcount));
+238   memset(context, 0, sizeof(*context));
+239 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SHA1_CTX::count</b>, <b>SHA1_DIGEST_LENGTH</b>,
-    <b>SHA1Update()</b>, and <b>SHA1_CTX::state</b>.</p>
+    <b>SHA1Final()</b>, <b>SHA1Update()</b>, and <b>SHA1_CTX::state</b>.</p>
+<p class="Pp">Referenced by <b>SHA1Final()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_SHA1Init_("><a class="permalink" href="#void_SHA1Init_(">void
   SHA1Init (<b>SHA1_CTX</b> * context)</a></h2>
-<p class="Pp">Definition at line <b>186</b> of file <b>sha1.c</b>.</p>
-<pre>186                                  {
-187   /* SHA1 initialization constants */
-188   context-&gt;count = 0;
-189   context-&gt;state[0] = 0x67452301;
-190   context-&gt;state[1] = 0xEFCDAB89;
-191   context-&gt;state[2] = 0x98BADCFE;
-192   context-&gt;state[3] = 0x10325476;
-193   context-&gt;state[4] = 0xC3D2E1F0;
-194 }</pre>
+<p class="Pp">Definition at line <b>188</b> of file <b>sha1.c</b>.</p>
+<pre>188                                  {
+189   /* SHA1 initialization constants */
+190   context-&gt;count = 0;
+191   context-&gt;state[0] = 0x67452301;
+192   context-&gt;state[1] = 0xEFCDAB89;
+193   context-&gt;state[2] = 0x98BADCFE;
+194   context-&gt;state[3] = 0x10325476;
+195   context-&gt;state[4] = 0xC3D2E1F0;
+196 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SHA1_CTX::count</b>, and <b>SHA1_CTX::state</b>.</p>
+<p class="Pp">References <b>SHA1_CTX::count</b>, <b>SHA1Init()</b>, and
+    <b>SHA1_CTX::state</b>.</p>
+<p class="Pp">Referenced by <b>SHA1Init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_SHA1Transform_("><a class="permalink" href="#void_SHA1Transform_(">void
   SHA1Transform (<b>uint32_t</b> state[5], const unsigned char
   buffer[64])</a></h2>
-<p class="Pp">Definition at line <b>70</b> of file <b>sha1.c</b>.</p>
-<pre>70                                                                                      {
-71   uint32_t a, b, c, d, e;
-72   typedef union {
-73     unsigned char c[64];
-74     uint32_t l[16];
-75   } CHAR64LONG16;
-76   CHAR64LONG16 *block;
-77 #ifdef SHA1HANDSOFF
-78   unsigned char workspace[SHA1_BLOCK_LENGTH];
-79 
-80   block = (CHAR64LONG16 *)workspace;
-81   memcpy(block, buffer, SHA1_BLOCK_LENGTH);
-82 #else
-83   block = (CHAR64LONG16 *)buffer;
-84 #endif
-85   /* Copy context-&gt;state[] to working vars */
-86   a = state[0];
-87   b = state[1];
-88   c = state[2];
-89   d = state[3];
-90   e = state[4];
-91 
-92   /* 4 rounds of 20 operations each. Loop unrolled. */
-93   R0(a, b, c, d, e, 0);
-94   R0(e, a, b, c, d, 1);
-95   R0(d, e, a, b, c, 2);
-96   R0(c, d, e, a, b, 3);
-97   R0(b, c, d, e, a, 4);
-98   R0(a, b, c, d, e, 5);
-99   R0(e, a, b, c, d, 6);
-100   R0(d, e, a, b, c, 7);
-101   R0(c, d, e, a, b, 8);
-102   R0(b, c, d, e, a, 9);
-103   R0(a, b, c, d, e, 10);
-104   R0(e, a, b, c, d, 11);
-105   R0(d, e, a, b, c, 12);
-106   R0(c, d, e, a, b, 13);
-107   R0(b, c, d, e, a, 14);
-108   R0(a, b, c, d, e, 15);
-109   R1(e, a, b, c, d, 16);
-110   R1(d, e, a, b, c, 17);
-111   R1(c, d, e, a, b, 18);
-112   R1(b, c, d, e, a, 19);
-113   R2(a, b, c, d, e, 20);
-114   R2(e, a, b, c, d, 21);
-115   R2(d, e, a, b, c, 22);
-116   R2(c, d, e, a, b, 23);
-117   R2(b, c, d, e, a, 24);
-118   R2(a, b, c, d, e, 25);
-119   R2(e, a, b, c, d, 26);
-120   R2(d, e, a, b, c, 27);
-121   R2(c, d, e, a, b, 28);
-122   R2(b, c, d, e, a, 29);
-123   R2(a, b, c, d, e, 30);
-124   R2(e, a, b, c, d, 31);
-125   R2(d, e, a, b, c, 32);
-126   R2(c, d, e, a, b, 33);
-127   R2(b, c, d, e, a, 34);
-128   R2(a, b, c, d, e, 35);
-129   R2(e, a, b, c, d, 36);
-130   R2(d, e, a, b, c, 37);
-131   R2(c, d, e, a, b, 38);
-132   R2(b, c, d, e, a, 39);
-133   R3(a, b, c, d, e, 40);
-134   R3(e, a, b, c, d, 41);
-135   R3(d, e, a, b, c, 42);
-136   R3(c, d, e, a, b, 43);
-137   R3(b, c, d, e, a, 44);
-138   R3(a, b, c, d, e, 45);
-139   R3(e, a, b, c, d, 46);
-140   R3(d, e, a, b, c, 47);
-141   R3(c, d, e, a, b, 48);
-142   R3(b, c, d, e, a, 49);
-143   R3(a, b, c, d, e, 50);
-144   R3(e, a, b, c, d, 51);
-145   R3(d, e, a, b, c, 52);
-146   R3(c, d, e, a, b, 53);
-147   R3(b, c, d, e, a, 54);
-148   R3(a, b, c, d, e, 55);
-149   R3(e, a, b, c, d, 56);
-150   R3(d, e, a, b, c, 57);
-151   R3(c, d, e, a, b, 58);
-152   R3(b, c, d, e, a, 59);
-153   R4(a, b, c, d, e, 60);
-154   R4(e, a, b, c, d, 61);
-155   R4(d, e, a, b, c, 62);
-156   R4(c, d, e, a, b, 63);
-157   R4(b, c, d, e, a, 64);
-158   R4(a, b, c, d, e, 65);
-159   R4(e, a, b, c, d, 66);
-160   R4(d, e, a, b, c, 67);
-161   R4(c, d, e, a, b, 68);
-162   R4(b, c, d, e, a, 69);
-163   R4(a, b, c, d, e, 70);
-164   R4(e, a, b, c, d, 71);
-165   R4(d, e, a, b, c, 72);
-166   R4(c, d, e, a, b, 73);
-167   R4(b, c, d, e, a, 74);
-168   R4(a, b, c, d, e, 75);
-169   R4(e, a, b, c, d, 76);
-170   R4(d, e, a, b, c, 77);
-171   R4(c, d, e, a, b, 78);
-172   R4(b, c, d, e, a, 79);
-173 
-174   /* Add the working vars back into context.state[] */
-175   state[0] += a;
-176   state[1] += b;
-177   state[2] += c;
-178   state[3] += d;
-179   state[4] += e;
-180   /* Wipe variables */
-181   a = b = c = d = e = 0;
-182 }</pre>
+<p class="Pp">Definition at line <b>72</b> of file <b>sha1.c</b>.</p>
+<pre>72                                                                                      {
+73   uint32_t a, b, c, d, e;
+74   typedef union {
+75     unsigned char c[SHA1_BLOCK_LENGTH];
+76     uint32_t l[16];
+77   } CHAR64LONG16;
+78   CHAR64LONG16 *block;
+79 #ifdef SHA1HANDSOFF
+80   unsigned char workspace[SHA1_BLOCK_LENGTH];
+81
+82   block = (CHAR64LONG16 *)workspace;
+83   memcpy(block, buffer, SHA1_BLOCK_LENGTH);
+84 #else
+85   block = (CHAR64LONG16 *)buffer;
+86 #endif
+87   /* Copy context-&gt;state[] to working vars */
+88   a = state[0];
+89   b = state[1];
+90   c = state[2];
+91   d = state[3];
+92   e = state[4];
+93
+94   /* 4 rounds of 20 operations each. Loop unrolled. */
+95   R0(a, b, c, d, e, 0);
+96   R0(e, a, b, c, d, 1);
+97   R0(d, e, a, b, c, 2);
+98   R0(c, d, e, a, b, 3);
+99   R0(b, c, d, e, a, 4);
+100   R0(a, b, c, d, e, 5);
+101   R0(e, a, b, c, d, 6);
+102   R0(d, e, a, b, c, 7);
+103   R0(c, d, e, a, b, 8);
+104   R0(b, c, d, e, a, 9);
+105   R0(a, b, c, d, e, 10);
+106   R0(e, a, b, c, d, 11);
+107   R0(d, e, a, b, c, 12);
+108   R0(c, d, e, a, b, 13);
+109   R0(b, c, d, e, a, 14);
+110   R0(a, b, c, d, e, 15);
+111   R1(e, a, b, c, d, 16);
+112   R1(d, e, a, b, c, 17);
+113   R1(c, d, e, a, b, 18);
+114   R1(b, c, d, e, a, 19);
+115   R2(a, b, c, d, e, 20);
+116   R2(e, a, b, c, d, 21);
+117   R2(d, e, a, b, c, 22);
+118   R2(c, d, e, a, b, 23);
+119   R2(b, c, d, e, a, 24);
+120   R2(a, b, c, d, e, 25);
+121   R2(e, a, b, c, d, 26);
+122   R2(d, e, a, b, c, 27);
+123   R2(c, d, e, a, b, 28);
+124   R2(b, c, d, e, a, 29);
+125   R2(a, b, c, d, e, 30);
+126   R2(e, a, b, c, d, 31);
+127   R2(d, e, a, b, c, 32);
+128   R2(c, d, e, a, b, 33);
+129   R2(b, c, d, e, a, 34);
+130   R2(a, b, c, d, e, 35);
+131   R2(e, a, b, c, d, 36);
+132   R2(d, e, a, b, c, 37);
+133   R2(c, d, e, a, b, 38);
+134   R2(b, c, d, e, a, 39);
+135   R3(a, b, c, d, e, 40);
+136   R3(e, a, b, c, d, 41);
+137   R3(d, e, a, b, c, 42);
+138   R3(c, d, e, a, b, 43);
+139   R3(b, c, d, e, a, 44);
+140   R3(a, b, c, d, e, 45);
+141   R3(e, a, b, c, d, 46);
+142   R3(d, e, a, b, c, 47);
+143   R3(c, d, e, a, b, 48);
+144   R3(b, c, d, e, a, 49);
+145   R3(a, b, c, d, e, 50);
+146   R3(e, a, b, c, d, 51);
+147   R3(d, e, a, b, c, 52);
+148   R3(c, d, e, a, b, 53);
+149   R3(b, c, d, e, a, 54);
+150   R3(a, b, c, d, e, 55);
+151   R3(e, a, b, c, d, 56);
+152   R3(d, e, a, b, c, 57);
+153   R3(c, d, e, a, b, 58);
+154   R3(b, c, d, e, a, 59);
+155   R4(a, b, c, d, e, 60);
+156   R4(e, a, b, c, d, 61);
+157   R4(d, e, a, b, c, 62);
+158   R4(c, d, e, a, b, 63);
+159   R4(b, c, d, e, a, 64);
+160   R4(a, b, c, d, e, 65);
+161   R4(e, a, b, c, d, 66);
+162   R4(d, e, a, b, c, 67);
+163   R4(c, d, e, a, b, 68);
+164   R4(b, c, d, e, a, 69);
+165   R4(a, b, c, d, e, 70);
+166   R4(e, a, b, c, d, 71);
+167   R4(d, e, a, b, c, 72);
+168   R4(c, d, e, a, b, 73);
+169   R4(b, c, d, e, a, 74);
+170   R4(a, b, c, d, e, 75);
+171   R4(e, a, b, c, d, 76);
+172   R4(d, e, a, b, c, 77);
+173   R4(c, d, e, a, b, 78);
+174   R4(b, c, d, e, a, 79);
+175
+176   /* Add the working vars back into context.state[] */
+177   state[0] = (uint32_t)((uint64_t)state[0] + a);
+178   state[1] = (uint32_t)((uint64_t)state[1] + b);
+179   state[2] = (uint32_t)((uint64_t)state[2] + c);
+180   state[3] = (uint32_t)((uint64_t)state[3] + d);
+181   state[4] = (uint32_t)((uint64_t)state[4] + e);
+182   /* Wipe variables */
+183   a = b = c = d = e = 0;
+184 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>R0</b>, <b>R1</b>, <b>R2</b>, <b>R3</b>, <b>R4</b>,
-    and <b>SHA1_BLOCK_LENGTH</b>.</p>
-<p class="Pp">Referenced by <b>SHA1Update()</b>.</p>
+    <b>SHA1_BLOCK_LENGTH</b>, and <b>SHA1Transform()</b>.</p>
+<p class="Pp">Referenced by <b>SHA1Transform()</b>, and <b>SHA1Update()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_SHA1Update_("><a class="permalink" href="#void_SHA1Update_(">void
   SHA1Update (<b>SHA1_CTX</b> * context, const void * data, unsigned int
   len)</a></h2>
-<p class="Pp">Definition at line <b>198</b> of file <b>sha1.c</b>.</p>
-<pre>198                                                                           {
-199   const uint8_t *data = dataptr;
-200   unsigned int i;
-201   unsigned int j;
-202 
-203   j = (uint32_t)((context-&gt;count &gt;&gt; 3) &amp; 63);
-204   context-&gt;count += (len &lt;&lt; 3);
-205   if ((j + len) &gt; 63) {
-206     memcpy(&amp;context-&gt;buffer[j], data, (i = 64 - j));
-207     SHA1Transform(context-&gt;state, context-&gt;buffer);
-208     for (; i + 63 &lt; len; i += 64) {
-209       SHA1Transform(context-&gt;state, &amp;data[i]);
-210     }
-211     j = 0;
-212   } else
-213     i = 0;
-214   memcpy(&amp;context-&gt;buffer[j], &amp;data[i], len - i);
-215 }</pre>
+<p class="Pp">Definition at line <b>200</b> of file <b>sha1.c</b>.</p>
+<pre>200                                                                           {
+201   const uint8_t *data = dataptr;
+202   unsigned int i;
+203   unsigned int j;
+204
+205   j = (uint32_t)((context-&gt;count &gt;&gt; 3) &amp; 63);
+206   context-&gt;count += (uint64_t)len &lt;&lt; 3;
+207   if ((j + len) &gt; 63) {
+208     memcpy(&amp;context-&gt;buffer[j], data, (i = 64 - j));
+209     SHA1Transform(context-&gt;state, context-&gt;buffer);
+210     for (; i + 63 &lt; len; i += 64) {
+211       SHA1Transform(context-&gt;state, &amp;data[i]);
+212     }
+213     j = 0;
+214   } else
+215     i = 0;
+216   memcpy(&amp;context-&gt;buffer[j], &amp;data[i], len - i);
+217 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SHA1_CTX::buffer</b>, <b>SHA1_CTX::count</b>,
-    <b>SHA1Transform()</b>, and <b>SHA1_CTX::state</b>.</p>
-<p class="Pp">Referenced by <b>SHA1Final()</b>.</p>
+    <b>SHA1Transform()</b>, <b>SHA1Update()</b>, and <b>SHA1_CTX::state</b>.</p>
+<p class="Pp">Referenced by <b>SHA1Final()</b>, and <b>SHA1Update()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -296,7 +299,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

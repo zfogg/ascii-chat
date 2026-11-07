@@ -79,16 +79,17 @@
 <section class="Ss">
 <h2 class="Ss" id="_define_ACDS_MAX_UNIQUE_SESSIONS___(2500LL_*_5000LL_*_5000LL)"><a class="permalink" href="#_define_ACDS_MAX_UNIQUE_SESSIONS___(2500LL_*_5000LL_*_5000LL)">#define
   ACDS_MAX_UNIQUE_SESSIONS (2500LL * 5000LL * 5000LL)</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>strings/main.c</b>.</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>strings/main.c</b>.</p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_SESSION_STRING_BUFFER_SIZE___40"><a class="permalink" href="#_define_SESSION_STRING_BUFFER_SIZE___40">#define
   SESSION_STRING_BUFFER_SIZE 40</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>strings/main.c</b>.</p>
+<p class="Pp">Definition at line <b>29</b> of file <b>strings/main.c</b>.</p>
 <p class="Pp">Referenced by <b>acds_string_generate()</b>,
-    <b>database_session_leave()</b>, <b>options_init()</b>,
-    <b>options_preset_unified()</b>, and <b>parse_client_address()</b>.</p>
+    <b>database_session_leave()</b>, <b>invitation_render()</b>,
+    <b>options_init()</b>, <b>options_preset_unified()</b>, and
+    <b>parse_client_address()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -97,91 +98,86 @@
 <section class="Ss">
 <h2 class="Ss" id="int_main_(int_argc,_char_*_argv__)"><a class="permalink" href="#int_main_(int_argc,_char_*_argv__)">int
   main (int argc, char * argv[])</a></h2>
-<p class="Pp">Definition at line <b>29</b> of file <b>strings/main.c</b>.</p>
-<pre>29                                  {
-30   long long count = 1;
-31   int dump_adjectives = 0;
-32   int dump_nouns = 0;
-33 
-34   static struct option long_options[] = {
-35     {&quot;count&quot;, required_argument, 0, 'n'},
-36     {&quot;dump-adjectives&quot;, no_argument, 0, 'a'},
-37     {&quot;dump-nouns&quot;, no_argument, 0, 'o'},
-38     {&quot;help&quot;, no_argument, 0, 'h'},
-39     {0, 0, 0, 0}
-40   };
-41 
-42   int opt;
-43   while ((opt = getopt_long(argc, argv, &quot;n:aoh&quot;, long_options, NULL)) != -1) {
-44     switch (opt) {
-45       case 'n':
-46         count = strtoll(optarg, NULL, 10);
-47         break;
-48       case 'a':
-49         dump_adjectives = 1;
-50         break;
-51       case 'o':
-52         dump_nouns = 1;
-53         break;
-54       case 'h':
-55         printf(&quot;Usage: ascii-chat-strings [OPTIONS]\n&quot;);
-56         printf(&quot;Generate memorable session strings (adjective-noun-noun format)\n&quot;);
-57         printf(&quot;\nOptions:\n&quot;);
-58         printf(&quot;  -n, --count COUNT        Generate COUNT session strings (default: 1)\n&quot;);
-59         printf(&quot;  -a, --dump-adjectives    Dump adjectives list as JavaScript\n&quot;);
-60         printf(&quot;  -o, --dump-nouns         Dump nouns list as JavaScript\n&quot;);
-61         printf(&quot;  -h, --help               Show this help message\n&quot;);
-62         return 0;
-63       default:
-64         return ERROR_USAGE;
-65     }
-66   }
-67 
-68   // Handle dump modes
-69   if (dump_adjectives) {
-70     printf(&quot;export const adjectives = [\n&quot;);
-71     for (size_t i = 0; i &lt; adjectives_count; i++) {
-72       printf(&quot;  \&quot;%s\&quot;%s\n&quot;, adjectives[i], (i &lt; adjectives_count - 1) ? &quot;,&quot; : &quot;&quot;);
-73     }
-74     printf(&quot;];\n&quot;);
-75     printf(&quot;export const adjectives_count = %zu;\n&quot;, adjectives_count);
-76     return 0;
-77   }
-78 
-79   if (dump_nouns) {
-80     printf(&quot;export const nouns = [\n&quot;);
-81     for (size_t i = 0; i &lt; nouns_count; i++) {
-82       printf(&quot;  \&quot;%s\&quot;%s\n&quot;, nouns[i], (i &lt; nouns_count - 1) ? &quot;,&quot; : &quot;&quot;);
-83     }
-84     printf(&quot;];\n&quot;);
-85     printf(&quot;export const nouns_count = %zu;\n&quot;, nouns_count);
-86     return 0;
-87   }
-88 
-89   // Normal session string generation
-90   if (count &lt;= 0 || (long long)count &gt; ACDS_MAX_UNIQUE_SESSIONS) {
-91     return ERROR_USAGE;
-92   }
-93 
-94   // Generate session strings
-95   for (long long i = 0; i &lt; count; i++) {
-96     uint32_t adj_idx = randombytes_uniform((uint32_t)adjectives_count);
-97     uint32_t noun1_idx = randombytes_uniform((uint32_t)nouns_count);
-98     uint32_t noun2_idx = randombytes_uniform((uint32_t)nouns_count);
-99 
-100     printf(&quot;%s-%s-%s\n&quot;,
-101            adjectives[adj_idx],
-102            nouns[noun1_idx],
-103            nouns[noun2_idx]);
-104   }
-105 
-106   return 0;
-107 }</pre>
+<p class="Pp">Definition at line <b>32</b> of file <b>strings/main.c</b>.</p>
+<pre>32                                  {
+33   long long count = 1;
+34   int dump_adjectives = 0;
+35   int dump_nouns = 0;
+36
+37   static struct option long_options[] = {{&quot;count&quot;, required_argument, 0, 'n'},
+38                                          {&quot;dump-adjectives&quot;, no_argument, 0, 'a'},
+39                                          {&quot;dump-nouns&quot;, no_argument, 0, 'o'},
+40                                          {&quot;help&quot;, no_argument, 0, 'h'},
+41                                          {0, 0, 0, 0}};
+42
+43   int opt;
+44   while ((opt = getopt_long(argc, argv, &quot;n:aoh&quot;, long_options, NULL)) != -1) {
+45     switch (opt) {
+46     case 'n':
+47       count = strtoll(optarg, NULL, 10);
+48       break;
+49     case 'a':
+50       dump_adjectives = 1;
+51       break;
+52     case 'o':
+53       dump_nouns = 1;
+54       break;
+55     case 'h':
+56       printf(&quot;Usage: ascii-chat-strings [OPTIONS]\n&quot;);
+57       printf(&quot;Generate memorable session strings (adjective-noun-noun format)\n&quot;);
+58       printf(&quot;\nOptions:\n&quot;);
+59       printf(&quot;  -n, --count COUNT        Generate COUNT session strings (default: 1)\n&quot;);
+60       printf(&quot;  -a, --dump-adjectives    Dump adjectives list as JavaScript\n&quot;);
+61       printf(&quot;  -o, --dump-nouns         Dump nouns list as JavaScript\n&quot;);
+62       printf(&quot;  -h, --help               Show this help message\n&quot;);
+63       return 0;
+64     default:
+65       return ERROR_USAGE;
+66     }
+67   }
+68
+69   // Handle dump modes
+70   if (dump_adjectives) {
+71     printf(&quot;export const adjectives = [\n&quot;);
+72     for (size_t i = 0; i &lt; adjectives_count; i++) {
+73       printf(&quot;  \&quot;%s\&quot;%s\n&quot;, adjectives[i], (i &lt; adjectives_count - 1) ? &quot;,&quot; : &quot;&quot;);
+74     }
+75     printf(&quot;];\n&quot;);
+76     printf(&quot;export const adjectives_count = %zu;\n&quot;, adjectives_count);
+77     return 0;
+78   }
+79
+80   if (dump_nouns) {
+81     printf(&quot;export const nouns = [\n&quot;);
+82     for (size_t i = 0; i &lt; nouns_count; i++) {
+83       printf(&quot;  \&quot;%s\&quot;%s\n&quot;, nouns[i], (i &lt; nouns_count - 1) ? &quot;,&quot; : &quot;&quot;);
+84     }
+85     printf(&quot;];\n&quot;);
+86     printf(&quot;export const nouns_count = %zu;\n&quot;, nouns_count);
+87     return 0;
+88   }
+89
+90   // Normal session string generation
+91   if (count &lt;= 0 || (long long)count &gt; ACDS_MAX_UNIQUE_SESSIONS) {
+92     return ERROR_USAGE;
+93   }
+94
+95   // Generate session strings
+96   for (long long i = 0; i &lt; count; i++) {
+97     uint32_t adj_idx = randombytes_uniform((uint32_t)adjectives_count);
+98     uint32_t noun1_idx = randombytes_uniform((uint32_t)nouns_count);
+99     uint32_t noun2_idx = randombytes_uniform((uint32_t)nouns_count);
+100
+101     printf(&quot;%s-%s-%s\n&quot;, adjectives[adj_idx], nouns[noun1_idx], nouns[noun2_idx]);
+102   }
+103
+104   return 0;
+105 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ACDS_MAX_UNIQUE_SESSIONS</b>, <b>adjectives</b>,
-    <b>adjectives_count</b>, <b>ERROR_USAGE</b>, <b>nouns</b>, and
-    <b>nouns_count</b>.</p>
+    <b>adjectives_count</b>, <b>ERROR_USAGE</b>, <b>main()</b>, <b>nouns</b>,
+    and <b>nouns_count</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -191,7 +187,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_protocol_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_protocol_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_protocol_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_protocol_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/common/session/protocol.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>acip_transport_t</b> * <b>transport</b>
+  <br/>
+  <b>session_protocol_media_t</b> <b>media</b>
+  <br/>
+  <b>acip_client_callbacks_t</b> <b>control</b>
+  <br/>
+  <b>asciichat_error_t</b> <b>callback_result</b>
+  <br/>
+  <b>uint64_t</b> <b>packets_received</b>
+  <br/>
+  <b>uint64_t</b> <b>frames_received</b>
+  <br/>
+  <b>uint64_t</b> <b>frames_skipped_viewport</b>
+  <br/>
+  <b>uint64_t</b> <b>audio_packets_received</b>
+  <br/>
+  <b>uint32_t</b> <b>active_client_count</b>
+  <br/>
+  <b>bool</b> <b>server_state_initialized</b>
+  <br/>
+  <b>bool</b> <b>layout_changed</b>
+  <br/>
+  <b>uint32_t</b> <b>settings_request</b>
+  <br/>
+  <b>uint32_t</b> <b>settings_revision</b>
+  <br/>
+  <b>uint32_t</b> <b>settings_status</b>
+  <br/>
+  <b>acip_render_settings_t</b> <b>effective_render_settings</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>21</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> session_protocol_t::active_client_count</h2>
+<p class="Pp">Definition at line <b>30</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> session_protocol_t::audio_packets_received</h2>
+<p class="Pp">Definition at line <b>29</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+<p class="Pp">Referenced by <b>session_protocol_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> session_protocol_t::callback_result</h2>
+<p class="Pp">Definition at line <b>25</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+<p class="Pp">Referenced by <b>session_protocol_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>acip_client_callbacks_t</b> session_protocol_t::control</h2>
+<p class="Pp">Definition at line <b>24</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+<p class="Pp">Referenced by <b>session_protocol_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>acip_render_settings_t</b>
+  session_protocol_t::effective_render_settings</h2>
+<p class="Pp">Definition at line <b>36</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+<p class="Pp">Referenced by <b>session_protocol_dispatch()</b>, and
+    <b>session_protocol_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> session_protocol_t::frames_received</h2>
+<p class="Pp">Definition at line <b>27</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> session_protocol_t::frames_skipped_viewport</h2>
+<p class="Pp">Definition at line <b>28</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_protocol_t::layout_changed</h2>
+<p class="Pp">Definition at line <b>32</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_protocol_media_t</b> session_protocol_t::media</h2>
+<p class="Pp">Definition at line <b>23</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+<p class="Pp">Referenced by <b>session_protocol_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> session_protocol_t::packets_received</h2>
+<p class="Pp">Definition at line <b>26</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+<p class="Pp">Referenced by <b>session_protocol_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_protocol_t::server_state_initialized</h2>
+<p class="Pp">Definition at line <b>31</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> session_protocol_t::settings_request</h2>
+<p class="Pp">Definition at line <b>33</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+<p class="Pp">Referenced by <b>session_protocol_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> session_protocol_t::settings_revision</h2>
+<p class="Pp">Definition at line <b>34</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+<p class="Pp">Referenced by <b>session_protocol_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> session_protocol_t::settings_status</h2>
+<p class="Pp">Definition at line <b>35</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+<p class="Pp">Referenced by <b>session_protocol_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>acip_transport_t</b>* session_protocol_t::transport</h2>
+<p class="Pp">Definition at line <b>22</b> of file
+    <b>src/common/session/protocol.h</b>.</p>
+<p class="Pp">Referenced by <b>session_protocol_dispatch()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

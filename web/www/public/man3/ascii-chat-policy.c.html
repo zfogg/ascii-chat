@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>policy.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">policy.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">policy.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">policy.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>crypto_policy_resolve</b> (const
+    <b>crypto_policy_t</b> *policy, <b>uint8_t</b> *mode)
+  <br/>
+  <b>asciichat_error_t</b> <b>crypto_policy_check_mode</b> (<b>bool</b>
+    transport_secure, <b>bool</b> encrypt, <b>bool</b> no_encrypt, <b>bool</b>
+    require_auth, <b>uint8_t</b> mode)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_policy_check_mode (<b>bool</b>
+  transport_secure, <b>bool</b> encrypt, <b>bool</b> no_encrypt, <b>bool</b>
+  require_auth, <b>uint8_t</b> mode)</h2>
+<p class="Pp">Validate a peer proposal against server transport and explicit
+    encryption settings.</p>
+<p class="Pp">Definition at line <b>17</b> of file <b>policy.c</b>.</p>
+<pre>18                                                          {
+19   if (mode &gt; ACIP_CRYPTO_FULL || (encrypt &amp;&amp; no_encrypt))
+20     return SET_ERRNO(ERROR_CRYPTO, &quot;Invalid security policy&quot;);
+21   if (require_auth &amp;&amp; !ACIP_CRYPTO_HAS_AUTH(mode))
+22     return SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;Server requires authentication&quot;);
+23   if ((encrypt || (!transport_secure &amp;&amp; !no_encrypt)) &amp;&amp; !ACIP_CRYPTO_HAS_ENCRYPT(mode))
+24     return SET_ERRNO(ERROR_CRYPTO, &quot;Server requires ACIP encryption&quot;);
+25   if (no_encrypt &amp;&amp; ACIP_CRYPTO_HAS_ENCRYPT(mode))
+26     return SET_ERRNO(ERROR_CRYPTO, &quot;Server disabled ACIP encryption&quot;);
+27   return ASCIICHAT_OK;
+28 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACIP_CRYPTO_FULL</b>, <b>ACIP_CRYPTO_HAS_AUTH</b>,
+    <b>ACIP_CRYPTO_HAS_ENCRYPT</b>, <b>ASCIICHAT_OK</b>,
+    <b>crypto_policy_check_mode()</b>, <b>ERROR_CRYPTO</b>,
+    <b>ERROR_CRYPTO_AUTH</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>crypto_policy_check_mode()</b>, and
+    <b>network_negotiation_receive()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> crypto_policy_resolve (const
+  <b>crypto_policy_t</b> * policy, <b>uint8_t</b> * mode)</h2>
+<p class="Pp">Resolve to the ACIP_CRYPTO_* wire bitmask; reject contradictory
+    requests.</p>
+<p class="Pp">Definition at line <b>4</b> of file <b>policy.c</b>.</p>
+<pre>4                                                                                       {
+5   if (!policy || !mode)
+6     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing crypto policy or result&quot;);
+7   if (policy-&gt;encrypt &amp;&amp; policy-&gt;no_encrypt)
+8     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;--encrypt and --no-encrypt are mutually exclusive&quot;);
+9   bool authentication = policy-&gt;has_password || policy-&gt;has_identity || policy-&gt;has_verification_key;
+10   if (policy-&gt;no_auth &amp;&amp; authentication)
+11     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Authentication material cannot be used with --no-auth&quot;);
+12   bool encryption = !policy-&gt;no_encrypt &amp;&amp; (policy-&gt;encrypt || policy-&gt;has_password || !policy-&gt;transport_secure);
+13   *mode = (encryption ? ACIP_CRYPTO_ENCRYPT : 0) | (authentication ? ACIP_CRYPTO_AUTH : 0);
+14   return ASCIICHAT_OK;
+15 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACIP_CRYPTO_AUTH</b>, <b>ACIP_CRYPTO_ENCRYPT</b>,
+    <b>ASCIICHAT_OK</b>, <b>crypto_policy_resolve()</b>,
+    <b>crypto_policy_t::encrypt</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>crypto_policy_t::has_identity</b>, <b>crypto_policy_t::has_password</b>,
+    <b>crypto_policy_t::has_verification_key</b>,
+    <b>crypto_policy_t::no_auth</b>, <b>crypto_policy_t::no_encrypt</b>,
+    <b>SET_ERRNO</b>, and <b>crypto_policy_t::transport_secure</b>.</p>
+<p class="Pp">Referenced by <b>acip_security_init_options()</b>,
+    <b>client_resolve_crypto_policy()</b>, <b>crypto_policy_resolve()</b>,
+    <b>discovery_session_start()</b>, and <b>peer_crypto_create()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

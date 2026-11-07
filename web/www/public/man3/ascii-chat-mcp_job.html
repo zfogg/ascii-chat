@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>mcp_job(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">mcp_job(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">mcp_job(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">mcp_job</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/mcp-server/mcp.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">struct <b>mcp_server</b> * <b>server</b>
+  <br/>
+  yyjson_doc * <b>message</b>
+  <br/>
+  yyjson_mut_doc * <b>response</b>
+  <br/>
+  <b>mcp_render_request_t</b> <b>request</b>
+  <br/>
+  <b>mcp_tool_t</b> <b>tool</b>
+  <br/>
+  gotel_context_t <b>telemetry_parent</b>
+  <br/>
+  <b>asciichat_thread_t</b> <b>thread</b>
+  <br/>
+  <b>atomic_t</b> <b>cancelled</b>
+  <br/>
+  <b>atomic_t</b> <b>done</b>
+  <br/>
+  <b>bool</b> <b>started</b>
+  <br/>
+  void * <b>connection</b>
+  <br/>
+  char <b>session_id</b> [32+1]
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>60</b> of file <b>mcp.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> mcp_job::cancelled</h2>
+<p class="Pp">Definition at line <b>68</b> of file <b>mcp.h</b>.</p>
+<p class="Pp">Referenced by <b>mcp_dispatch()</b>, <b>mcp_http_run()</b>,
+    <b>mcp_server_main()</b>, and <b>mcp_stdio_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_mcp_job::connection"><a class="permalink" href="#void*_mcp_job::connection">void*
+  mcp_job::connection</a></h2>
+<p class="Pp">Definition at line <b>71</b> of file <b>mcp.h</b>.</p>
+<p class="Pp">Referenced by <b>mcp_dispatch()</b>, and
+  <b>mcp_jobs_reap()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> mcp_job::done</h2>
+<p class="Pp">Definition at line <b>69</b> of file <b>mcp.h</b>.</p>
+<p class="Pp">Referenced by <b>mcp_http_run()</b>, and
+  <b>mcp_jobs_reap()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="yyjson_doc*_mcp_job::message"><a class="permalink" href="#yyjson_doc*_mcp_job::message">yyjson_doc*
+  mcp_job::message</a></h2>
+<p class="Pp">Definition at line <b>62</b> of file <b>mcp.h</b>.</p>
+<p class="Pp">Referenced by <b>mcp_dispatch()</b>, and
+  <b>mcp_jobs_reap()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>mcp_render_request_t</b> mcp_job::request</h2>
+<p class="Pp">Definition at line <b>64</b> of file <b>mcp.h</b>.</p>
+<p class="Pp">Referenced by <b>mcp_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="yyjson_mut_doc*_mcp_job::response"><a class="permalink" href="#yyjson_mut_doc*_mcp_job::response">yyjson_mut_doc*
+  mcp_job::response</a></h2>
+<p class="Pp">Definition at line <b>63</b> of file <b>mcp.h</b>.</p>
+<p class="Pp">Referenced by <b>mcp_jobs_reap()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
+  <b>mcp_server</b>* mcp_job::server</a></h2>
+<p class="Pp">Definition at line <b>61</b> of file <b>mcp.h</b>.</p>
+<p class="Pp">Referenced by <b>mcp_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_mcp_job::session_id_32+1_"><a class="permalink" href="#char_mcp_job::session_id_32+1_">char
+  mcp_job::session_id[32+1]</a></h2>
+<p class="Pp">Definition at line <b>72</b> of file <b>mcp.h</b>.</p>
+<p class="Pp">Referenced by <b>mcp_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> mcp_job::started</h2>
+<p class="Pp">Definition at line <b>70</b> of file <b>mcp.h</b>.</p>
+<p class="Pp">Referenced by <b>mcp_dispatch()</b>, <b>mcp_http_run()</b>,
+    <b>mcp_jobs_reap()</b>, <b>mcp_server_main()</b>, and
+    <b>mcp_stdio_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="gotel_context_t_mcp_job::telemetry_parent"><a class="permalink" href="#gotel_context_t_mcp_job::telemetry_parent">gotel_context_t
+  mcp_job::telemetry_parent</a></h2>
+<p class="Pp">Definition at line <b>66</b> of file <b>mcp.h</b>.</p>
+<p class="Pp">Referenced by <b>mcp_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_thread_t</b> mcp_job::thread</h2>
+<p class="Pp">Definition at line <b>67</b> of file <b>mcp.h</b>.</p>
+<p class="Pp">Referenced by <b>mcp_dispatch()</b>, and
+  <b>mcp_jobs_reap()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>mcp_tool_t</b> mcp_job::tool</h2>
+<p class="Pp">Definition at line <b>65</b> of file <b>mcp.h</b>.</p>
+<p class="Pp">Referenced by <b>mcp_dispatch()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

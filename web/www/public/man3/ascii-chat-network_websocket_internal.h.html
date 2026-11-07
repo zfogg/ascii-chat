@@ -43,11 +43,7 @@
 <p class="Pp">struct <b>websocket_msg_t</b>
   <br/>
   WebSocket message element (individual frame or fragment). struct
-    <b>pending_free_item_t</b>
-  <br/>
-  Pending buffer free item for deferred cleanup Used to defer buffer freeing
-    when permessage-deflate compression may still hold references
-    asynchronously. struct <b>websocket_transport_data_t</b>
+    <b>websocket_transport_data_t</b>
   <br/>
   WebSocket transport implementation data.
   <br/>
@@ -58,6 +54,19 @@
 <br/>
 <p class="Pp">typedef <b>websocket_msg_t</b> <b>websocket_recv_msg_t</b>
   <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>websocket_transport_send</b>
+    (<b>acip_transport_t</b> *transport, const void *data, size_t len)
+  <br/>
+  void <b>websocket_transport_write_pending</b> (struct lws *wsi,
+    <b>websocket_transport_data_t</b> *ws_data)
+  <br/>
+  Drain client messages from the send queue on the service thread.
   <br/>
 </p>
 </section>
@@ -77,8 +86,154 @@
 <section class="Ss">
 <h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
   <b>websocket_msg_t</b> <b>websocket_recv_msg_t</b></a></h2>
-<p class="Pp">Definition at line <b>32</b> of file
+<p class="Pp">Definition at line <b>36</b> of file
     <b>network/websocket/internal.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> websocket_transport_send
+  (<b>acip_transport_t</b> * transport, const void * data, size_t len)</h2>
+<p class="Pp">Queue one packet, preserving its control budget through encryption
+    and ownership transfer.</p>
+<p class="Pp">Definition at line <b>641</b> of file
+    <b>websocket/transport.c</b>.</p>
+<pre>641                                                                                                       {
+642   // NOTE: Disabled START_TIMER/STOP_TIMER due to thread safety issues with timer hashtable
+643   // causing heap-use-after-free crashes in ASAN. The timer system has race conditions
+644   // when accessed from the service thread context. See: line 325 (similar issue).
+645   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport-&gt;impl_data;
+646
+647   // For server-side transports (owns_context=false), the connection is already established.
+648   // For client-side transports, packets may be queued before the asynchronous WebSocket
+649   // handshake completes. The service thread drains that queue after CLIENT_ESTABLISHED.
+650   if (ws_data-&gt;owns_context) {
+651     // Check connection state without blocking the service thread.
+652     mutex_lock(&amp;ws_data-&gt;state_mutex);
+653     bool connected = ws_data-&gt;is_connected;
+654     bool connection_failed = ws_data-&gt;connection_failed;
+655     mutex_unlock(&amp;ws_data-&gt;state_mutex);
+656
+657     if (connection_failed) {
+658       log_error(&quot;Connection failed - cannot send&quot;);
+659       return SET_ERRNO(ERROR_NETWORK, &quot;WebSocket connection failed&quot;);
+660     }
+661
+662     if (!connected) {
+663       log_debug(&quot;Connection is opening; queueing packet for delivery after handshake&quot;);
+664     }
+665
+666     log_dev_every(1000000, &quot;websocket_send (client): is_connected=%d, wsi=%p, send_len=%zu&quot;, connected,
+667                   (void *)ws_data-&gt;wsi, len);
+668   } else {
+669     log_dev_every(4500 * US_PER_MS_INT,
+670                   &quot;[WEBSOCKET_SEND_SERVER] Server transport send: wsi=%p, len=%zu (bypassing is_connected check)&quot;,
+671                   (void *)ws_data-&gt;wsi, len);
+672   }
+673
+674   // Classify the original packet before encryption hides its type. Keep this
+675   // domain through every allocation, including the asynchronous queue owner.
+676   buffer_domain_t *domain = NULL;
+677   if (data &amp;&amp; len &gt;= sizeof(packet_header_t)) {
+678     packet_header_t header;
+679     memcpy(&amp;header, data, sizeof(header));
+680     packet_type_t type = NET_TO_HOST_U16(header.type);
+681     if (packet_is_handshake_type(type) || type == PACKET_TYPE_ERROR_MESSAGE)
+682       domain = buffer_control_domain();
+683   }
+684   const void *send_data = NULL;
+685   size_t send_len = 0;
+686   uint8_t *encrypted_packet = NULL;
+687   size_t encrypted_packet_size = 0;
+688   asciichat_error_t result = websocket_prepare_payload(transport, domain, data, len, &amp;send_data, &amp;send_len,
+689                                                        &amp;encrypted_packet, &amp;encrypted_packet_size);
+690   if (result != ASCIICHAT_OK) {
+691     return result;
+692   }
+693
+694   result = websocket_queue_payload(ws_data, domain, send_data, send_len);
+695   if (encrypted_packet) {
+696     buffer_release(encrypted_packet);
+697   }
+698   return result;
+699 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_control_domain()</b>,
+    <b>buffer_release</b>, <b>websocket_transport_data_t::connection_failed</b>,
+    <b>ERROR_NETWORK</b>, <b>acip_transport::impl_data</b>,
+    <b>websocket_transport_data_t::is_connected</b>, <b>log_debug</b>,
+    <b>log_dev_every</b>, <b>log_error</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>,
+    <b>websocket_transport_data_t::owns_context</b>,
+    <b>PACKET_TYPE_ERROR_MESSAGE</b>, <b>SET_ERRNO</b>,
+    <b>websocket_transport_data_t::state_mutex</b>,
+    <b>packet_header_t::type</b>, <b>US_PER_MS_INT</b>,
+    <b>websocket_transport_send()</b>, and
+    <b>websocket_transport_data_t::wsi</b>.</p>
+<p class="Pp">Referenced by <b>websocket_transport_send()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_websocket_transport_write_pending_(struct_lws_*_wsi,_"><a class="permalink" href="#void_websocket_transport_write_pending_(struct_lws_*_wsi,_">void
+  websocket_transport_write_pending (struct lws * wsi,
+  <b>websocket_transport_data_t</b> * ws_data)</a></h2>
+<p class="Pp">Drain client messages from the send queue on the service
+  thread.</p>
+<p class="Pp">Definition at line <b>458</b> of file
+    <b>websocket/transport.c</b>.</p>
+<pre>458                                                                                              {
+459   if (!ws_data || atomic_load_bool(&amp;ws_data-&gt;is_destroying))
+460     return;
+461   /* lws suppresses writable callbacks until previously buffered output is
+462    * consumed. Keep one owner until this completion boundary, or connection
+463    * teardown; elapsed service-loop iterations are not a completion signal. */
+464   websocket_recv_msg_t msg = {0};
+465   mutex_lock(&amp;ws_data-&gt;send_mutex);
+466   buffer_release(ws_data-&gt;inflight_buffer);
+467   ws_data-&gt;inflight_buffer = NULL;
+468   ws_data-&gt;pending_send_bytes -= ws_data-&gt;inflight_bytes;
+469   ws_data-&gt;inflight_bytes = 0;
+470   bool available = ringbuffer_read(ws_data-&gt;send_queue, &amp;msg);
+471   if (available)
+472     ws_data-&gt;inflight_buffer = msg.data;
+473   ws_data-&gt;inflight_bytes = msg.len;
+474   mutex_unlock(&amp;ws_data-&gt;send_mutex);
+475   if (!available)
+476     return;
+477   int written = lws_write(wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
+478   if (written &lt; 0 || (size_t)written &lt; msg.len) {
+479     mutex_lock(&amp;ws_data-&gt;state_mutex);
+480     ws_data-&gt;is_connected = false;
+481     ws_data-&gt;connection_failed = true;
+482     cond_broadcast(&amp;ws_data-&gt;state_cond);
+483     mutex_unlock(&amp;ws_data-&gt;state_mutex);
+484     lws_set_timeout(wsi, PENDING_TIMEOUT_CLOSE_SEND, LWS_TO_KILL_ASYNC);
+485     return;
+486   }
+487   /* Exactly one write per callback. Request a completion callback even if
+488    * there is no next message, so the final owner is promptly released. */
+489   lws_callback_on_writable(wsi);
+490 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>, <b>buffer_release</b>,
+    <b>cond_broadcast()</b>,
+    <b>websocket_transport_data_t::connection_failed</b>,
+    <b>websocket_msg_t::data</b>,
+    <b>websocket_transport_data_t::inflight_buffer</b>,
+    <b>websocket_transport_data_t::inflight_bytes</b>,
+    <b>websocket_transport_data_t::is_connected</b>,
+    <b>websocket_transport_data_t::is_destroying</b>,
+    <b>websocket_msg_t::len</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>websocket_transport_data_t::pending_send_bytes</b>,
+    <b>ringbuffer_read()</b>, <b>websocket_transport_data_t::send_mutex</b>,
+    <b>websocket_transport_data_t::send_queue</b>,
+    <b>websocket_transport_data_t::state_cond</b>,
+    <b>websocket_transport_data_t::state_mutex</b>, and
+    <b>websocket_transport_write_pending()</b>.</p>
+<p class="Pp">Referenced by <b>websocket_transport_write_pending()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -88,7 +243,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

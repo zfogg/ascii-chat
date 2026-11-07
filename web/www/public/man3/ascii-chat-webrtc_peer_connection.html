@@ -39,16 +39,25 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">int <b>rtc_id</b>
+<p class="Pp"><b>nat_upnp_context_t</b> * <b>mapping</b>
+  <br/>
+  Owned UDP mapping. <b>socket_t</b> <b>port_reservation</b>
+  <br/>
+  Held until ICE starts binding. <b>asciichat_thread_t</b> <b>mapping_thread</b>
+  <br/>
+  <b>atomic_t</b> <b>mapping_stop</b>
+  <br/>
+  <b>bool</b> <b>mapping_thread_started</b>
+  <br/>
+  int <b>rtc_id</b>
   <br/>
   libdatachannel peer connection ID <b>webrtc_config_t</b> <b>config</b>
   <br/>
-  Configuration with callbacks. <b>webrtc_state_t</b> <b>state</b>
+  Configuration with callbacks. <b>atomic_t</b> <b>state</b>
   <br/>
-  Current connection state. <b>webrtc_gathering_state_t</b>
-    <b>gathering_state</b>
+  Current connection state. <b>atomic_t</b> <b>gathering_state</b>
   <br/>
-  Current ICE gathering state. <b>uint64_t</b> <b>gathering_start_time_ms</b>
+  Current ICE gathering state. <b>atomic_t</b> <b>gathering_start_time_ms</b>
   <br/>
   When gathering started (platform_get_time_ms). <b>webrtc_data_channel_t</b> *
     <b>dc</b>
@@ -64,7 +73,7 @@
 <p class="Pp">WebRTC peer connection state.</p>
 <p class="Pp">Represents a WebRTC peer-to-peer connection using libdatachannel.
     Manages ICE state, connection state, and data channels.</p>
-<p class="Pp">Definition at line <b>36</b> of file
+<p class="Pp">Definition at line <b>58</b> of file
     <b>lib/network/webrtc/webrtc.c</b>.</p>
 </section>
 <section class="Sh">
@@ -73,44 +82,73 @@
 <section class="Ss">
 <h2 class="Ss"><b>webrtc_config_t</b> webrtc_peer_connection::config</h2>
 <p class="Pp">Configuration with callbacks.</p>
-<p class="Pp">Definition at line <b>38</b> of file
+<p class="Pp">Definition at line <b>65</b> of file
     <b>lib/network/webrtc/webrtc.c</b>.</p>
-<p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>, and
-    <b>webrtc_get_user_data()</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_create_datachannel()</b>,
+    <b>webrtc_create_peer_connection()</b>, and
+  <b>webrtc_get_user_data()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>webrtc_data_channel_t</b>* webrtc_peer_connection::dc</h2>
 <p class="Pp">Primary data channel (if created/received).</p>
-<p class="Pp">Definition at line <b>42</b> of file
+<p class="Pp">Definition at line <b>69</b> of file
     <b>lib/network/webrtc/webrtc.c</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_close_peer_connection()</b>,
-    <b>webrtc_create_datachannel()</b>, and
-    <b>webrtc_create_peer_connection()</b>.</p>
+    <b>webrtc_create_datachannel()</b>, <b>webrtc_create_peer_connection()</b>,
+    and <b>webrtc_set_remote_description()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>uint64_t</b>
+<h2 class="Ss"><b>atomic_t</b>
   webrtc_peer_connection::gathering_start_time_ms</h2>
 <p class="Pp">When gathering started (platform_get_time_ms).</p>
-<p class="Pp">Definition at line <b>41</b> of file
+<p class="Pp">Definition at line <b>68</b> of file
     <b>lib/network/webrtc/webrtc.c</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>, and
     <b>webrtc_is_gathering_timed_out()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>webrtc_gathering_state_t</b>
-  webrtc_peer_connection::gathering_state</h2>
+<h2 class="Ss"><b>atomic_t</b> webrtc_peer_connection::gathering_state</h2>
 <p class="Pp">Current ICE gathering state.</p>
-<p class="Pp">Definition at line <b>40</b> of file
+<p class="Pp">Definition at line <b>67</b> of file
     <b>lib/network/webrtc/webrtc.c</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>,
     <b>webrtc_get_gathering_state()</b>, and
     <b>webrtc_is_gathering_timed_out()</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss"><b>nat_upnp_context_t</b>* webrtc_peer_connection::mapping</h2>
+<p class="Pp">Owned UDP mapping.</p>
+<p class="Pp">Definition at line <b>59</b> of file
+    <b>lib/network/webrtc/webrtc.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>atomic_t</b> webrtc_peer_connection::mapping_stop</h2>
+<p class="Pp">Definition at line <b>62</b> of file
+    <b>lib/network/webrtc/webrtc.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_thread_t</b>
+  webrtc_peer_connection::mapping_thread</h2>
+<p class="Pp">Definition at line <b>61</b> of file
+    <b>lib/network/webrtc/webrtc.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> webrtc_peer_connection::mapping_thread_started</h2>
+<p class="Pp">Definition at line <b>63</b> of file
+    <b>lib/network/webrtc/webrtc.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>socket_t</b> webrtc_peer_connection::port_reservation</h2>
+<p class="Pp">Held until ICE starts binding.</p>
+<p class="Pp">Definition at line <b>60</b> of file
+    <b>lib/network/webrtc/webrtc.c</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="int_webrtc_peer_connection::rtc_id"><a class="permalink" href="#int_webrtc_peer_connection::rtc_id">int
   webrtc_peer_connection::rtc_id</a></h2>
 <p class="Pp">libdatachannel peer connection ID</p>
-<p class="Pp">Definition at line <b>37</b> of file
+<p class="Pp">Definition at line <b>64</b> of file
     <b>lib/network/webrtc/webrtc.c</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_add_remote_candidate()</b>,
     <b>webrtc_close_peer_connection()</b>, <b>webrtc_create_datachannel()</b>,
@@ -120,9 +158,9 @@
     <b>webrtc_set_remote_description()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>webrtc_state_t</b> webrtc_peer_connection::state</h2>
+<h2 class="Ss"><b>atomic_t</b> webrtc_peer_connection::state</h2>
 <p class="Pp">Current connection state.</p>
-<p class="Pp">Definition at line <b>39</b> of file
+<p class="Pp">Definition at line <b>66</b> of file
     <b>lib/network/webrtc/webrtc.c</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_create_peer_connection()</b>, and
     <b>webrtc_get_state()</b>.</p>
@@ -136,7 +174,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

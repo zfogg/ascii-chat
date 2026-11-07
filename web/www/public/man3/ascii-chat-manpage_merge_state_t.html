@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>manpage_merge_state_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">manpage_merge_state_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">manpage_merge_state_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">manpage_merge_state_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>in_auto_section</b>
+  <br/>
+  char <b>current_auto_section</b> [128]
+  <br/>
+  <b>bool</b> <b>found_section_header</b>
+  <br/>
+  <b>bool</b> <b>in_merge_section</b>
+  <br/>
+  <b>bool</b> <b>merge_content_generated</b>
+  <br/>
+  char <b>current_merge_section</b> [64]
+  <br/>
+  const char ** <b>manual_env_vars</b>
+  <br/>
+  const char ** <b>manual_env_descs</b>
+  <br/>
+  size_t <b>manual_env_count</b>
+  <br/>
+  size_t <b>manual_env_capacity</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>244</b> of file
+  <b>options/manpage.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_manpage_merge_state_t::current_auto_section_128_"><a class="permalink" href="#char_manpage_merge_state_t::current_auto_section_128_">char
+  manpage_merge_state_t::current_auto_section[128]</a></h2>
+<p class="Pp">Definition at line <b>246</b> of file
+  <b>options/manpage.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_manpage_merge_state_t::current_merge_section_64_"><a class="permalink" href="#char_manpage_merge_state_t::current_merge_section_64_">char
+  manpage_merge_state_t::current_merge_section[64]</a></h2>
+<p class="Pp">Definition at line <b>250</b> of file
+  <b>options/manpage.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> manpage_merge_state_t::found_section_header</h2>
+<p class="Pp">Definition at line <b>247</b> of file
+  <b>options/manpage.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> manpage_merge_state_t::in_auto_section</h2>
+<p class="Pp">Definition at line <b>245</b> of file
+  <b>options/manpage.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> manpage_merge_state_t::in_merge_section</h2>
+<p class="Pp">Definition at line <b>248</b> of file
+  <b>options/manpage.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_manpage_merge_state_t::manual_env_capacity"><a class="permalink" href="#size_t_manpage_merge_state_t::manual_env_capacity">size_t
+  manpage_merge_state_t::manual_env_capacity</a></h2>
+<p class="Pp">Definition at line <b>254</b> of file
+  <b>options/manpage.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_manpage_merge_state_t::manual_env_count"><a class="permalink" href="#size_t_manpage_merge_state_t::manual_env_count">size_t
+  manpage_merge_state_t::manual_env_count</a></h2>
+<p class="Pp">Definition at line <b>253</b> of file
+  <b>options/manpage.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char**_manpage_merge_state_t::manual_env_descs"><a class="permalink" href="#const_char**_manpage_merge_state_t::manual_env_descs">const
+  char** manpage_merge_state_t::manual_env_descs</a></h2>
+<p class="Pp">Definition at line <b>252</b> of file
+  <b>options/manpage.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char**_manpage_merge_state_t::manual_env_vars"><a class="permalink" href="#const_char**_manpage_merge_state_t::manual_env_vars">const
+  char** manpage_merge_state_t::manual_env_vars</a></h2>
+<p class="Pp">Definition at line <b>251</b> of file
+  <b>options/manpage.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> manpage_merge_state_t::merge_content_generated</h2>
+<p class="Pp">Definition at line <b>249</b> of file
+  <b>options/manpage.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>selectable_list.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">selectable_list.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">selectable_list.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">selectable_list.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>ui_selectable_list_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>ui_selectable_list_reset</b> (<b>ui_selectable_list_t</b>
+    *list)
+  <br/>
+  void <b>ui_selectable_list_move</b> (<b>ui_selectable_list_t</b> *list, int
+    count, int rows, int delta)
+  <br/>
+  void <b>ui_selectable_list_keep_visible</b> (<b>ui_selectable_list_t</b>
+    *list, int count, int rows)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_selectable_list_keep_visible_("><a class="permalink" href="#void_ui_selectable_list_keep_visible_(">void
+  ui_selectable_list_keep_visible (<b>ui_selectable_list_t</b> * list, int
+  count, int rows)</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>selectable_list.c</b>.</p>
+<pre>9                                                                                       {
+10   if (!list)
+11     return;
+12   ui_viewport_t viewport = {.selected = list-&gt;selected &gt; 0 ? (size_t)list-&gt;selected : 0,
+13                             .first_visible = list-&gt;first_visible &gt; 0 ? (size_t)list-&gt;first_visible : 0};
+14   ui_viewport_update(&amp;viewport, count &gt; 0 ? (size_t)count : 0, rows &gt; 0 ? (size_t)rows : 1);
+15   list-&gt;selected = (int)viewport.selected;
+16   list-&gt;first_visible = (int)viewport.first_visible;
+17 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_selectable_list_t::first_visible</b>,
+    <b>ui_viewport_t::first_visible</b>, <b>ui_selectable_list_t::selected</b>,
+    <b>ui_viewport_t::selected</b>, <b>ui_selectable_list_keep_visible()</b>,
+    and <b>ui_viewport_update()</b>.</p>
+<p class="Pp">Referenced by <b>ui_selectable_list_keep_visible()</b>, and
+    <b>ui_selectable_list_move()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_selectable_list_move_("><a class="permalink" href="#void_ui_selectable_list_move_(">void
+  ui_selectable_list_move (<b>ui_selectable_list_t</b> * list, int count, int
+  rows, int delta)</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file <b>selectable_list.c</b>.</p>
+<pre>19                                                                                          {
+20   if (!list || count &lt;= 0)
+21     return;
+22   list-&gt;selected += delta;
+23   ui_selectable_list_keep_visible(list, count, rows);
+24 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_selectable_list_t::selected</b>,
+    <b>ui_selectable_list_keep_visible()</b>, and
+    <b>ui_selectable_list_move()</b>.</p>
+<p class="Pp">Referenced by <b>ui_errno_stacks_handle_key()</b>, and
+    <b>ui_selectable_list_move()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_selectable_list_reset_("><a class="permalink" href="#void_ui_selectable_list_reset_(">void
+  ui_selectable_list_reset (<b>ui_selectable_list_t</b> * list)</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>selectable_list.c</b>.</p>
+<pre>4                                                           {
+5   if (list)
+6     *list = (ui_selectable_list_t){0};
+7 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_selectable_list_reset()</b>.</p>
+<p class="Pp">Referenced by <b>ui_errno_stacks_handle_key()</b>,
+    <b>ui_errno_stacks_toggle()</b>, and <b>ui_selectable_list_reset()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

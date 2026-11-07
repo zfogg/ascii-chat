@@ -41,9 +41,11 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">void *(* <b>user_func</b> )(void *)
+<p class="Pp">void *(*) <b>user_func</b> (void *)
   <br/>
   void * <b>user_arg</b>
+  <br/>
+  char <b>name</b> [128]
   <br/>
   <br/>
 </p>
@@ -53,26 +55,31 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">Internal thread wrapper for automatic cleanup.</p>
-<p class="Pp">This structure is used internally by
-    <b>acthread_create()</b> to wrap user thread functions with
-    automatic cleanup (mutex stack cleanup, etc). Users should not interact with
-    this directly.</p>
-<p class="Pp">Definition at line <b>99</b> of file
+<p class="Pp">This structure is used internally by <b>acthread_create()</b> to
+    wrap user thread functions with automatic cleanup (mutex stack cleanup,
+    etc). Users should not interact with this directly.</p>
+<p class="Pp">Definition at line <b>102</b> of file
     <b>include/ascii-chat/platform/thread.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void*_asciichat_thread_wrapper_t::user_arg"><a class="permalink" href="#void*_asciichat_thread_wrapper_t::user_arg">void*
-  asciichat_thread_wrapper_t::user_arg</a></h2>
-<p class="Pp">Definition at line <b>101</b> of file
+<h2 class="Ss" id="char_asciichat_thread_wrapper_t::name_128_"><a class="permalink" href="#char_asciichat_thread_wrapper_t::name_128_">char
+  asciichat_thread_wrapper_t::name[128]</a></h2>
+<p class="Pp">Definition at line <b>105</b> of file
     <b>include/ascii-chat/platform/thread.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_*(*_asciichat_thread_wrapper_t::user_func)_(void_*)"><a class="permalink" href="#void_*(*_asciichat_thread_wrapper_t::user_func)_(void_*)">void
-  *(* asciichat_thread_wrapper_t::user_func) (void *)</a></h2>
-<p class="Pp">Definition at line <b>100</b> of file
+<h2 class="Ss" id="void*_asciichat_thread_wrapper_t::user_arg"><a class="permalink" href="#void*_asciichat_thread_wrapper_t::user_arg">void*
+  asciichat_thread_wrapper_t::user_arg</a></h2>
+<p class="Pp">Definition at line <b>104</b> of file
+    <b>include/ascii-chat/platform/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_*(*)_asciichat_thread_wrapper_t::user_func(void_*)"><a class="permalink" href="#void_*(*)_asciichat_thread_wrapper_t::user_func(void_*)">void
+  *(*) asciichat_thread_wrapper_t::user_func(void *)</a></h2>
+<p class="Pp">Definition at line <b>103</b> of file
     <b>include/ascii-chat/platform/thread.h</b>.</p>
 <p class="Pp"></p>
 </section>
@@ -84,7 +91,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -39,7 +39,12 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">const char * <b>platform_getenv</b> (const char *name)
+<p class="Pp">int <b>platform_execute_subprocess</b> (const char *executable,
+    const char **argv, char *output_buffer, size_t output_size,
+    <b>bool</b>(*cancel)(void *), void *data)
+  <br/>
+  Execute a subprocess and optionally capture its output. const char *
+    <b>platform_getenv</b> (const char *name)
   <br/>
   Get an environment variable value. const char * <b>platform_strerror</b> (int
     errnum)
@@ -81,7 +86,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

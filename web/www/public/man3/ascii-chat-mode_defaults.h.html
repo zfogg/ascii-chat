@@ -108,52 +108,53 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>opts</i> Options struct to update (must have
   detected_mode already set)</div>
-<p class="Pp">Definition at line <b>184</b> of file
+<p class="Pp">Definition at line <b>189</b> of file
     <b>options/registry/mode_defaults.c</b>.</p>
-<pre>184                                                    {
-185   if (!opts) {
-186     return;
-187   }
-188 
-189   // Apply port default based on mode
-190   const int *mode_port = (const int *)get_default_port(opts-&gt;detected_mode);
-191   if (mode_port) {
-192     // Only update if still at a generic default (27224 or 27225)
-193     if (opts-&gt;port == OPT_PORT_INT_DEFAULT || opts-&gt;port == OPT_ACDS_PORT_INT_DEFAULT) {
-194       opts-&gt;port = *mode_port;
-195     }
-196   }
-197 
-198   // Apply websocket-port default based on mode
-199   const int *mode_websocket_port = (const int *)get_default_websocket_port(opts-&gt;detected_mode);
-200   if (mode_websocket_port) {
-201     // Only update if still at a generic default (27226 or 27227)
-202     if (opts-&gt;websocket_port == OPT_WEBSOCKET_PORT_SERVER_DEFAULT ||
-203         opts-&gt;websocket_port == OPT_WEBSOCKET_PORT_ACDS_DEFAULT) {
-204       opts-&gt;websocket_port = *mode_websocket_port;
-205     }
-206   }
-207 
-208   // If TLS cert+key are provided and websocket-port was not explicitly set,
-209   // default to 443 (standard HTTPS/WSS port) instead of the mode default.
-210   if (opts-&gt;websocket_tls_cert[0] != '\0' &amp;&amp; opts-&gt;websocket_tls_key[0] != '\0') {
-211     if (opts-&gt;websocket_port == OPT_WEBSOCKET_PORT_SERVER_DEFAULT ||
-212         opts-&gt;websocket_port == OPT_WEBSOCKET_PORT_ACDS_DEFAULT) {
-213       opts-&gt;websocket_port = 443;
-214     }
-215   }
-216 }</pre>
+<pre>189                                                    {
+190   if (!opts) {
+191     return;
+192   }
+193
+194   // Apply port default based on mode
+195   const int *mode_port = (const int *)get_default_port(opts-&gt;detected_mode);
+196   if (mode_port &amp;&amp; opts-&gt;detected_mode != MODE_MCP_SERVER) {
+197     // Only update if still at a generic default (27224 or 27225)
+198     if (opts-&gt;port == OPT_PORT_INT_DEFAULT || opts-&gt;port == OPT_ACDS_PORT_INT_DEFAULT) {
+199       opts-&gt;port = *mode_port;
+200     }
+201   }
+202
+203   // Apply websocket-port default based on mode
+204   const int *mode_websocket_port = (const int *)get_default_websocket_port(opts-&gt;detected_mode);
+205   if (mode_websocket_port) {
+206     // Only update if still at a generic default (27226 or 27227)
+207     if (opts-&gt;websocket_port == OPT_WEBSOCKET_PORT_SERVER_DEFAULT ||
+208         opts-&gt;websocket_port == OPT_WEBSOCKET_PORT_ACDS_DEFAULT) {
+209       opts-&gt;websocket_port = *mode_websocket_port;
+210     }
+211   }
+212
+213   // If TLS cert+key are provided and websocket-port was not explicitly set,
+214   // default to 443 (standard HTTPS/WSS port) instead of the mode default.
+215   if (opts-&gt;websocket_tls_cert[0] != '\0' &amp;&amp; opts-&gt;websocket_tls_key[0] != '\0') {
+216     if (opts-&gt;websocket_port == OPT_WEBSOCKET_PORT_SERVER_DEFAULT ||
+217         opts-&gt;websocket_port == OPT_WEBSOCKET_PORT_ACDS_DEFAULT) {
+218       opts-&gt;websocket_port = 443;
+219     }
+220   }
+221 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>options_state::detected_mode</b>,
-    <b>get_default_port()</b>, <b>get_default_websocket_port()</b>,
+<p class="Pp">References <b>apply_mode_specific_defaults()</b>,
+    <b>options_state::detected_mode</b>, <b>get_default_port()</b>,
+    <b>get_default_websocket_port()</b>, <b>MODE_MCP_SERVER</b>,
     <b>OPT_ACDS_PORT_INT_DEFAULT</b>, <b>OPT_PORT_INT_DEFAULT</b>,
     <b>OPT_WEBSOCKET_PORT_ACDS_DEFAULT</b>,
     <b>OPT_WEBSOCKET_PORT_SERVER_DEFAULT</b>, <b>options_state::port</b>,
     <b>options_state::websocket_port</b>,
     <b>options_state::websocket_tls_cert</b>, and
     <b>options_state::websocket_tls_key</b>.</p>
-<p class="Pp">Referenced by <b>options_init()</b>.</p>
+<p class="Pp">Referenced by <b>apply_mode_specific_defaults()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_void_*_get_default_log_file_("><a class="permalink" href="#const_void_*_get_default_log_file_(">const
@@ -170,15 +171,17 @@
 <p class="Pp">Debug builds: Uses current working directory (server.log,
     client.log, etc.) Release builds: Uses $TMPDIR/ascii-chat/server.log,
   etc.</p>
-<p class="Pp">Definition at line <b>109</b> of file
+<p class="Pp">Definition at line <b>110</b> of file
     <b>options/registry/mode_defaults.c</b>.</p>
-<pre>109                                                         {
-110   (void)mode; // Unused
-111   // Return empty string - let options_get_log_filepath() handle the defaults
-112   return &quot;&quot;;
-113 }</pre>
+<pre>110                                                         {
+111   (void)mode; // Unused
+112   // Return empty string - let options_get_log_filepath() handle the defaults
+113   return &quot;&quot;;
+114 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>get_default_log_file()</b>.</p>
+<p class="Pp">Referenced by <b>get_default_log_file()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_void_*_get_default_port_("><a class="permalink" href="#const_void_*_get_default_port_(">const
@@ -188,31 +191,37 @@
 <div class="Bd-indent"><i>mode</i> The mode to get the default for</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to the default port number for this mode</div>
-<p class="Pp">Definition at line <b>127</b> of file
+<p class="Pp">Definition at line <b>128</b> of file
     <b>options/registry/mode_defaults.c</b>.</p>
-<pre>127                                                     {
-128   switch (mode) {
-129   case MODE_SERVER:
-130     return &amp;g_port_server;
-131   case MODE_CLIENT:
-132     return &amp;g_port_client;
-133   case MODE_DISCOVERY_SERVICE:
-134     return &amp;g_port_discovery_service;
-135   case MODE_DISCOVERY:
-136     return &amp;g_port_discovery;
-137   case MODE_MIRROR:
-138   case MODE_INVALID:
-139   default:
-140     // Fallback
-141     return &amp;g_port_server;
-142   }
-143 }</pre>
+<pre>128                                                     {
+129   switch (mode) {
+130   case MODE_MCP_SERVER: {
+131     static const int port = OPT_MCP_PORT_DEFAULT;
+132     return &amp;port;
+133   }
+134   case MODE_SERVER:
+135     return &amp;g_port_server;
+136   case MODE_CLIENT:
+137     return &amp;g_port_client;
+138   case MODE_DISCOVERY_SERVICE:
+139     return &amp;g_port_discovery_service;
+140   case MODE_DISCOVERY:
+141     return &amp;g_port_discovery;
+142   case MODE_MIRROR:
+143   case MODE_INVALID:
+144   default:
+145     // Fallback
+146     return &amp;g_port_server;
+147   }
+148 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>MODE_CLIENT</b>, <b>MODE_DISCOVERY</b>,
-    <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_INVALID</b>, <b>MODE_MIRROR</b>, and
-    <b>MODE_SERVER</b>.</p>
-<p class="Pp">Referenced by <b>apply_mode_specific_defaults()</b>.</p>
+<p class="Pp">References <b>get_default_port()</b>, <b>MODE_CLIENT</b>,
+    <b>MODE_DISCOVERY</b>, <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_INVALID</b>,
+    <b>MODE_MCP_SERVER</b>, <b>MODE_MIRROR</b>, <b>MODE_SERVER</b>, and
+    <b>OPT_MCP_PORT_DEFAULT</b>.</p>
+<p class="Pp">Referenced by <b>apply_mode_specific_defaults()</b>, and
+    <b>get_default_port()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_void_*_get_default_websocket_port_("><a class="permalink" href="#const_void_*_get_default_websocket_port_(">const
@@ -223,29 +232,30 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to the default WebSocket port number for this
   mode</div>
-<p class="Pp">Definition at line <b>155</b> of file
+<p class="Pp">Definition at line <b>160</b> of file
     <b>options/registry/mode_defaults.c</b>.</p>
-<pre>155                                                               {
-156   switch (mode) {
-157   case MODE_SERVER:
-158     return &amp;g_websocket_port_server;
-159   case MODE_DISCOVERY_SERVICE:
-160     return &amp;g_websocket_port_discovery_service;
-161   case MODE_CLIENT:
-162   case MODE_MIRROR:
-163   case MODE_DISCOVERY:
-164   case MODE_INVALID:
-165   default:
-166     // Fallback (should not be used for client/mirror/discovery)
-167     return &amp;g_websocket_port_server;
-168   }
-169 }</pre>
+<pre>160                                                               {
+161   switch (mode) {
+162   case MODE_SERVER:
+163     return &amp;g_websocket_port_server;
+164   case MODE_DISCOVERY_SERVICE:
+165     return &amp;g_websocket_port_discovery_service;
+166   case MODE_CLIENT:
+167   case MODE_MIRROR:
+168   case MODE_DISCOVERY:
+169   case MODE_INVALID:
+170   default:
+171     // Fallback (should not be used for client/mirror/discovery)
+172     return &amp;g_websocket_port_server;
+173   }
+174 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>MODE_CLIENT</b>, <b>MODE_DISCOVERY</b>,
-    <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_INVALID</b>, <b>MODE_MIRROR</b>, and
-    <b>MODE_SERVER</b>.</p>
-<p class="Pp">Referenced by <b>apply_mode_specific_defaults()</b>.</p>
+<p class="Pp">References <b>get_default_websocket_port()</b>,
+    <b>MODE_CLIENT</b>, <b>MODE_DISCOVERY</b>, <b>MODE_DISCOVERY_SERVICE</b>,
+    <b>MODE_INVALID</b>, <b>MODE_MIRROR</b>, and <b>MODE_SERVER</b>.</p>
+<p class="Pp">Referenced by <b>apply_mode_specific_defaults()</b>, and
+    <b>get_default_websocket_port()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">const <b>mode_descriptor_t</b> * get_mode_descriptor
@@ -275,26 +285,30 @@ if (desc) {
 <div class="Bd-indent"><i>mode</i> Mode to look up</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to mode descriptor, or NULL if not found</div>
-<p class="Pp">Definition at line <b>41</b> of file
+<p class="Pp">Definition at line <b>42</b> of file
     <b>options/registry/mode_defaults.c</b>.</p>
-<pre>41                                                                     {
-42   for (size_t i = 0; g_mode_descriptors[i].name; i++) {
-43     if (g_mode_descriptors[i].mode == mode) {
-44       return &amp;g_mode_descriptors[i];
-45     }
-46   }
-47   return NULL;
-48 }</pre>
+<pre>42                                                                     {
+43   for (size_t i = 0; g_mode_descriptors[i].name; i++) {
+44     if (g_mode_descriptors[i].mode == mode) {
+45       return &amp;g_mode_descriptors[i];
+46     }
+47   }
+48   return NULL;
+49 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>get_mode_descriptor()</b>.</p>
+<p class="Pp">Referenced by <b>get_mode_descriptor()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">const <b>mode_descriptor_t</b> * get_modes_by_group (const char *
   group, size_t * out_count)</h2>
-<p class="Pp">Get all mode descriptors for a specific group. Returns all modes
-    in a given category (e.g., &quot;server-like&quot; or
-    &quot;client-like&quot;). The returned array is allocated with SAFE_MALLOC
-    and must be freed by caller.</p>
+<p class="Pp">Get all mode descriptors for a specific group. Get all mode
+    descriptors grouped by category.</p>
+<p class="Pp"></p>
+<p class="Pp">Returns all modes in a given category (e.g.,
+    &quot;server-like&quot; or &quot;client-like&quot;). The returned array is
+    allocated with SAFE_MALLOC and must be freed by caller.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>group</i> Group name (&quot;server-like&quot; or
@@ -332,53 +346,54 @@ if (server_modes) {
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Array of mode descriptors, or NULL if group not
   found</div>
-<p class="Pp">Definition at line <b>56</b> of file
+<p class="Pp">Definition at line <b>57</b> of file
     <b>options/registry/mode_defaults.c</b>.</p>
-<pre>56                                                                                   {
-57   if (!group || !out_count) {
-58     return NULL;
-59   }
-60 
-61   // Count matching modes
-62   size_t count = 0;
-63   for (size_t i = 0; g_mode_descriptors[i].name; i++) {
-64     if (strcmp(g_mode_descriptors[i].group, group) == 0) {
-65       count++;
-66     }
-67   }
-68 
-69   if (count == 0) {
-70     *out_count = 0;
-71     return NULL;
-72   }
-73 
-74   // Allocate result array
-75   mode_descriptor_t *result = SAFE_MALLOC((count + 1) * sizeof(mode_descriptor_t), mode_descriptor_t *);
-76   size_t idx = 0;
-77 
-78   // Fill result array
-79   for (size_t i = 0; g_mode_descriptors[i].name &amp;&amp; idx &lt; count; i++) {
-80     if (strcmp(g_mode_descriptors[i].group, group) == 0) {
-81       result[idx++] = g_mode_descriptors[i];
-82     }
-83   }
-84 
-85   // Add terminator
-86   result[idx].mode = MODE_INVALID;
-87   result[idx].name = NULL;
-88   result[idx].description = NULL;
-89   result[idx].group = NULL;
-90 
-91   *out_count = count;
-92   return result;
-93 }</pre>
+<pre>57                                                                                   {
+58   if (!group || !out_count) {
+59     return NULL;
+60   }
+61
+62   // Count matching modes
+63   size_t count = 0;
+64   for (size_t i = 0; g_mode_descriptors[i].name; i++) {
+65     if (strcmp(g_mode_descriptors[i].group, group) == 0) {
+66       count++;
+67     }
+68   }
+69
+70   if (count == 0) {
+71     *out_count = 0;
+72     return NULL;
+73   }
+74
+75   // Allocate result array
+76   mode_descriptor_t *result = SAFE_MALLOC((count + 1) * sizeof(mode_descriptor_t), mode_descriptor_t *);
+77   size_t idx = 0;
+78
+79   // Fill result array
+80   for (size_t i = 0; g_mode_descriptors[i].name &amp;&amp; idx &lt; count; i++) {
+81     if (strcmp(g_mode_descriptors[i].group, group) == 0) {
+82       result[idx++] = g_mode_descriptors[i];
+83     }
+84   }
+85
+86   // Add terminator
+87   result[idx].mode = MODE_INVALID;
+88   result[idx].name = NULL;
+89   result[idx].description = NULL;
+90   result[idx].group = NULL;
+91
+92   *out_count = count;
+93   return result;
+94 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>mode_descriptor_t::description</b>,
-    <b>mode_descriptor_t::group</b>, <b>mode_descriptor_t::mode</b>,
-    <b>MODE_INVALID</b>, <b>mode_descriptor_t::name</b>, and
-  <b>SAFE_MALLOC</b>.</p>
-<p class="Pp">Referenced by <b>completions_generate_zsh()</b>.</p>
+    <b>get_modes_by_group()</b>, <b>mode_descriptor_t::group</b>,
+    <b>mode_descriptor_t::mode</b>, <b>MODE_INVALID</b>,
+    <b>mode_descriptor_t::name</b>, and <b>SAFE_MALLOC</b>.</p>
+<p class="Pp">Referenced by <b>completions_generate_zsh()</b>, and
+    <b>get_modes_by_group()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -388,7 +403,7 @@ if (server_modes) {
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

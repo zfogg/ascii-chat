@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>controller.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">controller.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">controller.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">controller.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>animation_config_t</b>
+  <br/>
+  struct <b>animation_sample_t</b>
+  <br/>
+  struct <b>animation_t</b>
+  <br/>
+  struct <b>animation_target_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>animation_type_t</b> { <b>ANIMATION_SPLASH_RAINBOW</b>,
+    <b>ANIMATION_DIGITAL_RAIN</b>, <b>ANIMATION_RAINBOW_FILTER</b>,
+    <b>ANIMATION_TEST_PATTERN</b> }
+  <br/>
+  enum <b>animation_hidden_policy_t</b> { <b>ANIMATION_HIDDEN_PAUSE</b>,
+    <b>ANIMATION_HIDDEN_CONTINUE</b> }
+  <br/>
+  enum <b>animation_target_type_t</b> { <b>ANIMATION_TARGET_COLOR</b>,
+    <b>ANIMATION_TARGET_ANSI</b>, <b>ANIMATION_TARGET_TEST_PATTERN</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>animation_init</b> (<b>animation_t</b>
+    *animation, const char *name, <b>animation_config_t</b> config)
+  <br/>
+  void <b>animation_destroy</b> (<b>animation_t</b> *animation)
+  <br/>
+  void <b>animation_reset</b> (<b>animation_t</b> *animation)
+  <br/>
+  void <b>animation_set_paused</b> (<b>animation_t</b> *animation, <b>bool</b>
+    paused)
+  <br/>
+  void <b>animation_set_visible</b> (<b>animation_t</b> *animation, <b>bool</b>
+    visible)
+  <br/>
+  <b>asciichat_error_t</b> <b>animation_set_speed</b> (<b>animation_t</b>
+    *animation, double speed)
+  <br/>
+  <b>asciichat_error_t</b> <b>animation_update</b> (<b>animation_t</b>
+    *animation, <b>uint64_t</b> timestamp_ns, <b>animation_sample_t</b> *out)
+  <br/>
+  <b>asciichat_error_t</b> <b>animation_sample_at</b> (<b>animation_config_t</b>
+    config, double seconds, <b>animation_sample_t</b> *out)
+  <br/>
+  <b>asciichat_error_t</b> <b>animation_apply</b> (const
+    <b>animation_sample_t</b> *sample, <b>animation_target_t</b> *target)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">enum <b>animation_hidden_policy_t</b></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="ANIMATION_HIDDEN_PAUSE"><a class="permalink" href="#ANIMATION_HIDDEN_PAUSE"><b><i>ANIMATION_HIDDEN_PAUSE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="ANIMATION_HIDDEN_CONTINUE"><a class="permalink" href="#ANIMATION_HIDDEN_CONTINUE"><b><i>ANIMATION_HIDDEN_CONTINUE
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>15</b> of file
+    <b>video/anim/controller.h</b>.</p>
+<pre>15 { ANIMATION_HIDDEN_PAUSE, ANIMATION_HIDDEN_CONTINUE } animation_hidden_policy_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">enum <b>animation_target_type_t</b></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="ANIMATION_TARGET_COLOR"><a class="permalink" href="#ANIMATION_TARGET_COLOR"><b><i>ANIMATION_TARGET_COLOR
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="ANIMATION_TARGET_ANSI"><a class="permalink" href="#ANIMATION_TARGET_ANSI"><b><i>ANIMATION_TARGET_ANSI
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="ANIMATION_TARGET_TEST_PATTERN"><a class="permalink" href="#ANIMATION_TARGET_TEST_PATTERN"><b><i>ANIMATION_TARGET_TEST_PATTERN
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>56</b> of file
+    <b>video/anim/controller.h</b>.</p>
+<pre>56 { ANIMATION_TARGET_COLOR, ANIMATION_TARGET_ANSI, ANIMATION_TARGET_TEST_PATTERN } animation_target_type_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">enum <b>animation_type_t</b></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="ANIMATION_SPLASH_RAINBOW"><a class="permalink" href="#ANIMATION_SPLASH_RAINBOW"><b><i>ANIMATION_SPLASH_RAINBOW
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="ANIMATION_DIGITAL_RAIN"><a class="permalink" href="#ANIMATION_DIGITAL_RAIN"><b><i>ANIMATION_DIGITAL_RAIN
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="ANIMATION_RAINBOW_FILTER"><a class="permalink" href="#ANIMATION_RAINBOW_FILTER"><b><i>ANIMATION_RAINBOW_FILTER
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="ANIMATION_TEST_PATTERN"><a class="permalink" href="#ANIMATION_TEST_PATTERN"><b><i>ANIMATION_TEST_PATTERN
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>8</b> of file
+    <b>video/anim/controller.h</b>.</p>
+<pre>8              {
+9   ANIMATION_SPLASH_RAINBOW,
+10   ANIMATION_DIGITAL_RAIN,
+11   ANIMATION_RAINBOW_FILTER,
+12   ANIMATION_TEST_PATTERN,
+13 } animation_type_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> animation_apply (const
+  <b>animation_sample_t</b> * sample, <b>animation_target_t</b> * target)</h2>
+<p class="Pp">Definition at line <b>89</b> of file
+    <b>video/anim/controller.c</b>.</p>
+<pre>89                                                                                       {
+90   if (!s || !t || !isfinite(s-&gt;seconds) || s-&gt;seconds &lt; 0)
+91     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid animation sample or target&quot;);
+92   switch (s-&gt;type) {
+93   case ANIMATION_SPLASH_RAINBOW: {
+94     if (t-&gt;type != ANIMATION_TARGET_COLOR || !t-&gt;color.out || !isfinite(t-&gt;color.position))
+95       break;
+96     static const rgb_pixel_t colors[] = {{255, 0, 0},   {255, 165, 0}, {255, 255, 0}, {0, 255, 0},
+97                                          {0, 255, 255}, {0, 0, 255},   {255, 0, 255}};
+98     double position = fmod(t-&gt;color.position, 1.0) + fmod(s-&gt;seconds, 2.5) * 0.4;
+99     double phase = (position - floor(position)) * 6;
+100     int i = (int)phase;
+101     double blend = phase - i;
+102     rgb_pixel_t a = colors[i], b = colors[i + 1];
+103     *t-&gt;color.out =
+104         (rgb_pixel_t){(uint8_t)(a.r * (1 - blend) + b.r * blend), (uint8_t)(a.g * (1 - blend) + b.g * blend),
+105                       (uint8_t)(a.b * (1 - blend) + b.b * blend)};
+106     return ASCIICHAT_OK;
+107   }
+108   case ANIMATION_RAINBOW_FILTER:
+109     if (t-&gt;type == ANIMATION_TARGET_COLOR &amp;&amp; t-&gt;color.out) {
+110       color_filter_calculate_rainbow((float)fmod(s-&gt;seconds, 3.5), &amp;t-&gt;color.out-&gt;r, &amp;t-&gt;color.out-&gt;g,
+111                                      &amp;t-&gt;color.out-&gt;b);
+112       return ASCIICHAT_OK;
+113     }
+114     if (t-&gt;type != ANIMATION_TARGET_ANSI || !t-&gt;ansi.input || !t-&gt;ansi.out)
+115       break;
+116     *t-&gt;ansi.out = rainbow_render_ansi_at(t-&gt;ansi.input, (float)fmod(s-&gt;seconds, 3.5));
+117     return *t-&gt;ansi.out ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, &quot;Rainbow output allocation failed&quot;);
+118   case ANIMATION_DIGITAL_RAIN:
+119     if (t-&gt;type != ANIMATION_TARGET_ANSI || !t-&gt;ansi.input || !t-&gt;ansi.out || !t-&gt;ansi.rain)
+120       break;
+121     *t-&gt;ansi.out = digital_rain_render_at(t-&gt;ansi.rain, t-&gt;ansi.input, (float)s-&gt;seconds);
+122     return *t-&gt;ansi.out ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, &quot;Digital rain output allocation failed&quot;);
+123   case ANIMATION_TEST_PATTERN:
+124     if (t-&gt;type != ANIMATION_TARGET_TEST_PATTERN || !t-&gt;test_pattern.context)
+125       break;
+126     return test_pattern_render_at(t-&gt;test_pattern.context, t-&gt;test_pattern.index, s-&gt;seconds * 1000.0,
+127                                   t-&gt;test_pattern.cadence);
+128   }
+129   return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Animation type does not support this target&quot;);
+130 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>animation_apply()</b>,
+    <b>ANIMATION_DIGITAL_RAIN</b>, <b>ANIMATION_RAINBOW_FILTER</b>,
+    <b>ANIMATION_SPLASH_RAINBOW</b>, <b>ANIMATION_TARGET_ANSI</b>,
+    <b>ANIMATION_TARGET_COLOR</b>, <b>ANIMATION_TARGET_TEST_PATTERN</b>,
+    <b>ANIMATION_TEST_PATTERN</b>, <b>ASCIICHAT_OK</b>, <b>rgb_pixel_t::b</b>,
+    <b>color_filter_calculate_rainbow()</b>, <b>digital_rain_render_at()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>rgb_pixel_t::g</b>,
+    <b>rgb_pixel_t::r</b>, <b>rainbow_render_ansi_at()</b>,
+    <b>animation_sample_t::seconds</b>, <b>SET_ERRNO</b>,
+    <b>test_pattern_render_at()</b>, <b>animation_sample_t::type</b>, and
+    <b>animation_target_t::type</b>.</p>
+<p class="Pp">Referenced by <b>animation_apply()</b>,
+    <b>digital_rain_apply()</b>, <b>rainbow_replace_ansi_colors()</b>, and
+    <b>test_pattern_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_animation_destroy_("><a class="permalink" href="#void_animation_destroy_(">void
+  animation_destroy (<b>animation_t</b> * animation)</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file
+    <b>video/anim/controller.c</b>.</p>
+<pre>24                                        {
+25   if (!a)
+26     return;
+27   NAMED_UNREGISTER(a);
+28   memset(a, 0, sizeof(*a));
+29 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>animation_destroy()</b>, and
+    <b>NAMED_UNREGISTER</b>.</p>
+<p class="Pp">Referenced by <b>animation_destroy()</b>,
+    <b>digital_rain_destroy()</b>, and <b>ui_session_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> animation_init (<b>animation_t</b> *
+  animation, const char * name, <b>animation_config_t</b> config)</h2>
+<p class="Pp">Definition at line <b>16</b> of file
+    <b>video/anim/controller.c</b>.</p>
+<pre>16                                                                                               {
+17   if (!a || !name || !valid_config(config))
+18     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid animation configuration&quot;);
+19   *a = (animation_t){.config = config, .visible = true};
+20   NAMED_REGISTER(a, name, &quot;animation&quot;, NULL, NULL);
+21   return ASCIICHAT_OK;
+22 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>animation_init()</b>, <b>ASCIICHAT_OK</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>NAMED_REGISTER</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>animation_init()</b>, <b>digital_rain_init()</b>,
+    and <b>ui_session_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_animation_reset_("><a class="permalink" href="#void_animation_reset_(">void
+  animation_reset (<b>animation_t</b> * animation)</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file
+    <b>video/anim/controller.c</b>.</p>
+<pre>31                                      {
+32   if (!a)
+33     return;
+34   a-&gt;seconds = 0;
+35   a-&gt;started = false;
+36   a-&gt;last_frame = 0;
+37 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>animation_reset()</b>,
+    <b>animation_t::last_frame</b>, <b>animation_t::seconds</b>, and
+    <b>animation_t::started</b>.</p>
+<p class="Pp">Referenced by <b>animation_reset()</b>,
+    <b>digital_rain_reset()</b>, and <b>ui_session_loading()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> animation_sample_at
+  (<b>animation_config_t</b> config, double seconds, <b>animation_sample_t</b> *
+  out)</h2>
+<p class="Pp">Definition at line <b>53</b> of file
+    <b>video/anim/controller.c</b>.</p>
+<pre>53                                                                                                           {
+54   if (!out || !valid_config(config) || !isfinite(seconds) || seconds &lt; 0 || seconds * config.fps &gt;= (double)UINT64_MAX)
+55     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid animation timestamp&quot;);
+56   *out = (animation_sample_t){.type = config.type,
+57                               .seconds = seconds,
+58                               .frame = (uint64_t)(seconds * config.fps),
+59                               .changed = true,
+60                               .next_frame_ns = UINT64_MAX};
+61   return ASCIICHAT_OK;
+62 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>animation_sample_at()</b>, <b>ASCIICHAT_OK</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>animation_config_t::fps</b>,
+    <b>SET_ERRNO</b>, and <b>animation_config_t::type</b>.</p>
+<p class="Pp">Referenced by <b>animation_sample_at()</b>,
+    <b>animation_update()</b>, <b>rainbow_replace_ansi_colors()</b>, and
+    <b>test_pattern_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_animation_set_paused_("><a class="permalink" href="#void_animation_set_paused_(">void
+  animation_set_paused (<b>animation_t</b> * animation, <b>bool</b>
+  paused)</a></h2>
+<p class="Pp">Definition at line <b>38</b> of file
+    <b>video/anim/controller.c</b>.</p>
+<pre>38                                                        {
+39   if (a)
+40     a-&gt;paused = paused;
+41 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>animation_set_paused()</b>, and
+    <b>animation_t::paused</b>.</p>
+<p class="Pp">Referenced by <b>animation_set_paused()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> animation_set_speed (<b>animation_t</b>
+  * animation, double speed)</h2>
+<p class="Pp">Definition at line <b>46</b> of file
+    <b>video/anim/controller.c</b>.</p>
+<pre>46                                                                     {
+47   if (!a || !isfinite(speed) || speed &lt; 0)
+48     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid animation speed&quot;);
+49   a-&gt;config.speed = speed;
+50   return ASCIICHAT_OK;
+51 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>animation_set_speed()</b>, <b>ASCIICHAT_OK</b>,
+    <b>animation_t::config</b>, <b>ERROR_INVALID_PARAM</b>, <b>SET_ERRNO</b>,
+    and <b>animation_config_t::speed</b>.</p>
+<p class="Pp">Referenced by <b>animation_set_speed()</b>, and
+    <b>digital_rain_apply()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_animation_set_visible_("><a class="permalink" href="#void_animation_set_visible_(">void
+  animation_set_visible (<b>animation_t</b> * animation, <b>bool</b>
+  visible)</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file
+    <b>video/anim/controller.c</b>.</p>
+<pre>42                                                          {
+43   if (a)
+44     a-&gt;visible = visible;
+45 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>animation_set_visible()</b>, and
+    <b>animation_t::visible</b>.</p>
+<p class="Pp">Referenced by <b>animation_set_visible()</b>, and
+    <b>ui_session_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> animation_update (<b>animation_t</b> *
+  animation, <b>uint64_t</b> timestamp_ns, <b>animation_sample_t</b> * out)</h2>
+<p class="Pp">Definition at line <b>64</b> of file
+    <b>video/anim/controller.c</b>.</p>
+<pre>64                                                                                           {
+65   if (!a || !out || !valid_config(a-&gt;config) || (a-&gt;started &amp;&amp; now &lt; a-&gt;last_ns))
+66     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Animation timestamps must be monotonic; reset before seeking&quot;);
+67   bool running =
+68       !a-&gt;paused &amp;&amp; a-&gt;config.speed &gt; 0 &amp;&amp; (a-&gt;visible || a-&gt;config.hidden_policy == ANIMATION_HIDDEN_CONTINUE);
+69   double seconds = a-&gt;seconds;
+70   if (a-&gt;started &amp;&amp; running)
+71     seconds += (double)(now - a-&gt;last_ns) / 1e9 * a-&gt;config.speed;
+72   asciichat_error_t err = animation_sample_at(a-&gt;config, seconds, out);
+73   if (err != ASCIICHAT_OK)
+74     return err;
+75   out-&gt;changed = !a-&gt;started || out-&gt;frame != a-&gt;last_frame;
+76   if (running) {
+77     double remaining = ((double)out-&gt;frame + 1.0) / a-&gt;config.fps - seconds;
+78     double delay = ceil(fmax(1.0, remaining * 1e9 / a-&gt;config.speed));
+79     if (delay &lt; (double)(UINT64_MAX - now))
+80       out-&gt;next_frame_ns = now + (uint64_t)delay;
+81   }
+82   a-&gt;seconds = seconds;
+83   a-&gt;last_ns = now;
+84   a-&gt;last_frame = out-&gt;frame;
+85   a-&gt;started = true;
+86   return ASCIICHAT_OK;
+87 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ANIMATION_HIDDEN_CONTINUE</b>,
+    <b>animation_sample_at()</b>, <b>animation_update()</b>,
+    <b>ASCIICHAT_OK</b>, <b>animation_sample_t::changed</b>,
+    <b>animation_t::config</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>animation_config_t::fps</b>, <b>animation_sample_t::frame</b>,
+    <b>animation_config_t::hidden_policy</b>, <b>animation_t::last_frame</b>,
+    <b>animation_t::last_ns</b>, <b>animation_sample_t::next_frame_ns</b>,
+    <b>animation_t::paused</b>, <b>animation_t::seconds</b>, <b>SET_ERRNO</b>,
+    <b>animation_config_t::speed</b>, <b>animation_t::started</b>, and
+    <b>animation_t::visible</b>.</p>
+<p class="Pp">Referenced by <b>animation_update()</b>,
+    <b>digital_rain_apply()</b>, <b>digital_rain_init()</b>,
+    <b>digital_rain_reset()</b>, and <b>ui_session_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

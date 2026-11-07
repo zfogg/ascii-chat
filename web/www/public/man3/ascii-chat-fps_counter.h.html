@@ -59,7 +59,35 @@
   Record a frame timestamp. float <b>fps_counter_get</b> (<b>fps_counter_t</b>
     *counter)
   <br/>
-  Get the current FPS value.
+  Get the current FPS value. void <b>fps_counter_reset</b> (<b>fps_counter_t</b>
+    *counter)
+  <br/>
+  void <b>fps_counter_tick_at</b> (<b>fps_counter_t</b> *counter,
+    <b>uint64_t</b> now)
+  <br/>
+  float <b>fps_counter_get_at</b> (<b>fps_counter_t</b> *counter,
+    <b>uint64_t</b> now)
+  <br/>
+  <b>bool</b> <b>fps_counter_set_visible</b> (<b>fps_counter_t</b> *counter,
+    <b>bool</b> visible)
+  <br/>
+  void <b>fps_counter_frame_begin</b> (<b>fps_counter_t</b> *counter,
+    <b>bool</b> measure)
+  <br/>
+  void <b>fps_counter_write_begin</b> (<b>fps_counter_t</b> *counter)
+  <br/>
+  void <b>fps_counter_write_end</b> (<b>fps_counter_t</b> *counter, <b>bool</b>
+    complete)
+  <br/>
+  void <b>fps_counter_frame_end</b> (<b>fps_counter_t</b> *counter,
+    <b>uint64_t</b> now)
+  <br/>
+  void <b>fps_counter_render</b> (<b>fps_counter_t</b> *counter, int fd, int
+    columns, <b>bool</b> redrawn)
+  <br/>
+  <b>bool</b> <b>fps_counter_frame_begin_id</b> (<b>fps_counter_t</b> *counter,
+    <b>uint64_t</b> frame_id)
+  <br/>
   <br/>
 </p>
 </section>
@@ -74,13 +102,38 @@
 <p class="Pp">Definition in file <b>fps_counter.h</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> fps_counter_frame_begin_id (<b>fps_counter_t</b> *
+  counter, <b>uint64_t</b> frame_id)</h2>
+<p class="Pp">Count an acquired frame ID once, after its complete write. Zero
+    denotes a UI-only redraw.</p>
+<p class="Pp">Definition at line <b>157</b> of file <b>fps_counter.c</b>.</p>
+<pre>157                                                                            {
+158   if (!counter)
+159     return false;
+160   fps_counter_frame_begin(counter, frame_id &amp;&amp; frame_id != counter-&gt;completed_frame_id);
+161   counter-&gt;current_frame_id = frame_id;
+162   return counter-&gt;measuring;
+163 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>fps_counter_s::completed_frame_id</b>,
+    <b>fps_counter_s::current_frame_id</b>, <b>fps_counter_frame_begin()</b>,
+    <b>fps_counter_frame_begin_id()</b>, and
+  <b>fps_counter_s::measuring</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_frame_begin_id()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

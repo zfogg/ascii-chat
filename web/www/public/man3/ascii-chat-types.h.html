@@ -38,7 +38,9 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>LOG_DEV</b> <b>ASCIICHAT_LOG_DEV</b>
+<p class="Pp">#define <b>LOG_BIT</b>(n)
+  <br/>
+  Logging bit conversion. #define <b>LOG_DEV</b> <b>ASCIICHAT_LOG_DEV</b>
   <br/>
   #define <b>LOG_DEBUG</b> <b>ASCIICHAT_LOG_DEBUG</b>
   <br/>
@@ -80,58 +82,61 @@
 <section class="Ss">
 <h2 class="Ss" id="_define_LOG_DEBUG___"><a class="permalink" href="#_define_LOG_DEBUG___">#define
   LOG_DEBUG <b>ASCIICHAT_LOG_DEBUG</b></a></h2>
-<p class="Pp">Definition at line <b>34</b> of file <b>types.h</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_shared_init()</b>,
-    <b>client_init_with_args()</b>, <b>cond_log_state()</b>,
-    <b>get_level_string_padded()</b>, <b>log_recolor_plain_entry()</b>,
-    <b>mirror_init_with_args()</b>, <b>mutex_log_state()</b>,
+<p class="Pp">Definition at line <b>39</b> of file <b>types.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_otel_init()</b>, <b>ascii_otel_log()</b>,
+    <b>asciichat_shared_init()</b>, <b>cond_log_state()</b>,
+    <b>errno_print_chain()</b>, <b>get_level_string_padded()</b>,
+    <b>log_recolor_plain_entry()</b>, <b>mutex_log_state()</b>,
     <b>parse_log_level()</b>, <b>rwlock_log_state()</b>,
     <b>validate_opt_log_level()</b>, and <b>wasm_parse_log_level()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_LOG_DEV___"><a class="permalink" href="#_define_LOG_DEV___">#define
   LOG_DEV <b>ASCIICHAT_LOG_DEV</b></a></h2>
-<p class="Pp">Definition at line <b>33</b> of file <b>types.h</b>.</p>
-<p class="Pp">Referenced by <b>get_level_string_padded()</b>,
-    <b>parse_log_level()</b>, <b>validate_opt_log_level()</b>, and
-    <b>wasm_parse_log_level()</b>.</p>
+<p class="Pp">Definition at line <b>38</b> of file <b>types.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_otel_init()</b>,
+    <b>get_level_string_padded()</b>, <b>parse_log_level()</b>,
+    <b>validate_opt_log_level()</b>, and <b>wasm_parse_log_level()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_LOG_ERROR___"><a class="permalink" href="#_define_LOG_ERROR___">#define
   LOG_ERROR <b>ASCIICHAT_LOG_ERROR</b></a></h2>
-<p class="Pp">Definition at line <b>37</b> of file <b>types.h</b>.</p>
-<p class="Pp">Referenced by <b>disconnect_client_for_bad_data()</b>,
+<p class="Pp">Definition at line <b>42</b> of file <b>types.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_otel_init()</b>, <b>ascii_otel_log()</b>,
     <b>get_level_string_padded()</b>, <b>log_recolor_plain_entry()</b>,
-    <b>parse_log_level()</b>, <b>validate_opt_log_level()</b>, and
-    <b>wasm_parse_log_level()</b>.</p>
+    <b>parse_log_level()</b>, <b>ui_notice_confirm_kind()</b>,
+    <b>validate_opt_log_level()</b>, and <b>wasm_parse_log_level()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_LOG_FATAL___"><a class="permalink" href="#_define_LOG_FATAL___">#define
   LOG_FATAL <b>ASCIICHAT_LOG_FATAL</b></a></h2>
-<p class="Pp">Definition at line <b>38</b> of file <b>types.h</b>.</p>
-<p class="Pp">Referenced by <b>get_level_string_padded()</b>,
-    <b>log_recolor_plain_entry()</b>, <b>packet_parse_remote_log()</b>,
-    <b>packet_send_remote_log()</b>, <b>parse_log_level()</b>,
+<p class="Pp">Definition at line <b>43</b> of file <b>types.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_otel_init()</b>, <b>ascii_otel_log()</b>,
+    <b>get_level_string_padded()</b>, <b>log_recolor_plain_entry()</b>,
+    <b>packet_parse_remote_log()</b>, <b>packet_send_remote_log()</b>,
+    <b>parse_log_level()</b>, <b>ui_notice_confirm_kind()</b>,
     <b>validate_opt_log_level()</b>, and <b>wasm_parse_log_level()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_LOG_INFO___"><a class="permalink" href="#_define_LOG_INFO___">#define
   LOG_INFO <b>ASCIICHAT_LOG_INFO</b></a></h2>
-<p class="Pp">Definition at line <b>35</b> of file <b>types.h</b>.</p>
-<p class="Pp">Referenced by <b>get_level_string_padded()</b>,
+<p class="Pp">Definition at line <b>40</b> of file <b>types.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_otel_init()</b>, <b>ascii_otel_log()</b>,
+    <b>debug_sync_poll()</b>, <b>get_level_string_padded()</b>,
     <b>handle_remote_log_packet_from_client()</b>, <b>log_file_msg()</b>,
     <b>log_plain_msg()</b>, <b>log_recolor_plain_entry()</b>, <b>main()</b>,
-    <b>parse_log_level()</b>, <b>session_server_like_run()</b>,
-    <b>threaded_send_client_join_packet()</b>, <b>validate_opt_log_level()</b>,
-    and <b>wasm_parse_log_level()</b>.</p>
+    <b>parse_log_level()</b>, <b>threaded_send_client_join_packet()</b>,
+    <b>ui_notice_confirm_kind()</b>, <b>validate_opt_log_level()</b>, and
+    <b>wasm_parse_log_level()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_LOG_WARN___"><a class="permalink" href="#_define_LOG_WARN___">#define
   LOG_WARN <b>ASCIICHAT_LOG_WARN</b></a></h2>
-<p class="Pp">Definition at line <b>36</b> of file <b>types.h</b>.</p>
-<p class="Pp">Referenced by <b>backtrace_print()</b>,
-    <b>get_level_string_padded()</b>, <b>log_recolor_plain_entry()</b>,
-    <b>parse_log_level()</b>, <b>terminal_choose_log_fd()</b>,
+<p class="Pp">Definition at line <b>41</b> of file <b>types.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_otel_init()</b>, <b>ascii_otel_log()</b>,
+    <b>get_level_string_padded()</b>, <b>log_net_message()</b>,
+    <b>log_recolor_plain_entry()</b>, <b>parse_log_level()</b>,
+    <b>terminal_choose_log_fd()</b>, <b>ui_notice_confirm_kind()</b>,
     <b>validate_opt_log_level()</b>, and <b>wasm_parse_log_level()</b>.</p>
 </section>
 </section>
@@ -142,7 +147,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

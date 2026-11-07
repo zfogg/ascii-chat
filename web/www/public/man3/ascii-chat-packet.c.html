@@ -37,8 +37,10 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>packet_send</b> (<b>socket_t</b>
-    sockfd, <b>packet_type_t</b> type, const void *data, size_t len)
+<p class="Pp"><b>uint64_t</b> <b>packet_send_timeout_ns</b> (size_t packet_size)
+  <br/>
+  <b>asciichat_error_t</b> <b>packet_send</b> (<b>socket_t</b> sockfd,
+    <b>packet_type_t</b> type, const void *data, size_t len)
   <br/>
   Send a packet with proper header and CRC32. <b>asciichat_error_t</b>
     <b>packet_receive</b> (<b>socket_t</b> sockfd, <b>packet_type_t</b> *type,
@@ -54,9 +56,13 @@
     sockfd, void *crypto_ctx, <b>bool</b> enforce_encryption,
     <b>packet_envelope_t</b> *envelope)
   <br/>
-  Receive a packet with decryption and decompression support. int
-    <b>send_packet</b> (<b>socket_t</b> sockfd, <b>packet_type_t</b> type, const
-    void *data, size_t len)
+  Receive a packet with decryption and decompression support.
+    <b>packet_recv_result_t</b> <b>receive_packet_secure_with_timeout</b>
+    (<b>socket_t</b> sockfd, void *crypto_ctx, <b>bool</b> enforce_encryption,
+    <b>packet_envelope_t</b> *envelope, <b>uint64_t</b> timeout_ns)
+  <br/>
+  int <b>send_packet</b> (<b>socket_t</b> sockfd, <b>packet_type_t</b> type,
+    const void *data, size_t len)
   <br/>
   Send a basic packet without encryption. int <b>receive_packet</b>
     (<b>socket_t</b> sockfd, <b>packet_type_t</b> *type, void **data, size_t
@@ -70,9 +76,13 @@
   Send a pong packet. <b>asciichat_error_t</b> <b>packet_decrypt_envelope</b>
     (<b>packet_envelope_t</b> *envelope, void *crypto_ctx)
   <br/>
-  Send a clear console packet. <b>asciichat_error_t</b> <b>packet_send_error</b>
-    (<b>socket_t</b> sockfd, const <b>crypto_context_t</b> *crypto_ctx,
-    <b>asciichat_error_t</b> <b>error_code</b>, const char *message)
+  Send a clear console packet. size_t <b>packet_format_error_stack</b> (char
+    *buffer, size_t size)
+  <br/>
+  Format the current thread's error stack for transport to a peer.
+    <b>asciichat_error_t</b> <b>packet_send_error</b> (<b>socket_t</b> sockfd,
+    const <b>crypto_context_t</b> *crypto_ctx, <b>asciichat_error_t</b>
+    error_code, const char *message)
   <br/>
   Send an error packet with optional encryption context.
     <b>asciichat_error_t</b> <b>packet_parse_error_message</b> (const void
@@ -121,6 +131,56 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="size_t_packet_format_error_stack_(char_*_buffer,_size_t_size)"><a class="permalink" href="#size_t_packet_format_error_stack_(char_*_buffer,_size_t_size)">size_t
+  packet_format_error_stack (char * buffer, size_t size)</a></h2>
+<p class="Pp">Format the current thread's error stack for transport to a
+  peer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buffer</i> Destination buffer
+<br/>
+<i>size</i> Destination buffer size</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of bytes written, excluding the null
+  terminator</div>
+<p class="Pp">Definition at line <b>916</b> of file <b>packet.c</b>.</p>
+<pre>916                                                             {
+917   if (!buffer || size == 0)
+918     return 0;
+919   buffer[0] = '\0';
+920   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
+921   size_t frame_count = errno_snapshot(thread_current_id(), frames, ASCIICHAT_ERRNO_MAX_DEPTH).copied;
+922   size_t offset = 0;
+923   for (size_t i = 0; i &lt; frame_count &amp;&amp; offset &lt; size - 1; ++i) {
+924     const asciichat_error_context_t *frame = &amp;frames[i];
+925     const char *file = extract_project_relative_path(frame-&gt;file);
+926 #ifdef NDEBUG
+927     int written = snprintf(buffer + offset, size - offset, &quot;%s%s (%s:%d in %s())&quot;, i ? &quot;\n&quot; : &quot;&quot;,
+928                            frame-&gt;context_message, file, frame-&gt;line, frame-&gt;function ? frame-&gt;function : &quot;&lt;unknown&gt;&quot;);
+929 #else
+930     int written = snprintf(buffer + offset, size - offset, &quot;%s%s (%s:%d in %s())\tfull-path=%s&quot;, i ? &quot;\n&quot; : &quot;&quot;,
+931                            frame-&gt;context_message, file, frame-&gt;line, frame-&gt;function ? frame-&gt;function : &quot;&lt;unknown&gt;&quot;,
+932                            frame-&gt;file ? frame-&gt;file : &quot;&quot;);
+933 #endif
+934     if (written &lt; 0)
+935       break;
+936     size_t available = size - offset;
+937     offset += (size_t)written &lt; available ? (size_t)written : available - 1;
+938   }
+939   return offset;
+940 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_MAX_DEPTH</b>,
+    <b>asciichat_error_context_t::context_message</b>,
+    <b>asciichat_errno_snapshot_t::copied</b>, <b>errno_snapshot()</b>,
+    <b>extract_project_relative_path()</b>,
+    <b>asciichat_error_context_t::file</b>,
+    <b>asciichat_error_context_t::function</b>,
+    <b>asciichat_error_context_t::line</b>, <b>packet_format_error_stack()</b>,
+    and <b>thread_current_id()</b>.</p>
+<p class="Pp">Referenced by <b>packet_format_error_stack()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> packet_parse_error_message (const void *
   data, size_t len, <b>asciichat_error_t</b> * out_error_code, char *
   message_buffer, size_t message_buffer_size, size_t * out_message_length)</h2>
@@ -141,52 +201,55 @@
   sender</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>945</b> of file <b>packet.c</b>.</p>
-<pre>947                                                                          {
-948   if (!data || len &lt; sizeof(error_packet_t) || !out_error_code || !message_buffer || message_buffer_size == 0) {
-949     return SET_ERRNO(ERROR_INVALID_PARAM,
-950                      &quot;Invalid parameters: data=%p len=%zu out_error_code=%p message_buffer=%p buffer_size=%zu&quot;, data,
-951                      len, out_error_code, message_buffer, message_buffer_size);
-952   }
-953 
-954   const error_packet_t *packet = (const error_packet_t *)data;
-955   uint32_t raw_error_code = NET_TO_HOST_U32(packet-&gt;error_code);
-956   uint32_t raw_message_length = NET_TO_HOST_U32(packet-&gt;message_length);
-957 
-958   if (raw_message_length &gt; MAX_ERROR_MESSAGE_LENGTH) {
-959     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Error message length too large: %u&quot;, raw_message_length);
-960   }
-961 
-962   size_t total_required = sizeof(error_packet_t) + (size_t)raw_message_length;
-963   if (total_required &gt; len) {
-964     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Error packet truncated: expected %zu bytes, have %zu&quot;, total_required,
-965                      len);
-966   }
-967 
-968   const uint8_t *message_bytes = (const uint8_t *)data + sizeof(error_packet_t);
-969   size_t copy_len = raw_message_length;
-970   if (copy_len &gt;= message_buffer_size) {
-971     copy_len = message_buffer_size - 1;
-972   }
-973 
-974   if (copy_len &gt; 0) {
-975     memcpy(message_buffer, message_bytes, copy_len);
-976   }
-977   message_buffer[copy_len] = '\0';
-978 
-979   if (out_message_length) {
-980     *out_message_length = raw_message_length;
-981   }
-982 
-983   *out_error_code = (asciichat_error_t)raw_error_code;
-984   return ASCIICHAT_OK;
-985 }</pre>
+<p class="Pp">Definition at line <b>991</b> of file <b>packet.c</b>.</p>
+<pre>993                                                                          {
+994   if (!data || len &lt; sizeof(error_packet_t) || !out_error_code || !message_buffer || message_buffer_size == 0) {
+995     return SET_ERRNO(ERROR_INVALID_PARAM,
+996                      &quot;Invalid parameters: data=%p len=%zu out_error_code=%p message_buffer=%p buffer_size=%zu&quot;, data,
+997                      len, out_error_code, message_buffer, message_buffer_size);
+998   }
+999
+1000   const error_packet_t *packet = (const error_packet_t *)data;
+1001   uint32_t raw_error_code = NET_TO_HOST_U32(packet-&gt;error_code);
+1002   uint32_t raw_message_length = NET_TO_HOST_U32(packet-&gt;message_length);
+1003
+1004   if (raw_message_length &gt; MAX_ERROR_MESSAGE_LENGTH) {
+1005     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Error message length too large: %u&quot;, raw_message_length);
+1006   }
+1007
+1008   size_t total_required = sizeof(error_packet_t) + (size_t)raw_message_length;
+1009   if (total_required &gt; len) {
+1010     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Error packet truncated: expected %zu bytes, have %zu&quot;, total_required,
+1011                      len);
+1012   }
+1013
+1014   const uint8_t *message_bytes = (const uint8_t *)data + sizeof(error_packet_t);
+1015   size_t copy_len = raw_message_length;
+1016   if (copy_len &gt;= message_buffer_size) {
+1017     copy_len = message_buffer_size - 1;
+1018   }
+1019
+1020   if (copy_len &gt; 0) {
+1021     memcpy(message_buffer, message_bytes, copy_len);
+1022   }
+1023   message_buffer[copy_len] = '\0';
+1024
+1025   if (out_message_length) {
+1026     *out_message_length = raw_message_length;
+1027   }
+1028
+1029   *out_error_code = (asciichat_error_t)raw_error_code;
+1030   return ASCIICHAT_OK;
+1031 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>error_packet_t::error_code</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
     <b>MAX_ERROR_MESSAGE_LENGTH</b>, <b>error_packet_t::message_length</b>,
-    <b>NET_TO_HOST_U32</b>, and <b>SET_ERRNO</b>.</p>
+    <b>NET_TO_HOST_U32</b>, <b>packet_parse_error_message()</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>network_error_decode()</b>, and
+    <b>packet_parse_error_message()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> packet_parse_remote_log (const void *
@@ -214,60 +277,60 @@
   sender</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>1044</b> of file <b>packet.c</b>.</p>
-<pre>1047                                                                       {
-1048   if (!data || len &lt; sizeof(remote_log_packet_t) || !out_level || !out_direction || !out_flags || !message_buffer ||
-1049       message_buffer_size == 0) {
-1050     return SET_ERRNO(
-1051         ERROR_INVALID_PARAM,
-1052         &quot;Invalid parameters: data=%p len=%zu out_level=%p out_direction=%p out_flags=%p buffer=%p size=%zu&quot;, data, len,
-1053         out_level, out_direction, out_flags, message_buffer, message_buffer_size);
-1054   }
-1055 
-1056   const remote_log_packet_t *packet = (const remote_log_packet_t *)data;
-1057   uint8_t raw_level = packet-&gt;log_level;
-1058   if (raw_level &gt; LOG_FATAL) {
-1059     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid remote log level: %u&quot;, raw_level);
-1060   }
-1061   *out_level = (log_level_t)raw_level;
-1062 
-1063   uint8_t raw_direction = packet-&gt;direction;
-1064   if (raw_direction &gt; REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER) {
-1065     raw_direction = REMOTE_LOG_DIRECTION_UNKNOWN;
-1066   }
-1067   *out_direction = (remote_log_direction_t)raw_direction;
-1068 
-1069   uint16_t raw_flags = NET_TO_HOST_U16(packet-&gt;flags);
-1070   *out_flags = raw_flags;
-1071 
-1072   uint32_t raw_message_length = NET_TO_HOST_U32(packet-&gt;message_length);
-1073   if (raw_message_length &gt; MAX_REMOTE_LOG_MESSAGE_LENGTH) {
-1074     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Remote log message length too large: %u&quot;, raw_message_length);
-1075   }
-1076 
-1077   size_t total_required = sizeof(remote_log_packet_t) + (size_t)raw_message_length;
-1078   if (total_required &gt; len) {
-1079     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Remote log packet truncated: expected %zu bytes, have %zu&quot;,
-1080                      total_required, len);
-1081   }
-1082 
-1083   const uint8_t *message_bytes = (const uint8_t *)data + sizeof(remote_log_packet_t);
-1084   size_t copy_len = raw_message_length;
-1085   if (copy_len &gt;= message_buffer_size) {
-1086     copy_len = message_buffer_size - 1;
-1087   }
-1088 
-1089   if (copy_len &gt; 0) {
-1090     memcpy(message_buffer, message_bytes, copy_len);
-1091   }
-1092   message_buffer[copy_len] = '\0';
-1093 
-1094   if (out_message_length) {
-1095     *out_message_length = raw_message_length;
-1096   }
-1097 
-1098   return ASCIICHAT_OK;
-1099 }</pre>
+<p class="Pp">Definition at line <b>1090</b> of file <b>packet.c</b>.</p>
+<pre>1093                                                                       {
+1094   if (!data || len &lt; sizeof(remote_log_packet_t) || !out_level || !out_direction || !out_flags || !message_buffer ||
+1095       message_buffer_size == 0) {
+1096     return SET_ERRNO(
+1097         ERROR_INVALID_PARAM,
+1098         &quot;Invalid parameters: data=%p len=%zu out_level=%p out_direction=%p out_flags=%p buffer=%p size=%zu&quot;, data, len,
+1099         out_level, out_direction, out_flags, message_buffer, message_buffer_size);
+1100   }
+1101
+1102   const remote_log_packet_t *packet = (const remote_log_packet_t *)data;
+1103   uint8_t raw_level = packet-&gt;log_level;
+1104   if (raw_level &gt; LOG_FATAL) {
+1105     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid remote log level: %u&quot;, raw_level);
+1106   }
+1107   *out_level = (log_level_t)raw_level;
+1108
+1109   uint8_t raw_direction = packet-&gt;direction;
+1110   if (raw_direction &gt; REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER) {
+1111     raw_direction = REMOTE_LOG_DIRECTION_UNKNOWN;
+1112   }
+1113   *out_direction = (remote_log_direction_t)raw_direction;
+1114
+1115   uint16_t raw_flags = NET_TO_HOST_U16(packet-&gt;flags);
+1116   *out_flags = raw_flags;
+1117
+1118   uint32_t raw_message_length = NET_TO_HOST_U32(packet-&gt;message_length);
+1119   if (raw_message_length &gt; MAX_REMOTE_LOG_MESSAGE_LENGTH) {
+1120     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Remote log message length too large: %u&quot;, raw_message_length);
+1121   }
+1122
+1123   size_t total_required = sizeof(remote_log_packet_t) + (size_t)raw_message_length;
+1124   if (total_required &gt; len) {
+1125     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Remote log packet truncated: expected %zu bytes, have %zu&quot;,
+1126                      total_required, len);
+1127   }
+1128
+1129   const uint8_t *message_bytes = (const uint8_t *)data + sizeof(remote_log_packet_t);
+1130   size_t copy_len = raw_message_length;
+1131   if (copy_len &gt;= message_buffer_size) {
+1132     copy_len = message_buffer_size - 1;
+1133   }
+1134
+1135   if (copy_len &gt; 0) {
+1136     memcpy(message_buffer, message_bytes, copy_len);
+1137   }
+1138   message_buffer[copy_len] = '\0';
+1139
+1140   if (out_message_length) {
+1141     *out_message_length = raw_message_length;
+1142   }
+1143
+1144   return ASCIICHAT_OK;
+1145 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -276,9 +339,11 @@
     <b>LOG_FATAL</b>, <b>remote_log_packet_t::log_level</b>,
     <b>MAX_REMOTE_LOG_MESSAGE_LENGTH</b>,
     <b>remote_log_packet_t::message_length</b>, <b>NET_TO_HOST_U16</b>,
-    <b>NET_TO_HOST_U32</b>, <b>REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER</b>,
+    <b>NET_TO_HOST_U32</b>, <b>packet_parse_remote_log()</b>,
+    <b>REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER</b>,
     <b>REMOTE_LOG_DIRECTION_UNKNOWN</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>handle_remote_log_packet_from_client()</b>.</p>
+<p class="Pp">Referenced by <b>handle_remote_log_packet_from_client()</b>, and
+    <b>packet_parse_remote_log()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> packet_send_error (<b>socket_t</b>
@@ -291,72 +356,76 @@
 <i>crypto_ctx</i> Crypto context for encryption (NULL or not ready sends
   plaintext)
 <br/>
-<i></i><b>error_code</b><i></i><b> Error code from
-  </b><b>asciichat_error_t</b><b> enumeration</b>
+<i>error_code</i> Error code from <b>asciichat_error_t</b> enumeration
 <br/>
-<i>message</i> Human-readable message to accompany the error (can be NULL)</div>
+<i>message</i> Legacy argument; fixed public text is sent for the allowlisted
+  error code</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
 <p class="Pp">When the crypto context is ready, the packet is encrypted
     automatically. During the handshake (or when encryption is disabled), the
     packet is sent in plaintext so protocol errors can be delivered before
     encryption is active.</p>
-<p class="Pp">Definition at line <b>898</b> of file <b>packet.c</b>.</p>
-<pre>899                                                          {
-900   if (sockfd == INVALID_SOCKET_VALUE) {
-901     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
-902   }
-903 
-904   if (!message) {
-905     message = &quot;&quot;;
-906   }
-907 
-908   size_t message_len = strnlen(message, MAX_ERROR_MESSAGE_LENGTH);
-909   if (message_len == MAX_ERROR_MESSAGE_LENGTH) {
-910     log_warn(&quot;Error message truncated to %zu bytes&quot;, (size_t)MAX_ERROR_MESSAGE_LENGTH);
-911   }
-912 
-913   size_t payload_len = sizeof(error_packet_t) + message_len;
-914   uint8_t *payload = SAFE_MALLOC(payload_len, uint8_t *);
-915   if (!payload) {
-916     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate %zu bytes for error packet&quot;, payload_len);
-917   }
-918 
-919   error_packet_t *packet = (error_packet_t *)payload;
-920   packet-&gt;error_code = HOST_TO_NET_U32((uint32_t)error_code);
-921   packet-&gt;message_length = HOST_TO_NET_U32((uint32_t)message_len);
-922 
-923   if (message_len &gt; 0) {
-924     memcpy(payload + sizeof(error_packet_t), message, message_len);
-925   }
-926 
-927   bool encryption_ready = crypto_ctx &amp;&amp; crypto_is_ready(crypto_ctx);
-928   asciichat_error_t send_result;
-929 
-930   if (encryption_ready) {
-931     send_result =
-932         send_packet_secure(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len, (crypto_context_t *)crypto_ctx);
-933   } else {
-934     send_result = packet_send(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len);
-935   }
-936   SAFE_FREE(payload);
-937 
-938   if (send_result != ASCIICHAT_OK) {
-939     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send error packet: %s&quot;, asciichat_error_string(send_result));
-940   }
-941 
-942   return ASCIICHAT_OK;
-943 }</pre>
+<p class="Pp">Definition at line <b>942</b> of file <b>packet.c</b>.</p>
+<pre>943                                                          {
+944   if (sockfd == INVALID_SOCKET_VALUE) {
+945     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
+946   }
+947
+948   error_code = network_error_public_code(error_code);
+949   // This packet is valid before peer authentication, so use only the public
+950   // error description rather than contextual errno data.
+951   (void)message;
+952   message = asciichat_error_string(error_code);
+953
+954   size_t message_len = strnlen(message, MAX_ERROR_MESSAGE_LENGTH);
+955   if (message_len == MAX_ERROR_MESSAGE_LENGTH) {
+956     log_warn(&quot;Error message truncated to %zu bytes&quot;, (size_t)MAX_ERROR_MESSAGE_LENGTH);
+957   }
+958
+959   size_t payload_len = sizeof(error_packet_t) + message_len;
+960   uint8_t *payload = SAFE_MALLOC(payload_len, uint8_t *);
+961   if (!payload) {
+962     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate %zu bytes for error packet&quot;, payload_len);
+963   }
+964
+965   error_packet_t *packet = (error_packet_t *)payload;
+966   packet-&gt;error_code = HOST_TO_NET_U32((uint32_t)error_code);
+967   packet-&gt;message_length = HOST_TO_NET_U32((uint32_t)message_len);
+968
+969   if (message_len &gt; 0) {
+970     memcpy(payload + sizeof(error_packet_t), message, message_len);
+971   }
+972
+973   bool encryption_ready = crypto_ctx &amp;&amp; crypto_ctx-&gt;encrypt_data &amp;&amp; crypto_is_ready(crypto_ctx);
+974   asciichat_error_t send_result;
+975
+976   if (encryption_ready) {
+977     send_result =
+978         send_packet_secure(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len, (crypto_context_t *)crypto_ctx);
+979   } else {
+980     send_result = packet_send(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len);
+981   }
+982   SAFE_FREE(payload);
+983
+984   if (send_result != ASCIICHAT_OK) {
+985     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send error packet: %s&quot;, asciichat_error_string(send_result));
+986   }
+987
+988   return ASCIICHAT_OK;
+989 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_is_ready()</b>,
-    <b>error_code</b>, <b>error_packet_t::error_code</b>,
+    <b>crypto_context_t::encrypt_data</b>, <b>error_packet_t::error_code</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
     <b>HOST_TO_NET_U32</b>, <b>INVALID_SOCKET_VALUE</b>, <b>log_warn</b>,
     <b>MAX_ERROR_MESSAGE_LENGTH</b>, <b>error_packet_t::message_length</b>,
-    <b>packet_send()</b>, <b>PACKET_TYPE_ERROR_MESSAGE</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>send_packet_secure()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>disconnect_client_for_bad_data()</b>.</p>
+    <b>network_error_public_code()</b>, <b>packet_send()</b>,
+    <b>packet_send_error()</b>, <b>PACKET_TYPE_ERROR_MESSAGE</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>send_packet_secure()</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>packet_send_error()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> packet_send_remote_log (<b>socket_t</b>
@@ -379,74 +448,338 @@
 <i>message</i> Log message text</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>987</b> of file <b>packet.c</b>.</p>
-<pre>988                                                                                                                 {
-989   if (sockfd == INVALID_SOCKET_VALUE) {
-990     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
-991   }
-992 
-993   if (level &lt; LOG_DEV || level &gt; LOG_FATAL) {
-994     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid log level: %d&quot;, level);
-995   }
-996 
-997   const char *safe_message = message ? message : &quot;&quot;;
-998   bool truncated = false;
-999   size_t message_len = strnlen(safe_message, MAX_REMOTE_LOG_MESSAGE_LENGTH);
-1000   if (message_len == MAX_REMOTE_LOG_MESSAGE_LENGTH &amp;&amp; safe_message[message_len] != '\0') {
-1001     truncated = true;
-1002   }
-1003 
-1004   size_t payload_len = sizeof(remote_log_packet_t) + message_len;
-1005   uint8_t *payload = SAFE_MALLOC(payload_len, uint8_t *);
-1006   if (!payload) {
-1007     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate %zu bytes for remote log packet&quot;, payload_len);
-1008   }
-1009 
-1010   remote_log_packet_t *packet = (remote_log_packet_t *)payload;
-1011   packet-&gt;log_level = (uint8_t)level;
-1012   packet-&gt;direction = (uint8_t)direction;
-1013   uint16_t final_flags = flags;
-1014   if (truncated) {
-1015     final_flags |= REMOTE_LOG_FLAG_TRUNCATED;
-1016   }
-1017   packet-&gt;flags = HOST_TO_NET_U16(final_flags);
-1018   packet-&gt;message_length = HOST_TO_NET_U32((uint32_t)message_len);
-1019 
-1020   if (message_len &gt; 0) {
-1021     memcpy(payload + sizeof(remote_log_packet_t), safe_message, message_len);
-1022   }
-1023 
-1024   bool encryption_ready = crypto_ctx &amp;&amp; crypto_is_ready(crypto_ctx);
-1025   asciichat_error_t send_result;
-1026 
-1027   if (encryption_ready) {
-1028     int secure_result =
-1029         send_packet_secure(sockfd, PACKET_TYPE_REMOTE_LOG, payload, payload_len, (crypto_context_t *)crypto_ctx);
-1030     send_result = secure_result == 0 ? ASCIICHAT_OK : ERROR_NETWORK;
-1031   } else {
-1032     send_result = packet_send(sockfd, PACKET_TYPE_REMOTE_LOG, payload, payload_len);
-1033   }
-1034 
-1035   SAFE_FREE(payload);
-1036 
-1037   if (send_result != ASCIICHAT_OK) {
-1038     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send remote log packet: %d&quot;, send_result);
-1039   }
-1040 
-1041   return ASCIICHAT_OK;
-1042 }</pre>
+<p class="Pp">Definition at line <b>1033</b> of file <b>packet.c</b>.</p>
+<pre>1034                                                                                                                 {
+1035   if (sockfd == INVALID_SOCKET_VALUE) {
+1036     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
+1037   }
+1038
+1039   if (level &lt; LOG_DEV || level &gt; LOG_FATAL) {
+1040     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid log level: %d&quot;, level);
+1041   }
+1042
+1043   const char *safe_message = message ? message : &quot;&quot;;
+1044   bool truncated = false;
+1045   size_t message_len = strnlen(safe_message, MAX_REMOTE_LOG_MESSAGE_LENGTH);
+1046   if (message_len == MAX_REMOTE_LOG_MESSAGE_LENGTH &amp;&amp; safe_message[message_len] != '\0') {
+1047     truncated = true;
+1048   }
+1049
+1050   size_t payload_len = sizeof(remote_log_packet_t) + message_len;
+1051   uint8_t *payload = SAFE_MALLOC(payload_len, uint8_t *);
+1052   if (!payload) {
+1053     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate %zu bytes for remote log packet&quot;, payload_len);
+1054   }
+1055
+1056   remote_log_packet_t *packet = (remote_log_packet_t *)payload;
+1057   packet-&gt;log_level = (uint8_t)level;
+1058   packet-&gt;direction = (uint8_t)direction;
+1059   uint16_t final_flags = flags;
+1060   if (truncated) {
+1061     final_flags |= REMOTE_LOG_FLAG_TRUNCATED;
+1062   }
+1063   packet-&gt;flags = HOST_TO_NET_U16(final_flags);
+1064   packet-&gt;message_length = HOST_TO_NET_U32((uint32_t)message_len);
+1065
+1066   if (message_len &gt; 0) {
+1067     memcpy(payload + sizeof(remote_log_packet_t), safe_message, message_len);
+1068   }
+1069
+1070   bool encryption_ready = crypto_ctx &amp;&amp; crypto_ctx-&gt;encrypt_data &amp;&amp; crypto_is_ready(crypto_ctx);
+1071   asciichat_error_t send_result;
+1072
+1073   if (encryption_ready) {
+1074     int secure_result =
+1075         send_packet_secure(sockfd, PACKET_TYPE_REMOTE_LOG, payload, payload_len, (crypto_context_t *)crypto_ctx);
+1076     send_result = secure_result == 0 ? ASCIICHAT_OK : ERROR_NETWORK;
+1077   } else {
+1078     send_result = packet_send(sockfd, PACKET_TYPE_REMOTE_LOG, payload, payload_len);
+1079   }
+1080
+1081   SAFE_FREE(payload);
+1082
+1083   if (send_result != ASCIICHAT_OK) {
+1084     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send remote log packet: %d&quot;, send_result);
+1085   }
+1086
+1087   return ASCIICHAT_OK;
+1088 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>crypto_is_ready()</b>,
-    <b>remote_log_packet_t::direction</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>remote_log_packet_t::direction</b>,
+    <b>crypto_context_t::encrypt_data</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>,
     <b>remote_log_packet_t::flags</b>, <b>HOST_TO_NET_U16</b>,
     <b>HOST_TO_NET_U32</b>, <b>INVALID_SOCKET_VALUE</b>, <b>LOG_FATAL</b>,
     <b>remote_log_packet_t::log_level</b>, <b>MAX_REMOTE_LOG_MESSAGE_LENGTH</b>,
     <b>remote_log_packet_t::message_length</b>, <b>packet_send()</b>,
-    <b>PACKET_TYPE_REMOTE_LOG</b>, <b>REMOTE_LOG_FLAG_TRUNCATED</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>send_packet_secure()</b>, and
-    <b>SET_ERRNO</b>.</p>
+    <b>packet_send_remote_log()</b>, <b>PACKET_TYPE_REMOTE_LOG</b>,
+    <b>REMOTE_LOG_FLAG_TRUNCATED</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>send_packet_secure()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>packet_send_remote_log()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> packet_send_timeout_ns (size_t packet_size)</h2>
+<p class="Pp">Calculate timeout based on packet size Large packets need more
+    time to transmit reliably</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Returns timeout in nanoseconds for use with send/recv
+  APIs</div>
+<p class="Pp">Shared size-adjusted packet I/O budget, in nanoseconds.</p>
+<p class="Pp">Definition at line <b>48</b> of file <b>packet.c</b>.</p>
+<pre>48                                                     {
+49   uint64_t base_timeout = SEND_TIMEOUT * NS_PER_SEC_INT;
+50
+51   // For large packets, increase timeout proportionally
+52   if (packet_size &gt; LARGE_PACKET_THRESHOLD) {
+53     // Add extra timeout per MB above the threshold
+54     uint64_t extra_timeout =
+55         (uint64_t)(((double)packet_size - LARGE_PACKET_THRESHOLD) / 1000000.0 * LARGE_PACKET_EXTRA_TIMEOUT_PER_MB) +
+56         NS_PER_MS_INT;
+57     uint64_t total_timeout = base_timeout + extra_timeout;
+58
+59     // Ensure client timeout is longer than server's RECV_TIMEOUT (30s) to prevent deadlock
+60     // Add 10 seconds buffer to account for server processing delays
+61     if (total_timeout &lt; MIN_CLIENT_TIMEOUT) {
+62       total_timeout = MIN_CLIENT_TIMEOUT;
+63     }
+64
+65     // Cap at maximum timeout
+66     return (total_timeout &gt; MAX_CLIENT_TIMEOUT) ? MAX_CLIENT_TIMEOUT : total_timeout;
+67   }
+68
+69   return base_timeout;
+70 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>LARGE_PACKET_EXTRA_TIMEOUT_PER_MB</b>,
+    <b>LARGE_PACKET_THRESHOLD</b>, <b>MAX_CLIENT_TIMEOUT</b>,
+    <b>MIN_CLIENT_TIMEOUT</b>, <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>,
+    <b>packet_send_timeout_ns()</b>, and <b>SEND_TIMEOUT</b>.</p>
+<p class="Pp">Referenced by <b>packet_receive()</b>, <b>packet_send()</b>,
+    <b>packet_send_timeout_ns()</b>, and
+    <b>receive_packet_secure_with_timeout()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>packet_recv_result_t</b> receive_packet_secure_with_timeout
+  (<b>socket_t</b> sockfd, void * crypto_ctx, <b>bool</b> enforce_encryption,
+  <b>packet_envelope_t</b> * envelope, <b>uint64_t</b> timeout_ns)</h2>
+<p class="Pp">Definition at line <b>570</b> of file <b>packet.c</b>.</p>
+<pre>571                                                                                                           {
+572
+573   if (!envelope) {
+574     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: envelope=%p&quot;, envelope);
+575     return PACKET_RECV_ERROR;
+576   }
+577
+578   // Initialize envelope
+579   memset(envelope, 0, sizeof(*envelope));
+580
+581   // Receive packet header
+582   packet_header_t header;
+583   asciichat_errno_scope_t receive_scope = errno_checkpoint();
+584   ssize_t received = recv_with_timeout(sockfd, &amp;header, sizeof(header), timeout_ns);
+585
+586   // Check for errors first (before comparing signed with unsigned)
+587   if (received &lt; 0) {
+588     /* Preserve a poll timeout so callers can wait for the next signaling packet
+589      * without treating an idle connection as a receive failure. */
+590     if (GET_ERRNO() == ERROR_NETWORK_TIMEOUT &amp;&amp; HAS_ERRNO_CODE_SINCE(receive_scope, ERROR_NETWORK_TIMEOUT)) {
+591       return PACKET_RECV_ERROR;
+592     }
+593     SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive packet header: %zd/%zu bytes&quot;, received, sizeof(header));
+594     return PACKET_RECV_ERROR;
+595   }
+596
+597   if (received == 0) {
+598     return PACKET_RECV_EOF;
+599   }
+600
+601   if ((size_t)received != sizeof(header)) {
+602     SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive packet header: %zd/%zu bytes&quot;, received, sizeof(header));
+603     return PACKET_RECV_ERROR;
+604   }
+605
+606   // Convert from network byte order
+607   uint64_t magic = NET_TO_HOST_U64(header.magic);
+608   uint16_t pkt_type = NET_TO_HOST_U16(header.type);
+609   uint32_t pkt_len = NET_TO_HOST_U32(header.length);
+610   uint32_t expected_crc = NET_TO_HOST_U32(header.crc32);
+611
+612   log_debug_every(US_PER_SEC_INT, &quot;Received packet: type=%u len=%u client_id=%u&quot;, pkt_type, pkt_len,
+613                   NET_TO_HOST_U32(header.client_id));
+614
+615   // Validate magic number
+616   if (magic != PACKET_MAGIC) {
+617     SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid packet magic: 0x%llx (expected 0x%llx)&quot;, magic, PACKET_MAGIC);
+618     return PACKET_RECV_ERROR;
+619   }
+620
+621   // Validate packet size
+622   if (pkt_len &gt; MAX_PACKET_SIZE) {
+623     SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Packet too large: %u &gt; %d&quot;, pkt_len, MAX_PACKET_SIZE);
+624     return PACKET_RECV_ERROR;
+625   }
+626
+627   // Handle encrypted packets
+628   if (pkt_type == PACKET_TYPE_ENCRYPTED) {
+629     if (!crypto_ctx) {
+630       SET_ERRNO(ERROR_CRYPTO, &quot;Received encrypted packet but no crypto context&quot;);
+631       return PACKET_RECV_ERROR;
+632     }
+633
+634     // Read encrypted payload
+635     uint8_t *ciphertext = buffer_alloc(NULL, pkt_len);
+636     if (!ciphertext) {
+637       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer for ciphertext&quot;);
+638       return PACKET_RECV_ERROR;
+639     }
+640
+641     uint64_t recv_timeout = MAX(timeout_ns, packet_send_timeout_ns(pkt_len));
+642     received = recv_with_timeout(sockfd, ciphertext, pkt_len, recv_timeout);
+643     if (received != (ssize_t)pkt_len) {
+644       SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive encrypted payload: %zd/%u bytes&quot;, received, pkt_len);
+645       buffer_release(ciphertext);
+646       return PACKET_RECV_ERROR;
+647     }
+648
+649     // Decrypt - allocate plaintext buffer with extra space
+650     // pkt_len is already validated to be &lt;= MAX_PACKET_SIZE, so adding 1024 cannot overflow
+651     size_t plaintext_size = (size_t)pkt_len + 1024;
+652     uint8_t *plaintext = buffer_alloc(NULL, plaintext_size);
+653     if (!plaintext) {
+654       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer for plaintext&quot;);
+655       buffer_release(ciphertext);
+656       return PACKET_RECV_ERROR;
+657     }
+658
+659     size_t plaintext_len;
+660     crypto_result_t result = crypto_decrypt(crypto_ctx, ciphertext, pkt_len, plaintext, plaintext_size, &amp;plaintext_len);
+661     buffer_release(ciphertext);
+662
+663     if (result != CRYPTO_OK) {
+664       SET_ERRNO(ERROR_CRYPTO, &quot;Failed to decrypt packet: %s&quot;, crypto_result_to_string(result));
+665       buffer_release(plaintext);
+666       return PACKET_RECV_ERROR;
+667     }
+668
+669     if (plaintext_len &lt; sizeof(packet_header_t)) {
+670       SET_ERRNO(ERROR_CRYPTO, &quot;Decrypted packet too small: %zu &lt; %zu&quot;, plaintext_len, sizeof(packet_header_t));
+671       buffer_release(plaintext);
+672       return PACKET_RECV_ERROR;
+673     }
+674
+675     // Parse decrypted header
+676     packet_header_t *decrypted_header = (packet_header_t *)plaintext;
+677     if (NET_TO_HOST_U64(decrypted_header-&gt;magic) != PACKET_MAGIC) {
+678       SET_ERRNO(ERROR_CRYPTO, &quot;Decrypted packet has invalid magic&quot;);
+679       buffer_release(plaintext);
+680       return PACKET_RECV_ERROR;
+681     }
+682     pkt_type = NET_TO_HOST_U16(decrypted_header-&gt;type);
+683
+684     // DEBUG: Log decrypted packet type
+685     log_debug_every(US_PER_SEC_INT, &quot;[RECV_PKT_DECRYPTED] &#x1F510; After decryption: actual_type=%u (0x%04x), len=%u&quot;,
+686                     pkt_type, pkt_type, NET_TO_HOST_U32(decrypted_header-&gt;length));
+687     pkt_len = NET_TO_HOST_U32(decrypted_header-&gt;length);
+688     expected_crc = NET_TO_HOST_U32(decrypted_header-&gt;crc32);
+689
+690     // Extract payload
+691     size_t payload_len = plaintext_len - sizeof(packet_header_t);
+692     if (payload_len != pkt_len) {
+693       SET_ERRNO(ERROR_CRYPTO, &quot;Decrypted payload size mismatch: %zu != %u&quot;, payload_len, pkt_len);
+694       buffer_release(plaintext);
+695       return PACKET_RECV_ERROR;
+696     }
+697
+698     // Verify CRC
+699     if (pkt_len &gt; 0) {
+700       uint32_t actual_crc = asciichat_crc32(plaintext + sizeof(packet_header_t), pkt_len);
+701       if (actual_crc != expected_crc) {
+702         SET_ERRNO(ERROR_CRYPTO, &quot;Decrypted packet CRC mismatch: 0x%x != 0x%x&quot;, actual_crc, expected_crc);
+703         buffer_release(plaintext);
+704         return PACKET_RECV_ERROR;
+705       }
+706     }
+707
+708     // Set envelope
+709     envelope-&gt;type = (packet_type_t)pkt_type;
+710     envelope-&gt;data = plaintext + sizeof(packet_header_t);
+711     envelope-&gt;len = pkt_len;
+712     envelope-&gt;allocated_buffer = plaintext;
+713     envelope-&gt;allocated_size = plaintext_size;
+714
+715     return PACKET_RECV_SUCCESS;
+716   }
+717
+718   // Handle unencrypted packets
+719   if (enforce_encryption &amp;&amp; !packet_is_handshake_type(pkt_type)) {
+720     SET_ERRNO(ERROR_CRYPTO, &quot;Received unencrypted packet type %d but encryption is required&quot;, pkt_type);
+721     return PACKET_RECV_ERROR;
+722   }
+723
+724   // Read payload and return header+payload in envelope (matching encrypted path format)
+725   size_t total_size = sizeof(packet_header_t) + pkt_len;
+726   uint8_t *packet_buf = buffer_alloc(NULL, total_size);
+727   if (!packet_buf) {
+728     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer for packet&quot;);
+729     return PACKET_RECV_ERROR;
+730   }
+731
+732   // Copy header into buffer
+733   memcpy(packet_buf, &amp;header, sizeof(packet_header_t));
+734
+735   if (pkt_len &gt; 0) {
+736     uint64_t recv_timeout = packet_send_timeout_ns(pkt_len);
+737     received = recv_with_timeout(sockfd, packet_buf + sizeof(packet_header_t), pkt_len, recv_timeout);
+738     if (received != (ssize_t)pkt_len) {
+739       SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive payload: %zd/%u bytes&quot;, received, pkt_len);
+740       buffer_release(packet_buf);
+741       return PACKET_RECV_ERROR;
+742     }
+743
+744     // Verify CRC
+745     uint32_t actual_crc = asciichat_crc32(packet_buf + sizeof(packet_header_t), pkt_len);
+746     if (actual_crc != expected_crc) {
+747       SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Packet CRC mismatch: 0x%x != 0x%x&quot;, actual_crc, expected_crc);
+748       buffer_release(packet_buf);
+749       return PACKET_RECV_ERROR;
+750     }
+751   }
+752
+753   envelope-&gt;data = packet_buf;
+754   envelope-&gt;allocated_buffer = packet_buf;
+755   envelope-&gt;allocated_size = total_size;
+756   envelope-&gt;type = (packet_type_t)pkt_type;
+757   envelope-&gt;len = total_size;
+758
+759   return PACKET_RECV_SUCCESS;
+760 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_envelope_t::allocated_buffer</b>,
+    <b>packet_envelope_t::allocated_size</b>, <b>asciichat_crc32</b>,
+    <b>buffer_alloc()</b>, <b>buffer_release</b>,
+    <b>packet_header_t::client_id</b>, <b>packet_header_t::crc32</b>,
+    <b>crypto_decrypt()</b>, <b>CRYPTO_OK</b>, <b>crypto_result_to_string()</b>,
+    <b>packet_envelope_t::data</b>, <b>errno_checkpoint()</b>,
+    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+    <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+    <b>ERROR_NETWORK_SIZE</b>, <b>ERROR_NETWORK_TIMEOUT</b>, <b>GET_ERRNO</b>,
+    <b>HAS_ERRNO_CODE_SINCE</b>, <b>packet_envelope_t::len</b>,
+    <b>packet_header_t::length</b>, <b>log_debug_every</b>,
+    <b>packet_header_t::magic</b>, <b>MAX</b>, <b>MAX_PACKET_SIZE</b>,
+    <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>, <b>NET_TO_HOST_U64</b>,
+    <b>PACKET_MAGIC</b>, <b>PACKET_RECV_EOF</b>, <b>PACKET_RECV_ERROR</b>,
+    <b>PACKET_RECV_SUCCESS</b>, <b>packet_send_timeout_ns()</b>,
+    <b>PACKET_TYPE_ENCRYPTED</b>, <b>receive_packet_secure_with_timeout()</b>,
+    <b>recv_with_timeout()</b>, <b>SET_ERRNO</b>,
+    <b>packet_envelope_t::type</b>, <b>packet_header_t::type</b>, and
+    <b>US_PER_SEC_INT</b>.</p>
+<p class="Pp">Referenced by <b>receive_packet_secure()</b>, and
+    <b>receive_packet_secure_with_timeout()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -456,7 +789,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -89,7 +89,15 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>REMOTE_LOG_FLAG_TRUNCATED</b> 0x0001U
+<p class="Pp">#define <b>NETWORK_PACKET_TERM_TYPE_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>NETWORK_PACKET_COLORTERM_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>NETWORK_PACKET_PALETTE_CUSTOM_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>ACIP_OPUS_BATCH_HEADER_SIZE</b> 16
+  <br/>
+  #define <b>REMOTE_LOG_FLAG_TRUNCATED</b> 0x0001U
   <br/>
   Remote log packet flag definitions.
   <br/>
@@ -103,7 +111,7 @@
   Large packet size threshold (100KB). #define <b>MAX_PACKET_SIZE</b> ((size_t)5
     * 1024 * 1024)
   <br/>
-  Maximum packet size (5MB). #define <b>MAX_ERROR_MESSAGE_LENGTH</b> 512
+  Maximum packet size (5MB). #define <b>MAX_ERROR_MESSAGE_LENGTH</b> 4096
   <br/>
   Maximum error message length (512 bytes). #define
     <b>MAX_REMOTE_LOG_MESSAGE_LENGTH</b> 512
@@ -185,7 +193,9 @@
   Feature flags for <b>protocol_version_packet_t</b>. #define
     <b>FEATURE_DELTA_FRAMES</b> 0x02
   <br/>
-  Delta frame encoding (future).
+  Delta frame encoding (future). #define
+    <b>PROTOCOL_FEATURE_RECOVERABLE_ERRORS</b> 0x04
+  <br/>
   <br/>
   <br/>
 </p>
@@ -306,14 +316,14 @@
     <b>PACKET_TYPE_ERROR_MESSAGE</b> = 2003, <b>PACKET_TYPE_REMOTE_LOG</b> =
     2004, <b>PACKET_TYPE_ASCII_FRAME</b> = 3000, <b>PACKET_TYPE_IMAGE_FRAME</b>
     = 3001, <b>PACKET_TYPE_IMAGE_FRAME_H265</b> = 3002,
-    <b>PACKET_TYPE_AUDIO_BATCH</b> = 4000, <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b> =
-    4001, <b>PACKET_TYPE_CLIENT_CAPABILITIES</b> = 5000, <b>PACKET_TYPE_PING</b>
-    = 5001, <b>PACKET_TYPE_PONG</b> = 5002, <b>PACKET_TYPE_CLIENT_JOIN</b> =
-    5003, <b>PACKET_TYPE_CLIENT_LEAVE</b> = 5004,
-    <b>PACKET_TYPE_STREAM_START</b> = 5005, <b>PACKET_TYPE_STREAM_STOP</b> =
-    5006, <b>PACKET_TYPE_CLEAR_CONSOLE</b> = 5007,
-    <b>PACKET_TYPE_SERVER_STATE</b> = 5008,
-    <b>PACKET_TYPE_ACIP_SESSION_CREATE</b> = 6000,
+    <b>PACKET_TYPE_IMAGE_FRAME_H264</b> = 3003, <b>PACKET_TYPE_AUDIO_BATCH</b> =
+    4000, <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b> = 4001,
+    <b>PACKET_TYPE_CLIENT_CAPABILITIES</b> = 5000, <b>PACKET_TYPE_PING</b> =
+    5001, <b>PACKET_TYPE_PONG</b> = 5002, <b>PACKET_TYPE_CLIENT_JOIN</b> = 5003,
+    <b>PACKET_TYPE_CLIENT_LEAVE</b> = 5004, <b>PACKET_TYPE_STREAM_START</b> =
+    5005, <b>PACKET_TYPE_STREAM_STOP</b> = 5006,
+    <b>PACKET_TYPE_CLEAR_CONSOLE</b> = 5007, <b>PACKET_TYPE_SERVER_STATE</b> =
+    5008, <b>PACKET_TYPE_ACIP_SESSION_CREATE</b> = 6000,
     <b>PACKET_TYPE_ACIP_SESSION_CREATED</b> = 6001,
     <b>PACKET_TYPE_ACIP_SESSION_LOOKUP</b> = 6002,
     <b>PACKET_TYPE_ACIP_SESSION_INFO</b> = 6003,
@@ -366,6 +376,11 @@
 </section>
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>packet_send_timeout_ns</b> (size_t packet_size)
+  <br/>
+  <br/>
+</p>
 <p class="Pp"><b>Basic Packet I/O Functions</b></p>
 <p class="Pp">
   <br/>
@@ -395,7 +410,11 @@
     <b>packet_envelope_t</b> *envelope)
   <br/>
   Receive a packet with decryption and decompression support.
-    <b>asciichat_error_t</b> <b>packet_decrypt_envelope</b>
+    <b>packet_recv_result_t</b> <b>receive_packet_secure_with_timeout</b>
+    (<b>socket_t</b> sockfd, void *crypto_ctx, <b>bool</b> enforce_encryption,
+    <b>packet_envelope_t</b> *envelope, <b>uint64_t</b> timeout_ns)
+  <br/>
+  <b>asciichat_error_t</b> <b>packet_decrypt_envelope</b>
     (<b>packet_envelope_t</b> *envelope, void *crypto_ctx)
   <br/>
   Decrypt a PACKET_TYPE_ENCRYPTED envelope and extract inner packet.
@@ -435,10 +454,13 @@
   <br/>
   Send a pong packet (keepalive response). <b>asciichat_error_t</b>
     <b>packet_send_error</b> (<b>socket_t</b> sockfd, const
-    <b>crypto_context_t</b> *crypto_ctx, <b>asciichat_error_t</b>
-    <b>error_code</b>, const char *message)
+    <b>crypto_context_t</b> *crypto_ctx, <b>asciichat_error_t</b> error_code,
+    const char *message)
   <br/>
-  Send an error packet with optional encryption context.
+  Send an error packet with optional encryption context. size_t
+    <b>packet_format_error_stack</b> (char *buffer, size_t size)
+  <br/>
+  Format the current thread's error stack for transport to a peer.
     <b>asciichat_error_t</b> <b>packet_parse_error_message</b> (const void
     *data, size_t len, <b>asciichat_error_t</b> *out_error_code, char
     *message_buffer, size_t message_buffer_size, size_t *out_message_length)
@@ -484,13 +506,61 @@
 </section>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> packet_send_timeout_ns (size_t packet_size)</h2>
+<p class="Pp">Shared size-adjusted packet I/O budget, in nanoseconds.</p>
+<p class="Pp"></p>
+<p class="Pp">Calculate timeout based on packet size Large packets need more
+    time to transmit reliably</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Returns timeout in nanoseconds for use with send/recv
+  APIs</div>
+<p class="Pp">Definition at line <b>48</b> of file <b>packet.c</b>.</p>
+<pre>48                                                     {
+49   uint64_t base_timeout = SEND_TIMEOUT * NS_PER_SEC_INT;
+50
+51   // For large packets, increase timeout proportionally
+52   if (packet_size &gt; LARGE_PACKET_THRESHOLD) {
+53     // Add extra timeout per MB above the threshold
+54     uint64_t extra_timeout =
+55         (uint64_t)(((double)packet_size - LARGE_PACKET_THRESHOLD) / 1000000.0 * LARGE_PACKET_EXTRA_TIMEOUT_PER_MB) +
+56         NS_PER_MS_INT;
+57     uint64_t total_timeout = base_timeout + extra_timeout;
+58
+59     // Ensure client timeout is longer than server's RECV_TIMEOUT (30s) to prevent deadlock
+60     // Add 10 seconds buffer to account for server processing delays
+61     if (total_timeout &lt; MIN_CLIENT_TIMEOUT) {
+62       total_timeout = MIN_CLIENT_TIMEOUT;
+63     }
+64
+65     // Cap at maximum timeout
+66     return (total_timeout &gt; MAX_CLIENT_TIMEOUT) ? MAX_CLIENT_TIMEOUT : total_timeout;
+67   }
+68
+69   return base_timeout;
+70 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>LARGE_PACKET_EXTRA_TIMEOUT_PER_MB</b>,
+    <b>LARGE_PACKET_THRESHOLD</b>, <b>MAX_CLIENT_TIMEOUT</b>,
+    <b>MIN_CLIENT_TIMEOUT</b>, <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>,
+    <b>packet_send_timeout_ns()</b>, and <b>SEND_TIMEOUT</b>.</p>
+<p class="Pp">Referenced by <b>packet_receive()</b>, <b>packet_send()</b>,
+    <b>packet_send_timeout_ns()</b>, and
+    <b>receive_packet_secure_with_timeout()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

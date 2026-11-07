@@ -42,9 +42,9 @@
 <br/>
 <p class="Pp"><b>key_type_t</b> <b>type</b>
   <br/>
-  <b>uint8_t</b> <b>key</b> [32]
+  <b>uint8_t</b> <b>key</b> [<b>CRYPTO_PUBLIC_KEY_SIZE</b>]
   <br/>
-  char <b>comment</b> [256]
+  char <b>comment</b> [<b>MAX_COMMENT_LEN</b>]
   <br/>
   <br/>
 </p>
@@ -67,7 +67,7 @@
 <p class="Pp">Conversion: Ed25519 and GPG keys are converted to X25519 for key
     exchange</p>
 </div>
-<p class="Pp">Definition at line <b>69</b> of file <b>key_types.h</b>.</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>key_types.h</b>.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
@@ -77,7 +77,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

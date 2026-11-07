@@ -108,11 +108,11 @@
 202     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Entry is NULL&quot;);
 203     return false;
 204   }
-205 
+205
 206   // Hardcoded list of options to hide from binary help (matches builder.c line 752)
 207   // These are options that have hide_from_binary_help=true set in builder.c
 208   const char *hidden_from_binary[] = {NULL};
-209 
+209
 210   // When for_binary_help is true (i.e., for 'ascii-chat --help'),
 211   // we want to show all options that apply to any mode, plus binary-level options.
 212   if (for_binary_help) {
@@ -122,33 +122,34 @@
 216         return false; // Hidden from binary help
 217       }
 218     }
-219 
+219
 220     // An option applies if its mode_bitmask has any bit set for any valid mode.
 221     // OPTION_MODE_ALL is a bitmask of all modes (including OPTION_MODE_BINARY).
 222     return (entry-&gt;mode_bitmask &amp; OPTION_MODE_ALL) != 0;
 223   }
-224 
+224
 225   // For mode-specific help, show only options for that mode.
 226   // Do not show binary options here unless it also specifically applies to the mode.
-227   if (mode &lt; 0 || mode &gt; MODE_DISCOVERY) {
+227   if (mode &lt; 0 || mode &gt;= MODE_INVALID) {
 228     return false;
 229   }
 230   option_mode_bitmask_t mode_bit = (1 &lt;&lt; mode);
-231 
+231
 232   // Check if it's a binary option. If so, only show if it also explicitly applies to this mode.
 233   if ((entry-&gt;mode_bitmask &amp; OPTION_MODE_BINARY) &amp;&amp; !(entry-&gt;mode_bitmask &amp; mode_bit)) {
 234     return false; // Binary options not shown in mode-specific help unless also mode-specific
 235   }
-236 
+236
 237   return (entry-&gt;mode_bitmask &amp; mode_bit) != 0;
 238 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
     <b>registry_entry_t::long_name</b>, <b>registry_entry_t::mode_bitmask</b>,
-    <b>MODE_DISCOVERY</b>, <b>OPTION_MODE_ALL</b>, <b>OPTION_MODE_BINARY</b>,
-    and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_get_for_display()</b>.</p>
+    <b>MODE_INVALID</b>, <b>OPTION_MODE_ALL</b>, <b>OPTION_MODE_BINARY</b>,
+    <b>registry_entry_applies_to_mode()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_registry_get_for_display()</b>, and
+    <b>registry_entry_applies_to_mode()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>option_descriptor_t</b> registry_entry_to_descriptor (const
@@ -206,14 +207,19 @@
     <b>registry_entry_t::optional_arg</b>,
     <b>option_descriptor_t::owns_memory</b>,
     <b>registry_entry_t::owns_memory</b>, <b>option_descriptor_t::parse_fn</b>,
-    <b>registry_entry_t::parse_fn</b>, <b>option_descriptor_t::required</b>,
-    <b>registry_entry_t::required</b>, <b>option_descriptor_t::short_name</b>,
-    <b>registry_entry_t::short_name</b>, <b>option_descriptor_t::type</b>,
-    <b>registry_entry_t::type</b>, <b>option_descriptor_t::validate</b>, and
+    <b>registry_entry_t::parse_fn</b>, <b>registry_entry_to_descriptor()</b>,
+    <b>option_descriptor_t::required</b>, <b>registry_entry_t::required</b>,
+    <b>option_descriptor_t::short_name</b>, <b>registry_entry_t::short_name</b>,
+    <b>option_descriptor_t::type</b>, <b>registry_entry_t::type</b>,
+    <b>option_descriptor_t::validate</b>, and
     <b>registry_entry_t::validate_fn</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_get_binary_options()</b>,
-    <b>options_registry_get_for_display()</b>, and
-    <b>options_registry_get_for_mode()</b>.</p>
+<p class="Pp">Referenced by <b>options_json_parse_value()</b>,
+    <b>options_registry_find_by_name()</b>,
+    <b>options_registry_find_by_short()</b>,
+    <b>options_registry_get_binary_options()</b>,
+    <b>options_registry_get_for_display()</b>,
+    <b>options_registry_get_for_mode()</b>, and
+    <b>registry_entry_to_descriptor()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">const <b>registry_entry_t</b> * registry_find_entry_by_name
@@ -227,7 +233,7 @@
 129     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Long name is NULL&quot;);
 130     return NULL;
 131   }
-132 
+132
 133   for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
 134     if (strcmp(g_options_registry[i].long_name, long_name) == 0) {
 135       return &amp;g_options_registry[i];
@@ -238,8 +244,12 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>g_options_registry</b>,
+    <b>registry_entry_t::long_name</b>, <b>registry_find_entry_by_name()</b>,
     and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_find_by_name()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, <b>options_json_parse_value()</b>,
+    <b>options_json_schema_for_option()</b>,
+    <b>options_registry_find_by_name()</b>, and
+    <b>registry_find_entry_by_name()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">const <b>registry_entry_t</b> * registry_find_entry_by_short
@@ -252,7 +262,7 @@
 146   if (short_name == '\0') {
 147     return NULL;
 148   }
-149 
+149
 150   for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
 151     if (g_options_registry[i].short_name == short_name) {
 152       return &amp;g_options_registry[i];
@@ -262,8 +272,12 @@
 156 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_options_registry</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_find_by_short()</b>.</p>
+<p class="Pp">References <b>g_options_registry</b>,
+    <b>registry_entry_t::long_name</b>, and
+    <b>registry_find_entry_by_short()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>,
+    <b>options_registry_find_by_short()</b>, and
+    <b>registry_find_entry_by_short()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_registry_init_from_builders_(void_)"><a class="permalink" href="#void_registry_init_from_builders_(void_)">void
@@ -276,7 +290,7 @@
 25   if (initialized) {
 26     return;
 27   }
-28 
+28
 29   size_t offset = 0;
 30   for (int i = 0; g_category_builders[i].entries != NULL; i++) {
 31     // Count entries in this category (until sentinel terminator)
@@ -284,16 +298,16 @@
 33     for (const registry_entry_t *e = g_category_builders[i].entries; e-&gt;long_name != NULL; e++) {
 34       count++;
 35     }
-36 
+36
 37     // Copy category entries (count already excludes sentinel)
-38     if (offset + count &lt;= 2048) {
+38     if (offset + count &lt;= OPTIONS_REGISTRY_CAPACITY) {
 39       memcpy(&amp;g_options_registry[offset], g_category_builders[i].entries, count * sizeof(registry_entry_t));
 40       offset += count;
 41     }
 42   }
-43 
+43
 44   // Add final null terminator
-45   if (offset &lt; 2048) {
+45   if (offset &lt; OPTIONS_REGISTRY_CAPACITY) {
 46     g_options_registry[offset] = (registry_entry_t){.long_name = NULL,
 47                                                     .short_name = '\0',
 48                                                     .type = OPTION_TYPE_BOOL,
@@ -311,15 +325,18 @@
 60                                                     .mode_bitmask = OPTION_MODE_NONE,
 61                                                     .metadata = {0}};
 62   }
-63 
+63
 64   initialized = true;
 65 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_category_builders</b>, <b>g_options_registry</b>,
-    <b>initialized</b>, <b>OPTION_MODE_NONE</b>, and
-  <b>OPTION_TYPE_BOOL</b>.</p>
-<p class="Pp">Referenced by <b>registry_init_size()</b>.</p>
+<p class="Pp">References <b>category_builder_t::entries</b>,
+    <b>g_category_builders</b>, <b>g_options_registry</b>,
+    <b>OPTION_MODE_NONE</b>, <b>OPTION_TYPE_BOOL</b>,
+    <b>OPTIONS_REGISTRY_CAPACITY</b>, and
+  <b>registry_init_from_builders()</b>.</p>
+<p class="Pp">Referenced by <b>registry_init_from_builders()</b>, and
+    <b>registry_init_size()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_registry_init_size_(void_)"><a class="permalink" href="#void_registry_init_size_(void_)">void
@@ -328,7 +345,7 @@
 <p class="Pp">Definition at line <b>108</b> of file <b>core.c</b>.</p>
 <pre>108                               {
 109   registry_init_from_builders();
-110 
+110
 111   if (g_registry_size == 0) {
 112     for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
 113       g_registry_size++;
@@ -343,9 +360,11 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>g_metadata_populated</b>, <b>g_options_registry</b>,
-    <b>g_registry_size</b>, <b>registry_init_from_builders()</b>, and
+    <b>g_registry_size</b>, <b>registry_entry_t::long_name</b>,
+    <b>registry_init_from_builders()</b>, <b>registry_init_size()</b>, and
     <b>registry_validate_unique_options()</b>.</p>
-<p class="Pp">Referenced by <b>options_get_help_text()</b>,
+<p class="Pp">Referenced by <b>main()</b>, <b>mcp_server_main()</b>,
+    <b>options_get_help_text()</b>,
     <b>options_registry_add_all_to_builder()</b>,
     <b>options_registry_find_by_name()</b>,
     <b>options_registry_find_by_short()</b>,
@@ -353,8 +372,8 @@
     <b>options_registry_get_count()</b>,
     <b>options_registry_get_for_display()</b>,
     <b>options_registry_get_for_mode()</b>,
-    <b>options_registry_get_metadata()</b>, and
-    <b>options_registry_get_raw()</b>.</p>
+    <b>options_registry_get_metadata()</b>, <b>options_registry_get_raw()</b>,
+    <b>options_state_init()</b>, and <b>registry_init_size()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> registry_validate_unique_options (void
@@ -372,21 +391,21 @@
 75     if (!long_name || long_name[0] == '\0') {
 76       continue; // Skip empty long names
 77     }
-78 
+78
 79     for (size_t j = i + 1; g_options_registry[j].long_name != NULL; j++) {
 80       if (strcmp(g_options_registry[j].long_name, long_name) == 0) {
 81         return SET_ERRNO(ERROR_CONFIG, &quot;Duplicate long option '--%s' at registry indices %zu and %zu&quot;, long_name, i, j);
 82       }
 83     }
 84   }
-85 
+85
 86   // Check for duplicate short options (skip if '\0')
 87   for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
 88     char short_name = g_options_registry[i].short_name;
 89     if (short_name == '\0') {
 90       continue; // Skip if no short option
 91     }
-92 
+92
 93     for (size_t j = i + 1; g_options_registry[j].long_name != NULL; j++) {
 94       if (g_options_registry[j].short_name == short_name) {
 95         return SET_ERRNO(ERROR_CONFIG,
@@ -395,14 +414,17 @@
 98       }
 99     }
 100   }
-101 
+101
 102   return ASCIICHAT_OK;
 103 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>,
-    <b>g_options_registry</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>registry_init_size()</b>.</p>
+    <b>g_options_registry</b>, <b>registry_entry_t::long_name</b>,
+    <b>registry_validate_unique_options()</b>, <b>SET_ERRNO</b>, and
+    <b>registry_entry_t::short_name</b>.</p>
+<p class="Pp">Referenced by <b>registry_init_size()</b>, and
+    <b>registry_validate_unique_options()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -412,7 +434,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

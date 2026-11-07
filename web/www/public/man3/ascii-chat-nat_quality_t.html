@@ -53,7 +53,8 @@
   <br/>
   Same subnet as peer. <b>uint64_t</b> <b>stun_latency_ns</b>
   <br/>
-  RTT to STUN server in nanoseconds. char <b>public_address</b> [64]
+  RTT to STUN server in nanoseconds. char <b>public_address</b>
+    [<b>IP_ADDRESS_BUFFER_SIZE</b>]
   <br/>
   Public IP address. <b>uint16_t</b> <b>public_port</b>
   <br/>
@@ -88,7 +89,7 @@
 <p class="Pp">NAT quality assessment result.</p>
 <p class="Pp">Contains all information needed to determine hosting
   suitability.</p>
-<p class="Pp">Definition at line <b>27</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Definition at line <b>28</b> of file <b>nat.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -96,138 +97,109 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> nat_quality_t::detection_complete</h2>
 <p class="Pp">All probes finished.</p>
-<p class="Pp">Definition at line <b>51</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_process()</b>,
-    <b>nat_detect_quality()</b>, <b>nat_quality_from_acip()</b>,
-    <b>negotiate_determine_result()</b>, and
-    <b>negotiate_receive_peer_quality()</b>.</p>
+<p class="Pp">Definition at line <b>52</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Referenced by <b>nat_detect_quality()</b>, and
+    <b>negotiate_determine_result()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> nat_quality_t::download_kbps</h2>
 <p class="Pp">Download bandwidth in Kbps.</p>
-<p class="Pp">Definition at line <b>40</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_measure_bandwidth()</b>,
-    <b>nat_quality_from_acip()</b>, and <b>nat_quality_to_acip()</b>.</p>
+<p class="Pp">Definition at line <b>41</b> of file <b>nat.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> nat_quality_t::error</h2>
 <p class="Pp">Error if detection failed.</p>
-<p class="Pp">Definition at line <b>52</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Definition at line <b>53</b> of file <b>nat.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> nat_quality_t::has_host_candidates</h2>
 <p class="Pp">Local IP reachable.</p>
-<p class="Pp">Definition at line <b>46</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_detect_quality()</b>,
-    <b>nat_quality_from_acip()</b>, and <b>nat_quality_to_acip()</b>.</p>
+<p class="Pp">Definition at line <b>47</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Referenced by <b>nat_detect_quality()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> nat_quality_t::has_public_ip</h2>
 <p class="Pp">STUN reflexive == local IP.</p>
-<p class="Pp">Definition at line <b>29</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_compute_tier()</b>,
-    <b>nat_detect_quality()</b>, <b>nat_quality_from_acip()</b>, and
-    <b>nat_quality_to_acip()</b>.</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Referenced by <b>nat_compute_tier()</b>, and
+    <b>nat_detect_quality()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> nat_quality_t::has_relay_candidates</h2>
 <p class="Pp">TURN available.</p>
-<p class="Pp">Definition at line <b>48</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_detect_quality()</b>,
-    <b>nat_quality_from_acip()</b>, and <b>nat_quality_to_acip()</b>.</p>
+<p class="Pp">Definition at line <b>49</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Referenced by <b>nat_detect_quality()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> nat_quality_t::has_srflx_candidates</h2>
 <p class="Pp">STUN worked.</p>
-<p class="Pp">Definition at line <b>47</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_detect_quality()</b>,
-    <b>nat_quality_from_acip()</b>, and <b>nat_quality_to_acip()</b>.</p>
+<p class="Pp">Definition at line <b>48</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Referenced by <b>nat_detect_quality()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> nat_quality_t::jitter_ns</h2>
 <p class="Pp">Packet timing variance in nanoseconds.</p>
-<p class="Pp">Definition at line <b>42</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_measure_bandwidth()</b>,
-    <b>nat_quality_from_acip()</b>, and <b>nat_quality_to_acip()</b>.</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>nat.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> nat_quality_t::lan_reachable</h2>
 <p class="Pp">Same subnet as peer.</p>
-<p class="Pp">Definition at line <b>33</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_compute_tier()</b>,
-    <b>nat_quality_from_acip()</b>, and <b>nat_quality_to_acip()</b>.</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Referenced by <b>nat_compute_tier()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>acip_nat_type_t</b> nat_quality_t::nat_type</h2>
 <p class="Pp">NAT classification.</p>
-<p class="Pp">Definition at line <b>32</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>discovery_session_process()</b>,
-    <b>nat_compute_tier()</b>, <b>nat_detect_quality()</b>,
-    <b>nat_quality_from_acip()</b>, <b>nat_quality_init()</b>, and
-    <b>nat_quality_to_acip()</b>.</p>
+<p class="Pp">Definition at line <b>33</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Referenced by <b>nat_compute_tier()</b>,
+    <b>nat_detect_quality()</b>, and <b>nat_quality_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> nat_quality_t::packet_loss_pct</h2>
 <p class="Pp">Packet loss percentage.</p>
-<p class="Pp">Definition at line <b>43</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_measure_bandwidth()</b>,
-    <b>nat_quality_from_acip()</b>, and <b>nat_quality_to_acip()</b>.</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>nat.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="char_nat_quality_t::public_address_64_"><a class="permalink" href="#char_nat_quality_t::public_address_64_">char
-  nat_quality_t::public_address[64]</a></h2>
+<h2 class="Ss" id="char_nat_quality_t::public_address_"><a class="permalink" href="#char_nat_quality_t::public_address_">char
+  nat_quality_t::public_address[<b>IP_ADDRESS_BUFFER_SIZE</b>]</a></h2>
 <p class="Pp">Public IP address.</p>
-<p class="Pp">Definition at line <b>35</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_detect_quality()</b>,
-    <b>nat_quality_from_acip()</b>, <b>nat_quality_to_acip()</b>, and
-    <b>negotiate_determine_result()</b>.</p>
+<p class="Pp">Definition at line <b>36</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Referenced by <b>negotiate_determine_result()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> nat_quality_t::public_port</h2>
 <p class="Pp">Public port.</p>
-<p class="Pp">Definition at line <b>36</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_quality_from_acip()</b>, and
-    <b>nat_quality_to_acip()</b>.</p>
+<p class="Pp">Definition at line <b>37</b> of file <b>nat.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> nat_quality_t::rtt_to_acds_ns</h2>
 <p class="Pp">Latency to ACDS in nanoseconds.</p>
-<p class="Pp">Definition at line <b>41</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_compare_quality()</b>,
-    <b>nat_measure_bandwidth()</b>, <b>nat_quality_from_acip()</b>, and
-    <b>nat_quality_to_acip()</b>.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Referenced by <b>nat_compare_quality()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> nat_quality_t::stun_latency_ns</h2>
 <p class="Pp">RTT to STUN server in nanoseconds.</p>
-<p class="Pp">Definition at line <b>34</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_quality_from_acip()</b>, and
-    <b>nat_quality_to_acip()</b>.</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>nat.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> nat_quality_t::upload_kbps</h2>
 <p class="Pp">Upload bandwidth in Kbps.</p>
-<p class="Pp">Definition at line <b>39</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>__attribute__()</b>,
-    <b>nat_compare_quality()</b>, <b>nat_measure_bandwidth()</b>,
-    <b>nat_quality_from_acip()</b>, <b>nat_quality_to_acip()</b>, and
-    <b>negotiate_receive_peer_quality()</b>.</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Referenced by <b>nat_compare_quality()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> nat_quality_t::upnp_available</h2>
 <p class="Pp">UPnP/NAT-PMP mapping succeeded.</p>
-<p class="Pp">Definition at line <b>30</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>nat.h</b>.</p>
 <p class="Pp">Referenced by <b>nat_compute_tier()</b>,
-    <b>nat_detect_quality()</b>, <b>nat_quality_from_acip()</b>,
-    <b>nat_quality_to_acip()</b>, and <b>negotiate_determine_result()</b>.</p>
+    <b>nat_detect_quality()</b>, and <b>negotiate_determine_result()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> nat_quality_t::upnp_mapped_port</h2>
 <p class="Pp">Mapped external port (if upnp_available).</p>
-<p class="Pp">Definition at line <b>31</b> of file <b>nat.h</b>.</p>
-<p class="Pp">Referenced by <b>nat_detect_quality()</b>,
-    <b>nat_quality_from_acip()</b>, <b>nat_quality_to_acip()</b>, and
-    <b>negotiate_determine_result()</b>.</p>
+<p class="Pp">Definition at line <b>32</b> of file <b>nat.h</b>.</p>
+<p class="Pp">Referenced by <b>negotiate_determine_result()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -238,7 +210,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

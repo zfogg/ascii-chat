@@ -39,8 +39,8 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>acthread_create</b>(thread_ptr, attr,
-    start_routine, arg)
+<p class="Pp">#define <b>acthread_create</b>(thread_ptr, attr, start_routine,
+    arg)
   <br/>
   #define <b>thread_join</b>(thread, timeout_ms)
   <br/>
@@ -97,7 +97,7 @@
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="_define_asciichat_thread_create(_thread_ptr,__attr,__start_routine,__arg)"><a class="permalink" href="#_define_asciichat_thread_create(_thread_ptr,__attr,__start_routine,__arg)">#define
+<h2 class="Ss" id="_define_acthread_create(_thread_ptr,__attr,__start_routine,__arg)"><a class="permalink" href="#_define_acthread_create(_thread_ptr,__attr,__start_routine,__arg)">#define
   acthread_create( thread_ptr, attr, start_routine, arg)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>ASCIICHAT_OK</pre>
@@ -105,21 +105,26 @@
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>21</b> of file
     <b>lib/platform/wasm/stubs/thread.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>,
+<p class="Pp">Referenced by <b>acip_async_tcp_client_create()</b>,
+    <b>acip_outbound_create()</b>,
+    <b>acip_websocket_client_transport_create()</b>, <b>acthread_create()</b>,
+    <b>ascii_otel_init()</b>, <b>asciichat_mdns_advertise()</b>,
     <b>audio_start_duplex()</b>, <b>create_client_render_threads()</b>,
+    <b>debug_errno_start_thread()</b>, <b>debug_stats_start_thread()</b>,
     <b>debug_sync_start_thread()</b>, <b>discover_session_parallel()</b>,
-    <b>ffmpeg_decoder_start_prefetch()</b>, <b>parallel_connect()</b>,
+    <b>ffmpeg_decoder_start_prefetch()</b>, <b>mcp_dispatch()</b>,
+    <b>network_server_start()</b>, <b>parallel_connect()</b>,
     <b>session_host_start()</b>, <b>session_host_start_render()</b>,
-    <b>session_participant_start_audio_capture()</b>,
-    <b>session_participant_start_video_capture()</b>,
-    <b>session_pipeline_create()</b>, <b>session_server_like_run()</b>,
-    <b>splash_intro_start()</b>, <b>tcp_server_run()</b>,
-    <b>tcp_server_spawn_thread()</b>, <b>thread_create_or_fail()</b>,
-    <b>thread_pool_create_with_workers()</b>, <b>thread_pool_spawn()</b>, and
-    <b>update_banner_start_check()</b>.</p>
+    <b>session_participant_start_audio()</b>,
+    <b>session_participant_start_video()</b>, <b>session_pipeline_create()</b>,
+    <b>session_pipeline_run_main()</b>, <b>session_server_like_run()</b>,
+    <b>splash_intro_start()</b>, <b>stats_runtime_start()</b>,
+    <b>thread_create_or_fail()</b>, <b>thread_pool_create_with_workers()</b>,
+    <b>thread_pool_spawn()</b>, <b>thread_wrapper_impl()</b>, and
+    <b>ui_sync_start()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_asciichat_thread_detach(_thread)"><a class="permalink" href="#_define_asciichat_thread_detach(_thread)">#define
+<h2 class="Ss" id="_define_thread_detach(_thread)"><a class="permalink" href="#_define_thread_detach(_thread)">#define
   thread_detach( thread)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>ASCIICHAT_OK</pre>
@@ -127,9 +132,11 @@
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>23</b> of file
     <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_otel_shutdown()</b>,
+    <b>thread_detach()</b>, and <b>thread_wrapper_impl()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_asciichat_thread_equal(_t1,__t2)"><a class="permalink" href="#_define_asciichat_thread_equal(_t1,__t2)">#define
+<h2 class="Ss" id="_define_thread_equal(_t1,__t2)"><a class="permalink" href="#_define_thread_equal(_t1,__t2)">#define
   thread_equal( t1, t2)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>(t1 == t2)</pre>
@@ -137,11 +144,13 @@
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>25</b> of file
     <b>lib/platform/wasm/stubs/thread.h</b>.</p>
-<p class="Pp">Referenced by <b>mutex_stack_cleanup_current_thread()</b>, and
-    <b>remove_client()</b>.</p>
+<p class="Pp">Referenced by <b>mutex_stack_cleanup_current_thread()</b>,
+    <b>session_connection_start()</b>, <b>session_connection_stop()</b>,
+    <b>thread_equal()</b>, <b>thread_exit()</b>, and
+    <b>webrtc_peer_manager_dispatch_ready()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_asciichat_thread_exit(_status)"><a class="permalink" href="#_define_asciichat_thread_exit(_status)">#define
+<h2 class="Ss" id="_define_thread_exit(_status)"><a class="permalink" href="#_define_thread_exit(_status)">#define
   thread_exit( status)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>((void)0)</pre>
@@ -149,50 +158,7 @@
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>26</b> of file
     <b>lib/platform/wasm/stubs/thread.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_asciichat_thread_initialized(_thread)"><a class="permalink" href="#_define_asciichat_thread_initialized(_thread)">#define
-  thread_initialized( thread)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>false</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>27</b> of file
-    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_asciichat_thread_join(_thread,__timeout_ms)"><a class="permalink" href="#_define_asciichat_thread_join(_thread,__timeout_ms)">#define
-  thread_join( thread, timeout_ms)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>ASCIICHAT_OK</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>22</b> of file
-    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
-<p class="Pp">Referenced by <b>audio_destroy()</b>, <b>audio_stop_duplex()</b>,
-    <b>discover_session_parallel()</b>, <b>ffmpeg_decoder_destroy()</b>,
-    <b>parallel_connect()</b>, <b>remove_client()</b>,
-    <b>session_host_start()</b>, <b>session_host_stop()</b>,
-    <b>session_host_stop_render()</b>,
-    <b>session_participant_stop_audio_capture()</b>,
-    <b>session_participant_stop_video_capture()</b>,
-    <b>session_pipeline_create()</b>, <b>splash_wait_for_animation()</b>,
-    <b>stop_client_render_threads()</b>, <b>stop_client_threads()</b>, and
-    <b>update_banner_wait_for_check()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_asciichat_thread_self(_void)"><a class="permalink" href="#_define_asciichat_thread_self(_void)">#define
-  thread_self( void)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>((asciichat_thread_t)NULL)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>24</b> of file
-    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
-<p class="Pp">Referenced by <b>backtrace_print()</b>,
-    <b>client_receive_thread()</b>, <b>log_lock_terminal()</b>,
-    <b>log_plain_msg()</b>, <b>main()</b>,
-    <b>mutex_stack_cleanup_current_thread()</b>, and <b>remove_client()</b>.</p>
+<p class="Pp">Referenced by <b>thread_exit()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_thread_id_equal(_id1,__id2)"><a class="permalink" href="#_define_thread_id_equal(_id1,__id2)">#define
@@ -215,10 +181,61 @@
     <b>lib/platform/wasm/stubs/thread.h</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="_define_thread_initialized(_thread)"><a class="permalink" href="#_define_thread_initialized(_thread)">#define
+  thread_initialized( thread)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>false</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>27</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_thread_join(_thread,__timeout_ms)"><a class="permalink" href="#_define_thread_join(_thread,__timeout_ms)">#define
+  thread_join( thread, timeout_ms)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>ASCIICHAT_OK</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>22</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_outbound_destroy()</b>,
+    <b>audio_destroy()</b>, <b>audio_stop_duplex()</b>,
+    <b>debug_errno_cleanup_thread()</b>, <b>debug_stats_cleanup_thread()</b>,
+    <b>debug_sync_cleanup_thread()</b>, <b>discover_session_parallel()</b>,
+    <b>ffmpeg_decoder_destroy()</b>, <b>mcp_jobs_reap()</b>,
+    <b>network_server_stop()</b>, <b>parallel_connect()</b>,
+    <b>session_capture_destroy()</b>, <b>session_host_stop()</b>,
+    <b>session_host_stop_render()</b>, <b>session_participant_stop_audio()</b>,
+    <b>session_participant_stop_video()</b>, <b>session_pipeline_create()</b>,
+    <b>session_pipeline_destroy()</b>, <b>session_pipeline_run_main()</b>,
+    <b>session_server_like_run()</b>, <b>splash_wait_for_animation()</b>,
+    <b>stats_runtime_stop()</b>, <b>stop_client_render_threads()</b>,
+    <b>thread_join()</b>, <b>thread_wrapper_impl()</b>,
+    <b>ui_controller_shutdown()</b>, <b>ui_sync_stop()</b>, and
+    <b>update_banner_wait_for_check()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_thread_self(_void)"><a class="permalink" href="#_define_thread_self(_void)">#define
+  thread_self( void)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((asciichat_thread_t)NULL)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>24</b> of file
+    <b>lib/platform/wasm/stubs/thread.h</b>.</p>
+<p class="Pp">Referenced by <b>log_lock_terminal()</b>, <b>log_plain_msg()</b>,
+    <b>main()</b>, <b>mutex_stack_cleanup_current_thread()</b>,
+    <b>session_connection_init()</b>, <b>session_connection_start()</b>,
+    <b>session_connection_stop()</b>, <b>thread_exit()</b>,
+    <b>thread_self()</b>, <b>webrtc_peer_manager_create()</b>, and
+    <b>webrtc_peer_manager_dispatch_ready()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="_define_tls_getspecific(_key)"><a class="permalink" href="#_define_tls_getspecific(_key)">#define
   tls_getspecific( key)</a></h2>
 <p class="Pp"><b>Value:</b></p>
-<pre>((void*)NULL)</pre>
+<pre>((void *)NULL)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Definition at line <b>34</b> of file
@@ -281,7 +298,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

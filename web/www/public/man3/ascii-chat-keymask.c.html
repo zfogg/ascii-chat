@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>keymask.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">keymask.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">keymask.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">keymask.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>KEYMASK_INTERIOR_ROWS</b> (<b>KEYMASK_ROWS</b> - 2)
+  <br/>
+  #define <b>KEYMASK_INTERIOR_COLUMNS</b> (<b>KEYMASK_WIDTH</b> - 2)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>key_fingerprint_digest</b> (const
+    <b>uint8_t</b> public_key[<b>ED25519_PUBLIC_KEY_SIZE</b>], <b>uint8_t</b>
+    digest[<b>KEYMASK_DIGEST_SIZE</b>])
+  <br/>
+  <b>asciichat_error_t</b> <b>keymask_render</b> (const <b>uint8_t</b>
+    digest[<b>KEYMASK_DIGEST_SIZE</b>], <b>bool</b> unicode, char *out, size_t
+    size)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_KEYMASK_INTERIOR_COLUMNS___("><a class="permalink" href="#_define_KEYMASK_INTERIOR_COLUMNS___(">#define
+  KEYMASK_INTERIOR_COLUMNS (<b>KEYMASK_WIDTH</b> - 2)</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>keymask.c</b>.</p>
+<p class="Pp">Referenced by <b>keymask_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_KEYMASK_INTERIOR_ROWS___("><a class="permalink" href="#_define_KEYMASK_INTERIOR_ROWS___(">#define
+  KEYMASK_INTERIOR_ROWS (<b>KEYMASK_ROWS</b> - 2)</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>keymask.c</b>.</p>
+<p class="Pp">Referenced by <b>keymask_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> key_fingerprint_digest (const
+  <b>uint8_t</b> public_key[ED25519_PUBLIC_KEY_SIZE], <b>uint8_t</b>
+  digest[KEYMASK_DIGEST_SIZE])</h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>keymask.c</b>.</p>
+<pre>12                                                                               {
+13   if (!public_key || !digest)
+14     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing public key or fingerprint output&quot;);
+15   if (crypto_hash_sha256(digest, public_key, ED25519_PUBLIC_KEY_SIZE) != 0)
+16     return SET_ERRNO(ERROR_CRYPTO, &quot;Cannot compute public-key fingerprint&quot;);
+17   return ASCIICHAT_OK;
+18 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+    <b>ERROR_CRYPTO</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>key_fingerprint_digest()</b>, <b>KEYMASK_DIGEST_SIZE</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acds_identity_fingerprint()</b>,
+    <b>compute_key_fingerprint()</b>, <b>generate_key_fingerprint()</b>,
+    <b>key_fingerprint_digest()</b>, <b>key_fingerprint_digest()</b>, and
+    <b>key_identity_format()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> keymask_render (const <b>uint8_t</b>
+  digest[KEYMASK_DIGEST_SIZE], <b>bool</b> unicode, char * out, size_t
+  size)</h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>keymask.c</b>.</p>
+<pre>42                                                                                                                   {
+43   if (!out || !size)
+44     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing Keymask output buffer&quot;);
+45   out[0] = '\0';
+46   if (!digest)
+47     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing Keymask digest&quot;);
+48
+49   char cells[KEYMASK_INTERIOR_ROWS][KEYMASK_INTERIOR_COLUMNS];
+50   memset(cells, ' ', sizeof(cells));
+51   uint8_t outline[KEYMASK_DIGEST_SIZE], crown[KEYMASK_DIGEST_SIZE], eyes[KEYMASK_DIGEST_SIZE],
+52       center[KEYMASK_DIGEST_SIZE], mouth[KEYMASK_DIGEST_SIZE], marks[KEYMASK_DIGEST_SIZE];
+53   feature_seed(digest, &quot;outline&quot;, outline);
+54   feature_seed(digest, &quot;crown&quot;, crown);
+55   feature_seed(digest, &quot;eyes&quot;, eyes);
+56   feature_seed(digest, &quot;center&quot;, center);
+57   feature_seed(digest, &quot;mouth&quot;, mouth);
+58   feature_seed(digest, &quot;markings&quot;, marks);
+59
+60   // Half-widths from forehead to chin. Each family has a distinct silhouette.
+61   static const unsigned widths[8][12] = {
+62       {8, 10, 12, 12, 12, 11, 10, 9, 8, 6, 4, 2},     {6, 7, 8, 8, 8, 8, 8, 8, 7, 6, 5, 4},
+63       {11, 13, 14, 14, 13, 12, 11, 10, 9, 7, 5, 3},   {9, 10, 11, 12, 13, 14, 13, 11, 9, 6, 3, 1},
+64       {12, 12, 12, 12, 12, 12, 12, 12, 12, 10, 8, 6}, {5, 7, 9, 11, 12, 12, 11, 10, 8, 6, 4, 2},
+65       {10, 11, 12, 11, 10, 9, 10, 11, 10, 8, 6, 4},   {7, 9, 11, 13, 14, 13, 12, 11, 10, 9, 8, 7},
+66   };
+67   const unsigned *profile = widths[outline[0] % 8];
+68   for (unsigned r = 0; r &lt; 12; ++r) {
+69     unsigned left = 16 - profile[r], right = 15 + profile[r];
+70     cells[r + 3][left] = '#';
+71     cells[r + 3][right] = '#';
+72     if ((outline[1] &amp; 1) &amp;&amp; r &gt; 0 &amp;&amp; r &lt; 10) {
+73       cells[r + 3][left + 1] = '#';
+74       cells[r + 3][right - 1] = '#';
+75     }
+76     if (r == 0 || r == 11)
+77       for (unsigned c = left; c &lt;= right; ++c)
+78         cells[r + 3][c] = '#';
+79   }
+80   static const char *crowns[8][3] = {
+81       {&quot;/\\            /\\&quot;, &quot;/  \\          /  \\&quot;, &quot;\\   \\________/   /&quot;},
+82       {&quot;      /\\      &quot;, &quot;     /##\\     &quot;, &quot;____/####\\____&quot;},
+83       {&quot;o              o&quot;, &quot;|              |&quot;, &quot;/\\____________/\\&quot;},
+84       {&quot;  []  []  []  &quot;, &quot;  ||  ||  ||  &quot;, &quot;__||__||__||__&quot;},
+85       {&quot;   ________   &quot;, &quot;  /========\\  &quot;, &quot; /__________\\ &quot;},
+86       {&quot;\\\\          //&quot;, &quot; \\\\        // &quot;, &quot;  \\\\______//  &quot;},
+87       {&quot;     /||\\     &quot;, &quot;    /||||\\    &quot;, &quot;___/||||||\\___&quot;},
+88       {&quot; /\\        /\\ &quot;, &quot;&lt;  &gt;      &lt;  &gt;&quot;, &quot; \\/________\\/ &quot;},
+89   };
+90   for (unsigned r = 0; r &lt; 3; ++r)
+91     centered(cells, r, crowns[crown[0] % 8][r]);
+92
+93   static const char *eye_rows[8][2] = {
+94       {&quot;[###]  [###]&quot;, &quot;  V      V  &quot;},   {&quot; /--\\  /--\\ &quot;, &quot; \\__/  \\__/ &quot;}, {&quot; \\##\\  /##/ &quot;, &quot;  \\_/  \\_/  &quot;},
+95       {&quot;============&quot;, &quot;[--O----O--]&quot;},   {&quot; .--.  .--. &quot;, &quot; (XX)  (XX) &quot;},     {&quot; /^^\\  /^^\\ &quot;, &quot; |..|  |..| &quot;},
+96       {&quot;  &lt;&gt;    &lt;&gt;  &quot;, &quot; /__\\  /__\\ &quot;}, {&quot; [::]  [::] &quot;, &quot;  --    --  &quot;},
+97   };
+98   centered(cells, 5, eye_rows[eyes[0] % 8][0]);
+99   centered(cells, 6, eye_rows[eyes[0] % 8][1]);
+100   static const char *noses[6][2] = {{&quot;/\\&quot;, &quot;\\/&quot;},   {&quot;||&quot;, &quot;||&quot;}, {&quot;##&quot;, &quot;VV&quot;},
+101                                     {&quot;/\\&quot;, &quot;/__\\&quot;}, {&quot;::&quot;, &quot;[]&quot;}, {&quot;\\/&quot;, &quot;||&quot;}};
+102   centered(cells, 8, noses[center[0] % 6][0]);
+103   centered(cells, 9, noses[center[0] % 6][1]);
+104   static const char *mouths[8][2] = {
+105       {&quot;[||||||]&quot;, &quot; ------ &quot;}, {&quot;\\ VV VV /&quot;, &quot; \\____/ &quot;}, {&quot; ====== &quot;, &quot;        &quot;},     {&quot; /----\\ &quot;, &quot; \\____/ &quot;},
+106       {&quot; [++++] &quot;, &quot;  ----  &quot;}, {&quot; \\____/ &quot;, &quot;  V  V  &quot;},   {&quot;  /\\/\\  &quot;, &quot;  \\/\\/  &quot;}, {&quot; [####] &quot;, &quot;  ||||  &quot;},
+107   };
+108   centered(cells, 11, mouths[mouth[0] % 8][0]);
+109   centered(cells, 12, mouths[mouth[0] % 8][1]);
+110   // Cheek ornaments stay outside the facial features and inside the outline.
+111   static const char *ornaments[] = {&quot;/&quot;, &quot;=&quot;, &quot;:&quot;, &quot;+&quot;, &quot;&lt;&quot;, &quot;*&quot;, &quot;o&quot;, &quot;-&quot;};
+112   for (unsigned r = 7; r &lt;= 10; ++r) {
+113     unsigned col = 18 - profile[r - 3];
+114     char mark = ornaments[marks[r] % 8][0];
+115     cells[r][col] = mark;
+116     cells[r][31 - col] = mark == '&lt;' ? '&gt;' : mark == '/' ? '\\' : mark;
+117   }
+118   // One deliberate asymmetric cheek stripe, on a hash-selected side.
+119   unsigned accent_row = 7 + marks[0] % 3;
+120   unsigned accent_col = 19 - profile[accent_row - 3];
+121   if (marks[1] &amp; 1)
+122     accent_col = 31 - accent_col;
+123   cells[accent_row][accent_col] = '!';
+124   cells[accent_row + 1][accent_col] = '!';
+125
+126   size_t required = KEYMASK_ROWS * (KEYMASK_WIDTH + 1) + 1;
+127   for (unsigned r = 0; r &lt; KEYMASK_INTERIOR_ROWS; ++r)
+128     for (unsigned c = 0; c &lt; KEYMASK_INTERIOR_COLUMNS; ++c)
+129       if (unicode &amp;&amp; cells[r][c] == '#')
+130         required += 2;
+131   if (size &lt; required)
+132     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Keymask output needs %zu bytes&quot;, required);
+133   char *p = out;
+134   const char border[] = &quot;+--------------------------------+\n&quot;;
+135   memcpy(p, border, sizeof(border) - 1);
+136   p += sizeof(border) - 1;
+137   for (unsigned r = 0; r &lt; KEYMASK_INTERIOR_ROWS; ++r) {
+138     *p++ = '|';
+139     for (unsigned c = 0; c &lt; KEYMASK_INTERIOR_COLUMNS; ++c) {
+140       if (unicode &amp;&amp; cells[r][c] == '#') {
+141         memcpy(p, &quot;\xe2\x96\x91&quot;, 3);
+142         p += 3;
+143       } else {
+144         *p++ = cells[r][c];
+145       }
+146     }
+147     *p++ = '|';
+148     *p++ = '\n';
+149   }
+150   memcpy(p, border, sizeof(border));
+151   return ASCIICHAT_OK;
+152 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>KEYMASK_DIGEST_SIZE</b>, <b>KEYMASK_INTERIOR_COLUMNS</b>,
+    <b>KEYMASK_INTERIOR_ROWS</b>, <b>keymask_render()</b>, <b>KEYMASK_ROWS</b>,
+    <b>KEYMASK_WIDTH</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>key_identity_format()</b>,
+    <b>keymask_render()</b>, and <b>keymask_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

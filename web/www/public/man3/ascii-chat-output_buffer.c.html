@@ -35,6 +35,14 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>VIDEO_ASCII_OUTPUT_BUFFER_TMP_BUFFER_SIZE</b> 10
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">void <b>ob_reserve</b> (<b>outbuf_t</b> *ob, size_t need)
@@ -43,7 +51,7 @@
     *ob, char c)
   <br/>
   Append a character to buffer. void <b>ob_write</b> (<b>outbuf_t</b> *ob, const
-    char *s, size_t n)
+    void *s, size_t n)
   <br/>
   Append a string to buffer. void <b>ob_term</b> (<b>outbuf_t</b> *ob)
   <br/>
@@ -54,14 +62,14 @@
     (<b>outbuf_t</b> *ob, <b>uint32_t</b> v)
   <br/>
   Append unsigned 32-bit integer as decimal string. void
-    <b>emit_set_truecolor_fg</b> (<b>outbuf_t</b> *ob, <b>uint8_t</b> r,
+    <b>emit_set_truecolor_fg</b> (<b>outbuf_t</b> *out, <b>uint8_t</b> r,
     <b>uint8_t</b> g, <b>uint8_t</b> b)
   <br/>
   Emit truecolor foreground ANSI sequence. void <b>emit_set_truecolor_bg</b>
-    (<b>outbuf_t</b> *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b> b)
+    (<b>outbuf_t</b> *out, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b> b)
   <br/>
   Emit truecolor background ANSI sequence. void <b>emit_reset</b>
-    (<b>outbuf_t</b> *ob)
+    (<b>outbuf_t</b> *out)
   <br/>
   Emit ANSI reset sequence. <b>bool</b> <b>rep_is_profitable</b>
     (<b>uint32_t</b> runlen)
@@ -81,9 +89,76 @@
   Emit foreground color sequence (auto-select mode). void <b>emit_set_bg</b>
     (<b>outbuf_t</b> *ob, <b>uint8_t</b> r, <b>uint8_t</b> g, <b>uint8_t</b> b)
   <br/>
-  Emit background color sequence (auto-select mode).
+  Emit background color sequence (auto-select mode). void <b>emit_glyph_run</b>
+    (<b>outbuf_t</b> *out, const void *glyph, size_t bytes, <b>uint32_t</b>
+    count)
+  <br/>
+  void <b>emit_row_end</b> (<b>outbuf_t</b> *out, <b>bool</b> colored,
+    <b>bool</b> newline)
+  <br/>
   <br/>
 </p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_VIDEO_ASCII_OUTPUT_BUFFER_TMP_BUFFER_SIZE___10"><a class="permalink" href="#_define_VIDEO_ASCII_OUTPUT_BUFFER_TMP_BUFFER_SIZE___10">#define
+  VIDEO_ASCII_OUTPUT_BUFFER_TMP_BUFFER_SIZE 10</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>output_buffer.c</b>.</p>
+<p class="Pp">Referenced by <b>ob_u32()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_emit_glyph_run_("><a class="permalink" href="#void_emit_glyph_run_(">void
+  emit_glyph_run (<b>outbuf_t</b> * out, const void * glyph, size_t bytes,
+  <b>uint32_t</b> count)</a></h2>
+<p class="Pp">Emit complete UTF-8 glyphs, using REP only when it saves bytes.
+    count includes the first glyph; callers keep runs inside one terminal
+  row.</p>
+<p class="Pp">Definition at line <b>183</b> of file <b>output_buffer.c</b>.</p>
+<pre>183                                                                                     {
+184   if (!count || !bytes)
+185     return;
+186   ob_write(out, glyph, bytes);
+187   uint32_t extra = count - 1;
+188   // Compare division rather than multiplying count by glyph size (overflow).
+189   size_t cost = digits_u32(extra) + 3u;
+190   if (extra &gt; cost / bytes) {
+191     emit_rep(out, extra);
+192   } else {
+193     for (uint32_t i = 0; i &lt; extra; ++i)
+194       ob_write(out, glyph, bytes);
+195   }
+196 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>emit_glyph_run()</b>, <b>emit_rep()</b>, and
+    <b>ob_write()</b>.</p>
+<p class="Pp">Referenced by <b>emit_glyph_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_emit_row_end_("><a class="permalink" href="#void_emit_row_end_(">void
+  emit_row_end (<b>outbuf_t</b> * out, <b>bool</b> colored, <b>bool</b>
+  newline)</a></h2>
+<p class="Pp">Reset colored state before moving to the next row.</p>
+<p class="Pp">Definition at line <b>198</b> of file <b>output_buffer.c</b>.</p>
+<pre>198                                                              {
+199   if (colored)
+200     emit_reset(out);
+201   if (newline)
+202     ob_putc(out, '\n');
+203 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>emit_reset()</b>, <b>emit_row_end()</b>, and
+    <b>ob_putc()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
+    <b>ascii_frame_emit_row()</b>, and <b>emit_row_end()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -93,7 +168,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

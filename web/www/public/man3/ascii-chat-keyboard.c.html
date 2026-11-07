@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>keyboard.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">keyboard.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">keyboard.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">keyboard.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>PLATFORM_KEYBOARD_SEQUENCE_BUFFER_SIZE</b> 128
+  <br/>
+  #define <b>KEYBOARD_DEFERRED_KEY_CAPACITY</b> 1024
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>keyboard_key_t</b> <b>keyboard_read_with_timeout</b>
+    (<b>uint32_t</b> timeout_ms)
+  <br/>
+  Read keyboard input with timeout. <b>keyboard_line_edit_result_t</b>
+    <b>keyboard_read_line_interactive</b> (<b>keyboard_line_edit_opts_t</b>
+    *opts)
+  <br/>
+  Process one keystroke for interactive line editing. <b>keyboard_key_t</b>
+    <b>keyboard_text_decode</b> (<b>keyboard_text_decoder_t</b> *s, int input)
+  <br/>
+  size_t <b>keyboard_text_encode</b> (<b>keyboard_key_t</b> key, char
+    text[<b>UTF8_BUFFER_SIZE</b>])
+  <br/>
+  <b>keyboard_key_t</b> <b>keyboard_text_utf16</b> (<b>uint16_t</b>
+    *pending_high, <b>uint16_t</b> unit)
+  <br/>
+  <b>uint64_t</b> <b>keyboard_stream_terminal_reply_ns</b> (void)
+  <br/>
+  void <b>keyboard_stream_reset</b> (void)
+  <br/>
+  <b>bool</b> <b>keyboard_stream_ready</b> (int(*read_byte)(void))
+  <br/>
+  <b>keyboard_key_t</b> <b>keyboard_stream_read</b> (int(*read_byte)(void))
+  <br/>
+  <b>bool</b> <b>keyboard_stream_query_background</b> (int(*read_byte)(void),
+    <b>bool</b>(*send_query)(void), <b>uint8_t</b> *r, <b>uint8_t</b> *g,
+    <b>uint8_t</b> *b)
+  <br/>
+  <b>bool</b> <b>keyboard_stream_background</b> (<b>uint8_t</b> *r,
+    <b>uint8_t</b> *g, <b>uint8_t</b> *b)
+  <br/>
+  <b>keyboard_line_edit_result_t</b> <b>keyboard_apply_key</b>
+    (<b>keyboard_line_edit_opts_t</b> *opts)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_KEYBOARD_DEFERRED_KEY_CAPACITY___1024"><a class="permalink" href="#_define_KEYBOARD_DEFERRED_KEY_CAPACITY___1024">#define
+  KEYBOARD_DEFERRED_KEY_CAPACITY 1024</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file <b>keyboard.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_KEYBOARD_SEQUENCE_BUFFER_SIZE___128"><a class="permalink" href="#_define_PLATFORM_KEYBOARD_SEQUENCE_BUFFER_SIZE___128">#define
+  PLATFORM_KEYBOARD_SEQUENCE_BUFFER_SIZE 128</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>keyboard.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> keyboard_stream_background (<b>uint8_t</b> * r,
+  <b>uint8_t</b> * g, <b>uint8_t</b> * b)</h2>
+<p class="Pp">Most recently decoded OSC 11 reply, without reading or waiting for
+    input.</p>
+<p class="Pp">Definition at line <b>383</b> of file <b>keyboard.c</b>.</p>
+<pre>383                                                                     {
+384   if (!atomic_load_u64(&amp;background_ns))
+385     return false;
+386   uint64_t rgb = atomic_load_u64(&amp;background_rgb);
+387   *r = (uint8_t)(rgb &gt;&gt; 16);
+388   *g = (uint8_t)(rgb &gt;&gt; 8);
+389   *b = (uint8_t)rgb;
+390   return true;
+391 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>, and
+    <b>keyboard_stream_background()</b>.</p>
+<p class="Pp">Referenced by <b>colorscheme_highlight_background()</b>, and
+    <b>keyboard_stream_background()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> keyboard_stream_query_background (int(* read_byte
+  )(void), <b>bool</b>(* send_query )(void), <b>uint8_t</b> * r, <b>uint8_t</b>
+  * g, <b>uint8_t</b> * b)</h2>
+<p class="Pp">Query through the normal input decoder, preserving unrelated
+    keyboard input.</p>
+<p class="Pp">Definition at line <b>348</b> of file <b>keyboard.c</b>.</p>
+<pre>349                                                   {
+350   if (!r || !g || !b || !read_byte || !send_query)
+351     return false;
+352   uint64_t deadline = time_get_ns() + 100 * NS_PER_MS_INT;
+353   while (!parser_try_lock()) {
+354     if (time_get_ns() &gt;= deadline)
+355       return false;
+356     platform_sleep_ms(1);
+357   }
+358   uint64_t before = atomic_load_u64(&amp;background_ns);
+359   querying_background = true;
+360   bool received = false;
+361   if (deferred_count &lt; 1024 &amp;&amp; send_query()) {
+362     do {
+363       keyboard_key_t key = keyboard_stream_read_unlocked(read_byte);
+364       if (key != KEY_NONE)
+365         deferred[(deferred_head + deferred_count++) % 1024] = key;
+366       if (atomic_load_u64(&amp;background_ns) &gt; before) {
+367         uint64_t rgb = atomic_load_u64(&amp;background_rgb);
+368         *r = (uint8_t)(rgb &gt;&gt; 16);
+369         *g = (uint8_t)(rgb &gt;&gt; 8);
+370         *b = (uint8_t)rgb;
+371         received = true;
+372         break;
+373       }
+374       if (key == KEY_NONE)
+375         platform_sleep_ms(1);
+376     } while (deferred_count &lt; 1024 &amp;&amp; time_get_ns() &lt; deadline);
+377   }
+378   querying_background = false;
+379   parser_unlock();
+380   return received;
+381 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>, <b>KEY_NONE</b>,
+    <b>keyboard_stream_query_background()</b>, <b>NS_PER_MS_INT</b>,
+    <b>platform_sleep_ms()</b>, and <b>time_get_ns()</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_stream_query_background()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>keyboard_key_t</b> keyboard_stream_read (int(* read_byte
+  )(void))</h2>
+<p class="Pp">Decode a nonblocking UTF-8 byte stream and terminal escape
+    sequences.</p>
+<p class="Pp">Definition at line <b>333</b> of file <b>keyboard.c</b>.</p>
+<pre>333                                                             {
+334   if (!parser_try_lock())
+335     return KEY_NONE;
+336   keyboard_key_t key;
+337   if (deferred_count) {
+338     key = deferred[deferred_head];
+339     deferred_head = (deferred_head + 1) % 1024;
+340     --deferred_count;
+341   } else {
+342     key = keyboard_stream_read_unlocked(read_byte);
+343   }
+344   parser_unlock();
+345   return key;
+346 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>KEY_NONE</b>, and <b>keyboard_stream_read()</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_stream_read()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> keyboard_stream_ready (int(* read_byte )(void))</h2>
+<p class="Pp">Decode available bytes and retain the next event without consuming
+    it.</p>
+<p class="Pp">Definition at line <b>320</b> of file <b>keyboard.c</b>.</p>
+<pre>320                                                    {
+321   if (!parser_try_lock())
+322     return false;
+323   if (!deferred_count) {
+324     keyboard_key_t key = keyboard_stream_read_unlocked(read_byte);
+325     if (key != KEY_NONE)
+326       deferred[(deferred_head + deferred_count++) % 1024] = key;
+327   }
+328   bool ready = deferred_count != 0;
+329   parser_unlock();
+330   return ready;
+331 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>KEY_NONE</b>, and
+  <b>keyboard_stream_ready()</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_stream_ready()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_keyboard_stream_reset_(void_)"><a class="permalink" href="#void_keyboard_stream_reset_(void_)">void
+  keyboard_stream_reset (void )</a></h2>
+<p class="Pp">Definition at line <b>149</b> of file <b>keyboard.c</b>.</p>
+<pre>149                                  {
+150   while (!parser_try_lock())
+151     platform_sleep_ms(1);
+152   deferred_head = deferred_count = 0;
+153   length = 0;
+154   pasting = false;
+155   memset(&amp;text_decoder, 0, sizeof(text_decoder));
+156   pending_escape = discarding_osc = osc_escape = false;
+157   queued_key = KEY_NONE;
+158   parser_unlock();
+159 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>KEY_NONE</b>, <b>keyboard_stream_reset()</b>, and
+    <b>platform_sleep_ms()</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_stream_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> keyboard_stream_terminal_reply_ns (void )</h2>
+<p class="Pp">Last complete OSC 11 reply received from the terminal
+  frontend.</p>
+<p class="Pp">Definition at line <b>137</b> of file <b>keyboard.c</b>.</p>
+<pre>137                                                  {
+138   return atomic_load_u64(&amp;terminal_reply_ns);
+139 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>, and
+    <b>keyboard_stream_terminal_reply_ns()</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_stream_terminal_reply_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>keyboard_key_t</b> keyboard_text_decode
+  (<b>keyboard_text_decoder_t</b> * state, int input)</h2>
+<p class="Pp">Feed a byte or native special key. Invalid sequences are
+    discarded; a new starter or special key interrupts incomplete text and is
+    processed normally.</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>keyboard.c</b>.</p>
+<pre>34                                                                            {
+35   if (input == 0)
+36     return KEY_NONE;
+37   if (s-&gt;length &amp;&amp; input &gt;= 0x80 &amp;&amp; input &lt;= 0xbf) {
+38     s-&gt;bytes[s-&gt;length++] = (uint8_t)input;
+39     if (s-&gt;length &lt; s-&gt;expected)
+40       return KEY_NONE;
+41     s-&gt;length = 0;
+42     utf8proc_int32_t cp;
+43     if (utf8proc_iterate(s-&gt;bytes, s-&gt;expected, &amp;cp) &lt; 0)
+44       return KEY_NONE;
+45     return (keyboard_key_t)cp;
+46   }
+47   s-&gt;length = 0;
+48   if (input &lt; 0x80 || input &gt; 255)
+49     return (keyboard_key_t)input;
+50   s-&gt;expected = (unsigned)utf8proc_utf8class[input];
+51   if (s-&gt;expected &gt; 1) {
+52     s-&gt;bytes[0] = (uint8_t)input;
+53     s-&gt;length = 1;
+54   }
+55   return KEY_NONE;
+56 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>keyboard_text_decoder_t::bytes</b>,
+    <b>keyboard_text_decoder_t::expected</b>, <b>KEY_NONE</b>,
+    <b>keyboard_text_decode()</b>, and
+  <b>keyboard_text_decoder_t::length</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_text_decode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_keyboard_text_encode_("><a class="permalink" href="#size_t_keyboard_text_encode_(">size_t
+  keyboard_text_encode (<b>keyboard_key_t</b> key, char
+  text[UTF8_BUFFER_SIZE])</a></h2>
+<p class="Pp">Encode a text key to NUL-terminated UTF-8. Returns 0 for non-text
+    keys.</p>
+<p class="Pp">Definition at line <b>58</b> of file <b>keyboard.c</b>.</p>
+<pre>58                                                                              {
+59   if (key == KEY_NONE || !utf8proc_codepoint_valid((utf8proc_int32_t)key))
+60     return 0;
+61   utf8proc_int32_t cp = (utf8proc_int32_t)key;
+62   size_t bytes = (size_t)utf8proc_encode_char(cp, (utf8proc_uint8_t *)text);
+63   text[bytes] = '\0';
+64   return bytes;
+65 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>KEY_NONE</b>, <b>keyboard_text_encode()</b>, and
+    <b>UTF8_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_text_encode()</b>,
+    <b>tui_input_events_read()</b>, and <b>ui_input_edit_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>keyboard_key_t</b> keyboard_text_utf16 (<b>uint16_t</b> *
+  pending_high, <b>uint16_t</b> unit)</h2>
+<p class="Pp">Decode native UTF-16 console text. An unmatched surrogate is
+    discarded; a following ordinary character is preserved. Zero-initialize
+    pending_high.</p>
+<p class="Pp">Definition at line <b>67</b> of file <b>keyboard.c</b>.</p>
+<pre>67                                                                           {
+68   uint16_t high = *pending_high;
+69   *pending_high = 0;
+70   if (unit &gt;= 0xd800 &amp;&amp; unit &lt;= 0xdbff) {
+71     *pending_high = unit;
+72     return KEY_NONE;
+73   }
+74   if (unit &gt;= 0xdc00 &amp;&amp; unit &lt;= 0xdfff) {
+75     if (!high)
+76       return KEY_NONE;
+77     return (keyboard_key_t)(0x10000 + ((high - 0xd800) &lt;&lt; 10) + unit - 0xdc00);
+78   }
+79   return (keyboard_key_t)unit;
+80 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>KEY_NONE</b>, and <b>keyboard_text_utf16()</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_text_utf16()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -37,9 +37,21 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>[struct].g_timer_manager</b>
+  <br/>
+  Global timer manager.
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>SOKOL_TIME_IMPL</b>
+<p class="Pp">#define <b>UTIL_TIME_TEMP_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>SOKOL_TIME_IMPL</b>
   <br/>
   <br/>
 </p>
@@ -77,25 +89,25 @@
     <b>timer_is_initialized</b> (void)
   <br/>
   Check if timing system is initialized. int <b>format_uptime_hms</b> (int
-    hours, int minutes, int seconds, char *buffer, size_t <b>buffer_size</b>)
+    hours, int minutes, int seconds, char *buffer, size_t buffer_size)
   <br/>
   Format uptime as HH:MM:SS string. int <b>time_pretty</b> (<b>uint64_t</b>
-    nanoseconds, int decimals, char *buffer, size_t <b>buffer_size</b>)
+    nanoseconds, int decimals, char *buffer, size_t buffer_size)
   <br/>
-  Format nanoseconds as pretty duration with spaces and configurable precision.
-    int <b>time_pretty_now</b> (int decimals, char *buffer, size_t
-    <b>buffer_size</b>)
+  Format nanoseconds as a compact duration with configurable sub-minute
+    precision. int <b>time_pretty_now</b> (int decimals, char *buffer, size_t
+    buffer_size)
   <br/>
   Format current monotonic time as pretty duration. int
     <b>time_human_readable_unsigned</b> (<b>uint64_t</b> nanoseconds, char
-    *buffer, size_t <b>buffer_size</b>)
+    *buffer, size_t buffer_size)
   <br/>
   Format elapsed time as human-readable relative duration (unsigned version).
     int <b>time_human_readable</b> (int64_t nanoseconds, char *buffer, size_t
-    <b>buffer_size</b>)
+    buffer_size)
   <br/>
   Format nanoseconds as human-readable relative duration (moment.js style). int
-    <b>time_human_readable_now</b> (char *buffer, size_t <b>buffer_size</b>)
+    <b>time_human_readable_now</b> (char *buffer, size_t buffer_size)
   <br/>
   Format current monotonic time as human-readable relative duration. void
     <b>adaptive_sleep_init</b> (<b>adaptive_sleep_state_t</b> *state, const
@@ -138,33 +150,13 @@
 <section class="Ss">
 <h2 class="Ss" id="_define_SOKOL_TIME_IMPL"><a class="permalink" href="#_define_SOKOL_TIME_IMPL">#define
   SOKOL_TIME_IMPL</a></h2>
-<p class="Pp">Definition at line <b>11</b> of file <b>util/time.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>lifecycle_t</b> lifecycle</h2>
-<p class="Pp">Lifecycle state machine for init/shutdown synchronization.</p>
-<p class="Pp">Definition at line <b>35</b> of file <b>util/time.c</b>.</p>
+<p class="Pp">Definition at line <b>14</b> of file <b>util/time.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>rwlock_t</b> rwlock</h2>
-<p class="Pp">Read-write lock for thread-safe access (uthash requires external
-    locking).</p>
-<p class="Pp">Definition at line <b>34</b> of file <b>util/time.c</b>.</p>
-<p class="Pp">Referenced by <b>rwlock_destroy()</b>,
-    <b>rwlock_format_state()</b>, <b>rwlock_init()</b>,
-    <b>rwlock_log_state()</b>, <b>rwlock_on_rdlock()</b>,
-    <b>rwlock_on_unlock()</b>, <b>rwlock_on_wrlock()</b>,
-    <b>rwlock_rdlock_impl()</b>, <b>rwlock_rdunlock_impl()</b>,
-    <b>rwlock_wrlock_impl()</b>, and <b>rwlock_wrunlock_impl()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>timer_record_t</b>* timers</h2>
-<p class="Pp">Hash table of active timers (uthash head pointer).</p>
-<p class="Pp">Definition at line <b>33</b> of file <b>util/time.c</b>.</p>
+<h2 class="Ss" id="_define_UTIL_TIME_TEMP_BUFFER_SIZE___64"><a class="permalink" href="#_define_UTIL_TIME_TEMP_BUFFER_SIZE___64">#define
+  UTIL_TIME_TEMP_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>util/time.c</b>.</p>
+<p class="Pp">Referenced by <b>time_pretty()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -174,7 +166,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

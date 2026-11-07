@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>keymask.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">keymask.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">keymask.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">keymask.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>KEYMASK_DIGEST_SIZE</b> 32
+  <br/>
+  #define <b>KEYMASK_WIDTH</b> 34
+  <br/>
+  #define <b>KEYMASK_ROWS</b> 18
+  <br/>
+  #define <b>KEYMASK_BUFFER_SIZE</b> 1655
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>key_fingerprint_digest</b> (const
+    <b>uint8_t</b> public_key[<b>ED25519_PUBLIC_KEY_SIZE</b>], <b>uint8_t</b>
+    digest[32])
+  <br/>
+  <b>asciichat_error_t</b> <b>keymask_render</b> (const <b>uint8_t</b>
+    digest[32], <b>bool</b> unicode, char *out, size_t size)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_KEYMASK_BUFFER_SIZE___1655"><a class="permalink" href="#_define_KEYMASK_BUFFER_SIZE___1655">#define
+  KEYMASK_BUFFER_SIZE 1655</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>keymask.h</b>.</p>
+<p class="Pp">Referenced by <b>key_identity_format()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_KEYMASK_DIGEST_SIZE___32"><a class="permalink" href="#_define_KEYMASK_DIGEST_SIZE___32">#define
+  KEYMASK_DIGEST_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>keymask.h</b>.</p>
+<p class="Pp">Referenced by <b>key_fingerprint_digest()</b>,
+    <b>key_fingerprint_digest()</b>, <b>key_identity_format()</b>,
+    <b>keymask_render()</b>, and <b>keymask_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_KEYMASK_ROWS___18"><a class="permalink" href="#_define_KEYMASK_ROWS___18">#define
+  KEYMASK_ROWS 18</a></h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>keymask.h</b>.</p>
+<p class="Pp">Referenced by <b>key_identity_art_end()</b>, and
+    <b>keymask_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_KEYMASK_WIDTH___34"><a class="permalink" href="#_define_KEYMASK_WIDTH___34">#define
+  KEYMASK_WIDTH 34</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>keymask.h</b>.</p>
+<p class="Pp">Referenced by <b>key_identity_art_end()</b>,
+    <b>key_identity_format()</b>, and <b>keymask_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> key_fingerprint_digest (const
+  <b>uint8_t</b> public_key[ED25519_PUBLIC_KEY_SIZE], <b>uint8_t</b>
+  digest[32])</h2>
+<p class="Pp">SHA-256 of the 32 public-key bytes, independent of key source or
+    encoding.</p>
+<p class="Pp">References <b>ED25519_PUBLIC_KEY_SIZE</b>,
+    <b>key_fingerprint_digest()</b>, and <b>KEYMASK_DIGEST_SIZE</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> keymask_render (const <b>uint8_t</b>
+  digest[32], <b>bool</b> unicode, char * out, size_t size)</h2>
+<p class="Pp">Keymask v2: domain-separated constructed mask from the public-key
+    digest. ASCII and UTF-8 represent the same geometry. No terminal I/O or
+    allocations. This is a recognition aid; exact and perceptual collisions are
+    possible.</p>
+<p class="Pp">References <b>KEYMASK_DIGEST_SIZE</b>, and
+    <b>keymask_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -49,6 +49,16 @@
 </p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>NETWORK_RATE_LIMIT_MEMORY_KEY_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>RATE_LIMIT_INITIAL_EVENT_CAPACITY</b> 100
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
 <p class="Pp">typedef struct <b>rate_event_s</b> <b>rate_event_t</b>
@@ -85,6 +95,22 @@
 <p class="Pp">Definition in file <b>network/rate_limit/memory.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_NETWORK_RATE_LIMIT_MEMORY_KEY_BUFFER_SIZE___256"><a class="permalink" href="#_define_NETWORK_RATE_LIMIT_MEMORY_KEY_BUFFER_SIZE___256">#define
+  NETWORK_RATE_LIMIT_MEMORY_KEY_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file
+    <b>network/rate_limit/memory.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_RATE_LIMIT_INITIAL_EVENT_CAPACITY___100"><a class="permalink" href="#_define_RATE_LIMIT_INITIAL_EVENT_CAPACITY___100">#define
+  RATE_LIMIT_INITIAL_EVENT_CAPACITY 100</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file
+    <b>network/rate_limit/memory.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
   Documentation</a></h1>
 <section class="Ss">
@@ -102,32 +128,33 @@
 <p class="Pp">Create memory backend instance.</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Backend instance or NULL on failure</div>
-<p class="Pp">Definition at line <b>239</b> of file
+<p class="Pp">Definition at line <b>245</b> of file
     <b>network/rate_limit/memory.c</b>.</p>
-<pre>239                                   {
-240   memory_backend_t *backend = SAFE_MALLOC(sizeof(memory_backend_t), memory_backend_t *);
-241   if (!backend) {
-242     log_error(&quot;Failed to allocate memory backend&quot;);
-243     return NULL;
-244   }
-245 
-246   memset(backend, 0, sizeof(*backend));
-247 
-248   if (mutex_init(&amp;backend-&gt;lock, &quot;rate_limiter&quot;) != 0) {
-249     log_error(&quot;Failed to initialize mutex&quot;);
-250     SAFE_FREE(backend);
-251     return NULL;
-252   }
-253 
-254   log_debug(&quot;Memory rate limiter backend initialized&quot;);
-255   return backend;
-256 }</pre>
+<pre>245                                   {
+246   memory_backend_t *backend = SAFE_MALLOC(sizeof(memory_backend_t), memory_backend_t *);
+247   if (!backend) {
+248     log_error(&quot;Failed to allocate memory backend&quot;);
+249     return NULL;
+250   }
+251
+252   memset(backend, 0, sizeof(*backend));
+253
+254   if (mutex_init(&amp;backend-&gt;lock, &quot;rate_limiter&quot;) != 0) {
+255     log_error(&quot;Failed to initialize mutex&quot;);
+256     SAFE_FREE(backend);
+257     return NULL;
+258   }
+259
+260   log_debug(&quot;Memory rate limiter backend initialized&quot;);
+261   return backend;
+262 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>memory_backend_t::lock</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>mutex_init()</b>, <b>SAFE_FREE</b>, and
-    <b>SAFE_MALLOC</b>.</p>
-<p class="Pp">Referenced by <b>rate_limiter_create_memory()</b>.</p>
+    <b>log_error</b>, <b>memory_backend_create()</b>, <b>mutex_init()</b>,
+    <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.</p>
+<p class="Pp">Referenced by <b>memory_backend_create()</b>, and
+    <b>rate_limiter_create_memory()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -152,16 +179,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Memory backend operations vtable.</p>
-<p class="Pp">Definition at line <b>258</b> of file
+<p class="Pp">Definition at line <b>264</b> of file
     <b>network/rate_limit/memory.c</b>.</p>
-<pre>258                                                     {
-259     .check = memory_check,
-260     .record = memory_record,
-261     .cleanup = memory_cleanup,
-262     .destroy = memory_destroy,
-263 };</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>rate_limiter_create_memory()</b>.</p>
 </section>
 </section>
@@ -172,7 +191,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

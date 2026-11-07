@@ -57,9 +57,12 @@
   Bit 1: H.265 support. #define <b>VIDEO_CODEC_CAP_JPEG</b> ((<b>uint32_t</b>)(1
     &lt;&lt; <b>VIDEO_CODEC_JPEG</b>))
   <br/>
-  Bit 2: JPEG support. #define <b>VIDEO_CODEC_CAP_ALL</b>
-    (<b>VIDEO_CODEC_CAP_RGBA</b> | <b>VIDEO_CODEC_CAP_H265</b> |
-    <b>VIDEO_CODEC_CAP_JPEG</b>)
+  Bit 2: JPEG support. #define <b>VIDEO_CODEC_CAP_H264</b> ((<b>uint32_t</b>)(1
+    &lt;&lt; <b>VIDEO_CODEC_H264</b>))
+  <br/>
+  Bit 3: H.264 support. #define <b>VIDEO_CODEC_CAP_ALL</b>
+    (<b>VIDEO_CODEC_CAP_H264</b> | <b>VIDEO_CODEC_CAP_RGBA</b> |
+    <b>VIDEO_CODEC_CAP_H265</b> | <b>VIDEO_CODEC_CAP_JPEG</b>)
   <br/>
   Default video codec capabilities (all codecs supported).
   <br/>
@@ -81,11 +84,14 @@
   Bit 0: Raw PCM support. #define <b>AUDIO_CODEC_CAP_OPUS</b>
     ((<b>uint32_t</b>)(1 &lt;&lt; <b>AUDIO_CODEC_OPUS</b>))
   <br/>
-  Bit 1: Opus support. #define <b>AUDIO_CODEC_CAP_ALL</b>
-    (<b>AUDIO_CODEC_CAP_RAW</b> | <b>AUDIO_CODEC_CAP_OPUS</b>)
+  Bit 1: Opus support. #define <b>AUDIO_CAP_STEREO</b> ((<b>uint32_t</b>)(1u
+    &lt;&lt; 8))
   <br/>
   Default audio codec capabilities (all codecs supported). #define
-    <b>VIDEO_CODEC_SUPPORTED</b>(cap, codec)
+    <b>AUDIO_CODEC_CAP_ALL</b> (<b>AUDIO_CODEC_CAP_RAW</b> |
+    <b>AUDIO_CODEC_CAP_OPUS</b> | <b>AUDIO_CAP_STEREO</b>)
+  <br/>
+  #define <b>VIDEO_CODEC_SUPPORTED</b>(cap, codec)
   <br/>
   Check if a video codec is supported in capabilities bitmask. #define
     <b>AUDIO_CODEC_SUPPORTED</b>(cap, codec)
@@ -104,7 +110,8 @@
   <br/>
   <br/>
   enum <b>video_codec_t</b> { <b>VIDEO_CODEC_RGBA</b> = 0,
-    <b>VIDEO_CODEC_H265</b> = 1, <b>VIDEO_CODEC_JPEG</b> = 2 }
+    <b>VIDEO_CODEC_H265</b> = 1, <b>VIDEO_CODEC_JPEG</b> = 2,
+    <b>VIDEO_CODEC_H264</b> = 3 }
   <br/>
   <br/>
   <br/>
@@ -143,39 +150,53 @@
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="_define_AUDIO_CODEC_CAP_ALL___("><a class="permalink" href="#_define_AUDIO_CODEC_CAP_ALL___(">#define
+  AUDIO_CODEC_CAP_ALL (<b>AUDIO_CODEC_CAP_RAW</b> | <b>AUDIO_CODEC_CAP_OPUS</b>
+  | <b>AUDIO_CAP_STEREO</b>)</a></h2>
+<p class="Pp">Definition at line <b>80</b> of file <b>codecs.h</b>.</p>
+<p class="Pp">Referenced by <b>session_protocol_build_capabilities()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="_define_AUDIO_CODEC_CAP_OPUS___(("><a class="permalink" href="#_define_AUDIO_CODEC_CAP_OPUS___((">#define
   AUDIO_CODEC_CAP_OPUS ((<b>uint32_t</b>)(1 &lt;&lt;
   <b>AUDIO_CODEC_OPUS</b>))</a></h2>
 <p class="Pp">Bit 1: Opus support.</p>
-<p class="Pp">Definition at line <b>71</b> of file <b>codecs.h</b>.</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>codecs.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_AUDIO_CODEC_CAP_RAW___(("><a class="permalink" href="#_define_AUDIO_CODEC_CAP_RAW___((">#define
   AUDIO_CODEC_CAP_RAW ((<b>uint32_t</b>)(1 &lt;&lt;
   <b>AUDIO_CODEC_RAW</b>))</a></h2>
 <p class="Pp">Bit 0: Raw PCM support.</p>
-<p class="Pp">Definition at line <b>70</b> of file <b>codecs.h</b>.</p>
+<p class="Pp">Definition at line <b>72</b> of file <b>codecs.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VIDEO_CODEC_CAP_H264___(("><a class="permalink" href="#_define_VIDEO_CODEC_CAP_H264___((">#define
+  VIDEO_CODEC_CAP_H264 ((<b>uint32_t</b>)(1 &lt;&lt;
+  <b>VIDEO_CODEC_H264</b>))</a></h2>
+<p class="Pp">Bit 3: H.264 support.</p>
+<p class="Pp">Definition at line <b>46</b> of file <b>codecs.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_VIDEO_CODEC_CAP_H265___(("><a class="permalink" href="#_define_VIDEO_CODEC_CAP_H265___((">#define
   VIDEO_CODEC_CAP_H265 ((<b>uint32_t</b>)(1 &lt;&lt;
   <b>VIDEO_CODEC_H265</b>))</a></h2>
 <p class="Pp">Bit 1: H.265 support.</p>
-<p class="Pp">Definition at line <b>43</b> of file <b>codecs.h</b>.</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>codecs.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_VIDEO_CODEC_CAP_JPEG___(("><a class="permalink" href="#_define_VIDEO_CODEC_CAP_JPEG___((">#define
   VIDEO_CODEC_CAP_JPEG ((<b>uint32_t</b>)(1 &lt;&lt;
   <b>VIDEO_CODEC_JPEG</b>))</a></h2>
 <p class="Pp">Bit 2: JPEG support.</p>
-<p class="Pp">Definition at line <b>44</b> of file <b>codecs.h</b>.</p>
+<p class="Pp">Definition at line <b>45</b> of file <b>codecs.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_VIDEO_CODEC_CAP_RGBA___(("><a class="permalink" href="#_define_VIDEO_CODEC_CAP_RGBA___((">#define
   VIDEO_CODEC_CAP_RGBA ((<b>uint32_t</b>)(1 &lt;&lt;
   <b>VIDEO_CODEC_RGBA</b>))</a></h2>
 <p class="Pp">Bit 0: RGBA support.</p>
-<p class="Pp">Definition at line <b>42</b> of file <b>codecs.h</b>.</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>codecs.h</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -194,11 +215,11 @@
     </i></b></a></dt>
   <dd>Opus audio codec.</dd>
 </dl>
-<p class="Pp">Definition at line <b>57</b> of file <b>codecs.h</b>.</p>
-<pre>57              {
-58   AUDIO_CODEC_RAW = 0,   
-59   AUDIO_CODEC_OPUS = 1,  
-60 } audio_codec_t;</pre>
+<p class="Pp">Definition at line <b>59</b> of file <b>codecs.h</b>.</p>
+<pre>59              {
+60   AUDIO_CODEC_RAW = 0,
+61   AUDIO_CODEC_OPUS = 1,
+62 } audio_codec_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -217,13 +238,17 @@
   <dt id="VIDEO_CODEC_JPEG"><a class="permalink" href="#VIDEO_CODEC_JPEG"><b><i>VIDEO_CODEC_JPEG
     </i></b></a></dt>
   <dd>JPEG still frame codec.</dd>
+  <dt id="VIDEO_CODEC_H264"><a class="permalink" href="#VIDEO_CODEC_H264"><b><i>VIDEO_CODEC_H264
+    </i></b></a></dt>
+  <dd>H.264 (AVC) video codec.</dd>
 </dl>
 <p class="Pp">Definition at line <b>28</b> of file <b>codecs.h</b>.</p>
 <pre>28              {
-29   VIDEO_CODEC_RGBA = 0,   
-30   VIDEO_CODEC_H265 = 1,   
-31   VIDEO_CODEC_JPEG = 2,   
-32 } video_codec_t;</pre>
+29   VIDEO_CODEC_RGBA = 0,
+30   VIDEO_CODEC_H265 = 1,
+31   VIDEO_CODEC_JPEG = 2,
+32   VIDEO_CODEC_H264 = 3,
+33 } video_codec_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -235,7 +260,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

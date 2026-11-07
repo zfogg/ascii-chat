@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>packet_decoder_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">packet_decoder_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">packet_decoder_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">packet_decoder_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/packet/decoder.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint8_t</b> <b>header</b> [sizeof(<b>packet_header_t</b>)]
+  <br/>
+  size_t <b>header_used</b>
+  <br/>
+  <b>uint8_t</b> * <b>packet</b>
+  <br/>
+  size_t <b>used</b>
+  <br/>
+  size_t <b>size</b>
+  <br/>
+  size_t <b>max_payload</b>
+  <br/>
+  Zero uses MAX_PACKET_SIZE; set before the first feed. <b>bool</b>
+    <b>failed</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Incremental wire framing. Feed only on the owning connection's
+    serial lane. Callback borrows a complete header+payload until it returns. It
+    must copy any bytes it retains. An error is terminal: reset before feeding a
+    new connection.</p>
+<p class="Pp">Definition at line <b>8</b> of file
+    <b>network/packet/decoder.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> packet_decoder_t::failed</h2>
+<p class="Pp">Definition at line <b>14</b> of file
+    <b>network/packet/decoder.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_decoder_feed()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  packet_decoder_t::header[sizeof(<b>packet_header_t</b>)]</h2>
+<p class="Pp">Definition at line <b>9</b> of file
+    <b>network/packet/decoder.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_decoder_feed()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_packet_decoder_t::header_used"><a class="permalink" href="#size_t_packet_decoder_t::header_used">size_t
+  packet_decoder_t::header_used</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file
+    <b>network/packet/decoder.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_decoder_feed()</b>, and
+    <b>packet_decoder_pending()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_packet_decoder_t::max_payload"><a class="permalink" href="#size_t_packet_decoder_t::max_payload">size_t
+  packet_decoder_t::max_payload</a></h2>
+<p class="Pp">Zero uses MAX_PACKET_SIZE; set before the first feed.</p>
+<p class="Pp">Definition at line <b>13</b> of file
+    <b>network/packet/decoder.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_decoder_feed()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>* packet_decoder_t::packet</h2>
+<p class="Pp">Definition at line <b>11</b> of file
+    <b>network/packet/decoder.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_decoder_feed()</b>, and
+    <b>packet_decoder_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_packet_decoder_t::size"><a class="permalink" href="#size_t_packet_decoder_t::size">size_t
+  packet_decoder_t::size</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file
+    <b>network/packet/decoder.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_decoder_feed()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_packet_decoder_t::used"><a class="permalink" href="#size_t_packet_decoder_t::used">size_t
+  packet_decoder_t::used</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file
+    <b>network/packet/decoder.h</b>.</p>
+<p class="Pp">Referenced by <b>packet_decoder_feed()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

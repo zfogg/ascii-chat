@@ -38,15 +38,23 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>opus_codec_t</b> * <b>opus_codec_create_encoder</b>
+<p class="Pp"><b>asciichat_error_t</b> <b>audio_opus_configure_encoder</b>
+    (<b>OpusEncoder</b> *encoder, int bitrate)
+  <br/>
+  <b>opus_codec_t</b> * <b>opus_codec_create_encoder</b>
     (<b>opus_application_t</b> application, int sample_rate, int bitrate)
   <br/>
-  Create an Opus encoder. <b>opus_codec_t</b> * <b>opus_codec_create_decoder</b>
-    (int sample_rate)
+  Create an Opus encoder. <b>opus_codec_t</b> *
+    <b>opus_codec_create_encoder_channels</b> (<b>opus_application_t</b>
+    application, int sample_rate, int bitrate, int channels)
   <br/>
-  Create an Opus decoder. size_t <b>opus_codec_encode</b> (<b>opus_codec_t</b>
-    *codec, const float *samples, int num_samples, <b>uint8_t</b> *out_data,
-    size_t out_size)
+  <b>opus_codec_t</b> * <b>opus_codec_create_decoder</b> (int sample_rate)
+  <br/>
+  Create an Opus decoder. <b>opus_codec_t</b> *
+    <b>opus_codec_create_decoder_channels</b> (int sample_rate, int channels)
+  <br/>
+  size_t <b>opus_codec_encode</b> (<b>opus_codec_t</b> *codec, const float
+    *samples, int num_samples, <b>uint8_t</b> *out_data, size_t out_size)
   <br/>
   Encode audio frame with Opus. int <b>opus_codec_decode</b>
     (<b>opus_codec_t</b> *codec, const <b>uint8_t</b> *data, size_t data_len,
@@ -84,7 +92,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

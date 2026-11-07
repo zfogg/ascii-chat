@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>md_docs_2telemetry(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">md_docs_2telemetry(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">md_docs_2telemetry(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">md_docs_2telemetry - OpenTelemetry</p>
+<section class="Ss">
+<h2 class="Ss" id="Command_argument_privacy"><a class="permalink" href="#Command_argument_privacy">Command
+  argument privacy</a></h2>
+<p class="Pp">Release builds (NDEBUG) redact sensitive command arguments in both
+    resource metadata and the CLI span. Other builds copy arguments verbatim.
+    This is a build policy, with no CLI or environment override.</p>
+<p class="Pp"></p>
+<p class="Pp">Release builds redact ascii-chat's sensitive option values:
+    passwords, identity/public/private key sources and paths, TLS certificates
+    and keys, network addresses and ports, discovery/STUN/TURN endpoints and
+    credentials, media URLs, yt-dlp options, and telemetry endpoint/CA paths.
+    Native positional addresses, including bracketed IPv6 and address-with-port
+    forms, are also hidden. Other values, such as width, FPS, and log level,
+    stay visible.</p>
+<p class="Pp"></p>
+<p class="Pp">The reusable gotel policy API supports all, selected, or no
+    redaction, plus per-flag removal rules. Removal omits a flag and its
+    required or optional value from both destinations; ascii-chat currently uses
+    redaction rules.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Statistics_coverage"><a class="permalink" href="#Statistics_coverage">Statistics
+  coverage</a></h2>
+<p class="Pp">The typed process stats catalog maps to 38 counters, 5 gauges and
+    11 duration histograms through include/ascii-chat/stats/telemetry.def. Each
+    entry names its canonical telemetry metric. There is no separate
+    ascii-chat.stats.* mirror. For example, local frames_captured feeds
+    ascii-chat.frames.captured, bytes_sent feeds ascii-chat.network.sent, and
+    reconnects feeds ascii-chat.network.reconnects. Those events are recorded
+    only by the process stats observer; the former parallel OTEL calls have been
+    removed. Per-peer stats scopes do not export, so their duplicate local
+    accounting is not counted again.</p>
+<p class="Pp"></p>
+<p class="Pp">New measurements have descriptive names such as
+    ascii-chat.frames.converted, ascii-chat.discovery.migrations.failed,
+    ascii-chat.recording.frame.duration and
+    ascii-chat.video.ascii.convert.duration. Durations are seconds and retain
+    all observations as histograms. The native build fails if a typed stat lacks
+    a mapping. FPS and throughput are derived from counter changes over elapsed
+    time.</p>
+<p class="Pp"></p>
+<p class="Pp">Distinct stages remain separate, with explicit names:
+    audio.device.underruns counts PortAudio flags while audio.buffer.underruns
+    counts network ring-buffer shortages; frames.submitted_to_display counts
+    display submissions while frames.presented counts completed terminal writes;
+    recording.frames.encoded counts recording submissions while
+    video.encode.frames counts codec frames. The ascii-chat. prefix applies to
+    each name above. Stage totals and specific codec measurements must not be
+    added to one another as if they were disjoint.</p>
+<p class="Pp"></p>
+<p class="Pp">Mode capabilities control collection. Server/discovery gauges
+    refresh once per second with telemetry enabled even when the stats screen
+    and printing are off. Existing historical ascii-chat.stats.* points remain
+    in recordings; new runs emit only canonical names. No historical data is
+    deleted or re-ingested.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Test_isolation"><a class="permalink" href="#Test_isolation">Test
+  isolation</a></h2>
+<p class="Pp">All tests prohibit collector export. <b>ascii_otel_init</b><b>
+    returns before creating a host, exporter, or worker when the canonical
+    </b>is_test_environment()<b> is true. There is no endpoint, signal or CLI
+    override. C test executables also compile with </b>TESTING=1<b>, and their
+    public adapter initialization is a no-op even when they link the normal
+    library. CTest applies </b>TESTING=1<b> recursively to every registered
+    test, including root-directory smoke checks and subprocesses.</b></p>
+<p class="Pp"></p>
+<p class="Pp">Every Python test imports the shared tests/_environment.py
+    bootstrap before loading helpers or launching native children. It sets
+    TESTING=1 and disables signals as a second default. As in the existing C
+    helper, presence of TESTING or CRITERION_TEST denotes test mode, including
+    the string value 0. Do not remove those variables to enable export in
+  tests.</p>
+<p class="Pp"></p>
+<p class="Pp">Collector-based OTEL smoke scripts now report skip code 77.
+    In-process gotel transport tests still validate spans, metrics, sampling and
+    failures without network I/O.
+    tests/python/integration/telemetry/test_disabled.py runs real native media
+    with explicit collector and signal overrides and asserts zero received
+    requests. Historical exported-load measurements below describe earlier
+    manual runs; they are not test permissions.</p>
+<p class="Pp"></p>
+<p class="Pp">otel-contract compiles the application adapter into a process
+    fixture and installs a private, in-process Gotel test host. It exercises
+    bounded sampling, explicit worker contexts, retained errors, SQLite
+    prepare/PROFILE behavior, schema migrations and rate limits. It does not
+    call production initialization or start an exporter worker. It links the
+    actual static archive so production database calls share the fixture host in
+    Debug builds too. otel-trace-contract captures actual OTLP protobuf with
+    Gotel's optional test API and invokes the Spaniel-owned spaniel-assert CLI
+    using tests/integration/otel_contract.json. The spec checks ancestry, query
+    fingerprints, omitted-text reasons, one span per database operation,
+    registered query names and redaction. The CLI must be installed to run this
+    second check; its absence produces an explicit CTest skip.</p>
+<p class="Pp"></p>
+<p class="Pp">tests/scripts/check_query_names.py checks production SQLite calls
+    with Gotel's public querynames.check_c API. It reads CMake's compile
+    database so Clang sees the same headers and definitions as the native build.
+    Gotel owns source resolution and query identity checks; project code only
+    supplies the executor list and compile configuration.</p>
+<p class="Pp"></p>
+<p class="Pp">After configuring the native build, run the checker in its pinned
+    Python environment:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>uv run --project tests/ascii_chat_tests --extra telemetry python tests/scripts/check_query_names.py --build-dir build</pre>
+<p class="Pp">Install the matching Spaniel verifier at its immutable source
+    revision and make spaniel-assert available on PATH before running both
+    contract tests:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>go install github.com/zfogg/spaniel/cmd/spaniel-assert@9e30a755503f956a38a4f3b743f802910ab04dbc
+ctest --test-dir build -R 'otel-(trace-)?contract' --no-tests=error --output-on-failure</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Failure_alerts_and_active-session_scope"><a class="permalink" href="#Failure_alerts_and_active-session_scope">Failure
+  alerts and active-session scope</a></h2>
+<p class="Pp">All repository dashboard panels and alert SQL use Spaniel's
+    built-in $session_id, bound by the server to the active recording session.
+    Changing the active session changes query results without editing YAML or
+    supplying an ordinary variable override. Alert history remains durable
+    across sessions.</p>
+<p class="Pp"></p>
+<p class="Pp">The new dedicated event alerts classify errno failures as
+    crypto/authentication, malformed protocol packets, or discovery failures.
+    Their ERROR reports carry ascii_chat.failure.operation, category,
+    code/description and the status message. Incomplete buffered reads and
+    signal cancellation are not failure reports. The generic errored-trace rule
+    excludes traces owned by these dedicated alerts and the invalid-ASCII-frame
+    alert.</p>
+<p class="Pp"></p>
+<p class="Pp">Three failed non-mirror session attempts within two minutes
+    trigger the connection failure condition. Shutdown and signal cancellation
+    are excluded. Active pipeline stall gauges require capture within two
+    seconds, an expected display/encode stage, and no stage progress; a
+    five-second age sustained for ten seconds triggers the pipeline alert.
+    Prompt/log screens, stopped/paused capture, disabled file encoding and
+    shutdown reset the relevant observations. This covers the process's local
+    client-like media pipeline, not arbitrary remote peers or discovery idle
+    time.</p>
+<p class="Pp"></p>
+<p class="Pp">The session-scope verification script uses existing sessions and
+    SQL-only fixtures, sends no OTLP, switches to an empty session, checks all
+    panels/rules, and restores the original session in a finally block:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>python tests/manual/probe_spaniel_alert_pack.py</pre>
+<p class="Pp">Debug and Dev builds export traces, logs, and metrics to the local
+    Compose collector at http://127.0.0.1:24318 by default. Release builds
+    require an endpoint. Native builds use gotel/c-gotel (a Git submodule) over
+    pinned otlp-c. Browser builds compile no-op instrumentation hooks.</p>
+<p class="Pp"></p>
+<p class="Pp">Endpoint precedence is CLI --otel-endpoint,
+    ASCII_CHAT_OTEL_ENDPOINT, configured endpoint, OTEL_EXPORTER_OTLP_ENDPOINT,
+    then the build default. Standard OTEL configuration is handled by c-gotel.
+    It supports OTEL_SDK_DISABLED, OTEL_SERVICE_NAME, OTEL_RESOURCE_ATTRIBUTES,
+    OTEL_EXPORTER_OTLP_HEADERS, OTEL_EXPORTER_OTLP_TIMEOUT (milliseconds),
+    OTEL_EXPORTER_OTLP_CERTIFICATE, and OTEL_EXPORTER_OTLP_PROTOCOL
+    (http/protobuf or grpc). Signal-specific
+    OTEL_EXPORTER_OTLP_{TRACES,LOGS,METRICS}_{ENDPOINT,HEADERS} override common
+    settings. Explicit ascii-chat endpoint settings override all signal
+    endpoints. Empty standard environment values are unset.
+    OTEL_SDK_DISABLED=<b>true</b><b> disables all signals;
+    </b>ASCII_CHAT_OTEL_ENABLED_TELEMETRY=none<b> also disables export.
+    </b>OTEL_SERVICE_NAME<b> wins over </b>service.name<b> in resource
+    attributes. Explicit ascii-chat timeout and CA settings override their
+    standard OTEL equivalents.</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>docker compose -f deploy/otel/docker-compose.yml up -d
+./build/bin/ascii-chat --otel-endpoint http://127.0.0.1:24318 mirror --test-pattern --audio=false</pre>
+<p class="Pp">Spaniel is available at http://127.0.0.1:28080. Its persistent
+    Docker volume is specific to this Compose project. Set SPANIEL_IMAGE to
+    select a locally built or immutable release image. Both UI and OTLP ports
+    bind only to host loopback. The container itself binds all interfaces so
+    Docker port forwarding works.</p>
+<p class="Pp"></p>
+<p class="Pp">The project's .codex/config.toml connects Codex to Spaniel's MCP
+    endpoint at http://127.0.0.1:28080/mcp. Start the collector before opening a
+    new Codex chat in this trusted checkout. Use the Spaniel tools to inspect
+    stored traces, logs, and metrics, including named SQLite spans under
+    ascii-chat.storage.*. The bundled collector enables MCP writes with
+    --mcp-allow-writes. Its ports remain bound to host loopback.
+    SPANIEL_SELF_MONITOR=<b>false</b><b> keeps the collector's own request logs
+    and telemetry out of application views. Compose mounts the versioned
+    </b>deploy/otel/dashboards/*.yaml<b> files read-only and loads them through
+    Spaniel's </b>--dashboards-dir /dashboards<b> at startup. Stable IDs
+    preserve existing dashboard links and also recreate the dashboards on a
+    fresh database. After editing YAML, restart the collector to load
+  it:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>docker compose -f deploy/otel/docker-compose.yml restart spaniel</pre>
+<p class="Pp">Session health covers frames, audio, network, queues and latency;
+    FFmpeg and connections covers media operations and transitions; logs and
+    exporter covers severity and export pressure. Queries use a rolling
+    15-minute observation window. Cumulative metrics select the newest snapshot
+    per process start and series, so repeated exports are not added together.
+    Totals remain process-lifetime totals for processes seen in the window.
+    Sampled span percentiles are labeled separately from metrics that count
+    every operation. No data is not a healthy zero.</p>
+<p class="Pp"></p>
+<p class="Pp">Session health also counts unique ascii-chat session strings used
+    for calls in the last 15 minutes. Discovery emits
+    ascii-chat.discovery.call.session_used when a participant enters ACTIVE (a
+    host merely listening does not count); discovery-service emits it after a
+    successful session join. The span attribute ascii-chat.session.string holds
+    the string, without adding it to metric labels. The panel deduplicates
+    retries, reconnects and observations from both services, and shows connected
+    and joined distinct counts separately. A successful discovery-service join
+    confirms signaling admission, not completed media connectivity. Creation,
+    lookup and failed joins do not count. These are observed transition counts:
+    calls already active before the window are excluded, and disabled, dropped
+    or unavailable traces can undercount. This telemetry sends session strings
+    to the configured collector when tracing is enabled.</p>
+<p class="Pp"></p>
+<p class="Pp">Telemetry services are named ascii-chat-$mode, such as
+    ascii-chat-discovery-service for ACDS.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Configuration"><a class="permalink" href="#Configuration">Configuration</a></h1>
+<p class="Pp">All options support CLI, ASCII_CHAT_OTEL_* environment variables
+    and TOML. Precedence is config file, environment, then CLI. For example:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>[otel]
+endpoint = &quot;http://127.0.0.1:24318&quot;
+enabled_telemetry = &quot;traces,logs,metrics&quot;
+realtime_sample_rate = 0.01
+realtime_max_per_second = 10
+metrics_interval = 10000
+log_level = &quot;info&quot;
+timeout = 5000
+queue_capacity = 4096</pre>
+<p class="Pp">The corresponding flags are --otel-endpoint,
+    --otel-enabled-telemetry, --otel-realtime-sample-rate,
+    --otel-realtime-max-per-second, --otel-metrics-interval, --otel-log-level,
+    --otel-timeout, and --otel-queue-capacity. Intervals/timeouts are
+    milliseconds. The bounded queue capacity must be a power of two. Use
+    --otel-enabled-telemetry=none to override an inherited endpoint without
+    sending anything.</p>
+<p class="Pp"></p>
+<p class="Pp">OTEL_EXPORTER_OTLP_ENDPOINT is a fallback base URL. Standard
+    otlp-c exporter headers and per-signal endpoint environment settings are
+    also accepted. A base endpoint must be configured to enable export;
+    per-signal endpoints alone do not start telemetry. The base URL accepts HTTP
+    or HTTPS and must not contain credentials, query or fragment. HTTPS uses the
+    existing OpenSSL dependency, enables TLS 1.3 with TLS 1.2 as the minimum,
+    and verifies certificates and DNS/IP identities. System roots are used by
+    default, including native Windows/macOS anchors. --otel-ca-file (also
+    ASCII_CHAT_OTEL_CA_FILE or TOML [otel] ca_file) selects a PEM CA bundle
+    replacing system roots. OTEL_EXPORTER_OTLP_CERTIFICATE is the fallback.
+    Verification cannot be disabled. Native builds include gRPC support. Select
+    it with OTEL_EXPORTER_OTLP_PROTOCOL=grpc and an origin such as
+    https://collector.example.com:4317 (or http://127.0.0.1:4317 for plaintext
+    HTTP/2). gRPC endpoints must not include /v1/traces or another HTTP signal
+    path. For example:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>OTEL_EXPORTER_OTLP_PROTOCOL=grpc ./build/bin/ascii-chat \
+<br/>
+  --otel-endpoint http://127.0.0.1:4317 mirror --test-pattern --audio=false</pre>
+<p class="Pp">gRPC uses the same signal, sampling, timeout, header and CA
+    settings as HTTP/protobuf. HTTPS gRPC also requires HTTP/2 ALPN negotiation.
+    HTTP/protobuf remains the default protocol, including the local development
+    collector. A local Collector remains useful for forwarding and processing.
+    No default remote collector or usage reporting is enabled.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Execution_and_export"><a class="permalink" href="#Execution_and_export">Execution
+  and export</a></h1>
+<p class="Pp"><b>lib/otel.c</b><b> owns one platform abstraction worker named
+    </b>otel_export<b>, which calls c-gotel tick every 10 ms. Exporter
+    DNS/network I/O stays off media threads. The exporter batches protobuf
+    requests; it does not call the application's HTTP client, so export requests
+    cannot recursively generate HTTP spans.</b></p>
+<p class="Pp"></p>
+<p class="Pp">Normal shutdown disables new producers, ends the CLI span, waits
+    for retained scopes, and flushes within the smaller of the configured
+    timeout and 400 ms. Pending telemetry can be lost if the collector does not
+    respond in that time. An exit that bypasses scope cleanup retains a
+    still-borrowed host until process exit rather than freeing memory in use.
+    Exporter diagnostics go only to local debug logs; the OTLP sink suppresses
+    them to prevent recursion. Collector failure does not fail video/audio work.
+    Debug shutdown logs report exported/accepted counts, network errors, drops
+    and rejected spans.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Instrumentation"><a class="permalink" href="#Instrumentation">Instrumentation</a></h1>
+<p class="Pp">include/ascii-chat/otel_operations.def is the finite operation
+    catalog. It covers CLI lifecycle, source creation and URL resolution, media
+    seek/decode, H.265 encode/decode, ASCII conversion and terminal output,
+    render-file encoding, Opus encode/decode, audio mixing, audio workers,
+    crypto handshakes, ACIP packets, connection attempts, DNS resolution,
+    database/session operations, and capture, encode and display queues.</p>
+<p class="Pp"></p>
+<p class="Pp">Every operation exports cumulative .count, .errors, and
+    .duration.sum metrics and an explicit-bucket .duration histogram in seconds.
+    Histogram boundaries range from 100 microseconds through 10 seconds,
+    enabling percentile analysis. Duration sums divided by counts give means.
+    Metrics include unsampled operations and export every 10 seconds by default,
+    plus a final snapshot at shutdown. Series names come from the finite catalog
+    and never include client/session identifiers.</p>
+<p class="Pp"></p>
+<p class="Pp">Realtime frame/audio/packet roots sample at 1% with a default
+    process-wide cap of 10 roots/second. At 30&#x2013;60 fps, one frame pipeline
+    produces roughly 18&#x2013;36 root traces/minute; at 20 ms Opus framing an
+    audio stream produces roughly 30/minute. Child spans share their root's
+    sampling decision. Low-frequency lifecycle operations remain fully sampled.
+    Frame context crosses local worker queues by value; this change does not add
+    trace metadata to the network protocol.</p>
+<p class="Pp"></p>
+<p class="Pp">The Gotel copied-context policy detaches bounded operations from
+    command/session lifetime spans and shares one sampling decision across
+    nested stages. It adds no allocation or lock to parent selection.
+    Crypto/protocol/discovery failures and invalid-frame observations use
+    Gotel's retained-observation policy: sampled parents are inherited, while
+    dropped operations get independent observations with links when context IDs
+    are available. Independent retention has its own per-second budget using the
+    configured realtime cap (10/s when that cap is zero). It does not change an
+    already dropped media decision. Error counters still include dropped
+  work.</p>
+<p class="Pp"></p>
+<p class="Pp">HTTP names use gotel's sanitized application-prefixed convention.
+    DNS spans include question names. Named SQL templates live in
+    lib/discovery/queries.def; rate-limit templates are shared through
+    lib/network/rate_limit/queries.def. SQLite bind/step/reset/finalize calls
+    retain their driver semantics. Gotel owns the trace callback slot and
+    matches original templates, emits completed PROFILE spans, and records
+    database duration histogram observations. Unknown statements use
+    UnknownQuery. Query text is sanitized by Sequel; expanded bind values and
+    database file paths are excluded. Versioned fingerprints describe query
+    shapes without literal or bind values. Missing text carries
+    gotel.db.query.text_reason (policy, malformed, analysis_limit,
+    analysis_error, empty or cancelled); present text has no omission reason.
+    Preparation uses the supported Gotel DB-handle wrapper, which emits rejected
+    preparations with the attached catalog/privacy options and leaves successful
+    tracing to PROFILE. PROFILE callbacks do not infer potentially stale SQLite
+    error state. Migration batches execute individually named statements inside
+    the same transaction. The attachment opts into Sequel analysis with
+    formatted safe text, numeric source maps and bind descriptors. Descriptors
+    contain positions and slot identities; they do not contain bind names, types
+    or values. Gotel copies the analysis options at attachment, so the
+    application's temporary options do not outlive the call.</p>
+<p class="Pp"></p>
+<p class="Pp">The log sink runs before mmap/console routing and console
+    filtering, with its own severity threshold. Span context correlates logs on
+    the current thread. The CLI span includes mode, exit status, and a sanitized
+    process.command_args array: option names remain visible; arbitrary argument
+    values are redacted. Existing application log messages can contain paths or
+    URLs; select exported log levels according to the destination's data
+  policy.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Quality_and_health_measurements"><a class="permalink" href="#Quality_and_health_measurements">Quality
+  and health measurements</a></h1>
+<p class="Pp">The fixed catalog in include/ascii-chat/otel_metrics.def adds 60
+    application instruments. Unused instruments are omitted. Counters and
+    operation histograms are cumulative; gauges replace the last value. Derive
+    FPS and bytes/second from successive frame/byte counter snapshots. Labels
+    never contain client/session IDs.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Frames: captured/displayed/encoded totals,
+      replacement/encode-timeout/invalid/ conversion/hidden-screen drops,
+      capture-to-display and capture-to-encode latency.</li>
+  <li>Queues: display/encode depth, dequeue wait, oldest dequeued age, outbound
+      bytes, oldest pending frame age, congestion events, and discarded outbound
+      video.</li>
+  <li>Network: ACIP header/payload bytes, payload size histograms, send/receive
+      errors, reconnect attempts, active connections, loss notifications, and
+      matched ping/pong RTT. Overlapping/failed probes suppress RTT samples for
+      that connection because pong packets lack probe IDs. This measures local
+      RTT, without comparing clocks across hosts.</li>
+  <li>Audio: buffer occupancy, adaptive jitter target, real underruns/overruns,
+      dropped, sample consumption grouped by jitter policy, samples exceeding
+      the mixer's soft-clip threshold, and Opus packet size. Occupancy/jitter
+      aggregate observations across buffers.</li>
+  <li>Video: H.265 packet size, raw RGB-to-packet size ratio, keyframe count,
+      and actual encoded width/height. Existing encode/decode spans also have
+      duration histograms.</li>
+  <li>Discovery/SQLite: session/participant gauges, lookup misses, rate-limit
+      rejection, checked busy/locked errors and affected rows; all ten startup
+      table/index SQL statements now have registered names. Transactions retain
+      their named SQL spans.</li>
+  <li>Process: cumulative CPU seconds, resident memory bytes and OS thread
+      count, sampled by the exporter worker approximately once per second. CPU
+      is summed across threads; derive utilization from its change over wall
+      time.</li>
+  <li>Exporter: tick latency, retry attempts and batches sent from structured
+      events, sent/dropped/rejected totals and network errors. Queue utilization
+      is an estimate of pending/in-flight records divided by all three queue
+      capacities, not an exact queue-depth query. Exporter observations do not
+      create recursive HTTP spans.</li>
+</ul>
+<p class="Pp">Capture-to-display latency covers the local pipeline. Existing
+    frame context connects capture, encode, and display spans across worker
+    queues; trace propagation across the network would require an ACIP protocol
+    change.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Validation"><a class="permalink" href="#Validation">Validation</a></h1>
+<p class="Pp">Logs include both OTLP severity numbers and text. DEV maps to
+    TRACE (1), DEBUG to DEBUG (5), INFO to INFO (9), WARN to WARN (13), ERROR to
+    ERROR (17), and FATAL to FATAL (21). The media integration fixture checks
+    all six mappings on the wire. Routine render/setup pointers, snapshot timing
+    checks and transport destruction are DEBUG. Connection retries and real
+    transport-close failures are WARN. Crypto initialization no longer emits
+    unsolicited synchronization-state dumps; explicit --sync-state diagnostics
+    remain available.</p>
+<p class="Pp"></p>
+<p class="Pp">FFmpeg span names describe operations rather than implementation
+    function names: ascii-chat.ffmpeg.input.{open,open_stdin,close,seek},
+    demux.{open,probe,read_packet},
+    decoder.{open,<b>send_packet</b>,receive_frame}<b>, </b><b>Video to ASCII
+    Conversion</b>.{decode,scale,poll,read}<b> and
+    </b><b>Audio</b>.{read,resample}<b> under the same </b>ascii-chat.ffmpeg.<b>
+    prefix. These replace the earlier </b>ascii-chat.media.ffmpeg_decoder_*<b>
+    operation names and derived metric names. Packet/frame/scaling/resampling
+    spans remain sampled; all operation counts, errors and duration histograms
+    include unsampled work. EOF, EAGAIN and application cancellation do not mark
+    codec spans as errors. Attributes include codec, media type, dimensions,
+    packet sizes and numeric FFmpeg results, without source paths or
+  URLs.</b></p>
+<p class="Pp"></p>
+<p class="Pp">ascii-chat.network.connection.establish covers transport, crypto
+    and protocol startup. ascii-chat.session.attempt covers an initial or
+    reconnect session; ascii-chat.network.reconnect.wait covers backoff. Media
+    replacement has separate ascii-chat.media.transition.load and .commit spans
+    with bounded outcome/kind attributes. Loader and commit spans are
+    independent control-operation roots: the loader crosses a thread boundary,
+    and commit must not inherit a discarded frame's sampling decision.</p>
+<p class="Pp"></p>
+<p class="Pp">tests/manual/disabled_otel_export.py BINARY runs a synthetic
+    mirror snapshot against a loopback OTLP receiver, verifies each signal mask,
+    sampling and metric independence, CLI/config/environment precedence, invalid
+    configuration, and a bounded collector outage, encrypted client/server
+    delivery and named ACDS SQL. With BUILD_TESTS=ON it is registered as CTest
+    otel-export. It also checks histogram bucket/count consistency, process
+    gauges, network metrics, startup schema names, and controlled Windows audio
+    underrun/ overrun/drop export through the audio-priority fixture. c-gotel
+    has separate native unit/wire tests in its repository, including forced HTTP
+    503 recovery, structured retry events, cumulative custom instruments and
+    SQLite delta buckets.</p>
+<p class="Pp"></p>
+<p class="Pp">The Criterion suite test_unit_otel_otel exercises the host API and
+    ascii-chat adapter, including all signal masks, context restoration,
+    sampling and budgets, metric intervals/validation, retries and permanent
+    loss, queue saturation, SQLite lifecycle, and the complete application
+    catalog. It links gotel::testing from c-gotel; fake clocks, scripted no-I/O
+    transport and atomic event counts remain independent of Criterion. The
+    Python integration test shares c-gotel's loopback collector/OTLP decoder and
+    waits for complete asynchronous exports.</p>
+<p class="Pp"></p>
+<p class="Pp">Collector failures produce local warnings at most once every 30
+    seconds while unhealthy; successful delivery produces a recovery message.
+    These health messages do not enter the export queue. Snapshot/rendering can
+    suppress terminal logs; use --log-file to retain them. The socket
+    integration checks abrupt disconnects, stalled HTTP headers, and stalled
+    response bodies while synthetic frames continue rendering, including
+    shutdown with the default exporter timeout. The worker also owns the final
+    flush, keeping synchronous DNS resolution off the exit thread; the shutdown
+    join deadline retains a stuck exporter until process exit.</p>
+<p class="Pp"></p>
+<p class="Pp">For focused Linux testing after configuring the Docker preset:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>cmake --build build_docker --target test_unit_otel_otel ascii-chat
+ctest --test-dir build_docker -R 'test_unit_otel_otel|otel-export' --no-tests=error --output-on-failure</pre>
+<section class="Ss">
+<h2 class="Ss" id="Compression_and_video_codecs"><a class="permalink" href="#Compression_and_video_codecs">Compression
+  and video codecs</a></h2>
+<p class="Pp">ascii-chat.compression.zstd.{compress,<b>compress_workspace</b>,decompress,decompress_exact}<b>
+    spans include algorithm, level where applicable, and input/output sizes.
+    Successful operations record byte counters, packet-size histograms, and
+    compression output/input ratio. Failed decompression does not add successful
+    byte counts. Operation duration/error metrics cover rejected inputs and
+    codec failures too.</b></p>
+<p class="Pp"></p>
+<p class="Pp">ascii-chat.video.encode and .decode record codec, dimensions,
+    packet size, and keyframe status. The encoder supports both H.264 and H.265;
+    codec attributes identify the actual implementation. Encoding records RGB24
+    input bytes, encoded packet bytes, packet count, dimensions, keyframes, and
+    input/output ratio. Decoding records input packet sizes, frames and
+    grayscale output bytes. Flush packets add output bytes without counting
+    another input frame.</p>
+<p class="Pp"></p>
+<p class="Pp">The otel-media integration test also generates PPM/WAV inputs and
+    exercises FFmpeg probing, packet decoding, video scaling, audio resampling
+    and seeking, checking operation names and expected EOF behavior without
+    cameras or speakers. It performs real zstd round trips (including an
+    exact-size failure), H.264/H.265 encoding and HEVC decoding, then checks
+    exported names, attributes, counters, and histograms. A missing software
+    encoder is reported explicitly; compression assertions still execute. Native
+    Windows's current cached FFmpeg lacks libx264/libx265, so full codec
+    assertions run in Linux Docker. The test also covers ownership of borrowed
+    decoder input under ASan.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Manual_load_and_outage_test"><a class="permalink" href="#Manual_load_and_outage_test">Manual
+  load and outage test</a></h2>
+<p class="Pp">The sustained-load test is deliberately absent from CTest. Run it
+    explicitly:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>python tests/manual/test_otel_load.py build/bin/ascii-chat --seconds 60</pre>
+<p class="Pp">It measures payload bytes and spans with default sampling,
+    compares disabled/enabled elapsed and child CPU time, records exported RSS,
+    compares delivered span counts with a two-entry queue, recovers from HTTP
+    503 responses, and checks bounded shutdown during an outage. Tiny queues can
+    also drop health metrics, so the pressure phase checks collector delivery
+    counts rather than assuming the drop gauge survives. It prints JSON
+    measurements and imposes no host-dependent performance threshold. Fixed
+    capture duration makes the CPU ratio more useful than wall-clock ratio for
+    overhead comparisons. Use a longer run on an otherwise idle machine for
+    meaningful performance conclusions; the short 8-second development run
+    exercises failure/recovery behavior only. The script uses no webcam,
+    microphone, GPU, remote collector, or credentials.</p>
+<p class="Pp"></p>
+<p class="Pp">On 2026-10-22, native Windows 15-second synthetic workloads
+    forwarded through a counting HTTP relay into Spaniel with only the endpoint
+    configured. Total OTLP protobuf payloads, including startup/shutdown, were
+    38,706 bytes for mirror, 133,332 bytes for client/server video, and 176,280
+    bytes for client/server with test audio and video. These exclude HTTP
+    headers and are short functional measurements, not long-term storage or
+    performance guarantees. Native Spaniel MCP queries confirmed 901 mirror
+    captures with six capture spans, 575 server video renders with three render
+    spans, and (in the audio/video run) 1,381 client audio captures with 14
+    spans, 955 server audio renders with six spans, and 467 Opus decodes with
+    four spans. Metrics continue counting work omitted from traces.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Spaniel_alerts_and_deadlock_watchdog"><a class="permalink" href="#Spaniel_alerts_and_deadlock_watchdog">Spaniel
+  alerts and deadlock watchdog</a></h2>
+<p class="Pp">Compose mounts deploy/otel/alerts read-only and passes
+    --alerts-dir /alerts. Stable YAML IDs preserve rule identity. After editing
+    a rule, run docker compose -f deploy/otel/docker-compose.yml restart spaniel
+    and check the rule's source file, hash, and evaluation health in Spaniel.
+    File definitions are the source of truth; browser notifications are enabled,
+    remote delivery is not.</p>
+<p class="Pp"></p>
+<p class="Pp">The six rules cover new errored traces (deduplicated by trace ID),
+    exporter loss (any recent dropped/rejected records), exporter queue pressure
+    (80% for a minute), outbound queue delay (250 ms average, at least 20
+    observations, for a minute), audio glitches (10 in five minutes, pending 30
+    seconds), and invalid/conversion frame drops (five in five minutes, pending
+    30 seconds). Counter queries compute positive per-process/per-series deltas,
+    handling resets and duplicate snapshots; they do not alert on old lifetime
+    totals. Normal frame replacement and hidden screens are excluded. Stopped
+    development processes do not produce silence alerts.</p>
+<p class="Pp"></p>
+<p class="Pp">With telemetry enabled in a debug build, gotel polls ascii-chat's
+    nonblocking mutex wait-cycle callback on the independent telemetry worker,
+    once per second. A cycle whose newest wait is at least two seconds old
+    produces a completed ascii-chat.thread.deadlock ERROR span and the gauge
+    ascii-chat.thread.deadlock.threads. Reports repeat at most every 30 seconds
+    per host. Ordinary contention without a cycle does not qualify. Unavailable
+    snapshots are skipped, not treated as recovery. The existing errored-trace
+    alert covers these watchdog spans.</p>
+<p class="Pp"></p>
+<p class="Pp">The watchdog includes a representative blocked thread's active
+    operation name, asciichat_errno.code, asciichat_errno.code_message, and
+    asciichat_errno.message, copied when that thread began waiting. Zero/empty
+    means no pending errno at that point; error.type=thread.deadlock describes
+    the newly detected failure. It is parented to the copied blocked span
+    context when available. The watchdog also exports a metadata snapshot of
+    that parent with its original trace/span IDs, ancestor ID, name and start
+    time. Its end time is the observation time, with
+    gotel.span.snapshot=<b>true</b><b> and
+    </b>gotel.span.incomplete=<b>true</b><b> identifying the partial
+    observation. This makes the parent and error child visible together without
+    reading, ending or freeing another thread's live span. Attributes modified
+    on the live span are not copied; the owning thread can still resume and
+    finish it.</b></p>
+<p class="Pp"></p>
+<p class="Pp">Detection depends on tracked mutexes and debug lock
+    instrumentation. It cannot report fatal process termination, untracked
+    locks, arbitrary hangs, or a stuck telemetry worker/exporter. No allocation,
+    logging, or export is attempted from a fatal signal handler. The opt-in
+    native smoke check uses actual two-thread mutex cycles and checks live
+    export before terminating its disposable child:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>python tests/manual/test_otel_watchdog.py build/lib/libasciichat.so
+# macOS: build/lib/libasciichat.dylib; Windows: build/bin/asciichat.dll</pre>
+<p class="Pp">The errored-trace rule uses Spaniel event mode: acknowledgement
+    removes a trace from Needs attention without deleting its telemetry.
+    Repeated query evaluations, replay, and container restarts do not rearm the
+    same trace ID. A different trace ID creates a fresh instance immediately.
+    Other alerts retain condition semantics: acknowledgement suppresses repeats
+    until recovery and the next breach.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Invalid_rendered_ASCII_frames"><a class="permalink" href="#Invalid_rendered_ASCII_frames">Invalid
+  rendered ASCII frames</a></h2>
+<p class="Pp">The shared session renderer/protocol validator records
+    ascii-chat.frame.validation.checked for every validation attempt and
+    ascii-chat.frame.validation.rejected for every rejection. Rejections also
+    emit an ERROR span named ascii-chat.frame.validation.rejected with
+    error.type=ascii_chat.invalid_frame, frame.validation.validator,
+    frame.validation.reason, dimensions, byte count and errno code/description.
+    Frame text and palette contents are not exported. Valid frames produce no
+    per-frame validation span. Rejection spans remain available even when the
+    parent media operation was sampled out; without a sampled parent they start
+    a new trace. Counters count validation attempts, which can include repeated
+    checks of one frame; they are separate from pipeline drop counters.</p>
+<p class="Pp"></p>
+<p class="Pp">deploy/otel/alerts/invalid-ascii-frames.yaml provisions an event
+    alert for each rejected trace. It fires immediately, deduplicates trace IDs,
+    and stays out of Needs attention after acknowledgement, including across
+    restart/replay. The existing invalid/conversion-drop condition remains a
+    separate sustained-loss signal. Reload the mounted definitions by restarting
+    Spaniel.</p>
+<p class="Pp"></p>
+<p class="Pp">The focused native smoke accepts one valid frame, then rejects row
+    overflow, invalid UTF-8, an unsupported terminal escape and an unreset SGR
+    state. It checks four ERROR spans and exact counter totals with media
+    sampling set to zero:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>python tests/manual/test_otel_frame_validation.py build/bin/asciichat.dll</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="TUI_usage"><a class="permalink" href="#TUI_usage">TUI
+  usage</a></h1>
+<p class="Pp">ascii-chat.ui.usage emits unsampled-by-realtime-policy root events
+    for native interactive presentation. ascii_chat.ui.screen is a fixed screen
+    name and ascii_chat.ui.event is enter, leave, or shortcut. Leave events
+    carry ascii_chat.ui.duration_ns (monotonic elapsed time); other events carry
+    zero. These follow the existing trace enablement, test isolation and
+    exporter settings. No prompt text, passwords, media paths, URLs, or raw key
+    values are attached.</p>
+<p class="Pp"></p>
+<p class="Pp">The presentation thread observes foreground selection at loop
+    boundaries, including error overlays and screens covered by terminal-size
+    warnings. Repaints do not create visits. Returning from an overlay starts a
+    new visit. Selection is not proof of a successful terminal write; very short
+    transitions between loop samples can be missed. The final visit closes on
+    orderly presentation-thread shutdown; abrupt exits and dropped telemetry can
+    leave incomplete visits. Shortcut events count help, logs, stats and
+    error-stack requests dispatched by the shared input policy, including
+    toggles off; they do not assert successful presentation.</p>
+<p class="Pp"></p>
+<p class="Pp">The <b>ascii-chat - TUI usage</b> Spaniel dashboard groups
+    observed visits, shortcut requests and completed visit durations by mode
+    service and screen across the active recording session. It counts events
+    rather than exported cumulative snapshots; no data means no observed usage,
+    not proof that a TUI was unused.</p>
+<p class="Pp"></p>
+<p class="Pp">Contextual help visits have distinct screen identities: logs_help,
+    stats_help, sync_help, errno_help, media_input_help, mdns_help, update_help,
+    and error_help. General mode help remains help (the service identifies the
+    mode). Inline log help transitions are counted even though the controller
+    screen enum stays unchanged. Each leave retains the identity observed on
+    entry, so closing help cannot relabel its elapsed time as the underlying
+    screen. Historical events remain unchanged. Shared help toggle requests use
+    the same contextual names; inline log help is observed through visits rather
+    than shortcut events.</p>
+<p class="Pp"></p>
+<p class="Pp">Prompt visits now use caller-supplied, fixed purpose names:
+    password_prompt, media_input_prompt, ssh_passphrase_prompt,
+    gpg_passphrase_prompt, trust_host_prompt, unverified_host_prompt,
+    discovery_key_change_prompt, ip_disclosure_prompt, config_overwrite_prompt,
+    manpage_overwrite_prompt, and completion_overwrite_prompt. Generic APIs
+    retain input_prompt and confirmation_prompt fallbacks. Password retries
+    remain the same screen type. The identity is stored in the retained
+    presentation snapshot and never derived from prompt text, target addresses,
+    paths, fingerprints, or entered answers. Historical prompt events remain
+    unchanged. The usage dashboard groups the new names automatically.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="UI_actions_and_outcomes"><a class="permalink" href="#UI_actions_and_outcomes">UI
+  actions and outcomes</a></h2>
+<p class="Pp">The same ascii-chat.ui.usage event stream now includes:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Prompt submitted, cancelled, timed_out, interrupted, and failed outcomes.
+      A password retry records rejected once when the retry dialog begins; it is
+      evidence of a prior authentication rejection, not a claim about the new
+      answer. Interactive confirmations also record accepted or declined.
+      Automated answers bypass the TUI and do not count as interactive
+    usage.</li>
+  <li>stats_overview and stats_details page visits and completed durations.
+      Help, other overlays, and terminal-size warnings pause page time. These
+      page visits refine stats-screen visits and must not be added to them as
+      separate users.</li>
+  <li>Log search_started, search_cancelled, search_rejected, filter_applied,
+      scroll_older, and scroll_newer actions. Scroll events count dispatched
+      navigation requests; they do not assert that more buffered rows
+    existed.</li>
+  <li>Error-popup selected, details_scrolled, dismissed, and help_viewed
+      actions. Selection and detail scroll events require an actual state
+      change. The existing <b>Errors</b><b>/</b>error_help<b> visits cover
+      opening and viewing help.</b></li>
+  <li>Media-input paste, queue_changed, queue_submitted, source_file, and
+      source_url actions, plus submitted, cancelled, timed_out, rejected,
+      load_succeeded, load_failed, and load_cancelled. Source events indicate
+      presence of each source class, not a count of playlist items. Load success
+      means the capture owner committed a replacement; playlist auto-advance
+      uses the same load outcomes. No playlist paths, URLs, or paste contents
+      are attached.</li>
+  <li>size_warning_started and size_warning_ended (with elapsed nanoseconds).
+      size_warning_resolved specifically means the same screen became usable
+      after a resize; changing screens or shutting down ends an interval without
+      a resolution.</li>
+  <li>Update opened, dismissed, check_started, check_completed, check_failed,
+      and release_open_requested. Completed/failed describes publication of a
+      check result (including cache results); release-open records a validated
+      launch request, not proof that a browser displayed the page. No update is
+      installed by telemetry.</li>
+</ul>
+<p class="Pp">The dashboard includes actions/outcomes and terminal-warning
+    tables. The current log viewer has no copy command, and the error popup has
+    no expand/collapse control; there are no fabricated events for those
+    actions. Existing OTEL enablement and loss limitations apply. Early CLI
+    prompts before OTEL initialization cannot export.</p>
+<p class="Pp"></p>
+<p class="Pp">The build generates a patched copy of the pinned otlp-c exporter.
+    It prevents the queue drain from modifying an HTTP batch while that batch is
+    in flight; previously, records appended during a request could be freed
+    unsent on successful completion without incrementing drop counters.
+    Dependency source checkouts stay unchanged.</p>
+<p class="Pp"></p>
+<p class="Pp">Manual native Windows verification for this change observed and
+    asserted 41 screen/event combinations in Spaniel across prompts, pages, log
+    search/navigation, error-popup controls, media loading, size recovery, and
+    update controls. Media used a generated local video, a loopback HTTP server,
+    a missing file, and a delayed response cancelled during loading. Update
+    success/failure publication also used controlled result fixtures; a
+    release-open request launched the releases page. This verifies event wiring
+    and payloads, not availability of every external updater. The action fixture
+    sent all 86 emitted spans after the exporter correction (zero reported
+    drops). All four dashboard queries executed successfully. Automated
+    editing/masking, timeout, mirror-shortcut and test-export-prohibition checks
+    passed.</p>
+</section>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

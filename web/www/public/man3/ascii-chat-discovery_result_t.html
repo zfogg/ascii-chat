@@ -40,7 +40,7 @@
 <h2 class="Ss" id="Public_Types"><a class="permalink" href="#Public_Types">Public
   Types</a></h2>
 <br/>
-<p class="Pp">enum { <b>DISCOVERY_SOURCE_MDNS</b> = 0,
+<p class="Pp"><b>enum </b>{ <b>DISCOVERY_SOURCE_MDNS</b> = 0,
     <b>DISCOVERY_SOURCE_ACDS</b> = 1 }
   <br/>
   <br/>
@@ -58,7 +58,7 @@
   <br/>
   Server IP or hostname. <b>uint16_t</b> <b>server_port</b>
   <br/>
-  Server port (typically 27224). enum discovery_result_t:: { ... } <b>source</b>
+  Server port (typically 27224). <b>enum { ... } </b> <b>source</b>
   <br/>
   Which discovery method found the server. char <b>mdns_service_name</b> [256]
   <br/>
@@ -86,7 +86,7 @@
 <p class="Pp">Result from session discovery.</p>
 <p class="Pp">Returned by <b>discover_session_parallel()</b><b> with connection
     info for the discovered server.</b></p>
-<p class="Pp">Definition at line <b>86</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Definition at line <b>92</b> of file <b>discovery.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Member_Enumeration_Documentation"><a class="permalink" href="#Member_Enumeration_Documentation">Member
@@ -105,11 +105,11 @@
     </i></b></a></dt>
   <dd>Found via ACDS (internet).</dd>
 </dl>
-<p class="Pp">Definition at line <b>91</b> of file <b>discovery.h</b>.</p>
-<pre>91        {
-92     DISCOVERY_SOURCE_MDNS = 0, 
-93     DISCOVERY_SOURCE_ACDS = 1, 
-94   } source;                    </pre>
+<p class="Pp">Definition at line <b>97</b> of file <b>discovery.h</b>.</p>
+<pre>97        {
+98     DISCOVERY_SOURCE_MDNS = 0,
+99     DISCOVERY_SOURCE_ACDS = 1,
+100   } source;                    </pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -120,63 +120,62 @@
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> discovery_result_t::error</h2>
 <p class="Pp">Error code if !success.</p>
-<p class="Pp">Definition at line <b>105</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Definition at line <b>111</b> of file <b>discovery.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_discovery_result_t::error_message_256_"><a class="permalink" href="#char_discovery_result_t::error_message_256_">char
   discovery_result_t::error_message[256]</a></h2>
 <p class="Pp">Human-readable error (if !success).</p>
-<p class="Pp">Definition at line <b>106</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Definition at line <b>112</b> of file <b>discovery.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> discovery_result_t::host_pubkey[32]</h2>
 <p class="Pp">Ed25519 public key of discovered server.</p>
-<p class="Pp">Definition at line <b>88</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Definition at line <b>94</b> of file <b>discovery.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_discovery_result_t::mdns_hostname_256_"><a class="permalink" href="#char_discovery_result_t::mdns_hostname_256_">char
   discovery_result_t::mdns_hostname[256]</a></h2>
 <p class="Pp">mDNS hostname (e.g., &quot;mycomputer.local&quot;)</p>
-<p class="Pp">Definition at line <b>98</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Definition at line <b>104</b> of file <b>discovery.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_discovery_result_t::mdns_service_name_256_"><a class="permalink" href="#char_discovery_result_t::mdns_service_name_256_">char
   discovery_result_t::mdns_service_name[256]</a></h2>
 <p class="Pp">mDNS service instance name (e.g.,
     &quot;swift-river-mountain&quot;)</p>
-<p class="Pp">Definition at line <b>97</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Definition at line <b>103</b> of file <b>discovery.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> discovery_result_t::participant_id[16]</h2>
 <p class="Pp">Assigned participant ID (from SESSION_JOIN).</p>
-<p class="Pp">Definition at line <b>102</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Definition at line <b>108</b> of file <b>discovery.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_discovery_result_t::server_address_256_"><a class="permalink" href="#char_discovery_result_t::server_address_256_">char
   discovery_result_t::server_address[256]</a></h2>
 <p class="Pp">Server IP or hostname.</p>
-<p class="Pp">Definition at line <b>89</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Definition at line <b>95</b> of file <b>discovery.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> discovery_result_t::server_port</h2>
 <p class="Pp">Server port (typically 27224).</p>
-<p class="Pp">Definition at line <b>90</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Definition at line <b>96</b> of file <b>discovery.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> discovery_result_t::session_id[16]</h2>
 <p class="Pp">ACDS session UUID.</p>
-<p class="Pp">Definition at line <b>101</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Definition at line <b>107</b> of file <b>discovery.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="enum____"><a class="permalink" href="#enum____">enum { ... }
-  discovery_result_t::source</a></h2>
+<h2 class="Ss"><b>enum { ... } discovery_result_t::source</b></h2>
 <p class="Pp">Which discovery method found the server.</p>
 <p class="Pp">Referenced by <b>discover_session_parallel()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> discovery_result_t::success</h2>
 <p class="Pp">Discovery succeeded.</p>
-<p class="Pp">Definition at line <b>87</b> of file <b>discovery.h</b>.</p>
+<p class="Pp">Definition at line <b>93</b> of file <b>discovery.h</b>.</p>
 <p class="Pp">Referenced by <b>discover_session_parallel()</b>.</p>
 <p class="Pp"></p>
 </section>
@@ -188,7 +187,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

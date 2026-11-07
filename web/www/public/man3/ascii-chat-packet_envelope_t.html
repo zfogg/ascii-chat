@@ -82,7 +82,7 @@
 <p class="Pp">allocated_buffer may be different from data if packet was
     encrypted/compressed (data points into allocated_buffer).</p>
 </div>
-<p class="Pp">Definition at line <b>1129</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>1140</b> of file <b>packet.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -92,53 +92,61 @@
   packet_envelope_t::allocated_buffer</a></h2>
 <p class="Pp">Buffer that needs to be freed by caller (may be NULL if not
     allocated).</p>
-<p class="Pp">Definition at line <b>1139</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
-    <b>acip_server_receive_and_dispatch()</b>, <b>add_client()</b>,
-    <b>packet_decrypt_envelope()</b>, and <b>receive_packet_secure()</b>.</p>
+<p class="Pp">Definition at line <b>1150</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_receive_packet()</b>,
+    <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_client_receive_packet()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>packet_decrypt_envelope()</b>,
+    and <b>receive_packet_secure_with_timeout()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_packet_envelope_t::allocated_size"><a class="permalink" href="#size_t_packet_envelope_t::allocated_size">size_t
   packet_envelope_t::allocated_size</a></h2>
 <p class="Pp">Size of allocated buffer in bytes.</p>
-<p class="Pp">Definition at line <b>1141</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
-    <b>acip_server_receive_and_dispatch()</b>, <b>add_client()</b>,
-    <b>packet_decrypt_envelope()</b>, and <b>receive_packet_secure()</b>.</p>
+<p class="Pp">Definition at line <b>1152</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_packet()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>packet_decrypt_envelope()</b>,
+    and <b>receive_packet_secure_with_timeout()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_packet_envelope_t::data"><a class="permalink" href="#void*_packet_envelope_t::data">void*
   packet_envelope_t::data</a></h2>
 <p class="Pp">Packet payload data (decrypted and decompressed if
   applicable).</p>
-<p class="Pp">Definition at line <b>1133</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
-    <b>acip_server_receive_and_dispatch()</b>, <b>add_client()</b>,
-    <b>packet_decrypt_envelope()</b>, and <b>receive_packet_secure()</b>.</p>
+<p class="Pp">Definition at line <b>1144</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_receive_packet()</b>,
+    <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_client_receive_packet()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>packet_decrypt_envelope()</b>,
+    and <b>receive_packet_secure_with_timeout()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_packet_envelope_t::len"><a class="permalink" href="#size_t_packet_envelope_t::len">size_t
   packet_envelope_t::len</a></h2>
 <p class="Pp">Length of payload data in bytes.</p>
-<p class="Pp">Definition at line <b>1135</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
-    <b>acip_server_receive_and_dispatch()</b>, <b>add_client()</b>,
-    <b>packet_decrypt_envelope()</b>, and <b>receive_packet_secure()</b>.</p>
+<p class="Pp">Definition at line <b>1146</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_receive_packet()</b>,
+    <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_client_receive_packet()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>packet_decrypt_envelope()</b>,
+    and <b>receive_packet_secure_with_timeout()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>packet_type_t</b> packet_envelope_t::type</h2>
 <p class="Pp">Packet type (from packet_types.h).</p>
-<p class="Pp">Definition at line <b>1131</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
-    <b>acip_server_receive_and_dispatch()</b>, <b>add_client()</b>,
-    <b>packet_decrypt_envelope()</b>, and <b>receive_packet_secure()</b>.</p>
+<p class="Pp">Definition at line <b>1142</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_receive_packet()</b>,
+    <b>acip_client_receive_and_dispatch()</b>,
+    <b>acip_client_receive_packet()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>packet_decrypt_envelope()</b>,
+    and <b>receive_packet_secure_with_timeout()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> packet_envelope_t::was_encrypted</h2>
 <p class="Pp">True if packet was encrypted (decrypted before envelope
   creation).</p>
-<p class="Pp">Definition at line <b>1137</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>.</p>
+<p class="Pp">Definition at line <b>1148</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_client_receive_packet()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -149,7 +157,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

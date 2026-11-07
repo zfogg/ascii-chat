@@ -39,7 +39,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef <b>bool</b>(* <b>shutdown_check_fn</b>) (void)
+<p class="Pp">typedef <b>bool</b>(*) <b>shutdown_check_fn</b>(void)
   <br/>
   Shutdown check callback function type.
   <br/>
@@ -51,8 +51,10 @@
 <p class="Pp">void <b>shutdown_register_callback</b> (<b>shutdown_check_fn</b>
     callback)
   <br/>
-  Register application's shutdown check function. <b>bool</b>
-    <b>shutdown_is_requested</b> (void)
+  Register application's shutdown check function. void <b>shutdown_request</b>
+    (void)
+  <br/>
+  <b>bool</b> <b>shutdown_is_requested</b> (void)
   <br/>
   Check if shutdown has been requested.
   <br/>
@@ -75,7 +77,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

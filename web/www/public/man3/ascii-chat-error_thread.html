@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>error_thread(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">error_thread(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">error_thread(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">error_thread</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint64_t</b> <b>id</b>
+  <br/>
+  <b>uint64_t</b> <b>generation</b>
+  <br/>
+  int <b>top</b>
+  <br/>
+  size_t <b>depth</b>
+  <br/>
+  <b>uint64_t</b> <b>cause_after_id</b>
+  <br/>
+  struct <b>error_thread</b> * <b>next</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>38</b> of file <b>asciichat_errno.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> error_thread::cause_after_id</h2>
+<p class="Pp">Definition at line <b>43</b> of file <b>asciichat_errno.c</b>.</p>
+<p class="Pp">Referenced by <b>errno_scope_end()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_error_thread::depth"><a class="permalink" href="#size_t_error_thread::depth">size_t
+  error_thread::depth</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>asciichat_errno.c</b>.</p>
+<p class="Pp">Referenced by <b>errno_clear_if_current()</b>,
+    <b>errno_clear_if_top()</b>, <b>errno_get_thread_error()</b>,
+    <b>errno_has_thread_error()</b>, <b>errno_print_stacks()</b>,
+    <b>errno_scope_end()</b>, <b>errno_scope_is_clean()</b>,
+    <b>errno_snapshot()</b>, and <b>errno_title_snapshot()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> error_thread::generation</h2>
+<p class="Pp">Definition at line <b>40</b> of file <b>asciichat_errno.c</b>.</p>
+<p class="Pp">Referenced by <b>errno_clear_if_current()</b>,
+    <b>errno_clear_if_top()</b>, <b>errno_has_code_since()</b>,
+    <b>errno_peek_since()</b>, <b>errno_print_stacks()</b>,
+    <b>errno_scope_end()</b>, <b>errno_scope_is_clean()</b>, and
+    <b>errno_threads_snapshot()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> error_thread::id</h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>asciichat_errno.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
+  <b>error_thread</b>* error_thread::next</a></h2>
+<p class="Pp">Definition at line <b>44</b> of file <b>asciichat_errno.c</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_error_format()</b>, and
+    <b>errno_print_hash_stats()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_error_thread::top"><a class="permalink" href="#int_error_thread::top">int
+  error_thread::top</a></h2>
+<p class="Pp">Definition at line <b>41</b> of file <b>asciichat_errno.c</b>.</p>
+<p class="Pp">Referenced by <b>errno_clear_if_current()</b>,
+    <b>errno_clear_if_top()</b>, <b>errno_get_thread_error()</b>,
+    <b>errno_has_thread_error()</b>, <b>errno_peek_since()</b>,
+    <b>errno_scope_end()</b>, <b>errno_scope_is_clean()</b>,
+    <b>errno_snapshot()</b>, and <b>errno_title_snapshot()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -42,7 +42,7 @@
 <br/>
 <p class="Pp"><b>connection_endpoint_protocol_t</b> <b>protocol</b>
   <br/>
-  char <b>input</b> [512]
+  char <b>input</b> [(4095+1)]
   <br/>
   char <b>host</b> [256]
   <br/>
@@ -57,7 +57,7 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Definition at line <b>21</b> of file
+<p class="Pp">Definition at line <b>23</b> of file
   <b>connection_endpoint.h</b>.</p>
 </section>
 <section class="Sh">
@@ -65,41 +65,37 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> connection_endpoint_t::has_explicit_port</h2>
-<p class="Pp">Definition at line <b>26</b> of file
+<p class="Pp">Definition at line <b>28</b> of file
   <b>connection_endpoint.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_connection_endpoint_t::host_256_"><a class="permalink" href="#char_connection_endpoint_t::host_256_">char
   connection_endpoint_t::host[256]</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file
+<p class="Pp">Definition at line <b>26</b> of file
   <b>connection_endpoint.h</b>.</p>
-<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>, and
-    <b>server_connection_establish()</b>.</p>
+<p class="Pp">Referenced by <b>network_connection_open()</b>, and
+    <b>session_connection_establish()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="char_connection_endpoint_t::input_512_"><a class="permalink" href="#char_connection_endpoint_t::input_512_">char
-  connection_endpoint_t::input[512]</a></h2>
-<p class="Pp">Definition at line <b>23</b> of file
+<h2 class="Ss" id="char_connection_endpoint_t::input_(4095+1)_"><a class="permalink" href="#char_connection_endpoint_t::input_(4095+1)_">char
+  connection_endpoint_t::input[(4095+1)]</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file
   <b>connection_endpoint.h</b>.</p>
-<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
-    <b>connection_factory_open()</b>, and
-  <b>server_connection_establish()</b>.</p>
+<p class="Pp">Referenced by <b>network_connection_open()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> connection_endpoint_t::port</h2>
-<p class="Pp">Definition at line <b>25</b> of file
+<p class="Pp">Definition at line <b>27</b> of file
   <b>connection_endpoint.h</b>.</p>
-<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>, and
-    <b>server_connection_establish()</b>.</p>
+<p class="Pp">Referenced by <b>network_connection_open()</b>, and
+    <b>session_connection_establish()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>connection_endpoint_protocol_t</b>
   connection_endpoint_t::protocol</h2>
-<p class="Pp">Definition at line <b>22</b> of file
+<p class="Pp">Definition at line <b>24</b> of file
   <b>connection_endpoint.h</b>.</p>
-<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
-    <b>connection_factory_open()</b>, and
-  <b>server_connection_establish()</b>.</p>
+<p class="Pp">Referenced by <b>network_connection_open()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -110,7 +106,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -55,7 +55,16 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX</b> 1
+<p class="Pp">#define <b>TOOLING_PANIC_INSTRUMENT_LOG_TIMESTAMP_BUFFER_SIZE</b>
+    32
+  <br/>
+  #define <b>TOOLING_PANIC_INSTRUMENT_LOG_SNIPPET_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>TOOLING_PANIC_INSTRUMENT_LOG_TID_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>INSTRUMENT_LOG_KEY_BUFFER_SIZE</b> 8
+  <br/>
+  #define <b>ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX</b> 1
   <br/>
   #define <b>posix_write</b> write
   <br/>
@@ -114,9 +123,9 @@
     <b>asciichat_instr_runtime_global_destroy</b> (void)
   <br/>
   Global shutdown of the instrumentation system. void
-    <b>asciichat_instr_log_line</b> (const char *<b>file_path</b>,
-    <b>uint32_t</b> line_number, const char *function_name, const char *snippet,
-    <b>uint8_t</b> is_macro_expansion)
+    <b>asciichat_instr_log_line</b> (const char *file_path, <b>uint32_t</b>
+    line_number, const char *function_name, const char *snippet, <b>uint8_t</b>
+    is_macro_expansion)
   <br/>
   Log a source line execution event. <b>bool</b>
     <b>asciichat_instr_coverage_enabled</b> (void)
@@ -146,29 +155,51 @@
 <section class="Ss">
 <h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME___'ascii"><a class="permalink" href="#_define_ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME___'ascii">#define
   ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME 'ascii-instr'</a></h2>
-<p class="Pp">Definition at line <b>67</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>76</b> of file <b>instrument_log.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX___1"><a class="permalink" href="#_define_ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX___1">#define
   ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX 1</a></h2>
-<p class="Pp">Definition at line <b>44</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>53</b> of file <b>instrument_log.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_MAX_LINE___4096"><a class="permalink" href="#_define_ASCII_INSTR_SOURCE_PRINT_MAX_LINE___4096">#define
   ASCII_INSTR_SOURCE_PRINT_MAX_LINE 4096</a></h2>
-<p class="Pp">Definition at line <b>71</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>80</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET___2048"><a class="permalink" href="#_define_ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET___2048">#define
   ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET 2048</a></h2>
-<p class="Pp">Definition at line <b>75</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>84</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_INSTRUMENT_LOG_KEY_BUFFER_SIZE___8"><a class="permalink" href="#_define_INSTRUMENT_LOG_KEY_BUFFER_SIZE___8">#define
+  INSTRUMENT_LOG_KEY_BUFFER_SIZE 8</a></h2>
+<p class="Pp">Definition at line <b>20</b> of file <b>instrument_log.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_posix_write___write"><a class="permalink" href="#_define_posix_write___write">#define
   posix_write write</a></h2>
-<p class="Pp">Definition at line <b>63</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>72</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TOOLING_PANIC_INSTRUMENT_LOG_SNIPPET_BUFFER_SIZE___64"><a class="permalink" href="#_define_TOOLING_PANIC_INSTRUMENT_LOG_SNIPPET_BUFFER_SIZE___64">#define
+  TOOLING_PANIC_INSTRUMENT_LOG_SNIPPET_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_instr_log_pc()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TOOLING_PANIC_INSTRUMENT_LOG_TID_BUFFER_SIZE___32"><a class="permalink" href="#_define_TOOLING_PANIC_INSTRUMENT_LOG_TID_BUFFER_SIZE___32">#define
+  TOOLING_PANIC_INSTRUMENT_LOG_TID_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>instrument_log.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TOOLING_PANIC_INSTRUMENT_LOG_TIMESTAMP_BUFFER_SIZE___32"><a class="permalink" href="#_define_TOOLING_PANIC_INSTRUMENT_LOG_TIMESTAMP_BUFFER_SIZE___32">#define
+  TOOLING_PANIC_INSTRUMENT_LOG_TIMESTAMP_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
 </section>
 </section>
@@ -216,13 +247,13 @@
     </i></b></a></dt>
   <dd></dd>
 </dl>
-<p class="Pp">Definition at line <b>78</b> of file <b>instrument_log.c</b>.</p>
-<pre>78                                            {
-79   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING = 0,
-80   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB = 1,
-81   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB = 2,
-82   ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE = 3,
-83 } asciichat_instr_selector_type_t;</pre>
+<p class="Pp">Definition at line <b>87</b> of file <b>instrument_log.c</b>.</p>
+<pre>87                                            {
+88   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING = 0,
+89   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB = 1,
+90   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB = 2,
+91   ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE = 3,
+92 } asciichat_instr_selector_type_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -234,7 +265,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

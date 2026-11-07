@@ -65,16 +65,6 @@
 </p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
-<br/>
-<p class="Pp">enum <b>image_alloc_method_t</b> { <b>IMAGE_ALLOC_SIMD</b> = 0,
-    <b>IMAGE_ALLOC_POOL</b> = 1 }
-  <br/>
-  Pixel allocation method tracking.
-  <br/>
-</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>image_t</b> * <b>image_new</b> (size_t width, size_t height)
@@ -82,13 +72,7 @@
   Create a new image with standard allocation. void <b>image_destroy</b>
     (<b>image_t</b> *p)
   <br/>
-  Destroy an image allocated with <b>image_new()</b>. <b>image_t</b> *
-    <b>image_new_from_pool</b> (size_t width, size_t height)
-  <br/>
-  Create a new image from buffer pool. void <b>image_destroy_to_pool</b>
-    (<b>image_t</b> *image)
-  <br/>
-  Destroy an image allocated from buffer pool. void <b>image_clear</b>
+  Destroy an image allocated with <b>image_new()</b>. void <b>image_clear</b>
     (<b>image_t</b> *p)
   <br/>
   Clear image (set all pixels to black). <b>image_t</b> * <b>image_new_copy</b>
@@ -153,7 +137,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -41,12 +41,13 @@
 <h2 class="Ss" id="Public_Types"><a class="permalink" href="#Public_Types">Public
   Types</a></h2>
 <br/>
-<p class="Pp">enum { <b>RENDERER_BLOCK</b>, <b>RENDERER_HALFBLOCK</b>,
+<p class="Pp"><b>enum </b>{ <b>RENDERER_BLOCK</b>, <b>RENDERER_HALFBLOCK</b>,
     <b>RENDERER_BRAILLE</b> }
   <br/>
-  enum { <b>CHARSET_ASCII</b>, <b>CHARSET_UTF8</b>, <b>CHARSET_UTF8_WIDE</b> }
+  <b>enum </b>{ <b>CHARSET_ASCII</b>, <b>CHARSET_UTF8</b>,
+    <b>CHARSET_UTF8_WIDE</b> }
   <br/>
-  enum { <b>COMPRESSION_NONE</b>, <b>COMPRESSION_RLE</b>,
+  <b>enum </b>{ <b>COMPRESSION_NONE</b>, <b>COMPRESSION_RLE</b>,
     <b>COMPRESSION_ZSTD</b> }
   <br/>
   <br/>
@@ -60,12 +61,11 @@
   <br/>
   Terminal width in characters. <b>uint16_t</b> <b>height</b>
   <br/>
-  Terminal height in characters. enum terminal_format_params_t:: { ... }
-    <b>renderer</b>
+  Terminal height in characters. <b>enum { ... } </b> <b>renderer</b>
   <br/>
-  enum terminal_format_params_t:: { ... } <b>charset</b>
+  <b>enum { ... } </b> <b>charset</b>
   <br/>
-  enum terminal_format_params_t:: { ... } <b>compression</b>
+  <b>enum { ... } </b> <b>compression</b>
   <br/>
   <b>bool</b> <b>csi_rep_support</b>
   <br/>
@@ -80,7 +80,7 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">Terminal rendering format parameters.</p>
-<p class="Pp">Definition at line <b>87</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Definition at line <b>92</b> of file <b>sdp.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Member_Enumeration_Documentation"><a class="permalink" href="#Member_Enumeration_Documentation">Member
@@ -101,8 +101,8 @@
     </i></b></a></dt>
   <dd></dd>
 </dl>
-<p class="Pp">Definition at line <b>92</b> of file <b>sdp.h</b>.</p>
-<pre>92 { COMPRESSION_NONE, COMPRESSION_RLE, COMPRESSION_ZSTD } compression;</pre>
+<p class="Pp">Definition at line <b>97</b> of file <b>sdp.h</b>.</p>
+<pre>97 { COMPRESSION_NONE, COMPRESSION_RLE, COMPRESSION_ZSTD } compression;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -122,8 +122,8 @@
     </i></b></a></dt>
   <dd></dd>
 </dl>
-<p class="Pp">Definition at line <b>90</b> of file <b>sdp.h</b>.</p>
-<pre>90 { RENDERER_BLOCK, RENDERER_HALFBLOCK, RENDERER_BRAILLE } renderer;</pre>
+<p class="Pp">Definition at line <b>95</b> of file <b>sdp.h</b>.</p>
+<pre>95 { RENDERER_BLOCK, RENDERER_HALFBLOCK, RENDERER_BRAILLE } renderer;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -143,8 +143,8 @@
     </i></b></a></dt>
   <dd></dd>
 </dl>
-<p class="Pp">Definition at line <b>91</b> of file <b>sdp.h</b>.</p>
-<pre>91 { CHARSET_ASCII, CHARSET_UTF8, CHARSET_UTF8_WIDE } charset;</pre>
+<p class="Pp">Definition at line <b>96</b> of file <b>sdp.h</b>.</p>
+<pre>96 { CHARSET_ASCII, CHARSET_UTF8, CHARSET_UTF8_WIDE } charset;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -153,26 +153,26 @@
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss">enum { ... } terminal_format_params_t::charset</h2>
+<h2 class="Ss"><b>enum { ... } terminal_format_params_t::charset</b></h2>
 <p class="Pp">Referenced by <b>sdp_detect_terminal_capabilities()</b>,
     <b>sdp_generate_answer()</b>, and <b>sdp_generate_offer()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss">enum { ... } terminal_format_params_t::compression</h2>
+<h2 class="Ss"><b>enum { ... } terminal_format_params_t::compression</b></h2>
 <p class="Pp">Referenced by <b>sdp_detect_terminal_capabilities()</b>,
     <b>sdp_generate_answer()</b>, and <b>sdp_generate_offer()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_format_params_t::csi_rep_support</h2>
 <p class="Pp">CSI REP (repeat) support.</p>
-<p class="Pp">Definition at line <b>93</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Definition at line <b>98</b> of file <b>sdp.h</b>.</p>
 <p class="Pp">Referenced by <b>sdp_detect_terminal_capabilities()</b>,
     <b>sdp_generate_answer()</b>, and <b>sdp_generate_offer()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> terminal_format_params_t::height</h2>
 <p class="Pp">Terminal height in characters.</p>
-<p class="Pp">Definition at line <b>89</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Definition at line <b>94</b> of file <b>sdp.h</b>.</p>
 <p class="Pp">Referenced by <b>sdp_detect_terminal_capabilities()</b>,
     <b>sdp_generate_answer()</b>, <b>sdp_generate_offer()</b>, and
     <b>sdp_get_selected_video_codec()</b>.</p>
@@ -181,17 +181,17 @@
 <h2 class="Ss" id="const_char*_terminal_format_params_t::palette_hint"><a class="permalink" href="#const_char*_terminal_format_params_t::palette_hint">const
   char* terminal_format_params_t::palette_hint</a></h2>
 <p class="Pp">Palette name (informational).</p>
-<p class="Pp">Definition at line <b>94</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Definition at line <b>99</b> of file <b>sdp.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss">enum { ... } terminal_format_params_t::renderer</h2>
+<h2 class="Ss"><b>enum { ... } terminal_format_params_t::renderer</b></h2>
 <p class="Pp">Referenced by <b>sdp_detect_terminal_capabilities()</b>,
     <b>sdp_generate_answer()</b>, and <b>sdp_generate_offer()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> terminal_format_params_t::width</h2>
 <p class="Pp">Terminal width in characters.</p>
-<p class="Pp">Definition at line <b>88</b> of file <b>sdp.h</b>.</p>
+<p class="Pp">Definition at line <b>93</b> of file <b>sdp.h</b>.</p>
 <p class="Pp">Referenced by <b>sdp_detect_terminal_capabilities()</b>,
     <b>sdp_generate_answer()</b>, <b>sdp_generate_offer()</b>, and
     <b>sdp_get_selected_video_codec()</b>.</p>
@@ -205,7 +205,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

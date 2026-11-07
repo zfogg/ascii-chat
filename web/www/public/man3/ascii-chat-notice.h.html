@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>notice.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">notice.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">notice.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">notice.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>NOTICE</b>(severity, title, ...)
+  <br/>
+  #define <b>NOTICE_ANNOUNCE</b>(title, ...)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>ui_notice_severity_t</b> { <b>UI_NOTICE_INFO</b>,
+    <b>UI_NOTICE_WARNING</b>, <b>UI_NOTICE_DANGER</b>, <b>UI_NOTICE_FATAL</b>,
+    <b>UI_NOTICE_SUCCESS</b> }
+  <br/>
+  enum <b>ui_notice_key_result_t</b> { <b>UI_NOTICE_KEY_ORDINARY</b>,
+    <b>UI_NOTICE_KEY_HANDLED</b>, <b>UI_NOTICE_KEY_HELP</b>,
+    <b>UI_NOTICE_KEY_DISMISS</b>, <b>UI_NOTICE_KEY_COMPLETE</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>ui_notice_render</b> (<b>frame_buffer_t</b> *buffer, const
+    char *text, <b>ui_notice_severity_t</b> severity, int cols, <b>bool</b>
+    unicode, <b>bool</b> color)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_notice_present</b> (<b>ui_notice_severity_t</b>
+    severity, const char *text)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_notice_present_first_use</b> (const char
+    *title, const char *text, const char *marker_path)
+  <br/>
+  void <b>ui_notice_frame_presented</b> (const void *snapshot)
+  <br/>
+  <b>ui_notice_key_result_t</b> <b>ui_notice_first_use_key</b> (const void
+    *snapshot, int key)
+  <br/>
+  void <b>ui_notice_first_use_complete</b> (const void *snapshot)
+  <br/>
+  <b>bool</b> <b>ui_notice_confirm</b> (<b>ui_notice_severity_t</b> severity,
+    const char *text, unsigned timeout_seconds)
+  <br/>
+  <b>bool</b> <b>ui_notice_confirm_kind</b> (<b>ui_prompt_kind_t</b> kind,
+    <b>ui_notice_severity_t</b> severity, const char *text, unsigned
+    timeout_seconds)
+  <br/>
+  <b>ui_prompt_kind_t</b> <b>ui_notice_prompt_kind</b> (void)
+  <br/>
+  <b>ui_notice_severity_t</b> <b>ui_notice_prompt_severity</b> (void)
+  <br/>
+  void <b>ui_notice_dismiss</b> (void)
+  <br/>
+  const char * <b>ui_notice_title</b> (const void *snapshot)
+  <br/>
+  void <b>ui_notice_log</b> (<b>ui_notice_severity_t</b> severity, const char
+    *file, int line, const char *func, const char *title, const char
+    *format,...) <b>__attribute__</b>((format(printf
+  <br/>
+  void <b>ui_notice_announce</b> (const char *file, int line, const char *func,
+    const char *title, const char *format,...)
+    <b>__attribute__</b>((format(printf
+  <br/>
+  void <b>ui_notice_flush_snapshot</b> (int fd, const void *snapshot)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_NOTICE(_severity,__title,__"><a class="permalink" href="#_define_NOTICE(_severity,__title,__">#define
+  NOTICE( severity, title, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>ui_notice_log(UI_NOTICE_##severity, __FILE__, __LINE__, __func__, title, __VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>68</b> of file <b>notice.h</b>.</p>
+<p class="Pp">Referenced by <b>add_known_host()</b>,
+    <b>asciichat_fatal_with_context()</b>,
+    <b>check_known_host_no_identity()</b>, <b>check_known_host_with_key()</b>,
+    <b>client_crypto_init()</b>, <b>crypto_handshake_client_complete()</b>,
+    <b>crypto_handshake_client_key_exchange()</b>,
+    <b>crypto_handshake_server_auth_challenge()</b>,
+    <b>discover_session_parallel()</b>, <b>discovery_main()</b>,
+    <b>discovery_session_create()</b>, <b>display_mitm_warning()</b>,
+    <b>main()</b>, <b>media_source_create_interruptible()</b>,
+    <b>mirror_main()</b>, <b>prompt_unknown_host()</b>,
+    <b>prompt_unknown_host_no_identity()</b>, <b>session_capture_create()</b>,
+    <b>session_handle_keyboard_input()</b>, <b>validate_ssh_key_file()</b>, and
+    <b>websocket_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NOTICE_ANNOUNCE(_title,__"><a class="permalink" href="#_define_NOTICE_ANNOUNCE(_title,__">#define
+  NOTICE_ANNOUNCE( title, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>ui_notice_announce(__FILE__, __LINE__, __func__, title, __VA_ARGS__)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>74</b> of file <b>notice.h</b>.</p>
+<p class="Pp">Referenced by <b>key_identity_announce()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">enum <b>ui_notice_key_result_t</b></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="UI_NOTICE_KEY_ORDINARY"><a class="permalink" href="#UI_NOTICE_KEY_ORDINARY"><b><i>UI_NOTICE_KEY_ORDINARY
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="UI_NOTICE_KEY_HANDLED"><a class="permalink" href="#UI_NOTICE_KEY_HANDLED"><b><i>UI_NOTICE_KEY_HANDLED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="UI_NOTICE_KEY_HELP"><a class="permalink" href="#UI_NOTICE_KEY_HELP"><b><i>UI_NOTICE_KEY_HELP
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="UI_NOTICE_KEY_DISMISS"><a class="permalink" href="#UI_NOTICE_KEY_DISMISS"><b><i>UI_NOTICE_KEY_DISMISS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="UI_NOTICE_KEY_COMPLETE"><a class="permalink" href="#UI_NOTICE_KEY_COMPLETE"><b><i>UI_NOTICE_KEY_COMPLETE
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>30</b> of file <b>notice.h</b>.</p>
+<pre>30              {
+31   UI_NOTICE_KEY_ORDINARY,
+32   UI_NOTICE_KEY_HANDLED,
+33   UI_NOTICE_KEY_HELP,
+34   UI_NOTICE_KEY_DISMISS,
+35   UI_NOTICE_KEY_COMPLETE
+36 } ui_notice_key_result_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">enum <b>ui_notice_severity_t</b></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="UI_NOTICE_INFO"><a class="permalink" href="#UI_NOTICE_INFO"><b><i>UI_NOTICE_INFO
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="UI_NOTICE_WARNING"><a class="permalink" href="#UI_NOTICE_WARNING"><b><i>UI_NOTICE_WARNING
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="UI_NOTICE_DANGER"><a class="permalink" href="#UI_NOTICE_DANGER"><b><i>UI_NOTICE_DANGER
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="UI_NOTICE_FATAL"><a class="permalink" href="#UI_NOTICE_FATAL"><b><i>UI_NOTICE_FATAL
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="UI_NOTICE_SUCCESS"><a class="permalink" href="#UI_NOTICE_SUCCESS"><b><i>UI_NOTICE_SUCCESS
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>9</b> of file <b>notice.h</b>.</p>
+<pre>9              {
+10   UI_NOTICE_INFO,
+11   UI_NOTICE_WARNING,
+12   UI_NOTICE_DANGER,
+13   UI_NOTICE_FATAL,
+14   UI_NOTICE_SUCCESS
+15 } ui_notice_severity_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_notice_announce_(const_char_*_file,_int_line,_const_char_*_func,_const_char_*_title,_const_char_*_format,__"><a class="permalink" href="#void_ui_notice_announce_(const_char_*_file,_int_line,_const_char_*_func,_const_char_*_title,_const_char_*_format,__">void
+  ui_notice_announce (const char * file, int line, const char * func, const char
+  * title, const char * format, ...)</a></h2>
+<p class="Pp">Informational user output independent of log level; quiet, grep
+    and JSON still apply.</p>
+<p class="Pp">References <b>ui_notice_announce()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_notice_confirm (<b>ui_notice_severity_t</b>
+  severity, const char * text, unsigned timeout_seconds)</h2>
+<p class="Pp">Explicitly styled yes/no prompt; default remains No.</p>
+<p class="Pp">Definition at line <b>489</b> of file <b>notice.c</b>.</p>
+<pre>489                                                                                                   {
+490   return ui_notice_confirm_kind(UI_PROMPT_CONFIRMATION, severity, text, timeout_seconds);
+491 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_notice_confirm()</b>,
+    <b>ui_notice_confirm_kind()</b>, and <b>UI_PROMPT_CONFIRMATION</b>.</p>
+<p class="Pp">Referenced by <b>ui_notice_confirm()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_notice_confirm_kind (<b>ui_prompt_kind_t</b> kind,
+  <b>ui_notice_severity_t</b> severity, const char * text, unsigned
+  timeout_seconds)</h2>
+<p class="Pp">Definition at line <b>493</b> of file <b>notice.c</b>.</p>
+<pre>494                                                       {
+495   ui_prompt_kind_t previous_kind = g_prompt_kind;
+496   g_prompt_kind = kind;
+497   ui_notice_severity_t previous = g_prompt_severity;
+498   g_prompt_severity = severity;
+499   if (terminal_can_prompt_user())
+500     log_msg(severity == UI_NOTICE_FATAL     ? LOG_FATAL
+501             : severity == UI_NOTICE_DANGER  ? LOG_ERROR
+502             : severity == UI_NOTICE_WARNING ? LOG_WARN
+503                                             : LOG_INFO,
+504             __FILE__, __LINE__, __func__, &quot;%s&quot;, text);
+505   else
+506     ui_notice_log(severity, __FILE__, __LINE__, __func__, &quot;CONFIRMATION REQUIRED&quot;, &quot;%s&quot;, text);
+507   bool accepted = platform_prompt_yes_no_timeout(text, false, timeout_seconds);
+508   g_prompt_kind = previous_kind;
+509   g_prompt_severity = previous;
+510   return accepted;
+511 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>LOG_ERROR</b>, <b>LOG_FATAL</b>, <b>LOG_INFO</b>,
+    <b>log_msg()</b>, <b>LOG_WARN</b>, <b>platform_prompt_yes_no_timeout()</b>,
+    <b>terminal_can_prompt_user()</b>, <b>ui_notice_confirm_kind()</b>,
+    <b>UI_NOTICE_DANGER</b>, <b>UI_NOTICE_FATAL</b>, <b>ui_notice_log()</b>, and
+    <b>UI_NOTICE_WARNING</b>.</p>
+<p class="Pp">Referenced by <b>action_completions()</b>,
+    <b>config_create_default()</b>, <b>discovery_keys_verify_change()</b>,
+    <b>prompt_unknown_host()</b>, <b>prompt_unknown_host_no_identity()</b>,
+    <b>ui_notice_confirm()</b>, and <b>ui_notice_confirm_kind()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_notice_dismiss_(void_)"><a class="permalink" href="#void_ui_notice_dismiss_(void_)">void
+  ui_notice_dismiss (void )</a></h2>
+<p class="Pp">Definition at line <b>536</b> of file <b>notice.c</b>.</p>
+<pre>536                              {
+537   ui_controller_remove(UI_SCREEN_NOTICE);
+538 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_remove()</b>,
+    <b>ui_notice_dismiss()</b>, and <b>UI_SCREEN_NOTICE</b>.</p>
+<p class="Pp">Referenced by <b>ui_notice_dismiss()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_notice_first_use_complete_(const_void_*_snapshot)"><a class="permalink" href="#void_ui_notice_first_use_complete_(const_void_*_snapshot)">void
+  ui_notice_first_use_complete (const void * snapshot)</a></h2>
+<p class="Pp">Definition at line <b>473</b> of file <b>notice.c</b>.</p>
+<pre>473                                                     {
+474   const notice_snapshot_t *notice = data;
+475   if (!notice || !notice-&gt;marker_offset)
+476     return;
+477   asciichat_errno_scope_t scope = errno_scope_begin();
+478   FILE *marker = platform_fopen(&quot;first-use instructions&quot;, notice-&gt;text + notice-&gt;marker_offset, &quot;w&quot;);
+479   if (!marker) {
+480     log_warn(&quot;Could not save first-use instructions state; the notice may appear again: %s&quot;,
+481              notice-&gt;text + notice-&gt;marker_offset);
+482   } else if (fclose(marker) != 0) {
+483     log_warn(&quot;Could not finish saving first-use instructions state; the notice may appear again: %s&quot;,
+484              notice-&gt;text + notice-&gt;marker_offset);
+485   }
+486   errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+487 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_DISMISSED</b>,
+    <b>errno_scope_begin()</b>, <b>errno_scope_end()</b>, <b>log_warn</b>,
+    <b>notice_snapshot_t::marker_offset</b>, <b>platform_fopen()</b>,
+    <b>notice_snapshot_t::text</b>, and
+  <b>ui_notice_first_use_complete()</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_first_use_key()</b>, and
+    <b>ui_notice_first_use_complete()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ui_notice_key_result_t</b> ui_notice_first_use_key (const void
+  * snapshot, int key)</h2>
+<p class="Pp">Definition at line <b>448</b> of file <b>notice.c</b>.</p>
+<pre>448                                                                           {
+449   notice_snapshot_t *notice = (notice_snapshot_t *)data;
+450   if (!notice || !notice-&gt;marker_offset)
+451     return UI_NOTICE_KEY_ORDINARY;
+452   if (key == KEY_ESCAPE || key == 'q' || key == 3)
+453     return UI_NOTICE_KEY_DISMISS;
+454   if (key == KEY_QUESTION)
+455     return UI_NOTICE_KEY_HELP;
+456   int page = atomic_load(&amp;notice-&gt;page);
+457   int pages = atomic_load(&amp;notice-&gt;pages);
+458   if (key == KEY_LEFT &amp;&amp; page &gt; 0) {
+459     atomic_store(&amp;notice-&gt;presented_page, -1);
+460     atomic_store(&amp;notice-&gt;page, page - 1);
+461   } else if ((key == '\r' || key == '\n' || key == KEY_RIGHT) &amp;&amp; pages &gt; 0 &amp;&amp;
+462              atomic_load(&amp;notice-&gt;presented_page) == page) {
+463     if (page + 1 &lt; pages) {
+464       atomic_store(&amp;notice-&gt;presented_page, -1);
+465       atomic_store(&amp;notice-&gt;page, page + 1);
+466     } else if (key == '\r' || key == '\n') {
+467       return UI_NOTICE_KEY_COMPLETE;
+468     }
+469   }
+470   return UI_NOTICE_KEY_HANDLED;
+471 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>KEY_ESCAPE</b>, <b>KEY_LEFT</b>,
+    <b>KEY_QUESTION</b>, <b>KEY_RIGHT</b>,
+    <b>notice_snapshot_t::marker_offset</b>, <b>notice_snapshot_t::page</b>,
+    <b>notice_snapshot_t::pages</b>, <b>notice_snapshot_t::presented_page</b>,
+    <b>ui_notice_first_use_key()</b>, <b>UI_NOTICE_KEY_COMPLETE</b>,
+    <b>UI_NOTICE_KEY_DISMISS</b>, <b>UI_NOTICE_KEY_HANDLED</b>,
+    <b>UI_NOTICE_KEY_HELP</b>, and <b>UI_NOTICE_KEY_ORDINARY</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_first_use_key()</b>, and
+    <b>ui_notice_first_use_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_notice_flush_snapshot_(int_fd,_const_void_*_snapshot)"><a class="permalink" href="#void_ui_notice_flush_snapshot_(int_fd,_const_void_*_snapshot)">void
+  ui_notice_flush_snapshot (int fd, const void * snapshot)</a></h2>
+<p class="Pp">Controller teardown writes pending notices to scrollback before
+    releasing them.</p>
+<p class="Pp">Definition at line <b>521</b> of file <b>notice.c</b>.</p>
+<pre>521                                                         {
+522   const notice_snapshot_t *notice = data;
+523   frame_buffer_t *buffer = frame_buffer_create(0, 0);
+524   if (!buffer)
+525     return;
+526   if (platform_isatty(fd))
+527     frame_buffer_append(buffer, &quot;\033[0m\n&quot;, 5);
+528   terminal_size_t size = {.cols = 80};
+529   if (platform_isatty(fd))
+530     (void)terminal_get_size_fd(fd, &amp;size);
+531   ui_notice_render(buffer, notice-&gt;text, notice-&gt;severity, size.cols, notice-&gt;unicode, notice-&gt;color);
+532   platform_write_all(fd, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
+533   frame_buffer_destroy(buffer);
+534 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>notice_snapshot_t::color</b>,
+    <b>terminal_size_t::cols</b>, <b>frame_buffer_append()</b>,
+    <b>frame_buffer_create()</b>, <b>frame_buffer_destroy()</b>,
+    <b>frame_buffer_get_content()</b>, <b>frame_buffer_get_length()</b>,
+    <b>platform_isatty()</b>, <b>platform_write_all()</b>,
+    <b>notice_snapshot_t::severity</b>, <b>terminal_get_size_fd()</b>,
+    <b>notice_snapshot_t::text</b>, <b>ui_notice_flush_snapshot()</b>,
+    <b>ui_notice_render()</b>, and <b>notice_snapshot_t::unicode</b>.</p>
+<p class="Pp">Referenced by <b>ui_notice_flush_snapshot()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_notice_frame_presented_(const_void_*_snapshot)"><a class="permalink" href="#void_ui_notice_frame_presented_(const_void_*_snapshot)">void
+  ui_notice_frame_presented (const void * snapshot)</a></h2>
+<p class="Pp">Record which first-use page reached the terminal after a
+    successful frame.</p>
+<p class="Pp">Definition at line <b>442</b> of file <b>notice.c</b>.</p>
+<pre>442                                                  {
+443   notice_snapshot_t *notice = (notice_snapshot_t *)data;
+444   if (notice &amp;&amp; notice-&gt;marker_offset)
+445     atomic_store(&amp;notice-&gt;presented_page, notice-&gt;rendered_page);
+446 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>notice_snapshot_t::marker_offset</b>,
+    <b>notice_snapshot_t::presented_page</b>,
+    <b>notice_snapshot_t::rendered_page</b>, and
+    <b>ui_notice_frame_presented()</b>.</p>
+<p class="Pp">Referenced by <b>ui_notice_frame_presented()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_notice_log_("><a class="permalink" href="#void_ui_notice_log_(">void
+  ui_notice_log (<b>ui_notice_severity_t</b> severity, const char * file, int
+  line, const char * func, const char * title, const char * format,
+  ...)</a></h2>
+<p class="Pp">File/JSON logging stays undecorated; terminal presentation uses
+    the notice renderer.</p>
+<p class="Pp">References <b>ui_notice_log()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_notice_present
+  (<b>ui_notice_severity_t</b> severity, const char * text)</h2>
+<p class="Pp">Present a notice without changing authentication or input
+  policy.</p>
+<p class="Pp">Definition at line <b>366</b> of file <b>notice.c</b>.</p>
+<pre>366                                                                                      {
+367   if (!text)
+368     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing notice text&quot;);
+369   bool tty = platform_isatty(STDERR_FILENO);
+370   bool color = !GET_OPTION(strip_ansi) &amp;&amp; terminal_should_color_output(STDERR_FILENO);
+371   bool unicode = tty &amp;&amp; terminal_should_use_utf8();
+372   if (severity != UI_NOTICE_FATAL &amp;&amp; tty &amp;&amp; ui_controller_is_presenting() &amp;&amp; !ui_controller_is_owner() &amp;&amp;
+373       !GET_OPTION(snapshot_mode)) {
+374     size_t text_bytes = strlen(text) + 1;
+375     size_t bytes = sizeof(notice_snapshot_t) + text_bytes;
+376     notice_snapshot_t *snapshot = SAFE_MALLOC(bytes, notice_snapshot_t *);
+377     if (!snapshot)
+378       return SET_ERRNO(ERROR_MEMORY, &quot;Cannot allocate notice&quot;);
+379     snapshot-&gt;severity = severity;
+380     snapshot-&gt;unicode = unicode;
+381     snapshot-&gt;color = color;
+382     snapshot-&gt;started = time_get_ns();
+383     snapshot-&gt;marker_offset = snapshot-&gt;title_offset = 0;
+384     atomic_init(&amp;snapshot-&gt;page, 0);
+385     atomic_init(&amp;snapshot-&gt;pages, 0);
+386     atomic_init(&amp;snapshot-&gt;presented_page, -1);
+387     snapshot-&gt;rendered_page = -1;
+388     snapshot-&gt;rendered_cols = snapshot-&gt;rendered_rows = 0;
+389     memcpy(snapshot-&gt;text, text, text_bytes);
+390     asciichat_error_t result = ui_controller_submit(
+391         UI_SCREEN_NOTICE, STDERR_FILENO, (terminal_size_t){.cols = 1, .rows = 1}, render_notice, snapshot, bytes);
+392     SAFE_FREE(snapshot);
+393     return result;
+394   }
+395   frame_buffer_t *buffer = frame_buffer_create(0, 0);
+396   if (!buffer)
+397     return SET_ERRNO(ERROR_MEMORY, &quot;Cannot allocate notice buffer&quot;);
+398   if (severity == UI_NOTICE_FATAL &amp;&amp; tty)
+399     frame_buffer_append(buffer, &quot;\033[0m\033[?25h\r\n&quot;, 12);
+400   int cols = tty ? ui_controller_size().cols : 80;
+401   ui_notice_render(buffer, text, severity, cols, unicode, color);
+402   asciichat_error_t result = ASCIICHAT_OK;
+403   if (severity == UI_NOTICE_FATAL &amp;&amp; !ui_controller_is_owner())
+404     ui_controller_finish(STDERR_FILENO, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
+405   else
+406     result = ui_controller_write(STDERR_FILENO, frame_buffer_get_content(buffer), frame_buffer_get_length(buffer));
+407   frame_buffer_destroy(buffer);
+408   return result;
+409 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>notice_snapshot_t::color</b>,
+    <b>terminal_size_t::cols</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>frame_buffer_append()</b>,
+    <b>frame_buffer_create()</b>, <b>frame_buffer_destroy()</b>,
+    <b>frame_buffer_get_content()</b>, <b>frame_buffer_get_length()</b>,
+    <b>GET_OPTION</b>, <b>notice_snapshot_t::marker_offset</b>,
+    <b>notice_snapshot_t::page</b>, <b>notice_snapshot_t::pages</b>,
+    <b>platform_isatty()</b>, <b>notice_snapshot_t::presented_page</b>,
+    <b>notice_snapshot_t::rendered_cols</b>,
+    <b>notice_snapshot_t::rendered_page</b>,
+    <b>notice_snapshot_t::rendered_rows</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>notice_snapshot_t::severity</b>,
+    <b>notice_snapshot_t::started</b>, <b>terminal_should_color_output()</b>,
+    <b>terminal_should_use_utf8()</b>, <b>notice_snapshot_t::text</b>,
+    <b>time_get_ns()</b>, <b>notice_snapshot_t::title_offset</b>,
+    <b>ui_controller_finish()</b>, <b>ui_controller_is_owner()</b>,
+    <b>ui_controller_is_presenting()</b>, <b>ui_controller_size()</b>,
+    <b>ui_controller_submit()</b>, <b>ui_controller_write()</b>,
+    <b>UI_NOTICE_FATAL</b>, <b>ui_notice_present()</b>,
+    <b>ui_notice_render()</b>, <b>UI_SCREEN_NOTICE</b>, and
+    <b>notice_snapshot_t::unicode</b>.</p>
+<p class="Pp">Referenced by <b>ui_notice_present()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_notice_present_first_use (const char
+  * title, const char * text, const char * marker_path)</h2>
+<p class="Pp">Show a first-use notice until the user dismisses it.</p>
+<p class="Pp">Definition at line <b>411</b> of file <b>notice.c</b>.</p>
+<pre>411                                                                                                             {
+412   if (!title || !text || !marker_path || !platform_isatty(STDERR_FILENO) || GET_OPTION(snapshot_mode))
+413     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;First-use notice requires an interactive terminal and marker path&quot;);
+414   size_t text_bytes = strlen(text) + 1, title_bytes = strlen(title) + 1, marker_bytes = strlen(marker_path) + 1;
+415   if (title_bytes &gt; SIZE_MAX - marker_bytes - sizeof(notice_snapshot_t) ||
+416       text_bytes &gt; SIZE_MAX - title_bytes - marker_bytes - sizeof(notice_snapshot_t))
+417     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;First-use notice is too large&quot;);
+418   size_t bytes = sizeof(notice_snapshot_t) + text_bytes + title_bytes + marker_bytes;
+419   notice_snapshot_t *snapshot = SAFE_MALLOC(bytes, notice_snapshot_t *);
+420   if (!snapshot)
+421     return SET_ERRNO(ERROR_MEMORY, &quot;Cannot allocate first-use notice&quot;);
+422   snapshot-&gt;severity = UI_NOTICE_INFO;
+423   snapshot-&gt;unicode = terminal_should_use_utf8();
+424   snapshot-&gt;color = !GET_OPTION(strip_ansi) &amp;&amp; terminal_should_color_output(STDERR_FILENO);
+425   snapshot-&gt;started = time_get_ns();
+426   snapshot-&gt;title_offset = text_bytes;
+427   snapshot-&gt;marker_offset = text_bytes + title_bytes;
+428   atomic_init(&amp;snapshot-&gt;page, 0);
+429   atomic_init(&amp;snapshot-&gt;pages, 0);
+430   atomic_init(&amp;snapshot-&gt;presented_page, -1);
+431   snapshot-&gt;rendered_page = -1;
+432   snapshot-&gt;rendered_cols = snapshot-&gt;rendered_rows = 0;
+433   memcpy(snapshot-&gt;text, text, text_bytes);
+434   memcpy(snapshot-&gt;text + text_bytes, title, title_bytes);
+435   memcpy(snapshot-&gt;text + snapshot-&gt;marker_offset, marker_path, marker_bytes);
+436   asciichat_error_t result = ui_controller_submit(
+437       UI_SCREEN_NOTICE, STDERR_FILENO, (terminal_size_t){.cols = 20, .rows = 8}, render_notice, snapshot, bytes);
+438   SAFE_FREE(snapshot);
+439   return result;
+440 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>notice_snapshot_t::color</b>,
+    <b>ERROR_BUFFER_OVERFLOW</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>GET_OPTION</b>,
+    <b>notice_snapshot_t::marker_offset</b>, <b>notice_snapshot_t::page</b>,
+    <b>notice_snapshot_t::pages</b>, <b>platform_isatty()</b>,
+    <b>notice_snapshot_t::presented_page</b>,
+    <b>notice_snapshot_t::rendered_cols</b>,
+    <b>notice_snapshot_t::rendered_page</b>,
+    <b>notice_snapshot_t::rendered_rows</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>notice_snapshot_t::severity</b>,
+    <b>notice_snapshot_t::started</b>, <b>terminal_should_color_output()</b>,
+    <b>terminal_should_use_utf8()</b>, <b>notice_snapshot_t::text</b>,
+    <b>time_get_ns()</b>, <b>notice_snapshot_t::title_offset</b>,
+    <b>ui_controller_submit()</b>, <b>UI_NOTICE_INFO</b>,
+    <b>ui_notice_present_first_use()</b>, <b>UI_SCREEN_NOTICE</b>, and
+    <b>notice_snapshot_t::unicode</b>.</p>
+<p class="Pp">Referenced by <b>ui_notice_present_first_use()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ui_prompt_kind_t</b> ui_notice_prompt_kind (void )</h2>
+<p class="Pp">Definition at line <b>513</b> of file <b>notice.c</b>.</p>
+<pre>513                                              {
+514   return g_prompt_kind;
+515 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_notice_prompt_kind()</b>.</p>
+<p class="Pp">Referenced by <b>ui_notice_prompt_kind()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ui_notice_severity_t</b> ui_notice_prompt_severity (void
+  )</h2>
+<p class="Pp">Definition at line <b>517</b> of file <b>notice.c</b>.</p>
+<pre>517                                                      {
+518   return g_prompt_severity;
+519 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_notice_prompt_severity()</b>.</p>
+<p class="Pp">Referenced by <b>ui_notice_prompt_severity()</b>, and
+    <b>ui_prompt_present_kind()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ui_notice_render_("><a class="permalink" href="#int_ui_notice_render_(">int
+  ui_notice_render (<b>frame_buffer_t</b> * buffer, const char * text,
+  <b>ui_notice_severity_t</b> severity, int cols, <b>bool</b> unicode,
+  <b>bool</b> color)</a></h2>
+<p class="Pp">Append a complete box, or measure it when buffer is NULL. Returns
+    its row count. Text is plain UTF-8. Terminal control characters are made
+    visible, never executed.</p>
+<p class="Pp">Definition at line <b>64</b> of file <b>notice.c</b>.</p>
+<pre>65                                  {
+66   if (!text)
+67     text = &quot;&quot;;
+68   const char *body = text;
+69   text = notice_label(severity);
+70   bool rendering_label = true;
+71   const char *text_end = text + strlen(text);
+72   // Reserve the final column to avoid terminal autowrap at the right border.
+73   int width = cols &gt; 81 ? 80 : cols - 1;
+74   bool boxed = width &gt;= 8;
+75   int content = boxed ? width - 4 : (cols &gt; 2 ? cols - 1 : 2);
+76   const char *side = unicode ? &quot;&#x2551;&quot; : &quot;|&quot;;
+77   if (buffer &amp;&amp; color)
+78     frame_buffer_printf(buffer, &quot;\033[1m%s&quot;, notice_color(severity));
+79   if (boxed)
+80     border(buffer, width, UI_POPUP_TOP, unicode, severity, color);
+81   int rows = boxed ? 2 : 0;
+82   const char *art_end = NULL;
+83   const char *word_end = NULL;
+84   bool title_word = false;
+85   bool first_letter = false;
+86   do {
+87     // The Keymask formatter identifies complete plain-text blocks; input ANSI
+88     // escapes still pass through the normal control-character sanitization.
+89     const char *block_end = key_identity_art_end(text);
+90     if (block_end)
+91       art_end = block_end;
+92     bool neutral = art_end &amp;&amp; text &lt; art_end;
+93     int used = 0;
+94     if (buffer &amp;&amp; boxed)
+95       frame_buffer_printf(buffer, &quot;%s &quot;, side);
+96     if (buffer &amp;&amp; color &amp;&amp; neutral)
+97       frame_buffer_append(buffer, &quot;\033[0;39m&quot;, 7);
+98     while (*text &amp;&amp; *text != '\n') {
+99       int bytes = utf8_next_char_bytes(text, (size_t)(text_end - text));
+100       if (bytes &lt;= 0)
+101         bytes = 1;
+102       bool control = (unsigned char)*text &lt; 32 || (unsigned char)*text == 127 ||
+103                      (bytes == 2 &amp;&amp; (unsigned char)text[0] == 0xc2 &amp;&amp; (unsigned char)text[1] &gt;= 0x80 &amp;&amp;
+104                       (unsigned char)text[1] &lt;= 0x9f);
+105       int cells = control ? 1 : utf8_display_width_n(text, (size_t)bytes);
+106       if (cells &lt; 0)
+107         cells = 1;
+108       if (used + cells &gt; content &amp;&amp; used)
+109         break;
+110       if (buffer) {
+111         if (control)
+112           frame_buffer_append(buffer, &quot;?&quot;, 1);
+113         else if (!rendering_label &amp;&amp; !neutral) {
+114           if (!word_end || text &gt;= word_end) {
+115             word_end = text;
+116             title_word = (*text &gt;= 'A' &amp;&amp; *text &lt;= 'Z') || (*text &gt;= 'a' &amp;&amp; *text &lt;= 'z');
+117             first_letter = true;
+118             while (*word_end &amp;&amp; *word_end != ' ' &amp;&amp; *word_end != '\n' &amp;&amp; *word_end != '\t') {
+119               unsigned char c = (unsigned char)*word_end;
+120               bool letter = (c &gt;= 'A' &amp;&amp; c &lt;= 'Z') || (c &gt;= 'a' &amp;&amp; c &lt;= 'z');
+121               bool punctuation = strchr(&quot;,.;:!?&quot;, c) &amp;&amp; (!word_end[1] || word_end[1] == ' ' || word_end[1] == '\n');
+122               if (!letter &amp;&amp; !punctuation)
+123                 title_word = false;
+124               ++word_end;
+125             }
+126           }
+127           if (title_word &amp;&amp; bytes == 1) {
+128             char c = *text;
+129             if (first_letter &amp;&amp; c &gt;= 'a' &amp;&amp; c &lt;= 'z')
+130               c -= 'a' - 'A';
+131             else if (!first_letter &amp;&amp; c &gt;= 'A' &amp;&amp; c &lt;= 'Z')
+132               c += 'a' - 'A';
+133             first_letter = false;
+134             frame_buffer_append(buffer, &amp;c, 1);
+135           } else {
+136             frame_buffer_append(buffer, text, (size_t)bytes);
+137           }
+138         } else
+139           frame_buffer_append(buffer, text, (size_t)bytes);
+140       }
+141       used += cells;
+142       text += bytes;
+143     }
+144     if (buffer) {
+145       if (color &amp;&amp; neutral)
+146         frame_buffer_printf(buffer, &quot;\033[1m%s&quot;, notice_color(severity));
+147       if (boxed)
+148         frame_buffer_printf(buffer, &quot;%*s %s&quot;, content - used, &quot;&quot;, side);
+149       frame_buffer_append(buffer, &quot;\n&quot;, 1);
+150     }
+151     ++rows;
+152     if (*text == '\n')
+153       ++text;
+154     if (!*text) {
+155       if (!rendering_label)
+156         break;
+157       if (boxed) {
+158         border(buffer, width, UI_POPUP_SEPARATOR, unicode, severity, color);
+159         ++rows;
+160       }
+161       rendering_label = false;
+162       text = body;
+163       text_end = text + strlen(text);
+164     }
+165   } while (true);
+166   if (boxed)
+167     border(buffer, width, UI_POPUP_BOTTOM, unicode, severity, color);
+168   if (buffer &amp;&amp; color)
+169     frame_buffer_append(buffer, &quot;\033[0m&quot;, 4);
+170   return rows;
+171 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame_buffer_append()</b>,
+    <b>frame_buffer_printf()</b>, <b>key_identity_art_end()</b>,
+    <b>ui_notice_render()</b>, <b>UI_POPUP_BOTTOM</b>,
+    <b>UI_POPUP_SEPARATOR</b>, <b>UI_POPUP_TOP</b>,
+    <b>utf8_display_width_n()</b>, and <b>utf8_next_char_bytes()</b>.</p>
+<p class="Pp">Referenced by <b>ui_notice_flush_snapshot()</b>,
+    <b>ui_notice_present()</b>, <b>ui_notice_render()</b>,
+    <b>ui_prompt_present_kind()</b>, and <b>ui_prompt_required_rows()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_ui_notice_title_(const_void_*_snapshot)"><a class="permalink" href="#const_char_*_ui_notice_title_(const_void_*_snapshot)">const
+  char * ui_notice_title (const void * snapshot)</a></h2>
+<p class="Pp">Definition at line <b>189</b> of file <b>notice.c</b>.</p>
+<pre>189                                               {
+190   const notice_snapshot_t *notice = data;
+191   return notice-&gt;severity == UI_NOTICE_WARNING                                         ? &quot;warning&quot;
+192          : notice-&gt;severity == UI_NOTICE_DANGER || notice-&gt;severity == UI_NOTICE_FATAL ? &quot;error&quot;
+193                                                                                        : &quot;notice&quot;;
+194 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>notice_snapshot_t::severity</b>,
+    <b>UI_NOTICE_DANGER</b>, <b>UI_NOTICE_FATAL</b>, <b>ui_notice_title()</b>,
+    and <b>UI_NOTICE_WARNING</b>.</p>
+<p class="Pp">Referenced by <b>ui_notice_title()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

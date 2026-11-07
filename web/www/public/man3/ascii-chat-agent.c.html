@@ -39,7 +39,11 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>GPG_AGENT_MAX_RESPONSE</b> 8192
+<p class="Pp">#define <b>CRYPTO_GPG_AGENT_SIGKEY_CMD_BUFFER_SIZE</b> 128
+  <br/>
+  #define <b>CRYPTO_GPG_AGENT_SETHASH_CMD_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>GPG_AGENT_MAX_RESPONSE</b> 8192
   <br/>
   <br/>
 </p>
@@ -75,9 +79,21 @@
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="_define_CRYPTO_GPG_AGENT_SETHASH_CMD_BUFFER_SIZE___256"><a class="permalink" href="#_define_CRYPTO_GPG_AGENT_SETHASH_CMD_BUFFER_SIZE___256">#define
+  CRYPTO_GPG_AGENT_SETHASH_CMD_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>agent.c</b>.</p>
+<p class="Pp">Referenced by <b>gpg_agent_sign()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CRYPTO_GPG_AGENT_SIGKEY_CMD_BUFFER_SIZE___128"><a class="permalink" href="#_define_CRYPTO_GPG_AGENT_SIGKEY_CMD_BUFFER_SIZE___128">#define
+  CRYPTO_GPG_AGENT_SIGKEY_CMD_BUFFER_SIZE 128</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>agent.c</b>.</p>
+<p class="Pp">Referenced by <b>gpg_agent_sign()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="_define_GPG_AGENT_MAX_RESPONSE___8192"><a class="permalink" href="#_define_GPG_AGENT_MAX_RESPONSE___8192">#define
   GPG_AGENT_MAX_RESPONSE 8192</a></h2>
-<p class="Pp">Definition at line <b>30</b> of file <b>agent.c</b>.</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>agent.c</b>.</p>
 <p class="Pp">Referenced by <b>gpg_agent_connect()</b>, and
     <b>gpg_agent_sign()</b>.</p>
 </section>
@@ -89,7 +105,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

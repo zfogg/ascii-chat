@@ -120,10 +120,6 @@ if (ATOMIC_CAS_BOOL(&amp;client-&gt;active, false, true)) {
 }
 </pre>
 <p class="Pp">Definition at line <b>173</b> of file <b>util/atomic.h</b>.</p>
-<pre>173 #define ATOMIC_CAS_BOOL(ptr, expected, new_value)                                                                      \
-174   atomic_compare_exchange_strong((atomic_t *)(ptr), &amp;(expected), (new_value))</pre>
-<pre></pre>
-<p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ATOMIC_CAS_UINT32(_ptr,__expected,__new_value)"><a class="permalink" href="#_define_ATOMIC_CAS_UINT32(_ptr,__expected,__new_value)">#define
@@ -150,10 +146,6 @@ if (ATOMIC_CAS_UINT32(&amp;g_next_client_id, &amp;expected, current_id + 1)) {
 }
 </pre>
 <p class="Pp">Definition at line <b>192</b> of file <b>util/atomic.h</b>.</p>
-<pre>192 #define ATOMIC_CAS_UINT32(ptr, expected, new_value)                                                                    \
-193   atomic_compare_exchange_strong((atomic_uint32_t *)(ptr), (expected), (new_value))</pre>
-<pre></pre>
-<p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ATOMIC_LOAD_BOOL(_ptr)"><a class="permalink" href="#_define_ATOMIC_LOAD_BOOL(_ptr)">#define
@@ -337,7 +329,7 @@ while (!SHOULD_EXIT()) {
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -327,7 +327,7 @@ $ ascii-chat mirror --file movie.mp4
 <p class="Pp">lib/media/source.h - Media source types (<b>Webcam Module</b>,
     file, etc.)</p>
 <p class="Pp"></p>
-<p class="Pp">lib/video/palette.h - ASCII <b>Palette</b> types</p>
+<p class="Pp">lib/video/palette.h - ASCII <b>Character Palettes</b> types</p>
 </div>
 <p class="Pp">Definition in file <b>mirror/main.c</b>.</p>
 </section>
@@ -347,34 +347,104 @@ $ ascii-chat mirror --file movie.mp4
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, non-zero error code on failure</div>
-<p class="Pp">Definition at line <b>379</b> of file <b>mirror/main.c</b>.</p>
-<pre>379                       {
-380   log_info(&quot;[MIRROR] main ENTRY&quot;);
-381 
-382   // Configure mode-specific session settings
-383   session_client_like_config_t config = {
-384       .run_fn = mirror_run,
-385       .run_user_data = NULL,
-386       .kind = SESSION_CLIENT_LIKE_KIND_MIRROR,
-387       .keyboard_handler = mirror_keyboard_handler,
-388       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
-389   };
-390 
-391   // Run shared initialization/teardown with mode-specific loop
-392   asciichat_error_t result = session_client_like_run(&amp;config);
-393   log_info(&quot;mirror_main: session_client_like_run returned with result=%d&quot;, result);
-394 
-395   if (result != ASCIICHAT_OK) {
-396     log_error(&quot;Mirror mode failed with error code: %d&quot;, result);
-397   }
-398 
-399   return (int)result;
-400 }</pre>
+<p class="Pp">Entry point for mirror mode. Initializes media source (webcam or
+    file), sets up terminal display, and then continuously captures frames,
+    converts them to ASCII art, and displays them locally. The function runs
+    until the user presses Ctrl+C, the media reaches EOF, or an error
+  occurs.</p>
+<p class="Pp"></p>
+<p class="Pp">The function uses the unified session library for
+  initialization:</p>
+<ul class="Bl-bullet">
+  <li>Detects and opens media source (webcam, file, URL, test pattern)</li>
+  <li>Probes frame rate automatically</li>
+  <li>Initializes terminal with capability detection</li>
+  <li>Sets up audio if available and enabled</li>
+  <li>Shows splash screen animation</li>
+  <li>Runs the main render loop (frame capture &#x2192; ASCII conversion
+      &#x2192; display)</li>
+  <li>Performs proper cleanup on exit</li>
+</ul>
+<p class="Pp">All settings are read from command-line options (e.g., --file,
+    --url, --fps, etc.). No parameters are required - configuration is
+  global.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Return_Value"><a class="permalink" href="#Return_Value">Return
+  Value</a></h2>
+<ul class="Bl-bullet">
+  <li>0: Success (Ctrl+C, EOF, or snapshot complete)</li>
+  <li>Non-zero: Error code (ASCIICHAT_OK is 0, other codes indicate
+    failure)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Example_Flow"><a class="permalink" href="#Example_Flow">Example
+  Flow</a></h2>
+<pre>$ ascii-chat mirror --file video.mp4 --enable-audio
+1. Media source created (FFmpeg decoder for video.mp4)
+2. FPS detected (e.g., 24 FPS)
+3. Terminal initialized (e.g., 256-color palette)
+4. Audio initialized (from video.mp4)
+5. Splash screen shown (5 seconds with animation)
+6. Render loop starts:
+<br/>
+   - Read frame from FFmpeg
+<br/>
+   - Convert to ASCII (luminance + color codes)
+<br/>
+   - Render to terminal
+<br/>
+   - Sleep to maintain 24 FPS
+<br/>
+   - Poll keyboard for 'q' to quit
+7. On EOF or Ctrl+C:
+<br/>
+   - Destroy display, audio, media source
+<br/>
+   - Return 0</pre>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success (clean exit or Ctrl+C)
+<p class="Pp"></p>
+<p class="Pp">Non-zero error code on failure</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>src/mirror/main.c</b> - Full implementation
+<p class="Pp"></p>
+<p class="Pp"><b>src/common/session/client_like.h</b> - Shared
+  initialization</p>
+</div>
+<p class="Pp">Definition at line <b>298</b> of file <b>mirror/main.c</b>.</p>
+<pre>298                       {
+299
+300   // Configure mode-specific session settings
+301   session_client_like_config_t config = {
+302       .run_fn = mirror_run,
+303       .run_user_data = NULL,
+304       .kind = SESSION_CLIENT_LIKE_KIND_MIRROR,
+305       .keyboard_handler = mirror_keyboard_handler,
+306       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
+307   };
+308
+309   // Run shared initialization/teardown with mode-specific loop
+310   asciichat_error_t result = session_client_like_run(&amp;config);
+311   log_debug(&quot;session_client_like_run returned with result=%d&quot;, result);
+312
+313   if (result != ASCIICHAT_OK) {
+314     log_set_terminal_output(true);
+315     NOTICE(WARNING, &quot;MIRROR FAILED&quot;, &quot;%s&quot;, asciichat_error_format(&quot;Mirror mode failed&quot;, result));
+316   }
+317
+318   return (int)result;
+319 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>log_error</b>, <b>log_info</b>,
-    <b>SESSION_CLIENT_LIKE_KIND_MIRROR</b>, and
+<p class="Pp">References <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+    <b>log_debug</b>, <b>log_set_terminal_output()</b>, <b>mirror_main()</b>,
+    <b>NOTICE</b>, <b>SESSION_CLIENT_LIKE_KIND_MIRROR</b>, and
     <b>session_client_like_run()</b>.</p>
+<p class="Pp">Referenced by <b>mirror_main()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -384,7 +454,7 @@ $ ascii-chat mirror --file movie.mp4
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

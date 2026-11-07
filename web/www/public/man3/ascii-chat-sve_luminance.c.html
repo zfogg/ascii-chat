@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>luminance.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">luminance.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">luminance.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">luminance.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>glyph_shape_correlation_sve</b> (const int16_t samples[16],
+    const int16_t mask[16])
+  <br/>
+  void <b>simd_luminance_sve</b> (const <b>uint8_t</b> *rgb, <b>uint8_t</b>
+    *out, size_t width)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_glyph_shape_correlation_sve_(const_int16_t_samples_16_,_const_int16_t_mask_16_)"><a class="permalink" href="#int_glyph_shape_correlation_sve_(const_int16_t_samples_16_,_const_int16_t_mask_16_)">int
+  glyph_shape_correlation_sve (const int16_t samples[16], const int16_t
+  mask[16])</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>sve/luminance.c</b>.</p>
+<pre>7                                                                                    {
+8   int sum = 0;
+9   for (uint64_t i = 0; i &lt; 16; i += svcntw()) {
+10     svbool_t active = svwhilelt_b32(i, (uint64_t)16);
+11     svint32_t a = svld1sh_s32(active, samples + i);
+12     svint32_t b = svld1sh_s32(active, mask + i);
+13     sum += (int)svaddv_s32(active, svmul_s32_x(active, a, b));
+14   }
+15   return sum;
+16 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>glyph_shape_correlation_sve()</b>.</p>
+<p class="Pp">Referenced by <b>glyph_shape_correlation_sve()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_simd_luminance_sve_(const_"><a class="permalink" href="#void_simd_luminance_sve_(const_">void
+  simd_luminance_sve (const <b>uint8_t</b> * rgb, <b>uint8_t</b> * out, size_t
+  width)</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>sve/luminance.c</b>.</p>
+<pre>17                                                                         {
+18   const rgb_pixel_t *row = (const rgb_pixel_t *)rgb;
+19   size_t x = 0;
+20   while (x &lt; width) {
+21     // Widening consumes half the byte lanes; predicate the active halfword lanes.
+22     size_t process_count = width - x &lt; svcnth() ? width - x : svcnth();
+23     svbool_t pg_active = svwhilelt_b8((uint64_t)0, (uint64_t)process_count);
+24     // Retain the renderer's channel scratch layout before widening arithmetic.
+25     uint8_t r_array[256], g_array[256], b_array[256]; // Max SVE vector size
+26     for (int j = 0; j &lt; process_count; j++) {
+27       if (x + j &lt; width) {
+28         r_array[j] = row[x + j].r;
+29         g_array[j] = row[x + j].g;
+30         b_array[j] = row[x + j].b;
+31       }
+32     }
+33
+34     // Load into SVE vectors
+35     svuint8_t r_vec = svld1_u8(pg_active, r_array);
+36     svuint8_t g_vec = svld1_u8(pg_active, g_array);
+37     svuint8_t b_vec = svld1_u8(pg_active, b_array);
+38
+39     // Convert to 16-bit for arithmetic
+40     svuint16_t r_16 = svunpklo_u16(r_vec);
+41     svuint16_t g_16 = svunpklo_u16(g_vec);
+42     svuint16_t b_16 = svunpklo_u16(b_vec);
+43
+44     // Calculate luminance: (77*R + 150*G + 29*B + 128) &gt;&gt; 8
+45     svuint16_t luma = svmul_n_u16_x(svptrue_b16(), r_16, LUMA_RED);
+46     luma = svmla_n_u16_x(svptrue_b16(), luma, g_16, LUMA_GREEN);
+47     luma = svmla_n_u16_x(svptrue_b16(), luma, b_16, LUMA_BLUE);
+48     luma = svadd_n_u16_x(svptrue_b16(), luma, LUMA_THRESHOLD);
+49     luma = svlsr_n_u16_x(svptrue_b16(), luma, 8);
+50
+51     // Store u16 luminance values (SVE1 compatible - no SVE2 narrowing intrinsics)
+52     // After right-shift by 8, values are already in 0-255 range
+53     uint16_t luma_temp[256];
+54     svst1_u16(svptrue_b16(), luma_temp, luma);
+55
+56     // Convert to u8 array for ASCII lookup
+57     uint8_t luma_array[256];
+58     for (int j = 0; j &lt; process_count; j++) {
+59       luma_array[j] = (uint8_t)luma_temp[j];
+60     }
+61
+62     memcpy(out + x, luma_array, process_count);
+63     x += process_count;
+64   }
+65 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rgb_pixel_t::b</b>, <b>rgb_pixel_t::g</b>,
+    <b>LUMA_BLUE</b>, <b>LUMA_GREEN</b>, <b>LUMA_RED</b>, <b>LUMA_THRESHOLD</b>,
+    <b>rgb_pixel_t::r</b>, and <b>simd_luminance_sve()</b>.</p>
+<p class="Pp">Referenced by <b>simd_luminance_sve()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

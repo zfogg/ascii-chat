@@ -52,9 +52,11 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>TARGET_SAMPLE_RATE</b> 48000
+<p class="Pp">#define <b>MEDIA_FFMPEG_DECODER_DECODER_NAME_BUFFER_SIZE</b> 256
   <br/>
-  #define <b>TARGET_CHANNELS</b> 1
+  #define <b>TARGET_SAMPLE_RATE</b> 48000
+  <br/>
+  #define <b>TARGET_CHANNELS</b> 2
   <br/>
   #define <b>AVIO_BUFFER_SIZE</b> (64 * 1024)
   <br/>
@@ -68,16 +70,27 @@
     *path)
   <br/>
   Create FFmpeg decoder from file path. <b>ffmpeg_decoder_t</b> *
-    <b>ffmpeg_decoder_create_stdin</b> (void)
+    <b>ffmpeg_decoder_create_interruptible</b> (const char *path,
+    <b>bool</b>(*cancel)(void *), void *data)
+  <br/>
+  <b>ffmpeg_decoder_t</b> * <b>ffmpeg_decoder_create_with_request_options</b>
+    (const char *path, <b>bool</b>(*cancel)(void *), void *data, const char
+    *headers, const char *cookies, const char *proxy)
+  <br/>
+  <b>ffmpeg_decoder_t</b> * <b>ffmpeg_decoder_create_stdin</b> (void)
   <br/>
   Create FFmpeg decoder from stdin. void <b>ffmpeg_decoder_destroy</b>
     (<b>ffmpeg_decoder_t</b> *decoder)
   <br/>
-  Destroy FFmpeg decoder and free resources. <b>image_t</b> *
-    <b>ffmpeg_decoder_read_video_frame</b> (<b>ffmpeg_decoder_t</b> *decoder)
+  Destroy FFmpeg decoder and free resources. <b>ffmpeg_frame_status_t</b>
+    <b>ffmpeg_decoder_poll_video</b> (<b>ffmpeg_decoder_t</b> *decoder,
+    <b>image_t</b> **frame, <b>asciichat_error_context_t</b> *failure)
   <br/>
-  Decode next video frame. <b>asciichat_error_t</b>
-    <b>ffmpeg_decoder_start_prefetch</b> (<b>ffmpeg_decoder_t</b> *decoder)
+  <b>image_t</b> * <b>ffmpeg_decoder_read_video_frame</b>
+    (<b>ffmpeg_decoder_t</b> *decoder)
+  <br/>
+  <b>asciichat_error_t</b> <b>ffmpeg_decoder_start_prefetch</b>
+    (<b>ffmpeg_decoder_t</b> *decoder)
   <br/>
   Start the background frame prefetching thread. void
     <b>ffmpeg_decoder_stop_prefetch</b> (<b>ffmpeg_decoder_t</b> *decoder)
@@ -141,25 +154,363 @@
 <h2 class="Ss" id="_define_AVIO_BUFFER_SIZE___(64_*_1024)"><a class="permalink" href="#_define_AVIO_BUFFER_SIZE___(64_*_1024)">#define
   AVIO_BUFFER_SIZE (64 * 1024)</a></h2>
 <p class="Pp">AVIO buffer size for stdin reading (64KB)</p>
-<p class="Pp">Definition at line <b>56</b> of file
+<p class="Pp">Definition at line <b>61</b> of file
     <b>media/ffmpeg_decoder.c</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_create_stdin()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_TARGET_CHANNELS___1"><a class="permalink" href="#_define_TARGET_CHANNELS___1">#define
-  TARGET_CHANNELS 1</a></h2>
-<p class="Pp">Target audio channels (mono)</p>
-<p class="Pp">Definition at line <b>53</b> of file
+<h2 class="Ss" id="_define_MEDIA_FFMPEG_DECODER_DECODER_NAME_BUFFER_SIZE___256"><a class="permalink" href="#_define_MEDIA_FFMPEG_DECODER_DECODER_NAME_BUFFER_SIZE___256">#define
+  MEDIA_FFMPEG_DECODER_DECODER_NAME_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file
+  <b>media/ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by
+  <b>ffmpeg_decoder_create_with_request_options()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TARGET_CHANNELS___2"><a class="permalink" href="#_define_TARGET_CHANNELS___2">#define
+  TARGET_CHANNELS 2</a></h2>
+<p class="Pp">Target audio channels (interleaved stereo)</p>
+<p class="Pp">Definition at line <b>58</b> of file
     <b>media/ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create_stdin()</b>,
+    <b>ffmpeg_decoder_create_with_request_options()</b>, and
+    <b>ffmpeg_decoder_read_audio_samples()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_TARGET_SAMPLE_RATE___48000"><a class="permalink" href="#_define_TARGET_SAMPLE_RATE___48000">#define
   TARGET_SAMPLE_RATE 48000</a></h2>
 <p class="Pp">Target audio sample rate (48kHz for Opus compatibility)</p>
-<p class="Pp">Definition at line <b>50</b> of file
+<p class="Pp">Definition at line <b>55</b> of file
     <b>media/ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create_stdin()</b>, and
+    <b>ffmpeg_decoder_create_with_request_options()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>ffmpeg_decoder_t</b> * ffmpeg_decoder_create_interruptible
+  (const char * path, <b>bool</b>(* cancel )(void *), void * data)</h2>
+<p class="Pp">Definition at line <b>765</b> of file
+    <b>media/ffmpeg_decoder.c</b>.</p>
+<pre>765                                                                                                             {
+766   return ffmpeg_decoder_create_with_request_options(path, cancel, data, NULL, NULL, NULL);
+767 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ffmpeg_decoder_create_interruptible()</b>, and
+    <b>ffmpeg_decoder_create_with_request_options()</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>, and
-    <b>ffmpeg_decoder_create_stdin()</b>.</p>
+    <b>ffmpeg_decoder_create_interruptible()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ffmpeg_decoder_t</b> *
+  ffmpeg_decoder_create_with_request_options (const char * path, <b>bool</b>(*
+  cancel )(void *), void * data, const char * headers, const char * cookies,
+  const char * proxy)</h2>
+<p class="Pp">Definition at line <b>769</b> of file
+    <b>media/ffmpeg_decoder.c</b>.</p>
+<pre>771                                                                                 {
+772   ASCII_OTEL_SCOPE(FFMPEG_DECODER_CREATE_INTERRUPTIBLE);
+773   if (!path) {
+774     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Path is NULL&quot;);
+775     return NULL;
+776   }
+777
+778   // Suppress FFmpeg's verbose debug logging (H.264 codec warnings, etc.)
+779   // Only set this once, it's a global setting
+780   static bool ffmpeg_log_level_set = false;
+781   if (!ffmpeg_log_level_set) {
+782     av_log_set_level(AV_LOG_QUIET);                  // Suppress all FFmpeg logging
+783     av_log_set_callback(ffmpeg_silent_log_callback); // Install silent callback to discard all output
+784     ffmpeg_log_level_set = true;
+785   }
+786
+787   ffmpeg_decoder_t *decoder = SAFE_MALLOC(sizeof(ffmpeg_decoder_t), ffmpeg_decoder_t *);
+788   if (!decoder) {
+789     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate decoder&quot;);
+790     return NULL;
+791   }
+792
+793   memset(decoder, 0, sizeof(*decoder));
+794   decoder-&gt;should_exit_callback = cancel;
+795   decoder-&gt;exit_callback_user_data = data;
+796   decoder-&gt;format_ctx = avformat_alloc_context();
+797   if (!decoder-&gt;format_ctx) {
+798     SAFE_FREE(decoder);
+799     return NULL;
+800   }
+801   decoder-&gt;format_ctx-&gt;interrupt_callback.callback = ffmpeg_interrupt_callback;
+802   decoder-&gt;format_ctx-&gt;interrupt_callback.opaque = decoder;
+803   decoder-&gt;video_stream_idx = -1;
+804   decoder-&gt;audio_stream_idx = -1;
+805   decoder-&gt;last_video_pts = -1.0;
+806   decoder-&gt;last_audio_pts = -1.0;
+807
+808   // Capture FFmpeg's probing output (FFmpeg may write directly to either stream)
+809   int ret = 0;
+810   LOG_IO(&quot;ffmpeg&quot;, {
+811     // Configure FFmpeg options for HTTP streaming performance
+812     AVDictionary *options = NULL;
+813
+814     // FFmpeg accepts HTTP authorities that the application URL validator rejects.
+815     // Classify the protocol rather than validating the host for timeout settings.
+816     bool is_http = path &amp;&amp; (platform_strncasecmp(path, &quot;http://&quot;, sizeof(&quot;http://&quot;) - 1) == 0 ||
+817                             platform_strncasecmp(path, &quot;https://&quot;, sizeof(&quot;https://&quot;) - 1) == 0);
+818     asciichat_errno_scope_t url_scope = errno_scope_begin();
+819     bool is_url = is_http || (path &amp;&amp; strstr(path, &quot;://&quot;) &amp;&amp; url_is_valid(path));
+820     errno_scope_end(url_scope, ASCIICHAT_ERRNO_DISMISSED);
+821     if (is_url) {
+822       if (headers &amp;&amp; *headers)
+823         av_dict_set(&amp;options, &quot;headers&quot;, headers, 0);
+824       if (cookies &amp;&amp; *cookies)
+825         av_dict_set(&amp;options, &quot;cookies&quot;, cookies, 0);
+826       if (proxy)
+827         av_dict_set(&amp;options, &quot;http_proxy&quot;, proxy, 0);
+828       // Limit probing to 32KB for faster format detection
+829       av_dict_set(&amp;options, &quot;probesize&quot;, &quot;32768&quot;, 0);
+830       // Analyze for 100ms max to determine streams quickly
+831       av_dict_set(&amp;options, &quot;analyzeduration&quot;, &quot;100000&quot;, 0);
+832       // Enable auto-reconnection for interrupted connections
+833       av_dict_set(&amp;options, &quot;reconnect&quot;, &quot;1&quot;, 0);
+834       // Allow reconnection for streamed protocols
+835       av_dict_set(&amp;options, &quot;reconnect_streamed&quot;, &quot;1&quot;, 0);
+836       // Set reasonable I/O timeout (10 seconds)
+837       av_dict_set(&amp;options, &quot;rw_timeout&quot;, &quot;10000000&quot;, 0);
+838       // Enable HTTP persistent connection (keep-alive) for better performance
+839       av_dict_set(&amp;options, &quot;http_persistent&quot;, &quot;1&quot;, 0);
+840       // Reduce connect timeout to fail faster if server is unreachable
+841       av_dict_set(&amp;options, &quot;connect_timeout&quot;, &quot;5000000&quot;, 0);
+842     }
+843
+844     // Open input file
+845     ret = traced_format_open(&amp;decoder-&gt;format_ctx, path, NULL, &amp;options);
+846     av_dict_free(&amp;options); // Free options dictionary
+847
+848     if (ret &gt;= 0) {
+849       // Find stream info
+850       if (traced_format_probe(decoder-&gt;format_ctx, NULL) &lt; 0) {
+851         ret = -1;
+852       }
+853     }
+854   });
+855
+856   if (ret &lt; 0) {
+857     if (ret == -1) {
+858       SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to find stream info&quot;);
+859     } else {
+860       SET_ERRNO(ERROR_MEDIA_OPEN, &quot;Failed to open media file: %s&quot;, path);
+861     }
+862     if (decoder-&gt;format_ctx) {
+863       avformat_close_input(&amp;decoder-&gt;format_ctx);
+864     }
+865     SAFE_FREE(decoder);
+866     return NULL;
+867   }
+868
+869   // Install interrupt callback to allow seeking to interrupt long traced_packet_read() calls
+870   // Do this AFTER finding stream info to ensure format context is fully initialized
+871   if (decoder-&gt;format_ctx) {
+872     decoder-&gt;format_ctx-&gt;interrupt_callback.callback = ffmpeg_interrupt_callback;
+873     decoder-&gt;format_ctx-&gt;interrupt_callback.opaque = decoder;
+874   }
+875
+876   // Open video codec
+877   asciichat_error_t err = open_optional_codec_context(decoder-&gt;format_ctx, AVMEDIA_TYPE_VIDEO,
+878                                                       &amp;decoder-&gt;video_stream_idx, &amp;decoder-&gt;video_codec_ctx);
+879   if (err != ASCIICHAT_OK) {
+880     ffmpeg_decoder_destroy(decoder);
+881     return NULL;
+882   }
+883
+884   // Open audio codec - audio is enabled by default (no option needed)
+885   // Always try to open audio codec, don't rely on GET_OPTION(audio_enabled) which has a default issue
+886   err = open_optional_codec_context(decoder-&gt;format_ctx, AVMEDIA_TYPE_AUDIO, &amp;decoder-&gt;audio_stream_idx,
+887                                     &amp;decoder-&gt;audio_codec_ctx);
+888   if (err != ASCIICHAT_OK) {
+889     ffmpeg_decoder_destroy(decoder);
+890     return NULL;
+891   }
+892
+893   // Require at least one stream
+894   if (decoder-&gt;video_stream_idx &lt; 0 &amp;&amp; decoder-&gt;audio_stream_idx &lt; 0) {
+895     SET_ERRNO(ERROR_MEDIA_DECODE, &quot;No video or audio streams found&quot;);
+896     ffmpeg_decoder_destroy(decoder);
+897     return NULL;
+898   }
+899
+900   // Allocate frame and packet
+901   decoder-&gt;frame = av_frame_alloc();
+902   decoder-&gt;packet = av_packet_alloc();
+903   if (!decoder-&gt;frame || !decoder-&gt;packet) {
+904     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate frame/packet&quot;);
+905     ffmpeg_decoder_destroy(decoder);
+906     return NULL;
+907   }
+908
+909   // Initialize swscale context for video if present
+910   if (decoder-&gt;video_codec_ctx) {
+911     // Validate codec context has valid dimensions and pixel format
+912     // For HTTP streams, these might not be valid until first frame is read
+913     if (decoder-&gt;video_codec_ctx-&gt;width &lt;= 0 || decoder-&gt;video_codec_ctx-&gt;height &lt;= 0) {
+914       log_warn(&quot;Video codec has invalid dimensions (%dx%d), will initialize swscale on first frame&quot;,
+915                decoder-&gt;video_codec_ctx-&gt;width, decoder-&gt;video_codec_ctx-&gt;height);
+916       // Don't create swscale context yet - will create it lazily on first frame read
+917     } else if (decoder-&gt;video_codec_ctx-&gt;pix_fmt == AV_PIX_FMT_NONE) {
+918       log_warn(&quot;Video codec has invalid pixel format, will initialize swscale on first frame&quot;);
+919       // Don't create swscale context yet - will create it lazily on first frame read
+920     } else {
+921       // Create swscale context with valid parameters
+922       LOG_IO(&quot;swscaler&quot;, {
+923         decoder-&gt;sws_ctx =
+924             sws_getContext(decoder-&gt;video_codec_ctx-&gt;width, decoder-&gt;video_codec_ctx-&gt;height,
+925                            decoder-&gt;video_codec_ctx-&gt;pix_fmt, decoder-&gt;video_codec_ctx-&gt;width,
+926                            decoder-&gt;video_codec_ctx-&gt;height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+927       });
+928       if (!decoder-&gt;sws_ctx) {
+929         SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to create swscale context&quot;);
+930         ffmpeg_decoder_destroy(decoder);
+931         return NULL;
+932       }
+933     }
+934   }
+935
+936   // Initialize swresample context for audio if present
+937   if (decoder-&gt;audio_codec_ctx) {
+938     // Store output sample rate for position tracking
+939     decoder-&gt;audio_sample_rate = TARGET_SAMPLE_RATE;
+940
+941     // Allocate resampler context
+942     decoder-&gt;swr_ctx = swr_alloc();
+943     if (!decoder-&gt;swr_ctx) {
+944       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate swresample context&quot;);
+945       ffmpeg_decoder_destroy(decoder);
+946       return NULL;
+947     }
+948
+949     // Set options
+950     av_opt_set_chlayout(decoder-&gt;swr_ctx, &quot;in_chlayout&quot;, &amp;decoder-&gt;audio_codec_ctx-&gt;ch_layout, 0);
+951     av_opt_set_int(decoder-&gt;swr_ctx, &quot;in_sample_rate&quot;, decoder-&gt;audio_codec_ctx-&gt;sample_rate, 0);
+952     av_opt_set_sample_fmt(decoder-&gt;swr_ctx, &quot;in_sample_fmt&quot;, decoder-&gt;audio_codec_ctx-&gt;sample_fmt, 0);
+953
+954     AVChannelLayout out_ch_layout = AV_CHANNEL_LAYOUT_STEREO;
+955     av_opt_set_chlayout(decoder-&gt;swr_ctx, &quot;out_chlayout&quot;, &amp;out_ch_layout, 0);
+956     av_opt_set_int(decoder-&gt;swr_ctx, &quot;out_sample_rate&quot;, TARGET_SAMPLE_RATE, 0);
+957     av_opt_set_sample_fmt(decoder-&gt;swr_ctx, &quot;out_sample_fmt&quot;, AV_SAMPLE_FMT_FLT, 0);
+958
+959     // A mono source stays centered at unity gain in the stereo pipeline.
+960     if (decoder-&gt;audio_codec_ctx-&gt;ch_layout.nb_channels == 1) {
+961       const double matrix[] = {1.0, 1.0};
+962       swr_set_matrix(decoder-&gt;swr_ctx, matrix, 1);
+963     }
+964     // Initialize
+965     if (swr_init(decoder-&gt;swr_ctx) &lt; 0) {
+966       SET_ERRNO(ERROR_MEDIA_DECODE, &quot;Failed to initialize swresample context&quot;);
+967       ffmpeg_decoder_destroy(decoder);
+968       return NULL;
+969     }
+970
+971     // Allocate audio buffer (10 seconds worth)
+972     decoder-&gt;audio_buffer_size = TARGET_SAMPLE_RATE * TARGET_CHANNELS * 10;
+973     decoder-&gt;audio_buffer = SAFE_MALLOC(decoder-&gt;audio_buffer_size * sizeof(float), float *);
+974     if (!decoder-&gt;audio_buffer) {
+975       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate audio buffer&quot;);
+976       ffmpeg_decoder_destroy(decoder);
+977       return NULL;
+978     }
+979   }
+980
+981   // Initialize video frame prefetching system (for YouTube streaming)
+982   if (decoder-&gt;video_stream_idx &gt;= 0) {
+983     int width = decoder-&gt;video_codec_ctx-&gt;width;
+984     int height = decoder-&gt;video_codec_ctx-&gt;height;
+985
+986     // Create two prefetch image buffers for double-buffering
+987     decoder-&gt;prefetch_image_a = image_new((size_t)width, (size_t)height);
+988     decoder-&gt;prefetch_image_b = image_new((size_t)width, (size_t)height);
+989     if (!decoder-&gt;prefetch_image_a || !decoder-&gt;prefetch_image_b) {
+990       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate prefetch image buffers&quot;);
+991       ffmpeg_decoder_destroy(decoder);
+992       return NULL;
+993     }
+994
+995     decoder-&gt;current_prefetch_image = decoder-&gt;prefetch_image_a;
+996     decoder-&gt;prefetch_frame_ready = false;
+997
+998     // Initialize prefetch mutex
+999     if (mutex_init(&amp;decoder-&gt;prefetch_mutex, &quot;ffmpeg_prefetch&quot;) != 0) {
+1000       SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize prefetch mutex&quot;);
+1001       ffmpeg_decoder_destroy(decoder);
+1002       return NULL;
+1003     }
+1004
+1005     if (cond_init(&amp;decoder-&gt;prefetch_cond, &quot;ffmpeg_prefetch&quot;) != 0) {
+1006       SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize prefetch condition variable&quot;);
+1007       mutex_destroy(&amp;decoder-&gt;prefetch_mutex);
+1008       ffmpeg_decoder_destroy(decoder);
+1009       return NULL;
+1010     }
+1011
+1012     if (mutex_init(&amp;decoder-&gt;read_frame_mutex, &quot;ffmpeg_read_frame&quot;) != 0) {
+1013       SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize read_frame mutex&quot;);
+1014       mutex_destroy(&amp;decoder-&gt;prefetch_mutex);
+1015       cond_destroy(&amp;decoder-&gt;prefetch_cond);
+1016       ffmpeg_decoder_destroy(decoder);
+1017       return NULL;
+1018     }
+1019
+1020     decoder-&gt;prefetch_thread_running = false;
+1021     decoder-&gt;prefetch_should_stop = false;
+1022   }
+1023
+1024   log_debug(&quot;FFmpeg decoder opened: %s (video=%s, audio=%s)&quot;, path, decoder-&gt;video_stream_idx &gt;= 0 ? &quot;yes&quot; : &quot;no&quot;,
+1025             decoder-&gt;audio_stream_idx &gt;= 0 ? &quot;yes&quot; : &quot;no&quot;);
+1026
+1027   char decoder_name[MEDIA_FFMPEG_DECODER_DECODER_NAME_BUFFER_SIZE];
+1028   snprintf(decoder_name, sizeof(decoder_name), &quot;%s&quot;, path);
+1029   NAMED_REGISTER_FFMPEG_DECODER(decoder, decoder_name, NULL);
+1030   NAMED_REGISTER_ATOMIC(&amp;decoder-&gt;eof_reached, &quot;ffmpeg_eof&quot;, decoder);
+1031
+1032   return decoder;
+1033 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>,
+    <b>ASCIICHAT_ERRNO_DISMISSED</b>, <b>ASCIICHAT_OK</b>,
+    <b>ffmpeg_decoder_t::audio_buffer</b>,
+    <b>ffmpeg_decoder_t::audio_buffer_size</b>,
+    <b>ffmpeg_decoder_t::audio_codec_ctx</b>,
+    <b>ffmpeg_decoder_t::audio_sample_rate</b>,
+    <b>ffmpeg_decoder_t::audio_stream_idx</b>, <b>cond_destroy()</b>,
+    <b>cond_init()</b>, <b>ffmpeg_decoder_t::current_prefetch_image</b>,
+    <b>ffmpeg_decoder_t::eof_reached</b>, <b>errno_scope_begin()</b>,
+    <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEDIA_DECODE</b>, <b>ERROR_MEDIA_OPEN</b>, <b>ERROR_MEMORY</b>,
+    <b>ffmpeg_decoder_create_with_request_options()</b>,
+    <b>ffmpeg_decoder_destroy()</b>, <b>ffmpeg_decoder_t::format_ctx</b>,
+    <b>ffmpeg_decoder_t::frame</b>, <b>image_new()</b>,
+    <b>ffmpeg_decoder_t::last_audio_pts</b>,
+    <b>ffmpeg_decoder_t::last_video_pts</b>, <b>log_debug</b>, <b>LOG_IO</b>,
+    <b>log_warn</b>, <b>MEDIA_FFMPEG_DECODER_DECODER_NAME_BUFFER_SIZE</b>,
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER_ATOMIC</b>,
+    <b>NAMED_REGISTER_FFMPEG_DECODER</b>, <b>ffmpeg_decoder_t::packet</b>,
+    <b>platform_strncasecmp()</b>, <b>ffmpeg_decoder_t::prefetch_cond</b>,
+    <b>ffmpeg_decoder_t::prefetch_frame_ready</b>,
+    <b>ffmpeg_decoder_t::prefetch_image_a</b>,
+    <b>ffmpeg_decoder_t::prefetch_image_b</b>,
+    <b>ffmpeg_decoder_t::prefetch_mutex</b>,
+    <b>ffmpeg_decoder_t::prefetch_should_stop</b>,
+    <b>ffmpeg_decoder_t::prefetch_thread_running</b>,
+    <b>ffmpeg_decoder_t::read_frame_mutex</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>ffmpeg_decoder_t::swr_ctx</b>,
+    <b>ffmpeg_decoder_t::sws_ctx</b>, <b>TARGET_CHANNELS</b>,
+    <b>TARGET_SAMPLE_RATE</b>, <b>url_is_valid()</b>,
+    <b>ffmpeg_decoder_t::video_codec_ctx</b>, and
+    <b>ffmpeg_decoder_t::video_stream_idx</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create_interruptible()</b>,
+    <b>ffmpeg_decoder_create_with_request_options()</b>, and
+    <b>media_source_create_interruptible()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -169,7 +520,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

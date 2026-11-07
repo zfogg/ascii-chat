@@ -47,7 +47,8 @@
   <br/>
   Sign a message using GPG key and return OpenPGP signature. int
     <b>gpg_sign_detached_ed25519</b> (const char *key_id, const <b>uint8_t</b>
-    *message, size_t message_len, <b>uint8_t</b> signature_out[64])
+    *message, size_t message_len, <b>uint8_t</b>
+    signature_out[<b>ED25519_SIGNATURE_SIZE</b>])
   <br/>
   Sign message with GPG and extract raw Ed25519 signature.
   <br/>
@@ -70,7 +71,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

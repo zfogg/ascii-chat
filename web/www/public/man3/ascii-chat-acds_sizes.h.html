@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>acds_sizes.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">acds_sizes.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">acds_sizes.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">acds_sizes.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>ACIP_MAX_SESSION_STRING_LEN</b> 48
+  <br/>
+  #define <b>ACIP_ADDRESS_SIZE</b> 64
+  <br/>
+  #define <b>ACIP_PASSWORD_SIZE</b> 128
+  <br/>
+  #define <b>ACIP_PASSWORD_HASH_SIZE</b> 128
+  <br/>
+  #define <b>ACIP_ERROR_MESSAGE_SIZE</b> 128
+  <br/>
+  #define <b>ACIP_SIGNAL_ERROR_MESSAGE_SIZE</b> 256
+  <br/>
+  #define <b>ACIP_TURN_AUTH_SIZE</b> 128
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ACIP_ADDRESS_SIZE___64"><a class="permalink" href="#_define_ACIP_ADDRESS_SIZE___64">#define
+  ACIP_ADDRESS_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>acds_sizes.h</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_get_elected_host()</b>, and
+    <b>session_consensus_on_election_result()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ACIP_ERROR_MESSAGE_SIZE___128"><a class="permalink" href="#_define_ACIP_ERROR_MESSAGE_SIZE___128">#define
+  ACIP_ERROR_MESSAGE_SIZE 128</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>acds_sizes.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ACIP_MAX_SESSION_STRING_LEN___48"><a class="permalink" href="#_define_ACIP_MAX_SESSION_STRING_LEN___48">#define
+  ACIP_MAX_SESSION_STRING_LEN 48</a></h2>
+<p class="Pp">Fixed ACDS wire storage widths in bytes. Text fields retain their
+    existing padding/NUL convention; changing these widths requires a protocol
+    change. They are distinct from generated session-name and general DNS
+    limits.</p>
+<p class="Pp">Definition at line <b>6</b> of file <b>acds_sizes.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_create_key_set_collect()</b>,
+    <b>acds_sign_session_join()</b>, <b>acds_verify_session_join()</b>,
+    <b>acip_server_validate_session_join()</b>, and
+    <b>database_session_join()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ACIP_PASSWORD_HASH_SIZE___128"><a class="permalink" href="#_define_ACIP_PASSWORD_HASH_SIZE___128">#define
+  ACIP_PASSWORD_HASH_SIZE 128</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>acds_sizes.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ACIP_PASSWORD_SIZE___128"><a class="permalink" href="#_define_ACIP_PASSWORD_SIZE___128">#define
+  ACIP_PASSWORD_SIZE 128</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>acds_sizes.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ACIP_SIGNAL_ERROR_MESSAGE_SIZE___256"><a class="permalink" href="#_define_ACIP_SIGNAL_ERROR_MESSAGE_SIZE___256">#define
+  ACIP_SIGNAL_ERROR_MESSAGE_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>acds_sizes.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ACIP_TURN_AUTH_SIZE___128"><a class="permalink" href="#_define_ACIP_TURN_AUTH_SIZE___128">#define
+  ACIP_TURN_AUTH_SIZE 128</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>acds_sizes.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

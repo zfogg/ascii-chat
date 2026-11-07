@@ -254,10 +254,10 @@ ascii-chat client --audio-source call --fft
 <div class="Bd-indent"><b>Examples:</b>
 <div class="Bd-indent">
 <pre>(empty/unset) start new session. generates a session string to give someone to connect to you.
-grownup-grave-tour
-sunrise-partner-puff
-freelance-aspect-babe
-tramontane-absurd-weave</pre>
+lawful-fame-constantine
+healthy-whistle-chef
+auld-far-journey
+earlier-crime-operator</pre>
 </div>
 </div>
 <dl class="Bl-tag">
@@ -350,43 +350,43 @@ https://example.com/stream.m3u8</pre>
   <dd>Local MCP tools over Streamable HTTP</dd>
   <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
   <dd>Start new session (share the session string)</dd>
-  <dt><b>ascii-chat majestic-bitter-zebra</b></dt>
+  <dt><b>ascii-chat craggy-sheridan-seed</b></dt>
   <dd>Join a session using the session string</dd>
-  <dt><b>ascii-chat shabby-nap-ultrasound --file video.mp4</b></dt>
+  <dt><b>ascii-chat flash-bathe-babe --file video.mp4</b></dt>
   <dd>Join session and stream from local video file</dd>
-  <dt><b>ascii-chat hypocritical-pier-motorbike --url
+  <dt><b>ascii-chat risky-cramp-munch --url
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ'</b></dt>
   <dd>Join session and stream from YouTube video</dd>
-  <dt><b>ascii-chat behind-titus-ship -f -</b></dt>
+  <dt><b>ascii-chat jolly-fella-artist -f -</b></dt>
   <dd>Join session and stream media from stdin</dd>
-  <dt><b>ascii-chat chronic-prisoner-soap --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat kinematic-honk-bypass --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Join session with custom ASCII palette characters</dd>
-  <dt><b>ascii-chat shameful-scorpion-monster --discovery-service
+  <dt><b>ascii-chat perky-individual-amateur --discovery-service
     --discovery-service-port 27225</b></dt>
   <dd>Join session via custom discovery server</dd>
-  <dt><b>ascii-chat server</b></dt>
+  <dt><b>ascii-chat discovery-service</b></dt>
   <dd>Start on localhost (127.0.0.1 and ::1)</dd>
   <dt><b>ascii-chat discovery-service 0.0.0.0</b></dt>
   <dd>Start on all IPv4 interfaces</dd>
-  <dt><b>ascii-chat server 0.0.0.0 ::</b></dt>
+  <dt><b>ascii-chat discovery-service 0.0.0.0 ::</b></dt>
   <dd>Start on all IPv4 and IPv6 interfaces (dual-stack)</dd>
-  <dt><b>ascii-chat discovery-service --port 8080</b></dt>
+  <dt><b>ascii-chat server --port 8080</b></dt>
   <dd>Start on custom port</dd>
   <dt><b>ascii-chat server --key ~/.ssh/id_ed25519 --discovery</b></dt>
   <dd>Start with identity key and discovery registration</dd>
-  <dt><b>ascii-chat client --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
+  <dt><b>ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
   <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
-  <dt><b>ascii-chat client --url 'https://www.twitch.tv/ludwig'</b></dt>
+  <dt><b>ascii-chat mirror --url 'https://www.twitch.tv/ludwig'</b></dt>
   <dd>Stream Ludwig from videogames on Twitch</dd>
-  <dt><b>ascii-chat client -f video.mp4</b></dt>
+  <dt><b>ascii-chat mirror -f video.mp4</b></dt>
   <dd>Stream from local video file</dd>
-  <dt><b>ascii-chat mirror --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Custom palette characters to use. UTF-8 is allowed.</dd>
   <dt><b>ascii-chat client --snapshot</b></dt>
   <dd>Print ascii art for --snapshot-delay's value of seconds then print the
       last frame and exit. In snapshot mode, --width, --height, and --color are
       NOT autodetected when piping stdin in or redirecting output.</dd>
-  <dt><b>ascii-chat mirror --color-filter cyan --palette cool</b></dt>
+  <dt><b>ascii-chat client --color-filter cyan --palette cool</b></dt>
   <dd>Apply cyan color filter and cool palette</dd>
   <dt><b>ascii-chat client example.com</b></dt>
   <dd>Connect to remote server</dd>
@@ -443,15 +443,16 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt><b>--server <i>BOOLEAN</i></b></dt>
   <dd>Restrict MCP capabilities for cloud deployment (no webcam or
-      caller-selected filesystem paths). (default: false)</dd>
+      caller-selected filesystem paths). (default: false) (modes:
+    mcp-server)</dd>
   <dt id="transport"><a class="permalink" href="#transport"><b>--transport
     <i>STRING</i></b></a></dt>
   <dd>MCP transport: http or stdio (default). --server independently restricts
-      cloud capabilities. (default: stdio)</dd>
+      cloud capabilities. (default: stdio) (modes: mcp-server)</dd>
   <dt id="http-origin"><a class="permalink" href="#http-origin"><b>--http-origin
     <i>STRING</i></b></a></dt>
   <dd>Allowed browser Origin for MCP HTTP requests. (default:
-      https://mcp.ascii-chat.com)</dd>
+      https://mcp.ascii-chat.com) (modes: mcp-server)</dd>
 </dl>
 </section>
 <section class="Ss">
@@ -470,7 +471,8 @@ https://example.com/stream.m3u8</pre>
   <dt id="status-screen"><a class="permalink" href="#status-screen"><b>--status-screen
     <i>BOOLEAN</i></b></a></dt>
   <dd>Enable or disable live status screen display. Overrides non-interactive
-      terminal checks. (default: true) (modes: server, discovery-service)</dd>
+      terminal checks. (default: true) (modes: server, discovery-service,
+      mcp-server)</dd>
   <dt id="keepawake"><a class="permalink" href="#keepawake"><b>--keepawake
     <i>BOOLEAN</i></b></a></dt>
   <dd>Explicitly enable system sleep prevention (keepawake mode). (default:
@@ -484,7 +486,7 @@ https://example.com/stream.m3u8</pre>
   <dt id="no-check-update"><a class="permalink" href="#no-check-update"><b>--no-check-update
     <i>BOOLEAN</i></b></a></dt>
   <dd>Disable automatic update checks at startup. (default: false) (modes:
-      global, client, server, mirror, discovery-service)</dd>
+      global, client, server, mirror, discovery-service, mcp-server)</dd>
 </dl>
 </section>
 <section class="Ss">
@@ -497,7 +499,8 @@ https://example.com/stream.m3u8</pre>
   <dt id="otel-endpoint"><a class="permalink" href="#otel-endpoint"><b>--otel-endpoint
     <i>VALUE</i></b></a></dt>
   <dd>Collector base URL; enables telemetry. OTEL_EXPORTER_OTLP_PROTOCOL selects
-      http/protobuf or grpc. (mode: global)</dd>
+      http/protobuf or grpc. (default: http://127.0.0.1:24318) (mode:
+    global)</dd>
   <dt id="otel-ca-file"><a class="permalink" href="#otel-ca-file"><b>--otel-ca-file
     <i>VALUE</i></b></a></dt>
   <dd>PEM CA bundle for HTTPS telemetry; replaces system roots. (mode:
@@ -520,8 +523,8 @@ https://example.com/stream.m3u8</pre>
     global)</dd>
   <dt id="otel-timeout"><a class="permalink" href="#otel-timeout"><b>--otel-timeout
     <i>VALUE</i></b></a></dt>
-  <dd>Export and shutdown flush timeout in milliseconds. (default: 5000) (mode:
-      global)</dd>
+  <dd>Export timeout in milliseconds; shutdown flush is capped at 400 ms.
+      (default: 5000) (mode: global)</dd>
   <dt id="otel-queue-capacity"><a class="permalink" href="#otel-queue-capacity"><b>--otel-queue-capacity
     <i>VALUE</i></b></a></dt>
   <dd>Bounded exporter queue capacity (power of two). (default: 4096) (mode:
@@ -535,12 +538,12 @@ https://example.com/stream.m3u8</pre>
     <i>SECONDS</i></b></a></dt>
   <dd>Write plain statistics to stdout (stderr for MCP) every N seconds (0
       disables). Press = for live statistics. (default: 0) (modes: server,
-      discovery-service)</dd>
+      discovery-service, mcp-server)</dd>
   <dt id="L,"><a class="permalink" href="#L,"><b>-L, --log-file
     <i>FILE</i></b></a></dt>
-  <dd>Set FILE as path for log file (default: $TMPDIR/ascii-chat/ or
-      %TEMP%scii-chat; filenames: server.log, client.log, mirror.log, acds.log,
-      discovery.log). (mode: global)</dd>
+  <dd>Set FILE as path for log file (default: current directory; filenames:
+      server.log, client.log, mirror.log, acds.log, discovery.log). (modes:
+      default, client, server, mirror, discovery-service)</dd>
   <dt id="log-level"><a class="permalink" href="#log-level"><b>--log-level
     <i>VALUE</i></b></a></dt>
   <dd>Set log level: dev, debug, info, warn, error, fatal. Logs at or above this
@@ -606,7 +609,8 @@ https://example.com/stream.m3u8</pre>
   <dd>Terminal color level (auto, none, 16, 256, truecolor). This controls what
       ANSI escape codes ascii-chat will use for console logging and display
       output if color is enabled. Press 'c' during rendering to cycle. See also
-      --color. (modes: global, client, server, mirror, discovery-service)</dd>
+      --color. (modes: global, client, server, mirror, discovery-service,
+      mcp-server)</dd>
   <dt id="show-capabilities"><a class="permalink" href="#show-capabilities"><b>--show-capabilities</b></a></dt>
   <dd>Show detected terminal capabilities and exit (useful for debugging and
       scripting). (mode: global)</dd>
@@ -614,7 +618,7 @@ https://example.com/stream.m3u8</pre>
     <i>VALUE</i></b></a></dt>
   <dd>UTF-8 support setting: 'auto' (default, auto-detect), 'true' (force UTF-8
       on), or 'false' (force UTF-8 off). (modes: global, client, server, mirror,
-      discovery-service)</dd>
+      discovery-service, mcp-server)</dd>
   <dt id="strip-ansi"><a class="permalink" href="#strip-ansi"><b>--strip-ansi
     <i>BOOLEAN</i></b></a></dt>
   <dd>Strip ANSI escape sequences from output before printing. Useful for
@@ -686,6 +690,15 @@ https://example.com/stream.m3u8</pre>
       your client. These characters only will be used to create the rendered
       output. Can be UTF-8 content (see --utf8). (modes: default, client,
       mirror)</dd>
+  <dt id="renderer"><a class="permalink" href="#renderer"><b>--renderer
+    <i>luminance|glyph</i></b></a></dt>
+  <dd>Character selection: luminance (default) or experimental glyph matching.
+      Glyph supports printable ASCII palettes; Unicode palettes use luminance.
+      (modes: default, client, mirror)</dd>
+  <dt id="stabilize"><a class="permalink" href="#stabilize"><b>--stabilize
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Reduce character and color flicker between video frames in all render
+      modes. (default: false) (modes: default, client, mirror)</dd>
   <dt id="stretch"><a class="permalink" href="#stretch"><b>--stretch
     <i>BOOLEAN</i></b></a></dt>
   <dd>Allow aspect ratio distortion of image for rendering ascii output. This
@@ -693,8 +706,8 @@ https://example.com/stream.m3u8</pre>
       (modes: default, client, mirror)</dd>
   <dt id="fps"><a class="permalink" href="#fps"><b>--fps
     <i>INTEGER</i></b></a></dt>
-  <dd>Target framerate for rendering (1-144). (default: 60) (modes: default,
-      client, mirror)</dd>
+  <dd>Target framerate for rendering (0 = auto, 1-144). (default: 0) (modes:
+      default, client, mirror)</dd>
   <dt id="fps-counter"><a class="permalink" href="#fps-counter"><b>--fps-counter
     <i>BOOLEAN</i></b></a></dt>
   <dd>Show FPS counter overlay in top-right corner. Press '-' to toggle.
@@ -768,7 +781,7 @@ https://example.com/stream.m3u8</pre>
   <dt id="audio-spectral-mixer"><a class="permalink" href="#audio-spectral-mixer"><b>--audio-spectral-mixer
     <i>BOOLEAN</i></b></a></dt>
   <dd>Opt in to FFTW processing of the entire server mix, including media and
-      test signals (default off). (default: false) (modes: default, server)</dd>
+      test signals (default off). (default: false) (modes: server)</dd>
   <dt id="audio-spectral-gate"><a class="permalink" href="#audio-spectral-gate"><b>--audio-spectral-gate
     <i>BOOLEAN</i></b></a></dt>
   <dd>Enable adaptive spectral noise reduction with --spectral-audio. (default:
@@ -827,6 +840,10 @@ https://example.com/stream.m3u8</pre>
     <i>VALUE</i></b></a></dt>
   <dd>Select local audio capture and media playback: auto, mic, media, both, or
       remote. (modes: default, client, mirror)</dd>
+  <dt id="audio-analysis"><a class="permalink" href="#audio-analysis"><b>--audio-analysis
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Enable audio analysis (debug). (default: false) (modes: default,
+    client)</dd>
   <dt id="no-audio-playback"><a class="permalink" href="#no-audio-playback"><b>--no-audio-playback
     <i>BOOLEAN</i></b></a></dt>
   <dd>Disable speakers output. (default: false) (modes: default, client,
@@ -911,8 +928,8 @@ https://example.com/stream.m3u8</pre>
       /path/to/font.ttf. (modes: default, client, mirror)</dd>
   <dt id="render-font-size"><a class="permalink" href="#render-font-size"><b>--render-font-size
     <i>SIZE</i></b></a></dt>
-  <dd>Font size in points for render-file output (default: 12.0, must be &gt; 0,
-      fractional sizes supported e.g. 10.5). (default: 12.00) (modes: default,
+  <dd>Font size in points for render-file output (default: 0, auto-scales video;
+      positive fractional sizes supported). (default: 0.00) (modes: default,
       client, mirror)</dd>
 </dl>
 </section>
@@ -921,14 +938,16 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt><b>--address <i>STRING</i></b></dt>
   <dd>MCP bind address (IPv4 or IPv6); also accepts positional bind addresses.
-      (default: 127.0.0.1)</dd>
+      (default: 127.0.0.1) (modes: mcp-server)</dd>
   <dt id="address6"><a class="permalink" href="#address6"><b>--address6
     <i>STRING</i></b></a></dt>
-  <dd>Additional MCP IPv6 bind address. .TP <b>-p, --port <i>VALUE</i></b> Port
-      to host a server or discovery-service on, or port to connect to a server
-      as a client (default: 27224 for server/client, 27225 for
+  <dd>Additional MCP IPv6 bind address. (modes: mcp-server)</dd>
+  <dt id="p,"><a class="permalink" href="#p,"><b>-p, --port
+    <i>VALUE</i></b></a></dt>
+  <dd>Port to host a server or discovery-service on, or port to connect to a
+      server as a client (default: 27224 for server/client, 27225 for
       discovery-service, 27228 for mcp-server). (modes: default, client, server,
-      discovery-service)</dd>
+      discovery-service, mcp-server)</dd>
   <dt id="websocket-port"><a class="permalink" href="#websocket-port"><b>--websocket-port
     <i>INTEGER</i></b></a></dt>
   <dd>WebSocket server port (default: 27226 for server, 27227 for
@@ -936,13 +955,18 @@ https://example.com/stream.m3u8</pre>
       server, discovery-service)</dd>
   <dt id="http-tls-cert"><a class="permalink" href="#http-tls-cert"><b>--http-tls-cert
     <i>STRING</i></b></a></dt>
-  <dd>HTTP TLS certificate file path for MCP HTTPS. .TP <b>--http-tls-key
-      <i>STRING</i></b> HTTP TLS private key file path for MCP HTTPS. .TP
-      <b>--http-tls-key-password <i>STRING</i></b> HTTP TLS private key password
-      (use ASCII_CHAT_HTTP_TLS_KEY_PASSWORD). .TP <b>--websocket-tls-cert
-      <i>STRING</i></b> WebSocket TLS certificate file path for WSS (secure
-      WebSocket) support (server/discovery-service only). (modes: server,
-      discovery-service)</dd>
+  <dd>HTTP TLS certificate file path for MCP HTTPS. (modes: mcp-server)</dd>
+  <dt id="http-tls-key"><a class="permalink" href="#http-tls-key"><b>--http-tls-key
+    <i>STRING</i></b></a></dt>
+  <dd>HTTP TLS private key file path for MCP HTTPS. (modes: mcp-server)</dd>
+  <dt id="http-tls-key-password"><a class="permalink" href="#http-tls-key-password"><b>--http-tls-key-password
+    <i>STRING</i></b></a></dt>
+  <dd>HTTP TLS private key password (use ASCII_CHAT_HTTP_TLS_KEY_PASSWORD).
+      (modes: mcp-server)</dd>
+  <dt id="websocket-tls-cert"><a class="permalink" href="#websocket-tls-cert"><b>--websocket-tls-cert
+    <i>STRING</i></b></a></dt>
+  <dd>WebSocket TLS certificate file path for WSS (secure WebSocket) support
+      (server/discovery-service only). (modes: server, discovery-service)</dd>
   <dt id="websocket-tls-key"><a class="permalink" href="#websocket-tls-key"><b>--websocket-tls-key
     <i>STRING</i></b></a></dt>
   <dd>WebSocket TLS private key file path for WSS (secure WebSocket) support
@@ -955,7 +979,7 @@ https://example.com/stream.m3u8</pre>
   <dt id="max-clients"><a class="permalink" href="#max-clients"><b>--max-clients
     <i>INTEGER</i></b></a></dt>
   <dd>Maximum concurrent clients. (default: 9) (modes: server,
-      discovery-service)</dd>
+      discovery-service, mcp-server)</dd>
   <dt id="reconnect-attempts"><a class="permalink" href="#reconnect-attempts"><b>--reconnect-attempts
     <i>INTEGER</i></b></a></dt>
   <dd>Number of reconnection attempts before giving up (-1=infinite, 0=none).
@@ -964,7 +988,7 @@ https://example.com/stream.m3u8</pre>
     <i>BOOLEAN</i></b></a></dt>
   <dd>Map active TCP/WebSocket listeners and native WebRTC UDP ports with
       UPnP/NAT-PMP (router support required). (default: false) (modes: default,
-      client, server, discovery-service)</dd>
+      client, server, discovery-service, mcp-server)</dd>
   <dt id="scan"><a class="permalink" href="#scan"><b>--scan
     <i>BOOLEAN</i></b></a></dt>
   <dd>Scan for servers on local network via mDNS. (default: false) (modes:
@@ -978,8 +1002,8 @@ https://example.com/stream.m3u8</pre>
   <dd>Disable compression. (default: false) (modes: default, client,
     server)</dd>
   <dt><b>--discovery-service <i>STRING</i></b></dt>
-  <dd>Discovery service endpoint (IP address or hostname). (default:
-      discovery-service.ascii-chat.com) (modes: default, client, server)</dd>
+  <dd>Discovery service endpoint (IP address or hostname). (default: localhost)
+      (modes: default, client, server)</dd>
   <dt id="discovery-service-port"><a class="permalink" href="#discovery-service-port"><b>--discovery-service-port
     <i>INTEGER</i></b></a></dt>
   <dd>Discovery service port (1-65535). (default: 27225) (modes: default,
@@ -1126,7 +1150,36 @@ https://example.com/stream.m3u8</pre>
   <dt id="database"><a class="permalink" href="#database"><b>--database
     <i>STRING</i></b></a></dt>
   <dd>Path to SQLite database for discovery session storage. (modes:
-      discovery-service)
+      discovery-service)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="DEBUG"><a class="permalink" href="#DEBUG">DEBUG</a></h2>
+<dl class="Bl-tag">
+  <dt id="face-follow-debug"><a class="permalink" href="#face-follow-debug"><b>--face-follow-debug
+    <i>BOOLEAN</i></b></a></dt>
+  <dd>Outline the selected detected face with a red square (debug builds only).
+      (default: false) (modes: default, client, mirror)</dd>
+  <dt id="sync-state"><a class="permalink" href="#sync-state"><b>--sync-state
+    <i>TIME</i></b></a></dt>
+  <dd>Print synchronization state and named registry statistics after TIME
+      seconds. (default: 0.00) (modes: global, client, server, mirror,
+      discovery-service, mcp-server)</dd>
+  <dt id="errno-stacks"><a class="permalink" href="#errno-stacks"><b>--errno-stacks
+    <i>TIME</i></b></a></dt>
+  <dd>Print pending errors, handled history, and registry statistics after TIME
+      seconds. (default: 0.00) (modes: global, client, server, mirror,
+      discovery-service, mcp-server)</dd>
+  <dt id="backtrace"><a class="permalink" href="#backtrace"><b>--backtrace
+    <i>TIME</i></b></a></dt>
+  <dd>Print backtrace with optional time offset (debug builds only). (default:
+      0.00) (modes: global, client, server, mirror, discovery-service,
+      mcp-server)</dd>
+  <dt id="memory-report"><a class="permalink" href="#memory-report"><b>--memory-report
+    <i>TIME</i></b></a></dt>
+  <dd>Print memory report periodically at specified interval in seconds (debug
+      builds only). (default: 0.00) (modes: global, client, server, mirror,
+      discovery-service, mcp-server)
     <p class="Pp"></p>
     <p class="Pp"></p>
   </dd>
@@ -1487,6 +1540,8 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--audio</b></dd>
   <dt id="ASCII_CHAT_AUDIO_ADAPTIVE_EQ"><a class="permalink" href="#ASCII_CHAT_AUDIO_ADAPTIVE_EQ"><b>ASCII_CHAT_AUDIO_ADAPTIVE_EQ</b></a></dt>
   <dd>See: <b>--audio-adaptive-eq</b></dd>
+  <dt id="ASCII_CHAT_AUDIO_ANALYSIS"><a class="permalink" href="#ASCII_CHAT_AUDIO_ANALYSIS"><b>ASCII_CHAT_AUDIO_ANALYSIS</b></a></dt>
+  <dd>See: <b>--audio-analysis</b></dd>
   <dt id="ASCII_CHAT_AUDIO_CAPTURE_SOURCE"><a class="permalink" href="#ASCII_CHAT_AUDIO_CAPTURE_SOURCE"><b>ASCII_CHAT_AUDIO_CAPTURE_SOURCE</b></a></dt>
   <dd>See: <b>--audio-capture-source</b></dd>
   <dt id="ASCII_CHAT_AUDIO_FFT_SIZE"><a class="permalink" href="#ASCII_CHAT_AUDIO_FFT_SIZE"><b>ASCII_CHAT_AUDIO_FFT_SIZE</b></a></dt>
@@ -1537,6 +1592,8 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--encrypt</b></dd>
   <dt id="ASCII_CHAT_FACE_FOLLOW"><a class="permalink" href="#ASCII_CHAT_FACE_FOLLOW"><b>ASCII_CHAT_FACE_FOLLOW</b></a></dt>
   <dd>See: <b>--face-follow</b></dd>
+  <dt id="ASCII_CHAT_FACE_FOLLOW_DEBUG"><a class="permalink" href="#ASCII_CHAT_FACE_FOLLOW_DEBUG"><b>ASCII_CHAT_FACE_FOLLOW_DEBUG</b></a></dt>
+  <dd>See: <b>--face-follow-debug</b></dd>
   <dt id="ASCII_CHAT_FFT"><a class="permalink" href="#ASCII_CHAT_FFT"><b>ASCII_CHAT_FFT</b></a></dt>
   <dd>See: <b>--fft</b></dd>
   <dt id="ASCII_CHAT_FILE"><a class="permalink" href="#ASCII_CHAT_FILE"><b>ASCII_CHAT_FILE</b></a></dt>
@@ -1655,6 +1712,8 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--quiet</b></dd>
   <dt id="ASCII_CHAT_RECONNECT_ATTEMPTS"><a class="permalink" href="#ASCII_CHAT_RECONNECT_ATTEMPTS"><b>ASCII_CHAT_RECONNECT_ATTEMPTS</b></a></dt>
   <dd>See: <b>--reconnect-attempts</b></dd>
+  <dt id="ASCII_CHAT_RENDERER"><a class="permalink" href="#ASCII_CHAT_RENDERER"><b>ASCII_CHAT_RENDERER</b></a></dt>
+  <dd>See: <b>--renderer</b></dd>
   <dt id="ASCII_CHAT_RENDER_FILE"><a class="permalink" href="#ASCII_CHAT_RENDER_FILE"><b>ASCII_CHAT_RENDER_FILE</b></a></dt>
   <dd>See: <b>--render-file</b></dd>
   <dt id="ASCII_CHAT_RENDER_FONT"><a class="permalink" href="#ASCII_CHAT_RENDER_FONT"><b>ASCII_CHAT_RENDER_FONT</b></a></dt>
@@ -1691,6 +1750,8 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--spectral-audio</b></dd>
   <dt id="ASCII_CHAT_SPLASH_SCREEN"><a class="permalink" href="#ASCII_CHAT_SPLASH_SCREEN"><b>ASCII_CHAT_SPLASH_SCREEN</b></a></dt>
   <dd>See: <b>--splash-screen</b></dd>
+  <dt id="ASCII_CHAT_STABILIZE"><a class="permalink" href="#ASCII_CHAT_STABILIZE"><b>ASCII_CHAT_STABILIZE</b></a></dt>
+  <dd>See: <b>--stabilize</b></dd>
   <dt id="ASCII_CHAT_STATS_INTERVAL"><a class="permalink" href="#ASCII_CHAT_STATS_INTERVAL"><b>ASCII_CHAT_STATS_INTERVAL</b></a></dt>
   <dd>See: <b>--stats-interval</b></dd>
   <dt id="ASCII_CHAT_STATUS_SCREEN"><a class="permalink" href="#ASCII_CHAT_STATUS_SCREEN"><b>ASCII_CHAT_STATUS_SCREEN</b></a></dt>
@@ -1830,6 +1891,10 @@ https://example.com/stream.m3u8</pre>
 <section class="Sh">
 <h1 class="Sh" id="NOTES"><a class="permalink" href="#NOTES">NOTES</a></h1>
 <ul class="Bl-bullet">
+  <li><b>Frame Rate</b>: The default <b>--fps 0</b> selects the negotiated
+      webcam capture rate or the media source frame rate when available. If the
+      rate cannot be determined, capture falls back to 60 FPS. Set <b>--fps</b>
+      to a value from 1 to 144 to request a specific frame rate.</li>
   <li><b>Ed25519 Keys Only</b>: Only Ed25519 SSH keys are supported. RSA and
       ECDSA keys are NOT supported due to libsodium limitations. Generate
       Ed25519 keys with: ssh-keygen -t ed25519</li>
@@ -1911,7 +1976,7 @@ https://example.com/stream.m3u8</pre>
 <section class="Sh">
 <h1 class="Sh" id="LICENSE"><a class="permalink" href="#LICENSE">LICENSE</a></h1>
 <p class="Pp"><b>ascii-chat</b> is licensed under the MIT License.</p>
-<p class="Pp">Copyright (c) 2013-2013 Zachary Fogg</p>
+<p class="Pp">Copyright (c) 2013-2026 Zachary Fogg</p>
 <p class="Pp">Permission is hereby granted, free of charge, to any person
     obtaining a copy of this software and associated documentation files (the
     &quot;Software&quot;), to deal in the Software without restriction,
@@ -1932,8 +1997,8 @@ https://example.com/stream.m3u8</pre>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">2013-11-20</td>
-    <td class="foot-os">ascii-chat 0.14.6</td>
+    <td class="foot-date">2026-11-03</td>
+    <td class="foot-os">ascii-chat 0.14.7</td>
   </tr>
 </table>
 </body>

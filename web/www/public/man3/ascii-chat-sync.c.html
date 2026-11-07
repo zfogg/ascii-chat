@@ -107,13 +107,13 @@
     <b>uint64_t</b> *total_released, <b>uint32_t</b> *currently_held)
   <br/>
   Get synchronization statistics. int <b>debug_sync_mutex_lock</b>
-    (<b>mutex_t</b> *<b>mutex</b>, const char *file_name, int line_number, const
-    char *function_name)
+    (<b>mutex_t</b> *mutex, const char *file_name, int line_number, const char
+    *function_name)
   <br/>
-  int <b>debug_sync_mutex_trylock</b> (<b>mutex_t</b> *<b>mutex</b>, const char
+  int <b>debug_sync_mutex_trylock</b> (<b>mutex_t</b> *mutex, const char
     *file_name, int line_number, const char *function_name)
   <br/>
-  int <b>debug_sync_mutex_unlock</b> (<b>mutex_t</b> *<b>mutex</b>, const char
+  int <b>debug_sync_mutex_unlock</b> (<b>mutex_t</b> *mutex, const char
     *file_name, int line_number, const char *function_name)
   <br/>
   int <b>debug_sync_rwlock_rdlock</b> (<b>rwlock_t</b> *lock, const char
@@ -128,13 +128,12 @@
   int <b>debug_sync_rwlock_wrunlock</b> (<b>rwlock_t</b> *lock, const char
     *file_name, int line_number, const char *function_name)
   <br/>
-  int <b>debug_sync_cond_wait</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
-    *<b>mutex</b>, const char *file_name, int line_number, const char
-    *function_name)
+  int <b>debug_sync_cond_wait</b> (<b>cond_t</b> *cond, <b>mutex_t</b> *mutex,
+    const char *file_name, int line_number, const char *function_name)
   <br/>
   int <b>debug_sync_cond_timedwait</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
-    *<b>mutex</b>, <b>uint64_t</b> timeout_ns, const char *file_name, int
-    line_number, const char *function_name)
+    *mutex, <b>uint64_t</b> timeout_ns, const char *file_name, int line_number,
+    const char *function_name)
   <br/>
   int <b>debug_sync_cond_signal</b> (<b>cond_t</b> *cond, const char *file_name,
     int line_number, const char *function_name)
@@ -190,12 +189,12 @@
     </i></b></a></dt>
   <dd></dd>
 </dl>
-<p class="Pp">Definition at line <b>436</b> of file <b>sync.c</b>.</p>
-<pre>436              {
-437   DEBUG_REQUEST_STATE,         // Print sync state
-438   DEBUG_REQUEST_BACKTRACE,     // Print backtrace
-439   DEBUG_REQUEST_MEMORY_REPORT, // Print memory report
-440 } debug_request_type_t;</pre>
+<p class="Pp">Definition at line <b>435</b> of file <b>sync.c</b>.</p>
+<pre>435              {
+436   DEBUG_REQUEST_STATE,         // Print sync state
+437   DEBUG_REQUEST_BACKTRACE,     // Print backtrace
+438   DEBUG_REQUEST_MEMORY_REPORT, // Print memory report
+439 } debug_request_type_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -207,13 +206,13 @@
 <h2 class="Ss" id="int_debug_sync_cond_broadcast_("><a class="permalink" href="#int_debug_sync_cond_broadcast_(">int
   debug_sync_cond_broadcast (<b>cond_t</b> * cond, const char * file_name, int
   line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>814</b> of file <b>sync.c</b>.</p>
-<pre>814                                                                                                                {
-815   (void)file_name;
-816   (void)line_number;
-817   (void)function_name;
-818   return cond_broadcast(cond);
-819 }</pre>
+<p class="Pp">Definition at line <b>813</b> of file <b>sync.c</b>.</p>
+<pre>813                                                                                                                {
+814   (void)file_name;
+815   (void)line_number;
+816   (void)function_name;
+817   return cond_broadcast(cond);
+818 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>cond_broadcast()</b>.</p>
@@ -222,13 +221,13 @@
 <h2 class="Ss" id="int_debug_sync_cond_signal_("><a class="permalink" href="#int_debug_sync_cond_signal_(">int
   debug_sync_cond_signal (<b>cond_t</b> * cond, const char * file_name, int
   line_number, const char * function_name)</a></h2>
-<p class="Pp">Definition at line <b>807</b> of file <b>sync.c</b>.</p>
-<pre>807                                                                                                             {
-808   (void)file_name;
-809   (void)line_number;
-810   (void)function_name;
-811   return cond_signal(cond);
-812 }</pre>
+<p class="Pp">Definition at line <b>806</b> of file <b>sync.c</b>.</p>
+<pre>806                                                                                                             {
+807   (void)file_name;
+808   (void)line_number;
+809   (void)function_name;
+810   return cond_signal(cond);
+811 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>cond_signal()</b>.</p>
@@ -236,21 +235,21 @@
 <section class="Ss">
 <h2 class="Ss" id="int_debug_sync_init_(void_)"><a class="permalink" href="#int_debug_sync_init_(void_)">int
   debug_sync_init (void )</a></h2>
-<p class="Pp">Definition at line <b>645</b> of file <b>sync.c</b>.</p>
-<pre>645                           {
-646   // debug_sync_set_main_thread_id() should have already been called
-647   return 0;
-648 }</pre>
+<p class="Pp">Definition at line <b>644</b> of file <b>sync.c</b>.</p>
+<pre>644                           {
+645   // debug_sync_set_main_thread_id() should have already been called
+646   return 0;
+647 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> debug_sync_is_cleanup_in_progress (void )</h2>
-<p class="Pp">Definition at line <b>654</b> of file <b>sync.c</b>.</p>
-<pre>654                                              {
-655   return atomic_load_bool(&amp;g_cleanup_in_progress);
-656 }</pre>
+<p class="Pp">Definition at line <b>653</b> of file <b>sync.c</b>.</p>
+<pre>653                                              {
+654   return atomic_load_bool(&amp;g_cleanup_in_progress);
+655 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>.</p>
@@ -264,7 +263,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.11.25</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>decoder.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">decoder.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">decoder.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">decoder.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>packet_decoder_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef <b>asciichat_error_t</b>(*) <b>packet_decoder_fn</b>(const
+    void *, size_t, void *)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>packet_decoder_feed</b>
+    (<b>packet_decoder_t</b> *, const void *, size_t, <b>packet_decoder_fn</b>,
+    void *)
+  <br/>
+  void <b>packet_decoder_reset</b> (<b>packet_decoder_t</b> *)
+  <br/>
+  <b>bool</b> <b>packet_decoder_pending</b> (const <b>packet_decoder_t</b> *)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
+  <b>asciichat_error_t</b>(*) packet_decoder_fn(const void *, size_t, void
+  *)</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file
+    <b>network/packet/decoder.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> packet_decoder_feed
+  (<b>packet_decoder_t</b> * decoder, const void * data, size_t length,
+  <b>packet_decoder_fn</b> emit, void * arg)</h2>
+<p class="Pp">Definition at line <b>19</b> of file
+    <b>network/packet/decoder.c</b>.</p>
+<pre>20                                                                          {
+21   if (!decoder || (!data &amp;&amp; length) || !emit || decoder-&gt;failed)
+22     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid packet decoder input&quot;);
+23   const uint8_t *input = data;
+24   while (length) {
+25     if (decoder-&gt;header_used &lt; sizeof(packet_header_t)) {
+26       size_t take = MIN(length, sizeof(packet_header_t) - decoder-&gt;header_used);
+27       memcpy(decoder-&gt;header + decoder-&gt;header_used, input, take);
+28       decoder-&gt;header_used += take;
+29       input += take;
+30       length -= take;
+31       if (decoder-&gt;header_used != sizeof(packet_header_t))
+32         break;
+33       packet_header_t header;
+34       memcpy(&amp;header, decoder-&gt;header, sizeof(header));
+35       size_t payload = NET_TO_HOST_U32(header.length);
+36       size_t limit = decoder-&gt;max_payload ? MIN(decoder-&gt;max_payload, MAX_PACKET_SIZE) : MAX_PACKET_SIZE;
+37       if (NET_TO_HOST_U64(header.magic) != PACKET_MAGIC || payload &gt; limit) {
+38         decoder-&gt;failed = true;
+39         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid incremental packet header&quot;);
+40       }
+41       decoder-&gt;size = sizeof(header) + payload;
+42       buffer_workspace_t workspace = {.data = decoder-&gt;packet};
+43       if (buffer_workspace_reserve(&amp;workspace, NULL, decoder-&gt;size) != ASCIICHAT_OK) {
+44         decoder-&gt;failed = true;
+45         return SET_ERRNO(ERROR_MEMORY, &quot;Incremental packet exceeds buffer budget&quot;);
+46       }
+47       decoder-&gt;packet = workspace.data;
+48       memcpy(decoder-&gt;packet, &amp;header, sizeof(header));
+49       decoder-&gt;used = sizeof(header);
+50     }
+51     size_t take = MIN(length, decoder-&gt;size - decoder-&gt;used);
+52     if (take)
+53       memcpy(decoder-&gt;packet + decoder-&gt;used, input, take);
+54     decoder-&gt;used += take;
+55     input += take;
+56     length -= take;
+57     if (decoder-&gt;used != decoder-&gt;size)
+58       break;
+59     packet_header_t header;
+60     memcpy(&amp;header, decoder-&gt;packet, sizeof(header));
+61     size_t payload = decoder-&gt;size - sizeof(header);
+62     if (payload &amp;&amp; asciichat_crc32(decoder-&gt;packet + sizeof(header), payload) != NET_TO_HOST_U32(header.crc32)) {
+63       decoder-&gt;failed = true;
+64       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Incremental packet CRC mismatch&quot;);
+65     }
+66     asciichat_error_t result = emit(decoder-&gt;packet, decoder-&gt;size, arg);
+67     // The callback borrows this storage; retain it for the next framed packet.
+68     decoder-&gt;header_used = decoder-&gt;used = decoder-&gt;size = 0;
+69     if (result != ASCIICHAT_OK) {
+70       decoder-&gt;failed = true;
+71       return result;
+72     }
+73   }
+74   return ASCIICHAT_OK;
+75 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_crc32</b>, <b>ASCIICHAT_OK</b>,
+    <b>buffer_workspace_reserve()</b>, <b>packet_header_t::crc32</b>,
+    <b>buffer_workspace_t::data</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+    <b>packet_decoder_t::failed</b>, <b>packet_decoder_t::header</b>,
+    <b>packet_decoder_t::header_used</b>, <b>packet_header_t::length</b>,
+    <b>packet_header_t::magic</b>, <b>MAX_PACKET_SIZE</b>,
+    <b>packet_decoder_t::max_payload</b>, <b>MIN</b>, <b>NET_TO_HOST_U32</b>,
+    <b>NET_TO_HOST_U64</b>, <b>packet_decoder_t::packet</b>,
+    <b>packet_decoder_feed()</b>, <b>PACKET_MAGIC</b>, <b>SET_ERRNO</b>,
+    <b>packet_decoder_t::size</b>, and <b>packet_decoder_t::used</b>.</p>
+<p class="Pp">Referenced by <b>packet_decoder_feed()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> packet_decoder_pending (const <b>packet_decoder_t</b>
+  * decoder)</h2>
+<p class="Pp">Definition at line <b>15</b> of file
+    <b>network/packet/decoder.c</b>.</p>
+<pre>15                                                              {
+16   return decoder &amp;&amp; decoder-&gt;header_used != 0;
+17 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_decoder_t::header_used</b>, and
+    <b>packet_decoder_pending()</b>.</p>
+<p class="Pp">Referenced by <b>packet_decoder_pending()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_packet_decoder_reset_("><a class="permalink" href="#void_packet_decoder_reset_(">void
+  packet_decoder_reset (<b>packet_decoder_t</b> * decoder)</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file
+    <b>network/packet/decoder.c</b>.</p>
+<pre>8                                                      {
+9   if (decoder) {
+10     buffer_release(decoder-&gt;packet);
+11     memset(decoder, 0, sizeof(*decoder));
+12   }
+13 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_release</b>, <b>packet_decoder_t::packet</b>,
+    and <b>packet_decoder_reset()</b>.</p>
+<p class="Pp">Referenced by <b>packet_decoder_reset()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

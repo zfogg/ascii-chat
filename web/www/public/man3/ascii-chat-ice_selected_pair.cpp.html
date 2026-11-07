@@ -37,6 +37,17 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE</b>
+    512
+  <br/>
+  #define <b>NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE</b> 512
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>asciichat_error_t</b> <b>ice_get_selected_pair_impl</b>
@@ -62,6 +73,24 @@
 <p class="Pp">Definition in file <b>ice_selected_pair.cpp</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE___512"><a class="permalink" href="#_define_NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE___512">#define
+  NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file
+  <b>ice_selected_pair.cpp</b>.</p>
+<p class="Pp">Referenced by <b>ice_get_selected_pair_impl()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE___512"><a class="permalink" href="#_define_NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE___512">#define
+  NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file
+  <b>ice_selected_pair.cpp</b>.</p>
+<p class="Pp">Referenced by <b>ice_get_selected_pair_impl()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
@@ -71,63 +100,67 @@
 <p class="Pp">Get selected ICE candidate pair (C++ implementation). This
     function uses libdatachannel's C++ API to retrieve the selected candidate
     pair, which is not available in the C API.</p>
-<p class="Pp">Definition at line <b>58</b> of file
+<p class="Pp">Definition at line <b>62</b> of file
   <b>ice_selected_pair.cpp</b>.</p>
-<pre>59                                                                                 {
-60   if (!pc) {
-61     return ERROR_INVALID_PARAM;
-62   }
-63 
-64   try {
-65     // Get the libdatachannel peer connection ID using helper function
-66     int rtc_id = webrtc_get_rtc_id(pc);
-67     if (rtc_id &lt; 0) {
-68       return ERROR_INVALID_PARAM;
-69     }
-70 
-71     // Query selected candidate pair from libdatachannel
-72     // Note: This requires libdatachannel to have the selected candidate pair available
-73     char local_buf[512];
-74     char remote_buf[512];
-75 
-76     // Try to get the selected local candidate
-77     if (rtcGetSelectedCandidatePair(rtc_id, local_buf, sizeof(local_buf), remote_buf, sizeof(remote_buf)) &lt; 0) {
-78       // No pair selected yet, or error accessing it
-79       return ERROR_INVALID_STATE;
-80     }
-81 
-82     // Parse local candidate if requested
-83     if (local_candidate) {
-84       std::string local_str(local_buf);
-85       asciichat_error_t err = parse_datachannel_candidate(local_str, local_candidate);
-86       if (err != ASCIICHAT_OK) {
-87         return err;
-88       }
-89     }
-90 
-91     // Parse remote candidate if requested
-92     if (remote_candidate) {
-93       std::string remote_str(remote_buf);
-94       asciichat_error_t err = parse_datachannel_candidate(remote_str, remote_candidate);
-95       if (err != ASCIICHAT_OK) {
-96         return err;
-97       }
-98     }
-99 
-100     return ASCIICHAT_OK;
-101 
-102   } catch (const std::exception &amp;e) {
-103     return ERROR_NETWORK;
-104   } catch (...) {
-105     return ERROR_NETWORK;
-106   }
-107 }</pre>
+<pre>63                                                                                 {
+64   if (!pc) {
+65     return ERROR_INVALID_PARAM;
+66   }
+67
+68   try {
+69     // Get the libdatachannel peer connection ID using helper function
+70     int rtc_id = webrtc_get_rtc_id(pc);
+71     if (rtc_id &lt; 0) {
+72       return ERROR_INVALID_PARAM;
+73     }
+74
+75     // Query selected candidate pair from libdatachannel
+76     // Note: This requires libdatachannel to have the selected candidate pair available
+77     char local_buf[NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE];
+78     char remote_buf[NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE];
+79
+80     // Try to get the selected local candidate
+81     if (rtcGetSelectedCandidatePair(rtc_id, local_buf, sizeof(local_buf), remote_buf, sizeof(remote_buf)) &lt; 0) {
+82       // No pair selected yet, or error accessing it
+83       return ERROR_INVALID_STATE;
+84     }
+85
+86     // Parse local candidate if requested
+87     if (local_candidate) {
+88       std::string local_str(local_buf);
+89       asciichat_error_t err = parse_datachannel_candidate(local_str, local_candidate);
+90       if (err != ASCIICHAT_OK) {
+91         return err;
+92       }
+93     }
+94
+95     // Parse remote candidate if requested
+96     if (remote_candidate) {
+97       std::string remote_str(remote_buf);
+98       asciichat_error_t err = parse_datachannel_candidate(remote_str, remote_candidate);
+99       if (err != ASCIICHAT_OK) {
+100         return err;
+101       }
+102     }
+103
+104     return ASCIICHAT_OK;
+105
+106   } catch (const std::exception &amp;e) {
+107     return ERROR_NETWORK;
+108   } catch (...) {
+109     return ERROR_NETWORK;
+110   }
+111 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>, and
+    <b>ERROR_INVALID_STATE</b>, <b>ERROR_NETWORK</b>,
+    <b>ice_get_selected_pair_impl()</b>,
+    <b>NETWORK_WEBRTC_ICE_SELECTED_PAIR_LOCAL_BUFFER_SIZE</b>,
+    <b>NETWORK_WEBRTC_ICE_SELECTED_PAIR_REMOTE_BUFFER_SIZE</b>, and
     <b>webrtc_get_rtc_id()</b>.</p>
-<p class="Pp">Referenced by <b>ice_get_selected_pair()</b>.</p>
+<p class="Pp">Referenced by <b>ice_get_selected_pair()</b>, and
+    <b>ice_get_selected_pair_impl()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -137,7 +170,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

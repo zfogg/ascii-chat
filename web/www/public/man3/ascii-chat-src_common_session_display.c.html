@@ -59,15 +59,25 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>session_display_ctx_t</b> * <b>session_display_create</b>
-    (const <b>session_display_config_t</b> *config)
+<p class="Pp"><b>asciichat_error_t</b> <b>session_display_init_render_file</b>
+    (<b>session_display_ctx_t</b> *ctx, <b>uint32_t</b> fps)
   <br/>
-  Perform complete terminal reset. void <b>session_display_destroy</b>
+  Perform complete terminal reset. <b>session_display_ctx_t</b> *
+    <b>session_display_create</b> (const <b>session_display_config_t</b>
+    *config)
+  <br/>
+  Create a new session display context. void <b>session_display_begin_drain</b>
+    (<b>session_display_ctx_t</b> *ctx, <b>uint64_t</b> total, <b>bool</b>
+    total_known)
+  <br/>
+  <b>asciichat_error_t</b> <b>session_display_finish_render_file</b>
     (<b>session_display_ctx_t</b> *ctx)
   <br/>
   Destroy session display context and free resources. void
-    <b>session_display_set_stdin_reader</b> (<b>session_display_ctx_t</b> *ctx,
-    void *reader)
+    <b>session_display_destroy</b> (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  void <b>session_display_set_stdin_reader</b> (<b>session_display_ctx_t</b>
+    *ctx, void *reader)
   <br/>
   Set stdin frame reader for ASCII-to-video rendering. <b>bool</b>
     <b>session_display_has_tty</b> (<b>session_display_ctx_t</b> *ctx)
@@ -99,11 +109,7 @@
     <b>session_display_set_render_fps</b> (<b>session_display_ctx_t</b> *ctx,
     <b>uint32_t</b> fps)
   <br/>
-  Set the render FPS for file output encoding. void
-    <b>session_display_set_render_audio_source</b> (<b>session_display_ctx_t</b>
-    *ctx, void *audio_source)
-  <br/>
-  Set audio source for render-file output. <b>bool</b>
+  Set the render FPS for file output encoding. <b>bool</b>
     <b>session_display_has_first_frame</b> (<b>session_display_ctx_t</b> *ctx)
   <br/>
   Check if the display has rendered its first frame. void
@@ -113,24 +119,33 @@
     render. <b>bool</b> <b>session_display_has_render_file</b>
     (<b>session_display_ctx_t</b> *ctx)
   <br/>
-  Check if display has render-file configured. char *
+  Check if display has render-file configured. void
+    <b>session_display_render_frame</b> (<b>session_display_ctx_t</b> *ctx,
+    const char *frame_data)
+  <br/>
+  Render an ASCII frame to the terminal. char *
     <b>session_display_convert_to_ascii</b> (<b>session_display_ctx_t</b> *ctx,
     const <b>image_t</b> *image)
   <br/>
   Convert an image to ASCII art using display context and command-line options.
-    void <b>session_display_render_fps_overlay</b> (<b>session_display_ctx_t</b>
-    *ctx)
+    char * <b>session_display_convert_to_ascii_reuse</b>
+    (<b>session_display_ctx_t</b> *ctx, const <b>image_t</b> *image)
   <br/>
-  Render FPS counter overlay in top-right corner. void
-    <b>session_display_render_frame</b> (<b>session_display_ctx_t</b> *ctx,
-    const char *frame_data)
+  void <b>session_display_reset_stabilizer</b> (<b>session_display_ctx_t</b>
+    *ctx, <b>bool</b> recording)
   <br/>
-  Render an ASCII frame to the terminal. void <b>session_display_write_ascii</b>
-    (<b>session_display_ctx_t</b> *ctx, const char *ascii)
+  void <b>session_display_release_ascii</b> (<b>session_display_ctx_t</b> *ctx,
+    char *ascii)
   <br/>
-  Write ASCII frame to terminal only (no encoding). void
-    <b>session_display_encode_frame</b> (<b>session_display_ctx_t</b> *ctx,
-    const <b>image_t</b> *image, <b>uint64_t</b> captured_ns)
+  void <b>session_display_write_ascii_frame</b> (<b>session_display_ctx_t</b>
+    *ctx, const char *ascii, <b>bool</b> fresh)
+  <br/>
+  void <b>session_display_set_render_live_timing</b>
+    (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  <b>asciichat_error_t</b> <b>session_display_encode_frame</b>
+    (<b>session_display_ctx_t</b> *ctx, const <b>image_t</b> *image,
+    <b>uint64_t</b> captured_ns)
   <br/>
   Encode frame to render-file (FFmpeg only, no terminal output). void
     <b>session_display_write_raw</b> (<b>session_display_ctx_t</b> *ctx, const
@@ -153,10 +168,7 @@
     <b>session_display_write_audio</b> (<b>session_display_ctx_t</b> *ctx, const
     float *buffer, size_t num_samples)
   <br/>
-  Write audio samples to playback buffer. void <b>keyboard_help_toggle</b>
-    (<b>session_display_ctx_t</b> *ctx)
-  <br/>
-  Toggle keyboard help on/off (implemented in display.c for struct access). void
+  Write audio samples to playback buffer. void
     <b>session_display_set_global_context</b> (<b>session_display_ctx_t</b>
     *ctx)
   <br/>
@@ -187,7 +199,11 @@
     <b>session_display_set_snapshot_actual_duration</b>
     (<b>session_display_ctx_t</b> *ctx, double actual_duration_sec)
   <br/>
-  Set the actual wall-clock duration for snapshot mode frame timing.
+  Set the actual wall-clock duration for snapshot mode frame timing. void
+    <b>session_display_write_ascii</b> (<b>session_display_ctx_t</b> *ctx, const
+    char *ascii)
+  <br/>
+  Write ASCII frame to terminal only (no encoding).
   <br/>
 </p>
 </section>
@@ -206,13 +222,468 @@
 <p class="Pp">Definition in file <b>src/common/session/display.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_*_session_display_convert_to_ascii_reuse_("><a class="permalink" href="#char_*_session_display_convert_to_ascii_reuse_(">char
+  * session_display_convert_to_ascii_reuse (<b>session_display_ctx_t</b> * ctx,
+  const <b>image_t</b> * image)</a></h2>
+<p class="Pp">Single display owner; result must be released before its next
+    conversion.</p>
+<p class="Pp">Definition at line <b>912</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<pre>912                                                                                                {
+913   ASCII_OTEL_SCOPE(SESSION_DISPLAY_CONVERT_TO_ASCII_REUSE);
+914   return convert_to_ascii(ctx, image, true);
+915 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>, and
+    <b>session_display_convert_to_ascii_reuse()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_convert_to_ascii_reuse()</b>, and
+    <b>session_pipeline_run_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> session_display_init_render_file
+  (<b>session_display_ctx_t</b> * ctx, <b>uint32_t</b> fps)</h2>
+<p class="Pp">Perform complete terminal reset. Initialize render-file output
+    after the capture frame rate is known.</p>
+<p class="Pp"></p>
+<p class="Pp">Executes comprehensive terminal reset sequence for clean display
+    state. Skips terminal control operations in snapshot mode.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>snapshot_mode</i> Whether snapshot mode is
+  enabled</div>
+<p class="Pp">Perform complete terminal reset.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Display context
+<br/>
+<i>fps</i> Frame rate used for output timing</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success</div>
+<p class="Pp">Definition at line <b>165</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<pre>165                                                                                              {
+166   if (!ctx) {
+167     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Display context is NULL&quot;);
+168   }
+169
+170   const char *render_file_opt = GET_OPTION(render_file);
+171   if ((!render_file_opt || !render_file_opt[0]) &amp;&amp; GET_OPTION(render_kitty))
+172     render_file_opt = &quot;--kitty&quot;;
+173   if (!render_file_opt || render_file_opt[0] == '\0') {
+174     return ASCIICHAT_OK;
+175   }
+176   if (ctx-&gt;render_file) {
+177     return ASCIICHAT_OK;
+178   }
+179
+180   uint32_t encoder_fps = fps;
+181   if (encoder_fps == 0) {
+182     encoder_fps = (uint32_t)GET_OPTION(fps);
+183   }
+184   if (encoder_fps == 0) {
+185     encoder_fps = 60;
+186   }
+187
+188   int width = (int)GET_OPTION(width);
+189   int height = (int)GET_OPTION(height);
+190   ctx-&gt;render_fps = encoder_fps;
+191
+192   log_info(&quot;render-file: Initializing encoder after media timing selection: path='%s', grid=%dx%d, fps=%u&quot;,
+193            render_file_opt, width, height, encoder_fps);
+194   asciichat_error_t err =
+195       render_file_create(render_file_opt, width, height, (int)encoder_fps, GET_OPTION(render_theme), &amp;ctx-&gt;render_file);
+196   if (err != ASCIICHAT_OK) {
+197     asciichat_error_context_t error;
+198     if (HAS_ERRNO(&amp;error))
+199       log_error(&quot;render-file: %s&quot;, error.context_message);
+200     log_error(&quot;render-file: Failed to create encoder %s&quot;, asciichat_error_format(NULL, err));
+201     return err;
+202   }
+203
+204   log_info(&quot;render-file: Encoder initialized successfully at %u FPS&quot;, encoder_fps);
+205   return ASCIICHAT_OK;
+206 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+    <b>asciichat_error_context_t::context_message</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>GET_OPTION</b>, <b>HAS_ERRNO</b>,
+    <b>log_error</b>, <b>log_info</b>, <b>session_display_ctx::render_file</b>,
+    <b>render_file_create()</b>, <b>session_display_ctx::render_fps</b>,
+    <b>session_display_init_render_file()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>, and
+    <b>session_display_init_render_file()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_display_release_ascii_("><a class="permalink" href="#void_session_display_release_ascii_(">void
+  session_display_release_ascii (<b>session_display_ctx_t</b> * ctx, char *
+  ascii)</a></h2>
+<p class="Pp">Definition at line <b>922</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<pre>922                                                                             {
+923   if (!ctx || ascii != ctx-&gt;ascii_workspace.buf)
+924     SAFE_FREE(ascii);
+925 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_display_ctx::ascii_workspace</b>,
+    <b>outbuf_t::buf</b>, <b>SAFE_FREE</b>, and
+    <b>session_display_release_ascii()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_release_ascii()</b>, and
+    <b>session_pipeline_run_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_display_reset_stabilizer_("><a class="permalink" href="#void_session_display_reset_stabilizer_(">void
+  session_display_reset_stabilizer (<b>session_display_ctx_t</b> * ctx,
+  <b>bool</b> recording)</a></h2>
+<p class="Pp">Clear only the history owned by the calling display or recording
+    worker.</p>
+<p class="Pp">Definition at line <b>917</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<pre>917                                                                                   {
+918   if (ctx)
+919     ascii_stabilizer_reset(recording ? &amp;ctx-&gt;recording_stabilizer : &amp;ctx-&gt;stabilizer);
+920 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_stabilizer_reset()</b>,
+    <b>session_display_ctx::recording_stabilizer</b>,
+    <b>session_display_reset_stabilizer()</b>, and
+    <b>session_display_ctx::stabilizer</b>.</p>
+<p class="Pp">Referenced by <b>session_display_reset_stabilizer()</b>, and
+    <b>session_pipeline_run_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_display_set_render_live_timing_("><a class="permalink" href="#void_session_display_set_render_live_timing_(">void
+  session_display_set_render_live_timing (<b>session_display_ctx_t</b> *
+  ctx)</a></h2>
+<p class="Pp">Definition at line <b>1179</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<pre>1179                                                                         {
+1180   if (ctx &amp;&amp; ctx-&gt;render_file)
+1181     render_file_set_live_timing(ctx-&gt;render_file);
+1182 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_display_ctx::render_file</b>,
+    <b>render_file_set_live_timing()</b>, and
+    <b>session_display_set_render_live_timing()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_set_render_live_timing()</b>, and
+    <b>session_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_display_write_ascii_frame_("><a class="permalink" href="#void_session_display_write_ascii_frame_(">void
+  session_display_write_ascii_frame (<b>session_display_ctx_t</b> * ctx, const
+  char * ascii, <b>bool</b> fresh)</a></h2>
+<p class="Pp">Publish an acquired frame, or redraw retained content without
+    advancing displayed FPS.</p>
+<p class="Pp">Definition at line <b>927</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<pre>927                                                                                                   {
+928   ASCII_OTEL_SCOPE(SESSION_DISPLAY_WRITE_ASCII_FRAME);
+929   if (!ctx || !ctx-&gt;initialized) {
+930     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Display context is NULL or uninitialized&quot;);
+931     return;
+932   }
+933
+934   // Shutdown is asynchronous; queued frames must not retry a failed output.
+935   if (atomic_load_bool(&amp;ctx-&gt;output_failed)) {
+936     return;
+937   }
+938
+939   if (!ascii) {
+940     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ASCII data is NULL&quot;);
+941     return;
+942   }
+943
+944   // Re-evaluate color_level on every frame to pick up live color_mode changes
+945   terminal_color_mode_t color_mode = (terminal_color_mode_t)GET_OPTION(color_mode);
+946   if (color_mode != TERM_COLOR_AUTO) {
+947     ctx-&gt;caps.color_level = color_mode;
+948   }
+949
+950   // Suppress frame rendering when help screen is active
+951
+952   bool visualization_enabled = GET_OPTION(waveform) || GET_OPTION(fft);
+953   char *visualization_frame = visualization_enabled ? session_display_create_visualization_frame(ctx) : NULL;
+954   if (visualization_frame)
+955     ascii = visualization_frame;
+956
+957   // Leave room for cursor controls when passing the frame to the presenter.
+958   const size_t max_frame_len = UI_CONTROLLER_MAX_FRAME_BYTES - 7;
+959   size_t frame_len = strnlen(ascii, max_frame_len);
+960   if (frame_len == max_frame_len) {
+961     SET_ERRNO(ERROR_BUFFER_FULL, &quot;ASCII frame exceeds the presenter limit&quot;);
+962     SAFE_FREE(visualization_frame);
+963     return;
+964   }
+965   if (frame_len == 0) {
+966     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ASCII data is empty&quot;);
+967     SAFE_FREE(visualization_frame);
+968     return;
+969   }
+970
+971   // Apply digital rain effect if enabled
+972   char *display_frame = (char *)ascii;
+973   char *rain_result = NULL;
+974   if (ctx-&gt;digital_rain &amp;&amp; !visualization_enabled) {
+975     uint64_t t_rain_start = time_get_ns();
+976     uint64_t current_time_ns = t_rain_start;
+977     float delta_time = (float)(current_time_ns - ctx-&gt;last_frame_time_ns) / (float)NS_PER_SEC_INT;
+978     ctx-&gt;last_frame_time_ns = current_time_ns;
+979
+980     // Update digital rain color from current filter
+981     color_filter_t current_filter = GET_OPTION(color_filter);
+982     digital_rain_set_color_from_filter(ctx-&gt;digital_rain, current_filter);
+983
+984     rain_result = digital_rain_apply(ctx-&gt;digital_rain, (char *)ascii, delta_time);
+985     if (rain_result) {
+986       display_frame = rain_result;
+987       frame_len = strnlen(rain_result, max_frame_len);
+988       if (frame_len == max_frame_len) {
+989         SET_ERRNO(ERROR_BUFFER_FULL, &quot;Digital rain frame exceeds the presenter limit&quot;);
+990         SAFE_FREE(rain_result);
+991         SAFE_FREE(visualization_frame);
+992         return;
+993       }
+994
+995       uint64_t t_rain_end = time_get_ns();
+996       char rain_str[TIME_DURATION_BUFFER_SIZE];
+997       time_pretty(t_rain_end - t_rain_start, -1, rain_str, sizeof(rain_str));
+998       log_debug(&quot;DIGITAL_RAIN (write_ascii): Effect applied (%s)&quot;, rain_str);
+999     }
+1000   }
+1001
+1002   // Binary video owns stdout in every terminal mode.
+1003   const char *output = GET_OPTION(render_file);
+1004   bool binary_stdout = ctx-&gt;render_file &amp;&amp; (strcmp(output, &quot;-&quot;) == 0 || strcmp(output, &quot;pipe:&quot;) == 0 ||
+1005                                             strcmp(output, &quot;--kitty&quot;) == 0 || GET_OPTION(render_kitty));
+1006   char *zalgo_frame = NULL;
+1007   int zalgo_level = GET_OPTION(zalgo);
+1008   if (zalgo_level &gt; 0 &amp;&amp; !binary_stdout) {
+1009     asciichat_error_t err =
+1010         zalgo_apply(display_frame, frame_len, zalgo_level, UI_CONTROLLER_MAX_FRAME_BYTES - 7, &amp;zalgo_frame);
+1011     if (err == ASCIICHAT_OK) {
+1012       display_frame = zalgo_frame;
+1013       frame_len = strlen(zalgo_frame);
+1014     } else {
+1015       log_warn_every(5 * US_PER_SEC_INT, &quot;Cannot apply Zalgo: %s&quot;, asciichat_error_format(NULL, err));
+1016     }
+1017   }
+1018
+1019   char *plain_frame = NULL;
+1020   if (GET_OPTION(strip_ansi)) {
+1021     // Expand REP before stripping escapes so repeated cells are preserved.
+1022     char *expanded = ansi_expand_rle(display_frame, frame_len);
+1023     if (expanded) {
+1024       size_t capacity = strlen(expanded) + 1;
+1025       plain_frame = SAFE_MALLOC(capacity, char *);
+1026       strip_ansi_codes(expanded, plain_frame, capacity);
+1027       SAFE_FREE(expanded);
+1028       display_frame = plain_frame;
+1029       frame_len = strlen(plain_frame);
+1030     }
+1031   }
+1032
+1033   // Handle first frame - perform initial terminal reset and splash cleanup
+1034   bool was_first_frame = atomic_exchange_bool(&amp;ctx-&gt;first_frame, false);
+1035   if (was_first_frame) {
+1036     ui_controller_title_ready();
+1037     ui_controller_title_activity(UI_TITLE_ACTIVITY_IDLE);
+1038     // Stop splash screen when first frame is ready
+1039     splash_intro_done();
+1040     splash_wait_for_animation();
+1041   }
+1042
+1043   if (binary_stdout) {
+1044     if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
+1045       g_snapshot_first_frame_rendered = true;
+1046       g_snapshot_first_frame_rendered_ns = time_get_ns();
+1047     }
+1048     SAFE_FREE(plain_frame);
+1049     SAFE_FREE(zalgo_frame);
+1050     SAFE_FREE(rain_result);
+1051     SAFE_FREE(visualization_frame);
+1052     return;
+1053   }
+1054
+1055   // Output routing logic
+1056   bool use_tty_control = ctx-&gt;has_tty &amp;&amp; (!ctx-&gt;snapshot_mode || terminal_is_interactive());
+1057
+1058   uint64_t frame_write_started_ns = time_get_ns();
+1059
+1060   // Increment shared frame counter for both client and host rendering
+1061   // This metric is used by debug scripts to measure FPS across all modes
+1062   static atomic_t g_display_frames_rendered = {0};
+1063   int frame_number = atomic_fetch_add_u64(&amp;g_display_frames_rendered, 1) + 1;
+1064   log_dev(&quot;[FRAMES_RENDERED_TOTAL] %d&quot;, frame_number);
+1065
+1066   if (use_tty_control) {
+1067     // TTY mode: Buffer cursor control + frame data together for atomic frame display
+1068     const char *cursor_home_sequence = &quot;\033[H&quot;;
+1069     size_t cursor_seq_len = 3;
+1070     size_t total_size = cursor_seq_len + frame_len;
+1071
+1072     if (ctx-&gt;tty_frame_capacity &lt; total_size) {
+1073       size_t capacity = ctx-&gt;tty_frame_capacity ? ctx-&gt;tty_frame_capacity : 4096;
+1074       while (capacity &lt; total_size &amp;&amp; capacity &lt;= SIZE_MAX / 2)
+1075         capacity *= 2;
+1076       if (capacity &lt; total_size)
+1077         capacity = total_size;
+1078       ctx-&gt;tty_frame_buffer = SAFE_REALLOC(ctx-&gt;tty_frame_buffer, capacity, char *);
+1079       ctx-&gt;tty_frame_capacity = capacity;
+1080     }
+1081     char *frame_buffer = ctx-&gt;tty_frame_buffer;
+1082     if (frame_buffer) {
+1083       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
+1084       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
+1085
+1086       log_debug_every(US_PER_SEC_INT, &quot;FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout&quot;,
+1087                       total_size, cursor_seq_len, frame_len);
+1088       asciichat_error_t presented = (fresh ? ui_controller_present : ui_controller_present_retained)(
+1089           UI_SCREEN_MEDIA, ctx-&gt;tty_info.fd &gt;= 0 ? ctx-&gt;tty_info.fd : STDOUT_FILENO,
+1090           (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, frame_buffer, total_size);
+1091       if (was_first_frame &amp;&amp; presented == ASCIICHAT_OK)
+1092         ui_controller_remove(UI_SCREEN_SPLASH);
+1093       ssize_t written = presented == ASCIICHAT_OK ? (ssize_t)total_size : -1;
+1094       log_debug_every(US_PER_SEC_INT, &quot;FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)&quot;, written, total_size);
+1095
+1096       // Start snapshot timer on first ASCII frame rendered
+1097       if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
+1098         g_snapshot_first_frame_rendered = true;
+1099         g_snapshot_first_frame_rendered_ns = time_get_ns();
+1100         log_debug(&quot;SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii) - Timer started&quot;);
+1101       }
+1102
+1103       // The UI controller copies the submission before this workspace is reused.
+1104     }
+1105
+1106     // Live presentation owns terminal writes on its worker. Draining here
+1107     // blocks packet reception, including audio, behind a slow terminal reader.
+1108     if (ctx-&gt;snapshot_mode) {
+1109       (void)fflush(stdout);
+1110       int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
+1111       (void)terminal_flush(flush_fd);
+1112     }
+1113
+1114   } else if (terminal_is_interactive()) {
+1115     // Piped to interactive terminal: output ASCII frames with newline
+1116     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
+1117     if (write_buf) {
+1118       memcpy(write_buf, display_frame, frame_len);
+1119       write_buf[frame_len] = '\n';
+1120       if (ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1) != ASCIICHAT_OK) {
+1121         atomic_store_bool(&amp;ctx-&gt;output_failed, true);
+1122         APP_CALLBACK_VOID(signal_exit);
+1123         SAFE_FREE(write_buf);
+1124         goto cleanup_frame;
+1125       }
+1126       SAFE_FREE(write_buf);
+1127     }
+1128
+1129     if (ctx-&gt;snapshot_mode) {
+1130       (void)fflush(stdout);
+1131       int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
+1132       (void)terminal_flush(flush_fd);
+1133     }
+1134   } else {
+1135     // Named render files leave stdout available for ASCII output
+1136     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
+1137     if (write_buf) {
+1138       memcpy(write_buf, display_frame, frame_len);
+1139       write_buf[frame_len] = '\n';
+1140       if (ui_controller_write(STDOUT_FILENO, write_buf, frame_len + 1) != ASCIICHAT_OK) {
+1141         atomic_store_bool(&amp;ctx-&gt;output_failed, true);
+1142         APP_CALLBACK_VOID(signal_exit);
+1143         SAFE_FREE(write_buf);
+1144         goto cleanup_frame;
+1145       }
+1146
+1147       // Start snapshot timer on first ASCII frame rendered
+1148       if (GET_OPTION(snapshot_mode) &amp;&amp; !g_snapshot_first_frame_rendered) {
+1149         g_snapshot_first_frame_rendered = true;
+1150         g_snapshot_first_frame_rendered_ns = time_get_ns();
+1151         log_debug(&quot;SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii piped) - Timer started&quot;);
+1152       }
+1153
+1154       SAFE_FREE(write_buf);
+1155     }
+1156
+1157     // Writes already reach the OS synchronously; streaming frames do not need
+1158     // a durability barrier or a terminal drain on the receiving thread.
+1159     (void)fflush(stdout);
+1160     if (ctx-&gt;snapshot_mode &amp;&amp; ctx-&gt;has_tty) {
+1161       int flush_fd = (ctx-&gt;tty_info.fd &gt;= 0) ? ctx-&gt;tty_info.fd : STDOUT_FILENO;
+1162       (void)terminal_flush(flush_fd);
+1163     }
+1164   }
+1165
+1166 cleanup_frame:
+1167   log_dev_every(3 * US_PER_SEC_INT, &quot;FRAME_WRITE: Published in %.2f ms&quot;,
+1168                 (double)(time_get_ns() - frame_write_started_ns) / NS_PER_MS_INT);
+1169
+1170   // Clean up digital rain result if allocated
+1171   SAFE_FREE(plain_frame);
+1172   SAFE_FREE(zalgo_frame);
+1173   if (rain_result) {
+1174     SAFE_FREE(rain_result);
+1175   }
+1176   SAFE_FREE(visualization_frame);
+1177 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ansi_expand_rle()</b>, <b>APP_CALLBACK_VOID</b>,
+    <b>ASCII_OTEL_SCOPE</b>, <b>asciichat_error_format()</b>,
+    <b>ASCIICHAT_OK</b>, <b>atomic_exchange_bool()</b>,
+    <b>atomic_fetch_add_u64()</b>, <b>atomic_load_bool()</b>,
+    <b>atomic_store_bool()</b>, <b>session_display_ctx::caps</b>,
+    <b>terminal_capabilities_t::color_level</b>,
+    <b>session_display_ctx::digital_rain</b>, <b>digital_rain_apply()</b>,
+    <b>digital_rain_set_color_from_filter()</b>, <b>ERROR_BUFFER_FULL</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>tty_info_t::fd</b>,
+    <b>session_display_ctx::first_frame</b>,
+    <b>g_snapshot_first_frame_rendered</b>,
+    <b>g_snapshot_first_frame_rendered_ns</b>, <b>GET_OPTION</b>,
+    <b>session_display_ctx::has_tty</b>,
+    <b>session_display_ctx::initialized</b>,
+    <b>session_display_ctx::last_frame_time_ns</b>, <b>log_debug</b>,
+    <b>log_debug_every</b>, <b>log_dev</b>, <b>log_dev_every</b>,
+    <b>log_warn_every</b>, <b>NS_PER_MS_INT</b>, <b>NS_PER_SEC_INT</b>,
+    <b>session_display_ctx::output_failed</b>,
+    <b>session_display_ctx::render_file</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SAFE_REALLOC</b>,
+    <b>session_display_write_ascii_frame()</b>, <b>SET_ERRNO</b>,
+    <b>signal_exit()</b>, <b>session_display_ctx::snapshot_mode</b>,
+    <b>splash_intro_done()</b>, <b>splash_wait_for_animation()</b>,
+    <b>strip_ansi_codes()</b>, <b>TERM_COLOR_AUTO</b>, <b>terminal_flush()</b>,
+    <b>terminal_is_interactive()</b>, <b>TIME_DURATION_BUFFER_SIZE</b>,
+    <b>time_get_ns()</b>, <b>time_pretty()</b>,
+    <b>session_display_ctx::tty_frame_buffer</b>,
+    <b>session_display_ctx::tty_frame_capacity</b>,
+    <b>session_display_ctx::tty_info</b>, <b>UI_CONTROLLER_MAX_FRAME_BYTES</b>,
+    <b>ui_controller_present()</b>, <b>ui_controller_present_retained()</b>,
+    <b>ui_controller_remove()</b>, <b>ui_controller_title_activity()</b>,
+    <b>ui_controller_title_ready()</b>, <b>ui_controller_write()</b>,
+    <b>UI_SCREEN_MEDIA</b>, <b>UI_SCREEN_SPLASH</b>,
+    <b>UI_TITLE_ACTIVITY_IDLE</b>, <b>US_PER_SEC_INT</b>, and
+    <b>zalgo_apply()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_write_ascii()</b>,
+    <b>session_display_write_ascii_frame()</b>, and
+    <b>session_pipeline_run_main()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

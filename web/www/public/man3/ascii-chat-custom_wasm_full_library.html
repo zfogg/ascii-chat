@@ -1,0 +1,2347 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>custom_wasm_full_library(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">custom_wasm_full_library(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">custom_wasm_full_library(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">custom_wasm_full_library - Web Mirror Mode: Full Library WASM
+    Build with Settings Panel</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Web_Mirror_Mode:_Full_Library_WASM_Build_with_Settings_Panel"><a class="permalink" href="#Web_Mirror_Mode:_Full_Library_WASM_Build_with_Settings_Panel">Web
+  Mirror Mode: Full Library WASM Build with Settings Panel</a></h1>
+<p class="Pp"><b>Date:</b> 2026-02-06 <b>Status:</b> Design Phase <b>Goal:</b>
+    Enable web.ascii-chat.com/mirror to use the full ascii-chat library via WASM
+    with interactive settings panel for render-mode, color-filter, color-mode,
+    width, and height.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Table_of_Contents"><a class="permalink" href="#Table_of_Contents">Table
+  of Contents</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Overview</b></dd>
+  <dt>2.</dt>
+  <dd><b>Architecture</b></dd>
+  <dt>3.</dt>
+  <dd><b>Module Dependencies</b></dd>
+  <dt>4.</dt>
+  <dd><b>Platform Layer: WASM Implementation</b></dd>
+  <dt>5.</dt>
+  <dd><b>Exported WASM API</b></dd>
+  <dt>6.</dt>
+  <dd><b>Build Configuration</b></dd>
+  <dt>7.</dt>
+  <dd><b>TypeScript Integration</b></dd>
+  <dt>8.</dt>
+  <dd><b>UI Implementation</b></dd>
+  <dt>9.</dt>
+  <dd><b>Implementation Plan</b></dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Overview"><a class="permalink" href="#Overview">Overview</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Current_State"><a class="permalink" href="#Current_State">Current
+  State</a></h2>
+<p class="Pp">The web mirror (web.ascii-chat.com/mirror) currently uses a
+    minimal standalone WASM implementation:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>File:</b> web/web.ascii-chat.com/wasm/mirror_standalone.c (71
+    lines)</li>
+  <li><b>Features:</b> Basic luminance-to-ASCII conversion only</li>
+  <li><b>Palette:</b> Fixed &quot; ...',;:clodxkO0KXNWM&quot;</li>
+  <li><b>No settings:</b> No render modes, color filters, or color modes</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Target_State"><a class="permalink" href="#Target_State">Target
+  State</a></h2>
+<p class="Pp">Build the full ascii-chat library as WASM with:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>&#x2705; Complete options system (RCU-based, thread-safe)</li>
+  <li>&#x2705; Full video rendering pipeline (color filters, render modes, ANSI
+      output)</li>
+  <li>&#x2705; Runtime-configurable settings via
+    <b>options_set_int()</b><b></b></li>
+  <li>&#x2705; Interactive settings panel in web UI</li>
+  <li>&#x2705; Auto-calculated dimensions from terminal viewport + webcam aspect
+      ratio</li>
+  <li>&#x2705; Manual dimension override available</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Design_Philosophy"><a class="permalink" href="#Design_Philosophy">Design
+  Philosophy</a></h2>
+<p class="Pp"><b>Full library integration from the start</b> - Build with
+    threading support (Emscripten pthreads) to enable proper
+    <b>options_set_int()</b><b> integration, even though we'll start in
+    single-threaded mode (pthreads as no-ops). This gives us a clear upgrade
+    path to true multithreading later if needed.</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="High-Level_Structure"><a class="permalink" href="#High-Level_Structure">High-Level
+  Structure</a></h2>
+<pre>web/web.ascii-chat.com/wasm/
+&#x251C;&#x2500;&#x2500; CMakeLists.txt          # New WASM build config (Emscripten)
+&#x251C;&#x2500;&#x2500; mirror_wasm.c           # WASM entry point (replaces mirror_standalone.c)
+&#x251C;&#x2500;&#x2500; build.sh                # Build script (emcmake + emmake)
+&#x251C;&#x2500;&#x2500; platform_wasm/          # WASM-specific platform layer (NEW)
+&#x2502;   &#x251C;&#x2500;&#x2500; terminal.c          # EM_JS bridge to xterm.js
+&#x2502;   &#x251C;&#x2500;&#x2500; threading.c         # Emscripten pthread wrappers
+&#x2502;   &#x251C;&#x2500;&#x2500; environment.c       # getenv, strerror stubs
+&#x2502;   &#x251C;&#x2500;&#x2500; time.c              # Emscripten time functions
+&#x2502;   &#x2514;&#x2500;&#x2500; init.c              # Platform initialization
+&#x2514;&#x2500;&#x2500; build/                  # Emscripten build output
+<br/>
+    &#x251C;&#x2500;&#x2500; mirror.js           # Generated glue code (~200-300KB)
+<br/>
+    &#x2514;&#x2500;&#x2500; mirror.wasm         # Compiled library (~150-250KB)</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Module_Selection"><a class="permalink" href="#Module_Selection">Module
+  Selection</a></h2>
+<p class="Pp">Build these ascii-chat modules for WASM:</p>
+<p class="Pp"></p>
+<p class="Pp">Module Status Notes ascii-chat-core &#x2705; Full Error handling,
+    logging, memory tracking ascii-chat-util &#x26A0;&#xFE0F; Partial Exclude
+    PCRE2-dependent files (<b>url.c</b>) ascii-chat-platform-wasm &#x2705; New
+    WASM-specific platform implementations ascii-chat-video &#x26A0;&#xFE0F;
+    Partial ASCII conversion, color filters, render modes (no FFmpeg/V4L2)
+    ascii-chat-options &#x2705; Full Complete options system with RCU
+  threading</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Excluded modules:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>&#x274C; ascii-chat-network - No networking in mirror mode</li>
+  <li>&#x274C; ascii-chat-crypto - No encryption needed</li>
+  <li>&#x274C; ascii-chat-audio - Mirror is video-only</li>
+  <li>&#x274C; ascii-chat-discovery - No session discovery</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Thread_Model"><a class="permalink" href="#Thread_Model">Thread
+  Model</a></h2>
+<p class="Pp"><b>Phase 1 (Initial):</b> Single-threaded WASM</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Emscripten pthreads disabled: -s USE_PTHREADS=0</li>
+  <li>Mutexes compile as no-ops</li>
+  <li>No SharedArrayBuffer required (simpler deployment)</li>
+  <li>No COOP/COEP headers needed on web server</li>
+</ul>
+<p class="Pp"><b>Phase 2 (Future):</b> Multi-threaded WASM (optional
+  upgrade)</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Enable: -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2</li>
+  <li>Requires SharedArrayBuffer (COOP/COEP headers)</li>
+  <li>True RCU read-copy-update semantics</li>
+  <li>Web Worker pool for background processing</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Module_Dependencies"><a class="permalink" href="#Module_Dependencies">Module
+  Dependencies</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Dependency_Matrix"><a class="permalink" href="#Dependency_Matrix">Dependency
+  Matrix</a></h2>
+<p class="Pp">Dependency Native Build WASM Build Strategy <b>libsodium</b>
+    Required &#x274C; Excluded -DNO_CRYPTO=1 <b>PCRE2</b> Required &#x274C;
+    Excluded -DNO_PCRE2=1 (start without, add later if needed) <b>pthread</b>
+    Required &#x2705; Emscripten -s USE_PTHREADS=0 (no-op mutexes in
+    single-threaded) <b>FFmpeg</b> Optional &#x274C; Excluded -DNO_FFMPEG=1
+    <b>PortAudio</b> Required &#x274C; Excluded -DNO_AUDIO=1 <b>Opus</b>
+    Required &#x274C; Excluded -DNO_AUDIO=1 <b>V4L2/AVFoundation</b> Platform
+    &#x274C; Excluded -DNO_WEBCAM_CAPTURE=1 <b>BearSSL</b> Optional &#x274C;
+    Excluded -DNO_CRYPTO=1 <b>WebRTC AEC</b> Optional &#x274C; Excluded
+    -DNO_AUDIO=1</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="PCRE2_Strategy"><a class="permalink" href="#PCRE2_Strategy">PCRE2
+  Strategy</a></h2>
+<p class="Pp"><b>Start WITHOUT PCRE2:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Options parsing doesn't need it (uses simple string comparisons)</li>
+  <li>URL validation not needed for mirror mode</li>
+  <li>YouTube video ID extraction not needed</li>
+  <li>Saves ~150KB in WASM binary</li>
+</ul>
+<p class="Pp"><b>Add PCRE2 later if needed:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Emscripten port: embuilder <b>Build System</b> pcre2<b></b></dd>
+  <dt>2.</dt>
+  <dd>Or build from source with Emscripten toolchain</dd>
+  <dt>3.</dt>
+  <dd>Useful for future features (URL streaming, regex validation)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Conditional_Compilation_Flags"><a class="permalink" href="#Conditional_Compilation_Flags">Conditional
+  Compilation Flags</a></h2>
+<pre>// Defined in CMakeLists.txt, used in source code
+#define EMSCRIPTEN_BUILD 1
+#define WASM_MIRROR_MODE 1
+#define NO_NETWORK 1
+#define NO_CRYPTO 1
+#define NO_AUDIO 1
+#define NO_FFMPEG 1
+#define NO_WEBCAM_CAPTURE 1
+#define NO_PCRE2 1
+#define PCRE2_CODE_UNIT_WIDTH 8  // Keep for header compatibility</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Source_Files_Compiled"><a class="permalink" href="#Source_Files_Compiled">Source
+  Files Compiled</a></h2>
+<pre>set(WASM_SOURCES
+<br/>
+    # Entry point
+<br/>
+    ${CMAKE_SOURCE_DIR}/mirror_wasm.c
+<br/>
+    # Platform layer (WASM-specific - NEW)
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/terminal.c
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/thread.c
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/environment.c
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/time.c
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/init.c
+<br/>
+    # Core module
+<br/>
+    ${REPO_ROOT}/lib/core/error.c
+<br/>
+    ${REPO_ROOT}/lib/core/logging.c
+<br/>
+    ${REPO_ROOT}/lib/log/logging.c
+<br/>
+    # Util module (exclude PCRE2 files)
+<br/>
+    ${REPO_ROOT}/lib/util/string.c
+<br/>
+    ${REPO_ROOT}/lib/util/buffer.c
+<br/>
+    ${REPO_ROOT}/lib/util/format.c
+<br/>
+    # EXCLUDE: lib/util/url.c (uses PCRE2)
+<br/>
+    # Debug/memory tracking
+<br/>
+    ${REPO_ROOT}/lib/debug/memory.c
+<br/>
+    # Video module (ASCII conversion only)
+<br/>
+    ${REPO_ROOT}/lib/video/ascii.c
+<br/>
+    ${REPO_ROOT}/lib/video/color_filter.c
+<br/>
+    ${REPO_ROOT}/lib/video/ansi_fast.c
+<br/>
+    ${REPO_ROOT}/lib/video/image.c
+<br/>
+    ${REPO_ROOT}/lib/video/framebuffer.c
+<br/>
+    ${REPO_ROOT}/lib/video/output_buffer.c
+<br/>
+    # EXCLUDE: lib/media/ffmpeg_decoder.c (uses FFmpeg)
+<br/>
+    # EXCLUDE: lib/media/webcam.c (uses V4L2/AVFoundation)
+<br/>
+    # EXCLUDE: lib/media/youtube.c (uses PCRE2 + FFmpeg)
+<br/>
+    # Options module (FULL)
+<br/>
+    ${REPO_ROOT}/lib/options/options.c
+<br/>
+    ${REPO_ROOT}/lib/options/rcu.c
+<br/>
+    ${REPO_ROOT}/lib/options/common.c
+<br/>
+    ${REPO_ROOT}/lib/options/parsers.c
+<br/>
+    ${REPO_ROOT}/lib/options/strings.c
+<br/>
+    ${REPO_ROOT}/lib/options/validation.c
+<br/>
+    ${REPO_ROOT}/lib/options/builder.c
+<br/>
+    ${REPO_ROOT}/lib/options/registry.c
+<br/>
+    ${REPO_ROOT}/lib/options/config/presets.c
+<br/>
+    ${REPO_ROOT}/lib/options/config/config.c
+)</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Platform_Layer:_WASM_Implementation"><a class="permalink" href="#Platform_Layer:_WASM_Implementation">Platform
+  Layer: WASM Implementation</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Overview~2"><a class="permalink" href="#Overview~2">Overview</a></h2>
+<p class="Pp">Create lib/platform/wasm/ directory with WASM-specific
+    implementations of the platform abstraction API defined in
+    <b>include/ascii-chat/platform/abstraction.h</b><b>.</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key principle:</b> Library code remains unchanged - it just
+    calls platform_*() functions, and the WASM platform provides the
+    implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Directory_Structure"><a class="permalink" href="#Directory_Structure">Directory
+  Structure</a></h2>
+<pre>lib/platform/
+&#x251C;&#x2500;&#x2500; posix/          # Existing (Linux/macOS)
+&#x251C;&#x2500;&#x2500; windows/        # Existing (Windows)
+&#x2514;&#x2500;&#x2500; wasm/           # NEW - WASM/Emscripten implementations
+<br/>
+    &#x251C;&#x2500;&#x2500; terminal.c  # EM_JS bridge to xterm.js
+<br/>
+    &#x251C;&#x2500;&#x2500; threading.c # Emscripten pthread wrappers
+<br/>
+    &#x251C;&#x2500;&#x2500; environment.c # getenv, strerror
+<br/>
+    &#x251C;&#x2500;&#x2500; time.c      # Emscripten time functions
+<br/>
+    &#x2514;&#x2500;&#x2500; init.c      # Platform initialization</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Terminal_Integration_(Bidirectional_Bridge)"><a class="permalink" href="#Terminal_Integration_(Bidirectional_Bridge)">Terminal
+  Integration (Bidirectional Bridge)</a></h2>
+<p class="Pp"><b>WASM &#x2192; JavaScript (via EM_JS):</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// lib/platform/wasm/terminal.c
+#include &lt;emscripten.h&gt;
+#include &lt;ascii-chat/platform/abstraction.h&gt;
+#include &lt;ascii-chat/platform/terminal.h&gt;
+// EM_JS: Call JavaScript from C
+EM_JS(int, js_get_terminal_cols, (), {
+<br/>
+    return Module.xterm ? Module.xterm.cols : 80;
+});
+EM_JS(int, js_get_terminal_rows, (), {
+<br/>
+    return Module.xterm ? Module.xterm.rows : 24;
+});
+EM_JS(int, js_get_color_mode, (), {
+<br/>
+    // Query xterm.js theme/capabilities
+<br/>
+    if (!Module.xterm) return 0; // COLOR_MODE_AUTO
+<br/>
+    // Could check Module.xterm.options.theme for truecolor support
+<br/>
+    return 4; // COLOR_MODE_TRUECOLOR (xterm.js supports it)
+});
+EM_JS(void, js_terminal_write, (const char* data, int len), {
+<br/>
+    if (Module.xterm) {
+<br/>
+        Module.xterm.write(UTF8ToString(data, len));
+<br/>
+    }
+});
+// Platform API implementation
+int platform_get_terminal_size(int *cols, int *rows) {
+<br/>
+    if (!cols || !rows) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    *cols = js_get_terminal_cols();
+<br/>
+    *rows = js_get_terminal_rows();
+<br/>
+    return 0;
+}
+color_mode_t platform_detect_color_support(void) {
+<br/>
+    return (color_mode_t)js_get_color_mode();
+}
+int platform_write_terminal(const char *data, size_t len) {
+<br/>
+    js_terminal_write(data, (int)len);
+<br/>
+    return (int)len;
+}
+// Stub implementations (not needed for mirror mode)
+int platform_set_terminal_raw_mode(bool enable) {
+<br/>
+    (void)enable;
+<br/>
+    return 0; // No-op: xterm.js handles this
+}
+int platform_read_keyboard(char *buffer, size_t len) {
+<br/>
+    (void)buffer;
+<br/>
+    (void)len;
+<br/>
+    return -1; // Not supported: use JavaScript event listeners
+}</pre>
+<p class="Pp"><b>JavaScript &#x2192; WASM (Module initialization):</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// src/wasm/mirror.ts
+export async function initMirrorWasm(xtermInstance: Terminal): Promise&lt;MirrorWasmModule&gt; {
+<br/>
+  const module = await MirrorWasmModuleFactory();
+<br/>
+  // Expose xterm.js instance to WASM via Module.xterm
+<br/>
+  module.xterm = xtermInstance;
+<br/>
+  // WASM can now call js_get_terminal_cols(), js_get_terminal_rows(), etc.
+<br/>
+  return module;
+}</pre>
+<p class="Pp"><b>Benefits:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>&#x2705; Real terminal capability detection (query xterm.js
+    configuration)</li>
+  <li>&#x2705; Dynamic dimension updates (WASM sees xterm.js resize events)</li>
+  <li>&#x2705; Direct ANSI output (WASM writes directly to xterm.js)</li>
+  <li>&#x2705; Color mode synchronization (xterm.js theme &#x2194; WASM
+      color_mode)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Threading_Implementation"><a class="permalink" href="#Threading_Implementation">Threading
+  Implementation</a></h2>
+<pre>// lib/platform/wasm/thread.c
+#include &lt;ascii-chat/platform/abstraction.h&gt;
+#include &lt;pthread.h&gt;
+// Emscripten provides pthread.h
+// In single-threaded mode (USE_PTHREADS=0), these are no-ops
+// In multi-threaded mode (USE_PTHREADS=1), these are real mutexes
+int mutex_init(mutex_t *mutex) {
+<br/>
+    return pthread_mutex_init(mutex, NULL);
+}
+int mutex_lock(mutex_t *mutex) {
+<br/>
+    return pthread_mutex_lock(mutex);
+}
+int mutex_unlock(mutex_t *mutex) {
+<br/>
+    return pthread_mutex_unlock(mutex);
+}
+int mutex_destroy(mutex_t *mutex) {
+<br/>
+    return pthread_mutex_destroy(mutex);
+}
+// Thread creation (not used in mirror mode, but provided for completeness)
+int acthread_create(asciichat_thread_t *thread, void *(*start_routine)(void *), void *arg) {
+<br/>
+    return pthread_create(thread, NULL, start_routine, arg);
+}
+int thread_join(asciichat_thread_t thread, void **retval) {
+<br/>
+    return pthread_join(thread, retval);
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Environment_and_Utilities"><a class="permalink" href="#Environment_and_Utilities">Environment
+  and Utilities</a></h2>
+<pre>// lib/platform/wasm/environment.c
+#include &lt;ascii-chat/platform/abstraction.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+const char* platform_getenv(const char *name) {
+<br/>
+    // Emscripten supports getenv() via environment variables passed at initialization
+<br/>
+    return getenv(name);
+}
+const char* platform_strerror(int errnum) {
+<br/>
+    return strerror(errnum);
+}
+// lib/platform/wasm/time.c
+#include &lt;ascii-chat/platform/abstraction.h&gt;
+#include &lt;time.h&gt;
+#include &lt;sys/time.h&gt;
+uint64_t platform_get_time_ms(void) {
+<br/>
+    struct timeval tv;
+<br/>
+    gettimeofday(&amp;tv, NULL);
+<br/>
+    return (uint64_t)tv.tv_sec * 1000 + (uint64_t)tv.tv_usec / 1000;
+}
+uint64_t platform_get_time_us(void) {
+<br/>
+    struct timeval tv;
+<br/>
+    gettimeofday(&amp;tv, NULL);
+<br/>
+    return (uint64_t)tv.tv_sec * 1000000 + (uint64_t)tv.tv_usec;
+}
+// lib/platform/wasm/init.c
+#include &lt;ascii-chat/platform/init.h&gt;
+asciichat_error_t platform_init(void) {
+<br/>
+    // No special initialization needed for WASM
+<br/>
+    return ASCIICHAT_OK;
+}
+void platform_cleanup(void) {
+<br/>
+    // No cleanup needed
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Exported_WASM_API"><a class="permalink" href="#Exported_WASM_API">Exported
+  WASM API</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="C_Entry_Point"><a class="permalink" href="#C_Entry_Point">C
+  Entry Point</a></h2>
+<pre>// src/wasm/mirror_wasm.c (NEW - replaces mirror_standalone.c)
+#include &lt;emscripten.h&gt;
+#include &lt;ascii-chat/options/options.h&gt;
+#include &lt;ascii-chat/video/ascii.h&gt;
+#include &lt;ascii-chat/video/color_filter.h&gt;
+#include &lt;ascii-chat/video/framebuffer.h&gt;
+#include &lt;ascii-chat/platform/terminal.h&gt;
+#include &lt;ascii-chat/platform/init.h&gt;
+#include &lt;ascii-chat/asciichat_errno.h&gt;
+#include &lt;ascii-chat/common.h&gt;
+// ============================================================================
+// Initialization
+// ============================================================================
+EMSCRIPTEN_KEEPALIVE
+int mirror_init(int width, int height) {
+<br/>
+    // Initialize platform layer
+<br/>
+    asciichat_error_t err = platform_init();
+<br/>
+    if (err != ASCIICHAT_OK) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    // Create minimal argc/argv for options system
+<br/>
+    // Options system expects at least mode name
+<br/>
+    char *argv[] = {&quot;mirror&quot;, NULL};
+<br/>
+    int argc = 1;
+<br/>
+    // Initialize options (sets up RCU, defaults, etc.)
+<br/>
+    err = options_init(argc, argv);
+<br/>
+    if (err != ASCIICHAT_OK) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    // Override dimensions with actual values from xterm.js
+<br/>
+    options_set_int(&quot;width&quot;, width);
+<br/>
+    options_set_int(&quot;height&quot;, height);
+<br/>
+    return 0;
+}
+EMSCRIPTEN_KEEPALIVE
+void mirror_cleanup(void) {
+<br/>
+    options_cleanup();
+<br/>
+    platform_cleanup();
+}
+// ============================================================================
+// Settings API (Thread-safe via RCU)
+// ============================================================================
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_width(int width) {
+<br/>
+    if (width &lt;= 0 || width &gt; 1000) {
+<br/>
+        return -1; // Invalid range
+<br/>
+    }
+<br/>
+    asciichat_error_t err = options_set_int(&quot;width&quot;, width);
+<br/>
+    return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_height(int height) {
+<br/>
+    if (height &lt;= 0 || height &gt; 1000) {
+<br/>
+        return -1; // Invalid range
+<br/>
+    }
+<br/>
+    asciichat_error_t err = options_set_int(&quot;height&quot;, height);
+<br/>
+    return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_width(void) {
+<br/>
+    return GET_OPTION(width);
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_height(void) {
+<br/>
+    return GET_OPTION(height);
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_render_mode(int mode) {
+<br/>
+    // mode: 0=foreground, 1=background, 2=half-block
+<br/>
+    if (mode &lt; 0 || mode &gt; 2) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    asciichat_error_t err = options_set_int(&quot;render_mode&quot;, mode);
+<br/>
+    return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_render_mode(void) {
+<br/>
+    return GET_OPTION(render_mode);
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_color_mode(int mode) {
+<br/>
+    // mode: 0=auto, 1=none, 2=16, 3=256, 4=truecolor
+<br/>
+    if (mode &lt; 0 || mode &gt; 4) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    asciichat_error_t err = options_set_int(&quot;color_mode&quot;, mode);
+<br/>
+    return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_color_mode(void) {
+<br/>
+    return GET_OPTION(color_mode);
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_color_filter(int filter) {
+<br/>
+    // filter: 0=none, 1=black, 2=white, 3=green, 4=magenta, etc.
+<br/>
+    if (filter &lt; 0 || filter &gt; 11) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    asciichat_error_t err = options_set_int(&quot;color_filter&quot;, filter);
+<br/>
+    return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_color_filter(void) {
+<br/>
+    return GET_OPTION(color_filter);
+}
+// ============================================================================
+// Frame Conversion API
+// ============================================================================
+EMSCRIPTEN_KEEPALIVE
+char* mirror_convert_frame(
+<br/>
+    uint8_t *rgba_data,
+<br/>
+    int src_width,
+<br/>
+    int src_height
+) {
+<br/>
+    // Get current settings from options
+<br/>
+    int dst_width = GET_OPTION(width);
+<br/>
+    int dst_height = GET_OPTION(height);
+<br/>
+    color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
+<br/>
+    render_mode_t render_mode = (render_mode_t)GET_OPTION(render_mode);
+<br/>
+    // Apply color filter to RGBA data if needed
+<br/>
+    if (filter != COLOR_FILTER_NONE) {
+<br/>
+        // Convert RGBA to RGB (color_filter expects RGB24)
+<br/>
+        int stride = src_width * 3;
+<br/>
+        uint8_t *rgb_data = SAFE_MALLOC(src_width * src_height * 3, uint8_t *);
+<br/>
+        if (!rgb_data) {
+<br/>
+            return NULL;
+<br/>
+        }
+<br/>
+        // Extract RGB from RGBA
+<br/>
+        for (int i = 0; i &lt; src_width * src_height; i++) {
+<br/>
+            rgb_data[i * 3 + 0] = rgba_data[i * 4 + 0]; // R
+<br/>
+            rgb_data[i * 3 + 1] = rgba_data[i * 4 + 1]; // G
+<br/>
+            rgb_data[i * 3 + 2] = rgba_data[i * 4 + 2]; // B
+<br/>
+        }
+<br/>
+        // Apply filter (modifies rgb_data in-place)
+<br/>
+        apply_color_filter(rgb_data, src_width, src_height, stride, filter);
+<br/>
+        // Copy filtered RGB back to RGBA
+<br/>
+        for (int i = 0; i &lt; src_width * src_height; i++) {
+<br/>
+            rgba_data[i * 4 + 0] = rgb_data[i * 3 + 0];
+<br/>
+            rgba_data[i * 4 + 1] = rgb_data[i * 3 + 1];
+<br/>
+            rgba_data[i * 4 + 2] = rgb_data[i * 3 + 2];
+<br/>
+            // Alpha unchanged
+<br/>
+        }
+<br/>
+        SAFE_FREE(rgb_data);
+<br/>
+    }
+<br/>
+    // Create framebuffer for ASCII output
+<br/>
+    framebuffer_t fb;
+<br/>
+    if (framebuffer_init(&amp;fb, dst_width, dst_height) != ASCIICHAT_OK) {
+<br/>
+        return NULL;
+<br/>
+    }
+<br/>
+    // Convert to ASCII using full library rendering
+<br/>
+    // This uses the real ascii.c conversion with proper sampling
+<br/>
+    asciichat_error_t err = convert_image_to_ascii(
+<br/>
+        rgba_data, src_width, src_height,
+<br/>
+        &amp;fb, render_mode
+<br/>
+    );
+<br/>
+    if (err != ASCIICHAT_OK) {
+<br/>
+        framebuffer_cleanup(&amp;fb);
+<br/>
+        return NULL;
+<br/>
+    }
+<br/>
+    // Generate ANSI escape sequences from framebuffer
+<br/>
+    // Returns allocated string with full ANSI output
+<br/>
+    char *output = generate_ansi_output(&amp;fb, render_mode);
+<br/>
+    framebuffer_cleanup(&amp;fb);
+<br/>
+    return output;
+}
+EMSCRIPTEN_KEEPALIVE
+void mirror_free_string(char *ptr) {
+<br/>
+    SAFE_FREE(ptr);
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Exported_Functions_List"><a class="permalink" href="#Exported_Functions_List">Exported
+  Functions List</a></h2>
+<pre>// Exported to JavaScript via EXPORTED_FUNCTIONS
+_mirror_init; // Initialize WASM module and options system
+_mirror_cleanup; // Cleanup resources
+_mirror_set_width; // Set terminal width
+_mirror_set_height; // Set terminal height
+_mirror_get_width; // Get current width
+_mirror_get_height; // Get current height
+_mirror_set_render_mode; // Set render mode (0=fg, 1=bg, 2=half-block)
+_mirror_get_render_mode; // Get current render mode
+_mirror_set_color_mode; // Set color mode (0=auto, 1=none, 2=16, 3=256, 4=truecolor)
+_mirror_get_color_mode; // Get current color mode
+_mirror_set_color_filter; // Set color filter (0=none, 3=green, etc.)
+_mirror_get_color_filter; // Get current color filter
+_mirror_convert_frame; // Convert RGBA frame to ASCII with current settings
+_mirror_free_string; // Free string returned by convert_frame
+_malloc; // Allocate WASM memory
+_free; // Free WASM memory</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Build_Configuration"><a class="permalink" href="#Build_Configuration">Build
+  Configuration</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="CMakeLists"><a class="permalink" href="#CMakeLists">CMakeLists.txt</a></h2>
+<pre># web/web.ascii-chat.com/wasm/CMakeLists.txt
+cmake_minimum_required(VERSION 3.18)
+project(ascii-chat-mirror-wasm C)
+# Verify we're using Emscripten
+if(NOT EMSCRIPTEN)
+<br/>
+    message(FATAL_ERROR &quot;This CMakeLists.txt requires Emscripten. Use: emcmake cmake ..&quot;)
+endif()
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+# ============================================================================
+# Build Configuration
+# ============================================================================
+# Define WASM-specific flags
+add_definitions(
+<br/>
+    -DEMSCRIPTEN_BUILD=1
+<br/>
+    -DWASM_MIRROR_MODE=1
+<br/>
+    -DNO_NETWORK=1
+<br/>
+    -DNO_CRYPTO=1
+<br/>
+    -DNO_AUDIO=1
+<br/>
+    -DNO_FFMPEG=1
+<br/>
+    -DNO_WEBCAM_CAPTURE=1
+<br/>
+    -DNO_PCRE2=1
+<br/>
+    -DPCRE2_CODE_UNIT_WIDTH=8  # Keep defined for header compatibility
+)
+# ============================================================================
+# Source Files
+# ============================================================================
+# Point to main repo root (3 levels up: wasm/ -&gt; web.ascii-chat.com/ -&gt; web/ -&gt; repo/)
+set(REPO_ROOT ${CMAKE_SOURCE_DIR}/../../..)
+# Include directories
+include_directories(
+<br/>
+    ${REPO_ROOT}/include
+<br/>
+    ${REPO_ROOT}/src
+)
+# Collect source files from main repo
+set(WASM_SOURCES
+<br/>
+    # Entry point
+<br/>
+    ${CMAKE_SOURCE_DIR}/mirror_wasm.c
+<br/>
+    # Platform layer (WASM-specific)
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/terminal.c
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/thread.c
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/environment.c
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/time.c
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/init.c
+<br/>
+    # Core module (minimal subset)
+<br/>
+    ${REPO_ROOT}/lib/core/error.c
+<br/>
+    ${REPO_ROOT}/lib/core/logging.c
+<br/>
+    ${REPO_ROOT}/lib/log/logging.c
+<br/>
+    # Util module (no PCRE2 files)
+<br/>
+    ${REPO_ROOT}/lib/util/string.c
+<br/>
+    ${REPO_ROOT}/lib/util/buffer.c
+<br/>
+    ${REPO_ROOT}/lib/util/format.c
+<br/>
+    # Debug/memory tracking
+<br/>
+    ${REPO_ROOT}/lib/debug/memory.c
+<br/>
+    # Video module (ASCII conversion only)
+<br/>
+    ${REPO_ROOT}/lib/video/ascii.c
+<br/>
+    ${REPO_ROOT}/lib/video/color_filter.c
+<br/>
+    ${REPO_ROOT}/lib/video/ansi_fast.c
+<br/>
+    ${REPO_ROOT}/lib/video/image.c
+<br/>
+    ${REPO_ROOT}/lib/video/framebuffer.c
+<br/>
+    ${REPO_ROOT}/lib/video/output_buffer.c
+<br/>
+    # Options module (full)
+<br/>
+    ${REPO_ROOT}/lib/options/options.c
+<br/>
+    ${REPO_ROOT}/lib/options/rcu.c
+<br/>
+    ${REPO_ROOT}/lib/options/common.c
+<br/>
+    ${REPO_ROOT}/lib/options/parsers.c
+<br/>
+    ${REPO_ROOT}/lib/options/strings.c
+<br/>
+    ${REPO_ROOT}/lib/options/validation.c
+<br/>
+    ${REPO_ROOT}/lib/options/builder.c
+<br/>
+    ${REPO_ROOT}/lib/options/registry.c
+<br/>
+    ${REPO_ROOT}/lib/options/config/presets.c
+<br/>
+    ${REPO_ROOT}/lib/options/config/config.c
+)
+# ============================================================================
+# WASM Target
+# ============================================================================
+add_executable(mirror ${WASM_SOURCES})
+# Compiler flags
+target_compile_options(mirror PRIVATE
+<br/>
+    -O3                          # Optimize for size and speed
+<br/>
+    -fno-exceptions              # No C++ exceptions
+<br/>
+    -Wall -Wextra                # Enable warnings
+)
+# Emscripten linker flags
+set(EMSCRIPTEN_LINK_FLAGS
+<br/>
+    # WASM settings
+<br/>
+    -s WASM=1
+<br/>
+    -s MODULARIZE=1
+<br/>
+    -s EXPORT_ES6=1
+<br/>
+    -s EXPORT_NAME='MirrorWasmModule'
+<br/>
+    # Memory settings
+<br/>
+    -s ALLOW_MEMORY_GROWTH=1
+<br/>
+    -s INITIAL_MEMORY=64MB
+<br/>
+    -s MAXIMUM_MEMORY=512MB
+<br/>
+    # Threading (single-threaded for now)
+<br/>
+    -s USE_PTHREADS=0            # Pthreads as no-ops
+<br/>
+    # Future: -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2
+<br/>
+    # Exported functions
+<br/>
+    -s EXPORTED_FUNCTIONS='[
+<br/>
+        &quot;_mirror_init&quot;,
+<br/>
+        &quot;_mirror_cleanup&quot;,
+<br/>
+        &quot;_mirror_set_width&quot;,
+<br/>
+        &quot;_mirror_set_height&quot;,
+<br/>
+        &quot;_mirror_get_width&quot;,
+<br/>
+        &quot;_mirror_get_height&quot;,
+<br/>
+        &quot;_mirror_set_render_mode&quot;,
+<br/>
+        &quot;_mirror_get_render_mode&quot;,
+<br/>
+        &quot;_mirror_set_color_mode&quot;,
+<br/>
+        &quot;_mirror_get_color_mode&quot;,
+<br/>
+        &quot;_mirror_set_color_filter&quot;,
+<br/>
+        &quot;_mirror_get_color_filter&quot;,
+<br/>
+        &quot;_mirror_convert_frame&quot;,
+<br/>
+        &quot;_mirror_free_string&quot;,
+<br/>
+        &quot;_malloc&quot;,
+<br/>
+        &quot;_free&quot;
+<br/>
+    ]'
+<br/>
+    # Exported runtime methods
+<br/>
+    -s EXPORTED_RUNTIME_METHODS='[
+<br/>
+        &quot;ccall&quot;,
+<br/>
+        &quot;cwrap&quot;,
+<br/>
+        &quot;UTF8ToString&quot;,
+<br/>
+        &quot;getValue&quot;,
+<br/>
+        &quot;setValue&quot;,
+<br/>
+        &quot;HEAPU8&quot;
+<br/>
+    ]'
+<br/>
+    # Optimization
+<br/>
+    -O3
+<br/>
+    --closure 1                  # Google Closure Compiler
+<br/>
+    # Error handling (development vs production)
+<br/>
+    -s ASSERTIONS=1              # Enable for development
+<br/>
+    -s SAFE_HEAP=0               # Disable for production
+<br/>
+    # EM_JS support
+<br/>
+    -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE='[$Browser]'
+)
+set_target_properties(mirror PROPERTIES
+<br/>
+    LINK_FLAGS &quot;${EMSCRIPTEN_LINK_FLAGS}&quot;
+)
+# ============================================================================
+# Post-build: Copy to src/wasm/dist/
+# ============================================================================
+add_custom_command(TARGET mirror POST_BUILD
+<br/>
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../src/wasm/dist
+<br/>
+    COMMAND ${CMAKE_COMMAND} -E copy
+<br/>
+        ${CMAKE_BINARY_DIR}/mirror.js
+<br/>
+        ${CMAKE_BINARY_DIR}/mirror.wasm
+<br/>
+        ${CMAKE_SOURCE_DIR}/../src/wasm/dist/
+<br/>
+    COMMENT &quot;Copying WASM files to src/wasm/dist/&quot;
+)</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Build_Script"><a class="permalink" href="#Build_Script">Build
+  Script</a></h2>
+<pre>#!/bin/bash
+# web/web.ascii-chat.com/wasm/build.sh
+set -e
+echo &quot;Building ascii-chat Mirror WASM with full library...&quot;
+# Clean previous build
+rm -rf build
+mkdir -p build
+# Configure with Emscripten
+cd build
+emcmake cmake .. \
+<br/>
+    -DCMAKE_BUILD_TYPE=Release \
+<br/>
+    -DCMAKE_C_COMPILER=emcc
+# Build
+emmake make -j$(nproc)
+echo &quot;&#x2705; WASM build complete!&quot;
+echo &quot;   Output: src/wasm/dist/mirror.{js,wasm}&quot;
+ls -lh ../src/wasm/dist/</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Expected_Output"><a class="permalink" href="#Expected_Output">Expected
+  Output</a></h2>
+<pre>src/wasm/dist/
+&#x251C;&#x2500;&#x2500; mirror.js      (~200-300KB - Emscripten glue code)
+&#x2514;&#x2500;&#x2500; mirror.wasm    (~150-250KB - Compiled C library)</pre>
+<p class="Pp">Total size: **~350-550KB** (compressed with gzip: ~100-150KB)</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="TypeScript_Integration"><a class="permalink" href="#TypeScript_Integration">TypeScript
+  Integration</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Type_Definitions"><a class="permalink" href="#Type_Definitions">Type
+  Definitions</a></h2>
+<pre>// src/wasm/mirror-types.ts
+export enum RenderMode {
+<br/>
+  Foreground = 0,
+<br/>
+  Background = 1,
+<br/>
+  HalfBlock = 2,
+}
+export enum ColorMode {
+<br/>
+  Auto = 0,
+<br/>
+  None = 1,
+<br/>
+  Color16 = 2,
+<br/>
+  Color256 = 3,
+<br/>
+  TrueColor = 4,
+}
+export enum ColorFilter {
+<br/>
+  None = 0,
+<br/>
+  Black = 1,
+<br/>
+  White = 2,
+<br/>
+  Green = 3,
+<br/>
+  Magenta = 4,
+<br/>
+  Fuchsia = 5,
+<br/>
+  Orange = 6,
+<br/>
+  Teal = 7,
+<br/>
+  Cyan = 8,
+<br/>
+  PastelPink = 9,
+<br/>
+  ErrorRed = 10,
+<br/>
+  Yellow = 11,
+}
+export interface MirrorWasmModule extends EmscriptenModule {
+<br/>
+  // Initialization
+<br/>
+  _mirror_init(width: number, height: number): number;
+<br/>
+  _mirror_cleanup(): void;
+<br/>
+  // Dimension settings
+<br/>
+  _mirror_set_width(width: number): number;
+<br/>
+  _mirror_set_height(height: number): number;
+<br/>
+  _mirror_get_width(): number;
+<br/>
+  _mirror_get_height(): number;
+<br/>
+  // Render settings
+<br/>
+  _mirror_set_render_mode(mode: number): number;
+<br/>
+  _mirror_get_render_mode(): number;
+<br/>
+  _mirror_set_color_mode(mode: number): number;
+<br/>
+  _mirror_get_color_mode(): number;
+<br/>
+  _mirror_set_color_filter(filter: number): number;
+<br/>
+  _mirror_get_color_filter(): number;
+<br/>
+  // Frame conversion
+<br/>
+  _mirror_convert_frame(rgba_ptr: number, src_width: number, src_height: number): number;
+<br/>
+  _mirror_free_string(ptr: number): void;
+<br/>
+  // Memory management
+<br/>
+  _malloc(size: number): number;
+<br/>
+  _free(ptr: number): void;
+<br/>
+  // xterm.js reference (for EM_JS callbacks)
+<br/>
+  xterm: Terminal | null;
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="WASM_Wrapper_Class"><a class="permalink" href="#WASM_Wrapper_Class">WASM
+  Wrapper Class</a></h2>
+<pre>// src/wasm/mirror.ts
+import { Terminal } from &quot;xterm&quot;;
+import MirrorWasmModuleFactory from &quot;./dist/mirror.js&quot;;
+import { MirrorWasmModule, RenderMode, ColorMode, ColorFilter } from &quot;./mirror-types&quot;;
+export class MirrorWasm {
+<br/>
+  private module: MirrorWasmModule | null = null;
+<br/>
+  private initialized = false;
+<br/>
+  async init(xterm: Terminal, width: number, height: number): Promise&lt;void&gt; {
+<br/>
+    console.log(&quot;[MirrorWasm] Loading module...&quot;);
+<br/>
+    this.module = await MirrorWasmModuleFactory();
+<br/>
+    // Expose xterm.js to WASM (for EM_JS callbacks)
+<br/>
+    this.module.xterm = xterm;
+<br/>
+    // Initialize WASM module
+<br/>
+    const result = this.module._mirror_init(width, height);
+<br/>
+    if (result !== 0) {
+<br/>
+      throw new Error(&quot;Failed to initialize WASM module&quot;);
+<br/>
+    }
+<br/>
+    this.initialized = true;
+<br/>
+    console.log(&quot;[MirrorWasm] Module initialized&quot;);
+<br/>
+  }
+<br/>
+  cleanup(): void {
+<br/>
+    if (this.module &amp;&amp; this.initialized) {
+<br/>
+      this.module._mirror_cleanup();
+<br/>
+      this.initialized = false;
+<br/>
+    }
+<br/>
+  }
+<br/>
+  // Dimension settings
+<br/>
+  async setWidth(width: number): Promise&lt;void&gt; {
+<br/>
+    this.checkInitialized();
+<br/>
+    const result = this.module!._mirror_set_width(width);
+<br/>
+    if (result !== 0) {
+<br/>
+      throw new Error(`Failed to set width to ${width}`);
+<br/>
+    }
+<br/>
+  }
+<br/>
+  async setHeight(height: number): Promise&lt;void&gt; {
+<br/>
+    this.checkInitialized();
+<br/>
+    const result = this.module!._mirror_set_height(height);
+<br/>
+    if (result !== 0) {
+<br/>
+      throw new Error(`Failed to set height to ${height}`);
+<br/>
+    }
+<br/>
+  }
+<br/>
+  getWidth(): number {
+<br/>
+    this.checkInitialized();
+<br/>
+    return this.module!._mirror_get_width();
+<br/>
+  }
+<br/>
+  getHeight(): number {
+<br/>
+    this.checkInitialized();
+<br/>
+    return this.module!._mirror_get_height();
+<br/>
+  }
+<br/>
+  // Render settings
+<br/>
+  async setRenderMode(mode: RenderMode): Promise&lt;void&gt; {
+<br/>
+    this.checkInitialized();
+<br/>
+    const result = this.module!._mirror_set_render_mode(mode);
+<br/>
+    if (result !== 0) {
+<br/>
+      throw new Error(`Failed to set render mode to ${mode}`);
+<br/>
+    }
+<br/>
+  }
+<br/>
+  getRenderMode(): RenderMode {
+<br/>
+    this.checkInitialized();
+<br/>
+    return this.module!._mirror_get_render_mode();
+<br/>
+  }
+<br/>
+  async setColorMode(mode: ColorMode): Promise&lt;void&gt; {
+<br/>
+    this.checkInitialized();
+<br/>
+    const result = this.module!._mirror_set_color_mode(mode);
+<br/>
+    if (result !== 0) {
+<br/>
+      throw new Error(`Failed to set color mode to ${mode}`);
+<br/>
+    }
+<br/>
+  }
+<br/>
+  getColorMode(): ColorMode {
+<br/>
+    this.checkInitialized();
+<br/>
+    return this.module!._mirror_get_color_mode();
+<br/>
+  }
+<br/>
+  async setColorFilter(filter: ColorFilter): Promise&lt;void&gt; {
+<br/>
+    this.checkInitialized();
+<br/>
+    const result = this.module!._mirror_set_color_filter(filter);
+<br/>
+    if (result !== 0) {
+<br/>
+      throw new Error(`Failed to set color filter to ${filter}`);
+<br/>
+    }
+<br/>
+  }
+<br/>
+  getColorFilter(): ColorFilter {
+<br/>
+    this.checkInitialized();
+<br/>
+    return this.module!._mirror_get_color_filter();
+<br/>
+  }
+<br/>
+  // Frame conversion
+<br/>
+  convertFrame(rgbaData: Uint8Array, srcWidth: number, srcHeight: number): string {
+<br/>
+    this.checkInitialized();
+<br/>
+    // Allocate WASM memory for RGBA data
+<br/>
+    const dataPtr = this.module!._malloc(rgbaData.length);
+<br/>
+    if (!dataPtr) {
+<br/>
+      throw new Error(&quot;Failed to allocate WASM memory&quot;);
+<br/>
+    }
+<br/>
+    try {
+<br/>
+      // Copy RGBA data to WASM memory
+<br/>
+      this.module!.HEAPU8.set(rgbaData, dataPtr);
+<br/>
+      // Call WASM conversion function
+<br/>
+      const resultPtr = this.module!._mirror_convert_frame(dataPtr, srcWidth, srcHeight);
+<br/>
+      if (!resultPtr) {
+<br/>
+        throw new Error(&quot;WASM convert_frame returned null&quot;);
+<br/>
+      }
+<br/>
+      // Convert C string to JavaScript string
+<br/>
+      const asciiString = this.module!.UTF8ToString(resultPtr);
+<br/>
+      // Free the result buffer
+<br/>
+      this.module!._mirror_free_string(resultPtr);
+<br/>
+      return asciiString;
+<br/>
+    } finally {
+<br/>
+      // Always free the input buffer
+<br/>
+      this.module!._free(dataPtr);
+<br/>
+    }
+<br/>
+  }
+<br/>
+  private checkInitialized(): void {
+<br/>
+    if (!this.initialized || !this.module) {
+<br/>
+      throw new Error(&quot;WASM module not initialized. Call init() first.&quot;);
+<br/>
+    }
+<br/>
+  }
+}
+// Singleton instance
+let wasmInstance: MirrorWasm | null = null;
+export async function initMirrorWasm(xterm: Terminal, width: number, height: number): Promise&lt;MirrorWasm&gt; {
+<br/>
+  if (!wasmInstance) {
+<br/>
+    wasmInstance = new MirrorWasm();
+<br/>
+    await wasmInstance.init(xterm, width, height);
+<br/>
+  }
+<br/>
+  return wasmInstance;
+}
+export function isWasmReady(): boolean {
+<br/>
+  return wasmInstance !== null;
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="UI_Implementation"><a class="permalink" href="#UI_Implementation">UI
+  Implementation</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Settings_Panel_Design"><a class="permalink" href="#Settings_Panel_Design">Settings
+  Panel Design</a></h2>
+<p class="Pp"><b>Layout:</b> Floating overlay panel (right side of screen)</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Collapsible via button</li>
+  <li>Overlays the xterm.js terminal</li>
+  <li>Semi-transparent background</li>
+  <li>Auto-hides when webcam not running</li>
+</ul>
+<p class="Pp"><b>Controls:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Dimensions</b> (auto-calculated, editable)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Width input (number, live update)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Height input (number, live update)</dd>
+  <dt> &#x2022;</dt>
+  <dd>&quot;Reset to Auto&quot; button</dd>
+  <dt>2.</dt>
+  <dd><b>Render Mode</b> (dropdown)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Foreground (default)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Background</dd>
+  <dt> &#x2022;</dt>
+  <dd>Half-block</dd>
+  <dt>3.</dt>
+  <dd><b>Color Filter</b> (dropdown)</dd>
+  <dt> &#x2022;</dt>
+  <dd>None (default)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Green, Cyan, Magenta, etc.</dd>
+  <dt>4.</dt>
+  <dd><b>Color Mode</b> (dropdown)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Auto (default)</dd>
+  <dt> &#x2022;</dt>
+  <dd>None, 16-color, 256-color, Truecolor</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="React_Component"><a class="permalink" href="#React_Component">React
+  Component</a></h2>
+<pre>// src/components/MirrorSettings.tsx
+import { useState, useEffect } from 'react';
+import { MirrorWasm } from '../wasm/mirror';
+import { RenderMode, ColorMode, ColorFilter } from '../wasm/mirror-types';
+interface MirrorSettingsProps {
+<br/>
+    wasm: MirrorWasm | null;
+<br/>
+    isRunning: boolean;
+<br/>
+    onDimensionsChange?: (width: number, height: number) =&gt; void;
+}
+export function MirrorSettings({ wasm, isRunning, onDimensionsChange }: MirrorSettingsProps) {
+<br/>
+    const [isOpen, setIsOpen] = useState(true);
+<br/>
+    // Settings state
+<br/>
+    const [width, setWidth] = useState(150);
+<br/>
+    const [height, setHeight] = useState(60);
+<br/>
+    const [renderMode, setRenderMode] = useState(RenderMode.Foreground);
+<br/>
+    const [colorMode, setColorMode] = useState(ColorMode.Auto);
+<br/>
+    const [colorFilter, setColorFilter] = useState(ColorFilter.None);
+<br/>
+    // Load initial values from WASM
+<br/>
+    useEffect(() =&gt; {
+<br/>
+        if (wasm) {
+<br/>
+            setWidth(wasm.getWidth());
+<br/>
+            setHeight(wasm.getHeight());
+<br/>
+            setRenderMode(wasm.getRenderMode());
+<br/>
+            setColorMode(wasm.getColorMode());
+<br/>
+            setColorFilter(wasm.getColorFilter());
+<br/>
+        }
+<br/>
+    }, [wasm]);
+<br/>
+    const handleWidthChange = async (newWidth: number) =&gt; {
+<br/>
+        if (!wasm) return;
+<br/>
+        setWidth(newWidth);
+<br/>
+        await wasm.setWidth(newWidth);
+<br/>
+        onDimensionsChange?.(newWidth, height);
+<br/>
+    };
+<br/>
+    const handleHeightChange = async (newHeight: number) =&gt; {
+<br/>
+        if (!wasm) return;
+<br/>
+        setHeight(newHeight);
+<br/>
+        await wasm.setHeight(newHeight);
+<br/>
+        onDimensionsChange?.(width, newHeight);
+<br/>
+    };
+<br/>
+    const handleRenderModeChange = async (mode: RenderMode) =&gt; {
+<br/>
+        if (!wasm) return;
+<br/>
+        setRenderMode(mode);
+<br/>
+        await wasm.setRenderMode(mode);
+<br/>
+    };
+<br/>
+    const handleColorModeChange = async (mode: ColorMode) =&gt; {
+<br/>
+        if (!wasm) return;
+<br/>
+        setColorMode(mode);
+<br/>
+        await wasm.setColorMode(mode);
+<br/>
+    };
+<br/>
+    const handleColorFilterChange = async (filter: ColorFilter) =&gt; {
+<br/>
+        if (!wasm) return;
+<br/>
+        setColorFilter(filter);
+<br/>
+        await wasm.setColorFilter(filter);
+<br/>
+    };
+<br/>
+    if (!isOpen) {
+<br/>
+        return (
+<br/>
+            &lt;button
+<br/>
+                onClick={() =&gt; setIsOpen(true)}
+<br/>
+                className=&quot;fixed top-20 right-4 px-4 py-2 bg-terminal-8 text-terminal-fg rounded&quot;
+<br/>
+            &gt;
+<br/>
+                Settings
+<br/>
+            &lt;/button&gt;
+<br/>
+        );
+<br/>
+    }
+<br/>
+    return (
+<br/>
+        &lt;div className=&quot;fixed top-16 right-4 w-80 bg-terminal-bg/95 border border-terminal-8 rounded p-4 shadow-lg&quot;&gt;
+<br/>
+            &lt;div className=&quot;flex items-center justify-between mb-4&quot;&gt;
+<br/>
+                &lt;h3 className=&quot;text-lg font-semibold&quot;&gt;Mirror Settings&lt;/h3&gt;
+<br/>
+                &lt;button onClick={() =&gt; setIsOpen(false)} className=&quot;text-terminal-8 hover:text-terminal-fg&quot;&gt;
+<br/>
+                    &#x2715;
+<br/>
+                &lt;/button&gt;
+<br/>
+            &lt;/div&gt;
+<br/>
+            {/* Dimensions */}
+<br/>
+            &lt;div className=&quot;mb-4&quot;&gt;
+<br/>
+                &lt;label className=&quot;block text-sm mb-2&quot;&gt;Dimensions&lt;/label&gt;
+<br/>
+                &lt;div className=&quot;flex gap-2&quot;&gt;
+<br/>
+                    &lt;input
+<br/>
+                        type=&quot;number&quot;
+<br/>
+                        value={width}
+<br/>
+                        onChange={(e) =&gt; handleWidthChange(Number(e.target.value))}
+<br/>
+                        className=&quot;flex-1 px-2 py-1 bg-terminal-bg border border-terminal-8 rounded&quot;
+<br/>
+                        min=&quot;10&quot;
+<br/>
+                        max=&quot;500&quot;
+<br/>
+                    /&gt;
+<br/>
+                    &lt;span className=&quot;self-center&quot;&gt;&#x00D7;&lt;/span&gt;
+<br/>
+                    &lt;input
+<br/>
+                        type=&quot;number&quot;
+<br/>
+                        value={height}
+<br/>
+                        onChange={(e) =&gt; handleHeightChange(Number(e.target.value))}
+<br/>
+                        className=&quot;flex-1 px-2 py-1 bg-terminal-bg border border-terminal-8 rounded&quot;
+<br/>
+                        min=&quot;10&quot;
+<br/>
+                        max=&quot;300&quot;
+<br/>
+                    /&gt;
+<br/>
+                &lt;/div&gt;
+<br/>
+            &lt;/div&gt;
+<br/>
+            {/* Render Mode */}
+<br/>
+            &lt;div className=&quot;mb-4&quot;&gt;
+<br/>
+                &lt;label className=&quot;block text-sm mb-2&quot;&gt;Render Mode&lt;/label&gt;
+<br/>
+                &lt;select
+<br/>
+                    value={renderMode}
+<br/>
+                    onChange={(e) =&gt; handleRenderModeChange(Number(e.target.value))}
+<br/>
+                    className=&quot;w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded&quot;
+<br/>
+                &gt;
+<br/>
+                    &lt;option value={RenderMode.Foreground}&gt;Foreground&lt;/option&gt;
+<br/>
+                    &lt;option value={RenderMode.Background}&gt;Background&lt;/option&gt;
+<br/>
+                    &lt;option value={RenderMode.HalfBlock}&gt;Half-block&lt;/option&gt;
+<br/>
+                &lt;/select&gt;
+<br/>
+            &lt;/div&gt;
+<br/>
+            {/* Color Filter */}
+<br/>
+            &lt;div className=&quot;mb-4&quot;&gt;
+<br/>
+                &lt;label className=&quot;block text-sm mb-2&quot;&gt;Color Filter&lt;/label&gt;
+<br/>
+                &lt;select
+<br/>
+                    value={colorFilter}
+<br/>
+                    onChange={(e) =&gt; handleColorFilterChange(Number(e.target.value))}
+<br/>
+                    className=&quot;w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded&quot;
+<br/>
+                &gt;
+<br/>
+                    &lt;option value={ColorFilter.None}&gt;None&lt;/option&gt;
+<br/>
+                    &lt;option value={ColorFilter.Green}&gt;Green&lt;/option&gt;
+<br/>
+                    &lt;option value={ColorFilter.Cyan}&gt;Cyan&lt;/option&gt;
+<br/>
+                    &lt;option value={ColorFilter.Magenta}&gt;Magenta&lt;/option&gt;
+<br/>
+                    &lt;option value={ColorFilter.Orange}&gt;Orange&lt;/option&gt;
+<br/>
+                    &lt;option value={ColorFilter.Yellow}&gt;Yellow&lt;/option&gt;
+<br/>
+                &lt;/select&gt;
+<br/>
+            &lt;/div&gt;
+<br/>
+            {/* Color Mode */}
+<br/>
+            &lt;div className=&quot;mb-4&quot;&gt;
+<br/>
+                &lt;label className=&quot;block text-sm mb-2&quot;&gt;Color Mode&lt;/label&gt;
+<br/>
+                &lt;select
+<br/>
+                    value={colorMode}
+<br/>
+                    onChange={(e) =&gt; handleColorModeChange(Number(e.target.value))}
+<br/>
+                    className=&quot;w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded&quot;
+<br/>
+                &gt;
+<br/>
+                    &lt;option value={ColorMode.Auto}&gt;Auto&lt;/option&gt;
+<br/>
+                    &lt;option value={ColorMode.None}&gt;None&lt;/option&gt;
+<br/>
+                    &lt;option value={ColorMode.Color16}&gt;16-color&lt;/option&gt;
+<br/>
+                    &lt;option value={ColorMode.Color256}&gt;256-color&lt;/option&gt;
+<br/>
+                    &lt;option value={ColorMode.TrueColor}&gt;Truecolor&lt;/option&gt;
+<br/>
+                &lt;/select&gt;
+<br/>
+            &lt;/div&gt;
+<br/>
+        &lt;/div&gt;
+<br/>
+    );
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Updated_Mirror_Page"><a class="permalink" href="#Updated_Mirror_Page">Updated
+  Mirror Page</a></h2>
+<pre>// src/pages/Mirror.tsx (updated)
+import { useEffect, useRef, useState } from 'react'
+import { Terminal } from 'xterm'
+import { FitAddon } from '@xterm/addon-fit'
+import 'xterm/css/xterm.css'
+import { initMirrorWasm, MirrorWasm } from '../wasm/mirror'
+import { MirrorSettings } from '../components/MirrorSettings'
+export function MirrorPage() {
+<br/>
+    const videoRef = useRef&lt;HTMLVideoElement&gt;(null)
+<br/>
+    const canvasRef = useRef&lt;HTMLCanvasElement&gt;(null)
+<br/>
+    const terminalRef = useRef&lt;HTMLDivElement&gt;(null)
+<br/>
+    const xtermRef = useRef&lt;Terminal | null&gt;(null)
+<br/>
+    const wasmRef = useRef&lt;MirrorWasm | null&gt;(null)
+<br/>
+    const [fps, setFps] = useState&lt;string&gt;('--')
+<br/>
+    const [isRunning, setIsRunning] = useState(false)
+<br/>
+    const [error, setError] = useState&lt;string&gt;('')
+<br/>
+    // Calculate dimensions from terminal viewport
+<br/>
+    const calculateDimensions = () =&gt; {
+<br/>
+        if (!terminalRef.current) return { width: 150, height: 60 };
+<br/>
+        const rect = terminalRef.current.getBoundingClientRect();
+<br/>
+        const charWidth = 8;   // Approximate character width in pixels
+<br/>
+        const charHeight = 16; // Approximate character height in pixels
+<br/>
+        const width = Math.floor(rect.width / charWidth);
+<br/>
+        const height = Math.floor(rect.height / charHeight);
+<br/>
+        return { width, height };
+<br/>
+    };
+<br/>
+    // Initialize WASM and xterm.js
+<br/>
+    useEffect(() =&gt; {
+<br/>
+        const terminal = new Terminal({
+<br/>
+            theme: {
+<br/>
+                background: '#0c0c0c',
+<br/>
+                foreground: '#cccccc',
+<br/>
+            },
+<br/>
+            cursorStyle: 'block',
+<br/>
+            cursorBlink: false,
+<br/>
+            fontFamily: '&quot;Courier New&quot;, Courier, monospace',
+<br/>
+            fontSize: 12,
+<br/>
+            scrollback: 0,
+<br/>
+            disableStdin: true,
+<br/>
+        })
+<br/>
+        const fitAddon = new FitAddon()
+<br/>
+        terminal.loadAddon(fitAddon)
+<br/>
+        if (terminalRef.current) {
+<br/>
+            terminal.open(terminalRef.current)
+<br/>
+            fitAddon.fit()
+<br/>
+            xtermRef.current = terminal
+<br/>
+            // Initialize WASM with terminal dimensions
+<br/>
+            const dims = calculateDimensions();
+<br/>
+            initMirrorWasm(terminal, dims.width, dims.height)
+<br/>
+                .then((wasm) =&gt; {
+<br/>
+                    wasmRef.current = wasm;
+<br/>
+                    console.log('[MirrorPage] WASM initialized');
+<br/>
+                })
+<br/>
+                .catch((err) =&gt; {
+<br/>
+                    console.error('[MirrorPage] WASM init error:', err);
+<br/>
+                    setError(`Failed to load WASM: ${err}`);
+<br/>
+                });
+<br/>
+        }
+<br/>
+        return () =&gt; {
+<br/>
+            if (wasmRef.current) {
+<br/>
+                wasmRef.current.cleanup();
+<br/>
+            }
+<br/>
+            terminal.dispose();
+<br/>
+        }
+<br/>
+    }, [])
+<br/>
+    const renderFrame = () =&gt; {
+<br/>
+        const video = videoRef.current
+<br/>
+        const canvas = canvasRef.current
+<br/>
+        const wasm = wasmRef.current
+<br/>
+        if (!video || !canvas || !wasm) return
+<br/>
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })
+<br/>
+        if (!ctx) return
+<br/>
+        // Draw video to canvas
+<br/>
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+<br/>
+        // Get RGBA data
+<br/>
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+<br/>
+        // Convert via WASM (uses current settings from options system)
+<br/>
+        const asciiArt = wasm.convertFrame(
+<br/>
+            new Uint8Array(imageData.data),
+<br/>
+            canvas.width,
+<br/>
+            canvas.height
+<br/>
+        )
+<br/>
+        // Write to terminal
+<br/>
+        if (xtermRef.current) {
+<br/>
+            xtermRef.current.write('\x1b[H' + asciiArt)
+<br/>
+        }
+<br/>
+    }
+<br/>
+    // ... rest of the component (startWebcam, stopWebcam, renderLoop)
+<br/>
+    return (
+<br/>
+        &lt;div className=&quot;flex-1 bg-terminal-bg text-terminal-fg flex flex-col&quot;&gt;
+<br/>
+            {/* Hidden video/canvas */}
+<br/>
+            &lt;div style={{ opacity: 0, position: 'absolute', pointerEvents: 'none', width: 0, height: 0 }}&gt;
+<br/>
+                &lt;video ref={videoRef} autoPlay muted playsInline /&gt;
+<br/>
+                &lt;canvas ref={canvasRef} /&gt;
+<br/>
+            &lt;/div&gt;
+<br/>
+            {/* Controls */}
+<br/>
+            &lt;div className=&quot;px-4 py-3 flex-shrink-0 border-b border-terminal-8&quot;&gt;
+<br/>
+                &lt;div className=&quot;flex items-center justify-between mb-2&quot;&gt;
+<br/>
+                    &lt;h2 className=&quot;text-sm font-semibold&quot;&gt;ASCII Mirror&lt;/h2&gt;
+<br/>
+                    &lt;div className=&quot;text-xs text-terminal-8&quot;&gt;
+<br/>
+                        FPS: &lt;span className=&quot;text-terminal-2&quot;&gt;{fps}&lt;/span&gt;
+<br/>
+                    &lt;/div&gt;
+<br/>
+                &lt;/div&gt;
+<br/>
+                &lt;div className=&quot;flex gap-2&quot;&gt;
+<br/>
+                    {!isRunning ? (
+<br/>
+                        &lt;button onClick={startWebcam} className=&quot;px-4 py-2 bg-terminal-2 text-terminal-bg rounded&quot;&gt;
+<br/>
+                            Start Webcam
+<br/>
+                        &lt;/button&gt;
+<br/>
+                    ) : (
+<br/>
+                        &lt;button onClick={stopWebcam} className=&quot;px-4 py-2 bg-terminal-1 text-terminal-bg rounded&quot;&gt;
+<br/>
+                            Stop
+<br/>
+                        &lt;/button&gt;
+<br/>
+                    )}
+<br/>
+                &lt;/div&gt;
+<br/>
+            &lt;/div&gt;
+<br/>
+            {/* Terminal output (full width) */}
+<br/>
+            &lt;div className=&quot;flex-1 px-4 py-2&quot;&gt;
+<br/>
+                &lt;div ref={terminalRef} className=&quot;w-full h-full rounded bg-terminal-bg&quot; /&gt;
+<br/>
+            &lt;/div&gt;
+<br/>
+            {/* Settings panel (floating overlay) */}
+<br/>
+            &lt;MirrorSettings
+<br/>
+                wasm={wasmRef.current}
+<br/>
+                isRunning={isRunning}
+<br/>
+                onDimensionsChange={(width, height) =&gt; {
+<br/>
+                    console.log(`Dimensions changed: ${width}x${height}`);
+<br/>
+                }}
+<br/>
+            /&gt;
+<br/>
+            {error &amp;&amp; (
+<br/>
+                &lt;div className=&quot;px-4 pb-2&quot;&gt;
+<br/>
+                    &lt;div className=&quot;p-4 bg-terminal-1 text-terminal-fg rounded&quot;&gt;{error}&lt;/div&gt;
+<br/>
+                &lt;/div&gt;
+<br/>
+            )}
+<br/>
+        &lt;/div&gt;
+<br/>
+    )
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Implementation_Plan"><a class="permalink" href="#Implementation_Plan">Implementation
+  Plan</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Phase_1:_Platform_Layer_(1-2_days)"><a class="permalink" href="#Phase_1:_Platform_Layer_(1-2_days)">Phase
+  1: Platform Layer (1-2 days)</a></h2>
+<p class="Pp"><b>Tasks:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Create lib/platform/wasm/ directory</dd>
+  <dt>2.</dt>
+  <dd>Implement:</dd>
+  <dt> &#x2022;</dt>
+  <dd>terminal.c - EM_JS bridge to xterm.js</dd>
+  <dt> &#x2022;</dt>
+  <dd>threading.c - Emscripten pthread wrappers</dd>
+  <dt> &#x2022;</dt>
+  <dd><b>environment.c</b><b> - getenv/strerror stubs</b></dd>
+  <dt> &#x2022;</dt>
+  <dd>time.c - Time functions</dd>
+  <dt> &#x2022;</dt>
+  <dd>init.c - Platform initialization</dd>
+  <dt>3.</dt>
+  <dd>Add conditional compilation guards to existing platform code</dd>
+</dl>
+<p class="Pp"><b>Validation:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Compiles without errors with Emscripten</li>
+  <li>EM_JS functions can call JavaScript (test with simple console.log)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Phase_2:_WASM_Build_System_(1_day)"><a class="permalink" href="#Phase_2:_WASM_Build_System_(1_day)">Phase
+  2: WASM Build System (1 day)</a></h2>
+<p class="Pp"><b>Tasks:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Create web/web.ascii-chat.com/wasm/CMakeLists.txt</dd>
+  <dt>2.</dt>
+  <dd>Create mirror_wasm.c entry point</dd>
+  <dt>3.</dt>
+  <dd>Write build.sh script</dd>
+  <dt>4.</dt>
+  <dd>Configure Emscripten linker flags</dd>
+  <dt>5.</dt>
+  <dd>Test basic WASM build</dd>
+</dl>
+<p class="Pp"><b>Validation:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>./build.sh produces mirror.wasm and mirror.js</li>
+  <li>WASM module loads in browser (basic test)</li>
+  <li>Exported functions are accessible from JavaScript</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Phase_3:_TypeScript_Integration_(1_day)"><a class="permalink" href="#Phase_3:_TypeScript_Integration_(1_day)">Phase
+  3: TypeScript Integration (1 day)</a></h2>
+<p class="Pp"><b>Tasks:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Create TypeScript type definitions</dd>
+  <dt>2.</dt>
+  <dd>Implement MirrorWasm wrapper class</dd>
+  <dt>3.</dt>
+  <dd>Update Mirror.tsx to use new WASM module</dd>
+  <dt>4.</dt>
+  <dd>Test basic frame conversion</dd>
+</dl>
+<p class="Pp"><b>Validation:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>WASM module initializes successfully</li>
+  <li>Frame conversion works (basic ASCII output)</li>
+  <li>No memory leaks (check with Chrome DevTools)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Phase_4:_Settings_Panel_UI_(1_day)"><a class="permalink" href="#Phase_4:_Settings_Panel_UI_(1_day)">Phase
+  4: Settings Panel UI (1 day)</a></h2>
+<p class="Pp"><b>Tasks:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Create MirrorSettings.tsx component</dd>
+  <dt>2.</dt>
+  <dd>Implement controls for all settings</dd>
+  <dt>3.</dt>
+  <dd>Wire up event handlers to WASM setters</dd>
+  <dt>4.</dt>
+  <dd>Add auto-dimension calculation from viewport</dd>
+  <dt>5.</dt>
+  <dd>Style with Tailwind CSS</dd>
+</dl>
+<p class="Pp"><b>Validation:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Settings panel opens/closes correctly</li>
+  <li>All controls update WASM options</li>
+  <li>Live updates reflect in ASCII output</li>
+  <li>Dimensions auto-calculate on terminal resize</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Phase_5:_Testing_&amp;_Optimization_(1_day)"><a class="permalink" href="#Phase_5:_Testing_&amp;_Optimization_(1_day)">Phase
+  5: Testing &amp; Optimization (1 day)</a></h2>
+<p class="Pp"><b>Tasks:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Test all render modes (foreground, background, half-block)</dd>
+  <dt>2.</dt>
+  <dd>Test all color filters (green, cyan, magenta, etc.)</dd>
+  <dt>3.</dt>
+  <dd>Test all color modes (16, 256, truecolor)</dd>
+  <dt>4.</dt>
+  <dd>Performance profiling (Chrome DevTools)</dd>
+  <dt>5.</dt>
+  <dd>Memory leak detection</dd>
+  <dt>6.</dt>
+  <dd>Cross-browser testing (Chrome, Firefox, Safari)</dd>
+</dl>
+<p class="Pp"><b>Validation:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>All settings work correctly</li>
+  <li>Frame rate maintains 30-60 FPS</li>
+  <li>No memory growth over time</li>
+  <li>Works on major browsers</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Phase_6:_Documentation_&amp;_Cleanup_(0"><a class="permalink" href="#Phase_6:_Documentation_&amp;_Cleanup_(0">Phase
+  6: Documentation &amp; Cleanup (0.5 days)</a></h2>
+<p class="Pp"><b>Tasks:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Update README with WASM build instructions</dd>
+  <dt>2.</dt>
+  <dd>Add comments to complex WASM code</dd>
+  <dt>3.</dt>
+  <dd>Clean up debug logging</dd>
+  <dt>4.</dt>
+  <dd>Update deployment documentation</dd>
+</dl>
+<p class="Pp"><b>Total Estimated Time:</b> 5-6 days</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Success_Criteria"><a class="permalink" href="#Success_Criteria">Success
+  Criteria</a></h2>
+<p class="Pp">&#x2705; <b>Functional Requirements:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Full library options system working in WASM</li>
+  <li>All settings configurable via UI (render-mode, color-filter, color-mode,
+      width, height)</li>
+  <li>Settings update in real-time (no page refresh)</li>
+  <li>Auto-calculated dimensions from terminal viewport + webcam aspect
+    ratio</li>
+  <li>Manual dimension override available</li>
+</ul>
+<p class="Pp">&#x2705; <b>Performance Requirements:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Frame rate: 30-60 FPS on modern hardware</li>
+  <li>WASM binary size: &lt; 500KB uncompressed (&lt; 150KB gzipped)</li>
+  <li>Memory usage: Stable (no leaks over time)</li>
+  <li>Startup time: &lt; 2 seconds to initialize WASM</li>
+</ul>
+<p class="Pp">&#x2705; <b>Quality Requirements:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>No regressions from current mirror mode behavior</li>
+  <li>Cross-browser compatibility (Chrome, Firefox, Safari)</li>
+  <li>Mobile responsive (settings panel collapses on small screens)</li>
+  <li>Error handling for WASM initialization failures</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Future_Enhancements"><a class="permalink" href="#Future_Enhancements">Future
+  Enhancements</a></h2>
+<p class="Pp"><b>Phase 2 Features (Post-MVP):</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>PCRE2 Support</b> - Add URL streaming (--url flag)</dd>
+  <dt>2.</dt>
+  <dd><b>Multi-threading</b> - Enable USE_PTHREADS=1 for true concurrency</dd>
+  <dt>3.</dt>
+  <dd><b>SIMD Optimization</b> - Enable WASM SIMD for faster ASCII
+    conversion</dd>
+  <dt>4.</dt>
+  <dd><b>Palette Customization</b> - Expose --palette-custom setting</dd>
+  <dt>5.</dt>
+  <dd><b>FPS Control</b> - Add FPS slider (currently hardcoded to 60)</dd>
+  <dt>6.</dt>
+  <dd><b>Export ASCII</b> - Download ASCII frames as text files</dd>
+  <dt>7.</dt>
+  <dd><b>Record Session</b> - Save ASCII video to file</dd>
+</dl>
+<p class="Pp"><b>Performance Optimizations:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Use OffscreenCanvas for video processing</dd>
+  <dt>2.</dt>
+  <dd>Web Worker for WASM execution (offload from main thread)</dd>
+  <dt>3.</dt>
+  <dd>WebGL-accelerated color filtering</dd>
+  <dt>4.</dt>
+  <dd>Lazy loading of WASM module</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Appendix"><a class="permalink" href="#Appendix">Appendix</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="References"><a class="permalink" href="#References">References</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Emscripten Documentation:</b> https://emscripten.org/docs/</li>
+  <li><b>xterm.js API:</b> https://xtermjs.org/docs/api/</li>
+  <li><b>ascii-chat CLAUDE.md:</b> Full build system documentation</li>
+  <li><b>Platform Abstraction:</b>
+      <b>include/ascii-chat/platform/abstraction.h</b><b></b></li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="File_Locations"><a class="permalink" href="#File_Locations">File
+  Locations</a></h2>
+<pre>New files:
+&#x251C;&#x2500;&#x2500; lib/platform/wasm/             (5 files)
+&#x251C;&#x2500;&#x2500; web/web.ascii-chat.com/wasm/
+&#x2502;   &#x251C;&#x2500;&#x2500; CMakeLists.txt
+&#x2502;   &#x251C;&#x2500;&#x2500; mirror_wasm.c
+&#x2502;   &#x2514;&#x2500;&#x2500; build.sh
+&#x251C;&#x2500;&#x2500; web/web.ascii-chat.com/src/wasm/
+&#x2502;   &#x251C;&#x2500;&#x2500; mirror.ts                  (WASM wrapper)
+&#x2502;   &#x2514;&#x2500;&#x2500; mirror-types.ts            (TypeScript types)
+&#x2514;&#x2500;&#x2500; web/web.ascii-chat.com/src/components/
+<br/>
+    &#x2514;&#x2500;&#x2500; MirrorSettings.tsx         (Settings UI)
+Modified files:
+&#x251C;&#x2500;&#x2500; web/web.ascii-chat.com/src/pages/Mirror.tsx
+&#x2514;&#x2500;&#x2500; docs/plans/2026-02-06-web-mirror-full-library-wasm.md (this file)</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Sign-off"><a class="permalink" href="#Sign-off">Sign-off</a></h2>
+<p class="Pp"><b>Design Status:</b> &#x2705; Complete and validated <b>Ready for
+    Implementation:</b> Yes <b>Estimated Timeline:</b> 5-6 days <b>Next
+    Step:</b> Begin Phase 1 (Platform Layer implementation)</p>
+</section>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

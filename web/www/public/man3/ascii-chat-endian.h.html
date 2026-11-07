@@ -134,14 +134,6 @@ CONVERT_ARRAY_HOST_TO_NET_U32(data, 10);
 // Now all values in 'data' are in network byte order
 </pre>
 <p class="Pp">Definition at line <b>127</b> of file <b>endian.h</b>.</p>
-<pre>127 #define CONVERT_ARRAY_HOST_TO_NET_U32(arr, count)                                                                      \
-128   do {                                                                                                                 \
-129     for (size_t i = 0; i &lt; (count); i++) {                                                                             \
-130       (arr)[i] = htonl((arr)[i]);                                                                                      \
-131     }                                                                                                                  \
-132   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_CONVERT_ARRAY_NET_TO_HOST_U32(_arr,__count)"><a class="permalink" href="#_define_CONVERT_ARRAY_NET_TO_HOST_U32(_arr,__count)">#define
@@ -171,14 +163,6 @@ CONVERT_ARRAY_NET_TO_HOST_U32(data, 10);
 // Now all values in 'data' are in host byte order
 </pre>
 <p class="Pp">Definition at line <b>149</b> of file <b>endian.h</b>.</p>
-<pre>149 #define CONVERT_ARRAY_NET_TO_HOST_U32(arr, count)                                                                      \
-150   do {                                                                                                                 \
-151     for (size_t i = 0; i &lt; (count); i++) {                                                                             \
-152       (arr)[i] = ntohl((arr)[i]);                                                                                      \
-153     }                                                                                                                  \
-154   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_HOST_TO_NET_U16(_val)"><a class="permalink" href="#_define_HOST_TO_NET_U16(_val)">#define
@@ -200,14 +184,14 @@ CONVERT_ARRAY_NET_TO_HOST_U32(data, 10);
 addr.sin_port = HOST_TO_NET_U16(port);
 </pre>
 <p class="Pp">Definition at line <b>96</b> of file <b>endian.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_audio_opus_batch()</b>,
-    <b>av_send_audio_opus_batch()</b>, <b>client_crypto_handshake()</b>,
-    <b>client_serialize_packet()</b>, <b>discovery_session_process()</b>,
-    <b>discovery_session_start()</b>, <b>packet_queue_enqueue()</b>,
+<p class="Pp">Referenced by <b>acds_handshake_begin()</b>,
+    <b>acip_packet_encrypt()</b>, <b>acip_security_start()</b>,
+    <b>acip_send_audio_opus_batch()</b>, <b>av_send_audio_opus_batch()</b>,
+    <b>client_handshake_receive()</b>, <b>client_serialize_packet()</b>,
     <b>packet_send()</b>, <b>packet_send_remote_log()</b>,
-    <b>packet_send_via_transport()</b>, <b>send_crypto_parameters_packet()</b>,
-    <b>send_packet_secure()</b>, <b>server_crypto_handshake()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+    <b>packet_send_via_transportv()</b>, <b>send_crypto_parameters_packet()</b>,
+    <b>send_packet_secure()</b>, and
+    <b>session_protocol_build_capabilities()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_HOST_TO_NET_U32(_val)"><a class="permalink" href="#_define_HOST_TO_NET_U32(_val)">#define
@@ -229,20 +213,22 @@ addr.sin_port = HOST_TO_NET_U16(port);
 packet.count = HOST_TO_NET_U32(count);
 </pre>
 <p class="Pp">Definition at line <b>66</b> of file <b>endian.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_ascii_frame()</b>,
+<p class="Pp">Referenced by <b>acip_packet_encrypt()</b>,
+    <b>acip_send_ascii_frame_contract()</b>, <b>acip_send_audio_batch()</b>,
     <b>acip_send_audio_opus_batch()</b>, <b>acip_send_error()</b>,
     <b>acip_send_image_frame()</b>, <b>acip_send_remote_log()</b>,
     <b>acip_send_stream_start()</b>, <b>acip_send_stream_stop()</b>,
-    <b>add_webrtc_client()</b>, <b>av_send_audio_opus_batch()</b>,
-    <b>broadcast_server_state_to_all_clients()</b>,
-    <b>client_serialize_packet()</b>, <b>handle_image_frame_packet()</b>,
-    <b>packet_queue_enqueue()</b>, <b>packet_send()</b>,
-    <b>packet_send_error()</b>, <b>packet_send_remote_log()</b>,
-    <b>packet_send_via_transport()</b>, <b>send_packet_secure()</b>,
-    <b>send_server_state_to_client()</b>, <b>threaded_send_audio_opus()</b>,
-    <b>threaded_send_client_join_packet()</b>,
-    <b>threaded_send_stream_start_packet()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+    <b>acip_settings_encode()</b>, <b>av_send_audio_opus_batch()</b>,
+    <b>client_serialize_packet()</b>, <b>frame_render_contract_encode()</b>,
+    <b>handle_image_frame_packet()</b>, <b>handle_stream_start_packet()</b>,
+    <b>packet_send()</b>, <b>packet_send_error()</b>,
+    <b>packet_send_remote_log()</b>, <b>packet_send_via_transportv()</b>,
+    <b>send_image_frame_packet()</b>, <b>send_packet_secure()</b>,
+    <b>send_server_state_to_client()</b>,
+    <b>session_host_set_client_transport()</b>,
+    <b>session_protocol_build_capabilities()</b>,
+    <b>threaded_send_client_join_packet()</b>, and
+    <b>threaded_send_stream_start_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_HOST_TO_NET_U64(_val)"><a class="permalink" href="#_define_HOST_TO_NET_U64(_val)">#define
@@ -266,10 +252,9 @@ packet.magic = HOST_TO_NET_U64(magic);
 <p class="Pp">Definition at line <b>213</b> of file <b>endian.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_sign_session_create()</b>,
     <b>acds_sign_session_join()</b>, <b>acds_verify_session_create()</b>,
-    <b>acds_verify_session_join()</b>, <b>client_serialize_packet()</b>,
-    <b>packet_queue_enqueue()</b>, <b>packet_queue_free_packet()</b>,
-    <b>packet_send()</b>, <b>packet_send_via_transport()</b>, and
-    <b>send_packet_secure()</b>.</p>
+    <b>acds_verify_session_join()</b>, <b>acip_packet_encrypt()</b>,
+    <b>client_serialize_packet()</b>, <b>packet_send()</b>,
+    <b>packet_send_via_transportv()</b>, and <b>send_packet_secure()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_NET_TO_HOST_U16(_val)"><a class="permalink" href="#_define_NET_TO_HOST_U16(_val)">#define
@@ -291,22 +276,22 @@ packet.magic = HOST_TO_NET_U64(magic);
 uint16_t port = NET_TO_HOST_U16(addr-&gt;sin_port);
 </pre>
 <p class="Pp">Definition at line <b>111</b> of file <b>endian.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_websocket_client_handler()</b>,
-    <b>acip_client_receive_and_dispatch()</b>,
-    <b>acip_server_receive_and_dispatch()</b>, <b>client_crypto_handshake()</b>,
-    <b>client_dispatch_thread()</b>, <b>client_parse_packet()</b>,
-    <b>client_receive_thread()</b>, <b>client_send_thread_func()</b>,
+<p class="Pp">Referenced by <b>acip_client_receive_packet()</b>,
+    <b>acip_outbound_submitv()</b>, <b>acip_packet_plan()</b>,
+    <b>acip_render_settings_capabilities()</b>, <b>acip_security_receive()</b>,
+    <b>acip_server_receive_and_dispatch()</b>,
+    <b>client_handshake_receive()</b>, <b>client_parse_packet()</b>,
     <b>crypto_handshake_set_parameters()</b>,
-    <b>discovery_session_process()</b>, <b>handle_audio_opus_batch_packet()</b>,
-    <b>handle_client_capabilities_packet()</b>,
+    <b>handle_audio_opus_batch_packet()</b>,
     <b>handle_protocol_version_packet()</b>, <b>handle_size_packet()</b>,
-    <b>packet_decrypt_envelope()</b>, <b>packet_parse_remote_log()</b>,
-    <b>packet_queue_try_dequeue()</b>, <b>packet_queue_validate_packet()</b>,
-    <b>packet_receive_via_transport()</b>, <b>process_encrypted_packet()</b>,
-    <b>receive_packet_secure()</b>, <b>server_connection_establish()</b>,
-    <b>server_crypto_handshake()</b>, <b>tcp_client_connect()</b>,
-    <b>webrtc_peer_manager_handle_ice()</b>, and
-    <b>webrtc_peer_manager_handle_sdp()</b>.</p>
+    <b>network_negotiation_receive()</b>, <b>packet_decrypt_envelope()</b>,
+    <b>packet_parse_remote_log()</b>, <b>packet_queue_validate_packet()</b>,
+    <b>packet_receive_via_transport()</b>, <b>peer_crypto_receive()</b>,
+    <b>receive_packet_secure_with_timeout()</b>,
+    <b>session_host_receive_packet()</b>,
+    <b>webrtc_peer_manager_handle_ice()</b>,
+    <b>webrtc_peer_manager_handle_sdp()</b>, and
+    <b>websocket_transport_send()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_NET_TO_HOST_U32(_val)"><a class="permalink" href="#_define_NET_TO_HOST_U32(_val)">#define
@@ -328,21 +313,23 @@ uint16_t port = NET_TO_HOST_U16(addr-&gt;sin_port);
 uint32_t count = NET_TO_HOST_U32(pkt-&gt;count);
 </pre>
 <p class="Pp">Definition at line <b>81</b> of file <b>endian.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_websocket_client_handler()</b>,
-    <b>acip_client_receive_and_dispatch()</b>,
-    <b>acip_server_receive_and_dispatch()</b>,
-    <b>audio_dequantize_samples()</b>, <b>client_dispatch_thread()</b>,
-    <b>client_parse_packet()</b>, <b>client_receive_thread()</b>,
+<p class="Pp">Referenced by <b>acds_on_host_announcement()</b>,
+    <b>acds_receive_packet()</b>, <b>acip_client_receive_packet()</b>,
+    <b>acip_outbound_submitv()</b>, <b>acip_render_settings_capabilities()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>acip_settings_decode()</b>,
+    <b>audio_dequantize_samples()</b>, <b>client_parse_packet()</b>,
     <b>frame_extract_dimensions()</b>, <b>frame_extract_new_header()</b>,
-    <b>handle_audio_batch_packet()</b>, <b>handle_audio_opus_packet()</b>,
+    <b>frame_render_contract_decode()</b>, <b>handle_audio_batch_packet()</b>,
+    <b>handle_audio_opus_packet()</b>,
     <b>handle_client_capabilities_packet()</b>,
     <b>handle_client_join_packet()</b>, <b>handle_image_frame_packet()</b>,
     <b>handle_stream_start_packet()</b>, <b>handle_stream_stop_packet()</b>,
-    <b>packet_decrypt_envelope()</b>, <b>packet_parse_error_message()</b>,
-    <b>packet_parse_opus_batch()</b>, <b>packet_parse_remote_log()</b>,
-    <b>packet_queue_try_dequeue()</b>, <b>packet_queue_validate_packet()</b>,
-    <b>packet_receive_via_transport()</b>, <b>process_encrypted_packet()</b>,
-    and <b>receive_packet_secure()</b>.</p>
+    <b>packet_decoder_feed()</b>, <b>packet_decrypt_envelope()</b>,
+    <b>packet_parse_error_message()</b>, <b>packet_parse_opus_batch()</b>,
+    <b>packet_parse_remote_log()</b>, <b>packet_queue_validate_packet()</b>,
+    <b>packet_receive_via_transport()</b>, <b>peer_crypto_receive()</b>,
+    <b>receive_packet_secure_with_timeout()</b>, and
+    <b>session_host_receive_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_NET_TO_HOST_U64(_val)"><a class="permalink" href="#_define_NET_TO_HOST_U64(_val)">#define
@@ -364,10 +351,10 @@ uint32_t count = NET_TO_HOST_U32(pkt-&gt;count);
 uint64_t magic = NET_TO_HOST_U64(pkt-&gt;magic);
 </pre>
 <p class="Pp">Definition at line <b>228</b> of file <b>endian.h</b>.</p>
-<p class="Pp">Referenced by <b>client_parse_packet()</b>,
-    <b>packet_queue_free_packet()</b>, <b>packet_queue_try_dequeue()</b>,
-    <b>packet_queue_validate_packet()</b>, and
-  <b>receive_packet_secure()</b>.</p>
+<p class="Pp">Referenced by <b>acds_receive_packet()</b>,
+    <b>client_parse_packet()</b>, <b>packet_decoder_feed()</b>,
+    <b>packet_queue_validate_packet()</b>, <b>peer_crypto_receive()</b>, and
+    <b>receive_packet_secure_with_timeout()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -377,7 +364,7 @@ uint64_t magic = NET_TO_HOST_U64(pkt-&gt;magic);
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

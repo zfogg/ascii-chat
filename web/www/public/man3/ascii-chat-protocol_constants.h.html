@@ -65,13 +65,18 @@
   <br/>
   Frame data is RLE compressed. #define <b>FRAME_FLAG_IS_STRETCHED</b> 0x08
   <br/>
-  Frame was stretched (aspect adjusted). #define <b>PIXEL_FORMAT_RGB</b> 0
+  Frame was stretched (aspect adjusted). #define
+    <b>FRAME_FLAG_RENDER_CONTRACT</b> 0x10
   <br/>
-  RGB pixel format. #define <b>PIXEL_FORMAT_RGBA</b> 1
+  Explicit versioned render contract precedes encoded ASCII text. #define
+    <b>PIXEL_FORMAT_RGB</b> 1
   <br/>
-  RGBA pixel format. #define <b>PIXEL_FORMAT_BGR</b> 2
+  Packed RGB24 pixel format used by ACIP image-frame senders. #define
+    <b>PIXEL_FORMAT_RGBA</b> 2
   <br/>
-  BGR pixel format. #define <b>PIXEL_FORMAT_BGRA</b> 3
+  Packed RGBA32 pixel format. #define <b>PIXEL_FORMAT_BGR</b> 3
+  <br/>
+  BGR pixel format. #define <b>PIXEL_FORMAT_BGRA</b> 4
   <br/>
   BGRA pixel format.
   <br/>
@@ -94,7 +99,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

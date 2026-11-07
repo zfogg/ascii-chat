@@ -30,7 +30,11 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">palette - Palette</p>
+<p class="Pp">palette - Character Palettes</p>
+<p class="Pp">
+  <br/>
+   - &#x1F3A8; Character palettes for video-to-ASCII conversion</p>
+<p class="Pp"></p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
@@ -47,8 +51,7 @@
 </p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
+<h2 class="Ss">Data Structures</h2>
 <br/>
 <p class="Pp">struct <b>palette_def_t</b>
   <br/>
@@ -59,6 +62,16 @@
   UTF-8 character information structure. struct <b>utf8_palette_t</b>
   <br/>
   UTF-8 palette structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>VIDEO_ASCII_PALETTE_TERMINAL_TYPE_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>VIDEO_ASCII_PALETTE_LOCALE_ENCODING_BUFFER_SIZE</b> 16
+  <br/>
   <br/>
 </p>
 </section>
@@ -91,7 +104,7 @@
     <b>utf8_capabilities_t::locale_encoding</b> [16]
   <br/>
   Current locale encoding (e.g., <i>UTF-8&quot;).</i> char
-    <b>utf8_char_info_t::bytes</b> [4]
+    <b>utf8_char_info_t::bytes</b> [<b>UTF8_MAX_BYTES</b>]
   <br/>
   UTF-8 byte sequence (max 4 bytes per character). <b>uint8_t</b>
     <b>utf8_char_info_t::byte_len</b>
@@ -164,12 +177,14 @@
   <br/>
   Apply palette configuration (set global palette). int
     <b>build_client_luminance_palette</b> (const char *palette_chars, size_t
-    palette_len, char luminance_mapping[256])
+    palette_len, char luminance_mapping[<b>ASCII_LUMINANCE_LEVELS</b>])
   <br/>
   Build luminance mapping table from palette characters. int
     <b>initialize_client_palette</b> (<b>palette_type_t</b> palette_type, const
-    char *custom_chars, char client_palette_chars[256], size_t
-    *client_palette_len, char client_luminance_palette[256])
+    char *custom_chars, char
+    client_palette_chars[<b>ASCII_PALETTE_BUFFER_SIZE</b>], size_t
+    *client_palette_len, char
+    client_luminance_palette[<b>ASCII_LUMINANCE_LEVELS</b>])
   <br/>
   Initialize client palette with full configuration.
   <br/>
@@ -235,6 +250,7 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
+<p class="Pp">&#x1F3A8; Character palettes for video-to-ASCII conversion</p>
 <p class="Pp">This header provides ASCII palette management for converting video
     frames to ASCII art in ascii-chat. The system supports multiple built-in
     palettes and custom user-defined palettes, with full UTF-8 support for
@@ -317,6 +333,987 @@
 <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
 <p class="Pp"><b>Date</b></p>
 <div class="Bd-indent">2025</div>
+<p class="Pp">Palette README</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
+<p class="Pp">Welcome to the Palette Management module! This is where we turn
+    video frames into beautiful ASCII art. The palette system is all about
+    choosing the right characters to represent different brightness
+    levels&#x2014;from dark spaces to light block characters, we've got options
+    for every terminal and every aesthetic.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="What_does_the_palette_system_do?"><a class="permalink" href="#What_does_the_palette_system_do?">What
+  does the palette system do? </a></h2>
+<p class="Pp">The Palette Management module provides comprehensive ASCII
+    character palette management for converting video frames to ASCII art in
+    ascii-chat. Here's what it gives you:</p>
+<ul class="Bl-bullet">
+  <li><b>Five built-in palette types</b> (standard, blocks, digital, minimal,
+      cool) so you can choose the style that fits your terminal</li>
+  <li><b>Custom user-defined palettes</b> via command-line options (if you want
+      something unique, you can create your own)</li>
+  <li><b>UTF-8 character support</b> with proper encoding handling (for
+      terminals that support Unicode)</li>
+  <li><b>Automatic UTF-8 capability detection</b> and compatibility checking (we
+      detect what your terminal supports and pick the right palette
+      automatically)</li>
+  <li><b>Palette validation</b> to ensure proper character ordering (so your
+      custom palettes work correctly)</li>
+  <li><b>Luminance mapping</b> for optimal brightness-to-character conversion
+      (so dark pixels become dark characters and bright pixels become bright
+      characters)</li>
+  <li><b>Client compatibility checking</b> and automatic fallback (if your
+      terminal doesn't support UTF-8, we fall back to ASCII automatically)</li>
+</ul>
+<p class="Pp"><b>Implementation</b>: lib/palette.h</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Built-in_Palettes"><a class="permalink" href="#Built-in_Palettes">Built-in
+  Palettes</a></h1>
+<p class="Pp">ascii-chat provides five built-in palette types, each optimized
+    for different visual styles and terminal capabilities. Think of them as
+    different &quot;art styles&quot; for your ASCII art&#x2014;some are classic
+    and simple, others are modern and smooth. Let's explore what each one
+    offers:</p>
+<section class="Ss">
+<h2 class="Ss" id="Standard_Palette"><a class="permalink" href="#Standard_Palette">Standard
+  Palette</a></h2>
+<p class="Pp">The Standard palette is the classic ASCII art style&#x2014;if
+    you've ever seen ASCII art in movies or old-school terminal demos, this is
+    probably what they were using. It's simple, reliable, and works
+  everywhere.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Characters</b>: &quot; ...',;:clodxkO0KXNWM&quot;</p>
+<p class="Pp"></p>
+<p class="Pp">This palette uses traditional ASCII characters ordered from
+    darkest (spaces) to lightest (capital letters) for optimal brightness
+    mapping. It's the &quot;triedand true&quot; option&#x2014;nothing fancy, but
+    it works great.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">What makes it special? </h2>
+<ul class="Bl-bullet">
+  <li><b>Pure ASCII</b>: No UTF-8 required, so it works in any terminal, even
+      ancient ones</li>
+  <li><b>23 characters total</b>: A good balance between detail and
+    simplicity</li>
+  <li><b>Wide compatibility</b>: Works in all terminals, even terminals that
+      don't support UTF-8</li>
+  <li><b>Classic ASCII art aesthetic</b>: The traditional look that everyone
+      recognizes</li>
+</ul>
+<p class="Pp">This is probably what you want if you're not sure which palette to
+    use&#x2014;it's the safe default that works everywhere.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Blocks_Palette"><a class="permalink" href="#Blocks_Palette">Blocks
+  Palette</a></h2>
+<p class="Pp">The Blocks palette is our high-quality option for terminals that
+    support UTF-8. It uses Unicode block characters to create smooth gradients
+    that look almost like real video&#x2014;it's really impressive what you can
+    do with block characters!</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Characters</b>: &quot;
+    &#x2591;&#x2591;&#x2592;&#x2592;&#x2593;&#x2593;&#x2588;&#x2588;&quot;</p>
+<p class="Pp"></p>
+<p class="Pp">This palette uses Unicode half-block and full-block characters to
+    create a smooth gradient effect. The blocks range from light to dark,
+    creating a continuous gradient that looks much smoother than ASCII
+    characters.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">What makes it special? </h2>
+<ul class="Bl-bullet">
+  <li><b>Requires UTF-8 support</b>: Your terminal needs to support UTF-8 for
+      this to work, but most modern terminals do</li>
+  <li><b>10 characters total</b>: Just spaces and 4 block pairs (light
+      half-block, dark half-block, light full-block, dark full-block)</li>
+  <li><b>Smooth gradient effect</b>: The blocks create a much smoother gradient
+      than ASCII characters</li>
+  <li><b>Best visual quality for UTF-8 terminals</b>: If your terminal supports
+      UTF-8, this is probably the best-looking option</li>
+</ul>
+<p class="Pp">This is what you want if you have a modern terminal and want the
+    best visual quality!</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Digital_Palette"><a class="permalink" href="#Digital_Palette">Digital
+  Palette</a></h2>
+<p class="Pp">The Digital palette has a unique glitch/digital
+    aesthetic&#x2014;think &quot;Matrix&quot; meets &quot;cyberpunk
+    terminal&quot;. It uses mathematical and geometric Unicode characters to
+    create a technical, modern look.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Characters</b>: &quot;
+    -=&#x2261;&#x2263;&#x25B0;&#x25B1;&#x25FC;&quot;</p>
+<p class="Pp"></p>
+<p class="Pp">This palette combines mathematical symbols (equals, equivalent)
+    with geometric shapes (squares, blocks) to create a unique visual style.
+    It's not for everyone, but if you like the &quot;cyberpunk hacker&quot;
+    aesthetic, this is for you!</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">What makes it special? </h2>
+<ul class="Bl-bullet">
+  <li><b>Requires UTF-8 support</b>: Needs UTF-8 for the special characters</li>
+  <li><b>10 characters total</b>: A mix of mathematical and geometric
+    symbols</li>
+  <li><b>Unique glitch/digital aesthetic</b>: Very distinctive look</li>
+  <li><b>Technical appearance</b>: Looks like something from a sci-fi movie</li>
+</ul>
+<p class="Pp">This is for when you want something unique and
+  technical-looking.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Minimal_Palette"><a class="permalink" href="#Minimal_Palette">Minimal
+  Palette</a></h2>
+<p class="Pp">The Minimal palette is for when you want the absolute simplest
+    possible rendering. It uses just seven characters (spaces, dots, dashes,
+    plus signs, asterisks, and hashes), so it's fast, simple, and works
+    everywhere.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Characters</b>: &quot; .-+*#&quot;</p>
+<p class="Pp"></p>
+<p class="Pp">This is the &quot;less is more&quot; palette&#x2014;maximum
+    simplicity, maximum compatibility. If you're running on an ancient terminal
+    or want the absolute fastest rendering, this is what you want.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">What makes it special? </h2>
+<ul class="Bl-bullet">
+  <li><b>Pure ASCII</b>: No UTF-8 required, works everywhere</li>
+  <li><b>7 characters total</b>: Just the basics&#x2014;spaces, dots, dashes,
+      plus, asterisk, hash</li>
+  <li><b>Maximum simplicity</b>: As simple as it gets while still being
+    usable</li>
+  <li><b>Fast rendering</b>: Fewer characters means faster conversion</li>
+</ul>
+<p class="Pp">This is for minimalism lovers and performance purists.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Cool_Palette"><a class="permalink" href="#Cool_Palette">Cool
+  Palette</a></h2>
+<p class="Pp">The Cool palette is another UTF-8 option that uses ascending block
+    characters to create a smooth gradient. It's similar to the Blocks palette,
+    but uses a different set of characters that create a slightly different
+    look.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Characters</b>: &quot;
+    &#x2581;&#x2582;&#x2583;&#x2584;&#x2585;&#x2586;&#x2587;&#x2588;&quot;</p>
+<p class="Pp"></p>
+<p class="Pp">This palette uses Unicode ascending block characters (think
+    &quot;stair steps goingup&quot;) to create a visually appealing gradient
+    from dark to light. It's smooth, modern, and looks great in UTF-8
+  terminals.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">What makes it special? </h2>
+<ul class="Bl-bullet">
+  <li><b>Requires UTF-8 support</b>: Needs UTF-8 for the ascending block
+      characters</li>
+  <li><b>10 characters total</b>: Spaces plus 7 ascending block characters</li>
+  <li><b>Smooth gradient effect</b>: Creates a nice smooth transition from dark
+      to light</li>
+  <li><b>Modern visual style</b>: Clean, modern look</li>
+</ul>
+<p class="Pp">This is another great option if you have UTF-8 support and want
+    smooth gradients!</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="UTF-8_Support"><a class="permalink" href="#UTF-8_Support">UTF-8
+  Support</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="UTF-8_Capability_Detection"><a class="permalink" href="#UTF-8_Capability_Detection">UTF-8
+  Capability Detection</a></h2>
+<p class="Pp">The system automatically detects client UTF-8 support using
+    multiple methods:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Detection Methods</b>:</p>
+<ul class="Bl-bullet">
+  <li>$TERM environment variable analysis</li>
+  <li>Locale encoding detection (checks LC_ALL, LC_CTYPE, LANG)</li>
+  <li>Terminal type compatibility checking</li>
+  <li>User override via --utf8 flag</li>
+</ul>
+<p class="Pp"><b>Detection Logic</b>:</p>
+<p class="Pp"></p>
+<pre>utf8_capabilities_t caps;
+if (detect_client_utf8_support(&amp;caps)) {
+<br/>
+    if (caps.utf8_support) {
+<br/>
+        // Client supports UTF-8, can use UTF-8 palettes
+<br/>
+        palette = select_compatible_palette(PALETTE_BLOCKS, true);
+<br/>
+    } else {
+<br/>
+        // Client doesn't support UTF-8, use ASCII palette
+<br/>
+        palette = select_compatible_palette(PALETTE_STANDARD, false);
+<br/>
+    }
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="UTF-8_Character_Encoding"><a class="permalink" href="#UTF-8_Character_Encoding">UTF-8
+  Character Encoding</a></h2>
+<p class="Pp">UTF-8 palettes properly handle multi-byte characters:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Character Information</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>Byte Sequence</b>: Up to 4 bytes per character</li>
+  <li><b>Byte Length</b>: 1-4 bytes depending on character</li>
+  <li><b>Display Width</b>: 1-2 character cells (for full-width characters)</li>
+</ul>
+<p class="Pp"><b>UTF-8 Palette Structure</b>:</p>
+<p class="Pp"></p>
+<pre>utf8_palette_t *palette = utf8_palette_create(&quot;   &#x2591;&#x2591;&#x2592;&#x2592;&#x2593;&#x2593;&#x2588;&#x2588;&quot;);
+size_t char_count = utf8_palette_get_char_count(palette);  // 10 characters
+// Get character at index
+const utf8_char_info_t *char_info = utf8_palette_get_char(palette, 3);
+// char_info-&gt;bytes = &quot;&#x2591;&quot;
+// char_info-&gt;byte_len = 3
+// char_info-&gt;display_width = 1
+utf8_palette_destroy(palette);
+</pre>
+<p class="Pp"><b>Important Notes</b>:</p>
+<ul class="Bl-bullet">
+  <li>Character count (not byte count) is used for palette indexing</li>
+  <li>Display width ensures proper terminal rendering</li>
+  <li>Multi-byte characters are handled transparently</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Compatibility_Checking"><a class="permalink" href="#Compatibility_Checking">Compatibility
+  Checking</a></h2>
+<p class="Pp">The system automatically selects compatible palettes based on
+    client capabilities:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Request UTF-8 palette
+palette_type_t requested = PALETTE_BLOCKS;
+// Check client UTF-8 support
+utf8_capabilities_t caps;
+detect_client_utf8_support(&amp;caps);
+// Select compatible palette
+palette_type_t compatible = select_compatible_palette(
+<br/>
+    requested,
+<br/>
+    caps.utf8_support
+);
+// compatible will be PALETTE_BLOCKS if UTF-8 supported,
+// otherwise falls back to PALETTE_STANDARD</pre>
+<p class="Pp"><b>Automatic Fallback</b>:</p>
+<ul class="Bl-bullet">
+  <li>UTF-8 palettes (BLOCKS, DIGITAL, COOL) require UTF-8 support</li>
+  <li>If client doesn't support UTF-8, automatically falls back to STANDARD</li>
+  <li>ASCII palettes (STANDARD, MINIMAL) always work</li>
+  <li>Custom palettes are validated for compatibility</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Custom_Palettes"><a class="permalink" href="#Custom_Palettes">Custom
+  Palettes</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Defining_Custom_Palettes"><a class="permalink" href="#Defining_Custom_Palettes">Defining
+  Custom Palettes</a></h2>
+<p class="Pp">Users can define custom palettes via command-line options:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Command-Line Usage</b>:</p>
+<p class="Pp"></p>
+<pre># Use custom palette characters
+asciichat-client --palette-chars &quot;   .:;+=xX$&amp;&quot;
+# Or specify custom palette in config file
+palette_type = &quot;custom&quot;
+palette_chars = &quot;   &#x2591;&#x2592;&#x2593;&#x2588;&quot;
+</pre>
+<p class="Pp"><b>Programmatic Usage</b>:</p>
+<p class="Pp"></p>
+<pre>// Apply custom palette
+const char *custom_chars = &quot;   .:;+=xX$&amp;&quot;;
+asciichat_error_t err = apply_palette_config(
+<br/>
+    PALETTE_CUSTOM,
+<br/>
+    custom_chars
+);
+if (err != ASCIICHAT_OK) {
+<br/>
+    log_error(&quot;Failed to apply custom palette&quot;);
+<br/>
+    return err;
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Custom_Palette_Validation"><a class="permalink" href="#Custom_Palette_Validation">Custom
+  Palette Validation</a></h2>
+<p class="Pp">Custom palettes are validated to ensure proper formatting:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Validation Rules</b>:</p>
+<ul class="Bl-bullet">
+  <li>Non-empty character sequence</li>
+  <li>Proper character ordering (if applicable)</li>
+  <li>Valid UTF-8 encoding (for multi-byte characters)</li>
+  <li>Compatible with client capabilities</li>
+</ul>
+<p class="Pp"><b>Validation Example</b>:</p>
+<p class="Pp"></p>
+<pre>const char *custom_chars = &quot;   .:;+=xX$&amp;&quot;;
+size_t len = strlen(custom_chars);
+// Validate palette
+if (!validate_palette_chars(custom_chars, len)) {
+<br/>
+    log_error(&quot;Invalid custom palette&quot;);
+<br/>
+    return ERROR_INVALID_PALETTE;
+}
+// Check UTF-8 requirements
+if (palette_requires_utf8_encoding(custom_chars, len)) {
+<br/>
+    // Check client UTF-8 support before using
+<br/>
+    utf8_capabilities_t caps;
+<br/>
+    detect_client_utf8_support(&amp;caps);
+<br/>
+    if (!caps.utf8_support) {
+<br/>
+        log_warn(&quot;Custom palette requires UTF-8 but client doesn't support it&quot;);
+<br/>
+        return ERROR_PALETTE_INCOMPATIBLE;
+<br/>
+    }
+}
+</pre>
+<p class="Pp"><b>Palette Ordering</b>:</p>
+<ul class="Bl-bullet">
+  <li>Palettes should be ordered from darkest to lightest character</li>
+  <li>First character = darkest (for low brightness pixels)</li>
+  <li>Last character = lightest (for high brightness pixels)</li>
+  <li>Ordering affects luminance mapping quality</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Luminance_Mapping"><a class="permalink" href="#Luminance_Mapping">Luminance
+  Mapping</a></h1>
+<p class="Pp">Luminance mapping is the &quot;secret sauce&quot; that makes
+    video-to-ASCII conversion fast. Instead of calculating which character to
+    use for each pixel every time, we pre-compute a lookup table that maps
+    brightness values directly to character indices. This makes the conversion
+    super fast&#x2014;we're talking O(1) lookup time!</p>
+<section class="Ss">
+<h2 class="Ss" id="Luminance_Mapping_Overview"><a class="permalink" href="#Luminance_Mapping_Overview">Luminance
+  Mapping Overview</a></h2>
+<p class="Pp">Luminance mapping converts pixel brightness values (0-255)
+    directly to palette character indices using a pre-computed lookup table.
+    This eliminates the need for searching or calculation during video-to-ASCII
+    conversion, which makes everything significantly faster.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="How_does_it_work?"><a class="permalink" href="#How_does_it_work?">How
+  does it work? </a></h2>
+<p class="Pp"><b>Mapping Process</b>:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Pixel brightness extracted</b> (0-255 range): We calculate how bright
+      each pixel is (from completely black at 0 to completely white at 255)</dd>
+  <dt>2.</dt>
+  <dd><b>Direct lookup in luminance mapping table</b> (256 entries): We use the
+      brightness value as an index into a lookup table&#x2014;no calculation
+      needed!</dd>
+  <dt>3.</dt>
+  <dd><b>Character index retrieved</b> (0 to palette_length-1): The lookup table
+      tells us which character index to use</dd>
+  <dt>4.</dt>
+  <dd><b>Character selected from palette</b>: We grab that character from the
+      palette</dd>
+  <dt>5.</dt>
+  <dd><b>Character rendered to terminal</b>: Finally, we render it to the
+      terminal</dd>
+</dl>
+<p class="Pp">The key insight is that we pre-compute the lookup table once
+    during initialization, so during rendering we just do a simple array lookup.
+    This is way faster than calculating which character to use for each pixel
+    every time!</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Building_Luminance_Maps"><a class="permalink" href="#Building_Luminance_Maps">Building
+  Luminance Maps</a></h2>
+<p class="Pp">Luminance mapping tables are built from palette character
+    sequences:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Get palette characters
+const palette_def_t *palette = get_builtin_palette(PALETTE_STANDARD);
+// Build luminance mapping
+char luminance_mapping[256];
+asciichat_error_t err = build_client_luminance_palette(
+<br/>
+    palette-&gt;chars,
+<br/>
+    palette-&gt;length,
+<br/>
+    luminance_mapping
+);
+// luminance_mapping[0] = 0 (darkest character)
+// luminance_mapping[128] = palette-&gt;length / 2 (mid-tone character)
+// luminance_mapping[255] = palette-&gt;length - 1 (lightest character)</pre>
+<p class="Pp"><b>Mapping Distribution</b>:</p>
+<ul class="Bl-bullet">
+  <li>Brightness 0 &#x2192; Character index 0 (darkest)</li>
+  <li>Brightness 128 &#x2192; Character index length/2 (mid-tone)</li>
+  <li>Brightness 255 &#x2192; Character index length-1 (lightest)</li>
+  <li>Mapping is proportional across the full brightness range</li>
+</ul>
+<p class="Pp"><b>Performance Benefits</b>:</p>
+<ul class="Bl-bullet">
+  <li>O(1) lookup time (constant time)</li>
+  <li>No calculation required during rendering</li>
+  <li>Pre-computed for optimal performance</li>
+  <li>Single array access per pixel</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Using_Luminance_Maps"><a class="permalink" href="#Using_Luminance_Maps">Using
+  Luminance Maps</a></h2>
+<p class="Pp">Luminance maps are used during video-to-ASCII conversion:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// During video frame conversion
+for (int y = 0; y &lt; height; y++) {
+<br/>
+    for (int x = 0; x &lt; width; x++) {
+<br/>
+        // Get pixel brightness (0-255)
+<br/>
+        uint8_t brightness = calculate_pixel_brightness(pixels, x, y);
+<br/>
+        // Direct lookup in luminance mapping
+<br/>
+        char char_index = luminance_mapping[brightness];
+<br/>
+        // Select character from palette
+<br/>
+        char ascii_char = palette_chars[char_index];
+<br/>
+        // Render to terminal
+<br/>
+        render_char(ascii_char);
+<br/>
+    }
+}</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Initialization_and_Configuration"><a class="permalink" href="#Initialization_and_Configuration">Initialization
+  and Configuration</a></h1>
+<section class="Ss">
+<h2 class="Ss">Client Palette Initialization</h2>
+<p class="Pp">Complete client palette initialization combines palette selection,
+    validation, and luminance mapping creation:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Initialize client palette with full configuration
+char client_palette_chars[256];
+size_t client_palette_len;
+char client_luminance_palette[256];
+asciichat_error_t err = initialize_client_palette(
+<br/>
+    PALETTE_BLOCKS,           // Palette type
+<br/>
+    NULL,                     // Custom chars (NULL for built-in)
+<br/>
+    client_palette_chars,     // Output: palette characters
+<br/>
+    &amp;client_palette_len,      // Output: palette length
+<br/>
+    client_luminance_palette  // Output: luminance mapping
+);
+if (err != ASCIICHAT_OK) {
+<br/>
+    log_error(&quot;Failed to initialize client palette&quot;);
+<br/>
+    return err;
+}
+// Use palette for video conversion
+// client_palette_chars contains character sequence
+// client_luminance_palette contains brightness-to-index mapping</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Applying_Palette_Configuration"><a class="permalink" href="#Applying_Palette_Configuration">Applying
+  Palette Configuration</a></h2>
+<p class="Pp">Global palette configuration is applied using
+    <b>apply_palette_config()</b><b>:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Apply built-in palette globally
+asciichat_error_t err = apply_palette_config(
+<br/>
+    PALETTE_STANDARD,
+<br/>
+    NULL  // NULL for built-in palettes
+);
+// Apply custom palette globally
+err = apply_palette_config(
+<br/>
+    PALETTE_CUSTOM,
+<br/>
+    &quot;   .:;+=xX$&amp;&quot;  // Custom character sequence
+);</pre>
+<p class="Pp"><b>Configuration Steps</b>:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Validate palette (if custom)</dd>
+  <dt>2.</dt>
+  <dd>Check UTF-8 requirements</dd>
+  <dt>3.</dt>
+  <dd>Verify client compatibility</dd>
+  <dt>4.</dt>
+  <dd>Apply palette globally</dd>
+  <dt>5.</dt>
+  <dd>Build luminance mapping</dd>
+  <dt>6.</dt>
+  <dd>Make available for rendering</dd>
+</dl>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h1>
+<section class="Ss">
+<h2 class="Ss">Data Structures</h2>
+<p class="Pp"><b>Palette Definition</b>:</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    const char *name;           // Human-readable name
+<br/>
+    const char *chars;          // Character sequence
+<br/>
+    size_t length;              // Number of characters
+<br/>
+    bool requires_utf8;         // UTF-8 requirement flag
+<br/>
+    bool is_validated;          // Validation status
+} palette_def_t;
+</pre>
+<p class="Pp"><b>UTF-8 Character Information</b>:</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    char bytes[4];              // UTF-8 byte sequence (max 4 bytes)
+<br/>
+    uint8_t byte_len;           // Number of bytes (1-4)
+<br/>
+    uint8_t display_width;      // Terminal display width (1-2)
+} utf8_char_info_t;
+</pre>
+<p class="Pp"><b>UTF-8 Palette</b>:</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    utf8_char_info_t *chars;    // Array of character info
+<br/>
+    size_t char_count;          // Number of characters (not bytes!)
+<br/>
+    size_t total_bytes;         // Total byte length of string
+<br/>
+    char *raw_string;           // Original palette string
+} utf8_palette_t;
+</pre>
+<p class="Pp"><b>UTF-8 Capabilities</b>:</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    bool utf8_support;          // Detected UTF-8 support
+<br/>
+    bool forced_utf8;           // User-forced UTF-8 flag
+<br/>
+    char terminal_type[32];     // $TERM value
+<br/>
+    char locale_encoding[16];   // Locale encoding (e.g., &quot;UTF-8&quot;)
+} utf8_capabilities_t;
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="API_Functions"><a class="permalink" href="#API_Functions">API
+  Functions</a></h2>
+<p class="Pp"><b>Palette Management</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>get_builtin_palette()</b><b>: Get built-in palette definition</b></li>
+  <li><b>validate_palette_chars()</b><b>: Validate palette character
+      sequence</b></li>
+  <li><b>palette_requires_utf8_encoding()</b><b>: Check UTF-8
+    requirements</b></li>
+  <li><b>select_compatible_palette()</b><b>: Select compatible palette</b></li>
+  <li><b>apply_palette_config()</b><b>: Apply global palette
+    configuration</b></li>
+  <li><b>build_client_luminance_palette()</b><b>: Build luminance
+    mapping</b></li>
+  <li><b>initialize_client_palette()</b><b>: Initialize complete palette
+      config</b></li>
+</ul>
+<p class="Pp"><b>UTF-8 Palette Functions</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>utf8_palette_create()</b><b>: Create UTF-8 palette from string</b></li>
+  <li><b>utf8_palette_destroy()</b><b>: Destroy UTF-8 palette</b></li>
+  <li><b>utf8_palette_get_char()</b><b>: Get character info at index</b></li>
+  <li><b>utf8_palette_get_char_count()</b><b>: Get number of characters</b></li>
+  <li><b>utf8_palette_contains_char()</b><b>: Check if character exists</b></li>
+  <li><b>utf8_palette_find_char_index()</b><b>: Find character index</b></li>
+  <li><b>utf8_palette_find_all_char_indices()</b><b>: Find all
+    occurrences</b></li>
+</ul>
+<p class="Pp"><b>UTF-8 Detection</b>:</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>detect_client_utf8_support()</b><b>: Detect terminal UTF-8
+      capabilities</b></dd>
+</dl>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Usage_Examples"><a class="permalink" href="#Usage_Examples">Usage
+  Examples</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Basic_Palette_Usage"><a class="permalink" href="#Basic_Palette_Usage">Basic
+  Palette Usage</a></h2>
+<p class="Pp"><b>Using Built-in Palette</b>:</p>
+<p class="Pp"></p>
+<pre>#include &quot;palette.h&quot;
+// Get built-in palette
+const palette_def_t *palette = get_builtin_palette(PALETTE_STANDARD);
+// Check UTF-8 requirements
+if (palette-&gt;requires_utf8) {
+<br/>
+    utf8_capabilities_t caps;
+<br/>
+    if (!detect_client_utf8_support(&amp;caps) || !caps.utf8_support) {
+<br/>
+        log_error(&quot;Palette requires UTF-8 but terminal doesn't support it&quot;);
+<br/>
+        return ERROR_PALETTE_INCOMPATIBLE;
+<br/>
+    }
+}
+// Apply palette globally
+asciichat_error_t err = apply_palette_config(PALETTE_STANDARD, NULL);
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Custom_Palette_Usage"><a class="permalink" href="#Custom_Palette_Usage">Custom
+  Palette Usage</a></h2>
+<p class="Pp"><b>Defining and Using Custom Palette</b>:</p>
+<p class="Pp"></p>
+<pre>// Define custom palette
+const char *custom_chars = &quot;   .:-=+*#%@&quot;;
+// Validate palette
+if (!validate_palette_chars(custom_chars, strlen(custom_chars))) {
+<br/>
+    log_error(&quot;Invalid custom palette&quot;);
+<br/>
+    return ERROR_INVALID_PALETTE;
+}
+// Apply custom palette
+asciichat_error_t err = apply_palette_config(
+<br/>
+    PALETTE_CUSTOM,
+<br/>
+    custom_chars
+);
+if (err != ASCIICHAT_OK) {
+<br/>
+    log_error(&quot;Failed to apply custom palette&quot;);
+<br/>
+    return err;
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="UTF-8_Palette_Usage"><a class="permalink" href="#UTF-8_Palette_Usage">UTF-8
+  Palette Usage</a></h2>
+<p class="Pp"><b>Working with UTF-8 Palettes</b>:</p>
+<p class="Pp"></p>
+<pre>// Create UTF-8 palette
+utf8_palette_t *palette = utf8_palette_create(&quot;   &#x2591;&#x2591;&#x2592;&#x2592;&#x2593;&#x2593;&#x2588;&#x2588;&quot;);
+// Get character count (not byte count!)
+size_t char_count = utf8_palette_get_char_count(palette);
+// char_count = 10 (characters, not bytes)
+// Get character at index
+const utf8_char_info_t *char_info = utf8_palette_get_char(palette, 3);
+// char_info-&gt;bytes = &quot;&#x2591;&quot;
+// char_info-&gt;byte_len = 3
+// char_info-&gt;display_width = 1
+// Find character index
+size_t index = utf8_palette_find_char_index(palette, &quot;&#x2592;&quot;, 3);
+// index = 5 (5th character in palette)
+// Clean up
+utf8_palette_destroy(palette);
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss">Client Palette Initialization</h2>
+<p class="Pp"><b>Complete Client Palette Setup</b>:</p>
+<p class="Pp"></p>
+<pre>// Detect client UTF-8 support
+utf8_capabilities_t caps;
+detect_client_utf8_support(&amp;caps);
+// Select compatible palette
+palette_type_t palette_type = select_compatible_palette(
+<br/>
+    PALETTE_BLOCKS,  // Requested
+<br/>
+    caps.utf8_support
+);
+// Initialize complete palette configuration
+char client_palette_chars[256];
+size_t client_palette_len;
+char client_luminance_palette[256];
+asciichat_error_t err = initialize_client_palette(
+<br/>
+    palette_type,
+<br/>
+    NULL,  // Built-in palette
+<br/>
+    client_palette_chars,
+<br/>
+    &amp;client_palette_len,
+<br/>
+    client_luminance_palette
+);
+// Use palette for rendering
+// client_palette_chars: character sequence
+// client_luminance_palette: brightness-to-index mapping
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Best_Practices"><a class="permalink" href="#Best_Practices">Best
+  Practices</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Character_Ordering"><a class="permalink" href="#Character_Ordering">Character
+  Ordering</a></h2>
+<p class="Pp"><b>Always Order from Dark to Light</b>:</p>
+<ul class="Bl-bullet">
+  <li>First character = darkest (for black/low brightness)</li>
+  <li>Last character = lightest (for white/high brightness)</li>
+  <li>Proper ordering ensures accurate luminance mapping</li>
+  <li>Incorrect ordering produces inverted or incorrect output</li>
+</ul>
+<p class="Pp"><b>Example Ordering</b>:</p>
+<p class="Pp"></p>
+<pre>// &#x2705; CORRECT: Dark to light
+&quot;   .:-=+*#&quot;  // spaces (dark) &#x2192; # (light)
+// &#x274C; WRONG: Light to dark
+&quot;#*+=:-.   &quot;  // Inverted order
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="UTF-8_Compatibility"><a class="permalink" href="#UTF-8_Compatibility">UTF-8
+  Compatibility</a></h2>
+<p class="Pp"><b>Always Check UTF-8 Requirements</b>:</p>
+<ul class="Bl-bullet">
+  <li>Check if palette requires UTF-8 before using</li>
+  <li>Verify client UTF-8 support for UTF-8 palettes</li>
+  <li>Provide fallback to ASCII palettes</li>
+  <li>Use <b>select_compatible_palette()</b><b> for automatic selection</b></li>
+</ul>
+<p class="Pp"><b>Example</b>:</p>
+<p class="Pp"></p>
+<pre>// Check UTF-8 requirements
+if (palette_requires_utf8_encoding(chars, len)) {
+<br/>
+    utf8_capabilities_t caps;
+<br/>
+    detect_client_utf8_support(&amp;caps);
+<br/>
+    if (!caps.utf8_support) {
+<br/>
+        log_warn(&quot;UTF-8 palette incompatible with client&quot;);
+<br/>
+        // Fall back to ASCII palette
+<br/>
+        palette = get_builtin_palette(PALETTE_STANDARD);
+<br/>
+    }
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Always_Validate_Custom_Palettes"><a class="permalink" href="#Always_Validate_Custom_Palettes">Always
+  Validate Custom Palettes</a></h2>
+<p class="Pp"><b>Validate Before Use</b>:</p>
+<ul class="Bl-bullet">
+  <li>Always validate custom palettes</li>
+  <li>Check for empty or invalid sequences</li>
+  <li>Verify UTF-8 encoding for multi-byte characters</li>
+  <li>Ensure proper character ordering</li>
+</ul>
+<p class="Pp"><b>Example</b>:</p>
+<p class="Pp"></p>
+<pre>// Validate before applying
+if (!validate_palette_chars(custom_chars, len)) {
+<br/>
+    log_error(&quot;Invalid custom palette&quot;);
+<br/>
+    return ERROR_INVALID_PALETTE;
+}
+// Apply only if valid
+apply_palette_config(PALETTE_CUSTOM, custom_chars);
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Performance_Optimization"><a class="permalink" href="#Performance_Optimization">Performance
+  Optimization</a></h2>
+<p class="Pp"><b>Use Luminance Mapping</b>:</p>
+<ul class="Bl-bullet">
+  <li>Always build luminance mapping for performance</li>
+  <li>Use direct lookup instead of calculation</li>
+  <li>Pre-compute mappings during initialization</li>
+  <li>Cache mappings for repeated use</li>
+</ul>
+<p class="Pp"><b>Example</b>:</p>
+<p class="Pp"></p>
+<pre>// Build mapping once during initialization
+char luminance_mapping[256];
+build_client_luminance_palette(palette_chars, palette_len, luminance_mapping);
+// Use direct lookup during rendering (fast!)
+char char_index = luminance_mapping[pixel_brightness];
+char ascii_char = palette_chars[char_index];
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Performance_Characteristics"><a class="permalink" href="#Performance_Characteristics">Performance
+  Characteristics</a></h1>
+<p class="Pp">Palette performance is all about speed&#x2014;we're converting
+    video frames to ASCII in real-time, so every optimization matters. The
+    luminance mapping system makes this super fast, but let's look at what you
+    can expect:</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="How_fast_is_palette_lookup?"><a class="permalink" href="#How_fast_is_palette_lookup?">How
+  fast is palette lookup? </a></h2>
+<p class="Pp"><b>Palette Lookup</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>Luminance mapping</b>: O(1) constant time lookup&#x2014;that means it
+      takes the same amount of time regardless of how many characters are in the
+      palette</li>
+  <li><b>No calculation required during rendering</b>: We just do a simple array
+      lookup&#x2014;no math, no searching, just grab the value from the
+    table</li>
+  <li><b>Single array access per pixel</b>: One lookup, one character selection,
+      done!</li>
+  <li><b>Optimal for real-time video conversion</b>: Fast enough that you can
+      convert video frames at 60 FPS without any problems</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="How_fast_is_UTF-8_processing?"><a class="permalink" href="#How_fast_is_UTF-8_processing?">How
+  fast is UTF-8 processing? </a></h2>
+<p class="Pp"><b>UTF-8 Processing</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>UTF-8 palette creation</b>: O(n) where n is byte length&#x2014;this
+      happens once during initialization, so it's not a bottleneck</li>
+  <li><b>Character index lookup</b>: O(1) with pre-computed
+      structure&#x2014;once the palette is built, lookups are instant</li>
+  <li><b>UTF-8 detection</b>: O(1) environment variable checks&#x2014;we just
+      check a few environment variables, which is essentially free</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="How_much_memory_does_it_use?"><a class="permalink" href="#How_much_memory_does_it_use?">How
+  much memory does it use? </a></h2>
+<p class="Pp"><b>Memory Usage</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>ASCII palette</b>: ~23 bytes (STANDARD palette)&#x2014;super tiny!</li>
+  <li><b>UTF-8 palette</b>: ~40-100 bytes depending on character count (still
+      very small, even for larger palettes)</li>
+  <li><b>Luminance mapping</b>: 256 bytes (fixed size)&#x2014;this is the lookup
+      table, and it's always 256 bytes regardless of palette size</li>
+  <li><b>UTF-8 character info</b>: ~8 bytes per character&#x2014;just a tiny bit
+      of metadata per character to track byte length and display width</li>
+</ul>
+<p class="Pp">Memory usage is minimal&#x2014;even with UTF-8 palettes, you're
+    looking at well under a kilobyte per palette. The luminance mapping table is
+    always 256 bytes (one byte per possible brightness value), which is nothing
+    by modern standards.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Integration_with_Video-to-ASCII"><a class="permalink" href="#Integration_with_Video-to-ASCII">Integration
+  with Video-to-ASCII</a></h1>
+<p class="Pp">The palette module integrates with the video conversion
+  pipeline:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Conversion Pipeline</b>:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Video frame captured (RGB pixels)</dd>
+  <dt>2.</dt>
+  <dd>Pixel brightness calculated (0-255)</dd>
+  <dt>3.</dt>
+  <dd>Luminance mapping lookup (brightness &#x2192; char index)</dd>
+  <dt>4.</dt>
+  <dd>Character selected from palette</dd>
+  <dt>5.</dt>
+  <dd>Character rendered to terminal</dd>
+</dl>
+<p class="Pp"><b>Example Integration</b>:</p>
+<p class="Pp"></p>
+<pre>// Initialize palette
+char palette_chars[256];
+size_t palette_len;
+char luminance_mapping[256];
+initialize_client_palette(PALETTE_STANDARD, NULL,
+<br/>
+                           palette_chars, &amp;palette_len, luminance_mapping);
+// Convert frame to ASCII
+for (int y = 0; y &lt; frame_height; y++) {
+<br/>
+    for (int x = 0; x &lt; frame_width; x++) {
+<br/>
+        // Get pixel brightness
+<br/>
+        uint8_t brightness = get_pixel_brightness(frame, x, y);
+<br/>
+        // Lookup character index
+<br/>
+        size_t char_index = luminance_mapping[brightness];
+<br/>
+        // Select character
+<br/>
+        char ascii_char = palette_chars[char_index];
+<br/>
+        // Render
+<br/>
+        render_char(ascii_char);
+<br/>
+    }
+}
+</pre>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>palette.h</b>
+<p class="Pp"></p>
+<p class="Pp"><b>Video to ASCII Conversion</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Video Frame Buffers</b></p>
+</div>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
@@ -329,7 +1326,7 @@
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Unicode block palette character string. Unicode block characters
     (half and full blocks) for solid rendering.</p>
-<p class="Pp">Definition at line <b>170</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>176</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>mirror_convert_frame()</b>.</p>
 </section>
 <section class="Ss">
@@ -340,7 +1337,7 @@
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Cool ascending blocks palette character string. Unicode ascending
     blocks for smooth gradient effect.</p>
-<p class="Pp">Definition at line <b>197</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>203</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>mirror_convert_frame()</b>.</p>
 </section>
 <section class="Ss">
@@ -350,7 +1347,7 @@
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Digital/glitch palette character string. Digital aesthetic
     characters for unique visual style.</p>
-<p class="Pp">Definition at line <b>179</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>185</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>mirror_convert_frame()</b>.</p>
 </section>
 <section class="Ss">
@@ -360,7 +1357,7 @@
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Minimal ASCII palette character string. Simple ASCII characters
     for basic rendering.</p>
-<p class="Pp">Definition at line <b>188</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>194</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>mirror_convert_frame()</b>.</p>
 </section>
 <section class="Ss">
@@ -370,8 +1367,22 @@
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Standard ASCII palette character string. Classic ASCII palette
     with varying character density.</p>
-<p class="Pp">Definition at line <b>161</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>167</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>mirror_convert_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VIDEO_ASCII_PALETTE_LOCALE_ENCODING_BUFFER_SIZE___16"><a class="permalink" href="#_define_VIDEO_ASCII_PALETTE_LOCALE_ENCODING_BUFFER_SIZE___16">#define
+  VIDEO_ASCII_PALETTE_LOCALE_ENCODING_BUFFER_SIZE 16</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>68</b> of file <b>palette.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VIDEO_ASCII_PALETTE_TERMINAL_TYPE_BUFFER_SIZE___32"><a class="permalink" href="#_define_VIDEO_ASCII_PALETTE_TERMINAL_TYPE_BUFFER_SIZE___32">#define
+  VIDEO_ASCII_PALETTE_TERMINAL_TYPE_BUFFER_SIZE 32</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>67</b> of file <b>palette.h</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -417,17 +1428,17 @@
     </i></b></a></dt>
   <dd>Number of palette types (not a valid palette).</dd>
 </dl>
-<p class="Pp">Definition at line <b>84</b> of file <b>palette.h</b>.</p>
-<pre>84              {
-86   PALETTE_UNSET = 0,
-88   PALETTE_STANDARD,
-90   PALETTE_BLOCKS,
-92   PALETTE_DIGITAL,
-94   PALETTE_MINIMAL,
-96   PALETTE_COOL,
-98   PALETTE_CUSTOM,
-100   PALETTE_COUNT
-101 } palette_type_t;</pre>
+<p class="Pp">Definition at line <b>90</b> of file <b>palette.h</b>.</p>
+<pre>90              {
+92   PALETTE_UNSET = 0,
+94   PALETTE_STANDARD,
+96   PALETTE_BLOCKS,
+98   PALETTE_DIGITAL,
+100   PALETTE_MINIMAL,
+102   PALETTE_COOL,
+104   PALETTE_CUSTOM,
+106   PALETTE_COUNT
+107 } palette_type_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -463,45 +1474,47 @@
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Custom palette characters must be ordered from darkest to
   lightest.</div>
-<p class="Pp">Definition at line <b>250</b> of file <b>palette.c</b>.</p>
-<pre>250                                                                         {
-251   // This function is now used only for client-side initialization
-252   // Server uses initialize_client_palette() for per-client palettes
-253 
-254   log_debug(&quot;Client palette config: type=%d, custom_chars=%s&quot;, type, custom_chars ? custom_chars : &quot;(none)&quot;);
-255 
-256   // Just validate the palette - no global state changes
-257   if (type == PALETTE_CUSTOM) {
-258     if (!custom_chars || strlen(custom_chars) == 0) {
-259       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Custom palette requested but no characters provided&quot;);
-260       return -1;
-261     }
-262 
-263     if (!validate_palette_chars(custom_chars, strlen(custom_chars))) {
-264       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Custom palette validation failed&quot;);
+<p class="Pp">Definition at line <b>255</b> of file <b>palette.c</b>.</p>
+<pre>255                                                                         {
+256   // This function is now used only for client-side initialization
+257   // Server uses initialize_client_palette() for per-client palettes
+258
+259   log_debug(&quot;Client palette config: type=%d, custom_chars=%s&quot;, type, custom_chars ? custom_chars : &quot;(none)&quot;);
+260
+261   // Just validate the palette - no global state changes
+262   if (type == PALETTE_CUSTOM) {
+263     if (!custom_chars || strlen(custom_chars) == 0) {
+264       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Custom palette requested but no characters provided&quot;);
 265       return -1;
 266     }
-267   } else {
-268     const palette_def_t *palette = get_builtin_palette(type);
-269     if (!palette) {
-270       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid palette type: %d&quot;, type);
-271       return -1;
-272     }
-273   }
-274 
-275   return 0; // Validation successful, no global state to update
-276 }</pre>
+267
+268     if (!validate_palette_chars(custom_chars, strlen(custom_chars))) {
+269       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Custom palette validation failed&quot;);
+270       return -1;
+271     }
+272   } else {
+273     const palette_def_t *palette = get_builtin_palette(type);
+274     if (!palette) {
+275       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid palette type: %d&quot;, type);
+276       return -1;
+277     }
+278   }
+279
+280   return 0; // Validation successful, no global state to update
+281 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
-    <b>get_builtin_palette()</b>, <b>log_debug</b>, <b>PALETTE_CUSTOM</b>,
-    <b>SET_ERRNO</b>, and <b>validate_palette_chars()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
+<p class="Pp">References <b>apply_palette_config()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>get_builtin_palette()</b>, <b>log_debug</b>,
+    <b>PALETTE_CUSTOM</b>, <b>SET_ERRNO</b>, and
+    <b>validate_palette_chars()</b>.</p>
+<p class="Pp">Referenced by <b>apply_palette_config()</b>, and
+  <b>main()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_build_client_luminance_palette_(const_char_*_palette_chars,_size_t_palette_len,_char_luminance_mapping_256_)"><a class="permalink" href="#int_build_client_luminance_palette_(const_char_*_palette_chars,_size_t_palette_len,_char_luminance_mapping_256_)">int
+<h2 class="Ss" id="int_build_client_luminance_palette_(const_char_*_palette_chars,_size_t_palette_len,_char_luminance_mapping_ASCII_LUMINANCE_LEVELS_)"><a class="permalink" href="#int_build_client_luminance_palette_(const_char_*_palette_chars,_size_t_palette_len,_char_luminance_mapping_ASCII_LUMINANCE_LEVELS_)">int
   build_client_luminance_palette (const char * palette_chars, size_t
-  palette_len, char luminance_mapping[256])</a></h2>
+  palette_len, char luminance_mapping[ASCII_LUMINANCE_LEVELS])</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Build luminance mapping table from palette characters.</p>
@@ -529,29 +1542,32 @@
 <p class="Pp">Resulting mapping provides optimal brightness-to-character
     conversion.</p>
 </div>
-<p class="Pp">Definition at line <b>279</b> of file <b>palette.c</b>.</p>
-<pre>279                                                                                                                {
-280   if (!palette_chars || palette_len == 0 || !luminance_mapping) {
-281     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for client luminance palette&quot;);
-282     return -1;
-283   }
-284 
-285   // Map 256 luminance values to palette indices for this specific client
-286   for (int i = 0; i &lt; 256; i++) {
-287     // Linear mapping with proper rounding
-288     size_t palette_index = (i * (palette_len - 1) + 127) / 255;
-289     if (palette_index &gt;= palette_len) {
-290       palette_index = palette_len - 1;
-291     }
-292     luminance_mapping[i] = palette_chars[palette_index];
-293   }
-294 
-295   return 0;
-296 }</pre>
+<p class="Pp">Definition at line <b>284</b> of file <b>palette.c</b>.</p>
+<pre>285                                                                                    {
+286   if (!palette_chars || palette_len == 0 || !luminance_mapping) {
+287     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for client luminance palette&quot;);
+288     return -1;
+289   }
+290
+291   // Map 256 luminance values to palette indices for this specific client
+292   for (int i = 0; i &lt; 256; i++) {
+293     // Linear mapping with proper rounding
+294     size_t palette_index = (i * (palette_len - 1) + 127) / 255;
+295     if (palette_index &gt;= palette_len) {
+296       palette_index = palette_len - 1;
+297     }
+298     luminance_mapping[i] = palette_chars[palette_index];
+299   }
+300
+301   return 0;
+302 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>initialize_client_palette()</b>.</p>
+<p class="Pp">References <b>ASCII_LUMINANCE_LEVELS</b>,
+    <b>build_client_luminance_palette()</b>, <b>ERROR_INVALID_PARAM</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>build_client_luminance_palette()</b>, and
+    <b>initialize_client_palette()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> detect_client_utf8_support
@@ -575,83 +1591,85 @@
 <p class="Pp">User can force UTF-8 support via --utf8 flag (stored in
     forced_utf8).</p>
 </div>
-<p class="Pp">Definition at line <b>148</b> of file <b>palette.c</b>.</p>
-<pre>148                                                            {
-149   if (!caps) {
-150     return false;
-151   }
-152 
-153   // Initialize structure
-154   SAFE_MEMSET(caps, sizeof(utf8_capabilities_t), 0, sizeof(utf8_capabilities_t));
-155 
-156   // Check environment variables
-157   const char *term = SAFE_GETENV(&quot;TERM&quot;);
-158 
-159   // Store terminal type
-160   if (term) {
-161     SAFE_STRNCPY(caps-&gt;terminal_type, term, sizeof(caps-&gt;terminal_type));
-162   }
-163 
-164   // Use platform-specific UTF-8 detection from platform abstraction layer
-165   caps-&gt;utf8_support = terminal_supports_utf8();
-166 
-167   if (caps-&gt;utf8_support) {
-168     SAFE_STRNCPY(caps-&gt;locale_encoding, &quot;UTF-8&quot;, sizeof(caps-&gt;locale_encoding));
-169   } else {
-170     // Try to detect encoding via locale
-171     char *current_locale = setlocale(LC_CTYPE, NULL);
-172     char *old_locale = NULL;
-173     if (current_locale) {
-174       SAFE_STRDUP(old_locale, current_locale);
-175     }
-176     if (setlocale(LC_CTYPE, &quot;&quot;)) {
-177 #ifndef _WIN32
-178       const char *codeset = nl_langinfo(CODESET);
-179       if (codeset) {
-180         SAFE_STRNCPY(caps-&gt;locale_encoding, codeset, sizeof(caps-&gt;locale_encoding));
-181       }
-182 #else
-183       // Windows may not have locale set but still support UTF-8
-184       SAFE_STRNCPY(caps-&gt;locale_encoding, &quot;CP1252&quot;, sizeof(caps-&gt;locale_encoding));
-185 #endif
-186       // Restore old locale
-187       if (old_locale) {
-188         (void)setlocale(LC_CTYPE, old_locale);
-189       }
-190     }
-191     // Always free old_locale regardless of setlocale success
-192     if (old_locale) {
-193       SAFE_FREE(old_locale);
-194     }
-195   }
-196 
-197   // Check for known UTF-8 supporting terminals
-198   if (term) {
-199     const char *utf8_terminals[] = {
-200         &quot;xterm-256color&quot;, &quot;screen-256color&quot;, &quot;tmux-256color&quot;, &quot;alacritty&quot;,   &quot;kitty&quot;, &quot;iterm&quot;,
-201         &quot;iterm2&quot;,         &quot;gnome-terminal&quot;,  &quot;konsole&quot;,       &quot;terminology&quot;, NULL};
-202 
-203     for (int i = 0; utf8_terminals[i]; i++) {
-204       if (strstr(term, utf8_terminals[i])) {
-205         caps-&gt;utf8_support = true;
-206         break;
-207       }
-208     }
-209   }
-210 
-211   log_debug(&quot;UTF-8 support detection: %s (term=%s, encoding=%s)&quot;, caps-&gt;utf8_support ? &quot;supported&quot; : &quot;not supported&quot;,
-212             caps-&gt;terminal_type[0] ? caps-&gt;terminal_type : &quot;unknown&quot;,
-213             caps-&gt;locale_encoding[0] ? caps-&gt;locale_encoding : &quot;unknown&quot;);
-214 
-215   return caps-&gt;utf8_support;
-216 }</pre>
+<p class="Pp">Definition at line <b>153</b> of file <b>palette.c</b>.</p>
+<pre>153                                                            {
+154   if (!caps) {
+155     return false;
+156   }
+157
+158   // Initialize structure
+159   SAFE_MEMSET(caps, sizeof(utf8_capabilities_t), 0, sizeof(utf8_capabilities_t));
+160
+161   // Check environment variables
+162   const char *term = SAFE_GETENV(&quot;TERM&quot;);
+163
+164   // Store terminal type
+165   if (term) {
+166     SAFE_STRNCPY(caps-&gt;terminal_type, term, sizeof(caps-&gt;terminal_type));
+167   }
+168
+169   // Use platform-specific UTF-8 detection from platform abstraction layer
+170   caps-&gt;utf8_support = terminal_supports_utf8();
+171
+172   if (caps-&gt;utf8_support) {
+173     SAFE_STRNCPY(caps-&gt;locale_encoding, &quot;UTF-8&quot;, sizeof(caps-&gt;locale_encoding));
+174   } else {
+175     // Try to detect encoding via locale
+176     char *current_locale = setlocale(LC_CTYPE, NULL);
+177     char *old_locale = NULL;
+178     if (current_locale) {
+179       SAFE_STRDUP(old_locale, current_locale);
+180     }
+181     if (setlocale(LC_CTYPE, &quot;&quot;)) {
+182 #ifndef _WIN32
+183       const char *codeset = nl_langinfo(CODESET);
+184       if (codeset) {
+185         SAFE_STRNCPY(caps-&gt;locale_encoding, codeset, sizeof(caps-&gt;locale_encoding));
+186       }
+187 #else
+188       // Windows may not have locale set but still support UTF-8
+189       SAFE_STRNCPY(caps-&gt;locale_encoding, &quot;CP1252&quot;, sizeof(caps-&gt;locale_encoding));
+190 #endif
+191       // Restore old locale
+192       if (old_locale) {
+193         (void)setlocale(LC_CTYPE, old_locale);
+194       }
+195     }
+196     // Always free old_locale regardless of setlocale success
+197     if (old_locale) {
+198       SAFE_FREE(old_locale);
+199     }
+200   }
+201
+202   // Check for known UTF-8 supporting terminals
+203   if (term) {
+204     const char *utf8_terminals[] = {
+205         &quot;xterm-256color&quot;, &quot;screen-256color&quot;, &quot;tmux-256color&quot;, &quot;alacritty&quot;,   &quot;kitty&quot;, &quot;iterm&quot;,
+206         &quot;iterm2&quot;,         &quot;gnome-terminal&quot;,  &quot;konsole&quot;,       &quot;terminology&quot;, NULL};
+207
+208     for (int i = 0; utf8_terminals[i]; i++) {
+209       if (strstr(term, utf8_terminals[i])) {
+210         caps-&gt;utf8_support = true;
+211         break;
+212       }
+213     }
+214   }
+215
+216   log_debug(&quot;UTF-8 support detection: %s (term=%s, encoding=%s)&quot;, caps-&gt;utf8_support ? &quot;supported&quot; : &quot;not supported&quot;,
+217             caps-&gt;terminal_type[0] ? caps-&gt;terminal_type : &quot;unknown&quot;,
+218             caps-&gt;locale_encoding[0] ? caps-&gt;locale_encoding : &quot;unknown&quot;);
+219
+220   return caps-&gt;utf8_support;
+221 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>utf8_capabilities_t::locale_encoding</b>,
-    <b>log_debug</b>, <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>, <b>SAFE_MEMSET</b>,
+<p class="Pp">References <b>detect_client_utf8_support()</b>,
+    <b>utf8_capabilities_t::locale_encoding</b>, <b>log_debug</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>, <b>SAFE_MEMSET</b>,
     <b>SAFE_STRDUP</b>, <b>SAFE_STRNCPY</b>, <b>terminal_supports_utf8()</b>,
     <b>utf8_capabilities_t::terminal_type</b>, and
     <b>utf8_capabilities_t::utf8_support</b>.</p>
+<p class="Pp">Referenced by <b>detect_client_utf8_support()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">const <b>palette_def_t</b> * get_builtin_palette
@@ -676,26 +1694,27 @@
 <p class="Pp">The palette definition includes character sequence, length, and
     UTF-8 requirement information.</p>
 </div>
-<p class="Pp">Definition at line <b>47</b> of file <b>palette.c</b>.</p>
-<pre>47                                                               {
-48   if (type &gt;= PALETTE_COUNT || type == PALETTE_CUSTOM || type == PALETTE_UNSET) {
-49     return NULL;
-50   }
-51   return &amp;builtin_palettes[type];
-52 }</pre>
+<p class="Pp">Definition at line <b>52</b> of file <b>palette.c</b>.</p>
+<pre>52                                                               {
+53   if (type &gt;= PALETTE_COUNT || type == PALETTE_CUSTOM || type == PALETTE_UNSET) {
+54     return NULL;
+55   }
+56   return &amp;builtin_palettes[type];
+57 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>PALETTE_COUNT</b>, <b>PALETTE_CUSTOM</b>, and
-    <b>PALETTE_UNSET</b>.</p>
+<p class="Pp">References <b>get_builtin_palette()</b>, <b>PALETTE_COUNT</b>,
+    <b>PALETTE_CUSTOM</b>, and <b>PALETTE_UNSET</b>.</p>
 <p class="Pp">Referenced by <b>apply_palette_config()</b>,
-    <b>initialize_client_palette()</b>, and
-  <b>select_compatible_palette()</b>.</p>
+    <b>get_builtin_palette()</b>, <b>initialize_client_palette()</b>, and
+    <b>select_compatible_palette()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_initialize_client_palette_("><a class="permalink" href="#int_initialize_client_palette_(">int
   initialize_client_palette (<b>palette_type_t</b> palette_type, const char *
-  custom_chars, char client_palette_chars[256], size_t * client_palette_len,
-  char client_luminance_palette[256])</a></h2>
+  custom_chars, char client_palette_chars[ASCII_PALETTE_BUFFER_SIZE], size_t *
+  client_palette_len, char
+  client_luminance_palette[ASCII_LUMINANCE_LEVELS])</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Initialize client palette with full configuration.</p>
@@ -728,76 +1747,78 @@
 <p class="Pp">Luminance mapping is automatically generated from the character
     sequence.</p>
 </div>
-<p class="Pp">Definition at line <b>299</b> of file <b>palette.c</b>.</p>
-<pre>300                                                                                               {
-301   const palette_def_t *palette = NULL;
-302   const char *chars_to_use = NULL;
-303   size_t len_to_use = 0;
-304 
-305   if (palette_type == PALETTE_CUSTOM) {
-306     if (!custom_chars) {
-307       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client requested custom palette but custom_chars is NULL&quot;);
-308       return -1;
-309     }
-310 
-311     len_to_use = strlen(custom_chars);
-312     if (len_to_use == 0) {
-313       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client requested custom palette but custom_chars is empty&quot;);
-314       return -1;
-315     }
-316     if (len_to_use &gt;= 256) {
-317       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client custom palette too long: %zu chars&quot;, len_to_use);
-318       return -1;
-319     }
-320 
-321     // Validate custom palette
-322     if (!validate_palette_chars(custom_chars, len_to_use)) {
-323       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client custom palette validation failed&quot;);
-324       return -1;
-325     }
-326 
-327     chars_to_use = custom_chars;
-328   } else {
-329     palette = get_builtin_palette(palette_type);
-330     if (!palette) {
-331       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid client palette type: %d&quot;, palette_type);
-332       return -1;
-333     }
-334 
-335     chars_to_use = palette-&gt;chars;
-336     len_to_use = strlen(palette-&gt;chars); // Use actual byte count for UTF-8, not character count
-337 
-338     // Skip validation for built-in palettes since they're already validated
-339     log_dev(&quot;Using built-in palette: %s, chars='%s', char_count=%zu, byte_len=%zu&quot;, palette-&gt;name, chars_to_use,
-340             palette-&gt;length, len_to_use);
-341   }
-342 
-343   // Copy palette to client cache
-344   SAFE_MEMCPY(client_palette_chars, len_to_use, chars_to_use, len_to_use);
-345   client_palette_chars[len_to_use] = '\0';
-346   *client_palette_len = len_to_use;
-347 
-348   // Build client-specific luminance mapping
-349   if (build_client_luminance_palette(chars_to_use, len_to_use, client_luminance_palette) != 0) {
-350     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to build client luminance palette&quot;);
-351     return -1;
-352   }
-353 
-354   log_dev(&quot;Initialized client palette: type=%d, %zu chars, first_char='%c', last_char='%c'&quot;, palette_type, len_to_use,
-355           chars_to_use[0], chars_to_use[len_to_use - 1]);
-356 
-357   return 0;
-358 }</pre>
+<p class="Pp">Definition at line <b>305</b> of file <b>palette.c</b>.</p>
+<pre>307                                                                                      {
+308   const palette_def_t *palette = NULL;
+309   const char *chars_to_use = NULL;
+310   size_t len_to_use = 0;
+311
+312   if (palette_type == PALETTE_CUSTOM) {
+313     if (!custom_chars) {
+314       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client requested custom palette but custom_chars is NULL&quot;);
+315       return -1;
+316     }
+317
+318     len_to_use = strlen(custom_chars);
+319     if (len_to_use == 0) {
+320       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client requested custom palette but custom_chars is empty&quot;);
+321       return -1;
+322     }
+323     if (len_to_use &gt;= 256) {
+324       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client custom palette too long: %zu chars&quot;, len_to_use);
+325       return -1;
+326     }
+327
+328     // Validate custom palette
+329     if (!validate_palette_chars(custom_chars, len_to_use)) {
+330       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Client custom palette validation failed&quot;);
+331       return -1;
+332     }
+333
+334     chars_to_use = custom_chars;
+335   } else {
+336     palette = get_builtin_palette(palette_type);
+337     if (!palette) {
+338       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid client palette type: %d&quot;, palette_type);
+339       return -1;
+340     }
+341
+342     chars_to_use = palette-&gt;chars;
+343     len_to_use = strlen(palette-&gt;chars); // Use actual byte count for UTF-8, not character count
+344
+345     // Skip validation for built-in palettes since they're already validated
+346     log_dev(&quot;Using built-in palette: %s, chars='%s', char_count=%zu, byte_len=%zu&quot;, palette-&gt;name, chars_to_use,
+347             palette-&gt;length, len_to_use);
+348   }
+349
+350   // Copy palette to client cache
+351   SAFE_MEMCPY(client_palette_chars, len_to_use, chars_to_use, len_to_use);
+352   client_palette_chars[len_to_use] = '\0';
+353   *client_palette_len = len_to_use;
+354
+355   // Build client-specific luminance mapping
+356   if (build_client_luminance_palette(chars_to_use, len_to_use, client_luminance_palette) != 0) {
+357     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to build client luminance palette&quot;);
+358     return -1;
+359   }
+360
+361   log_dev(&quot;Initialized client palette: type=%d, %zu chars, first_char='%c', last_char='%c'&quot;, palette_type, len_to_use,
+362           chars_to_use[0], chars_to_use[len_to_use - 1]);
+363
+364   return 0;
+365 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>build_client_luminance_palette()</b>,
+<p class="Pp">References <b>ASCII_LUMINANCE_LEVELS</b>,
+    <b>ASCII_PALETTE_BUFFER_SIZE</b>, <b>build_client_luminance_palette()</b>,
     <b>palette_def_t::chars</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>ERROR_INVALID_STATE</b>, <b>get_builtin_palette()</b>,
-    <b>palette_def_t::length</b>, <b>log_dev</b>, <b>palette_def_t::name</b>,
-    <b>PALETTE_CUSTOM</b>, <b>SAFE_MEMCPY</b>, <b>SET_ERRNO</b>, and
-    <b>validate_palette_chars()</b>.</p>
-<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>, and
-    <b>session_display_create()</b>.</p>
+    <b>initialize_client_palette()</b>, <b>palette_def_t::length</b>,
+    <b>log_dev</b>, <b>palette_def_t::name</b>, <b>PALETTE_CUSTOM</b>,
+    <b>SAFE_MEMCPY</b>, <b>SET_ERRNO</b>, and
+  <b>validate_palette_chars()</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_prepare()</b>,
+    <b>initialize_client_palette()</b>, and <b>session_display_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> palette_requires_utf8_encoding (const char * chars,
@@ -823,23 +1844,25 @@
 <p class="Pp">This check determines if client must have UTF-8 support for
     palette.</p>
 </div>
-<p class="Pp">Definition at line <b>55</b> of file <b>palette.c</b>.</p>
-<pre>55                                                                    {
-56   // Handle NULL or empty string
-57   if (!chars || len == 0) {
-58     return false;
-59   }
-60 
-61   for (size_t i = 0; i &lt; len; i++) {
-62     // Any byte with high bit set indicates UTF-8
-63     if ((unsigned char)chars[i] &gt;= 128) {
-64       return true;
-65     }
-66   }
-67   return false;
-68 }</pre>
+<p class="Pp">Definition at line <b>60</b> of file <b>palette.c</b>.</p>
+<pre>60                                                                    {
+61   // Handle NULL or empty string
+62   if (!chars || len == 0) {
+63     return false;
+64   }
+65
+66   for (size_t i = 0; i &lt; len; i++) {
+67     // Any byte with high bit set indicates UTF-8
+68     if ((unsigned char)chars[i] &gt;= 128) {
+69       return true;
+70     }
+71   }
+72   return false;
+73 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>palette_requires_utf8_encoding()</b>.</p>
+<p class="Pp">Referenced by <b>palette_requires_utf8_encoding()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>palette_type_t</b> select_compatible_palette
@@ -866,42 +1889,44 @@
 <p class="Pp">Returns requested palette if compatible, otherwise returns
     STANDARD.</p>
 </div>
-<p class="Pp">Definition at line <b>219</b> of file <b>palette.c</b>.</p>
-<pre>219                                                                                      {
-220   const palette_def_t *palette = get_builtin_palette(requested);
-221 
-222   // Custom palettes are validated separately
-223   if (requested == PALETTE_CUSTOM) {
-224     return PALETTE_CUSTOM;
-225   }
-226 
-227   if (!palette) {
-228     log_warn(&quot;Invalid palette type %d, falling back to standard&quot;, requested);
-229     return PALETTE_STANDARD;
+<p class="Pp">Definition at line <b>224</b> of file <b>palette.c</b>.</p>
+<pre>224                                                                                      {
+225   const palette_def_t *palette = get_builtin_palette(requested);
+226
+227   // Custom palettes are validated separately
+228   if (requested == PALETTE_CUSTOM) {
+229     return PALETTE_CUSTOM;
 230   }
-231 
-232   // If palette requires UTF-8 but client doesn't support it, find fallback
-233   if (palette-&gt;requires_utf8 &amp;&amp; !client_utf8) {
-234     log_warn(&quot;Client doesn't support UTF-8, falling back from %s&quot;, palette-&gt;name);
-235 
-236     // Fallback hierarchy
-237     switch (requested) {
-238     case PALETTE_BLOCKS:
-239     case PALETTE_DIGITAL:
-240     case PALETTE_COOL:
-241     default:
-242       return PALETTE_STANDARD; // ASCII equivalent
-243     }
-244   }
-245 
-246   return requested; // Compatible, use as requested
-247 }</pre>
+231
+232   if (!palette) {
+233     log_warn(&quot;Invalid palette type %d, falling back to standard&quot;, requested);
+234     return PALETTE_STANDARD;
+235   }
+236
+237   // If palette requires UTF-8 but client doesn't support it, find fallback
+238   if (palette-&gt;requires_utf8 &amp;&amp; !client_utf8) {
+239     log_warn(&quot;Client doesn't support UTF-8, falling back from %s&quot;, palette-&gt;name);
+240
+241     // Fallback hierarchy
+242     switch (requested) {
+243     case PALETTE_BLOCKS:
+244     case PALETTE_DIGITAL:
+245     case PALETTE_COOL:
+246     default:
+247       return PALETTE_STANDARD; // ASCII equivalent
+248     }
+249   }
+250
+251   return requested; // Compatible, use as requested
+252 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>get_builtin_palette()</b>, <b>log_warn</b>,
     <b>palette_def_t::name</b>, <b>PALETTE_BLOCKS</b>, <b>PALETTE_COOL</b>,
-    <b>PALETTE_CUSTOM</b>, <b>PALETTE_DIGITAL</b>, <b>PALETTE_STANDARD</b>, and
-    <b>palette_def_t::requires_utf8</b>.</p>
+    <b>PALETTE_CUSTOM</b>, <b>PALETTE_DIGITAL</b>, <b>PALETTE_STANDARD</b>,
+    <b>palette_def_t::requires_utf8</b>, and
+  <b>select_compatible_palette()</b>.</p>
+<p class="Pp">Referenced by <b>select_compatible_palette()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> utf8_palette_contains_char (const
@@ -911,8 +1936,7 @@
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Check if UTF-8 palette contains a specific character.</p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Palette</b><i></i><b> UTF-8 palette (must not
-  be NULL)</b>
+<div class="Bd-indent"><i>palette</i> UTF-8 palette (must not be NULL)
 <br/>
 <i>utf8_char</i> UTF-8 character bytes (must not be NULL)
 <br/>
@@ -931,26 +1955,27 @@
 <p class="Pp">Character comparison is byte-accurate for multi-byte
   characters.</p>
 </div>
-<p class="Pp">Definition at line <b>510</b> of file <b>palette.c</b>.</p>
-<pre>510                                                                                                          {
-511   if (!palette || !utf8_char || char_bytes == 0 || char_bytes &gt; 4) {
-512     return false;
-513   }
-514 
-515   for (size_t i = 0; i &lt; palette-&gt;char_count; i++) {
-516     const utf8_char_info_t *char_info = &amp;palette-&gt;chars[i];
-517     if (char_info-&gt;byte_len == char_bytes &amp;&amp; memcmp(char_info-&gt;bytes, utf8_char, char_bytes) == 0) {
-518       return true;
-519     }
+<p class="Pp">Definition at line <b>517</b> of file <b>palette.c</b>.</p>
+<pre>517                                                                                                          {
+518   if (!palette || !utf8_char || char_bytes == 0 || char_bytes &gt; 4) {
+519     return false;
 520   }
-521 
-522   return false;
-523 }</pre>
+521
+522   for (size_t i = 0; i &lt; palette-&gt;char_count; i++) {
+523     const utf8_char_info_t *char_info = &amp;palette-&gt;chars[i];
+524     if (char_info-&gt;byte_len == char_bytes &amp;&amp; memcmp(char_info-&gt;bytes, utf8_char, char_bytes) == 0) {
+525       return true;
+526     }
+527   }
+528
+529   return false;
+530 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>utf8_char_info_t::byte_len</b>,
-    <b>utf8_char_info_t::bytes</b>, <b>utf8_palette_t::char_count</b>, and
-    <b>utf8_palette_t::chars</b>.</p>
+    <b>utf8_char_info_t::bytes</b>, <b>utf8_palette_t::char_count</b>,
+    <b>utf8_palette_t::chars</b>, and <b>utf8_palette_contains_char()</b>.</p>
+<p class="Pp">Referenced by <b>utf8_palette_contains_char()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>utf8_palette_t</b> * utf8_palette_create (const char *
@@ -979,127 +2004,127 @@
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Must call <b>utf8_palette_destroy()</b> to free
   resources.</div>
-<p class="Pp">Definition at line <b>363</b> of file <b>palette.c</b>.</p>
-<pre>363                                                                 {
-364   if (!palette_string || *palette_string == '\0') {
-365     return NULL;
-366   }
-367 
-368   utf8_palette_t *palette;
-369   palette = SAFE_MALLOC(sizeof(utf8_palette_t), utf8_palette_t *);
-370 
-371   // Count UTF-8 characters (not bytes)
-372   size_t char_count = 0;
-373   const char *p = palette_string;
-374   size_t total_bytes = strlen(palette_string);
-375 
-376   // First pass: count characters
-377   size_t bytes_processed = 0;
-378   while (bytes_processed &lt; total_bytes) {
-379     int bytes = 1;
-380     unsigned char c = (unsigned char)p[0];
-381 
-382     if ((c &amp; 0x80) == 0) {
-383       bytes = 1; // ASCII
-384     } else if ((c &amp; 0xE0) == 0xC0) {
-385       bytes = 2; // 2-byte UTF-8
-386     } else if ((c &amp; 0xF0) == 0xE0) {
-387       bytes = 3; // 3-byte UTF-8
-388     } else if ((c &amp; 0xF8) == 0xF0) {
-389       bytes = 4; // 4-byte UTF-8
-390     }
-391 
-392     // Verify we have enough bytes left
-393     if (bytes_processed + bytes &gt; total_bytes) {
-394       break;
-395     }
-396 
-397     p += bytes;
-398     bytes_processed += bytes;
-399     char_count++;
-400   }
-401 
-402   // Validate we got at least one character
-403   if (char_count == 0) {
-404     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette string contains no valid UTF-8 characters&quot;);
-405     SAFE_FREE(palette);
-406     return NULL;
+<p class="Pp">Definition at line <b>370</b> of file <b>palette.c</b>.</p>
+<pre>370                                                                 {
+371   if (!palette_string || *palette_string == '\0') {
+372     return NULL;
+373   }
+374
+375   utf8_palette_t *palette;
+376   palette = SAFE_MALLOC(sizeof(utf8_palette_t), utf8_palette_t *);
+377
+378   // Count UTF-8 characters (not bytes)
+379   size_t char_count = 0;
+380   const char *p = palette_string;
+381   size_t total_bytes = strlen(palette_string);
+382
+383   // First pass: count characters
+384   size_t bytes_processed = 0;
+385   while (bytes_processed &lt; total_bytes) {
+386     int bytes = 1;
+387     unsigned char c = (unsigned char)p[0];
+388
+389     if ((c &amp; 0x80) == 0) {
+390       bytes = 1; // ASCII
+391     } else if ((c &amp; 0xE0) == 0xC0) {
+392       bytes = 2; // 2-byte UTF-8
+393     } else if ((c &amp; 0xF0) == 0xE0) {
+394       bytes = 3; // 3-byte UTF-8
+395     } else if ((c &amp; 0xF8) == 0xF0) {
+396       bytes = 4; // 4-byte UTF-8
+397     }
+398
+399     // Verify we have enough bytes left
+400     if (bytes_processed + bytes &gt; total_bytes) {
+401       break;
+402     }
+403
+404     p += bytes;
+405     bytes_processed += bytes;
+406     char_count++;
 407   }
-408 
-409   // Allocate character array
-410   palette-&gt;chars = SAFE_MALLOC(char_count * sizeof(utf8_char_info_t), utf8_char_info_t *);
-411   palette-&gt;raw_string = SAFE_MALLOC(total_bytes + 1, char *);
-412   // Explicit NULL checks to satisfy static analyzer (SAFE_MALLOC calls FATAL on failure)
-413   if (palette-&gt;chars == NULL || palette-&gt;raw_string == NULL) {
-414     SAFE_FREE(palette-&gt;chars);
-415     SAFE_FREE(palette-&gt;raw_string);
-416     SAFE_FREE(palette);
-417     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate palette character array&quot;);
-418     return NULL;
-419   }
-420 
-421   SAFE_MEMCPY(palette-&gt;raw_string, total_bytes + 1, palette_string, total_bytes + 1);
-422   palette-&gt;char_count = char_count;
-423   palette-&gt;total_bytes = total_bytes; // Use strlen() value
-424 
-425   // Second pass: parse characters
-426   p = palette_string;
-427   size_t char_idx = 0;
-428   bytes_processed = 0;
-429 
-430   // Set locale for wcwidth - save a copy of the old locale
-431   char old_locale[256] = {0};
-432   char *current_locale = setlocale(LC_CTYPE, NULL);
-433   if (current_locale) {
-434     SAFE_STRNCPY(old_locale, current_locale, sizeof(old_locale));
-435   }
-436   (void)setlocale(LC_CTYPE, &quot;&quot;);
-437 
-438   while (char_idx &lt; char_count &amp;&amp; bytes_processed &lt; total_bytes) {
-439     utf8_char_info_t *char_info = &amp;palette-&gt;chars[char_idx];
-440 
-441     // Determine UTF-8 byte length
-442     unsigned char c = (unsigned char)*p;
-443     int bytes = 1;
-444 
-445     if ((c &amp; 0x80) == 0) {
-446       bytes = 1;
-447     } else if ((c &amp; 0xE0) == 0xC0) {
-448       bytes = 2;
-449     } else if ((c &amp; 0xF0) == 0xE0) {
-450       bytes = 3;
-451     } else if ((c &amp; 0xF8) == 0xF0) {
-452       bytes = 4;
-453     }
-454 
-455     // Verify we have enough bytes left
-456     if (bytes_processed + bytes &gt; total_bytes) {
-457       break;
-458     }
-459 
-460     // Copy bytes and null-terminate
-461     SAFE_MEMCPY(char_info-&gt;bytes, bytes, p, bytes);
-462     if (bytes &lt; 4) {
-463       SAFE_MEMSET(char_info-&gt;bytes + bytes, 4 - bytes, 0, 4 - bytes);
-464     }
-465     char_info-&gt;byte_len = bytes;
-466 
-467     // Get display width using utf8_display_width
-468     int width = utf8_display_width_n(p, bytes);
-469     char_info-&gt;display_width = (width &gt; 0 &amp;&amp; width &lt;= 2) ? width : 1;
-470 
-471     p += bytes;
-472     bytes_processed += bytes;
-473     char_idx++;
-474   }
-475 
-476   // Restore locale
-477   if (old_locale[0] != '\0') {
-478     (void)setlocale(LC_CTYPE, old_locale);
-479   }
-480 
-481   return palette;
-482 }</pre>
+408
+409   // Validate we got at least one character
+410   if (char_count == 0) {
+411     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette string contains no valid UTF-8 characters&quot;);
+412     SAFE_FREE(palette);
+413     return NULL;
+414   }
+415
+416   // Allocate character array
+417   palette-&gt;chars = SAFE_MALLOC(char_count * sizeof(utf8_char_info_t), utf8_char_info_t *);
+418   palette-&gt;raw_string = SAFE_MALLOC(total_bytes + 1, char *);
+419   // Explicit NULL checks to satisfy static analyzer (SAFE_MALLOC calls FATAL on failure)
+420   if (palette-&gt;chars == NULL || palette-&gt;raw_string == NULL) {
+421     SAFE_FREE(palette-&gt;chars);
+422     SAFE_FREE(palette-&gt;raw_string);
+423     SAFE_FREE(palette);
+424     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate palette character array&quot;);
+425     return NULL;
+426   }
+427
+428   SAFE_MEMCPY(palette-&gt;raw_string, total_bytes + 1, palette_string, total_bytes + 1);
+429   palette-&gt;char_count = char_count;
+430   palette-&gt;total_bytes = total_bytes; // Use strlen() value
+431
+432   // Second pass: parse characters
+433   p = palette_string;
+434   size_t char_idx = 0;
+435   bytes_processed = 0;
+436
+437   // Set locale for wcwidth - save a copy of the old locale
+438   char old_locale[VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE] = {0};
+439   char *current_locale = setlocale(LC_CTYPE, NULL);
+440   if (current_locale) {
+441     SAFE_STRNCPY(old_locale, current_locale, sizeof(old_locale));
+442   }
+443   (void)setlocale(LC_CTYPE, &quot;&quot;);
+444
+445   while (char_idx &lt; char_count &amp;&amp; bytes_processed &lt; total_bytes) {
+446     utf8_char_info_t *char_info = &amp;palette-&gt;chars[char_idx];
+447
+448     // Determine UTF-8 byte length
+449     unsigned char c = (unsigned char)*p;
+450     int bytes = 1;
+451
+452     if ((c &amp; 0x80) == 0) {
+453       bytes = 1;
+454     } else if ((c &amp; 0xE0) == 0xC0) {
+455       bytes = 2;
+456     } else if ((c &amp; 0xF0) == 0xE0) {
+457       bytes = 3;
+458     } else if ((c &amp; 0xF8) == 0xF0) {
+459       bytes = 4;
+460     }
+461
+462     // Verify we have enough bytes left
+463     if (bytes_processed + bytes &gt; total_bytes) {
+464       break;
+465     }
+466
+467     // Copy bytes and null-terminate
+468     SAFE_MEMCPY(char_info-&gt;bytes, bytes, p, bytes);
+469     if (bytes &lt; 4) {
+470       SAFE_MEMSET(char_info-&gt;bytes + bytes, 4 - bytes, 0, 4 - bytes);
+471     }
+472     char_info-&gt;byte_len = bytes;
+473
+474     // Get display width using utf8_display_width
+475     int width = utf8_display_width_n(p, bytes);
+476     char_info-&gt;display_width = (width &gt; 0 &amp;&amp; width &lt;= 2) ? width : 1;
+477
+478     p += bytes;
+479     bytes_processed += bytes;
+480     char_idx++;
+481   }
+482
+483   // Restore locale
+484   if (old_locale[0] != '\0') {
+485     (void)setlocale(LC_CTYPE, old_locale);
+486   }
+487
+488   return palette;
+489 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>utf8_char_info_t::byte_len</b>,
@@ -1108,9 +2133,11 @@
     <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
     <b>utf8_palette_t::raw_string</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
     <b>SAFE_MEMCPY</b>, <b>SAFE_MEMSET</b>, <b>SAFE_STRNCPY</b>,
-    <b>SET_ERRNO</b>, <b>utf8_palette_t::total_bytes</b>, and
-    <b>utf8_display_width_n()</b>.</p>
-<p class="Pp">Referenced by <b>build_ramp64()</b>.</p>
+    <b>SET_ERRNO</b>, <b>utf8_palette_t::total_bytes</b>,
+    <b>utf8_display_width_n()</b>, <b>utf8_palette_create()</b>, and
+    <b>VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>build_ramp64()</b>, and
+    <b>utf8_palette_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_utf8_palette_destroy_("><a class="permalink" href="#void_utf8_palette_destroy_(">void
@@ -1119,8 +2146,8 @@
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Destroy a UTF-8 palette and free resources.</p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Palette</b><i></i><b> UTF-8 palette to destroy
-  (can be NULL)</b></div>
+<div class="Bd-indent"><i>palette</i> UTF-8 palette to destroy (can be
+  NULL)</div>
 <p class="Pp">Destroys a UTF-8 palette and frees all associated memory including
     character arrays and the raw string. Safe to call multiple times or with
     NULL pointer.</p>
@@ -1128,19 +2155,21 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">All memory allocated by <b>utf8_palette_create()</b> is
   freed.</div>
-<p class="Pp">Definition at line <b>485</b> of file <b>palette.c</b>.</p>
-<pre>485                                                    {
-486   if (palette) {
-487     SAFE_FREE(palette-&gt;chars);
-488     SAFE_FREE(palette-&gt;raw_string);
-489     SAFE_FREE(palette);
-490   }
-491 }</pre>
+<p class="Pp">Definition at line <b>492</b> of file <b>palette.c</b>.</p>
+<pre>492                                                    {
+493   if (palette) {
+494     SAFE_FREE(palette-&gt;chars);
+495     SAFE_FREE(palette-&gt;raw_string);
+496     SAFE_FREE(palette);
+497   }
+498 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>utf8_palette_t::chars</b>,
-    <b>utf8_palette_t::raw_string</b>, and <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>build_ramp64()</b>.</p>
+    <b>utf8_palette_t::raw_string</b>, <b>SAFE_FREE</b>, and
+    <b>utf8_palette_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>build_ramp64()</b>, and
+    <b>utf8_palette_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_utf8_palette_find_all_char_indices_(const_"><a class="permalink" href="#size_t_utf8_palette_find_all_char_indices_(const_">size_t
@@ -1151,8 +2180,7 @@
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Find all indices of UTF-8 character in palette.</p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Palette</b><i></i><b> UTF-8 palette (must not
-  be NULL)</b>
+<div class="Bd-indent"><i>palette</i> UTF-8 palette (must not be NULL)
 <br/>
 <i>utf8_char</i> UTF-8 character bytes (must not be NULL)
 <br/>
@@ -1180,28 +2208,30 @@
 <p class="Pp"><b>Warning</b></p>
 <div class="Bd-indent">Indices array must be large enough to hold max_indices
   size_t values.</div>
-<p class="Pp">Definition at line <b>543</b> of file <b>palette.c</b>.</p>
-<pre>544                                                                                {
-545   if (!palette || !utf8_char || char_bytes == 0 || char_bytes &gt; 4 || !indices || max_indices == 0) {
-546     return 0;
-547   }
-548 
-549   size_t found_count = 0;
-550 
-551   for (size_t i = 0; i &lt; palette-&gt;char_count &amp;&amp; found_count &lt; max_indices; i++) {
-552     const utf8_char_info_t *char_info = &amp;palette-&gt;chars[i];
-553     if (char_info-&gt;byte_len == char_bytes &amp;&amp; memcmp(char_info-&gt;bytes, utf8_char, char_bytes) == 0) {
-554       indices[found_count++] = i;
-555     }
-556   }
-557 
-558   return found_count;
-559 }</pre>
+<p class="Pp">Definition at line <b>550</b> of file <b>palette.c</b>.</p>
+<pre>551                                                                                {
+552   if (!palette || !utf8_char || char_bytes == 0 || char_bytes &gt; 4 || !indices || max_indices == 0) {
+553     return 0;
+554   }
+555
+556   size_t found_count = 0;
+557
+558   for (size_t i = 0; i &lt; palette-&gt;char_count &amp;&amp; found_count &lt; max_indices; i++) {
+559     const utf8_char_info_t *char_info = &amp;palette-&gt;chars[i];
+560     if (char_info-&gt;byte_len == char_bytes &amp;&amp; memcmp(char_info-&gt;bytes, utf8_char, char_bytes) == 0) {
+561       indices[found_count++] = i;
+562     }
+563   }
+564
+565   return found_count;
+566 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>utf8_char_info_t::byte_len</b>,
-    <b>utf8_char_info_t::bytes</b>, <b>utf8_palette_t::char_count</b>, and
-    <b>utf8_palette_t::chars</b>.</p>
+    <b>utf8_char_info_t::bytes</b>, <b>utf8_palette_t::char_count</b>,
+    <b>utf8_palette_t::chars</b>, and
+    <b>utf8_palette_find_all_char_indices()</b>.</p>
+<p class="Pp">Referenced by <b>utf8_palette_find_all_char_indices()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_utf8_palette_find_char_index_(const_"><a class="permalink" href="#size_t_utf8_palette_find_char_index_(const_">size_t
@@ -1211,8 +2241,7 @@
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Find index of UTF-8 character in palette.</p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Palette</b><i></i><b> UTF-8 palette (must not
-  be NULL)</b>
+<div class="Bd-indent"><i>palette</i> UTF-8 palette (must not be NULL)
 <br/>
 <i>utf8_char</i> UTF-8 character bytes (must not be NULL)
 <br/>
@@ -1233,26 +2262,27 @@
 <p class="Pp">Index is character-based, suitable for palette lookup
   operations.</p>
 </div>
-<p class="Pp">Definition at line <b>526</b> of file <b>palette.c</b>.</p>
-<pre>526                                                                                                              {
-527   if (!palette || !utf8_char || char_bytes == 0 || char_bytes &gt; 4) {
-528     return (size_t)-1;
-529   }
-530 
-531   for (size_t i = 0; i &lt; palette-&gt;char_count; i++) {
-532     const utf8_char_info_t *char_info = &amp;palette-&gt;chars[i];
-533     if (char_info-&gt;byte_len == char_bytes &amp;&amp; memcmp(char_info-&gt;bytes, utf8_char, char_bytes) == 0) {
-534       return i;
-535     }
+<p class="Pp">Definition at line <b>533</b> of file <b>palette.c</b>.</p>
+<pre>533                                                                                                              {
+534   if (!palette || !utf8_char || char_bytes == 0 || char_bytes &gt; 4) {
+535     return (size_t)-1;
 536   }
-537 
-538   return (size_t)-1;
-539 }</pre>
+537
+538   for (size_t i = 0; i &lt; palette-&gt;char_count; i++) {
+539     const utf8_char_info_t *char_info = &amp;palette-&gt;chars[i];
+540     if (char_info-&gt;byte_len == char_bytes &amp;&amp; memcmp(char_info-&gt;bytes, utf8_char, char_bytes) == 0) {
+541       return i;
+542     }
+543   }
+544
+545   return (size_t)-1;
+546 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>utf8_char_info_t::byte_len</b>,
-    <b>utf8_char_info_t::bytes</b>, <b>utf8_palette_t::char_count</b>, and
-    <b>utf8_palette_t::chars</b>.</p>
+    <b>utf8_char_info_t::bytes</b>, <b>utf8_palette_t::char_count</b>,
+    <b>utf8_palette_t::chars</b>, and <b>utf8_palette_find_char_index()</b>.</p>
+<p class="Pp">Referenced by <b>utf8_palette_find_char_index()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">const <b>utf8_char_info_t</b> * utf8_palette_get_char (const
@@ -1261,8 +2291,7 @@
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Get UTF-8 character information at index.</p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Palette</b><i></i><b> UTF-8 palette (must not
-  be NULL)</b>
+<div class="Bd-indent"><i>palette</i> UTF-8 palette (must not be NULL)
 <br/>
 <i>index</i> Character index (0-based, must be &lt; char_count)</div>
 <p class="Pp"><b>Returns</b></p>
@@ -1281,18 +2310,19 @@
 <p class="Pp">The returned structure contains bytes, byte_len, and
     display_width.</p>
 </div>
-<p class="Pp">Definition at line <b>494</b> of file <b>palette.c</b>.</p>
-<pre>494                                                                                            {
-495   if (!palette || index &gt;= palette-&gt;char_count) {
-496     return NULL;
-497   }
-498   return &amp;palette-&gt;chars[index];
-499 }</pre>
+<p class="Pp">Definition at line <b>501</b> of file <b>palette.c</b>.</p>
+<pre>501                                                                                            {
+502   if (!palette || index &gt;= palette-&gt;char_count) {
+503     return NULL;
+504   }
+505   return &amp;palette-&gt;chars[index];
+506 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>utf8_palette_t::char_count</b>, and
-    <b>utf8_palette_t::chars</b>.</p>
-<p class="Pp">Referenced by <b>build_ramp64()</b>.</p>
+<p class="Pp">References <b>utf8_palette_t::char_count</b>,
+    <b>utf8_palette_t::chars</b>, and <b>utf8_palette_get_char()</b>.</p>
+<p class="Pp">Referenced by <b>build_ramp64()</b>, and
+    <b>utf8_palette_get_char()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_utf8_palette_get_char_count_(const_"><a class="permalink" href="#size_t_utf8_palette_get_char_count_(const_">size_t
@@ -1301,8 +2331,7 @@
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Get number of characters in UTF-8 palette.</p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Palette</b><i></i><b> UTF-8 palette (must not
-  be NULL)</b></div>
+<div class="Bd-indent"><i>palette</i> UTF-8 palette (must not be NULL)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of characters (not bytes)</div>
 <p class="Pp">Returns the number of characters in the UTF-8 palette. This is the
@@ -1315,17 +2344,19 @@
 <p class="Pp"></p>
 <p class="Pp">Use this for palette iteration and bounds checking.</p>
 </div>
-<p class="Pp">Definition at line <b>502</b> of file <b>palette.c</b>.</p>
-<pre>502                                                                   {
-503   if (!palette) {
-504     return 0;
-505   }
-506   return palette-&gt;char_count;
-507 }</pre>
+<p class="Pp">Definition at line <b>509</b> of file <b>palette.c</b>.</p>
+<pre>509                                                                   {
+510   if (!palette) {
+511     return 0;
+512   }
+513   return palette-&gt;char_count;
+514 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>utf8_palette_t::char_count</b>.</p>
-<p class="Pp">Referenced by <b>build_ramp64()</b>.</p>
+<p class="Pp">References <b>utf8_palette_t::char_count</b>, and
+    <b>utf8_palette_get_char_count()</b>.</p>
+<p class="Pp">Referenced by <b>build_ramp64()</b>, and
+    <b>utf8_palette_get_char_count()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> validate_palette_chars (const char * chars, size_t
@@ -1352,89 +2383,89 @@
 <p class="Pp"></p>
 <p class="Pp">Empty palettes or invalid sequences return false.</p>
 </div>
-<p class="Pp">Definition at line <b>71</b> of file <b>palette.c</b>.</p>
-<pre>71                                                            {
-72   if (!chars || len == 0) {
-73     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: empty or NULL palette&quot;);
-74     return false;
-75   }
-76 
-77   if (len &gt; 256) {
-78     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: palette too long (%zu chars, max 256)&quot;, len);
+<p class="Pp">Definition at line <b>76</b> of file <b>palette.c</b>.</p>
+<pre>76                                                            {
+77   if (!chars || len == 0) {
+78     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: empty or NULL palette&quot;);
 79     return false;
 80   }
-81 
-82   // Decode UTF-8 string into codepoints
-83   uint32_t codepoints[256];
-84   size_t codepoint_count = utf8_to_codepoints(chars, codepoints, 256);
-85 
-86   if (codepoint_count == SIZE_MAX) {
-87     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: invalid UTF-8 sequence&quot;);
-88     return false;
-89   }
-90 
-91   // Validate each codepoint
-92   for (size_t i = 0; i &lt; codepoint_count; i++) {
-93     uint32_t cp = codepoints[i];
-94 
-95     // Check for control characters (except tab)
-96     if (cp &lt; 32 &amp;&amp; cp != '\t') {
-97       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: control character at position %zu&quot;, i);
-98       return false;
-99     }
-100 
-101     // Convert codepoint to UTF-8 and check display width
-102     // For ASCII characters, this is straightforward
-103     // For multi-byte UTF-8, we need to check the display width
-104     if (cp &lt; 128) {
-105       // ASCII character - always width 1
-106       continue;
-107     } else {
-108       // Non-ASCII: use utf8_display_width to check character width
-109       // Create a temporary buffer with the UTF-8 encoded character
-110       uint8_t utf8_buf[5] = {0};
-111 
-112       // Encode codepoint to UTF-8 (simple for demo, should use proper encoder)
-113       if (cp &lt;= 0x7F) {
-114         utf8_buf[0] = (uint8_t)cp;
-115       } else if (cp &lt;= 0x7FF) {
-116         utf8_buf[0] = (uint8_t)(0xC0 | (cp &gt;&gt; 6));
-117         utf8_buf[1] = (uint8_t)(0x80 | (cp &amp; 0x3F));
-118       } else if (cp &lt;= 0xFFFF) {
-119         utf8_buf[0] = (uint8_t)(0xE0 | (cp &gt;&gt; 12));
-120         utf8_buf[1] = (uint8_t)(0x80 | ((cp &gt;&gt; 6) &amp; 0x3F));
-121         utf8_buf[2] = (uint8_t)(0x80 | (cp &amp; 0x3F));
-122       } else if (cp &lt;= 0x10FFFF) {
-123         utf8_buf[0] = (uint8_t)(0xF0 | (cp &gt;&gt; 18));
-124         utf8_buf[1] = (uint8_t)(0x80 | ((cp &gt;&gt; 12) &amp; 0x3F));
-125         utf8_buf[2] = (uint8_t)(0x80 | ((cp &gt;&gt; 6) &amp; 0x3F));
-126         utf8_buf[3] = (uint8_t)(0x80 | (cp &amp; 0x3F));
-127       } else {
-128         SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: invalid codepoint at position %zu&quot;, i);
-129         return false;
-130       }
-131 
-132       // Check character width - allow width 1 and 2 (for emoji and wide characters)
-133       int width = utf8_display_width((const char *)utf8_buf);
-134       if (width &lt; 0 || width &gt; 2) {
-135         SET_ERRNO(ERROR_INVALID_PARAM,
-136                   &quot;Palette validation failed: character at position %zu has invalid width %d (must be 1 or 2)&quot;, i,
-137                   width);
-138         return false;
-139       }
-140     }
-141   }
-142 
-143   log_debug(&quot;Palette validation successful: %zu characters validated&quot;, codepoint_count);
-144   return true;
-145 }</pre>
+81
+82   if (len &gt; 256) {
+83     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: palette too long (%zu chars, max 256)&quot;, len);
+84     return false;
+85   }
+86
+87   // Decode UTF-8 string into codepoints
+88   uint32_t codepoints[256];
+89   size_t codepoint_count = utf8_to_codepoints(chars, codepoints, 256);
+90
+91   if (codepoint_count == SIZE_MAX) {
+92     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: invalid UTF-8 sequence&quot;);
+93     return false;
+94   }
+95
+96   // Validate each codepoint
+97   for (size_t i = 0; i &lt; codepoint_count; i++) {
+98     uint32_t cp = codepoints[i];
+99
+100     // Check for control characters (except tab)
+101     if (cp &lt; 32 &amp;&amp; cp != '\t') {
+102       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: control character at position %zu&quot;, i);
+103       return false;
+104     }
+105
+106     // Convert codepoint to UTF-8 and check display width
+107     // For ASCII characters, this is straightforward
+108     // For multi-byte UTF-8, we need to check the display width
+109     if (cp &lt; 128) {
+110       // ASCII character - always width 1
+111       continue;
+112     } else {
+113       // Non-ASCII: use utf8_display_width to check character width
+114       // Create a temporary buffer with the UTF-8 encoded character
+115       uint8_t utf8_buf[UTF8_BUFFER_SIZE] = {0};
+116
+117       // Encode codepoint to UTF-8 (simple for demo, should use proper encoder)
+118       if (cp &lt;= 0x7F) {
+119         utf8_buf[0] = (uint8_t)cp;
+120       } else if (cp &lt;= 0x7FF) {
+121         utf8_buf[0] = (uint8_t)(0xC0 | (cp &gt;&gt; 6));
+122         utf8_buf[1] = (uint8_t)(0x80 | (cp &amp; 0x3F));
+123       } else if (cp &lt;= 0xFFFF) {
+124         utf8_buf[0] = (uint8_t)(0xE0 | (cp &gt;&gt; 12));
+125         utf8_buf[1] = (uint8_t)(0x80 | ((cp &gt;&gt; 6) &amp; 0x3F));
+126         utf8_buf[2] = (uint8_t)(0x80 | (cp &amp; 0x3F));
+127       } else if (cp &lt;= 0x10FFFF) {
+128         utf8_buf[0] = (uint8_t)(0xF0 | (cp &gt;&gt; 18));
+129         utf8_buf[1] = (uint8_t)(0x80 | ((cp &gt;&gt; 12) &amp; 0x3F));
+130         utf8_buf[2] = (uint8_t)(0x80 | ((cp &gt;&gt; 6) &amp; 0x3F));
+131         utf8_buf[3] = (uint8_t)(0x80 | (cp &amp; 0x3F));
+132       } else {
+133         SET_ERRNO(ERROR_INVALID_PARAM, &quot;Palette validation failed: invalid codepoint at position %zu&quot;, i);
+134         return false;
+135       }
+136
+137       // Check character width - allow width 1 and 2 (for emoji and wide characters)
+138       int width = utf8_display_width((const char *)utf8_buf);
+139       if (width &lt; 0 || width &gt; 2) {
+140         SET_ERRNO(ERROR_INVALID_PARAM,
+141                   &quot;Palette validation failed: character at position %zu has invalid width %d (must be 1 or 2)&quot;, i,
+142                   width);
+143         return false;
+144       }
+145     }
+146   }
+147
+148   log_debug(&quot;Palette validation successful: %zu characters validated&quot;, codepoint_count);
+149   return true;
+150 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>log_debug</b>,
-    <b>SET_ERRNO</b>, <b>utf8_display_width()</b>, and
-    <b>utf8_to_codepoints()</b>.</p>
-<p class="Pp">Referenced by <b>apply_palette_config()</b>, and
-    <b>initialize_client_palette()</b>.</p>
+    <b>SET_ERRNO</b>, <b>UTF8_BUFFER_SIZE</b>, <b>utf8_display_width()</b>,
+    <b>utf8_to_codepoints()</b>, and <b>validate_palette_chars()</b>.</p>
+<p class="Pp">Referenced by <b>apply_palette_config()</b>,
+    <b>initialize_client_palette()</b>, and <b>validate_palette_chars()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -1443,16 +2474,16 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> utf8_char_info_t::byte_len</h2>
 <p class="Pp">Number of bytes in UTF-8 encoding (1-4).</p>
-<p class="Pp">Definition at line <b>217</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>223</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>utf8_palette_contains_char()</b>,
     <b>utf8_palette_create()</b>, <b>utf8_palette_find_all_char_indices()</b>,
     and <b>utf8_palette_find_char_index()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="char_utf8_char_info_t::bytes_4_"><a class="permalink" href="#char_utf8_char_info_t::bytes_4_">char
-  utf8_char_info_t::bytes[4]</a></h2>
+<h2 class="Ss" id="char_utf8_char_info_t::bytes_"><a class="permalink" href="#char_utf8_char_info_t::bytes_">char
+  utf8_char_info_t::bytes[<b>UTF8_MAX_BYTES</b>]</a></h2>
 <p class="Pp">UTF-8 byte sequence (max 4 bytes per character).</p>
-<p class="Pp">Definition at line <b>215</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>221</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>build_ramp64()</b>,
     <b>utf8_palette_contains_char()</b>, <b>utf8_palette_create()</b>,
     <b>utf8_palette_find_all_char_indices()</b>, and
@@ -1462,7 +2493,7 @@
 <h2 class="Ss" id="size_t_utf8_palette_t::char_count"><a class="permalink" href="#size_t_utf8_palette_t::char_count">size_t
   utf8_palette_t::char_count</a></h2>
 <p class="Pp">Number of characters (not bytes!).</p>
-<p class="Pp">Definition at line <b>240</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>246</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>utf8_palette_contains_char()</b>,
     <b>utf8_palette_create()</b>, <b>utf8_palette_find_all_char_indices()</b>,
     <b>utf8_palette_find_char_index()</b>, <b>utf8_palette_get_char()</b>, and
@@ -1472,13 +2503,13 @@
 <h2 class="Ss" id="const_char*_palette_def_t::chars"><a class="permalink" href="#const_char*_palette_def_t::chars">const
   char* palette_def_t::chars</a></h2>
 <p class="Pp">Character sequence (ordered from dark to light).</p>
-<p class="Pp">Definition at line <b>120</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>126</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>initialize_client_palette()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>utf8_char_info_t</b>* utf8_palette_t::chars</h2>
 <p class="Pp">Array of UTF-8 character information.</p>
-<p class="Pp">Definition at line <b>238</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>244</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>utf8_palette_contains_char()</b>,
     <b>utf8_palette_create()</b>, <b>utf8_palette_destroy()</b>,
     <b>utf8_palette_find_all_char_indices()</b>,
@@ -1492,7 +2523,7 @@
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Default ASCII palette for legacy functions. Standard ASCII palette
     used as fallback for legacy code paths.</p>
-<p class="Pp">Definition at line <b>25</b> of file <b>palette.c</b>.</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>palette.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_size_t_DEFAULT_ASCII_PALETTE_LEN"><a class="permalink" href="#const_size_t_DEFAULT_ASCII_PALETTE_LEN">const
@@ -1501,43 +2532,43 @@
     &lt;<b>include/ascii-chat/video/ascii/palette.h</b>&gt;<b></b></p>
 <p class="Pp">Length of default ASCII palette. Number of characters in
     DEFAULT_ASCII_PALETTE.</p>
-<p class="Pp">Definition at line <b>26</b> of file <b>palette.c</b>.</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>palette.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> utf8_char_info_t::display_width</h2>
 <p class="Pp">Terminal display width in character cells (1-2).</p>
-<p class="Pp">Definition at line <b>219</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>225</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>utf8_palette_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> utf8_capabilities_t::forced_utf8</h2>
 <p class="Pp">True if user forced UTF-8 via --utf8 flag.</p>
-<p class="Pp">Definition at line <b>141</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>147</b> of file <b>palette.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> palette_def_t::is_validated</h2>
 <p class="Pp">True if palette passed validation checks.</p>
-<p class="Pp">Definition at line <b>126</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>132</b> of file <b>palette.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_palette_def_t::length"><a class="permalink" href="#size_t_palette_def_t::length">size_t
   palette_def_t::length</a></h2>
 <p class="Pp">Number of characters in sequence.</p>
-<p class="Pp">Definition at line <b>122</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>128</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>initialize_client_palette()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_utf8_capabilities_t::locale_encoding_16_"><a class="permalink" href="#char_utf8_capabilities_t::locale_encoding_16_">char
   utf8_capabilities_t::locale_encoding[16]</a></h2>
 <p class="Pp">Current locale encoding (e.g., &quot;UTF-8&quot;).</p>
-<p class="Pp">Definition at line <b>145</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>151</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>detect_client_utf8_support()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char*_palette_def_t::name"><a class="permalink" href="#const_char*_palette_def_t::name">const
   char* palette_def_t::name</a></h2>
 <p class="Pp">Human-readable palette name.</p>
-<p class="Pp">Definition at line <b>118</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>124</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>initialize_client_palette()</b>, and
     <b>select_compatible_palette()</b>.</p>
 </section>
@@ -1545,34 +2576,34 @@
 <h2 class="Ss" id="char*_utf8_palette_t::raw_string"><a class="permalink" href="#char*_utf8_palette_t::raw_string">char*
   utf8_palette_t::raw_string</a></h2>
 <p class="Pp">Original palette string (for reference/debugging).</p>
-<p class="Pp">Definition at line <b>244</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>250</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>utf8_palette_create()</b>, and
     <b>utf8_palette_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> palette_def_t::requires_utf8</h2>
 <p class="Pp">True if palette contains UTF-8 multi-byte characters.</p>
-<p class="Pp">Definition at line <b>124</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>130</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>select_compatible_palette()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_utf8_capabilities_t::terminal_type_32_"><a class="permalink" href="#char_utf8_capabilities_t::terminal_type_32_">char
   utf8_capabilities_t::terminal_type[32]</a></h2>
 <p class="Pp">$TERM environment variable value (for detection)</p>
-<p class="Pp">Definition at line <b>143</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>149</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>detect_client_utf8_support()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_utf8_palette_t::total_bytes"><a class="permalink" href="#size_t_utf8_palette_t::total_bytes">size_t
   utf8_palette_t::total_bytes</a></h2>
 <p class="Pp">Total byte length of palette string.</p>
-<p class="Pp">Definition at line <b>242</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>248</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>utf8_palette_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> utf8_capabilities_t::utf8_support</h2>
 <p class="Pp">True if terminal supports UTF-8 (detected automatically).</p>
-<p class="Pp">Definition at line <b>139</b> of file <b>palette.h</b>.</p>
+<p class="Pp">Definition at line <b>145</b> of file <b>palette.h</b>.</p>
 <p class="Pp">Referenced by <b>detect_client_utf8_support()</b>.</p>
 </section>
 </section>
@@ -1583,7 +2614,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

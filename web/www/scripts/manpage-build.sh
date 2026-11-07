@@ -52,11 +52,12 @@ if [ -d "$REPO_ROOT" ]; then
         # TODO: Verify this regex more thoroughly - test edge cases and ensure it doesn't break
         # other HTML patterns. The pattern is broad and may have unintended side effects.
         perl -pi -e 's/<\/([a-zA-Z][a-zA-Z0-9]*)\s*\n\s*>/<\/\1>/g' "$htmlfile"
+        perl -pi -e 's/[ \t]+$//' "$htmlfile"
       fi
     done
 
     # Generate pages.json index from converted HTML files
-    python3 scripts/generate_man3.py
+    BUILD_DIR="$BUILD_DIR" python3 scripts/generate_man3.py
     if [ $? -ne 0 ]; then
       echo "Failed to generate pages.json"
       exit 1

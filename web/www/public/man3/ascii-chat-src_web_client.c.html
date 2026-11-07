@@ -35,6 +35,16 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>BROWSER_PACKET_JSON_BUFFER_SIZE</b> 1024
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
 <br/>
 <p class="Pp">enum <b>connection_state_t</b> {
@@ -48,80 +58,156 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>EM_JS</b> (void, js_send_raw_packet,(const <b>uint8_t</b>
-    *packet_data, size_t packet_len), { if(!Module.sendPacketCallback) {
-    console.error('[WASM] sendPacketCallback not registered - cannot send
-    packet');return;} const packetArray=new Uint8Array(HEAPU8.buffer,
-    packet_data, packet_len);const packetCopy=new Uint8Array(packetArray);var
-    pktType=packetCopy.length &gt;=10 ?((packetCopy[8]&lt;&lt; 8)|packetCopy[9])
-    :-1;console.error('[WASM-&gt;JS] Sending raw packet:', packetCopy.length,
-    'bytes,
-    type=0x'+pktType.toString(16));Module.sendPacketCallback(packetCopy);})
+<p class="Pp"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+    <b>client_settings_receive</b> (const void *payload, size_t length)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_init_with_args</b> (const char *args_json)
+  <b>EMSCRIPTEN_KEEPALIVE</b> char * <b>client_settings_values</b> (void)
   <br/>
-  EMSCRIPTEN_KEEPALIVE void <b>client_cleanup</b> (void)
+  <b>EM_JS</b> (void, js_send_raw_packet,(const <b>uint8_t</b> *packet_data,
+    size_t packet_len), { if(!Module.sendPacketCallback) { console.error('[WASM]
+    sendPacketCallback not registered - cannot send packet');return;} const
+    packetArray=new Uint8Array(HEAPU8.buffer, packet_data, packet_len);const
+    packetCopy=new
+    Uint8Array(packetArray);Module.sendPacketCallback(packetCopy);})
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_generate_keypair</b> (void)
+  const unsigned char * <b>get_font_default_ptr</b> (int selection)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_set_server_address</b> (const char
+  unsigned int <b>get_font_default_size</b> (int selection)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_configure_crypto_options</b> (const
+    char *password, const <b>uint8_t</b> *identity_secret_key, const
+    <b>uint8_t</b> *expected_server_public_key)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_parse_ssh_private_key</b> (const
+    char *key_path, <b>uint8_t</b> *secret_key_out)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_parse_ssh_public_key</b> (const char
+    *key_line, <b>uint8_t</b> *public_key_out)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_parse_gpg_public_key</b> (const char
+    *armored_key, <b>uint8_t</b> *public_key_out)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_parse_gpg_public_key_binary</b>
+    (const <b>uint8_t</b> *key_data, size_t key_data_len, <b>uint8_t</b>
+    *public_key_out)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_parse_gpg_private_key</b> (const
+    char *armored_key, <b>uint8_t</b> *secret_key_out)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_parse_gpg_private_key_binary</b>
+    (const <b>uint8_t</b> *key_data, size_t key_data_len, <b>uint8_t</b>
+    *secret_key_out)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_get_crypto_error_message</b> (char
+    *output, size_t output_size)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_init_with_args</b> (const char
+    *args_json)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> void <b>client_cleanup</b> (void)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_generate_keypair</b> (void)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_set_server_address</b> (const char
     *server_host, int server_port)
   <br/>
-  EMSCRIPTEN_KEEPALIVE char * <b>client_get_public_key_hex</b> (void)
+  <b>EMSCRIPTEN_KEEPALIVE</b> char * <b>client_get_public_key_hex</b> (void)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_handle_key_exchange_init</b> (const
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_handle_key_exchange_init</b> (const
     <b>uint8_t</b> *packet, size_t packet_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_handle_crypto_parameters</b> (const
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_handle_crypto_parameters</b> (const
     <b>uint8_t</b> *packet, size_t packet_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_handle_auth_challenge</b> (const
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_handle_auth_challenge</b> (const
     <b>uint8_t</b> *packet, size_t packet_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_handle_handshake_complete</b> (const
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_handle_handshake_complete</b> (const
     <b>uint8_t</b> *packet, size_t packet_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_encrypt_packet</b> (const <b>uint8_t</b>
-    *plaintext, size_t plaintext_len, <b>uint8_t</b> *ciphertext, size_t
-    ciphertext_size, size_t *out_len)
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_encrypt_packet</b> (const
+    <b>uint8_t</b> *plaintext, size_t plaintext_len, <b>uint8_t</b> *ciphertext,
+    size_t ciphertext_size, size_t *out_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_decrypt_packet</b> (const <b>uint8_t</b>
-    *ciphertext, size_t ciphertext_len, <b>uint8_t</b> *plaintext, size_t
-    plaintext_size, size_t *out_len)
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_decrypt_packet</b> (const
+    <b>uint8_t</b> *ciphertext, size_t ciphertext_len, <b>uint8_t</b>
+    *plaintext, size_t plaintext_size, size_t *out_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE char * <b>client_parse_packet</b> (const <b>uint8_t</b>
-    *raw_packet, size_t packet_len)
+  <b>EMSCRIPTEN_KEEPALIVE</b> char * <b>client_parse_packet</b> (const
+    <b>uint8_t</b> *raw_packet, size_t packet_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_serialize_packet</b> (<b>uint16_t</b>
-    packet_type, const <b>uint8_t</b> *payload, size_t payload_len,
-    <b>uint32_t</b> client_id, <b>uint8_t</b> *output, size_t *out_len)
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_serialize_packet</b>
+    (<b>uint16_t</b> packet_type, const <b>uint8_t</b> *payload, size_t
+    payload_len, <b>uint32_t</b> client_id, <b>uint8_t</b> *output, size_t
+    *out_len)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_send_video_frame</b> (const <b>uint8_t</b>
-    *rgba_data, int width, int height)
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_send_video_frame</b> (const
+    <b>uint8_t</b> *rgba_data, int width, int height)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_get_connection_state</b> (void)
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_get_connection_state</b> (void)
   <br/>
-  EMSCRIPTEN_KEEPALIVE void <b>client_free_string</b> (char *ptr)
+  <b>EMSCRIPTEN_KEEPALIVE</b> void <b>client_free_string</b> (char *ptr)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_opus_encoder_init</b> (int sample_rate, int
-    channels, int bitrate)
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_opus_encoder_init</b> (int
+    sample_rate, int channels, int bitrate)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_opus_decoder_init</b> (int sample_rate, int
-    channels)
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_opus_decoder_init</b> (int
+    sample_rate, int channels)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_opus_encode</b> (const int16_t *pcm_data,
-    int frame_size, <b>uint8_t</b> *opus_data, int max_opus_bytes)
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_opus_encode</b> (const int16_t
+    *pcm_data, int frame_size, <b>uint8_t</b> *opus_data, int max_opus_bytes)
   <br/>
-  EMSCRIPTEN_KEEPALIVE int <b>client_opus_decode</b> (const <b>uint8_t</b>
-    *opus_data, int opus_bytes, int16_t *pcm_data, int frame_size, int
-    decode_fec)
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_opus_decode</b> (const
+    <b>uint8_t</b> *opus_data, int opus_bytes, int16_t *pcm_data, int
+    frame_size, int decode_fec)
   <br/>
-  EMSCRIPTEN_KEEPALIVE void <b>client_opus_encoder_cleanup</b> (void)
+  <b>EMSCRIPTEN_KEEPALIVE</b> void <b>client_opus_encoder_cleanup</b> (void)
   <br/>
-  EMSCRIPTEN_KEEPALIVE void <b>client_opus_decoder_cleanup</b> (void)
+  <b>EMSCRIPTEN_KEEPALIVE</b> void <b>client_opus_decoder_cleanup</b> (void)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+    <b>client_acds_handshake_begin</b> (<b>uint8_t</b> mode)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+    <b>client_acds_handshake_receive</b> (<b>uint32_t</b> type, const void
+    *payload, size_t length)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> int <b>client_resolve_crypto_policy</b>
+    (<b>bool</b> secure, int encryption)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+    <b>client_handshake_begin</b> (void)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+    <b>client_handshake_receive</b> (<b>uint32_t</b> type, const void *payload,
+    size_t length)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+    <b>client_validate_frame</b> (const char *text, size_t length,
+    <b>uint32_t</b> width, <b>uint32_t</b> height, <b>uint32_t</b> checksum,
+    <b>uint32_t</b> flags, const void *metadata, size_t metadata_length)
+  <br/>
+  <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+    <b>client_decode_frame_data</b> (const void *encoded, size_t encoded_length,
+    void *output, size_t output_length)
   <br/>
   <br/>
 </p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_BROWSER_PACKET_JSON_BUFFER_SIZE___1024"><a class="permalink" href="#_define_BROWSER_PACKET_JSON_BUFFER_SIZE___1024">#define
+  BROWSER_PACKET_JSON_BUFFER_SIZE 1024</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file <b>src/web/client.c</b>.</p>
+<p class="Pp">Referenced by <b>client_parse_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE___256"><a class="permalink" href="#_define_WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE___256">#define
+  WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>src/web/client.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -150,14 +236,14 @@
     </i></b></a></dt>
   <dd></dd>
 </dl>
-<p class="Pp">Definition at line <b>115</b> of file <b>src/web/client.c</b>.</p>
-<pre>115              {
-116   CONNECTION_STATE_DISCONNECTED = 0,
-117   CONNECTION_STATE_CONNECTING = 1,
-118   CONNECTION_STATE_HANDSHAKE = 2,
-119   CONNECTION_STATE_CONNECTED = 3,
-120   CONNECTION_STATE_ERROR = 4
-121 } connection_state_t;</pre>
+<p class="Pp">Definition at line <b>187</b> of file <b>src/web/client.c</b>.</p>
+<pre>187              {
+188   CONNECTION_STATE_DISCONNECTED = 0,
+189   CONNECTION_STATE_CONNECTING = 1,
+190   CONNECTION_STATE_HANDSHAKE = 2,
+191   CONNECTION_STATE_CONNECTED = 3,
+192   CONNECTION_STATE_ERROR = 4
+193 } connection_state_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -166,33 +252,153 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_client_cleanup_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_client_cleanup_(void_)">EMSCRIPTEN_KEEPALIVE
-  void client_cleanup (void )</a></h2>
-<p class="Pp">Definition at line <b>179</b> of file <b>src/web/client.c</b>.</p>
-<pre>179                           {
-180 
-181   // Clean up crypto handshake context
-182   crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
-183   memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
-184 
-185   g_handshake_complete = false;
-186   g_connection_state = CONNECTION_STATE_DISCONNECTED;
-187   g_initialized = false;
-188   options_state_destroy();
-189   platform_destroy();
-190 
-191 }</pre>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+  client_acds_handshake_begin (<b>uint8_t</b> mode)</h2>
+<p class="Pp">Definition at line <b>1101</b> of file
+  <b>src/web/client.c</b>.</p>
+<pre>1101                                                                                  {
+1102   g_crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
+1103   return acds_handshake_begin(&amp;g_wasm_transport, mode);
+1104 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>CONNECTION_STATE_DISCONNECTED</b>,
-    <b>crypto_handshake_destroy()</b>, <b>options_state_destroy()</b>, and
-    <b>platform_destroy()</b>.</p>
+<p class="Pp">References <b>acds_handshake_begin()</b>,
+    <b>ACIP_CRYPTO_HAS_ENCRYPT</b>, <b>client_acds_handshake_begin()</b>, and
+    <b>EMSCRIPTEN_KEEPALIVE</b>.</p>
+<p class="Pp">Referenced by <b>client_acds_handshake_begin()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_decrypt_packet_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_decrypt_packet_(const_">EMSCRIPTEN_KEEPALIVE
-  int client_decrypt_packet (const <b>uint8_t</b> * ciphertext, size_t
-  ciphertext_len, <b>uint8_t</b> * plaintext, size_t plaintext_size, size_t *
-  out_len)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+  client_acds_handshake_receive (<b>uint32_t</b> type, const void * payload,
+  size_t length)</h2>
+<p class="Pp">Definition at line <b>1105</b> of file
+  <b>src/web/client.c</b>.</p>
+<pre>1106                                                                                     {
+1107   asciichat_error_t result = acds_handshake_receive(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport, type, payload, length);
+1108   if (result != ASCIICHAT_OK) {
+1109     g_connection_state = CONNECTION_STATE_ERROR;
+1110     return result;
+1111   }
+1112   if (g_crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_READY) {
+1113     g_handshake_complete = true;
+1114     g_wasm_transport.crypto_ctx = &amp;g_crypto_handshake_ctx.crypto_ctx;
+1115     g_connection_state = CONNECTION_STATE_CONNECTED;
+1116   } else {
+1117     g_connection_state = CONNECTION_STATE_HANDSHAKE;
+1118   }
+1119   return ASCIICHAT_OK;
+1120 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acds_handshake_receive()</b>, <b>ASCIICHAT_OK</b>,
+    <b>client_acds_handshake_receive()</b>, <b>CONNECTION_STATE_CONNECTED</b>,
+    <b>CONNECTION_STATE_ERROR</b>, <b>CONNECTION_STATE_HANDSHAKE</b>,
+    <b>CRYPTO_HANDSHAKE_READY</b>, and <b>EMSCRIPTEN_KEEPALIVE</b>.</p>
+<p class="Pp">Referenced by <b>client_acds_handshake_receive()</b>, and
+    <b>client_handshake_receive()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> void client_cleanup (void )</h2>
+<p class="Pp">Definition at line <b>445</b> of file <b>src/web/client.c</b>.</p>
+<pre>445                           {
+446   remote_render_settings = (acip_render_settings_t){0};
+447   errno_destroy();
+448
+449   // Clean up crypto handshake context
+450   crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
+451   memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+452
+453   g_handshake_complete = false;
+454   g_wasm_transport.crypto_ctx = NULL;
+455   g_connection_state = CONNECTION_STATE_DISCONNECTED;
+456   sodium_memzero(g_crypto_password, sizeof(g_crypto_password));
+457   sodium_memzero(g_client_identity_key, sizeof(g_client_identity_key));
+458   sodium_memzero(g_expected_server_identity_key, sizeof(g_expected_server_identity_key));
+459   g_has_client_identity_key = false;
+460   g_has_expected_server_identity_key = false;
+461   // Keep module-wide options and buffer domains alive while browser renderers
+462   // still reference them. Connection cleanup only resets authentication state.
+463 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>client_cleanup()</b>,
+    <b>CONNECTION_STATE_DISCONNECTED</b>, <b>crypto_handshake_destroy()</b>, and
+    <b>errno_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>client_cleanup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_configure_crypto_options
+  (const char * password, const <b>uint8_t</b> * identity_secret_key, const
+  <b>uint8_t</b> * expected_server_public_key)</h2>
+<p class="Pp">Configure browser-provided authentication material for the next
+    handshake.</p>
+<p class="Pp">Definition at line <b>230</b> of file <b>src/web/client.c</b>.</p>
+<pre>231                                                                                {
+232   if (!g_initialized)
+233     return -1;
+234
+235   sodium_memzero(g_crypto_password, sizeof(g_crypto_password));
+236   sodium_memzero(g_client_identity_key, sizeof(g_client_identity_key));
+237   sodium_memzero(g_expected_server_identity_key, sizeof(g_expected_server_identity_key));
+238   g_has_client_identity_key = false;
+239   g_has_expected_server_identity_key = false;
+240
+241   if (password &amp;&amp; password[0] != '\0') {
+242     size_t length = strnlen(password, sizeof(g_crypto_password));
+243     if (length &lt; 8 || length &gt;= sizeof(g_crypto_password))
+244       return -1;
+245     SAFE_STRNCPY(g_crypto_password, password, sizeof(g_crypto_password) - 1);
+246   }
+247
+248   if (identity_secret_key) {
+249     uint8_t derived_public_key[crypto_sign_PUBLICKEYBYTES];
+250     if (crypto_sign_ed25519_sk_to_pk(derived_public_key, identity_secret_key) != 0 ||
+251         sodium_memcmp(derived_public_key, identity_secret_key + crypto_sign_SEEDBYTES, crypto_sign_PUBLICKEYBYTES) !=
+252             0) {
+253       sodium_memzero(derived_public_key, sizeof(derived_public_key));
+254       return -1;
+255     }
+256     memcpy(g_client_identity_key, identity_secret_key, sizeof(g_client_identity_key));
+257     sodium_memzero(derived_public_key, sizeof(derived_public_key));
+258     g_has_client_identity_key = true;
+259   }
+260
+261   if (expected_server_public_key) {
+262     memcpy(g_expected_server_identity_key, expected_server_public_key, sizeof(g_expected_server_identity_key));
+263     g_has_expected_server_identity_key = true;
+264   }
+265   return 0;
+266 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>client_configure_crypto_options()</b>, and
+    <b>SAFE_STRNCPY</b>.</p>
+<p class="Pp">Referenced by <b>client_configure_crypto_options()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+  client_decode_frame_data (const void * encoded, size_t encoded_length, void *
+  output, size_t output_length)</h2>
+<p class="Pp">Definition at line <b>1215</b> of file
+  <b>src/web/client.c</b>.</p>
+<pre>1216                                                                                                     {
+1217   if (!encoded || !output || !encoded_length || encoded_length &gt; FRAME_RENDER_MAX_BYTES || !output_length ||
+1218       output_length &gt; FRAME_RENDER_MAX_BYTES)
+1219     return SET_ERRNO(ERROR_INVALID_FRAME, &quot;Invalid browser frame decompression bounds&quot;);
+1220   return decompress_data_exact(encoded, encoded_length, output, output_length);
+1221 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>client_decode_frame_data()</b>,
+    <b>decompress_data_exact()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>ERROR_INVALID_FRAME</b>, <b>FRAME_RENDER_MAX_BYTES</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>client_decode_frame_data()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_decrypt_packet (const
+  <b>uint8_t</b> * ciphertext, size_t ciphertext_len, <b>uint8_t</b> *
+  plaintext, size_t plaintext_size, size_t * out_len)</h2>
 <p class="Pp">Decrypt a ciphertext packet</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>ciphertext</i> Input ciphertext data
@@ -207,32 +413,33 @@
 <i>out_len</i> Output parameter for plaintext length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>547</b> of file <b>src/web/client.c</b>.</p>
-<pre>548                                            {
-549   if (!g_handshake_complete) {
-550     return -1;
-551   }
-552 
-553   // Decrypt the packet using handshake context's crypto context
-554   size_t plaintext_len = 0;
-555   crypto_result_t result = crypto_decrypt(&amp;g_crypto_handshake_ctx.crypto_ctx, ciphertext, ciphertext_len, plaintext,
-556                                           plaintext_size, &amp;plaintext_len);
-557   if (result != CRYPTO_OK) {
-558     return -1;
-559   }
-560 
-561   *out_len = plaintext_len;
-562   return 0;
-563 }</pre>
+<p class="Pp">Definition at line <b>832</b> of file <b>src/web/client.c</b>.</p>
+<pre>833                                            {
+834   if (!g_handshake_complete) {
+835     return -1;
+836   }
+837
+838   // Decrypt the packet using handshake context's crypto context
+839   size_t plaintext_len = 0;
+840   crypto_result_t result = crypto_decrypt(&amp;g_crypto_handshake_ctx.crypto_ctx, ciphertext, ciphertext_len, plaintext,
+841                                           plaintext_size, &amp;plaintext_len);
+842   if (result != CRYPTO_OK) {
+843     return -1;
+844   }
+845
+846   *out_len = plaintext_len;
+847   return 0;
+848 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_decrypt()</b>, and <b>CRYPTO_OK</b>.</p>
+<p class="Pp">References <b>client_decrypt_packet()</b>,
+    <b>crypto_decrypt()</b>, and <b>CRYPTO_OK</b>.</p>
+<p class="Pp">Referenced by <b>client_decrypt_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_encrypt_packet_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_encrypt_packet_(const_">EMSCRIPTEN_KEEPALIVE
-  int client_encrypt_packet (const <b>uint8_t</b> * plaintext, size_t
-  plaintext_len, <b>uint8_t</b> * ciphertext, size_t ciphertext_size, size_t *
-  out_len)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_encrypt_packet (const
+  <b>uint8_t</b> * plaintext, size_t plaintext_len, <b>uint8_t</b> * ciphertext,
+  size_t ciphertext_size, size_t * out_len)</h2>
 <p class="Pp">Encrypt a plaintext packet</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>plaintext</i> Input plaintext data
@@ -247,128 +454,162 @@
 <i>out_len</i> Output parameter for ciphertext length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>519</b> of file <b>src/web/client.c</b>.</p>
-<pre>520                                            {
-521   if (!g_handshake_complete) {
-522     return -1;
-523   }
-524 
-525   // Encrypt the packet using handshake context's crypto context
-526   size_t ciphertext_len = 0;
-527   crypto_result_t result = crypto_encrypt(&amp;g_crypto_handshake_ctx.crypto_ctx, plaintext, plaintext_len, ciphertext,
-528                                           ciphertext_size, &amp;ciphertext_len);
-529   if (result != CRYPTO_OK) {
-530     return -1;
-531   }
-532 
-533   *out_len = ciphertext_len;
-534   return 0;
-535 }</pre>
+<p class="Pp">Definition at line <b>804</b> of file <b>src/web/client.c</b>.</p>
+<pre>805                                            {
+806   if (!g_handshake_complete) {
+807     return -1;
+808   }
+809
+810   // Encrypt the packet using handshake context's crypto context
+811   size_t ciphertext_len = 0;
+812   crypto_result_t result = crypto_encrypt(&amp;g_crypto_handshake_ctx.crypto_ctx, plaintext, plaintext_len, ciphertext,
+813                                           ciphertext_size, &amp;ciphertext_len);
+814   if (result != CRYPTO_OK) {
+815     return -1;
+816   }
+817
+818   *out_len = ciphertext_len;
+819   return 0;
+820 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_encrypt()</b>, and <b>CRYPTO_OK</b>.</p>
+<p class="Pp">References <b>client_encrypt_packet()</b>,
+    <b>crypto_encrypt()</b>, and <b>CRYPTO_OK</b>.</p>
+<p class="Pp">Referenced by <b>client_encrypt_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_client_free_string_(char_*_ptr)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_client_free_string_(char_*_ptr)">EMSCRIPTEN_KEEPALIVE
-  void client_free_string (char * ptr)</a></h2>
-<p class="Pp">Definition at line <b>682</b> of file <b>src/web/client.c</b>.</p>
-<pre>682                                    {
-683   SAFE_FREE(ptr);
-684 }</pre>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> void client_free_string (char *
+  ptr)</h2>
+<p class="Pp">Definition at line <b>973</b> of file <b>src/web/client.c</b>.</p>
+<pre>973                                    {
+974   SAFE_FREE(ptr);
+975 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SAFE_FREE</b>.</p>
+<p class="Pp">References <b>client_free_string()</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>client_free_string()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_generate_keypair_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_generate_keypair_(void_)">EMSCRIPTEN_KEEPALIVE
-  int client_generate_keypair (void )</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_generate_keypair (void
+  )</h2>
 <p class="Pp">Generate client keypair for handshake</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>202</b> of file <b>src/web/client.c</b>.</p>
-<pre>202                                   {
-203 
-204   if (!g_initialized) {
-205     return -1;
-206   }
-207 
-208   // Reset handshake context if previously used (reconnection / React Strict Mode remount)
-209   if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
-210     crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
-211     memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
-212     g_handshake_complete = false;
-213   }
-214 
-215   // Initialize crypto handshake context
-216   asciichat_error_t result = crypto_handshake_init(&quot;wasm-client&quot;, &amp;g_crypto_handshake_ctx, false /* is_server */);
-217   if (result != ASCIICHAT_OK) {
-218     return -1;
-219   }
-220 
-221   g_connection_state = CONNECTION_STATE_DISCONNECTED;
-222   return 0;
-223 }</pre>
+<p class="Pp">Definition at line <b>474</b> of file <b>src/web/client.c</b>.</p>
+<pre>474                                   {
+475
+476   if (!g_initialized) {
+477     return -1;
+478   }
+479
+480   // Reset handshake context if previously used (reconnection / React Strict Mode remount)
+481   if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
+482     crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
+483     memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+484     g_handshake_complete = false;
+485   }
+486
+487   // Initialize crypto handshake context
+488   asciichat_error_t result = crypto_handshake_init(&quot;wasm-client&quot;, &amp;g_crypto_handshake_ctx, false /* is_server */);
+489   if (result != ASCIICHAT_OK) {
+490     return -1;
+491   }
+492   if (apply_client_crypto_options() != 0) {
+493     crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
+494     memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+495     return -1;
+496   }
+497
+498   g_connection_state = CONNECTION_STATE_DISCONNECTED;
+499   return 0;
+500 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>client_generate_keypair()</b>,
     <b>CONNECTION_STATE_DISCONNECTED</b>, <b>crypto_handshake_destroy()</b>,
     <b>CRYPTO_HANDSHAKE_DISABLED</b>, and <b>crypto_handshake_init()</b>.</p>
+<p class="Pp">Referenced by <b>client_generate_keypair()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_get_connection_state_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_get_connection_state_(void_)">EMSCRIPTEN_KEEPALIVE
-  int client_get_connection_state (void )</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_get_connection_state (void
+  )</h2>
 <p class="Pp">Get current connection state</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Connection state enum value</div>
-<p class="Pp">Definition at line <b>673</b> of file <b>src/web/client.c</b>.</p>
-<pre>673                                       {
-674   return (int)g_connection_state;
-675 }</pre>
+<p class="Pp">Definition at line <b>964</b> of file <b>src/web/client.c</b>.</p>
+<pre>964                                       {
+965   return (int)g_connection_state;
+966 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>client_get_connection_state()</b>.</p>
+<p class="Pp">Referenced by <b>client_get_connection_state()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_char_*_client_get_public_key_hex_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_char_*_client_get_public_key_hex_(void_)">EMSCRIPTEN_KEEPALIVE
-  char * client_get_public_key_hex (void )</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_get_crypto_error_message
+  (char * output, size_t output_size)</h2>
+<p class="Pp">Copy the most recent C crypto error into a caller-provided
+  buffer.</p>
+<p class="Pp">Definition at line <b>383</b> of file <b>src/web/client.c</b>.</p>
+<pre>383                                                                       {
+384   if (!output || output_size == 0)
+385     return -1;
+386   asciichat_error_context_t context = {0};
+387   if (!HAS_ERRNO(&amp;context) || !context.context_message[0])
+388     return -1;
+389   safe_snprintf(output, output_size, &quot;%s&quot;, context.context_message);
+390   return 0;
+391 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>client_get_crypto_error_message()</b>,
+    <b>asciichat_error_context_t::context_message</b>, <b>HAS_ERRNO</b>, and
+    <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>client_get_crypto_error_message()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> char * client_get_public_key_hex
+  (void )</h2>
 <p class="Pp">Get client public key as hex string</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Allocated hex string (caller must free with
   client_free_string), or NULL on error</div>
-<p class="Pp">Definition at line <b>253</b> of file <b>src/web/client.c</b>.</p>
-<pre>253                                       {
-254   if (g_crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_DISABLED) {
-255     return NULL;
-256   }
-257 
-258   // Get public key from handshake context
-259   const uint8_t *pubkey = g_crypto_handshake_ctx.crypto_ctx.public_key;
-260   if (!pubkey) {
-261     return NULL;
-262   }
-263 
-264   // Allocate buffer for hex string (32 bytes = 64 hex chars + null terminator)
-265   char *hex_buffer = SAFE_MALLOC(65, char *);
-266   if (!hex_buffer) {
-267     return NULL;
-268   }
-269 
-270   // Convert public key to hex
-271   for (int i = 0; i &lt; 32; i++) {
-272     snprintf(hex_buffer + (i * 2), 3, &quot;%02x&quot;, pubkey[i]);
-273   }
-274   hex_buffer[64] = '\0';
-275 
-276   return hex_buffer;
-277 }</pre>
+<p class="Pp">Definition at line <b>530</b> of file <b>src/web/client.c</b>.</p>
+<pre>530                                       {
+531   if (g_crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_DISABLED) {
+532     return NULL;
+533   }
+534
+535   // Get public key from handshake context
+536   const uint8_t *pubkey = g_crypto_handshake_ctx.crypto_ctx.public_key;
+537   if (!pubkey) {
+538     return NULL;
+539   }
+540
+541   // Allocate buffer for hex string (32 bytes = 64 hex chars + null terminator)
+542   char *hex_buffer = SAFE_MALLOC(HEX_STRING_SIZE_32, char *);
+543   if (!hex_buffer) {
+544     return NULL;
+545   }
+546
+547   // Convert public key to hex
+548   for (int i = 0; i &lt; 32; i++) {
+549     snprintf(hex_buffer + (i * 2), 3, &quot;%02x&quot;, pubkey[i]);
+550   }
+551   hex_buffer[64] = '\0';
+552
+553   return hex_buffer;
+554 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>CRYPTO_HANDSHAKE_DISABLED</b>, and
+<p class="Pp">References <b>client_get_public_key_hex()</b>,
+    <b>CRYPTO_HANDSHAKE_DISABLED</b>, <b>HEX_STRING_SIZE_32</b>, and
     <b>SAFE_MALLOC</b>.</p>
+<p class="Pp">Referenced by <b>client_get_public_key_hex()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_handle_auth_challenge_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_handle_auth_challenge_(const_">EMSCRIPTEN_KEEPALIVE
-  int client_handle_auth_challenge (const <b>uint8_t</b> * packet, size_t
-  packet_len)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_handle_auth_challenge
+  (const <b>uint8_t</b> * packet, size_t packet_len)</h2>
 <p class="Pp">Handle CRYPTO_AUTH_CHALLENGE packet from server</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>packet</i> Raw packet data including header
@@ -376,58 +617,56 @@
 <i>packet_len</i> Total packet length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>410</b> of file <b>src/web/client.c</b>.</p>
-<pre>410                                                                            {
-411 
-412   if (!packet || packet_len == 0) {
-413     return -1;
-414   }
-415 
-416   // Extract packet type and payload
-417   if (packet_len &lt; sizeof(packet_header_t)) {
-418     return -1;
-419   }
-420 
-421   const packet_header_t *header = (const packet_header_t *)packet;
-422   packet_type_t packet_type = ntohs(header-&gt;type);
-423   const uint8_t *payload_src = packet + sizeof(packet_header_t);
-424   size_t payload_len = packet_len - sizeof(packet_header_t);
-425 
-426 
-427   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
-428   uint8_t *payload = NULL;
-429   if (payload_len &gt; 0) {
-430     payload = buffer_pool_alloc(NULL, payload_len);
-431     if (!payload) {
-432       g_connection_state = CONNECTION_STATE_ERROR;
-433       return -1;
-434     }
-435     memcpy(payload, payload_src, payload_len);
-436   }
-437 
-438   // Process auth challenge
-439   asciichat_error_t result = crypto_handshake_client_auth_response(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport,
-440                                                                    packet_type, payload, payload_len);
-441 
-442 
-443   if (result != ASCIICHAT_OK) {
-444     g_connection_state = CONNECTION_STATE_ERROR;
-445     return -1;
-446   }
-447 
-448   return 0;
-449 }</pre>
+<p class="Pp">Definition at line <b>699</b> of file <b>src/web/client.c</b>.</p>
+<pre>699                                                                            {
+700
+701   if (!packet || packet_len == 0) {
+702     return -1;
+703   }
+704
+705   // Extract packet type and payload
+706   if (packet_len &lt; sizeof(packet_header_t)) {
+707     return -1;
+708   }
+709
+710   const packet_header_t *header = (const packet_header_t *)packet;
+711   packet_type_t packet_type = ntohs(header-&gt;type);
+712   const uint8_t *payload_src = packet + sizeof(packet_header_t);
+713   size_t payload_len = packet_len - sizeof(packet_header_t);
+714
+715   // Allocate payload copy from buffer domain (crypto function takes ownership and frees it)
+716   uint8_t *payload = NULL;
+717   if (payload_len &gt; 0) {
+718     payload = buffer_alloc(NULL, payload_len);
+719     if (!payload) {
+720       g_connection_state = CONNECTION_STATE_ERROR;
+721       return -1;
+722     }
+723     memcpy(payload, payload_src, payload_len);
+724   }
+725
+726   // Process auth challenge
+727   asciichat_error_t result = crypto_handshake_client_auth_response(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport,
+728                                                                    packet_type, payload, payload_len);
+729
+730   if (result != ASCIICHAT_OK) {
+731     g_connection_state = CONNECTION_STATE_ERROR;
+732     return -1;
+733   }
+734
+735   return 0;
+736 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
-    <b>CONNECTION_STATE_ERROR</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_alloc()</b>,
+    <b>client_handle_auth_challenge()</b>, <b>CONNECTION_STATE_ERROR</b>,
     <b>crypto_handshake_client_auth_response()</b>, and
     <b>packet_header_t::type</b>.</p>
+<p class="Pp">Referenced by <b>client_handle_auth_challenge()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_handle_crypto_parameters_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_handle_crypto_parameters_(const_">EMSCRIPTEN_KEEPALIVE
-  int client_handle_crypto_parameters (const <b>uint8_t</b> * packet, size_t
-  packet_len)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_handle_crypto_parameters
+  (const <b>uint8_t</b> * packet, size_t packet_len)</h2>
 <p class="Pp">Handle CRYPTO_PARAMETERS packet from server Sets up the key size
     negotiation before KEY_EXCHANGE_INIT</p>
 <p class="Pp"><b>Parameters</b></p>
@@ -436,63 +675,77 @@
 <i>packet_len</i> Total packet length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>357</b> of file <b>src/web/client.c</b>.</p>
-<pre>357                                                                               {
-358 
-359   if (!packet || packet_len == 0) {
-360     return -1;
-361   }
-362 
-363   // Extract packet type and payload
-364   if (packet_len &lt; sizeof(packet_header_t)) {
-365     return -1;
-366   }
-367 
-368   const packet_header_t *header = (const packet_header_t *)packet;
-369   packet_type_t packet_type = ntohs(header-&gt;type);
-370   const uint8_t *payload_src = packet + sizeof(packet_header_t);
-371   size_t payload_len = packet_len - sizeof(packet_header_t);
-372 
-373 
-374   // Allocate payload copy from buffer pool
-375   uint8_t *payload = NULL;
-376   if (payload_len &gt; 0) {
-377     payload = buffer_pool_alloc(NULL, payload_len);
-378     if (!payload) {
-379       g_connection_state = CONNECTION_STATE_ERROR;
-380       return -1;
-381     }
-382     memcpy(payload, payload_src, payload_len);
-383   }
-384 
-385   // Process crypto parameters
-386   asciichat_error_t result = crypto_handshake_set_parameters(&amp;g_crypto_handshake_ctx,
-387                                                               (const crypto_parameters_packet_t *)payload);
-388 
-389 
-390   // Free payload
-391   if (payload) {
-392     buffer_pool_free(NULL, payload, payload_len);
-393   }
-394 
-395   if (result != ASCIICHAT_OK) {
-396     g_connection_state = CONNECTION_STATE_ERROR;
-397     return -1;
-398   }
-399 
-400   return 0;
-401 }</pre>
+<p class="Pp">Definition at line <b>634</b> of file <b>src/web/client.c</b>.</p>
+<pre>634                                                                               {
+635
+636   if (!packet || packet_len == 0) {
+637     return -1;
+638   }
+639
+640   // Discovery sends CRYPTO_PARAMETERS before KEY_EXCHANGE_INIT. Initialize
+641   // here so the negotiated values survive the subsequent key exchange packet.
+642   if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_INIT) {
+643     if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
+644       crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
+645     }
+646     memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+647     if (crypto_handshake_init(&quot;wasm-client&quot;, &amp;g_crypto_handshake_ctx, false) != ASCIICHAT_OK) {
+648       return -1;
+649     }
+650     if (apply_client_crypto_options() != 0)
+651       return -1;
+652   }
+653
+654   // Extract packet type and payload
+655   if (packet_len &lt; sizeof(packet_header_t)) {
+656     return -1;
+657   }
+658
+659   const packet_header_t *header = (const packet_header_t *)packet;
+660   packet_type_t packet_type = ntohs(header-&gt;type);
+661   const uint8_t *payload_src = packet + sizeof(packet_header_t);
+662   size_t payload_len = packet_len - sizeof(packet_header_t);
+663
+664   // Allocate payload copy from buffer domain
+665   uint8_t *payload = NULL;
+666   if (payload_len &gt; 0) {
+667     payload = buffer_alloc(NULL, payload_len);
+668     if (!payload) {
+669       g_connection_state = CONNECTION_STATE_ERROR;
+670       return -1;
+671     }
+672     memcpy(payload, payload_src, payload_len);
+673   }
+674
+675   // Process crypto parameters
+676   asciichat_error_t result =
+677       crypto_handshake_set_parameters(&amp;g_crypto_handshake_ctx, (const crypto_parameters_packet_t *)payload);
+678
+679   // Free payload
+680   if (payload) {
+681     buffer_release(payload);
+682   }
+683
+684   if (result != ASCIICHAT_OK) {
+685     g_connection_state = CONNECTION_STATE_ERROR;
+686     return -1;
+687   }
+688
+689   return 0;
+690 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
-    <b>buffer_pool_free()</b>, <b>CONNECTION_STATE_ERROR</b>,
-    <b>crypto_handshake_set_parameters()</b>, and
-  <b>packet_header_t::type</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_alloc()</b>,
+    <b>buffer_release</b>, <b>client_handle_crypto_parameters()</b>,
+    <b>CONNECTION_STATE_ERROR</b>, <b>crypto_handshake_destroy()</b>,
+    <b>CRYPTO_HANDSHAKE_DISABLED</b>, <b>CRYPTO_HANDSHAKE_INIT</b>,
+    <b>crypto_handshake_init()</b>, <b>crypto_handshake_set_parameters()</b>,
+    and <b>packet_header_t::type</b>.</p>
+<p class="Pp">Referenced by <b>client_handle_crypto_parameters()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_handle_handshake_complete_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_handle_handshake_complete_(const_">EMSCRIPTEN_KEEPALIVE
-  int client_handle_handshake_complete (const <b>uint8_t</b> * packet, size_t
-  packet_len)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_handle_handshake_complete
+  (const <b>uint8_t</b> * packet, size_t packet_len)</h2>
 <p class="Pp">Handle CRYPTO_HANDSHAKE_COMPLETE packet from server</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>packet</i> Raw packet data including header
@@ -500,64 +753,63 @@
 <i>packet_len</i> Total packet length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>458</b> of file <b>src/web/client.c</b>.</p>
-<pre>458                                                                                {
-459 
-460   if (!packet || packet_len == 0) {
-461     return -1;
-462   }
-463 
-464   // Extract packet type and payload
-465   if (packet_len &lt; sizeof(packet_header_t)) {
-466     return -1;
-467   }
-468 
-469   const packet_header_t *header = (const packet_header_t *)packet;
-470   packet_type_t packet_type = ntohs(header-&gt;type);
-471   const uint8_t *payload_src = packet + sizeof(packet_header_t);
-472   size_t payload_len = packet_len - sizeof(packet_header_t);
-473 
-474 
-475   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
-476   uint8_t *payload = NULL;
-477   if (payload_len &gt; 0) {
-478     payload = buffer_pool_alloc(NULL, payload_len);
-479     if (!payload) {
-480       g_connection_state = CONNECTION_STATE_ERROR;
-481       return -1;
-482     }
-483     memcpy(payload, payload_src, payload_len);
-484   }
-485 
-486   // Complete handshake (takes ownership of payload and will free it)
-487   asciichat_error_t result =
-488       crypto_handshake_client_complete(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport, packet_type, payload, payload_len);
-489 
-490 
-491   if (result != ASCIICHAT_OK) {
-492     g_connection_state = CONNECTION_STATE_ERROR;
-493     return -1;
-494   }
-495 
-496   g_handshake_complete = true;
-497   g_connection_state = CONNECTION_STATE_CONNECTED;
-498 
-499   // Update transport with the crypto context so ACIP can encrypt/decrypt packets
-500   g_wasm_transport.crypto_ctx = &amp;g_crypto_handshake_ctx.crypto_ctx;
-501 
-502   return 0;
-503 }</pre>
+<p class="Pp">Definition at line <b>745</b> of file <b>src/web/client.c</b>.</p>
+<pre>745                                                                                {
+746
+747   if (!packet || packet_len == 0) {
+748     return -1;
+749   }
+750
+751   // Extract packet type and payload
+752   if (packet_len &lt; sizeof(packet_header_t)) {
+753     return -1;
+754   }
+755
+756   const packet_header_t *header = (const packet_header_t *)packet;
+757   packet_type_t packet_type = ntohs(header-&gt;type);
+758   const uint8_t *payload_src = packet + sizeof(packet_header_t);
+759   size_t payload_len = packet_len - sizeof(packet_header_t);
+760
+761   // Allocate payload copy from buffer domain (crypto function takes ownership and frees it)
+762   uint8_t *payload = NULL;
+763   if (payload_len &gt; 0) {
+764     payload = buffer_alloc(NULL, payload_len);
+765     if (!payload) {
+766       g_connection_state = CONNECTION_STATE_ERROR;
+767       return -1;
+768     }
+769     memcpy(payload, payload_src, payload_len);
+770   }
+771
+772   // Complete handshake (takes ownership of payload and will free it)
+773   asciichat_error_t result =
+774       crypto_handshake_client_complete(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport, packet_type, payload, payload_len);
+775
+776   if (result != ASCIICHAT_OK) {
+777     g_connection_state = CONNECTION_STATE_ERROR;
+778     return -1;
+779   }
+780
+781   g_handshake_complete = true;
+782   g_connection_state = CONNECTION_STATE_CONNECTED;
+783
+784   // Update transport with the crypto context so ACIP can encrypt/decrypt packets
+785   g_wasm_transport.crypto_ctx = &amp;g_crypto_handshake_ctx.crypto_ctx;
+786
+787   return 0;
+788 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_alloc()</b>,
+    <b>client_handle_handshake_complete()</b>,
     <b>CONNECTION_STATE_CONNECTED</b>, <b>CONNECTION_STATE_ERROR</b>,
     <b>crypto_handshake_client_complete()</b>, and
   <b>packet_header_t::type</b>.</p>
+<p class="Pp">Referenced by <b>client_handle_handshake_complete()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_handle_key_exchange_init_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_handle_key_exchange_init_(const_">EMSCRIPTEN_KEEPALIVE
-  int client_handle_key_exchange_init (const <b>uint8_t</b> * packet, size_t
-  packet_len)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_handle_key_exchange_init
+  (const <b>uint8_t</b> * packet, size_t packet_len)</h2>
 <p class="Pp">Handle CRYPTO_KEY_EXCHANGE_INIT packet from server This is the
     first step of the crypto handshake</p>
 <p class="Pp"><b>Parameters</b></p>
@@ -566,141 +818,231 @@
 <i>packet_len</i> Total packet length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>287</b> of file <b>src/web/client.c</b>.</p>
-<pre>287                                                                               {
-288 
-289   // Safety check: if handshake context is not in INIT state, reinitialize it
-290   // This handles cases where previous handshakes weren't properly cleaned up
-291   if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_INIT) {
-292 
-293     // Destroy and reset
-294     if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
-295       crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
-296     }
-297     memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
-298 
-299     // Reinitialize to INIT state
-300     asciichat_error_t init_result = crypto_handshake_init(&quot;wasm-client&quot;, &amp;g_crypto_handshake_ctx, false);
-301     if (init_result != ASCIICHAT_OK) {
-302       return -1;
-303     }
-304   }
-305 
-306   if (!packet || packet_len == 0) {
-307     return -1;
-308   }
-309 
-310   // Extract packet type and payload
-311   if (packet_len &lt; sizeof(packet_header_t)) {
-312     return -1;
-313   }
-314 
-315   const packet_header_t *header = (const packet_header_t *)packet;
-316   packet_type_t packet_type = ntohs(header-&gt;type);
-317   const uint8_t *payload_src = packet + sizeof(packet_header_t);
-318   size_t payload_len = packet_len - sizeof(packet_header_t);
-319 
-320 
-321   // Allocate payload copy from buffer pool (crypto function takes ownership and frees it)
-322   // The raw packet pointer from JS cannot be passed directly because the crypto
-323   // handshake function calls buffer_pool_free() on the payload when done.
-324   uint8_t *payload = NULL;
-325   if (payload_len &gt; 0) {
-326     payload = buffer_pool_alloc(NULL, payload_len);
-327     if (!payload) {
-328       g_connection_state = CONNECTION_STATE_ERROR;
-329       return -1;
-330     }
-331     memcpy(payload, payload_src, payload_len);
-332   }
-333 
-334   // Process key exchange using transport-abstracted handshake
-335 
-336   asciichat_error_t result = crypto_handshake_client_key_exchange(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport,
-337                                                                   packet_type, payload, payload_len);
-338 
-339 
-340   if (result != ASCIICHAT_OK) {
-341     g_connection_state = CONNECTION_STATE_ERROR;
-342     return -1;
-343   }
-344 
-345   g_connection_state = CONNECTION_STATE_HANDSHAKE;
-346   return 0;
-347 }</pre>
+<p class="Pp">Definition at line <b>564</b> of file <b>src/web/client.c</b>.</p>
+<pre>564                                                                               {
+565
+566   // Safety check: if handshake context is not in INIT state, reinitialize it
+567   // This handles cases where previous handshakes weren't properly cleaned up
+568   if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_INIT) {
+569
+570     // Destroy and reset
+571     if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
+572       crypto_handshake_destroy(&amp;g_crypto_handshake_ctx);
+573     }
+574     memset(&amp;g_crypto_handshake_ctx, 0, sizeof(g_crypto_handshake_ctx));
+575
+576     // Reinitialize to INIT state
+577     asciichat_error_t init_result = crypto_handshake_init(&quot;wasm-client&quot;, &amp;g_crypto_handshake_ctx, false);
+578     if (init_result != ASCIICHAT_OK) {
+579       return -1;
+580     }
+581     if (apply_client_crypto_options() != 0)
+582       return -1;
+583   }
+584
+585   if (!packet || packet_len == 0) {
+586     return -1;
+587   }
+588
+589   // Extract packet type and payload
+590   if (packet_len &lt; sizeof(packet_header_t)) {
+591     return -1;
+592   }
+593
+594   const packet_header_t *header = (const packet_header_t *)packet;
+595   packet_type_t packet_type = ntohs(header-&gt;type);
+596   const uint8_t *payload_src = packet + sizeof(packet_header_t);
+597   size_t payload_len = packet_len - sizeof(packet_header_t);
+598
+599   // Allocate payload copy from buffer domain (crypto function takes ownership and frees it)
+600   // The raw packet pointer from JS cannot be passed directly because the crypto
+601   // handshake function calls buffer_release() on the payload when done.
+602   uint8_t *payload = NULL;
+603   if (payload_len &gt; 0) {
+604     payload = buffer_alloc(NULL, payload_len);
+605     if (!payload) {
+606       g_connection_state = CONNECTION_STATE_ERROR;
+607       return -1;
+608     }
+609     memcpy(payload, payload_src, payload_len);
+610   }
+611
+612   // Process key exchange using transport-abstracted handshake
+613
+614   asciichat_error_t result = crypto_handshake_client_key_exchange(&amp;g_crypto_handshake_ctx, &amp;g_wasm_transport,
+615                                                                   packet_type, payload, payload_len);
+616
+617   if (result != ASCIICHAT_OK) {
+618     g_connection_state = CONNECTION_STATE_ERROR;
+619     return -1;
+620   }
+621
+622   g_connection_state = CONNECTION_STATE_HANDSHAKE;
+623   return 0;
+624 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_pool_alloc()</b>,
-    <b>CONNECTION_STATE_ERROR</b>, <b>CONNECTION_STATE_HANDSHAKE</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>buffer_alloc()</b>,
+    <b>client_handle_key_exchange_init()</b>, <b>CONNECTION_STATE_ERROR</b>,
+    <b>CONNECTION_STATE_HANDSHAKE</b>,
     <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_destroy()</b>, <b>CRYPTO_HANDSHAKE_DISABLED</b>,
     <b>CRYPTO_HANDSHAKE_INIT</b>, <b>crypto_handshake_init()</b>, and
     <b>packet_header_t::type</b>.</p>
+<p class="Pp">Referenced by <b>client_handle_key_exchange_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_init_with_args_(const_char_*_args_json)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_init_with_args_(const_char_*_args_json)">EMSCRIPTEN_KEEPALIVE
-  int client_init_with_args (const char * args_json)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+  client_handshake_begin (void )</h2>
+<p class="Pp">Definition at line <b>1139</b> of file
+  <b>src/web/client.c</b>.</p>
+<pre>1139                                                                     {
+1140   g_connection_state = CONNECTION_STATE_CONNECTING;
+1141   g_version_received = false;
+1142   g_crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
+1143   return acds_handshake_begin(&amp;g_wasm_transport, g_crypto_mode);
+1144 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acds_handshake_begin()</b>,
+    <b>ACIP_CRYPTO_HAS_ENCRYPT</b>, <b>client_handshake_begin()</b>,
+    <b>CONNECTION_STATE_CONNECTING</b>, and <b>EMSCRIPTEN_KEEPALIVE</b>.</p>
+<p class="Pp">Referenced by <b>client_handshake_begin()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+  client_handshake_receive (<b>uint32_t</b> type, const void * payload, size_t
+  length)</h2>
+<p class="Pp">Definition at line <b>1146</b> of file
+  <b>src/web/client.c</b>.</p>
+<pre>1146                                                                                                                    {
+1147   if (!g_version_received &amp;&amp; type != PACKET_TYPE_PROTOCOL_VERSION)
+1148     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Expected server protocol version first&quot;);
+1149   if (type == PACKET_TYPE_PROTOCOL_VERSION) {
+1150     if (g_version_received)
+1151       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Duplicate server protocol version&quot;);
+1152     if (!payload || length != sizeof(protocol_version_packet_t))
+1153       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid server protocol version&quot;);
+1154     const protocol_version_packet_t *version = payload;
+1155     if (NET_TO_HOST_U16(version-&gt;protocol_version) != 1 || version-&gt;supports_encryption != g_crypto_mode)
+1156       return SET_ERRNO(ERROR_CRYPTO, &quot;Server rejected requested security policy&quot;);
+1157     g_version_received = true;
+1158     if (g_crypto_mode == ACIP_CRYPTO_NONE) {
+1159       g_connection_state = CONNECTION_STATE_CONNECTED;
+1160       return ASCIICHAT_OK;
+1161     }
+1162     crypto_capabilities_packet_t caps = {0};
+1163     caps.supported_kex_algorithms = HOST_TO_NET_U16(KEX_ALGO_X25519);
+1164     caps.supported_auth_algorithms = HOST_TO_NET_U16(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
+1165     caps.supported_cipher_algorithms = HOST_TO_NET_U16(CIPHER_ALGO_XSALSA20_POLY1305 | CIPHER_ALGO_NONE);
+1166     caps.preferred_kex = KEX_ALGO_X25519;
+1167     caps.preferred_auth = ACIP_CRYPTO_HAS_AUTH(g_crypto_mode) ? AUTH_ALGO_ED25519 : AUTH_ALGO_NONE;
+1168     caps.preferred_cipher = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode) ? CIPHER_ALGO_XSALSA20_POLY1305 : CIPHER_ALGO_NONE;
+1169     caps.requires_verification = g_has_expected_server_identity_key;
+1170     asciichat_error_t result =
+1171         packet_send_via_transport(&amp;g_wasm_transport, PACKET_TYPE_CRYPTO_CAPABILITIES, &amp;caps, sizeof(caps), 0);
+1172     if (result != ASCIICHAT_OK || !g_has_expected_server_identity_key)
+1173       return result;
+1174     return packet_send_via_transport(&amp;g_wasm_transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO, g_expected_server_identity_key,
+1175                                      sizeof(g_expected_server_identity_key), 0);
+1176   }
+1177   if (type == PACKET_TYPE_CRYPTO_PARAMETERS) {
+1178     if (!payload || length != sizeof(crypto_parameters_packet_t) ||
+1179         (((const crypto_parameters_packet_t *)payload)-&gt;selected_cipher != CIPHER_ALGO_NONE) !=
+1180             ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode))
+1181       return SET_ERRNO(ERROR_CRYPTO, &quot;Server changed requested payload encryption&quot;);
+1182   }
+1183   return client_acds_handshake_receive(type, payload, length);
+1184 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACIP_CRYPTO_HAS_AUTH</b>,
+    <b>ACIP_CRYPTO_HAS_ENCRYPT</b>, <b>ACIP_CRYPTO_NONE</b>,
+    <b>ASCIICHAT_OK</b>, <b>AUTH_ALGO_ED25519</b>, <b>AUTH_ALGO_NONE</b>,
+    <b>CIPHER_ALGO_NONE</b>, <b>CIPHER_ALGO_XSALSA20_POLY1305</b>,
+    <b>client_acds_handshake_receive()</b>, <b>client_handshake_receive()</b>,
+    <b>CONNECTION_STATE_CONNECTED</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>ERROR_CRYPTO</b>, <b>ERROR_NETWORK_PROTOCOL</b>, <b>HOST_TO_NET_U16</b>,
+    <b>KEX_ALGO_X25519</b>, <b>NET_TO_HOST_U16</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_CRYPTO_CAPABILITIES</b>,
+    <b>PACKET_TYPE_CRYPTO_CLIENT_HELLO</b>,
+    <b>PACKET_TYPE_CRYPTO_PARAMETERS</b>, <b>PACKET_TYPE_PROTOCOL_VERSION</b>,
+    <b>crypto_capabilities_packet_t::preferred_auth</b>,
+    <b>crypto_capabilities_packet_t::preferred_cipher</b>,
+    <b>crypto_capabilities_packet_t::preferred_kex</b>,
+    <b>protocol_version_packet_t::protocol_version</b>,
+    <b>crypto_capabilities_packet_t::requires_verification</b>,
+    <b>SET_ERRNO</b>,
+    <b>crypto_capabilities_packet_t::supported_auth_algorithms</b>,
+    <b>crypto_capabilities_packet_t::supported_cipher_algorithms</b>,
+    <b>crypto_capabilities_packet_t::supported_kex_algorithms</b>, and
+    <b>protocol_version_packet_t::supports_encryption</b>.</p>
+<p class="Pp">Referenced by <b>client_handshake_receive()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_init_with_args (const char
+  * args_json)</h2>
 <p class="Pp">Initialize client mode with command-line style arguments</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>args_json</i> Space-separated string of argument
   strings, e.g. &quot;client --width 80 --height 40&quot;</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>135</b> of file <b>src/web/client.c</b>.</p>
-<pre>135                                                  {
-136 
-137   // Parse space-separated arguments
-138   char *args_copy = NULL;
-139   char *argv[64] = {NULL};
-140   int argc = wasm_parse_args(args_json, argv, 64, &amp;args_copy);
-141   if (argc &lt; 0) {
-142     return -1;
-143   }
-144 
-145   // Initialize options (sets up RCU, defaults, etc.)
-146   asciichat_error_t err = options_init(argc, argv);
-147   free(args_copy);
-148 
-149   if (g_initialized) {
-150     return -1;
-151   }
-152 
-153   // Initialize platform layer
-154   err = platform_init();
-155   if (err != ASCIICHAT_OK) {
-156     return -1;
-157   }
-158 
-159   // Initialize logging to stderr (console.error in browser)
-160   log_init(NULL, LOG_DEBUG, true, false);
-161   // Use debug-style format in WASM so browser console shows full log headers
-162   log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
-163   log_info(&quot;WASM client initialized via logging system&quot;);
-164 
-165   if (err != ASCIICHAT_OK) {
-166     return -1;
-167   }
-168 
-169   // Initialize ANSI color code generation
-170   ansi_fast_init();
-171 
-172   g_initialized = true;
-173   g_connection_state = CONNECTION_STATE_DISCONNECTED;
-174 
-175   return 0;
-176 }</pre>
+<p class="Pp">Definition at line <b>403</b> of file <b>src/web/client.c</b>.</p>
+<pre>403                                                  {
+404   // The module, renderers, and allocator outlive individual connections.
+405   if (g_initialized)
+406     return 0;
+407   // Parse space-separated arguments
+408   char *args_copy = NULL;
+409   char *argv[WASM_ARGV_CAPACITY] = {NULL};
+410   int argc = wasm_parse_args(args_json, argv, WASM_ARGV_CAPACITY, &amp;args_copy);
+411   if (argc &lt; 0) {
+412     return -1;
+413   }
+414
+415   // Initialize options (sets up RCU, defaults, etc.)
+416   asciichat_error_t err = options_init(argc, argv);
+417   free(args_copy);
+418
+419   // Initialize platform layer
+420   err = platform_init();
+421   if (err != ASCIICHAT_OK) {
+422     return -1;
+423   }
+424
+425   // Honor the requested verbosity and let INFO use stdout (console.log).
+426   log_init(NULL, GET_OPTION(log_level), false, false);
+427   // Use debug-style format in WASM so browser console shows full log headers
+428   log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
+429   log_info(&quot;WASM client initialized via logging system&quot;);
+430
+431   if (err != ASCIICHAT_OK) {
+432     return -1;
+433   }
+434
+435   // Initialize ANSI color code generation
+436   ansi_fast_init();
+437
+438   g_initialized = true;
+439   g_connection_state = CONNECTION_STATE_DISCONNECTED;
+440
+441   return 0;
+442 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init()</b>, <b>ASCIICHAT_OK</b>,
-    <b>CONNECTION_STATE_DISCONNECTED</b>, <b>LOG_DEBUG</b>, <b>log_info</b>,
-    <b>log_init()</b>, <b>log_set_format()</b>,
-    <b>OPT_LOG_TEMPLATE_DEFAULT_DEBUG</b>, <b>options_init()</b>,
-    <b>platform_init()</b>, and <b>wasm_parse_args()</b>.</p>
+    <b>client_init_with_args()</b>, <b>CONNECTION_STATE_DISCONNECTED</b>,
+    <b>GET_OPTION</b>, <b>log_info</b>, <b>log_init()</b>,
+    <b>log_set_format()</b>, <b>OPT_LOG_TEMPLATE_DEFAULT_DEBUG</b>,
+    <b>options_init()</b>, <b>platform_init()</b>, <b>WASM_ARGV_CAPACITY</b>,
+    and <b>wasm_parse_args()</b>.</p>
+<p class="Pp">Referenced by <b>client_init_with_args()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_opus_decode_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_opus_decode_(const_">EMSCRIPTEN_KEEPALIVE
-  int client_opus_decode (const <b>uint8_t</b> * opus_data, int opus_bytes,
-  int16_t * pcm_data, int frame_size, int decode_fec)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_opus_decode (const
+  <b>uint8_t</b> * opus_data, int opus_bytes, int16_t * pcm_data, int
+  frame_size, int decode_fec)</h2>
 <p class="Pp">Decode Opus audio to PCM</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>opus_data</i> Input Opus data
@@ -715,39 +1057,45 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of samples decoded per channel, or -1 on
   error</div>
-<p class="Pp">Definition at line <b>770</b> of file <b>src/web/client.c</b>.</p>
-<pre>770                                                                                                                     {
-771   if (!g_opus_decoder) {
-772     return -1;
-773   }
-774 
-775   int decoded_samples = opus_decode(g_opus_decoder, opus_data, opus_bytes, pcm_data, frame_size, decode_fec);
-776   if (decoded_samples &lt; 0) {
-777     return -1;
-778   }
-779 
-780   return decoded_samples;
-781 }</pre>
+<p class="Pp">Definition at line <b>1066</b> of file
+  <b>src/web/client.c</b>.</p>
+<pre>1066                                                                                                                     {
+1067   if (!g_opus_decoder) {
+1068     return -1;
+1069   }
+1070
+1071   int decoded_samples = opus_decode(g_opus_decoder, opus_data, opus_bytes, pcm_data, frame_size, decode_fec);
+1072   if (decoded_samples &lt; 0) {
+1073     return -1;
+1074   }
+1075
+1076   return decoded_samples;
+1077 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>client_opus_decode()</b>.</p>
+<p class="Pp">Referenced by <b>client_opus_decode()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_client_opus_decoder_cleanup_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_client_opus_decoder_cleanup_(void_)">EMSCRIPTEN_KEEPALIVE
-  void client_opus_decoder_cleanup (void )</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> void client_opus_decoder_cleanup
+  (void )</h2>
 <p class="Pp">Cleanup Opus decoder</p>
-<p class="Pp">Definition at line <b>798</b> of file <b>src/web/client.c</b>.</p>
-<pre>798                                        {
-799   if (g_opus_decoder) {
-800     opus_decoder_destroy(g_opus_decoder);
-801     g_opus_decoder = NULL;
-802   }
-803 }</pre>
+<p class="Pp">Definition at line <b>1094</b> of file
+  <b>src/web/client.c</b>.</p>
+<pre>1094                                        {
+1095   if (g_opus_decoder) {
+1096     opus_decoder_destroy(g_opus_decoder);
+1097     g_opus_decoder = NULL;
+1098   }
+1099 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>client_opus_decoder_cleanup()</b>.</p>
+<p class="Pp">Referenced by <b>client_opus_decoder_cleanup()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_opus_decoder_init_(int_sample_rate,_int_channels)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_opus_decoder_init_(int_sample_rate,_int_channels)">EMSCRIPTEN_KEEPALIVE
-  int client_opus_decoder_init (int sample_rate, int channels)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_opus_decoder_init (int
+  sample_rate, int channels)</h2>
 <p class="Pp">Initialize Opus decoder</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>sample_rate</i> Sample rate (8000, 16000, 24000, or
@@ -756,28 +1104,31 @@
 <i>channels</i> Number of channels (1=mono, 2=stereo)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>723</b> of file <b>src/web/client.c</b>.</p>
-<pre>723                                                             {
-724   if (g_opus_decoder) {
-725     opus_decoder_destroy(g_opus_decoder);
-726     g_opus_decoder = NULL;
-727   }
-728 
-729   int error;
-730   g_opus_decoder = opus_decoder_create(sample_rate, channels, &amp;error);
-731   if (error != OPUS_OK || !g_opus_decoder) {
-732     return -1;
-733   }
-734 
-735   return 0;
-736 }</pre>
+<p class="Pp">Definition at line <b>1019</b> of file
+  <b>src/web/client.c</b>.</p>
+<pre>1019                                                             {
+1020   if (g_opus_decoder) {
+1021     opus_decoder_destroy(g_opus_decoder);
+1022     g_opus_decoder = NULL;
+1023   }
+1024
+1025   int error;
+1026   g_opus_decoder = opus_decoder_create(sample_rate, channels, &amp;error);
+1027   if (error != OPUS_OK || !g_opus_decoder) {
+1028     return -1;
+1029   }
+1030
+1031   return 0;
+1032 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>client_opus_decoder_init()</b>.</p>
+<p class="Pp">Referenced by <b>client_opus_decoder_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_opus_encode_(const_int16_t_*_pcm_data,_int_frame_size,_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_opus_encode_(const_int16_t_*_pcm_data,_int_frame_size,_">EMSCRIPTEN_KEEPALIVE
-  int client_opus_encode (const int16_t * pcm_data, int frame_size,
-  <b>uint8_t</b> * opus_data, int max_opus_bytes)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_opus_encode (const int16_t
+  * pcm_data, int frame_size, <b>uint8_t</b> * opus_data, int
+  max_opus_bytes)</h2>
 <p class="Pp">Encode PCM audio to Opus</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>pcm_data</i> Input PCM data (Int16 samples)
@@ -789,40 +1140,45 @@
 <i>max_opus_bytes</i> Maximum size of output buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of bytes encoded, or -1 on error</div>
-<p class="Pp">Definition at line <b>747</b> of file <b>src/web/client.c</b>.</p>
-<pre>747                                                                                                         {
-748   if (!g_opus_encoder) {
-749     return -1;
-750   }
-751 
-752   int encoded_bytes = opus_encode(g_opus_encoder, pcm_data, frame_size, opus_data, max_opus_bytes);
-753   if (encoded_bytes &lt; 0) {
-754     return -1;
-755   }
-756 
-757   return encoded_bytes;
-758 }</pre>
+<p class="Pp">Definition at line <b>1043</b> of file
+  <b>src/web/client.c</b>.</p>
+<pre>1043                                                                                                         {
+1044   if (!g_opus_encoder) {
+1045     return -1;
+1046   }
+1047
+1048   int encoded_bytes = opus_encode(g_opus_encoder, pcm_data, frame_size, opus_data, max_opus_bytes);
+1049   if (encoded_bytes &lt; 0) {
+1050     return -1;
+1051   }
+1052
+1053   return encoded_bytes;
+1054 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>client_opus_encode()</b>.</p>
+<p class="Pp">Referenced by <b>client_opus_encode()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_void_client_opus_encoder_cleanup_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_void_client_opus_encoder_cleanup_(void_)">EMSCRIPTEN_KEEPALIVE
-  void client_opus_encoder_cleanup (void )</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> void client_opus_encoder_cleanup
+  (void )</h2>
 <p class="Pp">Cleanup Opus encoder</p>
-<p class="Pp">Definition at line <b>787</b> of file <b>src/web/client.c</b>.</p>
-<pre>787                                        {
-788   if (g_opus_encoder) {
-789     opus_encoder_destroy(g_opus_encoder);
-790     g_opus_encoder = NULL;
-791   }
-792 }</pre>
+<p class="Pp">Definition at line <b>1083</b> of file
+  <b>src/web/client.c</b>.</p>
+<pre>1083                                        {
+1084   if (g_opus_encoder) {
+1085     opus_encoder_destroy(g_opus_encoder);
+1086     g_opus_encoder = NULL;
+1087   }
+1088 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>client_opus_encoder_cleanup()</b>.</p>
+<p class="Pp">Referenced by <b>client_opus_encoder_cleanup()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_opus_encoder_init_(int_sample_rate,_int_channels,_int_bitrate)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_opus_encoder_init_(int_sample_rate,_int_channels,_int_bitrate)">EMSCRIPTEN_KEEPALIVE
-  int client_opus_encoder_init (int sample_rate, int channels, int
-  bitrate)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_opus_encoder_init (int
+  sample_rate, int channels, int bitrate)</h2>
 <p class="Pp">Initialize Opus encoder</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>sample_rate</i> Sample rate (8000, 16000, 24000, or
@@ -833,32 +1189,161 @@
 <i>bitrate</i> Target bitrate in bits/sec</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>698</b> of file <b>src/web/client.c</b>.</p>
-<pre>698                                                                          {
-699   if (g_opus_encoder) {
-700     opus_encoder_destroy(g_opus_encoder);
-701     g_opus_encoder = NULL;
-702   }
-703 
-704   int error;
-705   g_opus_encoder = opus_encoder_create(sample_rate, channels, OPUS_APPLICATION_VOIP, &amp;error);
-706   if (error != OPUS_OK || !g_opus_encoder) {
-707     return -1;
-708   }
-709 
-710   // Set bitrate
-711   opus_encoder_ctl(g_opus_encoder, OPUS_SET_BITRATE(bitrate));
-712 
-713   return 0;
-714 }</pre>
+<p class="Pp">Definition at line <b>989</b> of file <b>src/web/client.c</b>.</p>
+<pre>989                                                                          {
+990   if (g_opus_encoder) {
+991     opus_encoder_destroy(g_opus_encoder);
+992     g_opus_encoder = NULL;
+993   }
+994
+995   int error;
+996   g_opus_encoder = opus_encoder_create(sample_rate, channels,
+997                                        bitrate &gt;= 128000 ? OPUS_APPLICATION_AUDIO : OPUS_APPLICATION_VOIP, &amp;error);
+998   if (error != OPUS_OK || !g_opus_encoder) {
+999     return -1;
+1000   }
+1001
+1002   // Set bitrate
+1003   if (opus_encoder_ctl(g_opus_encoder, OPUS_SET_BITRATE(bitrate)) != OPUS_OK) {
+1004     opus_encoder_destroy(g_opus_encoder);
+1005     g_opus_encoder = NULL;
+1006     return -1;
+1007   }
+1008
+1009   return 0;
+1010 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>OPUS_APPLICATION_VOIP</b>.</p>
+<p class="Pp">References <b>client_opus_encoder_init()</b>,
+    <b>OPUS_APPLICATION_AUDIO</b>, and <b>OPUS_APPLICATION_VOIP</b>.</p>
+<p class="Pp">Referenced by <b>client_opus_encoder_init()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_char_*_client_parse_packet_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_char_*_client_parse_packet_(const_">EMSCRIPTEN_KEEPALIVE
-  char * client_parse_packet (const <b>uint8_t</b> * raw_packet, size_t
-  packet_len)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_parse_gpg_private_key
+  (const char * armored_key, <b>uint8_t</b> * secret_key_out)</h2>
+<p class="Pp">Parse an unencrypted armored OpenPGP Ed25519 private key through
+    the shared C parser.</p>
+<p class="Pp">Definition at line <b>319</b> of file <b>src/web/client.c</b>.</p>
+<pre>319                                                                                    {
+320   if (!armored_key || !secret_key_out)
+321     return -1;
+322   CLEAR_ERRNO_ALL();
+323
+324   uint8_t public_key[crypto_sign_PUBLICKEYBYTES] = {0};
+325   uint8_t seed[crypto_sign_SEEDBYTES] = {0};
+326   uint8_t derived_public_key[crypto_sign_PUBLICKEYBYTES] = {0};
+327   uint8_t secret_key[crypto_sign_SECRETKEYBYTES] = {0};
+328   int result = -1;
+329
+330   if (openpgp_parse_armored_seckey(armored_key, public_key, seed) != ASCIICHAT_OK)
+331     goto cleanup;
+332   if (crypto_sign_seed_keypair(derived_public_key, secret_key, seed) != 0 ||
+333       sodium_memcmp(derived_public_key, public_key, sizeof(public_key)) != 0) {
+334     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;OpenPGP private key does not match its Ed25519 public key&quot;);
+335     goto cleanup;
+336   }
+337
+338   memcpy(secret_key_out, secret_key, sizeof(secret_key));
+339   result = 0;
+340
+341 cleanup:
+342   sodium_memzero(public_key, sizeof(public_key));
+343   sodium_memzero(seed, sizeof(seed));
+344   sodium_memzero(derived_public_key, sizeof(derived_public_key));
+345   sodium_memzero(secret_key, sizeof(secret_key));
+346   return result;
+347 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>CLEAR_ERRNO_ALL</b>,
+    <b>client_parse_gpg_private_key()</b>, <b>ERROR_CRYPTO_KEY</b>,
+    <b>openpgp_parse_armored_seckey()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>client_parse_gpg_private_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int
+  client_parse_gpg_private_key_binary (const <b>uint8_t</b> * key_data, size_t
+  key_data_len, <b>uint8_t</b> * secret_key_out)</h2>
+<p class="Pp">Parse an unencrypted binary OpenPGP Ed25519 secret-key packet
+    stream.</p>
+<p class="Pp">Definition at line <b>351</b> of file <b>src/web/client.c</b>.</p>
+<pre>351                                                                                                                {
+352   if (!key_data || key_data_len == 0 || !secret_key_out)
+353     return -1;
+354   CLEAR_ERRNO_ALL();
+355
+356   uint8_t public_key[crypto_sign_PUBLICKEYBYTES] = {0};
+357   uint8_t seed[crypto_sign_SEEDBYTES] = {0};
+358   uint8_t derived_public_key[crypto_sign_PUBLICKEYBYTES] = {0};
+359   uint8_t secret_key[crypto_sign_SECRETKEYBYTES] = {0};
+360   int result = -1;
+361
+362   if (openpgp_parse_binary_seckey(key_data, key_data_len, public_key, seed) != ASCIICHAT_OK)
+363     goto cleanup;
+364   if (crypto_sign_seed_keypair(derived_public_key, secret_key, seed) != 0 ||
+365       sodium_memcmp(derived_public_key, public_key, sizeof(public_key)) != 0) {
+366     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;OpenPGP private key does not match its Ed25519 public key&quot;);
+367     goto cleanup;
+368   }
+369
+370   memcpy(secret_key_out, secret_key, sizeof(secret_key));
+371   result = 0;
+372
+373 cleanup:
+374   sodium_memzero(public_key, sizeof(public_key));
+375   sodium_memzero(seed, sizeof(seed));
+376   sodium_memzero(derived_public_key, sizeof(derived_public_key));
+377   sodium_memzero(secret_key, sizeof(secret_key));
+378   return result;
+379 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>CLEAR_ERRNO_ALL</b>,
+    <b>client_parse_gpg_private_key_binary()</b>, <b>ERROR_CRYPTO_KEY</b>,
+    <b>openpgp_parse_binary_seckey()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>client_parse_gpg_private_key_binary()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_parse_gpg_public_key
+  (const char * armored_key, <b>uint8_t</b> * public_key_out)</h2>
+<p class="Pp">Parse an armored OpenPGP Ed25519 public key through the shared C
+    parser.</p>
+<p class="Pp">Definition at line <b>301</b> of file <b>src/web/client.c</b>.</p>
+<pre>301                                                                                   {
+302   if (!armored_key || !public_key_out)
+303     return -1;
+304   CLEAR_ERRNO_ALL();
+305   return openpgp_parse_armored_pubkey(armored_key, public_key_out) == ASCIICHAT_OK ? 0 : -1;
+306 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>CLEAR_ERRNO_ALL</b>,
+    <b>client_parse_gpg_public_key()</b>, and
+    <b>openpgp_parse_armored_pubkey()</b>.</p>
+<p class="Pp">Referenced by <b>client_parse_gpg_public_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int
+  client_parse_gpg_public_key_binary (const <b>uint8_t</b> * key_data, size_t
+  key_data_len, <b>uint8_t</b> * public_key_out)</h2>
+<p class="Pp">Parse a binary OpenPGP Ed25519 public-key packet stream.</p>
+<p class="Pp">Definition at line <b>310</b> of file <b>src/web/client.c</b>.</p>
+<pre>310                                                                                                               {
+311   if (!key_data || key_data_len == 0 || !public_key_out)
+312     return -1;
+313   CLEAR_ERRNO_ALL();
+314   return openpgp_parse_binary_pubkey(key_data, key_data_len, public_key_out) == ASCIICHAT_OK ? 0 : -1;
+315 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>CLEAR_ERRNO_ALL</b>,
+    <b>client_parse_gpg_public_key_binary()</b>, and
+    <b>openpgp_parse_binary_pubkey()</b>.</p>
+<p class="Pp">Referenced by <b>client_parse_gpg_public_key_binary()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> char * client_parse_packet (const
+  <b>uint8_t</b> * raw_packet, size_t packet_len)</h2>
 <p class="Pp">Parse a raw packet and return JSON metadata</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>raw_packet</i> Raw packet bytes including header
@@ -867,49 +1352,139 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Allocated JSON string with packet metadata (caller must
   free), or NULL on error</div>
-<p class="Pp">Definition at line <b>572</b> of file <b>src/web/client.c</b>.</p>
-<pre>572                                                                         {
-573   if (!raw_packet || packet_len &lt; sizeof(packet_header_t)) {
-574     return NULL;
-575   }
-576 
-577   // Parse packet header directly from bytes
-578   const packet_header_t *header = (const packet_header_t *)raw_packet;
-579 
-580   // Validate magic number (convert from network byte order)
-581   uint64_t magic = NET_TO_HOST_U64(header-&gt;magic);
-582   if (magic != PACKET_MAGIC) {
-583     return NULL;
-584   }
-585 
-586   // Convert header fields from network byte order
-587   uint16_t type = NET_TO_HOST_U16(header-&gt;type);
-588   uint32_t length = NET_TO_HOST_U32(header-&gt;length);
-589   uint32_t client_id = NET_TO_HOST_U32(header-&gt;client_id);
-590   uint32_t crc32 = NET_TO_HOST_U32(header-&gt;crc32);
-591 
-592   // Build JSON response with packet metadata
-593   char *json = SAFE_MALLOC(1024, char *);
-594   if (!json) {
-595     return NULL;
-596   }
-597 
-598   snprintf(json, 1024, &quot;{\&quot;type\&quot;:%u,\&quot;length\&quot;:%u,\&quot;client_id\&quot;:%u,\&quot;crc32\&quot;:%u}&quot;, type, length, client_id, crc32);
-599 
-600   return json;
-601 }</pre>
+<p class="Pp">Definition at line <b>857</b> of file <b>src/web/client.c</b>.</p>
+<pre>857                                                                         {
+858   if (!raw_packet || packet_len &lt; sizeof(packet_header_t)) {
+859     return NULL;
+860   }
+861
+862   // Parse packet header directly from bytes
+863   const packet_header_t *header = (const packet_header_t *)raw_packet;
+864
+865   // Validate magic number (convert from network byte order)
+866   uint64_t magic = NET_TO_HOST_U64(header-&gt;magic);
+867   if (magic != PACKET_MAGIC) {
+868     return NULL;
+869   }
+870
+871   // Convert header fields from network byte order
+872   uint16_t type = NET_TO_HOST_U16(header-&gt;type);
+873   uint32_t length = NET_TO_HOST_U32(header-&gt;length);
+874   uint32_t client_id = NET_TO_HOST_U32(header-&gt;client_id);
+875   uint32_t crc32 = NET_TO_HOST_U32(header-&gt;crc32);
+876
+877   if (length != packet_len - sizeof(packet_header_t) ||
+878       (length &gt; 0 &amp;&amp; asciichat_crc32_sw(raw_packet + sizeof(packet_header_t), length) != crc32)) {
+879     return NULL;
+880   }
+881
+882   // Build JSON response with packet metadata
+883   char *json = SAFE_MALLOC(BROWSER_PACKET_JSON_BUFFER_SIZE, char *);
+884   if (!json) {
+885     return NULL;
+886   }
+887
+888   snprintf(json, BROWSER_PACKET_JSON_BUFFER_SIZE, &quot;{\&quot;type\&quot;:%u,\&quot;length\&quot;:%u,\&quot;client_id\&quot;:%u,\&quot;crc32\&quot;:%u}&quot;, type,
+889            length, client_id, crc32);
+890
+891   return json;
+892 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_header_t::client_id</b>,
-    <b>packet_header_t::crc32</b>, <b>packet_header_t::length</b>,
-    <b>packet_header_t::magic</b>, <b>NET_TO_HOST_U16</b>,
-    <b>NET_TO_HOST_U32</b>, <b>NET_TO_HOST_U64</b>, <b>PACKET_MAGIC</b>,
-    <b>SAFE_MALLOC</b>, and <b>packet_header_t::type</b>.</p>
+<p class="Pp">References <b>asciichat_crc32_sw()</b>,
+    <b>BROWSER_PACKET_JSON_BUFFER_SIZE</b>, <b>packet_header_t::client_id</b>,
+    <b>client_parse_packet()</b>, <b>packet_header_t::crc32</b>,
+    <b>packet_header_t::length</b>, <b>packet_header_t::magic</b>,
+    <b>NET_TO_HOST_U16</b>, <b>NET_TO_HOST_U32</b>, <b>NET_TO_HOST_U64</b>,
+    <b>PACKET_MAGIC</b>, <b>SAFE_MALLOC</b>, and
+  <b>packet_header_t::type</b>.</p>
+<p class="Pp">Referenced by <b>client_parse_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_send_video_frame_(const_"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_send_video_frame_(const_">EMSCRIPTEN_KEEPALIVE
-  int client_send_video_frame (const <b>uint8_t</b> * rgba_data, int width, int
-  height)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_parse_ssh_private_key
+  (const char * key_path, <b>uint8_t</b> * secret_key_out)</h2>
+<p class="Pp">Parse an OpenSSH Ed25519 private-key file through the shared SSH
+    parser.</p>
+<p class="Pp">Definition at line <b>270</b> of file <b>src/web/client.c</b>.</p>
+<pre>270                                                                                 {
+271   if (!key_path || !secret_key_out)
+272     return -1;
+273   CLEAR_ERRNO_ALL();
+274 #ifdef EMSCRIPTEN_BUILD
+275   static const char wasm_key_prefix[] = &quot;/tmp/ascii-chat-key-&quot;;
+276   if (strncmp(key_path, wasm_key_prefix, sizeof(wasm_key_prefix) - 1) != 0)
+277     return -1;
+278 #endif
+279   private_key_t key = {0};
+280   asciichat_error_t result = parse_ssh_private_key(key_path, &amp;key);
+281   if (result != ASCIICHAT_OK || key.type != KEY_TYPE_ED25519 || key.use_ssh_agent || key.use_gpg_agent) {
+282     sodium_memzero(&amp;key, sizeof(key));
+283     return -1;
+284   }
+285   memcpy(secret_key_out, key.key.ed25519, crypto_sign_SECRETKEYBYTES);
+286   sodium_memzero(&amp;key, sizeof(key));
+287   return 0;
+288 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>CLEAR_ERRNO_ALL</b>,
+    <b>client_parse_ssh_private_key()</b>, <b>private_key_t::key</b>,
+    <b>KEY_TYPE_ED25519</b>, <b>parse_ssh_private_key()</b>,
+    <b>private_key_t::type</b>, <b>private_key_t::use_gpg_agent</b>, and
+    <b>private_key_t::use_ssh_agent</b>.</p>
+<p class="Pp">Referenced by <b>client_parse_ssh_private_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_parse_ssh_public_key
+  (const char * key_line, <b>uint8_t</b> * public_key_out)</h2>
+<p class="Pp">Parse an OpenSSH Ed25519 public-key line through the shared SSH
+    parser.</p>
+<p class="Pp">Definition at line <b>292</b> of file <b>src/web/client.c</b>.</p>
+<pre>292                                                                                {
+293   if (!key_line || !public_key_out)
+294     return -1;
+295   CLEAR_ERRNO_ALL();
+296   return parse_ssh_ed25519_line(key_line, public_key_out) == ASCIICHAT_OK ? 0 : -1;
+297 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>CLEAR_ERRNO_ALL</b>,
+    <b>client_parse_ssh_public_key()</b>, and
+  <b>parse_ssh_ed25519_line()</b>.</p>
+<p class="Pp">Referenced by <b>client_parse_ssh_public_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_resolve_crypto_policy
+  (<b>bool</b> secure, int encryption)</h2>
+<p class="Pp">Resolve browser inputs through the same policy as native and
+    mobile clients.</p>
+<p class="Pp">Definition at line <b>1123</b> of file
+  <b>src/web/client.c</b>.</p>
+<pre>1123                                                                                    {
+1124   crypto_policy_t policy = {
+1125       .transport_secure = secure,
+1126       .encrypt = encryption == 1,
+1127       .no_encrypt = encryption == 0,
+1128       .has_password = g_crypto_password[0] != '\0',
+1129       .has_identity = g_has_client_identity_key,
+1130       .has_verification_key = g_has_expected_server_identity_key,
+1131   };
+1132   uint8_t mode;
+1133   if (crypto_policy_resolve(&amp;policy, &amp;mode) != ASCIICHAT_OK)
+1134     return -1;
+1135   g_crypto_mode = mode;
+1136   return mode;
+1137 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>client_resolve_crypto_policy()</b>, <b>crypto_policy_resolve()</b>, and
+    <b>EMSCRIPTEN_KEEPALIVE</b>.</p>
+<p class="Pp">Referenced by <b>client_resolve_crypto_policy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_send_video_frame (const
+  <b>uint8_t</b> * rgba_data, int width, int height)</h2>
 <p class="Pp">Process a video frame and prepare it for sending</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>rgba_data</i> RGBA pixel data from canvas
@@ -919,28 +1494,30 @@
 <i>height</i> Frame height</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>650</b> of file <b>src/web/client.c</b>.</p>
-<pre>650                                                                              {
-651   if (!g_initialized) {
-652     return -1;
-653   }
-654 
-655   // This is a placeholder - actual implementation would:
-656   // 1. Convert RGBA to target format (e.g., compress with libjpeg-turbo)
-657   // 2. Build frame packet
-658   // 3. Encrypt if handshake complete
-659   // 4. Return serialized packet via callback to JS
-660 
-661   return 0;
-662 }</pre>
+<p class="Pp">Definition at line <b>941</b> of file <b>src/web/client.c</b>.</p>
+<pre>941                                                                              {
+942   if (!g_initialized) {
+943     return -1;
+944   }
+945
+946   // This is a placeholder - actual implementation would:
+947   // 1. Convert RGBA to target format (e.g., compress with libjpeg-turbo)
+948   // 2. Build frame packet
+949   // 3. Encrypt if handshake complete
+950   // 4. Return serialized packet via callback to JS
+951
+952   return 0;
+953 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>client_send_video_frame()</b>.</p>
+<p class="Pp">Referenced by <b>client_send_video_frame()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_serialize_packet_("><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_serialize_packet_(">EMSCRIPTEN_KEEPALIVE
-  int client_serialize_packet (<b>uint16_t</b> packet_type, const <b>uint8_t</b>
-  * payload, size_t payload_len, <b>uint32_t</b> client_id, <b>uint8_t</b> *
-  output, size_t * out_len)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_serialize_packet
+  (<b>uint16_t</b> packet_type, const <b>uint8_t</b> * payload, size_t
+  payload_len, <b>uint32_t</b> client_id, <b>uint8_t</b> * output, size_t *
+  out_len)</h2>
 <p class="Pp">Serialize a packet structure to raw bytes</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>packet_type</i> Type of packet
@@ -956,42 +1533,43 @@
 <i>out_len</i> Output parameter for total packet length</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>614</b> of file <b>src/web/client.c</b>.</p>
-<pre>615                                                               {
-616   if (!output || !out_len) {
-617     return -1;
-618   }
-619 
-620   // Calculate CRC32 of payload (use software version for WASM)
-621   uint32_t crc = payload &amp;&amp; payload_len &gt; 0 ? asciichat_crc32_sw(payload, payload_len) : 0;
-622 
-623   // Build packet header (convert to network byte order)
-624   packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-625                             .type = HOST_TO_NET_U16(packet_type),
-626                             .length = HOST_TO_NET_U32((uint32_t)payload_len),
-627                             .crc32 = HOST_TO_NET_U32(crc),
-628                             .client_id = HOST_TO_NET_U32(client_id)};
-629 
-630   // Copy header to output
-631   memcpy(output, &amp;header, sizeof(packet_header_t));
-632 
-633   // Copy payload to output
-634   if (payload &amp;&amp; payload_len &gt; 0) {
-635     memcpy(output + sizeof(packet_header_t), payload, payload_len);
-636   }
-637 
-638   *out_len = sizeof(packet_header_t) + payload_len;
-639   return 0;
-640 }</pre>
+<p class="Pp">Definition at line <b>905</b> of file <b>src/web/client.c</b>.</p>
+<pre>906                                                               {
+907   if (!output || !out_len) {
+908     return -1;
+909   }
+910
+911   // Calculate CRC32 of payload (use software version for WASM)
+912   uint32_t crc = payload &amp;&amp; payload_len &gt; 0 ? asciichat_crc32_sw(payload, payload_len) : 0;
+913
+914   // Build packet header (convert to network byte order)
+915   packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+916                             .type = HOST_TO_NET_U16(packet_type),
+917                             .length = HOST_TO_NET_U32((uint32_t)payload_len),
+918                             .crc32 = HOST_TO_NET_U32(crc),
+919                             .client_id = HOST_TO_NET_U32(client_id)};
+920
+921   // Copy header to output
+922   memcpy(output, &amp;header, sizeof(packet_header_t));
+923
+924   // Copy payload to output
+925   if (payload &amp;&amp; payload_len &gt; 0) {
+926     memcpy(output + sizeof(packet_header_t), payload, payload_len);
+927   }
+928
+929   *out_len = sizeof(packet_header_t) + payload_len;
+930   return 0;
+931 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_crc32_sw()</b>, <b>HOST_TO_NET_U16</b>,
+<p class="Pp">References <b>asciichat_crc32_sw()</b>,
+    <b>client_serialize_packet()</b>, <b>HOST_TO_NET_U16</b>,
     <b>HOST_TO_NET_U32</b>, <b>HOST_TO_NET_U64</b>, and <b>PACKET_MAGIC</b>.</p>
+<p class="Pp">Referenced by <b>client_serialize_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_client_set_server_address_(const_char_*_server_host,_int_server_port)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_client_set_server_address_(const_char_*_server_host,_int_server_port)">EMSCRIPTEN_KEEPALIVE
-  int client_set_server_address (const char * server_host, int
-  server_port)</a></h2>
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> int client_set_server_address (const
+  char * server_host, int server_port)</h2>
 <p class="Pp">Set server address for known_hosts verification</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>server_host</i> Server hostname or IP address
@@ -999,25 +1577,124 @@
 <i>server_port</i> Server port number</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on error</div>
-<p class="Pp">Definition at line <b>232</b> of file <b>src/web/client.c</b>.</p>
-<pre>232                                                                         {
-233   if (!g_initialized) {
-234     return -1;
-235   }
-236 
-237   if (!server_host || server_port &lt;= 0 || server_port &gt; 65535) {
-238     return -1;
-239   }
-240 
-241   // Set server IP and port in handshake context
-242   SAFE_STRNCPY(g_crypto_handshake_ctx.server_ip, server_host, sizeof(g_crypto_handshake_ctx.server_ip));
-243   g_crypto_handshake_ctx.server_port = server_port;
-244 
-245   return 0;
-246 }</pre>
+<p class="Pp">Definition at line <b>509</b> of file <b>src/web/client.c</b>.</p>
+<pre>509                                                                         {
+510   if (!g_initialized) {
+511     return -1;
+512   }
+513
+514   if (!server_host || server_port &lt;= 0 || server_port &gt; 65535) {
+515     return -1;
+516   }
+517
+518   // Set server IP and port in handshake context
+519   SAFE_STRNCPY(g_crypto_handshake_ctx.server_ip, server_host, sizeof(g_crypto_handshake_ctx.server_ip));
+520   g_crypto_handshake_ctx.server_port = server_port;
+521
+522   return 0;
+523 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SAFE_STRNCPY</b>.</p>
+<p class="Pp">References <b>client_set_server_address()</b>, and
+    <b>SAFE_STRNCPY</b>.</p>
+<p class="Pp">Referenced by <b>client_set_server_address()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+  client_settings_receive (const void * payload, size_t length)</h2>
+<p class="Pp">Effective remote state is separate from this participant's saved
+    preferences.</p>
+<p class="Pp">Definition at line <b>22</b> of file <b>src/web/client.c</b>.</p>
+<pre>22                                                                                                    {
+23   acip_settings_header_t header;
+24   const char *json;
+25   size_t json_length;
+26   asciichat_error_t result = acip_settings_decode(payload, length, &amp;header, &amp;json, &amp;json_length);
+27   if (result != ASCIICHAT_OK)
+28     return result;
+29   options_t *current = SAFE_MALLOC(sizeof(*current), options_t *),
+30             *candidate = SAFE_MALLOC(sizeof(*candidate), options_t *);
+31   // Browser capability packets and the shared renderer always support UTF-8.
+32   remote_render_settings.caps.utf8_support = true;
+33   acip_render_settings_options(&amp;remote_render_settings, current);
+34   result = options_prepare_json(current, json, json_length, candidate, true);
+35   if (result == ASCIICHAT_OK)
+36     result = acip_render_settings_prepare(&amp;remote_render_settings, candidate);
+37   if (result == ASCIICHAT_OK)
+38     remote_render_settings.revision = header.revision;
+39   SAFE_FREE(current);
+40   SAFE_FREE(candidate);
+41   return result;
+42 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_render_settings_options()</b>,
+    <b>acip_render_settings_prepare()</b>, <b>acip_settings_decode()</b>,
+    <b>ASCIICHAT_OK</b>, <b>client_settings_receive()</b>,
+    <b>EMSCRIPTEN_KEEPALIVE</b>, <b>options_prepare_json()</b>,
+    <b>acip_settings_header_t::revision</b>, <b>SAFE_FREE</b>, and
+    <b>SAFE_MALLOC</b>.</p>
+<p class="Pp">Referenced by <b>client_settings_receive()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> char * client_settings_values (void
+  )</h2>
+<p class="Pp">Definition at line <b>43</b> of file <b>src/web/client.c</b>.</p>
+<pre>43                                                         {
+44   options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
+45   acip_render_settings_options(&amp;remote_render_settings, values);
+46   char *json = options_values_json(values, true);
+47   SAFE_FREE(values);
+48   return json;
+49 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_render_settings_options()</b>,
+    <b>client_settings_values()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>options_values_json()</b>, <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.</p>
+<p class="Pp">Referenced by <b>client_settings_values()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+  client_validate_frame (const char * text, size_t length, <b>uint32_t</b>
+  width, <b>uint32_t</b> height, <b>uint32_t</b> checksum, <b>uint32_t</b>
+  flags, const void * metadata, size_t metadata_length)</h2>
+<p class="Pp">Definition at line <b>1188</b> of file
+  <b>src/web/client.c</b>.</p>
+<pre>1190                                                                                                            {
+1191   if (flags &amp; ~(FRAME_FLAG_RENDER_CONTRACT | FRAME_FLAG_IS_COMPRESSED | 1u))
+1192     return SET_ERRNO(ERROR_INVALID_FRAME, &quot;Unknown browser frame flags&quot;);
+1193   acip_render_settings_t settings;
+1194   uint32_t effects = 0;
+1195   bool contract = (flags &amp; FRAME_FLAG_RENDER_CONTRACT) != 0;
+1196   if (contract) {
+1197     size_t consumed;
+1198     asciichat_error_t decoded = frame_render_contract_decode(metadata, metadata_length, &amp;settings, &amp;effects, &amp;consumed);
+1199     if (decoded != ASCIICHAT_OK)
+1200       return decoded;
+1201     if (settings.revision &amp;&amp; settings.revision == remote_render_settings.revision &amp;&amp;
+1202         remote_render_settings.palette[0] &amp;&amp; remote_render_settings.caps.utf8_support &amp;&amp;
+1203         strcmp(settings.palette, remote_render_settings.palette) != 0)
+1204       return SET_ERRNO(ERROR_INVALID_FRAME, &quot;Browser frame palette contradicts acknowledged revision&quot;);
+1205     if (consumed != metadata_length)
+1206       return SET_ERRNO(ERROR_INVALID_FRAME, &quot;Trailing browser frame contract bytes&quot;);
+1207   } else if (metadata_length) {
+1208     return SET_ERRNO(ERROR_INVALID_FRAME, &quot;Unexpected browser frame contract&quot;);
+1209   }
+1210   if (!text || !length || length &gt; FRAME_RENDER_MAX_BYTES || asciichat_crc32(text, length) != checksum)
+1211     return SET_ERRNO(ERROR_INVALID_FRAME, &quot;Browser frame length/checksum mismatch&quot;);
+1212   return session_frame_validate_contract(text, length, width, height, contract ? &amp;settings : NULL, effects);
+1213 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_crc32</b>, <b>ASCIICHAT_OK</b>,
+    <b>client_validate_frame()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>ERROR_INVALID_FRAME</b>, <b>FRAME_FLAG_IS_COMPRESSED</b>,
+    <b>FRAME_FLAG_RENDER_CONTRACT</b>, <b>frame_render_contract_decode()</b>,
+    <b>FRAME_RENDER_MAX_BYTES</b>, <b>acip_render_settings_t::palette</b>,
+    <b>acip_render_settings_t::revision</b>,
+    <b>session_frame_validate_contract()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>client_validate_frame()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EM_JS_(void_,_js_send_raw_packet_,_(const_"><a class="permalink" href="#EM_JS_(void_,_js_send_raw_packet_,_(const_">EM_JS
@@ -1025,11 +1702,39 @@
   packet_len) , { if(!Module.sendPacketCallback) { console.error('[WASM]
   sendPacketCallback not registered - cannot send packet');return;} const
   packetArray=new Uint8Array(HEAPU8.buffer, packet_data, packet_len);const
-  packetCopy=new Uint8Array(packetArray);var pktType=packetCopy.length &gt;=10
-  ?((packetCopy[8]&lt;&lt; 8)|packetCopy[9]) :-1;console.error('[WASM-&gt;JS]
-  Sending raw packet:', packetCopy.length, 'bytes,
-  type=0x'+pktType.toString(16));Module.sendPacketCallback(packetCopy);}
+  packetCopy=new Uint8Array(packetArray);Module.sendPacketCallback(packetCopy);}
   )</a></h2>
+<p class="Pp">References <b>EM_JS()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_unsigned_char_*_get_font_default_ptr_(int_selection)"><a class="permalink" href="#const_unsigned_char_*_get_font_default_ptr_(int_selection)">const
+  unsigned char * get_font_default_ptr (int selection)</a></h2>
+<p class="Pp">Definition at line <b>103</b> of file <b>src/web/client.c</b>.</p>
+<pre>103                                                          {
+104   bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
+105   return matrix ? g_font_matrix_resurrected : g_font_default;
+106 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_font_default</b>,
+    <b>g_font_matrix_resurrected</b>, <b>get_font_default_ptr()</b>, and
+    <b>GET_OPTION</b>.</p>
+<p class="Pp">Referenced by <b>get_font_default_ptr()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="unsigned_int_get_font_default_size_(int_selection)"><a class="permalink" href="#unsigned_int_get_font_default_size_(int_selection)">unsigned
+  int get_font_default_size (int selection)</a></h2>
+<p class="Pp">Definition at line <b>108</b> of file <b>src/web/client.c</b>.</p>
+<pre>108                                                   {
+109   bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
+110   return (unsigned int)(matrix ? g_font_matrix_resurrected_size : g_font_default_size);
+111 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_font_default_size</b>,
+    <b>g_font_matrix_resurrected_size</b>, <b>get_font_default_size()</b>, and
+    <b>GET_OPTION</b>.</p>
+<p class="Pp">Referenced by <b>get_font_default_size()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -1039,7 +1744,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

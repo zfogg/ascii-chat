@@ -67,18 +67,19 @@
 <p class="Pp">Definition at line <b>99</b> of file <b>websocket.c</b>.</p>
 <pre>99                                {
 100   // Enable libwebsockets logging with our custom callback
-101   // In debug builds: include LLL_DEBUG for detailed TLS/handshake diagnostics
-102   // In release builds: exclude DEBUG to reduce noise
+101   // Keep libwebsockets protocol chatter out of normal logs. NOTICE still
+102   // reports lifecycle events; detailed traces remain available in dev builds.
 103 #ifdef CMAKE_BUILD_TYPE_DEBUG
-104   int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG;
+104   int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_DEBUG;
 105 #else
-106   int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO;
+106   int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE;
 107 #endif
 108   lws_set_log_level(log_level, websocket_client_lws_log_callback);
 109 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>.</p>
+<p class="Pp">References <b>lws_log_init_client()</b>.</p>
+<p class="Pp">Referenced by <b>lws_log_init_client()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_lws_log_init_server_(void_)"><a class="permalink" href="#void_lws_log_init_server_(void_)">void
@@ -89,18 +90,20 @@
 <p class="Pp">Definition at line <b>87</b> of file <b>websocket.c</b>.</p>
 <pre>87                                {
 88   // Enable libwebsockets logging with our custom callback
-89   // In debug builds: include LLL_DEBUG for detailed TLS/handshake diagnostics
-90   // In release builds: exclude DEBUG to reduce noise
+89   // Keep libwebsockets protocol chatter out of normal logs. NOTICE still
+90   // reports lifecycle events; detailed traces remain available in dev builds.
 91 #ifdef CMAKE_BUILD_TYPE_DEBUG
-92   int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG;
+92   int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_DEBUG;
 93 #else
-94   int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO;
+94   int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE;
 95 #endif
 96   lws_set_log_level(log_level, websocket_server_lws_log_callback);
 97 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
+<p class="Pp">References <b>lws_log_init_server()</b>.</p>
+<p class="Pp">Referenced by <b>lws_log_init_server()</b>, and
+    <b>websocket_server_init()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -110,7 +113,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

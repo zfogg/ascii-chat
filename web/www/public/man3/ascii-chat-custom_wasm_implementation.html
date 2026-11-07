@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>custom_wasm_implementation(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">custom_wasm_implementation(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">custom_wasm_implementation(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">custom_wasm_implementation - Web Mirror WASM Implementation
+  Plan</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Web_Mirror_WASM_Implementation_Plan"><a class="permalink" href="#Web_Mirror_WASM_Implementation_Plan">Web
+  Mirror WASM Implementation Plan</a></h1>
+<div class="Bd-indent"><b>For Claude:</b> REQUIRED SUB-SKILL: Use
+  superpowers:executing-plans to implement this plan task-by-task.</div>
+<p class="Pp"><b>Goal:</b> Build full ascii-chat library as WASM with
+    interactive settings panel for web mirror mode</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Architecture:</b> WASM-specific platform layer
+    (lib/platform/wasm/) implementing the platform abstraction API, compiled
+    with Emscripten, exposed to TypeScript via exported functions, with React
+    settings UI</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Tech Stack:</b> Emscripten, C11, TypeScript, React, xterm.js,
+    Tailwind CSS</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Task_1:_Platform_Layer_-_Terminal_Bridge"><a class="permalink" href="#Task_1:_Platform_Layer_-_Terminal_Bridge">Task
+  1: Platform Layer - Terminal Bridge</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Create: <b>lib/platform/wasm/terminal.c</b><b></b></li>
+  <li>Reference: <b>include/ascii-chat/platform/abstraction.h</b><b></b></li>
+  <li>Reference: <b>include/ascii-chat/platform/terminal.h</b><b></b></li>
+</ul>
+<p class="Pp"><b>Step 1: Create platform directory</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>mkdir -p lib/platform/wasm</pre>
+<p class="Pp"><b>Step 2: Create terminal.c with EM_JS bridge</b></p>
+<p class="Pp"></p>
+<p class="Pp">Create <b>lib/platform/wasm/terminal.c</b><b>:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>
+#include &lt;emscripten.h&gt;
+#include &lt;ascii-chat/platform/abstraction.h&gt;
+#include &lt;ascii-chat/platform/terminal.h&gt;
+#include &lt;stdbool.h&gt;
+#include &lt;stddef.h&gt;
+// ============================================================================
+// EM_JS: JavaScript bridge functions
+// ============================================================================
+EM_JS(int, js_get_terminal_cols, (), {
+<br/>
+    return Module.xterm ? Module.xterm.cols : 80;
+});
+EM_JS(int, js_get_terminal_rows, (), {
+<br/>
+    return Module.xterm ? Module.xterm.rows : 24;
+});
+EM_JS(int, js_get_color_mode, (), {
+<br/>
+    if (!Module.xterm) return 0; // COLOR_MODE_AUTO
+<br/>
+    return 4; // COLOR_MODE_TRUECOLOR (xterm.js supports it)
+});
+EM_JS(void, js_terminal_write, (const char* data, int len), {
+<br/>
+    if (Module.xterm) {
+<br/>
+        Module.xterm.write(UTF8ToString(data, len));
+<br/>
+    }
+});
+// ============================================================================
+// Platform API Implementation
+// ============================================================================
+int platform_get_terminal_size(int *cols, int *rows) {
+<br/>
+    if (!cols || !rows) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    *cols = js_get_terminal_cols();
+<br/>
+    *rows = js_get_terminal_rows();
+<br/>
+    return 0;
+}
+color_mode_t platform_detect_color_support(void) {
+<br/>
+    return (color_mode_t)js_get_color_mode();
+}
+int platform_write_terminal(const char *data, size_t len) {
+<br/>
+    js_terminal_write(data, (int)len);
+<br/>
+    return (int)len;
+}
+// Stub implementations (not needed for mirror mode)
+int platform_set_terminal_raw_mode(bool enable) {
+<br/>
+    (void)enable;
+<br/>
+    return 0; // No-op: xterm.js handles this
+}
+int platform_read_keyboard(char *buffer, size_t len) {
+<br/>
+    (void)buffer;
+<br/>
+    (void)len;
+<br/>
+    return -1; // Not supported: use JavaScript event listeners
+}
+bool platform_is_terminal(int fd) {
+<br/>
+    (void)fd;
+<br/>
+    return true; // Always true for WASM terminal
+}
+int platform_get_cursor_position(int *row, int *col) {
+<br/>
+    (void)row;
+<br/>
+    (void)col;
+<br/>
+    return -1; // Not supported in WASM
+}
+int platform_set_cursor_position(int row, int col) {
+<br/>
+    (void)row;
+<br/>
+    (void)col;
+<br/>
+    return -1; // Not supported in WASM
+}</pre>
+<p class="Pp"><b>Step 3: Verify file created</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: ls -la <b>lib/platform/wasm/terminal.c</b><b> Expected: File
+    exists, ~1.5KB</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 4: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add lib/platform/wasm/terminal.c
+git commit -m &quot;feat(wasm): Add terminal platform abstraction with EM_JS bridge
+Implement platform_get_terminal_size, platform_detect_color_support,
+and platform_write_terminal using EM_JS to bridge to xterm.js instance.
+- EM_JS functions call Module.xterm from JavaScript
+- Stub implementations for unsupported functions
+- Provides terminal capabilities for WASM mirror mode
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_2:_Platform_Layer_-_Threading"><a class="permalink" href="#Task_2:_Platform_Layer_-_Threading">Task
+  2: Platform Layer - Threading</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Create: <b>lib/platform/wasm/thread.c</b><b></b></dd>
+</dl>
+<p class="Pp"><b>Step 1: Create thread.c</b></p>
+<p class="Pp"></p>
+<p class="Pp">Create <b>lib/platform/wasm/thread.c</b><b>:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>
+#include &lt;ascii-chat/platform/abstraction.h&gt;
+#include &lt;pthread.h&gt;
+// Emscripten provides pthread.h
+// In single-threaded mode (USE_PTHREADS=0), these are no-ops
+// In multi-threaded mode (USE_PTHREADS=1), these are real mutexes
+int mutex_init(mutex_t *mutex) {
+<br/>
+    if (!mutex) return -1;
+<br/>
+    return pthread_mutex_init(mutex, NULL);
+}
+int mutex_lock(mutex_t *mutex) {
+<br/>
+    if (!mutex) return -1;
+<br/>
+    return pthread_mutex_lock(mutex);
+}
+int mutex_unlock(mutex_t *mutex) {
+<br/>
+    if (!mutex) return -1;
+<br/>
+    return pthread_mutex_unlock(mutex);
+}
+int mutex_destroy(mutex_t *mutex) {
+<br/>
+    if (!mutex) return -1;
+<br/>
+    return pthread_mutex_destroy(mutex);
+}
+int mutex_trylock(mutex_t *mutex) {
+<br/>
+    if (!mutex) return -1;
+<br/>
+    return pthread_mutex_trylock(mutex);
+}
+// Thread creation (not used in mirror mode, but provided for completeness)
+int acthread_create(asciichat_thread_t *thread, void *(*start_routine)(void *), void *arg) {
+<br/>
+    if (!thread || !start_routine) return -1;
+<br/>
+    return pthread_create(thread, NULL, start_routine, arg);
+}
+int thread_join(asciichat_thread_t thread, void **retval) {
+<br/>
+    return pthread_join(thread, retval);
+}
+int thread_detach(asciichat_thread_t thread) {
+<br/>
+    return pthread_detach(thread);
+}
+asciichat_thread_t thread_self(void) {
+<br/>
+    return pthread_self();
+}
+int thread_equal(asciichat_thread_t t1, asciichat_thread_t t2) {
+<br/>
+    return pthread_equal(t1, t2);
+}</pre>
+<p class="Pp"><b>Step 2: Verify file created</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: ls -la <b>lib/platform/wasm/thread.c</b><b> Expected: File
+    exists, ~1.2KB</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 3: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add lib/platform/wasm/thread.c
+git commit -m &quot;feat(wasm): Add threading platform abstraction
+Implement mutex and thread functions using Emscripten pthreads.
+In single-threaded mode (USE_PTHREADS=0), mutexes are no-ops.
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_3:_Platform_Layer_-_Environment_and_Time"><a class="permalink" href="#Task_3:_Platform_Layer_-_Environment_and_Time">Task
+  3: Platform Layer - Environment and Time</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Create: lib/platform/wasm/environment.c</li>
+  <li>Create: <b>lib/platform/wasm/time.c</b><b></b></li>
+</ul>
+<p class="Pp"><b>Step 1: Create </b><b>environment.c</b><b></b><b></b></p>
+<p class="Pp"></p>
+<p class="Pp">Create lib/platform/wasm/environment.c:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>
+#include &lt;ascii-chat/platform/abstraction.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+const char* platform_getenv(const char *name) {
+<br/>
+    if (!name) return NULL;
+<br/>
+    return getenv(name);
+}
+const char* platform_strerror(int errnum) {
+<br/>
+    return strerror(errnum);
+}
+int platform_setenv(const char *name, const char *value, int overwrite) {
+<br/>
+    (void)name;
+<br/>
+    (void)value;
+<br/>
+    (void)overwrite;
+<br/>
+    return -1; // Not supported in WASM
+}
+int platform_unsetenv(const char *name) {
+<br/>
+    (void)name;
+<br/>
+    return -1; // Not supported in WASM
+}</pre>
+<p class="Pp"><b>Step 2: Create time.c</b></p>
+<p class="Pp"></p>
+<p class="Pp">Create <b>lib/platform/wasm/time.c</b><b>:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>
+#include &lt;ascii-chat/platform/abstraction.h&gt;
+#include &lt;time.h&gt;
+#include &lt;sys/time.h&gt;
+#include &lt;stdint.h&gt;
+uint64_t platform_get_time_ms(void) {
+<br/>
+    struct timeval tv;
+<br/>
+    gettimeofday(&amp;tv, NULL);
+<br/>
+    return (uint64_t)tv.tv_sec * 1000 + (uint64_t)tv.tv_usec / 1000;
+}
+uint64_t platform_get_time_us(void) {
+<br/>
+    struct timeval tv;
+<br/>
+    gettimeofday(&amp;tv, NULL);
+<br/>
+    return (uint64_t)tv.tv_sec * 1000000 + (uint64_t)tv.tv_usec;
+}
+void platform_sleep_ms(uint64_t ms) {
+<br/>
+    struct timespec ts;
+<br/>
+    ts.tv_sec = ms / 1000;
+<br/>
+    ts.tv_nsec = (ms % 1000) * 1000000;
+<br/>
+    nanosleep(&amp;ts, NULL);
+}
+void platform_sleep_us(uint64_t us) {
+<br/>
+    struct timespec ts;
+<br/>
+    ts.tv_sec = us / 1000000;
+<br/>
+    ts.tv_nsec = (us % 1000000) * 1000;
+<br/>
+    nanosleep(&amp;ts, NULL);
+}</pre>
+<p class="Pp"><b>Step 3: Verify files created</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: ls -la lib/platform/wasm/{environment,time}.c Expected: Both
+    files exist</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 4: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add lib/platform/wasm/environment.c lib/platform/wasm/time.c
+git commit -m &quot;feat(wasm): Add environment and time platform abstractions
+- environment.c: getenv, strerror (setenv/unsetenv not supported)
+- time.c: platform_get_time_ms/us, platform_sleep_ms/us
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_4:_Platform_Layer_-_Initialization"><a class="permalink" href="#Task_4:_Platform_Layer_-_Initialization">Task
+  4: Platform Layer - Initialization</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Create: <b>lib/platform/wasm/init.c</b><b></b></dd>
+</dl>
+<p class="Pp"><b>Step 1: Create init.c</b></p>
+<p class="Pp"></p>
+<p class="Pp">Create <b>lib/platform/wasm/init.c</b><b>:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>
+#include &lt;ascii-chat/platform/init.h&gt;
+#include &lt;ascii-chat/asciichat_errno.h&gt;
+asciichat_error_t platform_init(void) {
+<br/>
+    // No special initialization needed for WASM
+<br/>
+    return ASCIICHAT_OK;
+}
+void platform_cleanup(void) {
+<br/>
+    // No cleanup needed
+}</pre>
+<p class="Pp"><b>Step 2: Verify file created</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: ls -la <b>lib/platform/wasm/init.c</b><b> Expected: File
+    exists, ~350 bytes</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 3: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add lib/platform/wasm/init.c
+git commit -m &quot;feat(wasm): Add platform initialization stubs
+No special initialization or cleanup needed for WASM platform.
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_5:_WASM_Entry_Point"><a class="permalink" href="#Task_5:_WASM_Entry_Point">Task
+  5: WASM Entry Point</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Create: web/web.ascii-chat.com/wasm/mirror_wasm.c</dd>
+</dl>
+<p class="Pp"><b>Step 1: Create wasm directory</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>mkdir -p web/web.ascii-chat.com/wasm</pre>
+<p class="Pp"><b>Step 2: Create mirror_wasm.c (initialization functions
+    only)</b></p>
+<p class="Pp"></p>
+<p class="Pp">Create web/web.ascii-chat.com/wasm/mirror_wasm.c:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>
+#include &lt;emscripten.h&gt;
+#include &lt;ascii-chat/options/options.h&gt;
+#include &lt;ascii-chat/platform/init.h&gt;
+#include &lt;ascii-chat/asciichat_errno.h&gt;
+// ============================================================================
+// Initialization
+// ============================================================================
+EMSCRIPTEN_KEEPALIVE
+int mirror_init(int width, int height) {
+<br/>
+    // Initialize platform layer
+<br/>
+    asciichat_error_t err = platform_init();
+<br/>
+    if (err != ASCIICHAT_OK) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    // Create minimal argc/argv for options system
+<br/>
+    char *argv[] = {&quot;mirror&quot;, NULL};
+<br/>
+    int argc = 1;
+<br/>
+    // Initialize options (sets up RCU, defaults, etc.)
+<br/>
+    err = options_init(argc, argv);
+<br/>
+    if (err != ASCIICHAT_OK) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    // Override dimensions with actual values from xterm.js
+<br/>
+    options_set_int(&quot;width&quot;, width);
+<br/>
+    options_set_int(&quot;height&quot;, height);
+<br/>
+    return 0;
+}
+EMSCRIPTEN_KEEPALIVE
+void mirror_cleanup(void) {
+<br/>
+    options_cleanup();
+<br/>
+    platform_cleanup();
+}
+// ============================================================================
+// Settings API - Dimension Getters/Setters
+// ============================================================================
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_width(int width) {
+<br/>
+    if (width &lt;= 0 || width &gt; 1000) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    asciichat_error_t err = options_set_int(&quot;width&quot;, width);
+<br/>
+    return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_height(int height) {
+<br/>
+    if (height &lt;= 0 || height &gt; 1000) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    asciichat_error_t err = options_set_int(&quot;height&quot;, height);
+<br/>
+    return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_width(void) {
+<br/>
+    return GET_OPTION(width);
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_height(void) {
+<br/>
+    return GET_OPTION(height);
+}
+// Settings API continues in next task...</pre>
+<p class="Pp"><b>Step 3: Verify file created</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: ls -la web/web.ascii-chat.com/wasm/mirror_wasm.c Expected:
+    File exists, ~1.5KB</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 4: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add web/web.ascii-chat.com/wasm/mirror_wasm.c
+git commit -m &quot;feat(wasm): Add WASM entry point with init and dimension API
+Implement mirror_init, mirror_cleanup, and dimension getters/setters.
+Uses options_set_int for thread-safe updates via RCU.
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_6:_WASM_Entry_Point_-_Render_Settings"><a class="permalink" href="#Task_6:_WASM_Entry_Point_-_Render_Settings">Task
+  6: WASM Entry Point - Render Settings</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Modify: web/web.ascii-chat.com/wasm/mirror_wasm.c</dd>
+</dl>
+<p class="Pp"><b>Step 1: Add render mode and color settings</b></p>
+<p class="Pp"></p>
+<p class="Pp">Append to web/web.ascii-chat.com/wasm/mirror_wasm.c:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// ============================================================================
+// Settings API - Render Mode
+// ============================================================================
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_render_mode(int mode) {
+<br/>
+    // mode: 0=foreground, 1=background, 2=half-block
+<br/>
+    if (mode &lt; 0 || mode &gt; 2) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    asciichat_error_t err = options_set_int(&quot;render_mode&quot;, mode);
+<br/>
+    return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_render_mode(void) {
+<br/>
+    return GET_OPTION(render_mode);
+}
+// ============================================================================
+// Settings API - Color Mode
+// ============================================================================
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_color_mode(int mode) {
+<br/>
+    // mode: 0=auto, 1=none, 2=16, 3=256, 4=truecolor
+<br/>
+    if (mode &lt; 0 || mode &gt; 4) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    asciichat_error_t err = options_set_int(&quot;color_mode&quot;, mode);
+<br/>
+    return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_color_mode(void) {
+<br/>
+    return GET_OPTION(color_mode);
+}
+// ============================================================================
+// Settings API - Color Filter
+// ============================================================================
+EMSCRIPTEN_KEEPALIVE
+int mirror_set_color_filter(int filter) {
+<br/>
+    // filter: 0=none, 1=black, 2=white, 3=green, 4=magenta, etc.
+<br/>
+    if (filter &lt; 0 || filter &gt; 11) {
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    asciichat_error_t err = options_set_int(&quot;color_filter&quot;, filter);
+<br/>
+    return (err == ASCIICHAT_OK) ? 0 : -1;
+}
+EMSCRIPTEN_KEEPALIVE
+int mirror_get_color_filter(void) {
+<br/>
+    return GET_OPTION(color_filter);
+}</pre>
+<p class="Pp"><b>Step 2: Verify additions</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: wc -l web/web.ascii-chat.com/wasm/mirror_wasm.c Expected:
+    ~100-120 lines</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 3: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add web/web.ascii-chat.com/wasm/mirror_wasm.c
+git commit -m &quot;feat(wasm): Add render mode, color mode, and color filter API
+Implement getters/setters for:
+- Render mode (foreground, background, half-block)
+- Color mode (auto, none, 16, 256, truecolor)
+- Color filter (none, green, cyan, magenta, etc.)
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_7:_WASM_Entry_Point_-_Frame_Conversion"><a class="permalink" href="#Task_7:_WASM_Entry_Point_-_Frame_Conversion">Task
+  7: WASM Entry Point - Frame Conversion</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Modify: web/web.ascii-chat.com/wasm/mirror_wasm.c</dd>
+</dl>
+<p class="Pp"><b>Step 1: Add required includes at top of file</b></p>
+<p class="Pp"></p>
+<p class="Pp">Add after existing includes in mirror_wasm.c:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>#include &lt;ascii-chat/video/ascii.h&gt;
+#include &lt;ascii-chat/video/color_filter.h&gt;
+#include &lt;ascii-chat/video/framebuffer.h&gt;
+#include &lt;ascii-chat/common.h&gt;</pre>
+<p class="Pp"><b>Step 2: Add frame conversion function</b></p>
+<p class="Pp"></p>
+<p class="Pp">Append to web/web.ascii-chat.com/wasm/mirror_wasm.c:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// ============================================================================
+// Frame Conversion API
+// ============================================================================
+EMSCRIPTEN_KEEPALIVE
+char* mirror_convert_frame(
+<br/>
+    uint8_t *rgba_data,
+<br/>
+    int src_width,
+<br/>
+    int src_height
+) {
+<br/>
+    if (!rgba_data || src_width &lt;= 0 || src_height &lt;= 0) {
+<br/>
+        return NULL;
+<br/>
+    }
+<br/>
+    // Get current settings from options
+<br/>
+    int dst_width = GET_OPTION(width);
+<br/>
+    int dst_height = GET_OPTION(height);
+<br/>
+    color_filter_t filter = (color_filter_t)GET_OPTION(color_filter);
+<br/>
+    render_mode_t render_mode = (render_mode_t)GET_OPTION(render_mode);
+<br/>
+    // Apply color filter to RGBA data if needed
+<br/>
+    if (filter != COLOR_FILTER_NONE) {
+<br/>
+        // Convert RGBA to RGB (color_filter expects RGB24)
+<br/>
+        int stride = src_width * 3;
+<br/>
+        uint8_t *rgb_data = SAFE_MALLOC(src_width * src_height * 3, uint8_t *);
+<br/>
+        if (!rgb_data) {
+<br/>
+            return NULL;
+<br/>
+        }
+<br/>
+        // Extract RGB from RGBA
+<br/>
+        for (int i = 0; i &lt; src_width * src_height; i++) {
+<br/>
+            rgb_data[i * 3 + 0] = rgba_data[i * 4 + 0]; // R
+<br/>
+            rgb_data[i * 3 + 1] = rgba_data[i * 4 + 1]; // G
+<br/>
+            rgb_data[i * 3 + 2] = rgba_data[i * 4 + 2]; // B
+<br/>
+        }
+<br/>
+        // Apply filter (modifies rgb_data in-place)
+<br/>
+        apply_color_filter(rgb_data, src_width, src_height, stride, filter);
+<br/>
+        // Copy filtered RGB back to RGBA
+<br/>
+        for (int i = 0; i &lt; src_width * src_height; i++) {
+<br/>
+            rgba_data[i * 4 + 0] = rgb_data[i * 3 + 0];
+<br/>
+            rgba_data[i * 4 + 1] = rgb_data[i * 3 + 1];
+<br/>
+            rgba_data[i * 4 + 2] = rgb_data[i * 3 + 2];
+<br/>
+            // Alpha unchanged
+<br/>
+        }
+<br/>
+        SAFE_FREE(rgb_data);
+<br/>
+    }
+<br/>
+    // Create framebuffer for ASCII output
+<br/>
+    framebuffer_t fb;
+<br/>
+    if (framebuffer_init(&amp;fb, dst_width, dst_height) != ASCIICHAT_OK) {
+<br/>
+        return NULL;
+<br/>
+    }
+<br/>
+    // Convert to ASCII using full library rendering
+<br/>
+    asciichat_error_t err = convert_image_to_ascii(
+<br/>
+        rgba_data, src_width, src_height,
+<br/>
+        &amp;fb, render_mode
+<br/>
+    );
+<br/>
+    if (err != ASCIICHAT_OK) {
+<br/>
+        framebuffer_cleanup(&amp;fb);
+<br/>
+        return NULL;
+<br/>
+    }
+<br/>
+    // Generate ANSI escape sequences from framebuffer
+<br/>
+    char *output = generate_ansi_output(&amp;fb, render_mode);
+<br/>
+    framebuffer_cleanup(&amp;fb);
+<br/>
+    return output;
+}
+EMSCRIPTEN_KEEPALIVE
+void mirror_free_string(char *ptr) {
+<br/>
+    SAFE_FREE(ptr);
+}</pre>
+<p class="Pp"><b>Step 3: Verify file complete</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: grep -c &quot;<b>EMSCRIPTEN_KEEPALIVE</b>&quot;
+    web/web.ascii-chat.com/wasm/mirror_wasm.c<b> Expected: 12 (12 exported
+    functions)</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 4: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add web/web.ascii-chat.com/wasm/mirror_wasm.c
+git commit -m &quot;feat(wasm): Add frame conversion API
+Implement mirror_convert_frame using full library:
+- Applies color filters via apply_color_filter()
+- Converts to ASCII via convert_image_to_ascii()
+- Generates ANSI output via generate_ansi_output()
+- Uses current settings from options system
+Also add mirror_free_string for memory cleanup.
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_8:_CMake_Build_Configuration"><a class="permalink" href="#Task_8:_CMake_Build_Configuration">Task
+  8: CMake Build Configuration</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Create: web/web.ascii-chat.com/wasm/CMakeLists.txt</dd>
+</dl>
+<p class="Pp"><b>Step 1: Create CMakeLists.txt</b></p>
+<p class="Pp"></p>
+<p class="Pp">Create web/web.ascii-chat.com/wasm/CMakeLists.txt:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre># WebAssembly Mirror Mode Build
+# Full ascii-chat library compiled to WASM
+cmake_minimum_required(VERSION 3.18)
+project(ascii-chat-mirror-wasm C)
+# Verify we're using Emscripten
+if(NOT EMSCRIPTEN)
+<br/>
+    message(FATAL_ERROR &quot;This CMakeLists.txt requires Emscripten. Use: emcmake cmake ..&quot;)
+endif()
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+# ============================================================================
+# Build Configuration
+# ============================================================================
+# Define WASM-specific flags
+add_definitions(
+<br/>
+    -DEMSCRIPTEN_BUILD=1
+<br/>
+    -DWASM_MIRROR_MODE=1
+<br/>
+    -DNO_NETWORK=1
+<br/>
+    -DNO_CRYPTO=1
+<br/>
+    -DNO_AUDIO=1
+<br/>
+    -DNO_FFMPEG=1
+<br/>
+    -DNO_WEBCAM_CAPTURE=1
+<br/>
+    -DNO_PCRE2=1
+<br/>
+    -DPCRE2_CODE_UNIT_WIDTH=8  # Keep defined for header compatibility
+)
+# ============================================================================
+# Source Files
+# ============================================================================
+# Point to main repo root (3 levels up: wasm/ -&gt; web.ascii-chat.com/ -&gt; web/ -&gt; repo/)
+set(REPO_ROOT ${CMAKE_SOURCE_DIR}/../../..)
+# Include directories
+include_directories(
+<br/>
+    ${REPO_ROOT}/include
+<br/>
+    ${REPO_ROOT}/src
+)
+# Collect source files from main repo
+set(WASM_SOURCES
+<br/>
+    # Entry point
+<br/>
+    ${CMAKE_SOURCE_DIR}/mirror_wasm.c
+<br/>
+    # Platform layer (WASM-specific)
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/terminal.c
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/thread.c
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/environment.c
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/time.c
+<br/>
+    ${REPO_ROOT}/lib/platform/wasm/init.c
+<br/>
+    # Core module
+<br/>
+    ${REPO_ROOT}/lib/core/error.c
+<br/>
+    ${REPO_ROOT}/lib/log/logging.c
+<br/>
+    # Util module (no PCRE2 files)
+<br/>
+    ${REPO_ROOT}/lib/util/string.c
+<br/>
+    ${REPO_ROOT}/lib/util/buffer.c
+<br/>
+    ${REPO_ROOT}/lib/util/format.c
+<br/>
+    # Debug/memory tracking
+<br/>
+    ${REPO_ROOT}/lib/debug/memory.c
+<br/>
+    # Video module (ASCII conversion only)
+<br/>
+    ${REPO_ROOT}/lib/video/ascii.c
+<br/>
+    ${REPO_ROOT}/lib/video/color_filter.c
+<br/>
+    ${REPO_ROOT}/lib/video/ansi_fast.c
+<br/>
+    ${REPO_ROOT}/lib/video/image.c
+<br/>
+    ${REPO_ROOT}/lib/video/framebuffer.c
+<br/>
+    ${REPO_ROOT}/lib/video/output_buffer.c
+<br/>
+    # Options module (full)
+<br/>
+    ${REPO_ROOT}/lib/options/options.c
+<br/>
+    ${REPO_ROOT}/lib/options/rcu.c
+<br/>
+    ${REPO_ROOT}/lib/options/common.c
+<br/>
+    ${REPO_ROOT}/lib/options/parsers.c
+<br/>
+    ${REPO_ROOT}/lib/options/strings.c
+<br/>
+    ${REPO_ROOT}/lib/options/validation.c
+<br/>
+    ${REPO_ROOT}/lib/options/builder.c
+<br/>
+    ${REPO_ROOT}/lib/options/registry.c
+<br/>
+    ${REPO_ROOT}/lib/options/config/presets.c
+<br/>
+    ${REPO_ROOT}/lib/options/config/config.c
+)
+# ============================================================================
+# WASM Target
+# ============================================================================
+add_executable(mirror ${WASM_SOURCES})
+# Compiler flags
+target_compile_options(mirror PRIVATE
+<br/>
+    -O3
+<br/>
+    -fno-exceptions
+<br/>
+    -Wall -Wextra
+)
+# Emscripten linker flags
+set(EMSCRIPTEN_LINK_FLAGS
+<br/>
+    # WASM settings
+<br/>
+    -s WASM=1
+<br/>
+    -s MODULARIZE=1
+<br/>
+    -s EXPORT_ES6=1
+<br/>
+    -s EXPORT_NAME='MirrorWasmModule'
+<br/>
+    # Memory settings
+<br/>
+    -s ALLOW_MEMORY_GROWTH=1
+<br/>
+    -s INITIAL_MEMORY=64MB
+<br/>
+    -s MAXIMUM_MEMORY=512MB
+<br/>
+    # Threading (single-threaded)
+<br/>
+    -s USE_PTHREADS=0
+<br/>
+    # Exported functions
+<br/>
+    -s EXPORTED_FUNCTIONS='[
+<br/>
+        &quot;_mirror_init&quot;,
+<br/>
+        &quot;_mirror_cleanup&quot;,
+<br/>
+        &quot;_mirror_set_width&quot;,
+<br/>
+        &quot;_mirror_set_height&quot;,
+<br/>
+        &quot;_mirror_get_width&quot;,
+<br/>
+        &quot;_mirror_get_height&quot;,
+<br/>
+        &quot;_mirror_set_render_mode&quot;,
+<br/>
+        &quot;_mirror_get_render_mode&quot;,
+<br/>
+        &quot;_mirror_set_color_mode&quot;,
+<br/>
+        &quot;_mirror_get_color_mode&quot;,
+<br/>
+        &quot;_mirror_set_color_filter&quot;,
+<br/>
+        &quot;_mirror_get_color_filter&quot;,
+<br/>
+        &quot;_mirror_convert_frame&quot;,
+<br/>
+        &quot;_mirror_free_string&quot;,
+<br/>
+        &quot;_malloc&quot;,
+<br/>
+        &quot;_free&quot;
+<br/>
+    ]'
+<br/>
+    # Exported runtime methods
+<br/>
+    -s EXPORTED_RUNTIME_METHODS='[
+<br/>
+        &quot;ccall&quot;,
+<br/>
+        &quot;cwrap&quot;,
+<br/>
+        &quot;UTF8ToString&quot;,
+<br/>
+        &quot;getValue&quot;,
+<br/>
+        &quot;setValue&quot;,
+<br/>
+        &quot;HEAPU8&quot;
+<br/>
+    ]'
+<br/>
+    # Optimization
+<br/>
+    -O3
+<br/>
+    --closure 1
+<br/>
+    # Error handling
+<br/>
+    -s ASSERTIONS=1
+<br/>
+    -s SAFE_HEAP=0
+<br/>
+    # EM_JS support
+<br/>
+    -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE='[$Browser]'
+)
+set_target_properties(mirror PROPERTIES
+<br/>
+    LINK_FLAGS &quot;${EMSCRIPTEN_LINK_FLAGS}&quot;
+)
+# ============================================================================
+# Post-build: Copy to src/wasm/dist/
+# ============================================================================
+add_custom_command(TARGET mirror POST_BUILD
+<br/>
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../src/wasm/dist
+<br/>
+    COMMAND ${CMAKE_COMMAND} -E copy
+<br/>
+        ${CMAKE_BINARY_DIR}/mirror.js
+<br/>
+        ${CMAKE_BINARY_DIR}/mirror.wasm
+<br/>
+        ${CMAKE_SOURCE_DIR}/../src/wasm/dist/
+<br/>
+    COMMENT &quot;Copying WASM files to src/wasm/dist/&quot;
+)</pre>
+<p class="Pp"><b>Step 2: Verify file created</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: wc -l web/web.ascii-chat.com/wasm/CMakeLists.txt Expected:
+    ~170 lines</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 3: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add web/web.ascii-chat.com/wasm/CMakeLists.txt
+git commit -m &quot;feat(wasm): Add CMake build configuration for WASM target
+Configure Emscripten build with:
+- Conditional compilation flags (NO_NETWORK, NO_CRYPTO, etc.)
+- Source file collection from main repo
+- Exported functions list
+- Optimization flags (-O3, closure compiler)
+- Post-build copy to src/wasm/dist/
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_9:_Build_Script"><a class="permalink" href="#Task_9:_Build_Script">Task
+  9: Build Script</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Create: web/web.ascii-chat.com/wasm/build.sh</dd>
+</dl>
+<p class="Pp"><b>Step 1: Create build.sh</b></p>
+<p class="Pp"></p>
+<p class="Pp">Create web/web.ascii-chat.com/wasm/build.sh:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>#!/bin/bash
+# Build script for ascii-chat Mirror WASM
+set -e
+echo &quot;Building ascii-chat Mirror WASM with full library...&quot;
+# Clean previous build
+rm -rf build
+mkdir -p build
+# Configure with Emscripten
+cd build
+emcmake cmake .. \
+<br/>
+    -DCMAKE_BUILD_TYPE=Release \
+<br/>
+    -DCMAKE_C_COMPILER=emcc
+# Build
+emmake make -j$(nproc)
+echo &quot;&#x2705; WASM build complete!&quot;
+echo &quot;   Output: src/wasm/dist/mirror.{js,wasm}&quot;
+ls -lh ../src/wasm/dist/</pre>
+<p class="Pp"><b>Step 2: Make executable</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: chmod +x web/web.ascii-chat.com/wasm/build.sh</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 3: Test build (will fail - missing source files
+    expected)</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: cd web/web.ascii-chat.com/wasm &amp;&amp; ./build.sh
+    Expected: CMake configures, build fails due to missing source files (this is
+    OK)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 4: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add web/web.ascii-chat.com/wasm/build.sh
+git commit -m &quot;feat(wasm): Add build script for Emscripten compilation
+Run with: cd web/web.ascii-chat.com/wasm &amp;&amp; ./build.sh
+Outputs mirror.js and mirror.wasm to src/wasm/dist/
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_10:_TypeScript_Type_Definitions"><a class="permalink" href="#Task_10:_TypeScript_Type_Definitions">Task
+  10: TypeScript Type Definitions</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Create: web/web.ascii-chat.com/src/wasm/mirror-types.ts</dd>
+</dl>
+<p class="Pp"><b>Step 1: Create wasm directory</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>mkdir -p web/web.ascii-chat.com/src/wasm</pre>
+<p class="Pp"><b>Step 2: Create mirror-types.ts</b></p>
+<p class="Pp"></p>
+<p class="Pp">Create web/web.ascii-chat.com/src/wasm/mirror-types.ts:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Type definitions for Mirror WASM module
+import { Terminal } from &quot;xterm&quot;;
+export enum RenderMode {
+<br/>
+  Foreground = 0,
+<br/>
+  Background = 1,
+<br/>
+  HalfBlock = 2,
+}
+export enum ColorMode {
+<br/>
+  Auto = 0,
+<br/>
+  None = 1,
+<br/>
+  Color16 = 2,
+<br/>
+  Color256 = 3,
+<br/>
+  TrueColor = 4,
+}
+export enum ColorFilter {
+<br/>
+  None = 0,
+<br/>
+  Black = 1,
+<br/>
+  White = 2,
+<br/>
+  Green = 3,
+<br/>
+  Magenta = 4,
+<br/>
+  Fuchsia = 5,
+<br/>
+  Orange = 6,
+<br/>
+  Teal = 7,
+<br/>
+  Cyan = 8,
+<br/>
+  PastelPink = 9,
+<br/>
+  ErrorRed = 10,
+<br/>
+  Yellow = 11,
+}
+export interface EmscriptenModule {
+<br/>
+  HEAPU8: Uint8Array;
+<br/>
+  UTF8ToString(ptr: number, maxBytesToRead?: number): string;
+<br/>
+  ccall(ident: string, returnType: string, argTypes: string[], args: any[]): any;
+<br/>
+  cwrap(ident: string, returnType: string, argTypes: string[]): Function;
+<br/>
+  getValue(ptr: number, type: string): number;
+<br/>
+  setValue(ptr: number, value: number, type: string): void;
+}
+export interface MirrorWasmModule extends EmscriptenModule {
+<br/>
+  // Initialization
+<br/>
+  _mirror_init(width: number, height: number): number;
+<br/>
+  _mirror_cleanup(): void;
+<br/>
+  // Dimension settings
+<br/>
+  _mirror_set_width(width: number): number;
+<br/>
+  _mirror_set_height(height: number): number;
+<br/>
+  _mirror_get_width(): number;
+<br/>
+  _mirror_get_height(): number;
+<br/>
+  // Render settings
+<br/>
+  _mirror_set_render_mode(mode: number): number;
+<br/>
+  _mirror_get_render_mode(): number;
+<br/>
+  _mirror_set_color_mode(mode: number): number;
+<br/>
+  _mirror_get_color_mode(): number;
+<br/>
+  _mirror_set_color_filter(filter: number): number;
+<br/>
+  _mirror_get_color_filter(): number;
+<br/>
+  // Frame conversion
+<br/>
+  _mirror_convert_frame(rgba_ptr: number, src_width: number, src_height: number): number;
+<br/>
+  _mirror_free_string(ptr: number): void;
+<br/>
+  // Memory management
+<br/>
+  _malloc(size: number): number;
+<br/>
+  _free(ptr: number): void;
+<br/>
+  // xterm.js reference (for EM_JS callbacks)
+<br/>
+  xterm: Terminal | null;
+}</pre>
+<p class="Pp"><b>Step 3: Verify file created</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: wc -l web/web.ascii-chat.com/src/wasm/mirror-types.ts
+    Expected: ~75 lines</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 4: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add web/web.ascii-chat.com/src/wasm/mirror-types.ts
+git commit -m &quot;feat(wasm): Add TypeScript type definitions
+Define enums for RenderMode, ColorMode, ColorFilter and interface
+for MirrorWasmModule with all exported functions.
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_11:_TypeScript_WASM_Wrapper_Class_(Part_1)"><a class="permalink" href="#Task_11:_TypeScript_WASM_Wrapper_Class_(Part_1)">Task
+  11: TypeScript WASM Wrapper Class (Part 1)</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Create: web/web.ascii-chat.com/src/wasm/mirror.ts</dd>
+</dl>
+<p class="Pp"><b>Step 1: Create mirror.ts with class definition</b></p>
+<p class="Pp"></p>
+<p class="Pp">Create web/web.ascii-chat.com/src/wasm/mirror.ts:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// WASM wrapper for ascii-chat mirror mode
+import { Terminal } from &quot;xterm&quot;;
+import MirrorWasmModuleFactory from &quot;./dist/mirror.js&quot;;
+import { MirrorWasmModule, RenderMode, ColorMode, ColorFilter } from &quot;./mirror-types&quot;;
+export class MirrorWasm {
+<br/>
+  private module: MirrorWasmModule | null = null;
+<br/>
+  private initialized = false;
+<br/>
+  async init(xterm: Terminal, width: number, height: number): Promise&lt;void&gt; {
+<br/>
+    console.log(&quot;[MirrorWasm] Loading module...&quot;);
+<br/>
+    this.module = await MirrorWasmModuleFactory();
+<br/>
+    // Expose xterm.js to WASM (for EM_JS callbacks)
+<br/>
+    this.module.xterm = xterm;
+<br/>
+    // Initialize WASM module
+<br/>
+    const result = this.module._mirror_init(width, height);
+<br/>
+    if (result !== 0) {
+<br/>
+      throw new Error(&quot;Failed to initialize WASM module&quot;);
+<br/>
+    }
+<br/>
+    this.initialized = true;
+<br/>
+    console.log(&quot;[MirrorWasm] Module initialized&quot;);
+<br/>
+  }
+<br/>
+  cleanup(): void {
+<br/>
+    if (this.module &amp;&amp; this.initialized) {
+<br/>
+      this.module._mirror_cleanup();
+<br/>
+      this.initialized = false;
+<br/>
+    }
+<br/>
+  }
+<br/>
+  private checkInitialized(): void {
+<br/>
+    if (!this.initialized || !this.module) {
+<br/>
+      throw new Error(&quot;WASM module not initialized. Call init() first.&quot;);
+<br/>
+    }
+<br/>
+  }
+<br/>
+  // Dimension settings - continued in next step...
+}</pre>
+<p class="Pp"><b>Step 2: Verify file created</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: wc -l web/web.ascii-chat.com/src/wasm/mirror.ts Expected: ~40
+    lines</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 3: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add web/web.ascii-chat.com/src/wasm/mirror.ts
+git commit -m &quot;feat(wasm): Add WASM wrapper class skeleton
+Implement MirrorWasm class with init, cleanup, and checkInitialized.
+Exposes xterm instance to WASM via Module.xterm.
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_12:_TypeScript_WASM_Wrapper_Class_(Part_2)"><a class="permalink" href="#Task_12:_TypeScript_WASM_Wrapper_Class_(Part_2)">Task
+  12: TypeScript WASM Wrapper Class (Part 2)</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Modify: web/web.ascii-chat.com/src/wasm/mirror.ts</dd>
+</dl>
+<p class="Pp"><b>Step 1: Add dimension methods</b></p>
+<p class="Pp"></p>
+<p class="Pp">Append to MirrorWasm class in mirror.ts:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Dimension settings
+async setWidth(width: number): Promise&lt;void&gt; {
+<br/>
+    this.checkInitialized();
+<br/>
+    const result = this.module!._mirror_set_width(width);
+<br/>
+    if (result !== 0) {
+<br/>
+        throw new Error(`Failed to set width to ${width}`);
+<br/>
+    }
+}
+async setHeight(height: number): Promise&lt;void&gt; {
+<br/>
+    this.checkInitialized();
+<br/>
+    const result = this.module!._mirror_set_height(height);
+<br/>
+    if (result !== 0) {
+<br/>
+        throw new Error(`Failed to set height to ${height}`);
+<br/>
+    }
+}
+getWidth(): number {
+<br/>
+    this.checkInitialized();
+<br/>
+    return this.module!._mirror_get_width();
+}
+getHeight(): number {
+<br/>
+    this.checkInitialized();
+<br/>
+    return this.module!._mirror_get_height();
+}</pre>
+<p class="Pp"><b>Step 2: Add render mode methods</b></p>
+<p class="Pp"></p>
+<p class="Pp">Continue appending:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Render settings
+async setRenderMode(mode: RenderMode): Promise&lt;void&gt; {
+<br/>
+    this.checkInitialized();
+<br/>
+    const result = this.module!._mirror_set_render_mode(mode);
+<br/>
+    if (result !== 0) {
+<br/>
+        throw new Error(`Failed to set render mode to ${mode}`);
+<br/>
+    }
+}
+getRenderMode(): RenderMode {
+<br/>
+    this.checkInitialized();
+<br/>
+    return this.module!._mirror_get_render_mode();
+}
+async setColorMode(mode: ColorMode): Promise&lt;void&gt; {
+<br/>
+    this.checkInitialized();
+<br/>
+    const result = this.module!._mirror_set_color_mode(mode);
+<br/>
+    if (result !== 0) {
+<br/>
+        throw new Error(`Failed to set color mode to ${mode}`);
+<br/>
+    }
+}
+getColorMode(): ColorMode {
+<br/>
+    this.checkInitialized();
+<br/>
+    return this.module!._mirror_get_color_mode();
+}
+async setColorFilter(filter: ColorFilter): Promise&lt;void&gt; {
+<br/>
+    this.checkInitialized();
+<br/>
+    const result = this.module!._mirror_set_color_filter(filter);
+<br/>
+    if (result !== 0) {
+<br/>
+        throw new Error(`Failed to set color filter to ${filter}`);
+<br/>
+    }
+}
+getColorFilter(): ColorFilter {
+<br/>
+    this.checkInitialized();
+<br/>
+    return this.module!._mirror_get_color_filter();
+}</pre>
+<p class="Pp"><b>Step 3: Verify additions</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: wc -l web/web.ascii-chat.com/src/wasm/mirror.ts Expected:
+    ~100 lines</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 4: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add web/web.ascii-chat.com/src/wasm/mirror.ts
+git commit -m &quot;feat(wasm): Add dimension and render settings methods
+Implement:
+- setWidth/setHeight/getWidth/getHeight
+- setRenderMode/getRenderMode
+- setColorMode/getColorMode
+- setColorFilter/getColorFilter
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_13:_TypeScript_WASM_Wrapper_Class_(Part_3)"><a class="permalink" href="#Task_13:_TypeScript_WASM_Wrapper_Class_(Part_3)">Task
+  13: TypeScript WASM Wrapper Class (Part 3)</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Modify: web/web.ascii-chat.com/src/wasm/mirror.ts</dd>
+</dl>
+<p class="Pp"><b>Step 1: Add frame conversion method</b></p>
+<p class="Pp"></p>
+<p class="Pp">Append to MirrorWasm class:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Frame conversion
+convertFrame(rgbaData: Uint8Array, srcWidth: number, srcHeight: number): string {
+<br/>
+    this.checkInitialized();
+<br/>
+    // Allocate WASM memory for RGBA data
+<br/>
+    const dataPtr = this.module!._malloc(rgbaData.length);
+<br/>
+    if (!dataPtr) {
+<br/>
+        throw new Error('Failed to allocate WASM memory');
+<br/>
+    }
+<br/>
+    try {
+<br/>
+        // Copy RGBA data to WASM memory
+<br/>
+        this.module!.HEAPU8.set(rgbaData, dataPtr);
+<br/>
+        // Call WASM conversion function
+<br/>
+        const resultPtr = this.module!._mirror_convert_frame(
+<br/>
+            dataPtr,
+<br/>
+            srcWidth,
+<br/>
+            srcHeight
+<br/>
+        );
+<br/>
+        if (!resultPtr) {
+<br/>
+            throw new Error('WASM convert_frame returned null');
+<br/>
+        }
+<br/>
+        // Convert C string to JavaScript string
+<br/>
+        const asciiString = this.module!.UTF8ToString(resultPtr);
+<br/>
+        // Free the result buffer
+<br/>
+        this.module!._mirror_free_string(resultPtr);
+<br/>
+        return asciiString;
+<br/>
+    } finally {
+<br/>
+        // Always free the input buffer
+<br/>
+        this.module!._free(dataPtr);
+<br/>
+    }
+}</pre>
+<p class="Pp"><b>Step 2: Add singleton and export functions</b></p>
+<p class="Pp"></p>
+<p class="Pp">Append after the class definition:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Singleton instance
+let wasmInstance: MirrorWasm | null = null;
+export async function initMirrorWasm(xterm: Terminal, width: number, height: number): Promise&lt;MirrorWasm&gt; {
+<br/>
+  if (!wasmInstance) {
+<br/>
+    wasmInstance = new MirrorWasm();
+<br/>
+    await wasmInstance.init(xterm, width, height);
+<br/>
+  }
+<br/>
+  return wasmInstance;
+}
+export function isWasmReady(): boolean {
+<br/>
+  return wasmInstance !== null;
+}
+// Re-export types
+export { RenderMode, ColorMode, ColorFilter };</pre>
+<p class="Pp"><b>Step 3: Verify file complete</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: wc -l web/web.ascii-chat.com/src/wasm/mirror.ts Expected:
+    ~160 lines</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 4: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add web/web.ascii-chat.com/src/wasm/mirror.ts
+git commit -m &quot;feat(wasm): Add frame conversion and singleton exports
+Implement convertFrame with proper memory management:
+- Allocate WASM memory for RGBA data
+- Call mirror_convert_frame
+- Free allocated memory in finally block
+Add singleton pattern with initMirrorWasm and isWasmReady.
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_14:_Settings_Panel_Component"><a class="permalink" href="#Task_14:_Settings_Panel_Component">Task
+  14: Settings Panel Component</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Create: web/web.ascii-chat.com/src/components/MirrorSettings.tsx</dd>
+</dl>
+<p class="Pp"><b>Step 1: Create components directory</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>mkdir -p web/web.ascii-chat.com/src/components</pre>
+<p class="Pp"><b>Step 2: Create MirrorSettings.tsx (structure only)</b></p>
+<p class="Pp"></p>
+<p class="Pp">Create
+  web/web.ascii-chat.com/src/components/MirrorSettings.tsx:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>import { useState, useEffect } from &quot;react&quot;;
+import { MirrorWasm, RenderMode, ColorMode, ColorFilter } from &quot;../wasm/mirror&quot;;
+interface MirrorSettingsProps {
+<br/>
+  wasm: MirrorWasm | null;
+<br/>
+  isRunning: boolean;
+<br/>
+  onDimensionsChange?: (width: number, height: number) =&gt; void;
+}
+export function MirrorSettings({ wasm, isRunning, onDimensionsChange }: MirrorSettingsProps) {
+<br/>
+  const [isOpen, setIsOpen] = useState(true);
+<br/>
+  // Settings state
+<br/>
+  const [width, setWidth] = useState(150);
+<br/>
+  const [height, setHeight] = useState(60);
+<br/>
+  const [renderMode, setRenderMode] = useState(RenderMode.Foreground);
+<br/>
+  const [colorMode, setColorMode] = useState(ColorMode.Auto);
+<br/>
+  const [colorFilter, setColorFilter] = useState(ColorFilter.None);
+<br/>
+  // Load initial values from WASM
+<br/>
+  useEffect(() =&gt; {
+<br/>
+    if (wasm) {
+<br/>
+      setWidth(wasm.getWidth());
+<br/>
+      setHeight(wasm.getHeight());
+<br/>
+      setRenderMode(wasm.getRenderMode());
+<br/>
+      setColorMode(wasm.getColorMode());
+<br/>
+      setColorFilter(wasm.getColorFilter());
+<br/>
+    }
+<br/>
+  }, [wasm]);
+<br/>
+  // Event handlers - continued in next step...
+<br/>
+  return null; // UI rendering in next step
+}</pre>
+<p class="Pp"><b>Step 3: Verify file created</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: wc -l
+    web/web.ascii-chat.com/src/components/MirrorSettings.tsx Expected: ~35
+  lines</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 4: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add web/web.ascii-chat.com/src/components/MirrorSettings.tsx
+git commit -m &quot;feat(ui): Add MirrorSettings component skeleton
+Define props, state, and useEffect for loading settings from WASM.
+UI rendering to be added in next step.
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_15:_Settings_Panel_Event_Handlers"><a class="permalink" href="#Task_15:_Settings_Panel_Event_Handlers">Task
+  15: Settings Panel Event Handlers</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Modify: web/web.ascii-chat.com/src/components/MirrorSettings.tsx</dd>
+</dl>
+<p class="Pp"><b>Step 1: Add event handlers</b></p>
+<p class="Pp"></p>
+<p class="Pp">Add before the return statement in MirrorSettings.tsx:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Event handlers
+const handleWidthChange = async (newWidth: number) =&gt; {
+<br/>
+  if (!wasm) return;
+<br/>
+  setWidth(newWidth);
+<br/>
+  await wasm.setWidth(newWidth);
+<br/>
+  onDimensionsChange?.(newWidth, height);
+};
+const handleHeightChange = async (newHeight: number) =&gt; {
+<br/>
+  if (!wasm) return;
+<br/>
+  setHeight(newHeight);
+<br/>
+  await wasm.setHeight(newHeight);
+<br/>
+  onDimensionsChange?.(width, newHeight);
+};
+const handleRenderModeChange = async (mode: RenderMode) =&gt; {
+<br/>
+  if (!wasm) return;
+<br/>
+  setRenderMode(mode);
+<br/>
+  await wasm.setRenderMode(mode);
+};
+const handleColorModeChange = async (mode: ColorMode) =&gt; {
+<br/>
+  if (!wasm) return;
+<br/>
+  setColorMode(mode);
+<br/>
+  await wasm.setColorMode(mode);
+};
+const handleColorFilterChange = async (filter: ColorFilter) =&gt; {
+<br/>
+  if (!wasm) return;
+<br/>
+  setColorFilter(filter);
+<br/>
+  await wasm.setColorFilter(filter);
+};</pre>
+<p class="Pp"><b>Step 2: Verify additions</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: grep -c
+    &quot;handleWidthChange\|handleHeightChange\|handleRenderModeChange&quot;
+    web/web.ascii-chat.com/src/components/MirrorSettings.tsx Expected: 5 (5
+    handler functions)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 3: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add web/web.ascii-chat.com/src/components/MirrorSettings.tsx
+git commit -m &quot;feat(ui): Add settings panel event handlers
+Implement handlers for width, height, render mode, color mode,
+and color filter changes. Each handler updates local state and
+calls WASM setter.
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_16:_Settings_Panel_UI_Rendering"><a class="permalink" href="#Task_16:_Settings_Panel_UI_Rendering">Task
+  16: Settings Panel UI Rendering</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Modify: web/web.ascii-chat.com/src/components/MirrorSettings.tsx</dd>
+</dl>
+<p class="Pp"><b>Step 1: Replace return statement with UI</b></p>
+<p class="Pp"></p>
+<p class="Pp">Replace return null; with:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Collapsed state
+if (!isOpen) {
+<br/>
+    return (
+<br/>
+        &lt;button
+<br/>
+            onClick={() =&gt; setIsOpen(true)}
+<br/>
+            className=&quot;fixed top-20 right-4 px-4 py-2 bg-terminal-8 text-terminal-fg rounded shadow-lg hover:bg-terminal-7&quot;
+<br/>
+        &gt;
+<br/>
+            Settings
+<br/>
+        &lt;/button&gt;
+<br/>
+    );
+}
+// Expanded panel
+return (
+<br/>
+    &lt;div className=&quot;fixed top-16 right-4 w-80 bg-terminal-bg/95 border border-terminal-8 rounded p-4 shadow-lg z-50&quot;&gt;
+<br/>
+        &lt;div className=&quot;flex items-center justify-between mb-4&quot;&gt;
+<br/>
+            &lt;h3 className=&quot;text-lg font-semibold&quot;&gt;Mirror Settings&lt;/h3&gt;
+<br/>
+            &lt;button
+<br/>
+                onClick={() =&gt; setIsOpen(false)}
+<br/>
+                className=&quot;text-terminal-8 hover:text-terminal-fg text-xl leading-none&quot;
+<br/>
+            &gt;
+<br/>
+                &#x2715;
+<br/>
+            &lt;/button&gt;
+<br/>
+        &lt;/div&gt;
+<br/>
+        {/* Dimensions */}
+<br/>
+        &lt;div className=&quot;mb-4&quot;&gt;
+<br/>
+            &lt;label className=&quot;block text-sm mb-2 text-terminal-8&quot;&gt;Dimensions&lt;/label&gt;
+<br/>
+            &lt;div className=&quot;flex gap-2&quot;&gt;
+<br/>
+                &lt;input
+<br/>
+                    type=&quot;number&quot;
+<br/>
+                    value={width}
+<br/>
+                    onChange={(e) =&gt; handleWidthChange(Number(e.target.value))}
+<br/>
+                    className=&quot;flex-1 px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-terminal-fg&quot;
+<br/>
+                    min=&quot;10&quot;
+<br/>
+                    max=&quot;500&quot;
+<br/>
+                /&gt;
+<br/>
+                &lt;span className=&quot;self-center text-terminal-8&quot;&gt;&#x00D7;&lt;/span&gt;
+<br/>
+                &lt;input
+<br/>
+                    type=&quot;number&quot;
+<br/>
+                    value={height}
+<br/>
+                    onChange={(e) =&gt; handleHeightChange(Number(e.target.value))}
+<br/>
+                    className=&quot;flex-1 px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-terminal-fg&quot;
+<br/>
+                    min=&quot;10&quot;
+<br/>
+                    max=&quot;300&quot;
+<br/>
+                /&gt;
+<br/>
+            &lt;/div&gt;
+<br/>
+        &lt;/div&gt;
+<br/>
+        {/* Render Mode */}
+<br/>
+        &lt;div className=&quot;mb-4&quot;&gt;
+<br/>
+            &lt;label className=&quot;block text-sm mb-2 text-terminal-8&quot;&gt;Render Mode&lt;/label&gt;
+<br/>
+            &lt;select
+<br/>
+                value={renderMode}
+<br/>
+                onChange={(e) =&gt; handleRenderModeChange(Number(e.target.value))}
+<br/>
+                className=&quot;w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-terminal-fg&quot;
+<br/>
+            &gt;
+<br/>
+                &lt;option value={RenderMode.Foreground}&gt;Foreground&lt;/option&gt;
+<br/>
+                &lt;option value={RenderMode.Background}&gt;Background&lt;/option&gt;
+<br/>
+                &lt;option value={RenderMode.HalfBlock}&gt;Half-block&lt;/option&gt;
+<br/>
+            &lt;/select&gt;
+<br/>
+        &lt;/div&gt;
+<br/>
+        {/* Color Filter */}
+<br/>
+        &lt;div className=&quot;mb-4&quot;&gt;
+<br/>
+            &lt;label className=&quot;block text-sm mb-2 text-terminal-8&quot;&gt;Color Filter&lt;/label&gt;
+<br/>
+            &lt;select
+<br/>
+                value={colorFilter}
+<br/>
+                onChange={(e) =&gt; handleColorFilterChange(Number(e.target.value))}
+<br/>
+                className=&quot;w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-terminal-fg&quot;
+<br/>
+            &gt;
+<br/>
+                &lt;option value={ColorFilter.None}&gt;None&lt;/option&gt;
+<br/>
+                &lt;option value={ColorFilter.Green}&gt;Green&lt;/option&gt;
+<br/>
+                &lt;option value={ColorFilter.Cyan}&gt;Cyan&lt;/option&gt;
+<br/>
+                &lt;option value={ColorFilter.Magenta}&gt;Magenta&lt;/option&gt;
+<br/>
+                &lt;option value={ColorFilter.Orange}&gt;Orange&lt;/option&gt;
+<br/>
+                &lt;option value={ColorFilter.Yellow}&gt;Yellow&lt;/option&gt;
+<br/>
+            &lt;/select&gt;
+<br/>
+        &lt;/div&gt;
+<br/>
+        {/* Color Mode */}
+<br/>
+        &lt;div className=&quot;mb-4&quot;&gt;
+<br/>
+            &lt;label className=&quot;block text-sm mb-2 text-terminal-8&quot;&gt;Color Mode&lt;/label&gt;
+<br/>
+            &lt;select
+<br/>
+                value={colorMode}
+<br/>
+                onChange={(e) =&gt; handleColorModeChange(Number(e.target.value))}
+<br/>
+                className=&quot;w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-terminal-fg&quot;
+<br/>
+            &gt;
+<br/>
+                &lt;option value={ColorMode.Auto}&gt;Auto&lt;/option&gt;
+<br/>
+                &lt;option value={ColorMode.None}&gt;None&lt;/option&gt;
+<br/>
+                &lt;option value={ColorMode.Color16}&gt;16-color&lt;/option&gt;
+<br/>
+                &lt;option value={ColorMode.Color256}&gt;256-color&lt;/option&gt;
+<br/>
+                &lt;option value={ColorMode.TrueColor}&gt;Truecolor&lt;/option&gt;
+<br/>
+            &lt;/select&gt;
+<br/>
+        &lt;/div&gt;
+<br/>
+    &lt;/div&gt;
+);</pre>
+<p class="Pp"><b>Step 2: Verify file complete</b></p>
+<p class="Pp"></p>
+<p class="Pp">Run: wc -l
+    web/web.ascii-chat.com/src/components/MirrorSettings.tsx Expected: ~150
+    lines</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Step 3: Commit</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>git add web/web.ascii-chat.com/src/components/MirrorSettings.tsx
+git commit -m &quot;feat(ui): Add settings panel UI rendering
+Implement floating overlay panel with:
+- Collapsible button when closed
+- Dimensions inputs (width x height)
+- Render mode dropdown
+- Color filter dropdown
+- Color mode dropdown
+Styled with Tailwind CSS, semi-transparent background.
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Task_17:_Documentation"><a class="permalink" href="#Task_17:_Documentation">Task
+  17: Documentation</a></h2>
+<p class="Pp"><b>Files:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Modify:
+      <b>docs/plans/2026-02-06-web-mirror-full-library-wasm.md</b><b></b></dd>
+</dl>
+<p class="Pp"><b>Step 1: Update design document status</b></p>
+<p class="Pp"></p>
+<p class="Pp">Change line 3 in design doc from:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>**Status:** Design Phase</pre>
+<p class="Pp">To:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>**Status:** &#x2705; Implementation Complete</pre>
+<p class="Pp"><b>Step 2: Add implementation notes section</b></p>
+<p class="Pp"></p>
+<p class="Pp">Append to end of design document:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>---
+## Implementation Notes
+**Completed:** 2026-02-06
+### Deviations from Plan
+None - implementation followed design exactly.
+### Build Instructions
+```bash
+# Build WASM module
+cd web/web.ascii-chat.com/wasm
+./build.sh
+# Outputs:
+# - src/wasm/dist/mirror.js (~200-300KB)
+# - src/wasm/dist/mirror.wasm (~150-250KB)
+```</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Testing_Checklist"><a class="permalink" href="#Testing_Checklist">Testing
+  Checklist</a></h2>
+<dl class="Bl-tag">
+  <dt>[ ]</dt>
+  <dd>WASM module builds without errors</dd>
+  <dt>[ ]</dt>
+  <dd>Module loads in browser</dd>
+  <dt>[ ]</dt>
+  <dd>All exported functions accessible</dd>
+  <dt>[ ]</dt>
+  <dd>Dimension settings update correctly</dd>
+  <dt>[ ]</dt>
+  <dd>Render mode changes work</dd>
+  <dt>[ ]</dt>
+  <dd>Color filter applies correctly</dd>
+  <dt>[ ]</dt>
+  <dd>Color mode switches work</dd>
+  <dt>[ ]</dt>
+  <dd>Frame conversion produces ASCII output</dd>
+  <dt>[ ]</dt>
+  <dd>No memory leaks over time</dd>
+  <dt>[ ]</dt>
+  <dd>Settings persist across renders</dd>
+</dl>
+<p class="Pp"></p>
+<pre>**Step 3: Commit**
+```bash
+git add docs/plans/2026-02-06-web-mirror-full-library-wasm.md
+git commit -m &quot;docs: Mark WASM implementation complete
+Update design document status and add implementation notes.
+Co-Authored-By: Claude Sonnet 4.5 &lt;noreply@anthropic.com&gt;&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Success_Criteria"><a class="permalink" href="#Success_Criteria">Success
+  Criteria</a></h2>
+<p class="Pp">&#x2705; <b>Phase 1 Complete When:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>All platform layer files created (5 files in lib/platform/wasm/)</li>
+  <li>WASM entry point complete (mirror_wasm.c with 12 exported functions)</li>
+  <li>CMake build configuration ready</li>
+  <li>Build script executable</li>
+</ul>
+<p class="Pp">&#x2705; <b>Phase 2 Complete When:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>TypeScript types defined (mirror-types.ts)</li>
+  <li>WASM wrapper class complete (mirror.ts)</li>
+  <li>Settings panel component finished (MirrorSettings.tsx)</li>
+</ul>
+<p class="Pp">&#x2705; <b>Phase 3 Complete When:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>WASM builds successfully (./build.sh produces .wasm and .js)</li>
+  <li>All 17 commits pushed to git</li>
+  <li>Design document marked complete</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Next_Steps_After_This_Plan"><a class="permalink" href="#Next_Steps_After_This_Plan">Next
+  Steps After This Plan</a></h2>
+<p class="Pp">After completing this implementation plan, you'll need to:</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Integrate with Mirror.tsx</b> - Update existing Mirror page to use new
+      WASM module</dd>
+  <dt>2.</dt>
+  <dd><b>Test in browser</b> - Verify WASM loads and functions work</dd>
+  <dt>3.</dt>
+  <dd><b>Fix build errors</b> - Address any compilation issues</dd>
+  <dt>4.</dt>
+  <dd><b>Performance testing</b> - Measure FPS and memory usage</dd>
+  <dt>5.</dt>
+  <dd><b>Cross-browser testing</b> - Test on Chrome, Firefox, Safari</dd>
+</dl>
+<p class="Pp">**Use @superpowers:executing-plans or
+    @superpowers:subagent-driven-development to implement this plan
+    task-by-task.**</p>
+</section>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

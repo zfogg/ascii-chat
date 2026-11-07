@@ -10,13 +10,12 @@
 
 static void setup(void) {
   setenv("ASCII_CHAT_PCRE2_DISABLE_JIT", "1", 1);
-  pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile("^fallback-probe$", 0);
-  cr_assert_not_null(singleton);
-  pcre2_code *code = asciichat_pcre2_singleton_get_code(singleton);
+  pcre2_code *code = asciichat_pcre2_compile("^fallback-probe$", 0);
   cr_assert_not_null(code);
   size_t jit_size = 1;
   cr_assert_eq(pcre2_pattern_info(code, PCRE2_INFO_JITSIZE, &jit_size), 0);
   cr_assert_eq(jit_size, 0, "The fixture must exercise interpreted regex matching");
+  pcre2_code_free(code);
 }
 
 TestSuite(regex_fallback, .init = setup);
@@ -64,20 +63,4 @@ Test(regex_fallback, session_strings_validate_without_jit) {
   cr_assert(is_session_string("happy-cat-dog"));
   cr_assert_not(is_session_string("happy--dog"));
   cr_assert_not(is_session_string("happy-cat-dog-extra"));
-}
-
-Test(regex_fallback, singleton_cleanup_allows_cached_validators_to_reinitialize) {
-  cr_assert(url_is_valid("https://example.com/video.mp4"));
-  asciichat_pcre2_cleanup_all();
-  cr_assert(url_is_valid("https://example.com/video.mp4"));
-  asciichat_pcre2_cleanup_all();
-  cr_assert(url_is_valid("https://127.0.0.1/video.mp4"));
-  asciichat_pcre2_cleanup_all();
-}
-
-Test(regex_fallback, individually_freed_singleton_is_removed_from_registry) {
-  pcre2_singleton_t *singleton = asciichat_pcre2_singleton_compile("test", 0);
-  cr_assert_not_null(singleton);
-  asciichat_pcre2_singleton_free(singleton);
-  asciichat_pcre2_cleanup_all();
 }

@@ -36,6 +36,12 @@
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>STUN_URL_BUFFER_SIZE</b> 64
+  <br/>
+  STUN server configuration.
+  <br/>
+</p>
 <p class="Pp"><b>STUN Protocol Constants</b></p>
 <p class="Pp">
   <br/>
@@ -44,9 +50,7 @@
   <br/>
   Standard STUN port (RFC 5389). #define <b>STUN_TLS_DEFAULT_PORT</b> 5349
   <br/>
-  STUN over TLS port (RFC 5389). #define <b>STUN_MAX_URL_LEN</b> 64
-  <br/>
-  Maximum STUN URL length.
+  STUN over TLS port (RFC 5389).
   <br/>
   <br/>
 </p>
@@ -56,9 +60,8 @@
 <br/>
 <p class="Pp">struct <b>__attribute__</b> ((packed))
   <br/>
-  STUN server configuration. int <b>stun_servers_parse</b> (const char
-    *csv_servers, const char *default_csv, <b>stun_server_t</b> *out_servers,
-    int max_count)
+  int <b>stun_servers_parse</b> (const char *csv_servers, const char
+    *default_csv, <b>stun_server_t</b> *out_servers, int max_count)
   <br/>
   Parse comma-separated STUN server URLs into stun_server_t array.
   <br/>
@@ -80,7 +83,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

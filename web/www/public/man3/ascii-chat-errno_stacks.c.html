@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>errno_stacks.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">errno_stacks.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">errno_stacks.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">errno_stacks.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>errno_tui_row_t</b>
+  <br/>
+  struct <b>errno_tui_state_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>TUI_ERRNO_STACKS_FOOTER_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>TUI_ERRNO_STACKS_HEADER_BUFFER_SIZE</b> 768
+  <br/>
+  #define <b>TUI_ERRNO_STACKS_TABS_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>TUI_ERRNO_STACKS_COLUMNS_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>TUI_ERRNO_STACKS_THREAD_NAME_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>TUI_ERRNO_STACKS_THREAD_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>TUI_ERRNO_STACKS_MESSAGE_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>TUI_ERRNO_STACKS_USER_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>TUI_ERRNO_STACKS_AGE_BUFFER_SIZE</b> 96
+  <br/>
+  #define <b>TUI_ERRNO_STACKS_OUTCOMES_BUFFER_SIZE</b> 128
+  <br/>
+  #define <b>TUI_ERRNO_STACKS_CODE_BUFFER_SIZE</b> 48
+  <br/>
+  #define <b>TUI_ERRNO_STACKS_LINE_BUFFER_SIZE</b> 2048
+  <br/>
+  #define <b>ERRNO_TUI_MIN_COLS</b> 88
+  <br/>
+  #define <b>ERRNO_TUI_MIN_ROWS</b> 10
+  <br/>
+  #define <b>ERRNO_TUI_MAX_ROWS</b> (<b>ASCIICHAT_ERRNO_MAX_FRAMES</b> +
+    <b>ASCIICHAT_ERRNO_HISTORY_SIZE</b>)
+  <br/>
+  #define <b>ERRNO_TUI_TABLE_BASE_WIDTH</b> 114
+  <br/>
+  #define <b>ERRNO_TUI_THREAD_BASE_WIDTH</b> 14
+  <br/>
+  #define <b>ERRNO_TUI_THREAD_MAX_WIDTH</b> 24
+  <br/>
+  #define <b>ERRNO_TUI_MESSAGE_BASE_WIDTH</b> 23
+  <br/>
+  #define <b>ERRNO_TUI_MESSAGE_MAX_WIDTH</b> 38
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>errno_tui_tab_t</b> { <b>ERRNO_TUI_CURRENT</b>,
+    <b>ERRNO_TUI_HISTORY</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>ui_errno_stacks_toggle</b> (void)
+  <br/>
+  void <b>ui_errno_stacks_hide</b> (void)
+  <br/>
+  <b>bool</b> <b>ui_errno_stacks_visible</b> (void)
+  <br/>
+  <b>bool</b> <b>ui_errno_stacks_handle_key</b> (<b>keyboard_key_t</b> key)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ERRNO_TUI_MAX_ROWS___("><a class="permalink" href="#_define_ERRNO_TUI_MAX_ROWS___(">#define
+  ERRNO_TUI_MAX_ROWS (<b>ASCIICHAT_ERRNO_MAX_FRAMES</b> +
+  <b>ASCIICHAT_ERRNO_HISTORY_SIZE</b>)</a></h2>
+<p class="Pp">Definition at line <b>41</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ERRNO_TUI_MESSAGE_BASE_WIDTH___23"><a class="permalink" href="#_define_ERRNO_TUI_MESSAGE_BASE_WIDTH___23">#define
+  ERRNO_TUI_MESSAGE_BASE_WIDTH 23</a></h2>
+<p class="Pp">Definition at line <b>45</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ERRNO_TUI_MESSAGE_MAX_WIDTH___38"><a class="permalink" href="#_define_ERRNO_TUI_MESSAGE_MAX_WIDTH___38">#define
+  ERRNO_TUI_MESSAGE_MAX_WIDTH 38</a></h2>
+<p class="Pp">Definition at line <b>46</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ERRNO_TUI_MIN_COLS___88"><a class="permalink" href="#_define_ERRNO_TUI_MIN_COLS___88">#define
+  ERRNO_TUI_MIN_COLS 88</a></h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ERRNO_TUI_MIN_ROWS___10"><a class="permalink" href="#_define_ERRNO_TUI_MIN_ROWS___10">#define
+  ERRNO_TUI_MIN_ROWS 10</a></h2>
+<p class="Pp">Definition at line <b>40</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ERRNO_TUI_TABLE_BASE_WIDTH___114"><a class="permalink" href="#_define_ERRNO_TUI_TABLE_BASE_WIDTH___114">#define
+  ERRNO_TUI_TABLE_BASE_WIDTH 114</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ERRNO_TUI_THREAD_BASE_WIDTH___14"><a class="permalink" href="#_define_ERRNO_TUI_THREAD_BASE_WIDTH___14">#define
+  ERRNO_TUI_THREAD_BASE_WIDTH 14</a></h2>
+<p class="Pp">Definition at line <b>43</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ERRNO_TUI_THREAD_MAX_WIDTH___24"><a class="permalink" href="#_define_ERRNO_TUI_THREAD_MAX_WIDTH___24">#define
+  ERRNO_TUI_THREAD_MAX_WIDTH 24</a></h2>
+<p class="Pp">Definition at line <b>44</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_ERRNO_STACKS_AGE_BUFFER_SIZE___96"><a class="permalink" href="#_define_TUI_ERRNO_STACKS_AGE_BUFFER_SIZE___96">#define
+  TUI_ERRNO_STACKS_AGE_BUFFER_SIZE 96</a></h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_ERRNO_STACKS_CODE_BUFFER_SIZE___48"><a class="permalink" href="#_define_TUI_ERRNO_STACKS_CODE_BUFFER_SIZE___48">#define
+  TUI_ERRNO_STACKS_CODE_BUFFER_SIZE 48</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_ERRNO_STACKS_COLUMNS_BUFFER_SIZE___256"><a class="permalink" href="#_define_TUI_ERRNO_STACKS_COLUMNS_BUFFER_SIZE___256">#define
+  TUI_ERRNO_STACKS_COLUMNS_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_ERRNO_STACKS_FOOTER_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_ERRNO_STACKS_FOOTER_BUFFER_SIZE___512">#define
+  TUI_ERRNO_STACKS_FOOTER_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_ERRNO_STACKS_HEADER_BUFFER_SIZE___768"><a class="permalink" href="#_define_TUI_ERRNO_STACKS_HEADER_BUFFER_SIZE___768">#define
+  TUI_ERRNO_STACKS_HEADER_BUFFER_SIZE 768</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_ERRNO_STACKS_LINE_BUFFER_SIZE___2048"><a class="permalink" href="#_define_TUI_ERRNO_STACKS_LINE_BUFFER_SIZE___2048">#define
+  TUI_ERRNO_STACKS_LINE_BUFFER_SIZE 2048</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_ERRNO_STACKS_MESSAGE_BUFFER_SIZE___256"><a class="permalink" href="#_define_TUI_ERRNO_STACKS_MESSAGE_BUFFER_SIZE___256">#define
+  TUI_ERRNO_STACKS_MESSAGE_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_ERRNO_STACKS_OUTCOMES_BUFFER_SIZE___128"><a class="permalink" href="#_define_TUI_ERRNO_STACKS_OUTCOMES_BUFFER_SIZE___128">#define
+  TUI_ERRNO_STACKS_OUTCOMES_BUFFER_SIZE 128</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_ERRNO_STACKS_TABS_BUFFER_SIZE___256"><a class="permalink" href="#_define_TUI_ERRNO_STACKS_TABS_BUFFER_SIZE___256">#define
+  TUI_ERRNO_STACKS_TABS_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>5</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_ERRNO_STACKS_THREAD_BUFFER_SIZE___256"><a class="permalink" href="#_define_TUI_ERRNO_STACKS_THREAD_BUFFER_SIZE___256">#define
+  TUI_ERRNO_STACKS_THREAD_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_ERRNO_STACKS_THREAD_NAME_BUFFER_SIZE___256"><a class="permalink" href="#_define_TUI_ERRNO_STACKS_THREAD_NAME_BUFFER_SIZE___256">#define
+  TUI_ERRNO_STACKS_THREAD_NAME_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_ERRNO_STACKS_USER_BUFFER_SIZE___256"><a class="permalink" href="#_define_TUI_ERRNO_STACKS_USER_BUFFER_SIZE___256">#define
+  TUI_ERRNO_STACKS_USER_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>errno_stacks.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>errno_tui_tab_t</b></a></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="ERRNO_TUI_CURRENT"><a class="permalink" href="#ERRNO_TUI_CURRENT"><b><i>ERRNO_TUI_CURRENT
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="ERRNO_TUI_HISTORY"><a class="permalink" href="#ERRNO_TUI_HISTORY"><b><i>ERRNO_TUI_HISTORY
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>48</b> of file <b>errno_stacks.c</b>.</p>
+<pre>48 { ERRNO_TUI_CURRENT, ERRNO_TUI_HISTORY } errno_tui_tab_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_errno_stacks_handle_key (<b>keyboard_key_t</b>
+  key)</h2>
+<p class="Pp">Returns true when a visible errno-stack UI consumed the key.</p>
+<p class="Pp">Definition at line <b>438</b> of file <b>errno_stacks.c</b>.</p>
+<pre>438                                                     {
+439   if (ui_controller_current_screen() != UI_SCREEN_ERRNO || !ui_errno_stacks_visible())
+440     return false;
+441   if (!state_lock())
+442     return false;
+443   if (key == KEY_BACKTICK || key == KEY_ESCAPE) {
+444     g_state.visible = false;
+445     state_unlock();
+446     ui_controller_remove(UI_SCREEN_ERRNO);
+447     return true;
+448   }
+449   if (key == '\t') {
+450     g_state.tab = g_state.tab == ERRNO_TUI_CURRENT ? ERRNO_TUI_HISTORY : ERRNO_TUI_CURRENT;
+451     ui_selectable_list_reset(&amp;g_state.list);
+452   } else if (key == 's' || key == 'S') {
+453     g_state.stack_sort = !g_state.stack_sort;
+454     ui_selectable_list_reset(&amp;g_state.list);
+455   } else if (key == KEY_UP || key == 'k') {
+456     ui_selectable_list_move(&amp;g_state.list, g_state.count, g_state.rows, -1);
+457   } else if (key == KEY_DOWN || key == 'j') {
+458     ui_selectable_list_move(&amp;g_state.list, g_state.count, g_state.rows, 1);
+459   } else if (key == 'x' || key == 'X') {
+460     errno_tui_state_t state = g_state;
+461     state_unlock();
+462     if (state.selected_current)
+463       errno_clear_if_current(state.selected_context.thread_id, state.selected_context.generation,
+464                              state.selected_context.error_id);
+465     publish();
+466     return true;
+467   } else {
+468     state_unlock();
+469     return false;
+470   }
+471   state_unlock();
+472   publish();
+473   return true;
+474 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_clear_if_current()</b>,
+    <b>ERRNO_TUI_CURRENT</b>, <b>ERRNO_TUI_HISTORY</b>,
+    <b>asciichat_error_context_t::error_id</b>,
+    <b>asciichat_error_context_t::generation</b>, <b>KEY_BACKTICK</b>,
+    <b>KEY_DOWN</b>, <b>KEY_ESCAPE</b>, <b>KEY_UP</b>,
+    <b>errno_tui_state_t::selected_context</b>,
+    <b>errno_tui_state_t::selected_current</b>,
+    <b>asciichat_error_context_t::thread_id</b>,
+    <b>ui_controller_current_screen()</b>, <b>ui_controller_remove()</b>,
+    <b>ui_errno_stacks_handle_key()</b>, <b>ui_errno_stacks_visible()</b>,
+    <b>UI_SCREEN_ERRNO</b>, <b>ui_selectable_list_move()</b>, and
+    <b>ui_selectable_list_reset()</b>.</p>
+<p class="Pp">Referenced by <b>ui_errno_stacks_handle_key()</b>, and
+    <b>ui_status_display_interactive()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_errno_stacks_hide_(void_)"><a class="permalink" href="#void_ui_errno_stacks_hide_(void_)">void
+  ui_errno_stacks_hide (void )</a></h2>
+<p class="Pp">Definition at line <b>422</b> of file <b>errno_stacks.c</b>.</p>
+<pre>422                                 {
+423   if (!state_lock())
+424     return;
+425   g_state.visible = false;
+426   state_unlock();
+427   ui_controller_remove(UI_SCREEN_ERRNO);
+428 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_remove()</b>,
+    <b>ui_errno_stacks_hide()</b>, and <b>UI_SCREEN_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_toggle_logs()</b>, and
+    <b>ui_errno_stacks_hide()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_errno_stacks_toggle_(void_)"><a class="permalink" href="#void_ui_errno_stacks_toggle_(void_)">void
+  ui_errno_stacks_toggle (void )</a></h2>
+<p class="Pp">Toggle the diagnostic errno-stack terminal UI. Available only in
+    diagnostic builds.</p>
+<p class="Pp">Definition at line <b>404</b> of file <b>errno_stacks.c</b>.</p>
+<pre>404                                   {
+405 #if defined(ASCIICHAT_DIAGNOSTIC_UI)
+406   if (!state_lock())
+407     return;
+408   g_state.visible = !g_state.visible;
+409   if (g_state.visible)
+410     ui_selectable_list_reset(&amp;g_state.list);
+411   if (g_state.visible)
+412     g_state.output_fd = ui_controller_active_fd();
+413   bool visible = g_state.visible;
+414   state_unlock();
+415   if (visible)
+416     publish();
+417   else
+418     ui_controller_remove(UI_SCREEN_ERRNO);
+419 #endif
+420 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_active_fd()</b>,
+    <b>ui_controller_remove()</b>, <b>ui_errno_stacks_toggle()</b>,
+    <b>UI_SCREEN_ERRNO</b>, and <b>ui_selectable_list_reset()</b>.</p>
+<p class="Pp">Referenced by <b>ui_errno_stacks_toggle()</b>, and
+    <b>ui_status_display_interactive()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_errno_stacks_visible (void )</h2>
+<p class="Pp">Definition at line <b>430</b> of file <b>errno_stacks.c</b>.</p>
+<pre>430                                    {
+431   if (!state_lock())
+432     return false;
+433   bool visible = g_state.visible;
+434   state_unlock();
+435   return visible;
+436 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_errno_stacks_visible()</b>.</p>
+<p class="Pp">Referenced by <b>ui_errno_stacks_handle_key()</b>, and
+    <b>ui_errno_stacks_visible()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

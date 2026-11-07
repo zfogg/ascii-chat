@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ssh_private_key_parse_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ssh_private_key_parse_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ssh_private_key_parse_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ssh_private_key_parse_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char * <b>file_content</b>
+  <br/>
+  <b>uint8_t</b> * <b>key_blob</b>
+  <br/>
+  size_t <b>key_blob_len</b>
+  <br/>
+  size_t <b>offset</b>
+  <br/>
+  <b>uint32_t</b> <b>ciphername_len</b>
+  <br/>
+  size_t <b>ciphername_pos</b>
+  <br/>
+  <b>bool</b> <b>is_encrypted</b>
+  <br/>
+  <b>uint32_t</b> <b>kdfname_len</b>
+  <br/>
+  size_t <b>kdfname_pos</b>
+  <br/>
+  <b>uint32_t</b> <b>kdfoptions_len</b>
+  <br/>
+  <b>uint32_t</b> <b>bcrypt_rounds</b>
+  <br/>
+  <b>uint32_t</b> <b>salt_len</b>
+  <br/>
+  char * <b>password</b>
+  <br/>
+  <b>uint8_t</b> * <b>decrypted_blob</b>
+  <br/>
+  size_t <b>decrypted_blob_len</b>
+  <br/>
+  size_t <b>dec_offset</b>
+  <br/>
+  char <b>ciphername</b> [32]
+  <br/>
+  <b>uint8_t</b> <b>bcrypt_salt</b> [16]
+  <br/>
+  <b>uint8_t</b> <b>ed25519_pubkey</b> [<b>ED25519_PUBLIC_KEY_SIZE</b>]
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>221</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> ssh_private_key_parse_t::bcrypt_rounds</h2>
+<p class="Pp">Definition at line <b>232</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> ssh_private_key_parse_t::bcrypt_salt[16]</h2>
+<p class="Pp">Definition at line <b>239</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_ssh_private_key_parse_t::ciphername_32_"><a class="permalink" href="#char_ssh_private_key_parse_t::ciphername_32_">char
+  ssh_private_key_parse_t::ciphername[32]</a></h2>
+<p class="Pp">Definition at line <b>238</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> ssh_private_key_parse_t::ciphername_len</h2>
+<p class="Pp">Definition at line <b>226</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ssh_private_key_parse_t::ciphername_pos"><a class="permalink" href="#size_t_ssh_private_key_parse_t::ciphername_pos">size_t
+  ssh_private_key_parse_t::ciphername_pos</a></h2>
+<p class="Pp">Definition at line <b>227</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ssh_private_key_parse_t::dec_offset"><a class="permalink" href="#size_t_ssh_private_key_parse_t::dec_offset">size_t
+  ssh_private_key_parse_t::dec_offset</a></h2>
+<p class="Pp">Definition at line <b>237</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>* ssh_private_key_parse_t::decrypted_blob</h2>
+<p class="Pp">Definition at line <b>235</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ssh_private_key_parse_t::decrypted_blob_len"><a class="permalink" href="#size_t_ssh_private_key_parse_t::decrypted_blob_len">size_t
+  ssh_private_key_parse_t::decrypted_blob_len</a></h2>
+<p class="Pp">Definition at line <b>236</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  ssh_private_key_parse_t::ed25519_pubkey[<b>ED25519_PUBLIC_KEY_SIZE</b>]</h2>
+<p class="Pp">Definition at line <b>240</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char*_ssh_private_key_parse_t::file_content"><a class="permalink" href="#char*_ssh_private_key_parse_t::file_content">char*
+  ssh_private_key_parse_t::file_content</a></h2>
+<p class="Pp">Definition at line <b>222</b> of file <b>ssh_keys.c</b>.</p>
+<p class="Pp">Referenced by <b>parse_ssh_private_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ssh_private_key_parse_t::is_encrypted</h2>
+<p class="Pp">Definition at line <b>228</b> of file <b>ssh_keys.c</b>.</p>
+<p class="Pp">Referenced by <b>parse_ssh_private_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> ssh_private_key_parse_t::kdfname_len</h2>
+<p class="Pp">Definition at line <b>229</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ssh_private_key_parse_t::kdfname_pos"><a class="permalink" href="#size_t_ssh_private_key_parse_t::kdfname_pos">size_t
+  ssh_private_key_parse_t::kdfname_pos</a></h2>
+<p class="Pp">Definition at line <b>230</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> ssh_private_key_parse_t::kdfoptions_len</h2>
+<p class="Pp">Definition at line <b>231</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>* ssh_private_key_parse_t::key_blob</h2>
+<p class="Pp">Definition at line <b>223</b> of file <b>ssh_keys.c</b>.</p>
+<p class="Pp">Referenced by <b>parse_ssh_private_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ssh_private_key_parse_t::key_blob_len"><a class="permalink" href="#size_t_ssh_private_key_parse_t::key_blob_len">size_t
+  ssh_private_key_parse_t::key_blob_len</a></h2>
+<p class="Pp">Definition at line <b>224</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ssh_private_key_parse_t::offset"><a class="permalink" href="#size_t_ssh_private_key_parse_t::offset">size_t
+  ssh_private_key_parse_t::offset</a></h2>
+<p class="Pp">Definition at line <b>225</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char*_ssh_private_key_parse_t::password"><a class="permalink" href="#char*_ssh_private_key_parse_t::password">char*
+  ssh_private_key_parse_t::password</a></h2>
+<p class="Pp">Definition at line <b>234</b> of file <b>ssh_keys.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> ssh_private_key_parse_t::salt_len</h2>
+<p class="Pp">Definition at line <b>233</b> of file <b>ssh_keys.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

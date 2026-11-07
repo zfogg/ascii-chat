@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>settings.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">settings.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">settings.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">settings.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>session_settings_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SESSION_SETTINGS_PALETTE_CUSTOM_BUFFER_SIZE</b> 64
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>session_settings_init</b> (<b>session_settings_t</b>
+    *settings)
+  <br/>
+  <b>asciichat_error_t</b> <b>session_settings_from_options</b>
+    (<b>session_settings_t</b> *settings)
+  <br/>
+  void <b>session_settings_from_values</b> (const <b>options_t</b> *values,
+    <b>session_settings_t</b> *settings)
+  <br/>
+  void <b>session_settings_to_options</b> (const <b>session_settings_t</b>
+    *settings, <b>options_t</b> *values)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_SESSION_SETTINGS_PALETTE_CUSTOM_BUFFER_SIZE___64"><a class="permalink" href="#_define_SESSION_SETTINGS_PALETTE_CUSTOM_BUFFER_SIZE___64">#define
+  SESSION_SETTINGS_PALETTE_CUSTOM_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file
+    <b>src/common/session/settings.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> session_settings_from_options
+  (<b>session_settings_t</b> * settings)</h2>
+<p class="Pp">Definition at line <b>34</b> of file
+    <b>src/common/session/settings.c</b>.</p>
+<pre>34                                                                               {
+35   if (!settings)
+36     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing settings&quot;);
+37   options_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot), options_snapshot_t *);
+38   asciichat_error_t result = options_read_snapshot(snapshot);
+39   if (result == ASCIICHAT_OK) {
+40     session_settings_from_values(&amp;snapshot-&gt;values, settings);
+41     settings-&gt;version = (uint32_t)snapshot-&gt;revision;
+42   }
+43   SAFE_FREE(snapshot);
+44   return result;
+45 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>options_read_snapshot()</b>, <b>options_snapshot_t::revision</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>session_settings_from_options()</b>,
+    <b>session_settings_from_values()</b>, <b>SET_ERRNO</b>,
+    <b>options_snapshot_t::values</b>, and
+  <b>session_settings_t::version</b>.</p>
+<p class="Pp">Referenced by <b>session_settings_from_options()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_settings_from_values_(const_"><a class="permalink" href="#void_session_settings_from_values_(const_">void
+  session_settings_from_values (const <b>options_t</b> * values,
+  <b>session_settings_t</b> * settings)</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file
+    <b>src/common/session/settings.c</b>.</p>
+<pre>6                                                                                          {
+7   memset(settings, 0, sizeof(*settings));
+8   settings-&gt;width = (int16_t)values-&gt;width;
+9   settings-&gt;height = (int16_t)values-&gt;height;
+10   settings-&gt;color_mode = (int8_t)values-&gt;color_mode;
+11   settings-&gt;render_mode = (uint8_t)values-&gt;render_mode;
+12   settings-&gt;palette_type = (uint8_t)values-&gt;palette_type;
+13   settings-&gt;color_filter = (uint8_t)values-&gt;color_filter;
+14   settings-&gt;fps = (uint8_t)values-&gt;fps;
+15   settings-&gt;matrix_rain = values-&gt;matrix_rain;
+16   SAFE_STRNCPY(settings-&gt;palette_custom, values-&gt;palette_custom, sizeof(settings-&gt;palette_custom));
+17 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_state::color_filter</b>,
+    <b>session_settings_t::color_filter</b>, <b>options_state::color_mode</b>,
+    <b>session_settings_t::color_mode</b>, <b>options_state::fps</b>,
+    <b>session_settings_t::fps</b>, <b>options_state::height</b>,
+    <b>session_settings_t::height</b>, <b>options_state::matrix_rain</b>,
+    <b>session_settings_t::matrix_rain</b>,
+    <b>options_state::palette_custom</b>,
+    <b>session_settings_t::palette_custom</b>,
+    <b>options_state::palette_type</b>, <b>session_settings_t::palette_type</b>,
+    <b>options_state::render_mode</b>, <b>session_settings_t::render_mode</b>,
+    <b>SAFE_STRNCPY</b>, <b>session_settings_from_values()</b>,
+    <b>options_state::width</b>, and <b>session_settings_t::width</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_receive_settings()</b>,
+    <b>session_settings_from_options()</b>,
+    <b>session_settings_from_values()</b>, and
+  <b>session_settings_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_settings_init_("><a class="permalink" href="#void_session_settings_init_(">void
+  session_settings_init (<b>session_settings_t</b> * settings)</a></h2>
+<p class="Pp">Definition at line <b>30</b> of file
+    <b>src/common/session/settings.c</b>.</p>
+<pre>30                                                          {
+31   if (settings)
+32     session_settings_from_values(options_get(), settings);
+33 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_get()</b>,
+    <b>session_settings_from_values()</b>, and
+  <b>session_settings_init()</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_create()</b>, and
+    <b>session_settings_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_settings_to_options_(const_"><a class="permalink" href="#void_session_settings_to_options_(const_">void
+  session_settings_to_options (const <b>session_settings_t</b> * settings,
+  <b>options_t</b> * values)</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file
+    <b>src/common/session/settings.c</b>.</p>
+<pre>18                                                                                         {
+19   *values = options_t_new();
+20   values-&gt;width = settings-&gt;width;
+21   values-&gt;height = settings-&gt;height;
+22   values-&gt;color_mode = settings-&gt;color_mode;
+23   values-&gt;render_mode = settings-&gt;render_mode;
+24   values-&gt;palette_type = settings-&gt;palette_type;
+25   values-&gt;color_filter = settings-&gt;color_filter;
+26   values-&gt;fps = settings-&gt;fps;
+27   values-&gt;matrix_rain = settings-&gt;matrix_rain;
+28   SAFE_STRNCPY(values-&gt;palette_custom, settings-&gt;palette_custom, sizeof(values-&gt;palette_custom));
+29 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_state::color_filter</b>,
+    <b>session_settings_t::color_filter</b>, <b>options_state::color_mode</b>,
+    <b>session_settings_t::color_mode</b>, <b>options_state::fps</b>,
+    <b>session_settings_t::fps</b>, <b>options_state::height</b>,
+    <b>session_settings_t::height</b>, <b>options_state::matrix_rain</b>,
+    <b>session_settings_t::matrix_rain</b>, <b>options_t_new()</b>,
+    <b>options_state::palette_custom</b>,
+    <b>session_settings_t::palette_custom</b>,
+    <b>options_state::palette_type</b>, <b>session_settings_t::palette_type</b>,
+    <b>options_state::render_mode</b>, <b>session_settings_t::render_mode</b>,
+    <b>SAFE_STRNCPY</b>, <b>session_settings_to_options()</b>,
+    <b>options_state::width</b>, and <b>session_settings_t::width</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_receive_settings()</b>,
+    <b>session_participant_request_settings()</b>, and
+    <b>session_settings_to_options()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

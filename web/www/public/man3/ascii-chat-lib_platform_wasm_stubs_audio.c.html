@@ -46,7 +46,7 @@
     <b>audio_init</b> (<b>audio_context_t</b> *ctx)
   <br/>
   Initialize audio context and PortAudio. <b>bool</b>
-    <b>audio_should_enable_microphone</b> (<b>audio_source_t</b> source,
+    <b>audio_should_enable_microphone</b> (<b>audio_capture_source_t</b> source,
     <b>bool</b> has_media_audio)
   <br/>
   Determine if microphone should be enabled based on audio source setting and
@@ -90,7 +90,8 @@
 44 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, and
+  <b>audio_analysis_init()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -100,7 +101,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

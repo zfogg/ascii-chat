@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>av_state.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">av_state.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">av_state.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">av_state.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>session_av_state_t</b>
+  <br/>
+  Shared run state for a native or asynchronous host audio/video stream.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>session_av_state_phase_t</b> {
+    <b>SESSION_AV_STATE_IDLE</b>, <b>SESSION_AV_STATE_STARTING</b>,
+    <b>SESSION_AV_STATE_ACTIVE</b>, <b>SESSION_AV_STATE_STOPPING</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>session_av_state_t</b> * <b>session_av_state_create</b> (void)
+  <br/>
+  Allocate an idle audio/video state for callers that need a separate handle.
+    void <b>session_av_state_destroy</b> (<b>session_av_state_t</b> *state)
+  <br/>
+  Free a state allocated by <b>session_av_state_create()</b>; NULL is accepted.
+    <b>uint32_t</b> <b>session_av_state_generation</b> (const
+    <b>session_av_state_t</b> *state)
+  <br/>
+  Read the owner-managed startup generation; returns zero for NULL or a new
+    state. <b>uint32_t</b> <b>session_av_state_begin</b>
+    (<b>session_av_state_t</b> *state)
+  <br/>
+  <b>bool</b> <b>session_av_state_complete</b> (<b>session_av_state_t</b>
+    *state, <b>uint32_t</b> generation)
+  <br/>
+  <b>bool</b> <b>session_av_state_is_current</b> (<b>session_av_state_t</b>
+    *state, <b>uint32_t</b> generation)
+  <br/>
+  <b>bool</b> <b>session_av_state_is_active</b> (<b>session_av_state_t</b>
+    *state)
+  <br/>
+  <b>bool</b> <b>session_av_state_should_run</b> (<b>session_av_state_t</b>
+    *state)
+  <br/>
+  void <b>session_av_state_begin_stop</b> (<b>session_av_state_t</b> *state)
+  <br/>
+  void <b>session_av_state_finish_stop</b> (<b>session_av_state_t</b> *state)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Shared audio/video run state for native workers and asynchronous
+    host adapters. The owner serializes transitions; workers may query
+    should_run atomically. Adapters release their resources before finish_stop,
+    including failed starts.</p>
+<p class="Pp">Definition in file <b>av_state.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>session_av_state_phase_t</b></a></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="SESSION_AV_STATE_IDLE"><a class="permalink" href="#SESSION_AV_STATE_IDLE"><b><i>SESSION_AV_STATE_IDLE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="SESSION_AV_STATE_STARTING"><a class="permalink" href="#SESSION_AV_STATE_STARTING"><b><i>SESSION_AV_STATE_STARTING
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="SESSION_AV_STATE_ACTIVE"><a class="permalink" href="#SESSION_AV_STATE_ACTIVE"><b><i>SESSION_AV_STATE_ACTIVE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="SESSION_AV_STATE_STOPPING"><a class="permalink" href="#SESSION_AV_STATE_STOPPING"><b><i>SESSION_AV_STATE_STOPPING
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>10</b> of file <b>av_state.h</b>.</p>
+<pre>10              {
+11   SESSION_AV_STATE_IDLE,
+12   SESSION_AV_STATE_STARTING,
+13   SESSION_AV_STATE_ACTIVE,
+14   SESSION_AV_STATE_STOPPING,
+15 } session_av_state_phase_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> session_av_state_begin (<b>session_av_state_t</b>
+  * state)</h2>
+<p class="Pp">Returns a nonzero startup token, or zero when already
+    starting/active/stopping.</p>
+<p class="Pp">Definition at line <b>28</b> of file <b>av_state.c</b>.</p>
+<pre>28                                                                                 {
+29   if (!state || atomic_load_int(&amp;state-&gt;phase) != SESSION_AV_STATE_IDLE)
+30     return 0;
+31   state-&gt;generation = state-&gt;generation == UINT32_MAX ? 1 : state-&gt;generation + 1;
+32   atomic_store_int(&amp;state-&gt;phase, SESSION_AV_STATE_STARTING);
+33   return state-&gt;generation;
+34 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_int()</b>, <b>atomic_store_int()</b>,
+    <b>EMSCRIPTEN_KEEPALIVE</b>, <b>session_av_state_t::generation</b>,
+    <b>session_av_state_t::phase</b>, <b>session_av_state_begin()</b>,
+    <b>SESSION_AV_STATE_IDLE</b>, and <b>SESSION_AV_STATE_STARTING</b>.</p>
+<p class="Pp">Referenced by <b>session_av_state_begin()</b>,
+    <b>session_participant_start_audio()</b>, and
+    <b>session_participant_start_video()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_av_state_begin_stop_("><a class="permalink" href="#void_session_av_state_begin_stop_(">void
+  session_av_state_begin_stop (<b>session_av_state_t</b> * state)</a></h2>
+<p class="Pp">Invalidate pending startup before the adapter stops and
+    joins/releases resources.</p>
+<p class="Pp">Definition at line <b>58</b> of file <b>av_state.c</b>.</p>
+<pre>58                                                                                  {
+59   if (state)
+60     atomic_store_int(&amp;state-&gt;phase, SESSION_AV_STATE_STOPPING);
+61 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_int()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>session_av_state_t::phase</b>, <b>session_av_state_begin_stop()</b>, and
+    <b>SESSION_AV_STATE_STOPPING</b>.</p>
+<p class="Pp">Referenced by <b>session_av_state_begin_stop()</b>,
+    <b>session_participant_stop_audio()</b>, and
+    <b>session_participant_stop_video()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_av_state_complete (<b>session_av_state_t</b>
+  * state, <b>uint32_t</b> generation)</h2>
+<p class="Pp">Only the current startup can become active; cancelled completions
+    return false.</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>av_state.c</b>.</p>
+<pre>40                                                                                                     {
+41   if (!session_av_state_is_current(state, generation) || atomic_load_int(&amp;state-&gt;phase) != SESSION_AV_STATE_STARTING)
+42     return false;
+43   atomic_store_int(&amp;state-&gt;phase, SESSION_AV_STATE_ACTIVE);
+44   return true;
+45 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_int()</b>, <b>atomic_store_int()</b>,
+    <b>EMSCRIPTEN_KEEPALIVE</b>, <b>session_av_state_t::phase</b>,
+    <b>SESSION_AV_STATE_ACTIVE</b>, <b>session_av_state_complete()</b>,
+    <b>session_av_state_is_current()</b>, and
+  <b>SESSION_AV_STATE_STARTING</b>.</p>
+<p class="Pp">Referenced by <b>session_av_state_complete()</b>,
+    <b>session_participant_start_audio()</b>, and
+    <b>session_participant_start_video()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_av_state_t</b> * session_av_state_create (void )</h2>
+<p class="Pp">Allocate an idle audio/video state for callers that need a
+    separate handle.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Owned state, or NULL on allocation failure. Embedded
+  states may still use zero initialization.</div>
+<p class="Pp">Definition at line <b>11</b> of file <b>av_state.c</b>.</p>
+<pre>11                                                                        {
+12   session_av_state_t *state = SAFE_CALLOC(1, sizeof(session_av_state_t), session_av_state_t *);
+13   if (state)
+14     NAMED_REGISTER_ATOMIC(&amp;state-&gt;phase, &quot;session_av.phase&quot;, NULL);
+15   return state;
+16 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>NAMED_REGISTER_ATOMIC</b>, <b>session_av_state_t::phase</b>,
+    <b>SAFE_CALLOC</b>, and <b>session_av_state_create()</b>.</p>
+<p class="Pp">Referenced by <b>session_av_state_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_av_state_destroy_("><a class="permalink" href="#void_session_av_state_destroy_(">void
+  session_av_state_destroy (<b>session_av_state_t</b> * state)</a></h2>
+<p class="Pp">Free a state allocated by <b>session_av_state_create()</b>; NULL
+    is accepted.</p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Stop resources and settle pending startup callbacks
+  before destroying the state. Do not pass stack-allocated or embedded
+  states.</div>
+<p class="Pp">Definition at line <b>18</b> of file <b>av_state.c</b>.</p>
+<pre>18                                                                               {
+19   if (state)
+20     NAMED_UNREGISTER(&amp;state-&gt;phase);
+21   SAFE_FREE(state);
+22 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>EMSCRIPTEN_KEEPALIVE</b>, <b>NAMED_UNREGISTER</b>,
+    <b>session_av_state_t::phase</b>, <b>SAFE_FREE</b>, and
+    <b>session_av_state_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>session_av_state_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_av_state_finish_stop_("><a class="permalink" href="#void_session_av_state_finish_stop_(">void
+  session_av_state_finish_stop (<b>session_av_state_t</b> * state)</a></h2>
+<p class="Pp">Definition at line <b>63</b> of file <b>av_state.c</b>.</p>
+<pre>63                                                                                   {
+64   if (state)
+65     atomic_store_int(&amp;state-&gt;phase, SESSION_AV_STATE_IDLE);
+66 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_int()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>session_av_state_t::phase</b>, <b>session_av_state_finish_stop()</b>, and
+    <b>SESSION_AV_STATE_IDLE</b>.</p>
+<p class="Pp">Referenced by <b>session_av_state_finish_stop()</b>,
+    <b>session_participant_stop_audio()</b>, and
+    <b>session_participant_stop_video()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> session_av_state_generation (const
+  <b>session_av_state_t</b> * state)</h2>
+<p class="Pp">Read the owner-managed startup generation; returns zero for NULL
+    or a new state.</p>
+<p class="Pp">Definition at line <b>24</b> of file <b>av_state.c</b>.</p>
+<pre>24                                                                                            {
+25   return state ? state-&gt;generation : 0;
+26 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>session_av_state_t::generation</b>, and
+    <b>session_av_state_generation()</b>.</p>
+<p class="Pp">Referenced by <b>session_av_state_generation()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_av_state_is_active (<b>session_av_state_t</b>
+  * state)</h2>
+<p class="Pp">Definition at line <b>47</b> of file <b>av_state.c</b>.</p>
+<pre>47                                                                                 {
+48   return state &amp;&amp; atomic_load_int(&amp;state-&gt;phase) == SESSION_AV_STATE_ACTIVE;
+49 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_int()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>session_av_state_t::phase</b>, <b>SESSION_AV_STATE_ACTIVE</b>, and
+    <b>session_av_state_is_active()</b>.</p>
+<p class="Pp">Referenced by <b>session_av_state_is_active()</b>,
+    <b>session_participant_is_audio_active()</b>,
+    <b>session_participant_is_video_active()</b>,
+    <b>session_participant_start_audio()</b>, and
+    <b>session_participant_start_video()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_av_state_is_current
+  (<b>session_av_state_t</b> * state, <b>uint32_t</b> generation)</h2>
+<p class="Pp">Definition at line <b>36</b> of file <b>av_state.c</b>.</p>
+<pre>36                                                                                                       {
+37   return state &amp;&amp; generation &amp;&amp; state-&gt;generation == generation &amp;&amp; session_av_state_should_run(state);
+38 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>session_av_state_t::generation</b>, <b>session_av_state_is_current()</b>,
+    and <b>session_av_state_should_run()</b>.</p>
+<p class="Pp">Referenced by <b>session_av_state_complete()</b>, and
+    <b>session_av_state_is_current()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_av_state_should_run
+  (<b>session_av_state_t</b> * state)</h2>
+<p class="Pp">Definition at line <b>51</b> of file <b>av_state.c</b>.</p>
+<pre>51                                                                                  {
+52   if (!state)
+53     return false;
+54   int phase = atomic_load_int(&amp;state-&gt;phase);
+55   return phase == SESSION_AV_STATE_STARTING || phase == SESSION_AV_STATE_ACTIVE;
+56 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_int()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+    <b>session_av_state_t::phase</b>, <b>SESSION_AV_STATE_ACTIVE</b>,
+    <b>session_av_state_should_run()</b>, and
+  <b>SESSION_AV_STATE_STARTING</b>.</p>
+<p class="Pp">Referenced by <b>session_av_state_is_current()</b>,
+    <b>session_av_state_should_run()</b>,
+    <b>session_participant_set_transport()</b>, and
+    <b>session_participant_take_connection()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

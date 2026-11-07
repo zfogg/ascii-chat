@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ffmpeg_encoder_architecture(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ffmpeg_encoder_architecture(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ffmpeg_encoder_architecture(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ffmpeg_encoder_architecture - FFmpeg Encoder Architecture &amp;
+    Implementation</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Architecture_Overview"><a class="permalink" href="#Architecture_Overview">Architecture
+  Overview</a></h1>
+<p class="Pp">The FFmpeg encoder is a thin wrapper around FFmpeg's encoding
+    pipeline that simplifies video/image encoding by automating format
+    selection, color space conversion, and encoder configuration. Rather than
+    expose FFmpeg's complex API directly, it provides a minimal three-function
+    interface: create, write frame, destroy.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>Application
+<br/>
+    &#x2193;
+ffmpeg_encoder_create() &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2192; [Format Detection] &#x2500;&#x2192; [Codec Selection] &#x2500;&#x2192; [SWS Setup]
+<br/>
+    &#x2193;
+ffmpeg_encoder_write_frame() &#x2192; [RGB24 Input] &#x2500;&#x2192; [Color Space Conversion] &#x2500;&#x2192; [Encoding]
+<br/>
+    &#x2193;
+ffmpeg_encoder_destroy() &#x2500;&#x2500;&#x2500;&#x2500;&#x2192; [Flush Frames] &#x2500;&#x2192; [Write Trailer] &#x2500;&#x2192; [Cleanup]</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Encoding_Pipeline"><a class="permalink" href="#Encoding_Pipeline">Encoding
+  Pipeline</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Initialization_Phase_(ffmpeg_encoder_create)"><a class="permalink" href="#Initialization_Phase_(ffmpeg_encoder_create)">Initialization
+  Phase (ffmpeg_encoder_create)</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Validation:</b> Parameters checked for validity (dimensions &gt; 0, fps
+      &gt; 0, paths valid)</dd>
+  <dt>2.</dt>
+  <dd><b>Format Detection:</b> File extension parsed to determine:</dd>
+  <dt> &#x2022;</dt>
+  <dd>Container format (MP4, WebM, AVI, GIF, image2)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Video codec (H.264, VP9, MPEG-4, GIF, PNG, MJPEG)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Output pixel format (YUV420P, YUVJ420P, RGB24, PAL8)</dd>
+  <dt>3.</dt>
+  <dd><b>Context Allocation:</b></dd>
+  <dt> &#x2022;</dt>
+  <dd>AVFormatContext allocated (muxer for output file)</dd>
+  <dt> &#x2022;</dt>
+  <dd>AVCodecContext allocated and configured with:</dd>
+  <dt> &#x2022;</dt>
+  <dd>Dimensions (width &#x00D7; height)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Pixel format (for target codec)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Frame rate (fps)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Bitrate (auto-calculated from resolution)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Time base (1/fps for frame timing)</dd>
+  <dt>4.</dt>
+  <dd><b>Codec Lookup:</b> FFmpeg looks up encoder by name (e.g.,
+      &quot;libx264&quot; for H.264)</dd>
+  <dt>5.</dt>
+  <dd><b>Stream Creation:</b> AVStream created in muxer context</dd>
+  <dt>6.</dt>
+  <dd><b>Codec Parameters:</b> Codec context parameters copied to stream for
+      muxer configuration</dd>
+  <dt>7.</dt>
+  <dd><b>Color Space Converter Setup:</b> SwsContext created to convert:</dd>
+  <dt> &#x2022;</dt>
+  <dd>Input: RGB24 (24-bit per pixel)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Output: Target pixel format (YUV420P, RGB24, YUVJ420P, etc.)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Algorithm: SWS_BICUBIC (bicubic interpolation for quality)</dd>
+  <dt>8.</dt>
+  <dd><b>Frame Allocation:</b></dd>
+  <dt> &#x2022;</dt>
+  <dd>Input frame buffer (for RGB24 data)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Encoded frame buffer (in target pixel format)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Packet buffer (for compressed output)</dd>
+  <dt>9.</dt>
+  <dd><b>File Opening:</b> Output file handle opened (unless AVFMT_NOFILE is
+      set)</dd>
+  <dt>10.</dt>
+  <dd><b>Header Writing:</b> Format-specific header written to file</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Writing_Phase_(ffmpeg_encoder_write_frame)"><a class="permalink" href="#Frame_Writing_Phase_(ffmpeg_encoder_write_frame)">Frame
+  Writing Phase (ffmpeg_encoder_write_frame)</a></h2>
+<p class="Pp">Called once per frame to encode and write a single frame:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>Input Frame (RGB24)
+<br/>
+    &#x2193;
+[SWS Scaling] &#x2500;&#x2192; Color Space Conversion to Target Format
+<br/>
+    &#x2193;
+[Encoded Frame] &#x2500;&#x2192; Set PTS (presentation timestamp)
+<br/>
+    &#x2193;
+[Codec] &#x2500;&#x2192; Encode Frame to Compressed Packets
+<br/>
+    &#x2193;
+[Packets] &#x2500;&#x2192; Rescale Timestamps, Set Stream Index
+<br/>
+    &#x2193;
+[Muxer] &#x2500;&#x2192; Write Interleaved Packets to File
+<br/>
+    &#x2193;
+Output File</pre>
+<p class="Pp"><b>Detailed Steps:</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Frame Setup:</b> Input RGB24 frame configured with pitch/linesize</dd>
+  <dt>2.</dt>
+  <dd><b>Color Space Conversion:</b> sws_scale() converts RGB24 to target
+      format:</dd>
+  <dt> &#x2022;</dt>
+  <dd>For YUV formats: Applies ITU-R BT.601 RGB&#x2192;YUV transformation</dd>
+  <dt> &#x2022;</dt>
+  <dd>For RGB formats: Direct copy with optional padding adjustment</dd>
+  <dt> &#x2022;</dt>
+  <dd>For Palette formats (GIF): Dithering and palette selection</dd>
+  <dt>3.</dt>
+  <dd><b>Timestamp Assignment:</b> PTS set to frame counter for proper
+    timing</dd>
+  <dt>4.</dt>
+  <dd><b>Encoding:</b> avcodec_send_frame() sends converted frame to codec</dd>
+  <dt>5.</dt>
+  <dd><b>Packet Reception:</b> Loop calling avcodec_receive_packet() to get
+      compressed packets</dd>
+  <dt> &#x2022;</dt>
+  <dd>Multiple packets may be produced per frame (especially for motion)</dd>
+  <dt> &#x2022;</dt>
+  <dd>EAGAIN/EOF indicates end of current packet batch</dd>
+  <dt>6.</dt>
+  <dd><b>Timestamp Rescaling:</b> Packet timestamps converted from codec time
+      base to stream time base</dd>
+  <dt>7.</dt>
+  <dd><b>Muxing:</b> av_interleaved_write_frame() writes packet to output
+    file</dd>
+  <dt> &#x2022;</dt>
+  <dd>Interleaved: Maintains proper frame order even with variable packet
+    sizes</dd>
+  <dt>8.</dt>
+  <dd><b>Cleanup:</b> Packet reference unreferenced after writing</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Finalization_Phase_(ffmpeg_encoder_destroy)"><a class="permalink" href="#Finalization_Phase_(ffmpeg_encoder_destroy)">Finalization
+  Phase (ffmpeg_encoder_destroy)</a></h2>
+<p class="Pp">Called once at end to finalize file and free resources:</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Encoder Flush:</b> Send NULL frame to encoder to flush pending
+    frames</dd>
+  <dt>2.</dt>
+  <dd><b>Receive Remaining Packets:</b> Loop to get all remaining packets
+      (especially important for B-frames in H.264 that may be delayed)</dd>
+  <dt>3.</dt>
+  <dd><b>Write Trailer:</b> Final container-specific trailer/footer written</dd>
+  <dt> &#x2022;</dt>
+  <dd>For MP4: Updates file size, metadata in atoms</dd>
+  <dt> &#x2022;</dt>
+  <dd>For WebM: Writes Cues element for seeking</dd>
+  <dt> &#x2022;</dt>
+  <dd>For GIF: Finalizes palette if needed</dd>
+  <dt>4.</dt>
+  <dd><b>Resource Cleanup:</b></dd>
+  <dt> &#x2022;</dt>
+  <dd>Color space converter freed</dd>
+  <dt> &#x2022;</dt>
+  <dd>Frames freed</dd>
+  <dt> &#x2022;</dt>
+  <dd>Codec context freed</dd>
+  <dt> &#x2022;</dt>
+  <dd>Muxer context and file handle freed</dd>
+</dl>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Format_&amp;_Codec_Details"><a class="permalink" href="#Format_&amp;_Codec_Details">Format
+  &amp; Codec Details</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Video_Formats"><a class="permalink" href="#Video_Formats">Video
+  Formats</a></h2>
+<p class="Pp"><b>MP4 / MOV Container with H.264 Codec</b></p>
+<ul class="Bl-bullet">
+  <li>Codec: libx264 (MPEG-4 Part 10 / AVC)</li>
+  <li>Pixel Format: YUV420P (4:2:0 subsampling)</li>
+  <li>Bitrate: Auto-calculated</li>
+  <li>Frame Rate: Variable (specified by fps parameter)</li>
+  <li>Use Case: Standard streaming, maximum compatibility</li>
+  <li>Quality: Good compression with high quality at reasonable bitrates</li>
+  <li>Speed: Fast to moderate encoding</li>
+</ul>
+<p class="Pp"><b>WebM Container with VP9 Codec</b></p>
+<ul class="Bl-bullet">
+  <li>Codec: libvpx-vp9 (VP9 video codec)</li>
+  <li>Pixel Format: YUV420P (4:2:0 subsampling)</li>
+  <li>Bitrate: Auto-calculated</li>
+  <li>Frame Rate: Variable (specified by fps parameter)</li>
+  <li>Use Case: Web streaming where quality/size ratio is important</li>
+  <li>Quality: Superior quality-to-bitrate ratio compared to H.264</li>
+  <li>Speed: Slow to moderate encoding (significantly slower than H.264)</li>
+  <li>Note: Larger file size than H.264 at equivalent quality is offset by
+      better efficiency</li>
+</ul>
+<p class="Pp"><b>AVI Container with MPEG-4 Codec</b></p>
+<ul class="Bl-bullet">
+  <li>Codec: mpeg4 (MPEG-4 Part 2)</li>
+  <li>Pixel Format: YUV420P (4:2:0 subsampling)</li>
+  <li>Bitrate: Auto-calculated</li>
+  <li>Frame Rate: Variable (specified by fps parameter)</li>
+  <li>Use Case: Legacy systems, historical/archival content</li>
+  <li>Quality: Adequate compression, less efficient than modern codecs</li>
+  <li>Speed: Fast encoding</li>
+  <li>Note: Larger files than modern formats at equivalent quality</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="GIF_Animation"><a class="permalink" href="#GIF_Animation">GIF
+  Animation</a></h2>
+<ul class="Bl-bullet">
+  <li>Codec: gif (FFmpeg's GIF encoder)</li>
+  <li>Pixel Format: Palette (8-bit color, max 256 colors)</li>
+  <li>Frame Rate: Variable (specified by fps parameter)</li>
+  <li>Use Case: Short animated sequences, compatibility with all browsers</li>
+  <li>Quality: Lossless but severely limited to 256 colors (dithered)</li>
+  <li>Speed: Fast encoding</li>
+  <li>Limitations: Color banding for gradients, large files for long
+    animations</li>
+  <li>Best for: Screen recordings, short clips with limited color palette</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Image_Formats"><a class="permalink" href="#Image_Formats">Image
+  Formats</a></h2>
+<p class="Pp"><b>PNG (Portable Network Graphics)</b></p>
+<ul class="Bl-bullet">
+  <li>Codec: png</li>
+  <li>Container: image2 (single image format)</li>
+  <li>Pixel Format: RGB24 (true color, no compression)</li>
+  <li>Compression: Lossless deflate (DEFLATE algorithm)</li>
+  <li>Use Case: Single-frame snapshots, critical content requiring lossless
+      quality</li>
+  <li>Quality: Perfect preservation of input RGB values</li>
+  <li>Speed: Slow (lossless compression is computationally expensive)</li>
+  <li>File Size: Large (typically 2-5x larger than JPEG for equivalent visual
+      quality)</li>
+  <li>Advantages: Lossless, alpha channel support (not exposed here)</li>
+  <li>Best for: Screenshots, archival, cases where pixel-perfect quality is
+      required</li>
+</ul>
+<p class="Pp"><b>MJPEG (Motion JPEG) via image2 Format</b></p>
+<ul class="Bl-bullet">
+  <li>Codec: mjpeg (JPEG encoder)</li>
+  <li>Container: image2 (single image format)</li>
+  <li>Pixel Format: YUVJ420P (full-range YUV as used in JPEG)</li>
+  <li>Compression: Lossy JPEG compression</li>
+  <li>Use Case: Single-frame snapshots with reasonable file size</li>
+  <li>Quality: Good visual quality, some compression artifacts at high
+      compression</li>
+  <li>Speed: Fast encoding (JPEG is efficient)</li>
+  <li>File Size: Small to moderate (typically 50-200 KB for high-quality
+      snapshots)</li>
+  <li>Advantages: Universal compatibility, efficient compression</li>
+  <li>Best for: General-purpose snapshots, web thumbnails</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Color_Space_Conversion_Details"><a class="permalink" href="#Color_Space_Conversion_Details">Color
+  Space Conversion Details</a></h1>
+<p class="Pp">All input frames are in <b>RGB24</b> format. The encoder
+    automatically converts to the appropriate output pixel format for each
+    target codec using libswscale.</p>
+<section class="Ss">
+<h2 class="Ss" id="Input:_RGB24"><a class="permalink" href="#Input:_RGB24">Input:
+  RGB24</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Format:</b> 24 bits per pixel (8-bit red, 8-bit green, 8-bit blue)</li>
+  <li><b>Memory Layout:</b> Pixels laid out as RGBRGBRGB... in memory</li>
+  <li><b>Pitch:</b> Byte offset from one row to the next (typically width
+      &#x00D7; 3 for tight packing)</li>
+  <li><b>Color Space:</b> Linear RGB (gamma-uncorrected)</li>
+  <li><b>Range:</b> Full range (0-255 per channel)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Output:_YUV420P_(Video_Formats)"><a class="permalink" href="#Output:_YUV420P_(Video_Formats)">Output:
+  YUV420P (Video Formats)</a></h2>
+<p class="Pp">Used for H.264, VP9, MPEG-4.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Format:</b> YUV 4:2:0 planar (luminance + 2&#x00D7; subsampled
+      chrominance)</li>
+  <li><b>Conversion:</b> RGB &#x2192; Y'CbCr (ITU-R BT.601)</li>
+</ul>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Y (luma): Brightness; computed from R, G, B weighted by perception</dd>
+  <dt> &#x2022;</dt>
+  <dd>Cb, Cr (chroma): Color; U and V components, each at 1/4 resolution</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>Spatial Arrangement:</b></dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Y plane: Full resolution (W &#x00D7; H pixels)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Cb plane: 1/4 resolution (W/2 &#x00D7; H/2 pixels)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Cr plane: 1/4 resolution (W/2 &#x00D7; H/2 pixels)</dd>
+</dl>
+<ul class="Bl-bullet">
+  <li><b>Advantage:</b> 50% memory reduction vs. RGB24 due to chroma subsampling
+      (human vision is less sensitive to color detail than brightness)</li>
+  <li><b>Perceptual Quality:</b> Transparent to most viewers for natural
+    video</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Output:_YUVJ420P_(JPEG_Formats)"><a class="permalink" href="#Output:_YUVJ420P_(JPEG_Formats)">Output:
+  YUVJ420P (JPEG Formats)</a></h2>
+<p class="Pp">Used for MJPEG (JPEG single-frame format).</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Format:</b> YUV 4:2:0 planar with <b>full-range</b> values</li>
+  <li><b>Key Difference vs. YUV420P:</b></li>
+</ul>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>YUV420P uses ITU-R BT.601 restricted range: Y &#x2208; [16, 235], Cb/Cr
+      &#x2208; [16, 240]</dd>
+  <dt> &#x2022;</dt>
+  <dd>YUVJ420P uses full range: Y, Cb, Cr &#x2208; [0, 255]</dd>
+</dl>
+<ul class="Bl-bullet">
+  <li><b>Why Different:</b> JPEG standard uses full-range YUV encoding</li>
+  <li><b>Conversion:</b> Same RGB &#x2192; Y'CbCr transformation, but with
+      full-range scaling</li>
+  <li><b>Perceptual Quality:</b> Identical to YUV420P for viewing</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Output:_RGB24_(PNG,_GIF)"><a class="permalink" href="#Output:_RGB24_(PNG,_GIF)">Output:
+  RGB24 (PNG, GIF)</a></h2>
+<ul class="Bl-bullet">
+  <li><b>PNG:</b> Direct RGB24 output, no conversion (pixel-perfect
+      preservation)</li>
+  <li><b>GIF:</b> RGB24 input converted to indexed color (256-color palette)
+      with dithering</li>
+</ul>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>FFmpeg handles palette generation and dithering automatically</dd>
+  <dt> &#x2022;</dt>
+  <dd>Quality depends on the color content (poor for gradients, excellent for
+      solid colors)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Conversion_Algorithm:_SWS_BICUBIC"><a class="permalink" href="#Conversion_Algorithm:_SWS_BICUBIC">Conversion
+  Algorithm: SWS_BICUBIC</a></h2>
+<p class="Pp">The encoder uses <b>SWS_BICUBIC</b> (bicubic interpolation) for
+    color space conversion:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Quality:</b> Good quality for both upsampling and downsampling</li>
+  <li><b>Speed:</b> Moderate performance (acceptable for real-time use with
+      moderate resolutions)</li>
+  <li><b>Alternatives Available (not exposed here):</b></li>
+</ul>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>SWS_FAST_BILINEAR: Fast but lower quality (used in many web video
+      services)</dd>
+  <dt> &#x2022;</dt>
+  <dd>SWS_BICUBIC: Current choice, good balance</dd>
+  <dt> &#x2022;</dt>
+  <dd>SWS_LANCZOS: Higher quality but significantly slower</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>Why SWS_BICUBIC:</b> Chosen as a reasonable balance for general
+    use</dd>
+</dl>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Automatic_Bitrate_Calculation"><a class="permalink" href="#Automatic_Bitrate_Calculation">Automatic
+  Bitrate Calculation</a></h1>
+<p class="Pp">The encoder calculates bitrate automatically to avoid requiring
+    manual tuning:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>int megapixels = (width_px * height_px) / (1024 * 1024);
+int bitrate_kbps = megapixels;  // ~1 Mbps per megapixel
+bitrate_kbps = clamp(bitrate_kbps, 500, 5000);  // Enforce [500, 5000] kbps range</pre>
+<section class="Ss">
+<h2 class="Ss" id="Rationale"><a class="permalink" href="#Rationale">Rationale</a></h2>
+<p class="Pp"><b>1 Mbps per megapixel</b> is a perceptually-tuned heuristic:</p>
+<p class="Pp"></p>
+<p class="Pp">Resolution Megapixels Bitrate Quality Common Use 320&#x00D7;240
+    0.077 500 kbps Good Video conferencing, low-bandwidth 640&#x00D7;480 0.31
+    500 kbps Acceptable Webcam, standard definition 1280&#x00D7;720 0.92 920
+    kbps Good HD ready 1920&#x00D7;1080 2.07 2070 kbps Good Full HD
+    3840&#x00D7;2160 8.29 5000 kbps (clamped) Acceptable 4K (bitrate
+  limited)</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Considerations"><a class="permalink" href="#Considerations">Considerations</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Lower resolutions</b> clamp at 500 kbps minimum (wasteful to use
+    less)</li>
+  <li><b>Higher resolutions</b> clamp at 5000 kbps maximum (balance file size
+      vs. quality)</li>
+  <li><b>H.264 at these bitrates:</b> Acceptable quality for general
+      streaming/recording</li>
+  <li><b>VP9 at these bitrates:</b> Superior quality compared to H.264</li>
+  <li><b>Static content</b> (slide shows): Could use lower bitrates
+    effectively</li>
+  <li><b>High-motion content</b> (sports, action): May benefit from higher
+      bitrates</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Memory_Management_&amp;_Resource_Lifetime"><a class="permalink" href="#Memory_Management_&amp;_Resource_Lifetime">Memory
+  Management &amp; Resource Lifetime</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Resource_Ownership"><a class="permalink" href="#Resource_Ownership">Resource
+  Ownership</a></h2>
+<p class="Pp"><b>Encoder Owns:</b></p>
+<ul class="Bl-bullet">
+  <li>AVFormatContext (muxer, output file handle)</li>
+  <li>AVCodecContext (encoder state)</li>
+  <li>AVStream (stream metadata)</li>
+  <li>SwsContext (color space converter)</li>
+  <li>AVFrame objects (input and encoded frames)</li>
+  <li>AVPacket (for compressed output)</li>
+</ul>
+<p class="Pp"><b>Caller Owns:</b></p>
+<ul class="Bl-bullet">
+  <li>Input RGB24 frame buffer</li>
+  <li>Output file path string</li>
+  <li><b>ffmpeg_encoder_t</b> pointer (stack or heap)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Lifetime_Rules"><a class="permalink" href="#Lifetime_Rules">Lifetime
+  Rules</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Creation:</b> <b>ffmpeg_encoder_create()</b><b> allocates all encoder
+      resources</b></dd>
+  <dt>2.</dt>
+  <dd><b>Usage:</b> Input buffer must remain valid for duration of
+      <b>ffmpeg_encoder_write_frame()</b><b> call</b></dd>
+  <dt> &#x2022;</dt>
+  <dd>Buffer is NOT copied; used immediately for color conversion</dd>
+  <dt> &#x2022;</dt>
+  <dd>Safe to reuse/free after function returns</dd>
+  <dt>3.</dt>
+  <dd><b>Finalization:</b> <b>ffmpeg_encoder_destroy()</b><b> releases all
+      resources</b></dd>
+  <dt> &#x2022;</dt>
+  <dd><b>Must be called</b> to finalize output file properly</dd>
+  <dt> &#x2022;</dt>
+  <dd><b>Must be called</b> to avoid resource leaks</dd>
+  <dt> &#x2022;</dt>
+  <dd>Safe to call with NULL (no-op)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Error_Recovery"><a class="permalink" href="#Error_Recovery">Error
+  Recovery</a></h2>
+<p class="Pp">If <b>ffmpeg_encoder_create()</b><b> fails:</b></p>
+<ul class="Bl-bullet">
+  <li>Partial resources may be allocated</li>
+  <li>out pointer is not modified (safe to check for NULL)</li>
+  <li>No cleanup needed (all resources freed on error)</li>
+</ul>
+<p class="Pp">If <b>ffmpeg_encoder_write_frame()</b><b> fails:</b></p>
+<ul class="Bl-bullet">
+  <li>Encoder state may be corrupted</li>
+  <li>Must still call <b>ffmpeg_encoder_destroy()</b><b> to clean up</b></li>
+  <li>Output file may be partially written</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Windows_Support"><a class="permalink" href="#Windows_Support">Windows
+  Support</a></h1>
+<p class="Pp">This encoder is <b>NOT AVAILABLE on Windows (_WIN32)</b>. All
+    functions are stubbed out with #ifndef _WIN32 guards.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Rationale:</b> Windows PortAudio/audio subsystem complexity;
+    future implementation would require Windows-specific codec/muxer setup.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Troubleshooting_Guide"><a class="permalink" href="#Troubleshooting_Guide">Troubleshooting
+  Guide</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="File_not_created_or_incomplete"><a class="permalink" href="#File_not_created_or_incomplete">File
+  not created or incomplete</a></h2>
+<p class="Pp"><b>Problem:</b> Output file missing or unplayable
+  <b>Causes:</b></p>
+<ul class="Bl-bullet">
+  <li><b>ffmpeg_encoder_destroy()</b> not called (file not finalized)</li>
+  <li>File path invalid or not writable</li>
+  <li>Disk full during encoding</li>
+</ul>
+<p class="Pp"><b>Solution:</b></p>
+<ul class="Bl-bullet">
+  <li>Always call <b>ffmpeg_encoder_destroy()</b> when done</li>
+  <li>Check file path is valid: use absolute paths if unsure</li>
+  <li>Ensure sufficient disk space before encoding large videos</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Color_shift_or_incorrect_output"><a class="permalink" href="#Color_shift_or_incorrect_output">Color
+  shift or incorrect output</a></h2>
+<p class="Pp"><b>Problem:</b> Output colors don't match input (greenish,
+    reddish, too dark/bright) <b>Causes:</b></p>
+<ul class="Bl-bullet">
+  <li>Input buffer not actually RGB24</li>
+  <li>Pitch parameter incorrect (row offset doesn't match buffer)</li>
+  <li>Input buffer not linearized (gamma-corrected input)</li>
+</ul>
+<p class="Pp"><b>Solution:</b></p>
+<ul class="Bl-bullet">
+  <li>Verify input is packed RGB24 (24 bits = 8R + 8G + 8B)</li>
+  <li>Verify pitch = width &#x00D7; 3 for tightly-packed; adjust for padded
+      buffers</li>
+  <li>Ensure RGB values are in linear space (not sRGB-gamma encoded)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="File_size_unexpectedly_large_or_small"><a class="permalink" href="#File_size_unexpectedly_large_or_small">File
+  size unexpectedly large or small</a></h2>
+<p class="Pp"><b>Problem:</b> Output file much larger or smaller than expected
+    <b>Causes:</b></p>
+<ul class="Bl-bullet">
+  <li>Bitrate auto-calculation doesn't match desired size</li>
+  <li>Codec differences (VP9 vs. H.264 have different compression ratios)</li>
+  <li>Extension mismatch (saved as .mp4 but encoder treating as different
+      format)</li>
+</ul>
+<p class="Pp"><b>Solution:</b></p>
+<ul class="Bl-bullet">
+  <li>For lower bitrate: Use WebM (VP9) instead of MP4 (H.264) for equivalent
+      quality</li>
+  <li>For smaller single frames: Use JPEG instead of PNG</li>
+  <li>Verify file extension matches intended codec</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Encoding_very_slow"><a class="permalink" href="#Encoding_very_slow">Encoding
+  very slow</a></h2>
+<p class="Pp"><b>Problem:</b> <b>ffmpeg_encoder_write_frame()</b> takes very
+    long <b>Causes:</b></p>
+<ul class="Bl-bullet">
+  <li>VP9 codec is slow (inherent to codec design)</li>
+  <li>Very high resolution (4K+)</li>
+  <li>CPU bottleneck</li>
+  <li>Disk I/O bottleneck</li>
+</ul>
+<p class="Pp"><b>Solution:</b></p>
+<ul class="Bl-bullet">
+  <li>For real-time encoding: Use MP4 H.264 instead of WebM VP9</li>
+  <li>For high resolution: Consider lower resolution or acceptance of slower
+      encoding</li>
+  <li>Ensure output file is on fast storage (SSD preferred over HDD)</li>
+  <li>Use lower FPS if acceptable for use case</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Memory_leak"><a class="permalink" href="#Memory_leak">Memory
+  leak</a></h2>
+<p class="Pp"><b>Problem:</b> Memory usage grows unbounded, program crashes with
+    out-of-memory <b>Causes:</b></p>
+<ul class="Bl-bullet">
+  <li><b>ffmpeg_encoder_destroy()</b> not called (resources not freed)</li>
+  <li>Encoder created in loop without cleanup between iterations</li>
+  <li>Caller buffer not freed between frames</li>
+</ul>
+<p class="Pp"><b>Solution:</b></p>
+<ul class="Bl-bullet">
+  <li>Always call <b>ffmpeg_encoder_destroy()</b> before exiting</li>
+  <li>If creating multiple encoders, ensure each is destroyed before next is
+      created</li>
+  <li>Reuse caller buffer if possible (don't allocate new buffer per frame)</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Advanced_Usage_Patterns"><a class="permalink" href="#Advanced_Usage_Patterns">Advanced
+  Usage Patterns</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Quality_ladder_encoding_(multiple_formats)"><a class="permalink" href="#Quality_ladder_encoding_(multiple_formats)">Quality
+  ladder encoding (multiple formats)</a></h2>
+<p class="Pp">Encode same video in multiple qualities for adaptive
+  streaming:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>struct {
+<br/>
+    const char *path;
+<br/>
+    int width, height;
+<br/>
+    const char *format_hint;  // &quot;webm&quot; for VP9, &quot;mp4&quot; for H.264
+} quality_ladder[] = {
+<br/>
+    {&quot;output_480p.webm&quot;, 854, 480, &quot;webm&quot;},
+<br/>
+    {&quot;output_720p.webm&quot;, 1280, 720, &quot;webm&quot;},
+<br/>
+    {&quot;output_1080p.mp4&quot;, 1920, 1080, &quot;mp4&quot;},
+};
+ffmpeg_encoder_t *encoders[3];
+for (int i = 0; i &lt; 3; i++) {
+<br/>
+    ffmpeg_encoder_create(quality_ladder[i].path,
+<br/>
+                         quality_ladder[i].width,
+<br/>
+                         quality_ladder[i].height,
+<br/>
+                         30, &amp;encoders[i]);
+}
+// For each frame
+uint8_t *frame_rgb = capture_frame();
+for (int i = 0; i &lt; 3; i++) {
+<br/>
+    // Would need to rescale frame_rgb to match each encoder resolution
+<br/>
+    ffmpeg_encoder_write_frame(encoders[i], frame_rgb, pitch);
+}
+for (int i = 0; i &lt; 3; i++) {
+<br/>
+    ffmpeg_encoder_destroy(encoders[i]);
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Periodic_snapshot_capture"><a class="permalink" href="#Periodic_snapshot_capture">Periodic
+  snapshot capture</a></h2>
+<p class="Pp">Capture individual frames as high-quality PNG snapshots:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Every N frames, capture a snapshot
+if (frame_number % 30 == 0) {
+<br/>
+    char path[256];
+<br/>
+    snprintf(path, sizeof(path), &quot;snapshot_%d.png&quot;, frame_number);
+<br/>
+    ffmpeg_encoder_t *snap;
+<br/>
+    ffmpeg_encoder_create(path, width, height, 1, &amp;snap);
+<br/>
+    ffmpeg_encoder_write_frame(snap, frame_rgb, pitch);
+<br/>
+    ffmpeg_encoder_destroy(snap);
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Format_format-aware_fallback"><a class="permalink" href="#Format_format-aware_fallback">Format
+  format-aware fallback</a></h2>
+<p class="Pp">Attempt high-quality encoding with fallback to lower quality:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>const char *preferred_formats[] = {&quot;output.webm&quot;, &quot;output.mp4&quot;};
+ffmpeg_encoder_t *enc = NULL;
+for (int i = 0; i &lt; 2; i++) {
+<br/>
+    asciichat_error_t err = ffmpeg_encoder_create(preferred_formats[i],
+<br/>
+                                                  1920, 1080, 30, &amp;enc);
+<br/>
+    if (err == ASCIICHAT_OK) break;
+<br/>
+    log_warn(&quot;Format %s not available, trying next&quot;, preferred_formats[i]);
+}
+if (enc == NULL) {
+<br/>
+    log_error(&quot;No encoding format available&quot;);
+<br/>
+    return;
+}
+// Use enc...
+ffmpeg_encoder_destroy(enc);</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="See_Also"><a class="permalink" href="#See_Also">See
+  Also</a></h1>
+<ul class="Bl-bullet">
+  <li>FFmpeg Documentation: https://ffmpeg.org/documentation.html</li>
+  <li>libswscale: Image scaling, color space conversion</li>
+  <li>libavcodec: Video encoding</li>
+  <li>libavformat: Container muxing</li>
+</ul>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

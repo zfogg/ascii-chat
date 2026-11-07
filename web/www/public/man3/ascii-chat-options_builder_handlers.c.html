@@ -86,22 +86,11 @@
 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>54</b> of file
+<p class="Pp">Definition at line <b>57</b> of file
     <b>options/builder/handlers.c</b>.</p>
-<pre>54                                                     {
-55     [OPTION_TYPE_BOOL] = {is_set_bool, apply_env_bool, apply_cli_bool, format_help_placeholder_bool},
-56     [OPTION_TYPE_INT] = {is_set_int, apply_env_int, apply_cli_int, format_help_placeholder_int},
-57     [OPTION_TYPE_STRING] = {is_set_string, apply_env_string, apply_cli_string, format_help_placeholder_string},
-58     [OPTION_TYPE_DOUBLE] = {is_set_double, apply_env_double, apply_cli_double, format_help_placeholder_double},
-59     [OPTION_TYPE_CALLBACK] = {is_set_callback, apply_env_callback, apply_cli_callback,
-60                               format_help_placeholder_callback},
-61     [OPTION_TYPE_ACTION] = {is_set_action, apply_env_action, apply_cli_action, format_help_placeholder_action},
-62 };</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>is_option_set()</b>,
-    <b>options_config_set_defaults()</b>, and
-  <b>options_config_validate()</b>.</p>
+    <b>options_config_set_defaults()</b>, <b>options_config_validate()</b>, and
+    <b>options_json_parse_value()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -111,7 +100,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

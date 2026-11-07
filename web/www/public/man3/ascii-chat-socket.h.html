@@ -36,12 +36,35 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>socket_buffer_t</b>
+  <br/>
+  struct <b>socket_io_stats_t</b>
+  <br/>
+  struct <b>socket_send_buffer_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
 <p class="Pp">#define <b>INVALID_SOCKET_VALUE</b> (-1)
   <br/>
-  Invalid socket value (POSIX: -1). #define <b>SOCKET_ERROR_WOULDBLOCK</b>
-    <b>EWOULDBLOCK</b>
+  Invalid socket value (POSIX: -1). #define <b>SOCKET_IOV_MAX</b> 16
+  <br/>
+  Send data on a socket. #define <b>SOCKET_ZEROCOPY_THRESHOLD</b> (64 * 1024)
+  <br/>
+  #define <b>SOCKET_STREAM_SEND_BUFFER</b> (64U * 1024U)
+  <br/>
+  #define <b>SOCKET_STREAM_SEND_RESERVE</b> (2U *
+    <b>SOCKET_STREAM_SEND_BUFFER</b>)
+  <br/>
+  #define <b>SOCKET_SEND_BUFFER_MAX</b> (32 * 1024 * 1024)
+  <br/>
+  #define <b>SOCKET_ERROR_WOULDBLOCK</b> <b>EWOULDBLOCK</b>
   <br/>
   #define <b>SOCKET_ERROR_INPROGRESS</b> EINPROGRESS
   <br/>
@@ -76,11 +99,38 @@
   Accept an incoming connection. int <b>socket_connect</b> (<b>socket_t</b>
     sock, const struct sockaddr *addr, socklen_t addrlen)
   <br/>
-  Connect to a remote address. ssize_t <b>socket_send</b> (<b>socket_t</b> sock,
-    const void *buf, size_t len, int flags)
+  Connect to a remote address. <b>asciichat_error_t</b> <b>socket_sendv</b>
+    (<b>socket_t</b> sock, const <b>socket_buffer_t</b> *buffers, size_t count,
+    size_t *sent)
   <br/>
-  Send data on a socket. ssize_t <b>socket_recv</b> (<b>socket_t</b> sock, void
-    *buf, size_t len, int flags)
+  <b>asciichat_error_t</b> <b>socket_sendv_all</b> (<b>socket_t</b> sock, const
+    <b>socket_buffer_t</b> *buffers, size_t count, <b>uint64_t</b> timeout_ns)
+  <br/>
+  <b>socket_io_stats_t</b> <b>socket_io_stats_get</b> (void)
+  <br/>
+  void <b>socket_io_stats_reset</b> (void)
+  <br/>
+  <b>asciichat_error_t</b> <b>socket_send_buffer_alloc</b> (size_t capacity,
+    <b>socket_send_buffer_t</b> *buffer)
+  <br/>
+  void <b>socket_send_buffer_free</b> (<b>socket_send_buffer_t</b> *buffer)
+  <br/>
+  <b>asciichat_error_t</b> <b>socket_send_zerocopy</b> (<b>socket_t</b> sock,
+    const <b>socket_send_buffer_t</b> *buffer, size_t len, <b>uint64_t</b>
+    timeout_ns, <b>bool</b> *supported, <b>bool</b> *copied)
+  <br/>
+  <b>asciichat_error_t</b> <b>socket_zerocopy_try</b> (<b>socket_t</b>, const
+    <b>socket_send_buffer_t</b> *, size_t offset, size_t length, size_t *sent,
+    <b>bool</b> *supported)
+  <br/>
+  <b>asciichat_error_t</b> <b>socket_zerocopy_poll</b> (<b>socket_t</b>,
+    <b>bool</b> *completed, <b>bool</b> *copied)
+  <br/>
+  ssize_t <b>socket_send</b> (<b>socket_t</b> sock, const void *buf, size_t len,
+    int flags)
+  <br/>
+  ssize_t <b>socket_recv</b> (<b>socket_t</b> sock, void *buf, size_t len, int
+    flags)
   <br/>
   Receive data from a socket. ssize_t <b>socket_sendto</b> (<b>socket_t</b>
     sock, const void *buf, size_t len, int flags, const struct sockaddr
@@ -172,17 +222,17 @@
     <b>socket_is_valid</b> (<b>socket_t</b> sock)
   <br/>
   Check if a socket handle is valid. <b>bool</b>
-    <b>socket_is_would_block_error</b> (int <b>error_code</b>)
+    <b>socket_is_would_block_error</b> (int error_code)
   <br/>
   Check if error code indicates
     <i>would</i>block&quot;<i>(non-blocking</i>socket<i>would</i>wait).<i></i>
-    <b>bool</b> <b>socket_is_connection_reset_error</b> (int <b>error_code</b>)
+    <b>bool</b> <b>socket_is_connection_reset_error</b> (int error_code)
   <br/>
   Check if error code indicates connection reset. <b>bool</b>
-    <b>socket_is_invalid_socket_error</b> (int <b>error_code</b>)
+    <b>socket_is_invalid_socket_error</b> (int error_code)
   <br/>
   Check if error code indicates a closed/invalid socket. <b>bool</b>
-    <b>socket_is_in_progress_error</b> (int <b>error_code</b>)
+    <b>socket_is_in_progress_error</b> (int error_code)
   <br/>
   Check if error indicates operation in progress (non-blocking connect). int
     <b>platform_socket_set_timeout</b> (<b>socket_t</b> sock, <b>uint64_t</b>
@@ -212,7 +262,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

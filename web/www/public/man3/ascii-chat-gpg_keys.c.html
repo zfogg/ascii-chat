@@ -35,6 +35,16 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>CRYPTO_GPG_GPG_KEYS_HEX_KEY_ID_BUFFER_SIZE</b> 17
+  <br/>
+  #define <b>GPG_COLON_FIELD_CAPACITY</b> 12
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>asciichat_error_t</b> <b>parse_gpg_key_binary</b> (const
@@ -85,13 +95,29 @@
 </section>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_CRYPTO_GPG_GPG_KEYS_HEX_KEY_ID_BUFFER_SIZE___17"><a class="permalink" href="#_define_CRYPTO_GPG_GPG_KEYS_HEX_KEY_ID_BUFFER_SIZE___17">#define
+  CRYPTO_GPG_GPG_KEYS_HEX_KEY_ID_BUFFER_SIZE 17</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>gpg_keys.c</b>.</p>
+<p class="Pp">Referenced by <b>format_gpg_key_display()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_GPG_COLON_FIELD_CAPACITY___12"><a class="permalink" href="#_define_GPG_COLON_FIELD_CAPACITY___12">#define
+  GPG_COLON_FIELD_CAPACITY 12</a></h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>gpg_keys.c</b>.</p>
+<p class="Pp">Referenced by <b>check_gpg_key_expiry()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

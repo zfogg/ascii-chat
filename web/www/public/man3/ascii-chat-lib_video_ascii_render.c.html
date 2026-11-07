@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>render.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">render.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">render.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">render.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>VIDEO_ASCII_RENDER_SEQUENCE_BUFFER_SIZE</b> 16
+  <br/>
+  #define <b>ASCII_TEMPORAL_MOTION_LIMIT</b> 8
+  <br/>
+  #define <b>ASCII_TEMPORAL_MAX_INTERVAL_NS</b> 250000000ULL
+  <br/>
+  #define <b>ASCII_TEMPORAL_COLOR_TIME_NS</b> 50000000ULL
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>ascii_stabilizer_t</b> * <b>ascii_stabilizer_set_target</b>
+    (<b>ascii_stabilizer_t</b> *state)
+  <br/>
+  void <b>ascii_stabilizer_reset</b> (<b>ascii_stabilizer_t</b> *state)
+  <br/>
+  <b>asciichat_error_t</b> <b>ascii_stabilizer_prepare</b>
+    (<b>ascii_stabilizer_t</b> *state, size_t width, size_t height,
+    <b>uint64_t</b> configuration)
+  <br/>
+  <b>uint32_t</b> <b>ascii_stabilizer_choose</b> (<b>ascii_temporal_cell_t</b>
+    *cell, const <b>uint8_t</b> samples[16], <b>uint32_t</b> candidate,
+    <b>uint64_t</b> candidate_error, <b>uint64_t</b> previous_error,
+    <b>uint32_t</b> color, <b>uint64_t</b> elapsed_ns, <b>uint32_t</b>
+    *stabilized_color)
+  <br/>
+  <b>outbuf_t</b> * <b>ascii_render_set_output_target</b> (<b>outbuf_t</b>
+    *target)
+  <br/>
+  char * <b>ascii_render</b> (const <b>image_t</b> *image, const char *palette,
+    <b>ascii_color_t</b> mode, <b>bool</b> background, <b>bool</b> dither, const
+    <b>simd_cells_t</b> *ops)
+  <br/>
+  char * <b>ascii_render_halfblocks</b> (const <b>uint8_t</b> *rgb, int width,
+    int height, int stride, <b>ascii_color_t</b> mode, const <b>simd_cells_t</b>
+    *ops)
+  <br/>
+  <b>asciichat_error_t</b> <b>ascii_frame_init</b> (<b>ascii_frame_t</b> *frame,
+    const <b>image_t</b> *image, const char *palette)
+  <br/>
+  void <b>ascii_frame_emit_row</b> (<b>ascii_frame_t</b> *frame,
+    <b>ascii_color_t</b> mode, <b>bool</b> background, <b>bool</b> more_rows,
+    const <b>simd_cells_t</b> *ops)
+  <br/>
+  char * <b>ascii_frame_finish</b> (<b>ascii_frame_t</b> *frame)
+  <br/>
+  <b>asciichat_error_t</b> <b>ascii_half_frame_init</b> (<b>ascii_frame_t</b>
+    *frame, const <b>uint8_t</b> *rgb, int width, int height, int *stride,
+    <b>ascii_color_t</b> mode)
+  <br/>
+  void <b>ascii_frame_emit_halfrow</b> (<b>ascii_frame_t</b> *frame,
+    <b>ascii_color_t</b> mode, <b>bool</b> more_rows, const <b>simd_cells_t</b>
+    *ops)
+  <br/>
+  <b>bool</b> <b>ascii_glyph_palette_supported</b> (const char *palette)
+  <br/>
+  char * <b>ascii_render_glyph_match</b> (const <b>image_t</b> *image,
+    <b>ascii_color_t</b> mode, const <b>simd_cells_t</b> *ops, const char
+    *palette)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Shared cell construction and terminal emission for scalar and SIMD
+    kernels.</p>
+<p class="Pp">Definition in file <b>lib/video/ascii/render.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_TEMPORAL_COLOR_TIME_NS___50000000ULL"><a class="permalink" href="#_define_ASCII_TEMPORAL_COLOR_TIME_NS___50000000ULL">#define
+  ASCII_TEMPORAL_COLOR_TIME_NS 50000000ULL</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_emit_row()</b>, and
+    <b>ascii_stabilizer_choose()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_TEMPORAL_MAX_INTERVAL_NS___250000000ULL"><a class="permalink" href="#_define_ASCII_TEMPORAL_MAX_INTERVAL_NS___250000000ULL">#define
+  ASCII_TEMPORAL_MAX_INTERVAL_NS 250000000ULL</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_emit_row()</b>, and
+    <b>ascii_stabilizer_choose()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_TEMPORAL_MOTION_LIMIT___8"><a class="permalink" href="#_define_ASCII_TEMPORAL_MOTION_LIMIT___8">#define
+  ASCII_TEMPORAL_MOTION_LIMIT 8</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_emit_row()</b>, and
+    <b>ascii_stabilizer_choose()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VIDEO_ASCII_RENDER_SEQUENCE_BUFFER_SIZE___16"><a class="permalink" href="#_define_VIDEO_ASCII_RENDER_SEQUENCE_BUFFER_SIZE___16">#define
+  VIDEO_ASCII_RENDER_SEQUENCE_BUFFER_SIZE 16</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_ascii_frame_emit_halfrow_("><a class="permalink" href="#void_ascii_frame_emit_halfrow_(">void
+  ascii_frame_emit_halfrow (<b>ascii_frame_t</b> * frame, <b>ascii_color_t</b>
+  mode, <b>bool</b> more_rows, const <b>simd_cells_t</b> * ops)</a></h2>
+<p class="Pp">Definition at line <b>420</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>420                                                                                                                  {
+421   if (frame-&gt;stabilizer) {
+422     size_t top_row = frame-&gt;row * 2;
+423     bool has_bottom = top_row + 1 &lt; frame-&gt;source_height;
+424     for (size_t x = 0; x &lt; frame-&gt;width; ++x) {
+425       uint32_t *pixels[] = {&amp;frame-&gt;packed[x], &amp;frame-&gt;index[x]};
+426       for (size_t half = 0; half &lt; (has_bottom ? 2u : 1u); ++half) {
+427         uint32_t color = *pixels[half];
+428         uint8_t luma = (uint8_t)((76u * (color &gt;&gt; 16) + 150u * ((color &gt;&gt; 8) &amp; 255) + 29u * (color &amp; 255)) &gt;&gt; 8);
+429         uint8_t samples[16];
+430         memset(samples, luma, sizeof(samples));
+431         ascii_temporal_cell_t *cell = &amp;frame-&gt;stabilizer-&gt;cells[(top_row + half) * frame-&gt;width + x];
+432         ascii_stabilizer_choose(cell, samples, 0, 0, UINT64_MAX, color, frame-&gt;stabilizer-&gt;elapsed_ns, pixels[half]);
+433       }
+434       if (!has_bottom)
+435         frame-&gt;index[x] = frame-&gt;packed[x];
+436     }
+437     if (mode == ASCII_COLOR_TRUE) {
+438       memcpy(frame-&gt;fg, frame-&gt;packed, frame-&gt;width * sizeof(uint32_t));
+439       memcpy(frame-&gt;bg, frame-&gt;index, frame-&gt;width * sizeof(uint32_t));
+440     } else if (mode != ASCII_COLOR_NONE) {
+441       ops-&gt;quantize(frame-&gt;packed, frame-&gt;fg, frame-&gt;width, mode == ASCII_COLOR_16 ? 16 : 256);
+442       ops-&gt;quantize(frame-&gt;index, frame-&gt;bg, frame-&gt;width, mode == ASCII_COLOR_16 ? 16 : 256);
+443     }
+444     ops-&gt;halfblock(frame-&gt;packed, frame-&gt;index, frame-&gt;glyph, frame-&gt;fg, frame-&gt;bg, frame-&gt;width, (unsigned)mode,
+445                    frame-&gt;table);
+446   }
+447   emit_prepared_row(&amp;frame-&gt;output, mode, ops, frame-&gt;glyph, frame-&gt;fg, frame-&gt;bg, frame-&gt;width);
+448   emit_row_end(&amp;frame-&gt;output, mode != ASCII_COLOR_NONE, more_rows);
+449   ++frame-&gt;row;
+450 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_COLOR_16</b>, <b>ASCII_COLOR_NONE</b>,
+    <b>ASCII_COLOR_TRUE</b>, <b>ascii_frame_emit_halfrow()</b>,
+    <b>ascii_stabilizer_choose()</b>, <b>ascii_frame_t::bg</b>,
+    <b>ascii_stabilizer_t::cells</b>, <b>ascii_stabilizer_t::elapsed_ns</b>,
+    <b>emit_row_end()</b>, <b>ascii_frame_t::fg</b>,
+    <b>ascii_frame_t::glyph</b>, <b>simd_cells_t::halfblock</b>,
+    <b>ascii_frame_t::index</b>, <b>ascii_frame_t::output</b>,
+    <b>ascii_frame_t::packed</b>, <b>simd_cells_t::quantize</b>,
+    <b>ascii_frame_t::row</b>, <b>ascii_frame_t::source_height</b>,
+    <b>ascii_frame_t::stabilizer</b>, <b>ascii_frame_t::table</b>, and
+    <b>ascii_frame_t::width</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
+    <b>ascii_render_halfblocks()</b>, and <b>render_ascii_cells_sve()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ascii_frame_emit_row_("><a class="permalink" href="#void_ascii_frame_emit_row_(">void
+  ascii_frame_emit_row (<b>ascii_frame_t</b> * frame, <b>ascii_color_t</b> mode,
+  <b>bool</b> background, <b>bool</b> more_rows, const <b>simd_cells_t</b> *
+  ops)</a></h2>
+<p class="Pp">Definition at line <b>309</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>310                                                    {
+311   if (frame-&gt;stabilizer &amp;&amp; !frame-&gt;temporal_preselected) {
+312     const uint64_t elapsed = frame-&gt;stabilizer-&gt;elapsed_ns;
+313     const bool recent = elapsed &lt;= ASCII_TEMPORAL_MAX_INTERVAL_NS;
+314     const unsigned weight = recent ? (unsigned)(elapsed * 256 / (elapsed + ASCII_TEMPORAL_COLOR_TIME_NS)) : 256;
+315     for (size_t x = 0; x &lt; frame-&gt;width; ++x) {
+316       ascii_temporal_cell_t *cell = &amp;frame-&gt;stabilizer-&gt;cells[frame-&gt;row * frame-&gt;width + x];
+317       uint8_t luma = frame-&gt;luma[x];
+318       uint32_t glyph = frame-&gt;glyph[x];
+319       uint32_t color = frame-&gt;packed[x];
+320       if (cell-&gt;valid &amp;&amp; recent &amp;&amp; abs((int)luma - (int)cell-&gt;samples[0]) &lt;= ASCII_TEMPORAL_MOTION_LIMIT) {
+321         if (cell-&gt;glyph != glyph) {
+322           // Only nearby brightness bins can win the hysteresis test. Searching
+323           // outward avoids scanning the entire 64-entry palette for every cell.
+324           unsigned bin = luma &gt;&gt; 2;
+325           int best_delta = (int)luma - ((int)bin * 4 + 2);
+326           uint64_t best_error = (uint64_t)(best_delta * best_delta);
+327           uint64_t margin = best_error / 8 + 128;
+328           for (unsigned distance = 1; distance &lt; 64; ++distance) {
+329             bool found = false;
+330             for (int direction = -1; direction &lt;= 1; direction += 2) {
+331               int index = (int)bin + direction * (int)distance;
+332               if (index &lt; 0 || index &gt;= 64 || frame-&gt;table[index] != cell-&gt;glyph)
+333                 continue;
+334               int delta = (int)luma - (index * 4 + 2);
+335               uint64_t error = (uint64_t)(delta * delta);
+336               if (error &lt;= best_error || error - best_error &lt;= margin)
+337                 glyph = cell-&gt;glyph;
+338               found = true;
+339             }
+340             // Bins farther than this cannot fall within the error margin.
+341             int nearest_delta = (int)distance * 4 - 3;
+342             if (found || (uint64_t)(nearest_delta * nearest_delta) &gt; best_error + margin)
+343               break;
+344           }
+345         }
+346         color = temporal_blend_color(cell-&gt;color, color, weight);
+347       }
+348       cell-&gt;samples[0] = luma;
+349       cell-&gt;glyph = frame-&gt;glyph[x] = glyph;
+350       cell-&gt;color = frame-&gt;packed[x] = color;
+351       cell-&gt;valid = true;
+352       if (background)
+353         frame-&gt;luma[x] =
+354             (uint8_t)((77u * (color &gt;&gt; 16) + 150u * ((color &gt;&gt; 8) &amp; 255) + 29u * (color &amp; 255) + 128u) &gt;&gt; 8);
+355     }
+356     if (!frame-&gt;dithered &amp;&amp; (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256))
+357       ops-&gt;quantize(frame-&gt;packed, frame-&gt;index, frame-&gt;width, mode == ASCII_COLOR_16 ? 16 : 256);
+358   }
+359   for (size_t x = 0; x &lt; frame-&gt;width; ++x) {
+360     frame-&gt;fg[x] = frame-&gt;bg[x] = UINT32_MAX;
+361     if (mode == ASCII_COLOR_NONE)
+362       continue;
+363     uint32_t value = mode == ASCII_COLOR_TRUE ? frame-&gt;packed[x] : frame-&gt;index[x];
+364     uint32_t contrast = frame-&gt;luma[x] &lt; 128 ? (mode == ASCII_COLOR_TRUE ? 0xffffffu : 15u) : 0;
+365     if (mode == ASCII_COLOR_16) {
+366       uint8_t r, g, b;
+367       get_16color_rgb((uint8_t)value, &amp;r, &amp;g, &amp;b);
+368       contrast = (77 * r + 150 * g + 29 * b) / 256 &lt; 127 ? 15u : 0;
+369     }
+370     frame-&gt;fg[x] = background ? contrast : value;
+371     frame-&gt;bg[x] = background ? value : UINT32_MAX;
+372   }
+373   emit_prepared_row(&amp;frame-&gt;output, mode, ops, frame-&gt;glyph, frame-&gt;fg, frame-&gt;bg, frame-&gt;width);
+374   emit_row_end(&amp;frame-&gt;output, mode != ASCII_COLOR_NONE, more_rows);
+375   ++frame-&gt;row;
+376 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_COLOR_16</b>, <b>ASCII_COLOR_256</b>,
+    <b>ASCII_COLOR_NONE</b>, <b>ASCII_COLOR_TRUE</b>,
+    <b>ascii_frame_emit_row()</b>, <b>ASCII_TEMPORAL_COLOR_TIME_NS</b>,
+    <b>ASCII_TEMPORAL_MAX_INTERVAL_NS</b>, <b>ASCII_TEMPORAL_MOTION_LIMIT</b>,
+    <b>ascii_frame_t::bg</b>, <b>ascii_stabilizer_t::cells</b>,
+    <b>ascii_temporal_cell_t::color</b>, <b>ascii_frame_t::dithered</b>,
+    <b>ascii_stabilizer_t::elapsed_ns</b>, <b>emit_row_end()</b>,
+    <b>ascii_frame_t::fg</b>, <b>get_16color_rgb()</b>,
+    <b>ascii_frame_t::glyph</b>, <b>ascii_temporal_cell_t::glyph</b>,
+    <b>ascii_frame_t::index</b>, <b>ascii_frame_t::luma</b>,
+    <b>ascii_frame_t::output</b>, <b>ascii_frame_t::packed</b>,
+    <b>simd_cells_t::quantize</b>, <b>ascii_frame_t::row</b>,
+    <b>ascii_temporal_cell_t::samples</b>, <b>ascii_frame_t::stabilizer</b>,
+    <b>ascii_frame_t::table</b>, <b>ascii_frame_t::temporal_preselected</b>,
+    <b>ascii_temporal_cell_t::valid</b>, and <b>ascii_frame_t::width</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_t::_Alignas()</b>,
+    <b>ascii_frame_emit_row()</b>, <b>ascii_render()</b>, and
+    <b>ascii_render_glyph_match()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_ascii_frame_finish_("><a class="permalink" href="#char_*_ascii_frame_finish_(">char
+  * ascii_frame_finish (<b>ascii_frame_t</b> * frame)</a></h2>
+<p class="Pp">Definition at line <b>377</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>377                                                {
+378   if (frame-&gt;scratch != frame-&gt;inline_scratch)
+379     SAFE_FREE(frame-&gt;scratch);
+380   ob_term(&amp;frame-&gt;output);
+381   if (frame-&gt;output_target)
+382     *frame-&gt;output_target = frame-&gt;output;
+383   return frame-&gt;output.buf;
+384 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_frame_finish()</b>, <b>outbuf_t::buf</b>,
+    <b>ob_term()</b>, <b>ascii_frame_t::output</b>,
+    <b>ascii_frame_t::output_target</b>, <b>SAFE_FREE</b>, and
+    <b>ascii_frame_t::scratch</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_t::_Alignas()</b>,
+    <b>ascii_frame_finish()</b>, <b>ascii_render()</b>,
+    <b>ascii_render_glyph_match()</b>, and <b>ascii_render_halfblocks()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ascii_frame_init (<b>ascii_frame_t</b> *
+  frame, const <b>image_t</b> * image, const char * palette)</h2>
+<p class="Pp">Definition at line <b>276</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>276                                                                                                     {
+277   ASCII_OTEL_SCOPE(ASCII_FRAME_INIT);
+278   outbuf_t *target = ascii_render_set_output_target(NULL);
+279   memset(frame, 0, sizeof(*frame));
+280   if (!image || !image-&gt;pixels || image-&gt;w &lt;= 0 || image-&gt;h &lt;= 0 || !palette || !palette[0])
+281     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid image or palette&quot;);
+282   size_t bytes, pixels, capacity, rows;
+283   if (checked_size_mul((size_t)image-&gt;w, (size_t)image-&gt;h, &amp;pixels) != ASCIICHAT_OK ||
+284       checked_size_mul(pixels, 48u, &amp;capacity) != ASCIICHAT_OK ||
+285       checked_size_mul((size_t)image-&gt;h, 5u, &amp;rows) != ASCIICHAT_OK ||
+286       checked_size_add(capacity, rows, &amp;capacity) != ASCIICHAT_OK ||
+287       checked_size_add(capacity, 1u, &amp;capacity) != ASCIICHAT_OK ||
+288       checked_size_mul((size_t)image-&gt;w, 6 * sizeof(uint32_t), &amp;bytes) != ASCIICHAT_OK)
+289     return ERROR_INVALID_PARAM;
+290   utf8_palette_cache_t *cache = get_utf8_palette_cache(palette);
+291   if (!cache)
+292     return ERROR_INVALID_PARAM;
+293   prepare_output(frame, capacity, target);
+294   frame-&gt;width = (size_t)image-&gt;w;
+295   if (g_stabilizer_target &amp;&amp; g_stabilizer_target-&gt;cells &amp;&amp; g_stabilizer_target-&gt;width == (size_t)image-&gt;w &amp;&amp;
+296       g_stabilizer_target-&gt;height == (size_t)image-&gt;h)
+297     frame-&gt;stabilizer = g_stabilizer_target;
+298   for (size_t i = 0; i &lt; 64; ++i)
+299     memcpy(frame-&gt;table + i, cache-&gt;cache64[i].utf8_bytes, cache-&gt;cache64[i].byte_len);
+300   frame-&gt;scratch = bytes &lt;= sizeof(frame-&gt;inline_scratch) ? frame-&gt;inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
+301   frame-&gt;packed = frame-&gt;scratch;
+302   frame-&gt;index = frame-&gt;packed + frame-&gt;width;
+303   frame-&gt;glyph = frame-&gt;index + frame-&gt;width;
+304   frame-&gt;fg = frame-&gt;glyph + frame-&gt;width;
+305   frame-&gt;bg = frame-&gt;fg + frame-&gt;width;
+306   frame-&gt;luma = (uint8_t *)(frame-&gt;bg + frame-&gt;width);
+307   return ASCIICHAT_OK;
+308 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_frame_init()</b>, <b>ASCII_OTEL_SCOPE</b>,
+    <b>ascii_render_set_output_target()</b>, <b>ASCIICHAT_OK</b>,
+    <b>ascii_frame_t::bg</b>, <b>utf8_char_t::byte_len</b>,
+    <b>utf8_palette_cache::cache64</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ascii_frame_t::fg</b>, <b>get_utf8_palette_cache()</b>,
+    <b>ascii_frame_t::glyph</b>, <b>image_t::h</b>, <b>ascii_frame_t::index</b>,
+    <b>ascii_frame_t::luma</b>, <b>ascii_frame_t::packed</b>,
+    <b>image_t::pixels</b>, <b>SAFE_MALLOC</b>, <b>ascii_frame_t::scratch</b>,
+    <b>SET_ERRNO</b>, <b>ascii_frame_t::stabilizer</b>,
+    <b>ascii_frame_t::table</b>, <b>utf8_char_t::utf8_bytes</b>,
+    <b>image_t::w</b>, and <b>ascii_frame_t::width</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_t::_Alignas()</b>,
+    <b>ascii_frame_init()</b>, <b>ascii_render()</b>, and
+    <b>ascii_render_glyph_match()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_glyph_palette_supported (const char *
+  palette)</h2>
+<p class="Pp">Definition at line <b>457</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>457                                                         {
+458   if (!palette || !*palette)
+459     return false;
+460   for (const unsigned char *p = (const unsigned char *)palette; *p; ++p)
+461     if (*p &lt; 32 || *p &gt; 126)
+462       return false;
+463   return true;
+464 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_glyph_palette_supported()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert_with_buffers_stabilized()</b>,
+    <b>ascii_glyph_palette_supported()</b>, <b>ascii_render_glyph_match()</b>,
+    and <b>mirror_convert_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ascii_half_frame_init
+  (<b>ascii_frame_t</b> * frame, const <b>uint8_t</b> * rgb, int width, int
+  height, int * stride, <b>ascii_color_t</b> mode)</h2>
+<p class="Pp">Definition at line <b>386</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>387                                                             {
+388   ASCII_OTEL_SCOPE(ASCII_HALF_FRAME_INIT);
+389   outbuf_t *target = ascii_render_set_output_target(NULL);
+390   memset(frame, 0, sizeof(*frame));
+391   size_t row_bytes, extent, bytes, capacity;
+392   if (!rgb || width &lt;= 0 || height &lt;= 0 || mode &lt; ASCII_COLOR_NONE || mode &gt; ASCII_COLOR_TRUE ||
+393       checked_size_mul((size_t)width, 3, &amp;row_bytes) != ASCIICHAT_OK || row_bytes &gt; INT_MAX)
+394     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid half-block input&quot;);
+395   if (*stride &lt;= 0)
+396     *stride = (int)row_bytes;
+397   if ((size_t)*stride &lt; row_bytes || checked_size_mul((size_t)*stride, (size_t)height, &amp;extent) != ASCIICHAT_OK ||
+398       checked_size_mul((size_t)width, 6 * sizeof(uint32_t), &amp;bytes) != ASCIICHAT_OK ||
+399       checked_size_mul((size_t)width, ((size_t)height + 1) / 2, &amp;capacity) != ASCIICHAT_OK ||
+400       checked_size_mul(capacity, 48u, &amp;capacity) != ASCIICHAT_OK ||
+401       checked_size_add(capacity, 1u, &amp;capacity) != ASCIICHAT_OK)
+402     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid half-block stride or size&quot;);
+403   prepare_output(frame, capacity, target);
+404   frame-&gt;width = (size_t)width;
+405   frame-&gt;source_height = (size_t)height;
+406   if (g_stabilizer_target &amp;&amp; g_stabilizer_target-&gt;cells &amp;&amp; g_stabilizer_target-&gt;width == (size_t)width &amp;&amp;
+407       g_stabilizer_target-&gt;height == (size_t)height)
+408     frame-&gt;stabilizer = g_stabilizer_target;
+409   frame-&gt;scratch = bytes &lt;= sizeof(frame-&gt;inline_scratch) ? frame-&gt;inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
+410   frame-&gt;packed = frame-&gt;scratch;
+411   frame-&gt;index = frame-&gt;packed + width;
+412   frame-&gt;glyph = frame-&gt;index + width;
+413   frame-&gt;fg = frame-&gt;glyph + width;
+414   frame-&gt;bg = frame-&gt;fg + width;
+415   const char blocks[5][4] = {&quot;\xe2\x96\x91&quot;, &quot;\xe2\x96\x92&quot;, &quot;\xe2\x96\x93&quot;, &quot;\xe2\x96\x88&quot;, &quot;\xe2\x96\x80&quot;};
+416   for (size_t i = 0; i &lt; 5; ++i)
+417     memcpy(frame-&gt;table + i, blocks[i], 3);
+418   return ASCIICHAT_OK;
+419 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_COLOR_TRUE</b>,
+    <b>ascii_half_frame_init()</b>, <b>ASCII_OTEL_SCOPE</b>,
+    <b>ascii_render_set_output_target()</b>, <b>ASCIICHAT_OK</b>,
+    <b>ascii_frame_t::bg</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ascii_frame_t::fg</b>, <b>ascii_frame_t::glyph</b>,
+    <b>ascii_frame_t::index</b>, <b>ascii_frame_t::packed</b>,
+    <b>SAFE_MALLOC</b>, <b>ascii_frame_t::scratch</b>, <b>SET_ERRNO</b>,
+    <b>ascii_frame_t::source_height</b>, <b>ascii_frame_t::stabilizer</b>,
+    <b>ascii_frame_t::table</b>, and <b>ascii_frame_t::width</b>.</p>
+<p class="Pp">Referenced by <b>ascii_half_frame_init()</b>,
+    <b>ascii_render_halfblocks()</b>, and <b>render_ascii_cells_sve()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_ascii_render_(const_"><a class="permalink" href="#char_*_ascii_render_(const_">char
+  * ascii_render (const <b>image_t</b> * image, const char * palette,
+  <b>ascii_color_t</b> mode, <b>bool</b> background, <b>bool</b> dither, const
+  <b>simd_cells_t</b> * ops)</a></h2>
+<p class="Pp">Definition at line <b>168</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>169                                             {
+170   if (!ops || mode &lt; ASCII_COLOR_NONE || mode &gt; ASCII_COLOR_TRUE) {
+171     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid rendering backend or color mode&quot;);
+172     return NULL;
+173   }
+174   if (!dither) {
+175 #if SIMD_SUPPORT_SSE2
+176     if (ops == &amp;simd_cells_sse2)
+177       return render_ascii_cells_sse2(image, palette, mode, background);
+178 #endif
+179 #if SIMD_SUPPORT_SSSE3
+180     if (ops == &amp;simd_cells_ssse3)
+181       return render_ascii_cells_ssse3(image, palette, mode, background);
+182 #endif
+183 #if SIMD_SUPPORT_AVX2
+184     if (ops == &amp;simd_cells_avx2)
+185       return render_ascii_cells_avx2(image, palette, mode, background);
+186 #endif
+187 #if SIMD_SUPPORT_NEON
+188     if (ops == &amp;simd_cells_neon)
+189       return render_ascii_cells_neon(image, palette, mode, background);
+190 #endif
+191 #if SIMD_SUPPORT_SVE
+192     if (ops == &amp;simd_cells_sve)
+193       return render_ascii_cells_sve(image, palette, mode, background);
+194 #endif
+195   }
+196   ascii_frame_t frame;
+197   if (ascii_frame_init(&amp;frame, image, palette) != ASCIICHAT_OK)
+198     return NULL;
+199   rgb_error_t *errors = NULL;
+200   if (mode == ASCII_COLOR_16 &amp;&amp; dither)
+201     errors = SAFE_CALLOC((size_t)image-&gt;w * (size_t)image-&gt;h, sizeof(rgb_error_t), rgb_error_t *);
+202   frame.dithered = errors != NULL;
+203   for (int y = 0; y &lt; image-&gt;h; ++y) {
+204     const uint8_t *source = (const uint8_t *)(image-&gt;pixels + (size_t)y * frame.width);
+205     ops-&gt;luminance(source, frame.luma, frame.width);
+206     ops-&gt;pack(source, frame.packed, frame.width);
+207     ops-&gt;lookup(frame.luma, frame.table, frame.glyph, frame.width);
+208     if (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256) {
+209       if (errors) {
+210         // Floyd-Steinberg error propagation is ordered; the other stages remain SIMD.
+211         for (int x = 0; x &lt; image-&gt;w; ++x) {
+212           uint32_t pixel = frame.packed[x];
+213           frame.index[x] = rgb_to_16color_dithered((int)(pixel &gt;&gt; 16), (int)((pixel &gt;&gt; 8) &amp; 255), (int)(pixel &amp; 255), x,
+214                                                    y, image-&gt;w, image-&gt;h, errors);
+215         }
+216       } else
+217         ops-&gt;quantize(frame.packed, frame.index, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
+218     }
+219     ascii_frame_emit_row(&amp;frame, mode, background, y + 1 &lt; image-&gt;h, ops);
+220   }
+221   SAFE_FREE(errors);
+222   return ascii_frame_finish(&amp;frame);
+223 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_COLOR_16</b>, <b>ASCII_COLOR_256</b>,
+    <b>ASCII_COLOR_TRUE</b>, <b>ascii_frame_emit_row()</b>,
+    <b>ascii_frame_finish()</b>, <b>ascii_frame_init()</b>,
+    <b>ascii_render()</b>, <b>ASCIICHAT_OK</b>, <b>ascii_frame_t::dithered</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ascii_frame_t::glyph</b>, <b>image_t::h</b>,
+    <b>ascii_frame_t::index</b>, <b>simd_cells_t::lookup</b>,
+    <b>ascii_frame_t::luma</b>, <b>simd_cells_t::luminance</b>,
+    <b>simd_cells_t::pack</b>, <b>ascii_frame_t::packed</b>,
+    <b>image_t::pixels</b>, <b>simd_cells_t::quantize</b>,
+    <b>render_ascii_cells_avx2()</b>, <b>render_ascii_cells_neon()</b>,
+    <b>render_ascii_cells_sse2()</b>, <b>render_ascii_cells_ssse3()</b>,
+    <b>render_ascii_cells_sve()</b>, <b>rgb_to_16color_dithered()</b>,
+    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>,
+    <b>simd_cells_avx2</b>, <b>simd_cells_neon</b>, <b>simd_cells_sse2</b>,
+    <b>simd_cells_ssse3</b>, <b>simd_cells_sve</b>, <b>ascii_frame_t::table</b>,
+    <b>image_t::w</b>, and <b>ascii_frame_t::width</b>.</p>
+<p class="Pp">Referenced by <b>ascii_render()</b>, <b>image_print()</b>,
+    <b>image_print_16color()</b>, <b>image_print_16color_dithered()</b>,
+    <b>image_print_16color_dithered_with_background()</b>,
+    <b>image_print_256color()</b>, <b>image_print_color()</b>,
+    <b>image_print_color_background()</b>, <b>image_print_color_simd()</b>,
+    <b>image_print_color_utf8()</b>, and
+  <b>image_print_with_capabilities()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_ascii_render_glyph_match_(const_"><a class="permalink" href="#char_*_ascii_render_glyph_match_(const_">char
+  * ascii_render_glyph_match (const <b>image_t</b> * image, <b>ascii_color_t</b>
+  mode, const <b>simd_cells_t</b> * ops, const char * palette)</a></h2>
+<p class="Pp">Definition at line <b>466</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>466                                                                                                                        {
+467   if (!image || !image-&gt;pixels || !ops || image-&gt;w &lt;= 0 || image-&gt;h &lt;= 0 || image-&gt;w % 8 || image-&gt;h % 8 ||
+468       mode &lt; ASCII_COLOR_NONE || mode &gt; ASCII_COLOR_TRUE) {
+469     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid glyph matching input&quot;);
+470     return NULL;
+471   }
+472   bool allowed[95] = {false};
+473   int (*shape_correlation)(const int16_t[16], const int16_t[16]) =
+474       ops-&gt;glyph_shape_correlation ? ops-&gt;glyph_shape_correlation : glyph_shape_correlation_scalar;
+475   if (palette) {
+476     if (!ascii_glyph_palette_supported(palette)) {
+477       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Glyph palette must contain printable ASCII characters&quot;);
+478       return NULL;
+479     }
+480     for (const unsigned char *p = (const unsigned char *)palette; *p; ++p)
+481       allowed[*p - 32] = true;
+482   } else {
+483     for (int i = 0; i &lt; 95; ++i)
+484       allowed[i] = true;
+485   }
+486   // Glyph masks do not change between cells. Prepare their tone and centered
+487   // shape once per frame instead of recomputing them for every candidate.
+488   int glyph_tone[95];
+489   int glyph_energy[95];
+490   int16_t centered_masks[95][16];
+491   for (int g = 0; g &lt; 95; ++g) {
+492     int sum = 0;
+493     for (int i = 0; i &lt; 16; ++i)
+494       sum += glyph_masks[g][i];
+495     int mean = sum / 16;
+496     glyph_tone[g] = sum * 255 / GLYPH_MASK_MAX_SUM;
+497     glyph_energy[g] = 0;
+498     for (int i = 0; i &lt; 16; ++i) {
+499       int centered = (int)glyph_masks[g][i] - mean;
+500       centered_masks[g][i] = (int16_t)centered;
+501       glyph_energy[g] += centered * centered;
+502     }
+503   }
+504   image_t cells = *image;
+505   cells.w /= 8;
+506   cells.h /= 8;
+507   ascii_frame_t frame;
+508   if (ascii_frame_init(&amp;frame, &amp;cells, &quot; .&quot;) != ASCIICHAT_OK)
+509     return NULL;
+510   frame.temporal_preselected = true;
+511   for (int y = 0; y &lt; cells.h; ++y) {
+512     for (int x = 0; x &lt; cells.w; ++x) {
+513       int luminance[16];
+514       int sample_mean = 0;
+515       for (int sy = 0; sy &lt; 4; ++sy) {
+516         const rgb_pixel_t *top = image-&gt;pixels + (size_t)(y * 8 + sy * 2) * (size_t)image-&gt;w + (size_t)(x * 8);
+517         const rgb_pixel_t *bottom = top + image-&gt;w;
+518         for (int sx = 0; sx &lt; 4; ++sx) {
+519           const rgb_pixel_t a = top[sx * 2], b = top[sx * 2 + 1];
+520           const rgb_pixel_t c = bottom[sx * 2], d = bottom[sx * 2 + 1];
+521           int i = sy * 4 + sx;
+522           int red = (a.r + b.r + c.r + d.r) / 4;
+523           int green = (a.g + b.g + c.g + d.g) / 4;
+524           int blue = (a.b + b.b + c.b + d.b) / 4;
+525           luminance[i] = (77 * red + 150 * green + 29 * blue) &gt;&gt; 8;
+526           sample_mean += luminance[i];
+527         }
+528       }
+529       sample_mean /= 16;
+530       int16_t centered_samples[16];
+531       int sample_energy = 0;
+532       for (int i = 0; i &lt; 16; ++i) {
+533         int centered = luminance[i] - sample_mean;
+534         centered_samples[i] = (int16_t)centered;
+535         sample_energy += centered * centered;
+536       }
+537       int best = -1;
+538       int64_t best_error = INT64_MAX;
+539       uint64_t previous_error = UINT64_MAX;
+540       ascii_temporal_cell_t *previous = frame.stabilizer ? &amp;frame.stabilizer-&gt;cells[(size_t)y * frame.width + x] : NULL;
+541       for (int g = 0; g &lt; 95; ++g) {
+542         if (!allowed[g])
+543           continue;
+544         // Normalize glyph density and compare local deviations around each mean.
+545         int tone_error = sample_mean - glyph_tone[g];
+546         int tone_cost = 16 * tone_error * tone_error;
+547         bool is_previous = previous &amp;&amp; previous-&gt;valid &amp;&amp; previous-&gt;glyph == (uint32_t)(g + 32);
+548         // Shape error is nonnegative, so this candidate cannot improve the
+549         // current best if its tone term already exceeds the whole score.
+550         // The previous glyph still needs a score for temporal hysteresis.
+551         if (!is_previous &amp;&amp; tone_cost &gt; best_error)
+552           continue;
+553         int dot = shape_correlation(centered_samples, centered_masks[g]);
+554         int64_t error = tone_cost + sample_energy + glyph_energy[g] - 2 * dot;
+555         if (is_previous)
+556           previous_error = (uint64_t)error;
+557         if (error &lt; best_error) {
+558           best_error = error;
+559           best = g;
+560         }
+561       }
+562       // Use the same top-left sample as the existing nearest-neighbor renderer.
+563       // Solving for glyph coverage here can clip all three color channels to white.
+564       rgb_pixel_t color = image-&gt;pixels[(size_t)(y * 8) * (size_t)image-&gt;w + (size_t)(x * 8)];
+565       uint32_t rgb = ((uint32_t)color.r &lt;&lt; 16) | ((uint32_t)color.g &lt;&lt; 8) | color.b;
+566       uint32_t selected = (uint32_t)(best + 32);
+567       if (previous) {
+568         uint8_t patch[16];
+569         for (int i = 0; i &lt; 16; ++i)
+570           patch[i] = (uint8_t)luminance[i];
+571         selected = ascii_stabilizer_choose(previous, patch, selected, (uint64_t)best_error, previous_error, rgb,
+572                                            frame.stabilizer-&gt;elapsed_ns, &amp;rgb);
+573       }
+574       frame.glyph[x] = selected;
+575       frame.packed[x] = rgb;
+576       frame.luma[x] = (uint8_t)((77 * ((rgb &gt;&gt; 16) &amp; 255) + 150 * ((rgb &gt;&gt; 8) &amp; 255) + 29 * (rgb &amp; 255)) &gt;&gt; 8);
+577     }
+578     if (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256)
+579       ops-&gt;quantize(frame.packed, frame.index, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
+580     ascii_frame_emit_row(&amp;frame, mode, false, y + 1 &lt; cells.h, ops);
+581   }
+582   return ascii_frame_finish(&amp;frame);
+583 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_COLOR_16</b>, <b>ASCII_COLOR_256</b>,
+    <b>ASCII_COLOR_TRUE</b>, <b>ascii_frame_emit_row()</b>,
+    <b>ascii_frame_finish()</b>, <b>ascii_frame_init()</b>,
+    <b>ascii_glyph_palette_supported()</b>, <b>ascii_render_glyph_match()</b>,
+    <b>ascii_stabilizer_choose()</b>, <b>ASCIICHAT_OK</b>,
+    <b>rgb_pixel_t::b</b>, <b>ascii_stabilizer_t::cells</b>,
+    <b>ascii_stabilizer_t::elapsed_ns</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>rgb_pixel_t::g</b>, <b>ascii_frame_t::glyph</b>,
+    <b>ascii_temporal_cell_t::glyph</b>, <b>GLYPH_MASK_MAX_SUM</b>,
+    <b>simd_cells_t::glyph_shape_correlation</b>,
+    <b>glyph_shape_correlation_scalar()</b>, <b>image_t::h</b>,
+    <b>ascii_frame_t::index</b>, <b>ascii_frame_t::luma</b>,
+    <b>ascii_frame_t::packed</b>, <b>image_t::pixels</b>,
+    <b>simd_cells_t::quantize</b>, <b>rgb_pixel_t::r</b>, <b>SET_ERRNO</b>,
+    <b>ascii_frame_t::stabilizer</b>,
+    <b>ascii_frame_t::temporal_preselected</b>,
+    <b>ascii_temporal_cell_t::valid</b>, <b>image_t::w</b>, and
+    <b>ascii_frame_t::width</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert_with_buffers_stabilized()</b>, and
+    <b>ascii_render_glyph_match()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_ascii_render_halfblocks_(const_"><a class="permalink" href="#char_*_ascii_render_halfblocks_(const_">char
+  * ascii_render_halfblocks (const <b>uint8_t</b> * rgb, int width, int height,
+  int stride_bytes, <b>ascii_color_t</b> color, const <b>simd_cells_t</b> *
+  ops)</a></h2>
+<p class="Pp">Two source rows per terminal row; the supplied backend processes
+    both rows.</p>
+<p class="Pp">Definition at line <b>225</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>226                                                        {
+227 #if SIMD_SUPPORT_SSE2
+228   if (ops == &amp;simd_cells_sse2)
+229     return render_halfblocks_sse2(rgb, width, height, stride, mode);
+230 #endif
+231 #if SIMD_SUPPORT_SSSE3
+232   if (ops == &amp;simd_cells_ssse3)
+233     return render_halfblocks_ssse3(rgb, width, height, stride, mode);
+234 #endif
+235 #if SIMD_SUPPORT_AVX2
+236   if (ops == &amp;simd_cells_avx2)
+237     return render_halfblocks_avx2(rgb, width, height, stride, mode);
+238 #endif
+239 #if SIMD_SUPPORT_NEON
+240   if (ops == &amp;simd_cells_neon)
+241     return render_halfblocks_neon(rgb, width, height, stride, mode);
+242 #endif
+243 #if SIMD_SUPPORT_SVE
+244   if (ops == &amp;simd_cells_sve)
+245     return render_halfblocks_sve(rgb, width, height, stride, mode);
+246 #endif
+247
+248   if (width &lt;= 0 || height &lt;= 0)
+249     return platform_strdup(&quot;&quot;);
+250   if (!ops) {
+251     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid half-block backend&quot;);
+252     return NULL;
+253   }
+254   ascii_frame_t frame;
+255   if (ascii_half_frame_init(&amp;frame, rgb, width, height, &amp;stride, mode) != ASCIICHAT_OK)
+256     return NULL;
+257   for (size_t y = 0; y &lt; (size_t)height; y += 2) {
+258     const uint8_t *top = rgb + y * (size_t)stride;
+259     const uint8_t *bottom = y + 1 &lt; (size_t)height ? top + stride : top;
+260     ops-&gt;pack(top, frame.packed, frame.width);
+261     ops-&gt;pack(bottom, frame.index, frame.width);
+262     if (mode == ASCII_COLOR_TRUE) {
+263       memcpy(frame.fg, frame.packed, frame.width * sizeof(uint32_t));
+264       memcpy(frame.bg, frame.index, frame.width * sizeof(uint32_t));
+265     } else if (mode != ASCII_COLOR_NONE) {
+266       ops-&gt;quantize(frame.packed, frame.fg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
+267       ops-&gt;quantize(frame.index, frame.bg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
+268     }
+269     ops-&gt;halfblock(frame.packed, frame.index, frame.glyph, frame.fg, frame.bg, frame.width, (unsigned)mode,
+270                    frame.table);
+271     ascii_frame_emit_halfrow(&amp;frame, mode, y + 2 &lt; (size_t)height, ops);
+272   }
+273   return ascii_frame_finish(&amp;frame);
+274 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_COLOR_16</b>, <b>ASCII_COLOR_NONE</b>,
+    <b>ASCII_COLOR_TRUE</b>, <b>ascii_frame_emit_halfrow()</b>,
+    <b>ascii_frame_finish()</b>, <b>ascii_half_frame_init()</b>,
+    <b>ascii_render_halfblocks()</b>, <b>ASCIICHAT_OK</b>,
+    <b>ascii_frame_t::bg</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ascii_frame_t::fg</b>, <b>ascii_frame_t::glyph</b>,
+    <b>simd_cells_t::halfblock</b>, <b>ascii_frame_t::index</b>,
+    <b>simd_cells_t::pack</b>, <b>ascii_frame_t::packed</b>,
+    <b>platform_strdup()</b>, <b>simd_cells_t::quantize</b>,
+    <b>render_halfblocks_avx2()</b>, <b>render_halfblocks_neon()</b>,
+    <b>render_halfblocks_sse2()</b>, <b>render_halfblocks_ssse3()</b>,
+    <b>render_halfblocks_sve()</b>, <b>SET_ERRNO</b>, <b>simd_cells_avx2</b>,
+    <b>simd_cells_neon</b>, <b>simd_cells_sse2</b>, <b>simd_cells_ssse3</b>,
+    <b>simd_cells_sve</b>, <b>ascii_frame_t::table</b>, and
+    <b>ascii_frame_t::width</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert()</b>,
+    <b>ascii_render_halfblocks()</b>, <b>image_print_with_capabilities()</b>,
+    <b>rgb_to_16color_halfblocks_scalar()</b>,
+    <b>rgb_to_256color_halfblocks_scalar()</b>,
+    <b>rgb_to_halfblocks_scalar()</b>, and
+    <b>rgb_to_truecolor_halfblocks_scalar()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>outbuf_t</b> * ascii_render_set_output_target (<b>outbuf_t</b>
+  * target)</h2>
+<p class="Pp">Internal one-shot output target, consumed by the next frame
+    initializer. Returns the prior target so capability conversion can restore
+    its scope.</p>
+<p class="Pp">Definition at line <b>97</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>97                                                            {
+98   outbuf_t *previous = g_output_target;
+99   g_output_target = target;
+100   return previous;
+101 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_render_set_output_target()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert_with_buffers_stabilized()</b>,
+    <b>ascii_frame_init()</b>, <b>ascii_half_frame_init()</b>,
+    <b>ascii_render_set_output_target()</b>, and
+  <b>render_halfblocks_sve()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> ascii_stabilizer_choose
+  (<b>ascii_temporal_cell_t</b> * cell, const <b>uint8_t</b> samples[16],
+  <b>uint32_t</b> candidate, <b>uint64_t</b> candidate_error, <b>uint64_t</b>
+  previous_error, <b>uint32_t</b> color, <b>uint64_t</b> elapsed_ns,
+  <b>uint32_t</b> * stabilized_color)</h2>
+<p class="Pp">Choose a glyph using current and previous candidate errors and
+    patch motion.</p>
+<p class="Pp">Definition at line <b>68</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>70                                                              {
+71   unsigned motion = 0;
+72   if (cell-&gt;valid) {
+73     for (size_t i = 0; i &lt; 16; ++i)
+74       motion += (unsigned)abs((int)samples[i] - (int)cell-&gt;samples[i]);
+75     motion /= 16;
+76   }
+77   uint32_t result = candidate;
+78   uint32_t output_color = color;
+79   if (cell-&gt;valid &amp;&amp; motion &lt;= ASCII_TEMPORAL_MOTION_LIMIT &amp;&amp; elapsed_ns &lt;= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
+80     uint64_t margin = candidate_error / 8 + 128;
+81     if (previous_error != UINT64_MAX &amp;&amp;
+82         (previous_error &lt;= candidate_error || previous_error - candidate_error &lt;= margin))
+83       result = cell-&gt;glyph;
+84     // Weight depends on elapsed time, avoiding a different response at each FPS.
+85     unsigned weight = (unsigned)(elapsed_ns * 256 / (elapsed_ns + ASCII_TEMPORAL_COLOR_TIME_NS));
+86     output_color = temporal_blend_color(cell-&gt;color, color, weight);
+87   }
+88   memcpy(cell-&gt;samples, samples, sizeof(cell-&gt;samples));
+89   cell-&gt;glyph = result;
+90   cell-&gt;color = output_color;
+91   cell-&gt;valid = true;
+92   if (stabilized_color)
+93     *stabilized_color = output_color;
+94   return result;
+95 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_stabilizer_choose()</b>,
+    <b>ASCII_TEMPORAL_COLOR_TIME_NS</b>, <b>ASCII_TEMPORAL_MAX_INTERVAL_NS</b>,
+    <b>ASCII_TEMPORAL_MOTION_LIMIT</b>, <b>ascii_temporal_cell_t::color</b>,
+    <b>ascii_temporal_cell_t::glyph</b>, <b>ascii_temporal_cell_t::samples</b>,
+    and <b>ascii_temporal_cell_t::valid</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
+    <b>ascii_render_glyph_match()</b>, and <b>ascii_stabilizer_choose()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ascii_stabilizer_prepare
+  (<b>ascii_stabilizer_t</b> * state, size_t width, size_t height,
+  <b>uint64_t</b> configuration)</h2>
+<p class="Pp">Prepare history for a viewport and rendering contract, resetting
+    it on change.</p>
+<p class="Pp">Definition at line <b>38</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>39                                                                    {
+40   if (!state || !width || !height || width &gt; SIZE_MAX / height ||
+41       width * height &gt; SIZE_MAX / sizeof(ascii_temporal_cell_t))
+42     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid stabilization viewport&quot;);
+43   if (state-&gt;cells &amp;&amp; state-&gt;width == width &amp;&amp; state-&gt;height == height &amp;&amp; state-&gt;configuration == configuration)
+44     return ASCIICHAT_OK;
+45   ascii_temporal_cell_t *cells = SAFE_CALLOC(width * height, sizeof(*cells), ascii_temporal_cell_t *);
+46   if (!cells)
+47     return SET_ERRNO(ERROR_MEMORY, &quot;Cannot allocate stabilization history&quot;);
+48   SAFE_FREE(state-&gt;cells);
+49   state-&gt;cells = cells;
+50   state-&gt;width = width;
+51   state-&gt;height = height;
+52   state-&gt;configuration = configuration;
+53   state-&gt;last_timestamp_ns = 0;
+54   state-&gt;elapsed_ns = UINT64_MAX;
+55   return ASCIICHAT_OK;
+56 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_stabilizer_prepare()</b>, <b>ASCIICHAT_OK</b>,
+    <b>ascii_stabilizer_t::cells</b>, <b>ascii_stabilizer_t::configuration</b>,
+    <b>ascii_stabilizer_t::elapsed_ns</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>ascii_stabilizer_t::height</b>,
+    <b>ascii_stabilizer_t::last_timestamp_ns</b>, <b>SAFE_CALLOC</b>,
+    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, and
+  <b>ascii_stabilizer_t::width</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert_with_buffers_stabilized()</b>, and
+    <b>ascii_stabilizer_prepare()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ascii_stabilizer_reset_("><a class="permalink" href="#void_ascii_stabilizer_reset_(">void
+  ascii_stabilizer_reset (<b>ascii_stabilizer_t</b> * state)</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>31                                                        {
+32   if (!state)
+33     return;
+34   SAFE_FREE(state-&gt;cells);
+35   memset(state, 0, sizeof(*state));
+36 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_stabilizer_reset()</b>,
+    <b>ascii_stabilizer_t::cells</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>ascii_stabilizer_reset()</b>,
+    <b>mirror_cleanup()</b>, <b>mirror_convert_frame()</b>,
+    <b>mirror_reset_stabilizer()</b>, <b>session_display_destroy()</b>,
+    <b>session_display_reset_stabilizer()</b>, and
+    <b>session_host_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ascii_stabilizer_t</b> * ascii_stabilizer_set_target
+  (<b>ascii_stabilizer_t</b> * state)</h2>
+<p class="Pp">Select history for the current thread until the previous target is
+    restored.</p>
+<p class="Pp">Definition at line <b>25</b> of file
+    <b>lib/video/ascii/render.c</b>.</p>
+<pre>25                                                                            {
+26   ascii_stabilizer_t *previous = g_stabilizer_target;
+27   g_stabilizer_target = state;
+28   return previous;
+29 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_stabilizer_set_target()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert_with_buffers_stabilized()</b>, and
+    <b>ascii_stabilizer_set_target()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

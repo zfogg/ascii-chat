@@ -39,19 +39,22 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef <b>bool</b>(* <b>backtrace_frame_filter_t</b>) (const char
-    *<b>frame</b>)
+<p class="Pp">typedef <b>bool</b>(*) <b>backtrace_frame_filter_t</b>(const char
+    *frame)
   <br/>
+  Frame filter callback for selective frame inclusion.
   <br/>
 </p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>backtrace_capture</b> (<b>backtrace_t</b> *bt)
+<p class="Pp"><b>bool</b> <b>backtrace_filter_error_internal</b> (const char
+    *frame)
   <br/>
-  Capture current stack into bt. void <b>backtrace_capture_and_symbolize</b>
-    (<b>backtrace_t</b> *bt)
+  void <b>backtrace_capture</b> (<b>backtrace_t</b> *bt)
+  <br/>
+  void <b>backtrace_capture_and_symbolize</b> (<b>backtrace_t</b> *bt)
   <br/>
   Capture and symbolize in one call. void <b>backtrace_free</b>
     (<b>backtrace_t</b> *bt)
@@ -61,9 +64,9 @@
   Free backtrace symbols. void <b>backtrace_symbolize</b> (<b>backtrace_t</b>
     *bt)
   <br/>
-  Symbolize bt-&gt;ptrs into bt-&gt;symbols. void <b>backtrace_print</b> (const
-    char *label, const <b>backtrace_t</b> *bt, int skip_frames, int max_frames,
-    <b>backtrace_frame_filter_t</b> filter)
+  Symbolize bt-&gt;ptrs into bt-&gt;symbols. void <b>backtrace_print</b>
+    (<b>log_level_t</b> level, const char *label, const <b>backtrace_t</b> *bt,
+    int skip_frames, int max_frames, <b>backtrace_frame_filter_t</b> filter)
   <br/>
   Print backtrace with dual output: colored stderr + plain log file. void
     <b>backtrace_print_simple</b> (int skip_frames)
@@ -87,8 +90,11 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
-  <b>bool</b>(* backtrace_frame_filter_t) (const char *<b>frame</b>)</a></h2>
-<p class="Pp">Definition at line <b>42</b> of file
+  <b>bool</b>(*) backtrace_frame_filter_t(const char *frame)</a></h2>
+<p class="Pp">Frame filter callback for selective frame inclusion. Used by
+    <b>backtrace_print()</b> to filter out unwanted frames. Return true to skip
+    (filter out) the frame, false to include it.</p>
+<p class="Pp">Definition at line <b>47</b> of file
     <b>platform/wasm/stubs/backtrace.c</b>.</p>
 </section>
 </section>
@@ -98,25 +104,18 @@
 <section class="Ss">
 <h2 class="Ss" id="void_backtrace_capture_("><a class="permalink" href="#void_backtrace_capture_(">void
   backtrace_capture (<b>backtrace_t</b> * bt)</a></h2>
-<p class="Pp">Capture current stack into bt. Calls <b>platform_backtrace()</b>
-    to capture raw return addresses. Does not symbolize (symbols remain
-  NULL).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>bt</i> Backtrace structure to fill (must not be
-  NULL)</div>
-<p class="Pp">Definition at line <b>9</b> of file
+<p class="Pp">Definition at line <b>14</b> of file
     <b>platform/wasm/stubs/backtrace.c</b>.</p>
-<pre>9                                         {
-10   if (bt) {
-11     bt-&gt;count = 0;
-12     bt-&gt;symbols = NULL;
-13   }
-14 }</pre>
+<pre>14                                         {
+15   if (bt) {
+16     bt-&gt;count = 0;
+17     bt-&gt;symbols = NULL;
+18   }
+19 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>backtrace_t::count</b>, and
-    <b>backtrace_t::symbols</b>.</p>
+<p class="Pp">References <b>backtrace_capture()</b>, <b>backtrace_t::count</b>,
+    and <b>backtrace_t::symbols</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_backtrace_capture_and_symbolize_("><a class="permalink" href="#void_backtrace_capture_and_symbolize_(">void
@@ -127,39 +126,55 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>bt</i> Backtrace structure to fill and symbolize (must
   not be NULL)</div>
-<p class="Pp">Definition at line <b>16</b> of file
+<p class="Pp">Definition at line <b>21</b> of file
     <b>platform/wasm/stubs/backtrace.c</b>.</p>
-<pre>16                                                       {
-17   if (bt) {
-18     bt-&gt;count = 0;
-19     bt-&gt;symbols = NULL;
-20   }
-21 }</pre>
+<pre>21                                                       {
+22   if (bt) {
+23     bt-&gt;count = 0;
+24     bt-&gt;symbols = NULL;
+25   }
+26 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>backtrace_t::count</b>, and
-    <b>backtrace_t::symbols</b>.</p>
+<p class="Pp">References <b>backtrace_capture_and_symbolize()</b>,
+    <b>backtrace_t::count</b>, and <b>backtrace_t::symbols</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> backtrace_filter_error_internal (const char *
+  frame)</h2>
+<p class="Pp">Filter implementation frames used to record an error context.</p>
+<p class="Pp">Definition at line <b>9</b> of file
+    <b>platform/wasm/stubs/backtrace.c</b>.</p>
+<pre>9                                                         {
+10   (void)frame;
+11   return false;
+12 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>backtrace_filter_error_internal()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_backtrace_free_("><a class="permalink" href="#void_backtrace_free_(">void
   backtrace_free (<b>backtrace_t</b> * bt)</a></h2>
-<p class="Pp">Definition at line <b>23</b> of file
+<p class="Pp">Definition at line <b>28</b> of file
     <b>platform/wasm/stubs/backtrace.c</b>.</p>
-<pre>23                                      {
-24   if (bt) {
-25     bt-&gt;count = 0;
-26     bt-&gt;symbols = NULL;
-27   }
-28 }</pre>
+<pre>28                                      {
+29   if (bt) {
+30     bt-&gt;count = 0;
+31     bt-&gt;symbols = NULL;
+32   }
+33 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>backtrace_t::count</b>, and
+<p class="Pp">References <b>backtrace_free()</b>, <b>backtrace_t::count</b>, and
     <b>backtrace_t::symbols</b>.</p>
+<p class="Pp">Referenced by <b>backtrace_free()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_print_(const_char_*_label,_const_"><a class="permalink" href="#void_backtrace_print_(const_char_*_label,_const_">void
-  backtrace_print (const char * label, const <b>backtrace_t</b> * bt, int
-  skip_frames, int max_frames, <b>backtrace_frame_filter_t</b> filter)</a></h2>
+<h2 class="Ss" id="void_backtrace_print_("><a class="permalink" href="#void_backtrace_print_(">void
+  backtrace_print (<b>log_level_t</b> level, const char * label, const
+  <b>backtrace_t</b> * bt, int skip_frames, int max_frames,
+  <b>backtrace_frame_filter_t</b> filter)</a></h2>
 <p class="Pp">Print backtrace with dual output: colored stderr + plain log file.
     Intelligently formats and routes backtraces to multiple destinations:</p>
 <ul class="Bl-bullet">
@@ -189,8 +204,10 @@
 ...
 </pre>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>label</i> Header label (e.g., &quot;Backtrace&quot;,
-  &quot;Leak trace&quot;, &quot;Assertion failure&quot;)
+<div class="Bd-indent"><i>level</i> Log severity for the entire backtrace entry
+<br/>
+<i>label</i> Header label (e.g., &quot;Backtrace&quot;, &quot;Leak trace&quot;,
+  &quot;Assertion failure&quot;)
 <br/>
 <i>bt</i> Backtrace to print (must not be NULL, must be symbolized via
   backtrace_capture_and_symbolize)
@@ -219,18 +236,20 @@
 <p class="Pp"><b>See also</b></p>
 <div class="Bd-indent"><b>backtrace_format()</b> for buffer-based output (safe
   for log system)</div>
-<p class="Pp">Definition at line <b>44</b> of file
+<p class="Pp">Definition at line <b>49</b> of file
     <b>platform/wasm/stubs/backtrace.c</b>.</p>
-<pre>45                                                       {
-46   (void)label;
-47   (void)bt;
-48   (void)skip_frames;
-49   (void)max_frames;
-50   (void)filter;
-51   // No-op for WASM
-52 }</pre>
+<pre>50                                                       {
+51   (void)level;
+52   (void)label;
+53   (void)bt;
+54   (void)skip_frames;
+55   (void)max_frames;
+56   (void)filter;
+57   // No-op for WASM
+58 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>backtrace_print()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_backtrace_symbolize_("><a class="permalink" href="#void_backtrace_symbolize_(">void
@@ -243,14 +262,15 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>bt</i> Backtrace structure to symbolize (must not be
   NULL)</div>
-<p class="Pp">Definition at line <b>37</b> of file
+<p class="Pp">Definition at line <b>42</b> of file
     <b>platform/wasm/stubs/backtrace.c</b>.</p>
-<pre>37                                           {
-38   (void)bt;
-39   // No-op for WASM
-40 }</pre>
+<pre>42                                           {
+43   (void)bt;
+44   // No-op for WASM
+45 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>backtrace_symbolize()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_backtrace_t_free_("><a class="permalink" href="#void_backtrace_t_free_(">void
@@ -261,18 +281,18 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>bt</i> Backtrace structure (must not be NULL)</div>
-<p class="Pp">Definition at line <b>30</b> of file
+<p class="Pp">Definition at line <b>35</b> of file
     <b>platform/wasm/stubs/backtrace.c</b>.</p>
-<pre>30                                        {
-31   if (bt) {
-32     bt-&gt;count = 0;
-33     bt-&gt;symbols = NULL;
-34   }
-35 }</pre>
+<pre>35                                        {
+36   if (bt) {
+37     bt-&gt;count = 0;
+38     bt-&gt;symbols = NULL;
+39   }
+40 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>backtrace_t::count</b>, and
-    <b>backtrace_t::symbols</b>.</p>
+<p class="Pp">References <b>backtrace_t_free()</b>, <b>backtrace_t::count</b>,
+    and <b>backtrace_t::symbols</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -282,7 +302,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

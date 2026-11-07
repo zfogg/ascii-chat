@@ -42,14 +42,16 @@
 <p class="Pp">void <b>shutdown_register_callback</b> (<b>shutdown_check_fn</b>
     callback)
   <br/>
-  Register application's shutdown check function. <b>bool</b>
-    <b>shutdown_is_requested</b> (void)
+  Register application's shutdown check function. void <b>shutdown_request</b>
+    (void)
+  <br/>
+  <b>bool</b> <b>shutdown_is_requested</b> (void)
   <br/>
   Check if shutdown has been requested. <b>__attribute__</b> ((constructor))
   <br/>
   Register fork handlers for common module. <b>asciichat_error_t</b>
-    <b>asciichat_shared_init</b> (const char *<b>log_file</b>, <b>bool</b>
-    is_client)
+    <b>asciichat_shared_init</b> (const char *log_file, <b>bool</b> is_client,
+    <b>bool</b> quiet_startup)
   <br/>
   Initialize common subsystems shared by client and server. void
     <b>asciichat_shared_destroy</b> (void)
@@ -99,10 +101,10 @@
 <h2 class="Ss" id="__attribute___((constructor)_)"><a class="permalink" href="#__attribute___((constructor)_)">__attribute__
   ((constructor) )</a></h2>
 <p class="Pp">Register fork handlers for common module.</p>
-<p class="Pp">Definition at line <b>110</b> of file <b>common.c</b>.</p>
-<pre>110                                                                              {
-111   pthread_atfork(NULL, NULL, asciichat_common_atfork_child);
-112 }</pre>
+<p class="Pp">Definition at line <b>125</b> of file <b>common.c</b>.</p>
+<pre>125                                                                              {
+126   pthread_atfork(NULL, NULL, asciichat_common_atfork_child);
+127 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -114,7 +116,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

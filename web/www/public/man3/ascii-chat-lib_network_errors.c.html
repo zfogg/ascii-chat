@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>errors.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">errors.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">errors.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">errors.c - Network error handling utilities implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>network_error_is_local_rejection</b>
+    (<b>asciichat_error_t</b> code)
+  <br/>
+  <b>network_error_action_t</b> <b>network_error_action</b>
+    (<b>asciichat_error_t</b> code)
+  <br/>
+  <b>asciichat_error_t</b> <b>network_error_public_code</b>
+    (<b>asciichat_error_t</b> code)
+  <br/>
+  <b>asciichat_error_t</b> <b>network_error_from_acip</b> (<b>uint8_t</b> code)
+  <br/>
+  <b>asciichat_error_t</b> <b>network_error_decode</b> (<b>packet_type_t</b>
+    type, const void *payload, size_t size)
+  <br/>
+  <b>asciichat_error_t</b> <b>send_error_packet</b> (<b>socket_t</b> sockfd,
+    <b>asciichat_error_t</b> error_code)
+  <br/>
+  Send an ACIP error packet using <b>asciichat_error_t</b>.
+    <b>asciichat_error_t</b> <b>send_error_packet_message</b> (<b>socket_t</b>
+    sockfd, <b>asciichat_error_t</b> error_code, const char *message)
+  <br/>
+  Send an ACIP error packet with a public message. <b>asciichat_error_t</b>
+    <b>check_and_record_rate_limit</b> (<b>rate_limiter_t</b> *rate_limiter,
+    const char *client_ip, <b>rate_event_type_t</b> event_type, <b>bool</b>
+    *allowed)
+  <br/>
+  Check rate limit and record an allowed event. <b>asciichat_error_t</b>
+    <b>check_and_record_packet_rate_limit</b> (<b>rate_limiter_t</b>
+    *rate_limiter, const char *client_ip, <b>packet_type_t</b> packet_type,
+    <b>bool</b> *allowed)
+  <br/>
+  Map packet type to rate event type and check rate limit.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Network error handling utilities implementation.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>lib/network/errors.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> check_and_record_packet_rate_limit
+  (<b>rate_limiter_t</b> * rate_limiter, const char * client_ip,
+  <b>packet_type_t</b> packet_type, <b>bool</b> * allowed)</h2>
+<p class="Pp">Map packet type to rate event type and check rate limit. Maps
+    <b>packet_type_t</b> to the corresponding <b>rate_event_type_t</b> and
+    performs rate limiting check. The caller owns any error response and
+    recovery scope.</p>
+<p class="Pp"></p>
+<p class="Pp">Packet type to rate event mapping:</p>
+<ul class="Bl-bullet">
+  <li>IMAGE_FRAME -&gt; RATE_EVENT_IMAGE_FRAME</li>
+  <li>AUDIO, AUDIO_BATCH, AUDIO_OPUS, AUDIO_OPUS_BATCH -&gt;
+    RATE_EVENT_AUDIO</li>
+  <li>PING, PONG -&gt; RATE_EVENT_PING</li>
+  <li>CLIENT_JOIN -&gt; RATE_EVENT_CLIENT_JOIN</li>
+  <li>CLIENT_CAPABILITIES, STREAM_START, STREAM_STOP, CLIENT_LEAVE -&gt;
+      RATE_EVENT_CONTROL</li>
+  <li>All other packets -&gt; No rate limiting (always allowed)</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>rate_limiter</i> Rate limiter instance
+<br/>
+<i>client_ip</i> Client IP address
+<br/>
+<i>packet_type</i> Packet type being processed
+<br/>
+<i>allowed</i> Output quota decision; false on failure</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK for a completed decision, typed failure
+  otherwise</div>
+<p class="Pp">Definition at line <b>159</b> of file
+  <b>lib/network/errors.c</b>.</p>
+<pre>160                                                                                                {
+161   if (!allowed)
+162     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing rate-limit decision output&quot;);
+163   *allowed = false;
+164   // Map packet type to rate event type
+165   rate_event_type_t event_type;
+166
+167   switch (packet_type) {
+168   case PACKET_TYPE_IMAGE_FRAME:
+169     event_type = RATE_EVENT_IMAGE_FRAME;
+170     break;
+171
+172   case PACKET_TYPE_AUDIO_BATCH:
+173   case PACKET_TYPE_AUDIO_OPUS_BATCH:
+174     event_type = RATE_EVENT_AUDIO;
+175     break;
+176
+177   case PACKET_TYPE_PING:
+178   case PACKET_TYPE_PONG:
+179     event_type = RATE_EVENT_PING;
+180     break;
+181
+182   case PACKET_TYPE_CLIENT_JOIN:
+183     event_type = RATE_EVENT_CLIENT_JOIN;
+184     break;
+185
+186   case PACKET_TYPE_CLIENT_CAPABILITIES:
+187   case PACKET_TYPE_STREAM_START:
+188   case PACKET_TYPE_STREAM_STOP:
+189   case PACKET_TYPE_CLIENT_LEAVE:
+190     event_type = RATE_EVENT_CONTROL;
+191     break;
+192
+193   default:
+194     // No rate limiting for other packet types
+195     *allowed = true;
+196     return ASCIICHAT_OK;
+197   }
+198
+199   // Use the existing check_and_record_rate_limit function
+200   return check_and_record_rate_limit(rate_limiter, client_ip, event_type, allowed);
+201 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>check_and_record_packet_rate_limit()</b>,
+    <b>check_and_record_rate_limit()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>PACKET_TYPE_AUDIO_BATCH</b>, <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>,
+    <b>PACKET_TYPE_CLIENT_CAPABILITIES</b>, <b>PACKET_TYPE_CLIENT_JOIN</b>,
+    <b>PACKET_TYPE_CLIENT_LEAVE</b>, <b>PACKET_TYPE_IMAGE_FRAME</b>,
+    <b>PACKET_TYPE_PING</b>, <b>PACKET_TYPE_PONG</b>,
+    <b>PACKET_TYPE_STREAM_START</b>, <b>PACKET_TYPE_STREAM_STOP</b>,
+    <b>RATE_EVENT_AUDIO</b>, <b>RATE_EVENT_CLIENT_JOIN</b>,
+    <b>RATE_EVENT_CONTROL</b>, <b>RATE_EVENT_IMAGE_FRAME</b>,
+    <b>RATE_EVENT_PING</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>check_and_record_packet_rate_limit()</b>, and
+    <b>process_decrypted_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> check_and_record_rate_limit
+  (<b>rate_limiter_t</b> * rate_limiter, const char * client_ip,
+  <b>rate_event_type_t</b> event_type, <b>bool</b> * allowed)</h2>
+<p class="Pp">Check rate limit and record an allowed event. Helper function that
+    checks rate limit and records the event if allowed. Encapsulates the common
+    pattern:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Check rate limit</dd>
+  <dt>2.</dt>
+  <dd>Return allowed=false if exceeded</dd>
+  <dt>3.</dt>
+  <dd>Record event if allowed</dd>
+</dl>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>rate_limiter</i> Rate limiter instance
+<br/>
+<i>client_ip</i> Client IP address for logging
+<br/>
+<i>event_type</i> Type of event being rate limited
+<br/>
+<i>allowed</i> Output quota decision; false on failure</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK for a completed decision, typed failure
+  otherwise</div>
+<p class="Pp">Definition at line <b>141</b> of file
+  <b>lib/network/errors.c</b>.</p>
+<pre>142                                                                                            {
+143   if (!allowed)
+144     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing rate-limit decision output&quot;);
+145   *allowed = false;
+146   asciichat_error_t result = rate_limiter_check(rate_limiter, client_ip, event_type, NULL, allowed);
+147   if (result != ASCIICHAT_OK) {
+148     *allowed = false;
+149     return result;
+150   }
+151   if (!*allowed)
+152     return ASCIICHAT_OK;
+153   result = rate_limiter_record(rate_limiter, client_ip, event_type);
+154   if (result != ASCIICHAT_OK)
+155     *allowed = false;
+156   return result;
+157 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>check_and_record_rate_limit()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>rate_limiter_check()</b>, <b>rate_limiter_record()</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>check_and_record_packet_rate_limit()</b>, and
+    <b>check_and_record_rate_limit()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>network_error_action_t</b> network_error_action
+  (<b>asciichat_error_t</b> code)</h2>
+<p class="Pp">Definition at line <b>15</b> of file
+  <b>lib/network/errors.c</b>.</p>
+<pre>15                                                                     {
+16   switch (code) {
+17   case ERROR_AUDIO:
+18     return NETWORK_ERROR_CONTINUE;
+19   case ERROR_SESSION_FULL:
+20   case ERROR_RATE_LIMITED:
+21   case ERROR_NETWORK:
+22   case ERROR_NETWORK_TIMEOUT:
+23   case ERROR_NETWORK_CONNECT:
+24     return NETWORK_ERROR_RETRY;
+25   default:
+26     return NETWORK_ERROR_STOP;
+27   }
+28 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_AUDIO</b>, <b>ERROR_NETWORK</b>,
+    <b>ERROR_NETWORK_CONNECT</b>, <b>ERROR_NETWORK_TIMEOUT</b>,
+    <b>ERROR_RATE_LIMITED</b>, <b>ERROR_SESSION_FULL</b>,
+    <b>network_error_action()</b>, <b>NETWORK_ERROR_CONTINUE</b>,
+    <b>NETWORK_ERROR_RETRY</b>, and <b>NETWORK_ERROR_STOP</b>.</p>
+<p class="Pp">Referenced by <b>network_error_action()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> network_error_decode
+  (<b>packet_type_t</b> type, const void * payload, size_t size)</h2>
+<p class="Pp">Decode either discovery or application error packets with bounded
+    payload validation.</p>
+<p class="Pp">Definition at line <b>69</b> of file
+  <b>lib/network/errors.c</b>.</p>
+<pre>69                                                                                              {
+70   asciichat_error_t code;
+71   if (!payload)
+72     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Missing remote error payload&quot;);
+73   if (type == PACKET_TYPE_ACIP_ERROR) {
+74     if (size != sizeof(acip_error_t))
+75       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid discovery error payload length&quot;);
+76     code = network_error_from_acip(((const acip_error_t *)payload)-&gt;error_code);
+77   } else if (type == PACKET_TYPE_ERROR_MESSAGE) {
+78     char message[MAX_ERROR_MESSAGE_LENGTH + 1];
+79     asciichat_error_t result = packet_parse_error_message(payload, size, &amp;code, message, sizeof(message), NULL);
+80     if (result != ASCIICHAT_OK)
+81       return result;
+82     code = network_error_public_code(code);
+83   } else {
+84     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Unexpected rejection packet type&quot;);
+85   }
+86   return SET_ERRNO(code, &quot;Remote request rejected: %s&quot;, asciichat_error_string(code));
+87 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_error_t</b>, <b>ASCIICHAT_OK</b>,
+    <b>ERROR_NETWORK_PROTOCOL</b>, <b>MAX_ERROR_MESSAGE_LENGTH</b>,
+    <b>network_error_decode()</b>, <b>network_error_from_acip()</b>,
+    <b>network_error_public_code()</b>, <b>packet_parse_error_message()</b>,
+    <b>PACKET_TYPE_ACIP_ERROR</b>, <b>PACKET_TYPE_ERROR_MESSAGE</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acds_protocol_receive()</b>, and
+    <b>network_error_decode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> network_error_from_acip (<b>uint8_t</b>
+  code)</h2>
+<p class="Pp">Definition at line <b>49</b> of file
+  <b>lib/network/errors.c</b>.</p>
+<pre>49                                                         {
+50   switch (code) {
+51   case ACIP_ERROR_SESSION_NOT_FOUND:
+52     return ERROR_SESSION_NOT_FOUND;
+53   case ACIP_ERROR_SESSION_FULL:
+54     return ERROR_SESSION_FULL;
+55   case ACIP_ERROR_INVALID_PASSWORD:
+56     return ERROR_INVALID_PASSWORD;
+57   case ACIP_ERROR_INVALID_SIGNATURE:
+58     return ERROR_INVALID_SIGNATURE;
+59   case ACIP_ERROR_RATE_LIMITED:
+60     return ERROR_RATE_LIMITED;
+61   case ACIP_ERROR_STRING_TAKEN:
+62     return ERROR_ACDS_STRING_TAKEN;
+63   case ACIP_ERROR_STRING_INVALID:
+64     return ERROR_ACDS_STRING_INVALID;
+65   default:
+66     return ERROR_INTERNAL;
+67   }
+68 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACIP_ERROR_INVALID_PASSWORD</b>,
+    <b>ACIP_ERROR_INVALID_SIGNATURE</b>, <b>ACIP_ERROR_RATE_LIMITED</b>,
+    <b>ACIP_ERROR_SESSION_FULL</b>, <b>ACIP_ERROR_SESSION_NOT_FOUND</b>,
+    <b>ACIP_ERROR_STRING_INVALID</b>, <b>ACIP_ERROR_STRING_TAKEN</b>,
+    <b>ERROR_ACDS_STRING_INVALID</b>, <b>ERROR_ACDS_STRING_TAKEN</b>,
+    <b>ERROR_INTERNAL</b>, <b>ERROR_INVALID_PASSWORD</b>,
+    <b>ERROR_INVALID_SIGNATURE</b>, <b>ERROR_RATE_LIMITED</b>,
+    <b>ERROR_SESSION_FULL</b>, <b>ERROR_SESSION_NOT_FOUND</b>, and
+    <b>network_error_from_acip()</b>.</p>
+<p class="Pp">Referenced by <b>acds_protocol_receive()</b>,
+    <b>network_error_decode()</b>, and <b>network_error_from_acip()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> network_error_is_local_rejection
+  (<b>asciichat_error_t</b> code)</h2>
+<p class="Pp">True only for local packet construction failures that have not
+    reached transport I/O.</p>
+<p class="Pp">Definition at line <b>11</b> of file
+  <b>lib/network/errors.c</b>.</p>
+<pre>11                                                               {
+12   return code == ERROR_INVALID_PARAM || code == ERROR_INVALID_FRAME || code == ERROR_NETWORK_SIZE ||
+13          code == ERROR_BUFFER_OVERFLOW || code == ERROR_BUFFER_FULL || code == ERROR_MEMORY;
+14 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_BUFFER_FULL</b>, <b>ERROR_BUFFER_OVERFLOW</b>,
+    <b>ERROR_INVALID_FRAME</b>, <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+    <b>ERROR_NETWORK_SIZE</b>, and
+  <b>network_error_is_local_rejection()</b>.</p>
+<p class="Pp">Referenced by <b>network_error_is_local_rejection()</b>,
+    <b>threaded_send_audio_batch_packet()</b>,
+    <b>threaded_send_audio_opus()</b>, <b>threaded_send_audio_opus_batch()</b>,
+    <b>threaded_send_image_frame()</b>,
+    <b>threaded_send_image_frame_encoded()</b>, and
+    <b>threaded_send_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> network_error_public_code
+  (<b>asciichat_error_t</b> code)</h2>
+<p class="Pp">Allowlisted public application code; internal failures become
+    ERROR_INTERNAL.</p>
+<p class="Pp">Definition at line <b>29</b> of file
+  <b>lib/network/errors.c</b>.</p>
+<pre>29                                                                     {
+30   switch (code) {
+31   case ERROR_AUDIO:
+32   case ERROR_SESSION_FULL:
+33   case ERROR_SESSION_NOT_FOUND:
+34   case ERROR_RATE_LIMITED:
+35   case ERROR_INVALID_PASSWORD:
+36   case ERROR_INVALID_SIGNATURE:
+37   case ERROR_CRYPTO_AUTH:
+38   case ERROR_CRYPTO_VERIFICATION:
+39   case ERROR_NETWORK_PROTOCOL:
+40   case ERROR_ACDS_STRING_TAKEN:
+41   case ERROR_ACDS_STRING_INVALID:
+42     return code;
+43   case ERROR_CRYPTO:
+44     return ERROR_CRYPTO_AUTH;
+45   default:
+46     return ERROR_INTERNAL;
+47   }
+48 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_ACDS_STRING_INVALID</b>,
+    <b>ERROR_ACDS_STRING_TAKEN</b>, <b>ERROR_AUDIO</b>, <b>ERROR_CRYPTO</b>,
+    <b>ERROR_CRYPTO_AUTH</b>, <b>ERROR_CRYPTO_VERIFICATION</b>,
+    <b>ERROR_INTERNAL</b>, <b>ERROR_INVALID_PASSWORD</b>,
+    <b>ERROR_INVALID_SIGNATURE</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+    <b>ERROR_RATE_LIMITED</b>, <b>ERROR_SESSION_FULL</b>,
+    <b>ERROR_SESSION_NOT_FOUND</b>, and <b>network_error_public_code()</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_error()</b>,
+    <b>network_error_decode()</b>, <b>network_error_public_code()</b>,
+    <b>packet_send_error()</b>, and <b>send_error_packet_message()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> send_error_packet (<b>socket_t</b>
+  sockfd, <b>asciichat_error_t</b> error_code)</h2>
+<p class="Pp">Send an ACIP error packet using <b>asciichat_error_t</b>. Converts
+    an <b>asciichat_error_t</b> code to an ACIP error packet and sends it. Uses
+    asciichat_error_string() for the error message.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sockfd</i> Socket to send error on
+<br/>
+<i>error_code</i> Error code from <b>asciichat_error_t</b> enum</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>89</b> of file
+  <b>lib/network/errors.c</b>.</p>
+<pre>89                                                                                    {
+90   return send_error_packet_message(sockfd, error_code, asciichat_error_string(error_code));
+91 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>send_error_packet()</b>, and
+    <b>send_error_packet_message()</b>.</p>
+<p class="Pp">Referenced by <b>send_error_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> send_error_packet_message
+  (<b>socket_t</b> sockfd, <b>asciichat_error_t</b> error_code, const char *
+  message)</h2>
+<p class="Pp">Send an ACIP error packet with a public message. Maps application
+    codes to discovery wire codes and uses their fixed public text. The legacy
+    message argument is ignored to avoid exposing internal diagnostics.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sockfd</i> Socket to send error on
+<br/>
+<i>error_code</i> Error code from <b>asciichat_error_t</b> enum
+<br/>
+<i>message</i> Legacy argument, ignored</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>93</b> of file
+  <b>lib/network/errors.c</b>.</p>
+<pre>93                                                                                                                 {
+94   if (sockfd == INVALID_SOCKET_VALUE) {
+95     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket&quot;);
+96   }
+97
+98   // Keep the legacy parameter for source compatibility; only allowlisted text goes on the wire.
+99   (void)message;
+100
+101   // Construct ACIP error packet
+102   acip_error_t error = {0};
+103   switch (error_code) {
+104   case ERROR_SESSION_NOT_FOUND:
+105     error.error_code = ACIP_ERROR_SESSION_NOT_FOUND;
+106     break;
+107   case ERROR_SESSION_FULL:
+108     error.error_code = ACIP_ERROR_SESSION_FULL;
+109     break;
+110   case ERROR_INVALID_PASSWORD:
+111     error.error_code = ACIP_ERROR_INVALID_PASSWORD;
+112     break;
+113   case ERROR_INVALID_SIGNATURE:
+114     error.error_code = ACIP_ERROR_INVALID_SIGNATURE;
+115     break;
+116   case ERROR_RATE_LIMITED:
+117     error.error_code = ACIP_ERROR_RATE_LIMITED;
+118     break;
+119   case ERROR_ACDS_STRING_TAKEN:
+120     error.error_code = ACIP_ERROR_STRING_TAKEN;
+121     break;
+122   case ERROR_ACDS_STRING_INVALID:
+123     error.error_code = ACIP_ERROR_STRING_INVALID;
+124     break;
+125   default:
+126     error.error_code = ACIP_ERROR_INTERNAL;
+127     break;
+128   }
+129   SAFE_STRNCPY(error.error_message, asciichat_error_string(network_error_public_code(error_code)),
+130                sizeof(error.error_message));
+131
+132   // Send error packet
+133   int result = send_packet(sockfd, PACKET_TYPE_ACIP_ERROR, &amp;error, sizeof(error));
+134   if (result &lt; 0) {
+135     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send error packet&quot;);
+136   }
+137
+138   return ASCIICHAT_OK;
+139 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACIP_ERROR_INTERNAL</b>,
+    <b>ACIP_ERROR_INVALID_PASSWORD</b>, <b>ACIP_ERROR_INVALID_SIGNATURE</b>,
+    <b>ACIP_ERROR_RATE_LIMITED</b>, <b>ACIP_ERROR_SESSION_FULL</b>,
+    <b>ACIP_ERROR_SESSION_NOT_FOUND</b>, <b>ACIP_ERROR_STRING_INVALID</b>,
+    <b>ACIP_ERROR_STRING_TAKEN</b>, <b>acip_error_t</b>, <b>ASCIICHAT_OK</b>,
+    <b>ERROR_ACDS_STRING_INVALID</b>, <b>ERROR_ACDS_STRING_TAKEN</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_PASSWORD</b>,
+    <b>ERROR_INVALID_SIGNATURE</b>, <b>ERROR_NETWORK</b>,
+    <b>ERROR_RATE_LIMITED</b>, <b>ERROR_SESSION_FULL</b>,
+    <b>ERROR_SESSION_NOT_FOUND</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>network_error_public_code()</b>, <b>PACKET_TYPE_ACIP_ERROR</b>,
+    <b>SAFE_STRNCPY</b>, <b>send_error_packet_message()</b>,
+    <b>send_packet()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>send_error_packet()</b>, and
+    <b>send_error_packet_message()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

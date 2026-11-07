@@ -50,7 +50,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef <b>bool</b>(* <b>shutdown_check_fn</b>) (void)
+<p class="Pp">typedef <b>bool</b>(*) <b>shutdown_check_fn</b>(void)
   <br/>
   Shutdown check callback function type.
   <br/>
@@ -62,8 +62,10 @@
 <p class="Pp">void <b>shutdown_register_callback</b> (<b>shutdown_check_fn</b>
     callback)
   <br/>
-  Register application's shutdown check function. <b>bool</b>
-    <b>shutdown_is_requested</b> (void)
+  Register application's shutdown check function. void <b>shutdown_request</b>
+    (void)
+  <br/>
+  <b>bool</b> <b>shutdown_is_requested</b> (void)
   <br/>
   Check if shutdown has been requested.
   <br/>
@@ -90,7 +92,7 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
-  <b>bool</b>(* shutdown_check_fn) (void)</a></h2>
+  <b>bool</b>(*) shutdown_check_fn(void)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/shutdown.h</b>&gt;<b></b></p>
 <p class="Pp">Shutdown check callback function type.</p>
@@ -115,20 +117,26 @@
 <div class="Bd-indent">Use this in library code to check for shutdown requests
   without accessing application state directly. The callback must be registered
   first with <b>shutdown_register_callback()</b>.</div>
-<p class="Pp">Definition at line <b>73</b> of file <b>common.c</b>.</p>
-<pre>73                                  {
-74   shutdown_check_fn callback = (shutdown_check_fn)atomic_ptr_load(&amp;g_shutdown_callback);
-75   if (callback == NULL) {
-76     return false; // No callback registered, assume not shutting down
-77   }
-78   return callback();
-79 }</pre>
+<p class="Pp">Definition at line <b>85</b> of file <b>common.c</b>.</p>
+<pre>85                                  {
+86   if (atomic_load_u64(&amp;g_shutdown_requested)) {
+87     return true;
+88   }
+89   shutdown_check_fn callback = (shutdown_check_fn)atomic_ptr_load(&amp;g_shutdown_callback);
+90   if (callback == NULL) {
+91     return false; // No callback registered, assume not shutting down
+92   }
+93   return callback();
+94 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_ptr_load()</b>.</p>
+<p class="Pp">References <b>atomic_load_u64()</b>, <b>atomic_ptr_load()</b>, and
+    <b>shutdown_is_requested()</b>.</p>
 <p class="Pp">Referenced by <b>log_plain_msg()</b>,
     <b>log_plain_stderr_msg()</b>, <b>log_plain_stderr_nonewline_msg()</b>,
-    <b>log_plain_stdout_msg()</b>, and <b>splash_wait_for_animation()</b>.</p>
+    <b>log_plain_stdout_msg()</b>, <b>shutdown_is_requested()</b>,
+    <b>splash_wait_for_animation()</b>, <b>stats_runtime_start()</b>,
+    <b>ui_input_wait_key()</b>, and <b>update_banner_show_prompt()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_shutdown_register_callback_("><a class="permalink" href="#void_shutdown_register_callback_(">void
@@ -144,14 +152,33 @@
   application's shutdown detection function. Library code should use
   <b>shutdown_is_requested()</b> instead of accessing application state
   directly.</div>
-<p class="Pp">Definition at line <b>69</b> of file <b>common.c</b>.</p>
-<pre>69                                                             {
-70   atomic_ptr_store(&amp;g_shutdown_callback, (void *)callback);
-71 }</pre>
+<p class="Pp">Definition at line <b>77</b> of file <b>common.c</b>.</p>
+<pre>77                                                             {
+78   atomic_ptr_store(&amp;g_shutdown_callback, (void *)callback);
+79 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_ptr_store()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>, and <b>server_main()</b>.</p>
+<p class="Pp">References <b>atomic_ptr_store()</b>, and
+    <b>shutdown_register_callback()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, <b>server_main()</b>, and
+    <b>shutdown_register_callback()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_shutdown_request_(void_)"><a class="permalink" href="#void_shutdown_request_(void_)">void
+  shutdown_request (void )</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/common/shutdown.h</b>&gt;<b>Request a clean
+    application shutdown from shared library code.</b></p>
+<p class="Pp">Definition at line <b>81</b> of file <b>common.c</b>.</p>
+<pre>81                             {
+82   atomic_store_u64(&amp;g_shutdown_requested, 1);
+83 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>, and
+    <b>shutdown_request()</b>.</p>
+<p class="Pp">Referenced by <b>shutdown_request()</b>,
+    <b>ui_input_password()</b>, and <b>update_banner_install_update()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -161,7 +188,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

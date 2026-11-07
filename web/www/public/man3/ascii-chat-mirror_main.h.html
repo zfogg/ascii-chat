@@ -188,7 +188,8 @@ session_client_like_run()
 <p class="Pp">Control performance with:</p>
 <ul class="Bl-bullet">
   <li>--fps N: Target frame rate (default 60)</li>
-  <li>--<b>Palette</b> compact<b>: Use more efficient ASCII palette</b></li>
+  <li>--<b>Character Palettes</b> compact<b>: Use more efficient ASCII
+      palette</b></li>
   <li>--snapshot: Single frame only (exits immediately)</li>
   <li>--grep: Log filtering to reduce console overhead</li>
 </ul>
@@ -292,34 +293,36 @@ session_client_like_run()
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, non-zero error code on failure</div>
-<p class="Pp">Definition at line <b>379</b> of file <b>mirror/main.c</b>.</p>
-<pre>379                       {
-380   log_info(&quot;[MIRROR] main ENTRY&quot;);
-381 
-382   // Configure mode-specific session settings
-383   session_client_like_config_t config = {
-384       .run_fn = mirror_run,
-385       .run_user_data = NULL,
-386       .kind = SESSION_CLIENT_LIKE_KIND_MIRROR,
-387       .keyboard_handler = mirror_keyboard_handler,
-388       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
-389   };
-390 
-391   // Run shared initialization/teardown with mode-specific loop
-392   asciichat_error_t result = session_client_like_run(&amp;config);
-393   log_info(&quot;mirror_main: session_client_like_run returned with result=%d&quot;, result);
-394 
-395   if (result != ASCIICHAT_OK) {
-396     log_error(&quot;Mirror mode failed with error code: %d&quot;, result);
-397   }
-398 
-399   return (int)result;
-400 }</pre>
+<p class="Pp">Definition at line <b>298</b> of file <b>mirror/main.c</b>.</p>
+<pre>298                       {
+299
+300   // Configure mode-specific session settings
+301   session_client_like_config_t config = {
+302       .run_fn = mirror_run,
+303       .run_user_data = NULL,
+304       .kind = SESSION_CLIENT_LIKE_KIND_MIRROR,
+305       .keyboard_handler = mirror_keyboard_handler,
+306       .print_newline_on_tty_exit = true, // Mirror prints newline to separate frame from prompt
+307   };
+308
+309   // Run shared initialization/teardown with mode-specific loop
+310   asciichat_error_t result = session_client_like_run(&amp;config);
+311   log_debug(&quot;session_client_like_run returned with result=%d&quot;, result);
+312
+313   if (result != ASCIICHAT_OK) {
+314     log_set_terminal_output(true);
+315     NOTICE(WARNING, &quot;MIRROR FAILED&quot;, &quot;%s&quot;, asciichat_error_format(&quot;Mirror mode failed&quot;, result));
+316   }
+317
+318   return (int)result;
+319 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>log_error</b>, <b>log_info</b>,
-    <b>SESSION_CLIENT_LIKE_KIND_MIRROR</b>, and
+<p class="Pp">References <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+    <b>log_debug</b>, <b>log_set_terminal_output()</b>, <b>mirror_main()</b>,
+    <b>NOTICE</b>, <b>SESSION_CLIENT_LIKE_KIND_MIRROR</b>, and
     <b>session_client_like_run()</b>.</p>
+<p class="Pp">Referenced by <b>mirror_main()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -329,7 +332,7 @@ session_client_like_run()
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>test_pattern.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">test_pattern.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">test_pattern.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">test_pattern.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>audio_test_pattern</b> (float *output, size_t count,
+    <b>uint64_t</b> position, <b>uint32_t</b> sample_rate)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_test_pattern_(float_*_output,_size_t_count,_"><a class="permalink" href="#void_audio_test_pattern_(float_*_output,_size_t_count,_">void
+  audio_test_pattern (float * output, size_t count, <b>uint64_t</b> position,
+  <b>uint32_t</b> sample_rate)</a></h2>
+<p class="Pp">Generate a bounded, repeating 20-second mono diagnostic phrase.
+    Position is in samples at sample_rate; arbitrary block sizes are equivalent.
+    No allocations or mutable global state. Peak amplitude is at most 0.18.</p>
+<p class="Pp">Definition at line <b>8</b> of file
+    <b>lib/audio/test_pattern.c</b>.</p>
+<pre>8                                                                                               {
+9   if (!output || !sample_rate)
+10     return;
+11   const uint64_t period = (uint64_t)sample_rate * 20;
+12   uint64_t current = position;
+13   for (size_t i = 0; i &lt; count; ++i) {
+14     uint64_t phase = current % period;
+15     current = current == UINT64_MAX ? 0 : current + 1;
+16     double t = (double)phase / sample_rate;
+17     int section = (int)(t / 4);
+18     double u = t - section * 4;
+19     double value = 0;
+20     double fade = fmin(1.0, fmin(u, 4 - u) / 0.08);
+21     fade = sin(1.5707963267948966 * fade);
+22     fade *= fade;
+23     if (section == 0) {
+24       // A quiet major arpeggio tests pitch and transients without sharp clicks.
+25       const double notes[] = {261.625565, 329.627557, 391.995436, 523.251131};
+26       double beat = u - floor(u);
+27       double envelope = sin(3.141592653589793 * beat);
+28       value = 0.16 * envelope * envelope * tone(notes[(int)u], beat);
+29     } else if (section == 1) {
+30       // Soft harmonic chord: simultaneous low, middle, and upper frequencies.
+31       value = 0.06 * tone(130.812783, u) + 0.05 * tone(329.627557, u) + 0.04 * tone(783.990872, u);
+32     } else if (section == 2) {
+33       // Smooth logarithmic sweep from 150 Hz to 3 kHz.
+34       double k = log(20.0) / 4;
+35       value = 0.12 * sin(6.283185307179586 * 150 * (exp(k * u) - 1) / k);
+36     } else if (section == 3) {
+37       // Deterministic broadband noise bursts, with a low level and soft edges.
+38       // The hash uses the low 32 bits of each product and sum.
+39       uint32_t hash = (uint32_t)((uint64_t)(uint32_t)phase * 747796405u + 2891336453u);
+40       hash = (uint32_t)((uint64_t)((hash &gt;&gt; ((hash &gt;&gt; 28) + 4)) ^ hash) * 277803737u);
+41       hash = (hash &gt;&gt; 22) ^ hash;
+42       double noise = (double)hash / 2147483648.0 - 1;
+43       double beat = fmod(u, 1.0);
+44       double envelope = beat &lt; 0.5 ? sin(6.283185307179586 * beat) : 0;
+45       value = 0.045 * noise * envelope * envelope;
+46     } else if (u &lt; 2) {
+47       // Speech-like amplitude modulation, then two seconds of silence.
+48       double envelope = 0.5 + 0.5 * tone(4, u);
+49       double end = fmin(1.0, (2 - u) / 0.08);
+50       value = end * envelope * (0.08 * tone(180, u) + 0.04 * tone(540, u) + 0.02 * tone(1260, u));
+51     }
+52     output[i] = (float)(value * fade);
+53   }
+54 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>audio_test_pattern()</b>.</p>
+<p class="Pp">Referenced by <b>audio_test_pattern()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

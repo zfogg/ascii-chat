@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>popup.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">popup.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">popup.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">popup.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>ui_popup_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>ui_popup_edge_t</b> { <b>UI_POPUP_TOP</b>,
+    <b>UI_POPUP_SEPARATOR</b>, <b>UI_POPUP_BOTTOM</b>, <b>UI_POPUP_RULE</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>ui_popup_rule</b>
+    (<b>frame_buffer_t</b> *output, int width, <b>ui_popup_edge_t</b> edge,
+    <b>bool</b> double_border, <b>bool</b> unicode, <b>log_color_t</b> color)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_popup_frame</b> (<b>frame_buffer_t</b> *output,
+    int row, int column, int width, int height, <b>log_color_t</b> color)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_popup_frame_titled</b> (<b>frame_buffer_t</b>
+    *output, int row, int column, int width, int height, <b>log_color_t</b>
+    color, const char *title)
+  <br/>
+  <b>bool</b> <b>ui_popup_render</b> (<b>frame_buffer_t</b> *output,
+    <b>terminal_size_t</b> size, const <b>ui_popup_t</b> *box)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>ui_popup_edge_t</b></a></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="UI_POPUP_TOP"><a class="permalink" href="#UI_POPUP_TOP"><b><i>UI_POPUP_TOP
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="UI_POPUP_SEPARATOR"><a class="permalink" href="#UI_POPUP_SEPARATOR"><b><i>UI_POPUP_SEPARATOR
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="UI_POPUP_BOTTOM"><a class="permalink" href="#UI_POPUP_BOTTOM"><b><i>UI_POPUP_BOTTOM
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="UI_POPUP_RULE"><a class="permalink" href="#UI_POPUP_RULE"><b><i>UI_POPUP_RULE
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>9</b> of file <b>popup.h</b>.</p>
+<pre>9 { UI_POPUP_TOP, UI_POPUP_SEPARATOR, UI_POPUP_BOTTOM, UI_POPUP_RULE } ui_popup_edge_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_popup_frame (<b>frame_buffer_t</b> *
+  output, int row, int column, int width, int height, <b>log_color_t</b>
+  color)</h2>
+<p class="Pp">Definition at line <b>28</b> of file <b>popup.c</b>.</p>
+<pre>28                                                                                                                   {
+29   if (!out || row &lt; 1 || col &lt; 1 || width &lt; 2 || height &lt; 2)
+30     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid popup frame output or rectangle&quot;);
+31   frame_buffer_printf(out, &quot;\033[%d;%dH&quot;, row, col);
+32   ui_popup_rule(out, width, UI_POPUP_TOP, false, terminal_should_use_utf8(), color);
+33   const char *vertical = terminal_should_use_utf8() ? &quot;&#x2502;&quot; : &quot;|&quot;;
+34   for (int i = 1; i &lt; height - 1; ++i)
+35     frame_buffer_printf(out, &quot;\033[%d;%dH%s%*s%s&quot;, row + i, col, colored_string(color, vertical), width - 2, &quot;&quot;,
+36                         colored_string(color, vertical));
+37   frame_buffer_printf(out, &quot;\033[%d;%dH&quot;, row + height - 1, col);
+38   return ui_popup_rule(out, width, UI_POPUP_BOTTOM, false, terminal_should_use_utf8(), color);
+39 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colored_string()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>frame_buffer_printf()</b>, <b>SET_ERRNO</b>,
+    <b>terminal_should_use_utf8()</b>, <b>UI_POPUP_BOTTOM</b>,
+    <b>ui_popup_frame()</b>, <b>ui_popup_rule()</b>, and
+  <b>UI_POPUP_TOP</b>.</p>
+<p class="Pp">Referenced by <b>ui_error_popup_render()</b>,
+    <b>ui_popup_frame()</b>, <b>ui_popup_frame_titled()</b>, and
+    <b>ui_popup_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_popup_frame_titled
+  (<b>frame_buffer_t</b> * output, int row, int column, int width, int height,
+  <b>log_color_t</b> color, const char * title)</h2>
+<p class="Pp">Draw a frame with a centered, clipped title embedded in its top
+    border.</p>
+<p class="Pp">Definition at line <b>41</b> of file <b>popup.c</b>.</p>
+<pre>42                                                            {
+43   if (!title || width &lt; 5)
+44     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid popup title or width&quot;);
+45   asciichat_error_t result = ui_popup_frame(out, row, col, width, height, color);
+46   if (result != ASCIICHAT_OK)
+47     return result;
+48   char rendered[UI_POPUP_RENDERED_BUFFER_SIZE];
+49   truncate_with_ellipsis(title, rendered, sizeof(rendered), width - 4);
+50   int title_width = display_width(rendered);
+51   frame_buffer_printf(out, &quot;\033[%d;%dH %s &quot;, row, col + (width - title_width - 2) / 2,
+52                       colored_string(LOG_COLOR_RESET, rendered));
+53   return ASCIICHAT_OK;
+54 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>colored_string()</b>,
+    <b>display_width()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>frame_buffer_printf()</b>, <b>LOG_COLOR_RESET</b>, <b>SET_ERRNO</b>,
+    <b>truncate_with_ellipsis()</b>, <b>ui_popup_frame()</b>,
+    <b>ui_popup_frame_titled()</b>, and
+  <b>UI_POPUP_RENDERED_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>ui_popup_frame_titled()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_popup_render (<b>frame_buffer_t</b> * output,
+  <b>terminal_size_t</b> size, const <b>ui_popup_t</b> * box)</h2>
+<p class="Pp">Draw a centered box without clearing the frame beneath it.</p>
+<p class="Pp">Definition at line <b>56</b> of file <b>popup.c</b>.</p>
+<pre>56                                                                                           {
+57   if (!output || !box || !box-&gt;title || (box-&gt;line_count &amp;&amp; !box-&gt;lines) || box-&gt;top_margin &lt; 0) {
+58     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid popup output, content or margins&quot;);
+59     return false;
+60   }
+61   if (size.cols &lt; 8 || size.rows &lt; 5)
+62     return false;
+63   int content_width = display_width(box-&gt;title);
+64   for (size_t i = 0; i &lt; box-&gt;line_count; ++i) {
+65     int width = display_width(box-&gt;lines[i]);
+66     if (width &gt; content_width)
+67       content_width = width;
+68   }
+69   if (box-&gt;footer &amp;&amp; display_width(box-&gt;footer) &gt; content_width)
+70     content_width = display_width(box-&gt;footer);
+71   int width = content_width + 4;
+72   if (width &lt; box-&gt;minimum_width)
+73     width = box-&gt;minimum_width;
+74   if (width &gt; size.cols - 2)
+75     width = size.cols - 2;
+76   int height = (int)box-&gt;line_count + (box-&gt;footer ? 5 : 4);
+77   if (height &gt; size.rows - 2 - box-&gt;top_margin)
+78     return false;
+79   int left = (size.cols - width) / 2 + 1;
+80   int top = box-&gt;top_margin + (size.rows - box-&gt;top_margin - height) / 2 + 1;
+81   if (ui_popup_frame(output, top, left, width, height, LOG_COLOR_RESET) != ASCIICHAT_OK)
+82     return false;
+83   char rendered[UI_POPUP_RENDERED_BUFFER_SIZE];
+84   truncate_with_ellipsis(box-&gt;title, rendered, sizeof(rendered), width - 4);
+85   const char *colored_title = colored_string(LOG_COLOR_RESET, rendered);
+86   frame_buffer_printf(output, &quot;\033[%d;%dH\033[1m%s\033[0m&quot;, top + 1, left + 2, colored_title);
+87   for (size_t i = 0; i &lt; box-&gt;line_count; ++i) {
+88     truncate_with_ellipsis(box-&gt;lines[i], rendered, sizeof(rendered), width - 4);
+89     frame_buffer_printf(output, &quot;\033[%d;%dH%s&quot;, top + 2 + (int)i, left + 2, rendered);
+90   }
+91   if (box-&gt;footer) {
+92     truncate_with_ellipsis(box-&gt;footer, rendered, sizeof(rendered), width - 4);
+93     frame_buffer_printf(output, &quot;\033[%d;%dH\033[2m%s\033[0m&quot;, top + height - 2, left + 2, rendered);
+94   }
+95   return true;
+96 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>colored_string()</b>,
+    <b>terminal_size_t::cols</b>, <b>display_width()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ui_popup_t::footer</b>,
+    <b>frame_buffer_printf()</b>, <b>ui_popup_t::line_count</b>,
+    <b>ui_popup_t::lines</b>, <b>LOG_COLOR_RESET</b>,
+    <b>ui_popup_t::minimum_width</b>, <b>terminal_size_t::rows</b>,
+    <b>SET_ERRNO</b>, <b>ui_popup_t::title</b>, <b>ui_popup_t::top_margin</b>,
+    <b>truncate_with_ellipsis()</b>, <b>ui_popup_frame()</b>,
+    <b>ui_popup_render()</b>, and <b>UI_POPUP_RENDERED_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>ui_help_menu_render()</b>, and
+    <b>ui_popup_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_popup_rule (<b>frame_buffer_t</b> *
+  output, int width, <b>ui_popup_edge_t</b> edge, <b>bool</b> double_border,
+  <b>bool</b> unicode, <b>log_color_t</b> color)</h2>
+<p class="Pp">Shared chrome for streaming notices and nested dialog panels. No
+    newline.</p>
+<p class="Pp">Definition at line <b>12</b> of file <b>popup.c</b>.</p>
+<pre>13                                                    {
+14   if (!out || width &lt; 2 || edge &lt; UI_POPUP_TOP || edge &gt; UI_POPUP_RULE)
+15     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid popup rule output, width or edge&quot;);
+16   static const char *single[][2] = {{&quot;&#x250C;&quot;, &quot;&#x2510;&quot;}, {&quot;&#x251C;&quot;, &quot;&#x2524;&quot;}, {&quot;&#x2514;&quot;, &quot;&#x2518;&quot;}, {&quot;&quot;, &quot;&quot;}};
+17   static const char *dual[][2] = {{&quot;&#x2554;&quot;, &quot;&#x2557;&quot;}, {&quot;&#x2560;&quot;, &quot;&#x2563;&quot;}, {&quot;&#x255A;&quot;, &quot;&#x255D;&quot;}, {&quot;&quot;, &quot;&quot;}};
+18   const char *left = edge == UI_POPUP_RULE ? &quot;&quot; : !unicode ? &quot;+&quot; : double_border ? dual[edge][0] : single[edge][0];
+19   const char *right = edge == UI_POPUP_RULE ? &quot;&quot; : !unicode ? &quot;+&quot; : double_border ? dual[edge][1] : single[edge][1];
+20   const char *horizontal = !unicode ? &quot;-&quot; : double_border ? &quot;&#x2550;&quot; : &quot;&#x2500;&quot;;
+21   frame_buffer_printf(out, &quot;%s&quot;, colored_string(color, left));
+22   for (int i = 0; i &lt; width - (edge == UI_POPUP_RULE ? 0 : 2); ++i)
+23     frame_buffer_printf(out, &quot;%s&quot;, colored_string(color, horizontal));
+24   frame_buffer_printf(out, &quot;%s&quot;, colored_string(color, right));
+25   return ASCIICHAT_OK;
+26 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>colored_string()</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>frame_buffer_printf()</b>, <b>SET_ERRNO</b>,
+    <b>UI_POPUP_RULE</b>, and <b>ui_popup_rule()</b>.</p>
+<p class="Pp">Referenced by <b>ui_error_popup_preserve()</b>,
+    <b>ui_popup_frame()</b>, and <b>ui_popup_rule()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

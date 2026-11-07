@@ -116,23 +116,23 @@
 <i>default_value</i> Default if not found</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Header value or default</div>
-<p class="Pp">Definition at line <b>41</b> of file <b>http_server.cpp</b>.</p>
-<pre>41                                                                                          {
-42     // Case-insensitive header lookup
-43     std::string lower_name = name;
-44     std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(),
-45                    [](unsigned char c) { return std::tolower(c); });
-46 
-47     for (const auto &amp;[key, value] : headers) {
-48         std::string lower_key = key;
-49         std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
-50                        [](unsigned char c) { return std::tolower(c); });
-51         if (lower_key == lower_name) {
-52             return value;
-53         }
-54     }
-55     return default_value;
-56 }</pre>
+<p class="Pp">Definition at line <b>44</b> of file <b>http_server.cpp</b>.</p>
+<pre>44                                                                                          {
+45   // Case-insensitive header lookup
+46   std::string lower_name = name;
+47   std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(),
+48                  [](unsigned char c) { return std::tolower(c); });
+49
+50   for (const auto &amp;[key, value] : headers) {
+51     std::string lower_key = key;
+52     std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
+53                    [](unsigned char c) { return std::tolower(c); });
+54     if (lower_key == lower_name) {
+55       return value;
+56     }
+57   }
+58   return default_value;
+59 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>headers</b>.</p>
@@ -235,7 +235,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

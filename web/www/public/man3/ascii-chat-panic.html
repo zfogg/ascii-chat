@@ -30,7 +30,11 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">panic - Panic</p>
+<p class="Pp">panic - Panic Instrumentation</p>
+<p class="Pp">
+  <br/>
+   - &#x1F6A8; Per-statement logging for crash debugging in C programs</p>
+<p class="Pp"></p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
@@ -65,7 +69,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
 <br/>
-<p class="Pp">enum { <b>ASCII_INSTR_SOURCE_PRINT_MACRO_NONE</b> = 0u,
+<p class="Pp"><b>enum </b>{ <b>ASCII_INSTR_SOURCE_PRINT_MACRO_NONE</b> = 0u,
     <b>ASCII_INSTR_SOURCE_PRINT_MACRO_EXPANSION</b> = 1u,
     <b>ASCII_INSTR_SOURCE_PRINT_MACRO_INVOCATION</b> = 2u }
   <br/>
@@ -87,9 +91,9 @@
     <b>asciichat_instr_runtime_global_destroy</b> (void)
   <br/>
   Global shutdown of the instrumentation system. void
-    <b>asciichat_instr_log_line</b> (const char *<b>file_path</b>,
-    <b>uint32_t</b> line_number, const char *function_name, const char *snippet,
-    <b>uint8_t</b> is_macro_expansion)
+    <b>asciichat_instr_log_line</b> (const char *file_path, <b>uint32_t</b>
+    line_number, const char *function_name, const char *snippet, <b>uint8_t</b>
+    is_macro_expansion)
   <br/>
   Log a source line execution event. <b>bool</b>
     <b>asciichat_instr_coverage_enabled</b> (void)
@@ -105,6 +109,8 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
+<p class="Pp">&#x1F6A8; Per-statement logging for crash debugging in C
+  programs</p>
 <p class="Pp">This module provides the runtime logging infrastructure for the
     source-print instrumentation system. When code is instrumented with
     ascii-instr-panic, calls to <b>asciichat_instr_log_line()</b> are inserted
@@ -156,7 +162,453 @@
 <p class="Pp"><b>See also</b></p>
 <div class="Bd-indent">docs/tooling/panic-instrumentation.md for full
   documentation</div>
+<p class="Pp">Panic Instrumentation</p>
 </section>
+</section>
+<section class="Sh">
+<h1 class="Sh">&#x1F6A8; Overview</h1>
+<p class="Pp">Panic instrumentation provides per-statement logging for debugging
+    crashes in C programs. The core idea is simple: <b>the last line printed
+    before a crash is the crashing line</b> (or the line immediately before it
+    in most cases).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Implementation</b>:
+  <b>src/tooling/panic/tool.cpp</b><b></b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Features</b>:</p>
+<ul class="Bl-bullet">
+  <li>Per-statement source code logging</li>
+  <li>Multi-threaded support with per-thread log files</li>
+  <li>Environment variable filtering (by file, function, thread, regex, glob
+      patterns)</li>
+  <li>Signal-safe logging using atomic writes</li>
+  <li>Post-mortem analysis with ascii-panic-report tool</li>
+  <li>SanitizerCoverage integration for edge coverage</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Background:_The_Core_Idea"><a class="permalink" href="#Background:_The_Core_Idea">Background:
+  The Core Idea</a></h1>
+<p class="Pp"><b>The Problem</b>: C programs crash without error messages. When
+    a segfault or other crash occurs, you get no information about which line of
+    code caused it. Traditional debugging approaches have limitations:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Manual printf debugging</b>: You have to guess where to add logs, and
+      you might not even be in the right function yet. Hours can be wasted
+      adding printf() calls to the wrong places.</li>
+  <li><b>Debuggers (gdb/lldb)</b>: Great for reproducible crashes, but
+      timing-sensitive bugs (race conditions) may not reproduce under a
+      debugger.</li>
+  <li><b>Sanitizers (ASan/UBSan)</b>: Excellent for memory bugs, but don't help
+      with logic errors or silent hangs.</li>
+</ul>
+<p class="Pp"><b>The Solution</b>: What if we automatically insert a log before
+    <i>every</i> line of code? When the program crashes, the last line printed
+    tells you exactly where it crashed.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>If your program crashes without logs:
+<br/>
+  ??? &#x2192; ??? &#x2192; ??? &#x2192; CRASH
+With panic instrumentation:
+<br/>
+  log(line 10) &#x2192; log(line 11) &#x2192; log(line 12) &#x2192; CRASH
+<br/>
+                                      &#x2191;
+<br/>
+                          Last printed line = crash location!</pre>
+<p class="Pp"><b>Why This Works</b>:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>We log BEFORE each statement executes</dd>
+  <dt>2.</dt>
+  <dd>The logging uses atomic writes (survives crashes)</dd>
+  <dt>3.</dt>
+  <dd>Whatever printed last was the last thing that ran</dd>
+  <dt>4.</dt>
+  <dd>Therefore, the crash is at or after that line</dd>
+</dl>
+<p class="Pp"><b>Why Hasn't This Been Done Before?</b></p>
+<p class="Pp"></p>
+<p class="Pp">Tools like this exist in various forms (SanitizerCoverage,
+    -finstrument-functions, dynamic binary instrumentation), but they
+  typically:</p>
+<ul class="Bl-bullet">
+  <li>Log addresses/PCs that need symbolization, not actual source text</li>
+  <li>Work at function granularity, not per-statement</li>
+  <li>Require post-processing to map back to source</li>
+</ul>
+<p class="Pp">This approach is deliberately simple: print the actual source code
+    text, so the crash location is immediately readable. No symbolization, no
+    post-processing.</p>
+<section class="Ss">
+<h2 class="Ss" id="Multi-Threaded_Programs"><a class="permalink" href="#Multi-Threaded_Programs">Multi-Threaded
+  Programs</a></h2>
+<p class="Pp">With multiple threads, the &quot;last printed line globally&quot;
+    might be from a different thread than the one that crashed. The
+  solution:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Each thread writes to its own log file
+      (ascii-instr-&lt;pid&gt;-&lt;tid&gt;.log)</li>
+  <li>Each log line includes the thread ID</li>
+  <li>Use ascii-panic-report to find the last line from each thread</li>
+  <li>Identify the crashing thread from the crash report, then check its
+    log</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="When_to_Use"><a class="permalink" href="#When_to_Use">When to
+  Use</a></h1>
+<p class="Pp">Use panic instrumentation when:</p>
+<ul class="Bl-bullet">
+  <li>You have a crash that's difficult to reproduce</li>
+  <li>Traditional debuggers don't work (e.g., timing-sensitive bugs)</li>
+  <li>You need to know exactly which statement crashed</li>
+  <li>You're debugging multi-threaded code</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="How_It_Works"><a class="permalink" href="#How_It_Works">How
+  It Works</a></h1>
+<p class="Pp">The panic instrumentation tool transforms your C source code to
+    print each statement before executing it:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>Original code:          Instrumented code:
+---------------         -------------------------------------------
+int x = 5;              log(&quot;lib/foo.c:10: int x = 5;&quot;);
+<br/>
+                        int x = 5;
+int y = x / 0;          log(&quot;lib/foo.c:11: int y = x / 0;&quot;);  // Last printed!
+<br/>
+                        int y = x / 0;                         // CRASH!
+return y;               log(&quot;lib/foo.c:12: return y;&quot;);       // Never reached
+<br/>
+                        return y;</pre>
+<p class="Pp"><b>Single-Threaded Programs</b>: The last log line is the crash
+    location.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Multi-Threaded Programs</b>: Each thread writes to its own log
+    file (ascii-instr-&lt;pid&gt;-&lt;tid&gt;.log). Use ascii-panic-report to
+    summarize the last statement executed by each thread.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Usage"><a class="permalink" href="#Usage">Usage</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Building_with_Panic_Instrumentation"><a class="permalink" href="#Building_with_Panic_Instrumentation">Building
+  with Panic Instrumentation</a></h2>
+<pre># Build with panic instrumentation
+cmake -B build -DASCIICHAT_BUILD_WITH_PANIC=ON
+cmake --build build</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Debugging_Workflow"><a class="permalink" href="#Debugging_Workflow">Debugging
+  Workflow</a></h2>
+<pre># 1. Build with panic instrumentation
+cmake -B build -DASCIICHAT_BUILD_WITH_PANIC=ON
+cmake --build build
+# 2. Run the crashing program
+export ASCII_PANIC_OUTPUT_DIR=/tmp/crash-logs
+./build/bin/ascii-chat server
+# ... program crashes ...
+# 3. Find the crash location
+# Single-threaded: just look at the last line
+tail -n1 /tmp/crash-logs/ascii-instr-*.log
+# Multi-threaded: use the report tool
+./build/bin/ascii-panic-report --log-dir /tmp/crash-logs</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="The_ascii-panic-report_Tool"><a class="permalink" href="#The_ascii-panic-report_Tool">The
+  ascii-panic-report Tool</a></h1>
+<p class="Pp">For multi-threaded programs, ascii-panic-report parses all log
+    files and shows the last executed statement per thread:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre># Build the report tool
+cmake --build build --target ascii-panic-report
+# Run it
+./build/bin/ascii-panic-report --log-dir /tmp/crash-logs
+# Output:
+# Latest instrumentation record per thread (3 threads)
+# ======================================================================
+# tid=1234 seq=42891 pid=5678
+#   timestamp : 2025-11-07T18:32:01.123456789Z
+#   elapsed   : 12.3ms
+#   location  : lib/network.c:512
+#   function  : socket_send
+#   macro     : none (0)
+#   snippet   : send_packet(queue, payload)
+# ----------------------------------------------------------------------
+# tid=1235 seq=8901 pid=5678
+#   location  : lib/mixer.c:234
+#   function  : mix_audio_frames
+#   snippet   : buffer[i] = left + right</pre>
+<section class="Ss">
+<h2 class="Ss" id="Report_Tool_Options"><a class="permalink" href="#Report_Tool_Options">Report
+  Tool Options</a></h2>
+<pre># Filter to specific thread
+./build/bin/ascii-panic-report --thread 1234
+# Filter by file path
+./build/bin/ascii-panic-report --include network.c
+# Exclude files
+./build/bin/ascii-panic-report --exclude video
+# Show raw log lines
+./build/bin/ascii-panic-report --raw</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Log_Record_Format"><a class="permalink" href="#Log_Record_Format">Log
+  Record Format</a></h1>
+<p class="Pp">Each log line contains:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>pid=12345 tid=678 seq=42 ts=2025-11-07T18:32:01.123456789Z elapsed=12.3ms file=lib/network.c line=512 func=socket_send macro=0 snippet=send_packet(queue, payload)</pre>
+<ul class="Bl-bullet">
+  <li>pid: Process ID</li>
+  <li>tid: Thread ID</li>
+  <li>seq: Sequence number for this thread</li>
+  <li>ts: Timestamp (ISO 8601 format)</li>
+  <li>elapsed: Time since runtime initialization</li>
+  <li>file: Source file path</li>
+  <li>line: Line number</li>
+  <li>func: Function name</li>
+  <li>macro: Macro flag (0=normal, 1=from macro expansion, 2=macro
+    invocation)</li>
+  <li>snippet: The source code being executed</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Environment_Variable_Filtering"><a class="permalink" href="#Environment_Variable_Filtering">Environment
+  Variable Filtering</a></h1>
+<p class="Pp">Reduce log volume by filtering what gets logged. Filters are
+    checked before formatting to minimize overhead.</p>
+<section class="Ss">
+<h2 class="Ss" id="Basic_Filters"><a class="permalink" href="#Basic_Filters">Basic
+  Filters</a></h2>
+<p class="Pp">Variable Purpose ASCII_INSTR_SOURCE_PRINT_INCLUDE Only log files
+    matching substring ASCII_INSTR_SOURCE_PRINT_EXCLUDE Skip files matching
+    substring ASCII_INSTR_SOURCE_PRINT_THREAD Comma-separated thread IDs to log
+    ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE Only log functions matching
+    substring ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE Skip functions matching
+    substring ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR Directory for log files
+    ASCII_INSTR_SOURCE_PRINT_RATE Log every Nth statement (throttle)
+    ASCII_INSTR_SOURCE_PRINT_ENABLE Set to &quot;0&quot; to disable at
+  runtime</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Regex_Filters_(POSIX_platforms_only)"><a class="permalink" href="#Regex_Filters_(POSIX_platforms_only)">Regex
+  Filters (POSIX platforms only)</a></h2>
+<p class="Pp">Variable Purpose ASCII_INSTR_SOURCE_PRINT_INCLUDE_REGEX POSIX
+    regex include filter on file path ASCII_INSTR_SOURCE_PRINT_EXCLUDE_REGEX
+    POSIX regex exclude filter on file path
+    ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE_REGEX POSIX regex include filter
+    on function name ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE_REGEX POSIX regex
+    exclude filter on function name</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ONLY_Selectors_(Advanced)"><a class="permalink" href="#ONLY_Selectors_(Advanced)">ONLY
+  Selectors (Advanced)</a></h2>
+<p class="Pp">The ASCII_INSTR_SOURCE_PRINT_ONLY variable supports sophisticated
+    allow-list filtering using comma-separated selectors:</p>
+<p class="Pp"></p>
+<p class="Pp">Syntax Description file=&lt;glob&gt; Match files by glob pattern
+    func=&lt;glob&gt; Match functions by glob pattern module=&lt;name&gt; Match
+    files under /name/ directory module=&lt;name&gt;:&lt;glob&gt; Match files
+    under /name/ with basename matching glob &lt;name&gt;:&lt;glob&gt; Shorthand
+    for module=&lt;name&gt;:&lt;glob&gt; &lt;substring&gt; Match files
+    containing substring</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Examples</b>:</p>
+<p class="Pp"></p>
+<pre># Only log network-related files
+export ASCII_INSTR_SOURCE_PRINT_INCLUDE=network.c
+# Skip video processing (too noisy)
+export ASCII_INSTR_SOURCE_PRINT_EXCLUDE=video
+# Only log specific threads
+export ASCII_INSTR_SOURCE_PRINT_THREAD=1234,5678
+# Log every 100th statement (reduce volume)
+export ASCII_INSTR_SOURCE_PRINT_RATE=100
+# Custom output directory
+export ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR=/tmp/crash-logs
+# Advanced: Only log server render code
+export ASCII_INSTR_SOURCE_PRINT_ONLY=&quot;server:render_*&quot;
+# Advanced: Multiple selectors
+export ASCII_INSTR_SOURCE_PRINT_ONLY=&quot;file=lib/network/*,func=socket_*&quot;
+# Advanced: Module with glob pattern
+export ASCII_INSTR_SOURCE_PRINT_ONLY=&quot;module=crypto:handshake*&quot;
+# Disable instrumentation at runtime (binary still instrumented)
+export ASCII_INSTR_SOURCE_PRINT_ENABLE=0
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Custom_Log_File"><a class="permalink" href="#Custom_Log_File">Custom
+  Log File</a></h2>
+<p class="Pp">For debugging specific issues, you can direct all output to a
+    single file:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre># Write to a specific file (allows appending across runs)
+export ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE=/tmp/trace.log
+# Also echo to stderr for live viewing
+export ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_STDERR=1</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Signal_Handler_Annotations"><a class="permalink" href="#Signal_Handler_Annotations">Signal
+  Handler Annotations</a></h1>
+<p class="Pp">Mark functions that must remain async-signal-safe:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>ASCII_PANIC_SIGNAL_HANDLER
+void handle_sigint(int signum) {
+<br/>
+    // ... signal handler code ...
+}</pre>
+<p class="Pp">The panic instrumentation tool skips any function carrying that
+    annotation, ensuring inserted logging calls never appear inside signal
+    handlers.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Safety_Guarantees"><a class="permalink" href="#Safety_Guarantees">Safety
+  Guarantees</a></h1>
+<ul class="Bl-bullet">
+  <li><b>Original sources remain untouched</b>: The tool writes only to new
+      files under build/instrumented/</li>
+  <li><b>Atomic writes</b>: Each log line is emitted with a single write() call,
+      so concurrent threads cannot interleave records</li>
+  <li><b>Signal tolerance</b>: Once initialized, the runtime avoids
+      non-signal-safe functions inside the hot path</li>
+  <li><b>Thread isolation</b>: Separate files per thread prevent
+    interleaving</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Limitations_and_Best_Practices"><a class="permalink" href="#Limitations_and_Best_Practices">Limitations
+  and Best Practices</a></h1>
+<ul class="Bl-bullet">
+  <li><b>Performance cost</b>: Logging every statement carries significant
+      overhead. Use filters to narrow the scope when possible.</li>
+  <li><b>Timing changes</b>: Heavy I/O can mask race conditions (Heisenbugs).
+      After localizing the failure, confirm with sanitizers or record/replay
+      tools.</li>
+  <li><b>Binary size</b>: Expect larger binaries because every statement
+      introduces a logging call and associated string literal.</li>
+  <li><b>Thread IDs differ by platform</b>: Always copy the numeric ID from log
+      headers when using ASCII_PANIC_THREAD.</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Build_System_Details"><a class="permalink" href="#Build_System_Details">Build
+  System Details</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="File_Locations"><a class="permalink" href="#File_Locations">File
+  Locations</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Tool source</b>: <b>src/tooling/panic/tool.cpp</b><b> (Clang libTooling
+      rewriter)</b></li>
+  <li><b>Runtime library</b>: <b>lib/tooling/panic/instrument_log.c</b><b> and
+      </b>.h<b></b></li>
+  <li><b>Coverage runtime</b>:
+    <b>lib/tooling/panic/instrument_cov.c</b><b></b></li>
+  <li><b>CMake integration</b>: cmake/tooling/Panic.cmake</li>
+  <li><b>Helper script</b>: cmake/tooling/run_panic_instrumentation.sh</li>
+  <li><b>Report tool</b>: <b>src/tooling/panic/report.c</b><b></b></li>
+  <li><b>Instrumented output</b>: build/instrumented/</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="CMake_Options"><a class="permalink" href="#CMake_Options">CMake
+  Options</a></h2>
+<p class="Pp">Option Default Description ASCIICHAT_BUILD_WITH_PANIC OFF Enable
+    panic instrumentation ASCIICHAT_PANIC_TOOL &quot;&quot; Path to pre-built
+    tool (faster rebuilds)</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="SanitizerCoverage_Mode"><a class="permalink" href="#SanitizerCoverage_Mode">SanitizerCoverage
+  Mode</a></h2>
+<p class="Pp">For lightweight edge coverage without full statement logging:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre># Build with coverage instrumentation
+cmake -B build -DCMAKE_C_FLAGS=&quot;-fsanitize-coverage=trace-pc-guard&quot;
+# Enable coverage logging at runtime
+export ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE=1
+./build/bin/ascii-chat server</pre>
+<p class="Pp">Coverage mode logs compact pc=0x... entries that can be symbolized
+    with llvm-symbolizer or addr2line to map back to source locations.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Tool_Command-Line_Options"><a class="permalink" href="#Tool_Command-Line_Options">Tool
+  Command-Line Options</a></h2>
+<p class="Pp">The ascii-instr-panic tool supports:</p>
+<p class="Pp"></p>
+<p class="Pp">Option Description --output-dir &lt;path&gt; Where to write
+    instrumented sources --input-root &lt;path&gt; Root for computing relative
+    paths --log-macro-expansions Instrument statements from macro expansions
+    --log-macro-invocations Emit synthetic log for macro call sites
+    --filter-file &lt;substring&gt; Only instrument files matching substring
+    --filter-function &lt;substring&gt; Only instrument functions matching
+    substring --signal-handler-annotation &lt;name&gt; Annotation to skip
+    (default: ASCII_INSTR_PANIC_SIGNAL_HANDLER)</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Troubleshooting"><a class="permalink" href="#Troubleshooting">Troubleshooting</a></h1>
+<p class="Pp"><b>No logs emitted</b>:</p>
+<ul class="Bl-bullet">
+  <li>Check the output directory exists and is writable</li>
+  <li>Verify filters aren't over-restrictive (unset
+      ASCII_INSTR_SOURCE_PRINT_INCLUDE)</li>
+  <li>Check ASCII_INSTR_SOURCE_PRINT_ENABLE isn't set to &quot;0&quot;</li>
+</ul>
+<p class="Pp"><b>&quot;Refusing to overwrite&quot; errors</b>:</p>
+<ul class="Bl-bullet">
+  <li>Remove existing build/instrumented/ directory</li>
+  <li>Or specify a fresh output directory</li>
+</ul>
+<p class="Pp"><b>Partial log files</b>:</p>
+<ul class="Bl-bullet">
+  <li>Ensure disk isn't full</li>
+  <li>Check runtime didn't hit a fatal error before logging</li>
+</ul>
+<p class="Pp"><b>Thread IDs don't match</b>:</p>
+<ul class="Bl-bullet">
+  <li>Thread IDs are platform-specific (pthread vs system TID)</li>
+  <li>Always copy the exact numeric ID from log headers</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Related_Tools_and_Alternatives"><a class="permalink" href="#Related_Tools_and_Alternatives">Related
+  Tools and Alternatives</a></h1>
+<p class="Pp">Tool Approach Pros Cons <b>Panic instrumentation</b> Source
+    rewriting Readable output, no symbolization High overhead
+    <b>SanitizerCoverage</b> Edge callbacks Lower overhead Needs symbolization
+    <b>-finstrument-functions</b> Function entry/exit Very low overhead Function
+    granularity only <b>rr (record/replay)</b> Deterministic replay Perfect
+    reproduction Linux only, heavyweight <b>ASan/UBSan</b> Memory/UB detection
+    Catches specific bugs Not for all crash types <b>gdb/lldb</b> Debugger Full
+    control May perturb timing</p>
+<p class="Pp"></p>
+<p class="Pp">Panic instrumentation is best when you need:</p>
+<ul class="Bl-bullet">
+  <li>Immediate, readable crash location without post-processing</li>
+  <li>To debug timing-sensitive code that doesn't reproduce under debuggers</li>
+  <li>Per-statement granularity for complex control flow</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="References"><a class="permalink" href="#References">References</a></h1>
+<ul class="Bl-bullet">
+  <li><b>Defer Statements</b> - Related tooling for automatic cleanup</li>
+  <li><b>Build System</b> - CMake build options including panic
+    instrumentation</li>
+  <li>Clang libTooling: https://clang.llvm.org/docs/LibTooling.html</li>
+  <li>SanitizerCoverage: https://clang.llvm.org/docs/SanitizerCoverage.html</li>
+</ul>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
@@ -225,9 +677,9 @@
 </dl>
 <p class="Pp">Definition at line <b>61</b> of file <b>instrument_log.h</b>.</p>
 <pre>61      {
-62   ASCII_INSTR_SOURCE_PRINT_MACRO_NONE = 0u,      
-63   ASCII_INSTR_SOURCE_PRINT_MACRO_EXPANSION = 1u, 
-64   ASCII_INSTR_SOURCE_PRINT_MACRO_INVOCATION = 2u 
+62   ASCII_INSTR_SOURCE_PRINT_MACRO_NONE = 0u,
+63   ASCII_INSTR_SOURCE_PRINT_MACRO_EXPANSION = 1u,
+64   ASCII_INSTR_SOURCE_PRINT_MACRO_INVOCATION = 2u
 65 };</pre>
 <pre></pre>
 <p class="Pp"></p>
@@ -247,27 +699,29 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE is
   set</div>
-<p class="Pp">Definition at line <b>425</b> of file <b>instrument_log.c</b>.</p>
-<pre>425                                             {
-426   if (g_disable_write) {
-427     return false;
-428   }
-429 
-430   // Initialize runtime once using lock-free lifecycle API
-431   if (!lifecycle_is_initialized(&amp;g_runtime_lc)) {
-432     if (lifecycle_init_once(&amp;g_runtime_lc)) {
-433       asciichat_instr_runtime_init_once();
-434       lifecycle_init_commit(&amp;g_runtime_lc);
-435     }
-436   }
-437 
-438   return g_coverage_enabled;
-439 }</pre>
+<p class="Pp">Definition at line <b>440</b> of file <b>instrument_log.c</b>.</p>
+<pre>440                                             {
+441   if (g_disable_write) {
+442     return false;
+443   }
+444
+445   // Initialize runtime once using lock-free lifecycle API
+446   if (!lifecycle_is_initialized(&amp;g_runtime_lc)) {
+447     if (lifecycle_init_once(&amp;g_runtime_lc)) {
+448       asciichat_instr_runtime_init_once();
+449       lifecycle_init_commit(&amp;g_runtime_lc);
+450     }
+451   }
+452
+453   return g_coverage_enabled;
+454 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_init_commit()</b>,
-    <b>lifecycle_init_once()</b>, and <b>lifecycle_is_initialized()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_instr_log_pc()</b>.</p>
+<p class="Pp">References <b>asciichat_instr_coverage_enabled()</b>,
+    <b>lifecycle_init_commit()</b>, <b>lifecycle_init_once()</b>, and
+    <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_instr_coverage_enabled()</b>, and
+    <b>asciichat_instr_log_pc()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_asciichat_instr_log_line_(const_char_*_file_path,_"><a class="permalink" href="#void_asciichat_instr_log_line_(const_char_*_file_path,_">void
@@ -282,8 +736,8 @@
     snippet.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>file_path</b><i></i><b> Source file path
-  (typically from </b><b>FILE</b><b>)</b>
+<div class="Bd-indent"><i>file_path</i> Source file path (typically from
+  <b>FILE</b>)
 <br/>
 <i>line_number</i> Line number in the source file
 <br/>
@@ -299,172 +753,174 @@
 <p class="Pp"></p>
 <p class="Pp">Reentrant-safe: nested calls are detected and skipped</p>
 </div>
-<p class="Pp">Definition at line <b>275</b> of file <b>instrument_log.c</b>.</p>
-<pre>276                                                                                {
-277   // Instrumentation is enabled by default when the binary is built with Source Print.
-278   // Set ASCII_INSTR_SOURCE_PRINT_ENABLE=0 to disable tracing at runtime.
-279   if (!g_instrumentation_enabled_checked) {
-280     const char *enable_env = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_ENABLE&quot;);
-281     // Default to enabled (true) - only disable if explicitly set to &quot;0&quot;, &quot;false&quot;, &quot;off&quot;, or &quot;no&quot;
-282     if (enable_env != NULL &amp;&amp; enable_env[0] != '\0') {
-283       g_instrumentation_enabled = asciichat_instr_env_is_enabled(enable_env);
-284     } else {
-285       g_instrumentation_enabled = true; // Default to enabled when instrumented
-286     }
-287     g_instrumentation_enabled_checked = true;
-288   }
-289 
-290   if (!g_instrumentation_enabled) {
-291     return;
-292   }
-293 
-294   if (g_disable_write) {
-295     return;
-296   }
-297 
-298   if (g_logging_reentry_guard) {
-299     return;
-300   }
-301 
-302   g_logging_reentry_guard = true;
-303 
-304   asciichat_instr_runtime_t *runtime = asciichat_instr_runtime_get();
-305   if (runtime == NULL) {
-306     goto cleanup;
+<p class="Pp">Definition at line <b>290</b> of file <b>instrument_log.c</b>.</p>
+<pre>291                                                                                {
+292   // Instrumentation is enabled by default when the binary is built with Source Print.
+293   // Set ASCII_INSTR_SOURCE_PRINT_ENABLE=0 to disable tracing at runtime.
+294   if (!g_instrumentation_enabled_checked) {
+295     const char *enable_env = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_ENABLE&quot;);
+296     // Default to enabled (true) - only disable if explicitly set to &quot;0&quot;, &quot;false&quot;, &quot;off&quot;, or &quot;no&quot;
+297     if (enable_env != NULL &amp;&amp; enable_env[0] != '\0') {
+298       g_instrumentation_enabled = asciichat_instr_env_is_enabled(enable_env);
+299     } else {
+300       g_instrumentation_enabled = true; // Default to enabled when instrumented
+301     }
+302     g_instrumentation_enabled_checked = true;
+303   }
+304
+305   if (!g_instrumentation_enabled) {
+306     return;
 307   }
-308 
-309   if (!asciichat_instr_should_log(runtime, file_path, line_number, function_name)) {
-310     goto cleanup;
+308
+309   if (g_disable_write) {
+310     return;
 311   }
-312 
-313   runtime-&gt;call_counter++;
-314   if (runtime-&gt;rate_enabled) {
-315     const uint64_t counter = runtime-&gt;call_counter;
-316     if (((counter - 1U) % runtime-&gt;rate) != 0U) {
-317       goto cleanup;
-318     }
-319   }
-320 
-321   if (runtime-&gt;fd &lt; 0) {
-322     if (asciichat_instr_open_log_file(runtime) != 0) {
-323       runtime-&gt;stderr_fallback = true;
-324     }
-325   }
-326 
-327   const int fd = runtime-&gt;stderr_fallback ? STDERR_FILENO : runtime-&gt;fd;
-328   char buffer[ASCII_INSTR_SOURCE_PRINT_MAX_LINE];
-329   size_t pos = 0;
-330 
-331   uint64_t realtime_ns = time_get_realtime_ns();
-332   time_t sec = (time_t)(realtime_ns / NS_PER_SEC_INT);
-333   long nsec = (long)(realtime_ns % NS_PER_SEC_INT);
-334   struct tm tm_now;
-335   memset(&amp;tm_now, 0, sizeof(tm_now));
-336   if (platform_gtime(&amp;sec, &amp;tm_now) != ASCIICHAT_OK) {
-337     memset(&amp;tm_now, 0, sizeof(tm_now));
-338   }
-339 
-340   char timestamp[32];
-341   size_t ts_len = strftime(timestamp, sizeof(timestamp), &quot;%Y-%m-%dT%H:%M:%S&quot;, &amp;tm_now);
-342   if (ts_len == 0) {
-343     SAFE_STRNCPY(timestamp, &quot;1970-01-01T00:00:00&quot;, sizeof(timestamp));
-344     ts_len = strlen(timestamp);
-345   }
-346 
-347   char elapsed_buf[32];
-348   elapsed_buf[0] = '\0';
-349   if (g_ticks_initialized) {
-350     uint64_t now_ns = time_get_ns();
-351     uint64_t elapsed_ns = time_elapsed_ns(g_start_ns, now_ns);
-352     if (time_pretty((uint64_t)elapsed_ns, -1, elapsed_buf, sizeof(elapsed_buf)) &lt; 0) {
-353       elapsed_buf[0] = '\0';
-354     }
-355   }
-356 
-357   runtime-&gt;sequence++;
-358 
-359   const char *elapsed_field = (elapsed_buf[0] != '\0') ? elapsed_buf : &quot;-&quot;;
-360 
-361   const char *safe_file_path = (file_path != NULL) ? file_path : &quot;&lt;unknown&gt;&quot;;
-362   pos += safe_snprintf(buffer + pos, sizeof(buffer) - pos,
-363                        &quot;pid=%d tid=%llu seq=%llu ts=%.*s.%09ldZ elapsed=%s file=%s line=%u func=%s macro=%u snippet=&quot;,
-364                        runtime-&gt;pid, (unsigned long long)runtime-&gt;thread_id, (unsigned long long)runtime-&gt;sequence,
-365                        (int)ts_len, timestamp, nsec, elapsed_field, safe_file_path, line_number,
-366                        function_name ? function_name : &quot;&lt;unknown&gt;&quot;, (unsigned)is_macro_expansion);
-367 
-368   if (snippet != NULL) {
-369     size_t snippet_len = strnlen(snippet, ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET);
-370     for (size_t i = 0; i &lt; snippet_len &amp;&amp; pos &lt; sizeof(buffer) - 2; ++i) {
-371       const char ch = snippet[i];
-372       switch (ch) {
-373       case '\n':
-374         buffer[pos++] = '\\';
-375         buffer[pos++] = 'n';
-376         break;
-377       case '\r':
-378         buffer[pos++] = '\\';
-379         buffer[pos++] = 'r';
-380         break;
-381       case '\t':
-382         buffer[pos++] = '\\';
-383         buffer[pos++] = 't';
-384         break;
-385       default:
-386         buffer[pos++] = ch;
-387         break;
-388       }
-389     }
-390   }
-391 
-392   if (pos &gt;= sizeof(buffer) - 1) {
-393     pos = sizeof(buffer) - 2;
-394   }
-395 
-396   buffer[pos++] = '\n';
-397   buffer[pos] = '\0';
-398 
-399   asciichat_instr_write_full(fd, buffer, pos);
-400 
-401   // Also echo to stderr if requested via environment variable
-402   if (!g_echo_to_stderr_initialized) {
-403     const char *echo_env = SAFE_GETENV(&quot;ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_STDERR&quot;);
-404     g_echo_to_stderr = asciichat_instr_env_is_enabled(echo_env);
-405     g_echo_to_stderr_initialized = true;
-406   }
-407 
-408   if (g_echo_to_stderr &amp;&amp; !runtime-&gt;stderr_fallback) {
-409     // Write to stderr in addition to the log file
-410     // Suppress Windows deprecation warning for POSIX write function
-411 #ifdef _WIN32
-412 #pragma clang diagnostic push
-413 #pragma clang diagnostic ignored &quot;-Wdeprecated-declarations&quot;
-414 #endif
-415     (void)posix_write(STDERR_FILENO, buffer, pos);
-416 #ifdef _WIN32
-417 #pragma clang diagnostic pop
-418 #endif
-419   }
-420 
-421 cleanup:
-422   g_logging_reentry_guard = false;
-423 }</pre>
+312
+313   if (g_logging_reentry_guard) {
+314     return;
+315   }
+316
+317   g_logging_reentry_guard = true;
+318
+319   asciichat_instr_runtime_t *runtime = asciichat_instr_runtime_get();
+320   if (runtime == NULL) {
+321     goto cleanup;
+322   }
+323
+324   if (!asciichat_instr_should_log(runtime, file_path, line_number, function_name)) {
+325     goto cleanup;
+326   }
+327
+328   runtime-&gt;call_counter++;
+329   if (runtime-&gt;rate_enabled) {
+330     const uint64_t counter = runtime-&gt;call_counter;
+331     if (((counter - 1U) % runtime-&gt;rate) != 0U) {
+332       goto cleanup;
+333     }
+334   }
+335
+336   if (runtime-&gt;fd &lt; 0) {
+337     if (asciichat_instr_open_log_file(runtime) != 0) {
+338       runtime-&gt;stderr_fallback = true;
+339     }
+340   }
+341
+342   const int fd = runtime-&gt;stderr_fallback ? STDERR_FILENO : runtime-&gt;fd;
+343   char buffer[ASCII_INSTR_SOURCE_PRINT_MAX_LINE];
+344   size_t pos = 0;
+345
+346   uint64_t realtime_ns = time_get_realtime_ns();
+347   time_t sec = (time_t)(realtime_ns / NS_PER_SEC_INT);
+348   long nsec = (long)(realtime_ns % NS_PER_SEC_INT);
+349   struct tm tm_now;
+350   memset(&amp;tm_now, 0, sizeof(tm_now));
+351   if (platform_gtime(&amp;sec, &amp;tm_now) != ASCIICHAT_OK) {
+352     memset(&amp;tm_now, 0, sizeof(tm_now));
+353   }
+354
+355   char timestamp[TOOLING_PANIC_INSTRUMENT_LOG_TIMESTAMP_BUFFER_SIZE];
+356   size_t ts_len = strftime(timestamp, sizeof(timestamp), &quot;%Y-%m-%dT%H:%M:%S&quot;, &amp;tm_now);
+357   if (ts_len == 0) {
+358     SAFE_STRNCPY(timestamp, &quot;1970-01-01T00:00:00&quot;, sizeof(timestamp));
+359     ts_len = strlen(timestamp);
+360   }
+361
+362   char elapsed_buf[TIME_DURATION_BUFFER_SIZE];
+363   elapsed_buf[0] = '\0';
+364   if (g_ticks_initialized) {
+365     uint64_t now_ns = time_get_ns();
+366     uint64_t elapsed_ns = time_elapsed_ns(g_start_ns, now_ns);
+367     if (time_pretty((uint64_t)elapsed_ns, -1, elapsed_buf, sizeof(elapsed_buf)) &lt; 0) {
+368       elapsed_buf[0] = '\0';
+369     }
+370   }
+371
+372   runtime-&gt;sequence++;
+373
+374   const char *elapsed_field = (elapsed_buf[0] != '\0') ? elapsed_buf : &quot;-&quot;;
+375
+376   const char *safe_file_path = (file_path != NULL) ? file_path : &quot;&lt;unknown&gt;&quot;;
+377   pos += safe_snprintf(buffer + pos, sizeof(buffer) - pos,
+378                        &quot;pid=%d tid=%llu seq=%llu ts=%.*s.%09ldZ elapsed=%s file=%s line=%u func=%s macro=%u snippet=&quot;,
+379                        runtime-&gt;pid, (unsigned long long)runtime-&gt;thread_id, (unsigned long long)runtime-&gt;sequence,
+380                        (int)ts_len, timestamp, nsec, elapsed_field, safe_file_path, line_number,
+381                        function_name ? function_name : &quot;&lt;unknown&gt;&quot;, (unsigned)is_macro_expansion);
+382
+383   if (snippet != NULL) {
+384     size_t snippet_len = strnlen(snippet, ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET);
+385     for (size_t i = 0; i &lt; snippet_len &amp;&amp; pos &lt; sizeof(buffer) - 2; ++i) {
+386       const char ch = snippet[i];
+387       switch (ch) {
+388       case '\n':
+389         buffer[pos++] = '\\';
+390         buffer[pos++] = 'n';
+391         break;
+392       case '\r':
+393         buffer[pos++] = '\\';
+394         buffer[pos++] = 'r';
+395         break;
+396       case '\t':
+397         buffer[pos++] = '\\';
+398         buffer[pos++] = 't';
+399         break;
+400       default:
+401         buffer[pos++] = ch;
+402         break;
+403       }
+404     }
+405   }
+406
+407   if (pos &gt;= sizeof(buffer) - 1) {
+408     pos = sizeof(buffer) - 2;
+409   }
+410
+411   buffer[pos++] = '\n';
+412   buffer[pos] = '\0';
+413
+414   asciichat_instr_write_full(fd, buffer, pos);
+415
+416   // Also echo to stderr if requested via environment variable
+417   if (!g_echo_to_stderr_initialized) {
+418     const char *echo_env = SAFE_GETENV(&quot;ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_STDERR&quot;);
+419     g_echo_to_stderr = asciichat_instr_env_is_enabled(echo_env);
+420     g_echo_to_stderr_initialized = true;
+421   }
+422
+423   if (g_echo_to_stderr &amp;&amp; !runtime-&gt;stderr_fallback) {
+424     // Write to stderr in addition to the log file
+425     // Suppress Windows deprecation warning for POSIX write function
+426 #ifdef _WIN32
+427 #pragma clang diagnostic push
+428 #pragma clang diagnostic ignored &quot;-Wdeprecated-declarations&quot;
+429 #endif
+430     (void)posix_write(STDERR_FILENO, buffer, pos);
+431 #ifdef _WIN32
+432 #pragma clang diagnostic pop
+433 #endif
+434   }
+435
+436 cleanup:
+437   g_logging_reentry_guard = false;
+438 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCII_INSTR_SOURCE_PRINT_MAX_LINE</b>,
     <b>ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET</b>,
-    <b>asciichat_instr_runtime_get()</b>, <b>ASCIICHAT_OK</b>,
-    <b>asciichat_instr_runtime::call_counter</b>,
-    <b>asciichat_instr_runtime::fd</b>, <b>file_path</b>, <b>NS_PER_SEC_INT</b>,
+    <b>asciichat_instr_log_line()</b>, <b>asciichat_instr_runtime_get()</b>,
+    <b>ASCIICHAT_OK</b>, <b>asciichat_instr_runtime::call_counter</b>,
+    <b>asciichat_instr_runtime::fd</b>, <b>NS_PER_SEC_INT</b>,
     <b>asciichat_instr_runtime::pid</b>, <b>platform_gtime()</b>,
     <b>posix_write</b>, <b>asciichat_instr_runtime::rate</b>,
     <b>asciichat_instr_runtime::rate_enabled</b>, <b>SAFE_GETENV</b>,
     <b>safe_snprintf()</b>, <b>SAFE_STRNCPY</b>,
     <b>asciichat_instr_runtime::sequence</b>,
     <b>asciichat_instr_runtime::stderr_fallback</b>,
-    <b>asciichat_instr_runtime::thread_id</b>, <b>time_elapsed_ns()</b>,
-    <b>time_get_ns()</b>, <b>time_get_realtime_ns()</b>, and
-    <b>time_pretty()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_instr_log_pc()</b>.</p>
+    <b>asciichat_instr_runtime::thread_id</b>, <b>TIME_DURATION_BUFFER_SIZE</b>,
+    <b>time_elapsed_ns()</b>, <b>time_get_ns()</b>,
+    <b>time_get_realtime_ns()</b>, <b>time_pretty()</b>, and
+    <b>TOOLING_PANIC_INSTRUMENT_LOG_TIMESTAMP_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>, and
+    <b>asciichat_instr_log_pc()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_asciichat_instr_log_pc_(uintptr_t_program_counter)"><a class="permalink" href="#void_asciichat_instr_log_pc_(uintptr_t_program_counter)">void
@@ -480,22 +936,25 @@
   log</div>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Only logs if coverage mode is enabled</div>
-<p class="Pp">Definition at line <b>441</b> of file <b>instrument_log.c</b>.</p>
-<pre>441                                                        {
-442   if (!asciichat_instr_coverage_enabled()) {
-443     return;
-444   }
-445 
-446   char snippet[64];
-447   safe_snprintf(snippet, sizeof(snippet), &quot;pc=0x%zx&quot;, (size_t)program_counter);
-448   asciichat_instr_log_line(&quot;__coverage__&quot;, 0, &quot;&lt;coverage&gt;&quot;, snippet, ASCII_INSTR_SOURCE_PRINT_MACRO_NONE);
-449 }</pre>
+<p class="Pp">Definition at line <b>456</b> of file <b>instrument_log.c</b>.</p>
+<pre>456                                                        {
+457   if (!asciichat_instr_coverage_enabled()) {
+458     return;
+459   }
+460
+461   char snippet[TOOLING_PANIC_INSTRUMENT_LOG_SNIPPET_BUFFER_SIZE];
+462   safe_snprintf(snippet, sizeof(snippet), &quot;pc=0x%zx&quot;, (size_t)program_counter);
+463   asciichat_instr_log_line(&quot;__coverage__&quot;, 0, &quot;&lt;coverage&gt;&quot;, snippet, ASCII_INSTR_SOURCE_PRINT_MACRO_NONE);
+464 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCII_INSTR_SOURCE_PRINT_MACRO_NONE</b>,
     <b>asciichat_instr_coverage_enabled()</b>,
-    <b>asciichat_instr_log_line()</b>, and <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>__sanitizer_cov_trace_pc_guard()</b>.</p>
+    <b>asciichat_instr_log_line()</b>, <b>asciichat_instr_log_pc()</b>,
+    <b>safe_snprintf()</b>, and
+    <b>TOOLING_PANIC_INSTRUMENT_LOG_SNIPPET_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>__sanitizer_cov_trace_pc_guard()</b>, and
+    <b>asciichat_instr_log_pc()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_asciichat_instr_runtime_destroy_("><a class="permalink" href="#void_asciichat_instr_runtime_destroy_(">void
@@ -510,42 +969,43 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>runtime</i> Context to destroy (safe to pass
   NULL)</div>
-<p class="Pp">Definition at line <b>223</b> of file <b>instrument_log.c</b>.</p>
-<pre>223                                                                          {
-224   if (runtime == NULL) {
-225     return;
-226   }
-227 
-228   if (runtime-&gt;fd &gt;= 0) {
-229     platform_close(runtime-&gt;fd);
-230     runtime-&gt;fd = -1;
-231   }
-232 
-233 #if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
-234   if (runtime-&gt;include_regex_valid) {
-235     regfree(&amp;runtime-&gt;include_regex);
-236     runtime-&gt;include_regex_valid = false;
-237   }
-238   if (runtime-&gt;exclude_regex_valid) {
-239     regfree(&amp;runtime-&gt;exclude_regex);
-240     runtime-&gt;exclude_regex_valid = false;
-241   }
-242   if (runtime-&gt;function_include_regex_valid) {
-243     regfree(&amp;runtime-&gt;function_include_regex);
-244     runtime-&gt;function_include_regex_valid = false;
-245   }
-246   if (runtime-&gt;function_exclude_regex_valid) {
-247     regfree(&amp;runtime-&gt;function_exclude_regex);
-248     runtime-&gt;function_exclude_regex_valid = false;
-249   }
-250 #endif
-251 
-252   asciichat_instr_only_list_destroy(&amp;runtime-&gt;only_selectors);
-253   SAFE_FREE(runtime);
-254 }</pre>
+<p class="Pp">Definition at line <b>232</b> of file <b>instrument_log.c</b>.</p>
+<pre>232                                                                          {
+233   if (runtime == NULL) {
+234     return;
+235   }
+236
+237   if (runtime-&gt;fd &gt;= 0) {
+238     platform_close(runtime-&gt;fd);
+239     runtime-&gt;fd = -1;
+240   }
+241
+242 #if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
+243   if (runtime-&gt;include_regex_valid) {
+244     regfree(&amp;runtime-&gt;include_regex);
+245     runtime-&gt;include_regex_valid = false;
+246   }
+247   if (runtime-&gt;exclude_regex_valid) {
+248     regfree(&amp;runtime-&gt;exclude_regex);
+249     runtime-&gt;exclude_regex_valid = false;
+250   }
+251   if (runtime-&gt;function_include_regex_valid) {
+252     regfree(&amp;runtime-&gt;function_include_regex);
+253     runtime-&gt;function_include_regex_valid = false;
+254   }
+255   if (runtime-&gt;function_exclude_regex_valid) {
+256     regfree(&amp;runtime-&gt;function_exclude_regex);
+257     runtime-&gt;function_exclude_regex_valid = false;
+258   }
+259 #endif
+260
+261   asciichat_instr_only_list_destroy(&amp;runtime-&gt;only_selectors);
+262   SAFE_FREE(runtime);
+263 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_instr_runtime::exclude_regex</b>,
+<p class="Pp">References <b>asciichat_instr_runtime_destroy()</b>,
+    <b>asciichat_instr_runtime::exclude_regex</b>,
     <b>asciichat_instr_runtime::exclude_regex_valid</b>,
     <b>asciichat_instr_runtime::fd</b>,
     <b>asciichat_instr_runtime::function_exclude_regex</b>,
@@ -556,6 +1016,8 @@
     <b>asciichat_instr_runtime::include_regex_valid</b>,
     <b>asciichat_instr_runtime::only_selectors</b>, <b>platform_close()</b>, and
     <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_instr_runtime_destroy()</b>, and
+    <b>asciichat_instr_runtime_global_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_instr_runtime_t</b> * asciichat_instr_runtime_get
@@ -575,57 +1037,57 @@
 <p class="Pp"></p>
 <p class="Pp">Returns NULL if ASCII_INSTR_SOURCE_PRINT_ENABLE=0</p>
 </div>
-<p class="Pp">Definition at line <b>176</b> of file <b>instrument_log.c</b>.</p>
-<pre>176                                                              {
-177   if (g_disable_write) {
-178     return NULL;
-179   }
-180 
-181   // Initialize runtime once using lock-free lifecycle API
-182   if (!lifecycle_is_initialized(&amp;g_runtime_lc)) {
-183     if (lifecycle_init_once(&amp;g_runtime_lc)) {
-184       asciichat_instr_runtime_init_once();
-185       lifecycle_init_commit(&amp;g_runtime_lc);
-186     }
-187   }
-188 
-189   asciichat_instr_runtime_t *runtime = ascii_tls_get(g_runtime_key);
-190   if (runtime != NULL) {
-191     return runtime;
-192   }
-193 
-194   runtime = SAFE_CALLOC(1, sizeof(*runtime), asciichat_instr_runtime_t *);
-195   if (runtime == NULL) {
-196     return NULL;
-197   }
-198 
-199   runtime-&gt;pid = platform_get_pid();
-200   runtime-&gt;thread_id = thread_current_id();
-201   runtime-&gt;sequence = 0;
-202   runtime-&gt;call_counter = 0;
-203   runtime-&gt;fd = -1;
-204   runtime-&gt;filter_include = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_INCLUDE&quot;);
-205   runtime-&gt;filter_exclude = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_EXCLUDE&quot;);
-206   runtime-&gt;filter_thread = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_THREAD&quot;);
-207   runtime-&gt;filter_function_include = NULL;
-208   runtime-&gt;filter_function_exclude = NULL;
-209   runtime-&gt;filters_enabled = false;
-210   runtime-&gt;rate = 1;
-211   runtime-&gt;rate_enabled = false;
-212 
-213   asciichat_instr_runtime_configure(runtime);
-214 
-215   if (ascii_tls_set(g_runtime_key, runtime) != 0) {
-216     SAFE_FREE(runtime);
-217     return NULL;
-218   }
-219 
-220   return runtime;
-221 }</pre>
+<p class="Pp">Definition at line <b>185</b> of file <b>instrument_log.c</b>.</p>
+<pre>185                                                              {
+186   if (g_disable_write) {
+187     return NULL;
+188   }
+189
+190   // Initialize runtime once using lock-free lifecycle API
+191   if (!lifecycle_is_initialized(&amp;g_runtime_lc)) {
+192     if (lifecycle_init_once(&amp;g_runtime_lc)) {
+193       asciichat_instr_runtime_init_once();
+194       lifecycle_init_commit(&amp;g_runtime_lc);
+195     }
+196   }
+197
+198   asciichat_instr_runtime_t *runtime = ascii_tls_get(g_runtime_key);
+199   if (runtime != NULL) {
+200     return runtime;
+201   }
+202
+203   runtime = SAFE_CALLOC(1, sizeof(*runtime), asciichat_instr_runtime_t *);
+204   if (runtime == NULL) {
+205     return NULL;
+206   }
+207
+208   runtime-&gt;pid = platform_get_pid();
+209   runtime-&gt;thread_id = thread_current_id();
+210   runtime-&gt;sequence = 0;
+211   runtime-&gt;call_counter = 0;
+212   runtime-&gt;fd = -1;
+213   runtime-&gt;filter_include = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_INCLUDE&quot;);
+214   runtime-&gt;filter_exclude = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_EXCLUDE&quot;);
+215   runtime-&gt;filter_thread = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_THREAD&quot;);
+216   runtime-&gt;filter_function_include = NULL;
+217   runtime-&gt;filter_function_exclude = NULL;
+218   runtime-&gt;filters_enabled = false;
+219   runtime-&gt;rate = 1;
+220   runtime-&gt;rate_enabled = false;
+221
+222   asciichat_instr_runtime_configure(runtime);
+223
+224   if (ascii_tls_set(g_runtime_key, runtime) != 0) {
+225     SAFE_FREE(runtime);
+226     return NULL;
+227   }
+228
+229   return runtime;
+230 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_tls_get()</b>, <b>ascii_tls_set()</b>,
-    <b>thread_current_id()</b>,
+    <b>asciichat_instr_runtime_get()</b>,
     <b>asciichat_instr_runtime::call_counter</b>,
     <b>asciichat_instr_runtime::fd</b>,
     <b>asciichat_instr_runtime::filter_exclude</b>,
@@ -639,9 +1101,10 @@
     <b>platform_get_pid()</b>, <b>asciichat_instr_runtime::rate</b>,
     <b>asciichat_instr_runtime::rate_enabled</b>, <b>SAFE_CALLOC</b>,
     <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>,
-    <b>asciichat_instr_runtime::sequence</b>, and
+    <b>asciichat_instr_runtime::sequence</b>, <b>thread_current_id()</b>, and
     <b>asciichat_instr_runtime::thread_id</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>, and
+    <b>asciichat_instr_runtime_get()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_asciichat_instr_runtime_global_destroy_(void_)"><a class="permalink" href="#void_asciichat_instr_runtime_global_destroy_(void_)">void
@@ -658,29 +1121,38 @@
 <p class="Pp"></p>
 <p class="Pp">Thread-safe: acquires global mutex during shutdown</p>
 </div>
-<p class="Pp">Definition at line <b>256</b> of file <b>instrument_log.c</b>.</p>
-<pre>256                                                   {
-257   if (lifecycle_shutdown(&amp;g_runtime_lc)) {
-258     g_disable_write = true;
-259     ascii_tls_key_delete(g_runtime_key);
-260     g_ticks_initialized = false;
-261     g_start_ns = 0;
-262     g_coverage_enabled = false;
-263     g_output_dir_set = false;
-264     g_output_dir[0] = '\0';
-265     g_instrumentation_enabled_checked = false;
-266     g_instrumentation_enabled = false;
-267     g_echo_to_stderr_initialized = false;
-268     g_echo_to_stderr = false;
-269   }
-270 
-271   // Reset g_disable_write so instrumentation can be re-enabled in subsequent tests
-272   g_disable_write = false;
-273 }</pre>
+<p class="Pp">Definition at line <b>265</b> of file <b>instrument_log.c</b>.</p>
+<pre>265                                                   {
+266   if (lifecycle_shutdown(&amp;g_runtime_lc)) {
+267     g_disable_write = true;
+268     asciichat_instr_runtime_t *runtime = ascii_tls_get(g_runtime_key);
+269     if (runtime != NULL) {
+270       ascii_tls_set(g_runtime_key, NULL);
+271       asciichat_instr_runtime_destroy(runtime);
+272     }
+273     ascii_tls_key_delete(g_runtime_key);
+274     g_ticks_initialized = false;
+275     g_start_ns = 0;
+276     g_coverage_enabled = false;
+277     g_output_dir_set = false;
+278     g_output_dir[0] = '\0';
+279     g_echo_to_stderr_initialized = false;
+280     g_echo_to_stderr = false;
+281   }
+282
+283   g_instrumentation_enabled_checked = false;
+284   g_instrumentation_enabled = false;
+285
+286   // Reset g_disable_write so instrumentation can be re-enabled in subsequent tests
+287   g_disable_write = false;
+288 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ascii_tls_key_delete()</b>, and
+<p class="Pp">References <b>ascii_tls_get()</b>, <b>ascii_tls_key_delete()</b>,
+    <b>ascii_tls_set()</b>, <b>asciichat_instr_runtime_destroy()</b>,
+    <b>asciichat_instr_runtime_global_destroy()</b>, and
     <b>lifecycle_shutdown()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_instr_runtime_global_destroy()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -690,7 +1162,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

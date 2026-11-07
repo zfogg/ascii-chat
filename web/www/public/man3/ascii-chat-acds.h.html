@@ -42,15 +42,10 @@
 <p class="Pp">
   <br/>
   <br/>
-  #define <b>ACIP_MAX_SESSION_STRING_LEN</b> 48
+  #define <b>ACIP_SESSION_EXPIRATION_MS</b> (24ULL * 60 * 60 * 1000)
   <br/>
   Maximum session string length (e.g.,
     <i>swift-river-mountain&quot;</i>=<i>20</i>chars).<i></i> #define
-    <b>ACIP_SESSION_EXPIRATION_MS</b> (24ULL * 60 * 60 * 1000)
-  <br/>
-  Session maximum lifetime (24 hours in milliseconds) Note: Sessions are
-    actually cleaned up after 3 hours of inactivity (last_activity_at), but
-    expires_at serves as an absolute maximum lifetime. #define
     <b>ACIP_DISCOVERY_DEFAULT_PORT</b> <b>OPT_ACDS_PORT_INT_DEFAULT</b>
   <br/>
   Discovery server default port (use OPT_ACDS_PORT_INT_DEFAULT from options.h).
@@ -227,7 +222,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

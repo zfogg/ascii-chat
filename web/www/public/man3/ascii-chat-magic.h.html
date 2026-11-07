@@ -45,12 +45,6 @@
     0xFEEDFACEU
   <br/>
   Magic number for freed ring buffer frames (0xFEEDFACE). #define
-    <b>MAGIC_BUFFER_POOL_VALID</b> 0xBF00B001U
-  <br/>
-  Magic number for valid pooled buffers (0xBF00B001). #define
-    <b>MAGIC_BUFFER_POOL_FALLBACK</b> 0xBF00FA11U
-  <br/>
-  Magic number for malloc fallback buffers (0xBF00FA11). #define
     <b>MAGIC_PACKET_VALID</b> 0xA5C11C4A1ULL
   <br/>
   Magic number for network packets (0xA5C11C4A1 =
@@ -58,16 +52,12 @@
     expected)
   <br/>
   Check if magic number is valid (true if matches expected). #define
-    <b>IS_FRAME_VALID</b>(<b>frame</b>)
+    <b>IS_FRAME_VALID</b>(frame)
   <br/>
-  Check if frame is valid and not freed. #define
-    <b>IS_FRAME_FREED</b>(<b>frame</b>)
+  Check if frame is valid and not freed. #define <b>IS_FRAME_FREED</b>(frame)
   <br/>
   Check if frame has been freed (corruption detection). #define
-    <b>IS_BUFFER_POOL_VALID</b>(node)
-  <br/>
-  Check if buffer pool node is valid. #define
-    <b>MARK_FRAME_FREED</b>(<b>frame</b>)
+    <b>MARK_FRAME_FREED</b>(frame)
   <br/>
   Mark a frame as freed.
   <br/>
@@ -86,39 +76,25 @@
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="_define_IS_BUFFER_POOL_VALID(_node)"><a class="permalink" href="#_define_IS_BUFFER_POOL_VALID(_node)">#define
-  IS_BUFFER_POOL_VALID( node)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>((node)-&gt;magic == MAGIC_BUFFER_POOL_VALID || (node)-&gt;magic == MAGIC_BUFFER_POOL_FALLBACK)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Check if buffer pool node is valid.</p>
-<p class="Pp">Definition at line <b>45</b> of file <b>magic.h</b>.</p>
-<pre>45 #define IS_BUFFER_POOL_VALID(node)                                                                                     \
-46   ((node)-&gt;magic == MAGIC_BUFFER_POOL_VALID || (node)-&gt;magic == MAGIC_BUFFER_POOL_FALLBACK)</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_IS_FRAME_FREED(_"><a class="permalink" href="#_define_IS_FRAME_FREED(_">#define
-  IS_FRAME_FREED( <b>frame</b>)</a></h2>
+<h2 class="Ss" id="_define_IS_FRAME_FREED(_frame)"><a class="permalink" href="#_define_IS_FRAME_FREED(_frame)">#define
+  IS_FRAME_FREED( frame)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>((frame)-&gt;magic == MAGIC_FRAME_FREED)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Check if frame has been freed (corruption detection).</p>
-<p class="Pp">Definition at line <b>42</b> of file <b>magic.h</b>.</p>
+<p class="Pp">Definition at line <b>36</b> of file <b>magic.h</b>.</p>
 <p class="Pp">Referenced by <b>framebuffer_read_frame()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_IS_FRAME_VALID(_"><a class="permalink" href="#_define_IS_FRAME_VALID(_">#define
-  IS_FRAME_VALID( <b>frame</b>)</a></h2>
+<h2 class="Ss" id="_define_IS_FRAME_VALID(_frame)"><a class="permalink" href="#_define_IS_FRAME_VALID(_frame)">#define
+  IS_FRAME_VALID( frame)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>((frame)-&gt;magic == MAGIC_FRAME_VALID &amp;&amp; (frame)-&gt;data != NULL)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Check if frame is valid and not freed.</p>
-<p class="Pp">Definition at line <b>39</b> of file <b>magic.h</b>.</p>
+<p class="Pp">Definition at line <b>33</b> of file <b>magic.h</b>.</p>
 <p class="Pp">Referenced by <b>framebuffer_clear()</b>, and
     <b>framebuffer_write_frame()</b>.</p>
 </section>
@@ -130,27 +106,11 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Check if magic number is valid (true if matches expected).</p>
-<p class="Pp">Definition at line <b>36</b> of file <b>magic.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_pool_free()</b>,
-    <b>framebuffer_clear()</b>, <b>framebuffer_peek_latest_multi_frame()</b>,
+<p class="Pp">Definition at line <b>30</b> of file <b>magic.h</b>.</p>
+<p class="Pp">Referenced by <b>framebuffer_clear()</b>,
+    <b>framebuffer_peek_latest_multi_frame()</b>,
     <b>framebuffer_read_frame()</b>, <b>framebuffer_read_multi_frame()</b>, and
     <b>framebuffer_write_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAGIC_BUFFER_POOL_FALLBACK___0xBF00FA11U"><a class="permalink" href="#_define_MAGIC_BUFFER_POOL_FALLBACK___0xBF00FA11U">#define
-  MAGIC_BUFFER_POOL_FALLBACK 0xBF00FA11U</a></h2>
-<p class="Pp">Magic number for malloc fallback buffers (0xBF00FA11).</p>
-<p class="Pp">Definition at line <b>26</b> of file <b>magic.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_pool_alloc()</b>, and
-    <b>buffer_pool_free()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_MAGIC_BUFFER_POOL_VALID___0xBF00B001U"><a class="permalink" href="#_define_MAGIC_BUFFER_POOL_VALID___0xBF00B001U">#define
-  MAGIC_BUFFER_POOL_VALID 0xBF00B001U</a></h2>
-<p class="Pp">Magic number for valid pooled buffers (0xBF00B001).</p>
-<p class="Pp">Definition at line <b>23</b> of file <b>magic.h</b>.</p>
-<p class="Pp">Referenced by <b>buffer_pool_alloc()</b>, and
-    <b>buffer_pool_free()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_MAGIC_FRAME_FREED___0xFEEDFACEU"><a class="permalink" href="#_define_MAGIC_FRAME_FREED___0xFEEDFACEU">#define
@@ -172,17 +132,17 @@
   MAGIC_PACKET_VALID 0xA5C11C4A1ULL</a></h2>
 <p class="Pp">Magic number for network packets (0xA5C11C4A1 =
     &quot;ASCIICHAT&quot; in hex).</p>
-<p class="Pp">Definition at line <b>29</b> of file <b>magic.h</b>.</p>
+<p class="Pp">Definition at line <b>23</b> of file <b>magic.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="_define_MARK_FRAME_FREED(_"><a class="permalink" href="#_define_MARK_FRAME_FREED(_">#define
-  MARK_FRAME_FREED( <b>frame</b>)</a></h2>
+<h2 class="Ss" id="_define_MARK_FRAME_FREED(_frame)"><a class="permalink" href="#_define_MARK_FRAME_FREED(_frame)">#define
+  MARK_FRAME_FREED( frame)</a></h2>
 <p class="Pp"><b>Value:</b></p>
 <pre>((frame)-&gt;magic = MAGIC_FRAME_FREED)</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Mark a frame as freed.</p>
-<p class="Pp">Definition at line <b>49</b> of file <b>magic.h</b>.</p>
+<p class="Pp">Definition at line <b>39</b> of file <b>magic.h</b>.</p>
 <p class="Pp">Referenced by <b>framebuffer_clear()</b>, and
     <b>framebuffer_write_frame()</b>.</p>
 </section>
@@ -194,7 +154,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

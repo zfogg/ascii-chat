@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>stdio.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">stdio.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">stdio.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">stdio.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>mcp_stdio_reserve</b> (void)
+  <br/>
+  void <b>mcp_stdio_release</b> (void)
+  <br/>
+  void <b>mcp_stdio_send</b> (<b>mcp_server_t</b> *s, yyjson_mut_doc *response)
+  <br/>
+  <b>asciichat_error_t</b> <b>mcp_stdio_run</b> (<b>mcp_server_t</b> *s)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_mcp_stdio_release_(void_)"><a class="permalink" href="#void_mcp_stdio_release_(void_)">void
+  mcp_stdio_release (void )</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>stdio.c</b>.</p>
+<pre>13                              {
+14   if (protocol_fd &gt;= 0) {
+15     platform_close(protocol_fd);
+16     protocol_fd = -1;
+17   }
+18 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mcp_stdio_release()</b>, and
+    <b>platform_close()</b>.</p>
+<p class="Pp">Referenced by <b>mcp_server_main()</b>, and
+    <b>mcp_stdio_release()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> mcp_stdio_reserve (void )</h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>stdio.c</b>.</p>
+<pre>7                                           {
+8   protocol_fd = platform_dup(STDOUT_FILENO);
+9   if (protocol_fd &lt; 0)
+10     return SET_ERRNO(ERROR_FILE_OPERATION, &quot;Cannot reserve MCP stdout&quot;);
+11   return platform_dup2(STDERR_FILENO, STDOUT_FILENO);
+12 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_FILE_OPERATION</b>,
+    <b>mcp_stdio_reserve()</b>, <b>platform_dup()</b>, <b>platform_dup2()</b>,
+    and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, and <b>mcp_stdio_reserve()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> mcp_stdio_run (<b>mcp_server_t</b> *
+  s)</h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>stdio.c</b>.</p>
+<pre>31                                                  {
+32   char *line = SAFE_MALLOC(MCP_MAX_INPUT + 1, char *);
+33   size_t n = 0;
+34   bool overflow = false;
+35   while (!atomic_load_bool(&amp;s-&gt;stopping)) {
+36     int c = fgetc(stdin);
+37     if (c == EOF)
+38       break;
+39     if (c != '\n') {
+40       if (n &lt; MCP_MAX_INPUT)
+41         line[n++] = (char)c;
+42       else
+43         overflow = true;
+44       continue;
+45     }
+46     if (n &amp;&amp; line[n - 1] == '\r')
+47       --n;
+48     if (!n &amp;&amp; !overflow)
+49       continue;
+50     yyjson_doc *doc = overflow ? NULL : yyjson_read(line, n, YYJSON_READ_NOFLAG);
+51     bool pending = false;
+52     yyjson_mut_doc *response =
+53         doc ? mcp_dispatch(s, doc, NULL, NULL, &amp;pending)
+54             : mcp_error(NULL, overflow ? -32600 : -32700, overflow ? &quot;Request exceeds 24 MiB&quot; : &quot;Parse error&quot;);
+55     if (response) {
+56       mcp_stdio_send(s, response);
+57       yyjson_mut_doc_free(response);
+58     }
+59     if (doc)
+60       yyjson_doc_free(doc);
+61     n = 0;
+62     overflow = false;
+63     mcp_jobs_reap(s, false);
+64   }
+65   SAFE_FREE(line);
+66   for (unsigned i = 0; i &lt; s-&gt;policy.max_jobs; ++i)
+67     if (s-&gt;jobs[i].started)
+68       atomic_store_bool(&amp;s-&gt;jobs[i].cancelled, true);
+69   mcp_jobs_reap(s, true);
+70   return ASCIICHAT_OK;
+71 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+    <b>atomic_store_bool()</b>, <b>mcp_job::cancelled</b>,
+    <b>mcp_server::jobs</b>, <b>mcp_policy_t::max_jobs</b>,
+    <b>mcp_dispatch()</b>, <b>mcp_error()</b>, <b>mcp_jobs_reap()</b>,
+    <b>MCP_MAX_INPUT</b>, <b>mcp_stdio_run()</b>, <b>mcp_stdio_send()</b>,
+    <b>mcp_server::policy</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>mcp_job::started</b>, and <b>mcp_server::stopping</b>.</p>
+<p class="Pp">Referenced by <b>mcp_server_main()</b>, and
+    <b>mcp_stdio_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_mcp_stdio_send_("><a class="permalink" href="#void_mcp_stdio_send_(">void
+  mcp_stdio_send (<b>mcp_server_t</b> * s, yyjson_mut_doc * response)</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file <b>stdio.c</b>.</p>
+<pre>19                                                                {
+20   size_t size;
+21   char *json = yyjson_mut_write(response, 0, &amp;size);
+22   if (!json)
+23     return;
+24   mutex_lock(&amp;s-&gt;output_mutex);
+25   bool ok = platform_write_all(protocol_fd, json, size) == size &amp;&amp; platform_write_all(protocol_fd, &quot;\n&quot;, 1) == 1;
+26   mutex_unlock(&amp;s-&gt;output_mutex);
+27   free(json); // yyjson owns allocations made by its default allocator.
+28   if (!ok)
+29     atomic_store_bool(&amp;s-&gt;stopping, true);
+30 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>, <b>mcp_stdio_send()</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>mcp_server::output_mutex</b>,
+    <b>platform_write_all()</b>, and <b>mcp_server::stopping</b>.</p>
+<p class="Pp">Referenced by <b>mcp_stdio_run()</b>, and
+  <b>mcp_stdio_send()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

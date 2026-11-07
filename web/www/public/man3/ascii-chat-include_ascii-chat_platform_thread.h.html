@@ -49,7 +49,9 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>PLATFORM_THREAD_LOCAL</b> __thread
+<p class="Pp">#define <b>PLATFORM_THREAD_NAME_BUFFER_SIZE</b> 128
+  <br/>
+  #define <b>PLATFORM_THREAD_LOCAL</b> __thread
   <br/>
   Platform-specific thread-local storage declaration.
   <br/>
@@ -74,33 +76,35 @@
 <p class="Pp">void * <b>thread_wrapper_impl</b> (void *arg)
   <br/>
   Internal thread wrapper function that executes user code with cleanup. int
-    <b>acthread_create</b> (<b>asciichat_thread_t</b> *thread, const
-    char *name, void *(*func)(void *), void *arg)
+    <b>acthread_create</b> (<b>asciichat_thread_t</b> *thread, const char *name,
+    void *(*func)(void *), void *arg)
   <br/>
-  Create a new named thread. int <b>thread_join</b>
-    (<b>asciichat_thread_t</b> *thread, void **retval)
+  Create a new named thread. int <b>thread_join</b> (<b>asciichat_thread_t</b>
+    *thread, void **retval)
   <br/>
-  Wait for a thread to complete (blocking). int
-    <b>thread_join_timeout</b> (<b>asciichat_thread_t</b> *thread,
-    void **retval, <b>uint64_t</b> timeout_ns)
+  Wait for a thread to complete (blocking). int <b>thread_detach</b>
+    (<b>asciichat_thread_t</b> *thread)
   <br/>
-  Wait for a thread to complete with timeout. void <b>thread_exit</b>
-    (void *retval)
+  Detach a thread so its resources are reclaimed when it exits. int
+    <b>thread_join_timeout</b> (<b>asciichat_thread_t</b> *thread, void
+    **retval, <b>uint64_t</b> timeout_ns)
   <br/>
-  Exit the current thread. <b>thread_id_t</b> <b>thread_self</b>
+  Wait for a thread to complete with timeout. void <b>thread_exit</b> (void
+    *retval)
+  <br/>
+  Exit the current thread. <b>thread_id_t</b> <b>thread_self</b> (void)
+  <br/>
+  Get the current thread's ID. int <b>thread_equal</b> (<b>thread_id_t</b> t1,
+    <b>thread_id_t</b> t2)
+  <br/>
+  Compare two thread IDs for equality. <b>uint64_t</b> <b>thread_current_id</b>
     (void)
-  <br/>
-  Get the current thread's ID. int <b>thread_equal</b>
-    (<b>thread_id_t</b> t1, <b>thread_id_t</b> t2)
-  <br/>
-  Compare two thread IDs for equality. <b>uint64_t</b>
-    <b>thread_current_id</b> (void)
   <br/>
   Get the current thread's unique numeric ID. <b>bool</b>
     <b>thread_is_initialized</b> (<b>asciichat_thread_t</b> *thread)
   <br/>
-  Check if a thread handle has been initialized. void
-    <b>thread_init</b> (<b>asciichat_thread_t</b> *thread)
+  Check if a thread handle has been initialized. void <b>thread_init</b>
+    (<b>asciichat_thread_t</b> *thread)
   <br/>
   Initialize a thread handle to an uninitialized state. <b>asciichat_error_t</b>
     <b>thread_set_realtime_priority</b> (void)
@@ -146,7 +150,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

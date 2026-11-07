@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>stats.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">stats.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">stats.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">stats.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>stats_descriptor_t</b>
+  <br/>
+  struct <b>stats_capabilities_t</b>
+  <br/>
+  struct <b>stats_duration_snapshot_t</b>
+  <br/>
+  struct <b>stats_snapshot_t</b>
+  <br/>
+  struct <b>stats_sampler_config_t</b>
+  <br/>
+  struct <b>stats_rates_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>stats_scope</b> <b>stats_scope_t</b>
+  <br/>
+  typedef struct <b>stats_sampler</b> <b>stats_sampler_t</b>
+  <br/>
+  typedef void(*) <b>stats_observer_fn</b>(<b>stats_record_kind_t</b> kind,
+    unsigned id, <b>uint64_t</b> value, void *context)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>stats_counter_id_t</b> {
+    <b>STATS_COUNTER_FRAMES_CAPTURED</b>, <b>STATS_COUNTER_FRAMES_CONVERTED</b>,
+    <b>STATS_COUNTER_FRAMES_ENCODED</b>, <b>STATS_COUNTER_FRAMES_DECODED</b>,
+    <b>STATS_COUNTER_FRAMES_PRESENTED</b>, <b>STATS_COUNTER_FRAMES_SKIPPED</b>,
+    <b>STATS_COUNTER_FRAMES_DROPPED</b>, <b>STATS_COUNTER_PACKETS_SENT</b>,
+    <b>STATS_COUNTER_PACKETS_RECEIVED</b>, <b>STATS_COUNTER_BYTES_SENT</b>,
+    <b>STATS_COUNTER_BYTES_RECEIVED</b>, <b>STATS_COUNTER_SEND_ERRORS</b>,
+    <b>STATS_COUNTER_RECEIVE_ERRORS</b>, <b>STATS_COUNTER_AUDIO_UNDERRUNS</b>,
+    <b>STATS_COUNTER_AUDIO_OVERRUNS</b>, <b>STATS_COUNTER_SESSION_CREATES</b>,
+    <b>STATS_COUNTER_SESSION_JOINS</b>, <b>STATS_COUNTER_SESSION_LOOKUPS</b>,
+    <b>STATS_COUNTER_REQUEST_FAILURES</b>,
+    <b>STATS_COUNTER_RATE_LIMIT_REJECTIONS</b>,
+    <b>STATS_COUNTER_SESSION_EXPIRATIONS</b>,
+    <b>STATS_COUNTER_HOST_MIGRATIONS</b>, <b>STATS_COUNTER_FRAMES_SENT</b>,
+    <b>STATS_COUNTER_FRAMES_RECEIVED</b>, <b>STATS_COUNTER_RECONNECTS</b>,
+    <b>STATS_COUNTER_RECORDING_FRAMES</b>, <b>STATS_COUNTER_FRAMES_ENQUEUED</b>,
+    <b>STATS_COUNTER_QUEUE_DROPS</b>, <b>STATS_COUNTER_MIGRATION_FAILURES</b>,
+    <b>STATS_COUNTER_MCP_REQUESTS</b>, <b>STATS_COUNTER_MCP_REJECTED</b>,
+    <b>STATS_COUNTER_MCP_RENDERS</b>, <b>STATS_COUNTER_MCP_RENDER_FAILURES</b>,
+    <b>STATS_COUNTER_MCP_CANCELLED</b>, <b>STATS_COUNTER_MCP_TIMEOUTS</b>,
+    <b>STATS_COUNTER_MCP_OUTPUT_BYTES</b>, <b>STATS_COUNTER_MCP_SAVED_FILES</b>,
+    <b>STATS_COUNTER_MCP_HTTP_RESPONSES</b>, <b>STATS_COUNTER_COUNT</b> }
+  <br/>
+  enum <b>stats_gauge_id_t</b> { <b>STATS_GAUGE_CONNECTIONS_ACTIVE</b>,
+    <b>STATS_GAUGE_SESSIONS_ACTIVE</b>, <b>STATS_GAUGE_PARTICIPANTS_ACTIVE</b>,
+    <b>STATS_GAUGE_VIDEO_QUEUE_DEPTH</b>,
+    <b>STATS_GAUGE_AUDIO_BUFFERED_SAMPLES</b>, <b>STATS_GAUGE_COUNT</b> }
+  <br/>
+  enum <b>stats_duration_id_t</b> { <b>STATS_DURATION_CAPTURE</b>,
+    <b>STATS_DURATION_ASCII_CONVERT</b>, <b>STATS_DURATION_ENCODE</b>,
+    <b>STATS_DURATION_DECODE</b>, <b>STATS_DURATION_AUDIO_MIX</b>,
+    <b>STATS_DURATION_TERMINAL_WRITE</b>,
+    <b>STATS_DURATION_CONNECTION_SETUP</b>, <b>STATS_DURATION_REQUEST</b>,
+    <b>STATS_DURATION_RTT</b>, <b>STATS_DURATION_RECORDING</b>,
+    <b>STATS_DURATION_MCP_RENDER</b>, <b>STATS_DURATION_COUNT</b> }
+  <br/>
+  enum <b>stats_record_kind_t</b> { <b>STATS_RECORD_COUNTER</b>,
+    <b>STATS_RECORD_GAUGE</b>, <b>STATS_RECORD_DURATION</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const <b>stats_descriptor_t</b> * <b>stats_counter_descriptor</b>
+    (<b>stats_counter_id_t</b> id)
+  <br/>
+  const <b>stats_descriptor_t</b> * <b>stats_gauge_descriptor</b>
+    (<b>stats_gauge_id_t</b> id)
+  <br/>
+  const <b>stats_descriptor_t</b> * <b>stats_duration_descriptor</b>
+    (<b>stats_duration_id_t</b> id)
+  <br/>
+  <b>asciichat_error_t</b> <b>stats_scope_create</b> (const
+    <b>stats_capabilities_t</b> *capabilities, <b>stats_scope_t</b> **out_scope)
+  <br/>
+  void <b>stats_scope_destroy</b> (<b>stats_scope_t</b> *scope)
+  <br/>
+  void <b>stats_scope_set_observer</b> (<b>stats_scope_t</b> *scope,
+    <b>stats_observer_fn</b> observer, void *context)
+  <br/>
+  void <b>stats_counter_add</b> (<b>stats_scope_t</b> *scope,
+    <b>stats_counter_id_t</b> id, <b>uint64_t</b> amount)
+  <br/>
+  void <b>stats_gauge_set</b> (<b>stats_scope_t</b> *scope,
+    <b>stats_gauge_id_t</b> id, <b>uint64_t</b> value)
+  <br/>
+  void <b>stats_duration_record</b> (<b>stats_scope_t</b> *scope,
+    <b>stats_duration_id_t</b> id, <b>uint64_t</b> elapsed_ns)
+  <br/>
+  <b>asciichat_error_t</b> <b>stats_scope_snapshot</b> (const
+    <b>stats_scope_t</b> *scope, <b>stats_snapshot_t</b> *out)
+  <br/>
+  <b>asciichat_error_t</b> <b>stats_sampler_create</b> (const
+    <b>stats_sampler_config_t</b> *config, <b>stats_sampler_t</b> **out_sampler)
+  <br/>
+  <b>asciichat_error_t</b> <b>stats_sampler_update</b> (<b>stats_sampler_t</b>
+    *sampler, const <b>stats_snapshot_t</b> *snapshot, <b>stats_rates_t</b>
+    *out_rates)
+  <br/>
+  void <b>stats_sampler_destroy</b> (<b>stats_sampler_t</b> *sampler)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void(*)_stats_observer_fn("><a class="permalink" href="#typedef_void(*)_stats_observer_fn(">typedef
+  void(*) stats_observer_fn(<b>stats_record_kind_t</b> kind, unsigned id,
+  <b>uint64_t</b> value, void *context)</a></h2>
+<p class="Pp">Called concurrently by producers with counter deltas, gauge values
+    or duration nanoseconds. Configure before producers start; detach only after
+    they join. The observer must not record back into this scope. Peer scopes do
+    not inherit the observer.</p>
+<p class="Pp">Definition at line <b>127</b> of file
+    <b>include/ascii-chat/stats/stats.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>stats_sampler</b> <b>stats_sampler_t</b></h2>
+<p class="Pp">Definition at line <b>13</b> of file
+    <b>include/ascii-chat/stats/stats.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>stats_scope</b> <b>stats_scope_t</b></h2>
+<p class="Pp">Typed, process-local measurements. No UI, mode globals, or worker
+    threads.</p>
+<p class="Pp">Definition at line <b>12</b> of file
+    <b>include/ascii-chat/stats/stats.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">enum <b>stats_counter_id_t</b></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="STATS_COUNTER_FRAMES_CAPTURED"><a class="permalink" href="#STATS_COUNTER_FRAMES_CAPTURED"><b><i>STATS_COUNTER_FRAMES_CAPTURED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_FRAMES_CONVERTED"><a class="permalink" href="#STATS_COUNTER_FRAMES_CONVERTED"><b><i>STATS_COUNTER_FRAMES_CONVERTED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_FRAMES_ENCODED"><a class="permalink" href="#STATS_COUNTER_FRAMES_ENCODED"><b><i>STATS_COUNTER_FRAMES_ENCODED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_FRAMES_DECODED"><a class="permalink" href="#STATS_COUNTER_FRAMES_DECODED"><b><i>STATS_COUNTER_FRAMES_DECODED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_FRAMES_PRESENTED"><a class="permalink" href="#STATS_COUNTER_FRAMES_PRESENTED"><b><i>STATS_COUNTER_FRAMES_PRESENTED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_FRAMES_SKIPPED"><a class="permalink" href="#STATS_COUNTER_FRAMES_SKIPPED"><b><i>STATS_COUNTER_FRAMES_SKIPPED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_FRAMES_DROPPED"><a class="permalink" href="#STATS_COUNTER_FRAMES_DROPPED"><b><i>STATS_COUNTER_FRAMES_DROPPED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_PACKETS_SENT"><a class="permalink" href="#STATS_COUNTER_PACKETS_SENT"><b><i>STATS_COUNTER_PACKETS_SENT
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_PACKETS_RECEIVED"><a class="permalink" href="#STATS_COUNTER_PACKETS_RECEIVED"><b><i>STATS_COUNTER_PACKETS_RECEIVED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_BYTES_SENT"><a class="permalink" href="#STATS_COUNTER_BYTES_SENT"><b><i>STATS_COUNTER_BYTES_SENT
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_BYTES_RECEIVED"><a class="permalink" href="#STATS_COUNTER_BYTES_RECEIVED"><b><i>STATS_COUNTER_BYTES_RECEIVED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_SEND_ERRORS"><a class="permalink" href="#STATS_COUNTER_SEND_ERRORS"><b><i>STATS_COUNTER_SEND_ERRORS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_RECEIVE_ERRORS"><a class="permalink" href="#STATS_COUNTER_RECEIVE_ERRORS"><b><i>STATS_COUNTER_RECEIVE_ERRORS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_AUDIO_UNDERRUNS"><a class="permalink" href="#STATS_COUNTER_AUDIO_UNDERRUNS"><b><i>STATS_COUNTER_AUDIO_UNDERRUNS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_AUDIO_OVERRUNS"><a class="permalink" href="#STATS_COUNTER_AUDIO_OVERRUNS"><b><i>STATS_COUNTER_AUDIO_OVERRUNS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_SESSION_CREATES"><a class="permalink" href="#STATS_COUNTER_SESSION_CREATES"><b><i>STATS_COUNTER_SESSION_CREATES
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_SESSION_JOINS"><a class="permalink" href="#STATS_COUNTER_SESSION_JOINS"><b><i>STATS_COUNTER_SESSION_JOINS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_SESSION_LOOKUPS"><a class="permalink" href="#STATS_COUNTER_SESSION_LOOKUPS"><b><i>STATS_COUNTER_SESSION_LOOKUPS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_REQUEST_FAILURES"><a class="permalink" href="#STATS_COUNTER_REQUEST_FAILURES"><b><i>STATS_COUNTER_REQUEST_FAILURES
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_RATE_LIMIT_REJECTIONS"><a class="permalink" href="#STATS_COUNTER_RATE_LIMIT_REJECTIONS"><b><i>STATS_COUNTER_RATE_LIMIT_REJECTIONS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_SESSION_EXPIRATIONS"><a class="permalink" href="#STATS_COUNTER_SESSION_EXPIRATIONS"><b><i>STATS_COUNTER_SESSION_EXPIRATIONS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_HOST_MIGRATIONS"><a class="permalink" href="#STATS_COUNTER_HOST_MIGRATIONS"><b><i>STATS_COUNTER_HOST_MIGRATIONS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_FRAMES_SENT"><a class="permalink" href="#STATS_COUNTER_FRAMES_SENT"><b><i>STATS_COUNTER_FRAMES_SENT
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_FRAMES_RECEIVED"><a class="permalink" href="#STATS_COUNTER_FRAMES_RECEIVED"><b><i>STATS_COUNTER_FRAMES_RECEIVED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_RECONNECTS"><a class="permalink" href="#STATS_COUNTER_RECONNECTS"><b><i>STATS_COUNTER_RECONNECTS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_RECORDING_FRAMES"><a class="permalink" href="#STATS_COUNTER_RECORDING_FRAMES"><b><i>STATS_COUNTER_RECORDING_FRAMES
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_FRAMES_ENQUEUED"><a class="permalink" href="#STATS_COUNTER_FRAMES_ENQUEUED"><b><i>STATS_COUNTER_FRAMES_ENQUEUED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_QUEUE_DROPS"><a class="permalink" href="#STATS_COUNTER_QUEUE_DROPS"><b><i>STATS_COUNTER_QUEUE_DROPS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_MIGRATION_FAILURES"><a class="permalink" href="#STATS_COUNTER_MIGRATION_FAILURES"><b><i>STATS_COUNTER_MIGRATION_FAILURES
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_MCP_REQUESTS"><a class="permalink" href="#STATS_COUNTER_MCP_REQUESTS"><b><i>STATS_COUNTER_MCP_REQUESTS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_MCP_REJECTED"><a class="permalink" href="#STATS_COUNTER_MCP_REJECTED"><b><i>STATS_COUNTER_MCP_REJECTED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_MCP_RENDERS"><a class="permalink" href="#STATS_COUNTER_MCP_RENDERS"><b><i>STATS_COUNTER_MCP_RENDERS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_MCP_RENDER_FAILURES"><a class="permalink" href="#STATS_COUNTER_MCP_RENDER_FAILURES"><b><i>STATS_COUNTER_MCP_RENDER_FAILURES
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_MCP_CANCELLED"><a class="permalink" href="#STATS_COUNTER_MCP_CANCELLED"><b><i>STATS_COUNTER_MCP_CANCELLED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_MCP_TIMEOUTS"><a class="permalink" href="#STATS_COUNTER_MCP_TIMEOUTS"><b><i>STATS_COUNTER_MCP_TIMEOUTS
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_MCP_OUTPUT_BYTES"><a class="permalink" href="#STATS_COUNTER_MCP_OUTPUT_BYTES"><b><i>STATS_COUNTER_MCP_OUTPUT_BYTES
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_MCP_SAVED_FILES"><a class="permalink" href="#STATS_COUNTER_MCP_SAVED_FILES"><b><i>STATS_COUNTER_MCP_SAVED_FILES
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_MCP_HTTP_RESPONSES"><a class="permalink" href="#STATS_COUNTER_MCP_HTTP_RESPONSES"><b><i>STATS_COUNTER_MCP_HTTP_RESPONSES
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_COUNTER_COUNT"><a class="permalink" href="#STATS_COUNTER_COUNT"><b><i>STATS_COUNTER_COUNT
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>15</b> of file
+    <b>include/ascii-chat/stats/stats.h</b>.</p>
+<pre>15              {
+16   STATS_COUNTER_FRAMES_CAPTURED,
+17   STATS_COUNTER_FRAMES_CONVERTED,
+18   STATS_COUNTER_FRAMES_ENCODED,
+19   STATS_COUNTER_FRAMES_DECODED,
+20   STATS_COUNTER_FRAMES_PRESENTED,
+21   STATS_COUNTER_FRAMES_SKIPPED,
+22   STATS_COUNTER_FRAMES_DROPPED,
+23   STATS_COUNTER_PACKETS_SENT,
+24   STATS_COUNTER_PACKETS_RECEIVED,
+25   STATS_COUNTER_BYTES_SENT,
+26   STATS_COUNTER_BYTES_RECEIVED,
+27   STATS_COUNTER_SEND_ERRORS,
+28   STATS_COUNTER_RECEIVE_ERRORS,
+29   STATS_COUNTER_AUDIO_UNDERRUNS,
+30   STATS_COUNTER_AUDIO_OVERRUNS,
+31   STATS_COUNTER_SESSION_CREATES,
+32   STATS_COUNTER_SESSION_JOINS,
+33   STATS_COUNTER_SESSION_LOOKUPS,
+34   STATS_COUNTER_REQUEST_FAILURES,
+35   STATS_COUNTER_RATE_LIMIT_REJECTIONS,
+36   STATS_COUNTER_SESSION_EXPIRATIONS,
+37   STATS_COUNTER_HOST_MIGRATIONS,
+38   STATS_COUNTER_FRAMES_SENT,
+39   STATS_COUNTER_FRAMES_RECEIVED,
+40   STATS_COUNTER_RECONNECTS,
+41   STATS_COUNTER_RECORDING_FRAMES,
+42   STATS_COUNTER_FRAMES_ENQUEUED,
+43   STATS_COUNTER_QUEUE_DROPS,
+44   STATS_COUNTER_MIGRATION_FAILURES,
+45   STATS_COUNTER_MCP_REQUESTS,
+46   STATS_COUNTER_MCP_REJECTED,
+47   STATS_COUNTER_MCP_RENDERS,
+48   STATS_COUNTER_MCP_RENDER_FAILURES,
+49   STATS_COUNTER_MCP_CANCELLED,
+50   STATS_COUNTER_MCP_TIMEOUTS,
+51   STATS_COUNTER_MCP_OUTPUT_BYTES,
+52   STATS_COUNTER_MCP_SAVED_FILES,
+53   STATS_COUNTER_MCP_HTTP_RESPONSES,
+54   STATS_COUNTER_COUNT
+55 } stats_counter_id_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">enum <b>stats_duration_id_t</b></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="STATS_DURATION_CAPTURE"><a class="permalink" href="#STATS_DURATION_CAPTURE"><b><i>STATS_DURATION_CAPTURE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_DURATION_ASCII_CONVERT"><a class="permalink" href="#STATS_DURATION_ASCII_CONVERT"><b><i>STATS_DURATION_ASCII_CONVERT
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_DURATION_ENCODE"><a class="permalink" href="#STATS_DURATION_ENCODE"><b><i>STATS_DURATION_ENCODE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_DURATION_DECODE"><a class="permalink" href="#STATS_DURATION_DECODE"><b><i>STATS_DURATION_DECODE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_DURATION_AUDIO_MIX"><a class="permalink" href="#STATS_DURATION_AUDIO_MIX"><b><i>STATS_DURATION_AUDIO_MIX
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_DURATION_TERMINAL_WRITE"><a class="permalink" href="#STATS_DURATION_TERMINAL_WRITE"><b><i>STATS_DURATION_TERMINAL_WRITE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_DURATION_CONNECTION_SETUP"><a class="permalink" href="#STATS_DURATION_CONNECTION_SETUP"><b><i>STATS_DURATION_CONNECTION_SETUP
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_DURATION_REQUEST"><a class="permalink" href="#STATS_DURATION_REQUEST"><b><i>STATS_DURATION_REQUEST
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_DURATION_RTT"><a class="permalink" href="#STATS_DURATION_RTT"><b><i>STATS_DURATION_RTT
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_DURATION_RECORDING"><a class="permalink" href="#STATS_DURATION_RECORDING"><b><i>STATS_DURATION_RECORDING
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_DURATION_MCP_RENDER"><a class="permalink" href="#STATS_DURATION_MCP_RENDER"><b><i>STATS_DURATION_MCP_RENDER
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_DURATION_COUNT"><a class="permalink" href="#STATS_DURATION_COUNT"><b><i>STATS_DURATION_COUNT
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>66</b> of file
+    <b>include/ascii-chat/stats/stats.h</b>.</p>
+<pre>66              {
+67   STATS_DURATION_CAPTURE,
+68   STATS_DURATION_ASCII_CONVERT,
+69   STATS_DURATION_ENCODE,
+70   STATS_DURATION_DECODE,
+71   STATS_DURATION_AUDIO_MIX,
+72   STATS_DURATION_TERMINAL_WRITE,
+73   STATS_DURATION_CONNECTION_SETUP,
+74   STATS_DURATION_REQUEST,
+75   STATS_DURATION_RTT,
+76   STATS_DURATION_RECORDING,
+77   STATS_DURATION_MCP_RENDER,
+78   STATS_DURATION_COUNT
+79 } stats_duration_id_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">enum <b>stats_gauge_id_t</b></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="STATS_GAUGE_CONNECTIONS_ACTIVE"><a class="permalink" href="#STATS_GAUGE_CONNECTIONS_ACTIVE"><b><i>STATS_GAUGE_CONNECTIONS_ACTIVE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_GAUGE_SESSIONS_ACTIVE"><a class="permalink" href="#STATS_GAUGE_SESSIONS_ACTIVE"><b><i>STATS_GAUGE_SESSIONS_ACTIVE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_GAUGE_PARTICIPANTS_ACTIVE"><a class="permalink" href="#STATS_GAUGE_PARTICIPANTS_ACTIVE"><b><i>STATS_GAUGE_PARTICIPANTS_ACTIVE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_GAUGE_VIDEO_QUEUE_DEPTH"><a class="permalink" href="#STATS_GAUGE_VIDEO_QUEUE_DEPTH"><b><i>STATS_GAUGE_VIDEO_QUEUE_DEPTH
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_GAUGE_AUDIO_BUFFERED_SAMPLES"><a class="permalink" href="#STATS_GAUGE_AUDIO_BUFFERED_SAMPLES"><b><i>STATS_GAUGE_AUDIO_BUFFERED_SAMPLES
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_GAUGE_COUNT"><a class="permalink" href="#STATS_GAUGE_COUNT"><b><i>STATS_GAUGE_COUNT
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>57</b> of file
+    <b>include/ascii-chat/stats/stats.h</b>.</p>
+<pre>57              {
+58   STATS_GAUGE_CONNECTIONS_ACTIVE,
+59   STATS_GAUGE_SESSIONS_ACTIVE,
+60   STATS_GAUGE_PARTICIPANTS_ACTIVE,
+61   STATS_GAUGE_VIDEO_QUEUE_DEPTH,
+62   STATS_GAUGE_AUDIO_BUFFERED_SAMPLES,
+63   STATS_GAUGE_COUNT
+64 } stats_gauge_id_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">enum <b>stats_record_kind_t</b></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="STATS_RECORD_COUNTER"><a class="permalink" href="#STATS_RECORD_COUNTER"><b><i>STATS_RECORD_COUNTER
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_RECORD_GAUGE"><a class="permalink" href="#STATS_RECORD_GAUGE"><b><i>STATS_RECORD_GAUGE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="STATS_RECORD_DURATION"><a class="permalink" href="#STATS_RECORD_DURATION"><b><i>STATS_RECORD_DURATION
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>122</b> of file
+    <b>include/ascii-chat/stats/stats.h</b>.</p>
+<pre>122 { STATS_RECORD_COUNTER, STATS_RECORD_GAUGE, STATS_RECORD_DURATION } stats_record_kind_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_counter_add_("><a class="permalink" href="#void_stats_counter_add_(">void
+  stats_counter_add (<b>stats_scope_t</b> * scope, <b>stats_counter_id_t</b> id,
+  <b>uint64_t</b> amount)</a></h2>
+<p class="Pp">Thread-safe recording with no module allocations. Platform mutex
+    diagnostics may initialize per-thread storage on first use in debug builds.
+    NULL, invalid IDs, and unsupported metrics are ignored. Counters and
+    duration totals wrap at UINT64_MAX; samplers rebaseline on observed
+    decreases. Durations measure attempts (including failures); successful
+    operations are counted separately. A gauge's producer owns its current
+    value.</p>
+<p class="Pp">Definition at line <b>90</b> of file <b>lib/stats/stats.c</b>.</p>
+<pre>90                                                                                      {
+91   if (scope &amp;&amp; (unsigned)id &lt; STATS_COUNTER_COUNT &amp;&amp; scope-&gt;capabilities.counters[id]) {
+92     atomic_fetch_add_u64_impl(&amp;scope-&gt;counters[id], amount);
+93     if (scope-&gt;observer)
+94       scope-&gt;observer(STATS_RECORD_COUNTER, id, amount, scope-&gt;observer_context);
+95   }
+96 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_fetch_add_u64_impl()</b>,
+    <b>stats_scope::counters</b>, <b>stats_scope::observer</b>,
+    <b>stats_scope::observer_context</b>, <b>stats_counter_add()</b>, and
+    <b>STATS_RECORD_COUNTER</b>.</p>
+<p class="Pp">Referenced by <b>acip_handle_acds_packet()</b>,
+    <b>acip_send_session_joined()</b>, <b>client_video_render_thread()</b>,
+    <b>database_session_cleanup_expired()</b>,
+    <b>database_session_update_host()</b>, <b>h265_decode()</b>,
+    <b>h265_encode()</b>, <b>h265_encoder_flush()</b>, <b>mcp_dispatch()</b>,
+    <b>mcp_error()</b>, <b>packet_decode_frame_data_malloc()</b>,
+    <b>packet_decode_frame_data_workspace()</b>, <b>rate_limiter_check()</b>,
+    <b>session_display_encode_frame()</b>, <b>stats_counter_add()</b>,
+    <b>stats_runtime_packet()</b>, and <b>video_frame_commit()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">const <b>stats_descriptor_t</b> * stats_counter_descriptor
+  (<b>stats_counter_id_t</b> id)</h2>
+<p class="Pp">Static metadata; NULL for an invalid ID. Names are stable,
+    lowercase identifiers.</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>descriptors.c</b>.</p>
+<pre>73                                                                           {
+74   return (unsigned)id &lt; STATS_COUNTER_COUNT ? &amp;counter_descriptors[id] : NULL;
+75 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>STATS_COUNTER_COUNT</b>, and
+    <b>stats_counter_descriptor()</b>.</p>
+<p class="Pp">Referenced by <b>stats_counter_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">const <b>stats_descriptor_t</b> * stats_duration_descriptor
+  (<b>stats_duration_id_t</b> id)</h2>
+<p class="Pp">Definition at line <b>81</b> of file <b>descriptors.c</b>.</p>
+<pre>81                                                                             {
+82   return (unsigned)id &lt; STATS_DURATION_COUNT ? &amp;duration_descriptors[id] : NULL;
+83 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>STATS_DURATION_COUNT</b>, and
+    <b>stats_duration_descriptor()</b>.</p>
+<p class="Pp">Referenced by <b>stats_duration_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_duration_record_("><a class="permalink" href="#void_stats_duration_record_(">void
+  stats_duration_record (<b>stats_scope_t</b> * scope,
+  <b>stats_duration_id_t</b> id, <b>uint64_t</b> elapsed_ns)</a></h2>
+<p class="Pp">Definition at line <b>129</b> of file
+  <b>lib/stats/stats.c</b>.</p>
+<pre>129                                                                                               {
+130   if (!scope || (unsigned)id &gt;= STATS_DURATION_COUNT || !scope-&gt;capabilities.durations[id])
+131     return;
+132   stats_duration_shard_t *shard = duration_shard(scope);
+133   if (shard) {
+134     stats_duration_cell_t *cell = &amp;shard-&gt;durations[id];
+135     uint64_t sequence = atomic_load(&amp;cell-&gt;sequence);
+136     atomic_store(&amp;cell-&gt;sequence, duration_add(sequence, 1));
+137     uint64_t observations = atomic_load(&amp;cell-&gt;observations);
+138     if (!observations || elapsed_ns &lt; atomic_load(&amp;cell-&gt;min_ns))
+139       atomic_store(&amp;cell-&gt;min_ns, elapsed_ns);
+140     if (elapsed_ns &gt; atomic_load(&amp;cell-&gt;max_ns))
+141       atomic_store(&amp;cell-&gt;max_ns, elapsed_ns);
+142     atomic_store(&amp;cell-&gt;last_ns, elapsed_ns);
+143     atomic_store(&amp;cell-&gt;recorded_ns, time_get_ns());
+144     atomic_store(&amp;cell-&gt;observations, duration_add(observations, 1));
+145     atomic_store(&amp;cell-&gt;total_ns, duration_add(atomic_load(&amp;cell-&gt;total_ns), elapsed_ns));
+146     atomic_store(&amp;cell-&gt;sequence, duration_add(sequence, 2));
+147     if (scope-&gt;observer)
+148       scope-&gt;observer(STATS_RECORD_DURATION, id, elapsed_ns, scope-&gt;observer_context);
+149     return;
+150   }
+151   // Unusually many lifetime producers retain the bounded, coherent fallback.
+152   if (mutex_lock(&amp;scope-&gt;duration_mutex) != 0)
+153     return;
+154   stats_duration_snapshot_t *duration = &amp;scope-&gt;durations[id];
+155   duration-&gt;last_ns = elapsed_ns;
+156   scope-&gt;duration_recorded_ns[id] = time_get_ns();
+157   if (!duration-&gt;observations || elapsed_ns &lt; duration-&gt;min_ns)
+158     duration-&gt;min_ns = elapsed_ns;
+159   if (elapsed_ns &gt; duration-&gt;max_ns)
+160     duration-&gt;max_ns = elapsed_ns;
+161   duration-&gt;observations = duration-&gt;observations == UINT64_MAX ? 0 : duration-&gt;observations + 1;
+162   // Unsigned wrap is intentional; an observed decrease causes samplers to rebaseline.
+163   duration-&gt;total_ns = duration-&gt;total_ns &gt; UINT64_MAX - elapsed_ns ? elapsed_ns - (UINT64_MAX - duration-&gt;total_ns) - 1
+164                                                                     : duration-&gt;total_ns + elapsed_ns;
+165   mutex_unlock(&amp;scope-&gt;duration_mutex);
+166   if (scope-&gt;observer)
+167     scope-&gt;observer(STATS_RECORD_DURATION, id, elapsed_ns, scope-&gt;observer_context);
+168 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>stats_scope::capabilities</b>,
+    <b>stats_scope::duration_mutex</b>,
+    <b>stats_scope::duration_recorded_ns</b>,
+    <b>stats_capabilities_t::durations</b>,
+    <b>stats_duration_shard_t::durations</b>, <b>stats_scope::durations</b>,
+    <b>stats_duration_cell_t::last_ns</b>,
+    <b>stats_duration_snapshot_t::last_ns</b>,
+    <b>stats_duration_cell_t::max_ns</b>,
+    <b>stats_duration_snapshot_t::max_ns</b>,
+    <b>stats_duration_cell_t::min_ns</b>,
+    <b>stats_duration_snapshot_t::min_ns</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>stats_duration_cell_t::observations</b>,
+    <b>stats_duration_snapshot_t::observations</b>,
+    <b>stats_scope::observer</b>, <b>stats_scope::observer_context</b>,
+    <b>stats_duration_cell_t::recorded_ns</b>,
+    <b>stats_duration_cell_t::sequence</b>, <b>STATS_DURATION_COUNT</b>,
+    <b>stats_duration_record()</b>, <b>STATS_RECORD_DURATION</b>,
+    <b>time_get_ns()</b>, <b>stats_duration_cell_t::total_ns</b>, and
+    <b>stats_duration_snapshot_t::total_ns</b>.</p>
+<p class="Pp">Referenced by <b>acip_handle_acds_packet()</b>,
+    <b>client_audio_render_thread()</b>, <b>client_video_render_thread()</b>,
+    <b>h265_decode()</b>, <b>h265_encode()</b>, <b>h265_encoder_flush()</b>,
+    <b>packet_decode_frame_data_malloc()</b>,
+    <b>packet_decode_frame_data_workspace()</b>,
+    <b>server_connection_pong_received()</b>,
+    <b>session_display_encode_frame()</b>, <b>session_host_render_audio()</b>,
+    and <b>stats_duration_record()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">const <b>stats_descriptor_t</b> * stats_gauge_descriptor
+  (<b>stats_gauge_id_t</b> id)</h2>
+<p class="Pp">Definition at line <b>77</b> of file <b>descriptors.c</b>.</p>
+<pre>77                                                                       {
+78   return (unsigned)id &lt; STATS_GAUGE_COUNT ? &amp;gauge_descriptors[id] : NULL;
+79 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>STATS_GAUGE_COUNT</b>, and
+    <b>stats_gauge_descriptor()</b>.</p>
+<p class="Pp">Referenced by <b>stats_gauge_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_gauge_set_("><a class="permalink" href="#void_stats_gauge_set_(">void
+  stats_gauge_set (<b>stats_scope_t</b> * scope, <b>stats_gauge_id_t</b> id,
+  <b>uint64_t</b> value)</a></h2>
+<p class="Pp">Definition at line <b>98</b> of file <b>lib/stats/stats.c</b>.</p>
+<pre>98                                                                                 {
+99   if (scope &amp;&amp; (unsigned)id &lt; STATS_GAUGE_COUNT &amp;&amp; scope-&gt;capabilities.gauges[id]) {
+100     atomic_store_u64_impl(&amp;scope-&gt;gauges[id], value);
+101     if (scope-&gt;observer)
+102       scope-&gt;observer(STATS_RECORD_GAUGE, id, value, scope-&gt;observer_context);
+103   }
+104 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64_impl()</b>,
+    <b>stats_scope::gauges</b>, <b>stats_scope::observer</b>,
+    <b>stats_scope::observer_context</b>, <b>stats_gauge_set()</b>, and
+    <b>STATS_RECORD_GAUGE</b>.</p>
+<p class="Pp">Referenced by <b>database_stats_snapshot()</b>,
+    <b>stats_gauge_set()</b>, <b>stats_runtime_peer_close()</b>, and
+    <b>stats_runtime_peer_open()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> stats_sampler_create (const
+  <b>stats_sampler_config_t</b> * config, <b>stats_sampler_t</b> **
+  out_sampler)</h2>
+<p class="Pp">Bounded history: ceil(window/resolution) must be in [1, 4096].
+    Both durations must be nonzero and resolution &lt;= window. Each consumer
+    owns its own sampler; sampler operations are not thread-safe. All allocation
+    happens at creation.</p>
+<p class="Pp">Definition at line <b>233</b> of file
+  <b>lib/stats/stats.c</b>.</p>
+<pre>233                                                                                                             {
+234   if (!out_sampler)
+235     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing stats sampler output&quot;);
+236   *out_sampler = NULL;
+237   if (!config || !config-&gt;resolution_ns || config-&gt;window_ns &lt; config-&gt;resolution_ns)
+238     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid stats sampling interval&quot;);
+239   uint64_t slots = config-&gt;window_ns / config-&gt;resolution_ns + (config-&gt;window_ns % config-&gt;resolution_ns != 0);
+240   if (slots &gt; 4096)
+241     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Stats sampler exceeds 4096 history intervals&quot;);
+242   stats_sampler_t *sampler = SAFE_CALLOC(1, sizeof(*sampler), stats_sampler_t *);
+243   if (!sampler)
+244     return SET_ERRNO(ERROR_MEMORY, &quot;Cannot allocate stats sampler&quot;);
+245   sampler-&gt;capacity = (size_t)slots + 2;
+246   sampler-&gt;history = SAFE_CALLOC(sampler-&gt;capacity, sizeof(*sampler-&gt;history), stats_snapshot_t *);
+247   if (!sampler-&gt;history) {
+248     SAFE_FREE(sampler);
+249     return SET_ERRNO(ERROR_MEMORY, &quot;Cannot allocate stats history&quot;);
+250   }
+251   sampler-&gt;config = *config;
+252   *out_sampler = sampler;
+253   return ASCIICHAT_OK;
+254 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>stats_sampler::capacity</b>,
+    <b>stats_sampler::config</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>stats_sampler::history</b>,
+    <b>stats_sampler_config_t::resolution_ns</b>, <b>SAFE_CALLOC</b>,
+    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, <b>stats_sampler_create()</b>, and
+    <b>stats_sampler_config_t::window_ns</b>.</p>
+<p class="Pp">Referenced by <b>stats_runtime_peer_open()</b>,
+    <b>stats_runtime_start()</b>, and <b>stats_sampler_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_sampler_destroy_("><a class="permalink" href="#void_stats_sampler_destroy_(">void
+  stats_sampler_destroy (<b>stats_sampler_t</b> * sampler)</a></h2>
+<p class="Pp">Definition at line <b>322</b> of file
+  <b>lib/stats/stats.c</b>.</p>
+<pre>322                                                      {
+323   if (!sampler)
+324     return;
+325   SAFE_FREE(sampler-&gt;history);
+326   SAFE_FREE(sampler);
+327 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>stats_sampler::history</b>, <b>SAFE_FREE</b>, and
+    <b>stats_sampler_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>stats_runtime_peer_close()</b>,
+    <b>stats_runtime_start()</b>, <b>stats_runtime_stop()</b>, and
+    <b>stats_sampler_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> stats_sampler_update
+  (<b>stats_sampler_t</b> * sampler, const <b>stats_snapshot_t</b> * snapshot,
+  <b>stats_rates_t</b> * out_rates)</h2>
+<p class="Pp">Samples must be supplied regularly, even while idle. Rates use
+    actual elapsed time from the latest retained sample at/before the window
+    boundary (or the oldest available sample during warmup). Resolution controls
+    history retention, not calls. ready becomes true with a positive interval;
+    elapsed_ns exposes window warmup. Scope/capability changes, nonincreasing
+    timestamps, or decreasing totals reset the baseline and return ready=false.
+    Unsupported values are zero/invalid; consult the snapshot capabilities to
+    distinguish unsupported counters from measured zero.</p>
+<p class="Pp">Definition at line <b>273</b> of file
+  <b>lib/stats/stats.c</b>.</p>
+<pre>274                                                                  {
+275   if (!sampler || !snapshot || !out_rates)
+276     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing stats sampler, snapshot, or rates output&quot;);
+277   memset(out_rates, 0, sizeof(*out_rates));
+278   if (!sampler-&gt;count || stats_baseline_changed(&amp;sampler-&gt;latest, snapshot)) {
+279     sampler-&gt;head = 0;
+280     sampler-&gt;count = 1;
+281     sampler-&gt;history[0] = *snapshot;
+282     sampler-&gt;latest = *snapshot;
+283     return ASCIICHAT_OK;
+284   }
+285   uint64_t cutoff =
+286       snapshot-&gt;sampled_ns &gt; sampler-&gt;config.window_ns ? snapshot-&gt;sampled_ns - sampler-&gt;config.window_ns : 0;
+287   while (sampler-&gt;count &gt; 1) {
+288     size_t next = (sampler-&gt;head + 1) % sampler-&gt;capacity;
+289     if (sampler-&gt;history[next].sampled_ns &gt; cutoff)
+290       break;
+291     sampler-&gt;head = next;
+292     sampler-&gt;count--;
+293   }
+294   const stats_snapshot_t *baseline = &amp;sampler-&gt;history[sampler-&gt;head];
+295   out_rates-&gt;elapsed_ns = snapshot-&gt;sampled_ns - baseline-&gt;sampled_ns;
+296   out_rates-&gt;ready = true;
+297   for (size_t i = 0; i &lt; STATS_COUNTER_COUNT; ++i)
+298     if (snapshot-&gt;capabilities.counters[i])
+299       out_rates-&gt;counters_per_second[i] =
+300           (double)(snapshot-&gt;counters[i] - baseline-&gt;counters[i]) * 1e9 / (double)out_rates-&gt;elapsed_ns;
+301   for (size_t i = 0; i &lt; STATS_DURATION_COUNT; ++i) {
+302     uint64_t observations = snapshot-&gt;durations[i].observations - baseline-&gt;durations[i].observations;
+303     if (snapshot-&gt;capabilities.durations[i] &amp;&amp; observations) {
+304       out_rates-&gt;duration_valid[i] = true;
+305       out_rates-&gt;duration_mean_ns[i] =
+306           (double)(snapshot-&gt;durations[i].total_ns - baseline-&gt;durations[i].total_ns) / (double)observations;
+307     }
+308   }
+309   size_t tail = (sampler-&gt;head + sampler-&gt;count - 1) % sampler-&gt;capacity;
+310   if (snapshot-&gt;sampled_ns - sampler-&gt;history[tail].sampled_ns &gt;= sampler-&gt;config.resolution_ns) {
+311     size_t next = (tail + 1) % sampler-&gt;capacity;
+312     sampler-&gt;history[next] = *snapshot;
+313     if (sampler-&gt;count == sampler-&gt;capacity)
+314       sampler-&gt;head = (sampler-&gt;head + 1) % sampler-&gt;capacity;
+315     else
+316       sampler-&gt;count++;
+317   }
+318   sampler-&gt;latest = *snapshot;
+319   return ASCIICHAT_OK;
+320 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>stats_snapshot_t::capabilities</b>, <b>stats_sampler::capacity</b>,
+    <b>stats_sampler::config</b>, <b>stats_sampler::count</b>,
+    <b>stats_capabilities_t::counters</b>, <b>stats_snapshot_t::counters</b>,
+    <b>stats_rates_t::counters_per_second</b>,
+    <b>stats_rates_t::duration_mean_ns</b>,
+    <b>stats_rates_t::duration_valid</b>,
+    <b>stats_capabilities_t::durations</b>, <b>stats_snapshot_t::durations</b>,
+    <b>stats_rates_t::elapsed_ns</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>stats_sampler::head</b>, <b>stats_sampler::history</b>,
+    <b>stats_sampler::latest</b>,
+    <b>stats_duration_snapshot_t::observations</b>, <b>stats_rates_t::ready</b>,
+    <b>stats_sampler_config_t::resolution_ns</b>,
+    <b>stats_snapshot_t::sampled_ns</b>, <b>SET_ERRNO</b>,
+    <b>STATS_COUNTER_COUNT</b>, <b>STATS_DURATION_COUNT</b>,
+    <b>stats_sampler_update()</b>, <b>stats_duration_snapshot_t::total_ns</b>,
+    and <b>stats_sampler_config_t::window_ns</b>.</p>
+<p class="Pp">Referenced by <b>stats_sampler_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> stats_scope_create (const
+  <b>stats_capabilities_t</b> * capabilities, <b>stats_scope_t</b> **
+  out_scope)</h2>
+<p class="Pp">Copies capabilities. Create before workers start; destroy after
+    all users join. No reset or automatic parent aggregation. New sessions
+    should get new scopes.</p>
+<p class="Pp">Definition at line <b>49</b> of file <b>lib/stats/stats.c</b>.</p>
+<pre>49                                                                                                           {
+50   if (!out_scope)
+51     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing stats scope output&quot;);
+52   *out_scope = NULL;
+53   if (!capabilities)
+54     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing stats capabilities&quot;);
+55   stats_scope_t *scope = SAFE_CALLOC(1, sizeof(*scope), stats_scope_t *);
+56   if (!scope)
+57     return SET_ERRNO(ERROR_MEMORY, &quot;Cannot allocate stats scope&quot;);
+58   if (mutex_init(&amp;scope-&gt;snapshot_mutex, &quot;stats_snapshot&quot;) != 0) {
+59     SAFE_FREE(scope);
+60     return SET_ERRNO(ERROR_THREAD, &quot;Cannot initialize stats snapshot mutex&quot;);
+61   }
+62   if (mutex_init(&amp;scope-&gt;duration_mutex, &quot;stats_duration&quot;) != 0) {
+63     mutex_destroy(&amp;scope-&gt;snapshot_mutex);
+64     SAFE_FREE(scope);
+65     return SET_ERRNO(ERROR_THREAD, &quot;Cannot initialize stats duration mutex&quot;);
+66   }
+67   scope-&gt;capabilities = *capabilities;
+68   // Bypass debug atomic instrumentation so recording never recursively collects or allocates.
+69   scope-&gt;id = atomic_fetch_add_u64_impl(&amp;next_scope_id, 1) + 1;
+70   scope-&gt;started_ns = time_get_ns();
+71   *out_scope = scope;
+72   return ASCIICHAT_OK;
+73 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>atomic_fetch_add_u64_impl()</b>, <b>stats_scope::capabilities</b>,
+    <b>stats_scope::duration_mutex</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>ERROR_THREAD</b>, <b>stats_scope::id</b>,
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>SAFE_CALLOC</b>,
+    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, <b>stats_scope::snapshot_mutex</b>,
+    <b>stats_scope::started_ns</b>, <b>stats_scope_create()</b>, and
+    <b>time_get_ns()</b>.</p>
+<p class="Pp">Referenced by <b>stats_runtime_peer_open()</b>,
+    <b>stats_runtime_start()</b>, and <b>stats_scope_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_scope_destroy_("><a class="permalink" href="#void_stats_scope_destroy_(">void
+  stats_scope_destroy (<b>stats_scope_t</b> * scope)</a></h2>
+<p class="Pp">Definition at line <b>75</b> of file <b>lib/stats/stats.c</b>.</p>
+<pre>75                                                {
+76   if (!scope)
+77     return;
+78   mutex_destroy(&amp;scope-&gt;duration_mutex);
+79   mutex_destroy(&amp;scope-&gt;snapshot_mutex);
+80   SAFE_FREE(scope);
+81 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>stats_scope::duration_mutex</b>,
+    <b>mutex_destroy()</b>, <b>SAFE_FREE</b>,
+    <b>stats_scope::snapshot_mutex</b>, and <b>stats_scope_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>stats_runtime_peer_close()</b>,
+    <b>stats_runtime_peer_open()</b>, <b>stats_runtime_start()</b>,
+    <b>stats_runtime_stop()</b>, and <b>stats_scope_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_stats_scope_set_observer_("><a class="permalink" href="#void_stats_scope_set_observer_(">void
+  stats_scope_set_observer (<b>stats_scope_t</b> * scope,
+  <b>stats_observer_fn</b> observer, void * context)</a></h2>
+<p class="Pp">Definition at line <b>83</b> of file <b>lib/stats/stats.c</b>.</p>
+<pre>83                                                                                                {
+84   if (scope) {
+85     scope-&gt;observer = observer;
+86     scope-&gt;observer_context = context;
+87   }
+88 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>stats_scope::observer</b>,
+    <b>stats_scope::observer_context</b>, and
+  <b>stats_scope_set_observer()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_otel_stats_attach()</b>, and
+    <b>stats_scope_set_observer()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> stats_scope_snapshot (const
+  <b>stats_scope_t</b> * scope, <b>stats_snapshot_t</b> * out)</h2>
+<p class="Pp">Owned value copy. Concurrent snapshots are serialized. Each
+    duration tuple is coherent, but independent metrics need not describe one
+    atomic application event. Empty durations have
+    observations/min/max/last/total equal to zero.</p>
+<p class="Pp">Definition at line <b>170</b> of file
+  <b>lib/stats/stats.c</b>.</p>
+<pre>170                                                                                           {
+171   if (!scope || !out)
+172     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing stats scope or snapshot output&quot;);
+173   // Logical constness: collection is unchanged; only snapshot synchronization is mutable.
+174   stats_scope_t *mutable_scope = (stats_scope_t *)scope;
+175   if (mutex_lock(&amp;mutable_scope-&gt;snapshot_mutex) != 0)
+176     return SET_ERRNO(ERROR_THREAD, &quot;Cannot lock stats snapshot&quot;);
+177   memset(out, 0, sizeof(*out));
+178   out-&gt;scope_id = scope-&gt;id;
+179   out-&gt;started_ns = scope-&gt;started_ns;
+180   out-&gt;capabilities = scope-&gt;capabilities;
+181   for (size_t i = 0; i &lt; STATS_COUNTER_COUNT; ++i)
+182     out-&gt;counters[i] = atomic_load_u64_impl(&amp;scope-&gt;counters[i]);
+183   for (size_t i = 0; i &lt; STATS_GAUGE_COUNT; ++i)
+184     out-&gt;gauges[i] = atomic_load_u64_impl(&amp;scope-&gt;gauges[i]);
+185   if (mutex_lock(&amp;mutable_scope-&gt;duration_mutex) != 0) {
+186     mutex_unlock(&amp;mutable_scope-&gt;snapshot_mutex);
+187     return SET_ERRNO(ERROR_THREAD, &quot;Cannot lock stats durations&quot;);
+188   }
+189   memcpy(out-&gt;durations, scope-&gt;durations, sizeof(out-&gt;durations));
+190   uint64_t recorded_ns[STATS_DURATION_COUNT];
+191   memcpy(recorded_ns, scope-&gt;duration_recorded_ns, sizeof(recorded_ns));
+192   mutex_unlock(&amp;mutable_scope-&gt;duration_mutex);
+193   for (size_t i = 0; i &lt; STATS_DURATION_SHARDS; ++i) {
+194     if (!atomic_load(&amp;scope-&gt;shards[i].owner))
+195       continue;
+196     for (size_t id = 0; id &lt; STATS_DURATION_COUNT; ++id) {
+197       const stats_duration_cell_t *cell = &amp;scope-&gt;shards[i].durations[id];
+198       stats_duration_snapshot_t sample;
+199       uint64_t stamp, before;
+200       for (;;) {
+201         before = atomic_load(&amp;cell-&gt;sequence);
+202         if (before &amp; 1)
+203           continue;
+204         sample.observations = atomic_load(&amp;cell-&gt;observations);
+205         sample.total_ns = atomic_load(&amp;cell-&gt;total_ns);
+206         sample.min_ns = atomic_load(&amp;cell-&gt;min_ns);
+207         sample.max_ns = atomic_load(&amp;cell-&gt;max_ns);
+208         sample.last_ns = atomic_load(&amp;cell-&gt;last_ns);
+209         stamp = atomic_load(&amp;cell-&gt;recorded_ns);
+210         if (before == atomic_load(&amp;cell-&gt;sequence))
+211           break;
+212       }
+213       if (!sample.observations)
+214         continue;
+215       stats_duration_snapshot_t *total = &amp;out-&gt;durations[id];
+216       if (!total-&gt;observations || sample.min_ns &lt; total-&gt;min_ns)
+217         total-&gt;min_ns = sample.min_ns;
+218       if (sample.max_ns &gt; total-&gt;max_ns)
+219         total-&gt;max_ns = sample.max_ns;
+220       if (stamp &gt;= recorded_ns[id]) {
+221         recorded_ns[id] = stamp;
+222         total-&gt;last_ns = sample.last_ns;
+223       }
+224       total-&gt;observations = duration_add(total-&gt;observations, sample.observations);
+225       total-&gt;total_ns = duration_add(total-&gt;total_ns, sample.total_ns);
+226     }
+227   }
+228   out-&gt;sampled_ns = time_get_ns();
+229   mutex_unlock(&amp;mutable_scope-&gt;snapshot_mutex);
+230   return ASCIICHAT_OK;
+231 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_u64_impl()</b>,
+    <b>stats_scope::capabilities</b>, <b>stats_snapshot_t::capabilities</b>,
+    <b>stats_scope::counters</b>, <b>stats_snapshot_t::counters</b>,
+    <b>stats_scope::duration_mutex</b>,
+    <b>stats_scope::duration_recorded_ns</b>,
+    <b>stats_duration_shard_t::durations</b>, <b>stats_scope::durations</b>,
+    <b>stats_snapshot_t::durations</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_THREAD</b>, <b>stats_scope::gauges</b>,
+    <b>stats_snapshot_t::gauges</b>, <b>stats_scope::id</b>,
+    <b>stats_duration_cell_t::last_ns</b>,
+    <b>stats_duration_snapshot_t::last_ns</b>,
+    <b>stats_duration_cell_t::max_ns</b>,
+    <b>stats_duration_snapshot_t::max_ns</b>,
+    <b>stats_duration_cell_t::min_ns</b>,
+    <b>stats_duration_snapshot_t::min_ns</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>stats_duration_cell_t::observations</b>,
+    <b>stats_duration_snapshot_t::observations</b>,
+    <b>stats_duration_shard_t::owner</b>,
+    <b>stats_duration_cell_t::recorded_ns</b>,
+    <b>stats_snapshot_t::sampled_ns</b>, <b>stats_snapshot_t::scope_id</b>,
+    <b>stats_duration_cell_t::sequence</b>, <b>SET_ERRNO</b>,
+    <b>stats_scope::shards</b>, <b>stats_scope::snapshot_mutex</b>,
+    <b>stats_scope::started_ns</b>, <b>stats_snapshot_t::started_ns</b>,
+    <b>STATS_COUNTER_COUNT</b>, <b>STATS_DURATION_COUNT</b>,
+    <b>STATS_DURATION_SHARDS</b>, <b>STATS_GAUGE_COUNT</b>,
+    <b>stats_scope_snapshot()</b>, <b>time_get_ns()</b>,
+    <b>stats_duration_cell_t::total_ns</b>, and
+    <b>stats_duration_snapshot_t::total_ns</b>.</p>
+<p class="Pp">Referenced by <b>stats_scope_snapshot()</b>, and
+    <b>update_server_stats()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

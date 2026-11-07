@@ -46,23 +46,23 @@
 <h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
   Structures</a></h2>
 <br/>
-<p class="Pp">struct <b>HttpRequest</b>
+<p class="Pp">struct <b>BreakpointInfo</b>
+  <br/>
+  Breakpoint information. struct <b>FrameInfo</b>
+  <br/>
+  Stack frame information. struct <b>HttpRequest</b>
   <br/>
   Parsed HTTP request. struct <b>HttpResponse</b>
   <br/>
   HTTP response builder. class <b>HttpServer</b>
   <br/>
-  Simple single-threaded HTTP server. struct <b>ThreadInfo</b>
+  Simple single-threaded HTTP server. class <b>LLDBController</b>
   <br/>
-  Thread information. struct <b>FrameInfo</b>
+  LLDB process controller. struct <b>ThreadInfo</b>
   <br/>
-  Stack frame information. struct <b>VariableInfo</b>
+  Thread information. struct <b>VariableInfo</b>
   <br/>
-  Variable information (from LLDB SBValue). struct <b>BreakpointInfo</b>
-  <br/>
-  Breakpoint information. class <b>LLDBController</b>
-  <br/>
-  LLDB process controller.
+  Variable information (from LLDB SBValue).
   <br/>
 </p>
 </section>
@@ -130,12 +130,12 @@
 </dl>
 <p class="Pp">Definition at line <b>35</b> of file <b>lldb_controller.h</b>.</p>
 <pre>35                         {
-36   Invalid,  
-37   Running,  
-38   Stopped,  
-39   Exited,   
-40   Crashed,  
-41   Detached, 
+36   Invalid,
+37   Running,
+38   Stopped,
+39   Exited,
+40   Crashed,
+41   Detached,
 42 };</pre>
 <pre></pre>
 <p class="Pp"></p>
@@ -148,7 +148,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

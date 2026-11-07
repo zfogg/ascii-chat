@@ -96,7 +96,6 @@
 <br/>
 <p class="Pp">typedef struct <b>client_info</b> <b>client_info_t</b>
   <br/>
-  Per-client state structure for server-side client management.
   <br/>
 </p>
 </section>
@@ -165,16 +164,6 @@
   incorrect.</p>
 <p class="Pp">Definition at line <b>111</b> of file
   <b>util/validation.h</b>.</p>
-<pre>111 #define VALIDATE_AUDIO_ALIGNMENT(client, len, sample_size, packet_name)                                                \
-112   do {                                                                                                                 \
-113     if ((len) % (sample_size) != 0) {                                                                                  \
-114       disconnect_client_for_bad_data((client), &quot;%s payload not aligned (len=%zu, sample_size=%zu)&quot;, (packet_name),     \
-115                                      (len), (sample_size));                                                            \
-116       return;                                                                                                          \
-117     }                                                                                                                  \
-118   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>handle_audio_packet()</b>.</p>
 </section>
 <section class="Ss">
@@ -199,16 +188,6 @@
 <p class="Pp">Validate that audio sample count is within acceptable bounds.
     Disconnects client and returns if sample count is invalid.</p>
 <p class="Pp">Definition at line <b>98</b> of file <b>util/validation.h</b>.</p>
-<pre>98 #define VALIDATE_AUDIO_SAMPLE_COUNT(client, num_samples, max_samples, packet_name)                                     \
-99   do {                                                                                                                 \
-100     if ((num_samples) &lt;= 0 || (num_samples) &gt; (max_samples)) {                                                         \
-101       disconnect_client_for_bad_data((client), &quot;%s invalid sample count: %d (max %d)&quot;, (packet_name), (num_samples),   \
-102                                      (max_samples));                                                                   \
-103       return;                                                                                                          \
-104     }                                                                                                                  \
-105   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>handle_audio_packet()</b>.</p>
 </section>
 <section class="Ss">
@@ -218,7 +197,7 @@
     &lt;<b>include/ascii-chat/util/validation.h</b>&gt;<b></b><b>Value:</b><b></b></p>
 <pre>do {                                                                                                                 \
 <br/>
-  if (!atomic_load_bool(&amp;(client)-&gt;is_sending_audio)) {                                                                   \
+  if (!atomic_load_bool(&amp;(client)-&gt;is_sending_audio)) {                                                              \
 <br/>
     disconnect_client_for_bad_data((client), &quot;%s received before audio stream enabled&quot;, (packet_name));              \
 <br/>
@@ -230,15 +209,6 @@
 <p class="Pp">Validate that audio stream is enabled for this client. Disconnects
     client and returns if audio stream is not enabled.</p>
 <p class="Pp">Definition at line <b>86</b> of file <b>util/validation.h</b>.</p>
-<pre>86 #define VALIDATE_AUDIO_STREAM_ENABLED(client, packet_name)                                                             \
-87   do {                                                                                                                 \
-88     if (!atomic_load_bool(&amp;(client)-&gt;is_sending_audio)) {                                                                   \
-89       disconnect_client_for_bad_data((client), &quot;%s received before audio stream enabled&quot;, (packet_name));              \
-90       return;                                                                                                          \
-91     }                                                                                                                  \
-92   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>,
     <b>handle_audio_opus_batch_packet()</b>, and
   <b>handle_audio_packet()</b>.</p>
@@ -265,16 +235,6 @@
     client and returns if all flags are zero or invalid.</p>
 <p class="Pp">Definition at line <b>178</b> of file
   <b>util/validation.h</b>.</p>
-<pre>178 #define VALIDATE_CAPABILITY_FLAGS(client, flags, valid_mask, packet_name)                                              \
-179   do {                                                                                                                 \
-180     if (((flags) &amp; (valid_mask)) == 0) {                                                                               \
-181       disconnect_client_for_bad_data((client), &quot;%s no valid capability flags set (flags=0x%x, valid=0x%x)&quot;,            \
-182                                      (packet_name), (unsigned)(flags), (unsigned)(valid_mask));                        \
-183       return;                                                                                                          \
-184     }                                                                                                                  \
-185   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>handle_client_join_packet()</b>,
     <b>handle_stream_start_packet()</b>, and
   <b>handle_stream_stop_packet()</b>.</p>
@@ -300,16 +260,6 @@
 <p class="Pp">Validate that payload size is exactly the expected size.
     Disconnects client and returns if len != expected_size.</p>
 <p class="Pp">Definition at line <b>73</b> of file <b>util/validation.h</b>.</p>
-<pre>73 #define VALIDATE_EXACT_SIZE(client, len, expected_size, packet_name)                                                   \
-74   do {                                                                                                                 \
-75     if ((len) != (expected_size)) {                                                                                    \
-76       disconnect_client_for_bad_data((client), &quot;%s payload size mismatch (len=%zu, expected=%zu)&quot;, (packet_name),      \
-77                                      (len), (expected_size));                                                          \
-78       return;                                                                                                          \
-79     }                                                                                                                  \
-80   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_VALIDATE_FLAGS_MASK(_client,__flags,__valid_mask,__packet_name)"><a class="permalink" href="#_define_VALIDATE_FLAGS_MASK(_client,__flags,__valid_mask,__packet_name)">#define
@@ -333,16 +283,6 @@
     and returns if unknown flags are present.</p>
 <p class="Pp">Definition at line <b>191</b> of file
   <b>util/validation.h</b>.</p>
-<pre>191 #define VALIDATE_FLAGS_MASK(client, flags, valid_mask, packet_name)                                                    \
-192   do {                                                                                                                 \
-193     if (((flags) &amp; ~(valid_mask)) != 0) {                                                                              \
-194       disconnect_client_for_bad_data((client), &quot;%s unknown flags set (flags=0x%x, valid=0x%x)&quot;, (packet_name),         \
-195                                      (unsigned)(flags), (unsigned)(valid_mask));                                       \
-196       return;                                                                                                          \
-197     }                                                                                                                  \
-198   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>handle_client_join_packet()</b>,
     <b>handle_stream_start_packet()</b>, and
   <b>handle_stream_stop_packet()</b>.</p>
@@ -368,16 +308,6 @@
 <p class="Pp">Validate that payload size is at least the minimum required.
     Disconnects client and returns if len &lt; min_size.</p>
 <p class="Pp">Definition at line <b>60</b> of file <b>util/validation.h</b>.</p>
-<pre>60 #define VALIDATE_MIN_SIZE(client, len, min_size, packet_name)                                                          \
-61   do {                                                                                                                 \
-62     if ((len) &lt; (min_size)) {                                                                                          \
-63       disconnect_client_for_bad_data((client), &quot;%s payload too small (len=%zu, min=%zu)&quot;, (packet_name), (len),        \
-64                                      (min_size));                                                                      \
-65       return;                                                                                                          \
-66     }                                                                                                                  \
-67   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>.</p>
 </section>
 <section class="Ss">
@@ -400,18 +330,8 @@
     etc). Disconnects client and returns if value is zero.</p>
 <p class="Pp">Definition at line <b>153</b> of file
   <b>util/validation.h</b>.</p>
-<pre>153 #define VALIDATE_NONZERO(client, value, value_name, packet_name)                                                       \
-154   do {                                                                                                                 \
-155     if ((value) == 0) {                                                                                                \
-156       disconnect_client_for_bad_data((client), &quot;%s %s cannot be zero&quot;, (packet_name), (value_name));                   \
-157       return;                                                                                                          \
-158     }                                                                                                                  \
-159   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>,
-    <b>handle_audio_opus_batch_packet()</b>,
-    <b>handle_client_capabilities_packet()</b>, and
+    <b>handle_audio_opus_batch_packet()</b>, and
   <b>handle_size_packet()</b>.</p>
 </section>
 <section class="Ss">
@@ -433,15 +353,6 @@
 <p class="Pp">Validate that payload data pointer is not NULL. Disconnects client
     and returns if data is NULL.</p>
 <p class="Pp">Definition at line <b>48</b> of file <b>util/validation.h</b>.</p>
-<pre>48 #define VALIDATE_NOTNULL_DATA(client, data, packet_name)                                                               \
-49   do {                                                                                                                 \
-50     if (!(data)) {                                                                                                     \
-51       disconnect_client_for_bad_data((client), &quot;%s payload missing&quot;, (packet_name));                                   \
-52       return;                                                                                                          \
-53     }                                                                                                                  \
-54   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>,
     <b>handle_audio_opus_batch_packet()</b>, and
   <b>handle_audio_packet()</b>.</p>
@@ -470,17 +381,6 @@
     validation failed (data is NULL), false if valid.</p>
 <p class="Pp">Definition at line <b>204</b> of file
   <b>util/validation.h</b>.</p>
-<pre>204 #define VALIDATE_PACKET_NOT_NULL(client, data, packet_name)                                                            \
-205   ({                                                                                                                   \
-206     int _validation_failed = 0;                                                                                        \
-207     if (!(data)) {                                                                                                     \
-208       disconnect_client_for_bad_data((client), packet_name &quot; payload missing&quot;);                                        \
-209       _validation_failed = 1;                                                                                          \
-210     }                                                                                                                  \
-211     _validation_failed;                                                                                                \
-212   })</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>handle_audio_opus_packet()</b>.</p>
 </section>
 <section class="Ss">
@@ -513,24 +413,9 @@
     is non-NULL and payload matches expected size.</p>
 <p class="Pp">Definition at line <b>136</b> of file
   <b>util/validation.h</b>.</p>
-<pre>136 #define VALIDATE_PACKET_SIZE(client, data, len, expected_size, packet_name)                                            \
-137   do {                                                                                                                 \
-138     if (!(data)) {                                                                                                     \
-139       disconnect_client_for_bad_data((client), packet_name &quot; payload missing&quot;);                                        \
-140       return;                                                                                                          \
-141     }                                                                                                                  \
-142     if ((len) != (expected_size)) {                                                                                    \
-143       disconnect_client_for_bad_data((client), packet_name &quot; payload size %zu (expected %zu)&quot;, (len),                  \
-144                                      (expected_size));                                                                 \
-145       return;                                                                                                          \
-146     }                                                                                                                  \
-147   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>,
-    <b>handle_client_join_packet()</b>, <b>handle_size_packet()</b>,
-    <b>handle_stream_start_packet()</b>, and
-  <b>handle_stream_stop_packet()</b>.</p>
+<p class="Pp">Referenced by <b>handle_client_join_packet()</b>,
+    <b>handle_size_packet()</b>, <b>handle_stream_start_packet()</b>, and
+    <b>handle_stream_stop_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_VALIDATE_RANGE(_client,__value,__min_val,__max_val,__value_name,__packet_name)"><a class="permalink" href="#_define_VALIDATE_RANGE(_client,__value,__min_val,__max_val,__value_name,__packet_name)">#define
@@ -555,19 +440,8 @@
     (inclusive). Disconnects client and returns if value is outside range.</p>
 <p class="Pp">Definition at line <b>165</b> of file
   <b>util/validation.h</b>.</p>
-<pre>165 #define VALIDATE_RANGE(client, value, min_val, max_val, value_name, packet_name)                                       \
-166   do {                                                                                                                 \
-167     if ((value) &lt; (min_val) || (value) &gt; (max_val)) {                                                                  \
-168       disconnect_client_for_bad_data((client), &quot;%s %s out of range: %u (valid: %u-%u)&quot;, (packet_name), (value_name),   \
-169                                      (unsigned)(value), (unsigned)(min_val), (unsigned)(max_val));                     \
-170       return;                                                                                                          \
-171     }                                                                                                                  \
-172   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>handle_audio_opus_batch_packet()</b>,
-    <b>handle_client_capabilities_packet()</b>, and
-  <b>handle_size_packet()</b>.</p>
+<p class="Pp">Referenced by <b>handle_audio_opus_batch_packet()</b>, and
+    <b>handle_size_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_VALIDATE_RESOURCE_INITIALIZED(_client,__resource,__resource_name)"><a class="permalink" href="#_define_VALIDATE_RESOURCE_INITIALIZED(_client,__resource,__resource_name)">#define
@@ -589,15 +463,6 @@
     Disconnects client and returns if resource is NULL.</p>
 <p class="Pp">Definition at line <b>124</b> of file
   <b>util/validation.h</b>.</p>
-<pre>124 #define VALIDATE_RESOURCE_INITIALIZED(client, resource, resource_name)                                                 \
-125   do {                                                                                                                 \
-126     if (!(resource)) {                                                                                                 \
-127       disconnect_client_for_bad_data((client), &quot;%s not initialized&quot;, (resource_name));                                 \
-128       return;                                                                                                          \
-129     }                                                                                                                  \
-130   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 <p class="Pp">Referenced by <b>handle_audio_opus_batch_packet()</b>, and
     <b>handle_audio_packet()</b>.</p>
 </section>
@@ -610,64 +475,7 @@
   struct <b>client_info</b> <b>client_info_t</b></a></h2>
 <p class="Pp">#include
   &lt;<b>include/ascii-chat/network/client.h</b>&gt;<b></b></p>
-<p class="Pp">Per-client state structure for server-side client management.
-    Represents complete state for a single connected client in the ascii-chat
-    server. This structure stores all client-specific information including
-    network connection, media capabilities, terminal settings, threading state,
-    and synchronization primitives.</p>
-<p class="Pp"></p>
 </section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="CORE_FIELDS:"><a class="permalink" href="#CORE_FIELDS:">CORE
-  FIELDS: </a></h1>
-<ul class="Bl-bullet">
-  <li>Network: Socket, IP address, port, thread handles</li>
-  <li>Media: Video/audio capabilities, stream state, buffers</li>
-  <li>Terminal: Capabilities, palette cache, dimensions</li>
-  <li>Threading: Send/receive/render thread handles and flags</li>
-  <li>Synchronization: Mutexes for thread-safe state access</li>
-  <li>Crypto: Cryptographic handshake context for secure communication</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="THREADING_MODEL:"><a class="permalink" href="#THREADING_MODEL:">THREADING
-  MODEL: </a></h1>
-<p class="Pp">Each client has dedicated threads:</p>
-<ul class="Bl-bullet">
-  <li>receive_thread: Handles incoming packets (protocol processing)</li>
-  <li>send_thread: Manages outgoing packet delivery (packet queues)</li>
-  <li>video_render_thread: Generates ASCII frames at 60fps</li>
-  <li>audio_render_thread: Mixes audio streams at 172fps</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="BUFFER_MANAGEMENT:"><a class="permalink" href="#BUFFER_MANAGEMENT:">BUFFER
-  MANAGEMENT: </a></h1>
-<ul class="Bl-bullet">
-  <li>incoming_video_buffer: Double-buffered video frames from client</li>
-  <li>incoming_audio_buffer: Ring buffer for client's audio samples</li>
-  <li>outgoing_video_buffer: Double-buffered ASCII frames to send</li>
-  <li>audio_queue: Packet queue for audio packets to send</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="MEMORY_MANAGEMENT:"><a class="permalink" href="#MEMORY_MANAGEMENT:">MEMORY
-  MANAGEMENT: </a></h1>
-<ul class="Bl-bullet">
-  <li>Pre-allocated buffers to avoid malloc/free in hot paths</li>
-  <li>send_buffer: For packet assembly</li>
-  <li>crypto_plaintext_buffer: For encryption plaintext</li>
-  <li>crypto_ciphertext_buffer: For encryption ciphertext</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">All atomic fields are thread-safe for concurrent access.
-<p class="Pp"></p>
-<p class="Pp">Buffer pointers are set once during client creation and never
-    change.</p>
-<p class="Pp"></p>
-<p class="Pp">Thread handles are valid only when threads are running.</p>
-</div>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
@@ -678,130 +486,69 @@
   format, ...)</a></h2>
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/util/validation.h</b>&gt;<b></b></p>
-<p class="Pp">Definition at line <b>155</b> of file
+<p class="Pp">Definition at line <b>167</b> of file
   <b>server/protocol.c</b>.</p>
-<pre>155                                                                                     {
-156   if (!client) {
-157     return;
-158   }
-159 
-160   protocol_cleanup_thread_locals();
-161 
-162   // Atomically set the disconnect flag and get the old value
-163   // This ensures only one thread proceeds to disconnect (the first one)
-164   bool already_requested = atomic_exchange_bool(&amp;client-&gt;protocol_disconnect_requested, true);
-165   if (already_requested) {
-166     return;  // Already disconnecting, don't do it again
-167   }
-168 
-169   char reason[BUFFER_SIZE_SMALL] = {0};
-170   if (format) {
-171     va_list args;
-172     va_start(args, format);
-173     safe_vsnprintf(reason, sizeof(reason), format, args);
-174     va_end(args);
-175   } else {
-176     SAFE_STRNCPY(reason, &quot;Protocol violation&quot;, sizeof(reason));
-177   }
-178 
-179   const char *reason_str = reason[0] != '\0' ? reason : &quot;Protocol violation&quot;;
-180   const char *client_id = client-&gt;client_id;
-181 
-182   socket_t socket_snapshot = INVALID_SOCKET_VALUE;
-183   const crypto_context_t *crypto_ctx = NULL;
-184   acip_transport_t *transport_snapshot = NULL;
-185 
-186   mutex_lock(&amp;client-&gt;client_state_mutex);
-187   if (client-&gt;socket != INVALID_SOCKET_VALUE) {
-188     socket_snapshot = client-&gt;socket;
-189     if (client-&gt;crypto_initialized) {
-190       crypto_ctx = crypto_handshake_get_context(&amp;client-&gt;crypto_handshake_ctx);
-191     }
-192   }
-193   mutex_unlock(&amp;client-&gt;client_state_mutex);
-194 
-195   // Get transport reference for WebSocket clients
-196   mutex_lock(&amp;client-&gt;send_mutex);
-197   transport_snapshot = client-&gt;transport;
+<pre>167                                                                                     {
+168   if (!client) {
+169     return;
+170   }
+171
+172   protocol_cleanup_thread_locals();
+173
+174   // Atomically set the disconnect flag and get the old value
+175   // This ensures only one thread proceeds to disconnect (the first one)
+176   bool already_requested = atomic_exchange_bool(&amp;client-&gt;protocol_disconnect_requested, true);
+177   if (already_requested) {
+178     return; // Already disconnecting, don't do it again
+179   }
+180
+181   char reason[BUFFER_SIZE_SMALL] = {0};
+182   if (format) {
+183     va_list args;
+184     va_start(args, format);
+185     safe_vsnprintf(reason, sizeof(reason), format, args);
+186     va_end(args);
+187   } else {
+188     SAFE_STRNCPY(reason, &quot;Protocol violation&quot;, sizeof(reason));
+189   }
+190
+191   const char *reason_str = reason[0] != '\0' ? reason : &quot;Protocol violation&quot;;
+192   const char *client_id = client-&gt;client_id;
+193
+194   log_warn(&quot;Disconnecting client %s due to protocol violation: %s&quot;, client_id, reason_str);
+195   mutex_lock(&amp;client-&gt;send_mutex);
+196   if (client-&gt;transport)
+197     acip_send_error(client-&gt;transport, ERROR_NETWORK_PROTOCOL, reason_str);
 198   mutex_unlock(&amp;client-&gt;send_mutex);
-199 
-200   // NOTE: Disconnecting a client due to the client's own bad behavior isn't an
-201   // error for us, it's desired behavior for us, so we simply warn and do not
-202   // have a need for asciichat_errno here.
-203   log_warn(&quot;Disconnecting client %u due to protocol violation: %s&quot;, client_id, reason_str);
-204 
-205   if (socket_snapshot != INVALID_SOCKET_VALUE) {
-206     // Protect socket writes with send_mutex to prevent race with send_thread.
-207     // This receive_thread and send_thread both write to same socket.
-208     mutex_lock(&amp;client-&gt;send_mutex);
-209 
-210     asciichat_error_t log_result =
-211         log_network_message(socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_ERROR,
-212                             REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, &quot;Protocol violation: %s&quot;, reason_str);
-213     if (log_result != ASCIICHAT_OK) {
-214       log_warn(&quot;Failed to send remote log to client %u: %s&quot;, client_id, asciichat_error_string(log_result));
-215     }
-216 
-217     asciichat_error_t send_result = packet_send_error(socket_snapshot, crypto_ctx, ERROR_NETWORK_PROTOCOL, reason_str);
-218     if (send_result != ASCIICHAT_OK) {
-219       log_warn(&quot;Failed to send error packet to client %u: %s&quot;, client_id, asciichat_error_string(send_result));
-220     }
-221 
-222     mutex_unlock(&amp;client-&gt;send_mutex);
-223   } else if (transport_snapshot) {
-224     // For WebSocket clients, try to send error via transport
-225     log_debug(&quot;Sending error to WebSocket client %u via transport&quot;, client_id);
-226     acip_send_error(transport_snapshot, ERROR_NETWORK_PROTOCOL, reason_str);
-227   }
-228 
-229   APP_CALLBACK_VOID(platform_pump_events);
-230   platform_sleep_ms(500);
-231 
-232   log_debug(&quot;Setting active=false in disconnect_client_for_bad_data (client_id=%u, reason=%s)&quot;, client_id, reason_str);
-233   atomic_store_bool(&amp;client-&gt;active, false);
-234   atomic_store_bool(&amp;client-&gt;shutting_down, true);
-235   atomic_store_bool(&amp;client-&gt;send_thread_running, false);
-236   atomic_store_bool(&amp;client-&gt;video_render_thread_running, false);
-237   atomic_store_bool(&amp;client-&gt;audio_render_thread_running, false);
-238 
-239   if (client-&gt;audio_queue) {
-240     packet_queue_stop(client-&gt;audio_queue);
-241   }
-242 
-243   mutex_lock(&amp;client-&gt;client_state_mutex);
-244   if (client-&gt;socket != INVALID_SOCKET_VALUE) {
-245     socket_shutdown(client-&gt;socket, 2);
-246     socket_close(client-&gt;socket);
-247     client-&gt;socket = INVALID_SOCKET_VALUE;
-248   }
-249   mutex_unlock(&amp;client-&gt;client_state_mutex);
-250 }</pre>
+199
+200   log_debug(&quot;Setting active=false (client_id=%s, reason=%s)&quot;, client_id, reason_str);
+201   atomic_store_bool(&amp;client-&gt;active, false);
+202   atomic_store_bool(&amp;client-&gt;shutting_down, true);
+203   network_connection_request_stop(client-&gt;network_connection);
+204   atomic_store_bool(&amp;client-&gt;video_render_thread_running, false);
+205   atomic_store_bool(&amp;client-&gt;audio_render_thread_running, false);
+206 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_error()</b>, <b>client_info::active</b>,
-    <b>APP_CALLBACK_VOID</b>, <b>args</b>, <b>ASCIICHAT_OK</b>,
     <b>atomic_exchange_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>client_info::audio_queue</b>,
     <b>client_info::audio_render_thread_running</b>, <b>BUFFER_SIZE_SMALL</b>,
-    <b>client_info::client_id</b>, <b>client_info::client_state_mutex</b>,
-    <b>client_info::crypto_handshake_ctx</b>,
-    <b>crypto_handshake_get_context()</b>,
-    <b>client_info::crypto_initialized</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
-    <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>, <b>LOG_ERROR</b>,
-    <b>log_network_message()</b>, <b>log_warn</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>packet_queue_stop()</b>, <b>packet_send_error()</b>,
-    <b>platform_sleep_ms()</b>,
-    <b>client_info::protocol_disconnect_requested</b>,
-    <b>REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT</b>, <b>SAFE_STRNCPY</b>,
+    <b>client_info::client_id</b>, <b>disconnect_client_for_bad_data()</b>,
+    <b>ERROR_NETWORK_PROTOCOL</b>, <b>log_debug</b>, <b>log_warn</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>client_info::network_connection</b>,
+    <b>network_connection_request_stop()</b>,
+    <b>client_info::protocol_disconnect_requested</b>, <b>SAFE_STRNCPY</b>,
     <b>safe_vsnprintf()</b>, <b>client_info::send_mutex</b>,
-    <b>client_info::send_thread_running</b>, <b>client_info::shutting_down</b>,
-    <b>client_info::socket</b>, <b>socket_close()</b>, <b>socket_shutdown()</b>,
-    <b>client_info::transport</b>, and
+    <b>client_info::shutting_down</b>, <b>client_info::transport</b>, and
     <b>client_info::video_render_thread_running</b>.</p>
-<p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>,
-    <b>handle_audio_opus_batch_packet()</b>, <b>handle_audio_opus_packet()</b>,
-    <b>handle_client_join_packet()</b>, <b>handle_image_frame_h265_packet()</b>,
-    <b>handle_image_frame_packet()</b>, <b>handle_protocol_version_packet()</b>,
+<p class="Pp">Referenced by <b>disconnect_client_for_bad_data()</b>,
+    <b>handle_audio_batch_packet()</b>, <b>handle_audio_opus_batch_packet()</b>,
+    <b>handle_audio_opus_packet()</b>,
+    <b>handle_client_capabilities_packet()</b>,
+    <b>handle_client_join_packet()</b>, <b>handle_image_frame_h264_packet()</b>,
+    <b>handle_image_frame_h265_packet()</b>, <b>handle_image_frame_packet()</b>,
+    <b>handle_protocol_version_packet()</b>,
     <b>handle_remote_log_packet_from_client()</b>, and
     <b>process_decrypted_packet()</b>.</p>
 </section>
@@ -813,7 +560,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

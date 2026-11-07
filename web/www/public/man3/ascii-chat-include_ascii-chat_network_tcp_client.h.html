@@ -159,18 +159,18 @@
 <pre>216                                             {
 217   if (!client)
 218     return;
-219 
+219
 220   log_debug(&quot;Closing client connection&quot;);
-221 
+221
 222   // Mark connection as inactive
 223   atomic_store_bool(&amp;client-&gt;connection_active, false);
-224 
+224
 225   // Close socket
 226   if (socket_is_valid(client-&gt;sockfd)) {
 227     close_socket_safe(client-&gt;sockfd);
 228     client-&gt;sockfd = INVALID_SOCKET_VALUE;
 229   }
-230 
+230
 231   // Reset client ID
 232   client-&gt;my_client_id = 0;
 233 }</pre>
@@ -237,27 +237,27 @@
 <pre>326                                                                        {
 327   (void)first_connection;   // Currently unused
 328   (void)has_ever_connected; // Currently unused
-329 
+329
 330   if (!client || !address || port &lt;= 0) {
 331     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid client, address, or port&quot;);
 332   }
-333 
+333
 334   // Close any existing connection
 335   if (socket_is_valid(client-&gt;sockfd)) {
 336     close_socket_safe(client-&gt;sockfd);
 337     client-&gt;sockfd = INVALID_SOCKET_VALUE;
 338   }
-339 
+339
 340   // Apply reconnection delay if this is a retry
 341   if (reconnect_attempt &gt; 0) {
 342     uint64_t delay_ns = get_reconnect_delay(reconnect_attempt);
 343     platform_sleep_ns(delay_ns);
 344   }
-345 
+345
 346   // Resolve server address using getaddrinfo() for IPv4/IPv6 support
 347   // Special handling for localhost: ensure we try both IPv6 (::1) and IPv4 (127.0.0.1)
 348   bool is_localhost = (strcmp(address, &quot;localhost&quot;) == 0 || is_localhost_ipv4(address) || is_localhost_ipv6(address));
-349 
+349
 350   struct addrinfo hints, *res = NULL, *addr_iter;
 351   memset(&amp;hints, 0, sizeof(hints));
 352   hints.ai_family = AF_UNSPEC; // Allow IPv4 or IPv6
@@ -265,16 +265,16 @@
 354   if (is_localhost) {
 355     hints.ai_flags = AI_NUMERICSERV; // Optimize for localhost
 356   }
-357 
+357
 358   char port_str[16];
 359   SAFE_SNPRINTF(port_str, sizeof(port_str), &quot;%d&quot;, port);
-360 
+360
 361   // For localhost, try IPv6 loopback (::1) first, then fall back to IPv4
 362   if (is_localhost) {
 363     log_debug(&quot;Localhost detected - trying IPv6 loopback [::1]:%s first...&quot;, port_str);
 364     hints.ai_family = AF_INET6;
 365     hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
-366 
+366
 367     int ipv6_result = getaddrinfo(&quot;::1&quot;, port_str, &amp;hints, &amp;res);
 368     if (ipv6_result == 0 &amp;&amp; res != NULL) {
 369       // Try IPv6 loopback connection
@@ -294,11 +294,11 @@
 383       freeaddrinfo(res);
 384       res = NULL;
 385     }
-386 
+386
 387     // IPv6 failed, try IPv4 loopback (127.0.0.1)
 388     log_debug(&quot;IPv6 failed, trying IPv4 loopback 127.0.0.1:%s...&quot;, port_str);
 389     hints.ai_family = AF_INET;
-390 
+390
 391     int ipv4_result = getaddrinfo(&quot;127.0.0.1&quot;, port_str, &amp;hints, &amp;res);
 392     if (ipv4_result == 0 &amp;&amp; res != NULL) {
 393       client-&gt;sockfd = socket_create(&quot;client_ipv4&quot;, res-&gt;ai_family, res-&gt;ai_socktype, res-&gt;ai_protocol);
@@ -317,12 +317,12 @@
 406       freeaddrinfo(res);
 407       res = NULL;
 408     }
-409 
+409
 410     // Both IPv6 and IPv4 loopback failed for localhost
 411     log_warn(&quot;Could not connect to localhost using either IPv6 or IPv4 loopback&quot;);
 412     return -1;
 413   }
-414 
+414
 415   // For non-localhost addresses, use standard resolution
 416   log_debug(&quot;Resolving server address '%s' port %s...&quot;, address, port_str);
 417   hints.ai_family = AF_UNSPEC;
@@ -332,31 +332,31 @@
 421     log_error(&quot;Failed to resolve server address '%s': %s&quot;, address, gai_strerror(getaddr_result));
 422     return -1;
 423   }
-424 
+424
 425   // Try each address returned by getaddrinfo() - prefer IPv6, fall back to IPv4
 426   for (int address_family = AF_INET6; address_family &gt;= AF_INET; address_family -= (AF_INET6 - AF_INET)) {
 427     for (addr_iter = res; addr_iter != NULL; addr_iter = addr_iter-&gt;ai_next) {
 428       if (addr_iter-&gt;ai_family != address_family) {
 429         continue;
 430       }
-431 
+431
 432       const char *socket_name = (addr_iter-&gt;ai_family == AF_INET6) ? &quot;client_server_ipv6&quot; : &quot;client_server_ipv4&quot;;
 433       client-&gt;sockfd = socket_create(socket_name, addr_iter-&gt;ai_family, addr_iter-&gt;ai_socktype, addr_iter-&gt;ai_protocol);
 434       if (client-&gt;sockfd == INVALID_SOCKET_VALUE) {
 435         continue;
 436       }
-437 
+437
 438       if (addr_iter-&gt;ai_family == AF_INET) {
 439         log_debug(&quot;Trying IPv4 connection...&quot;);
 440       } else if (addr_iter-&gt;ai_family == AF_INET6) {
 441         log_debug(&quot;Trying IPv6 connection...&quot;);
 442       }
-443 
+443
 444       if (connect_with_timeout(client-&gt;sockfd, addr_iter-&gt;ai_addr, addr_iter-&gt;ai_addrlen, CONNECT_TIMEOUT)) {
 445         log_debug(&quot;Connection successful using %s&quot;, addr_iter-&gt;ai_family == AF_INET    ? &quot;IPv4&quot;
 446                                                     : addr_iter-&gt;ai_family == AF_INET6 ? &quot;IPv6&quot;
 447                                                                                        : &quot;unknown protocol&quot;);
-448 
+448
 449         // Extract server IP address for known_hosts
 450         if (format_ip_address(addr_iter-&gt;ai_family, addr_iter-&gt;ai_addr, client-&gt;server_ip, sizeof(client-&gt;server_ip)) ==
 451             ASCIICHAT_OK) {
@@ -364,27 +364,27 @@
 453         } else {
 454           log_warn(&quot;Failed to format server IP address&quot;);
 455         }
-456 
+456
 457         goto connection_success;
 458       }
-459 
+459
 460       close_socket_safe(client-&gt;sockfd);
 461       client-&gt;sockfd = INVALID_SOCKET_VALUE;
 462     }
 463   }
-464 
+464
 465 connection_success:
-466 
+466
 467   if (res) {
 468     freeaddrinfo(res);
 469   }
-470 
+470
 471   // If we exhausted all addresses without success, fail
 472   if (client-&gt;sockfd == INVALID_SOCKET_VALUE) {
 473     log_warn(&quot;Could not connect to server %s:%d (tried all addresses)&quot;, address, port);
 474     return -1;
 475   }
-476 
+476
 477   // Extract local port for client ID
 478   struct sockaddr_storage local_addr = {0};
 479   socklen_t addr_len = sizeof(local_addr);
@@ -394,7 +394,7 @@
 483     client-&gt;sockfd = INVALID_SOCKET_VALUE;
 484     return -1;
 485   }
-486 
+486
 487   // Extract port from either IPv4 or IPv6 address
 488   int local_port = 0;
 489   if (((struct sockaddr *)&amp;local_addr)-&gt;sa_family == AF_INET) {
@@ -403,32 +403,32 @@
 492     local_port = NET_TO_HOST_U16(((struct sockaddr_in6 *)&amp;local_addr)-&gt;sin6_port);
 493   }
 494   client-&gt;my_client_id = (uint32_t)local_port;
-495 
+495
 496   // Update registration name now that we have a client ID
 497   {
 498     char client_name[64];
 499     SAFE_SNPRINTF(client_name, sizeof(client_name), &quot;tcp_client_%u&quot;, client-&gt;my_client_id);
 500     named_update_name((uintptr_t)client, client_name);
 501   }
-502 
+502
 503   // Mark connection as active
 504   atomic_store_bool(&amp;client-&gt;connection_active, true);
 505   atomic_store_bool(&amp;client-&gt;connection_lost, false);
 506   atomic_store_bool(&amp;client-&gt;should_reconnect, false);
-507 
+507
 508   // Initialize crypto (application must set crypto_initialized flag)
 509   // This is done outside this function by calling client_crypto_init()
-510 
+510
 511   // Configure socket options
 512   if (socket_set_keepalive(client-&gt;sockfd, true) &lt; 0) {
 513     log_warn(&quot;Failed to set socket keepalive: %s&quot;, network_error_string());
 514   }
-515 
+515
 516   asciichat_error_t sock_config_result = socket_configure_buffers(client-&gt;sockfd);
 517   if (sock_config_result != ASCIICHAT_OK) {
 518     log_warn(&quot;Failed to configure socket: %s&quot;, network_error_string());
 519   }
-520 
+520
 521   log_debug(&quot;Connection established successfully to %s:%d (client_id=%u)&quot;, address, port, client-&gt;my_client_id);
 522   return 0;
 523 }</pre>
@@ -448,9 +448,12 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>tcp_client_t</b> * tcp_client_create (void )</h2>
-<p class="Pp">Create and initialize a TCP client instance. Allocates a new
-    <b>tcp_client_t</b> structure and initializes all fields to safe defaults.
-    This function must be called before starting any worker threads.</p>
+<p class="Pp">Create and initialize a TCP client instance. Create and initialize
+    TCP client.</p>
+<p class="Pp"></p>
+<p class="Pp">Allocates a new <b>tcp_client_t</b> structure and initializes all
+    fields to safe defaults. This function must be called before starting any
+    worker threads.</p>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
@@ -494,9 +497,9 @@
 99     log_error(&quot;Failed to allocate tcp_client_t&quot;);
 100     return NULL;
 101   }
-102 
+102
 103   memset(client, 0, sizeof(*client));
-104 
+104
 105   client-&gt;sockfd = INVALID_SOCKET_VALUE;
 106   atomic_store_bool(&amp;client-&gt;connection_active, false);
 107   atomic_store_bool(&amp;client-&gt;connection_lost, false);
@@ -504,20 +507,20 @@
 109   client-&gt;my_client_id = 0;
 110   memset(client-&gt;server_ip, 0, sizeof(client-&gt;server_ip));
 111   client-&gt;encryption_enabled = false;
-112 
+112
 113   if (mutex_init(&amp;client-&gt;send_mutex, &quot;client_send&quot;) != 0) {
 114     log_error(&quot;Failed to initialize send mutex&quot;);
 115     SAFE_FREE(client);
 116     return NULL;
 117   }
-118 
+118
 119   NAMED_REGISTER_CLIENT(client, &quot;client&quot;, NULL);
-120 
+120
 121   // Register atomic fields for debug tracking - parent_key handles hierarchical naming
 122   NAMED_REGISTER_ATOMIC(&amp;client-&gt;connection_active, &quot;is_connection_active&quot;, (uintptr_t)(const void *)(client));
 123   NAMED_REGISTER_ATOMIC(&amp;client-&gt;connection_lost, &quot;has_connection_been_lost&quot;, (uintptr_t)(const void *)(client));
 124   NAMED_REGISTER_ATOMIC(&amp;client-&gt;should_reconnect, &quot;should_attempt_reconnection&quot;, (uintptr_t)(const void *)(client));
-125 
+125
 126   log_debug(&quot;TCP client created successfully&quot;);
 127   return client;
 128 }</pre>
@@ -532,9 +535,12 @@
 <section class="Ss">
 <h2 class="Ss" id="void_tcp_client_destroy_("><a class="permalink" href="#void_tcp_client_destroy_(">void
   tcp_client_destroy (<b>tcp_client_t</b> ** client_ptr)</a></h2>
-<p class="Pp">Destroy TCP client and free all resources. Destroys all
-    synchronization primitives and frees the client structure. This function
-    must be called AFTER all worker threads have been joined.</p>
+<p class="Pp">Destroy TCP client and free all resources. Destroy TCP client and
+    free resources.</p>
+<p class="Pp"></p>
+<p class="Pp">Destroys all synchronization primitives and frees the client
+    structure. This function must be called AFTER all worker threads have been
+    joined.</p>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
@@ -573,23 +579,23 @@
 136   if (!client_ptr || !*client_ptr) {
 137     return;
 138   }
-139 
+139
 140   tcp_client_t *client = *client_ptr;
-141 
+141
 142   if (socket_is_valid(client-&gt;sockfd)) {
 143     close_socket_safe(client-&gt;sockfd);
 144     client-&gt;sockfd = INVALID_SOCKET_VALUE;
 145   }
-146 
+146
 147   // Unregister atomic fields
 148   NAMED_UNREGISTER(&amp;client-&gt;connection_active);
 149   NAMED_UNREGISTER(&amp;client-&gt;connection_lost);
 150   NAMED_UNREGISTER(&amp;client-&gt;should_reconnect);
-151 
+151
 152   NAMED_UNREGISTER(client);
 153   mutex_destroy(&amp;client-&gt;send_mutex);
 154   SAFE_FREE(*client_ptr);
-155 
+155
 156   log_debug(&quot;TCP client destroyed&quot;);
 157 }</pre>
 <pre></pre>
@@ -700,24 +706,24 @@
 261   if (!client) {
 262     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL client&quot;);
 263   }
-264 
+264
 265   if (!atomic_load_bool(&amp;client-&gt;connection_active)) {
 266     return SET_ERRNO(ERROR_NETWORK, &quot;Connection not active&quot;);
 267   }
-268 
+268
 269   // Acquire send mutex for thread-safe transmission
 270   mutex_lock(&amp;client-&gt;send_mutex);
-271 
+271
 272   // Send packet without encryption (crypto is handled at app_client layer)
 273   asciichat_error_t result = (asciichat_error_t)send_packet(client-&gt;sockfd, type, data, len);
-274 
+274
 275   mutex_unlock(&amp;client-&gt;send_mutex);
-276 
+276
 277   if (result != ASCIICHAT_OK) {
 278     log_debug(&quot;Failed to send packet type %d: %s&quot;, type, asciichat_error_string(result));
 279     return -1;
 280   }
-281 
+281
 282   return 0;
 283 }</pre>
 <pre></pre>
@@ -780,9 +786,9 @@
 <pre>238                                                {
 239   if (!client)
 240     return;
-241 
+241
 242   atomic_store_bool(&amp;client-&gt;connection_active, false);
-243 
+243
 244   // Shutdown socket for reading/writing to interrupt blocking calls
 245   if (socket_is_valid(client-&gt;sockfd)) {
 246     socket_shutdown(client-&gt;sockfd, SHUT_RDWR);
@@ -804,7 +810,7 @@
 <pre>202                                                   {
 203   if (!client)
 204     return;
-205 
+205
 206   if (!atomic_load_bool(&amp;client-&gt;connection_lost)) {
 207     atomic_store_bool(&amp;client-&gt;connection_lost, true);
 208     atomic_store_bool(&amp;client-&gt;connection_active, false);
@@ -824,7 +830,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.11.25</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

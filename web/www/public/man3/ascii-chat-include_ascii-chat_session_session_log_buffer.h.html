@@ -49,7 +49,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>SESSION_LOG_BUFFER_SIZE</b> 8192
+<p class="Pp">#define <b>SESSION_LOG_BUFFER_SIZE</b> 16384
   <br/>
   #define <b>SESSION_LOG_LINE_MAX</b> 1024
   <br/>
@@ -106,15 +106,15 @@
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="_define_SESSION_LOG_BUFFER_SIZE___8192"><a class="permalink" href="#_define_SESSION_LOG_BUFFER_SIZE___8192">#define
-  SESSION_LOG_BUFFER_SIZE 8192</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file
+<h2 class="Ss" id="_define_SESSION_LOG_BUFFER_SIZE___16384"><a class="permalink" href="#_define_SESSION_LOG_BUFFER_SIZE___16384">#define
+  SESSION_LOG_BUFFER_SIZE 16384</a></h2>
+<p class="Pp">Definition at line <b>30</b> of file
     <b>include/ascii-chat/session/session_log_buffer.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_SESSION_LOG_LINE_MAX___1024"><a class="permalink" href="#_define_SESSION_LOG_LINE_MAX___1024">#define
   SESSION_LOG_LINE_MAX 1024</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file
+<p class="Pp">Definition at line <b>31</b> of file
     <b>include/ascii-chat/session/session_log_buffer.h</b>.</p>
 </section>
 </section>
@@ -133,22 +133,43 @@
 <div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)
 <br/>
 <i>message</i> Log message text (already formatted with colors)</div>
-<p class="Pp">Definition at line <b>93</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>93                                                                                {
-94   (void)buf;
-95   (void)message;
-96   // No-op - session log buffer not used in WASM
+<p class="Pp">Definition at line <b>65</b> of file
+  <b>session_log_buffer.c</b>.</p>
+<pre>65                                                                                {
+66   if (!buf || !message) {
+67     // Fail silently - this is called FROM the logging system
+68     // Using SET_ERRNO here would cause infinite recursion
+69     return;
+70   }
+71
+72   mutex_lock(&amp;buf-&gt;mutex);
+73
+74   // Keep every line of multiline notices and split long lines at UTF-8 boundaries.
+75   // Hold the lock for the entire message so concurrent producers cannot interleave it.
+76   do {
+77     const char *newline = strchr(message, '\n');
+78     size_t length = newline ? (size_t)(newline - message) : strlen(message);
+79     if (length &gt;= SESSION_LOG_LINE_MAX) {
+80       length = SESSION_LOG_LINE_MAX - 1;
+81       while (length &amp;&amp; ((unsigned char)message[length] &amp; 0xc0) == 0x80)
+82         --length;
+83       if (!length)
+84         length = SESSION_LOG_LINE_MAX - 1; // Malformed UTF-8 must still make progress.
+85     }
+86     size_t pos = atomic_load_u64(&amp;buf-&gt;write_pos);
+87     memcpy(buf-&gt;entries[pos].message, message, length);
+88     buf-&gt;entries[pos].message[length] = '\0';
+89     buf-&gt;entries[pos].sequence = atomic_fetch_add_u64(&amp;buf-&gt;sequence, 1) + 1;
+90     atomic_store_u64(&amp;buf-&gt;write_pos, (pos + 1) % SESSION_LOG_BUFFER_SIZE);
+91     message += length;
+92     if (*message == '\n')
+93       ++message;
+94   } while (*message);
+95
+96   mutex_unlock(&amp;buf-&gt;mutex);
 97 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_fetch_add_u64()</b>,
-    <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>,
-    <b>session_log_buffer::entries</b>, <b>session_log_entry_t::message</b>,
-    <b>session_log_buffer::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>SAFE_STRNCPY</b>, <b>session_log_buffer::sequence</b>,
-    <b>session_log_entry_t::sequence</b>, <b>SESSION_LOG_BUFFER_SIZE</b>,
-    <b>SESSION_LOG_LINE_MAX</b>, and <b>session_log_buffer::write_pos</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_session_log_buffer_clear_("><a class="permalink" href="#void_session_log_buffer_clear_(">void
@@ -159,21 +180,29 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>buf</i> Buffer instance (must not be NULL)</div>
-<p class="Pp">Definition at line <b>88</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>88                                                          {
-89   (void)buf;
-90   // No-op - session log buffer not used in WASM
-91 }</pre>
+<p class="Pp">Definition at line <b>45</b> of file
+  <b>session_log_buffer.c</b>.</p>
+<pre>45                                                          {
+46   if (!buf) {
+47     return;
+48   }
+49
+50   mutex_lock(&amp;buf-&gt;mutex);
+51
+52   // Reset write position and sequence
+53   atomic_store_u64(&amp;buf-&gt;write_pos, 0);
+54   atomic_store_u64(&amp;buf-&gt;sequence, 0);
+55
+56   // Clear all entries
+57   for (size_t i = 0; i &lt; SESSION_LOG_BUFFER_SIZE; i++) {
+58     buf-&gt;entries[i].message[0] = '\0';
+59     buf-&gt;entries[i].sequence = 0;
+60   }
+61
+62   mutex_unlock(&amp;buf-&gt;mutex);
+63 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_u64()</b>,
-    <b>session_log_buffer::entries</b>, <b>session_log_entry_t::message</b>,
-    <b>session_log_buffer::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
-    <b>session_log_buffer::sequence</b>, <b>session_log_entry_t::sequence</b>,
-    <b>SESSION_LOG_BUFFER_SIZE</b>, and
-  <b>session_log_buffer::write_pos</b>.</p>
-<p class="Pp">Referenced by <b>terminal_screen_log_clear()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_log_buffer_t</b> * session_log_buffer_create (void
@@ -185,18 +214,22 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Pointer to new buffer instance, or NULL on allocation
   failure</div>
-<p class="Pp">Definition at line <b>79</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>79                                                       {
-80   return NULL;  // No-op - session log buffer not used in WASM
-81 }</pre>
+<p class="Pp">Definition at line <b>23</b> of file
+  <b>session_log_buffer.c</b>.</p>
+<pre>23                                                       {
+24   session_log_buffer_t *buf = SAFE_CALLOC(1, sizeof(session_log_buffer_t), session_log_buffer_t *);
+25   if (!buf) {
+26     return NULL;
+27   }
+28
+29   atomic_store_u64(&amp;buf-&gt;write_pos, 0);
+30   atomic_store_u64(&amp;buf-&gt;sequence, 0);
+31   mutex_init(&amp;buf-&gt;mutex, &quot;log_buffer&quot;);
+32
+33   return buf;
+34 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_u64()</b>,
-    <b>session_log_buffer::mutex</b>, <b>mutex_init()</b>, <b>SAFE_CALLOC</b>,
-    <b>session_log_buffer::sequence</b>, and
-    <b>session_log_buffer::write_pos</b>.</p>
-<p class="Pp">Referenced by <b>terminal_screen_log_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_session_log_buffer_destroy_("><a class="permalink" href="#void_session_log_buffer_destroy_(">void
@@ -206,17 +239,18 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>buf</i> Buffer instance to destroy (can be NULL)</div>
-<p class="Pp">Definition at line <b>83</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>83                                                            {
-84   (void)buf;
-85   // No-op - session log buffer not used in WASM
-86 }</pre>
+<p class="Pp">Definition at line <b>36</b> of file
+  <b>session_log_buffer.c</b>.</p>
+<pre>36                                                            {
+37   if (!buf) {
+38     return;
+39   }
+40
+41   mutex_destroy(&amp;buf-&gt;mutex);
+42   SAFE_FREE(buf);
+43 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_log_buffer::mutex</b>,
-    <b>mutex_destroy()</b>, and <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>terminal_screen_log_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_session_log_buffer_get_recent_("><a class="permalink" href="#size_t_session_log_buffer_get_recent_(">size_t
@@ -236,22 +270,38 @@
 <div class="Bd-indent">Number of entries actually copied (may be less than
   max_count)</div>
 <p class="Pp">Definition at line <b>99</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>101                                                         {
-102   (void)buf;
-103   (void)out_entries;
-104   (void)max_count;
-105   return 0; // No entries in WASM
-106 }</pre>
+  <b>session_log_buffer.c</b>.</p>
+<pre>99                                                                                                                     {
+100   if (!buf || !out_entries || max_count == 0) {
+101     // Fail silently - called from display code that handles 0 gracefully
+102     // Using SET_ERRNO here could cause recursion if error logging is enabled
+103     return 0;
+104   }
+105
+106   mutex_lock(&amp;buf-&gt;mutex);
+107
+108   size_t write_pos = atomic_load_u64(&amp;buf-&gt;write_pos);
+109   uint64_t total_entries = atomic_load_u64(&amp;buf-&gt;sequence);
+110
+111   size_t entries_to_check = total_entries &lt; SESSION_LOG_BUFFER_SIZE ? (size_t)total_entries : SESSION_LOG_BUFFER_SIZE;
+112   if (entries_to_check &gt; max_count)
+113     entries_to_check = max_count;
+114   size_t start_pos = (write_pos + SESSION_LOG_BUFFER_SIZE - entries_to_check) % SESSION_LOG_BUFFER_SIZE;
+115
+116   size_t count = 0;
+117   for (size_t i = 0; i &lt; entries_to_check &amp;&amp; count &lt; max_count; i++) {
+118     size_t idx = (start_pos + i) % SESSION_LOG_BUFFER_SIZE;
+119     if (buf-&gt;entries[idx].sequence &gt; 0) {
+120       memcpy(&amp;out_entries[count], &amp;buf-&gt;entries[idx], sizeof(session_log_entry_t));
+121       count++;
+122     }
+123   }
+124
+125   mutex_unlock(&amp;buf-&gt;mutex);
+126   return count;
+127 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>,
-    <b>session_log_buffer::entries</b>, <b>session_log_buffer::mutex</b>,
-    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>session_log_buffer::sequence</b>,
-    <b>session_log_entry_t::sequence</b>, <b>SESSION_LOG_BUFFER_SIZE</b>,
-    <b>session_log_buffer::write_pos</b>, and <b>write_pos</b>.</p>
-<p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>, and
-    <b>terminal_screen_render()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -261,7 +311,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

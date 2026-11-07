@@ -42,11 +42,16 @@
 <br/>
 <p class="Pp"><b>acds_client_config_t</b> <b>config</b>
   <br/>
-  <b>socket_t</b> <b>socket</b>
+  <b>bool</b> <b>connected</b>
   <br/>
-  TCP socket to ACDS server. <b>bool</b> <b>connected</b>
+  Connection status. <b>acip_transport_t</b> * <b>transport</b>
   <br/>
-  Connection status.
+  Transport used for the initial crypto handshake. <b>network_connection_t</b> *
+    <b>connection</b>
+  <br/>
+  <b>crypto_handshake_context_t</b> * <b>handshake_ctx</b>
+  <br/>
+  Borrowed from connection owner.
   <br/>
 </p>
 </section>
@@ -55,31 +60,44 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">ACDS client connection handle.</p>
-<p class="Pp">Definition at line <b>122</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Definition at line <b>136</b> of file <b>acds_client.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>acds_client_config_t</b> acds_client_t::config</h2>
-<p class="Pp">Definition at line <b>123</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Definition at line <b>137</b> of file <b>acds_client.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_connect()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> acds_client_t::connected</h2>
 <p class="Pp">Connection status.</p>
-<p class="Pp">Definition at line <b>125</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Definition at line <b>138</b> of file <b>acds_client.h</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_connect()</b>,
     <b>acds_client_disconnect()</b>, <b>acds_session_create()</b>,
     <b>acds_session_join()</b>, and <b>acds_session_lookup()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>socket_t</b> acds_client_t::socket</h2>
-<p class="Pp">TCP socket to ACDS server.</p>
-<p class="Pp">Definition at line <b>124</b> of file <b>acds_client.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_connect()</b>,
-    <b>acds_client_disconnect()</b>, <b>acds_session_create()</b>,
-    <b>acds_session_join()</b>, and <b>acds_session_lookup()</b>.</p>
+<h2 class="Ss"><b>network_connection_t</b>* acds_client_t::connection</h2>
+<p class="Pp">Definition at line <b>140</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_connect()</b>, and
+    <b>acds_client_disconnect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>crypto_handshake_context_t</b>*
+  acds_client_t::handshake_ctx</h2>
+<p class="Pp">Borrowed from connection owner.</p>
+<p class="Pp">Definition at line <b>141</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_connect()</b>, and
+    <b>acds_client_disconnect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>acip_transport_t</b>* acds_client_t::transport</h2>
+<p class="Pp">Transport used for the initial crypto handshake.</p>
+<p class="Pp">Definition at line <b>139</b> of file <b>acds_client.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_connect()</b>, and
+    <b>acds_client_disconnect()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -90,7 +108,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

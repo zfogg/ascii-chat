@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>lookup.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">lookup.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">lookup.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">lookup.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>simd_lookup_SIMD_CELL_ISA</b> (const <b>uint8_t</b> *luma,
+    const <b>uint32_t</b> table[64], <b>uint32_t</b> *out, size_t count)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_simd_lookup_SIMD_CELL_ISA_(const_"><a class="permalink" href="#void_simd_lookup_SIMD_CELL_ISA_(const_">void
+  simd_lookup_SIMD_CELL_ISA (const <b>uint8_t</b> * luma, const <b>uint32_t</b>
+  table[64], <b>uint32_t</b> * out, size_t count)</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>lookup.c</b>.</p>
+<pre>3                                                                                                   {
+4 #if !defined(SIMD_CELL_SVE)
+5 #if defined(SIMD_CELL_NEON) || defined(SIMD_CELL_SSSE3)
+6   const size_t minimum = 16;
+7 #elif defined(SIMD_CELL_AVX2)
+8   const size_t minimum = 8;
+9 #else
+10   const size_t minimum = 4;
+11 #endif
+12   if (count &lt; minimum) {
+13     simd_lookup_scalar(luma, table, out, count);
+14     return;
+15   }
+16 #endif
+17   size_t i = 0;
+18 #if defined(SIMD_CELL_SVE)
+19   for (; i &lt; count; i += svcntw()) {
+20     svbool_t pg = svwhilelt_b32((uint64_t)i, (uint64_t)count);
+21     svuint32_t index = svlsr_n_u32_x(pg, svld1ub_u32(pg, luma + i), 2);
+22     svst1_u32(pg, out + i, svld1_gather_u32index_u32(pg, table, index));
+23   }
+24 #elif defined(SIMD_CELL_NEON)
+25   // Deinterleave the four UTF-8 bytes of all 64 palette entries into four tables.
+26   uint8x16x4_t tables[4];
+27   for (unsigned group = 0; group &lt; 4; ++group) {
+28     uint8x16x4_t entries = vld4q_u8((const uint8_t *)(table + 16 * group));
+29     for (unsigned byte = 0; byte &lt; 4; ++byte)
+30       tables[byte].val[group] = entries.val[byte];
+31   }
+32   for (; count - i &gt;= 16; i += 16) {
+33     uint8x16_t index = vshrq_n_u8(vld1q_u8(luma + i), 2);
+34     uint8x16x4_t glyph;
+35     for (unsigned byte = 0; byte &lt; 4; ++byte) {
+36 #if defined(__aarch64__)
+37       glyph.val[byte] = vqtbl4q_u8(tables[byte], index);
+38 #else
+39       uint8x8x4_t low = {{vget_low_u8(tables[byte].val[0]), vget_high_u8(tables[byte].val[0]),
+40                           vget_low_u8(tables[byte].val[1]), vget_high_u8(tables[byte].val[1])}};
+41       uint8x8x4_t high = {{vget_low_u8(tables[byte].val[2]), vget_high_u8(tables[byte].val[2]),
+42                            vget_low_u8(tables[byte].val[3]), vget_high_u8(tables[byte].val[3])}};
+43       uint8x8_t il = vget_low_u8(index), ih = vget_high_u8(index);
+44       glyph.val[byte] = vcombine_u8(vorr_u8(vtbl4_u8(low, il), vtbl4_u8(high, vsub_u8(il, vdup_n_u8(32)))),
+45                                     vorr_u8(vtbl4_u8(low, ih), vtbl4_u8(high, vsub_u8(ih, vdup_n_u8(32)))));
+46 #endif
+47     }
+48     vst4q_u8((uint8_t *)(out + i), glyph);
+49   }
+50 #elif defined(SIMD_CELL_AVX2)
+51   for (; count - i &gt;= 8; i += 8) {
+52     __m256i index = _mm256_srli_epi32(_mm256_cvtepu8_epi32(_mm_loadl_epi64((const __m128i *)(luma + i))), 2);
+53     _mm256_storeu_si256((__m256i *)(out + i), _mm256_i32gather_epi32((const int *)table, index, 4));
+54   }
+55 #elif defined(SIMD_CELL_SSSE3)
+56   uint8_t bytes[4][64];
+57   for (unsigned entry = 0; entry &lt; 64; ++entry) {
+58     const uint8_t *key = (const uint8_t *)(table + entry);
+59     for (unsigned byte = 0; byte &lt; 4; ++byte)
+60       bytes[byte][entry] = key[byte];
+61   }
+62   for (; count - i &gt;= 16; i += 16) {
+63     __m128i index = _mm_and_si128(_mm_srli_epi16(_mm_loadu_si128((const __m128i *)(luma + i)), 2), _mm_set1_epi8(63));
+64     __m128i low = _mm_and_si128(index, _mm_set1_epi8(15));
+65     __m128i high = _mm_and_si128(index, _mm_set1_epi8(48));
+66     __m128i glyph[4];
+67     for (unsigned byte = 0; byte &lt; 4; ++byte) {
+68       glyph[byte] = _mm_setzero_si128();
+69       for (unsigned group = 0; group &lt; 4; ++group) {
+70         __m128i lut = _mm_loadu_si128((const __m128i *)(bytes[byte] + 16 * group));
+71         __m128i selected =
+72             _mm_and_si128(_mm_shuffle_epi8(lut, low), _mm_cmpeq_epi8(high, _mm_set1_epi8((char)(16 * group))));
+73         glyph[byte] = _mm_or_si128(glyph[byte], selected);
+74       }
+75     }
+76     __m128i a = _mm_unpacklo_epi8(glyph[0], glyph[1]), b = _mm_unpacklo_epi8(glyph[2], glyph[3]);
+77     __m128i c = _mm_unpackhi_epi8(glyph[0], glyph[1]), d = _mm_unpackhi_epi8(glyph[2], glyph[3]);
+78     _mm_storeu_si128((__m128i *)(out + i), _mm_unpacklo_epi16(a, b));
+79     _mm_storeu_si128((__m128i *)(out + i + 4), _mm_unpackhi_epi16(a, b));
+80     _mm_storeu_si128((__m128i *)(out + i + 8), _mm_unpacklo_epi16(c, d));
+81     _mm_storeu_si128((__m128i *)(out + i + 12), _mm_unpackhi_epi16(c, d));
+82   }
+83 #else
+84   unsigned starts[64], ends[64], groups = 0;
+85   uint32_t values[64];
+86   for (unsigned first = 0; first &lt; 64;) {
+87     unsigned end = first + 1;
+88     while (end &lt; 64 &amp;&amp; table[end] == table[first])
+89       ++end;
+90     starts[groups] = first;
+91     ends[groups] = end;
+92     values[groups] = table[first];
+93     ++groups;
+94     first = end;
+95   }
+96   for (; count - i &gt;= 4; i += 4) {
+97     uint32_t input;
+98     memcpy(&amp;input, luma + i, 4);
+99     __m128i zero = _mm_setzero_si128();
+100     vec_t index =
+101         (vec_t)_mm_srli_epi32(_mm_unpacklo_epi16(_mm_unpacklo_epi8(_mm_cvtsi32_si128((int)input), zero), zero), 2);
+102     vec_t glyph = SET(0);
+103     // SSE2 has no byte shuffle or gather. Compare ranges of equal palette entries
+104     // in parallel, rather than replacing the stage with four scalar lookups.
+105     for (unsigned group = 0; group &lt; groups; ++group) {
+106       vec_t in_range = BOTH(LT(SET((int)starts[group] - 1), index), LT(index, SET((int)ends[group])));
+107       glyph = SELECT(in_range, SET((int32_t)values[group]), glyph);
+108     }
+109     STORE(out + i, glyph);
+110   }
+111 #endif
+112   if (i &lt; count)
+113     simd_lookup_scalar(luma + i, table, out + i, count - i);
+114 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>BOTH</b>, <b>FN</b>, <b>LT</b>, <b>SELECT</b>,
+    <b>SET</b>, <b>simd_lookup_scalar()</b>, and <b>STORE</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

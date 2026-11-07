@@ -42,14 +42,21 @@
 <br/>
 <p class="Pp">struct <b>options_state</b>
   <br/>
-  Consolidated options structure.
   <br/>
 </p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>COLOR_MODE_AUTO</b> <b>TERM_COLOR_AUTO</b>
+<p class="Pp">#define <b>OPTIONS_YT_DLP_OPTIONS_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>OPTIONS_COLOR_SCHEME_NAME_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>OPTIONS_VIDEO_CODEC_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>COLOR_MODE_AUTO</b> <b>TERM_COLOR_AUTO</b>
   <br/>
   Backward compatibility aliases for color mode enum values. #define
     <b>COLOR_MODE_NONE</b> <b>TERM_COLOR_NONE</b>
@@ -90,18 +97,21 @@
     <b>OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT</b> 3
   <br/>
   Default WebRTC reconnection attempts (3 = try initial + 3 retries). #define
-    <b>OPT_TURN_USERNAME_DEFAULT</b> 'ascii'
+    <b>OPT_TURN_USERNAME_DEFAULT</b> ''
   <br/>
-  Default TURN server username. #define <b>OPT_TURN_CREDENTIAL_DEFAULT</b>
-    '0aa9917b4dad1b01631e87a32b875e09'
+  Default TURN username (empty = use ACDS credentials). #define
+    <b>OPT_TURN_CREDENTIAL_DEFAULT</b> ''
   <br/>
-  Default TURN server credential. #define <b>OPT_AUDIO_ENABLED_DEFAULT</b>
-    <b>true</b>
+  Default TURN credential (empty = use ACDS credentials). #define
+    <b>OPT_AUDIO_ENABLED_DEFAULT</b> <b>true</b>
   <br/>
   Default audio enabled flag (true = audio enabled by default). #define
-    <b>OPT_AUDIO_SOURCE_DEFAULT</b> <b>AUDIO_SOURCE_AUTO</b>
+    <b>OPT_AUDIO_SOURCE_DEFAULT</b> <b>AUDIO_SOURCE_ALL</b>
   <br/>
-  Default audio source (AUDIO_SOURCE_AUTO = smart selection). #define
+  Visualize all available sources by default. #define
+    <b>OPT_AUDIO_CAPTURE_SOURCE_DEFAULT</b> <b>AUDIO_CAPTURE_SOURCE_AUTO</b>
+  <br/>
+  Preserve automatic local audio capture selection by default. #define
     <b>OPT_MICROPHONE_INDEX_DEFAULT</b> (-1)
   <br/>
   Default microphone device index (-1 means system default). #define
@@ -123,7 +133,7 @@
     <b>OPT_ENCODE_AUDIO_DEFAULT</b> <b>true</b>
   <br/>
   Default audio encoding state (true = Opus encoding enabled). #define
-    <b>OPT_ENCRYPT_ENABLED_DEFAULT</b> <b>true</b>
+    <b>OPT_ENCRYPT_ENABLED_DEFAULT</b> <b>false</b>
   <br/>
   Default encrypt enabled flag (true = encryption required). #define
     <b>OPT_NO_ENCRYPT_DEFAULT</b> <b>false</b>
@@ -147,7 +157,7 @@
   <br/>
   #define <b>OPT_RENDER_FONT_DEFAULT</b> ''
   <br/>
-  #define <b>OPT_RENDER_FONT_SIZE_DEFAULT</b> 12.0
+  #define <b>OPT_RENDER_FONT_SIZE_DEFAULT</b> 0.0
   <br/>
   #define <b>OPTION_MODE_SERVER_LIKE</b> (<b>OPTION_MODE_SERVER</b> |
     <b>OPTION_MODE_DISCOVERY_SVC</b>)
@@ -171,10 +181,8 @@
   <br/>
   #define <b>OPTIONS_BUFF_SIZE</b> 256
   <br/>
-  Buffer size for option string values. #define <b>MAX_IDENTITY_KEYS</b> 32
-  <br/>
-  Maximum number of identity keys that can be loaded (for multi-key support).
-    #define <b>OPT_HELP_DEFAULT</b> <b>false</b>
+  Buffer size for option string values. #define <b>OPT_HELP_DEFAULT</b>
+    <b>false</b>
   <br/>
   Default help flag (false = don't show help). #define
     <b>OPT_VERSION_DEFAULT</b> <b>false</b>
@@ -204,6 +212,9 @@
     <b>OPT_QUIET_DEFAULT</b> <b>false</b>
   <br/>
   Default quiet mode flag (false = logging enabled). #define
+    <b>OPT_OTEL_ENDPOINT_DEFAULT</b> ''
+  <br/>
+  Debug and Dev builds export to the local Spaniel Compose collector. #define
     <b>OPT_VERBOSE_LEVEL_DEFAULT</b> 0
   <br/>
   Default verbose level (0 = not verbose). #define <b>OPT_LOG_LEVEL_DEFAULT</b>
@@ -283,7 +294,7 @@
   Default custom palette set flag (false = not set). #define
     <b>OPT_STRETCH_DEFAULT</b> <b>false</b>
   <br/>
-  Default allow aspect ratio distortion flag. #define <b>OPT_FPS_DEFAULT</b> 60
+  Default allow aspect ratio distortion flag. #define <b>OPT_FPS_DEFAULT</b> 0
   <br/>
   Default FPS (frames per second). #define <b>OPT_SNAPSHOT_MODE_DEFAULT</b>
     <b>false</b>
@@ -298,10 +309,9 @@
     <b>OPT_FPS_COUNTER_DEFAULT</b> <b>false</b>
   <br/>
   Default FPS counter overlay flag (false = disabled). #define
-    <b>OPT_FLIP_X_DEFAULT</b> <b>false</b>
+    <b>OPT_FLIP_X_DEFAULT</b> <b>true</b>
   <br/>
-  Default horizontal flip state (true = horizontally flipped) macOS webcams
-    default to flipped (mirrored), other platforms default to normal. #define
+  Webcam input is mirrored unless an orientation is explicitly selected. #define
     <b>OPT_FLIP_Y_DEFAULT</b> <b>false</b>
   <br/>
   Default vertical flip state (false = no vertical flip). #define
@@ -347,7 +357,9 @@
     <b>OPT_WEBSOCKET_PORT_ACDS_DEFAULT</b> 27227
   <br/>
   Default WebSocket port for discovery-service mode (integer). #define
-    <b>OPT_MAX_CLIENTS_DEFAULT</b> 9
+    <b>OPT_MCP_PORT_DEFAULT</b> 27228
+  <br/>
+  #define <b>OPT_MAX_CLIENTS_DEFAULT</b> 9
   <br/>
   Default maximum concurrent clients (server only). #define
     <b>OPT_RECONNECT_ATTEMPTS_DEFAULT</b> (-1)
@@ -446,7 +458,6 @@
 <br/>
 <p class="Pp">typedef struct <b>options_state</b> <b>options_t</b>
   <br/>
-  Consolidated options structure.
   <br/>
 </p>
 </section>
@@ -461,12 +472,18 @@
     <b>UTF8_SETTING_FALSE</b> = -1 }
   <br/>
   UTF-8 support setting (--utf8 flag values). enum <b>audio_source_t</b> {
-    <b>AUDIO_SOURCE_AUTO</b> = 0, <b>AUDIO_SOURCE_MIC</b> = 1,
-    <b>AUDIO_SOURCE_MEDIA</b> = 2, <b>AUDIO_SOURCE_BOTH</b> = 3 }
+    <b>AUDIO_SOURCE_ALL</b> = 0, <b>AUDIO_SOURCE_CALL</b> = 1,
+    <b>AUDIO_SOURCE_MIC</b> = 2, <b>AUDIO_SOURCE_MEDIA</b> = 3,
+    <b>AUDIO_SOURCE_AUTO</b> = AUDIO_SOURCE_ALL }
   <br/>
-  Audio source selection for playback and capture. enum <b>asciichat_mode_t</b>
-    { <b>MODE_SERVER</b>, <b>MODE_CLIENT</b>, <b>MODE_MIRROR</b>,
-    <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_DISCOVERY</b>, <b>MODE_INVALID</b> }
+  Audio source selected for visualization. enum <b>audio_capture_source_t</b> {
+    <b>AUDIO_CAPTURE_SOURCE_AUTO</b> = 0, <b>AUDIO_CAPTURE_SOURCE_MIC</b> = 1,
+    <b>AUDIO_CAPTURE_SOURCE_MEDIA</b> = 2, <b>AUDIO_CAPTURE_SOURCE_BOTH</b> = 3,
+    <b>AUDIO_CAPTURE_SOURCE_REMOTE</b> = 4 }
+  <br/>
+  enum <b>asciichat_mode_t</b> { <b>MODE_SERVER</b>, <b>MODE_CLIENT</b>,
+    <b>MODE_MIRROR</b>, <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_DISCOVERY</b>,
+    <b>MODE_MCP_SERVER</b>, <b>MODE_INVALID</b> }
   <br/>
   Mode type for options parsing. enum <b>option_mode_bitmask_t</b> {
     <b>OPTION_MODE_NONE</b> = 0, <b>OPTION_MODE_SERVER</b> = (1 &lt;&lt;
@@ -474,9 +491,13 @@
     <b>OPTION_MODE_MIRROR</b> = (1 &lt;&lt; MODE_MIRROR),
     <b>OPTION_MODE_DISCOVERY_SVC</b> = (1 &lt;&lt; MODE_DISCOVERY_SERVICE),
     <b>OPTION_MODE_DISCOVERY</b> = (1 &lt;&lt; MODE_DISCOVERY),
-    <b>OPTION_MODE_BINARY</b> = 0x100, <b>OPTION_MODE_ALL</b> = 0x1F | 0x100 }
+    <b>OPTION_MODE_MCP_SERVER</b> = (1 &lt;&lt; MODE_MCP_SERVER),
+    <b>OPTION_MODE_BINARY</b> = 0x100, <b>OPTION_MODE_ALL</b> = 0x3F | 0x100 }
   <br/>
-  Option mode bitmask.
+  Option mode bitmask. enum <b>ascii_renderer_t</b> {
+    <b>ASCII_RENDERER_LUMINANCE</b> = 0, <b>ASCII_RENDERER_GLYPH</b> = 1 }
+  <br/>
+  Consolidated options structure.
   <br/>
 </p>
 </section>
@@ -504,7 +525,9 @@
   Get help text for an option in a specific mode. <b>bool</b>
     <b>has_action_flag</b> (void)
   <br/>
-  Check if an action flag was detected.
+  Check if an action flag was detected. void <b>options_resolve_flip_x</b>
+    (<b>options_t</b> *opts)
+  <br/>
   <br/>
 </p>
 <p class="Pp"><b>Utility Functions</b></p>
@@ -590,34 +613,58 @@
   <b>include/ascii-chat/options/options.h</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_options_resolve_flip_x_("><a class="permalink" href="#void_options_resolve_flip_x_(">void
+  options_resolve_flip_x (<b>options_t</b> * opts)</a></h2>
+<p class="Pp">Resolve source defaults without turning them into a user
+    selection.</p>
+<p class="Pp">Definition at line <b>2445</b> of file
+    <b>lib/options/options.c</b>.</p>
+<pre>2445                                              {
+2446   if (!opts-&gt;flip_x_explicit)
+2447     opts-&gt;flip_x = !opts-&gt;media_input &amp;&amp; !opts-&gt;test_pattern &amp;&amp; !opts-&gt;waveform &amp;&amp; !opts-&gt;fft;
+2448 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_state::fft</b>,
+    <b>options_state::flip_x</b>, <b>options_state::flip_x_explicit</b>,
+    <b>options_state::media_input</b>, <b>options_resolve_flip_x()</b>,
+    <b>options_state::test_pattern</b>, and <b>options_state::waveform</b>.</p>
+<p class="Pp">Referenced by <b>options_prepare_patch()</b>,
+    <b>options_resolve_flip_x()</b>, and <b>options_state_set()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> g_snapshot_actual_duration_ms [extern]</h2>
-<p class="Pp">Definition at line <b>52</b> of file
-    <b>common/session/render.c</b>.</p>
-<p class="Pp">Referenced by <b>ffmpeg_encoder_destroy()</b>, and
-    <b>ffmpeg_encoder_write_frame()</b>.</p>
+<p class="Pp">Definition at line <b>55</b> of file
+    <b>src/common/session/render.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_encoder_write_frame()</b>, and
+    <b>session_render_loop()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> g_snapshot_first_capture_ns [extern]</h2>
-<p class="Pp">Definition at line <b>51</b> of file
-    <b>common/session/render.c</b>.</p>
+<p class="Pp">Definition at line <b>54</b> of file
+    <b>src/common/session/render.c</b>.</p>
 <p class="Pp">Referenced by <b>session_render_loop()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> g_snapshot_first_frame_rendered [extern]</h2>
 <p class="Pp">Snapshot mode global timing variables Used to track actual
     duration when snapshot mode is active.</p>
-<p class="Pp">Definition at line <b>49</b> of file
-    <b>common/session/render.c</b>.</p>
+<p class="Pp">Definition at line <b>52</b> of file
+    <b>src/common/session/render.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> g_snapshot_first_frame_rendered_ns [extern]</h2>
-<p class="Pp">Definition at line <b>50</b> of file
-    <b>common/session/render.c</b>.</p>
-<p class="Pp">Referenced by <b>session_display_write_ascii()</b>,
-    <b>session_pipeline_run_main()</b>, and <b>session_render_loop()</b>.</p>
+<p class="Pp">Definition at line <b>53</b> of file
+    <b>src/common/session/render.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_write_ascii_frame()</b>, and
+    <b>session_render_loop()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -627,7 +674,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

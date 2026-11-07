@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii_stabilizer_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii_stabilizer_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ascii_stabilizer_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ascii_stabilizer_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/video/ascii/render.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>ascii_temporal_cell_t</b> * <b>cells</b>
+  <br/>
+  size_t <b>width</b>
+  <br/>
+  size_t <b>height</b>
+  <br/>
+  <b>uint64_t</b> <b>configuration</b>
+  <br/>
+  <b>uint64_t</b> <b>elapsed_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>last_timestamp_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>fixed_step_ns</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>29</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>ascii_temporal_cell_t</b>* ascii_stabilizer_t::cells</h2>
+<p class="Pp">Definition at line <b>30</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
+    <b>ascii_frame_emit_row()</b>, <b>ascii_render_glyph_match()</b>,
+    <b>ascii_stabilizer_prepare()</b>, and <b>ascii_stabilizer_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> ascii_stabilizer_t::configuration</h2>
+<p class="Pp">Definition at line <b>32</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_stabilizer_prepare()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> ascii_stabilizer_t::elapsed_ns</h2>
+<p class="Pp">Definition at line <b>33</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert_with_buffers_stabilized()</b>,
+    <b>ascii_frame_emit_halfrow()</b>, <b>ascii_frame_emit_row()</b>,
+    <b>ascii_render_glyph_match()</b>, and
+  <b>ascii_stabilizer_prepare()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> ascii_stabilizer_t::fixed_step_ns</h2>
+<p class="Pp">Definition at line <b>35</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert_with_buffers_stabilized()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ascii_stabilizer_t::height"><a class="permalink" href="#size_t_ascii_stabilizer_t::height">size_t
+  ascii_stabilizer_t::height</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_stabilizer_prepare()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> ascii_stabilizer_t::last_timestamp_ns</h2>
+<p class="Pp">Definition at line <b>34</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert_with_buffers_stabilized()</b>, and
+    <b>ascii_stabilizer_prepare()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ascii_stabilizer_t::width"><a class="permalink" href="#size_t_ascii_stabilizer_t::width">size_t
+  ascii_stabilizer_t::width</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_stabilizer_prepare()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

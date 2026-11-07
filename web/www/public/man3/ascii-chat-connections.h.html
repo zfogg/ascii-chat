@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>connections.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">connections.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">connections.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">connections.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>server_connection_state_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>server_dispatch_packet</b>
+    (<b>client_info_t</b> *, <b>packet_type_t</b>, const void *, size_t)
+  <br/>
+  <b>asciichat_error_t</b> <b>server_send_state</b> (<b>acip_transport_t</b> *)
+  <br/>
+  void <b>server_send_video</b> (<b>client_info_t</b> *,
+    <b>acip_frame_workspace_t</b> *, const char *, size_t, <b>uint32_t</b>,
+    <b>uint32_t</b>, int, const <b>acip_render_settings_t</b> *)
+  <br/>
+  <b>asciichat_error_t</b> <b>server_send_audio</b> (<b>client_info_t</b> *,
+    const void *, size_t)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const <b>network_connection_callbacks_t</b>
+    <b>server_network_callbacks</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> server_dispatch_packet
+  (<b>client_info_t</b> * client, <b>packet_type_t</b> type, const void * data,
+  size_t length)</h2>
+<p class="Pp">Definition at line <b>731</b> of file
+  <b>src/server/client.c</b>.</p>
+<pre>731                                                                                                                      {
+732   if (type == PACKET_TYPE_ACIP_SETTINGS_SYNC)
+733     return handle_runtime_settings(client, data, length);
+734   return acip_handle_server_packet(client-&gt;transport, type, data, length, client, &amp;g_acip_server_callbacks);
+735 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_handle_server_packet()</b>,
+    <b>handle_runtime_settings()</b>, <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b>,
+    <b>server_dispatch_packet()</b>, and <b>client_info::transport</b>.</p>
+<p class="Pp">Referenced by <b>server_dispatch_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> server_send_audio (<b>client_info_t</b>
+  * client, const void * data, size_t length)</h2>
+<p class="Pp">Definition at line <b>129</b> of file <b>connections.c</b>.</p>
+<pre>129                                                                                             {
+130   mutex_lock(&amp;client-&gt;client_state_mutex);
+131   mutex_lock(&amp;client-&gt;send_mutex);
+132   asciichat_error_t result = ASCIICHAT_OK;
+133   if (client-&gt;transport &amp;&amp; !atomic_load_bool(&amp;client-&gt;shutting_down) &amp;&amp; atomic_load_bool(&amp;client-&gt;event_ready))
+134     result = packet_send_via_transport(client-&gt;transport, PACKET_TYPE_AUDIO_OPUS_BATCH, data, length,
+135                                        fnv1a_hash_string(client-&gt;client_id));
+136   mutex_unlock(&amp;client-&gt;send_mutex);
+137   mutex_unlock(&amp;client-&gt;client_state_mutex);
+138   return result;
+139 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+    <b>client_info::client_id</b>, <b>client_info::client_state_mutex</b>,
+    <b>client_info::event_ready</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>packet_send_via_transport()</b>, <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>,
+    <b>client_info::send_mutex</b>, <b>server_send_audio()</b>,
+    <b>client_info::shutting_down</b>, and <b>client_info::transport</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> server_send_state
+  (<b>acip_transport_t</b> * transport)</h2>
+<p class="Pp">Definition at line <b>768</b> of file
+  <b>src/server/client.c</b>.</p>
+<pre>768                                                                  {
+769   server_state_packet_t state = server_state_snapshot();
+770   return acip_send_server_state(transport, &amp;state);
+771 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_send_server_state()</b>, and
+    <b>server_send_state()</b>.</p>
+<p class="Pp">Referenced by <b>server_send_state()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_server_send_video_("><a class="permalink" href="#void_server_send_video_(">void
+  server_send_video (<b>client_info_t</b> * client,
+  <b>acip_frame_workspace_t</b> * workspace, const char * data, size_t length,
+  <b>uint32_t</b> width, <b>uint32_t</b> height, int sources, const
+  <b>acip_render_settings_t</b> * rendering)</a></h2>
+<p class="Pp">Definition at line <b>107</b> of file <b>connections.c</b>.</p>
+<pre>108                                                                                                               {
+109   mutex_lock(&amp;client-&gt;client_state_mutex);
+110   mutex_lock(&amp;client-&gt;send_mutex);
+111   acip_transport_t *transport = client-&gt;transport;
+112   if (transport &amp;&amp; !atomic_load_bool(&amp;client-&gt;shutting_down) &amp;&amp; atomic_load_bool(&amp;client-&gt;event_ready)) {
+113     if (client-&gt;crypto_initialized &amp;&amp; crypto_handshake_should_rekey(client-&gt;crypto_handshake_ctx))
+114       crypto_handshake_rekey_request(client-&gt;crypto_handshake_ctx, transport);
+115     if (sources &gt; 0 &amp;&amp; atomic_load_u64(&amp;client-&gt;last_sent_grid_sources) != (uint64_t)sources) {
+116       acip_send_clear_console(transport);
+117       atomic_store_u64(&amp;client-&gt;last_sent_grid_sources, (uint64_t)sources);
+118     }
+119     if (acip_send_ascii_frame_contract(
+120             transport, workspace, data, length, width, height, rendering,
+121             (rendering-&gt;caps.capabilities &amp; TERM_CAP_MATRIX_RAIN) ? FRAME_RENDER_CONTRACT_RAIN : 0,
+122             client-&gt;client_id) == ASCIICHAT_OK)
+123       atomic_fetch_add_u64(&amp;client-&gt;frames_sent_count, 1);
+124   }
+125   mutex_unlock(&amp;client-&gt;send_mutex);
+126   mutex_unlock(&amp;client-&gt;client_state_mutex);
+127 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_send_ascii_frame_contract()</b>,
+    <b>acip_send_clear_console()</b>, <b>ASCIICHAT_OK</b>,
+    <b>atomic_fetch_add_u64()</b>, <b>atomic_load_bool()</b>,
+    <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>,
+    <b>terminal_capabilities_t::capabilities</b>,
+    <b>acip_render_settings_t::caps</b>, <b>client_info::client_id</b>,
+    <b>client_info::client_state_mutex</b>,
+    <b>client_info::crypto_handshake_ctx</b>,
+    <b>crypto_handshake_rekey_request()</b>,
+    <b>crypto_handshake_should_rekey()</b>,
+    <b>client_info::crypto_initialized</b>, <b>client_info::event_ready</b>,
+    <b>FRAME_RENDER_CONTRACT_RAIN</b>, <b>client_info::frames_sent_count</b>,
+    <b>client_info::last_sent_grid_sources</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>client_info::send_mutex</b>,
+    <b>server_send_video()</b>, <b>client_info::shutting_down</b>,
+    <b>TERM_CAP_MATRIX_RAIN</b>, and <b>client_info::transport</b>.</p>
+<p class="Pp">Referenced by <b>client_video_render_thread()</b>, and
+    <b>server_send_video()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>network_connection_callbacks_t</b> server_network_callbacks
+  [extern]</a></h2>
+<p class="Pp">Definition at line <b>104</b> of file <b>connections.c</b>.</p>
+<pre>104                                                               {server_connection_open, server_connection_packet,
+105                                                                  server_connection_closing, server_connection_closed};</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>server_main()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

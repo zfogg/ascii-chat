@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>acip_settings_header_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">acip_settings_header_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">acip_settings_header_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">acip_settings_header_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/network/acip/settings.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint32_t</b> <b>schema</b>
+  <br/>
+  <b>uint32_t</b> <b>request</b>
+  <br/>
+  <b>uint32_t</b> <b>expected_revision</b>
+  <br/>
+  <b>uint32_t</b> <b>revision</b>
+  <br/>
+  <b>uint32_t</b> <b>status</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Host-order header; wire encoding uses five network-order uint32
+    values.</p>
+<p class="Pp">Definition at line <b>27</b> of file
+    <b>include/ascii-chat/network/acip/settings.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> acip_settings_header_t::expected_revision</h2>
+<p class="Pp">Definition at line <b>28</b> of file
+    <b>include/ascii-chat/network/acip/settings.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_settings_encode()</b>, and
+    <b>acip_settings_request()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> acip_settings_header_t::request</h2>
+<p class="Pp">Definition at line <b>28</b> of file
+    <b>include/ascii-chat/network/acip/settings.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_settings_encode()</b>,
+    <b>session_participant_receive_settings()</b>, and
+    <b>session_protocol_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> acip_settings_header_t::revision</h2>
+<p class="Pp">Definition at line <b>28</b> of file
+    <b>include/ascii-chat/network/acip/settings.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_settings_encode()</b>,
+    <b>acip_settings_request()</b>, <b>client_settings_receive()</b>,
+    <b>session_participant_receive_settings()</b>, and
+    <b>session_protocol_dispatch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> acip_settings_header_t::schema</h2>
+<p class="Pp">Definition at line <b>28</b> of file
+    <b>include/ascii-chat/network/acip/settings.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_settings_decode()</b>, and
+    <b>acip_settings_encode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> acip_settings_header_t::status</h2>
+<p class="Pp">Definition at line <b>28</b> of file
+    <b>include/ascii-chat/network/acip/settings.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_settings_encode()</b>,
+    <b>acip_settings_request()</b>,
+    <b>session_participant_receive_settings()</b>, and
+    <b>session_protocol_dispatch()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

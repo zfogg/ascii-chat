@@ -68,8 +68,9 @@
   Seek to this timestamp after opening media (0.0 = no seek).
     <b>session_capture_should_exit_fn</b> <b>should_exit_callback</b>
   <br/>
-  Optional: callback to check if initialization should be cancelled (e.g.,
-    shutdown signal). void * <b>callback_data</b>
+  Optional cancellation callback, also invoked by media loader threads. The
+    callback and its data must be thread-safe and remain valid until the capture
+    context is destroyed. void * <b>callback_data</b>
   <br/>
   Opaque data passed to should_exit_callback.
   <br/>
@@ -99,18 +100,18 @@
 <h2 class="Ss" id="void*_session_capture_config_t::callback_data"><a class="permalink" href="#void*_session_capture_config_t::callback_data">void*
   session_capture_config_t::callback_data</a></h2>
 <p class="Pp">Opaque data passed to should_exit_callback.</p>
-<p class="Pp">Definition at line <b>112</b> of file
+<p class="Pp">Definition at line <b>113</b> of file
     <b>common/session/capture.h</b>.</p>
-<p class="Pp">Referenced by <b>display_init()</b>,
-    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+<p class="Pp">Referenced by <b>display_init()</b>, and
+    <b>session_capture_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_capture_config_t::enable_audio</h2>
 <p class="Pp">Enable audio capture from media source.</p>
 <p class="Pp">Definition at line <b>97</b> of file
     <b>common/session/capture.h</b>.</p>
-<p class="Pp">Referenced by <b>capture_init()</b>,
-    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>, and
+    <b>session_capture_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="double_session_capture_config_t::initial_seek_timestamp"><a class="permalink" href="#double_session_capture_config_t::initial_seek_timestamp">double
@@ -118,8 +119,8 @@
 <p class="Pp">Seek to this timestamp after opening media (0.0 = no seek).</p>
 <p class="Pp">Definition at line <b>106</b> of file
     <b>common/session/capture.h</b>.</p>
-<p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>,
-    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>, and
+    <b>session_capture_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_capture_config_t::loop</h2>
@@ -127,7 +128,8 @@
 <p class="Pp">Definition at line <b>91</b> of file
     <b>common/session/capture.h</b>.</p>
 <p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>,
-    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+    <b>session_capture_create()</b>, and
+    <b>session_participant_start_video()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_session_capture_config_t::mic_audio_ctx"><a class="permalink" href="#void*_session_capture_config_t::mic_audio_ctx">void*
@@ -145,7 +147,8 @@
 <p class="Pp">Definition at line <b>85</b> of file
     <b>common/session/capture.h</b>.</p>
 <p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>,
-    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+    <b>session_capture_create()</b>, and
+    <b>session_participant_start_video()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_capture_config_t::resize_for_network</h2>
@@ -153,18 +156,19 @@
     MAX_FRAME_HEIGHT).</p>
 <p class="Pp">Definition at line <b>94</b> of file
     <b>common/session/capture.h</b>.</p>
-<p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>,
-    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>, and
+    <b>session_capture_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_capture_should_exit_fn</b>
   session_capture_config_t::should_exit_callback</h2>
-<p class="Pp">Optional: callback to check if initialization should be cancelled
-    (e.g., shutdown signal).</p>
-<p class="Pp">Definition at line <b>109</b> of file
+<p class="Pp">Optional cancellation callback, also invoked by media loader
+    threads. The callback and its data must be thread-safe and remain valid
+    until the capture context is destroyed.</p>
+<p class="Pp">Definition at line <b>110</b> of file
     <b>common/session/capture.h</b>.</p>
-<p class="Pp">Referenced by <b>display_init()</b>,
-    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+<p class="Pp">Referenced by <b>display_init()</b>, and
+    <b>session_capture_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> session_capture_config_t::target_fps</h2>
@@ -172,8 +176,8 @@
   network).</p>
 <p class="Pp">Definition at line <b>88</b> of file
     <b>common/session/capture.h</b>.</p>
-<p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>,
-    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>, and
+    <b>session_capture_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>media_source_type_t</b> session_capture_config_t::type</h2>
@@ -181,7 +185,8 @@
 <p class="Pp">Definition at line <b>82</b> of file
     <b>common/session/capture.h</b>.</p>
 <p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>,
-    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+    <b>session_capture_create()</b>, and
+    <b>session_participant_start_video()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -192,7 +197,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

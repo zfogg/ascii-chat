@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>luminance.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">luminance.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">luminance.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">luminance.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>simd_luminance_ssse3</b> (const <b>uint8_t</b> *rgb,
+    <b>uint8_t</b> *out, size_t width)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_simd_luminance_ssse3_(const_"><a class="permalink" href="#void_simd_luminance_ssse3_(const_">void
+  simd_luminance_ssse3 (const <b>uint8_t</b> * rgb, <b>uint8_t</b> * out, size_t
+  width)</a></h2>
+<p class="Pp">Definition at line <b>5</b> of file <b>ssse3/luminance.c</b>.</p>
+<pre>5                                                                           {
+6   const rgb_pixel_t *row = (const rgb_pixel_t *)rgb;
+7   size_t x = 0;
+8   for (; width - x &gt;= 16; x += 16) {
+9     // Manual deinterleave RGB components (SSSE3 limitation vs NEON's vld3q_u8)
+10     uint8_t r_array[16], g_array[16], b_array[16];
+11     for (int j = 0; j &lt; 16; j++) {
+12       r_array[j] = row[x + j].r;
+13       g_array[j] = row[x + j].g;
+14       b_array[j] = row[x + j].b;
+15     }
+16
+17     // Process 16 pixels in two 8-pixel SSSE3 batches (same as SSE2 approach)
+18     __m128i r_vec_lo = _mm_loadl_epi64((__m128i *)(r_array + 0));
+19     __m128i r_vec_hi = _mm_loadl_epi64((__m128i *)(r_array + 8));
+20     __m128i g_vec_lo = _mm_loadl_epi64((__m128i *)(g_array + 0));
+21     __m128i g_vec_hi = _mm_loadl_epi64((__m128i *)(g_array + 8));
+22     __m128i b_vec_lo = _mm_loadl_epi64((__m128i *)(b_array + 0));
+23     __m128i b_vec_hi = _mm_loadl_epi64((__m128i *)(b_array + 8));
+24
+25     // Process first 8 pixels
+26     __m128i r_16_lo = _mm_unpacklo_epi8(r_vec_lo, _mm_setzero_si128());
+27     __m128i g_16_lo = _mm_unpacklo_epi8(g_vec_lo, _mm_setzero_si128());
+28     __m128i b_16_lo = _mm_unpacklo_epi8(b_vec_lo, _mm_setzero_si128());
+29
+30     __m128i luma_r_lo = _mm_mullo_epi16(r_16_lo, _mm_set1_epi16(LUMA_RED));
+31     __m128i luma_g_lo = _mm_mullo_epi16(g_16_lo, _mm_set1_epi16(LUMA_GREEN));
+32     __m128i luma_b_lo = _mm_mullo_epi16(b_16_lo, _mm_set1_epi16(LUMA_BLUE));
+33
+34     __m128i luma_sum_lo = _mm_add_epi16(luma_r_lo, luma_g_lo);
+35     luma_sum_lo = _mm_add_epi16(luma_sum_lo, luma_b_lo);
+36     luma_sum_lo = _mm_add_epi16(luma_sum_lo, _mm_set1_epi16(LUMA_THRESHOLD));
+37     luma_sum_lo = _mm_srli_epi16(luma_sum_lo, 8);
+38
+39     // Process second 8 pixels
+40     __m128i r_16_hi = _mm_unpacklo_epi8(r_vec_hi, _mm_setzero_si128());
+41     __m128i g_16_hi = _mm_unpacklo_epi8(g_vec_hi, _mm_setzero_si128());
+42     __m128i b_16_hi = _mm_unpacklo_epi8(b_vec_hi, _mm_setzero_si128());
+43
+44     __m128i luma_r_hi = _mm_mullo_epi16(r_16_hi, _mm_set1_epi16(LUMA_RED));
+45     __m128i luma_g_hi = _mm_mullo_epi16(g_16_hi, _mm_set1_epi16(LUMA_GREEN));
+46     __m128i luma_b_hi = _mm_mullo_epi16(b_16_hi, _mm_set1_epi16(LUMA_BLUE));
+47
+48     __m128i luma_sum_hi = _mm_add_epi16(luma_r_hi, luma_g_hi);
+49     luma_sum_hi = _mm_add_epi16(luma_sum_hi, luma_b_hi);
+50     luma_sum_hi = _mm_add_epi16(luma_sum_hi, _mm_set1_epi16(LUMA_THRESHOLD));
+51     luma_sum_hi = _mm_srli_epi16(luma_sum_hi, 8);
+52
+53     // Pack and store
+54     __m128i luminance_lo = _mm_packus_epi16(luma_sum_lo, _mm_setzero_si128());
+55     __m128i luminance_hi = _mm_packus_epi16(luma_sum_hi, _mm_setzero_si128());
+56
+57     uint8_t luma_array[16];
+58     _mm_storel_epi64((__m128i *)(luma_array + 0), luminance_lo);
+59     _mm_storel_epi64((__m128i *)(luma_array + 8), luminance_hi);
+60     memcpy(out + x, luma_array, 16);
+61   }
+62   simd_luminance_scalar((const uint8_t *)(row + x), out + x, width - x);
+63 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rgb_pixel_t::b</b>, <b>rgb_pixel_t::g</b>,
+    <b>LUMA_BLUE</b>, <b>LUMA_GREEN</b>, <b>LUMA_RED</b>, <b>LUMA_THRESHOLD</b>,
+    <b>rgb_pixel_t::r</b>, <b>simd_luminance_scalar()</b>, and
+    <b>simd_luminance_ssse3()</b>.</p>
+<p class="Pp">Referenced by <b>simd_luminance_ssse3()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

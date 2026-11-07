@@ -89,7 +89,7 @@
 29   if (!out_file || !out_content || !out_len) {
 30     return -1;
 31   }
-32 
+32
 33   // Return embedded empty string (WASM doesn't support man pages)
 34   *out_file = NULL;
 35   *out_content = empty_manpage;
@@ -98,6 +98,7 @@
 38 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>get_manpage_content()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_get_manpage_template_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)"><a class="permalink" href="#int_get_manpage_template_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)">int
@@ -139,7 +140,7 @@
 16   if (!out_file || !out_content || !out_len) {
 17     return -1;
 18   }
-19 
+19
 20   // Return embedded empty string (WASM doesn't support man pages)
 21   *out_file = NULL;
 22   *out_content = empty_manpage;
@@ -148,6 +149,7 @@
 25 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>get_manpage_template()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_release_manpage_resources_(FILE_*_file)"><a class="permalink" href="#void_release_manpage_resources_(FILE_*_file)">void
@@ -175,6 +177,7 @@
 44 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>release_manpage_resources()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -184,7 +187,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

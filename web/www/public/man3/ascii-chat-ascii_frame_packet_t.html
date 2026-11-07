@@ -76,7 +76,7 @@
 <p class="Pp">Format: char data[original_size] or
     compressed_data[compressed_size]</p>
 </div>
-<p class="Pp">Definition at line <b>848</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>859</b> of file <b>packet.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -84,38 +84,38 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> ascii_frame_packet_t::checksum</h2>
 <p class="Pp">CRC32 checksum of original ASCII data.</p>
-<p class="Pp">Definition at line <b>858</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_ascii_frame()</b>.</p>
+<p class="Pp">Definition at line <b>869</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_ascii_frame_contract()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> ascii_frame_packet_t::compressed_size</h2>
 <p class="Pp">Size of compressed data (0 = not compressed).</p>
-<p class="Pp">Definition at line <b>856</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_ascii_frame()</b>.</p>
+<p class="Pp">Definition at line <b>867</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_ascii_frame_contract()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> ascii_frame_packet_t::flags</h2>
 <p class="Pp">Frame flags bitmask (HAS_COLOR, IS_COMPRESSED, etc.).</p>
-<p class="Pp">Definition at line <b>860</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_ascii_frame()</b>.</p>
+<p class="Pp">Definition at line <b>871</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_ascii_frame_contract()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> ascii_frame_packet_t::height</h2>
 <p class="Pp">Terminal height in characters.</p>
-<p class="Pp">Definition at line <b>852</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_ascii_frame()</b>.</p>
+<p class="Pp">Definition at line <b>863</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_ascii_frame_contract()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> ascii_frame_packet_t::original_size</h2>
 <p class="Pp">Size of original uncompressed ASCII data in bytes.</p>
-<p class="Pp">Definition at line <b>854</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_ascii_frame()</b>.</p>
+<p class="Pp">Definition at line <b>865</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_ascii_frame_contract()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> ascii_frame_packet_t::width</h2>
 <p class="Pp">Terminal width in characters.</p>
-<p class="Pp">Definition at line <b>850</b> of file <b>packet.h</b>.</p>
-<p class="Pp">Referenced by <b>acip_send_ascii_frame()</b>.</p>
+<p class="Pp">Definition at line <b>861</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_ascii_frame_contract()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -126,7 +126,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

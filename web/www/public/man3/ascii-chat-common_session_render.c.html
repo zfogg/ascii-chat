@@ -41,7 +41,7 @@
 <br/>
 <p class="Pp"><b>asciichat_error_t</b> <b>session_render_loop</b>
     (<b>session_capture_ctx_t</b> *capture, <b>session_display_ctx_t</b>
-    *display, <b>session_should_exit_fn</b> <b>should_exit</b>,
+    *display, <b>session_should_exit_fn</b> should_exit,
     <b>session_capture_fn</b> capture_cb, <b>session_sleep_for_frame_fn</b>
     sleep_cb, <b>session_keyboard_handler_fn</b> keyboard_handler, void
     *user_data)
@@ -55,9 +55,7 @@
 <br/>
 <p class="Pp"><b>bool</b> <b>g_snapshot_first_frame_rendered</b> = <b>false</b>
   <br/>
-  Snapshot mode global timing variables Used to track actual duration when
-    snapshot mode is active. <b>uint64_t</b>
-    <b>g_snapshot_first_frame_rendered_ns</b> = 0
+  <b>uint64_t</b> <b>g_snapshot_first_frame_rendered_ns</b> = 0
   <br/>
   <b>uint64_t</b> <b>g_snapshot_first_capture_ns</b> = 0
   <br/>
@@ -101,19 +99,17 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> g_snapshot_first_frame_rendered = <b>false</b></h2>
-<p class="Pp">Snapshot mode global timing variables Used to track actual
-    duration when snapshot mode is active.</p>
 <p class="Pp">Definition at line <b>49</b> of file
     <b>common/session/render.c</b>.</p>
-<p class="Pp">Referenced by <b>session_display_write_ascii()</b>,
-    <b>session_pipeline_run_main()</b>, and <b>session_render_loop()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_write_ascii()</b>, and
+    <b>session_render_loop()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> g_snapshot_first_frame_rendered_ns = 0</h2>
 <p class="Pp">Definition at line <b>50</b> of file
     <b>common/session/render.c</b>.</p>
-<p class="Pp">Referenced by <b>session_display_write_ascii()</b>,
-    <b>session_pipeline_run_main()</b>, and <b>session_render_loop()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_write_ascii()</b>, and
+    <b>session_render_loop()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> g_snapshot_last_capture_elapsed_ns = 0</h2>
@@ -129,7 +125,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.11.25</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

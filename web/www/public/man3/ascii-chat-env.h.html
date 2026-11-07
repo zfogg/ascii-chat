@@ -72,25 +72,27 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if at least one response is available, false
   otherwise</div>
-<p class="Pp">Definition at line <b>201</b> of file <b>env.c</b>.</p>
-<pre>201                                    {
-202   const char *env_value = SAFE_GETENV(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
-203   if (!env_value || env_value[0] == '\0' || env_value[0] == ';') {
-204     return false;
-205   }
-206 
-207   // Check if it's all semicolons
-208   for (const char *p = env_value; *p; p++) {
-209     if (*p != ';') {
-210       return true;
-211     }
-212   }
-213 
-214   return false;
-215 }</pre>
+<p class="Pp">Definition at line <b>204</b> of file <b>env.c</b>.</p>
+<pre>204                                    {
+205   const char *env_value = SAFE_GETENV(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
+206   if (!env_value || env_value[0] == '\0' || env_value[0] == ';') {
+207     return false;
+208   }
+209
+210   // Check if it's all semicolons
+211   for (const char *p = env_value; *p; p++) {
+212     if (*p != ';') {
+213       return true;
+214     }
+215   }
+216
+217   return false;
+218 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SAFE_GETENV</b>.</p>
+<p class="Pp">References <b>env_has_prompt_response()</b>, and
+    <b>SAFE_GETENV</b>.</p>
+<p class="Pp">Referenced by <b>env_has_prompt_response()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> env_pop_prompt_response (char * response_out, size_t
@@ -149,114 +151,117 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if a response was successfully popped, false
   otherwise</div>
-<p class="Pp">Definition at line <b>93</b> of file <b>env.c</b>.</p>
-<pre>93                                                                        {
-94   if (!response_out || response_size &lt; 2) {
-95     return false;
-96   }
-97 
-98   const char *env_value = SAFE_GETENV(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
-99   if (!env_value || env_value[0] == '\0') {
-100     return false;
-101   }
-102 
-103   // Validate: no leading semicolon (unless escaped)
-104   if (env_value[0] == ';') {
-105     log_warn(&quot;Invalid ASCII_CHAT_QUESTION_PROMPT_RESPONSE format: leading semicolon&quot;);
-106     return false;
-107   }
-108 
-109   // Find the first unescaped semicolon
-110   const char *semicolon = find_unescaped_semicolon(env_value);
-111 
-112   if (semicolon == NULL) {
-113     // No semicolon - this is the last (or only) response
-114     size_t len = strlen(env_value);
-115     if (len == 0) {
-116       return false;
-117     }
-118 
-119     // Validate: ensure it's not empty
-120     if (len &gt;= response_size) {
-121       log_warn(&quot;Response too long: %zu bytes (max: %zu)&quot;, len, response_size - 1);
-122       return false;
-123     }
-124 
-125     // Copy the response
-126     SAFE_STRNCPY(response_out, env_value, response_size);
-127 
-128     // Unescape the response (\; &#x2192; ; and \\ &#x2192; \)
-129     unescape_response(response_out);
-130 
-131     // Clear the environment variable
-132     platform_unsetenv(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
-133 
-134     log_dev(&quot;Popped last response from stack: '%s' (cleared env)&quot;, response_out);
-135     return true;
-136   }
-137 
-138   // Calculate response length
-139   size_t response_len = (size_t)(semicolon - env_value);
-140 
-141   // Validate: no empty segment
-142   if (response_len == 0) {
-143     log_warn(&quot;Invalid ASCII_CHAT_QUESTION_PROMPT_RESPONSE format: empty segment&quot;);
-144     return false;
-145   }
-146 
-147   if (response_len &gt;= response_size) {
-148     log_warn(&quot;Response too long: %zu bytes (max: %zu)&quot;, response_len, response_size - 1);
-149     return false;
-150   }
-151 
-152   // Copy the first response
-153   memcpy(response_out, env_value, response_len);
-154   response_out[response_len] = '\0';
-155 
-156   // Unescape the response (\; &#x2192; ; and \\ &#x2192; \)
-157   unescape_response(response_out);
-158 
-159   // Calculate remaining stack (skip the semicolon)
-160   const char *remaining = semicolon + 1;
-161 
-162   // Validate: if remaining is empty or only semicolons, clear the env
-163   bool remaining_valid = false;
-164   for (const char *p = remaining; *p; p++) {
-165     if (*p != ';') {
-166       remaining_valid = true;
-167       break;
-168     }
-169   }
-170 
-171   // Update environment variable with remaining responses
-172   if (remaining_valid &amp;&amp; remaining[0] != '\0') {
-173     char new_env[1024];
-174     int written = snprintf(new_env, sizeof(new_env), &quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE=%s&quot;, remaining);
-175     if (written &lt; 0 || (size_t)written &gt;= sizeof(new_env)) {
-176       log_warn(&quot;Failed to format new environment variable&quot;);
-177       return false;
-178     }
-179 
-180     if (platform_setenv(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;, remaining) != 0) {
-181       log_warn(&quot;Failed to update ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
-182       return false;
-183     }
-184 
-185     log_debug(&quot;Popped response from stack: '%s' (remaining: '%s')&quot;, response_out, remaining);
-186   } else {
-187     // No valid remaining responses - clear the env
-188     platform_unsetenv(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
-189 
-190     log_debug(&quot;Popped response from stack: '%s' (cleared env)&quot;, response_out);
-191   }
-192 
-193   return true;
-194 }</pre>
+<p class="Pp">Definition at line <b>96</b> of file <b>env.c</b>.</p>
+<pre>96                                                                        {
+97   if (!response_out || response_size &lt; 2) {
+98     return false;
+99   }
+100
+101   const char *env_value = SAFE_GETENV(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
+102   if (!env_value || env_value[0] == '\0') {
+103     return false;
+104   }
+105
+106   // Validate: no leading semicolon (unless escaped)
+107   if (env_value[0] == ';') {
+108     log_warn(&quot;Invalid ASCII_CHAT_QUESTION_PROMPT_RESPONSE format: leading semicolon&quot;);
+109     return false;
+110   }
+111
+112   // Find the first unescaped semicolon
+113   const char *semicolon = find_unescaped_semicolon(env_value);
+114
+115   if (semicolon == NULL) {
+116     // No semicolon - this is the last (or only) response
+117     size_t len = strlen(env_value);
+118     if (len == 0) {
+119       return false;
+120     }
+121
+122     // Validate: ensure it's not empty
+123     if (len &gt;= response_size) {
+124       log_warn(&quot;Response too long: %zu bytes (max: %zu)&quot;, len, response_size - 1);
+125       return false;
+126     }
+127
+128     // Copy the response
+129     SAFE_STRNCPY(response_out, env_value, response_size);
+130
+131     // Unescape the response (\; &#x2192; ; and \\ &#x2192; \)
+132     unescape_response(response_out);
+133
+134     // Clear the environment variable
+135     platform_unsetenv(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
+136
+137     log_dev(&quot;Popped last response from stack: '%s' (cleared env)&quot;, response_out);
+138     return true;
+139   }
+140
+141   // Calculate response length
+142   size_t response_len = (size_t)(semicolon - env_value);
+143
+144   // Validate: no empty segment
+145   if (response_len == 0) {
+146     log_warn(&quot;Invalid ASCII_CHAT_QUESTION_PROMPT_RESPONSE format: empty segment&quot;);
+147     return false;
+148   }
+149
+150   if (response_len &gt;= response_size) {
+151     log_warn(&quot;Response too long: %zu bytes (max: %zu)&quot;, response_len, response_size - 1);
+152     return false;
+153   }
+154
+155   // Copy the first response
+156   memcpy(response_out, env_value, response_len);
+157   response_out[response_len] = '\0';
+158
+159   // Unescape the response (\; &#x2192; ; and \\ &#x2192; \)
+160   unescape_response(response_out);
+161
+162   // Calculate remaining stack (skip the semicolon)
+163   const char *remaining = semicolon + 1;
+164
+165   // Validate: if remaining is empty or only semicolons, clear the env
+166   bool remaining_valid = false;
+167   for (const char *p = remaining; *p; p++) {
+168     if (*p != ';') {
+169       remaining_valid = true;
+170       break;
+171     }
+172   }
+173
+174   // Update environment variable with remaining responses
+175   if (remaining_valid &amp;&amp; remaining[0] != '\0') {
+176     char new_env[UTIL_ENV_NEW_ENV_BUFFER_SIZE];
+177     int written = snprintf(new_env, sizeof(new_env), &quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE=%s&quot;, remaining);
+178     if (written &lt; 0 || (size_t)written &gt;= sizeof(new_env)) {
+179       log_warn(&quot;Failed to format new environment variable&quot;);
+180       return false;
+181     }
+182
+183     if (platform_setenv(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;, remaining) != 0) {
+184       log_warn(&quot;Failed to update ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
+185       return false;
+186     }
+187
+188     log_debug(&quot;Popped response from stack: '%s' (remaining: '%s')&quot;, response_out, remaining);
+189   } else {
+190     // No valid remaining responses - clear the env
+191     platform_unsetenv(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
+192
+193     log_debug(&quot;Popped response from stack: '%s' (cleared env)&quot;, response_out);
+194   }
+195
+196   return true;
+197 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, <b>log_dev</b>, <b>log_warn</b>,
-    <b>platform_setenv()</b>, <b>platform_unsetenv()</b>, <b>SAFE_GETENV</b>,
-    and <b>SAFE_STRNCPY</b>.</p>
+<p class="Pp">References <b>env_pop_prompt_response()</b>, <b>log_debug</b>,
+    <b>log_dev</b>, <b>log_warn</b>, <b>platform_setenv()</b>,
+    <b>platform_unsetenv()</b>, <b>SAFE_GETENV</b>, <b>SAFE_STRNCPY</b>, and
+    <b>UTIL_ENV_NEW_ENV_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>env_pop_prompt_response()</b>, and
+    <b>ui_input_password()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> env_validate_prompt_response_format (void )</h2>
@@ -286,50 +291,52 @@
 </ul>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if format is valid, false otherwise</div>
-<p class="Pp">Definition at line <b>237</b> of file <b>env.c</b>.</p>
-<pre>237                                                {
-238   const char *env_value = SAFE_GETENV(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
-239   if (!env_value) {
-240     return true; // Not set is valid (no automated responses)
-241   }
-242 
-243   if (env_value[0] == '\0') {
-244     return true; // Empty is valid (no automated responses)
-245   }
-246 
-247   // Invalid: leading semicolon (unless escaped)
-248   if (env_value[0] == ';') {
-249     return false;
-250   }
-251 
-252   // Check for consecutive unescaped semicolons or empty segments
-253   const char *p = env_value;
-254   bool last_was_semicolon = false;
-255 
-256   while (*p) {
-257     if (*p == '\\' &amp;&amp; *(p + 1)) {
-258       // Skip escaped character
-259       last_was_semicolon = false;
-260       p += 2;
-261       continue;
-262     }
-263     if (*p == ';') {
-264       if (last_was_semicolon) {
-265         return false; // Consecutive unescaped semicolons (empty segment)
-266       }
-267       last_was_semicolon = true;
-268     } else {
-269       last_was_semicolon = false;
-270     }
-271     p++;
-272   }
-273 
-274   // Trailing semicolon is allowed
-275   return true;
-276 }</pre>
+<p class="Pp">Definition at line <b>240</b> of file <b>env.c</b>.</p>
+<pre>240                                                {
+241   const char *env_value = SAFE_GETENV(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
+242   if (!env_value) {
+243     return true; // Not set is valid (no automated responses)
+244   }
+245
+246   if (env_value[0] == '\0') {
+247     return true; // Empty is valid (no automated responses)
+248   }
+249
+250   // Invalid: leading semicolon (unless escaped)
+251   if (env_value[0] == ';') {
+252     return false;
+253   }
+254
+255   // Check for consecutive unescaped semicolons or empty segments
+256   const char *p = env_value;
+257   bool last_was_semicolon = false;
+258
+259   while (*p) {
+260     if (*p == '\\' &amp;&amp; *(p + 1)) {
+261       // Skip escaped character
+262       last_was_semicolon = false;
+263       p += 2;
+264       continue;
+265     }
+266     if (*p == ';') {
+267       if (last_was_semicolon) {
+268         return false; // Consecutive unescaped semicolons (empty segment)
+269       }
+270       last_was_semicolon = true;
+271     } else {
+272       last_was_semicolon = false;
+273     }
+274     p++;
+275   }
+276
+277   // Trailing semicolon is allowed
+278   return true;
+279 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SAFE_GETENV</b>.</p>
+<p class="Pp">References <b>env_validate_prompt_response_format()</b>, and
+    <b>SAFE_GETENV</b>.</p>
+<p class="Pp">Referenced by <b>env_validate_prompt_response_format()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -339,7 +346,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

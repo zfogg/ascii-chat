@@ -37,6 +37,14 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE</b> 256
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">const <b>palette_def_t</b> * <b>get_builtin_palette</b>
@@ -61,12 +69,14 @@
   <br/>
   Apply palette configuration (set global palette). int
     <b>build_client_luminance_palette</b> (const char *palette_chars, size_t
-    palette_len, char luminance_mapping[256])
+    palette_len, char luminance_mapping[<b>ASCII_LUMINANCE_LEVELS</b>])
   <br/>
   Build luminance mapping table from palette characters. int
     <b>initialize_client_palette</b> (<b>palette_type_t</b> palette_type, const
-    char *custom_chars, char client_palette_chars[256], size_t
-    *client_palette_len, char client_luminance_palette[256])
+    char *custom_chars, char
+    client_palette_chars[<b>ASCII_PALETTE_BUFFER_SIZE</b>], size_t
+    *client_palette_len, char
+    client_luminance_palette[<b>ASCII_LUMINANCE_LEVELS</b>])
   <br/>
   Initialize client palette with full configuration. <b>utf8_palette_t</b> *
     <b>utf8_palette_create</b> (const char *palette_string)
@@ -122,13 +132,23 @@
 <p class="Pp">Definition in file <b>palette.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE___256"><a class="permalink" href="#_define_VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE___256">#define
+  VIDEO_ASCII_PALETTE_OLD_LOCALE_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>palette.c</b>.</p>
+<p class="Pp">Referenced by <b>utf8_palette_create()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

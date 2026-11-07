@@ -61,10 +61,12 @@
 <p class="Pp">
   <br/>
   <br/>
-  #define <b>MIXER_MAX_SOURCES</b> 32
+  #define <b>MIXER_MAX_SOURCES</b> <b>MAX_SESSION_PARTICIPANTS</b>
   <br/>
-  Maximum number of simultaneous audio sources. #define <b>MIXER_FRAME_SIZE</b>
-    256
+  Maximum number of simultaneous audio sources. #define <b>MIXER_MASK_WORDS</b>
+    ((<b>MIXER_MAX_SOURCES</b> + 63) / 64)
+  <br/>
+  #define <b>MIXER_FRAME_SIZE</b> 256
   <br/>
   Number of samples processed per audio frame.
   <br/>
@@ -79,7 +81,10 @@
   <br/>
   <b>mixer_t</b> * <b>mixer_create</b> (int max_sources, int sample_rate)
   <br/>
-  Create a new audio mixer. void <b>mixer_destroy</b> (<b>mixer_t</b> *mixer)
+  Create a new audio mixer. <b>mixer_t</b> * <b>mixer_create_channels</b> (int
+    max_sources, int sample_rate, unsigned channels)
+  <br/>
+  void <b>mixer_destroy</b> (<b>mixer_t</b> *mixer)
   <br/>
   Destroy a mixer and free all resources.
   <br/>
@@ -305,7 +310,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>event_work_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">event_work_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">event_work_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">event_work_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">uv_work_t <b>work</b>
+  <br/>
+  <b>platform_event_stream_t</b> * <b>stream</b>
+  <br/>
+  <b>platform_event_work_fn</b> <b>run</b>
+  <br/>
+  <b>platform_event_work_done_fn</b> <b>done</b>
+  <br/>
+  void * <b>arg</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>707</b> of file <b>event.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void*_event_work_t::arg"><a class="permalink" href="#void*_event_work_t::arg">void*
+  event_work_t::arg</a></h2>
+<p class="Pp">Definition at line <b>712</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_work()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>platform_event_work_done_fn</b> event_work_t::done</h2>
+<p class="Pp">Definition at line <b>711</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_work()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>platform_event_work_fn</b> event_work_t::run</h2>
+<p class="Pp">Definition at line <b>710</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_work()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>platform_event_stream_t</b>* event_work_t::stream</h2>
+<p class="Pp">Definition at line <b>709</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_work()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uv_work_t_event_work_t::work"><a class="permalink" href="#uv_work_t_event_work_t::work">uv_work_t
+  event_work_t::work</a></h2>
+<p class="Pp">Definition at line <b>708</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_work()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

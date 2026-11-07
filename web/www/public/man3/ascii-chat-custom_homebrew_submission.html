@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>custom_homebrew_submission(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">custom_homebrew_submission(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">custom_homebrew_submission(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">custom_homebrew_submission - Homebrew Core Submission Guide for
+    ascii-chat</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Homebrew_Core_Submission_Guide_for_ascii-chat"><a class="permalink" href="#Homebrew_Core_Submission_Guide_for_ascii-chat">Homebrew
+  Core Submission Guide for ascii-chat</a></h1>
+<p class="Pp">This guide walks you through submitting ascii-chat to official
+    Homebrew (homebrew-core).</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Prerequisites"><a class="permalink" href="#Prerequisites">Prerequisites</a></h2>
+<dl class="Bl-tag">
+  <dt>[x]</dt>
+  <dd>Stable, well-maintained open source project</dd>
+  <dt>[x]</dt>
+  <dd>MIT license</dd>
+  <dt>[x]</dt>
+  <dd>Active development and user base</dd>
+  <dt>[x]</dt>
+  <dd>Working formula in custom tap (zfogg/ascii-chat)</dd>
+  <dt>[ ]</dt>
+  <dd>Formula tested on latest macOS</dd>
+  <dt>[ ]</dt>
+  <dd>Formula tested on Linux (via Homebrew on Linux)</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Overview"><a class="permalink" href="#Overview">Overview</a></h2>
+<p class="Pp">You currently have:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Custom tap: homebrew-ascii-chat with pre-built bottles</li>
+  <li>Two formulas: ascii-chat (runtime) and libasciichat (development)</li>
+</ul>
+<p class="Pp">For homebrew-core:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Submit only ascii-chat (not libasciichat - Homebrew prefers single
+      packages)</li>
+  <li>Build from source tarball (not pre-built bottles initially)</li>
+  <li>Simplified formula without GPG verification</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Step-by-Step_Submission_Process"><a class="permalink" href="#Step-by-Step_Submission_Process">Step-by-Step
+  Submission Process</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="1"><a class="permalink" href="#1">1. Prepare the
+  Formula</a></h2>
+<p class="Pp">I've created a simplified formula at:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>Formula/ascii-chat-homebrew-core.rb</pre>
+<p class="Pp"><b>Key differences from your tap formula:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Builds from GitHub source tarball (not pre-built bottles)</li>
+  <li>No GPG signature verification (Homebrew CI handles security)</li>
+  <li>Simplified installation process</li>
+  <li>Better test coverage</li>
+  <li>Uses only depends_on for dependencies</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="2"><a class="permalink" href="#2">2. Test the Formula
+  Locally</a></h2>
+<p class="Pp"><b>On macOS:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre># Test building from source
+brew install --build-from-source Formula/ascii-chat-homebrew-core.rb
+# Run tests
+brew test ascii-chat
+# Try running the binary
+ascii-chat --help
+ascii-chat --version
+ascii-chat client --snapshot --no-webcam
+# Uninstall
+brew uninstall ascii-chat</pre>
+<p class="Pp"><b>On Linux (Homebrew on Linux):</b></p>
+<p class="Pp"></p>
+<p class="Pp">If you have access to a Linux machine with Homebrew:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre># Same commands as macOS
+brew install --build-from-source Formula/ascii-chat-homebrew-core.rb
+brew test ascii-chat</pre>
+<p class="Pp"><b>Using Docker for Linux testing:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre># Use Homebrew's official Linux Docker image
+docker run -it --rm \
+<br/>
+  -v &quot;$PWD:/workdir&quot; \
+<br/>
+  -w /workdir \
+<br/>
+  homebrew/brew:latest \
+<br/>
+  bash
+# Inside container:
+brew install --build-from-source Formula/ascii-chat-homebrew-core.rb
+brew test ascii-chat</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="3"><a class="permalink" href="#3">3. Run Homebrew's Formula
+  Audits</a></h2>
+<pre># Audit the formula for style and correctness
+brew audit --strict --online Formula/ascii-chat-homebrew-core.rb
+# Check formula style
+brew style Formula/ascii-chat-homebrew-core.rb
+# Verify dependencies are available in homebrew-core
+brew info libsodium opus portaudio zstd mimalloc ca-certificates gnupg</pre>
+<p class="Pp"><b>Common audit issues to fix:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Trailing whitespace</li>
+  <li>Line length &gt; 80 characters</li>
+  <li>Incorrect dependency specifications</li>
+  <li>Missing test coverage</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="4"><a class="permalink" href="#4">4. Fork and Clone
+  homebrew-core</a></h2>
+<pre># Fork homebrew-core on GitHub first
+# Then clone your fork:
+cd ~/src
+git clone https://github.com/YOUR_USERNAME/homebrew-core.git
+cd homebrew-core
+# Add upstream
+git remote add upstream https://github.com/Homebrew/homebrew-core.git
+git fetch upstream</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="5"><a class="permalink" href="#5">5. Create a New
+  Branch</a></h2>
+<pre>cd homebrew-core
+# Update master
+git checkout master
+git pull upstream master
+# Create feature branch
+git checkout -b ascii-chat</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="6"><a class="permalink" href="#6">6. Add the Formula</a></h2>
+<pre># Copy your formula to homebrew-core
+cp ~/src/github.com/zfogg/ascii-chat/Formula/ascii-chat-homebrew-core.rb \
+<br/>
+   Formula/a/ascii-chat.rb
+# Note: Homebrew organizes formulas alphabetically by first letter
+# ascii-chat goes in Formula/a/</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="7"><a class="permalink" href="#7">7. Test Again in
+  homebrew-core</a></h2>
+<pre># Test building from the formula in homebrew-core
+brew install --build-from-source Formula/a/ascii-chat.rb
+# Run tests
+brew test ascii-chat
+# Audit
+brew audit --strict --online Formula/a/ascii-chat.rb
+brew style Formula/a/ascii-chat.rb</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="8"><a class="permalink" href="#8">8. Commit and Push</a></h2>
+<pre># Stage changes
+git add Formula/a/ascii-chat.rb
+# Commit with proper format (Homebrew is VERY strict about commit messages)
+git commit -m &quot;ascii-chat 0.6.12 (new formula)
+Video chat in your terminal.
+Closes Homebrew/homebrew-core#XXXXX&quot;
+# Push to your fork
+git push origin ascii-chat</pre>
+<p class="Pp"><b>Commit message format:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>First line: formula-name <b>VERSION</b> (new formula)<b></b></li>
+  <li>Blank line</li>
+  <li>Brief description (1-2 sentences)</li>
+  <li>Blank line</li>
+  <li>Closes Homebrew/homebrew-core#XXXXX (if there's a related issue)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="9"><a class="permalink" href="#9">9. Create Pull
+  Request</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Go to https://github.com/Homebrew/homebrew-core</dd>
+  <dt>2.</dt>
+  <dd>Click &quot;New Pull Request&quot;</dd>
+  <dt>3.</dt>
+  <dd>Select your fork and ascii-chat branch</dd>
+  <dt>4.</dt>
+  <dd>Fill out the PR template (Homebrew has a specific template)</dd>
+</dl>
+<p class="Pp"><b>PR Title Format:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>ascii-chat 0.6.12 (new formula)</pre>
+<p class="Pp"><b>PR Description Template:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>## Description
+Video chat in your terminal.
+ascii-chat is a client-server application for video chat in the terminal.
+It captures webcam video, converts it to ASCII art in real-time, and
+transmits it over TCP/IP. Features include:
+- Multi-client support with grid layout
+- Audio streaming and mixing
+- End-to-end encryption with libsodium
+- SSH key authentication
+- Cross-platform (macOS, Linux, Windows)
+## Checklist
+- [x] I have personally tested the formula on macOS
+- [ ] I have personally tested the formula on Linux (if you haven't, mention it)
+- [x] The formula builds without errors
+- [x] All tests pass
+- [x] `brew audit --strict --online` passes
+- [x] `brew style` passes
+- [x] I am the author/maintainer of this software
+## Additional Notes
+This project has been actively maintained since 2013 with continuous
+development. The project has comprehensive test coverage (90+ tests)
+and full API documentation.
+Source: https://github.com/zfogg/ascii-chat
+Documentation: https://zfogg.github.io/ascii-chat/</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="10"><a class="permalink" href="#10">10. Respond to CI and
+  Reviewers</a></h2>
+<p class="Pp">Homebrew has automated CI that will:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Build your formula on macOS (multiple versions)</li>
+  <li>Build on Linux</li>
+  <li>Run all tests</li>
+  <li>Check for style violations</li>
+</ul>
+<p class="Pp"><b>Common CI failures:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Missing dependencies on Linux</li>
+  <li>Build failures due to system differences</li>
+  <li>Test failures</li>
+  <li>Style violations</li>
+</ul>
+<p class="Pp"><b>Be prepared to:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Respond to reviewer feedback promptly</li>
+  <li>Make requested changes</li>
+  <li>Update your PR with fixes</li>
+  <li>Rebase if requested</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="11"><a class="permalink" href="#11">11. After
+  Approval</a></h2>
+<p class="Pp">Once approved and merged:</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Your formula will be available in homebrew-core</dd>
+  <dt>2.</dt>
+  <dd>Users can install with: brew install ascii-chat</dd>
+  <dt>3.</dt>
+  <dd>Homebrew will build bottles automatically for popular platforms</dd>
+  <dt>4.</dt>
+  <dd>You'll be notified of the merge</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Homebrew_Submission_Best_Practices"><a class="permalink" href="#Homebrew_Submission_Best_Practices">Homebrew
+  Submission Best Practices</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Do's:"><a class="permalink" href="#Do's:">Do's:</a></h2>
+<p class="Pp">&#x2705; Test thoroughly on both macOS and Linux before submitting
+    &#x2705; Run brew audit --strict --online and fix all issues &#x2705; Use
+    minimal, focused descriptions &#x2705; Respond to feedback quickly and
+    professionally &#x2705; Follow Homebrew's commit message format exactly
+    &#x2705; Include meaningful tests &#x2705; Keep the formula simple and
+    maintainable</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Don'ts:"><a class="permalink" href="#Don'ts:">Don'ts:</a></h2>
+<p class="Pp">&#x274C; Submit untested formulas &#x274C; Include pre-built
+    binaries (bottles come later, after merge) &#x274C; Add GPG verification
+    (Homebrew doesn't support it) &#x274C; Submit formulas for unstable/alpha
+    software &#x274C; Argue with reviewers (they're volunteers helping you)
+    &#x274C; Submit multiple formulas at once (libasciichat should be separate,
+    later) &#x274C; Use complex workarounds (keep it simple)</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Maintaining_the_Formula"><a class="permalink" href="#Maintaining_the_Formula">Maintaining
+  the Formula</a></h2>
+<p class="Pp">After acceptance:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Update the formula for new releases by submitting PRs</li>
+  <li>Monitor issues related to your formula</li>
+  <li>Help users with installation problems</li>
+  <li>Keep dependencies up to date</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Alternative:_Keep_Your_Tap"><a class="permalink" href="#Alternative:_Keep_Your_Tap">Alternative:
+  Keep Your Tap</a></h2>
+<p class="Pp">If homebrew-core submission is too complex or restrictive,
+    consider:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Keeping your custom tap with pre-built bottles</li>
+  <li>Providing better user experience in your tap</li>
+  <li>Submitting to homebrew-core later when ready</li>
+</ul>
+<p class="Pp">Your custom tap is already excellent with:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Pre-built bottles (faster installation)</li>
+  <li>GPG signature verification (extra security)</li>
+  <li>Separate runtime and development packages</li>
+  <li>Homebrew service integration</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Resources"><a class="permalink" href="#Resources">Resources</a></h2>
+<ul class="Bl-bullet">
+  <li>Homebrew Formula Cookbook</li>
+  <li>How to Open a Homebrew Pull Request</li>
+  <li>Acceptable Formulae</li>
+  <li>Homebrew Maintainer Guide</li>
+  <li>Formula Style Guide</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Questions?"><a class="permalink" href="#Questions?">Questions?</a></h2>
+<p class="Pp">If you need help during the submission process:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Ask in #general on Homebrew's Discussions:
+      https://github.com/orgs/Homebrew/discussions</li>
+  <li>Review existing PRs to see how others handled similar issues</li>
+  <li>Check Homebrew's documentation thoroughly</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Timeline_Expectations"><a class="permalink" href="#Timeline_Expectations">Timeline
+  Expectations</a></h2>
+<ul class="Bl-bullet">
+  <li>Initial review: 1-7 days</li>
+  <li>Total time to merge: 1-4 weeks (depending on feedback cycles)</li>
+  <li>CI builds take 10-30 minutes per run</li>
+  <li>Expect 1-3 rounds of feedback before approval</li>
+</ul>
+<p class="Pp">Good luck with your submission! &#x1F37A;</p>
+</section>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

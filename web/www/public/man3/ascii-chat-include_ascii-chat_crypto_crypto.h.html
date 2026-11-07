@@ -47,10 +47,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>SERVER_AUTH_RESPONSE_SIZE</b> <b>AUTH_HMAC_SIZE</b>
-  <br/>
-  Server authentication response size (32 bytes). #define
-    <b>SSH_KEY_TYPE_LENGTH_SIZE</b> 4
+<p class="Pp">#define <b>SSH_KEY_TYPE_LENGTH_SIZE</b> 4
   <br/>
   #define <b>SSH_KEY_TYPE_STRING_SIZE</b> 11
   <br/>
@@ -70,184 +67,6 @@
     (S_IRWXG | S_IRWXO)
   <br/>
   #define <b>SSH_KEY_RECOMMENDED_PERMISSIONS</b> 0600
-  <br/>
-  #define <b>MAX_COMMENT_LEN</b> 256
-  <br/>
-  #define <b>MAX_GPG_KEYGRIP_LEN</b> 64
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Password Requirements</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>MIN_PASSWORD_LENGTH</b> 8
-  <br/>
-  Minimum password length (8 characters). #define <b>MAX_PASSWORD_LENGTH</b> 256
-  <br/>
-  Maximum password length (256 characters).
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Algorithm-Specific Key Sizes</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>X25519_KEY_SIZE</b> 32
-  <br/>
-  X25519 key size in bytes. #define <b>ED25519_PUBLIC_KEY_SIZE</b> 32
-  <br/>
-  Ed25519 public key size in bytes. #define <b>ED25519_PRIVATE_KEY_SIZE</b> 64
-  <br/>
-  Ed25519 private key size (seed + public) in bytes. #define
-    <b>ED25519_SIGNATURE_SIZE</b> 64
-  <br/>
-  Ed25519 signature size in bytes. #define <b>XSALSA20_NONCE_SIZE</b> 24
-  <br/>
-  XSalsa20 nonce size in bytes. #define <b>POLY1305_MAC_SIZE</b> 16
-  <br/>
-  Poly1305 MAC size in bytes. #define <b>HMAC_SHA256_SIZE</b> 32
-  <br/>
-  HMAC-SHA256 output size in bytes. #define <b>ARGON2ID_SALT_SIZE</b> 32
-  <br/>
-  Argon2id salt size in bytes. #define <b>SECRETBOX_KEY_SIZE</b> 32
-  <br/>
-  Secretbox key size in bytes. #define <b>AES256_KEY_SIZE</b> 32
-  <br/>
-  AES-256 key size in bytes. #define <b>AES_IV_SIZE</b> 16
-  <br/>
-  AES initialization vector (IV) size in bytes. #define
-    <b>AES256_DERIVED_SIZE</b> (<b>AES256_KEY_SIZE</b> + <b>AES_IV_SIZE</b>)
-  <br/>
-  AES-256 key + IV derived size in bytes (for bcrypt_pbkdf). #define
-    <b>SESSION_ID_SIZE</b> 16
-  <br/>
-  Session ID size in bytes.
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Abstracted Cryptographic Constants</b>
-  <br/>
-  These constants abstract the underlying algorithms to allow future
-  changes.</p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>CRYPTO_PUBLIC_KEY_SIZE</b> <b>X25519_KEY_SIZE</b>
-  <br/>
-  Public key size (X25519). #define <b>CRYPTO_PRIVATE_KEY_SIZE</b>
-    <b>X25519_KEY_SIZE</b>
-  <br/>
-  Private key size (X25519). #define <b>CRYPTO_SHARED_KEY_SIZE</b>
-    <b>X25519_KEY_SIZE</b>
-  <br/>
-  Shared key size (X25519). #define <b>CRYPTO_ED25519_PUBLIC_KEY_SIZE</b>
-    <b>ED25519_PUBLIC_KEY_SIZE</b>
-  <br/>
-  Ed25519 public key size. #define <b>CRYPTO_ED25519_PRIVATE_KEY_SIZE</b>
-    <b>ED25519_PRIVATE_KEY_SIZE</b>
-  <br/>
-  Ed25519 private key size. #define <b>CRYPTO_ED25519_SIGNATURE_SIZE</b>
-    <b>ED25519_SIGNATURE_SIZE</b>
-  <br/>
-  Ed25519 signature size. #define <b>CRYPTO_NONCE_SIZE</b>
-    <b>XSALSA20_NONCE_SIZE</b>
-  <br/>
-  Nonce size (XSalsa20). #define <b>CRYPTO_SALT_SIZE</b>
-    <b>ARGON2ID_SALT_SIZE</b>
-  <br/>
-  Salt size (Argon2id). #define <b>CRYPTO_ENCRYPTION_KEY_SIZE</b>
-    <b>SECRETBOX_KEY_SIZE</b>
-  <br/>
-  Encryption key size (XSalsa20-Poly1305). #define <b>CRYPTO_MAC_SIZE</b>
-    <b>POLY1305_MAC_SIZE</b>
-  <br/>
-  MAC size (Poly1305). #define <b>CRYPTO_HMAC_SIZE</b> <b>HMAC_SHA256_SIZE</b>
-  <br/>
-  HMAC size (HMAC-SHA256).
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Authentication Packet Sizes</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>AUTH_HMAC_SIZE</b> 32
-  <br/>
-  HMAC size in authentication packets (32 bytes). #define
-    <b>AUTH_CHALLENGE_SIZE</b> 32
-  <br/>
-  Challenge nonce size (32 bytes). #define <b>AUTH_COMBINED_SIZE</b>
-    (<b>AUTH_HMAC_SIZE</b> + <b>AUTH_CHALLENGE_SIZE</b>)
-  <br/>
-  Combined authentication data size (HMAC + challenge, 64 bytes). #define
-    <b>AUTH_SIGNATURE_SIZE</b> 64
-  <br/>
-  Ed25519 signature size (64 bytes). #define <b>AUTH_SIGNATURE_COMBINED_SIZE</b>
-    (<b>AUTH_SIGNATURE_SIZE</b> + <b>AUTH_CHALLENGE_SIZE</b>)
-  <br/>
-  Combined signature + challenge size (96 bytes).
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Authentication Challenge Packet Structure</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>AUTH_CHALLENGE_FLAGS_SIZE</b> 1
-  <br/>
-  Authentication flags size (1 byte). #define <b>AUTH_CHALLENGE_PACKET_SIZE</b>
-    (<b>AUTH_CHALLENGE_FLAGS_SIZE</b> + <b>AUTH_CHALLENGE_SIZE</b>)
-  <br/>
-  Complete authentication challenge packet size (1 + 32 = 33 bytes).
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Authentication Response Packet Sizes</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>AUTH_RESPONSE_PASSWORD_SIZE</b> (<b>AUTH_HMAC_SIZE</b> +
-    <b>AUTH_CHALLENGE_SIZE</b>)
-  <br/>
-  Password-based authentication response size (HMAC + challenge, 64 bytes).
-    #define <b>AUTH_RESPONSE_SIGNATURE_SIZE</b> (<b>AUTH_SIGNATURE_SIZE</b> +
-    <b>AUTH_CHALLENGE_SIZE</b>)
-  <br/>
-  Signature-based authentication response size (signature + challenge, 96
-    bytes).
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Packet Size Limits</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>MAX_AUTH_FAILED_PACKET_SIZE</b> 256
-  <br/>
-  Maximum AUTH_FAILED packet size (256 bytes). #define
-    <b>MAX_ENCRYPTED_PACKET_SIZE</b> 65536
-  <br/>
-  Maximum encrypted packet size (64KB).
-  <br/>
-  <br/>
-</p>
-<p class="Pp"><b>Buffer Sizes</b></p>
-<p class="Pp">
-  <br/>
-  <br/>
-  #define <b>HEX_STRING_SIZE_32</b> (32 * 2 + 1)
-  <br/>
-  Hex string size for 32-byte values (64 hex chars + null terminator). #define
-    <b>HEX_STRING_SIZE_64</b> (64 * 2 + 1)
-  <br/>
-  Hex string size for 64-byte values (128 hex chars + null terminator). #define
-    <b>PASSWORD_BUFFER_SIZE</b> 256
-  <br/>
-  Password input buffer size (256 bytes). #define <b>ZERO_KEY_SIZE</b>
-    <b>X25519_KEY_SIZE</b>
-  <br/>
-  Zero key array size (32 bytes, used for no-identity entries).
   <br/>
   <br/>
 </p>
@@ -426,7 +245,7 @@
   <br/>
   Convert crypto result to human-readable string. void <b>crypto_get_status</b>
     (const <b>crypto_context_t</b> *ctx, char *status_buffer, size_t
-    <b>buffer_size</b>)
+    buffer_size)
   <br/>
   Get crypto context status information for debugging. <b>bool</b>
     <b>crypto_secure_compare</b> (const <b>uint8_t</b> *lhs, const
@@ -646,7 +465,7 @@
   <br/>
   Abort rekeying and fallback to old keys. void <b>crypto_get_rekey_status</b>
     (const <b>crypto_context_t</b> *ctx, char *status_buffer, size_t
-    <b>buffer_size</b>)
+    buffer_size)
   <br/>
   Get the current rekeying state for debugging/logging.
   <br/>
@@ -660,7 +479,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

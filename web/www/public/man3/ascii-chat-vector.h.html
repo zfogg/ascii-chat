@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>vector.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">vector.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">vector.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">vector.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>JOIN_</b>(a, b)
+  <br/>
+  #define <b>JOIN</b>(a, b)
+  <br/>
+  #define <b>FN</b>(name)
+  <br/>
+  #define <b>LANES</b> 4
+  <br/>
+  #define <b>SET</b>(n)
+  <br/>
+  #define <b>ADD</b>(a, b)
+  <br/>
+  #define <b>SUB</b>(a, b)
+  <br/>
+  #define <b>MUL</b>(a, b)
+  <br/>
+  #define <b>DIV</b>(a, n)
+  <br/>
+  #define <b>SHL</b>(a, n)
+  <br/>
+  #define <b>SHR</b>(a, n)
+  <br/>
+  #define <b>AND</b>(a, b)
+  <br/>
+  #define <b>OR</b>(a, b)
+  <br/>
+  #define <b>LT</b>(a, b)
+  <br/>
+  #define <b>EQ</b>(a, b)
+  <br/>
+  #define <b>BOTH</b>(a, b)
+  <br/>
+  #define <b>SELECT</b>(mask, a, b)
+  <br/>
+  #define <b>LOAD</b>(p)
+  <br/>
+  #define <b>STORE</b>(p, v)
+  <br/>
+  #define <b>BEGIN_BLOCK</b> size_t active = <b>LANES</b>
+  <br/>
+  #define <b>HAS_BLOCK</b> (count - i &gt;= <b>LANES</b>)
+  <br/>
+  #define <b>ABS</b>(v)
+  <br/>
+  #define <b>SQUARE</b>(v)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<p class="Pp"><b>ACDS Session Management Messages</b></p>
+<p class="Pp">
+  <br/>
+  <br/>
+  typedef int32_t vec_t <b>__attribute__</b>((vector_size(4 *4)))
+  <br/>
+  SESSION_CREATED (PACKET_TYPE_ACIP_SESSION_CREATED) - Session created response.
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ABS(_v)"><a class="permalink" href="#_define_ABS(_v)">#define
+  ABS( v)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>SELECT(LT(v, SET(0)), SUB(SET(0), v), v)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>75</b> of file <b>vector.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ADD(_a,__b)"><a class="permalink" href="#_define_ADD(_a,__b)">#define
+  ADD( a, b)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((a) + (b))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>58</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>, and
+    <b>simd_quantize_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_AND(_a,__b)"><a class="permalink" href="#_define_AND(_a,__b)">#define
+  AND( a, b)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((a) &amp; (b))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>64</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>, and
+    <b>simd_quantize_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_BEGIN_BLOCK___size_t_active_=_"><a class="permalink" href="#_define_BEGIN_BLOCK___size_t_active_=_">#define
+  BEGIN_BLOCK size_t active = <b>LANES</b></a></h2>
+<p class="Pp">Definition at line <b>72</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>,
+    <b>simd_quantize_SIMD_CELL_ISA()</b>, and
+  <b>simd_run_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_BOTH(_a,__b)"><a class="permalink" href="#_define_BOTH(_a,__b)">#define
+  BOTH( a, b)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((a) &amp; (b))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>68</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>,
+    <b>simd_lookup_SIMD_CELL_ISA()</b>, and <b>simd_run_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DIV(_a,__n)"><a class="permalink" href="#_define_DIV(_a,__n)">#define
+  DIV( a, n)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((a) / SET(n))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>61</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_quantize_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_EQ(_a,__b)"><a class="permalink" href="#_define_EQ(_a,__b)">#define
+  EQ( a, b)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((a) == (b))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>67</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>,
+    <b>simd_quantize_SIMD_CELL_ISA()</b>, and
+  <b>simd_run_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_FN(_name)"><a class="permalink" href="#_define_FN(_name)">#define
+  FN( name)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>JOIN(name, SIMD_CELL_ISA)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>6</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>,
+    <b>simd_lookup_SIMD_CELL_ISA()</b>, <b>simd_pack_SIMD_CELL_ISA()</b>,
+    <b>simd_quantize_SIMD_CELL_ISA()</b>, and
+  <b>simd_run_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_HAS_BLOCK___(count_"><a class="permalink" href="#_define_HAS_BLOCK___(count_">#define
+  HAS_BLOCK (count - i &gt;= <b>LANES</b>)</a></h2>
+<p class="Pp">Definition at line <b>73</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>,
+    <b>simd_quantize_SIMD_CELL_ISA()</b>, and
+  <b>simd_run_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_JOIN(_a,__b)"><a class="permalink" href="#_define_JOIN(_a,__b)">#define
+  JOIN( a, b)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>JOIN_(a, b)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>5</b> of file <b>vector.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_JOIN_(_a,__b)"><a class="permalink" href="#_define_JOIN_(_a,__b)">#define
+  JOIN_( a, b)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>a##b</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>4</b> of file <b>vector.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LANES___4"><a class="permalink" href="#_define_LANES___4">#define
+  LANES 4</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>,
+    <b>simd_quantize_SIMD_CELL_ISA()</b>, and
+  <b>simd_run_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOAD(_p)"><a class="permalink" href="#_define_LOAD(_p)">#define
+  LOAD( p)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>load_vec(p)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>70</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>,
+    <b>simd_pack_SIMD_CELL_ISA()</b>, <b>simd_quantize_SIMD_CELL_ISA()</b>, and
+    <b>simd_run_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LT(_a,__b)"><a class="permalink" href="#_define_LT(_a,__b)">#define
+  LT( a, b)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((a) &lt; (b))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>66</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>,
+    <b>simd_lookup_SIMD_CELL_ISA()</b>, and
+    <b>simd_quantize_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MUL(_a,__b)"><a class="permalink" href="#_define_MUL(_a,__b)">#define
+  MUL( a, b)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((a) * (b))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>60</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>, and
+    <b>simd_quantize_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OR(_a,__b)"><a class="permalink" href="#_define_OR(_a,__b)">#define
+  OR( a, b)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((a) | (b))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>65</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_pack_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SELECT(_mask,__a,__b)"><a class="permalink" href="#_define_SELECT(_mask,__a,__b)">#define
+  SELECT( mask, a, b)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>(((mask) &amp; (a)) | (~(mask) &amp; (b)))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>69</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>,
+    <b>simd_lookup_SIMD_CELL_ISA()</b>, and
+    <b>simd_quantize_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SET(_n)"><a class="permalink" href="#_define_SET(_n)">#define
+  SET( n)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>broadcast(n)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>57</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>,
+    <b>simd_lookup_SIMD_CELL_ISA()</b>, <b>simd_quantize_SIMD_CELL_ISA()</b>,
+    and <b>simd_run_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SHL(_a,__n)"><a class="permalink" href="#_define_SHL(_a,__n)">#define
+  SHL( a, n)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((a) &lt;&lt; (n))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>62</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_pack_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SHR(_a,__n)"><a class="permalink" href="#_define_SHR(_a,__n)">#define
+  SHR( a, n)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((a) &gt;&gt; (n))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>63</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>, and
+    <b>simd_quantize_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SQUARE(_v)"><a class="permalink" href="#_define_SQUARE(_v)">#define
+  SQUARE( v)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>MUL(v, v)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>76</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_quantize_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_STORE(_p,__v)"><a class="permalink" href="#_define_STORE(_p,__v)">#define
+  STORE( p, v)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>store_vec(p, v)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>71</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_halfblock_SIMD_CELL_ISA()</b>,
+    <b>simd_lookup_SIMD_CELL_ISA()</b>, <b>simd_pack_SIMD_CELL_ISA()</b>,
+    <b>simd_quantize_SIMD_CELL_ISA()</b>, and
+  <b>simd_run_SIMD_CELL_ISA()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SUB(_a,__b)"><a class="permalink" href="#_define_SUB(_a,__b)">#define
+  SUB( a, b)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((a) - (b))</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>59</b> of file <b>vector.h</b>.</p>
+<p class="Pp">Referenced by <b>simd_quantize_SIMD_CELL_ISA()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -42,7 +42,9 @@
 <br/>
 <p class="Pp">struct <b>terminal_size_t</b>
   <br/>
-  Terminal size structure. struct <b>terminal_capabilities_t</b>
+  Terminal size structure. struct <b>terminal_resize_watcher_t</b>
+  <br/>
+  struct <b>terminal_capabilities_t</b>
   <br/>
   Complete terminal capabilities structure. struct <b>tty_info_t</b>
   <br/>
@@ -53,7 +55,13 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>TERMINAL_COLOR_THEME_LIGHT_FG_R</b> 65
+<p class="Pp">#define <b>PLATFORM_TERMINAL_TERM_TYPE_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>PLATFORM_TERMINAL_COLORTERM_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>PLATFORM_TERMINAL_PALETTE_CUSTOM_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>TERMINAL_COLOR_THEME_LIGHT_FG_R</b> 65
   <br/>
   Platform-specific getopt include. #define
     <b>TERMINAL_COLOR_THEME_LIGHT_FG_G</b> 61
@@ -87,8 +95,8 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef <b>bool</b>(* <b>console_ctrl_handler_t</b>)
-    (<b>console_ctrl_event_t</b> event)
+<p class="Pp">typedef <b>bool</b>(*)
+    <b>console_ctrl_handler_t</b>(<b>console_ctrl_event_t</b> event)
   <br/>
   Console control handler callback type.
   <br/>
@@ -113,7 +121,8 @@
   Monochromatic color filter enumeration. enum
     <b>terminal_capability_flags_t</b> { <b>TERM_CAP_COLOR_16</b> = 0x0001,
     <b>TERM_CAP_COLOR_256</b> = 0x0002, <b>TERM_CAP_COLOR_TRUE</b> = 0x0004,
-    <b>TERM_CAP_UTF8</b> = 0x0008, <b>TERM_CAP_BACKGROUND</b> = 0x0010 }
+    <b>TERM_CAP_UTF8</b> = 0x0008, <b>TERM_CAP_BACKGROUND</b> = 0x0010,
+    <b>TERM_CAP_MATRIX_RAIN</b> = 0x0020 }
   <br/>
   Terminal capability flags (bitmask). enum <b>render_mode_t</b> {
     <b>RENDER_MODE_FOREGROUND</b> = 0, <b>RENDER_MODE_BACKGROUND</b> = 1,
@@ -134,8 +143,13 @@
 <p class="Pp"><b>asciichat_error_t</b> <b>terminal_get_size</b>
     (<b>terminal_size_t</b> *size)
   <br/>
-  Get terminal size. <b>asciichat_error_t</b> <b>terminal_set_raw_mode</b>
-    (<b>bool</b> enable)
+  Get terminal size. <b>asciichat_error_t</b> <b>terminal_get_size_fd</b> (int
+    fd, <b>terminal_size_t</b> *size)
+  <br/>
+  <b>asciichat_error_t</b> <b>terminal_resize_poll</b>
+    (<b>terminal_resize_watcher_t</b> *watcher, int fd, <b>bool</b> *changed)
+  <br/>
+  <b>asciichat_error_t</b> <b>terminal_set_raw_mode</b> (<b>bool</b> enable)
   <br/>
   Set terminal to raw mode. <b>asciichat_error_t</b> <b>terminal_set_echo</b>
     (<b>bool</b> enable)
@@ -148,8 +162,10 @@
   Check if terminal supports unicode. <b>bool</b> <b>terminal_supports_utf8</b>
     (void)
   <br/>
-  Check if terminal supports UTF-8. <b>asciichat_error_t</b>
-    <b>terminal_clear_screen</b> (void)
+  Check if terminal supports UTF-8. <b>bool</b> <b>terminal_should_use_utf8</b>
+    (void)
+  <br/>
+  <b>asciichat_error_t</b> <b>terminal_clear_screen</b> (void)
   <br/>
   Clear the terminal screen. <b>asciichat_error_t</b>
     <b>terminal_move_cursor</b> (int row, int col)
@@ -178,8 +194,14 @@
   Restore saved cursor position. <b>asciichat_error_t</b>
     <b>terminal_set_title</b> (const char *title)
   <br/>
-  Set terminal window title. <b>asciichat_error_t</b> <b>terminal_ring_bell</b>
-    (void)
+  Set terminal window title. <b>asciichat_error_t</b>
+    <b>terminal_set_title_fd</b> (int fd, const char *title)
+  <br/>
+  <b>asciichat_error_t</b> <b>terminal_title_save</b> (int fd)
+  <br/>
+  <b>asciichat_error_t</b> <b>terminal_title_restore</b> (int fd)
+  <br/>
+  <b>asciichat_error_t</b> <b>terminal_ring_bell</b> (void)
   <br/>
   Ring terminal bell. <b>asciichat_error_t</b> <b>terminal_cursor_hide</b>
     (void)
@@ -225,8 +247,12 @@
   Apply command-line overrides to detected capabilities. <b>bool</b>
     <b>terminal_should_color_output</b> (int fd)
   <br/>
-  Determine if color output should be used. <b>terminal_color_mode_t</b>
-    <b>terminal_get_effective_color_mode</b> (void)
+  Determine if color output should be used. int <b>terminal_format_hyperlink</b>
+    (char *buffer, size_t capacity, const char *url, const char *label,
+    <b>bool</b> enabled)
+  <br/>
+  Format a clickable, underlined OSC 8 terminal link.
+    <b>terminal_color_mode_t</b> <b>terminal_get_effective_color_mode</b> (void)
   <br/>
   Get current color mode considering all overrides. <b>bool</b>
     <b>terminal_has_dark_background</b> (void)
@@ -308,7 +334,7 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
-  <b>bool</b>(* console_ctrl_handler_t) (<b>console_ctrl_event_t</b>
+  <b>bool</b>(*) console_ctrl_handler_t(<b>console_ctrl_event_t</b>
   event)</a></h2>
 <p class="Pp">Console control handler callback type.</p>
 <p class="Pp"><b>Parameters</b></p>
@@ -323,7 +349,7 @@
 <p class="Pp">On Unix, this is called from signal context (limited safe
     operations)</p>
 </div>
-<p class="Pp">Definition at line <b>1227</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Definition at line <b>1274</b> of file <b>terminal.h</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -381,23 +407,23 @@
     </i></b></a></dt>
   <dd>Total count of filters (not a valid filter).</dd>
 </dl>
-<p class="Pp">Definition at line <b>599</b> of file <b>terminal.h</b>.</p>
-<pre>599              {
-601   COLOR_FILTER_NONE = 0,
-603   COLOR_FILTER_BLACK = 1,
-605   COLOR_FILTER_WHITE = 2,
-607   COLOR_FILTER_GREEN = 3,
-609   COLOR_FILTER_MAGENTA = 4,
-611   COLOR_FILTER_FUCHSIA = 5,
-613   COLOR_FILTER_ORANGE = 6,
-615   COLOR_FILTER_TEAL = 7,
-617   COLOR_FILTER_CYAN = 8,
-619   COLOR_FILTER_PINK = 9,
-621   COLOR_FILTER_RED = 10,
-623   COLOR_FILTER_YELLOW = 11,
-625   COLOR_FILTER_RAINBOW = 12,
-627   COLOR_FILTER_COUNT
-628 } color_filter_t;</pre>
+<p class="Pp">Definition at line <b>626</b> of file <b>terminal.h</b>.</p>
+<pre>626              {
+628   COLOR_FILTER_NONE = 0,
+630   COLOR_FILTER_BLACK = 1,
+632   COLOR_FILTER_WHITE = 2,
+634   COLOR_FILTER_GREEN = 3,
+636   COLOR_FILTER_MAGENTA = 4,
+638   COLOR_FILTER_FUCHSIA = 5,
+640   COLOR_FILTER_ORANGE = 6,
+642   COLOR_FILTER_TEAL = 7,
+644   COLOR_FILTER_CYAN = 8,
+646   COLOR_FILTER_PINK = 9,
+648   COLOR_FILTER_RED = 10,
+650   COLOR_FILTER_YELLOW = 11,
+652   COLOR_FILTER_RAINBOW = 12,
+654   COLOR_FILTER_COUNT
+655 } color_filter_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -424,14 +450,14 @@
     </i></b></a></dt>
   <dd>System shutdown event (Windows only)</dd>
 </dl>
-<p class="Pp">Definition at line <b>1209</b> of file <b>terminal.h</b>.</p>
-<pre>1209              {
-1210   CONSOLE_CTRL_C = 0,     
-1211   CONSOLE_CTRL_BREAK = 1, 
-1212   CONSOLE_CLOSE = 2,      
-1213   CONSOLE_LOGOFF = 3,     
-1214   CONSOLE_SHUTDOWN = 4    
-1215 } console_ctrl_event_t;</pre>
+<p class="Pp">Definition at line <b>1256</b> of file <b>terminal.h</b>.</p>
+<pre>1256              {
+1257   CONSOLE_CTRL_C = 0,
+1258   CONSOLE_CTRL_BREAK = 1,
+1259   CONSOLE_CLOSE = 2,
+1260   CONSOLE_LOGOFF = 3,
+1261   CONSOLE_SHUTDOWN = 4
+1262 } console_ctrl_event_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -454,12 +480,12 @@
     </i></b></a></dt>
   <dd>Unicode half-block characters (mixed foreground/background).</dd>
 </dl>
-<p class="Pp">Definition at line <b>660</b> of file <b>terminal.h</b>.</p>
-<pre>660              {
-662   RENDER_MODE_FOREGROUND = 0,
-664   RENDER_MODE_BACKGROUND = 1,
-666   RENDER_MODE_HALF_BLOCK = 2
-667 } render_mode_t;</pre>
+<p class="Pp">Definition at line <b>689</b> of file <b>terminal.h</b>.</p>
+<pre>689              {
+691   RENDER_MODE_FOREGROUND = 0,
+693   RENDER_MODE_BACKGROUND = 1,
+695   RENDER_MODE_HALF_BLOCK = 2
+696 } render_mode_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -488,15 +514,19 @@
   <dt id="TERM_CAP_BACKGROUND"><a class="permalink" href="#TERM_CAP_BACKGROUND"><b><i>TERM_CAP_BACKGROUND
     </i></b></a></dt>
   <dd>Background color support (TERM_CAP_BACKGROUND).</dd>
+  <dt id="TERM_CAP_MATRIX_RAIN"><a class="permalink" href="#TERM_CAP_MATRIX_RAIN"><b><i>TERM_CAP_MATRIX_RAIN
+    </i></b></a></dt>
+  <dd>Client requests Matrix digital-rain post-processing.</dd>
 </dl>
-<p class="Pp">Definition at line <b>639</b> of file <b>terminal.h</b>.</p>
-<pre>639              {
-641   TERM_CAP_COLOR_16 = 0x0001,
-643   TERM_CAP_COLOR_256 = 0x0002,
-645   TERM_CAP_COLOR_TRUE = 0x0004,
-647   TERM_CAP_UTF8 = 0x0008,
-649   TERM_CAP_BACKGROUND = 0x0010
-650 } terminal_capability_flags_t;</pre>
+<p class="Pp">Definition at line <b>666</b> of file <b>terminal.h</b>.</p>
+<pre>666              {
+668   TERM_CAP_COLOR_16 = 0x0001,
+670   TERM_CAP_COLOR_256 = 0x0002,
+672   TERM_CAP_COLOR_TRUE = 0x0004,
+674   TERM_CAP_UTF8 = 0x0008,
+676   TERM_CAP_BACKGROUND = 0x0010,
+678   TERM_CAP_MATRIX_RAIN = 0x0020
+679 } terminal_capability_flags_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -550,14 +580,14 @@
     </i></b></a></dt>
   <dd>24-bit truecolor support (RGB colors)</dd>
 </dl>
-<p class="Pp">Definition at line <b>578</b> of file <b>terminal.h</b>.</p>
-<pre>578              {
-580   TERM_COLOR_AUTO = -1,
-582   TERM_COLOR_NONE = 0,
-584   TERM_COLOR_16 = 1,
-586   TERM_COLOR_256 = 2,
-588   TERM_COLOR_TRUECOLOR = 3
-589 } terminal_color_mode_t;</pre>
+<p class="Pp">Definition at line <b>605</b> of file <b>terminal.h</b>.</p>
+<pre>605              {
+607   TERM_COLOR_AUTO = -1,
+609   TERM_COLOR_NONE = 0,
+611   TERM_COLOR_16 = 1,
+613   TERM_COLOR_256 = 2,
+615   TERM_COLOR_TRUECOLOR = 3
+616 } terminal_color_mode_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -587,14 +617,17 @@
 <p class="Pp"></p>
 <p class="Pp">Overrides take precedence over detected capabilities.</p>
 </div>
-<p class="Pp">Definition at line <b>30</b> of file <b>misc.c</b>.</p>
-<pre>30                                                                                 {
-31   return caps;
-32 }</pre>
+<p class="Pp">Definition at line <b>34</b> of file <b>misc.c</b>.</p>
+<pre>34                                                                                 {
+35   return caps;
+36 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>main()</b>, <b>session_display_create()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+<p class="Pp">References <b>apply_color_mode_override()</b>.</p>
+<p class="Pp">Referenced by <b>apply_color_mode_override()</b>, <b>main()</b>,
+    <b>session_display_create()</b>,
+    <b>session_protocol_build_capabilities()</b>, and
+    <b>test_terminal_output_modes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>terminal_capabilities_t</b> detect_terminal_capabilities (void
@@ -626,32 +659,35 @@
 <p class="Pp">Use <b>apply_color_mode_override()</b> to apply command-line
     overrides.</p>
 </div>
-<p class="Pp">Definition at line <b>148</b> of file
+<p class="Pp">Definition at line <b>219</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>148                                                            {
-149   terminal_capabilities_t caps = {0};
-150   caps.color_level = TERM_COLOR_TRUECOLOR;
-151   caps.capabilities = 0;
-152   caps.color_count = 16777216;
-153   caps.utf8_support = true;
-154   caps.detection_reliable = true;
-155   caps.render_mode = RENDER_MODE_FOREGROUND; // Default to foreground mode
-156   platform_strlcpy(caps.term_type, &quot;xterm-256color&quot;, sizeof(caps.term_type));
-157   platform_strlcpy(caps.colorterm, &quot;truecolor&quot;, sizeof(caps.colorterm));
-158   caps.wants_background = true;
-159   caps.palette_type = 0; // Default palette
-160   caps.desired_fps = 30;
-161   caps.color_filter = COLOR_FILTER_NONE;
-162   return caps;
-163 }</pre>
+<pre>219                                                            {
+220   terminal_capabilities_t caps = {0};
+221   caps.color_level = TERM_COLOR_TRUECOLOR;
+222   caps.capabilities = 0;
+223   caps.color_count = 16777216;
+224   caps.utf8_support = true;
+225   caps.detection_reliable = true;
+226   caps.render_mode = RENDER_MODE_FOREGROUND; // Default to foreground mode
+227   platform_strlcpy(caps.term_type, &quot;xterm-256color&quot;, sizeof(caps.term_type));
+228   platform_strlcpy(caps.colorterm, &quot;truecolor&quot;, sizeof(caps.colorterm));
+229   caps.wants_background = true;
+230   caps.palette_type = 0; // Default palette
+231   // Browser rendering uses requestAnimationFrame and supports the same
+232   // 60 FPS default as the native terminal paths.
+233   caps.desired_fps = DEFAULT_MAX_FPS;
+234   caps.color_filter = COLOR_FILTER_NONE;
+235   return caps;
+236 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>terminal_capabilities_t::capabilities</b>,
     <b>terminal_capabilities_t::color_count</b>,
     <b>terminal_capabilities_t::color_filter</b>, <b>COLOR_FILTER_NONE</b>,
     <b>terminal_capabilities_t::color_level</b>,
-    <b>terminal_capabilities_t::colorterm</b>,
+    <b>terminal_capabilities_t::colorterm</b>, <b>DEFAULT_MAX_FPS</b>,
     <b>terminal_capabilities_t::desired_fps</b>,
+    <b>detect_terminal_capabilities()</b>,
     <b>terminal_capabilities_t::detection_reliable</b>,
     <b>terminal_capabilities_t::palette_type</b>, <b>platform_strlcpy()</b>,
     <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_FOREGROUND</b>,
@@ -659,9 +695,13 @@
     <b>terminal_capabilities_t::utf8_support</b>, and
     <b>terminal_capabilities_t::wants_background</b>.</p>
 <p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
+    <b>detect_terminal_capabilities()</b>,
     <b>log_redetect_terminal_capabilities()</b>, <b>main()</b>,
-    <b>session_display_create()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+    <b>session_display_create()</b>,
+    <b>session_participant_request_settings()</b>,
+    <b>session_protocol_build_capabilities()</b>,
+    <b>session_protocol_update_settings()</b>, <b>tui_stats_render()</b>,
+    <b>ui_session_render()</b>, and <b>ui_sync_render()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>tty_info_t</b> get_current_tty (void )</h2>
@@ -679,14 +719,16 @@
 <p class="Pp">TTY path is platform-specific (Unix: /dev/tty, Windows: CON,
     etc.).</p>
 </div>
-<p class="Pp">Definition at line <b>25</b> of file <b>misc.c</b>.</p>
-<pre>25                                  {
-26   tty_info_t tty = {0};
-27   return tty;
-28 }</pre>
+<p class="Pp">Definition at line <b>29</b> of file <b>misc.c</b>.</p>
+<pre>29                                  {
+30   tty_info_t tty = {0};
+31   return tty;
+32 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>session_display_create()</b>.</p>
+<p class="Pp">References <b>get_current_tty()</b>.</p>
+<p class="Pp">Referenced by <b>get_current_tty()</b>, and
+    <b>session_display_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> get_terminal_size (unsigned short int *
@@ -718,26 +760,27 @@
 <p class="Pp">This function is more reliable than <b>terminal_get_size()</b> due
     to fallbacks.</p>
 </div>
-<p class="Pp">Definition at line <b>82</b> of file
+<p class="Pp">Definition at line <b>143</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>82                                                                                            {
-83   if (!width || !height) {
-84     return ERROR_INVALID_PARAM;
-85   }
-86   int cols, rows;
-87   if (platform_get_terminal_size(&amp;cols, &amp;rows) != 0) {
-88     return ERROR_PLATFORM_INIT;
-89   }
-90   *width = (unsigned short int)cols;
-91   *height = (unsigned short int)rows;
-92   return ASCIICHAT_OK;
-93 }</pre>
+<pre>143                                                                                            {
+144   if (!width || !height) {
+145     return ERROR_INVALID_PARAM;
+146   }
+147   int cols, rows;
+148   if (platform_get_terminal_size(&amp;cols, &amp;rows) != 0) {
+149     return ERROR_PLATFORM_INIT;
+150   }
+151   *width = (unsigned short int)cols;
+152   *height = (unsigned short int)rows;
+153   return ASCIICHAT_OK;
+154 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_PLATFORM_INIT</b>, and <b>platform_get_terminal_size()</b>.</p>
-<p class="Pp">Referenced by <b>session_render_loop()</b>,
-    <b>update_dimensions_for_full_height()</b>, and
+    <b>ERROR_PLATFORM_INIT</b>, <b>get_terminal_size()</b>, and
+    <b>platform_get_terminal_size()</b>.</p>
+<p class="Pp">Referenced by <b>get_terminal_size()</b>,
+    <b>is_valid_tty_path()</b>, <b>update_dimensions_for_full_height()</b>, and
     <b>update_dimensions_to_terminal_size()</b>.</p>
 </section>
 <section class="Ss">
@@ -755,6 +798,9 @@
 <p class="Pp"></p>
 <p class="Pp">Useful for validating TTY paths before use.</p>
 </div>
+<p class="Pp">References <b>get_terminal_size()</b>, and
+    <b>is_valid_tty_path()</b>.</p>
+<p class="Pp">Referenced by <b>is_valid_tty_path()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_platform_isatty_(int_fd)"><a class="permalink" href="#int_platform_isatty_(int_fd)">int
@@ -771,12 +817,21 @@
 66 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>session_display_create()</b>,
-    <b>splash_intro_start()</b>, <b>terminal_is_stderr_tty()</b>,
+<p class="Pp">References <b>platform_isatty()</b>.</p>
+<p class="Pp">Referenced by <b>key_identity_format_terminal()</b>,
+    <b>log_console_impl()</b>, <b>main()</b>, <b>platform_isatty()</b>,
+    <b>platform_set_console_ctrl_handler()</b>, <b>prompt_unknown_host()</b>,
+    <b>session_display_create()</b>, <b>splash_intro_start()</b>,
+    <b>stats_runtime_start()</b>, <b>terminal_is_stderr_tty()</b>,
     <b>terminal_is_stdin_tty()</b>, <b>terminal_is_stdout_tty()</b>,
     <b>terminal_should_color_output()</b>,
-    <b>terminal_should_use_control_sequences()</b>, and
-    <b>ui_status_display()</b>.</p>
+    <b>terminal_should_use_control_sequences()</b>,
+    <b>ui_controller_restore_terminal()</b>, <b>ui_controller_size()</b>,
+    <b>ui_controller_title_start()</b>, <b>ui_controller_toggle_logs()</b>,
+    <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>,
+    <b>ui_notice_present_first_use()</b>, <b>ui_status_display()</b>,
+    <b>ui_status_display_interactive()</b>, <b>ui_sync_start()</b>, and
+    <b>yt_dlp_extract_with_options()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> platform_set_console_ctrl_handler
@@ -800,7 +855,10 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Only one handler is supported at a time. Registering a
   new handler replaces the previous one.</div>
-<p class="Pp">Referenced by <b>setup_signal_handlers()</b>.</p>
+<p class="Pp">References <b>platform_isatty()</b>, and
+    <b>platform_set_console_ctrl_handler()</b>.</p>
+<p class="Pp">Referenced by <b>platform_set_console_ctrl_handler()</b>, and
+    <b>setup_signal_handlers()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_platform_ttyname_(int_fd)"><a class="permalink" href="#const_char_*_platform_ttyname_(int_fd)">const
@@ -818,6 +876,13 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">The returned string may be a static buffer. Do not modify
   or free it.</div>
+<p class="Pp">References <b>platform_ttyname()</b>,
+    <b>terminal_get_default_background_color()</b>,
+    <b>terminal_get_default_foreground_color()</b>,
+    <b>terminal_get_effective_height()</b>,
+    <b>terminal_get_effective_width()</b>, and
+    <b>terminal_stop_resize_detection()</b>.</p>
+<p class="Pp">Referenced by <b>platform_ttyname()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_can_prompt_user (void )</h2>
@@ -867,34 +932,37 @@
 <p class="Pp"></p>
 <p class="Pp">When false, yes/no prompts should use default value or deny</p>
 </div>
-<p class="Pp">Definition at line <b>215</b> of file
+<p class="Pp">Definition at line <b>236</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>215                                     {
-216   // Must be fully interactive (stdin and stdout are TTYs)
-217   if (!terminal_is_interactive()) {
-218     return false;
-219   }
-220 
-221   // Must not be in snapshot mode (non-interactive capture)
-222   if (GET_OPTION(snapshot_mode)) {
-223     return false;
-224   }
-225 
-226   // Must not have automated prompt responses configured
-227   const char *auto_response = SAFE_GETENV(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
-228   if (auto_response &amp;&amp; *auto_response != '\0') {
-229     // NOLINTNEXTLINE(readability-simplify-boolean-expr) - Intentional check for configured automated responses
-230     return false;
-231   }
-232 
-233   // All checks passed, interactive prompts are appropriate
-234   return true;
-235 }</pre>
+<pre>236                                     {
+237   // Must be fully interactive (stdin and stdout are TTYs)
+238   if (!terminal_is_interactive()) {
+239     return false;
+240   }
+241
+242   // Must not be in snapshot mode (non-interactive capture)
+243   if (GET_OPTION(snapshot_mode)) {
+244     return false;
+245   }
+246
+247   // Must not have automated prompt responses configured
+248   const char *auto_response = SAFE_GETENV(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
+249   if (auto_response &amp;&amp; *auto_response != '\0') {
+250     // NOLINTNEXTLINE(readability-simplify-boolean-expr) - Intentional check for configured automated responses
+251     return false;
+252   }
+253
+254   // All checks passed, interactive prompts are appropriate
+255   return true;
+256 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>GET_OPTION</b>, <b>SAFE_GETENV</b>, and
-    <b>terminal_is_interactive()</b>.</p>
-<p class="Pp">Referenced by <b>prompt_unknown_host()</b>.</p>
+<p class="Pp">References <b>GET_OPTION</b>, <b>SAFE_GETENV</b>,
+    <b>terminal_can_prompt_user()</b>, and <b>terminal_is_interactive()</b>.</p>
+<p class="Pp">Referenced by <b>prompt_unknown_host()</b>,
+    <b>terminal_can_prompt_user()</b>, <b>test_terminal_output_modes()</b>,
+    <b>ui_mdns_prompt_selection()</b>, <b>ui_notice_confirm_kind()</b>, and
+    <b>update_banner_show_prompt()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_terminal_capabilities_summary_(const_"><a class="permalink" href="#const_char_*_terminal_capabilities_summary_(const_">const
@@ -917,6 +985,8 @@
 <p class="Pp">Summary format: &quot;16-color, UTF-8, foreground mode&quot;
     (example).</p>
 </div>
+<p class="Pp">References <b>terminal_capabilities_summary()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_capabilities_summary()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_terminal_choose_log_fd_("><a class="permalink" href="#int_terminal_choose_log_fd_(">int
@@ -944,31 +1014,32 @@
 <p class="Pp">Common usage: platform_write_all(terminal_choose_log_fd(level),
     data, len);</p>
 </div>
-<p class="Pp">Definition at line <b>237</b> of file
+<p class="Pp">Definition at line <b>258</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>237                                               {
-238   // When force_stderr is enabled (client mode), send ALL logs to stderr
-239   // When terminal is NOT interactive (piped/redirected), send ALL logs to stderr
-240   // to keep stdout clean for piped data (JSON, frames, etc.)
-241   if (log_get_force_stderr() || !terminal_is_interactive()) {
-242     return STDERR_FILENO;
-243   }
-244 
-245   // In interactive mode, route based on level:
-246   // WARN and above (ERROR, FATAL) go to stderr
-247   // Others (DEV, DEBUG, INFO) go to stdout
-248   if (level &gt;= LOG_WARN) {
-249     return STDERR_FILENO;
-250   }
-251 
-252   return STDOUT_FILENO;
-253 }</pre>
+<pre>258                                               {
+259   // When force_stderr is enabled (client mode), send ALL logs to stderr
+260   // When terminal is NOT interactive (piped/redirected), send ALL logs to stderr
+261   // to keep stdout clean for piped data (JSON, frames, etc.)
+262   if (log_get_force_stderr() || !terminal_is_interactive()) {
+263     return STDERR_FILENO;
+264   }
+265
+266   // In interactive mode, route based on level:
+267   // WARN and above (ERROR, FATAL) go to stderr
+268   // Others (DEV, DEBUG, INFO) go to stdout
+269   if (level &gt;= LOG_WARN) {
+270     return STDERR_FILENO;
+271   }
+272
+273   return STDOUT_FILENO;
+274 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_get_force_stderr()</b>, <b>LOG_WARN</b>, and
-    <b>terminal_is_interactive()</b>.</p>
-<p class="Pp">Referenced by <b>log_console_impl()</b>, <b>log_msg()</b>, and
-    <b>log_plain_msg()</b>.</p>
+<p class="Pp">References <b>log_get_force_stderr()</b>, <b>LOG_WARN</b>,
+    <b>terminal_choose_log_fd()</b>, and <b>terminal_is_interactive()</b>.</p>
+<p class="Pp">Referenced by <b>log_console_impl()</b>, <b>log_msg()</b>,
+    <b>log_plain_msg()</b>, <b>terminal_choose_log_fd()</b>, and
+    <b>test_terminal_output_modes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_terminal_color_level_name_("><a class="permalink" href="#const_char_*_terminal_color_level_name_(">const
@@ -989,14 +1060,62 @@
 <p class="Pp"></p>
 <p class="Pp">Returns &quot;unknown&quot; for invalid level values.</p>
 </div>
+<p class="Pp">References <b>terminal_color_level_name()</b>.</p>
 <p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>, and
-    <b>handle_client_capabilities_packet()</b>.</p>
+    <b>terminal_color_level_name()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_terminal_format_hyperlink_(char_*_buffer,_size_t_capacity,_const_char_*_url,_const_char_*_label,_"><a class="permalink" href="#int_terminal_format_hyperlink_(char_*_buffer,_size_t_capacity,_const_char_*_url,_const_char_*_label,_">int
+  terminal_format_hyperlink (char * buffer, size_t capacity, const char * url,
+  const char * label, <b>bool</b> enabled)</a></h2>
+<p class="Pp">Format a clickable, underlined OSC 8 terminal link. Uses the same
+    terminal protocol on Windows, macOS, and Linux. The terminal emulator
+    handles clicking and opening the URL in the user's browser. Emulators
+    without OSC 8 support still display the label. Pass enabled=false for plain
+    output. Styling and the hyperlink end immediately after the label. URLs and
+    labels must not contain terminal control characters.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of bytes written, or -1 for invalid
+  input/insufficient space. On failure a nonempty output buffer is cleared;
+  escape sequences are never truncated. The return count excludes the
+  terminating NUL.</div>
+<p class="Pp">Definition at line <b>7</b> of file <b>terminal_format.c</b>.</p>
+<pre>7                                                                                                                {
+8   if (!buffer || !capacity)
+9     return -1;
+10   buffer[0] = '\0';
+11   if (!url || !*url || !label)
+12     return -1;
+13   const char *parts[] = {url, label};
+14   for (size_t i = 0; i &lt; 2; ++i) {
+15     for (const unsigned char *p = (const unsigned char *)parts[i]; *p; ++p) {
+16       if (*p &lt; 32 || *p == 127)
+17         return -1;
+18     }
+19   }
+20   int length = enabled ? snprintf(buffer, capacity, &quot;\033]8;;%s\033\\\033[4m%s\033[24m\033]8;;\033\\&quot;, url, label)
+21                        : snprintf(buffer, capacity, &quot;%s&quot;, label);
+22   if (length &lt; 0 || (size_t)length &gt;= capacity) {
+23     buffer[0] = '\0';
+24     return -1;
+25   }
+26   return length;
+27 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_format_hyperlink()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_format_hyperlink()</b>,
+    <b>test_terminal_output_modes()</b>, and
+    <b>update_banner_print_instructions()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_terminal_get_default_background_color_(int_theme,_"><a class="permalink" href="#void_terminal_get_default_background_color_(int_theme,_">void
   terminal_get_default_background_color (int theme, <b>uint8_t</b> * out_r,
   <b>uint8_t</b> * out_g, <b>uint8_t</b> * out_b)</a></h2>
-<p class="Pp">Get theme-aware default background color for pixel renderers.</p>
+<p class="Pp">Get theme-aware default background color for pixel renderers. Get
+    theme-aware default background color for the renderer.</p>
+<p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>theme</i> Terminal theme (0=dark, 1=light, 2=auto)
 <br/>
@@ -1021,33 +1140,39 @@
 <p class="Pp">Returns appropriate default background color based on terminal
     theme. Light theme uses white background, dark theme uses black
   background.</p>
-<p class="Pp">Definition at line <b>291</b> of file
+<p class="Pp">Definition at line <b>312</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>291                                                                                                       {
-292   if (theme == 1) { // TERM_RENDERER_THEME_LIGHT
-293     *out_r = TERMINAL_COLOR_THEME_LIGHT_BG_R;
-294     *out_g = TERMINAL_COLOR_THEME_LIGHT_BG_G;
-295     *out_b = TERMINAL_COLOR_THEME_LIGHT_BG_B;
-296   } else { // TERM_RENDERER_THEME_DARK or TERM_RENDERER_THEME_AUTO
-297     *out_r = TERMINAL_COLOR_THEME_DARK_BG_R;
-298     *out_g = TERMINAL_COLOR_THEME_DARK_BG_G;
-299     *out_b = TERMINAL_COLOR_THEME_DARK_BG_B;
-300   }
-301 }</pre>
+<pre>312                                                                                                       {
+313   if (theme == 1) { // TERM_RENDERER_THEME_LIGHT
+314     *out_r = TERMINAL_COLOR_THEME_LIGHT_BG_R;
+315     *out_g = TERMINAL_COLOR_THEME_LIGHT_BG_G;
+316     *out_b = TERMINAL_COLOR_THEME_LIGHT_BG_B;
+317   } else { // TERM_RENDERER_THEME_DARK or TERM_RENDERER_THEME_AUTO
+318     *out_r = TERMINAL_COLOR_THEME_DARK_BG_R;
+319     *out_g = TERMINAL_COLOR_THEME_DARK_BG_G;
+320     *out_b = TERMINAL_COLOR_THEME_DARK_BG_B;
+321   }
+322 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>TERMINAL_COLOR_THEME_DARK_BG_B</b>,
     <b>TERMINAL_COLOR_THEME_DARK_BG_G</b>,
     <b>TERMINAL_COLOR_THEME_DARK_BG_R</b>,
     <b>TERMINAL_COLOR_THEME_LIGHT_BG_B</b>,
-    <b>TERMINAL_COLOR_THEME_LIGHT_BG_G</b>, and
-    <b>TERMINAL_COLOR_THEME_LIGHT_BG_R</b>.</p>
+    <b>TERMINAL_COLOR_THEME_LIGHT_BG_G</b>,
+    <b>TERMINAL_COLOR_THEME_LIGHT_BG_R</b>, and
+    <b>terminal_get_default_background_color()</b>.</p>
+<p class="Pp">Referenced by <b>platform_ttyname()</b>,
+    <b>term_renderer_feed()</b>, <b>terminal_get_default_background_color()</b>,
+    and <b>terminal_get_default_background_color()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_terminal_get_default_foreground_color_(int_theme,_"><a class="permalink" href="#void_terminal_get_default_foreground_color_(int_theme,_">void
   terminal_get_default_foreground_color (int theme, <b>uint8_t</b> * out_r,
   <b>uint8_t</b> * out_g, <b>uint8_t</b> * out_b)</a></h2>
-<p class="Pp">Get theme-aware default foreground color for pixel renderers.</p>
+<p class="Pp">Get theme-aware default foreground color for pixel renderers. Get
+    theme-aware default foreground color for the renderer.</p>
+<p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>theme</i> Terminal theme (0=dark, 1=light, 2=auto)
 <br/>
@@ -1071,27 +1196,31 @@
 <i>out_b</i> Pointer to store blue component (0-255)</div>
 <p class="Pp">Returns appropriate default text color based on terminal theme.
     Both Linux and macOS renderers use this for consistent color selection.</p>
-<p class="Pp">Definition at line <b>269</b> of file
+<p class="Pp">Definition at line <b>290</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>269                                                                                                       {
-270   if (theme == 1) { // TERM_RENDERER_THEME_LIGHT
-271     *out_r = TERMINAL_COLOR_THEME_LIGHT_FG_R;
-272     *out_g = TERMINAL_COLOR_THEME_LIGHT_FG_G;
-273     *out_b = TERMINAL_COLOR_THEME_LIGHT_FG_B;
-274   } else { // TERM_RENDERER_THEME_DARK or TERM_RENDERER_THEME_AUTO
-275     *out_r = TERMINAL_COLOR_THEME_DARK_FG_R;
-276     *out_g = TERMINAL_COLOR_THEME_DARK_FG_G;
-277     *out_b = TERMINAL_COLOR_THEME_DARK_FG_B;
-278   }
-279 }</pre>
+<pre>290                                                                                                       {
+291   if (theme == 1) { // TERM_RENDERER_THEME_LIGHT
+292     *out_r = TERMINAL_COLOR_THEME_LIGHT_FG_R;
+293     *out_g = TERMINAL_COLOR_THEME_LIGHT_FG_G;
+294     *out_b = TERMINAL_COLOR_THEME_LIGHT_FG_B;
+295   } else { // TERM_RENDERER_THEME_DARK or TERM_RENDERER_THEME_AUTO
+296     *out_r = TERMINAL_COLOR_THEME_DARK_FG_R;
+297     *out_g = TERMINAL_COLOR_THEME_DARK_FG_G;
+298     *out_b = TERMINAL_COLOR_THEME_DARK_FG_B;
+299   }
+300 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>TERMINAL_COLOR_THEME_DARK_FG_B</b>,
     <b>TERMINAL_COLOR_THEME_DARK_FG_G</b>,
     <b>TERMINAL_COLOR_THEME_DARK_FG_R</b>,
     <b>TERMINAL_COLOR_THEME_LIGHT_FG_B</b>,
-    <b>TERMINAL_COLOR_THEME_LIGHT_FG_G</b>, and
-    <b>TERMINAL_COLOR_THEME_LIGHT_FG_R</b>.</p>
+    <b>TERMINAL_COLOR_THEME_LIGHT_FG_G</b>,
+    <b>TERMINAL_COLOR_THEME_LIGHT_FG_R</b>, and
+    <b>terminal_get_default_foreground_color()</b>.</p>
+<p class="Pp">Referenced by <b>platform_ttyname()</b>,
+    <b>term_renderer_feed()</b>, <b>terminal_get_default_foreground_color()</b>,
+    and <b>terminal_get_default_foreground_color()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>terminal_color_mode_t</b> terminal_get_effective_color_mode
@@ -1108,29 +1237,32 @@
 </dl>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Effective <b>terminal_color_mode_t</b> to use</div>
-<p class="Pp">Definition at line <b>107</b> of file
+<p class="Pp">Definition at line <b>128</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>107                                                               {
-108   // If colors are disabled entirely by terminal_should_color_output(), return NONE
-109   if (!terminal_should_color_output(STDOUT_FILENO)) {
-110     return TERM_COLOR_NONE;
-111   }
-112 
-113   // If --color-mode is set to specific value, use it
-114   terminal_color_mode_t color_mode = GET_OPTION(color_mode);
-115   if (color_mode != TERM_COLOR_AUTO) {
-116     return color_mode;
-117   }
-118 
-119   // Otherwise auto-detect from terminal capabilities
-120   // For now, return the detected color mode from terminal capabilities
-121   // This will be used by apply_color_mode_override() if needed
-122   return TERM_COLOR_AUTO; // Let the calling code handle auto-detection
-123 }</pre>
+<pre>128                                                               {
+129   // If colors are disabled entirely by terminal_should_color_output(), return NONE
+130   if (!terminal_should_color_output(STDOUT_FILENO)) {
+131     return TERM_COLOR_NONE;
+132   }
+133
+134   // If --color-mode is set to specific value, use it
+135   terminal_color_mode_t color_mode = GET_OPTION(color_mode);
+136   if (color_mode != TERM_COLOR_AUTO) {
+137     return color_mode;
+138   }
+139
+140   // Otherwise auto-detect from terminal capabilities
+141   // For now, return the detected color mode from terminal capabilities
+142   // This will be used by apply_color_mode_override() if needed
+143   return TERM_COLOR_AUTO; // Let the calling code handle auto-detection
+144 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>GET_OPTION</b>, <b>TERM_COLOR_AUTO</b>,
-    <b>TERM_COLOR_NONE</b>, and <b>terminal_should_color_output()</b>.</p>
+    <b>TERM_COLOR_NONE</b>, <b>terminal_get_effective_color_mode()</b>, and
+    <b>terminal_should_color_output()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_get_effective_color_mode()</b>, and
+    <b>test_terminal_output_modes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_short_int_terminal_get_effective_height_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_height_(void_)">unsigned
@@ -1196,36 +1328,34 @@ unsigned short int height = terminal_get_effective_height();
   <dt>3.</dt>
   <dd>OPT_HEIGHT_DEFAULT fallback</dd>
 </dl>
-<p class="Pp">Definition at line <b>179</b> of file
+<p class="Pp">Definition at line <b>200</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>179                                                        {
-180   int height = GET_OPTION(height);
-181 
-182   // If height option is explicitly set to non-zero, use it
-183   if (height &gt; 0) {
-184     return (unsigned short int)height;
-185   }
-186 
-187   // Try to detect actual terminal height
-188   terminal_size_t size;
-189   if (terminal_get_size(&amp;size) == ASCIICHAT_OK &amp;&amp; size.rows &gt; 0) {
-190     return (unsigned short int)size.rows;
-191   }
-192 
-193   // Fallback to default
-194   return OPT_HEIGHT_DEFAULT;
-195 }</pre>
+<pre>200                                                        {
+201   int height = GET_OPTION(height);
+202
+203   // If height option is explicitly set to non-zero, use it
+204   if (height &gt; 0) {
+205     return (unsigned short int)height;
+206   }
+207
+208   // Try to detect actual terminal height
+209   terminal_size_t size;
+210   if (terminal_get_size(&amp;size) == ASCIICHAT_OK &amp;&amp; size.rows &gt; 0) {
+211     return (unsigned short int)size.rows;
+212   }
+213
+214   // Fallback to default
+215   return OPT_HEIGHT_DEFAULT;
+216 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>GET_OPTION</b>,
-    <b>OPT_HEIGHT_DEFAULT</b>, <b>terminal_size_t::rows</b>, and
-    <b>terminal_get_size()</b>.</p>
-<p class="Pp">Referenced by <b>keyboard_help_render()</b>,
-    <b>mirror_convert_frame()</b>, <b>protocol_start_connection()</b>,
-    <b>server_connection_establish()</b>,
-    <b>session_display_convert_to_ascii()</b>, <b>session_display_create()</b>,
-    <b>session_render_loop()</b>, <b>session_settings_init()</b>,
-    <b>splash_intro_start()</b>, and <b>update_banner_show_prompt()</b>.</p>
+    <b>OPT_HEIGHT_DEFAULT</b>, <b>terminal_size_t::rows</b>,
+    <b>terminal_get_effective_height()</b>, and <b>terminal_get_size()</b>.</p>
+<p class="Pp">Referenced by <b>client_protocol_start()</b>,
+    <b>mirror_convert_frame()</b>, <b>platform_ttyname()</b>,
+    <b>session_display_create()</b>, and
+  <b>terminal_get_effective_height()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_short_int_terminal_get_effective_width_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_width_(void_)">unsigned
@@ -1291,37 +1421,34 @@ unsigned short int width = terminal_get_effective_width();
   <dt>3.</dt>
   <dd>OPT_WIDTH_DEFAULT fallback</dd>
 </dl>
-<p class="Pp">Definition at line <b>153</b> of file
+<p class="Pp">Definition at line <b>174</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>153                                                       {
-154   int width = GET_OPTION(width);
-155 
-156   // If width option is explicitly set to non-zero, use it
-157   if (width &gt; 0) {
-158     return (unsigned short int)width;
-159   }
-160 
-161   // Try to detect actual terminal width
-162   terminal_size_t size;
-163   if (terminal_get_size(&amp;size) == ASCIICHAT_OK &amp;&amp; size.cols &gt; 0) {
-164     return (unsigned short int)size.cols;
-165   }
-166 
-167   // Fallback to default
-168   return OPT_WIDTH_DEFAULT;
-169 }</pre>
+<pre>174                                                       {
+175   int width = GET_OPTION(width);
+176
+177   // If width option is explicitly set to non-zero, use it
+178   if (width &gt; 0) {
+179     return (unsigned short int)width;
+180   }
+181
+182   // Try to detect actual terminal width
+183   terminal_size_t size;
+184   if (terminal_get_size(&amp;size) == ASCIICHAT_OK &amp;&amp; size.cols &gt; 0) {
+185     return (unsigned short int)size.cols;
+186   }
+187
+188   // Fallback to default
+189   return OPT_WIDTH_DEFAULT;
+190 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>terminal_size_t::cols</b>,
-    <b>GET_OPTION</b>, <b>OPT_WIDTH_DEFAULT</b>, and
-  <b>terminal_get_size()</b>.</p>
-<p class="Pp">Referenced by <b>keyboard_help_render()</b>,
-    <b>mirror_convert_frame()</b>, <b>protocol_start_connection()</b>,
-    <b>server_connection_establish()</b>,
-    <b>session_display_convert_to_ascii()</b>, <b>session_display_create()</b>,
-    <b>session_display_render_fps_overlay()</b>, <b>session_render_loop()</b>,
-    <b>session_settings_init()</b>, <b>splash_intro_start()</b>, and
-    <b>update_banner_show_prompt()</b>.</p>
+    <b>GET_OPTION</b>, <b>OPT_WIDTH_DEFAULT</b>,
+    <b>terminal_get_effective_width()</b>, and <b>terminal_get_size()</b>.</p>
+<p class="Pp">Referenced by <b>client_protocol_start()</b>,
+    <b>mirror_convert_frame()</b>, <b>platform_ttyname()</b>,
+    <b>session_display_create()</b>, and
+  <b>terminal_get_effective_width()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_has_dark_background (void )</h2>
@@ -1358,14 +1485,17 @@ unsigned short int width = terminal_get_effective_width();
 <p class="Pp"></p>
 <p class="Pp">User can override via TERM_BACKGROUND environment variable</p>
 </div>
-<p class="Pp">Definition at line <b>137</b> of file
+<p class="Pp">Definition at line <b>208</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>137                                         {
-138   return true; // Default to dark background for terminals
-139 }</pre>
+<pre>208                                         {
+209   return true; // Default to dark background for terminals
+210 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>detect_terminal_background()</b>.</p>
+<p class="Pp">References <b>terminal_has_dark_background()</b>.</p>
+<p class="Pp">Referenced by <b>detect_terminal_background()</b>,
+    <b>terminal_has_dark_background()</b>, and
+    <b>test_terminal_output_modes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_interactive (void )</h2>
@@ -1402,20 +1532,21 @@ unsigned short int width = terminal_get_effective_width();
 <p class="Pp">Snapshot mode is checked separately via
     <b>GET_OPTION(snapshot_mode)</b></p>
 </div>
-<p class="Pp">Definition at line <b>141</b> of file
+<p class="Pp">Definition at line <b>162</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>141                                    {
-142   return terminal_is_stdin_tty() &amp;&amp; terminal_is_stdout_tty();
-143 }</pre>
+<pre>162                                    {
+163   return terminal_is_stdin_tty() &amp;&amp; terminal_is_stdout_tty();
+164 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>terminal_is_stdin_tty()</b>, and
-    <b>terminal_is_stdout_tty()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>, <b>options_init()</b>,
-    <b>session_display_write_ascii()</b>, <b>session_render_loop()</b>,
-    <b>session_server_like_run()</b>, <b>terminal_can_prompt_user()</b>,
-    <b>terminal_choose_log_fd()</b>,
-    <b>threaded_send_terminal_size_with_auto_detect()</b>,
+<p class="Pp">References <b>terminal_is_interactive()</b>,
+    <b>terminal_is_stdin_tty()</b>, and <b>terminal_is_stdout_tty()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, <b>mcp_http_run()</b>,
+    <b>session_display_write_ascii_frame()</b>,
+    <b>session_protocol_build_capabilities()</b>, <b>session_render_loop()</b>,
+    <b>session_server_like_run()</b>, <b>splash_intro_start()</b>,
+    <b>terminal_can_prompt_user()</b>, <b>terminal_choose_log_fd()</b>,
+    <b>terminal_is_interactive()</b>, <b>test_terminal_output_modes()</b>,
     <b>ui_status_display()</b>, and <b>ui_status_display_interactive()</b>.</p>
 </section>
 <section class="Ss">
@@ -1445,16 +1576,18 @@ unsigned short int width = terminal_get_effective_width();
 <p class="Pp">Common pattern: force stderr when piped to prevent data
   corruption</p>
 </div>
-<p class="Pp">Definition at line <b>197</b> of file
+<p class="Pp">Definition at line <b>218</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>197                                     {
-198   return !terminal_is_stdout_tty();
-199 }</pre>
+<pre>218                                     {
+219   return !terminal_is_stdout_tty();
+220 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>terminal_is_stdout_tty()</b>.</p>
+<p class="Pp">References <b>terminal_is_piped_output()</b>, and
+    <b>terminal_is_stdout_tty()</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_shared_init()</b>, <b>log_init()</b>,
-    and <b>terminal_should_force_stderr()</b>.</p>
+    <b>terminal_is_piped_output()</b>, <b>terminal_should_force_stderr()</b>,
+    and <b>test_terminal_output_modes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_stderr_tty (void )</h2>
@@ -1472,14 +1605,17 @@ unsigned short int width = terminal_get_effective_width();
 <p class="Pp"></p>
 <p class="Pp">stderr is often a TTY even when stdout is piped</p>
 </div>
-<p class="Pp">Definition at line <b>137</b> of file
+<p class="Pp">Definition at line <b>158</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>137                                   {
-138   return platform_isatty(STDERR_FILENO) != 0;
-139 }</pre>
+<pre>158                                   {
+159   return platform_isatty(STDERR_FILENO) != 0;
+160 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_isatty()</b>.</p>
+<p class="Pp">References <b>platform_isatty()</b>, and
+    <b>terminal_is_stderr_tty()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_is_stderr_tty()</b>, and
+    <b>test_terminal_output_modes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_stdin_tty (void )</h2>
@@ -1499,18 +1635,21 @@ unsigned short int width = terminal_get_effective_width();
 <p class="Pp">Returns false in non-interactive environments (CI, scripts,
   pipes)</p>
 </div>
-<p class="Pp">Definition at line <b>129</b> of file
+<p class="Pp">Definition at line <b>150</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>129                                  {
-130   return platform_isatty(STDIN_FILENO) != 0;
-131 }</pre>
+<pre>150                                  {
+151   return platform_isatty(STDIN_FILENO) != 0;
+152 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_isatty()</b>.</p>
-<p class="Pp">Referenced by <b>display_init()</b>,
-    <b>session_client_like_run()</b>, <b>session_display_create()</b>,
-    <b>session_render_loop()</b>, <b>terminal_is_interactive()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+<p class="Pp">References <b>platform_isatty()</b>, and
+    <b>terminal_is_stdin_tty()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_init()</b>,
+    <b>display_init()</b>, <b>display_set_context()</b>,
+    <b>session_display_create()</b>,
+    <b>session_protocol_build_capabilities()</b>, <b>session_render_loop()</b>,
+    <b>terminal_is_interactive()</b>, <b>terminal_is_stdin_tty()</b>, and
+    <b>test_terminal_output_modes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_is_stdout_tty (void )</h2>
@@ -1533,18 +1672,21 @@ unsigned short int width = terminal_get_effective_width();
 <p class="Pp">Returns false in piped contexts (e.g., ascii-chat client |
   less)</p>
 </div>
-<p class="Pp">Definition at line <b>133</b> of file
+<p class="Pp">Definition at line <b>154</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>133                                   {
-134   return platform_isatty(STDOUT_FILENO) != 0;
-135 }</pre>
+<pre>154                                   {
+155   return platform_isatty(STDOUT_FILENO) != 0;
+156 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_isatty()</b>.</p>
-<p class="Pp">Referenced by <b>session_client_like_run()</b>,
-    <b>session_display_create()</b>, <b>session_render_loop()</b>,
-    <b>terminal_is_interactive()</b>, <b>terminal_is_piped_output()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+<p class="Pp">References <b>platform_isatty()</b>, and
+    <b>terminal_is_stdout_tty()</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>,
+    <b>render_progress_create()</b>, <b>session_display_create()</b>,
+    <b>session_protocol_build_capabilities()</b>, <b>session_render_loop()</b>,
+    <b>splash_intro_start()</b>, <b>terminal_is_interactive()</b>,
+    <b>terminal_is_piped_output()</b>, <b>terminal_is_stdout_tty()</b>, and
+    <b>test_terminal_output_modes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_query_background_color (<b>uint8_t</b> *
@@ -1570,20 +1712,23 @@ unsigned short int width = terminal_get_effective_width();
 <p class="Pp"></p>
 <p class="Pp">Only works if stdout is a TTY</p>
 </div>
-<p class="Pp">Definition at line <b>166</b> of file
+<p class="Pp">Definition at line <b>239</b> of file
     <b>platform/wasm/terminal.c</b>.</p>
-<pre>166                                                                                   {
-167   // Return dark background (black)
-168   if (bg_r)
-169     *bg_r = 0;
-170   if (bg_g)
-171     *bg_g = 0;
-172   if (bg_b)
-173     *bg_b = 0;
-174   return true;
-175 }</pre>
+<pre>239                                                                                   {
+240   // Return dark background (black)
+241   if (bg_r)
+242     *bg_r = 0;
+243   if (bg_g)
+244     *bg_g = 0;
+245   if (bg_b)
+246     *bg_b = 0;
+247   return true;
+248 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>terminal_query_background_color()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_query_background_color()</b>, and
+    <b>test_terminal_output_modes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_should_color_output (int fd)</h2>
@@ -1606,82 +1751,89 @@ unsigned short int width = terminal_get_effective_width();
   STDERR_FILENO)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if colors should be used, false otherwise</div>
-<p class="Pp">Definition at line <b>31</b> of file
+<p class="Pp">Definition at line <b>52</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>31                                           {
-32   // Check color_mode setting - if explicitly set to NONE, disable colors
-33   int color_mode = GET_OPTION(color_mode);
-34   if (color_mode == COLOR_MODE_NONE) {
-35     return false; // Color mode explicitly disabled
-36   }
-37 
-38   // Get current color setting (auto/true/false)
-39   int color_setting = GET_OPTION(color);
-40 
-41   // Priority 1: --color=true - Force colors ON (overrides everything)
-42   if (color_setting == COLOR_SETTING_TRUE) {
-43     return true; // ALWAYS colorize
-44   }
-45 
-46   // Priority 2: --color=false - Force colors OFF (overrides everything)
-47   if (color_setting == COLOR_SETTING_FALSE) {
-48     return false; // NEVER colorize
-49   }
-50 
-51   // Priority 3: --color=auto (default) - Smart detection
-52   // Special case: Show colors for --help and --version even if not a TTY
-53   // Check for help/version in global argv (set by main.c early)
-54   if (g_argc &gt; 1 &amp;&amp; g_argv) {
-55     for (int i = 1; i &lt; g_argc; i++) {
-56       if (strcmp(g_argv[i], &quot;--help&quot;) == 0 || strcmp(g_argv[i], &quot;-h&quot;) == 0 || strcmp(g_argv[i], &quot;--version&quot;) == 0 ||
-57           strcmp(g_argv[i], &quot;-v&quot;) == 0 || strcmp(g_argv[i], &quot;--show-capabilities&quot;) == 0) {
-58         // For help/version/show-capabilities, use colors only if output is a TTY
-59         // (respect piping convention: no colors unless --color=true)
-60         int is_tty = platform_isatty(fd);
-61         if (!is_tty) {
-62           // Piping detected - fall through to check environment overrides
-63           break;
-64         }
-65 
-66         // It's a TTY - show colors for help. Check environment overrides.
-67         if (SAFE_GETENV(&quot;ASCII_CHAT_COLOR&quot;)) {
-68           return true; // ASCII_CHAT_COLOR env var forces colors
-69         }
-70 
-71         // CLAUDECODE environment variable (LLM automation) - disable colors
-72         if (SAFE_GETENV(&quot;CLAUDECODE&quot;)) {
-73           return false; // NO colors in Claude Code environment
-74         }
-75 
-76         // For help output to TTY, show colors by default
-77         return true;
-78       }
-79     }
-80   }
-81 
-82   // Check environment variable overrides
-83   if (SAFE_GETENV(&quot;ASCII_CHAT_COLOR&quot;)) {
-84     return true; // ASCII_CHAT_COLOR env var forces colors
-85   }
-86 
-87   // CLAUDECODE environment variable (LLM automation) - disable colors
-88   if (SAFE_GETENV(&quot;CLAUDECODE&quot;)) {
-89     return false; // NO colors in Claude Code environment
-90   }
-91 
-92   // Check if output is a TTY (pipe detection)
-93   // Default: Use colors only if we have TTY and no environment overrides
-94   return platform_isatty(fd);
-95 }</pre>
+<pre>52                                           {
+53   // Check color_mode setting - if explicitly set to NONE, disable colors
+54   int color_mode = GET_OPTION(color_mode);
+55   if (color_mode == COLOR_MODE_NONE) {
+56     return false; // Color mode explicitly disabled
+57   }
+58
+59   // Get current color setting (auto/true/false)
+60   int color_setting = GET_OPTION(color);
+61
+62   // Priority 1: --color=true - Force colors ON (overrides everything)
+63   if (color_setting == COLOR_SETTING_TRUE) {
+64     return true; // ALWAYS colorize
+65   }
+66
+67   // Priority 2: --color=false - Force colors OFF (overrides everything)
+68   if (color_setting == COLOR_SETTING_FALSE) {
+69     return false; // NEVER colorize
+70   }
+71
+72   // Priority 3: --color=auto (default) - Smart detection
+73   // Special case: Show colors for --help and --version even if not a TTY
+74   // Check for help/version in global argv (set by main.c early)
+75   if (g_argc &gt; 1 &amp;&amp; g_argv) {
+76     for (int i = 1; i &lt; g_argc; i++) {
+77       if (strcmp(g_argv[i], &quot;--help&quot;) == 0 || strcmp(g_argv[i], &quot;-h&quot;) == 0 || strcmp(g_argv[i], &quot;--version&quot;) == 0 ||
+78           strcmp(g_argv[i], &quot;-v&quot;) == 0 || strcmp(g_argv[i], &quot;--show-capabilities&quot;) == 0) {
+79         // For help/version/show-capabilities, use colors only if output is a TTY
+80         // (respect piping convention: no colors unless --color=true)
+81         int is_tty = platform_isatty(fd);
+82         if (!is_tty) {
+83           // Piping detected - fall through to check environment overrides
+84           break;
+85         }
+86
+87         // It's a TTY - show colors for help. Check environment overrides.
+88         if (SAFE_GETENV(&quot;ASCII_CHAT_COLOR&quot;)) {
+89           return true; // ASCII_CHAT_COLOR env var forces colors
+90         }
+91
+92         // CLAUDECODE environment variable (LLM automation) - disable colors
+93         if (SAFE_GETENV(&quot;CLAUDECODE&quot;)) {
+94           return false; // NO colors in Claude Code environment
+95         }
+96
+97         // For help output to TTY, show colors by default
+98         return true;
+99       }
+100     }
+101   }
+102
+103   // Check environment variable overrides
+104   if (SAFE_GETENV(&quot;ASCII_CHAT_COLOR&quot;)) {
+105     return true; // ASCII_CHAT_COLOR env var forces colors
+106   }
+107
+108   // CLAUDECODE environment variable (LLM automation) - disable colors
+109   if (SAFE_GETENV(&quot;CLAUDECODE&quot;)) {
+110     return false; // NO colors in Claude Code environment
+111   }
+112
+113   // Check if output is a TTY (pipe detection)
+114   // Default: Use colors only if we have TTY and no environment overrides
+115   return platform_isatty(fd);
+116 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>COLOR_MODE_NONE</b>, <b>COLOR_SETTING_FALSE</b>,
     <b>COLOR_SETTING_TRUE</b>, <b>g_argc</b>, <b>g_argv</b>, <b>GET_OPTION</b>,
-    <b>platform_isatty()</b>, and <b>SAFE_GETENV</b>.</p>
+    <b>platform_isatty()</b>, <b>SAFE_GETENV</b>, and
+    <b>terminal_should_color_output()</b>.</p>
 <p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
     <b>action_show_version()</b>, <b>colored_string()</b>,
-    <b>colorize_log_message()</b>, <b>log_plain_msg()</b>, and
-    <b>terminal_get_effective_color_mode()</b>.</p>
+    <b>colorize_log_message()</b>, <b>log_msg()</b>, <b>log_plain_msg()</b>,
+    <b>terminal_get_effective_color_mode()</b>,
+    <b>terminal_should_color_output()</b>, <b>test_terminal_output_modes()</b>,
+    <b>ui_buttons_render()</b>, <b>ui_error_popup_preserve()</b>,
+    <b>ui_error_popup_render()</b>, <b>ui_media_panel_render()</b>,
+    <b>ui_notice_present()</b>, <b>ui_notice_present_first_use()</b>,
+    <b>ui_password_prompt_present()</b>, <b>ui_prompt_present_kind()</b>, and
+    <b>ui_status_render_header()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_should_force_stderr (void )</h2>
@@ -1720,27 +1872,28 @@ unsigned short int width = terminal_get_effective_width();
 <p class="Pp">Typical usage: if (<b>terminal_should_force_stderr()</b>)
     log_set_force_stderr(true);</p>
 </div>
-<p class="Pp">Definition at line <b>201</b> of file
+<p class="Pp">Definition at line <b>222</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>201                                         {
-202   // If stdout is piped/redirected, force logs to stderr to avoid corruption
-203   if (terminal_is_piped_output()) {
-204     // Unless in TESTING environment where test framework may capture stdout
-205     const char *testing = SAFE_GETENV(&quot;TESTING&quot;);
-206     if (testing &amp;&amp; strcmp(testing, &quot;1&quot;) == 0) {
-207       // NOLINTNEXTLINE(readability-simplify-boolean-expr) - Intentional logic for test environment override
-208       return false;
-209     }
-210     return true; // Force stderr when piped
-211   }
-212   return false; // stdout is TTY, no need to force stderr
-213 }</pre>
+<pre>222                                         {
+223   // If stdout is piped/redirected, force logs to stderr to avoid corruption
+224   if (terminal_is_piped_output()) {
+225     // Unless in TESTING environment where test framework may capture stdout
+226     const char *testing = SAFE_GETENV(&quot;TESTING&quot;);
+227     if (testing &amp;&amp; strcmp(testing, &quot;1&quot;) == 0) {
+228       // NOLINTNEXTLINE(readability-simplify-boolean-expr) - Intentional logic for test environment override
+229       return false;
+230     }
+231     return true; // Force stderr when piped
+232   }
+233   return false; // stdout is TTY, no need to force stderr
+234 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SAFE_GETENV</b>, and
-    <b>terminal_is_piped_output()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>, <b>session_client_like_run()</b>, and
-    <b>session_display_create()</b>.</p>
+<p class="Pp">References <b>SAFE_GETENV</b>, <b>terminal_is_piped_output()</b>,
+    and <b>terminal_should_force_stderr()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, <b>session_display_create()</b>,
+    <b>terminal_should_force_stderr()</b>, and
+    <b>test_terminal_output_modes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_should_use_control_sequences (int fd)</h2>
@@ -1788,38 +1941,40 @@ unsigned short int width = terminal_get_effective_width();
 <p class="Pp"></p>
 <p class="Pp">Note: This does NOT control ANSI COLOR CODES, which are controlled
     by --color-mode option and may be sent to pipes if explicitly requested.</p>
-<p class="Pp">Definition at line <b>316</b> of file
+<p class="Pp">Definition at line <b>336</b> of file
   <b>platform/terminal.c</b>.</p>
-<pre>316                                                    {
-317   if (fd &lt; 0) {
-318     return false;
-319   }
-320   if (GET_OPTION(snapshot_mode)) {
-321     return false;
-322   }
-323   const char *testing_env = SAFE_GETENV(&quot;TESTING&quot;);
-324   if (testing_env != NULL) {
-325     return false;
-326   }
-327   return platform_isatty(fd) != 0;
-328 }</pre>
+<pre>336                                                    {
+337   if (fd &lt; 0) {
+338     return false;
+339   }
+340   if (GET_OPTION(snapshot_mode)) {
+341     return false;
+342   }
+343   const char *testing_env = SAFE_GETENV(&quot;TESTING&quot;);
+344   if (testing_env != NULL) {
+345     return false;
+346   }
+347   return platform_isatty(fd) != 0;
+348 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>GET_OPTION</b>, <b>platform_isatty()</b>, and
-    <b>SAFE_GETENV</b>.</p>
+<p class="Pp">References <b>GET_OPTION</b>, <b>platform_isatty()</b>,
+    <b>SAFE_GETENV</b>, and <b>terminal_should_use_control_sequences()</b>.</p>
 <p class="Pp">Referenced by <b>ascii_write()</b>, <b>ascii_write_destroy()</b>,
-    and <b>ascii_write_init()</b>.</p>
+    <b>ascii_write_init()</b>, <b>terminal_should_use_control_sequences()</b>,
+    and <b>test_terminal_output_modes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_terminal_stop_resize_detection_(void_)"><a class="permalink" href="#void_terminal_stop_resize_detection_(void_)">void
   terminal_stop_resize_detection (void )</a></h2>
 <p class="Pp">No-op stub on POSIX platforms (no resize detection thread).</p>
-<p class="Pp">Definition at line <b>92</b> of file <b>misc.c</b>.</p>
-<pre>92                                           {
-93 }</pre>
+<p class="Pp">Definition at line <b>96</b> of file <b>misc.c</b>.</p>
+<pre>96 {}</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+<p class="Pp">References <b>terminal_stop_resize_detection()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
+    <b>platform_ttyname()</b>, and <b>terminal_stop_resize_detection()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_test_terminal_output_modes_(void_)"><a class="permalink" href="#void_test_terminal_output_modes_(void_)">void
@@ -1834,6 +1989,19 @@ unsigned short int width = terminal_get_effective_width();
 <p class="Pp"></p>
 <p class="Pp">Useful for verifying terminal capability detection accuracy.</p>
 </div>
+<p class="Pp">References <b>apply_color_mode_override()</b>,
+    <b>terminal_can_prompt_user()</b>, <b>terminal_choose_log_fd()</b>,
+    <b>terminal_format_hyperlink()</b>,
+    <b>terminal_get_effective_color_mode()</b>,
+    <b>terminal_has_dark_background()</b>, <b>terminal_is_interactive()</b>,
+    <b>terminal_is_piped_output()</b>, <b>terminal_is_stderr_tty()</b>,
+    <b>terminal_is_stdin_tty()</b>, <b>terminal_is_stdout_tty()</b>,
+    <b>terminal_query_background_color()</b>,
+    <b>terminal_should_color_output()</b>,
+    <b>terminal_should_force_stderr()</b>,
+    <b>terminal_should_use_control_sequences()</b>, and
+    <b>test_terminal_output_modes()</b>.</p>
+<p class="Pp">Referenced by <b>test_terminal_output_modes()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -1843,7 +2011,7 @@ unsigned short int width = terminal_get_effective_width();
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>playlist.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">playlist.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">playlist.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">playlist.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>media_playlist_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>MEDIA_PLAYLIST_MAX_ITEMS</b> 64
+  <br/>
+  #define <b>MEDIA_PLAYLIST_PATH_MAX</b> 256
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>media_playlist_append</b>
+    (<b>media_playlist_t</b> *list, const char *path, <b>bool</b> url)
+  <br/>
+  <b>asciichat_error_t</b> <b>media_playlist_parse</b> (const char *text,
+    <b>media_playlist_t</b> *list)
+  <br/>
+  <b>asciichat_error_t</b> <b>media_playlist_format</b> (const
+    <b>media_playlist_t</b> *list, char *text, size_t capacity)
+  <br/>
+  <b>bool</b> <b>media_playlist_adjacent</b> (const <b>media_playlist_t</b>
+    *list, int direction, size_t *index)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_MEDIA_PLAYLIST_MAX_ITEMS___64"><a class="permalink" href="#_define_MEDIA_PLAYLIST_MAX_ITEMS___64">#define
+  MEDIA_PLAYLIST_MAX_ITEMS 64</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file <b>playlist.h</b>.</p>
+<p class="Pp">Referenced by <b>media_playlist_append()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MEDIA_PLAYLIST_PATH_MAX___256"><a class="permalink" href="#_define_MEDIA_PLAYLIST_PATH_MAX___256">#define
+  MEDIA_PLAYLIST_PATH_MAX 256</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>playlist.h</b>.</p>
+<p class="Pp">Referenced by <b>media_playlist_append()</b>, and
+    <b>media_playlist_parse()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> media_playlist_adjacent (const
+  <b>media_playlist_t</b> * list, int direction, size_t * index)</h2>
+<p class="Pp">Find an adjacent item without wrapping at playlist boundaries.</p>
+<p class="Pp">Definition at line <b>113</b> of file <b>playlist.c</b>.</p>
+<pre>113                                                                                          {
+114   if (!list || !index || !list-&gt;count || list-&gt;index &gt;= list-&gt;count || (direction != -1 &amp;&amp; direction != 1))
+115     return false;
+116   if (direction &lt; 0 &amp;&amp; list-&gt;index) {
+117     *index = list-&gt;index - 1;
+118     return true;
+119   }
+120   if (direction &gt; 0 &amp;&amp; list-&gt;index + 1 &lt; list-&gt;count) {
+121     *index = list-&gt;index + 1;
+122     return true;
+123   }
+124   return false;
+125 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>media_playlist_t::count</b>,
+    <b>media_playlist_t::index</b>, and <b>media_playlist_adjacent()</b>.</p>
+<p class="Pp">Referenced by <b>media_playlist_adjacent()</b>, and
+    <b>session_capture_at_end()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> media_playlist_append
+  (<b>media_playlist_t</b> * list, const char * path, <b>bool</b> url)</h2>
+<p class="Pp">Append one already separated argument; preserves insertion
+  order.</p>
+<p class="Pp">Definition at line <b>7</b> of file <b>playlist.c</b>.</p>
+<pre>7                                                                                             {
+8   if (!list || !path || list-&gt;count &gt;= MEDIA_PLAYLIST_MAX_ITEMS)
+9     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;A playlist supports at most %d artifacts&quot;, MEDIA_PLAYLIST_MAX_ITEMS);
+10   char normalized[MEDIA_PLAYLIST_PATH_MAX];
+11   asciichat_error_t result = media_input_normalize(path, normalized, sizeof(normalized));
+12   if (result != ASCIICHAT_OK)
+13     return result;
+14   if (url &amp;&amp; !strstr(normalized, &quot;://&quot;)) {
+15     char absolute[MEDIA_PLAYLIST_PATH_MAX];
+16     if (strlen(normalized) + 7 &gt;= sizeof(absolute))
+17       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Media URL is too long&quot;);
+18     snprintf(absolute, sizeof(absolute), &quot;http://%s&quot;, normalized);
+19     const size_t absolute_bytes = strlen(absolute) + 1;
+20     memcpy(normalized, absolute, absolute_bytes);
+21   }
+22   if (strcmp(normalized, &quot;-&quot;) == 0 &amp;&amp; list-&gt;count)
+23     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Stdin must be the only playlist artifact&quot;);
+24   if (list-&gt;count &amp;&amp; strcmp(list-&gt;paths[0], &quot;-&quot;) == 0)
+25     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Stdin must be the only playlist artifact&quot;);
+26   const size_t normalized_bytes = strlen(normalized) + 1;
+27   memcpy(list-&gt;paths[list-&gt;count], normalized, normalized_bytes);
+28   list-&gt;urls[list-&gt;count++] = url;
+29   return ASCIICHAT_OK;
+30 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>media_playlist_t::count</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>media_input_normalize()</b>,
+    <b>media_playlist_append()</b>, <b>MEDIA_PLAYLIST_MAX_ITEMS</b>,
+    <b>MEDIA_PLAYLIST_PATH_MAX</b>, <b>media_playlist_t::paths</b>,
+    <b>SET_ERRNO</b>, and <b>media_playlist_t::urls</b>.</p>
+<p class="Pp">Referenced by <b>media_playlist_append()</b>,
+    <b>media_playlist_parse()</b>, <b>session_capture_create()</b>,
+    <b>session_capture_open_media()</b>, and <b>ui_input_read_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> media_playlist_format (const
+  <b>media_playlist_t</b> * list, char * text, size_t capacity)</h2>
+<p class="Pp">Render one quoted artifact per line, with no trailing
+  whitespace.</p>
+<p class="Pp">Definition at line <b>89</b> of file <b>playlist.c</b>.</p>
+<pre>89                                                                                                    {
+90   if (!list || !text || !capacity)
+91     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid playlist display buffer&quot;);
+92   size_t used = 0;
+93   text[0] = '\0';
+94   for (size_t i = 0; i &lt; list-&gt;count; ++i) {
+95     const char *path = list-&gt;paths[i];
+96     char quote = strchr(path, '&quot;') ? '\'' : '&quot;';
+97     if (strchr(path, quote))
+98       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Cannot quote media artifact&quot;);
+99     size_t bytes = strlen(path);
+100     if (used + bytes + 3 + (i != 0) &gt; capacity)
+101       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Playlist display is too long&quot;);
+102     if (i)
+103       text[used++] = '\n';
+104     text[used++] = quote;
+105     memcpy(text + used, path, bytes);
+106     used += bytes;
+107     text[used++] = quote;
+108     text[used] = '\0';
+109   }
+110   return ASCIICHAT_OK;
+111 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>media_playlist_t::count</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>media_playlist_format()</b>,
+    <b>media_playlist_t::paths</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>media_playlist_format()</b>,
+    <b>session_handle_keyboard_input()</b>, and <b>ui_input_read_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> media_playlist_parse (const char * text,
+  <b>media_playlist_t</b> * list)</h2>
+<p class="Pp">Parse shell-quoted paths, file URIs or URLs. A lone unquoted path
+    may contain spaces.</p>
+<p class="Pp">Definition at line <b>32</b> of file <b>playlist.c</b>.</p>
+<pre>32                                                                                  {
+33   if (!text || !list)
+34     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid playlist input&quot;);
+35   media_playlist_t parsed = {0};
+36   while (isspace((unsigned char)*text))
+37     ++text;
+38   if (text[0] == '&amp;' &amp;&amp; text[1] == ' ')
+39     text += 2;
+40   while (*text) {
+41     while (isspace((unsigned char)*text))
+42       ++text;
+43     if (!*text)
+44       break;
+45     const char *start = text;
+46     if (*text == '\'' || *text == '&quot;') {
+47       char quote = *text++;
+48       while (*text &amp;&amp; *text != quote)
+49         ++text;
+50       if (!*text || (text[1] &amp;&amp; !isspace((unsigned char)text[1])))
+51         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Separate media artifacts with whitespace and match their quotes&quot;);
+52       ++text;
+53     } else {
+54       // Preserve a manually typed path containing spaces. Newline-delimited
+55       // clipboard URI lists remain separate artifacts.
+56       while (*text &amp;&amp; *text != '\n' &amp;&amp; *text != '\r') {
+57         if (isspace((unsigned char)*text)) {
+58           const char *next = text;
+59           while (*next == ' ' || *next == '\t')
+60             ++next;
+61           bool path_start = *next == '\'' || *next == '&quot;' || *next == '/' || *next == '\\' ||
+62                             (isalpha((unsigned char)next[0]) &amp;&amp; next[1] == ':');
+63           const char *scheme = strstr(next, &quot;://&quot;);
+64           const char *space = strpbrk(next, &quot; \t\r\n&quot;);
+65           if (path_start || (scheme &amp;&amp; (!space || scheme &lt; space)))
+66             break;
+67         }
+68         ++text;
+69       }
+70     }
+71     size_t bytes = (size_t)(text - start);
+72     char argument[MEDIA_PLAYLIST_PATH_MAX + 2];
+73     if (bytes &gt;= sizeof(argument))
+74       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Media artifact is too long&quot;);
+75     memcpy(argument, start, bytes);
+76     argument[bytes] = '\0';
+77     bool url = strstr(argument, &quot;://&quot;) &amp;&amp;
+78                strncmp(argument + (argument[0] == '\'' || argument[0] == '&quot;'), &quot;file://&quot;, sizeof(&quot;file://&quot;) - 1) != 0;
+79     asciichat_error_t result = media_playlist_append(&amp;parsed, argument, url);
+80     if (result != ASCIICHAT_OK)
+81       return result;
+82   }
+83   if (!parsed.count)
+84     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Enter at least one media path or URL&quot;);
+85   *list = parsed;
+86   return ASCIICHAT_OK;
+87 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>media_playlist_t::count</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>media_playlist_append()</b>,
+    <b>media_playlist_parse()</b>, <b>MEDIA_PLAYLIST_PATH_MAX</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>media_playlist_parse()</b>,
+    <b>session_capture_open_playlist()</b>,
+    <b>session_handle_keyboard_input()</b>, <b>ui_input_media_take()</b>, and
+    <b>ui_input_read_key()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

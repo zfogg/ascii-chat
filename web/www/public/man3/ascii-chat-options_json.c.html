@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>json.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">json.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">json.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">json.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">yyjson_mut_val * <b>options_json_schema_for_option</b>
+    (yyjson_mut_doc *d, const char *name)
+  <br/>
+  <b>asciichat_error_t</b> <b>options_json_parse_value</b> (const char *name,
+    yyjson_val *v, char *output, size_t output_size, <b>bool</b> *omitted)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> options_json_parse_value (const char *
+  name, yyjson_val * value, char * output, size_t output_size, <b>bool</b> *
+  omitted)</h2>
+<p class="Pp">Convert and parse a JSON value with the CLI handler, without
+    publishing global options. omitted is set for an explicitly disabled
+    optional flag such as test-pattern=false. Full cross-option validation
+    remains in the normal CLI worker initialization.</p>
+<p class="Pp">Definition at line <b>78</b> of file <b>options/json.c</b>.</p>
+<pre>79                                                           {
+80   if (!name || !v || !output || !output_size || !omitted)
+81     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing JSON option argument&quot;);
+82   *omitted = false;
+83   const registry_entry_t *e = registry_find_entry_by_name(name);
+84   if (!e || e-&gt;type &lt; 0 || e-&gt;type &gt;= NUM_OPTION_TYPES || e-&gt;type == OPTION_TYPE_ACTION || e-&gt;owns_memory)
+85     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unsupported value option: %s&quot;, name);
+86   asciichat_error_t err = validate_value(e, v);
+87   if (err != ASCIICHAT_OK)
+88     return err;
+89   if (yyjson_is_str(v)) {
+90     size_t len = yyjson_get_len(v);
+91     if (len &gt;= output_size || (e-&gt;type == OPTION_TYPE_STRING &amp;&amp; e-&gt;default_value_size &amp;&amp; len &gt;= e-&gt;default_value_size))
+92       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option value too long: %s&quot;, name);
+93     SAFE_STRNCPY(output, yyjson_get_str(v), output_size);
+94   } else if (yyjson_is_bool(v)) {
+95     SAFE_SNPRINTF(output, output_size, &quot;%s&quot;, yyjson_get_bool(v) ? &quot;true&quot; : &quot;false&quot;);
+96   } else {
+97     SAFE_SNPRINTF(output, output_size, &quot;%.17g&quot;, yyjson_get_num(v));
+98   }
+99   if (!strcmp(name, &quot;test-pattern&quot;) &amp;&amp; yyjson_is_bool(v)) {
+100     if (!yyjson_get_bool(v)) {
+101       *omitted = true;
+102       return ASCIICHAT_OK;
+103     }
+104     SAFE_SNPRINTF(output, output_size, &quot;0&quot;);
+105   }
+106   // Use the same registry descriptor and handlers as options_config_parse().
+107   option_descriptor_t descriptor = registry_entry_to_descriptor(e);
+108   options_t *scratch = SAFE_CALLOC(1, sizeof(*scratch), options_t *);
+109   err = g_builder_handlers[descriptor.type].apply_cli((char *)scratch + descriptor.offset, output, &amp;descriptor);
+110   SAFE_FREE(scratch);
+111   return err;
+112 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>option_builder_handler_t::apply_cli</b>,
+    <b>ASCIICHAT_OK</b>, <b>registry_entry_t::default_value_size</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>g_builder_handlers</b>,
+    <b>NUM_OPTION_TYPES</b>, <b>option_descriptor_t::offset</b>,
+    <b>OPTION_TYPE_ACTION</b>, <b>OPTION_TYPE_STRING</b>,
+    <b>options_json_parse_value()</b>, <b>registry_entry_t::owns_memory</b>,
+    <b>registry_entry_to_descriptor()</b>, <b>registry_find_entry_by_name()</b>,
+    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_SNPRINTF</b>,
+    <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>, <b>option_descriptor_t::type</b>, and
+    <b>registry_entry_t::type</b>.</p>
+<p class="Pp">Referenced by <b>mcp_request_parse()</b>, and
+    <b>options_json_parse_value()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="yyjson_mut_val_*_options_json_schema_for_option_(yyjson_mut_doc_*_doc,_const_char_*_name)"><a class="permalink" href="#yyjson_mut_val_*_options_json_schema_for_option_(yyjson_mut_doc_*_doc,_const_char_*_name)">yyjson_mut_val
+  * options_json_schema_for_option (yyjson_mut_doc * doc, const char *
+  name)</a></h2>
+<p class="Pp">Generate a JSON property from a registered option's metadata;
+    document owns the result.</p>
+<p class="Pp">Definition at line <b>37</b> of file <b>options/json.c</b>.</p>
+<pre>37                                                                                     {
+38   if (!d || !name) {
+39     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing option schema argument&quot;);
+40     return NULL;
+41   }
+42   const registry_entry_t *e = registry_find_entry_by_name(name);
+43   if (!e || e-&gt;type == OPTION_TYPE_ACTION) {
+44     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown value option: %s&quot;, name);
+45     return NULL;
+46   }
+47   yyjson_mut_val *v = yyjson_mut_obj(d);
+48   yyjson_mut_obj_add_str(d, v, &quot;type&quot;, json_type(e));
+49   yyjson_mut_obj_add_str(d, v, &quot;description&quot;, e-&gt;help_text);
+50   if (e-&gt;metadata.enum_values) {
+51     yyjson_mut_val *values = yyjson_mut_arr(d);
+52     for (size_t i = 0; e-&gt;metadata.enum_values[i]; i++)
+53       yyjson_mut_arr_add_str(d, values, e-&gt;metadata.enum_values[i]);
+54     yyjson_mut_obj_add_val(d, v, &quot;enum&quot;, values);
+55   }
+56   if (!strcmp(name, &quot;test-pattern&quot;)) {
+57     yyjson_mut_obj_remove_str(v, &quot;type&quot;);
+58     yyjson_mut_obj_remove_str(v, &quot;enum&quot;);
+59     yyjson_mut_val *values = yyjson_mut_arr(d);
+60     yyjson_mut_arr_add_bool(d, values, true);
+61     yyjson_mut_arr_add_bool(d, values, false);
+62     yyjson_mut_arr_add_int(d, values, 0);
+63     yyjson_mut_arr_add_int(d, values, 1);
+64     yyjson_mut_arr_add_str(d, values, &quot;0&quot;);
+65     yyjson_mut_arr_add_str(d, values, &quot;1&quot;);
+66     yyjson_mut_obj_add_val(d, v, &quot;enum&quot;, values);
+67   }
+68   if (!strcmp(name, &quot;seek&quot;)) {
+69     yyjson_mut_obj_remove_str(v, &quot;type&quot;);
+70     yyjson_mut_val *types = yyjson_mut_arr(d);
+71     yyjson_mut_arr_add_str(d, types, &quot;string&quot;);
+72     yyjson_mut_arr_add_str(d, types, &quot;number&quot;);
+73     yyjson_mut_obj_add_val(d, v, &quot;type&quot;, types);
+74   }
+75   return v;
+76 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>option_metadata_t::enum_values</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>registry_entry_t::help_text</b>,
+    <b>registry_entry_t::metadata</b>, <b>OPTION_TYPE_ACTION</b>,
+    <b>options_json_schema_for_option()</b>,
+    <b>registry_find_entry_by_name()</b>, <b>SET_ERRNO</b>, and
+    <b>registry_entry_t::type</b>.</p>
+<p class="Pp">Referenced by <b>mcp_tools_schema()</b>, and
+    <b>options_json_schema_for_option()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

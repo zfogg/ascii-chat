@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>platform_event_stream(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">platform_event_stream(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">platform_event_stream(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">platform_event_stream</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>listener</b>
+  <br/>
+  <b>platform_event_loop_t</b> * <b>owner</b>
+  <br/>
+  uv_tcp_t <b>tcp</b>
+  <br/>
+  uv_timer_t <b>timer</b>
+  <br/>
+  uv_timer_t <b>output_timer</b>
+  <br/>
+  uv_async_t <b>output</b>
+  <br/>
+  uv_mutex_t <b>mutex</b>
+  <br/>
+  struct <b>event_write</b> * <b>first</b>
+  <br/>
+  struct <b>event_write</b> * <b>last</b>
+  <br/>
+  struct <b>event_write</b> * <b>active</b>
+  <br/>
+  struct <b>event_write</b> * <b>recycled</b>
+  <br/>
+  size_t <b>recycled_count</b>
+  <br/>
+  <b>bool</b> <b>zerocopy</b>
+  <br/>
+  <b>platform_event_read_fn</b> <b>read</b>
+  <br/>
+  <b>platform_event_close_fn</b> <b>close</b>
+  <br/>
+  void * <b>arg</b>
+  <br/>
+  size_t <b>queued</b>
+  <br/>
+  <b>platform_event_queue_fn</b> <b>queue_changed</b>
+  <br/>
+  void * <b>queue_context</b>
+  <br/>
+  size_t <b>writes</b>
+  <br/>
+  unsigned <b>handles</b>
+  <br/>
+  <b>bool</b> <b>closing</b>
+  <br/>
+  <b>bool</b> <b>working</b>
+  <br/>
+  <b>bool</b> <b>close_requested</b>
+  <br/>
+  <b>asciichat_error_t</b> <b>requested_reason</b>
+  <br/>
+  <b>asciichat_error_t</b> <b>reason</b>
+  <br/>
+  char <b>input</b> [65536]
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>31</b> of file <b>event.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">struct <b>event_write</b> * platform_event_stream::active</h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_close()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_platform_event_stream::arg"><a class="permalink" href="#void*_platform_event_stream::arg">void*
+  platform_event_stream::arg</a></h2>
+<p class="Pp">Definition at line <b>45</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_start()</b>, and
+    <b>platform_event_stream_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>platform_event_close_fn</b> platform_event_stream::close</h2>
+<p class="Pp">Definition at line <b>44</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> platform_event_stream::close_requested</h2>
+<p class="Pp">Definition at line <b>53</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_request_close()</b>, and
+    <b>platform_event_stream_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> platform_event_stream::closing</h2>
+<p class="Pp">Definition at line <b>51</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_close()</b>,
+    <b>platform_event_stream_deadline()</b>,
+    <b>platform_event_stream_pause()</b>,
+    <b>platform_event_stream_request_close()</b>,
+    <b>platform_event_stream_resume()</b>, <b>platform_event_stream_start()</b>,
+    <b>platform_event_stream_work()</b>, and
+    <b>platform_event_stream_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">struct <b>event_write</b>* platform_event_stream::first</h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_close()</b>, and
+    <b>platform_event_stream_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="unsigned_platform_event_stream::handles"><a class="permalink" href="#unsigned_platform_event_stream::handles">unsigned
+  platform_event_stream::handles</a></h2>
+<p class="Pp">Definition at line <b>50</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_work()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_platform_event_stream::input_65536_"><a class="permalink" href="#char_platform_event_stream::input_65536_">char
+  platform_event_stream::input[65536]</a></h2>
+<p class="Pp">Definition at line <b>56</b> of file <b>event.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">struct <b>event_write</b> * platform_event_stream::last</h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_close()</b>, and
+    <b>platform_event_stream_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> platform_event_stream::listener</h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>event.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uv_mutex_t_platform_event_stream::mutex"><a class="permalink" href="#uv_mutex_t_platform_event_stream::mutex">uv_mutex_t
+  platform_event_stream::mutex</a></h2>
+<p class="Pp">Definition at line <b>38</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_close()</b>,
+    <b>platform_event_stream_observe_queue()</b>,
+    <b>platform_event_stream_queued_bytes()</b>,
+    <b>platform_event_stream_request_close()</b>,
+    <b>platform_event_stream_set_zerocopy()</b>, and
+    <b>platform_event_stream_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uv_async_t_platform_event_stream::output"><a class="permalink" href="#uv_async_t_platform_event_stream::output">uv_async_t
+  platform_event_stream::output</a></h2>
+<p class="Pp">Definition at line <b>37</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_close()</b>,
+    <b>platform_event_stream_request_close()</b>, and
+    <b>platform_event_stream_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uv_timer_t_platform_event_stream::output_timer"><a class="permalink" href="#uv_timer_t_platform_event_stream::output_timer">uv_timer_t
+  platform_event_stream::output_timer</a></h2>
+<p class="Pp">Definition at line <b>36</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_close()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>platform_event_loop_t</b>* platform_event_stream::owner</h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>event.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>platform_event_queue_fn</b>
+  platform_event_stream::queue_changed</h2>
+<p class="Pp">Definition at line <b>47</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_close()</b>,
+    <b>platform_event_stream_observe_queue()</b>, and
+    <b>platform_event_stream_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_platform_event_stream::queue_context"><a class="permalink" href="#void*_platform_event_stream::queue_context">void*
+  platform_event_stream::queue_context</a></h2>
+<p class="Pp">Definition at line <b>48</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_close()</b>,
+    <b>platform_event_stream_observe_queue()</b>, and
+    <b>platform_event_stream_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_platform_event_stream::queued"><a class="permalink" href="#size_t_platform_event_stream::queued">size_t
+  platform_event_stream::queued</a></h2>
+<p class="Pp">Definition at line <b>46</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_close()</b>,
+    <b>platform_event_stream_observe_queue()</b>,
+    <b>platform_event_stream_queued_bytes()</b>, and
+    <b>platform_event_stream_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>platform_event_read_fn</b> platform_event_stream::read</h2>
+<p class="Pp">Definition at line <b>43</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_resume()</b>, and
+    <b>platform_event_stream_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_stream::reason</h2>
+<p class="Pp">Definition at line <b>55</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_close()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">struct <b>event_write</b>* platform_event_stream::recycled</h2>
+<p class="Pp">Definition at line <b>40</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_platform_event_stream::recycled_count"><a class="permalink" href="#size_t_platform_event_stream::recycled_count">size_t
+  platform_event_stream::recycled_count</a></h2>
+<p class="Pp">Definition at line <b>41</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b>
+  platform_event_stream::requested_reason</h2>
+<p class="Pp">Definition at line <b>54</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_request_close()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uv_tcp_t_platform_event_stream::tcp"><a class="permalink" href="#uv_tcp_t_platform_event_stream::tcp">uv_tcp_t
+  platform_event_stream::tcp</a></h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_adopt()</b>,
+    <b>platform_event_stream_close()</b>, <b>platform_event_stream_pause()</b>,
+    <b>platform_event_stream_peer()</b>, <b>platform_event_stream_resume()</b>,
+    <b>platform_event_stream_start()</b>, and
+    <b>platform_event_stream_work()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uv_timer_t_platform_event_stream::timer"><a class="permalink" href="#uv_timer_t_platform_event_stream::timer">uv_timer_t
+  platform_event_stream::timer</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_close()</b>, and
+    <b>platform_event_stream_deadline()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> platform_event_stream::working</h2>
+<p class="Pp">Definition at line <b>52</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_work()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_platform_event_stream::writes"><a class="permalink" href="#size_t_platform_event_stream::writes">size_t
+  platform_event_stream::writes</a></h2>
+<p class="Pp">Definition at line <b>49</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_close()</b>, and
+    <b>platform_event_stream_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> platform_event_stream::zerocopy</h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>event.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_set_zerocopy()</b>, and
+    <b>platform_event_stream_write()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

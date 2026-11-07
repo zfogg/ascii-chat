@@ -60,15 +60,6 @@
 </p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef void(* <b>signal_handler_t</b>) (int)
-  <br/>
-  Signal handler function type.
-  <br/>
-</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">void <b>platform_install_crash_handler</b> (void)
@@ -145,13 +136,13 @@
     <b>platform_stdio_redirect_to_null_permanent</b> (void)
   <br/>
   Permanently redirect stderr and stdout to /dev/null. int <b>safe_snprintf</b>
-    (char *buffer, size_t <b>buffer_size</b>, const char *format,...)
+    (char *buffer, size_t buffer_size, const char *format,...)
   <br/>
   Platform-safe snprintf wrapper. int <b>safe_fprintf</b> (FILE *stream, const
     char *format,...)
   <br/>
   Platform-safe fprintf wrapper. int <b>safe_vsnprintf</b> (char *buffer, size_t
-    <b>buffer_size</b>, const char *format, va_list ap)
+    buffer_size, const char *format, va_list ap)
   <br/>
   Platform-safe vsnprintf wrapper. <b>asciichat_error_t</b>
     <b>platform_memcpy</b> (void *dest, size_t dest_size, const void *src,
@@ -181,7 +172,8 @@
   <br/>
   Load system CA certificates for TLS/HTTPS. int
     <b>platform_execute_subprocess</b> (const char *executable, const char
-    **argv, char *output_buffer, size_t output_size)
+    **argv, char *output_buffer, size_t output_size, <b>bool</b>(*cancel)(void
+    *), void *data)
   <br/>
   Execute a subprocess and optionally capture its output. size_t
     <b>platform_write_all</b> (int fd, const void *buf, size_t count)
@@ -189,11 +181,16 @@
   Write all bytes to a file descriptor, handling partial writes. ssize_t
     <b>platform_write</b> (int fd, const void *buf, size_t count)
   <br/>
-  Safe file write (write replacement). int
-    <b>get_binary_file_address_offsets</b> (const void *addr,
+  Safe file write (write replacement). int <b>platform_dup</b> (int fd)
+  <br/>
+  int <b>platform_fileno</b> (FILE *stream)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_dup2</b> (int source_fd, int target_fd)
+  <br/>
+  int <b>get_binary_file_address_offsets</b> (const void *addr,
     <b>platform_binary_match_t</b> *matches, int max_matches)
   <br/>
-  Get binary that contains address on Linux via /proc/self/maps.
+  Get binary that contains address on Linux via the ELF program headers.
   <br/>
 </p>
 </section>
@@ -213,7 +210,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

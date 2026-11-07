@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>stdout_writer.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">stdout_writer.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">stdout_writer.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">stdout_writer.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>stdout_writer_write</b> (FILE *stream,
+    const void *data, size_t size)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> stdout_writer_write (FILE * stream,
+  const void * data, size_t size)</h2>
+<p class="Pp">Write exactly size bytes, including embedded NULs, without closing
+    stream.</p>
+<p class="Pp">Definition at line <b>4</b> of file <b>stdout_writer.c</b>.</p>
+<pre>4                                                                                    {
+5   if (!stream || (!data &amp;&amp; size))
+6     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing output stream or bytes&quot;);
+7   const unsigned char *bytes = data;
+8   size_t offset = 0;
+9   while (offset &lt; size) {
+10     size_t written = fwrite(bytes + offset, 1, size - offset, stream);
+11     offset += written;
+12     if (ferror(stream)) {
+13       if (errno == EINTR) {
+14         clearerr(stream);
+15         continue;
+16       }
+17       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, &quot;Cannot write output stream&quot;);
+18     }
+19     if (!written)
+20       return SET_ERRNO(ERROR_FILE_OPERATION, &quot;Output stream made no progress&quot;);
+21   }
+22   while (fflush(stream) != 0) {
+23     if (errno != EINTR)
+24       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, &quot;Cannot flush output stream&quot;);
+25     clearerr(stream);
+26   }
+27   return ASCIICHAT_OK;
+28 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>EINTR</b>, <b>errno</b>,
+    <b>ERROR_FILE_OPERATION</b>, <b>ERROR_INVALID_PARAM</b>, <b>SET_ERRNO</b>,
+    <b>SET_ERRNO_SYS</b>, and <b>stdout_writer_write()</b>.</p>
+<p class="Pp">Referenced by <b>kitty_image_write()</b>,
+    <b>stdout_writer_write()</b>, and <b>terminal_fd_writer_write()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

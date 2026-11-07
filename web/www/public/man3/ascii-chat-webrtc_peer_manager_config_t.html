@@ -43,7 +43,10 @@
 <br/>
 <p class="Pp"><b>webrtc_peer_role_t</b> <b>role</b>
   <br/>
-  Session role (creator or joiner). <b>stun_server_t</b> * <b>stun_servers</b>
+  Session role (creator or joiner). const char * <b>bind_address</b>
+  <br/>
+  Optional local interface address for ICE sockets. <b>stun_server_t</b> *
+    <b>stun_servers</b>
   <br/>
   STUN servers for ICE. size_t <b>stun_count</b>
   <br/>
@@ -51,7 +54,13 @@
   <br/>
   TURN servers for relay. size_t <b>turn_count</b>
   <br/>
-  Number of TURN servers. <b>webrtc_transport_ready_callback_t</b>
+  Number of TURN servers. <b>bool</b> <b>relay_only</b>
+  <br/>
+  Restrict ICE to TURN relay candidates. const char * <b>turn_username</b>
+  <br/>
+  Optional TURN credential override. const char * <b>turn_credential</b>
+  <br/>
+  Optional TURN credential override. <b>webrtc_transport_ready_callback_t</b>
     <b>on_transport_ready</b>
   <br/>
   Called when DataChannel ready. <b>webrtc_gathering_timeout_callback_t</b>
@@ -59,9 +68,7 @@
   <br/>
   Called when ICE gathering times out. void * <b>user_data</b>
   <br/>
-  Passed to callbacks. <b>crypto_context_t</b> * <b>crypto_ctx</b>
-  <br/>
-  Crypto context for transports.
+  Passed to callbacks.
   <br/>
 </p>
 </section>
@@ -70,22 +77,22 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">Peer manager configuration.</p>
-<p class="Pp">Definition at line <b>89</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Definition at line <b>93</b> of file <b>peer_manager.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss"><b>crypto_context_t</b>*
-  webrtc_peer_manager_config_t::crypto_ctx</h2>
-<p class="Pp">Crypto context for transports.</p>
-<p class="Pp">Definition at line <b>98</b> of file <b>peer_manager.h</b>.</p>
+<h2 class="Ss" id="const_char*_webrtc_peer_manager_config_t::bind_address"><a class="permalink" href="#const_char*_webrtc_peer_manager_config_t::bind_address">const
+  char* webrtc_peer_manager_config_t::bind_address</a></h2>
+<p class="Pp">Optional local interface address for ICE sockets.</p>
+<p class="Pp">Definition at line <b>95</b> of file <b>peer_manager.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>webrtc_gathering_timeout_callback_t</b>
   webrtc_peer_manager_config_t::on_gathering_timeout</h2>
 <p class="Pp">Called when ICE gathering times out.</p>
-<p class="Pp">Definition at line <b>96</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Definition at line <b>104</b> of file <b>peer_manager.h</b>.</p>
 <p class="Pp">Referenced by
     <b>webrtc_peer_manager_check_gathering_timeouts()</b>.</p>
 </section>
@@ -93,45 +100,66 @@
 <h2 class="Ss"><b>webrtc_transport_ready_callback_t</b>
   webrtc_peer_manager_config_t::on_transport_ready</h2>
 <p class="Pp">Called when DataChannel ready.</p>
-<p class="Pp">Definition at line <b>95</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Definition at line <b>103</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_peer_manager_dispatch_ready()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> webrtc_peer_manager_config_t::relay_only</h2>
+<p class="Pp">Restrict ICE to TURN relay candidates.</p>
+<p class="Pp">Definition at line <b>100</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_peer_manager_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>webrtc_peer_role_t</b> webrtc_peer_manager_config_t::role</h2>
 <p class="Pp">Session role (creator or joiner).</p>
-<p class="Pp">Definition at line <b>90</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Definition at line <b>94</b> of file <b>peer_manager.h</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_peer_manager_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_webrtc_peer_manager_config_t::stun_count"><a class="permalink" href="#size_t_webrtc_peer_manager_config_t::stun_count">size_t
   webrtc_peer_manager_config_t::stun_count</a></h2>
 <p class="Pp">Number of STUN servers.</p>
-<p class="Pp">Definition at line <b>92</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Definition at line <b>97</b> of file <b>peer_manager.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>stun_server_t</b>*
   webrtc_peer_manager_config_t::stun_servers</h2>
 <p class="Pp">STUN servers for ICE.</p>
-<p class="Pp">Definition at line <b>91</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Definition at line <b>96</b> of file <b>peer_manager.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_webrtc_peer_manager_config_t::turn_count"><a class="permalink" href="#size_t_webrtc_peer_manager_config_t::turn_count">size_t
   webrtc_peer_manager_config_t::turn_count</a></h2>
 <p class="Pp">Number of TURN servers.</p>
-<p class="Pp">Definition at line <b>94</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Definition at line <b>99</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_peer_manager_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_webrtc_peer_manager_config_t::turn_credential"><a class="permalink" href="#const_char*_webrtc_peer_manager_config_t::turn_credential">const
+  char* webrtc_peer_manager_config_t::turn_credential</a></h2>
+<p class="Pp">Optional TURN credential override.</p>
+<p class="Pp">Definition at line <b>102</b> of file <b>peer_manager.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>turn_server_t</b>*
   webrtc_peer_manager_config_t::turn_servers</h2>
 <p class="Pp">TURN servers for relay.</p>
-<p class="Pp">Definition at line <b>93</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Definition at line <b>98</b> of file <b>peer_manager.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_webrtc_peer_manager_config_t::turn_username"><a class="permalink" href="#const_char*_webrtc_peer_manager_config_t::turn_username">const
+  char* webrtc_peer_manager_config_t::turn_username</a></h2>
+<p class="Pp">Optional TURN credential override.</p>
+<p class="Pp">Definition at line <b>101</b> of file <b>peer_manager.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void*_webrtc_peer_manager_config_t::user_data"><a class="permalink" href="#void*_webrtc_peer_manager_config_t::user_data">void*
   webrtc_peer_manager_config_t::user_data</a></h2>
 <p class="Pp">Passed to callbacks.</p>
-<p class="Pp">Definition at line <b>97</b> of file <b>peer_manager.h</b>.</p>
+<p class="Pp">Definition at line <b>105</b> of file <b>peer_manager.h</b>.</p>
 <p class="Pp">Referenced by
-    <b>webrtc_peer_manager_check_gathering_timeouts()</b>.</p>
+    <b>webrtc_peer_manager_check_gathering_timeouts()</b>, and
+    <b>webrtc_peer_manager_dispatch_ready()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -142,7 +170,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

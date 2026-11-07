@@ -30,16 +30,43 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">asciichat_errno.c - &#x1F6A8; Custom error code system with
-    formatted messages, thread-local storage, and errno mapping</p>
+<p class="Pp">asciichat_errno.c - Bounded, synchronized error stacks with
+    allocation-free recording.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>error_frame_t</b>
+  <br/>
+  struct <b>error_thread</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>MAX_THREAD_ERRORS</b> 64
+<p class="Pp">#define <b>ASCIICHAT_ERRNO_SUFFIX_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>ERROR_RENDER_SLOT_COUNT</b> 8
+  <br/>
+  #define <b>ERRNO_BUCKETS</b> 257
+  <br/>
+  #define <b>NO_FRAME</b> (-1)
+  <br/>
+  #define <b>RESERVED_FRAMES</b> (2 * <b>ASCIICHAT_ERRNO_MAX_THREADS</b>)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>error_thread</b> <b>error_thread_t</b>
   <br/>
   <br/>
 </p>
@@ -47,93 +74,133 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">void <b>log_labeled</b> (const char *label, <b>log_color_t</b>
-    color, const char *message,...)
+<p class="Pp">void <b>errno_notifications_enable</b> (<b>bool</b> enabled)
   <br/>
-  Print a labeled message with color. void <b>errno_set</b>
-    (<b>asciichat_error_t</b> code, const char *file, int line, const char
-    *function, const char *context_message)
+  void <b>errno_notifications_pause</b> (void)
   <br/>
-  Set error code with basic context. void
-    <b>errno_set_with_message</b> (<b>asciichat_error_t</b> code,
-    const char *file, int line, const char *function, const char *format,...)
+  <b>bool</b> <b>errno_notifications_pending</b> (void)
   <br/>
-  Set error code with formatted message. void
-    <b>errno_set_with_system_error</b> (<b>asciichat_error_t</b> code,
-    const char *file, int line, const char *function, int sys_errno)
+  <b>bool</b> <b>errno_notifications_suppress</b> (<b>bool</b> suppress)
   <br/>
-  Set error code with system error (errno). void
-    <b>errno_set_with_system_error_and_message</b>
-    (<b>asciichat_error_t</b> code, const char *file, int line, const char
-    *function, int sys_errno, const char *format,...)
+  size_t <b>errno_notifications_snapshot</b> (<b>asciichat_error_context_t</b>
+    *out, size_t capacity, <b>uint64_t</b> *dropped)
   <br/>
-  Set error code with system error and formatted message. void
-    <b>errno_set_with_wsa_error</b> (<b>asciichat_error_t</b> code,
-    const char *file, int line, const char *function, int wsa_error)
+  void <b>errno_notifications_dismiss</b> (<b>uint64_t</b> through_id)
   <br/>
-  Set error code with Windows socket error (WSA error). <b>bool</b>
-    <b>errno_has_wsa_error</b> (void)
+  const char * <b>asciichat_error_format</b> (const char *message,
+    <b>asciichat_error_t</b> code)
   <br/>
-  Check if current error has WSA error code. <b>bool</b>
-    <b>errno_has</b> (<b>asciichat_error_context_t</b> *context)
+  size_t <b>errno_title_snapshot</b> (<b>asciichat_error_context_t</b> *latest)
   <br/>
-  Check if error occurred and get full context. void
-    <b>errno_clear</b> (void)
-  <br/>
-  Clear the current error state. <b>asciichat_error_t</b>
-    <b>errno_get</b> (void)
-  <br/>
-  Get current error code. void <b>asciichat_fatal_with_context</b>
+  <b>asciichat_error_t</b> <b>errno_set_with_message</b>
     (<b>asciichat_error_t</b> code, const char *file, int line, const char
     *function, const char *format,...)
   <br/>
-  Exit with error code and context (used by FATAL macro). void
-    <b>asciichat_print_error_context</b> (const <b>asciichat_error_context_t</b>
-    *context)
+  <b>asciichat_error_t</b> <b>errno_set</b> (<b>asciichat_error_t</b> code,
+    const char *file, int line, const char *function, const char *message)
   <br/>
-  Print full error context to stderr. void <b>asciichat_error_stats_init</b>
-    (void)
+  <b>asciichat_error_t</b> <b>errno_set_with_system_error_and_message</b>
+    (<b>asciichat_error_t</b> code, const char *file, int line, const char
+    *function, int sys_errno, const char *format,...)
   <br/>
-  Initialize error statistics system. void <b>asciichat_error_stats_record</b>
-    (<b>asciichat_error_t</b> code)
+  <b>asciichat_error_t</b> <b>errno_set_with_system_error</b>
+    (<b>asciichat_error_t</b> code, const char *file, int line, const char
+    *function, int sys_errno)
   <br/>
-  Record an error in statistics. void <b>asciichat_error_stats_print</b> (void)
+  <b>asciichat_error_t</b> <b>errno_set_with_wsa_error</b>
+    (<b>asciichat_error_t</b> code, const char *file, int line, const char
+    *function, int wsa_error)
   <br/>
-  Print error statistics to stderr. void <b>asciichat_error_stats_reset</b>
-    (void)
+  <b>bool</b> <b>errno_has_thread_error</b> (<b>uint64_t</b> id,
+    <b>asciichat_error_context_t</b> *context)
   <br/>
-  Reset all error statistics to zero. <b>asciichat_error_stats_t</b>
-    <b>asciichat_error_stats_get</b> (void)
+  <b>bool</b> <b>errno_has</b> (<b>asciichat_error_context_t</b> *context)
   <br/>
-  Get current error statistics. <b>asciichat_error_t</b>
-    <b>errno_get_thread_error</b> (int <b>thread_id</b>)
+  <b>asciichat_error_t</b> <b>errno_get_thread_error</b> (<b>uint64_t</b> id)
   <br/>
-  Get error code for a specific thread. void <b>asciichat_set_thread_error</b>
-    (int <b>thread_id</b>, <b>asciichat_error_t</b> code)
+  <b>asciichat_error_t</b> <b>errno_get</b> (void)
   <br/>
-  Set error code for a specific thread. void <b>errno_clear_thread_error</b>
-    (int <b>thread_id</b>)
+  <b>bool</b> <b>errno_has_wsa_error</b> (void)
   <br/>
-  Clear error code for a specific thread. void <b>errno_suppress</b>
-    (<b>bool</b> suppress)
+  <b>bool</b> <b>errno_has_code_tid</b> (<b>uint64_t</b> id,
+    <b>asciichat_error_t</b> code)
   <br/>
-  Suppress error logging and reporting. void <b>errno_destroy</b>
-    (void)
+  <b>bool</b> <b>errno_has_code</b> (<b>asciichat_error_t</b> code)
   <br/>
-  Cleanup error system resources.
+  <b>bool</b> <b>errno_has_code_since</b> (<b>asciichat_errno_scope_t</b> scope,
+    <b>asciichat_error_t</b> code)
   <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
-<br/>
-<p class="Pp">__thread <b>asciichat_error_context_t</b>
-    <b>asciichat_errno_context</b>
+  <b>bool</b> <b>errno_peek_since</b> (<b>asciichat_errno_scope_t</b> scope,
+    <b>asciichat_error_context_t</b> *out)
   <br/>
-  Thread-local error context storage. __thread <b>asciichat_error_t</b>
-    <b>asciichat_errno</b> = <b>ASCIICHAT_OK</b>
+  <b>asciichat_error_t</b> <b>errno_import</b> (const
+    <b>asciichat_error_context_t</b> *cause)
   <br/>
-  Thread-local current error code.
+  void <b>errno_clear_thread_error</b> (<b>uint64_t</b> id)
+  <br/>
+  void <b>errno_clear_thread_errors</b> (<b>uint64_t</b> id)
+  <br/>
+  void <b>errno_clear</b> (void)
+  <br/>
+  void <b>errno_clear_all</b> (void)
+  <br/>
+  <b>bool</b> <b>errno_clear_if_top</b> (<b>uint64_t</b> id, <b>uint64_t</b>
+    generation, <b>uint64_t</b> error_id)
+  <br/>
+  <b>bool</b> <b>errno_clear_if_current</b> (<b>uint64_t</b> id, <b>uint64_t</b>
+    generation, <b>uint64_t</b> error_id)
+  <br/>
+  <b>asciichat_errno_scope_t</b> <b>errno_checkpoint</b> (void)
+  <br/>
+  <b>asciichat_errno_scope_t</b> <b>errno_scope_begin</b> (void)
+  <br/>
+  void <b>errno_scope_end</b> (<b>asciichat_errno_scope_t</b> scope,
+    <b>asciichat_errno_outcome_t</b> outcome)
+  <br/>
+  <b>asciichat_errno_snapshot_t</b> <b>errno_snapshot</b> (<b>uint64_t</b> id,
+    <b>asciichat_error_context_t</b> *out, size_t capacity)
+  <br/>
+  size_t <b>errno_threads_snapshot</b> (<b>uint64_t</b> *out, size_t capacity)
+  <br/>
+  size_t <b>errno_history_snapshot</b> (<b>asciichat_errno_history_t</b> *out,
+    size_t capacity)
+  <br/>
+  void <b>errno_suppress</b> (<b>bool</b> suppress)
+  <br/>
+  void <b>errno_destroy</b> (void)
+  <br/>
+  void <b>errno_shutdown</b> (void)
+  <br/>
+  void <b>asciichat_error_stats_init</b> (void)
+  <br/>
+  void <b>asciichat_error_stats_record</b> (<b>asciichat_error_t</b> code)
+  <br/>
+  <b>asciichat_error_stats_t</b> <b>asciichat_error_stats_get</b> (void)
+  <br/>
+  void <b>asciichat_error_stats_reset</b> (void)
+  <br/>
+  void <b>asciichat_error_stats_print</b> (void)
+  <br/>
+  void <b>asciichat_print_error_context</b> (const
+    <b>asciichat_error_context_t</b> *context)
+  <br/>
+  void <b>errno_print_stacks</b> (void)
+  <br/>
+  void <b>errno_print_history</b> (void)
+  <br/>
+  void <b>errno_print_hash_stats</b> (void)
+  <br/>
+  void <b>asciichat_fatal_with_context</b> (<b>asciichat_error_t</b> code, const
+    char *file, int line, const char *function, const char *format,...)
+  <br/>
+  <b>bool</b> <b>errno_scope_is_clean</b> (<b>asciichat_errno_scope_t</b> scope)
+  <br/>
+  void <b>errno_print_chain</b> (<b>uint64_t</b> id, <b>uint64_t</b> error_id)
+  <br/>
+  void <b>errno_request_exit</b> (<b>asciichat_error_t</b> code)
+  <br/>
+  <b>asciichat_error_t</b> <b>errno_exit_code</b> (void)
+  <br/>
   <br/>
 </p>
 </section>
@@ -141,8 +208,8 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">&#x1F6A8; Custom error code system with formatted messages,
-    thread-local storage, and errno mapping</p>
+<p class="Pp">Bounded, synchronized error stacks with allocation-free
+  recording.</p>
 <p class="Pp"></p>
 <p class="Pp"></p>
 <p class="Pp">Definition in file <b>asciichat_errno.c</b>.</p>
@@ -151,72 +218,1225 @@
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="_define_MAX_THREAD_ERRORS___64"><a class="permalink" href="#_define_MAX_THREAD_ERRORS___64">#define
-  MAX_THREAD_ERRORS 64</a></h2>
-<p class="Pp">Definition at line <b>64</b> of file <b>asciichat_errno.c</b>.</p>
-<p class="Pp">Referenced by <b>errno_clear_thread_error()</b>,
-    <b>errno_get_thread_error()</b>, and
-    <b>asciichat_set_thread_error()</b>.</p>
+<h2 class="Ss" id="_define_ASCIICHAT_ERRNO_SUFFIX_BUFFER_SIZE___256"><a class="permalink" href="#_define_ASCIICHAT_ERRNO_SUFFIX_BUFFER_SIZE___256">#define
+  ASCIICHAT_ERRNO_SUFFIX_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>asciichat_errno.c</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_error_format()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ERRNO_BUCKETS___257"><a class="permalink" href="#_define_ERRNO_BUCKETS___257">#define
+  ERRNO_BUCKETS 257</a></h2>
+<p class="Pp">Definition at line <b>27</b> of file <b>asciichat_errno.c</b>.</p>
+<p class="Pp">Referenced by <b>errno_print_hash_stats()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ERROR_RENDER_SLOT_COUNT___8"><a class="permalink" href="#_define_ERROR_RENDER_SLOT_COUNT___8">#define
+  ERROR_RENDER_SLOT_COUNT 8</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>asciichat_errno.c</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_error_format()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NO_FRAME___("><a class="permalink" href="#_define_NO_FRAME___(">#define
+  NO_FRAME (-1)</a></h2>
+<p class="Pp">Definition at line <b>28</b> of file <b>asciichat_errno.c</b>.</p>
+<p class="Pp">Referenced by <b>errno_clear_if_current()</b>,
+    <b>errno_peek_since()</b>, <b>errno_snapshot()</b>, and
+    <b>errno_title_snapshot()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_RESERVED_FRAMES___(2_*_"><a class="permalink" href="#_define_RESERVED_FRAMES___(2_*_">#define
+  RESERVED_FRAMES (2 * <b>ASCIICHAT_ERRNO_MAX_THREADS</b>)</a></h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>asciichat_errno.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> error_code</h2>
-<p class="Pp">Definition at line <b>67</b> of file <b>asciichat_errno.c</b>.</p>
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>error_thread</b> <b>error_thread_t</b></a></h2>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_asciichat_error_format_(const_char_*_message,_"><a class="permalink" href="#const_char_*_asciichat_error_format_(const_char_*_message,_">const
+  char * asciichat_error_format (const char * message, <b>asciichat_error_t</b>
+  code)</a></h2>
+<p class="Pp">Format &quot;message: description (code=N)&quot;; NULL/empty
+    message returns only &quot;description (code=N)&quot;. Allocation-free and
+    thread-local; the returned string survives the next seven calls on this
+    thread. Copy it for longer storage. Message text is limited to
+    ASCIICHAT_ERRNO_MESSAGE_MAX-1 bytes; the code and meaning are retained. An
+    existing matching suffix is not duplicated. This is plain text: use
+    SET_ERRNO(code, &quot;%s&quot;, formatted), never pass formatted text as the
+    printf format. SET_ERRNO already logs code/meaning automatically, so callers
+    normally supply only their contextual message.</p>
+<p class="Pp">Definition at line <b>151</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>151                                                                                 {
+152   static PLATFORM_THREAD_LOCAL char buffers[ERROR_RENDER_SLOT_COUNT]
+153                                            [ASCIICHAT_ERRNO_MESSAGE_MAX + ASCIICHAT_ERRNO_SUFFIX_BUFFER_SIZE];
+154   static PLATFORM_THREAD_LOCAL unsigned next;
+155   char *output = buffers[next++ % 8];
+156   char suffix[ASCIICHAT_ERRNO_SUFFIX_BUFFER_SIZE];
+157   snprintf(suffix, sizeof(suffix), &quot;%s (code=%d)&quot;, asciichat_error_string(code), code);
+158   if (!message || !*message || !strcmp(message, asciichat_error_string(code))) {
+159     snprintf(output, sizeof(buffers[0]), &quot;%s&quot;, suffix);
+160   } else {
+161     size_t length = strlen(message);
+162     size_t suffix_length = strlen(suffix);
+163     if (length &gt;= suffix_length &amp;&amp; !strcmp(message + length - suffix_length, suffix))
+164       snprintf(output, sizeof(buffers[0]), &quot;%s&quot;, message);
+165     else {
+166       size_t limit = length &lt; ASCIICHAT_ERRNO_MESSAGE_MAX ? length : ASCIICHAT_ERRNO_MESSAGE_MAX - 1;
+167       // Do not cut a UTF-8 character in half when shortening the message.
+168       while (limit &amp;&amp; ((unsigned char)message[limit] &amp; 0xc0) == 0x80)
+169         --limit;
+170       snprintf(output, sizeof(buffers[0]), &quot;%.*s: %s&quot;, (int)limit, message, suffix);
+171     }
+172   }
+173   return output;
+174 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_MESSAGE_MAX</b>,
+    <b>ASCIICHAT_ERRNO_SUFFIX_BUFFER_SIZE</b>, <b>asciichat_error_format()</b>,
+    <b>ERROR_RENDER_SLOT_COUNT</b>, <b>error_thread::next</b>, and
+    <b>PLATFORM_THREAD_LOCAL</b>.</p>
+<p class="Pp">Referenced by <b>acds_on_host_announcement()</b>,
+    <b>acds_send_current_host()</b>, <b>acip_client_receive_packet()</b>,
+    <b>acip_handle_server_packet()</b>, <b>acip_send_image_frame_h265()</b>,
+    <b>acip_server_receive_and_dispatch()</b>, <b>asciichat_error_format()</b>,
+    <b>asciichat_fatal_with_context()</b>, <b>capture_init()</b>,
+    <b>discovery_main()</b>, <b>discovery_session_start()</b>,
+    <b>h265_client_init_media_source()</b>, <b>handle_audio_batch_packet()</b>,
+    <b>handle_audio_opus_batch_packet()</b>, <b>handle_audio_opus_packet()</b>,
+    <b>handle_audio_packet()</b>, <b>handle_image_frame_h265_packet()</b>,
+    <b>log_named_format_or_original()</b>, <b>main()</b>,
+    <b>media_source_create_interruptible()</b>, <b>media_source_seek()</b>,
+    <b>mirror_main()</b>, <b>mixer_add_source()</b>,
+    <b>render_file_create()</b>, <b>session_display_create()</b>,
+    <b>session_display_encode_frame()</b>,
+    <b>session_display_init_render_file()</b>,
+    <b>session_display_render_frame()</b>,
+    <b>session_display_write_ascii_frame()</b>, <b>session_render_loop()</b>,
+    <b>splash_wait_for_animation()</b>, and
+  <b>video_frame_buffer_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_stats_t</b> asciichat_error_stats_get (void
+  )</h2>
+<p class="Pp">Definition at line <b>763</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>763                                                         {
+764   registry_lock();
+765   asciichat_error_stats_t stats = g_stats;
+766   registry_unlock();
+767   return stats;
+768 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_error_stats_get()</b>, and
+  <b>g_stats</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_error_stats_get()</b>, and
+    <b>asciichat_error_stats_print()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_error_stats_init_(void_)"><a class="permalink" href="#void_asciichat_error_stats_init_(void_)">void
+  asciichat_error_stats_init (void )</a></h2>
+<p class="Pp">Definition at line <b>752</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>752                                       {
+753   registry_lock();
+754   initialize_locked();
+755   registry_unlock();
+756 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_error_stats_init()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_error_stats_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_error_stats_print_(void_)"><a class="permalink" href="#void_asciichat_error_stats_print_(void_)">void
+  asciichat_error_stats_print (void )</a></h2>
+<p class="Pp">Definition at line <b>777</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>777                                        {
+778   asciichat_error_stats_t stats = asciichat_error_stats_get();
+779   log_plain(&quot;Errors: total=%&quot; PRIu64 &quot; pending=%zu threads=%zu dropped=%&quot; PRIu64 &quot; history_overwritten=%&quot; PRIu64,
+780             stats.total_errors, stats.pending_errors, stats.registered_threads, stats.dropped_errors,
+781             stats.overwritten_history);
+782   for (size_t i = 1; i &lt; ARRAY_SIZE(stats.error_counts); ++i)
+783     if (stats.error_counts[i])
+784       log_plain(&quot;  %s: %&quot; PRIu64, asciichat_error_string((asciichat_error_t)i), stats.error_counts[i]);
+785 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_error_stats_get()</b>,
+    <b>asciichat_error_stats_print()</b>,
+    <b>asciichat_error_stats_t::dropped_errors</b>,
+    <b>asciichat_error_stats_t::error_counts</b>, <b>log_plain</b>,
+    <b>asciichat_error_stats_t::overwritten_history</b>,
+    <b>asciichat_error_stats_t::pending_errors</b>,
+    <b>asciichat_error_stats_t::registered_threads</b>, and
+    <b>asciichat_error_stats_t::total_errors</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_error_stats_print()</b>,
+    <b>debug_stats_print()</b>, <b>errno_print_stacks()</b>, and
+    <b>stats_logger_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_error_stats_record_("><a class="permalink" href="#void_asciichat_error_stats_record_(">void
+  asciichat_error_stats_record (<b>asciichat_error_t</b> code)</a></h2>
+<p class="Pp">Definition at line <b>757</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>757                                                           {
+758   uint64_t timestamp = time_ns_to_us(time_get_realtime_ns());
+759   registry_lock();
+760   record_stats_locked(code, timestamp);
+761   registry_unlock();
+762 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_error_stats_record()</b>, and
+    <b>time_get_realtime_ns()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_error_stats_record()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_error_stats_reset_(void_)"><a class="permalink" href="#void_asciichat_error_stats_reset_(void_)">void
+  asciichat_error_stats_reset (void )</a></h2>
+<p class="Pp">Definition at line <b>769</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>769                                        {
+770   registry_lock();
+771   size_t pending = g_stats.pending_errors, threads = g_stats.registered_threads;
+772   memset(&amp;g_stats, 0, sizeof(g_stats));
+773   g_stats.pending_errors = pending;
+774   g_stats.registered_threads = threads;
+775   registry_unlock();
+776 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_error_stats_reset()</b>, <b>g_stats</b>,
+    <b>asciichat_error_stats_t::pending_errors</b>, and
+    <b>asciichat_error_stats_t::registered_threads</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_error_stats_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_asciichat_print_error_context_(const_"><a class="permalink" href="#void_asciichat_print_error_context_(const_">void
+  asciichat_print_error_context (const <b>asciichat_error_context_t</b> *
+  context)</a></h2>
+<p class="Pp">Definition at line <b>818</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>818                                                                              {
+819   print_error_context(context, true);
+820 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_print_error_context()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_print_error_context()</b>, and
+    <b>errno_print_stacks()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_errno_scope_t</b> errno_checkpoint (void )</h2>
+<p class="Pp">Definition at line <b>659</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>659                                                {
+660   return checkpoint(false);
+661 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_checkpoint()</b>.</p>
+<p class="Pp">Referenced by <b>action_completions()</b>,
+    <b>asciichat_mdns_advertise()</b>, <b>capture_init()</b>,
+    <b>errno_checkpoint()</b>, <b>ffmpeg_decoder_poll_video()</b>,
+    <b>log_net_message()</b>, <b>media_source_create_interruptible()</b>,
+    <b>options_config_validate()</b>,
+    <b>receive_packet_secure_with_timeout()</b>,
+    <b>session_capture_create()</b>, <b>session_participant_start_audio()</b>,
+    <b>session_participant_start_video()</b>, and
+  <b>session_render_loop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_clear_(void_)"><a class="permalink" href="#void_errno_clear_(void_)">void
+  errno_clear (void )</a></h2>
+<p class="Pp">Definition at line <b>604</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>604                        {
+605   clear_thread(thread_current_id(), false);
+606   platform_clear_error_state();
+607 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_clear()</b>,
+    <b>platform_clear_error_state()</b>, and <b>thread_current_id()</b>.</p>
+<p class="Pp">Referenced by <b>errno_clear()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_clear_all_(void_)"><a class="permalink" href="#void_errno_clear_all_(void_)">void
+  errno_clear_all (void )</a></h2>
+<p class="Pp">Definition at line <b>608</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>608                            {
+609   clear_thread(thread_current_id(), true);
+610   platform_clear_error_state();
+611 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_clear_all()</b>,
+    <b>platform_clear_error_state()</b>, and <b>thread_current_id()</b>.</p>
+<p class="Pp">Referenced by <b>errno_clear_all()</b>, and
+    <b>wasm_error_dismiss()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> errno_clear_if_current (<b>uint64_t</b> thread_id,
+  <b>uint64_t</b> generation, <b>uint64_t</b> error_id)</h2>
+<p class="Pp">Clear one displayed pending frame when its thread generation and
+    ID still match.</p>
+<p class="Pp">Definition at line <b>623</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>623                                                                                  {
+624   registry_lock();
+625   uint64_t now = time_get_ns();
+626   error_thread_t *thread = find_thread(id);
+627   int previous = NO_FRAME;
+628   int index = thread ? thread-&gt;top : NO_FRAME;
+629   while (index != NO_FRAME &amp;&amp; g_frames[index].context.error_id != error_id) {
+630     previous = index;
+631     index = g_frames[index].next;
+632   }
+633   bool matches = thread &amp;&amp; thread-&gt;generation == generation &amp;&amp; index != NO_FRAME;
+634   if (matches) {
+635     if (previous == NO_FRAME)
+636       thread-&gt;top = g_frames[index].next;
+637     else
+638       g_frames[previous].next = g_frames[index].next;
+639     --thread-&gt;depth;
+640     release_frame_locked(index, ASCIICHAT_ERRNO_HANDLED, now);
+641   }
+642   registry_unlock();
+643   return matches;
+644 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_HANDLED</b>,
+    <b>error_thread::depth</b>, <b>errno_clear_if_current()</b>,
+    <b>asciichat_error_context_t::error_id</b>, <b>error_thread::generation</b>,
+    <b>NO_FRAME</b>, <b>time_get_ns()</b>, and <b>error_thread::top</b>.</p>
+<p class="Pp">Referenced by <b>errno_clear_if_current()</b>, and
+    <b>ui_errno_stacks_handle_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> errno_clear_if_top (<b>uint64_t</b> id,
+  <b>uint64_t</b> generation, <b>uint64_t</b> error_id)</h2>
+<p class="Pp">Definition at line <b>612</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>612                                                                              {
+613   registry_lock();
+614   uint64_t now = time_get_ns();
+615   error_thread_t *thread = find_thread(id);
+616   bool matches =
+617       thread &amp;&amp; thread-&gt;generation == generation &amp;&amp; thread-&gt;depth &amp;&amp; g_frames[thread-&gt;top].context.error_id == error_id;
+618   if (matches)
+619     pop_locked(thread, ASCIICHAT_ERRNO_HANDLED, now);
+620   registry_unlock();
+621   return matches;
+622 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_HANDLED</b>,
+    <b>error_thread::depth</b>, <b>errno_clear_if_top()</b>,
+    <b>error_thread::generation</b>, <b>time_get_ns()</b>, and
+    <b>error_thread::top</b>.</p>
+<p class="Pp">Referenced by <b>errno_clear_if_top()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_clear_thread_error_("><a class="permalink" href="#void_errno_clear_thread_error_(">void
+  errno_clear_thread_error (<b>uint64_t</b> id)</a></h2>
+<p class="Pp">Definition at line <b>598</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>598                                            {
+599   clear_thread(id, false);
+600 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_clear_thread_error()</b>.</p>
+<p class="Pp">Referenced by <b>errno_clear_thread_error()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_clear_thread_errors_("><a class="permalink" href="#void_errno_clear_thread_errors_(">void
+  errno_clear_thread_errors (<b>uint64_t</b> id)</a></h2>
+<p class="Pp">Definition at line <b>601</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>601                                             {
+602   clear_thread(id, true);
+603 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_clear_thread_errors()</b>.</p>
+<p class="Pp">Referenced by <b>errno_clear_thread_errors()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_destroy_(void_)"><a class="permalink" href="#void_errno_destroy_(void_)">void
+  errno_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>716</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>716                          {
+717   uint64_t now = time_get_ns();
+718   uint64_t id = thread_current_id();
+719   registry_lock();
+720 #ifndef EMSCRIPTEN_BUILD
+721   if (g_tls_ready)
+722     ascii_tls_set(g_tls_key, NULL);
+723 #endif
+724   error_thread_t *thread = find_thread(id);
+725   if (thread)
+726     unregister_locked(thread, now);
+727   registry_unlock();
+728 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_tls_set()</b>, <b>errno_destroy()</b>,
+    <b>thread_current_id()</b>, and <b>time_get_ns()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
+    <b>client_cleanup()</b>, <b>errno_destroy()</b>, <b>errno_shutdown()</b>,
+    and <b>mirror_cleanup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> errno_exit_code (void )</h2>
+<p class="Pp">Definition at line <b>926</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>926                                         {
+927   registry_lock();
+928   asciichat_error_t code = g_exit_code;
+929   registry_unlock();
+930   return code;
+931 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_exit_code()</b>.</p>
+<p class="Pp">Referenced by <b>errno_exit_code()</b>, and <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> errno_get (void )</h2>
+<p class="Pp">Definition at line <b>522</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>522                                   {
+523   return errno_get_thread_error(thread_current_id());
+524 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_get()</b>, <b>errno_get_thread_error()</b>,
+    and <b>thread_current_id()</b>.</p>
+<p class="Pp">Referenced by <b>errno_get()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> errno_get_thread_error (<b>uint64_t</b>
+  id)</h2>
+<p class="Pp">Definition at line <b>515</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>515                                                       {
+516   registry_lock();
+517   error_thread_t *thread = find_thread(id);
+518   asciichat_error_t code = thread &amp;&amp; thread-&gt;depth ? g_frames[thread-&gt;top].context.code : ASCIICHAT_OK;
+519   registry_unlock();
+520   return code;
+521 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>error_thread::depth</b>,
+    <b>errno_get_thread_error()</b>, and <b>error_thread::top</b>.</p>
+<p class="Pp">Referenced by <b>errno_get()</b>, and
+    <b>errno_get_thread_error()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> errno_has (<b>asciichat_error_context_t</b> *
+  context)</h2>
+<p class="Pp">Definition at line <b>512</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>512                                                    {
+513   return errno_has_thread_error(thread_current_id(), context);
+514 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_has()</b>, <b>errno_has_thread_error()</b>,
+    and <b>thread_current_id()</b>.</p>
+<p class="Pp">Referenced by <b>errno_has()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> errno_has_code (<b>asciichat_error_t</b> code)</h2>
+<p class="Pp">Definition at line <b>548</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>548                                             {
+549   return errno_has_code_tid(thread_current_id(), code);
+550 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_has_code()</b>, <b>errno_has_code_tid()</b>,
+    and <b>thread_current_id()</b>.</p>
+<p class="Pp">Referenced by <b>errno_has_code()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> errno_has_code_since (<b>asciichat_errno_scope_t</b>
+  scope, <b>asciichat_error_t</b> code)</h2>
+<p class="Pp">Definition at line <b>551</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>551                                                                                  {
+552   registry_lock();
+553   error_thread_t *thread = find_thread(scope.thread_id);
+554   bool found = thread &amp;&amp; thread-&gt;generation == scope.generation &amp;&amp; has_code_locked(thread, scope.after_id, code);
+555   registry_unlock();
+556   return found;
+557 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno_scope_t::after_id</b>,
+    <b>errno_has_code_since()</b>, <b>asciichat_errno_scope_t::generation</b>,
+    <b>error_thread::generation</b>, and
+    <b>asciichat_errno_scope_t::thread_id</b>.</p>
+<p class="Pp">Referenced by <b>errno_has_code_since()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> errno_has_code_tid (<b>uint64_t</b> id,
+  <b>asciichat_error_t</b> code)</h2>
+<p class="Pp">Definition at line <b>542</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>542                                                              {
+543   registry_lock();
+544   bool found = has_code_locked(find_thread(id), 0, code);
+545   registry_unlock();
+546   return found;
+547 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_has_code_tid()</b>.</p>
+<p class="Pp">Referenced by <b>errno_has_code()</b>, and
+    <b>errno_has_code_tid()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> errno_has_thread_error (<b>uint64_t</b> id,
+  <b>asciichat_error_context_t</b> * context)</h2>
+<p class="Pp">Definition at line <b>499</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>499                                                                              {
+500   registry_lock();
+501   error_thread_t *thread = find_thread(id);
+502   bool found = thread &amp;&amp; thread-&gt;depth;
+503   if (context) {
+504     if (found)
+505       *context = g_frames[thread-&gt;top].context;
+506     else
+507       memset(context, 0, sizeof(*context));
+508   }
+509   registry_unlock();
+510   return found;
+511 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>error_thread::depth</b>,
+    <b>errno_has_thread_error()</b>, and <b>error_thread::top</b>.</p>
+<p class="Pp">Referenced by <b>errno_has()</b>, and
+    <b>errno_has_thread_error()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> errno_has_wsa_error (void )</h2>
+<p class="Pp">Definition at line <b>525</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>525                                {
+526   asciichat_error_context_t context;
+527   return HAS_ERRNO(&amp;context) &amp;&amp; context.has_wsa_error;
+528 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_has_wsa_error()</b>, <b>HAS_ERRNO</b>, and
+    <b>asciichat_error_context_t::has_wsa_error</b>.</p>
+<p class="Pp">Referenced by <b>errno_has_wsa_error()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_errno_history_snapshot_("><a class="permalink" href="#size_t_errno_history_snapshot_(">size_t
+  errno_history_snapshot (<b>asciichat_errno_history_t</b> * out, size_t
+  capacity)</a></h2>
+<p class="Pp">Definition at line <b>703</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>703                                                                                {
+704   registry_lock();
+705   size_t count = g_history_count;
+706   if (out)
+707     for (size_t i = 0; i &lt; count &amp;&amp; i &lt; capacity; ++i)
+708       out[i] = g_history[(g_history_next + ASCIICHAT_ERRNO_HISTORY_SIZE - 1 - i) % ASCIICHAT_ERRNO_HISTORY_SIZE];
+709   registry_unlock();
+710   return count;
+711 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_HISTORY_SIZE</b>, and
+    <b>errno_history_snapshot()</b>.</p>
+<p class="Pp">Referenced by <b>errno_history_snapshot()</b>, and
+    <b>errno_print_history()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> errno_import (const
+  <b>asciichat_error_context_t</b> * cause)</h2>
+<p class="Pp">Import an owned value snapshot into the caller's stack, linking to
+    its original ID. Synchronization of snapshot transfer belongs to the
+    operation owner.</p>
+<p class="Pp">Definition at line <b>569</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>569                                                                        {
+570   if (!cause || cause-&gt;code == ASCIICHAT_OK)
+571     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing failure snapshot&quot;);
+572   if (g_recording)
+573     return cause-&gt;code;
+574   g_recording = true;
+575   asciichat_error_context_t copy = *cause;
+576   copy.cause_id = cause-&gt;error_id;
+577   copy.thread_id = thread_current_id();
+578   copy.timestamp = time_ns_to_us(time_get_realtime_ns());
+579   copy.created_ns = time_get_ns();
+580   copy.backtrace.symbols = NULL;
+581   copy.backtrace.tried_symbolize = false;
+582   push_context(&amp;copy);
+583   g_recording = false;
+584   return copy.code;
+585 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>asciichat_error_context_t::backtrace</b>,
+    <b>asciichat_error_context_t::cause_id</b>,
+    <b>asciichat_error_context_t::code</b>,
+    <b>asciichat_error_context_t::created_ns</b>, <b>errno_import()</b>,
+    <b>asciichat_error_context_t::error_id</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>SET_ERRNO</b>, <b>backtrace_t::symbols</b>, <b>thread_current_id()</b>,
+    <b>asciichat_error_context_t::thread_id</b>, <b>time_get_ns()</b>,
+    <b>time_get_realtime_ns()</b>, <b>asciichat_error_context_t::timestamp</b>,
+    and <b>backtrace_t::tried_symbolize</b>.</p>
+<p class="Pp">Referenced by <b>errno_import()</b>,
+    <b>ffmpeg_decoder_read_video_frame()</b>, and
+    <b>session_pipeline_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_notifications_dismiss_("><a class="permalink" href="#void_errno_notifications_dismiss_(">void
+  errno_notifications_dismiss (<b>uint64_t</b> through_id)</a></h2>
+<p class="Pp">Definition at line <b>125</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>125                                                       {
+126   registry_lock();
+127   if (through_id &gt; g_title_dismissed_through)
+128     g_title_dismissed_through = through_id;
+129   while (g_notification_count &amp;&amp; g_notifications[g_notification_first].error_id &lt;= through_id) {
+130     memset(&amp;g_notifications[g_notification_first], 0, sizeof(g_notifications[0]));
+131     g_notification_first = (g_notification_first + 1) % ASCIICHAT_ERRNO_HISTORY_SIZE;
+132     --g_notification_count;
+133   }
+134   g_notification_dropped = 0;
+135   atomic_store_bool_impl(&amp;g_notifications_pending, g_notification_count != 0);
+136   registry_unlock();
+137 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_HISTORY_SIZE</b>,
+    <b>atomic_store_bool_impl()</b>, and
+  <b>errno_notifications_dismiss()</b>.</p>
+<p class="Pp">Referenced by <b>errno_notifications_dismiss()</b>, and
+    <b>ui_error_popup_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_notifications_enable_("><a class="permalink" href="#void_errno_notifications_enable_(">void
+  errno_notifications_enable (<b>bool</b> enabled)</a></h2>
+<p class="Pp">Independent, bounded UI notifications. Acknowledgment never
+    changes pending stacks. Enabling starts a fresh terminal session; repeated
+    enable calls preserve the batch. Snapshots are oldest-first. Dismiss only
+    through the last displayed ID so concurrent arrivals remain visible. No
+    callbacks, allocation, or symbolization run on producers.</p>
+<p class="Pp">Definition at line <b>83</b> of file <b>asciichat_errno.c</b>.</p>
+<pre>83                                               {
+84   registry_lock();
+85   if (!enabled || (!g_notifications_enabled &amp;&amp; !g_notifications_paused)) {
+86     g_notification_first = g_notification_count = 0;
+87     g_notification_dropped = 0;
+88     atomic_store_bool_impl(&amp;g_notifications_pending, false);
+89   }
+90   g_notifications_enabled = enabled;
+91   g_notifications_paused = false;
+92   registry_unlock();
+93 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool_impl()</b>, and
+    <b>errno_notifications_enable()</b>.</p>
+<p class="Pp">Referenced by <b>errno_notifications_enable()</b>,
+    <b>errno_shutdown()</b>, <b>ui_controller_finish()</b>, and
+    <b>ui_controller_shutdown()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_notifications_pause_(void_)"><a class="permalink" href="#void_errno_notifications_pause_(void_)">void
+  errno_notifications_pause (void )</a></h2>
+<p class="Pp">Stop collecting new notifications while retaining those already
+    queued.</p>
+<p class="Pp">Definition at line <b>95</b> of file <b>asciichat_errno.c</b>.</p>
+<pre>95                                      {
+96   registry_lock();
+97   if (g_notifications_enabled) {
+98     g_notifications_enabled = false;
+99     g_notifications_paused = true;
+100   }
+101   registry_unlock();
+102 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_notifications_pause()</b>.</p>
+<p class="Pp">Referenced by <b>errno_notifications_pause()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> errno_notifications_pending (void )</h2>
+<p class="Pp">Definition at line <b>104</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>104                                        {
+105   return atomic_load_bool_impl(&amp;g_notifications_pending);
+106 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool_impl()</b>, and
+    <b>errno_notifications_pending()</b>.</p>
+<p class="Pp">Referenced by <b>errno_notifications_pending()</b>,
+    <b>ui_error_popup_preserve()</b>, and <b>ui_error_popup_visible()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_errno_notifications_snapshot_("><a class="permalink" href="#size_t_errno_notifications_snapshot_(">size_t
+  errno_notifications_snapshot (<b>asciichat_error_context_t</b> * out, size_t
+  capacity, <b>uint64_t</b> * dropped)</a></h2>
+<p class="Pp">Definition at line <b>114</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>114                                                                                                         {
+115   registry_lock();
+116   size_t count = MIN(capacity, g_notification_count);
+117   for (size_t i = 0; out &amp;&amp; i &lt; count; ++i)
+118     out[i] = g_notifications[(g_notification_first + i) % ASCIICHAT_ERRNO_HISTORY_SIZE];
+119   if (dropped)
+120     *dropped = g_notification_dropped;
+121   registry_unlock();
+122   return count;
+123 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_HISTORY_SIZE</b>,
+    <b>errno_notifications_snapshot()</b>, and <b>MIN</b>.</p>
+<p class="Pp">Referenced by <b>errno_notifications_snapshot()</b>, and
+    <b>ui_error_popup_preserve()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> errno_notifications_suppress (<b>bool</b>
+  suppress)</h2>
+<p class="Pp">Suppress UI notifications on this thread, without suppressing
+    errno storage/logging.</p>
+<p class="Pp">Definition at line <b>108</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>108                                                  {
+109   bool previous = g_suppress_notifications;
+110   g_suppress_notifications = suppress;
+111   return previous;
+112 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_notifications_suppress()</b>.</p>
+<p class="Pp">Referenced by <b>discovery_mdns_query()</b>,
+    <b>discovery_session_create()</b>, <b>errno_notifications_suppress()</b>,
+    <b>nat_detect_quality()</b>, <b>session_server_like_run()</b>, and
+    <b>ui_error_popup_preserve()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> errno_peek_since (<b>asciichat_errno_scope_t</b>
+  scope, <b>asciichat_error_context_t</b> * out)</h2>
+<p class="Pp">Copy the newest error belonging to this operation, without
+    consuming it.</p>
+<p class="Pp">Definition at line <b>559</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>559                                                                                      {
+560   registry_lock();
+561   error_thread_t *thread = find_thread(scope.thread_id);
+562   bool found = thread &amp;&amp; thread-&gt;generation == scope.generation &amp;&amp; thread-&gt;top != NO_FRAME &amp;&amp;
+563                g_frames[thread-&gt;top].context.error_id &gt; scope.after_id;
+564   if (found &amp;&amp; out)
+565     *out = g_frames[thread-&gt;top].context;
+566   registry_unlock();
+567   return found;
+568 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno_scope_t::after_id</b>,
+    <b>errno_peek_since()</b>, <b>asciichat_errno_scope_t::generation</b>,
+    <b>error_thread::generation</b>, <b>NO_FRAME</b>,
+    <b>asciichat_errno_scope_t::thread_id</b>, and <b>error_thread::top</b>.</p>
+<p class="Pp">Referenced by <b>action_completions()</b>, <b>capture_init()</b>,
+    <b>errno_peek_since()</b>, <b>ffmpeg_decoder_poll_video()</b>,
+    <b>log_net_message()</b>, <b>options_config_validate()</b>,
+    <b>session_capture_create()</b>, and <b>session_render_loop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_print_chain_("><a class="permalink" href="#void_errno_print_chain_(">void
+  errno_print_chain (<b>uint64_t</b> id, <b>uint64_t</b> error_id)</a></h2>
+<p class="Pp">Definition at line <b>903</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>903                                                        {
+904   asciichat_error_context_t frames[ASCIICHAT_ERRNO_MAX_DEPTH];
+905   size_t count = errno_snapshot(id, frames, ASCIICHAT_ERRNO_MAX_DEPTH).copied;
+906   log_plain(&quot;Failure chain (outer context -&gt; root cause):&quot;);
+907   for (size_t i = 0; i &lt; count &amp;&amp; error_id; ++i) {
+908     if (frames[i].error_id == error_id) {
+909       // Automatic error logs keep their full cause metadata at normal verbosity.
+910       // Symbolization can launch external tools and is reserved for Debug logs;
+911       // explicit stack reports above still include backtraces at every level.
+912       print_error_context(&amp;frames[i], log_get_level() &lt;= LOG_DEBUG);
+913       error_id = frames[i].cause_id;
+914     }
+915   }
+916   if (error_id)
+917     log_plain(&quot;  Cause #%&quot; PRIu64 &quot; was resolved or evicted; consult handled-error history&quot;, error_id);
+918 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_MAX_DEPTH</b>,
+    <b>asciichat_error_context_t::cause_id</b>,
+    <b>asciichat_errno_snapshot_t::copied</b>, <b>errno_print_chain()</b>,
+    <b>errno_snapshot()</b>, <b>LOG_DEBUG</b>, <b>log_get_level()</b>, and
+    <b>log_plain</b>.</p>
+<p class="Pp">Referenced by <b>errno_print_chain()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_print_hash_stats_(void_)"><a class="permalink" href="#void_errno_print_hash_stats_(void_)">void
+  errno_print_hash_stats (void )</a></h2>
+<p class="Pp">Definition at line <b>856</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>856                                   {
+857   size_t used = 0, max_chain = 0;
+858   registry_lock();
+859   for (size_t i = 0; i &lt; ERRNO_BUCKETS; ++i) {
+860     size_t chain = 0;
+861     for (error_thread_t *thread = g_buckets[i]; thread; thread = thread-&gt;next)
+862       ++chain;
+863     used += chain != 0;
+864     if (chain &gt; max_chain)
+865       max_chain = chain;
+866   }
+867   size_t entries = g_stats.registered_threads;
+868   registry_unlock();
+869   log_plain(&quot;Error registry: entries=%zu buckets=%d used=%zu max_chain=%zu reserved_bytes=%zu&quot;, entries, ERRNO_BUCKETS,
+870             used, max_chain, sizeof(g_threads) + sizeof(g_buckets) + sizeof(g_frames) + sizeof(g_history));
+871 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERRNO_BUCKETS</b>, <b>errno_print_hash_stats()</b>,
+    <b>g_stats</b>, <b>log_plain</b>, <b>error_thread::next</b>, and
+    <b>asciichat_error_stats_t::registered_threads</b>.</p>
+<p class="Pp">Referenced by <b>errno_print_hash_stats()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_print_history_(void_)"><a class="permalink" href="#void_errno_print_history_(void_)">void
+  errno_print_history (void )</a></h2>
+<p class="Pp">Definition at line <b>845</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>845                                {
+846   asciichat_errno_history_t events[ASCIICHAT_ERRNO_HISTORY_SIZE];
+847   size_t count = errno_history_snapshot(events, ASCIICHAT_ERRNO_HISTORY_SIZE);
+848   static const char *outcomes[] = {&quot;handled&quot;, &quot;dismissed&quot;, &quot;thread-exit&quot;, &quot;overflow&quot;};
+849   for (size_t i = 0; i &lt; count; ++i) {
+850     const asciichat_errno_history_t *event = &amp;events[i];
+851     log_plain(&quot;Error #%&quot; PRIu64 &quot; thread=%&quot; PRIu64 &quot; code=%d %s after %.3fms: %s&quot;, event-&gt;context.error_id,
+852               event-&gt;context.thread_id, event-&gt;context.code, outcomes[event-&gt;outcome],
+853               (double)(event-&gt;resolved_ns - event-&gt;context.created_ns) / 1e6, event-&gt;context.context_message);
+854   }
+855 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_HISTORY_SIZE</b>,
+    <b>errno_history_snapshot()</b>, <b>errno_print_history()</b>, and
+    <b>log_plain</b>.</p>
+<p class="Pp">Referenced by <b>errno_print_history()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_print_stacks_(void_)"><a class="permalink" href="#void_errno_print_stacks_(void_)">void
+  errno_print_stacks (void )</a></h2>
+<p class="Pp">Definition at line <b>822</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>822                               {
+823   // Copy one bounded thread stack at a time. A generation check prevents a
+824   // reused thread slot from being attributed to the thread sampled earlier.
+825   uint64_t ids[ASCIICHAT_ERRNO_MAX_THREADS], generations[ASCIICHAT_ERRNO_MAX_THREADS];
+826   size_t count = 0;
+827   registry_lock();
+828   for (size_t i = 0; i &lt; ASCIICHAT_ERRNO_MAX_THREADS; ++i)
+829     if (g_threads[i].depth) {
+830       ids[count] = g_threads[i].id;
+831       generations[count++] = g_threads[i].generation;
+832     }
+833   registry_unlock();
+834   log_plain(&quot;Pending error stacks (%zu threads):&quot;, count);
+835   for (size_t i = 0; i &lt; count; ++i) {
+836     asciichat_error_context_t contexts[ASCIICHAT_ERRNO_MAX_DEPTH];
+837     size_t depth = errno_snapshot(ids[i], contexts, ASCIICHAT_ERRNO_MAX_DEPTH).copied;
+838     if (!depth || contexts[0].generation != generations[i])
+839       continue;
+840     for (size_t j = 0; j &lt; depth; ++j)
+841       asciichat_print_error_context(&amp;contexts[j]);
+842   }
+843   asciichat_error_stats_print();
+844 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_MAX_DEPTH</b>,
+    <b>ASCIICHAT_ERRNO_MAX_THREADS</b>, <b>asciichat_error_stats_print()</b>,
+    <b>asciichat_print_error_context()</b>,
+    <b>asciichat_errno_snapshot_t::copied</b>, <b>error_thread::depth</b>,
+    <b>errno_print_stacks()</b>, <b>errno_snapshot()</b>,
+    <b>error_thread::generation</b>, and <b>log_plain</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>, and
+    <b>errno_print_stacks()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_request_exit_("><a class="permalink" href="#void_errno_request_exit_(">void
+  errno_request_exit (<b>asciichat_error_t</b> code)</a></h2>
+<p class="Pp">Definition at line <b>920</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>920                                                 {
+921   registry_lock();
+922   if (g_exit_code == ASCIICHAT_OK)
+923     g_exit_code = code;
+924   registry_unlock();
+925 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, and
+  <b>errno_request_exit()</b>.</p>
+<p class="Pp">Referenced by <b>errno_request_exit()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_errno_scope_t</b> errno_scope_begin (void )</h2>
+<p class="Pp">Definition at line <b>662</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>662                                                 {
+663   return checkpoint(true);
+664 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_scope_begin()</b>.</p>
+<p class="Pp">Referenced by <b>acip_settings_request()</b>,
+    <b>audio_start_duplex()</b>, <b>config_load_and_apply()</b>,
+    <b>config_load_system_and_user()</b>, <b>discovery_mdns_query()</b>,
+    <b>discovery_session_create()</b>, <b>errno_scope_begin()</b>,
+    <b>ffmpeg_decoder_create_with_request_options()</b>, <b>main()</b>,
+    <b>media_source_create_interruptible()</b>, <b>nat_detect_quality()</b>,
+    <b>nat_upnp_open_protocol()</b>, <b>platform_clipboard_read()</b>,
+    <b>process_decrypted_packet()</b>, <b>session_connection_establish()</b>,
+    <b>session_participant_connect()</b>, <b>session_server_like_run()</b>,
+    <b>ui_controller_size()</b>, <b>ui_input_media_take()</b>, and
+    <b>ui_notice_first_use_complete()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_errno_scope_end_("><a class="permalink" href="#void_errno_scope_end_(">void
+  errno_scope_end (<b>asciichat_errno_scope_t</b> scope,
+  <b>asciichat_errno_outcome_t</b> outcome)</a></h2>
+<p class="Pp">Definition at line <b>665</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>665                                                                                        {
+666   uint64_t now = time_get_ns();
+667   // Recovery runs on the offending thread. Cross-thread clearing has separate APIs.
+668   if (scope.thread_id != thread_current_id())
+669     return;
+670   registry_lock();
+671   error_thread_t *thread = find_thread(scope.thread_id);
+672   if (thread &amp;&amp; thread-&gt;generation == scope.generation) {
+673     while (thread-&gt;depth &amp;&amp; g_frames[thread-&gt;top].context.error_id &gt; scope.after_id)
+674       pop_locked(thread, outcome, now);
+675     thread-&gt;cause_after_id = scope.previous_after_id;
+676   }
+677   registry_unlock();
+678 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno_scope_t::after_id</b>,
+    <b>error_thread::cause_after_id</b>, <b>error_thread::depth</b>,
+    <b>errno_scope_end()</b>, <b>asciichat_errno_scope_t::generation</b>,
+    <b>error_thread::generation</b>,
+    <b>asciichat_errno_scope_t::previous_after_id</b>,
+    <b>thread_current_id()</b>, <b>asciichat_errno_scope_t::thread_id</b>,
+    <b>time_get_ns()</b>, and <b>error_thread::top</b>.</p>
+<p class="Pp">Referenced by <b>acip_settings_request()</b>,
+    <b>asciichat_mdns_advertise()</b>, <b>audio_start_duplex()</b>,
+    <b>config_load_and_apply()</b>, <b>config_load_system_and_user()</b>,
+    <b>discovery_mdns_query()</b>, <b>discovery_session_create()</b>,
+    <b>errno_scope_end()</b>,
+    <b>ffmpeg_decoder_create_with_request_options()</b>, <b>main()</b>,
+    <b>media_source_create_interruptible()</b>, <b>nat_detect_quality()</b>,
+    <b>nat_upnp_open_protocol()</b>, <b>platform_clipboard_read()</b>,
+    <b>process_decrypted_packet()</b>, <b>session_connection_establish()</b>,
+    <b>session_participant_connect()</b>, <b>session_server_like_run()</b>,
+    <b>ui_controller_size()</b>, <b>ui_input_media_take()</b>, and
+    <b>ui_notice_first_use_complete()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> errno_scope_is_clean (<b>asciichat_errno_scope_t</b>
+  scope)</h2>
+<p class="Pp">Definition at line <b>895</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>895                                                          {
+896   registry_lock();
+897   error_thread_t *thread = find_thread(scope.thread_id);
+898   bool clean = !thread || thread-&gt;generation != scope.generation || !thread-&gt;depth ||
+899                g_frames[thread-&gt;top].context.error_id &lt;= scope.after_id;
+900   registry_unlock();
+901   return clean;
+902 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno_scope_t::after_id</b>,
+    <b>error_thread::depth</b>, <b>errno_scope_is_clean()</b>,
+    <b>asciichat_errno_scope_t::generation</b>, <b>error_thread::generation</b>,
+    <b>asciichat_errno_scope_t::thread_id</b>, and <b>error_thread::top</b>.</p>
+<p class="Pp">Referenced by <b>errno_scope_is_clean()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> errno_set (<b>asciichat_error_t</b>
+  code, const char * file, int line, const char * function, const char *
+  message)</h2>
+<p class="Pp">Definition at line <b>464</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>465                                                  {
+466   return errno_set_with_message(code, file, line, function, &quot;%s&quot;, message ? message : &quot;&quot;);
+467 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_set()</b>, and
+    <b>errno_set_with_message()</b>.</p>
+<p class="Pp">Referenced by <b>errno_set()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> errno_set_with_message
+  (<b>asciichat_error_t</b> code, const char * file, int line, const char *
+  function, const char * format, ...)</h2>
+<p class="Pp">Definition at line <b>455</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>456                                                                   {
+457   va_list args;
+458   va_start(args, format);
+459   asciichat_error_t result = set_formatted(code, file, line, function, 0, false, 0, false, format, args);
+460   va_end(args);
+461   return result;
+462 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_set_with_message()</b>.</p>
+<p class="Pp">Referenced by <b>errno_set()</b>, and
+    <b>errno_set_with_message()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> errno_set_with_system_error
+  (<b>asciichat_error_t</b> code, const char * file, int line, const char *
+  function, int sys_errno)</h2>
+<p class="Pp">Definition at line <b>479</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>480                                                              {
+481   return errno_set_with_system_error_and_message(code, file, line, function, sys_errno, &quot;System operation failed (%d)&quot;,
+482                                                  sys_errno);
+483 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_set_with_system_error()</b>, and
+    <b>errno_set_with_system_error_and_message()</b>.</p>
 <p class="Pp">Referenced by <b>accept_with_timeout()</b>,
-    <b>acip_send_error()</b>, <b>acip_server_send_error()</b>,
-    <b>connect_with_timeout()</b>, <b>packet_send_error()</b>,
-    <b>send_error_packet()</b>, <b>send_error_packet_message()</b>,
-    <b>socket_get_fd()</b>, <b>socket_is_connection_reset_error()</b>,
-    <b>socket_is_in_progress_error()</b>,
-    <b>socket_is_invalid_socket_error()</b>,
-    <b>socket_is_would_block_error()</b>, and
-    <b>webcam_print_init_error_help()</b>.</p>
+    <b>errno_set_with_system_error()</b>, and <b>recv_with_timeout()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>lifecycle_t</b> lifecycle</h2>
-<p class="Pp">Definition at line <b>56</b> of file <b>asciichat_errno.c</b>.</p>
+<h2 class="Ss"><b>asciichat_error_t</b> errno_set_with_system_error_and_message
+  (<b>asciichat_error_t</b> code, const char * file, int line, const char *
+  function, int sys_errno, const char * format, ...)</h2>
+<p class="Pp">Definition at line <b>469</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>471                                                                {
+472   va_list args;
+473   va_start(args, format);
+474   asciichat_error_t result = set_formatted(code, file, line, function, sys_errno, true, 0, false, format, args);
+475   va_end(args);
+476   return result;
+477 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_set_with_system_error_and_message()</b>.</p>
+<p class="Pp">Referenced by <b>errno_set_with_system_error()</b>, and
+    <b>errno_set_with_system_error_and_message()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>mutex_t</b> mutex</h2>
-<p class="Pp">Definition at line <b>55</b> of file <b>asciichat_errno.c</b>.</p>
-<p class="Pp">Referenced by <b>cond_on_wait()</b>, <b>cond_timedwait_impl()</b>,
-    <b>cond_wait_impl()</b>, <b>debug_sync_cond_timedwait()</b>,
-    <b>debug_sync_cond_wait()</b>, <b>debug_sync_mutex_lock()</b>,
-    <b>debug_sync_mutex_trylock()</b>, <b>debug_sync_mutex_unlock()</b>,
-    <b>mutex_destroy()</b>, <b>mutex_format_state()</b>, <b>mutex_init()</b>,
-    <b>mutex_lock_impl()</b>, <b>mutex_log_state()</b>, <b>mutex_on_lock()</b>,
-    <b>mutex_on_trylock()</b>, <b>mutex_on_unlock()</b>,
-    <b>mutex_trylock_impl()</b>, <b>mutex_unlock_impl()</b>, and
-    <b>outputRegistryMutex()</b>.</p>
+<h2 class="Ss"><b>asciichat_error_t</b> errno_set_with_wsa_error
+  (<b>asciichat_error_t</b> code, const char * file, int line, const char *
+  function, int wsa_error)</h2>
+<p class="Pp">Definition at line <b>494</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>495                                                           {
+496   return set_wsa(code, file, line, function, wsa_error, &quot;Socket operation failed (%d)&quot;, wsa_error);
+497 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_set_with_wsa_error()</b>.</p>
+<p class="Pp">Referenced by <b>errno_set_with_wsa_error()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>asciichat_error_stats_t</b> stats</h2>
-<p class="Pp">Definition at line <b>54</b> of file <b>asciichat_errno.c</b>.</p>
-<p class="Pp">Referenced by <b>lws_profiler_get_stats()</b>,
-    <b>stats_logger_thread()</b>, <b>update_server_stats()</b>,
-    <b>video_frame_get_stats()</b>, and
-    <b>websocket_callback_timing_record()</b>.</p>
+<h2 class="Ss" id="void_errno_shutdown_(void_)"><a class="permalink" href="#void_errno_shutdown_(void_)">void
+  errno_shutdown (void )</a></h2>
+<p class="Pp">Definition at line <b>729</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>729                           {
+730   errno_notifications_enable(false);
+731   errno_destroy();
+732   registry_lock();
+733   g_shutdown = true;
+734   memset(g_threads, 0, sizeof(g_threads));
+735   memset(g_buckets, 0, sizeof(g_buckets));
+736   memset(g_frames, 0, sizeof(g_frames));
+737   memset(g_history, 0, sizeof(g_history));
+738   g_history_count = g_history_next = 0;
+739   g_stats.pending_errors = g_stats.registered_threads = 0;
+740 #ifndef EMSCRIPTEN_BUILD
+741   bool delete_key = g_tls_ready;
+742   tls_key_t key = g_tls_key;
+743   g_tls_ready = false;
+744 #endif
+745   registry_unlock();
+746 #ifndef EMSCRIPTEN_BUILD
+747   if (delete_key)
+748     ascii_tls_key_delete(key);
+749 #endif
+750 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_tls_key_delete()</b>, <b>errno_destroy()</b>,
+    <b>errno_notifications_enable()</b>, <b>errno_shutdown()</b>,
+    <b>g_stats</b>, <b>asciichat_error_stats_t::pending_errors</b>, and
+    <b>asciichat_error_stats_t::registered_threads</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>, and
+    <b>errno_shutdown()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_thread_id"><a class="permalink" href="#int_thread_id">int
-  thread_id</a></h2>
-<p class="Pp">Definition at line <b>66</b> of file <b>asciichat_errno.c</b>.</p>
-<p class="Pp">Referenced by <b>errno_clear_thread_error()</b>,
-    <b>errno_get_thread_error()</b>, <b>asciichat_set_thread_error()</b>,
-    <b>mutex_stack_cleanup_current_thread()</b>,
-    <b>mutex_stack_detect_deadlocks()</b>,
-    <b>ascii_query::LLDBController::operator=()</b>, and
-    <b>ascii_query::LLDBController::selectThread()</b>.</p>
+<h2 class="Ss"><b>asciichat_errno_snapshot_t</b> errno_snapshot (<b>uint64_t</b>
+  thread_id, <b>asciichat_error_context_t</b> * out, size_t capacity)</h2>
+<p class="Pp">Copy newest-first up to capacity. The result distinguishes total
+    depth from copied frames.</p>
+<p class="Pp">Definition at line <b>679</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>679                                                                                                         {
+680   registry_lock();
+681   error_thread_t *thread = find_thread(id);
+682   size_t depth = thread ? thread-&gt;depth : 0;
+683   asciichat_errno_snapshot_t snapshot = {.total = depth};
+684   if (thread &amp;&amp; out)
+685     for (int index = thread-&gt;top; index != NO_FRAME &amp;&amp; snapshot.copied &lt; capacity; index = g_frames[index].next)
+686       out[snapshot.copied++] = g_frames[index].context;
+687   registry_unlock();
+688   return snapshot;
+689 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno_snapshot_t::copied</b>,
+    <b>error_thread::depth</b>, <b>errno_snapshot()</b>, <b>NO_FRAME</b>, and
+    <b>error_thread::top</b>.</p>
+<p class="Pp">Referenced by <b>errno_print_chain()</b>,
+    <b>errno_print_stacks()</b>, <b>errno_snapshot()</b>,
+    <b>packet_format_error_stack()</b>, and <b>wasm_error_snapshot()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>bool</b> valid</h2>
-<p class="Pp">Definition at line <b>68</b> of file <b>asciichat_errno.c</b>.</p>
-<p class="Pp">Referenced by <b>errno_clear_thread_error()</b>,
-    <b>errno_get_thread_error()</b>, <b>asciichat_set_thread_error()</b>,
-    and <b>database_session_verify_key()</b>.</p>
+<h2 class="Ss" id="void_errno_suppress_("><a class="permalink" href="#void_errno_suppress_(">void
+  errno_suppress (<b>bool</b> suppress)</a></h2>
+<p class="Pp">Definition at line <b>713</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>713                                    {
+714   g_suppress_logging = suppress;
+715 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>errno_suppress()</b>.</p>
+<p class="Pp">Referenced by <b>errno_suppress()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_errno_threads_snapshot_("><a class="permalink" href="#size_t_errno_threads_snapshot_(">size_t
+  errno_threads_snapshot (<b>uint64_t</b> * out, size_t capacity)</a></h2>
+<p class="Pp">Copy registered thread IDs. Returns the total count so truncation
+    is visible.</p>
+<p class="Pp">Definition at line <b>690</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>690                                                               {
+691   registry_lock();
+692   size_t count = 0;
+693   for (size_t i = 0; i &lt; ASCIICHAT_ERRNO_MAX_THREADS; ++i) {
+694     if (!g_threads[i].generation)
+695       continue;
+696     if (out &amp;&amp; count &lt; capacity)
+697       out[count] = g_threads[i].id;
+698     ++count;
+699   }
+700   registry_unlock();
+701   return count;
+702 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_MAX_THREADS</b>,
+    <b>errno_threads_snapshot()</b>, and <b>error_thread::generation</b>.</p>
+<p class="Pp">Referenced by <b>errno_threads_snapshot()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_errno_title_snapshot_("><a class="permalink" href="#size_t_errno_title_snapshot_(">size_t
+  errno_title_snapshot (<b>asciichat_error_context_t</b> * latest)</a></h2>
+<p class="Pp">Count distinct unacknowledged pending frames and visible
+    notifications, copying the newest. The count and value come from the same
+    synchronized registry snapshot.</p>
+<p class="Pp">Definition at line <b>196</b> of file
+  <b>asciichat_errno.c</b>.</p>
+<pre>196                                                                {
+197   asciichat_error_context_t newest = {0};
+198   registry_lock();
+199   size_t count = 0;
+200   for (size_t i = 0; i &lt; ASCIICHAT_ERRNO_MAX_THREADS; ++i) {
+201     error_thread_t *thread = &amp;g_threads[i];
+202     for (int frame = thread-&gt;depth ? thread-&gt;top : NO_FRAME; frame != NO_FRAME; frame = g_frames[frame].next) {
+203       const asciichat_error_context_t *entry = &amp;g_frames[frame].context;
+204       if (entry-&gt;error_id &lt;= g_title_dismissed_through)
+205         continue;
+206       ++count;
+207       if (entry-&gt;error_id &gt; newest.error_id)
+208         newest = *entry;
+209     }
+210   }
+211   for (size_t i = 0; i &lt; g_notification_count; ++i) {
+212     const asciichat_error_context_t *entry =
+213         &amp;g_notifications[(g_notification_first + i) % ASCIICHAT_ERRNO_HISTORY_SIZE];
+214     error_thread_t *thread = find_thread(entry-&gt;thread_id);
+215     bool pending = false;
+216     if (thread &amp;&amp; thread-&gt;generation == entry-&gt;generation) {
+217       for (int frame = thread-&gt;top; frame != NO_FRAME; frame = g_frames[frame].next) {
+218         if (g_frames[frame].context.error_id == entry-&gt;error_id) {
+219           pending = true;
+220           break;
+221         }
+222       }
+223     }
+224     if (!pending)
+225       ++count;
+226     if (entry-&gt;error_id &gt; newest.error_id)
+227       newest = *entry;
+228   }
+229   if (latest)
+230     *latest = newest;
+231   registry_unlock();
+232   return count;
+233 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_HISTORY_SIZE</b>,
+    <b>ASCIICHAT_ERRNO_MAX_THREADS</b>, <b>error_thread::depth</b>,
+    <b>errno_title_snapshot()</b>, <b>asciichat_error_context_t::error_id</b>,
+    <b>asciichat_error_context_t::generation</b>, <b>NO_FRAME</b>,
+    <b>asciichat_error_context_t::thread_id</b>, and
+  <b>error_thread::top</b>.</p>
+<p class="Pp">Referenced by <b>errno_title_snapshot()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -226,7 +1446,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

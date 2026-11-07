@@ -70,16 +70,18 @@
 70   if (!frame_data || frame_size &lt; 4) {
 71     return frame_size;
 72   }
-73 
+73
 74   size_t reset_pos = frame_find_final_reset(frame_data, frame_size);
 75   if (reset_pos == SIZE_MAX) {
 76     return frame_size; // No reset found, assume all data is valid
 77   }
-78 
+78
 79   return reset_pos + 4; // Return position after the reset sequence
 80 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>frame_get_valid_end()</b>.</p>
+<p class="Pp">Referenced by <b>frame_get_valid_end()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> frame_validate_integrity (const char * frame_data,
@@ -105,40 +107,42 @@
 34   if (!frame_data || frame_size == 0) {
 35     return false;
 36   }
-37 
+37
 38   size_t reset_pos = frame_find_final_reset(frame_data, frame_size);
 39   if (reset_pos == SIZE_MAX) {
 40     // No reset sequence found - this is suspicious
 41     log_warn(&quot;FRAME_VALIDATION: No ESC[0m reset sequence found in %zu byte frame&quot;, frame_size);
 42     return false;
 43   }
-44 
+44
 45   size_t expected_end = reset_pos + 4; // 4 bytes for ESC[0m
-46 
+46
 47   // Check if there's garbage after the reset
 48   if (expected_end &lt; frame_size) {
 49     // Calculate how much garbage we have
 50     size_t garbage_size = frame_size - expected_end;
-51 
+51
 52     // Check what the garbage looks like
 53     const uint8_t *garbage = (const uint8_t *)&amp;frame_data[expected_end];
-54 
+54
 55     // Log the garbage for debugging
 56     log_warn(&quot;FRAME_VALIDATION: Found %zu garbage bytes after reset at offset %zu (frame size %zu): &quot;
 57              &quot;[%02x %02x %02x %02x ...]&quot;,
 58              garbage_size, expected_end, frame_size, garbage[0], garbage_size &gt; 1 ? garbage[1] : 0,
 59              garbage_size &gt; 2 ? garbage[2] : 0, garbage_size &gt; 3 ? garbage[3] : 0);
-60 
+60
 61     return false;
 62   }
-63 
+63
 64   // Frame looks valid
 65   log_debug(&quot;FRAME_VALIDATION: Frame OK (%zu bytes, ends at offset %zu)&quot;, frame_size, expected_end);
 66   return true;
 67 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_debug</b>, and <b>log_warn</b>.</p>
+<p class="Pp">References <b>frame_validate_integrity()</b>, <b>log_debug</b>,
+    and <b>log_warn</b>.</p>
+<p class="Pp">Referenced by <b>frame_validate_integrity()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -148,7 +152,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

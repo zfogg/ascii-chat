@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>render_progress.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">render_progress.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">render_progress.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">render_progress.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>progress_snapshot_t</b>
+  <br/>
+  struct <b>render_progress</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>TUI_RENDER_PROGRESS_LABEL_BUFFER_SIZE</b> 160
+  <br/>
+  #define <b>TUI_RENDER_PROGRESS_TOTAL_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>TUI_RENDER_PROGRESS_TITLE_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>TUI_RENDER_PROGRESS_BAR_BUFFER_SIZE</b> 4096
+  <br/>
+  #define <b>PREVIEW_MAX_BYTES</b> (1024 * 1024)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>render_progress_t</b> * <b>render_progress_create</b>
+    (<b>bool</b> enabled, const char *destination)
+  <br/>
+  void <b>render_progress_frame</b> (<b>render_progress_t</b> *progress, const
+    char *frame, <b>bool</b> succeeded)
+  <br/>
+  void <b>render_progress_begin</b> (<b>render_progress_t</b> *progress,
+    <b>uint64_t</b> total, <b>bool</b> total_known)
+  <br/>
+  void <b>render_progress_finalize</b> (<b>render_progress_t</b> *progress)
+  <br/>
+  void <b>render_progress_destroy</b> (<b>render_progress_t</b> *progress)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_PREVIEW_MAX_BYTES___(1024_*_1024)"><a class="permalink" href="#_define_PREVIEW_MAX_BYTES___(1024_*_1024)">#define
+  PREVIEW_MAX_BYTES (1024 * 1024)</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>render_progress.c</b>.</p>
+<p class="Pp">Referenced by <b>render_progress_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_RENDER_PROGRESS_BAR_BUFFER_SIZE___4096"><a class="permalink" href="#_define_TUI_RENDER_PROGRESS_BAR_BUFFER_SIZE___4096">#define
+  TUI_RENDER_PROGRESS_BAR_BUFFER_SIZE 4096</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file <b>render_progress.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_RENDER_PROGRESS_LABEL_BUFFER_SIZE___160"><a class="permalink" href="#_define_TUI_RENDER_PROGRESS_LABEL_BUFFER_SIZE___160">#define
+  TUI_RENDER_PROGRESS_LABEL_BUFFER_SIZE 160</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>render_progress.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_RENDER_PROGRESS_TITLE_BUFFER_SIZE___64"><a class="permalink" href="#_define_TUI_RENDER_PROGRESS_TITLE_BUFFER_SIZE___64">#define
+  TUI_RENDER_PROGRESS_TITLE_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>5</b> of file <b>render_progress.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_RENDER_PROGRESS_TOTAL_BUFFER_SIZE___32"><a class="permalink" href="#_define_TUI_RENDER_PROGRESS_TOTAL_BUFFER_SIZE___32">#define
+  TUI_RENDER_PROGRESS_TOTAL_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>render_progress.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_render_progress_begin_("><a class="permalink" href="#void_render_progress_begin_(">void
+  render_progress_begin (<b>render_progress_t</b> * progress, <b>uint64_t</b>
+  total, <b>bool</b> total_known)</a></h2>
+<p class="Pp">Definition at line <b>184</b> of file
+  <b>render_progress.c</b>.</p>
+<pre>184                                                                                           {
+185   if (!progress)
+186     return;
+187   mutex_lock(&amp;progress-&gt;mutex);
+188   progress-&gt;active = true;
+189   progress-&gt;snapshot-&gt;total = total;
+190   progress-&gt;snapshot-&gt;total_known = total_known;
+191   progress_publish(progress);
+192   mutex_unlock(&amp;progress-&gt;mutex);
+193 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>render_progress::active</b>,
+    <b>render_progress::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>render_progress_begin()</b>, <b>render_progress::snapshot</b>,
+    <b>progress_snapshot_t::total</b>, and
+    <b>progress_snapshot_t::total_known</b>.</p>
+<p class="Pp">Referenced by <b>render_file_begin_drain()</b>, and
+    <b>render_progress_begin()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>render_progress_t</b> * render_progress_create (<b>bool</b>
+  enabled, const char * destination)</h2>
+<p class="Pp">Retains only the latest ASCII frame. All updates are serialized;
+    callbacks own copied snapshots.</p>
+<p class="Pp">Definition at line <b>123</b> of file
+  <b>render_progress.c</b>.</p>
+<pre>123                                                                                  {
+124   if (!enabled || !terminal_is_stdout_tty())
+125     return NULL;
+126   render_progress_t *progress = SAFE_CALLOC(1, sizeof(*progress), render_progress_t *);
+127   progress-&gt;fd = platform_dup(STDOUT_FILENO);
+128   if (progress-&gt;fd &lt; 0) {
+129     SAFE_FREE(progress);
+130     return NULL;
+131   }
+132   mutex_init(&amp;progress-&gt;mutex, &quot;render_progress&quot;);
+133   size_t destination_length = strlen(destination);
+134   progress-&gt;snapshot = SAFE_CALLOC(1, sizeof(*progress-&gt;snapshot) + destination_length + 2, progress_snapshot_t *);
+135   progress-&gt;snapshot-&gt;destination_length = destination_length;
+136   char *name = progress-&gt;snapshot-&gt;frame + 1;
+137   memcpy(name, destination, destination_length);
+138   // A path must not inject terminal control sequences into the overlay.
+139   for (size_t i = 0; i &lt; destination_length; ++i) {
+140     if ((unsigned char)name[i] &lt; 0x20 || name[i] == 0x7f)
+141       name[i] = '?';
+142   }
+143   progress-&gt;snapshot-&gt;started_ns = time_get_ns();
+144   return progress;
+145 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>progress_snapshot_t::destination_length</b>,
+    <b>render_progress::fd</b>, <b>progress_snapshot_t::frame</b>,
+    <b>render_progress::mutex</b>, <b>mutex_init()</b>, <b>platform_dup()</b>,
+    <b>render_progress_create()</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>render_progress::snapshot</b>, <b>progress_snapshot_t::started_ns</b>,
+    <b>terminal_is_stdout_tty()</b>, and <b>time_get_ns()</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>, and
+    <b>render_progress_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_render_progress_destroy_("><a class="permalink" href="#void_render_progress_destroy_(">void
+  render_progress_destroy (<b>render_progress_t</b> * progress)</a></h2>
+<p class="Pp">Definition at line <b>209</b> of file
+  <b>render_progress.c</b>.</p>
+<pre>209                                                           {
+210   if (!progress)
+211     return;
+212   ui_controller_remove(UI_SCREEN_RENDER_PROGRESS);
+213   platform_close(progress-&gt;fd);
+214   SAFE_FREE(progress-&gt;snapshot);
+215   mutex_destroy(&amp;progress-&gt;mutex);
+216   SAFE_FREE(progress);
+217 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>render_progress::fd</b>,
+    <b>render_progress::mutex</b>, <b>mutex_destroy()</b>,
+    <b>platform_close()</b>, <b>render_progress_destroy()</b>, <b>SAFE_FREE</b>,
+    <b>render_progress::snapshot</b>, <b>ui_controller_remove()</b>, and
+    <b>UI_SCREEN_RENDER_PROGRESS</b>.</p>
+<p class="Pp">Referenced by <b>render_file_destroy()</b>, and
+    <b>render_progress_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_render_progress_finalize_("><a class="permalink" href="#void_render_progress_finalize_(">void
+  render_progress_finalize (<b>render_progress_t</b> * progress)</a></h2>
+<p class="Pp">Definition at line <b>195</b> of file
+  <b>render_progress.c</b>.</p>
+<pre>195                                                            {
+196   if (!progress)
+197     return;
+198   mutex_lock(&amp;progress-&gt;mutex);
+199   progress-&gt;active = true;
+200   progress-&gt;snapshot-&gt;finalizing = true;
+201   if (!progress-&gt;snapshot-&gt;total_known) {
+202     progress-&gt;snapshot-&gt;total = progress-&gt;snapshot-&gt;completed;
+203     progress-&gt;snapshot-&gt;total_known = true;
+204   }
+205   progress_publish(progress);
+206   mutex_unlock(&amp;progress-&gt;mutex);
+207 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>render_progress::active</b>,
+    <b>progress_snapshot_t::completed</b>,
+    <b>progress_snapshot_t::finalizing</b>, <b>render_progress::mutex</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>render_progress_finalize()</b>,
+    <b>render_progress::snapshot</b>, <b>progress_snapshot_t::total</b>, and
+    <b>progress_snapshot_t::total_known</b>.</p>
+<p class="Pp">Referenced by <b>render_file_destroy()</b>, and
+    <b>render_progress_finalize()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_render_progress_frame_("><a class="permalink" href="#void_render_progress_frame_(">void
+  render_progress_frame (<b>render_progress_t</b> * progress, const char *
+  frame, <b>bool</b> succeeded)</a></h2>
+<p class="Pp">Definition at line <b>147</b> of file
+  <b>render_progress.c</b>.</p>
+<pre>147                                                                                            {
+148   if (!progress)
+149     return;
+150   mutex_lock(&amp;progress-&gt;mutex);
+151   uint64_t now = time_get_ns();
+152   // The overlay refreshes at most eight times per second. Expanding and copying
+153   // every full-resolution frame only slows the encoder and cannot be displayed.
+154   if (succeeded &amp;&amp; !progress-&gt;snapshot-&gt;failed &amp;&amp; progress-&gt;last_preview_ns &amp;&amp; now &gt;= progress-&gt;last_preview_ns &amp;&amp;
+155       now - progress-&gt;last_preview_ns &lt; 125 * NS_PER_MS_INT) {
+156     ++progress-&gt;snapshot-&gt;completed;
+157     mutex_unlock(&amp;progress-&gt;mutex);
+158     return;
+159   }
+160   progress-&gt;last_preview_ns = now;
+161   size_t length = strnlen(frame, (size_t)PREVIEW_MAX_BYTES + 1u);
+162   // Oversized frames still encode normally; omit their terminal preview.
+163   if (length &gt; PREVIEW_MAX_BYTES)
+164     length = 0;
+165   progress_snapshot_t *next =
+166       SAFE_CALLOC(1, sizeof(*next) + length + progress-&gt;snapshot-&gt;destination_length + 2, progress_snapshot_t *);
+167   memcpy(next, progress-&gt;snapshot, sizeof(*next));
+168   next-&gt;length = length;
+169   memcpy(next-&gt;frame, frame, length);
+170   memcpy(next-&gt;frame + length + 1, progress-&gt;snapshot-&gt;frame + progress-&gt;snapshot-&gt;length + 1,
+171          next-&gt;destination_length + 1);
+172   if (!next-&gt;started_ns)
+173     next-&gt;started_ns = time_get_ns();
+174   if (succeeded)
+175     next-&gt;completed++;
+176   else
+177     next-&gt;failed = true;
+178   SAFE_FREE(progress-&gt;snapshot);
+179   progress-&gt;snapshot = next;
+180   progress_publish(progress);
+181   mutex_unlock(&amp;progress-&gt;mutex);
+182 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>progress_snapshot_t::completed</b>,
+    <b>progress_snapshot_t::destination_length</b>,
+    <b>progress_snapshot_t::failed</b>, <b>progress_snapshot_t::frame</b>,
+    <b>render_progress::last_preview_ns</b>, <b>progress_snapshot_t::length</b>,
+    <b>render_progress::mutex</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>NS_PER_MS_INT</b>, <b>PREVIEW_MAX_BYTES</b>,
+    <b>render_progress_frame()</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>render_progress::snapshot</b>, <b>progress_snapshot_t::started_ns</b>,
+    and <b>time_get_ns()</b>.</p>
+<p class="Pp">Referenced by <b>render_file_write_frame()</b>, and
+    <b>render_progress_frame()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

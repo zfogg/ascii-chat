@@ -98,30 +98,30 @@
 32   if (!out_size) {
 33     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_size is NULL&quot;);
 34   }
-35 
+35
 36   if (pixel_count == 0) {
 37     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Pixel count must be non-zero&quot;);
 38   }
-39 
+39
 40   if (bytes_per_pixel == 0) {
 41     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;bytes_per_pixel must be non-zero&quot;);
 42   }
-43 
+43
 44   // Check overflow before multiplication
 45   if (pixel_count &gt; SIZE_MAX / bytes_per_pixel) {
 46     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Pixel buffer too large (would overflow): %zu pixels * %zu bpp&quot;, pixel_count,
 47                      bytes_per_pixel);
 48   }
-49 
+49
 50   *out_size = pixel_count * bytes_per_pixel;
 51   return ASCIICHAT_OK;
 52 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>image_calc_rgb_size()</b>, and
-    <b>image_calc_total_allocation()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>image_calc_pixel_buffer_size()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>image_calc_pixel_buffer_size()</b>,
+    <b>image_calc_rgb_size()</b>, and <b>image_calc_total_allocation()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> image_calc_pixel_count (size_t width,
@@ -143,26 +143,26 @@
 13   if (!out_pixel_count) {
 14     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_pixel_count is NULL&quot;);
 15   }
-16 
+16
 17   // Check for zero dimensions
 18   if (width == 0 || height == 0) {
 19     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image dimensions must be non-zero: %zu x %zu&quot;, width, height);
 20   }
-21 
+21
 22   // Check overflow before multiplication
 23   if (height &gt; SIZE_MAX / width) {
 24     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image dimensions too large (would overflow): %zu x %zu&quot;, width, height);
 25   }
-26 
+26
 27   *out_pixel_count = width * height;
 28   return ASCIICHAT_OK;
 29 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>image_calc_rgb_size()</b>, and
-    <b>image_calc_total_allocation()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>image_calc_pixel_count()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>image_calc_pixel_count()</b>,
+    <b>image_calc_rgb_size()</b>, and <b>image_calc_total_allocation()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> image_calc_rgb_size (size_t width,
@@ -184,23 +184,24 @@
 55   if (!out_size) {
 56     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_size is NULL&quot;);
 57   }
-58 
+58
 59   // Calculate pixel count first
 60   size_t pixel_count;
 61   asciichat_error_t err = image_calc_pixel_count(width, height, &amp;pixel_count);
 62   if (err != ASCIICHAT_OK) {
 63     return err;
 64   }
-65 
+65
 66   // Calculate size with 3 bytes per pixel (RGB)
 67   return image_calc_pixel_buffer_size(pixel_count, 3, out_size);
 68 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>image_calc_pixel_buffer_size()</b>, <b>image_calc_pixel_count()</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>handle_image_frame_packet()</b>.</p>
+    <b>image_calc_pixel_buffer_size()</b>, <b>image_calc_pixel_count()</b>,
+    <b>image_calc_rgb_size()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>handle_image_frame_packet()</b>,
+    <b>image_calc_rgb_size()</b>, and <b>session_host_inject_frame()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> image_calc_total_allocation (size_t
@@ -227,35 +228,36 @@
 72   if (!out_size) {
 73     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_size is NULL&quot;);
 74   }
-75 
+75
 76   // Calculate pixel count first with overflow checking
 77   size_t pixel_count;
 78   asciichat_error_t err = image_calc_pixel_count(width, height, &amp;pixel_count);
 79   if (err != ASCIICHAT_OK) {
 80     return err;
 81   }
-82 
+82
 83   // Calculate pixel buffer size
 84   size_t pixel_buffer_size;
 85   err = image_calc_pixel_buffer_size(pixel_count, bytes_per_pixel, &amp;pixel_buffer_size);
 86   if (err != ASCIICHAT_OK) {
 87     return err;
 88   }
-89 
+89
 90   // Check overflow when adding struct size
 91   if (pixel_buffer_size &gt; SIZE_MAX - struct_size) {
 92     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Total allocation size would overflow: struct=%zu + pixels=%zu&quot;, struct_size,
 93                      pixel_buffer_size);
 94   }
-95 
+95
 96   *out_size = struct_size + pixel_buffer_size;
 97   return ASCIICHAT_OK;
 98 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>image_calc_pixel_buffer_size()</b>, <b>image_calc_pixel_count()</b>, and
-    <b>SET_ERRNO</b>.</p>
+    <b>image_calc_pixel_buffer_size()</b>, <b>image_calc_pixel_count()</b>,
+    <b>image_calc_total_allocation()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>image_calc_total_allocation()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> image_validate_buffer_size (size_t
@@ -274,14 +276,16 @@
 117     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image buffer size exceeds maximum: %zu &gt; %zu bytes&quot;, requested_size,
 118                      IMAGE_MAX_PIXELS_SIZE);
 119   }
-120 
+120
 121   return ASCIICHAT_OK;
 122 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>IMAGE_MAX_PIXELS_SIZE</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>handle_image_frame_packet()</b>.</p>
+    <b>IMAGE_MAX_PIXELS_SIZE</b>, <b>image_validate_buffer_size()</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>handle_image_frame_packet()</b>, and
+    <b>image_validate_buffer_size()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> image_validate_dimensions (size_t width,
@@ -310,9 +314,11 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>IMAGE_MAX_HEIGHT</b>, <b>IMAGE_MAX_WIDTH</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>handle_image_frame_packet()</b>, and
-    <b>image_new()</b>.</p>
+    <b>IMAGE_MAX_HEIGHT</b>, <b>IMAGE_MAX_WIDTH</b>,
+    <b>image_validate_dimensions()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>handle_image_frame_packet()</b>,
+    <b>image_new()</b>, <b>image_validate_dimensions()</b>, and
+    <b>session_host_inject_frame()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -322,7 +328,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

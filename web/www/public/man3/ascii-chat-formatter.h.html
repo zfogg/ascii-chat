@@ -104,16 +104,18 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">This is a simple implementation. For production use with
   arbitrary content, consider a more robust escaping strategy.</div>
-<p class="Pp">Definition at line <b>21</b> of file <b>formatter.c</b>.</p>
-<pre>21                                                       {
-22   // For simplicity, we'll just return the string as-is
-23   // In a more robust implementation, we'd escape special characters
-24   // But for man page content, most strings don't have problematic characters
-25   return str ? str : &quot;&quot;;
-26 }</pre>
+<p class="Pp">Definition at line <b>25</b> of file <b>formatter.c</b>.</p>
+<pre>25                                                       {
+26   // For simplicity, we'll just return the string as-is
+27   // In a more robust implementation, we'd escape special characters
+28   // But for man page content, most strings don't have problematic characters
+29   return str ? str : &quot;&quot;;
+30 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>manpage_fmt_write_title()</b>.</p>
+<p class="Pp">References <b>manpage_fmt_escape_groff()</b>.</p>
+<p class="Pp">Referenced by <b>manpage_fmt_escape_groff()</b>, and
+    <b>manpage_fmt_write_title()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_manpage_fmt_write_blank_line_(FILE_*_f)"><a class="permalink" href="#void_manpage_fmt_write_blank_line_(FILE_*_f)">void
@@ -121,17 +123,18 @@
 <p class="Pp">Write a blank line (for spacing between sections).</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>f</i> Output file handle (cannot be NULL)</div>
-<p class="Pp">Definition at line <b>35</b> of file <b>formatter.c</b>.</p>
-<pre>35                                            {
-36   if (!f) {
-37     return;
-38   }
-39   fprintf(f, &quot;\n&quot;);
-40 }</pre>
+<p class="Pp">Definition at line <b>39</b> of file <b>formatter.c</b>.</p>
+<pre>39                                            {
+40   if (!f) {
+41     return;
+42   }
+43   fprintf(f, &quot;\n&quot;);
+44 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by
-  <b>options_config_generate_manpage_template()</b>.</p>
+<p class="Pp">References <b>manpage_fmt_write_blank_line()</b>.</p>
+<p class="Pp">Referenced by <b>manpage_fmt_write_blank_line()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_manpage_fmt_write_bold_(FILE_*_f,_const_char_*_text)"><a class="permalink" href="#void_manpage_fmt_write_bold_(FILE_*_f,_const_char_*_text)">void
@@ -144,15 +147,17 @@
 <div class="Bd-indent"><i>f</i> Output file handle (cannot be NULL)
 <br/>
 <i>text</i> Text to write in bold (cannot be NULL)</div>
-<p class="Pp">Definition at line <b>42</b> of file <b>formatter.c</b>.</p>
-<pre>42                                                        {
-43   if (!f || !text) {
-44     return;
-45   }
-46   fprintf(f, &quot;.B %s\n&quot;, text);
-47 }</pre>
+<p class="Pp">Definition at line <b>46</b> of file <b>formatter.c</b>.</p>
+<pre>46                                                        {
+47   if (!f || !text) {
+48     return;
+49   }
+50   fprintf(f, &quot;.B %s\n&quot;, text);
+51 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>manpage_fmt_write_bold()</b>.</p>
+<p class="Pp">Referenced by <b>manpage_fmt_write_bold()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_manpage_fmt_write_italic_(FILE_*_f,_const_char_*_text)"><a class="permalink" href="#void_manpage_fmt_write_italic_(FILE_*_f,_const_char_*_text)">void
@@ -165,15 +170,17 @@
 <div class="Bd-indent"><i>f</i> Output file handle (cannot be NULL)
 <br/>
 <i>text</i> Text to write in italic (cannot be NULL)</div>
-<p class="Pp">Definition at line <b>49</b> of file <b>formatter.c</b>.</p>
-<pre>49                                                          {
-50   if (!f || !text) {
-51     return;
-52   }
-53   fprintf(f, &quot;.I %s\n&quot;, text);
-54 }</pre>
+<p class="Pp">Definition at line <b>53</b> of file <b>formatter.c</b>.</p>
+<pre>53                                                          {
+54   if (!f || !text) {
+55     return;
+56   }
+57   fprintf(f, &quot;.I %s\n&quot;, text);
+58 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>manpage_fmt_write_italic()</b>.</p>
+<p class="Pp">Referenced by <b>manpage_fmt_write_italic()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_manpage_fmt_write_section_(FILE_*_f,_const_char_*_section_name)"><a class="permalink" href="#void_manpage_fmt_write_section_(FILE_*_f,_const_char_*_section_name)">void
@@ -187,17 +194,18 @@
 <div class="Bd-indent"><i>f</i> Output file handle (cannot be NULL)
 <br/>
 <i>section_name</i> Section name to write (cannot be NULL)</div>
-<p class="Pp">Definition at line <b>28</b> of file <b>formatter.c</b>.</p>
-<pre>28                                                                   {
-29   if (!f || !section_name) {
-30     return;
-31   }
-32   fprintf(f, &quot;.SH %s\n&quot;, section_name);
-33 }</pre>
+<p class="Pp">Definition at line <b>32</b> of file <b>formatter.c</b>.</p>
+<pre>32                                                                   {
+33   if (!f || !section_name) {
+34     return;
+35   }
+36   fprintf(f, &quot;.SH %s\n&quot;, section_name);
+37 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by
-  <b>options_config_generate_manpage_template()</b>.</p>
+<p class="Pp">References <b>manpage_fmt_write_section()</b>.</p>
+<p class="Pp">Referenced by <b>manpage_fmt_write_section()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_manpage_fmt_write_tagged_paragraph_(FILE_*_f)"><a class="permalink" href="#void_manpage_fmt_write_tagged_paragraph_(FILE_*_f)">void
@@ -209,15 +217,17 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>f</i> Output file handle (cannot be NULL)</div>
-<p class="Pp">Definition at line <b>56</b> of file <b>formatter.c</b>.</p>
-<pre>56                                                  {
-57   if (!f) {
-58     return;
-59   }
-60   fprintf(f, &quot;.TP\n&quot;);
-61 }</pre>
+<p class="Pp">Definition at line <b>60</b> of file <b>formatter.c</b>.</p>
+<pre>60                                                  {
+61   if (!f) {
+62     return;
+63   }
+64   fprintf(f, &quot;.TP\n&quot;);
+65 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>manpage_fmt_write_tagged_paragraph()</b>.</p>
+<p class="Pp">Referenced by <b>manpage_fmt_write_tagged_paragraph()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_manpage_fmt_write_text_(FILE_*_f,_const_char_*_text)"><a class="permalink" href="#void_manpage_fmt_write_text_(FILE_*_f,_const_char_*_text)">void
@@ -231,20 +241,22 @@
 <br/>
 <i>text</i> Text to write (can be NULL, in which case only newline
   written)</div>
-<p class="Pp">Definition at line <b>63</b> of file <b>formatter.c</b>.</p>
-<pre>63                                                        {
-64   if (!f) {
-65     return;
-66   }
-67 
-68   if (text) {
-69     fprintf(f, &quot;%s\n&quot;, text);
-70   } else {
-71     fprintf(f, &quot;\n&quot;);
-72   }
-73 }</pre>
+<p class="Pp">Definition at line <b>67</b> of file <b>formatter.c</b>.</p>
+<pre>67                                                        {
+68   if (!f) {
+69     return;
+70   }
+71
+72   if (text) {
+73     fprintf(f, &quot;%s\n&quot;, text);
+74   } else {
+75     fprintf(f, &quot;\n&quot;);
+76   }
+77 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>manpage_fmt_write_text()</b>.</p>
+<p class="Pp">Referenced by <b>manpage_fmt_write_text()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_manpage_fmt_write_title_(FILE_*_f,_const_char_*_program_name,_const_char_*_mode_name,_const_char_*_brief_description)"><a class="permalink" href="#void_manpage_fmt_write_title_(FILE_*_f,_const_char_*_program_name,_const_char_*_mode_name,_const_char_*_brief_description)">void
@@ -263,40 +275,43 @@
   &quot;client&quot;, or NULL for binary-level)
 <br/>
 <i>brief_description</i> One-line description (cannot be NULL)</div>
-<p class="Pp">Definition at line <b>75</b> of file <b>formatter.c</b>.</p>
-<pre>75                                                                                                                       {
-76   if (!f || !program_name || !brief_description) {
-77     return;
-78   }
-79 
-80   time_t now = time(NULL);
-81   struct tm tm_buf;
-82   platform_localtime(&amp;now, &amp;tm_buf);
-83   char date_str[32];
-84   strftime(date_str, sizeof(date_str), &quot;%B %Y&quot;, &amp;tm_buf);
-85 
-86   // Build full program name (e.g., &quot;ascii-chat-server&quot; or just &quot;ascii-chat&quot;)
-87   char full_name[256];
-88   if (mode_name) {
-89     safe_snprintf(full_name, sizeof(full_name), &quot;%s-%s&quot;, program_name, mode_name);
-90   } else {
-91     safe_snprintf(full_name, sizeof(full_name), &quot;%s&quot;, program_name);
-92   }
-93 
-94   // .TH NAME SECTION DATE SOURCE MANUAL
-95   // Section 1 = user commands, 5 = file formats
-96   fprintf(f, &quot;.TH %s 1 \&quot;%s\&quot; \&quot;%s\&quot; \&quot;User Commands\&quot;\n&quot;, full_name, date_str, program_name);
-97   fprintf(f, &quot;.SH NAME\n&quot;);
-98   fprintf(f, &quot;.B %s\n&quot;, full_name);
-99   fprintf(f, &quot;\\- %s\n&quot;, manpage_fmt_escape_groff(brief_description));
-100   fprintf(f, &quot;\n&quot;);
-101 }</pre>
+<p class="Pp">Definition at line <b>79</b> of file <b>formatter.c</b>.</p>
+<pre>79                                                                                                                       {
+80   if (!f || !program_name || !brief_description) {
+81     return;
+82   }
+83
+84   time_t now = time(NULL);
+85   struct tm tm_buf;
+86   platform_localtime(&amp;now, &amp;tm_buf);
+87   char date_str[OPTIONS_MANPAGE_FORMATTER_DATE_BUFFER_SIZE];
+88   strftime(date_str, sizeof(date_str), &quot;%B %Y&quot;, &amp;tm_buf);
+89
+90   // Build full program name (e.g., &quot;ascii-chat-server&quot; or just &quot;ascii-chat&quot;)
+91   char full_name[OPTIONS_MANPAGE_FORMATTER_FULL_NAME_BUFFER_SIZE];
+92   if (mode_name) {
+93     safe_snprintf(full_name, sizeof(full_name), &quot;%s-%s&quot;, program_name, mode_name);
+94   } else {
+95     safe_snprintf(full_name, sizeof(full_name), &quot;%s&quot;, program_name);
+96   }
+97
+98   // .TH NAME SECTION DATE SOURCE MANUAL
+99   // Section 1 = user commands, 5 = file formats
+100   fprintf(f, &quot;.TH %s 1 \&quot;%s\&quot; \&quot;%s\&quot; \&quot;User Commands\&quot;\n&quot;, full_name, date_str, program_name);
+101   fprintf(f, &quot;.SH NAME\n&quot;);
+102   fprintf(f, &quot;.B %s\n&quot;, full_name);
+103   fprintf(f, &quot;\\- %s\n&quot;, manpage_fmt_escape_groff(brief_description));
+104   fprintf(f, &quot;\n&quot;);
+105 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>manpage_fmt_escape_groff()</b>,
+    <b>manpage_fmt_write_title()</b>,
+    <b>OPTIONS_MANPAGE_FORMATTER_DATE_BUFFER_SIZE</b>,
+    <b>OPTIONS_MANPAGE_FORMATTER_FULL_NAME_BUFFER_SIZE</b>,
     <b>platform_localtime()</b>, and <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by
-  <b>options_config_generate_manpage_template()</b>.</p>
+<p class="Pp">Referenced by <b>manpage_fmt_write_title()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -306,7 +321,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

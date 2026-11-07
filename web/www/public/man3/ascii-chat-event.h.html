@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>event.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">event.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">event.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">event.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>platform_event_loop</b>
+    <b>platform_event_loop_t</b>
+  <br/>
+  typedef struct <b>platform_event_stream</b> <b>platform_event_stream_t</b>
+  <br/>
+  typedef struct <b>platform_event_listener</b> <b>platform_event_listener_t</b>
+  <br/>
+  typedef void(*) <b>platform_event_task_fn</b>(void *arg)
+  <br/>
+  typedef void(*) <b>platform_event_read_fn</b>(<b>platform_event_stream_t</b>
+    *, const void *, size_t, void *)
+  <br/>
+  typedef void(*) <b>platform_event_close_fn</b>(void *,
+    <b>asciichat_error_t</b>)
+  <br/>
+  typedef void(*) <b>platform_event_write_fn</b>(void *,
+    <b>asciichat_error_t</b>)
+  <br/>
+  typedef void(*) <b>platform_event_queue_fn</b>(void *, size_t)
+  <br/>
+  typedef void(*) <b>platform_event_accept_fn</b>(<b>platform_event_stream_t</b>
+    *, void *)
+  <br/>
+  typedef void(*) <b>platform_event_work_fn</b>(void *)
+  <br/>
+  typedef void(*)
+    <b>platform_event_work_done_fn</b>(<b>platform_event_stream_t</b> *, void *,
+    <b>bool</b> closing)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>platform_event_loop_create</b>
+    (<b>platform_event_loop_t</b> **out)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_event_loop_run</b>
+    (<b>platform_event_loop_t</b> *loop)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_event_loop_post</b>
+    (<b>platform_event_loop_t</b> *loop, <b>platform_event_task_fn</b> fn, void
+    *arg)
+  <br/>
+  void <b>platform_event_loop_stop</b> (<b>platform_event_loop_t</b> *loop)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_event_loop_destroy</b>
+    (<b>platform_event_loop_t</b> *loop)
+  <br/>
+  const char * <b>platform_event_backend</b> (void)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_event_loop_tick</b>
+    (<b>platform_event_loop_t</b> *, <b>uint64_t</b>,
+    <b>platform_event_task_fn</b>, void *)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_event_loop_work</b>
+    (<b>platform_event_loop_t</b> *, <b>platform_event_task_fn</b>,
+    <b>platform_event_task_fn</b>, void *)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_event_listen</b>
+    (<b>platform_event_loop_t</b> *, <b>socket_t</b> *,
+    <b>platform_event_accept_fn</b>, void *, <b>platform_event_listener_t</b>
+    **)
+  <br/>
+  void <b>platform_event_listener_close</b> (<b>platform_event_listener_t</b> *)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_event_stream_start</b>
+    (<b>platform_event_stream_t</b> *, <b>platform_event_read_fn</b>,
+    <b>platform_event_close_fn</b>, void *)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_event_stream_adopt</b>
+    (<b>platform_event_loop_t</b> *, <b>socket_t</b> *,
+    <b>platform_event_stream_t</b> **)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_event_stream_write</b>
+    (<b>platform_event_stream_t</b> *, const <b>socket_buffer_t</b> *, size_t,
+    <b>platform_event_write_fn</b>, void *)
+  <br/>
+  void <b>platform_event_stream_pause</b> (<b>platform_event_stream_t</b> *)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_event_stream_resume</b>
+    (<b>platform_event_stream_t</b> *)
+  <br/>
+  void <b>platform_event_stream_close</b> (<b>platform_event_stream_t</b> *,
+    <b>asciichat_error_t</b>)
+  <br/>
+  void <b>platform_event_stream_request_close</b>
+    (<b>platform_event_stream_t</b> *, <b>asciichat_error_t</b>)
+  <br/>
+  void <b>platform_event_stream_set_zerocopy</b> (<b>platform_event_stream_t</b>
+    *, <b>bool</b> enabled)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_event_stream_deadline</b>
+    (<b>platform_event_stream_t</b> *, <b>uint64_t</b> timeout_ms)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_event_stream_peer</b>
+    (<b>platform_event_stream_t</b> *, struct sockaddr_storage *, socklen_t *)
+  <br/>
+  size_t <b>platform_event_stream_queued_bytes</b> (const
+    <b>platform_event_stream_t</b> *)
+  <br/>
+  void <b>platform_event_stream_observe_queue</b>
+    (<b>platform_event_stream_t</b> *, <b>platform_event_queue_fn</b>, void *)
+  <br/>
+  <b>asciichat_error_t</b> <b>platform_event_stream_work</b>
+    (<b>platform_event_stream_t</b> *, <b>platform_event_work_fn</b>,
+    <b>platform_event_work_done_fn</b>, void *)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void(*)_platform_event_accept_fn("><a class="permalink" href="#typedef_void(*)_platform_event_accept_fn(">typedef
+  void(*) platform_event_accept_fn(<b>platform_event_stream_t</b> *, void
+  *)</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file <b>event.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void(*)_platform_event_close_fn(void_*,_"><a class="permalink" href="#typedef_void(*)_platform_event_close_fn(void_*,_">typedef
+  void(*) platform_event_close_fn(void *, <b>asciichat_error_t</b>)</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file <b>event.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>platform_event_listener</b>
+  <b>platform_event_listener_t</b></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>event.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>platform_event_loop</b>
+  <b>platform_event_loop_t</b></h2>
+<p class="Pp">Native asynchronous networking. Call handle operations on the loop
+    thread. post() and stop() may be called by other threads. The caller owns
+    the loop thread and must join it before destroy(). No application callback
+    may block. WASM uses browser transports and does not build this backend.</p>
+<p class="Pp">Definition at line <b>11</b> of file <b>event.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void(*)_platform_event_queue_fn(void_*,_size_t)"><a class="permalink" href="#typedef_void(*)_platform_event_queue_fn(void_*,_size_t)">typedef
+  void(*) platform_event_queue_fn(void *, size_t)</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file <b>event.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void(*)_platform_event_read_fn("><a class="permalink" href="#typedef_void(*)_platform_event_read_fn(">typedef
+  void(*) platform_event_read_fn(<b>platform_event_stream_t</b> *, const void *,
+  size_t, void *)</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file <b>event.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>platform_event_stream</b>
+  <b>platform_event_stream_t</b></h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>event.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void(*)_platform_event_task_fn(void_*arg)"><a class="permalink" href="#typedef_void(*)_platform_event_task_fn(void_*arg)">typedef
+  void(*) platform_event_task_fn(void *arg)</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file <b>event.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void(*)_platform_event_work_done_fn("><a class="permalink" href="#typedef_void(*)_platform_event_work_done_fn(">typedef
+  void(*) platform_event_work_done_fn(<b>platform_event_stream_t</b> *, void *,
+  <b>bool</b> closing)</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file <b>event.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void(*)_platform_event_work_fn(void_*)"><a class="permalink" href="#typedef_void(*)_platform_event_work_fn(void_*)">typedef
+  void(*) platform_event_work_fn(void *)</a></h2>
+<p class="Pp">Definition at line <b>20</b> of file <b>event.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void(*)_platform_event_write_fn(void_*,_"><a class="permalink" href="#typedef_void(*)_platform_event_write_fn(void_*,_">typedef
+  void(*) platform_event_write_fn(void *, <b>asciichat_error_t</b>)</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>event.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_platform_event_backend_(void_)"><a class="permalink" href="#const_char_*_platform_event_backend_(void_)">const
+  char * platform_event_backend (void )</a></h2>
+<p class="Pp">Definition at line <b>262</b> of file <b>event.c</b>.</p>
+<pre>262                                          {
+263 #ifdef _WIN32
+264   return &quot;iocp&quot;;
+265 #elif defined(__linux__)
+266   return &quot;epoll&quot;;
+267 #elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+268   return &quot;kqueue&quot;;
+269 #else
+270   return &quot;libuv&quot;;
+271 #endif
+272 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_event_backend()</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_backend()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_listen
+  (<b>platform_event_loop_t</b> * loop, <b>socket_t</b> * socket,
+  <b>platform_event_accept_fn</b> accept, void * arg,
+  <b>platform_event_listener_t</b> ** out)</h2>
+<p class="Pp">Sets *socket to INVALID_SOCKET_VALUE when ownership transfers,
+    including if listen subsequently fails. Accepted streams are owned by the
+    loop until their close callback returns. Set callbacks in the accept
+    callback.</p>
+<p class="Pp">Definition at line <b>434</b> of file <b>event.c</b>.</p>
+<pre>435                                                                                     {
+436   if (!loop || !socket || !accept || !out)
+437     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid event listener&quot;);
+438   *out = NULL;
+439   platform_event_listener_t *listener = SAFE_CALLOC(1, sizeof(*listener), platform_event_listener_t *);
+440   int status = uv_tcp_init(&amp;loop-&gt;uv, &amp;listener-&gt;tcp);
+441   if (status &lt; 0) {
+442     SAFE_FREE(listener);
+443     return event_error(status, &quot;Initialize listener&quot;);
+444   }
+445   listener-&gt;tcp.data = listener;
+446   listener-&gt;listener = true;
+447   listener-&gt;accept = accept;
+448   listener-&gt;arg = arg;
+449   status = uv_tcp_open(&amp;listener-&gt;tcp, (uv_os_sock_t)*socket);
+450   if (status &lt; 0) {
+451     uv_close((uv_handle_t *)&amp;listener-&gt;tcp, listener_closed);
+452     return event_error(status, &quot;Adopt listener&quot;);
+453   }
+454   *socket = INVALID_SOCKET_VALUE;
+455   status = uv_listen((uv_stream_t *)&amp;listener-&gt;tcp, 128, accepted);
+456   if (status &lt; 0) {
+457     // Adoption has succeeded: the loop owns the descriptor even if listen fails.
+458     uv_close((uv_handle_t *)&amp;listener-&gt;tcp, listener_closed);
+459     return event_error(status, &quot;Listen&quot;);
+460   }
+461   *out = listener;
+462   return ASCIICHAT_OK;
+463 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_event_listener::accept</b>,
+    <b>event_write::arg</b>, <b>platform_event_listener::arg</b>,
+    <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>INVALID_SOCKET_VALUE</b>, <b>platform_event_listener::listener</b>,
+    <b>platform_event_listen()</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>SET_ERRNO</b>, <b>platform_event_listener::tcp</b>, and
+    <b>platform_event_loop::uv</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_listen()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_event_listener_close_("><a class="permalink" href="#void_platform_event_listener_close_(">void
+  platform_event_listener_close (<b>platform_event_listener_t</b> *
+  listener)</a></h2>
+<p class="Pp">Definition at line <b>148</b> of file <b>event.c</b>.</p>
+<pre>148                                                                         {
+149   if (listener &amp;&amp; !uv_is_closing((uv_handle_t *)&amp;listener-&gt;tcp))
+150     uv_close((uv_handle_t *)&amp;listener-&gt;tcp, listener_closed);
+151 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_event_listener_close()</b>, and
+    <b>platform_event_listener::tcp</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_listener_close()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_loop_create
+  (<b>platform_event_loop_t</b> ** out)</h2>
+<p class="Pp">Definition at line <b>188</b> of file <b>event.c</b>.</p>
+<pre>188                                                                           {
+189   if (!out)
+190     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing event loop output&quot;);
+191   *out = NULL;
+192   platform_event_loop_t *loop = SAFE_CALLOC(1, sizeof(*loop), platform_event_loop_t *);
+193   int status = uv_loop_init(&amp;loop-&gt;uv);
+194   if (status &lt; 0) {
+195     SAFE_FREE(loop);
+196     return event_error(status, &quot;Initialize event loop&quot;);
+197   }
+198   status = uv_mutex_init(&amp;loop-&gt;mutex);
+199   if (status &lt; 0) {
+200     uv_loop_close(&amp;loop-&gt;uv);
+201     SAFE_FREE(loop);
+202     return event_error(status, &quot;Initialize event queue&quot;);
+203   }
+204   status = uv_async_init(&amp;loop-&gt;uv, &amp;loop-&gt;wake, wake_loop);
+205   if (status &lt; 0) {
+206     uv_mutex_destroy(&amp;loop-&gt;mutex);
+207     uv_loop_close(&amp;loop-&gt;uv);
+208     SAFE_FREE(loop);
+209     return event_error(status, &quot;Initialize event wakeup&quot;);
+210   }
+211   loop-&gt;wake.data = loop;
+212   loop-&gt;uv.data = loop;
+213   *out = loop;
+214   return ASCIICHAT_OK;
+215 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>platform_event_loop::mutex</b>, <b>platform_event_loop_create()</b>,
+    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>,
+    <b>platform_event_loop::uv</b>, and <b>platform_event_loop::wake</b>.</p>
+<p class="Pp">Referenced by <b>acip_async_tcp_client_create()</b>, and
+    <b>platform_event_loop_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_loop_destroy
+  (<b>platform_event_loop_t</b> * loop)</h2>
+<p class="Pp">Definition at line <b>251</b> of file <b>event.c</b>.</p>
+<pre>251                                                                            {
+252   if (!loop)
+253     return ASCIICHAT_OK;
+254   int status = uv_loop_close(&amp;loop-&gt;uv);
+255   if (status &lt; 0)
+256     return event_error(status, &quot;Destroy event loop (stop and join first)&quot;);
+257   uv_mutex_destroy(&amp;loop-&gt;mutex);
+258   SAFE_FREE(loop);
+259   return ASCIICHAT_OK;
+260 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>platform_event_loop::mutex</b>,
+    <b>platform_event_loop_destroy()</b>, <b>SAFE_FREE</b>, and
+    <b>platform_event_loop::uv</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_loop_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_loop_post
+  (<b>platform_event_loop_t</b> * loop, <b>platform_event_task_fn</b> fn, void *
+  arg)</h2>
+<p class="Pp">Definition at line <b>224</b> of file <b>event.c</b>.</p>
+<pre>224                                                                                                               {
+225   if (!loop || !fn)
+226     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing event command&quot;);
+227   uv_mutex_lock(&amp;loop-&gt;mutex);
+228   if (loop-&gt;stopping || loop-&gt;count == EVENT_COMMAND_LIMIT) {
+229     uv_mutex_unlock(&amp;loop-&gt;mutex);
+230     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Event queue stopped or full&quot;);
+231   }
+232   loop-&gt;commands[(loop-&gt;head + loop-&gt;count) % EVENT_COMMAND_LIMIT] = (event_command_t){fn, arg};
+233   ++loop-&gt;count;
+234   // Keep the wake handle alive until this send has finished.
+235   uv_async_send(&amp;loop-&gt;wake);
+236   uv_mutex_unlock(&amp;loop-&gt;mutex);
+237   return ASCIICHAT_OK;
+238 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>event_write::arg</b>, <b>ASCIICHAT_OK</b>,
+    <b>platform_event_loop::commands</b>, <b>platform_event_loop::count</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>EVENT_COMMAND_LIMIT</b>, <b>platform_event_loop::head</b>,
+    <b>platform_event_loop::mutex</b>, <b>platform_event_loop_post()</b>,
+    <b>SET_ERRNO</b>, <b>platform_event_loop::stopping</b>, and
+    <b>platform_event_loop::wake</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_loop_post()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_loop_run
+  (<b>platform_event_loop_t</b> * loop)</h2>
+<p class="Pp">Definition at line <b>217</b> of file <b>event.c</b>.</p>
+<pre>217                                                                        {
+218   if (!loop)
+219     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing event loop&quot;);
+220   uv_run(&amp;loop-&gt;uv, UV_RUN_DEFAULT);
+221   return ASCIICHAT_OK;
+222 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>platform_event_loop_run()</b>, <b>SET_ERRNO</b>, and
+    <b>platform_event_loop::uv</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_loop_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_event_loop_stop_("><a class="permalink" href="#void_platform_event_loop_stop_(">void
+  platform_event_loop_stop (<b>platform_event_loop_t</b> * loop)</a></h2>
+<p class="Pp">Definition at line <b>240</b> of file <b>event.c</b>.</p>
+<pre>240                                                            {
+241   if (!loop)
+242     return;
+243   uv_mutex_lock(&amp;loop-&gt;mutex);
+244   if (!loop-&gt;stopping) {
+245     loop-&gt;stopping = true;
+246     uv_async_send(&amp;loop-&gt;wake);
+247   }
+248   uv_mutex_unlock(&amp;loop-&gt;mutex);
+249 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_event_loop::mutex</b>,
+    <b>platform_event_loop_stop()</b>, <b>platform_event_loop::stopping</b>, and
+    <b>platform_event_loop::wake</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_loop_stop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_loop_tick
+  (<b>platform_event_loop_t</b> * loop, <b>uint64_t</b> interval,
+  <b>platform_event_task_fn</b> fn, void * arg)</h2>
+<p class="Pp">Definition at line <b>279</b> of file <b>event.c</b>.</p>
+<pre>280                                                       {
+281   if (!loop || !interval || !fn || loop-&gt;tick_initialized)
+282     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid event loop tick&quot;);
+283   int status = uv_timer_init(&amp;loop-&gt;uv, &amp;loop-&gt;tick);
+284   if (status &lt; 0)
+285     return event_error(status, &quot;Initialize loop timer&quot;);
+286   loop-&gt;tick_initialized = true;
+287   loop-&gt;tick.data = loop;
+288   loop-&gt;tick_fn = fn;
+289   loop-&gt;tick_arg = arg;
+290   status = uv_timer_start(&amp;loop-&gt;tick, tick_loop, interval, interval);
+291   return status &lt; 0 ? event_error(status, &quot;Start loop timer&quot;) : ASCIICHAT_OK;
+292 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>event_write::arg</b>, <b>ASCIICHAT_OK</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>platform_event_loop_tick()</b>,
+    <b>SET_ERRNO</b>, <b>platform_event_loop::tick</b>,
+    <b>platform_event_loop::tick_arg</b>, <b>platform_event_loop::tick_fn</b>,
+    <b>platform_event_loop::tick_initialized</b>, and
+    <b>platform_event_loop::uv</b>.</p>
+<p class="Pp">Referenced by <b>acip_async_tcp_client_create()</b>, and
+    <b>platform_event_loop_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_loop_work
+  (<b>platform_event_loop_t</b> * loop, <b>platform_event_task_fn</b> run,
+  <b>platform_event_task_fn</b> done, void * arg)</h2>
+<p class="Pp">Definition at line <b>731</b> of file <b>event.c</b>.</p>
+<pre>732                                                                                    {
+733   if (!loop || !run || !done)
+734     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid event worker&quot;);
+735   loop_work_t *work = SAFE_CALLOC(1, sizeof(*work), loop_work_t *);
+736   work-&gt;request.data = work;
+737   work-&gt;work = run;
+738   work-&gt;done = done;
+739   work-&gt;arg = arg;
+740   int status = uv_queue_work(&amp;loop-&gt;uv, &amp;work-&gt;request, loop_work_run, loop_work_done);
+741   if (status &lt; 0) {
+742     SAFE_FREE(work);
+743     return event_error(status, &quot;Queue loop work&quot;);
+744   }
+745   return ASCIICHAT_OK;
+746 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>loop_work_t::arg</b>, <b>ASCIICHAT_OK</b>,
+    <b>loop_work_t::done</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>platform_event_loop_work()</b>, <b>loop_work_t::request</b>,
+    <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>,
+    <b>platform_event_loop::uv</b>, and <b>loop_work_t::work</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_loop_work()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_stream_adopt
+  (<b>platform_event_loop_t</b> * loop, <b>socket_t</b> * socket,
+  <b>platform_event_stream_t</b> ** out)</h2>
+<p class="Pp">Adopt an already-connected socket, setting it invalid on ownership
+    transfer.</p>
+<p class="Pp">Definition at line <b>393</b> of file <b>event.c</b>.</p>
+<pre>394                                                                              {
+395   if (!loop || !socket || !out)
+396     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket adoption&quot;);
+397   *out = NULL;
+398   platform_event_stream_t *stream = create_stream(&amp;loop-&gt;uv);
+399   if (!stream)
+400     return SET_ERRNO(ERROR_MEMORY, &quot;Cannot initialize event stream&quot;);
+401   int status = uv_tcp_open(&amp;stream-&gt;tcp, (uv_os_sock_t)*socket);
+402   if (status &lt; 0) {
+403     platform_event_stream_close(stream, ERROR_NETWORK);
+404     return event_error(status, &quot;Adopt TCP stream&quot;);
+405   }
+406   *socket = INVALID_SOCKET_VALUE;
+407   uv_tcp_nodelay(&amp;stream-&gt;tcp, 1);
+408   uv_tcp_keepalive(&amp;stream-&gt;tcp, 1, 60);
+409   *out = stream;
+410   return ASCIICHAT_OK;
+411 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK</b>, <b>INVALID_SOCKET_VALUE</b>,
+    <b>platform_event_stream_adopt()</b>, <b>platform_event_stream_close()</b>,
+    <b>SET_ERRNO</b>, <b>event_write::stream</b>,
+    <b>platform_event_stream::tcp</b>, and <b>platform_event_loop::uv</b>.</p>
+<p class="Pp">Referenced by <b>acip_async_tcp_client_create()</b>, and
+    <b>platform_event_stream_adopt()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_event_stream_close_("><a class="permalink" href="#void_platform_event_stream_close_(">void
+  platform_event_stream_close (<b>platform_event_stream_t</b> * stream,
+  <b>asciichat_error_t</b> reason)</a></h2>
+<p class="Pp">Definition at line <b>103</b> of file <b>event.c</b>.</p>
+<pre>103                                                                                             {
+104   if (!stream)
+105     return;
+106   uv_mutex_lock(&amp;stream-&gt;mutex);
+107   if (stream-&gt;closing) {
+108     uv_mutex_unlock(&amp;stream-&gt;mutex);
+109     return;
+110   }
+111   stream-&gt;closing = true;
+112   event_write_t *pending = stream-&gt;first;
+113   stream-&gt;first = stream-&gt;last = NULL;
+114   uv_mutex_unlock(&amp;stream-&gt;mutex);
+115   while (pending) {
+116     event_write_t *next = pending-&gt;next;
+117     uv_mutex_lock(&amp;stream-&gt;mutex);
+118     stream-&gt;queued -= pending-&gt;size;
+119     if (stream-&gt;queue_changed)
+120       stream-&gt;queue_changed(stream-&gt;queue_context, stream-&gt;queued);
+121     --stream-&gt;writes;
+122     uv_mutex_unlock(&amp;stream-&gt;mutex);
+123     if (pending-&gt;done)
+124       pending-&gt;done(pending-&gt;arg, ERROR_NETWORK);
+125     socket_send_buffer_free(&amp;pending-&gt;storage);
+126     SAFE_FREE(pending);
+127     pending = next;
+128   }
+129   stream-&gt;reason = reason;
+130   // Submitted uv_write requests complete during TCP close. A raw zerocopy
+131   // submission has no libuv request; discard its mapping without recycling it.
+132   if (stream-&gt;active &amp;&amp; stream-&gt;active-&gt;waiting)
+133     write_complete(&amp;stream-&gt;active-&gt;request, UV_ECANCELED);
+134   uv_timer_stop(&amp;stream-&gt;output_timer);
+135   uv_close((uv_handle_t *)&amp;stream-&gt;output_timer, stream_closed);
+136   uv_read_stop((uv_stream_t *)&amp;stream-&gt;tcp);
+137   uv_timer_stop(&amp;stream-&gt;timer);
+138   uv_close((uv_handle_t *)&amp;stream-&gt;timer, stream_closed);
+139   uv_close((uv_handle_t *)&amp;stream-&gt;tcp, stream_closed);
+140   uv_close((uv_handle_t *)&amp;stream-&gt;output, stream_closed);
+141 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_event_stream::active</b>,
+    <b>event_write::arg</b>, <b>platform_event_stream::closing</b>,
+    <b>event_write::done</b>, <b>ERROR_NETWORK</b>,
+    <b>platform_event_stream::first</b>, <b>platform_event_stream::last</b>,
+    <b>platform_event_stream::mutex</b>, <b>event_write::next</b>,
+    <b>platform_event_stream::output</b>,
+    <b>platform_event_stream::output_timer</b>,
+    <b>platform_event_stream_close()</b>,
+    <b>platform_event_stream::queue_changed</b>,
+    <b>platform_event_stream::queue_context</b>,
+    <b>platform_event_stream::queued</b>, <b>platform_event_stream::reason</b>,
+    <b>event_write::request</b>, <b>SAFE_FREE</b>, <b>event_write::size</b>,
+    <b>socket_send_buffer_free()</b>, <b>event_write::storage</b>,
+    <b>event_write::stream</b>, <b>platform_event_stream::tcp</b>,
+    <b>platform_event_stream::timer</b>, <b>event_write::waiting</b>, and
+    <b>platform_event_stream::writes</b>.</p>
+<p class="Pp">Referenced by <b>acip_async_tcp_accepted_create()</b>,
+    <b>platform_event_stream_adopt()</b>, and
+    <b>platform_event_stream_close()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_stream_deadline
+  (<b>platform_event_stream_t</b> * stream, <b>uint64_t</b> timeout_ms)</h2>
+<p class="Pp">Relative timeout converted to an absolute deadline; zero disables
+    it.</p>
+<p class="Pp">Definition at line <b>340</b> of file <b>event.c</b>.</p>
+<pre>340                                                                                                        {
+341   if (!stream || stream-&gt;closing)
+342     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Stream is closing&quot;);
+343   uv_timer_stop(&amp;stream-&gt;timer);
+344   int status = timeout_ms ? uv_timer_start(&amp;stream-&gt;timer, deadline_expired, timeout_ms, 0) : 0;
+345   return status &lt; 0 ? event_error(status, &quot;Set stream deadline&quot;) : ASCIICHAT_OK;
+346 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>platform_event_stream::closing</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>platform_event_stream_deadline()</b>, <b>SET_ERRNO</b>,
+    <b>event_write::stream</b>, and <b>platform_event_stream::timer</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_deadline()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_event_stream_observe_queue_("><a class="permalink" href="#void_platform_event_stream_observe_queue_(">void
+  platform_event_stream_observe_queue (<b>platform_event_stream_t</b> * stream,
+  <b>platform_event_queue_fn</b> observer, void * context)</a></h2>
+<p class="Pp">Publish queued-byte changes without polling the stream. Configure
+    before producers start. Invoked under the stream lock; only publish atomic
+    state, never call stream/transport APIs. Context remains alive through
+    on_close.</p>
+<p class="Pp">Definition at line <b>695</b> of file <b>event.c</b>.</p>
+<pre>696                                                         {
+697   if (!stream)
+698     return;
+699   uv_mutex_lock(&amp;stream-&gt;mutex);
+700   stream-&gt;queue_changed = observer;
+701   stream-&gt;queue_context = context;
+702   if (observer)
+703     observer(context, stream-&gt;queued);
+704   uv_mutex_unlock(&amp;stream-&gt;mutex);
+705 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_event_stream::mutex</b>,
+    <b>platform_event_stream_observe_queue()</b>,
+    <b>platform_event_stream::queue_changed</b>,
+    <b>platform_event_stream::queue_context</b>,
+    <b>platform_event_stream::queued</b>, and <b>event_write::stream</b>.</p>
+<p class="Pp">Referenced by <b>acip_async_tcp_accepted_create()</b>,
+    <b>acip_async_tcp_client_create()</b>,
+    <b>acip_async_tcp_transport_create()</b>,
+    <b>acip_async_tcp_transport_detach()</b>, and
+    <b>platform_event_stream_observe_queue()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_event_stream_pause_("><a class="permalink" href="#void_platform_event_stream_pause_(">void
+  platform_event_stream_pause (<b>platform_event_stream_t</b> * stream)</a></h2>
+<p class="Pp">Definition at line <b>324</b> of file <b>event.c</b>.</p>
+<pre>324                                                                   {
+325   if (stream &amp;&amp; !stream-&gt;closing)
+326     uv_read_stop((uv_stream_t *)&amp;stream-&gt;tcp);
+327 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_event_stream::closing</b>,
+    <b>platform_event_stream_pause()</b>, <b>event_write::stream</b>, and
+    <b>platform_event_stream::tcp</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_pause()</b>, and
+    <b>platform_event_stream_work()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_stream_peer
+  (<b>platform_event_stream_t</b> * stream, struct sockaddr_storage * address,
+  socklen_t * length)</h2>
+<p class="Pp">Definition at line <b>785</b> of file <b>event.c</b>.</p>
+<pre>786                                                                 {
+787   if (!stream || !address || !length)
+788     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid peer address output&quot;);
+789   int size = (int)*length;
+790   int status = uv_tcp_getpeername(&amp;stream-&gt;tcp, (struct sockaddr *)address, &amp;size);
+791   *length = (socklen_t)size;
+792   return status &lt; 0 ? event_error(status, &quot;Get stream peer&quot;) : ASCIICHAT_OK;
+793 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>platform_event_stream_peer()</b>, <b>SET_ERRNO</b>, and
+    <b>platform_event_stream::tcp</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_peer()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_platform_event_stream_queued_bytes_(const_"><a class="permalink" href="#size_t_platform_event_stream_queued_bytes_(const_">size_t
+  platform_event_stream_queued_bytes (const <b>platform_event_stream_t</b> *
+  stream)</a></h2>
+<p class="Pp">Definition at line <b>686</b> of file <b>event.c</b>.</p>
+<pre>686                                                                                  {
+687   if (!stream)
+688     return 0;
+689   uv_mutex_lock((uv_mutex_t *)&amp;stream-&gt;mutex);
+690   size_t bytes = stream-&gt;queued;
+691   uv_mutex_unlock((uv_mutex_t *)&amp;stream-&gt;mutex);
+692   return bytes;
+693 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_event_stream::mutex</b>,
+    <b>platform_event_stream_queued_bytes()</b>,
+    <b>platform_event_stream::queued</b>, and <b>event_write::stream</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_queued_bytes()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_event_stream_request_close_("><a class="permalink" href="#void_platform_event_stream_request_close_(">void
+  platform_event_stream_request_close (<b>platform_event_stream_t</b> * stream,
+  <b>asciichat_error_t</b> reason)</a></h2>
+<p class="Pp">Reject new writes, drain accepted output, then close; write
+    deadlines still apply.</p>
+<p class="Pp">Definition at line <b>608</b> of file <b>event.c</b>.</p>
+<pre>608                                                                                                     {
+609   if (!stream)
+610     return;
+611   uv_mutex_lock(&amp;stream-&gt;mutex);
+612   if (!stream-&gt;closing &amp;&amp; !stream-&gt;close_requested) {
+613     stream-&gt;close_requested = true;
+614     stream-&gt;requested_reason = reason;
+615     uv_async_send(&amp;stream-&gt;output);
+616   }
+617   uv_mutex_unlock(&amp;stream-&gt;mutex);
+618 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_event_stream::close_requested</b>,
+    <b>platform_event_stream::closing</b>, <b>platform_event_stream::mutex</b>,
+    <b>platform_event_stream::output</b>,
+    <b>platform_event_stream_request_close()</b>,
+    <b>platform_event_stream::requested_reason</b>, and
+    <b>event_write::stream</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_request_close()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_stream_resume
+  (<b>platform_event_stream_t</b> * stream)</h2>
+<p class="Pp">Definition at line <b>329</b> of file <b>event.c</b>.</p>
+<pre>329                                                                                 {
+330   if (!stream || stream-&gt;closing || !stream-&gt;read)
+331     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Stream cannot resume&quot;);
+332   int status = uv_read_start((uv_stream_t *)&amp;stream-&gt;tcp, allocate_read, read_stream);
+333   return status &lt; 0 ? event_error(status, &quot;Start stream read&quot;) : ASCIICHAT_OK;
+334 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>platform_event_stream::closing</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>platform_event_stream_resume()</b>, <b>platform_event_stream::read</b>,
+    <b>SET_ERRNO</b>, <b>event_write::stream</b>, and
+    <b>platform_event_stream::tcp</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_resume()</b>, and
+    <b>platform_event_stream_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_event_stream_set_zerocopy_("><a class="permalink" href="#void_platform_event_stream_set_zerocopy_(">void
+  platform_event_stream_set_zerocopy (<b>platform_event_stream_t</b> * stream,
+  <b>bool</b> enabled)</a></h2>
+<p class="Pp">Configure copy avoidance before starting producers. The loop
+    always owns I/O.</p>
+<p class="Pp">Definition at line <b>600</b> of file <b>event.c</b>.</p>
+<pre>600                                                                                        {
+601   if (!stream)
+602     return;
+603   uv_mutex_lock(&amp;stream-&gt;mutex);
+604   stream-&gt;zerocopy = enabled;
+605   uv_mutex_unlock(&amp;stream-&gt;mutex);
+606 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_event_stream::mutex</b>,
+    <b>platform_event_stream_set_zerocopy()</b>, <b>event_write::stream</b>, and
+    <b>platform_event_stream::zerocopy</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_set_zerocopy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_stream_start
+  (<b>platform_event_stream_t</b> * stream, <b>platform_event_read_fn</b> read,
+  <b>platform_event_close_fn</b> close, void * arg)</h2>
+<p class="Pp">Definition at line <b>309</b> of file <b>event.c</b>.</p>
+<pre>310                                                                                         {
+311   if (!stream || stream-&gt;closing || !read)
+312     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid stream callbacks&quot;);
+313   // Retain cleanup callbacks even when configuring or starting reads fails.
+314   stream-&gt;read = read;
+315   stream-&gt;close = close;
+316   stream-&gt;arg = arg;
+317   int send_buffer = SOCKET_STREAM_SEND_BUFFER;
+318   int status = uv_send_buffer_size((uv_handle_t *)&amp;stream-&gt;tcp, &amp;send_buffer);
+319   if (status &lt; 0)
+320     return event_error(status, &quot;Bound stream send buffer&quot;);
+321   return platform_event_stream_resume(stream);
+322 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>event_write::arg</b>,
+    <b>platform_event_stream::arg</b>, <b>platform_event_stream::close</b>,
+    <b>platform_event_stream::closing</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>platform_event_stream_resume()</b>, <b>platform_event_stream_start()</b>,
+    <b>platform_event_stream::read</b>, <b>SET_ERRNO</b>,
+    <b>SOCKET_STREAM_SEND_BUFFER</b>, <b>event_write::stream</b>, and
+    <b>platform_event_stream::tcp</b>.</p>
+<p class="Pp">Referenced by <b>acip_async_tcp_accepted_create()</b>,
+    <b>acip_async_tcp_client_create()</b>, and
+    <b>platform_event_stream_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_stream_work
+  (<b>platform_event_stream_t</b> * stream, <b>platform_event_work_fn</b> run,
+  <b>platform_event_work_done_fn</b> done, void * arg)</h2>
+<p class="Pp">Run blocking application work outside the loop. One job per stream
+    at a time; reads pause until done runs on the loop. Stream lifetime includes
+    this job. write(), request_close(), and queued_bytes() are thread-safe while
+    the caller holds a live stream reference; other stream operations are
+    loop-only.</p>
+<p class="Pp">Definition at line <b>764</b> of file <b>event.c</b>.</p>
+<pre>765                                                                                           {
+766   if (!stream || stream-&gt;closing || stream-&gt;working || !run || !done)
+767     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Stream work already active or closing&quot;);
+768   event_work_t *work = SAFE_CALLOC(1, sizeof(*work), event_work_t *);
+769   work-&gt;stream = stream;
+770   work-&gt;run = run;
+771   work-&gt;done = done;
+772   work-&gt;arg = arg;
+773   work-&gt;work.data = work;
+774   platform_event_stream_pause(stream);
+775   int status = uv_queue_work(stream-&gt;tcp.loop, &amp;work-&gt;work, run_work, finish_work);
+776   if (status &lt; 0) {
+777     SAFE_FREE(work);
+778     return event_error(status, &quot;Queue stream work&quot;);
+779   }
+780   stream-&gt;working = true;
+781   ++stream-&gt;handles;
+782   return ASCIICHAT_OK;
+783 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>event_work_t::arg</b>, <b>ASCIICHAT_OK</b>,
+    <b>platform_event_stream::closing</b>, <b>event_work_t::done</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>platform_event_stream::handles</b>,
+    <b>platform_event_stream_pause()</b>, <b>platform_event_stream_work()</b>,
+    <b>event_work_t::run</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
+    <b>SET_ERRNO</b>, <b>event_work_t::stream</b>,
+    <b>platform_event_stream::tcp</b>, <b>event_work_t::work</b>, and
+    <b>platform_event_stream::working</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_work()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_event_stream_write
+  (<b>platform_event_stream_t</b> * stream, const <b>socket_buffer_t</b> *
+  buffers, size_t count, <b>platform_event_write_fn</b> done, void * arg)</h2>
+<p class="Pp">Copies input before returning. Completion means local write
+    completion, not peer acknowledgement. Rejected writes never invoke
+    completion. Accepted writes invoke completion exactly once, including during
+    shutdown, before on_close.</p>
+<p class="Pp">Definition at line <b>620</b> of file <b>event.c</b>.</p>
+<pre>621                                                                                                      {
+622   if (!stream || !buffers || !count || count &gt; SOCKET_IOV_MAX)
+623     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid asynchronous write&quot;);
+624   size_t size = 0;
+625   for (size_t i = 0; i &lt; count; ++i) {
+626     if ((!buffers[i].data &amp;&amp; buffers[i].len) || buffers[i].len &gt; EVENT_WRITE_LIMIT - size)
+627       return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Asynchronous write too large&quot;);
+628     size += buffers[i].len;
+629   }
+630   uv_mutex_lock(&amp;stream-&gt;mutex);
+631   if (stream-&gt;closing || stream-&gt;close_requested || !size || stream-&gt;writes &gt;= EVENT_WRITE_COUNT_LIMIT ||
+632       size &gt; EVENT_WRITE_LIMIT - stream-&gt;queued) {
+633     uv_mutex_unlock(&amp;stream-&gt;mutex);
+634     return SET_ERRNO(ERROR_NETWORK_SIZE, &quot;Asynchronous output queue full&quot;);
+635   }
+636   bool mapped = stream-&gt;zerocopy &amp;&amp; size &gt;= SOCKET_ZEROCOPY_THRESHOLD;
+637   event_write_t **cached = &amp;stream-&gt;recycled;
+638   while (*cached &amp;&amp; (mapped || (*cached)-&gt;storage.capacity &lt; size))
+639     cached = &amp;(*cached)-&gt;next;
+640   event_write_t *write = *cached;
+641   socket_send_buffer_t storage = {0};
+642   if (write) {
+643     *cached = write-&gt;next;
+644     --stream-&gt;recycled_count;
+645     storage = write-&gt;storage;
+646   } else {
+647     write = SAFE_MALLOC(sizeof(*write), event_write_t *);
+648   }
+649   *write = (event_write_t){.stream = stream, .done = done, .arg = arg, .size = size, .storage = storage};
+650   if (!write-&gt;storage.data &amp;&amp; mapped) {
+651     if (socket_send_buffer_alloc(size, &amp;write-&gt;storage) != ASCIICHAT_OK) {
+652       SAFE_FREE(write);
+653       uv_mutex_unlock(&amp;stream-&gt;mutex);
+654       return SET_ERRNO(ERROR_MEMORY, &quot;Async copy avoidance exceeds process buffer budget&quot;);
+655     }
+656   } else if (!write-&gt;storage.data) {
+657     write-&gt;storage.data = buffer_alloc(NULL, size);
+658     write-&gt;storage.capacity = size;
+659   }
+660   if (!write-&gt;storage.data) {
+661     SAFE_FREE(write);
+662     uv_mutex_unlock(&amp;stream-&gt;mutex);
+663     return SET_ERRNO(ERROR_MEMORY, &quot;Async output exceeds process buffer budget&quot;);
+664   }
+665   write-&gt;request.data = write;
+666   size_t offset = 0;
+667   for (size_t i = 0; i &lt; count; ++i) {
+668     if (buffers[i].len)
+669       memcpy((char *)write-&gt;storage.data + offset, buffers[i].data, buffers[i].len);
+670     offset += buffers[i].len;
+671   }
+672   stream-&gt;queued += size;
+673   if (stream-&gt;queue_changed)
+674     stream-&gt;queue_changed(stream-&gt;queue_context, stream-&gt;queued);
+675   ++stream-&gt;writes;
+676   if (stream-&gt;last)
+677     stream-&gt;last-&gt;next = write;
+678   else
+679     stream-&gt;first = write;
+680   stream-&gt;last = write;
+681   uv_async_send(&amp;stream-&gt;output);
+682   uv_mutex_unlock(&amp;stream-&gt;mutex);
+683   return ASCIICHAT_OK;
+684 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>event_write::arg</b>,
+    <b>platform_event_stream::arg</b>, <b>ASCIICHAT_OK</b>,
+    <b>buffer_alloc()</b>, <b>socket_send_buffer_t::capacity</b>,
+    <b>platform_event_stream::close_requested</b>,
+    <b>platform_event_stream::closing</b>, <b>socket_buffer_t::data</b>,
+    <b>socket_send_buffer_t::data</b>, <b>event_write::done</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>ERROR_NETWORK_SIZE</b>,
+    <b>EVENT_WRITE_COUNT_LIMIT</b>, <b>EVENT_WRITE_LIMIT</b>,
+    <b>platform_event_stream::first</b>, <b>platform_event_stream::last</b>,
+    <b>socket_buffer_t::len</b>, <b>platform_event_stream::mutex</b>,
+    <b>event_write::next</b>, <b>event_write::offset</b>,
+    <b>platform_event_stream::output</b>, <b>platform_event_stream_write()</b>,
+    <b>platform_event_stream::queue_changed</b>,
+    <b>platform_event_stream::queue_context</b>,
+    <b>platform_event_stream::queued</b>,
+    <b>platform_event_stream::recycled</b>,
+    <b>platform_event_stream::recycled_count</b>, <b>event_write::request</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
+    <b>event_write::size</b>, <b>SOCKET_IOV_MAX</b>,
+    <b>socket_send_buffer_alloc()</b>, <b>SOCKET_ZEROCOPY_THRESHOLD</b>,
+    <b>event_write::storage</b>, <b>event_write::stream</b>,
+    <b>platform_event_stream::writes</b>, and
+    <b>platform_event_stream::zerocopy</b>.</p>
+<p class="Pp">Referenced by <b>platform_event_stream_write()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

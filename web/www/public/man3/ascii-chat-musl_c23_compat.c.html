@@ -72,15 +72,13 @@
     <b>__isoc23_sscanf</b> (const char *str, const char *format,...)
   <br/>
   Read formatted input from string (C23 compatible). int <b>__isoc23_vscanf</b>
-    (const char *format, va_list <b>args</b>)
+    (const char *format, va_list args)
   <br/>
   Read formatted input from stdin (va_list variant, C23 compatible). int
-    <b>__isoc23_vfscanf</b> (FILE *stream, const char *format, va_list
-    <b>args</b>)
+    <b>__isoc23_vfscanf</b> (FILE *stream, const char *format, va_list args)
   <br/>
   Read formatted input from file stream (va_list variant, C23 compatible). int
-    <b>__isoc23_vsscanf</b> (const char *str, const char *format, va_list
-    <b>args</b>)
+    <b>__isoc23_vsscanf</b> (const char *str, const char *format, va_list args)
   <br/>
   Read formatted input from string (va_list variant, C23 compatible). int
     <b>__isoc23_wscanf</b> (const wchar_t *format,...)
@@ -92,15 +90,14 @@
     <b>__isoc23_swscanf</b> (const wchar_t *str, const wchar_t *format,...)
   <br/>
   Read formatted wide input from string (C23 compatible). int
-    <b>__isoc23_vwscanf</b> (const wchar_t *format, va_list <b>args</b>)
+    <b>__isoc23_vwscanf</b> (const wchar_t *format, va_list args)
   <br/>
   Read formatted wide input from stdin (va_list variant, C23 compatible). int
-    <b>__isoc23_vfwscanf</b> (FILE *stream, const wchar_t *format, va_list
-    <b>args</b>)
+    <b>__isoc23_vfwscanf</b> (FILE *stream, const wchar_t *format, va_list args)
   <br/>
   Read formatted wide input from file stream (va_list variant, C23 compatible).
     int <b>__isoc23_vswscanf</b> (const wchar_t *str, const wchar_t *format,
-    va_list <b>args</b>)
+    va_list args)
   <br/>
   Read formatted wide input from string (va_list variant, C23 compatible). void
     <b>arc4random_buf</b> (void *buf, size_t nbytes)
@@ -160,7 +157,8 @@
 135 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">References <b>__isoc23_fscanf()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_fscanf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_fwscanf_(FILE_*_stream,_const_wchar_t_*_format,__"><a class="permalink" href="#int___isoc23_fwscanf_(FILE_*_stream,_const_wchar_t_*_format,__">int
@@ -185,7 +183,8 @@
 215 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">References <b>__isoc23_fwscanf()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_fwscanf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_sscanf_(const_char_*_str,_const_char_*_format,__"><a class="permalink" href="#int___isoc23_sscanf_(const_char_*_str,_const_char_*_format,__">int
@@ -210,7 +209,8 @@
 150 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">References <b>__isoc23_sscanf()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_sscanf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="long_long___isoc23_strtoll_(const_char_*_str,_char_**_endptr,_int_base)"><a class="permalink" href="#long_long___isoc23_strtoll_(const_char_*_str,_char_**_endptr,_int_base)">long
@@ -222,6 +222,8 @@
 40 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>__isoc23_strtoll()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_strtoll()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_long___isoc23_strtoul_(const_char_*_str,_char_**_endptr,_int_base)"><a class="permalink" href="#unsigned_long___isoc23_strtoul_(const_char_*_str,_char_**_endptr,_int_base)">unsigned
@@ -233,6 +235,8 @@
 47 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>__isoc23_strtoul()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_strtoul()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_long_long___isoc23_strtoull_(const_char_*_str,_char_**_endptr,_int_base)"><a class="permalink" href="#unsigned_long_long___isoc23_strtoull_(const_char_*_str,_char_**_endptr,_int_base)">unsigned
@@ -245,6 +249,8 @@
 54 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>__isoc23_strtoull()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_strtoull()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_swscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,__"><a class="permalink" href="#int___isoc23_swscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,__">int
@@ -269,7 +275,8 @@
 230 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">References <b>__isoc23_swscanf()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_swscanf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_vfscanf_(FILE_*_stream,_const_char_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vfscanf_(FILE_*_stream,_const_char_*_format,_va_list_args)">int
@@ -281,7 +288,7 @@
 <br/>
 <i>format</i> Format string
 <br/>
-<i></i><b>args</b><i></i><b> Variable argument list</b></div>
+<i>args</i> Variable argument list</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
 <p class="Pp">Definition at line <b>169</b> of file
@@ -291,7 +298,8 @@
 171 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">References <b>__isoc23_vfscanf()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_vfscanf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_vfwscanf_(FILE_*_stream,_const_wchar_t_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vfwscanf_(FILE_*_stream,_const_wchar_t_*_format,_va_list_args)">int
@@ -304,7 +312,7 @@
 <br/>
 <i>format</i> Format string
 <br/>
-<i></i><b>args</b><i></i><b> Variable argument list</b></div>
+<i>args</i> Variable argument list</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
 <p class="Pp">Definition at line <b>249</b> of file
@@ -314,7 +322,8 @@
 251 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">References <b>__isoc23_vfwscanf()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_vfwscanf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_vscanf_(const_char_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vscanf_(const_char_*_format,_va_list_args)">int
@@ -324,7 +333,7 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>format</i> Format string
 <br/>
-<i></i><b>args</b><i></i><b> Variable argument list</b></div>
+<i>args</i> Variable argument list</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
 <p class="Pp">Definition at line <b>158</b> of file
@@ -334,7 +343,8 @@
 160 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">References <b>__isoc23_vscanf()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_vscanf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_vsscanf_(const_char_*_str,_const_char_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vsscanf_(const_char_*_str,_const_char_*_format,_va_list_args)">int
@@ -347,7 +357,7 @@
 <br/>
 <i>format</i> Format string
 <br/>
-<i></i><b>args</b><i></i><b> Variable argument list</b></div>
+<i>args</i> Variable argument list</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
 <p class="Pp">Definition at line <b>180</b> of file
@@ -357,7 +367,8 @@
 182 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">References <b>__isoc23_vsscanf()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_vsscanf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_vswscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vswscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,_va_list_args)">int
@@ -370,7 +381,7 @@
 <br/>
 <i>format</i> Format string
 <br/>
-<i></i><b>args</b><i></i><b> Variable argument list</b></div>
+<i>args</i> Variable argument list</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
 <p class="Pp">Definition at line <b>260</b> of file
@@ -380,7 +391,8 @@
 262 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">References <b>__isoc23_vswscanf()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_vswscanf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_vwscanf_(const_wchar_t_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vwscanf_(const_wchar_t_*_format,_va_list_args)">int
@@ -390,7 +402,7 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>format</i> Format string
 <br/>
-<i></i><b>args</b><i></i><b> Variable argument list</b></div>
+<i>args</i> Variable argument list</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of successfully read items</div>
 <p class="Pp">Definition at line <b>238</b> of file
@@ -400,7 +412,8 @@
 240 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">References <b>__isoc23_vwscanf()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_vwscanf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="long_long___isoc23_wcstoll_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"><a class="permalink" href="#long_long___isoc23_wcstoll_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)">long
@@ -421,6 +434,8 @@
 80 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>__isoc23_wcstoll()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_wcstoll()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_long___isoc23_wcstoul_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"><a class="permalink" href="#unsigned_long___isoc23_wcstoul_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)">unsigned
@@ -441,6 +456,8 @@
 91 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>__isoc23_wcstoul()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_wcstoul()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_long_long___isoc23_wcstoull_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"><a class="permalink" href="#unsigned_long_long___isoc23_wcstoull_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)">unsigned
@@ -462,6 +479,8 @@
 102 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>__isoc23_wcstoull()</b>.</p>
+<p class="Pp">Referenced by <b>__isoc23_wcstoull()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_initstate_r_(unsigned_int_seed,_char_*_statebuf,_size_t_statelen,_struct_random_data_*_buf)"><a class="permalink" href="#int_initstate_r_(unsigned_int_seed,_char_*_statebuf,_size_t_statelen,_struct_random_data_*_buf)">int
@@ -529,17 +548,19 @@
 349   if (!statebuf || !buf || statelen &lt; 32) {
 350     return -1;
 351   }
-352 
+352
 353   // Initialize buffer (though random_r() doesn't actually use it)
 354   memset(statebuf, 0, statelen);
-355 
+355
 356   return 0;
 357 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>initstate_r()</b>.</p>
+<p class="Pp">Referenced by <b>initstate_r()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="long_musl_strtol_(const_char_*_,_extern_long_long____musl_strtoll(const_char_char_**,_int_)"><a class="permalink" href="#long_musl_strtol_(const_char_*_,_extern_long_long____musl_strtoll(const_char_char_**,_int_)">long
+<h2 class="Ss" id="long_musl_strtol_(const_char_*_,_extern_long_long_musl_strtoll(const_char_char_**,_int_)"><a class="permalink" href="#long_musl_strtol_(const_char_*_,_extern_long_long_musl_strtoll(const_char_char_**,_int_)">long
   musl_strtol (const char * , extern long long musl_strtoll(const char char **,
   int ) [extern]</a></h2>
 <p class="Pp">Definition at line <b>23</b> of file <b>musl_c23_compat.c</b>.</p>
@@ -548,6 +569,8 @@
 33 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>musl_strtol()</b>.</p>
+<p class="Pp">Referenced by <b>musl_strtol()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_random_r_(struct_random_data_*restrict_buf,_int32_t_*restrict_result)"><a class="permalink" href="#int_random_r_(struct_random_data_*restrict_buf,_int32_t_*restrict_result)">int
@@ -594,20 +617,21 @@
 384   if (buf == NULL || result == NULL) {
 385     return -1;
 386   }
-387 
+387
 388   /* Obtain cryptographically secure random bytes from kernel */
 389   uint32_t random_bytes;
 390   arc4random_buf(&amp;random_bytes, sizeof(random_bytes));
-391 
+391
 392   /* Convert to 31-bit positive integer matching glibc behavior
 393      glibc's random_r returns values in range [0, 2^31) */
 394   *result = (int32_t)((random_bytes &gt;&gt; 1) &amp; 0x7FFFFFFF);
-395 
+395
 396   return 0;
 397 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>arc4random_buf()</b>.</p>
+<p class="Pp">References <b>arc4random_buf()</b>, and <b>random_r()</b>.</p>
+<p class="Pp">Referenced by <b>random_r()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -617,7 +641,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

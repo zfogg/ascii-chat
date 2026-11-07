@@ -36,6 +36,16 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>CRYPTO_GPG_SIGNING_ESCAPED_KEY_ID_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>CRYPTO_GPG_SIGNING_HEX_S_BUFFER_SIZE</b> 65
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">int <b>gpg_sign_with_key</b> (const char *key_id, const
@@ -44,7 +54,8 @@
   <br/>
   Sign a message using GPG key (via gpg --detach-sign). int
     <b>gpg_sign_detached_ed25519</b> (const char *key_id, const <b>uint8_t</b>
-    *message, size_t message_len, <b>uint8_t</b> signature_out[64])
+    *message, size_t message_len, <b>uint8_t</b>
+    signature_out[<b>ED25519_SIGNATURE_SIZE</b>])
   <br/>
   Sign message with GPG and extract raw Ed25519 signature.
   <br/>
@@ -60,13 +71,29 @@
 <p class="Pp">Definition in file <b>signing.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_CRYPTO_GPG_SIGNING_ESCAPED_KEY_ID_BUFFER_SIZE___64"><a class="permalink" href="#_define_CRYPTO_GPG_SIGNING_ESCAPED_KEY_ID_BUFFER_SIZE___64">#define
+  CRYPTO_GPG_SIGNING_ESCAPED_KEY_ID_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>signing.c</b>.</p>
+<p class="Pp">Referenced by <b>gpg_sign_with_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CRYPTO_GPG_SIGNING_HEX_S_BUFFER_SIZE___65"><a class="permalink" href="#_define_CRYPTO_GPG_SIGNING_HEX_S_BUFFER_SIZE___65">#define
+  CRYPTO_GPG_SIGNING_HEX_S_BUFFER_SIZE 65</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>signing.c</b>.</p>
+<p class="Pp">Referenced by <b>gpg_sign_detached_ed25519()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

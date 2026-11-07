@@ -35,6 +35,14 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE</b> 32
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">const <b>color_filter_def_t</b> * <b>color_filter_get_metadata</b>
@@ -55,9 +63,115 @@
     <b>rainbow_replace_ansi_colors</b> (const char *ansi_string, float
     time_seconds)
   <br/>
-  Replace all RGB ANSI codes with rainbow color.
+  Replace all RGB ANSI codes with rainbow color. char *
+    <b>rainbow_render_ansi_at</b> (const char *ansi_string, float time_seconds)
+  <br/>
   <br/>
 </p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE___32"><a class="permalink" href="#_define_VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE___32">#define
+  VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>color_filter.c</b>.</p>
+<p class="Pp">Referenced by <b>rainbow_render_ansi_at()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_*_rainbow_render_ansi_at_(const_char_*_ansi_string,_float_time_seconds)"><a class="permalink" href="#char_*_rainbow_render_ansi_at_(const_char_*_ansi_string,_float_time_seconds)">char
+  * rainbow_render_ansi_at (const char * ansi_string, float
+  time_seconds)</a></h2>
+<p class="Pp">Definition at line <b>365</b> of file <b>color_filter.c</b>.</p>
+<pre>365                                                                           {
+366   if (!ansi_string) {
+367     return NULL;
+368   }
+369
+370   // Calculate rainbow color once for this frame
+371   uint8_t rainbow_r = 0, rainbow_g = 0, rainbow_b = 0;
+372   color_filter_calculate_rainbow(time_seconds, &amp;rainbow_r, &amp;rainbow_g, &amp;rainbow_b);
+373
+374   // Build the replacement ANSI code string once
+375   char rainbow_code[VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE];
+376   snprintf(rainbow_code, sizeof(rainbow_code), &quot;\x1b[38;2;%d;%d;%dm&quot;, rainbow_r, rainbow_g, rainbow_b);
+377   size_t rainbow_code_len = strlen(rainbow_code);
+378
+379   // Check if there are any ANSI codes to replace
+380   if (!strstr(ansi_string, &quot;\x1b[38;2;&quot;)) {
+381     return NULL; // No ANSI codes found, no replacement needed
+382   }
+383
+384   size_t input_len = strlen(ansi_string);
+385   size_t replacements = 0;
+386   const char *scan = ansi_string;
+387   while ((scan = strstr(scan, &quot;\x1b[38;2;&quot;)) != NULL) {
+388     const char *end = strchr(scan + 7, 'm');
+389     if (!end)
+390       break;
+391     replacements++;
+392     scan = end + 1;
+393   }
+394   if (input_len == SIZE_MAX || replacements &gt; (SIZE_MAX - input_len - 1) / rainbow_code_len)
+395     return NULL;
+396   char *new_result = SAFE_MALLOC(input_len + replacements * rainbow_code_len + 1, char *);
+397   if (!new_result) {
+398     return NULL;
+399   }
+400
+401   // Replace all RGB color codes with rainbow color
+402   const char *src = ansi_string;
+403   char *dst = new_result;
+404
+405   while (*src) {
+406     const char *ansi_start = strstr(src, &quot;\x1b[38;2;&quot;);
+407     if (ansi_start) {
+408       // Copy everything before this ANSI code
+409       size_t before_len = (size_t)(ansi_start - src);
+410       memcpy(dst, src, before_len);
+411       dst += before_len;
+412
+413       // Skip the old ANSI code (find the 'm' that ends it)
+414       const char *ansi_end = strchr(ansi_start + 7, 'm');
+415       if (ansi_end) {
+416         // Copy the rainbow replacement code
+417         // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary data
+418         memcpy(dst, rainbow_code, rainbow_code_len);
+419         dst += rainbow_code_len;
+420
+421         // Move source past the old code
+422         src = ansi_end + 1;
+423       } else {
+424         // Preserve a malformed trailing sequence without duplicating the prefix.
+425         size_t remaining = strlen(ansi_start);
+426         memcpy(dst, ansi_start, remaining);
+427         dst += remaining;
+428         break;
+429       }
+430     } else {
+431       // No more ANSI codes, copy the rest
+432       size_t remaining = strlen(src);
+433       memcpy(dst, src, remaining);
+434       dst += remaining;
+435       break;
+436     }
+437   }
+438   *dst = '\0';
+439
+440   return new_result;
+441 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>color_filter_calculate_rainbow()</b>,
+    <b>rainbow_render_ansi_at()</b>, <b>SAFE_MALLOC</b>, and
+    <b>VIDEO_RGBA_COLOR_FILTER_RAINBOW_CODE_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>animation_apply()</b>, and
+    <b>rainbow_render_ansi_at()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -67,7 +181,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -60,7 +60,7 @@
     (<b>uint64_t</b> handle, size_t bytes_processed)
   <br/>
   Stop timing a callback invocation. <b>bool</b> <b>lws_profiler_get_stats</b>
-    (int callback_reason, <b>lws_callback_stats_t</b> *<b>stats</b>)
+    (int callback_reason, <b>lws_callback_stats_t</b> *stats)
   <br/>
   Get statistics for a specific callback. void <b>lws_profiler_reset</b> (void)
   <br/>
@@ -105,6 +105,8 @@
   lws_profiler_destroy (void )</a></h2>
 <p class="Pp">Cleanup the callback profiler. Frees all profiling structures and
     destroys mutex. Called at application exit or when stopping profiling.</p>
+<p class="Pp">References <b>lws_profiler_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>lws_profiler_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_lws_profiler_dump_report_(void_)"><a class="permalink" href="#void_lws_profiler_dump_report_(void_)">void
@@ -117,6 +119,8 @@
   <li>Total data processed</li>
   <li>Efficiency metrics</li>
 </ul>
+<p class="Pp">References <b>lws_profiler_dump_report()</b>.</p>
+<p class="Pp">Referenced by <b>lws_profiler_dump_report()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_lws_profiler_export_json_(void_)"><a class="permalink" href="#char_*_lws_profiler_export_json_(void_)">char
@@ -126,6 +130,8 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Allocated JSON string, or NULL on failure</div>
+<p class="Pp">References <b>lws_profiler_export_json()</b>.</p>
+<p class="Pp">Referenced by <b>lws_profiler_export_json()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lws_profiler_get_stats (int callback_reason,
@@ -137,11 +143,12 @@
 <div class="Bd-indent"><i>callback_reason</i> LWS callback reason enum (as
   integer)
 <br/>
-<i></i><b>stats</b><i></i><b> Output structure (caller-allocated)</b></div>
+<i>stats</i> Output structure (caller-allocated)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if statistics exist, false if callback never
   invoked</div>
-<p class="Pp">References <b>stats</b>.</p>
+<p class="Pp">References <b>lws_profiler_get_stats()</b>.</p>
+<p class="Pp">Referenced by <b>lws_profiler_get_stats()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lws_profiler_init (void )</h2>
@@ -151,18 +158,24 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true on success, false on failure</div>
+<p class="Pp">References <b>lws_profiler_init()</b>.</p>
+<p class="Pp">Referenced by <b>lws_profiler_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lws_profiler_is_initialized (void )</h2>
 <p class="Pp">Check if profiler is initialized.</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if profiler is active, false otherwise</div>
+<p class="Pp">References <b>lws_profiler_is_initialized()</b>.</p>
+<p class="Pp">Referenced by <b>lws_profiler_is_initialized()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_lws_profiler_reset_(void_)"><a class="permalink" href="#void_lws_profiler_reset_(void_)">void
   lws_profiler_reset (void )</a></h2>
 <p class="Pp">Reset all profiling statistics. Clears counters and timing data.
     Useful for collecting data over specific time windows.</p>
+<p class="Pp">References <b>lws_profiler_reset()</b>.</p>
+<p class="Pp">Referenced by <b>lws_profiler_reset()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> lws_profiler_start (int callback_reason,
@@ -179,6 +192,8 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Opaque timing handle (non-zero if profiler is
   initialized)</div>
+<p class="Pp">References <b>lws_profiler_start()</b>.</p>
+<p class="Pp">Referenced by <b>lws_profiler_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_lws_profiler_stop_("><a class="permalink" href="#void_lws_profiler_stop_(">void
@@ -193,6 +208,8 @@
 <br/>
 <i>bytes_processed</i> Bytes processed by this callback (0 if not
   applicable)</div>
+<p class="Pp">References <b>lws_profiler_stop()</b>.</p>
+<p class="Pp">Referenced by <b>lws_profiler_stop()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -202,7 +219,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

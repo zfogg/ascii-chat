@@ -73,26 +73,29 @@
   to</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>367</b> of file <b>bash.c</b>.</p>
-<pre>367                                                           {
-368   if (!output) {
-369     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
-370   }
-371 
-372   bash_write_header(output);
-373   asciichat_error_t err = bash_write_all_options(output);
-374   if (err != ASCIICHAT_OK) {
-375     return err;
-376   }
-377   bash_write_completion_logic(output);
-378   bash_write_footer(output);
-379 
-380   return ASCIICHAT_OK;
-381 }</pre>
+<p class="Pp">Definition at line <b>379</b> of file <b>bash.c</b>.</p>
+<pre>379                                                           {
+380   if (!output) {
+381     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
+382   }
+383
+384   bash_write_header(output);
+385   asciichat_error_t err = bash_write_all_options(output);
+386   if (err != ASCIICHAT_OK) {
+387     return err;
+388   }
+389   bash_write_completion_logic(output);
+390   bash_write_footer(output);
+391
+392   return ASCIICHAT_OK;
+393 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, and
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>completions_generate_bash()</b>, <b>ERROR_INVALID_PARAM</b>, and
     <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>completions_generate_bash()</b>, and
+    <b>completions_generate_for_shell()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -102,7 +105,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

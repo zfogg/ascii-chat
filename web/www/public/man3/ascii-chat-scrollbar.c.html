@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>scrollbar.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">scrollbar.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">scrollbar.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">scrollbar.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>UI_SCROLLBAR_CELL_BUFFER_SIZE</b> 128
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>ui_scrollbar_geometry_t</b> <b>ui_scrollbar_measure</b> (size_t
+    total, size_t visible, size_t offset, size_t height)
+  <br/>
+  void <b>ui_scrollbar_cell</b> (char *out, size_t cap, size_t row, size_t
+    height, size_t total, size_t visible, size_t offset)
+  <br/>
+  void <b>ui_scrollbar_render</b> (<b>frame_buffer_t</b> *out, int row, int col,
+    int height, size_t total, size_t visible, size_t offset)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_UI_SCROLLBAR_CELL_BUFFER_SIZE___128"><a class="permalink" href="#_define_UI_SCROLLBAR_CELL_BUFFER_SIZE___128">#define
+  UI_SCROLLBAR_CELL_BUFFER_SIZE 128</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>scrollbar.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_scrollbar_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_scrollbar_cell_(char_*_output,_size_t_capacity,_size_t_row,_size_t_height,_size_t_total,_size_t_visible,_size_t_offset)"><a class="permalink" href="#void_ui_scrollbar_cell_(char_*_output,_size_t_capacity,_size_t_row,_size_t_height,_size_t_total,_size_t_visible,_size_t_offset)">void
+  ui_scrollbar_cell (char * output, size_t capacity, size_t row, size_t height,
+  size_t total, size_t visible, size_t offset)</a></h2>
+<p class="Pp">Format one track cell; caller supplies storage (no allocation or
+    output).</p>
+<p class="Pp">Definition at line <b>26</b> of file <b>scrollbar.c</b>.</p>
+<pre>26                                                                                                                       {
+27   if (!out || !cap) {
+28     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Scrollbar cell requires output storage&quot;);
+29     return;
+30   }
+31   ui_scrollbar_geometry_t g = ui_scrollbar_measure(total, visible, offset, height);
+32   bool thumb = g.visible &amp;&amp; row &gt;= g.start &amp;&amp; row - g.start &lt; g.length;
+33   const char *glyph = !g.visible ? &quot; &quot; : terminal_should_use_utf8() ? (thumb ? &quot;&#x2588;&quot; : &quot;&#x2502;&quot;) : (thumb ? &quot;#&quot; : &quot;|&quot;);
+34   snprintf(out, cap, &quot;%s&quot;, colored_string(thumb ? LOG_COLOR_DEBUG : LOG_COLOR_GREY, glyph));
+35 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colored_string()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ui_scrollbar_geometry_t::length</b>, <b>LOG_COLOR_DEBUG</b>,
+    <b>LOG_COLOR_GREY</b>, <b>SET_ERRNO</b>,
+    <b>ui_scrollbar_geometry_t::start</b>, <b>terminal_should_use_utf8()</b>,
+    <b>ui_scrollbar_cell()</b>, <b>ui_scrollbar_measure()</b>, and
+    <b>ui_scrollbar_geometry_t::visible</b>.</p>
+<p class="Pp">Referenced by <b>ui_scrollbar_cell()</b>, and
+    <b>ui_scrollbar_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ui_scrollbar_geometry_t</b> ui_scrollbar_measure (size_t
+  total, size_t visible, size_t offset, size_t height)</h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>scrollbar.c</b>.</p>
+<pre>10                                                                                                          {
+11   ui_scrollbar_geometry_t g = {0};
+12   if (!height || !visible || total &lt;= visible)
+13     return g;
+14   g.visible = true;
+15   g.length = (size_t)((long double)visible * height / total);
+16   if (!g.length)
+17     g.length = 1;
+18   if (g.length &gt; height)
+19     g.length = height;
+20   if (offset &gt; total - visible)
+21     offset = total - visible;
+22   g.start = (size_t)((long double)offset * (height - g.length) / (total - visible));
+23   return g;
+24 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_scrollbar_geometry_t::length</b>,
+    <b>ui_scrollbar_geometry_t::start</b>, <b>ui_scrollbar_measure()</b>, and
+    <b>ui_scrollbar_geometry_t::visible</b>.</p>
+<p class="Pp">Referenced by <b>ui_scrollbar_cell()</b>, and
+    <b>ui_scrollbar_measure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_scrollbar_render_("><a class="permalink" href="#void_ui_scrollbar_render_(">void
+  ui_scrollbar_render (<b>frame_buffer_t</b> * out, int row, int col, int
+  height, size_t total, size_t visible, size_t offset)</a></h2>
+<p class="Pp">Definition at line <b>37</b> of file <b>scrollbar.c</b>.</p>
+<pre>38                                         {
+39   if (!out || row &lt; 1 || col &lt; 1 || height &lt; 1) {
+40     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid scrollbar output or geometry&quot;);
+41     return;
+42   }
+43   frame_buffer_append(out, &quot;\0337&quot;, 2);
+44   for (int i = 0; i &lt; height; ++i) {
+45     char cell[UI_SCROLLBAR_CELL_BUFFER_SIZE];
+46     ui_scrollbar_cell(cell, sizeof(cell), (size_t)i, (size_t)height, total, visible, offset);
+47     frame_buffer_printf(out, &quot;\033[%d;%dH%s&quot;, row + i, col, cell);
+48   }
+49   frame_buffer_append(out, &quot;\0338&quot;, 2);
+50 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
+    <b>frame_buffer_append()</b>, <b>frame_buffer_printf()</b>,
+    <b>SET_ERRNO</b>, <b>ui_scrollbar_cell()</b>,
+    <b>UI_SCROLLBAR_CELL_BUFFER_SIZE</b>, and <b>ui_scrollbar_render()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_screen_compose()</b>,
+    <b>ui_error_popup_render()</b>, <b>ui_scrollbar_render()</b>, and
+    <b>ui_table_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

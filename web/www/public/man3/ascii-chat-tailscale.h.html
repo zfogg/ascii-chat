@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>tailscale.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">tailscale.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">tailscale.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">tailscale.h - Tailscale host identity helpers.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>is_tailscale_host</b> (const char *address)
+  <br/>
+  Determine whether an address belongs to the local Tailscale tailnet.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Tailscale host identity helpers.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>tailscale.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> is_tailscale_host (const char * address)</h2>
+<p class="Pp">Determine whether an address belongs to the local Tailscale
+    tailnet. A fully-qualified .ts.net name is accepted directly. Literal IP
+    addresses are reverse-resolved, while short hostnames are forward-resolved
+    and then reverse-checked. The resolved name must end in .ts.net.</p>
+<p class="Pp">Definition at line <b>63</b> of file <b>tailscale.c</b>.</p>
+<pre>63                                             {
+64   if (!address || !address[0]) {
+65     return false;
+66   }
+67   if (is_tailscale_hostname(address)) {
+68     return true;
+69   }
+70
+71   bool is_numeric = is_valid_ipv4(address) || is_valid_ipv6(address);
+72   bool is_short_hostname = !is_numeric &amp;&amp; strchr(address, '.') == NULL;
+73   return (is_numeric || is_short_hostname) &amp;&amp; address_resolves_to_tailscale(address, is_numeric);
+74 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_tailscale_host()</b>, <b>is_valid_ipv4()</b>, and
+    <b>is_valid_ipv6()</b>.</p>
+<p class="Pp">Referenced by <b>is_tailscale_host()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

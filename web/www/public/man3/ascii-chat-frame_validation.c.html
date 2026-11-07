@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>frame_validation.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">frame_validation.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">frame_validation.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">frame_validation.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>FRAME_SGR_PARAMETER_CAPACITY</b> 16
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>session_frame_validate_contract</b>
+    (const char *text, size_t length, <b>uint32_t</b> width, <b>uint32_t</b>
+    height, const <b>acip_render_settings_t</b> *settings, <b>uint32_t</b>
+    effects)
+  <br/>
+  <b>asciichat_error_t</b> <b>session_frame_validate</b> (const char *text,
+    size_t length, <b>uint32_t</b> width, <b>uint32_t</b> height)
+  <br/>
+  <b>asciichat_error_t</b> <b>frame_render_contract_decode</b> (const void
+    *wire, size_t available, <b>acip_render_settings_t</b> *settings,
+    <b>uint32_t</b> *effects, size_t *length)
+  <br/>
+  <b>asciichat_error_t</b> <b>frame_render_contract_encode</b> (const
+    <b>acip_render_settings_t</b> *settings, <b>uint32_t</b> effects,
+    <b>uint8_t</b> *wire, size_t *length)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_FRAME_SGR_PARAMETER_CAPACITY___16"><a class="permalink" href="#_define_FRAME_SGR_PARAMETER_CAPACITY___16">#define
+  FRAME_SGR_PARAMETER_CAPACITY 16</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>frame_validation.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> frame_render_contract_decode (const void
+  * wire, size_t available, <b>acip_render_settings_t</b> * settings,
+  <b>uint32_t</b> * effects, size_t * length)</h2>
+<p class="Pp">Definition at line <b>209</b> of file
+  <b>frame_validation.c</b>.</p>
+<pre>210                                                                                   {
+211   if (!wire || !settings || !effects || !length || available &lt; FRAME_RENDER_CONTRACT_HEADER)
+212     return SET_ERRNO(ERROR_INVALID_FRAME, &quot;Truncated rendered frame contract&quot;);
+213   uint32_t fields[5];
+214   memcpy(fields, wire, sizeof(fields));
+215   for (size_t i = 0; i &lt; 5; ++i)
+216     fields[i] = NET_TO_HOST_U32(fields[i]);
+217   if (fields[0] != FRAME_RENDER_CONTRACT_SCHEMA || fields[2] &gt; RENDER_MODE_HALF_BLOCK ||
+218       (fields[3] &amp; ~(FRAME_RENDER_CONTRACT_RAIN | FRAME_RENDER_CONTRACT_GRID)) || !fields[4] || fields[4] &gt; 255 ||
+219       fields[4] &gt; available - FRAME_RENDER_CONTRACT_HEADER)
+220     return SET_ERRNO(ERROR_INVALID_FRAME, &quot;Invalid rendered frame contract schema/mode/effects/palette length&quot;);
+221   memset(settings, 0, sizeof(*settings));
+222   settings-&gt;revision = fields[1];
+223   settings-&gt;caps.render_mode = (render_mode_t)fields[2];
+224   settings-&gt;palette_length = fields[4];
+225   memcpy(settings-&gt;palette, (const uint8_t *)wire + FRAME_RENDER_CONTRACT_HEADER, fields[4]);
+226   if (memchr(settings-&gt;palette, 0, fields[4]))
+227     return SET_ERRNO(ERROR_INVALID_FRAME, &quot;Embedded NUL in rendered frame contract palette&quot;);
+228   *effects = fields[3];
+229   *length = FRAME_RENDER_CONTRACT_HEADER + fields[4];
+230   return ASCIICHAT_OK;
+231 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>acip_render_settings_t::caps</b>, <b>ERROR_INVALID_FRAME</b>,
+    <b>frame_render_contract_decode()</b>, <b>FRAME_RENDER_CONTRACT_GRID</b>,
+    <b>FRAME_RENDER_CONTRACT_HEADER</b>, <b>FRAME_RENDER_CONTRACT_RAIN</b>,
+    <b>FRAME_RENDER_CONTRACT_SCHEMA</b>, <b>NET_TO_HOST_U32</b>,
+    <b>acip_render_settings_t::palette</b>,
+    <b>acip_render_settings_t::palette_length</b>,
+    <b>terminal_capabilities_t::render_mode</b>, <b>RENDER_MODE_HALF_BLOCK</b>,
+    <b>acip_render_settings_t::revision</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>client_validate_frame()</b>, and
+    <b>frame_render_contract_decode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> frame_render_contract_encode (const
+  <b>acip_render_settings_t</b> * settings, <b>uint32_t</b> effects,
+  <b>uint8_t</b> * wire, size_t * length)</h2>
+<p class="Pp">Definition at line <b>233</b> of file
+  <b>frame_validation.c</b>.</p>
+<pre>234                                                                {
+235   if (!settings || !wire || !length)
+236     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing rendered frame contract&quot;);
+237   size_t n = strnlen(settings-&gt;palette, sizeof(settings-&gt;palette));
+238   if (!n || n &gt; 255)
+239     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid rendered frame contract palette&quot;);
+240   uint32_t fields[] = {HOST_TO_NET_U32(FRAME_RENDER_CONTRACT_SCHEMA), HOST_TO_NET_U32(settings-&gt;revision),
+241                        HOST_TO_NET_U32(settings-&gt;caps.render_mode), HOST_TO_NET_U32(effects), HOST_TO_NET_U32(n)};
+242   memcpy(wire, fields, sizeof(fields));
+243   memcpy(wire + sizeof(fields), settings-&gt;palette, n);
+244   *length = sizeof(fields) + n;
+245   return ASCIICHAT_OK;
+246 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>acip_render_settings_t::caps</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>frame_render_contract_encode()</b>, <b>FRAME_RENDER_CONTRACT_SCHEMA</b>,
+    <b>HOST_TO_NET_U32</b>, <b>acip_render_settings_t::palette</b>,
+    <b>terminal_capabilities_t::render_mode</b>,
+    <b>acip_render_settings_t::revision</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acip_send_ascii_frame_contract()</b>, and
+    <b>frame_render_contract_encode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> session_frame_validate (const char *
+  text, size_t length, <b>uint32_t</b> width, <b>uint32_t</b> height)</h2>
+<p class="Pp">Definition at line <b>205</b> of file
+  <b>frame_validation.c</b>.</p>
+<pre>205                                                                                                            {
+206   return session_frame_validate_contract(text, length, width, height, NULL, 0);
+207 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_frame_validate()</b>, and
+    <b>session_frame_validate_contract()</b>.</p>
+<p class="Pp">Referenced by <b>mirror_render_audio_visualization()</b>, and
+    <b>session_frame_validate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> session_frame_validate_contract (const
+  char * text, size_t length, <b>uint32_t</b> width, <b>uint32_t</b> height,
+  const <b>acip_render_settings_t</b> * settings, <b>uint32_t</b> effects)</h2>
+<p class="Pp">Definition at line <b>193</b> of file
+  <b>frame_validation.c</b>.</p>
+<pre>194                                                                                                             {
+195   asciichat_error_t result = validate_contract(text, length, width, height, settings, effects);
+196   ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_VALIDATION_CHECKED, 1);
+197   if (result != ASCIICHAT_OK) {
+198     asciichat_error_context_t error = {0};
+199     const char *reason = HAS_ERRNO(&amp;error) ? error.context_message : asciichat_error_string(result);
+200     ascii_otel_frame_rejected(&quot;rendered_frame&quot;, reason, length, width, height, result);
+201   }
+202   return result;
+203 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_otel_frame_rejected()</b>,
+    <b>ascii_otel_metric()</b>, <b>ASCIICHAT_OK</b>,
+    <b>asciichat_error_context_t::context_message</b>, <b>HAS_ERRNO</b>, and
+    <b>session_frame_validate_contract()</b>.</p>
+<p class="Pp">Referenced by <b>client_validate_frame()</b>,
+    <b>mirror_convert_frame()</b>, <b>session_frame_validate()</b>, and
+    <b>session_frame_validate_contract()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

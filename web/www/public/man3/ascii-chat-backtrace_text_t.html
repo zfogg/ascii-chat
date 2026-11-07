@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>backtrace_text_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">backtrace_text_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">backtrace_text_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">backtrace_text_t - Capture current stack into bt.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/debug/backtrace.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char <b>colored</b> [16384]
+  <br/>
+  char <b>plain</b> [16384]
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Capture current stack into bt.</p>
+<p class="Pp">Calls <b>platform_backtrace()</b> to capture raw return addresses.
+    Does not symbolize (symbols remain NULL).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>bt</i> Backtrace structure to fill (must not be NULL)
+  Shared semantic formatting for terminal logs and TUI backtraces. No output or
+  ownership transfer.</div>
+<p class="Pp">Definition at line <b>137</b> of file
+  <b>debug/backtrace.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_backtrace_text_t::colored_16384_"><a class="permalink" href="#char_backtrace_text_t::colored_16384_">char
+  backtrace_text_t::colored[16384]</a></h2>
+<p class="Pp">Definition at line <b>138</b> of file
+  <b>debug/backtrace.h</b>.</p>
+<p class="Pp">Referenced by <b>backtrace_format_styled()</b>, and
+    <b>backtrace_print()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_backtrace_text_t::plain_16384_"><a class="permalink" href="#char_backtrace_text_t::plain_16384_">char
+  backtrace_text_t::plain[16384]</a></h2>
+<p class="Pp">Definition at line <b>139</b> of file
+  <b>debug/backtrace.h</b>.</p>
+<p class="Pp">Referenced by <b>backtrace_format_styled()</b>, and
+    <b>backtrace_print()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

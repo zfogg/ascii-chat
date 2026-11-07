@@ -60,6 +60,21 @@
 <h2 class="Ss" id="int_wasm_parse_args_(const_char_*_args_str,_char_**_argv,_int_max_args,_char_**_out_args_copy)"><a class="permalink" href="#int_wasm_parse_args_(const_char_*_args_str,_char_**_argv,_int_max_args,_char_**_out_args_copy)">int
   wasm_parse_args (const char * args_str, char ** argv, int max_args, char **
   out_args_copy)</a></h2>
+<p class="Pp">Parse a shell-style argument string into argv[] Sets
+    *out_args_copy to the strdup'd buffer that must be freed by the caller AFTER
+    argv is no longer needed (since argv points into args_copy).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>args_str</i> Space-separated argument string
+<br/>
+<i>argv</i> Output array to store argument pointers (at least max_args elements)
+<br/>
+<i>max_args</i> Maximum number of arguments to parse
+<br/>
+<i>out_args_copy</i> Output buffer for the strdup'd args_str</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">argc (number of arguments parsed), or -1 on allocation
+  failure</div>
 <p class="Pp">Parse space-separated args_str into argv[] Sets *out_args_copy to
     the strdup'd buffer that must be freed by the caller AFTER argv is no longer
     needed (since argv points into args_copy).</p>
@@ -75,43 +90,75 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">argc (number of arguments parsed), or -1 on allocation
   failure</div>
-<p class="Pp">Definition at line <b>25</b> of file
+<p class="Pp">Definition at line <b>24</b> of file
   <b>src/web/common/init.c</b>.</p>
-<pre>25                                                                                            {
-26   if (!args_str || !argv || !out_args_copy || max_args &lt; 1) {
-27     return -1;
-28   }
-29 
-30   // Duplicate the input string (strtok modifies the string)
-31   char *args_copy = strdup(args_str);
-32   if (!args_copy) {
-33     return -1;
-34   }
-35 
-36   *out_args_copy = args_copy;
-37 
-38   // Parse space-separated arguments
-39   int argc = 0;
-40   char *token = strtok(args_copy, &quot; &quot;);
-41   while (token != NULL &amp;&amp; argc &lt; (max_args - 1)) {
-42     argv[argc++] = token;
-43     token = strtok(NULL, &quot; &quot;);
-44   }
-45   argv[argc] = NULL;
-46 
-47   // Log for debugging
-48   fprintf(stderr, &quot;[wasm_parse_args] Parsed input: %s\n&quot;, args_str);
-49   fprintf(stderr, &quot;[wasm_parse_args] argc=%d\n&quot;, argc);
-50   for (int i = 0; i &lt; argc; i++) {
-51     fprintf(stderr, &quot;[wasm_parse_args] argv[%d]=%s\n&quot;, i, argv[i]);
-52   }
-53 
-54   return argc;
-55 }</pre>
+<pre>24                                                                                            {
+25   if (!args_str || !argv || !out_args_copy || max_args &lt; 1) {
+26     return -1;
+27   }
+28
+29   *out_args_copy = NULL;
+30   char *args_copy = strdup(args_str);
+31   if (!args_copy) {
+32     return -1;
+33   }
+34
+35   *out_args_copy = args_copy;
+36
+37   // Compact each parsed argument in place so quoted values can contain spaces.
+38   int argc = 0;
+39   char *read = args_copy;
+40   char *write = args_copy;
+41   while (*read != '\0') {
+42     while (*read == ' ' || *read == '\t' || *read == '\n' || *read == '\r')
+43       read++;
+44     if (*read == '\0')
+45       break;
+46     if (argc &gt;= max_args - 1) {
+47       free(args_copy);
+48       *out_args_copy = NULL;
+49       return -1;
+50     }
+51
+52     argv[argc++] = write;
+53     char quote = '\0';
+54     while (*read != '\0') {
+55       char current = *read++;
+56       if (current == '\\' &amp;&amp; *read != '\0') {
+57         *write++ = *read++;
+58         continue;
+59       }
+60       if (quote != '\0') {
+61         if (current == quote)
+62           quote = '\0';
+63         else
+64           *write++ = current;
+65         continue;
+66       }
+67       if (current == '\'' || current == '&quot;') {
+68         quote = current;
+69       } else if (current == ' ' || current == '\t' || current == '\n' || current == '\r') {
+70         break;
+71       } else {
+72         *write++ = current;
+73       }
+74     }
+75     if (quote != '\0') {
+76       free(args_copy);
+77       *out_args_copy = NULL;
+78       return -1;
+79     }
+80     *write++ = '\0';
+81   }
+82   argv[argc] = NULL;
+83
+84   return argc;
+85 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>client_init_with_args()</b>, and
-    <b>mirror_init_with_args()</b>.</p>
+<p class="Pp">References <b>wasm_parse_args()</b>.</p>
+<p class="Pp">Referenced by <b>client_init_with_args()</b>,
+    <b>mirror_init_with_args()</b>, and <b>wasm_parse_args()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -121,7 +168,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

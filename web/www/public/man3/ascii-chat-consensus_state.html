@@ -43,7 +43,7 @@
   <br/>
   <b>consensus_topology_t</b> * <b>topology</b>
   <br/>
-  <b>uint8_t</b> <b>my_id</b> [16]
+  <b>uint8_t</b> <b>my_id</b> [<b>SESSION_ID_SIZE</b>]
   <br/>
   participant_metrics_t * <b>metrics</b>
   <br/>
@@ -61,7 +61,7 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">State machine instance.</p>
-<p class="Pp">Definition at line <b>24</b> of file <b>state.c</b>.</p>
+<p class="Pp">Definition at line <b>27</b> of file <b>state.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -70,7 +70,7 @@
 <h2 class="Ss"><b>consensus_state_machine_t</b>
   consensus_state::current_state</h2>
 <p class="Pp">Current state</p>
-<p class="Pp">Definition at line <b>25</b> of file <b>state.c</b>.</p>
+<p class="Pp">Definition at line <b>28</b> of file <b>state.c</b>.</p>
 <p class="Pp">Referenced by <b>consensus_state_add_metrics()</b>,
     <b>consensus_state_collection_complete()</b>,
     <b>consensus_state_compute_election()</b>, <b>consensus_state_create()</b>,
@@ -78,34 +78,35 @@
     <b>consensus_state_get_elected_backup()</b>,
     <b>consensus_state_get_elected_host()</b>,
     <b>consensus_state_get_metric_at()</b>,
-    <b>consensus_state_reset_to_idle()</b>, and
-    <b>consensus_state_start_collection()</b>.</p>
+    <b>consensus_state_reset_to_idle()</b>,
+    <b>consensus_state_start_collection()</b>, and
+    <b>consensus_state_store_election()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>election_result_t</b> consensus_state::election_result</h2>
 <p class="Pp">Last election result</p>
-<p class="Pp">Definition at line <b>35</b> of file <b>state.c</b>.</p>
-<p class="Pp">Referenced by <b>consensus_state_compute_election()</b>,
-    <b>consensus_state_create()</b>,
+<p class="Pp">Definition at line <b>38</b> of file <b>state.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_state_create()</b>,
     <b>consensus_state_get_elected_backup()</b>,
-    <b>consensus_state_get_elected_host()</b>, and
-    <b>consensus_state_start_collection()</b>.</p>
+    <b>consensus_state_get_elected_host()</b>,
+    <b>consensus_state_start_collection()</b>, and
+    <b>consensus_state_store_election()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="participant_metrics_t*_consensus_state::metrics"><a class="permalink" href="#participant_metrics_t*_consensus_state::metrics">participant_metrics_t*
   consensus_state::metrics</a></h2>
 <p class="Pp">Dynamic array of collected metrics</p>
-<p class="Pp">Definition at line <b>30</b> of file <b>state.c</b>.</p>
+<p class="Pp">Definition at line <b>33</b> of file <b>state.c</b>.</p>
 <p class="Pp">Referenced by <b>consensus_state_add_metrics()</b>,
     <b>consensus_state_compute_election()</b>, <b>consensus_state_create()</b>,
-    <b>consensus_state_destroy()</b>, and
-    <b>consensus_state_get_metric_at()</b>.</p>
+    <b>consensus_state_destroy()</b>, <b>consensus_state_get_metric_at()</b>,
+    and <b>consensus_state_store_election()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_consensus_state::metrics_capacity"><a class="permalink" href="#int_consensus_state::metrics_capacity">int
   consensus_state::metrics_capacity</a></h2>
 <p class="Pp">Allocated capacity</p>
-<p class="Pp">Definition at line <b>32</b> of file <b>state.c</b>.</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>state.c</b>.</p>
 <p class="Pp">Referenced by <b>consensus_state_add_metrics()</b>, and
     <b>consensus_state_create()</b>.</p>
 </section>
@@ -113,23 +114,25 @@
 <h2 class="Ss" id="int_consensus_state::metrics_count"><a class="permalink" href="#int_consensus_state::metrics_count">int
   consensus_state::metrics_count</a></h2>
 <p class="Pp">Current number of metrics</p>
-<p class="Pp">Definition at line <b>31</b> of file <b>state.c</b>.</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>state.c</b>.</p>
 <p class="Pp">Referenced by <b>consensus_state_add_metrics()</b>,
     <b>consensus_state_compute_election()</b>, <b>consensus_state_create()</b>,
     <b>consensus_state_get_metric_at()</b>,
-    <b>consensus_state_get_metrics_count()</b>, and
-    <b>consensus_state_start_collection()</b>.</p>
+    <b>consensus_state_get_metrics_count()</b>,
+    <b>consensus_state_start_collection()</b>, and
+    <b>consensus_state_store_election()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> consensus_state::my_id[16]</h2>
+<h2 class="Ss"><b>uint8_t</b>
+  consensus_state::my_id[<b>SESSION_ID_SIZE</b>]</h2>
 <p class="Pp">My participant ID</p>
-<p class="Pp">Definition at line <b>27</b> of file <b>state.c</b>.</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>state.c</b>.</p>
 <p class="Pp">Referenced by <b>consensus_state_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>consensus_topology_t</b>* consensus_state::topology</h2>
 <p class="Pp">Topology (not owned)</p>
-<p class="Pp">Definition at line <b>26</b> of file <b>state.c</b>.</p>
+<p class="Pp">Definition at line <b>29</b> of file <b>state.c</b>.</p>
 <p class="Pp">Referenced by <b>consensus_state_collection_complete()</b>,
     <b>consensus_state_create()</b>, and <b>consensus_state_is_leader()</b>.</p>
 <p class="Pp"></p>
@@ -142,7 +145,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

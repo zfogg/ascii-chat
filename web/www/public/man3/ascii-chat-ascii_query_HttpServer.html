@@ -56,7 +56,7 @@
     handler)
   <br/>
   Set a default handler for unmatched routes. <b>bool</b> <b>start</b>
-    (<b>uint16_t</b> <b>port</b>)
+    (<b>uint16_t</b> port)
   <br/>
   Start the server. void <b>stop</b> ()
   <br/>
@@ -86,17 +86,17 @@
 <section class="Ss">
 <h2 class="Ss" id="ascii_query::HttpServer::HttpServer_()"><a class="permalink" href="#ascii_query::HttpServer::HttpServer_()">ascii_query::HttpServer::HttpServer
   ()</a></h2>
-<p class="Pp">Definition at line <b>111</b> of file <b>http_server.cpp</b>.</p>
-<pre>111                        {
-112 #if defined(_WIN32)
-113     // Initialize Winsock
-114     WSADATA wsa_data;
-115     WSAStartup(MAKEWORD(2, 2), &amp;wsa_data);
-116 #endif
-117 
-118     // Default 404 handler
-119     default_handler_ = [](const HttpRequest &amp;) { return HttpResponse::notFound(); };
-120 }</pre>
+<p class="Pp">Definition at line <b>114</b> of file <b>http_server.cpp</b>.</p>
+<pre>114                        {
+115 #if defined(_WIN32)
+116   // Initialize Winsock
+117   WSADATA wsa_data;
+118   WSAStartup(MAKEWORD(2, 2), &amp;wsa_data);
+119 #endif
+120
+121   // Default 404 handler
+122   default_handler_ = [](const HttpRequest &amp;) { return HttpResponse::notFound(); };
+123 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_query::HttpResponse::notFound()</b>.</p>
@@ -105,14 +105,14 @@
 <section class="Ss">
 <h2 class="Ss" id="ascii_query::HttpServer::_HttpServer_()"><a class="permalink" href="#ascii_query::HttpServer::_HttpServer_()">ascii_query::HttpServer::~HttpServer
   ()</a></h2>
-<p class="Pp">Definition at line <b>122</b> of file <b>http_server.cpp</b>.</p>
-<pre>122                         {
-123     stop();
-124 
-125 #if defined(_WIN32)
-126     WSACleanup();
-127 #endif
-128 }</pre>
+<p class="Pp">Definition at line <b>125</b> of file <b>http_server.cpp</b>.</p>
+<pre>125                         {
+126   stop();
+127
+128 #if defined(_WIN32)
+129   WSACleanup();
+130 #endif
+131 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>stop()</b>.</p>
@@ -137,12 +137,13 @@
 <i>path</i> URL path (exact match)
 <br/>
 <i>handler</i> Handler function</div>
-<p class="Pp">Definition at line <b>130</b> of file <b>http_server.cpp</b>.</p>
-<pre>130                                                                                               {
-131     routes_.push_back({method, path, std::move(handler)});
-132 }</pre>
+<p class="Pp">Definition at line <b>133</b> of file <b>http_server.cpp</b>.</p>
+<pre>133                                                                                               {
+134   routes_.push_back({method, path, std::move(handler)});
+135 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">Referenced by <b>operator=()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> ascii_query::HttpServer::isRunning () const [inline],
@@ -171,7 +172,8 @@
 <section class="Ss">
 <h2 class="Ss"><b>HttpServer</b> &amp; ascii_query::HttpServer::operator= (const
   <b>HttpServer</b> &amp; ) [delete]</h2>
-<p class="Pp">References <b>HttpServer()</b>, and <b>port()</b>.</p>
+<p class="Pp">References <b>addRoute()</b>, <b>HttpServer()</b>, <b>port()</b>,
+    <b>setDefaultHandler()</b>, <b>start()</b>, and <b>stop()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> ascii_query::HttpServer::port () const [inline],
@@ -191,24 +193,24 @@
     control. Normally you'd call <b>start()</b> instead.</p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if a request was processed, false on error</div>
-<p class="Pp">Definition at line <b>230</b> of file <b>http_server.cpp</b>.</p>
-<pre>230                                    {
-231     if (server_socket_ &lt; 0) {
-232         return false;
-233     }
-234 
-235     struct sockaddr_in client_addr {};
-236     socklen_t client_len = sizeof(client_addr);
-237 
-238     socket_t client_socket = accept(server_socket_, reinterpret_cast&lt;struct sockaddr *&gt;(&amp;client_addr), &amp;client_len);
-239 
-240     if (client_socket == INVALID_SOCKET_VAL) {
-241         return false;
-242     }
-243 
-244     handleClient(static_cast&lt;int&gt;(client_socket));
-245     return true;
-246 }</pre>
+<p class="Pp">Definition at line <b>235</b> of file <b>http_server.cpp</b>.</p>
+<pre>235                                    {
+236   if (server_socket_ &lt; 0) {
+237     return false;
+238   }
+239
+240   struct sockaddr_in client_addr{};
+241   socklen_t client_len = sizeof(client_addr);
+242
+243   socket_t client_socket = accept(server_socket_, reinterpret_cast&lt;struct sockaddr *&gt;(&amp;client_addr), &amp;client_len);
+244
+245   if (client_socket == INVALID_SOCKET_VAL) {
+246     return false;
+247   }
+248
+249   handleClient(static_cast&lt;int&gt;(client_socket));
+250   return true;
+251 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>INVALID_SOCKET_VAL</b>.</p>
@@ -220,108 +222,112 @@
 <p class="Pp">Set a default handler for unmatched routes.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>handler</i> Handler function</div>
-<p class="Pp">Definition at line <b>134</b> of file <b>http_server.cpp</b>.</p>
-<pre>134 { default_handler_ = std::move(handler); }</pre>
+<p class="Pp">Definition at line <b>137</b> of file <b>http_server.cpp</b>.</p>
+<pre>137                                                        {
+138   default_handler_ = std::move(handler);
+139 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">Referenced by <b>operator=()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> ascii_query::HttpServer::start (<b>uint16_t</b>
   port)</h2>
 <p class="Pp">Start the server.</p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>port</b><i></i><b> Port to listen on</b></div>
+<div class="Bd-indent"><i>port</i> Port to listen on</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if server started successfully</div>
-<p class="Pp">Definition at line <b>136</b> of file <b>http_server.cpp</b>.</p>
-<pre>136                                     {
-137     if (running_) {
-138         last_error_ = &quot;Server already running&quot;;
-139         return false;
-140     }
-141 
-142     // Create socket
-143     server_socket_ = static_cast&lt;int&gt;(socket(AF_INET, SOCK_STREAM, 0));
-144     if (server_socket_ == INVALID_SOCKET_VAL) {
-145         last_error_ = &quot;Failed to create socket&quot;;
-146         return false;
-147     }
-148 
-149     // Set SO_REUSEADDR
-150     int opt = 1;
-151 #if defined(_WIN32)
-152     setsockopt(server_socket_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast&lt;const char *&gt;(&amp;opt), sizeof(opt));
-153 #else
-154     setsockopt(server_socket_, SOL_SOCKET, SO_REUSEADDR, &amp;opt, sizeof(opt));
-155 #endif
-156 
-157     // Bind
-158     struct sockaddr_in addr {};
-159     addr.sin_family = AF_INET;
-160     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // localhost only for security
-161     addr.sin_port = htons(port);
-162 
-163     if (bind(server_socket_, reinterpret_cast&lt;struct sockaddr *&gt;(&amp;addr), sizeof(addr)) &lt; 0) {
-164         last_error_ = &quot;Failed to bind to port &quot; + std::to_string(port);
-165         close_socket(server_socket_);
-166         server_socket_ = -1;
-167         return false;
-168     }
-169 
-170     // Listen
-171     if (listen(server_socket_, 10) &lt; 0) {
-172         last_error_ = &quot;Failed to listen on socket&quot;;
-173         close_socket(server_socket_);
-174         server_socket_ = -1;
-175         return false;
-176     }
-177 
-178     port_ = port;
-179     running_ = true;
-180 
-181     // Start server thread
-182     server_thread_ = std::thread(&amp;HttpServer::serverLoop, this);
-183 
-184     return true;
-185 }</pre>
+<p class="Pp">Definition at line <b>141</b> of file <b>http_server.cpp</b>.</p>
+<pre>141                                     {
+142   if (running_) {
+143     last_error_ = &quot;Server already running&quot;;
+144     return false;
+145   }
+146
+147   // Create socket
+148   server_socket_ = static_cast&lt;int&gt;(socket(AF_INET, SOCK_STREAM, 0));
+149   if (server_socket_ == INVALID_SOCKET_VAL) {
+150     last_error_ = &quot;Failed to create socket&quot;;
+151     return false;
+152   }
+153
+154   // Set SO_REUSEADDR
+155   int opt = 1;
+156 #if defined(_WIN32)
+157   setsockopt(server_socket_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast&lt;const char *&gt;(&amp;opt), sizeof(opt));
+158 #else
+159   setsockopt(server_socket_, SOL_SOCKET, SO_REUSEADDR, &amp;opt, sizeof(opt));
+160 #endif
+161
+162   // Bind
+163   struct sockaddr_in addr{};
+164   addr.sin_family = AF_INET;
+165   addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // localhost only for security
+166   addr.sin_port = htons(port);
+167
+168   if (bind(server_socket_, reinterpret_cast&lt;struct sockaddr *&gt;(&amp;addr), sizeof(addr)) &lt; 0) {
+169     last_error_ = &quot;Failed to bind to port &quot; + std::to_string(port);
+170     close_socket(server_socket_);
+171     server_socket_ = -1;
+172     return false;
+173   }
+174
+175   // Listen
+176   if (listen(server_socket_, 10) &lt; 0) {
+177     last_error_ = &quot;Failed to listen on socket&quot;;
+178     close_socket(server_socket_);
+179     server_socket_ = -1;
+180     return false;
+181   }
+182
+183   port_ = port;
+184   running_ = true;
+185
+186   // Start server thread
+187   server_thread_ = std::thread(&amp;HttpServer::serverLoop, this);
+188
+189   return true;
+190 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>close_socket</b>, <b>INVALID_SOCKET_VAL</b>, and
     <b>port()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, and <b>operator=()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_ascii_query::HttpServer::stop_()"><a class="permalink" href="#void_ascii_query::HttpServer::stop_()">void
   ascii_query::HttpServer::stop ()</a></h2>
 <p class="Pp">Stop the server.</p>
-<p class="Pp">Definition at line <b>187</b> of file <b>http_server.cpp</b>.</p>
-<pre>187                       {
-188     if (!running_) {
-189         return;
-190     }
-191 
-192     running_ = false;
-193 
-194     // Close server socket to unblock accept()
-195     if (server_socket_ &gt;= 0) {
-196 #if defined(_WIN32)
-197         shutdown(server_socket_, SD_BOTH);
-198 #else
-199         shutdown(server_socket_, SHUT_RDWR);
-200 #endif
-201         close_socket(server_socket_);
-202         server_socket_ = -1;
-203     }
-204 
-205     // Wait for server thread
-206     if (server_thread_.joinable()) {
-207         server_thread_.join();
-208     }
-209 }</pre>
+<p class="Pp">Definition at line <b>192</b> of file <b>http_server.cpp</b>.</p>
+<pre>192                       {
+193   if (!running_) {
+194     return;
+195   }
+196
+197   running_ = false;
+198
+199   // Close server socket to unblock accept()
+200   if (server_socket_ &gt;= 0) {
+201 #if defined(_WIN32)
+202     shutdown(server_socket_, SD_BOTH);
+203 #else
+204     shutdown(server_socket_, SHUT_RDWR);
+205 #endif
+206     close_socket(server_socket_);
+207     server_socket_ = -1;
+208   }
+209
+210   // Wait for server thread
+211   if (server_thread_.joinable()) {
+212     server_thread_.join();
+213   }
+214 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>close_socket</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>, and <b>~HttpServer()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, <b>operator=()</b>, and
+    <b>~HttpServer()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -332,7 +338,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

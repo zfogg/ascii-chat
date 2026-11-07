@@ -41,13 +41,13 @@
 <br/>
 <p class="Pp">void <b>backtrace_t_free</b> (<b>backtrace_t</b> *bt)
   <br/>
-  Free backtrace symbols. void <b>backtrace_print</b> (const char *label, const
-    <b>backtrace_t</b> *bt, int skip_frames, int max_frames,
-    <b>backtrace_frame_filter_t</b> filter)
+  Free backtrace symbols. void <b>backtrace_print</b> (<b>log_level_t</b> level,
+    const char *label, const <b>backtrace_t</b> *bt, int skip_frames, int
+    max_frames, <b>backtrace_frame_filter_t</b> filter)
   <br/>
   Print backtrace with dual output: colored stderr + plain log file. void
-    <b>backtrace_print_many</b> (const char *label, const <b>backtrace_t</b>
-    *bts, int count)
+    <b>backtrace_print_many</b> (<b>log_level_t</b> level, const char *label,
+    const <b>backtrace_t</b> *bts, int count)
   <br/>
   Print multiple backtraces. void <b>backtrace_symbolize</b> (<b>backtrace_t</b>
     *bt)
@@ -69,9 +69,10 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_print_(const_char_*_label,_const_"><a class="permalink" href="#void_backtrace_print_(const_char_*_label,_const_">void
-  backtrace_print (const char * label, const <b>backtrace_t</b> * bt, int
-  skip_frames, int max_frames, <b>backtrace_frame_filter_t</b> filter)</a></h2>
+<h2 class="Ss" id="void_backtrace_print_("><a class="permalink" href="#void_backtrace_print_(">void
+  backtrace_print (<b>log_level_t</b> level, const char * label, const
+  <b>backtrace_t</b> * bt, int skip_frames, int max_frames,
+  <b>backtrace_frame_filter_t</b> filter)</a></h2>
 <p class="Pp">Print backtrace with dual output: colored stderr + plain log file.
     Intelligently formats and routes backtraces to multiple destinations:</p>
 <ul class="Bl-bullet">
@@ -101,8 +102,10 @@
 ...
 </pre>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>label</i> Header label (e.g., &quot;Backtrace&quot;,
-  &quot;Leak trace&quot;, &quot;Assertion failure&quot;)
+<div class="Bd-indent"><i>level</i> Log severity for the entire backtrace entry
+<br/>
+<i>label</i> Header label (e.g., &quot;Backtrace&quot;, &quot;Leak trace&quot;,
+  &quot;Assertion failure&quot;)
 <br/>
 <i>bt</i> Backtrace to print (must not be NULL, must be symbolized via
   backtrace_capture_and_symbolize)
@@ -134,39 +137,45 @@
 <p class="Pp">Definition at line <b>14</b> of file
     <b>platform/wasm/backtrace.c</b>.</p>
 <pre>15                                                       {
-16   (void)label;
-17   (void)bt;
-18   (void)skip_frames;
-19   (void)max_frames;
-20   (void)filter;
-21   // No-op - backtraces not available in WASM
-22 }</pre>
+16   (void)level;
+17   (void)label;
+18   (void)bt;
+19   (void)skip_frames;
+20   (void)max_frames;
+21   (void)filter;
+22   // No-op - backtraces not available in WASM
+23 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>backtrace_print()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_backtrace_print_many_(const_char_*_label,_const_"><a class="permalink" href="#void_backtrace_print_many_(const_char_*_label,_const_">void
-  backtrace_print_many (const char * label, const <b>backtrace_t</b> * bts, int
-  count)</a></h2>
+<h2 class="Ss" id="void_backtrace_print_many_("><a class="permalink" href="#void_backtrace_print_many_(">void
+  backtrace_print_many (<b>log_level_t</b> level, const char * label, const
+  <b>backtrace_t</b> * bts, int count)</a></h2>
 <p class="Pp">Print multiple backtraces. Convenience function for iterating and
     printing multiple <b>backtrace_t</b> entries.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>label</i> Header label for all backtraces
+<div class="Bd-indent"><i>level</i> Log severity for every backtrace entry
+<br/>
+<i>label</i> Header label for all backtraces
 <br/>
 <i>bts</i> Array of backtrace structures
 <br/>
 <i>count</i> Number of backtraces to print</div>
-<p class="Pp">Definition at line <b>24</b> of file
+<p class="Pp">Definition at line <b>25</b> of file
     <b>platform/wasm/backtrace.c</b>.</p>
-<pre>24                                                                                 {
-25   (void)label;
-26   (void)bts;
-27   (void)count;
-28   // No-op
-29 }</pre>
+<pre>25                                                                                                    {
+26   (void)level;
+27   (void)label;
+28   (void)bts;
+29   (void)count;
+30   // No-op
+31 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>backtrace_print_many()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_backtrace_symbolize_("><a class="permalink" href="#void_backtrace_symbolize_(">void
@@ -179,14 +188,15 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>bt</i> Backtrace structure to symbolize (must not be
   NULL)</div>
-<p class="Pp">Definition at line <b>31</b> of file
+<p class="Pp">Definition at line <b>33</b> of file
     <b>platform/wasm/backtrace.c</b>.</p>
-<pre>31                                           {
-32   (void)bt;
-33   // No-op - symbolization not available in WASM
-34 }</pre>
+<pre>33                                           {
+34   (void)bt;
+35   // No-op - symbolization not available in WASM
+36 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>backtrace_symbolize()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_backtrace_t_free_("><a class="permalink" href="#void_backtrace_t_free_(">void
@@ -205,6 +215,7 @@
 12 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>backtrace_t_free()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -214,7 +225,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

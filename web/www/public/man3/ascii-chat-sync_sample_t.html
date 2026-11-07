@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>sync_sample_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">sync_sample_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">sync_sample_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">sync_sample_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">atomic_flag <b>busy</b>
+  <br/>
+  <b>sync_row_t</b> * <b>rows</b>
+  <br/>
+  size_t <b>count</b>
+  <br/>
+  size_t <b>capacity</b>
+  <br/>
+  <b>uint64_t</b> <b>sampled_ns</b>
+  <br/>
+  <b>bool</b> <b>waits_complete</b>
+  <br/>
+  <b>bool</b> <b>limited</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>72</b> of file <b>tui/sync.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="atomic_flag_sync_sample_t::busy"><a class="permalink" href="#atomic_flag_sync_sample_t::busy">atomic_flag
+  sync_sample_t::busy</a></h2>
+<p class="Pp">Definition at line <b>73</b> of file <b>tui/sync.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_sync_sample_t::capacity"><a class="permalink" href="#size_t_sync_sample_t::capacity">size_t
+  sync_sample_t::capacity</a></h2>
+<p class="Pp">Definition at line <b>75</b> of file <b>tui/sync.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_sync_sample_t::count"><a class="permalink" href="#size_t_sync_sample_t::count">size_t
+  sync_sample_t::count</a></h2>
+<p class="Pp">Definition at line <b>75</b> of file <b>tui/sync.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> sync_sample_t::limited</h2>
+<p class="Pp">Definition at line <b>77</b> of file <b>tui/sync.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>sync_row_t</b>* sync_sample_t::rows</h2>
+<p class="Pp">Definition at line <b>74</b> of file <b>tui/sync.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> sync_sample_t::sampled_ns</h2>
+<p class="Pp">Definition at line <b>76</b> of file <b>tui/sync.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> sync_sample_t::waits_complete</h2>
+<p class="Pp">Definition at line <b>77</b> of file <b>tui/sync.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

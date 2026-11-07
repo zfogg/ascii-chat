@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>input.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">input.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">input.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">input.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>media_input_normalize</b> (const char
+    *text, char *output, size_t capacity)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> media_input_normalize (const char *
+  text, char * output, size_t capacity)</h2>
+<p class="Pp">Normalize one dropped/pasted path or URL without interpreting
+    shell commands.</p>
+<p class="Pp">Definition at line <b>14</b> of file <b>media/input.c</b>.</p>
+<pre>14                                                                                          {
+15   if (!text || !output || capacity &lt; 2)
+16     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid media input buffer&quot;);
+17   output[0] = '\0';
+18   while (isspace((unsigned char)*text))
+19     ++text;
+20   size_t length = strlen(text);
+21   while (length &amp;&amp; isspace((unsigned char)text[length - 1]))
+22     --length;
+23   if (!length)
+24     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Enter one media path or URL&quot;);
+25   if (length &gt; 2 &amp;&amp; text[0] == '&amp;' &amp;&amp; text[1] == ' ') {
+26     text += 2;
+27     length -= 2;
+28   }
+29   char quote = (*text == '\'' || *text == '&quot;') ? *text : 0;
+30   if (quote) {
+31     if (length &lt; 2 || text[length - 1] != quote)
+32       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Choose one file with matching quotes&quot;);
+33     ++text;
+34     length -= 2;
+35   }
+36   bool uri = length &gt;= 7 &amp;&amp; strncmp(text, &quot;file://&quot;, sizeof(&quot;file://&quot;) - 1) == 0;
+37   bool url = !uri &amp;&amp; (strstr(text, &quot;://&quot;) != NULL);
+38   if (uri) {
+39     text += 7;
+40     length -= 7;
+41     if (length &gt;= 10 &amp;&amp; strncmp(text, &quot;localhost/&quot;, sizeof(&quot;localhost/&quot;) - 1) == 0) {
+42       text += 9;
+43       length -= 9;
+44     } else if (*text != '/') {
+45       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Only local file URIs are supported&quot;);
+46     }
+47 #ifdef _WIN32
+48     if (length &gt;= 3 &amp;&amp; text[0] == '/' &amp;&amp; isalpha((unsigned char)text[1]) &amp;&amp; text[2] == ':') {
+49       ++text;
+50       --length;
+51     }
+52 #endif
+53   }
+54   bool windows_path = length &gt;= 2 &amp;&amp; (text[1] == ':' || (text[0] == '\\' &amp;&amp; text[1] == '\\'));
+55   size_t used = 0;
+56   size_t i = 0;
+57   while (i &lt; length) {
+58     unsigned char c = (unsigned char)text[i];
+59     if (uri &amp;&amp; c == '%') {
+60       if (i + 2 &gt;= length || hex_digit((unsigned char)text[i + 1]) &lt; 0 || hex_digit((unsigned char)text[i + 2]) &lt; 0)
+61         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid escape in file URI&quot;);
+62       c = (unsigned char)(hex_digit((unsigned char)text[i + 1]) * 16 + hex_digit((unsigned char)text[i + 2]));
+63       i += 2;
+64     } else if (!url &amp;&amp; !uri &amp;&amp; !quote &amp;&amp; !windows_path &amp;&amp; c == '\\' &amp;&amp; i + 1 &lt; length &amp;&amp;
+65                (text[i + 1] == ' ' || text[i + 1] == '\'' || text[i + 1] == '&quot;' || text[i + 1] == '\\')) {
+66       c = (unsigned char)text[++i];
+67     } else if (!url &amp;&amp; !uri &amp;&amp; (c == '\'' || c == '&quot;')) {
+68       if (quote &amp;&amp; c == (unsigned char)quote)
+69         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Choose one media file at a time&quot;);
+70     }
+71     if (c &lt; 32 || c == 127)
+72       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Choose one media path or URL without control characters&quot;);
+73     if (used + 1 &gt;= capacity)
+74       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Media path or URL is too long&quot;);
+75     output[used++] = (char)c;
+76     ++i;
+77   }
+78   output[used] = '\0';
+79   if (!utf8_is_valid(output))
+80     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Media path or URL is not valid UTF-8&quot;);
+81   return used ? ASCIICHAT_OK : SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty media path&quot;);
+82 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>media_input_normalize()</b>, <b>SET_ERRNO</b>, and
+    <b>utf8_is_valid()</b>.</p>
+<p class="Pp">Referenced by <b>media_input_normalize()</b>, and
+    <b>media_playlist_append()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

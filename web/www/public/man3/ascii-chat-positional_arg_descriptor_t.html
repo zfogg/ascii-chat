@@ -55,7 +55,7 @@
   <br/>
   Array of example strings with descriptions. size_t <b>num_examples</b>
   <br/>
-  Number of examples. int(* <b>parse_fn</b> )(const char *arg, void *config,
+  Number of examples. int(*) <b>parse_fn</b> (const char *arg, void *config,
     char **remaining, int num_remaining, char **error_msg)
   <br/>
   <b>option_mode_bitmask_t</b> <b>mode_bitmask</b>
@@ -139,16 +139,15 @@
     <b>options_print_help_for_mode()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int(*_positional_arg_descriptor_t::parse_fn)_(const_char_*arg,_void_*config,_char_**remaining,_int_num_remaining,_char_**error_msg)"><a class="permalink" href="#int(*_positional_arg_descriptor_t::parse_fn)_(const_char_*arg,_void_*config,_char_**remaining,_int_num_remaining,_char_**error_msg)">int(*
-  positional_arg_descriptor_t::parse_fn) (const char *arg, void *config, char
+<h2 class="Ss" id="int(*)_positional_arg_descriptor_t::parse_fn(const_char_*arg,_void_*config,_char_**remaining,_int_num_remaining,_char_**error_msg)"><a class="permalink" href="#int(*)_positional_arg_descriptor_t::parse_fn(const_char_*arg,_void_*config,_char_**remaining,_int_num_remaining,_char_**error_msg)">int(*)
+  positional_arg_descriptor_t::parse_fn(const char *arg, void *config, char
   **remaining, int num_remaining, char **error_msg)</a></h2>
 <p class="Pp">Custom parser function</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>arg</i> Current positional argument string
 <br/>
-<i></i><b>Config Module</b><i></i><b> Pointer to options struct (can modify any
-  field)</b>
+<i>config</i> Pointer to options struct (can modify any field)
 <br/>
 <i>remaining</i> Remaining positional args (or NULL if last)
 <br/>
@@ -186,7 +185,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

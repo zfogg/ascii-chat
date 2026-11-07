@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>progress.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">progress.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">progress.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">progress.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>ui_progress_format</b> (char *output, size_t capacity,
+    double fraction, int width)
+  <br/>
+  const char * <b>ui_spinner_glyph</b> (<b>uint64_t</b> elapsed_ns, <b>bool</b>
+    use_colors)
+  <br/>
+  void <b>ui_spinner_render</b> (<b>frame_buffer_t</b> *output, int row, int
+    column, <b>uint64_t</b> elapsed_ns)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_progress_format_(char_*_output,_size_t_capacity,_double_fraction,_int_width)"><a class="permalink" href="#void_ui_progress_format_(char_*_output,_size_t_capacity,_double_fraction,_int_width)">void
+  ui_progress_format (char * output, size_t capacity, double fraction, int
+  width)</a></h2>
+<p class="Pp">Caller-owned ASCII/UTF-8 bar, styled using the active theme.</p>
+<p class="Pp">Definition at line <b>7</b> of file <b>progress.c</b>.</p>
+<pre>7                                                                            {
+8   if (!out || !cap || width &lt; 1 || !isfinite(fraction)) {
+9     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid progress buffer, value or width&quot;);
+10     return;
+11   }
+12   out[0] = '\0';
+13   if (fraction &lt; 0)
+14     fraction = 0;
+15   if (fraction &gt; 1)
+16     fraction = 1;
+17   int filled = (int)(fraction * width);
+18   size_t used = 0;
+19   for (int i = 0; i &lt; width; ++i) {
+20     const char *glyph = terminal_should_use_utf8() ? (i &lt; filled ? &quot;&#x2588;&quot; : &quot;&#x2591;&quot;) : (i &lt; filled ? &quot;#&quot; : &quot;.&quot;);
+21     const char *cell = colored_string(i &lt; filled ? LOG_COLOR_INFO : LOG_COLOR_GREY, glyph);
+22     size_t n = strlen(cell);
+23     if (n &gt;= cap - used) {
+24       SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Progress output buffer is too small&quot;);
+25       return;
+26     }
+27     memcpy(out + used, cell, n);
+28     used += n;
+29     out[used] = '\0';
+30   }
+31 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colored_string()</b>, <b>ERROR_BUFFER_OVERFLOW</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>LOG_COLOR_GREY</b>, <b>LOG_COLOR_INFO</b>,
+    <b>SET_ERRNO</b>, <b>terminal_should_use_utf8()</b>, and
+    <b>ui_progress_format()</b>.</p>
+<p class="Pp">Referenced by <b>ui_progress_format()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_ui_spinner_glyph_("><a class="permalink" href="#const_char_*_ui_spinner_glyph_(">const
+  char * ui_spinner_glyph (<b>uint64_t</b> elapsed_ns, <b>bool</b>
+  use_colors)</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>progress.c</b>.</p>
+<pre>32                                                                    {
+33   // Each rotating segment has three dots spanning both Braille columns.
+34   static const char *unicode[] = {&quot;&#x280B;&quot;, &quot;&#x2819;&quot;, &quot;&#x2834;&quot;, &quot;&#x2826;&quot;};
+35   static const char *ascii[] = {&quot;|&quot;, &quot;/&quot;, &quot;-&quot;, &quot;\\&quot;};
+36   uint64_t step = elapsed_ns / 125000000;
+37   const char *glyph = terminal_should_use_utf8() ? unicode[step % 4] : ascii[step % 4];
+38   return use_colors ? colored_string(LOG_COLOR_WARN, glyph) : glyph;
+39 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colored_string()</b>, <b>LOG_COLOR_WARN</b>,
+    <b>terminal_should_use_utf8()</b>, and <b>ui_spinner_glyph()</b>.</p>
+<p class="Pp">Referenced by <b>ui_spinner_glyph()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_spinner_render_("><a class="permalink" href="#void_ui_spinner_render_(">void
+  ui_spinner_render (<b>frame_buffer_t</b> * output, int row, int column,
+  <b>uint64_t</b> elapsed_ns)</a></h2>
+<p class="Pp">Eight-dot animated indicator extracted from the update
+  checker.</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>progress.c</b>.</p>
+<pre>40                                                                                    {
+41   if (!out || row &lt; 1 || col &lt; 1) {
+42     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid spinner output or position&quot;);
+43     return;
+44   }
+45   static const int x[] = {3, 5, 6, 5, 3, 1, 0, 1}, y[] = {0, 0, 1, 2, 2, 2, 1, 0};
+46   unsigned phase = (unsigned)((elapsed_ns / 100000000) % 8);
+47   for (unsigned dot = 0; dot &lt; 8; ++dot) {
+48     bool lit = (phase + 8 - dot) % 8 &lt; 3;
+49     frame_buffer_printf(out, &quot;\033[%d;%dH%s&quot;, row + y[dot], col + x[dot],
+50                         colored_string(lit ? LOG_COLOR_WARN : LOG_COLOR_GREY, terminal_should_use_utf8() ? &quot;&#x25CF;&quot;
+51                                                                               : lit                      ? &quot;o&quot;
+52                                                                                                          : &quot;.&quot;));
+53   }
+54 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colored_string()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>frame_buffer_printf()</b>, <b>LOG_COLOR_GREY</b>, <b>LOG_COLOR_WARN</b>,
+    <b>SET_ERRNO</b>, <b>terminal_should_use_utf8()</b>, and
+    <b>ui_spinner_render()</b>.</p>
+<p class="Pp">Referenced by <b>ui_spinner_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

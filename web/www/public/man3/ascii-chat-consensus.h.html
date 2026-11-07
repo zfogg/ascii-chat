@@ -49,23 +49,24 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef <b>asciichat_error_t</b>(*
-    <b>session_consensus_send_packet_fn</b>) (void *context, const
-    <b>uint8_t</b> next_participant_id[16], const <b>uint8_t</b> *packet, size_t
-    packet_size)
+<p class="Pp">typedef <b>asciichat_error_t</b>(*)
+    <b>session_consensus_send_packet_fn</b>(void *context, const <b>uint8_t</b>
+    next_participant_id[<b>SESSION_ID_SIZE</b>], const <b>uint8_t</b> *packet,
+    size_t packet_size)
   <br/>
   Callback: Send a consensus packet to the next ring participant. typedef
-    <b>asciichat_error_t</b>(* <b>session_consensus_on_election_fn</b>) (void
-    *context, const <b>uint8_t</b> host_id[16], const char host_address[64],
-    <b>uint16_t</b> host_port, const <b>uint8_t</b> backup_id[16], const char
-    backup_address[64], <b>uint16_t</b> backup_port)
+    <b>asciichat_error_t</b>(*) <b>session_consensus_on_election_fn</b>(void
+    *context, const <b>uint8_t</b> host_id[<b>SESSION_ID_SIZE</b>], const char
+    host_address[<b>ACIP_ADDRESS_SIZE</b>], <b>uint16_t</b> host_port, const
+    <b>uint8_t</b> backup_id[<b>SESSION_ID_SIZE</b>], const char
+    backup_address[<b>ACIP_ADDRESS_SIZE</b>], <b>uint16_t</b> backup_port)
   <br/>
-  Callback: Handle elected host result. typedef <b>asciichat_error_t</b>(*
-    <b>session_consensus_get_metrics_fn</b>) (void *context, const
-    <b>uint8_t</b> my_id[16], participant_metrics_t *out_metrics)
+  Callback: Handle elected host result. typedef <b>asciichat_error_t</b>(*)
+    <b>session_consensus_get_metrics_fn</b>(void *context, const <b>uint8_t</b>
+    my_id[<b>SESSION_ID_SIZE</b>], participant_metrics_t *out_metrics)
   <br/>
   Callback: Measure current participant's network metrics. typedef
-    <b>asciichat_error_t</b>(* <b>session_consensus_election_fn</b>) (void
+    <b>asciichat_error_t</b>(*) <b>session_consensus_election_fn</b>(void
     *context, const participant_metrics_t *metrics, int num_metrics, int
     *out_best_index, int *out_backup_index)
   <br/>
@@ -77,10 +78,11 @@
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>asciichat_error_t</b> <b>session_consensus_create</b> (const
-    <b>uint8_t</b> my_id[16], <b>bool</b> is_leader, const <b>uint8_t</b>
-    participant_ids[64][16], int num_participants, const
-    <b>session_consensus_callbacks_t</b> *callbacks, <b>session_consensus_t</b>
-    **out_consensus)
+    <b>uint8_t</b> my_id[<b>SESSION_ID_SIZE</b>], <b>bool</b> is_leader, const
+    <b>uint8_t</b>
+    participant_ids[<b>MAX_SESSION_PARTICIPANTS</b>][<b>SESSION_ID_SIZE</b>],
+    int num_participants, const <b>session_consensus_callbacks_t</b> *callbacks,
+    <b>session_consensus_t</b> **out_consensus)
   <br/>
   Create a new session consensus instance. void <b>session_consensus_destroy</b>
     (<b>session_consensus_t</b> *consensus)
@@ -91,8 +93,9 @@
   <br/>
   Main consensus processing loop - call periodically. <b>asciichat_error_t</b>
     <b>session_consensus_set_topology</b> (<b>session_consensus_t</b>
-    *consensus, const <b>uint8_t</b> participant_ids[64][16], int
-    num_participants)
+    *consensus, const <b>uint8_t</b>
+    participant_ids[<b>MAX_SESSION_PARTICIPANTS</b>][<b>SESSION_ID_SIZE</b>],
+    int num_participants)
   <br/>
   Update ring topology when participants change. <b>asciichat_error_t</b>
     <b>session_consensus_on_collection_start</b> (<b>session_consensus_t</b>
@@ -100,20 +103,24 @@
   <br/>
   Handle incoming STATS_COLLECTION_START packet. <b>asciichat_error_t</b>
     <b>session_consensus_on_stats_update</b> (<b>session_consensus_t</b>
-    *consensus, const <b>uint8_t</b> sender_id[16], const participant_metrics_t
-    *metrics, <b>uint8_t</b> num_metrics)
+    *consensus, const <b>uint8_t</b> sender_id[<b>SESSION_ID_SIZE</b>], const
+    participant_metrics_t *metrics, <b>uint8_t</b> num_metrics)
   <br/>
   Handle incoming STATS_UPDATE packet (metrics relayed around ring).
     <b>asciichat_error_t</b> <b>session_consensus_on_election_result</b>
-    (<b>session_consensus_t</b> *consensus, const <b>uint8_t</b> host_id[16],
-    const char host_address[64], <b>uint16_t</b> host_port, const <b>uint8_t</b>
-    backup_id[16], const char backup_address[64], <b>uint16_t</b> backup_port)
+    (<b>session_consensus_t</b> *consensus, const <b>uint8_t</b>
+    host_id[<b>SESSION_ID_SIZE</b>], const char
+    host_address[<b>ACIP_ADDRESS_SIZE</b>], <b>uint16_t</b> host_port, const
+    <b>uint8_t</b> backup_id[<b>SESSION_ID_SIZE</b>], const char
+    backup_address[<b>ACIP_ADDRESS_SIZE</b>], <b>uint16_t</b> backup_port)
   <br/>
   Handle incoming ELECTION_RESULT packet from leader. <b>asciichat_error_t</b>
     <b>session_consensus_get_elected_host</b> (<b>session_consensus_t</b>
-    *consensus, <b>uint8_t</b> out_host_id[16], char out_host_address[64],
-    <b>uint16_t</b> *out_host_port, <b>uint8_t</b> out_backup_id[16], char
-    out_backup_address[64], <b>uint16_t</b> *out_backup_port)
+    *consensus, <b>uint8_t</b> out_host_id[<b>SESSION_ID_SIZE</b>], char
+    out_host_address[<b>ACIP_ADDRESS_SIZE</b>], <b>uint16_t</b> *out_host_port,
+    <b>uint8_t</b> out_backup_id[<b>SESSION_ID_SIZE</b>], char
+    out_backup_address[<b>ACIP_ADDRESS_SIZE</b>], <b>uint16_t</b>
+    *out_backup_port)
   <br/>
   Get the currently elected host. <b>bool</b> <b>session_consensus_is_ready</b>
     (<b>session_consensus_t</b> *consensus)
@@ -174,9 +181,9 @@
 <h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss">typedef <b>asciichat_error_t</b>(* session_consensus_election_fn)
-  (void *context, const participant_metrics_t *metrics, int num_metrics, int
-  *out_best_index, int *out_backup_index)</h2>
+<h2 class="Ss">typedef <b>asciichat_error_t</b>(*)
+  session_consensus_election_fn(void *context, const participant_metrics_t
+  *metrics, int num_metrics, int *out_best_index, int *out_backup_index)</h2>
 <p class="Pp">Callback type for custom election algorithm. If provided,
     consensus calls this instead of built-in election. Allows modes to implement
     custom host selection logic.</p>
@@ -194,12 +201,12 @@
 <i>out_backup_index</i> Output: Index of backup host</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>110</b> of file <b>consensus.h</b>.</p>
+<p class="Pp">Definition at line <b>119</b> of file <b>consensus.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss">typedef <b>asciichat_error_t</b>(*
-  session_consensus_get_metrics_fn) (void *context, const <b>uint8_t</b>
-  my_id[16], participant_metrics_t *out_metrics)</h2>
+<h2 class="Ss">typedef <b>asciichat_error_t</b>(*)
+  session_consensus_get_metrics_fn(void *context, const <b>uint8_t</b>
+  my_id[<b>SESSION_ID_SIZE</b>], participant_metrics_t *out_metrics)</h2>
 <p class="Pp">Callback: Measure current participant's network metrics. Called by
     consensus to collect metrics for this participant. Should measure:</p>
 <ul class="Bl-bullet">
@@ -219,14 +226,15 @@
 <i>out_metrics</i> Output metrics structure (caller-allocated)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>94</b> of file <b>consensus.h</b>.</p>
+<p class="Pp">Definition at line <b>103</b> of file <b>consensus.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss">typedef <b>asciichat_error_t</b>(*
-  session_consensus_on_election_fn) (void *context, const <b>uint8_t</b>
-  host_id[16], const char host_address[64], <b>uint16_t</b> host_port, const
-  <b>uint8_t</b> backup_id[16], const char backup_address[64], <b>uint16_t</b>
-  backup_port)</h2>
+<h2 class="Ss">typedef <b>asciichat_error_t</b>(*)
+  session_consensus_on_election_fn(void *context, const <b>uint8_t</b>
+  host_id[<b>SESSION_ID_SIZE</b>], const char
+  host_address[<b>ACIP_ADDRESS_SIZE</b>], <b>uint16_t</b> host_port, const
+  <b>uint8_t</b> backup_id[<b>SESSION_ID_SIZE</b>], const char
+  backup_address[<b>ACIP_ADDRESS_SIZE</b>], <b>uint16_t</b> backup_port)</h2>
 <p class="Pp">Callback: Handle elected host result. Called by consensus when a
     new host election is complete and announced. The mode should:</p>
 <ul class="Bl-bullet">
@@ -251,13 +259,13 @@
 <i>backup_port</i> Backup port</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>73</b> of file <b>consensus.h</b>.</p>
+<p class="Pp">Definition at line <b>80</b> of file <b>consensus.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss">typedef <b>asciichat_error_t</b>(*
-  session_consensus_send_packet_fn) (void *context, const <b>uint8_t</b>
-  next_participant_id[16], const <b>uint8_t</b> *packet, size_t
-  packet_size)</h2>
+<h2 class="Ss">typedef <b>asciichat_error_t</b>(*)
+  session_consensus_send_packet_fn(void *context, const <b>uint8_t</b>
+  next_participant_id[<b>SESSION_ID_SIZE</b>], const <b>uint8_t</b> *packet,
+  size_t packet_size)</h2>
 <p class="Pp">Callback: Send a consensus packet to the next ring participant.
     Called by consensus to send packets around the ring. The mode is responsible
     for serializing and transmitting to the appropriate transport.</p>
@@ -274,7 +282,7 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code if sending
   failed</div>
-<p class="Pp">Definition at line <b>52</b> of file <b>consensus.h</b>.</p>
+<p class="Pp">Definition at line <b>58</b> of file <b>consensus.h</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -282,10 +290,10 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> session_consensus_create (const
-  <b>uint8_t</b> my_id[16], <b>bool</b> is_leader, const <b>uint8_t</b>
-  participant_ids[64][16], int num_participants, const
-  <b>session_consensus_callbacks_t</b> * callbacks, <b>session_consensus_t</b>
-  ** out_consensus)</h2>
+  <b>uint8_t</b> my_id[SESSION_ID_SIZE], <b>bool</b> is_leader, const
+  <b>uint8_t</b> participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int
+  num_participants, const <b>session_consensus_callbacks_t</b> * callbacks,
+  <b>session_consensus_t</b> ** out_consensus)</h2>
 <p class="Pp">Create a new session consensus instance. Initializes consensus for
     a participant in a session. The consensus will manage ring topology, metrics
     collection, and host election according to the configured ring
@@ -297,7 +305,7 @@
 <i>is_leader</i> Whether this participant should run elections (typically last
   in ring)
 <br/>
-<i>participant_ids</i> Array of participant UUIDs (up to 64)
+<i>participant_ids</i> Array of participant UUIDs (up to 128)
 <br/>
 <i>num_participants</i> Count of participants
 <br/>
@@ -306,78 +314,85 @@
 <i>out_consensus</i> Output consensus handle (caller must destroy)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>108</b> of file <b>consensus.c</b>.</p>
-<pre>111                                                                                 {
-112   if (!my_id || !callbacks || !out_consensus) {
-113     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: my_id=%p, callbacks=%p, out_consensus=%p&quot;, my_id,
-114                      callbacks, out_consensus);
-115   }
-116 
-117   if (!callbacks-&gt;send_packet || !callbacks-&gt;on_election || !callbacks-&gt;get_metrics) {
-118     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Required callbacks missing: send_packet=%p, on_election=%p, get_metrics=%p&quot;,
-119                      callbacks-&gt;send_packet, callbacks-&gt;on_election, callbacks-&gt;get_metrics);
-120   }
-121 
-122   if (num_participants &lt; 1 || num_participants &gt; 64) {
-123     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid participant count: %d&quot;, num_participants);
-124   }
-125 
-126   // Allocate consensus handle
-127   session_consensus_t *consensus = SAFE_CALLOC(1, sizeof(session_consensus_t), session_consensus_t *);
-128   if (!consensus) {
-129     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate session consensus&quot;);
+<p class="Pp">Definition at line <b>114</b> of file <b>consensus.c</b>.</p>
+<pre>117                                                                                 {
+118   if (!my_id || !callbacks || !out_consensus) {
+119     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: my_id=%p, callbacks=%p, out_consensus=%p&quot;, my_id,
+120                      callbacks, out_consensus);
+121   }
+122
+123   if (!callbacks-&gt;send_packet || !callbacks-&gt;on_election || !callbacks-&gt;get_metrics) {
+124     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Required callbacks missing: send_packet=%p, on_election=%p, get_metrics=%p&quot;,
+125                      callbacks-&gt;send_packet, callbacks-&gt;on_election, callbacks-&gt;get_metrics);
+126   }
+127
+128   if (num_participants &lt; 1 || num_participants &gt; MAX_SESSION_PARTICIPANTS) {
+129     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid participant count: %d&quot;, num_participants);
 130   }
-131 
-132   // Copy identity
-133   memcpy(consensus-&gt;my_id, my_id, 16);
-134   consensus-&gt;is_leader = is_leader;
-135 
-136   // Copy callbacks
-137   consensus-&gt;send_packet = callbacks-&gt;send_packet;
-138   consensus-&gt;on_election = callbacks-&gt;on_election;
-139   consensus-&gt;get_metrics = callbacks-&gt;get_metrics;
-140   consensus-&gt;election = callbacks-&gt;election; // May be NULL
-141   consensus-&gt;context = callbacks-&gt;context;
-142 
-143   // Create topology
-144   asciichat_error_t err = consensus_topology_create(participant_ids, num_participants, my_id, &amp;consensus-&gt;topology);
-145   if (err != ASCIICHAT_OK) {
-146     SAFE_FREE(consensus);
-147     return err;
-148   }
-149 
-150   // Create coordinator
-151   err = consensus_coordinator_create(my_id, consensus-&gt;topology, session_consensus_election_bridge, consensus,
-152                                      &amp;consensus-&gt;coordinator);
-153   if (err != ASCIICHAT_OK) {
-154     consensus_topology_destroy(consensus-&gt;topology);
-155     SAFE_FREE(consensus);
-156     return err;
-157   }
-158 
-159   log_debug(&quot;Session consensus created: my_id=%.*s, is_leader=%d, participants=%d&quot;, 16, my_id, is_leader,
-160             num_participants);
-161 
-162   *out_consensus = consensus;
-163   return ASCIICHAT_OK;
-164 }</pre>
+131
+132   // Allocate consensus handle
+133   session_consensus_t *consensus = SAFE_CALLOC(1, sizeof(session_consensus_t), session_consensus_t *);
+134   if (!consensus) {
+135     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate session consensus&quot;);
+136   }
+137
+138   // Copy identity
+139   memcpy(consensus-&gt;my_id, my_id, SESSION_ID_SIZE);
+140   consensus-&gt;is_leader = is_leader;
+141
+142   // Copy callbacks
+143   consensus-&gt;send_packet = callbacks-&gt;send_packet;
+144   consensus-&gt;on_election = callbacks-&gt;on_election;
+145   consensus-&gt;get_metrics = callbacks-&gt;get_metrics;
+146   consensus-&gt;election = callbacks-&gt;election; // May be NULL
+147   consensus-&gt;context = callbacks-&gt;context;
+148
+149   // Create topology
+150   asciichat_error_t err = consensus_topology_create(participant_ids, num_participants, my_id, &amp;consensus-&gt;topology);
+151   if (err != ASCIICHAT_OK) {
+152     SAFE_FREE(consensus);
+153     return err;
+154   }
+155
+156   // Create coordinator
+157   err = consensus_coordinator_create(my_id, consensus-&gt;topology, session_consensus_election_bridge, consensus,
+158                                      &amp;consensus-&gt;coordinator);
+159   if (err != ASCIICHAT_OK) {
+160     consensus_topology_destroy(consensus-&gt;topology);
+161     SAFE_FREE(consensus);
+162     return err;
+163   }
+164
+165   consensus_coordinator_set_metrics_provider(consensus-&gt;coordinator, callbacks-&gt;get_metrics, callbacks-&gt;context);
+166
+167   log_debug(&quot;Session consensus created: my_id=%.*s, is_leader=%d, participants=%d&quot;, 16, my_id, is_leader,
+168             num_participants);
+169
+170   *out_consensus = consensus;
+171   return ASCIICHAT_OK;
+172 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_coordinator_create()</b>, <b>consensus_topology_create()</b>,
-    <b>consensus_topology_destroy()</b>, <b>session_consensus::context</b>,
+    <b>consensus_coordinator_create()</b>,
+    <b>consensus_coordinator_set_metrics_provider()</b>,
+    <b>consensus_topology_create()</b>, <b>consensus_topology_destroy()</b>,
+    <b>session_consensus::context</b>,
     <b>session_consensus_callbacks_t::context</b>,
     <b>session_consensus::coordinator</b>, <b>session_consensus::election</b>,
     <b>session_consensus_callbacks_t::election</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>ERROR_MEMORY</b>, <b>session_consensus::get_metrics</b>,
     <b>session_consensus_callbacks_t::get_metrics</b>,
     <b>session_consensus::is_leader</b>, <b>log_debug</b>,
-    <b>session_consensus::my_id</b>, <b>session_consensus::on_election</b>,
+    <b>MAX_SESSION_PARTICIPANTS</b>, <b>session_consensus::my_id</b>,
+    <b>session_consensus::on_election</b>,
     <b>session_consensus_callbacks_t::on_election</b>, <b>SAFE_CALLOC</b>,
     <b>SAFE_FREE</b>, <b>session_consensus::send_packet</b>,
-    <b>session_consensus_callbacks_t::send_packet</b>, <b>SET_ERRNO</b>, and
-    <b>session_consensus::topology</b>.</p>
-<p class="Pp">Referenced by <b>consensus_create_for_discovery()</b>.</p>
+    <b>session_consensus_callbacks_t::send_packet</b>,
+    <b>session_consensus_create()</b>, <b>SESSION_ID_SIZE</b>, <b>SET_ERRNO</b>,
+    and <b>session_consensus::topology</b>.</p>
+<p class="Pp">Referenced by <b>consensus_create_for_discovery()</b>, and
+    <b>session_consensus_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_session_consensus_destroy_("><a class="permalink" href="#void_session_consensus_destroy_(">void
@@ -386,34 +401,37 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>consensus</i> Consensus handle (safe to pass
   NULL)</div>
-<p class="Pp">Definition at line <b>166</b> of file <b>consensus.c</b>.</p>
-<pre>166                                                                {
-167   if (!consensus) {
-168     return;
-169   }
-170 
-171   if (consensus-&gt;coordinator) {
-172     consensus_coordinator_destroy(consensus-&gt;coordinator);
-173   }
-174 
-175   if (consensus-&gt;topology) {
-176     consensus_topology_destroy(consensus-&gt;topology);
+<p class="Pp">Definition at line <b>174</b> of file <b>consensus.c</b>.</p>
+<pre>174                                                                {
+175   if (!consensus) {
+176     return;
 177   }
-178 
-179   SAFE_FREE(consensus);
-180 }</pre>
+178
+179   if (consensus-&gt;coordinator) {
+180     consensus_coordinator_destroy(consensus-&gt;coordinator);
+181   }
+182
+183   if (consensus-&gt;topology) {
+184     consensus_topology_destroy(consensus-&gt;topology);
+185   }
+186
+187   SAFE_FREE(consensus);
+188 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_coordinator_destroy()</b>,
     <b>consensus_topology_destroy()</b>, <b>session_consensus::coordinator</b>,
-    <b>SAFE_FREE</b>, and <b>session_consensus::topology</b>.</p>
+    <b>SAFE_FREE</b>, <b>session_consensus_destroy()</b>, and
+    <b>session_consensus::topology</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> session_consensus_get_elected_host
-  (<b>session_consensus_t</b> * consensus, <b>uint8_t</b> out_host_id[16], char
-  out_host_address[64], <b>uint16_t</b> * out_host_port, <b>uint8_t</b>
-  out_backup_id[16], char out_backup_address[64], <b>uint16_t</b> *
-  out_backup_port)</h2>
+  (<b>session_consensus_t</b> * consensus, <b>uint8_t</b>
+  out_host_id[SESSION_ID_SIZE], char out_host_address[ACIP_ADDRESS_SIZE],
+  <b>uint16_t</b> * out_host_port, <b>uint8_t</b>
+  out_backup_id[SESSION_ID_SIZE], char out_backup_address[ACIP_ADDRESS_SIZE],
+  <b>uint16_t</b> * out_backup_port)</h2>
 <p class="Pp">Get the currently elected host. Returns the most recently elected
     host and backup. If no election has completed yet, returns the previous
     stored result if available, or error.</p>
@@ -435,35 +453,37 @@
 <i>out_backup_port</i> Output: Backup port</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>259</b> of file <b>consensus.c</b>.</p>
-<pre>262                                                                                 {
-263   if (!consensus || !out_host_id || !out_host_address || !out_host_port || !out_backup_id || !out_backup_address ||
-264       !out_backup_port) {
-265     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-266   }
-267 
-268   // Get from coordinator
-269   asciichat_error_t err = consensus_coordinator_get_current_host(consensus-&gt;coordinator, out_host_id, out_backup_id);
-270   if (err != ASCIICHAT_OK) {
-271     return err;
-272   }
-273 
-274   // NOTE: The current API doesn't return addresses/ports. This is a limitation
-275   // of the coordinator that should be addressed in a future enhancement.
-276   // For now, return zeros and indicate this is a placeholder.
-277   memset(out_host_address, 0, 64);
-278   *out_host_port = 0;
-279   memset(out_backup_address, 0, 64);
-280   *out_backup_port = 0;
-281 
-282   return ASCIICHAT_OK;
-283 }</pre>
+<p class="Pp">Definition at line <b>271</b> of file <b>consensus.c</b>.</p>
+<pre>276                                                                                 {
+277   if (!consensus || !out_host_id || !out_host_address || !out_host_port || !out_backup_id || !out_backup_address ||
+278       !out_backup_port) {
+279     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+280   }
+281
+282   // Get from coordinator
+283   asciichat_error_t err = consensus_coordinator_get_current_host(consensus-&gt;coordinator, out_host_id, out_backup_id);
+284   if (err != ASCIICHAT_OK) {
+285     return err;
+286   }
+287
+288   // NOTE: The current API doesn't return addresses/ports. This is a limitation
+289   // of the coordinator that should be addressed in a future enhancement.
+290   // For now, return zeros and indicate this is a placeholder.
+291   memset(out_host_address, 0, ACIP_ADDRESS_SIZE);
+292   *out_host_port = 0;
+293   memset(out_backup_address, 0, ACIP_ADDRESS_SIZE);
+294   *out_backup_port = 0;
+295
+296   return ASCIICHAT_OK;
+297 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
+<p class="Pp">References <b>ACIP_ADDRESS_SIZE</b>, <b>ASCIICHAT_OK</b>,
     <b>consensus_coordinator_get_current_host()</b>,
-    <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>, and
+    <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>session_consensus_get_elected_host()</b>, <b>SESSION_ID_SIZE</b>, and
     <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_get_elected_host()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_session_consensus_get_metrics_count_("><a class="permalink" href="#int_session_consensus_get_metrics_count_(">int
@@ -476,18 +496,20 @@
 <div class="Bd-indent"><i>consensus</i> Consensus handle</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of metrics collected, or -1 if invalid</div>
-<p class="Pp">Definition at line <b>314</b> of file <b>consensus.c</b>.</p>
-<pre>314                                                                         {
-315   if (!consensus) {
-316     return -1;
-317   }
-318 
-319   return consensus_coordinator_get_metrics_count(consensus-&gt;coordinator);
-320 }</pre>
+<p class="Pp">Definition at line <b>328</b> of file <b>consensus.c</b>.</p>
+<pre>328                                                                         {
+329   if (!consensus) {
+330     return -1;
+331   }
+332
+333   return consensus_coordinator_get_metrics_count(consensus-&gt;coordinator);
+334 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_get_metrics_count()</b>, and
-    <b>session_consensus::coordinator</b>.</p>
+<p class="Pp">References <b>consensus_coordinator_get_metrics_count()</b>,
+    <b>session_consensus::coordinator</b>, and
+    <b>session_consensus_get_metrics_count()</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_get_metrics_count()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_session_consensus_get_state_("><a class="permalink" href="#int_session_consensus_get_state_(">int
@@ -497,18 +519,20 @@
 <div class="Bd-indent"><i>consensus</i> Consensus handle</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Current state from internal state machine</div>
-<p class="Pp">Definition at line <b>298</b> of file <b>consensus.c</b>.</p>
-<pre>298                                                                 {
-299   if (!consensus) {
-300     return -1;
-301   }
-302 
-303   return (int)consensus_coordinator_get_state(consensus-&gt;coordinator);
-304 }</pre>
+<p class="Pp">Definition at line <b>312</b> of file <b>consensus.c</b>.</p>
+<pre>312                                                                 {
+313   if (!consensus) {
+314     return -1;
+315   }
+316
+317   return (int)consensus_coordinator_get_state(consensus-&gt;coordinator);
+318 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_get_state()</b>, and
-    <b>session_consensus::coordinator</b>.</p>
+<p class="Pp">References <b>consensus_coordinator_get_state()</b>,
+    <b>session_consensus::coordinator</b>, and
+    <b>session_consensus_get_state()</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_get_state()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_consensus_is_ready
@@ -521,24 +545,26 @@
 <div class="Bd-indent"><i>consensus</i> Consensus handle</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if consensus reached, false otherwise</div>
-<p class="Pp">Definition at line <b>285</b> of file <b>consensus.c</b>.</p>
-<pre>285                                                                 {
-286   if (!consensus) {
-287     return false;
-288   }
-289 
-290   // Check if we have a valid elected host
-291   uint8_t host_id[16];
-292   uint8_t backup_id[16];
-293   asciichat_error_t err = consensus_coordinator_get_current_host(consensus-&gt;coordinator, host_id, backup_id);
-294 
-295   return err == ASCIICHAT_OK;
-296 }</pre>
+<p class="Pp">Definition at line <b>299</b> of file <b>consensus.c</b>.</p>
+<pre>299                                                                 {
+300   if (!consensus) {
+301     return false;
+302   }
+303
+304   // Check if we have a valid elected host
+305   uint8_t host_id[SESSION_ID_SIZE];
+306   uint8_t backup_id[SESSION_ID_SIZE];
+307   asciichat_error_t err = consensus_coordinator_get_current_host(consensus-&gt;coordinator, host_id, backup_id);
+308
+309   return err == ASCIICHAT_OK;
+310 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>consensus_coordinator_get_current_host()</b>, and
-    <b>session_consensus::coordinator</b>.</p>
+    <b>consensus_coordinator_get_current_host()</b>,
+    <b>session_consensus::coordinator</b>, <b>session_consensus_is_ready()</b>,
+    and <b>SESSION_ID_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_is_ready()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> session_consensus_on_collection_start
@@ -556,25 +582,27 @@
 <i>deadline_ns</i> Unix nanosecond deadline for collection</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>218</b> of file <b>consensus.c</b>.</p>
-<pre>219                                                                               {
-220   if (!consensus) {
-221     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;consensus is NULL&quot;);
-222   }
-223 
-224   return consensus_coordinator_on_collection_start(consensus-&gt;coordinator, round_id, deadline_ns);
-225 }</pre>
+<p class="Pp">Definition at line <b>227</b> of file <b>consensus.c</b>.</p>
+<pre>228                                                                               {
+229   if (!consensus) {
+230     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;consensus is NULL&quot;);
+231   }
+232
+233   return consensus_coordinator_on_collection_start(consensus-&gt;coordinator, round_id, deadline_ns);
+234 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_coordinator_on_collection_start()</b>,
-    <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>, and
-    <b>SET_ERRNO</b>.</p>
+    <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>session_consensus_on_collection_start()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_on_collection_start()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> session_consensus_on_election_result
-  (<b>session_consensus_t</b> * consensus, const <b>uint8_t</b> host_id[16],
-  const char host_address[64], <b>uint16_t</b> host_port, const <b>uint8_t</b>
-  backup_id[16], const char backup_address[64], <b>uint16_t</b>
+  (<b>session_consensus_t</b> * consensus, const <b>uint8_t</b>
+  host_id[SESSION_ID_SIZE], const char host_address[ACIP_ADDRESS_SIZE],
+  <b>uint16_t</b> host_port, const <b>uint8_t</b> backup_id[SESSION_ID_SIZE],
+  const char backup_address[ACIP_ADDRESS_SIZE], <b>uint16_t</b>
   backup_port)</h2>
 <p class="Pp">Handle incoming ELECTION_RESULT packet from leader. Consensus
     calls this when leader announces the elected host. Should be called from
@@ -596,38 +624,41 @@
 <i>backup_port</i> Port of backup host</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>236</b> of file <b>consensus.c</b>.</p>
-<pre>239                                                                              {
-240   if (!consensus || !host_id || !backup_id) {
-241     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-242   }
-243 
-244   // First acknowledge the election in coordinator
-245   asciichat_error_t err = consensus_coordinator_on_election_result(consensus-&gt;coordinator, host_id, backup_id);
-246   if (err != ASCIICHAT_OK) {
-247     return err;
-248   }
-249 
-250   // Then call the mode's election callback
-251   if (consensus-&gt;on_election) {
-252     return consensus-&gt;on_election(consensus-&gt;context, host_id, host_address, host_port, backup_id, backup_address,
-253                                   backup_port);
+<p class="Pp">Definition at line <b>246</b> of file <b>consensus.c</b>.</p>
+<pre>251                                                                              {
+252   if (!consensus || !host_id || !backup_id) {
+253     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
 254   }
-255 
-256   return ASCIICHAT_OK;
-257 }</pre>
+255
+256   // First acknowledge the election in coordinator
+257   asciichat_error_t err = consensus_coordinator_on_election_result(consensus-&gt;coordinator, host_id, backup_id);
+258   if (err != ASCIICHAT_OK) {
+259     return err;
+260   }
+261
+262   // Then call the mode's election callback
+263   if (consensus-&gt;on_election) {
+264     return consensus-&gt;on_election(consensus-&gt;context, host_id, host_address, host_port, backup_id, backup_address,
+265                                   backup_port);
+266   }
+267
+268   return ASCIICHAT_OK;
+269 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
+<p class="Pp">References <b>ACIP_ADDRESS_SIZE</b>, <b>ASCIICHAT_OK</b>,
     <b>consensus_coordinator_on_election_result()</b>,
     <b>session_consensus::context</b>, <b>session_consensus::coordinator</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>session_consensus::on_election</b>, and
+    <b>ERROR_INVALID_PARAM</b>, <b>session_consensus::on_election</b>,
+    <b>session_consensus_on_election_result()</b>, <b>SESSION_ID_SIZE</b>, and
     <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_on_election_result()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> session_consensus_on_stats_update
-  (<b>session_consensus_t</b> * consensus, const <b>uint8_t</b> sender_id[16],
-  const participant_metrics_t * metrics, <b>uint8_t</b> num_metrics)</h2>
+  (<b>session_consensus_t</b> * consensus, const <b>uint8_t</b>
+  sender_id[SESSION_ID_SIZE], const participant_metrics_t * metrics,
+  <b>uint8_t</b> num_metrics)</h2>
 <p class="Pp">Handle incoming STATS_UPDATE packet (metrics relayed around ring).
     Consensus calls this when it receives metrics from the previous participant.
     Should be called from packet handler in mode.</p>
@@ -642,19 +673,21 @@
 <i>num_metrics</i> Count of metrics</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>227</b> of file <b>consensus.c</b>.</p>
-<pre>228                                                                                                                {
-229   if (!consensus || !sender_id || !metrics) {
-230     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-231   }
-232 
-233   return consensus_coordinator_on_stats_update(consensus-&gt;coordinator, sender_id, metrics, num_metrics);
-234 }</pre>
+<p class="Pp">Definition at line <b>236</b> of file <b>consensus.c</b>.</p>
+<pre>238                                                                                                                {
+239   if (!consensus || !sender_id || !metrics) {
+240     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+241   }
+242
+243   return consensus_coordinator_on_stats_update(consensus-&gt;coordinator, sender_id, metrics, num_metrics);
+244 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_coordinator_on_stats_update()</b>,
-    <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>, and
+    <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>session_consensus_on_stats_update()</b>, <b>SESSION_ID_SIZE</b>, and
     <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_on_stats_update()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> session_consensus_process
@@ -677,25 +710,27 @@
 <i>timeout_ms</i> Timeout for this call in milliseconds (0 = non-blocking)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>182</b> of file <b>consensus.c</b>.</p>
-<pre>182                                                                                                  {
-183   if (!consensus) {
-184     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;consensus is NULL&quot;);
-185   }
-186 
-187   // Call coordinator process
-188   return consensus_coordinator_process(consensus-&gt;coordinator, timeout_ms);
-189 }</pre>
+<p class="Pp">Definition at line <b>190</b> of file <b>consensus.c</b>.</p>
+<pre>190                                                                                                  {
+191   if (!consensus) {
+192     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;consensus is NULL&quot;);
+193   }
+194
+195   // Call coordinator process
+196   return consensus_coordinator_process(consensus-&gt;coordinator, timeout_ms);
+197 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_coordinator_process()</b>,
-    <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>, and
-    <b>SET_ERRNO</b>.</p>
+    <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>session_consensus_process()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_process()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> session_consensus_set_topology
   (<b>session_consensus_t</b> * consensus, const <b>uint8_t</b>
-  participant_ids[64][16], int num_participants)</h2>
+  participant_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE], int
+  num_participants)</h2>
 <p class="Pp">Update ring topology when participants change. Called when the
     ring topology changes (participants join/leave). Updates the consensus
     topology and resets any in-progress round.</p>
@@ -708,40 +743,41 @@
 <i>num_participants</i> New count of participants</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>191</b> of file <b>consensus.c</b>.</p>
-<pre>192                                                                        {
-193   if (!consensus || !participant_ids) {
-194     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
-195   }
-196 
-197   if (num_participants &lt; 1 || num_participants &gt; 64) {
-198     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid participant count: %d&quot;, num_participants);
-199   }
-200 
-201   // Destroy old topology
-202   if (consensus-&gt;topology) {
-203     consensus_topology_destroy(consensus-&gt;topology);
-204   }
-205 
-206   // Create new topology
-207   asciichat_error_t err =
-208       consensus_topology_create(participant_ids, num_participants, consensus-&gt;my_id, &amp;consensus-&gt;topology);
-209   if (err != ASCIICHAT_OK) {
-210     consensus-&gt;topology = NULL;
-211     return err;
-212   }
-213 
-214   // Update coordinator with new topology
-215   return consensus_coordinator_on_ring_members(consensus-&gt;coordinator, consensus-&gt;topology);
-216 }</pre>
+<p class="Pp">Definition at line <b>200</b> of file <b>consensus.c</b>.</p>
+<pre>202                                                      {
+203   if (!consensus || !participant_ids) {
+204     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+205   }
+206
+207   if (num_participants &lt; 1 || num_participants &gt; MAX_SESSION_PARTICIPANTS) {
+208     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid participant count: %d&quot;, num_participants);
+209   }
+210
+211   // Validate the candidate before releasing the ring still borrowed by the
+212   // coordinator. A rejected membership update must preserve the active round.
+213   consensus_topology_t *replacement = NULL;
+214   asciichat_error_t err = consensus_topology_create(participant_ids, num_participants, consensus-&gt;my_id, &amp;replacement);
+215   if (err != ASCIICHAT_OK)
+216     return err;
+217   err = consensus_coordinator_on_ring_members(consensus-&gt;coordinator, replacement);
+218   if (err != ASCIICHAT_OK) {
+219     consensus_topology_destroy(replacement);
+220     return err;
+221   }
+222   consensus_topology_destroy(consensus-&gt;topology);
+223   consensus-&gt;topology = replacement;
+224   return ASCIICHAT_OK;
+225 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
     <b>consensus_coordinator_on_ring_members()</b>,
     <b>consensus_topology_create()</b>, <b>consensus_topology_destroy()</b>,
     <b>session_consensus::coordinator</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>session_consensus::my_id</b>, <b>SET_ERRNO</b>, and
-    <b>session_consensus::topology</b>.</p>
+    <b>MAX_SESSION_PARTICIPANTS</b>, <b>session_consensus::my_id</b>,
+    <b>session_consensus_set_topology()</b>, <b>SESSION_ID_SIZE</b>,
+    <b>SET_ERRNO</b>, and <b>session_consensus::topology</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_set_topology()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> session_consensus_time_until_next_round
@@ -754,19 +790,21 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Nanoseconds until next round, or 0 if round is due
   now</div>
-<p class="Pp">Definition at line <b>306</b> of file <b>consensus.c</b>.</p>
-<pre>306                                                                                  {
-307   if (!consensus) {
-308     return 0;
-309   }
-310 
-311   return consensus_coordinator_time_until_next_round(consensus-&gt;coordinator);
-312 }</pre>
+<p class="Pp">Definition at line <b>320</b> of file <b>consensus.c</b>.</p>
+<pre>320                                                                                  {
+321   if (!consensus) {
+322     return 0;
+323   }
+324
+325   return consensus_coordinator_time_until_next_round(consensus-&gt;coordinator);
+326 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_coordinator_time_until_next_round()</b>,
-    and <b>session_consensus::coordinator</b>.</p>
-<p class="Pp">Referenced by <b>consensus_suggest_timeout_ms()</b>.</p>
+    <b>session_consensus::coordinator</b>, and
+    <b>session_consensus_time_until_next_round()</b>.</p>
+<p class="Pp">Referenced by <b>consensus_suggest_timeout_ms()</b>, and
+    <b>session_consensus_time_until_next_round()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -776,7 +814,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

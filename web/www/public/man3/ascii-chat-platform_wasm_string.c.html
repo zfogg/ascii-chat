@@ -92,20 +92,22 @@
 <pre>27                                                                  {
 28   size_t dst_len = strlen(dst);
 29   size_t src_len = strlen(src);
-30 
+30
 31   if (dst_len &gt;= size) {
 32     return dst_len + src_len;
 33   }
-34 
+34
 35   size_t remaining = size - dst_len;
 36   size_t copy_len = (src_len &gt;= remaining) ? remaining - 1 : src_len;
 37   memcpy(dst + dst_len, src, copy_len);
 38   dst[dst_len + copy_len] = '\0';
-39 
+39
 40   return dst_len + src_len;
 41 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>platform_strlcat()</b>.</p>
+<p class="Pp">Referenced by <b>platform_strlcat()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -115,7 +117,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

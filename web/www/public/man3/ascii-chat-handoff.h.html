@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>handoff.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">handoff.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">handoff.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">handoff.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>consensus_handoff_message_t</b>
+  <br/>
+  struct <b>consensus_handoff_peer_t</b>
+  <br/>
+  struct <b>consensus_handoff_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>CONSENSUS_HANDOFF_PACKET</b> 6090
+  <br/>
+  #define <b>CONSENSUS_HANDOFF_VERSION</b> 1
+  <br/>
+  #define <b>CONSENSUS_HANDOFF_HEADER</b> 64
+  <br/>
+  #define <b>CONSENSUS_HANDOFF_PROBE_BYTES</b> 65536
+  <br/>
+  #define <b>CONSENSUS_HANDOFF_FRESH_MS</b> 15000
+  <br/>
+  #define <b>CONSENSUS_HANDOFF_PREPARE_MS</b> 5000
+  <br/>
+  #define <b>CONSENSUS_HANDOFF_RECOVERY_MS</b> 15000
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>consensus_handoff_kind_t</b> { <b>HANDOFF_SAMPLE_START</b>
+    = 1, <b>HANDOFF_SAMPLE_DATA</b>, <b>HANDOFF_PREPARE</b>,
+    <b>HANDOFF_READY</b>, <b>HANDOFF_PLAN</b>, <b>HANDOFF_COMMIT</b>,
+    <b>HANDOFF_REJECT</b>, <b>HANDOFF_FAILED</b>, <b>HANDOFF_SAMPLE_ACK</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>consensus_handoff_decode</b> (const
+    void *data, size_t length, <b>consensus_handoff_message_t</b> *out)
+  <br/>
+  void <b>consensus_handoff_encode</b> (const <b>consensus_handoff_message_t</b>
+    *message, <b>uint8_t</b> out[64])
+  <br/>
+  void <b>consensus_handoff_init</b> (<b>consensus_handoff_t</b> *state, const
+    <b>uint8_t</b> session[<b>SESSION_ID_SIZE</b>], const <b>uint8_t</b>
+    host[<b>SESSION_ID_SIZE</b>])
+  <br/>
+  <b>asciichat_error_t</b> <b>consensus_handoff_join</b>
+    (<b>consensus_handoff_t</b> *state, const <b>uint8_t</b>
+    id[<b>SESSION_ID_SIZE</b>])
+  <br/>
+  void <b>consensus_handoff_leave</b> (<b>consensus_handoff_t</b> *state, const
+    <b>uint8_t</b> id[<b>SESSION_ID_SIZE</b>])
+  <br/>
+  <b>asciichat_error_t</b> <b>consensus_handoff_receive</b>
+    (<b>consensus_handoff_t</b> *state, const <b>consensus_handoff_message_t</b>
+    *message, size_t length, <b>uint64_t</b> now_ms)
+  <br/>
+  Accept a member's probe or preparation reply using receiver-clock time. Probe
+    metadata becomes eligible only with a matched, timely body. Preparation
+    replies must match the current generation, round, and selected successor.
+    <b>bool</b> <b>consensus_handoff_tick</b> (<b>consensus_handoff_t</b>
+    *state, <b>uint64_t</b> now_ms, <b>consensus_handoff_message_t</b> *action)
+  <br/>
+  Advance measured successor selection and bounded host-loss recovery. Fresh
+    eligible peers prepare within five seconds; all recovery attempts share one
+    15-second budget. Only a fresh prepared peer can commit, and failure is
+    terminal. void <b>consensus_handoff_host_lost</b>
+    (<b>consensus_handoff_t</b> *state, const <b>uint8_t</b>
+    host[<b>SESSION_ID_SIZE</b>])
+  <br/>
+  Record loss of the incumbent, ignoring delayed reports about old hosts. The
+    caller authenticates the reporter before the next tick starts recovery.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_CONSENSUS_HANDOFF_FRESH_MS___15000"><a class="permalink" href="#_define_CONSENSUS_HANDOFF_FRESH_MS___15000">#define
+  CONSENSUS_HANDOFF_FRESH_MS 15000</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CONSENSUS_HANDOFF_HEADER___64"><a class="permalink" href="#_define_CONSENSUS_HANDOFF_HEADER___64">#define
+  CONSENSUS_HANDOFF_HEADER 64</a></h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>,
+    <b>consensus_handoff_decode()</b>, <b>consensus_handoff_encode()</b>,
+    <b>consensus_handoff_encode()</b>, and
+  <b>consensus_handoff_receive()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CONSENSUS_HANDOFF_PACKET___6090"><a class="permalink" href="#_define_CONSENSUS_HANDOFF_PACKET___6090">#define
+  CONSENSUS_HANDOFF_PACKET 6090</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_handle_acds_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CONSENSUS_HANDOFF_PREPARE_MS___5000"><a class="permalink" href="#_define_CONSENSUS_HANDOFF_PREPARE_MS___5000">#define
+  CONSENSUS_HANDOFF_PREPARE_MS 5000</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CONSENSUS_HANDOFF_PROBE_BYTES___65536"><a class="permalink" href="#_define_CONSENSUS_HANDOFF_PROBE_BYTES___65536">#define
+  CONSENSUS_HANDOFF_PROBE_BYTES 65536</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>,
+    <b>consensus_handoff_decode()</b>, and
+  <b>consensus_handoff_receive()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CONSENSUS_HANDOFF_RECOVERY_MS___15000"><a class="permalink" href="#_define_CONSENSUS_HANDOFF_RECOVERY_MS___15000">#define
+  CONSENSUS_HANDOFF_RECOVERY_MS 15000</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CONSENSUS_HANDOFF_VERSION___1"><a class="permalink" href="#_define_CONSENSUS_HANDOFF_VERSION___1">#define
+  CONSENSUS_HANDOFF_VERSION 1</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_decode()</b>, and
+    <b>consensus_handoff_encode()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>consensus_handoff_kind_t</b></a></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="HANDOFF_SAMPLE_START"><a class="permalink" href="#HANDOFF_SAMPLE_START"><b><i>HANDOFF_SAMPLE_START
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="HANDOFF_SAMPLE_DATA"><a class="permalink" href="#HANDOFF_SAMPLE_DATA"><b><i>HANDOFF_SAMPLE_DATA
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="HANDOFF_PREPARE"><a class="permalink" href="#HANDOFF_PREPARE"><b><i>HANDOFF_PREPARE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="HANDOFF_READY"><a class="permalink" href="#HANDOFF_READY"><b><i>HANDOFF_READY
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="HANDOFF_PLAN"><a class="permalink" href="#HANDOFF_PLAN"><b><i>HANDOFF_PLAN
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="HANDOFF_COMMIT"><a class="permalink" href="#HANDOFF_COMMIT"><b><i>HANDOFF_COMMIT
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="HANDOFF_REJECT"><a class="permalink" href="#HANDOFF_REJECT"><b><i>HANDOFF_REJECT
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="HANDOFF_FAILED"><a class="permalink" href="#HANDOFF_FAILED"><b><i>HANDOFF_FAILED
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="HANDOFF_SAMPLE_ACK"><a class="permalink" href="#HANDOFF_SAMPLE_ACK"><b><i>HANDOFF_SAMPLE_ACK
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>17</b> of file <b>handoff.h</b>.</p>
+<pre>17              {
+18   HANDOFF_SAMPLE_START = 1,
+19   HANDOFF_SAMPLE_DATA,
+20   HANDOFF_PREPARE,
+21   HANDOFF_READY,
+22   HANDOFF_PLAN,
+23   HANDOFF_COMMIT,
+24   HANDOFF_REJECT,
+25   HANDOFF_FAILED,
+26   HANDOFF_SAMPLE_ACK
+27 } consensus_handoff_kind_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> consensus_handoff_decode (const void *
+  data, size_t length, <b>consensus_handoff_message_t</b> * out)</h2>
+<p class="Pp">Definition at line <b>16</b> of file <b>handoff.c</b>.</p>
+<pre>16                                                                                                             {
+17   if (!data || !m || length &lt; CONSENSUS_HANDOFF_HEADER)
+18     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Truncated handoff frame&quot;);
+19   const uint8_t *p = data;
+20   if (p[0] != CONSENSUS_HANDOFF_VERSION || p[1] &lt; HANDOFF_SAMPLE_START || p[1] &gt; HANDOFF_SAMPLE_ACK ||
+21       (p[1] == HANDOFF_SAMPLE_DATA ? length != CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES
+22                                    : length != CONSENSUS_HANDOFF_HEADER))
+23     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Invalid handoff version, kind or length&quot;);
+24   memset(m, 0, sizeof(*m));
+25   m-&gt;kind = p[1];
+26   memcpy(m-&gt;session, p + 4, SESSION_ID_SIZE);
+27   memcpy(m-&gt;participant, p + 20, SESSION_ID_SIZE);
+28   m-&gt;generation = read32(p + 36);
+29   m-&gt;sequence = read32(p + 40);
+30   m-&gt;upload_kbps = read32(p + 44);
+31   m-&gt;rtt_ms = read32(p + 48);
+32   m-&gt;capabilities = p[52];
+33   m-&gt;nat_tier = p[53];
+34   m-&gt;port = (uint16_t)((p[54] &lt;&lt; 8) | p[55]);
+35   return ASCIICHAT_OK;
+36 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>consensus_handoff_message_t::capabilities</b>,
+    <b>consensus_handoff_decode()</b>, <b>CONSENSUS_HANDOFF_HEADER</b>,
+    <b>CONSENSUS_HANDOFF_PROBE_BYTES</b>, <b>CONSENSUS_HANDOFF_VERSION</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+    <b>consensus_handoff_message_t::generation</b>, <b>HANDOFF_SAMPLE_ACK</b>,
+    <b>HANDOFF_SAMPLE_DATA</b>, <b>HANDOFF_SAMPLE_START</b>,
+    <b>consensus_handoff_message_t::kind</b>,
+    <b>consensus_handoff_message_t::nat_tier</b>,
+    <b>consensus_handoff_message_t::participant</b>,
+    <b>consensus_handoff_message_t::port</b>,
+    <b>consensus_handoff_message_t::rtt_ms</b>,
+    <b>consensus_handoff_message_t::sequence</b>,
+    <b>consensus_handoff_message_t::session</b>, <b>SESSION_ID_SIZE</b>,
+    <b>SET_ERRNO</b>, and <b>consensus_handoff_message_t::upload_kbps</b>.</p>
+<p class="Pp">Referenced by <b>browser_handoff_decode()</b>, and
+    <b>consensus_handoff_decode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_consensus_handoff_encode_(const_"><a class="permalink" href="#void_consensus_handoff_encode_(const_">void
+  consensus_handoff_encode (const <b>consensus_handoff_message_t</b> * message,
+  <b>uint8_t</b> out[64])</a></h2>
+<p class="Pp">References <b>consensus_handoff_encode()</b>,
+    <b>CONSENSUS_HANDOFF_HEADER</b>, <b>consensus_handoff_host_lost()</b>,
+    <b>consensus_handoff_init()</b>, <b>consensus_handoff_join()</b>,
+    <b>consensus_handoff_leave()</b>, <b>consensus_handoff_receive()</b>,
+    <b>consensus_handoff_tick()</b>, and <b>SESSION_ID_SIZE</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_consensus_handoff_host_lost_("><a class="permalink" href="#void_consensus_handoff_host_lost_(">void
+  consensus_handoff_host_lost (<b>consensus_handoff_t</b> * state, const
+  <b>uint8_t</b> host[SESSION_ID_SIZE])</a></h2>
+<p class="Pp">Record loss of the incumbent, ignoring delayed reports about old
+    hosts. The caller authenticates the reporter before the next tick starts
+    recovery.</p>
+<p class="Pp">Definition at line <b>102</b> of file <b>handoff.c</b>.</p>
+<pre>102                                                                                               {
+103   if (!memcmp(s-&gt;host, host, sizeof(s-&gt;host)))
+104     s-&gt;host_lost = true;
+105 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_handoff_host_lost()</b>,
+    <b>consensus_handoff_t::host</b>, <b>consensus_handoff_t::host_lost</b>, and
+    <b>SESSION_ID_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_encode()</b>, and
+    <b>consensus_handoff_host_lost()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_consensus_handoff_init_("><a class="permalink" href="#void_consensus_handoff_init_(">void
+  consensus_handoff_init (<b>consensus_handoff_t</b> * state, const
+  <b>uint8_t</b> session[SESSION_ID_SIZE], const <b>uint8_t</b>
+  host[SESSION_ID_SIZE])</a></h2>
+<p class="Pp">Definition at line <b>52</b> of file <b>handoff.c</b>.</p>
+<pre>53                                                                  {
+54   memset(s, 0, sizeof(*s));
+55   memcpy(s-&gt;session, session, SESSION_ID_SIZE);
+56   memcpy(s-&gt;host, host, SESSION_ID_SIZE);
+57   s-&gt;generation = 1;
+58 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_handoff_init()</b>,
+    <b>consensus_handoff_t::generation</b>, <b>consensus_handoff_t::host</b>,
+    <b>consensus_handoff_t::session</b>, and <b>SESSION_ID_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_encode()</b>, and
+    <b>consensus_handoff_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> consensus_handoff_join
+  (<b>consensus_handoff_t</b> * state, const <b>uint8_t</b>
+  id[SESSION_ID_SIZE])</h2>
+<p class="Pp">Definition at line <b>65</b> of file <b>handoff.c</b>.</p>
+<pre>65                                                                                                     {
+66   if (find_peer(s, id))
+67     return ASCIICHAT_OK;
+68   if (s-&gt;count == MAX_SESSION_PARTICIPANTS)
+69     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handoff membership full&quot;);
+70   consensus_handoff_peer_t *p = &amp;s-&gt;peers[s-&gt;count++];
+71   memset(p, 0, sizeof(*p));
+72   memcpy(p-&gt;id, id, SESSION_ID_SIZE);
+73   p-&gt;nat_tier = 255;
+74   ++s-&gt;generation;
+75   s-&gt;ready = false;
+76   memset(s-&gt;successor, 0, SESSION_ID_SIZE);
+77   return ASCIICHAT_OK;
+78 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>consensus_handoff_join()</b>,
+    <b>consensus_handoff_t::count</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>consensus_handoff_t::generation</b>, <b>consensus_handoff_peer_t::id</b>,
+    <b>MAX_SESSION_PARTICIPANTS</b>, <b>consensus_handoff_peer_t::nat_tier</b>,
+    <b>consensus_handoff_t::peers</b>, <b>consensus_handoff_t::ready</b>,
+    <b>SESSION_ID_SIZE</b>, <b>SET_ERRNO</b>, and
+    <b>consensus_handoff_t::successor</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_encode()</b>, and
+    <b>consensus_handoff_join()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_consensus_handoff_leave_("><a class="permalink" href="#void_consensus_handoff_leave_(">void
+  consensus_handoff_leave (<b>consensus_handoff_t</b> * state, const
+  <b>uint8_t</b> id[SESSION_ID_SIZE])</a></h2>
+<p class="Pp">Definition at line <b>79</b> of file <b>handoff.c</b>.</p>
+<pre>79                                                                                         {
+80   // The incumbent can leave before its first measurement creates a peer entry.
+81   if (memcmp(s-&gt;host, id, SESSION_ID_SIZE) == 0)
+82     s-&gt;host_lost = true;
+83   for (size_t i = 0; i &lt; s-&gt;count; ++i) {
+84     if (memcmp(s-&gt;peers[i].id, id, SESSION_ID_SIZE) != 0)
+85       continue;
+86     memmove(&amp;s-&gt;peers[i], &amp;s-&gt;peers[i + 1], (s-&gt;count - i - 1) * sizeof(s-&gt;peers[0]));
+87     --s-&gt;count;
+88     ++s-&gt;generation;
+89     if (memcmp(s-&gt;host, id, SESSION_ID_SIZE) == 0)
+90       s-&gt;host_lost = true;
+91     if (memcmp(s-&gt;successor, id, SESSION_ID_SIZE) == 0) {
+92       memset(s-&gt;successor, 0, SESSION_ID_SIZE);
+93       s-&gt;ready = false;
+94     }
+95     return;
+96   }
+97 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_handoff_leave()</b>,
+    <b>consensus_handoff_t::count</b>, <b>consensus_handoff_t::generation</b>,
+    <b>consensus_handoff_t::host</b>, <b>consensus_handoff_t::host_lost</b>,
+    <b>consensus_handoff_peer_t::id</b>, <b>consensus_handoff_t::peers</b>,
+    <b>consensus_handoff_t::ready</b>, <b>SESSION_ID_SIZE</b>, and
+    <b>consensus_handoff_t::successor</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_encode()</b>, and
+    <b>consensus_handoff_leave()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> consensus_handoff_receive
+  (<b>consensus_handoff_t</b> * s, const <b>consensus_handoff_message_t</b> * m,
+  size_t length, <b>uint64_t</b> now)</h2>
+<p class="Pp">Accept a member's probe or preparation reply using receiver-clock
+    time. Probe metadata becomes eligible only with a matched, timely body.
+    Preparation replies must match the current generation, round, and selected
+    successor.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK if accepted, or a protocol error without
+  accepting the frame.</div>
+<p class="Pp">Definition at line <b>113</b> of file <b>handoff.c</b>.</p>
+<pre>114                                                           {
+115   if (memcmp(s-&gt;session, m-&gt;session, SESSION_ID_SIZE) != 0)
+116     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Wrong handoff session&quot;);
+117   consensus_handoff_peer_t *p = find_peer(s, m-&gt;participant);
+118   if (!p)
+119     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Handoff sender is not a member&quot;);
+120   if (m-&gt;kind == HANDOFF_SAMPLE_START) {
+121     if (m-&gt;sequence &lt;= p-&gt;sequence || (p-&gt;measured_ms &amp;&amp; now - p-&gt;measured_ms &lt; 1000))
+122       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Repeated or excessive handoff probe&quot;);
+123     p-&gt;sequence = m-&gt;sequence;
+124     p-&gt;probe_started_ms = now;
+125     p-&gt;measuring = true;
+126     p-&gt;pending_capabilities = m-&gt;capabilities &amp; 3;
+127     p-&gt;pending_nat_tier = m-&gt;nat_tier &lt;= 4 ? m-&gt;nat_tier : 255;
+128     p-&gt;pending_port = m-&gt;port;
+129   } else if (m-&gt;kind == HANDOFF_SAMPLE_DATA) {
+130     if (!p-&gt;measuring || m-&gt;sequence != p-&gt;sequence ||
+131         length != CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES)
+132       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Unmatched handoff probe&quot;);
+133     p-&gt;measuring = false;
+134     uint64_t elapsed = now - p-&gt;probe_started_ms;
+135     if (elapsed == 0)
+136       elapsed = 1;
+137     p-&gt;valid = elapsed &lt;= 5000;
+138     if (p-&gt;valid) {
+139       p-&gt;capabilities = p-&gt;pending_capabilities;
+140       p-&gt;nat_tier = p-&gt;pending_nat_tier;
+141       p-&gt;port = p-&gt;pending_port;
+142       // A quality refresh cannot extend a failed recovery by retrying the same host.
+143       if (!s-&gt;host_lost)
+144         p-&gt;rejected = false;
+145     }
+146     p-&gt;upload_kbps = (uint32_t)((uint64_t)CONSENSUS_HANDOFF_PROBE_BYTES * 8 / elapsed);
+147     p-&gt;measured_ms = now;
+148   } else if (m-&gt;kind == HANDOFF_READY || m-&gt;kind == HANDOFF_REJECT) {
+149     if (m-&gt;generation != s-&gt;generation || m-&gt;sequence != s-&gt;round ||
+150         memcmp(m-&gt;participant, s-&gt;successor, SESSION_ID_SIZE))
+151       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Obsolete handoff preparation&quot;);
+152     if (m-&gt;kind == HANDOFF_READY &amp;&amp; now &lt;= s-&gt;prepare_deadline_ms)
+153       s-&gt;ready = true;
+154     else {
+155       p-&gt;rejected = true;
+156       s-&gt;ready = false;
+157       memset(s-&gt;successor, 0, SESSION_ID_SIZE);
+158     }
+159   } else
+160     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, &quot;Client cannot announce a handoff decision&quot;);
+161   return ASCIICHAT_OK;
+162 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>consensus_handoff_message_t::capabilities</b>,
+    <b>consensus_handoff_peer_t::capabilities</b>,
+    <b>CONSENSUS_HANDOFF_HEADER</b>, <b>CONSENSUS_HANDOFF_PROBE_BYTES</b>,
+    <b>consensus_handoff_receive()</b>, <b>ERROR_NETWORK_PROTOCOL</b>,
+    <b>consensus_handoff_message_t::generation</b>,
+    <b>consensus_handoff_t::generation</b>, <b>HANDOFF_READY</b>,
+    <b>HANDOFF_REJECT</b>, <b>HANDOFF_SAMPLE_DATA</b>,
+    <b>HANDOFF_SAMPLE_START</b>, <b>consensus_handoff_t::host_lost</b>,
+    <b>consensus_handoff_message_t::kind</b>,
+    <b>consensus_handoff_peer_t::measured_ms</b>,
+    <b>consensus_handoff_peer_t::measuring</b>,
+    <b>consensus_handoff_message_t::nat_tier</b>,
+    <b>consensus_handoff_peer_t::nat_tier</b>,
+    <b>consensus_handoff_message_t::participant</b>,
+    <b>consensus_handoff_peer_t::pending_capabilities</b>,
+    <b>consensus_handoff_peer_t::pending_nat_tier</b>,
+    <b>consensus_handoff_peer_t::pending_port</b>,
+    <b>consensus_handoff_message_t::port</b>,
+    <b>consensus_handoff_peer_t::port</b>,
+    <b>consensus_handoff_peer_t::probe_started_ms</b>,
+    <b>consensus_handoff_t::ready</b>,
+    <b>consensus_handoff_peer_t::rejected</b>,
+    <b>consensus_handoff_t::round</b>,
+    <b>consensus_handoff_message_t::sequence</b>,
+    <b>consensus_handoff_peer_t::sequence</b>,
+    <b>consensus_handoff_message_t::session</b>,
+    <b>consensus_handoff_t::session</b>, <b>SESSION_ID_SIZE</b>,
+    <b>SET_ERRNO</b>, <b>consensus_handoff_t::successor</b>,
+    <b>consensus_handoff_peer_t::upload_kbps</b>, and
+    <b>consensus_handoff_peer_t::valid</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_encode()</b>, and
+    <b>consensus_handoff_receive()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> consensus_handoff_tick (<b>consensus_handoff_t</b> *
+  s, <b>uint64_t</b> now, <b>consensus_handoff_message_t</b> * a)</h2>
+<p class="Pp">Advance measured successor selection and bounded host-loss
+    recovery. Fresh eligible peers prepare within five seconds; all recovery
+    attempts share one 15-second budget. Only a fresh prepared peer can commit,
+    and failure is terminal.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>now</i> Monotonic receiver time in milliseconds.
+<br/>
+<i>a</i> Output action to send when the function returns true.</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">True if a PREPARE, COMMIT, or terminal FAILED action was
+  produced.</div>
+<p class="Pp">Definition at line <b>204</b> of file <b>handoff.c</b>.</p>
+<pre>204                                                                                                   {
+205   memset(a, 0, sizeof(*a));
+206   memcpy(a-&gt;session, s-&gt;session, SESSION_ID_SIZE);
+207   a-&gt;generation = s-&gt;generation;
+208   if (s-&gt;failure_announced)
+209     return false; // Terminal until the session is recreated.
+210   if (!s-&gt;monitoring) {
+211     s-&gt;monitoring = true;
+212     s-&gt;monitoring_started_ms = now;
+213   }
+214   consensus_handoff_peer_t *incumbent = find_peer(s, s-&gt;host);
+215   uint64_t last_host_sample = incumbent &amp;&amp; incumbent-&gt;valid ? incumbent-&gt;measured_ms : s-&gt;monitoring_started_ms;
+216   if (now - last_host_sample &gt; CONSENSUS_HANDOFF_FRESH_MS)
+217     s-&gt;host_lost = true;
+218   if (s-&gt;host_lost &amp;&amp; !s-&gt;failure_deadline_ms)
+219     s-&gt;failure_deadline_ms = now + CONSENSUS_HANDOFF_RECOVERY_MS;
+220   // The recovery budget is shared by all candidates, including silent/rejecting
+221   // candidates that continue sending fresh probes. A late READY cannot revive it.
+222   if (s-&gt;host_lost &amp;&amp; now &gt;= s-&gt;failure_deadline_ms) {
+223     s-&gt;failure_announced = true;
+224     s-&gt;ready = false;
+225     memset(s-&gt;successor, 0, sizeof(s-&gt;successor));
+226     a-&gt;kind = HANDOFF_FAILED;
+227     a-&gt;sequence = s-&gt;round;
+228     handoff_record_action(s, a, now, 0);
+229     return true;
+230   }
+231   if (s-&gt;ready &amp;&amp; s-&gt;host_lost) {
+232     consensus_handoff_peer_t *p = find_peer(s, s-&gt;successor);
+233     if (p &amp;&amp; p-&gt;valid &amp;&amp; p-&gt;capabilities &amp;&amp; now - p-&gt;measured_ms &lt;= CONSENSUS_HANDOFF_FRESH_MS) {
+234       a-&gt;kind = HANDOFF_COMMIT;
+235       memcpy(a-&gt;participant, s-&gt;successor, SESSION_ID_SIZE);
+236       a-&gt;sequence = s-&gt;round;
+237       a-&gt;port = p-&gt;port;
+238       a-&gt;capabilities = p-&gt;capabilities;
+239       handoff_record_action(s, a, now, 1);
+240       s-&gt;host_sequence = a-&gt;sequence;
+241       memcpy(s-&gt;host, s-&gt;successor, SESSION_ID_SIZE);
+242       s-&gt;host_lost = false;
+243       s-&gt;monitoring_started_ms = now;
+244       s-&gt;ready = false;
+245       s-&gt;failure_deadline_ms = 0;
+246       s-&gt;failure_announced = false;
+247       for (size_t i = 0; i &lt; s-&gt;count; ++i)
+248         s-&gt;peers[i].rejected = false;
+249       memset(s-&gt;successor, 0, SESSION_ID_SIZE);
+250       return true;
+251     }
+252     s-&gt;ready = false;
+253     memset(s-&gt;successor, 0, SESSION_ID_SIZE);
+254   }
+255   uint8_t zero[SESSION_ID_SIZE] = {0};
+256   if (memcmp(s-&gt;successor, zero, SESSION_ID_SIZE)) {
+257     consensus_handoff_peer_t *p = find_peer(s, s-&gt;successor);
+258     if (p &amp;&amp; p-&gt;valid &amp;&amp; p-&gt;capabilities &amp;&amp; now - p-&gt;measured_ms &lt;= CONSENSUS_HANDOFF_FRESH_MS &amp;&amp;
+259         (s-&gt;ready || now &lt; s-&gt;prepare_deadline_ms))
+260       return false;
+261     if (p &amp;&amp; !s-&gt;ready)
+262       p-&gt;rejected = true;
+263     memset(s-&gt;successor, 0, SESSION_ID_SIZE);
+264     s-&gt;ready = false;
+265   }
+266   participant_metrics_t metrics[MAX_SESSION_PARTICIPANTS];
+267   size_t count = 0;
+268   for (size_t i = 0; i &lt; s-&gt;count; ++i) {
+269     consensus_handoff_peer_t *p = &amp;s-&gt;peers[i];
+270     if (!p-&gt;valid || p-&gt;rejected || !p-&gt;capabilities || now - p-&gt;measured_ms &gt; CONSENSUS_HANDOFF_FRESH_MS ||
+271         memcmp(p-&gt;id, s-&gt;host, SESSION_ID_SIZE) == 0)
+272       continue;
+273     participant_metrics_t *m = &amp;metrics[count++];
+274     memset(m, 0, sizeof(*m));
+275     memcpy(m-&gt;participant_id, p-&gt;id, SESSION_ID_SIZE);
+276     m-&gt;nat_tier = p-&gt;nat_tier &lt;= 4 ? p-&gt;nat_tier : 4;
+277     m-&gt;upload_kbps = p-&gt;upload_kbps;
+278     m-&gt;rtt_ns = 500000000; /* Unknown RTT earns no latency bonus. */
+279   }
+280   if (!count)
+281
+282     return false;
+283   int best = -1, backup = -1;
+284   if (consensus_election_choose_hosts(metrics, (int)count, &amp;best, &amp;backup) != ASCIICHAT_OK)
+285     return false;
+286   memcpy(s-&gt;successor, metrics[best].participant_id, SESSION_ID_SIZE);
+287   ++s-&gt;round;
+288   s-&gt;prepare_deadline_ms = now + CONSENSUS_HANDOFF_PREPARE_MS;
+289   a-&gt;kind = HANDOFF_PREPARE;
+290   memcpy(a-&gt;participant, s-&gt;successor, SESSION_ID_SIZE);
+291   a-&gt;sequence = s-&gt;round;
+292   handoff_record_action(s, a, now, count);
+293   return true;
+294 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>consensus_handoff_message_t::capabilities</b>,
+    <b>consensus_handoff_peer_t::capabilities</b>,
+    <b>consensus_election_choose_hosts()</b>, <b>CONSENSUS_HANDOFF_FRESH_MS</b>,
+    <b>CONSENSUS_HANDOFF_PREPARE_MS</b>, <b>CONSENSUS_HANDOFF_RECOVERY_MS</b>,
+    <b>consensus_handoff_tick()</b>, <b>consensus_handoff_t::count</b>,
+    <b>consensus_handoff_t::failure_announced</b>,
+    <b>consensus_handoff_t::failure_deadline_ms</b>,
+    <b>consensus_handoff_message_t::generation</b>,
+    <b>consensus_handoff_t::generation</b>, <b>HANDOFF_COMMIT</b>,
+    <b>HANDOFF_FAILED</b>, <b>HANDOFF_PREPARE</b>,
+    <b>consensus_handoff_t::host</b>, <b>consensus_handoff_t::host_lost</b>,
+    <b>consensus_handoff_t::host_sequence</b>,
+    <b>consensus_handoff_peer_t::id</b>,
+    <b>consensus_handoff_message_t::kind</b>, <b>MAX_SESSION_PARTICIPANTS</b>,
+    <b>consensus_handoff_peer_t::measured_ms</b>,
+    <b>consensus_handoff_t::monitoring</b>,
+    <b>consensus_handoff_t::monitoring_started_ms</b>,
+    <b>consensus_handoff_peer_t::nat_tier</b>,
+    <b>consensus_handoff_message_t::participant</b>,
+    <b>consensus_handoff_t::peers</b>, <b>consensus_handoff_message_t::port</b>,
+    <b>consensus_handoff_peer_t::port</b>,
+    <b>consensus_handoff_t::prepare_deadline_ms</b>,
+    <b>consensus_handoff_t::ready</b>,
+    <b>consensus_handoff_peer_t::rejected</b>,
+    <b>consensus_handoff_t::round</b>,
+    <b>consensus_handoff_message_t::sequence</b>,
+    <b>consensus_handoff_message_t::session</b>,
+    <b>consensus_handoff_t::session</b>, <b>SESSION_ID_SIZE</b>,
+    <b>consensus_handoff_t::successor</b>,
+    <b>consensus_handoff_peer_t::upload_kbps</b>, and
+    <b>consensus_handoff_peer_t::valid</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_encode()</b>, and
+    <b>consensus_handoff_tick()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

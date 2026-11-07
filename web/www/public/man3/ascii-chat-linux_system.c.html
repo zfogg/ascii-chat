@@ -37,12 +37,21 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>linux_binary_lookup_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">int <b>get_binary_file_address_offsets</b> (const void *addr,
     <b>platform_binary_match_t</b> *matches, int max_matches)
   <br/>
-  Get binary that contains address on Linux via /proc/self/maps.
+  Get binary that contains address on Linux via the ELF program headers.
   <br/>
 </p>
 </section>
@@ -63,7 +72,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

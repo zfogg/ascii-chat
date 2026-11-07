@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>visualization.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">visualization.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">visualization.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">visualization.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>waveform_color_stop_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>visualization_color_for_level</b> (float frequency_hz,
+    float level, int color_mode, unsigned char *red, unsigned char *green,
+    unsigned char *blue)
+  <br/>
+  void <b>audio_visualization_submit_stereo</b>
+    (<b>audio_visualization_source_t</b> source, const float *samples, size_t
+    count)
+  <br/>
+  void <b>audio_visualization_submit</b> (<b>audio_visualization_source_t</b>
+    source, const float *samples, size_t count)
+  <br/>
+  void <b>audio_visualization_read</b> (<b>audio_visualization_source_t</b>
+    source, float *samples, size_t count)
+  <br/>
+  char * <b>visualization_encode</b> (const char *cells, const unsigned char
+    *colors, <b>bool</b> column_colors, unsigned int width, unsigned int height,
+    <b>bool</b> use_color, <b>bool</b> flip_x, <b>bool</b> flip_y)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_visualization_read_("><a class="permalink" href="#void_audio_visualization_read_(">void
+  audio_visualization_read (<b>audio_visualization_source_t</b> source, float *
+  samples, size_t count)</a></h2>
+<p class="Pp">Definition at line <b>100</b> of file <b>visualization.c</b>.</p>
+<pre>100                                                                                                  {
+101   if (!samples)
+102     return;
+103   if (source &lt; AUDIO_VISUALIZATION_SOURCE_MIC || source &gt;= AUDIO_VISUALIZATION_SOURCE_COUNT) {
+104     memset(samples, 0, count * sizeof(float));
+105     return;
+106   }
+107   static_mutex_lock_named(&amp;history_mutex, &quot;audio_visualization_history&quot;);
+108   size_t available_count = count &lt; VISUALIZATION_HISTORY ? count : VISUALIZATION_HISTORY;
+109   size_t output_offset = count - available_count;
+110   for (size_t i = 0; i &lt; count; i++)
+111     samples[i] = 0.0f;
+112   size_t first_source = source;
+113   size_t last_source = source;
+114   if (source == AUDIO_VISUALIZATION_SOURCE_MIX) {
+115     first_source = AUDIO_VISUALIZATION_SOURCE_MIC;
+116     last_source = AUDIO_VISUALIZATION_SOURCE_REMOTE;
+117   } else if (source == AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX) {
+118     first_source = AUDIO_VISUALIZATION_SOURCE_MIC;
+119     last_source = AUDIO_VISUALIZATION_SOURCE_MEDIA;
+120   }
+121   for (size_t current = first_source; current &lt;= last_source; current++) {
+122     size_t start = (write_position[current] + VISUALIZATION_HISTORY - available_count) % VISUALIZATION_HISTORY;
+123     for (size_t i = 0; i &lt; available_count; i++)
+124       samples[output_offset + i] += history[current][(start + i) % VISUALIZATION_HISTORY];
+125   }
+126   static_mutex_unlock(&amp;history_mutex);
+127   for (size_t i = 0; i &lt; count; i++)
+128     samples[i] = fmaxf(-1.0f, fminf(1.0f, samples[i]));
+129 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>audio_visualization_read()</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_COUNT</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_MEDIA</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_MIC</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_MIX</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_REMOTE</b>, and
+  <b>VISUALIZATION_HISTORY</b>.</p>
+<p class="Pp">Referenced by <b>audio_visualization_read()</b>,
+    <b>audio_visualization_render_fft()</b>, and
+    <b>audio_visualization_render_waveform()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_visualization_submit_("><a class="permalink" href="#void_audio_visualization_submit_(">void
+  audio_visualization_submit (<b>audio_visualization_source_t</b> source, const
+  float * samples, size_t count)</a></h2>
+<p class="Pp">Definition at line <b>85</b> of file <b>visualization.c</b>.</p>
+<pre>85                                                                                                          {
+86   if ((!GET_OPTION(waveform) &amp;&amp; !GET_OPTION(fft)) || !samples || source &lt; AUDIO_VISUALIZATION_SOURCE_MIC ||
+87       source &gt; AUDIO_VISUALIZATION_SOURCE_REMOTE)
+88     return;
+89   static_mutex_lock_named(&amp;history_mutex, &quot;audio_visualization_history&quot;);
+90   size_t position = write_position[source];
+91   for (size_t i = 0; i &lt; count; i++) {
+92     float sample = samples[i];
+93     history[source][position] = isfinite(sample) ? fmaxf(-1.0f, fminf(1.0f, sample)) : 0.0f;
+94     position = (position + 1) % VISUALIZATION_HISTORY;
+95   }
+96   write_position[source] = position;
+97   static_mutex_unlock(&amp;history_mutex);
+98 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>AUDIO_VISUALIZATION_SOURCE_MIC</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_REMOTE</b>,
+    <b>audio_visualization_submit()</b>, <b>GET_OPTION</b>, and
+    <b>VISUALIZATION_HISTORY</b>.</p>
+<p class="Pp">Referenced by <b>audio_visualization_submit()</b>,
+    <b>audio_visualization_submit_stereo()</b>, and
+    <b>mirror_submit_audio_samples()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_visualization_submit_stereo_("><a class="permalink" href="#void_audio_visualization_submit_stereo_(">void
+  audio_visualization_submit_stereo (<b>audio_visualization_source_t</b> source,
+  const float * samples, size_t count)</a></h2>
+<p class="Pp">Downmix interleaved stereo only for display analysis, preserving
+    its sample clock.</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>visualization.c</b>.</p>
+<pre>70                                                                                                                 {
+71   if (!samples || count % 2)
+72     return;
+73   float mono[480];
+74   for (size_t offset = 0; offset &lt; count;) {
+75     size_t frames = (count - offset) / 2;
+76     if (frames &gt; 480)
+77       frames = 480;
+78     for (size_t i = 0; i &lt; frames; i++)
+79       mono[i] = samples[offset + i * 2] * 0.5f + samples[offset + i * 2 + 1] * 0.5f;
+80     audio_visualization_submit(source, mono, frames);
+81     offset += frames * 2;
+82   }
+83 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>audio_visualization_submit()</b>, and
+    <b>audio_visualization_submit_stereo()</b>.</p>
+<p class="Pp">Referenced by <b>audio_visualization_submit_stereo()</b>, and
+    <b>audio_write_samples()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_visualization_color_for_level_(float_frequency_hz,_float_level,_int_color_mode,_unsigned_char_*_red,_unsigned_char_*_green,_unsigned_char_*_blue)"><a class="permalink" href="#void_visualization_color_for_level_(float_frequency_hz,_float_level,_int_color_mode,_unsigned_char_*_red,_unsigned_char_*_green,_unsigned_char_*_blue)">void
+  visualization_color_for_level (float frequency_hz, float level, int
+  color_mode, unsigned char * red, unsigned char * green, unsigned char *
+  blue)</a></h2>
+<p class="Pp">Definition at line <b>54</b> of file <b>visualization.c</b>.</p>
+<pre>55                                                                               {
+56   visualization_color_for_frequency(frequency_hz, red, green, blue);
+57   float brightness = 0.5f + 0.5f * level;
+58   float white_mix = 0.0f;
+59   if (color_mode == AUDIO_VISUALIZATION_COLOR_DARKER) {
+60     brightness = 0.24f + 0.76f * level;
+61   } else if (color_mode == AUDIO_VISUALIZATION_COLOR_BRIGHTER) {
+62     brightness = 0.62f + 0.38f * level;
+63     white_mix = 0.10f;
+64   }
+65   *red = (unsigned char)lrintf(fminf(255.0f, *red * brightness + 255.0f * white_mix));
+66   *green = (unsigned char)lrintf(fminf(255.0f, *green * brightness + 255.0f * white_mix));
+67   *blue = (unsigned char)lrintf(fminf(255.0f, *blue * brightness + 255.0f * white_mix));
+68 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>AUDIO_VISUALIZATION_COLOR_BRIGHTER</b>,
+    <b>AUDIO_VISUALIZATION_COLOR_DARKER</b>, and
+    <b>visualization_color_for_level()</b>.</p>
+<p class="Pp">Referenced by <b>audio_visualization_render_fft()</b>,
+    <b>audio_visualization_render_waveform()</b>, and
+    <b>visualization_color_for_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_visualization_encode_(const_char_*_cells,_const_unsigned_char_*_colors,_"><a class="permalink" href="#char_*_visualization_encode_(const_char_*_cells,_const_unsigned_char_*_colors,_">char
+  * visualization_encode (const char * cells, const unsigned char * colors,
+  <b>bool</b> column_colors, unsigned int width, unsigned int height,
+  <b>bool</b> use_color, <b>bool</b> flip_x, <b>bool</b> flip_y)</a></h2>
+<p class="Pp">Definition at line <b>133</b> of file <b>visualization.c</b>.</p>
+<pre>134                                                                                           {
+135   int mode = GET_OPTION(render_mode);
+136   bool half = mode == RENDER_MODE_HALF_BLOCK;
+137   unsigned int rows = half ? height / 2 : height;
+138   size_t capacity = (size_t)width * rows * 64 + rows + 1;
+139   char *frame = SAFE_MALLOC(capacity, char *);
+140   if (!frame)
+141     return NULL;
+142   size_t used = 0;
+143   for (unsigned int y = 0; y &lt; rows; y++) {
+144     for (unsigned int x = 0; x &lt; width; x++) {
+145       unsigned int sx = flip_x ? width - x - 1 : x;
+146       unsigned int sy = half ? y * 2 : y;
+147       unsigned int top = flip_y ? height - sy - 1 : sy;
+148       size_t cell = (size_t)top * width + sx;
+149       const unsigned char *color = colors + (column_colors ? sx : cell) * 3;
+150       char ch = cells[cell];
+151       if (half) {
+152         unsigned int bottom = flip_y ? height - sy - 2 : sy + 1;
+153         size_t lower = (size_t)bottom * width + sx;
+154         const unsigned char *lower_color = colors + (column_colors ? sx : lower) * 3;
+155         bool upper_on = ch != ' ', lower_on = cells[lower] != ' ';
+156         if (use_color) {
+157           used += (size_t)snprintf(frame + used, capacity - used, &quot;\033[38;2;%u;%u;%um\033[48;2;%u;%u;%um&#x2580;\033[0m&quot;,
+158                                    upper_on ? color[0] : 0, upper_on ? color[1] : 0, upper_on ? color[2] : 0,
+159                                    lower_on ? lower_color[0] : 0, lower_on ? lower_color[1] : 0,
+160                                    lower_on ? lower_color[2] : 0);
+161         } else {
+162           const char *glyph = upper_on ? (lower_on ? &quot;&#x2588;&quot; : &quot;&#x2580;&quot;) : (lower_on ? &quot;&#x2584;&quot; : &quot; &quot;);
+163           size_t length = strlen(glyph);
+164           memcpy(frame + used, glyph, length);
+165           used += length;
+166         }
+167       } else if (use_color &amp;&amp; ch != ' ') {
+168         used += (size_t)snprintf(frame + used, capacity - used, &quot;\033[%d;2;%u;%u;%um%c\033[0m&quot;,
+169                                  mode == RENDER_MODE_BACKGROUND ? 48 : 38, color[0], color[1], color[2],
+170                                  mode == RENDER_MODE_BACKGROUND ? ' ' : ch);
+171       } else {
+172         frame[used++] = ch;
+173       }
+174     }
+175     frame[used++] = '\n';
+176   }
+177   frame[used] = '\0';
+178   return frame;
+179 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>GET_OPTION</b>, <b>RENDER_MODE_BACKGROUND</b>,
+    <b>RENDER_MODE_HALF_BLOCK</b>, <b>SAFE_MALLOC</b>, and
+    <b>visualization_encode()</b>.</p>
+<p class="Pp">Referenced by <b>audio_visualization_render_fft()</b>,
+    <b>audio_visualization_render_waveform()</b>, and
+    <b>visualization_encode()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

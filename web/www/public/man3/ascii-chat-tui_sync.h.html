@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>sync.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">sync.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">sync.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">sync.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>ui_sync_start</b> (int fd)
+  <br/>
+  void <b>ui_sync_stop</b> (void)
+  <br/>
+  <b>bool</b> <b>ui_sync_is_visible</b> (void)
+  <br/>
+  <b>keyboard_key_t</b> <b>ui_sync_handle_key</b> (<b>keyboard_key_t</b> key)
+  <br/>
+  void <b>ui_sync_render</b> (<b>terminal_size_t</b> size)
+  <br/>
+  int <b>ui_sync_output_fd</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>keyboard_key_t</b> ui_sync_handle_key (<b>keyboard_key_t</b>
+  key)</h2>
+<p class="Pp">Definition at line <b>350</b> of file <b>tui/sync.c</b>.</p>
+<pre>350                                                       {
+351   if (key == KEY_0) {
+352     ui_controller_select_interactive(ui_sync_is_visible() ? -1 : UI_SCREEN_SYNC);
+353     return KEY_NONE;
+354   }
+355   if (!ui_sync_is_visible())
+356     return key;
+357   // Leave sync selected until the replacement has a complete snapshot.
+358   if (key == '=' || key == KEY_BACKTICK || key == KEY_QUESTION || key == ']' || key == 'o' || key == 'O' || key == 15)
+359     return key;
+360   if (key == KEY_ESCAPE) {
+361     ui_controller_select_interactive(-1);
+362     return KEY_NONE;
+363   }
+364   ui_viewport_t viewport = {.selected = (size_t)atomic_load(&amp;g_sync_selected),
+365                             .page_size = (size_t)atomic_load(&amp;g_sync_page_size)};
+366   ui_viewport_key(&amp;viewport, (size_t)atomic_load(&amp;g_sync_total), viewport.page_size, key);
+367   atomic_store(&amp;g_sync_selected, (int)viewport.selected);
+368   return key == 'q' || key == 3 ? key : KEY_NONE;
+369 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>KEY_0</b>, <b>KEY_BACKTICK</b>, <b>KEY_ESCAPE</b>,
+    <b>KEY_NONE</b>, <b>KEY_QUESTION</b>, <b>ui_viewport_t::page_size</b>,
+    <b>ui_viewport_t::selected</b>, <b>ui_controller_select_interactive()</b>,
+    <b>UI_SCREEN_SYNC</b>, <b>ui_sync_handle_key()</b>,
+    <b>ui_sync_is_visible()</b>, and <b>ui_viewport_key()</b>.</p>
+<p class="Pp">Referenced by <b>ui_input_poll_sync()</b>,
+    <b>ui_input_read_key()</b>, and <b>ui_sync_handle_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_sync_is_visible (void )</h2>
+<p class="Pp">Definition at line <b>343</b> of file <b>tui/sync.c</b>.</p>
+<pre>343                               {
+344   return ui_controller_interactive_screen() == UI_SCREEN_SYNC;
+345 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_interactive_screen()</b>,
+    <b>UI_SCREEN_SYNC</b>, and <b>ui_sync_is_visible()</b>.</p>
+<p class="Pp">Referenced by <b>ui_sync_handle_key()</b>,
+    <b>ui_sync_is_visible()</b>, and <b>ui_sync_stop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ui_sync_output_fd_(void_)"><a class="permalink" href="#int_ui_sync_output_fd_(void_)">int
+  ui_sync_output_fd (void )</a></h2>
+<p class="Pp">Definition at line <b>346</b> of file <b>tui/sync.c</b>.</p>
+<pre>346                             {
+347   return g_sync_fd;
+348 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_sync_output_fd()</b>.</p>
+<p class="Pp">Referenced by <b>ui_sync_output_fd()</b>, and
+    <b>ui_sync_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_sync_render_("><a class="permalink" href="#void_ui_sync_render_(">void
+  ui_sync_render (<b>terminal_size_t</b> size)</a></h2>
+<p class="Pp">Called only by the presentation thread; uses already-owned
+    snapshots.</p>
+<p class="Pp">Definition at line <b>472</b> of file <b>tui/sync.c</b>.</p>
+<pre>472                                           {
+473   colored_string_set_output_fd(ui_sync_output_fd() &gt;= 0 ? ui_sync_output_fd() : STDOUT_FILENO);
+474   terminal_capabilities_t caps = detect_terminal_capabilities();
+475   terminal_color_mode_t mode = GET_OPTION(color_mode);
+476   g_sync_use_color = mode != TERM_COLOR_NONE &amp;&amp; GET_OPTION(color) != COLOR_SETTING_FALSE &amp;&amp; !GET_OPTION(strip_ansi) &amp;&amp;
+477                      (mode != TERM_COLOR_AUTO || caps.color_level != TERM_COLOR_NONE);
+478   g_sync_use_utf8 = terminal_should_use_utf8();
+479   // Copy only the visible page before terminal writes; the collector never
+480   // waits for output, and the renderer never waits for collection.
+481   sync_row_t rows[SYNC_ROW_CAPACITY];
+482   size_t count = 0, total = 0, cycles = 0;
+483   size_t mutexes = 0, conditions = 0, rwlocks = 0, atomics = 0;
+484   uint64_t sampled = 0;
+485   bool waits_complete = false, limited = false;
+486   enum { header_rows = 4, detail_rows = 3, footer_rows = 1 };
+487   const int fixed_rows = header_rows + detail_rows + footer_rows;
+488   int name_width = (int)strlen(&quot;Name&quot;);
+489   ui_layout_t layout;
+490   if (ui_layout_measure(size, header_rows, detail_rows, footer_rows, &amp;layout) != ASCIICHAT_OK)
+491     return;
+492   int per_page = layout.body_rows &gt; 0 ? layout.body_rows : 1;
+493   if (per_page &gt; 128)
+494     per_page = 128;
+495   atomic_store(&amp;g_sync_page_size, per_page);
+496   int selected = atomic_load(&amp;g_sync_selected);
+497   int page = 0, pages = 1;
+498   int slot = atomic_load(&amp;g_sync_published);
+499   if (slot &gt;= 0) {
+500     // Keep the last complete screen if collection is reusing this mailbox.
+501     if (atomic_flag_test_and_set(&amp;g_sync_samples[slot].busy)) {
+502       return;
+503     }
+504     sync_sample_t *s = &amp;g_sync_samples[slot];
+505     total = s-&gt;count;
+506     atomic_store(&amp;g_sync_total, total &gt; INT_MAX ? INT_MAX : (int)total);
+507     if ((size_t)selected &gt;= total) {
+508       int previous = selected;
+509       selected = total ? (int)total - 1 : 0;
+510       // Do not overwrite a key received while the renderer copies a sample.
+511       atomic_compare_exchange_strong(&amp;g_sync_selected, &amp;previous, selected);
+512     }
+513     pages = total ? (int)((total + per_page - 1) / per_page) : 1;
+514     page = selected / per_page;
+515     size_t first = (size_t)page * per_page;
+516     count = total &gt; first ? total - first : 0;
+517     if (count &gt; (size_t)per_page)
+518       count = per_page;
+519     if (count)
+520       memcpy(rows, s-&gt;rows + first, count * sizeof(*rows));
+521     for (size_t i = 0; i &lt; total; ++i) {
+522       cycles += s-&gt;rows[i].cycle;
+523       const char *type = s-&gt;rows[i].type;
+524       mutexes += !strcmp(type, &quot;mutex&quot;);
+525       conditions += !strcmp(type, &quot;cond&quot;);
+526       rwlocks += !strcmp(type, &quot;rwlock&quot;);
+527       atomics += !strncmp(type, &quot;atomic&quot;, 6);
+528       char label[TUI_SYNC_LABEL_BUFFER_SIZE];
+529       sync_row_label(&amp;s-&gt;rows[i], label, sizeof(label));
+530       int width = (int)strlen(label);
+531       if (width &gt; name_width)
+532         name_width = width;
+533     }
+534     sampled = s-&gt;sampled_ns;
+535     waits_complete = s-&gt;waits_complete;
+536     limited = s-&gt;limited;
+537     atomic_flag_clear(&amp;s-&gt;busy);
+538   }
+539   if (name_width &gt; 30)
+540     name_width = 30;
+541   uint64_t now = time_get_ns();
+542   selected %= per_page;
+543   if ((size_t)selected &gt;= count)
+544     selected = count ? (int)count - 1 : 0;
+545   char deadlock[TUI_SYNC_DEADLOCK_BUFFER_SIZE];
+546   snprintf(deadlock, sizeof(deadlock), &quot;%s%s%s&quot;, sync_color(LOG_COLOR_ERROR),
+547            g_sync_use_utf8 ? &quot;DEADLOCK &#x274C;&quot; : &quot;DEADLOCK!&quot;, sync_color(LOG_COLOR_RESET));
+548   int measured_width = 0;
+549   for (int pass = 0; pass &lt; 2; ++pass) {
+550     int *measure = pass == 0 ? &amp;measured_width : NULL;
+551     char line[TUI_SYNC_LINE_SHORT_BUFFER_SIZE];
+552     if (!measure)
+553       sync_write(&quot;\033[?2026h\033[H&quot;, 11);
+554     snprintf(line, sizeof(line), &quot;Sync primitives | %zu objects | page %d/%d | item %zu/%zu | age %.1fs&quot;, total,
+555              page + 1, pages, count ? (size_t)page * per_page + selected + 1 : 0, total,
+556              sampled ? (double)(now - sampled) / NS_PER_SEC_INT : 0.0);
+557     sync_write_numbers(line, size.cols, measure);
+558     snprintf(line, sizeof(line), &quot;%s%s | M=%zu RW=%zu C=%zu A=%zu | %zu mutexes in wait cycles%s&quot;,
+559              cycles ? sync_color(LOG_COLOR_ERROR) : &quot;&quot;,
+560              !sampled                         ? &quot;Waiting for registry&quot;
+561              : now - sampled &gt; NS_PER_SEC_INT ? &quot;STALE: collection unavailable&quot;
+562                                               : &quot;Live registered&quot;,
+563              mutexes, rwlocks, conditions, atomics, cycles,
+564              !waits_complete ? &quot; | wait tracker busy&quot;
+565              : limited       ? &quot; | wait tracker capacity reached&quot;
+566                              : &quot;&quot;);
+567     sync_write_numbers(line, size.cols, measure);
+568     snprintf(line, sizeof(line), &quot;%s %-8s %-*s %-12s  %13s %6s %6s %7s %12s%s&quot;, sync_color(LOG_COLOR_GREY), &quot;Type&quot;,
+569              name_width, &quot;Name&quot;, &quot;State/value&quot;, &quot;Total Actions&quot;, &quot;L/s&quot;, &quot;U/s&quot;, &quot;Change/s&quot;, &quot;Total Wait&quot;,
+570              sync_color(LOG_COLOR_RESET));
+571     sync_write_line(line, size.cols, true, measure);
+572     sync_separator(size.cols, measure);
+573     for (size_t i = 0; i &lt; count; ++i) {
+574       sync_row_t *r = &amp;rows[i];
+575       // Parent names may be media paths; keep the primitive visible in the table.
+576       // The detail row identifies the source location and address.
+577       char name[TUI_SYNC_NAME_EXTENDED_BUFFER_SIZE];
+578       sync_row_label(r, name, sizeof(name));
+579       if (strlen(name) &gt; (size_t)name_width) {
+580         const char *suffix = strrchr(name, '.');
+581         size_t suffix_bytes = suffix &amp;&amp; strspn(suffix + 1, &quot;0123456789&quot;) == strlen(suffix + 1) ? strlen(suffix) : 0;
+582         if (suffix_bytes &gt;= (size_t)name_width - 1)
+583           suffix_bytes = 0;
+584         size_t used = 0;
+585         int columns = 0;
+586         while (name[used]) {
+587           int bytes = utf8_next_char_bytes(name + used, strlen(name + used));
+588           if (bytes &lt;= 0)
+589             break;
+590           int width = utf8_display_width_n(name + used, bytes);
+591           if (columns + width &gt; name_width - 1 - (int)suffix_bytes)
+592             break;
+593           used += bytes;
+594           columns += width;
+595         }
+596         name[used++] = '~';
+597         if (suffix_bytes) {
+598           memmove(name + used, suffix, suffix_bytes);
+599           used += suffix_bytes;
+600         }
+601         name[used] = '\0';
+602       }
+603       char state[TUI_SYNC_STATE_BUFFER_SIZE];
+604       if (r-&gt;cycle)
+605         snprintf(state, sizeof(state), &quot;DEADLOCK&quot;);
+606       else if (!strcmp(r-&gt;type, &quot;mutex&quot;))
+607         snprintf(state, sizeof(state), &quot;%s t=%&quot; PRIxPTR &quot; w=%u&quot;,
+608                  r-&gt;cycle   ? &quot;CYCLE&quot;
+609                  : r-&gt;owner ? &quot;HELD&quot;
+610                             : &quot;FREE&quot;,
+611                  r-&gt;owner, r-&gt;waiters);
+612       else if (!strcmp(r-&gt;type, &quot;rwlock&quot;))
+613         snprintf(state, sizeof(state), &quot;W=%&quot; PRIxPTR &quot; R=%&quot; PRIu64, r-&gt;owner, r-&gt;value);
+614       else if (!strcmp(r-&gt;type, &quot;cond&quot;))
+615         snprintf(state, sizeof(state), &quot;waiting=%&quot; PRIu64, r-&gt;value);
+616       else
+617         snprintf(state, sizeof(state), &quot;0x%&quot; PRIx64 &quot; (%&quot; PRIu64 &quot;)&quot;, r-&gt;value, r-&gt;value);
+618       // Prefer the complete hex value over a clipped redundant decimal copy.
+619       if (!strncmp(r-&gt;type, &quot;atomic&quot;, 6) &amp;&amp; strlen(state) &gt; 12)
+620         snprintf(state, sizeof(state), &quot;0x%&quot; PRIx64, r-&gt;value);
+621       char padded_state[TUI_SYNC_PADDED_STATE_BUFFER_SIZE];
+622       if (r-&gt;cycle) {
+623         int width = utf8_display_width(g_sync_use_utf8 ? &quot;DEADLOCK &#x274C;&quot; : &quot;DEADLOCK!&quot;);
+624         snprintf(padded_state, sizeof(padded_state), &quot;%s%*s&quot;, deadlock, 12 - width, &quot;&quot;);
+625       } else {
+626         snprintf(padded_state, sizeof(padded_state), &quot;%-12.12s&quot;, state);
+627       }
+628       char plain_actions[TUI_SYNC_PLAIN_ACTIONS_BUFFER_SIZE], actions[TUI_SYNC_ACTIONS_BUFFER_SIZE];
+629       format_number_compact(r-&gt;actions, plain_actions, sizeof(plain_actions));
+630       char padded_actions[TUI_SYNC_PADDED_ACTIONS_BUFFER_SIZE];
+631       snprintf(padded_actions, sizeof(padded_actions), &quot;%13s&quot;, plain_actions);
+632       sync_color_numbers(padded_actions, actions, sizeof(actions));
+633       char changes[TUI_SYNC_CHANGES_BUFFER_SIZE];
+634       if (!strncmp(r-&gt;type, &quot;atomic&quot;, 6))
+635         snprintf(changes, sizeof(changes), &quot;%s%7.1f&quot;, sync_rate_color(r-&gt;change_rate), r-&gt;change_rate);
+636       else
+637         snprintf(changes, sizeof(changes), &quot;%s%7s&quot;, sync_color(LOG_COLOR_RESET), &quot;-&quot;);
+638       char wait[TIME_DURATION_BUFFER_SIZE] = &quot;-&quot;;
+639       if (!strcmp(r-&gt;type, &quot;cond&quot;)) {
+640         if (r-&gt;wait_known)
+641           time_pretty(r-&gt;wait_ns, -1, wait, sizeof(wait));
+642         else
+643           snprintf(wait, sizeof(wait), &quot;busy&quot;);
+644       }
+645       char padded_wait[TUI_SYNC_PADDED_WAIT_BUFFER_SIZE], colored_wait[TUI_SYNC_COLORED_WAIT_BUFFER_SIZE];
+646       snprintf(padded_wait, sizeof(padded_wait), &quot;%12s&quot;, wait);
+647       sync_color_numbers(padded_wait, colored_wait, sizeof(colored_wait));
+648       char locks[TUI_SYNC_LOCKS_BUFFER_SIZE], unlocks[TUI_SYNC_UNLOCKS_BUFFER_SIZE];
+649       snprintf(locks, sizeof(locks), &quot;%s%6.1f%s&quot;, sync_rate_color(r-&gt;lock_rate), r-&gt;lock_rate,
+650                sync_color(LOG_COLOR_RESET));
+651       snprintf(unlocks, sizeof(unlocks), &quot;%s%6.1f%s&quot;, sync_rate_color(r-&gt;unlock_rate), r-&gt;unlock_rate,
+652                sync_color(LOG_COLOR_RESET));
+653       const ui_table_column_t columns[] = {
+654           {&quot;Type&quot;, 8, UI_ALIGN_LEFT, false},         {&quot;Name&quot;, name_width, UI_ALIGN_LEFT, false},
+655           {&quot;State/value&quot;, 13, UI_ALIGN_LEFT, false}, {&quot;Total Actions&quot;, 13, UI_ALIGN_RIGHT, false},
+656           {&quot;L/s&quot;, 6, UI_ALIGN_RIGHT, false},         {&quot;U/s&quot;, 6, UI_ALIGN_RIGHT, false},
+657           {&quot;Change/s&quot;, 7, UI_ALIGN_RIGHT, false},    {&quot;Total Wait&quot;, 12, UI_ALIGN_RIGHT, false}};
+658       const char *cells[] = {r-&gt;type, name, padded_state, actions, locks, unlocks, changes, colored_wait};
+659       ui_table_row(line, sizeof(line), columns, cells, 8, name_width + 83, true, (int)i == selected);
+660       sync_write_line(line, size.cols, true, measure);
+661     }
+662     if (!measure) {
+663       // Clear only unused table rows, leaving the live footer in place.
+664       for (int row = header_rows + (int)count + 1; row &lt; size.rows - 3; ++row) {
+665         snprintf(line, sizeof(line), &quot;\033[%d;1H\033[K&quot;, row);
+666         sync_write(line, strlen(line));
+667       }
+668       snprintf(line, sizeof(line), &quot;\033[%d;1H&quot;, size.rows &gt; 3 ? size.rows - 3 : 1);
+669       sync_write(line, strlen(line));
+670     }
+671     sync_separator(size.cols, measure);
+672     if (count) {
+673       sync_row_t *r = &amp;rows[selected];
+674       snprintf(line, sizeof(line), &quot;%d @0x%&quot; PRIxPTR, r-&gt;line, r-&gt;key);
+675       char numbers[TUI_SYNC_NUMBERS_BUFFER_SIZE];
+676       sync_color_numbers(line, numbers, sizeof(numbers));
+677       char full_name[TUI_SYNC_FULL_NAME_BUFFER_SIZE], colored_name[TUI_SYNC_COLORED_NAME_BUFFER_SIZE];
+678       sync_row_label(r, full_name, sizeof(full_name));
+679       sync_color_numbers(full_name, colored_name, sizeof(colored_name));
+680       snprintf(line, sizeof(line), &quot;%s%s%s:%s | %s&quot;, sync_color(LOG_COLOR_DEV), r-&gt;file, sync_color(LOG_COLOR_RESET),
+681                numbers, colored_name);
+682       sync_write_line(line, size.cols, true, measure);
+683       snprintf(line, sizeof(line),
+684                &quot;owner=0x%&quot; PRIxPTR &quot; waiter=0x%&quot; PRIxPTR &quot; | value=%&quot; PRIu64 &quot; | last operation %.2fs ago%s%s&quot;,
+685                r-&gt;owner, r-&gt;waiter, r-&gt;value, r-&gt;last_ns ? (double)(now - r-&gt;last_ns) / NS_PER_SEC_INT : 0.0,
+686                r-&gt;cycle ? &quot; &quot; : &quot;&quot;, r-&gt;cycle ? deadlock : &quot;&quot;);
+687       sync_write_numbers(line, size.cols, measure);
+688     } else if (!measure) {
+689       snprintf(line, sizeof(line), &quot;\033[%d;1H\033[K\033[%d;1H\033[K&quot;, size.rows - 2, size.rows - 1);
+690       sync_write(line, strlen(line));
+691     }
+692     snprintf(line, sizeof(line), &quot;\033[%d;1H&quot;, size.rows);
+693     if (!measure)
+694       sync_write(line, strlen(line));
+695     snprintf(line, sizeof(line),
+696              &quot;%s0%s/%sEsc%s close | %s?%s help | %sLeft%s/%sRight%s page | %sUp%s/%sDown%s select | &quot;
+697              &quot;%sHome%s/%sEnd%s first/last&quot;,
+698              sync_color(LOG_COLOR_FATAL), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN),
+699              sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET),
+700              sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN),
+701              sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET),
+702              sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN),
+703              sync_color(LOG_COLOR_RESET), sync_color(LOG_COLOR_WARN), sync_color(LOG_COLOR_RESET));
+704     sync_write_line(line, size.cols, false, measure);
+705     if (measure) {
+706       terminal_size_t minimum = {.cols = measured_width + 1, .rows = fixed_rows + 1};
+707       if (ui_too_small(size, minimum)) {
+708         char output[TUI_SYNC_OUTPUT_SHORT_BUFFER_SIZE];
+709         size_t length = ui_too_small_format(output, sizeof(output), size, minimum);
+710         ui_controller_write(g_sync_fd, output, length);
+711         return;
+712       }
+713     }
+714   }
+715   sync_write(&quot;\033[?2026l&quot;, 8);
+716   sync_flush();
+717 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>sync_row_t::actions</b>, <b>ASCIICHAT_OK</b>,
+    <b>ui_layout_t::body_rows</b>, <b>sync_sample_t::busy</b>,
+    <b>sync_row_t::change_rate</b>, <b>terminal_capabilities_t::color_level</b>,
+    <b>COLOR_SETTING_FALSE</b>, <b>colored_string_set_output_fd()</b>,
+    <b>terminal_size_t::cols</b>, <b>sync_sample_t::count</b>,
+    <b>sync_row_t::cycle</b>, <b>detect_terminal_capabilities()</b>,
+    <b>sync_row_t::file</b>, <b>format_number_compact()</b>, <b>GET_OPTION</b>,
+    <b>sync_row_t::key</b>, <b>sync_row_t::last_ns</b>,
+    <b>sync_sample_t::limited</b>, <b>sync_row_t::line</b>,
+    <b>sync_row_t::lock_rate</b>, <b>LOG_COLOR_DEV</b>, <b>LOG_COLOR_ERROR</b>,
+    <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_GREY</b>, <b>LOG_COLOR_RESET</b>,
+    <b>LOG_COLOR_WARN</b>, <b>NS_PER_SEC_INT</b>, <b>sync_row_t::owner</b>,
+    <b>sync_sample_t::rows</b>, <b>terminal_size_t::rows</b>,
+    <b>sync_sample_t::sampled_ns</b>, <b>SYNC_ROW_CAPACITY</b>,
+    <b>TERM_COLOR_AUTO</b>, <b>TERM_COLOR_NONE</b>,
+    <b>terminal_should_use_utf8()</b>, <b>TIME_DURATION_BUFFER_SIZE</b>,
+    <b>time_get_ns()</b>, <b>time_pretty()</b>,
+    <b>TUI_SYNC_ACTIONS_BUFFER_SIZE</b>, <b>TUI_SYNC_CHANGES_BUFFER_SIZE</b>,
+    <b>TUI_SYNC_COLORED_NAME_BUFFER_SIZE</b>,
+    <b>TUI_SYNC_COLORED_WAIT_BUFFER_SIZE</b>,
+    <b>TUI_SYNC_DEADLOCK_BUFFER_SIZE</b>, <b>TUI_SYNC_FULL_NAME_BUFFER_SIZE</b>,
+    <b>TUI_SYNC_LABEL_BUFFER_SIZE</b>, <b>TUI_SYNC_LINE_SHORT_BUFFER_SIZE</b>,
+    <b>TUI_SYNC_LOCKS_BUFFER_SIZE</b>,
+    <b>TUI_SYNC_NAME_EXTENDED_BUFFER_SIZE</b>,
+    <b>TUI_SYNC_NUMBERS_BUFFER_SIZE</b>,
+    <b>TUI_SYNC_OUTPUT_SHORT_BUFFER_SIZE</b>,
+    <b>TUI_SYNC_PADDED_ACTIONS_BUFFER_SIZE</b>,
+    <b>TUI_SYNC_PADDED_STATE_BUFFER_SIZE</b>,
+    <b>TUI_SYNC_PADDED_WAIT_BUFFER_SIZE</b>,
+    <b>TUI_SYNC_PLAIN_ACTIONS_BUFFER_SIZE</b>,
+    <b>TUI_SYNC_STATE_BUFFER_SIZE</b>, <b>TUI_SYNC_UNLOCKS_BUFFER_SIZE</b>,
+    <b>sync_row_t::type</b>, <b>UI_ALIGN_LEFT</b>, <b>UI_ALIGN_RIGHT</b>,
+    <b>ui_controller_write()</b>, <b>ui_layout_measure()</b>,
+    <b>ui_sync_output_fd()</b>, <b>ui_sync_render()</b>, <b>ui_table_row()</b>,
+    <b>ui_too_small()</b>, <b>ui_too_small_format()</b>,
+    <b>sync_row_t::unlock_rate</b>, <b>utf8_display_width()</b>,
+    <b>utf8_display_width_n()</b>, <b>utf8_next_char_bytes()</b>,
+    <b>sync_row_t::value</b>, <b>sync_row_t::wait_known</b>,
+    <b>sync_row_t::wait_ns</b>, <b>sync_row_t::waiter</b>,
+    <b>sync_row_t::waiters</b>, and <b>sync_sample_t::waits_complete</b>.</p>
+<p class="Pp">Referenced by <b>ui_sync_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_sync_start (int fd)</h2>
+<p class="Pp">Debug-only service. Collection and input never wait on application
+    locks.</p>
+<p class="Pp">Definition at line <b>297</b> of file <b>tui/sync.c</b>.</p>
+<pre>297                                         {
+298   while (atomic_flag_test_and_set(&amp;g_sync_starting))
+299     platform_sleep_ms(1);
+300   asciichat_error_t result = ASCIICHAT_OK;
+301   if (!g_sync_started &amp;&amp; platform_isatty(fd) &amp;&amp; platform_isatty(STDIN_FILENO)) {
+302     g_sync_fd = platform_dup(fd);
+303     if (g_sync_fd &lt; 0) {
+304       result = SET_ERRNO_SYS(ERROR_FILE_OPERATION, &quot;Cannot retain sync display terminal&quot;);
+305     } else if ((result = keyboard_init()) != ASCIICHAT_OK) {
+306       platform_close(g_sync_fd);
+307       g_sync_fd = -1;
+308     } else {
+309       atomic_store(&amp;g_sync_stop, false);
+310       result = acthread_create(&amp;g_sync_thread, &quot;sync_collector&quot;, sync_collect_main, NULL);
+311       if (result == ASCIICHAT_OK) {
+312         g_sync_started = true;
+313       } else {
+314         keyboard_destroy();
+315         platform_close(g_sync_fd);
+316         g_sync_fd = -1;
+317         result = SET_ERRNO(ERROR_THREAD, &quot;Cannot start sync collector&quot;);
+318       }
+319     }
+320   }
+321   atomic_flag_clear(&amp;g_sync_starting);
+322   return result;
+323 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acthread_create</b>, <b>ASCIICHAT_OK</b>,
+    <b>ERROR_FILE_OPERATION</b>, <b>ERROR_THREAD</b>, <b>keyboard_destroy()</b>,
+    <b>keyboard_init()</b>, <b>platform_close()</b>, <b>platform_dup()</b>,
+    <b>platform_isatty()</b>, <b>platform_sleep_ms()</b>, <b>SET_ERRNO</b>,
+    <b>SET_ERRNO_SYS</b>, and <b>ui_sync_start()</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_start_terminal()</b>, and
+    <b>ui_sync_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_sync_stop_(void_)"><a class="permalink" href="#void_ui_sync_stop_(void_)">void
+  ui_sync_stop (void )</a></h2>
+<p class="Pp">Definition at line <b>325</b> of file <b>tui/sync.c</b>.</p>
+<pre>325                         {
+326   if (!g_sync_started)
+327     return;
+328   atomic_store(&amp;g_sync_stop, true);
+329   thread_join(&amp;g_sync_thread, NULL);
+330   keyboard_destroy();
+331   platform_close(g_sync_fd);
+332   g_sync_fd = -1;
+333   for (int i = 0; i &lt; 3; ++i) {
+334     UNTRACKED_FREE(g_sync_samples[i].rows);
+335     g_sync_samples[i].capacity = g_sync_samples[i].count = 0;
+336   }
+337   atomic_store(&amp;g_sync_published, -1);
+338   if (ui_sync_is_visible())
+339     ui_controller_select_interactive(-1);
+340   g_sync_started = false;
+341 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>keyboard_destroy()</b>, <b>platform_close()</b>,
+    <b>thread_join</b>, <b>ui_controller_select_interactive()</b>,
+    <b>ui_sync_is_visible()</b>, <b>ui_sync_stop()</b>, and
+    <b>UNTRACKED_FREE</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_shutdown()</b>, and
+    <b>ui_sync_stop()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

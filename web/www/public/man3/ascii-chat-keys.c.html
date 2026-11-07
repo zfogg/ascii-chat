@@ -35,6 +35,14 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>CRYPTO_KEYS_HEADER_BUFFER_SIZE</b> 50
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>asciichat_error_t</b> <b>parse_public_key</b> (const char
@@ -50,15 +58,13 @@
   <br/>
   Parse all SSH/GPG public keys from any format (returns all keys).
     <b>asciichat_error_t</b> <b>public_key_to_x25519</b> (const
-    <b>public_key_t</b> *key, <b>uint8_t</b> x25519_pk[32])
+    <b>public_key_t</b> *key, <b>uint8_t</b> x25519_pk[<b>X25519_KEY_SIZE</b>])
   <br/>
-  Convert public key to X25519 for Diffie-Hellman key exchange.
-    <b>asciichat_error_t</b> <b>private_key_to_x25519</b> (const
-    <b>private_key_t</b> *key, <b>uint8_t</b> x25519_sk[32])
+  <b>asciichat_error_t</b> <b>private_key_to_x25519</b> (const
+    <b>private_key_t</b> *key, <b>uint8_t</b> x25519_sk[<b>X25519_KEY_SIZE</b>])
   <br/>
-  Convert private key to X25519 for Diffie-Hellman key exchange.
-    <b>asciichat_error_t</b> <b>fetch_github_keys</b> (const char *username,
-    char ***keys_out, size_t *num_keys, <b>bool</b> use_gpg)
+  <b>asciichat_error_t</b> <b>fetch_github_keys</b> (const char *username, char
+    ***keys_out, size_t *num_keys, <b>bool</b> use_gpg)
   <br/>
   Fetch SSH/GPG keys from GitHub using BearSSL. <b>asciichat_error_t</b>
     <b>fetch_gitlab_keys</b> (const char *username, char ***keys_out, size_t
@@ -82,13 +88,92 @@
 </section>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_CRYPTO_KEYS_HEADER_BUFFER_SIZE___50"><a class="permalink" href="#_define_CRYPTO_KEYS_HEADER_BUFFER_SIZE___50">#define
+  CRYPTO_KEYS_HEADER_BUFFER_SIZE 50</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>keys.c</b>.</p>
+<p class="Pp">Referenced by <b>parse_private_key()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> private_key_to_x25519 (const
+  <b>private_key_t</b> * key, <b>uint8_t</b> x25519_sk[X25519_KEY_SIZE])</h2>
+<p class="Pp">Definition at line <b>575</b> of file <b>keys.c</b>.</p>
+<pre>575                                                                                                       {
+576   if (!key || !x25519_sk) {
+577     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+578   }
+579
+580   if (key-&gt;type == KEY_TYPE_X25519) {
+581     // Passthrough for X25519 keys
+582     memcpy(x25519_sk, key-&gt;key.x25519, X25519_KEY_SIZE);
+583     return ASCIICHAT_OK;
+584   }
+585
+586   if (key-&gt;type == KEY_TYPE_ED25519) {
+587     // Convert Ed25519 to X25519 (Ed25519 private key is 64 bytes: seed + public)
+588     return ed25519_to_x25519_private(key-&gt;key.ed25519, x25519_sk);
+589   }
+590
+591   return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Unsupported key type for X25519 conversion: %d&quot;, key-&gt;type);
+592 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>ed25519_to_x25519_private()</b>, <b>ERROR_CRYPTO_KEY</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>private_key_t::key</b>,
+    <b>KEY_TYPE_ED25519</b>, <b>KEY_TYPE_X25519</b>,
+    <b>private_key_to_x25519()</b>, <b>SET_ERRNO</b>,
+    <b>private_key_t::type</b>, and <b>X25519_KEY_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>private_key_to_x25519()</b>, and
+    <b>private_key_to_x25519()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> public_key_to_x25519 (const
+  <b>public_key_t</b> * key, <b>uint8_t</b> x25519_pk[X25519_KEY_SIZE])</h2>
+<p class="Pp">Definition at line <b>556</b> of file <b>keys.c</b>.</p>
+<pre>556                                                                                                     {
+557   if (!key || !x25519_pk) {
+558     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+559   }
+560
+561   if (key-&gt;type == KEY_TYPE_X25519) {
+562     // Passthrough for X25519 keys
+563     memcpy(x25519_pk, key-&gt;key, X25519_KEY_SIZE);
+564     return ASCIICHAT_OK;
+565   }
+566
+567   if (key-&gt;type == KEY_TYPE_ED25519) {
+568     // Convert Ed25519 to X25519
+569     return ed25519_to_x25519_public(key-&gt;key, x25519_pk);
+570   }
+571
+572   return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Unsupported key type for X25519 conversion: %d&quot;, key-&gt;type);
+573 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ed25519_to_x25519_public()</b>,
+    <b>ERROR_CRYPTO_KEY</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>public_key_t::key</b>, <b>KEY_TYPE_ED25519</b>, <b>KEY_TYPE_X25519</b>,
+    <b>public_key_to_x25519()</b>, <b>SET_ERRNO</b>, <b>public_key_t::type</b>,
+    and <b>X25519_KEY_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>public_key_to_x25519()</b>, and
+    <b>public_key_to_x25519()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

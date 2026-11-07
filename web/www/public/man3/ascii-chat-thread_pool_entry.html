@@ -45,8 +45,8 @@
   <br/>
   Thread handle. int <b>stop_id</b>
   <br/>
-  Cleanup order (lower = stop first, -1 = unordered). void *(*
-    <b>thread_func</b> )(void *)
+  Cleanup order (lower = stop first, -1 = unordered). void *(*)
+    <b>thread_func</b> (void *)
   <br/>
   Thread function. void * <b>thread_arg</b>
   <br/>
@@ -65,7 +65,7 @@
 <p class="Pp">Thread pool entry (internal linked list node).</p>
 <p class="Pp">Tracks individual threads in the pool. Threads are maintained in a
     sorted linked list by stop_id for ordered cleanup.</p>
-<p class="Pp">Definition at line <b>99</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>102</b> of file <b>thread_pool.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -74,7 +74,7 @@
 <h2 class="Ss" id="char_thread_pool_entry::name_64_"><a class="permalink" href="#char_thread_pool_entry::name_64_">char
   thread_pool_entry::name[64]</a></h2>
 <p class="Pp">Thread name for debugging.</p>
-<p class="Pp">Definition at line <b>104</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>107</b> of file <b>thread_pool.h</b>.</p>
 <p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>,
     <b>thread_pool_interrupt_all()</b>, <b>thread_pool_spawn()</b>, and
     <b>thread_pool_stop_all()</b>.</p>
@@ -83,7 +83,7 @@
 <h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
   <b>thread_pool_entry</b>* thread_pool_entry::next</a></h2>
 <p class="Pp">Linked list next pointer.</p>
-<p class="Pp">Definition at line <b>105</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>108</b> of file <b>thread_pool.h</b>.</p>
 <p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>,
     <b>thread_pool_interrupt_all()</b>, <b>thread_pool_spawn()</b>, and
     <b>thread_pool_stop_all()</b>.</p>
@@ -92,14 +92,14 @@
 <h2 class="Ss" id="int_thread_pool_entry::stop_id"><a class="permalink" href="#int_thread_pool_entry::stop_id">int
   thread_pool_entry::stop_id</a></h2>
 <p class="Pp">Cleanup order (lower = stop first, -1 = unordered).</p>
-<p class="Pp">Definition at line <b>101</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>104</b> of file <b>thread_pool.h</b>.</p>
 <p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>,
     <b>thread_pool_spawn()</b>, and <b>thread_pool_stop_all()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_thread_t</b> thread_pool_entry::thread</h2>
 <p class="Pp">Thread handle.</p>
-<p class="Pp">Definition at line <b>100</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>103</b> of file <b>thread_pool.h</b>.</p>
 <p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>,
     <b>thread_pool_interrupt_all()</b>, <b>thread_pool_spawn()</b>, and
     <b>thread_pool_stop_all()</b>.</p>
@@ -108,15 +108,15 @@
 <h2 class="Ss" id="void*_thread_pool_entry::thread_arg"><a class="permalink" href="#void*_thread_pool_entry::thread_arg">void*
   thread_pool_entry::thread_arg</a></h2>
 <p class="Pp">Thread argument.</p>
-<p class="Pp">Definition at line <b>103</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>106</b> of file <b>thread_pool.h</b>.</p>
 <p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>, and
     <b>thread_pool_spawn()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_*(*_thread_pool_entry::thread_func)_(void_*)"><a class="permalink" href="#void_*(*_thread_pool_entry::thread_func)_(void_*)">void
-  *(* thread_pool_entry::thread_func) (void *)</a></h2>
+<h2 class="Ss" id="void_*(*)_thread_pool_entry::thread_func(void_*)"><a class="permalink" href="#void_*(*)_thread_pool_entry::thread_func(void_*)">void
+  *(*) thread_pool_entry::thread_func(void *)</a></h2>
 <p class="Pp">Thread function.</p>
-<p class="Pp">Definition at line <b>102</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>105</b> of file <b>thread_pool.h</b>.</p>
 <p class="Pp">Referenced by <b>thread_pool_create_with_workers()</b>, and
     <b>thread_pool_spawn()</b>.</p>
 <p class="Pp"></p>
@@ -129,7 +129,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

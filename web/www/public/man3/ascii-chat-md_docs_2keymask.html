@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>md_docs_2keymask(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">md_docs_2keymask(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">md_docs_2keymask(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">md_docs_2keymask - Keymask public-key art</p>
+<p class="Pp">Keymask is ascii-chat's deterministic, monochrome public-key
+    emblem. It supplements the full SHA-256 fingerprint and existing
+    authentication checks. A similar-looking picture is not proof that two keys
+    match.</p>
+<p class="Pp"></p>
+<p class="Pp">Art appears automatically on interactive stderr terminals outside
+    snapshot mode, when the terminal has room. Redirected output keeps the
+    textual fingerprint. Art uses the terminal's default foreground, adapting to
+    light and dark themes; warning text retains its severity color. Quiet, grep,
+    and JSON output retain their existing notice policies.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Stable_v2_mapping"><a class="permalink" href="#Stable_v2_mapping">Stable
+  v2 mapping</a></h1>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Compute SHA-256 of the 32 public-key bytes. This remains the full
+      fingerprint.</dd>
+  <dt>2.</dt>
+  <dd>For each feature, compute SHA-256 of the UTF-8 domain
+      ascii-chat/keymask/v2, a NUL byte, the 32-byte fingerprint, and the ASCII
+      feature name: outline, crown, eyes, center, mouth, or markings (no
+      trailing NUL).</dd>
+  <dt>3.</dt>
+  <dd>Select one of eight silhouette profiles, eight crowns, eight eye pairs,
+      six noses, and eight mouths using the first byte of the corresponding
+      feature hash modulo the template count. Outline byte 1 selects
+      single/double edges.</dd>
+  <dt>4.</dt>
+  <dd>Stamp features into a 32 by 16 canvas. Cheek details use markings bytes
+      7-10; bytes 0-1 select the position and side of an asymmetric stripe.
+      Template tables and placement rules in <b>keymask.c</b><b> define the
+      versioned mapping.</b></dd>
+  <dt>5.</dt>
+  <dd>Render ASCII literally; Unicode replaces only # with &#x2591;. Surround
+      the canvas with a 34-column, 18-row border and display Keymask v2 /
+      SHA-256 followed by the unchanged complete fingerprint.</dd>
+</dl>
+<p class="Pp">V2 prioritizes recognizable shapes and empty space over random
+    texture. It does not preserve all 256 digest bits in its output. Exact
+    visual collisions and perceptual lookalikes are possible, including through
+    deliberate key searches; compare the full fingerprint for exact identity
+    verification. V1 artwork changes under v2, but saved trust records and
+    fingerprints do not change.</p>
+<p class="Pp"></p>
+<p class="Pp">SSH, raw X25519, and GPG Ed25519 public-key objects use the same
+    mapping. Identical public bytes produce identical art regardless of file,
+    agent, or network source. The algorithm label distinguishes Ed25519 from
+    X25519; GPG metadata is not part of the hash. The fingerprint convention is
+    ascii-chat's existing SHA-256 of raw key bytes, not OpenSSH's hash of its
+    serialized SSH key blob.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Display_behavior"><a class="permalink" href="#Display_behavior">Display
+  behavior</a></h1>
+<ul class="Bl-bullet">
+  <li>Servers announce their configured public identities at startup;
+      discovery-service announces its public identity too.</li>
+  <li>Clients show the presented server identity after the existing key checks.
+      The label explicitly says unverified if signature verification was not
+      enabled.</li>
+  <li>Servers show a client's public identity after handshake completion,
+      labeled with its connection ID and authenticated/unverified status.
+      Anonymous clients have no persistent key art.</li>
+  <li>Unknown-host prompts include art when it fits. Short terminals (fewer than
+      38 rows) keep just the fingerprint so the question and input remain
+      accessible.</li>
+  <li>Changed-host warnings show received and stored identities. When several
+      stored keys exist, the first nonzero candidate is labeled as such. Missing
+      stored identities are described as unavailable, never visualized as a zero
+      key.</li>
+  <li>If the available notice content width is below 34 columns, only the
+      fingerprint is shown. The existing UI controller handles later terminal
+      resizes and prompt minimum dimensions.</li>
+</ul>
+<p class="Pp">Trust decisions, known-host file format, and network packets are
+    unchanged.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Implementation_and_verification"><a class="permalink" href="#Implementation_and_verification">Implementation
+  and verification</a></h1>
+<p class="Pp"><b>lib/crypto/key_identity/keymask.c</b><b> contains the
+    allocation-free mask renderer and shared public-key digest function.
+    </b>display.c<b> formats identity cards and applies terminal/notice policy.
+    Public headers mirror that directory under
+    </b>include/ascii-chat/crypto/key_identity/<b>.</b></p>
+<p class="Pp"></p>
+<p class="Pp">Build using the default CMake preset, then run against the
+    compiled shared library:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>python tests/integration/keymask.py --library build/bin/asciichat.dll --terminal --binary build/bin/ascii-chat.exe</pre>
+<p class="Pp">Use the corresponding .so/.dylib path on other platforms. The core
+    checks use only Python's standard library. --terminal additionally requires
+    pyte and pywinpty on Windows, or pexpect on POSIX. --contact-sheet
+    output.png uses Pillow to render 36 deterministic examples from the native
+    renderer.</p>
+<p class="Pp"></p>
+<p class="Pp">The tests cover a fixed v2 golden vector, all 256 single-bit input
+    mutations, ASCII/UTF-8 equivalence, buffer boundaries, SHA-256 parity,
+    public-key imports, narrow layouts, stored-key comparisons, noninteractive
+    rejection, and real PTY/ConPTY notices and trust prompts. --binary
+    additionally exercises a real loopback server/client authenticated snapshot
+    with temporary SSH keys (requires ssh-keygen), checking both identity cards
+    and that snapshot stdout stays clean. They use temporary fixtures and
+    isolate the user config directory.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Example_contact_sheet"><a class="permalink" href="#Example_contact_sheet">Example
+  contact sheet</a></h1>
+<p class="Pp">These 36 synthetic digest fixtures are rendered by the compiled C
+    implementation.</p>
+<p class="Pp"></p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -71,7 +71,7 @@
 <p class="Pp"></p>
 <p class="Pp">At 44.1kHz, this represents ~186ms of audio per batch.</p>
 </div>
-<p class="Pp">Definition at line <b>904</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>915</b> of file <b>packet.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -80,28 +80,28 @@
 <h2 class="Ss"><b>uint32_t</b> audio_batch_packet_t::batch_count</h2>
 <p class="Pp">Number of audio chunks in this batch (usually AUDIO_BATCH_COUNT =
     32).</p>
-<p class="Pp">Definition at line <b>906</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>917</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_audio_batch()</b>, and
     <b>audio_parse_batch_header()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> audio_batch_packet_t::channels</h2>
 <p class="Pp">Number of audio channels (1=mono, 2=stereo).</p>
-<p class="Pp">Definition at line <b>912</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>923</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_audio_batch()</b>, and
     <b>audio_parse_batch_header()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> audio_batch_packet_t::sample_rate</h2>
 <p class="Pp">Sample rate in Hz (e.g., 44100, 48000).</p>
-<p class="Pp">Definition at line <b>910</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>921</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_audio_batch()</b>, and
     <b>audio_parse_batch_header()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> audio_batch_packet_t::total_samples</h2>
 <p class="Pp">Total audio samples across all chunks (typically 8192).</p>
-<p class="Pp">Definition at line <b>908</b> of file <b>packet.h</b>.</p>
+<p class="Pp">Definition at line <b>919</b> of file <b>packet.h</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_audio_batch()</b>, and
     <b>audio_parse_batch_header()</b>.</p>
 <p class="Pp"></p>
@@ -114,7 +114,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

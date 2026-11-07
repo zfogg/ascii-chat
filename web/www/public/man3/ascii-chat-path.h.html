@@ -71,8 +71,11 @@
 <p class="Pp">const char * <b>extract_project_relative_path</b> (const char
     *file)
   <br/>
-  Extract relative path from an absolute path. char * <b>expand_path</b> (const
-    char *path)
+  Extract a path relative to the source root embedded by CMake. const char *
+    <b>path_last_components</b> (const char *path, size_t component_count)
+  <br/>
+  Return a pointer to the last components of a path. char * <b>expand_path</b>
+    (const char *path)
   <br/>
   Expand path with tilde (~) support. char * <b>get_config_dir</b> (void)
   <br/>
@@ -128,7 +131,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

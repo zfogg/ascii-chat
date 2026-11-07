@@ -62,7 +62,7 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">JSON array builder.</p>
-<p class="Pp">Definition at line <b>146</b> of file
+<p class="Pp">Definition at line <b>149</b> of file
     <b>src/tooling/query/json.h</b>.</p>
 </section>
 <section class="Sh">
@@ -80,12 +80,12 @@
 <section class="Ss">
 <h2 class="Ss"><b>JsonArray</b> &amp; ascii_query::json::JsonArray::add (const
   <b>JsonArray</b> &amp; arr) [inline]</h2>
-<p class="Pp">Definition at line <b>155</b> of file
+<p class="Pp">Definition at line <b>158</b> of file
     <b>src/tooling/query/json.h</b>.</p>
-<pre>155                                        {
-156     values_.push_back(JsonValue::fromArray(arr.toString()));
-157     return *this;
-158   }</pre>
+<pre>158                                        {
+159     values_.push_back(JsonValue::fromArray(arr.toString()));
+160     return *this;
+161   }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_query::json::JsonValue::fromArray()</b>,
@@ -94,12 +94,12 @@
 <section class="Ss">
 <h2 class="Ss"><b>JsonArray</b> &amp; ascii_query::json::JsonArray::add (const
   <b>JsonObject</b> &amp; obj) [inline]</h2>
-<p class="Pp">Definition at line <b>235</b> of file
+<p class="Pp">Definition at line <b>238</b> of file
     <b>src/tooling/query/json.h</b>.</p>
-<pre>235                                                       {
-236   values_.push_back(JsonValue::fromObject(obj.toString()));
-237   return *this;
-238 }</pre>
+<pre>238                                                       {
+239   values_.push_back(JsonValue::fromObject(obj.toString()));
+240   return *this;
+241 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_query::json::JsonValue::fromObject()</b>,
@@ -109,12 +109,12 @@
 <section class="Ss">
 <h2 class="Ss"><b>JsonArray</b> &amp; ascii_query::json::JsonArray::add (const
   <b>JsonValue</b> &amp; value) [inline]</h2>
-<p class="Pp">Definition at line <b>150</b> of file
+<p class="Pp">Definition at line <b>153</b> of file
     <b>src/tooling/query/json.h</b>.</p>
-<pre>150                                          {
-151     values_.push_back(value);
-152     return *this;
-153   }</pre>
+<pre>153                                          {
+154     values_.push_back(value);
+155     return *this;
+156   }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>JsonArray()</b>.</p>
@@ -122,42 +122,42 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> ascii_query::json::JsonArray::empty () const
   [inline], [nodiscard]</h2>
-<p class="Pp">Definition at line <b>175</b> of file
+<p class="Pp">Definition at line <b>178</b> of file
     <b>src/tooling/query/json.h</b>.</p>
-<pre>175                                    {
-176     return values_.empty();
-177   }</pre>
+<pre>178                                    {
+179     return values_.empty();
+180   }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_ascii_query::json::JsonArray::size_()_const"><a class="permalink" href="#size_t_ascii_query::json::JsonArray::size_()_const">size_t
   ascii_query::json::JsonArray::size () const [inline], [nodiscard]</a></h2>
-<p class="Pp">Definition at line <b>178</b> of file
+<p class="Pp">Definition at line <b>181</b> of file
     <b>src/tooling/query/json.h</b>.</p>
-<pre>178                                     {
-179     return values_.size();
-180   }</pre>
+<pre>181                                     {
+182     return values_.size();
+183   }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="std::string_ascii_query::json::JsonArray::toString_()_const"><a class="permalink" href="#std::string_ascii_query::json::JsonArray::toString_()_const">std::string
   ascii_query::json::JsonArray::toString () const [inline], [nodiscard]</a></h2>
-<p class="Pp">Definition at line <b>162</b> of file
+<p class="Pp">Definition at line <b>165</b> of file
     <b>src/tooling/query/json.h</b>.</p>
-<pre>162                                            {
-163     std::string result = &quot;[&quot;;
-164     bool first = true;
-165     for (const auto &amp;v : values_) {
-166       if (!first)
-167         result += &quot;,&quot;;
-168       first = false;
-169       result += v.toString();
-170     }
-171     result += &quot;]&quot;;
-172     return result;
-173   }</pre>
+<pre>165                                            {
+166     std::string result = &quot;[&quot;;
+167     bool first = true;
+168     for (const auto &amp;v : values_) {
+169       if (!first)
+170         result += &quot;,&quot;;
+171       first = false;
+172       result += v.toString();
+173     }
+174     result += &quot;]&quot;;
+175     return result;
+176   }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>add()</b>, and
@@ -172,7 +172,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -39,9 +39,9 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp"><b>uint8_t</b> <b>host_id</b> [16]
+<p class="Pp"><b>uint8_t</b> <b>host_id</b> [<b>SESSION_ID_SIZE</b>]
   <br/>
-  <b>uint8_t</b> <b>backup_id</b> [16]
+  <b>uint8_t</b> <b>backup_id</b> [<b>SESSION_ID_SIZE</b>]
   <br/>
   <b>uint64_t</b> <b>timestamp_ns</b>
   <br/>
@@ -53,30 +53,32 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">Election result storage.</p>
-<p class="Pp">Definition at line <b>15</b> of file <b>state.c</b>.</p>
+<p class="Pp">Definition at line <b>18</b> of file <b>state.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> election_result_t::backup_id[16]</h2>
+<h2 class="Ss"><b>uint8_t</b>
+  election_result_t::backup_id[<b>SESSION_ID_SIZE</b>]</h2>
 <p class="Pp">Elected backup participant ID</p>
-<p class="Pp">Definition at line <b>17</b> of file <b>state.c</b>.</p>
-<p class="Pp">Referenced by <b>consensus_state_compute_election()</b>, and
-    <b>consensus_state_get_elected_backup()</b>.</p>
+<p class="Pp">Definition at line <b>20</b> of file <b>state.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_state_get_elected_backup()</b>, and
+    <b>consensus_state_store_election()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> election_result_t::host_id[16]</h2>
+<h2 class="Ss"><b>uint8_t</b>
+  election_result_t::host_id[<b>SESSION_ID_SIZE</b>]</h2>
 <p class="Pp">Elected host participant ID</p>
-<p class="Pp">Definition at line <b>16</b> of file <b>state.c</b>.</p>
-<p class="Pp">Referenced by <b>consensus_state_compute_election()</b>, and
-    <b>consensus_state_get_elected_host()</b>.</p>
+<p class="Pp">Definition at line <b>19</b> of file <b>state.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_state_get_elected_host()</b>, and
+    <b>consensus_state_store_election()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> election_result_t::timestamp_ns</h2>
 <p class="Pp">Unix ns when elected</p>
-<p class="Pp">Definition at line <b>18</b> of file <b>state.c</b>.</p>
-<p class="Pp">Referenced by <b>consensus_state_compute_election()</b>.</p>
+<p class="Pp">Definition at line <b>21</b> of file <b>state.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_state_store_election()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -87,7 +89,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

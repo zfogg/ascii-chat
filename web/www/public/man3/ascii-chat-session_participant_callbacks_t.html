@@ -41,27 +41,26 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">void(* <b>on_connected</b> )(<b>session_participant_t</b> *p,
+<p class="Pp">void(*) <b>on_connected</b> (<b>session_participant_t</b> *p,
     <b>uint32_t</b> client_id, void *user_data)
   <br/>
-  Called when successfully connected to session. void(* <b>on_disconnected</b>
-    )(<b>session_participant_t</b> *p, void *user_data)
+  Called when successfully connected to session. void(*) <b>on_disconnected</b>
+    (<b>session_participant_t</b> *p, void *user_data)
   <br/>
-  Called when disconnected from session. void(* <b>on_frame_received</b>
-    )(<b>session_participant_t</b> *p, const char *<b>frame</b>, void
+  Called when disconnected from session. void(*) <b>on_frame_received</b>
+    (<b>session_participant_t</b> *p, const char *frame, void *user_data)
+  <br/>
+  Called when ASCII frame received from server. void(*) <b>on_audio_received</b>
+    (<b>session_participant_t</b> *p, const float *samples, size_t count, void
     *user_data)
   <br/>
-  Called when ASCII frame received from server. void(* <b>on_audio_received</b>
-    )(<b>session_participant_t</b> *p, const float *samples, size_t count, void
-    *user_data)
-  <br/>
-  Called when audio samples received from server. void(*
-    <b>on_settings_changed</b> )(<b>session_participant_t</b> *p, const
+  Called when audio samples received from server. void(*)
+    <b>on_settings_changed</b> (<b>session_participant_t</b> *p, const
     <b>session_settings_t</b> *settings, void *user_data)
   <br/>
-  Called when session settings change. void(* <b>on_error</b>
-    )(<b>session_participant_t</b> *p, <b>asciichat_error_t</b> error, const
-    char *message, void *user_data)
+  Called when session settings change. void(*) <b>on_error</b>
+    (<b>session_participant_t</b> *p, <b>asciichat_error_t</b> error, const char
+    *message, void *user_data)
   <br/>
   Called when an error occurs.
   <br/>
@@ -72,16 +71,15 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">Callback function prototypes for session participant events.</p>
-<p class="Pp">Definition at line <b>77</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Definition at line <b>83</b> of file <b>participant.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void(*_session_participant_callbacks_t::on_audio_received)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_audio_received)_(">void(*
-  session_participant_callbacks_t::on_audio_received)
-  (<b>session_participant_t</b> *p, const float *samples, size_t count, void
-  *user_data)</a></h2>
+<h2 class="Ss" id="void(*)_session_participant_callbacks_t::on_audio_received("><a class="permalink" href="#void(*)_session_participant_callbacks_t::on_audio_received(">void(*)
+  session_participant_callbacks_t::on_audio_received(<b>session_participant_t</b>
+  *p, const float *samples, size_t count, void *user_data)</a></h2>
 <p class="Pp">Called when audio samples received from server.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>p</i> Participant handle
@@ -91,12 +89,12 @@
 <i>count</i> Number of samples
 <br/>
 <i>user_data</i> User-provided context pointer</div>
-<p class="Pp">Definition at line <b>108</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Definition at line <b>114</b> of file <b>participant.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_session_participant_callbacks_t::on_connected)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_connected)_(">void(*
-  session_participant_callbacks_t::on_connected) (<b>session_participant_t</b>
-  *p, <b>uint32_t</b> client_id, void *user_data)</a></h2>
+<h2 class="Ss" id="void(*)_session_participant_callbacks_t::on_connected("><a class="permalink" href="#void(*)_session_participant_callbacks_t::on_connected(">void(*)
+  session_participant_callbacks_t::on_connected(<b>session_participant_t</b> *p,
+  <b>uint32_t</b> client_id, void *user_data)</a></h2>
 <p class="Pp">Called when successfully connected to session.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>p</i> Participant handle
@@ -104,24 +102,24 @@
 <i>client_id</i> Assigned client ID from server
 <br/>
 <i>user_data</i> User-provided context pointer</div>
-<p class="Pp">Definition at line <b>84</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Definition at line <b>90</b> of file <b>participant.h</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_connect()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_session_participant_callbacks_t::on_disconnected)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_disconnected)_(">void(*
-  session_participant_callbacks_t::on_disconnected)
-  (<b>session_participant_t</b> *p, void *user_data)</a></h2>
+<h2 class="Ss" id="void(*)_session_participant_callbacks_t::on_disconnected("><a class="permalink" href="#void(*)_session_participant_callbacks_t::on_disconnected(">void(*)
+  session_participant_callbacks_t::on_disconnected(<b>session_participant_t</b>
+  *p, void *user_data)</a></h2>
 <p class="Pp">Called when disconnected from session.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>p</i> Participant handle
 <br/>
 <i>user_data</i> User-provided context pointer</div>
-<p class="Pp">Definition at line <b>91</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Definition at line <b>97</b> of file <b>participant.h</b>.</p>
 <p class="Pp">Referenced by <b>session_participant_disconnect()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_session_participant_callbacks_t::on_error)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_error)_(">void(*
-  session_participant_callbacks_t::on_error) (<b>session_participant_t</b> *p,
+<h2 class="Ss" id="void(*)_session_participant_callbacks_t::on_error("><a class="permalink" href="#void(*)_session_participant_callbacks_t::on_error(">void(*)
+  session_participant_callbacks_t::on_error(<b>session_participant_t</b> *p,
   <b>asciichat_error_t</b> error, const char *message, void *user_data)</a></h2>
 <p class="Pp">Called when an error occurs.</p>
 <p class="Pp"><b>Parameters</b></p>
@@ -132,28 +130,26 @@
 <i>message</i> Error message
 <br/>
 <i>user_data</i> User-provided context pointer</div>
-<p class="Pp">Definition at line <b>125</b> of file <b>participant.h</b>.</p>
-<p class="Pp">Referenced by <b>session_participant_connect()</b>.</p>
+<p class="Pp">Definition at line <b>131</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_receive_settings()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_session_participant_callbacks_t::on_frame_received)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_frame_received)_(">void(*
-  session_participant_callbacks_t::on_frame_received)
-  (<b>session_participant_t</b> *p, const char *<b>frame</b>, void
-  *user_data)</a></h2>
+<h2 class="Ss" id="void(*)_session_participant_callbacks_t::on_frame_received("><a class="permalink" href="#void(*)_session_participant_callbacks_t::on_frame_received(">void(*)
+  session_participant_callbacks_t::on_frame_received(<b>session_participant_t</b>
+  *p, const char *frame, void *user_data)</a></h2>
 <p class="Pp">Called when ASCII frame received from server.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>p</i> Participant handle
 <br/>
-<i></i><b>frame</b><i></i><b> ASCII frame data (null-terminated)</b>
+<i>frame</i> ASCII frame data (null-terminated)
 <br/>
 <i>user_data</i> User-provided context pointer</div>
-<p class="Pp">Definition at line <b>99</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Definition at line <b>105</b> of file <b>participant.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_session_participant_callbacks_t::on_settings_changed)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_settings_changed)_(">void(*
-  session_participant_callbacks_t::on_settings_changed)
-  (<b>session_participant_t</b> *p, const <b>session_settings_t</b> *settings,
-  void *user_data)</a></h2>
+<h2 class="Ss" id="void(*)_session_participant_callbacks_t::on_settings_changed("><a class="permalink" href="#void(*)_session_participant_callbacks_t::on_settings_changed(">void(*)
+  session_participant_callbacks_t::on_settings_changed(<b>session_participant_t</b>
+  *p, const <b>session_settings_t</b> *settings, void *user_data)</a></h2>
 <p class="Pp">Called when session settings change.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>p</i> Participant handle
@@ -161,7 +157,8 @@
 <i>settings</i> New session settings
 <br/>
 <i>user_data</i> User-provided context pointer</div>
-<p class="Pp">Definition at line <b>116</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Definition at line <b>122</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_receive_settings()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -172,7 +169,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

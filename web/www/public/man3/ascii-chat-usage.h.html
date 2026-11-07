@@ -74,7 +74,9 @@
 65 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SAFE_FREE</b>.</p>
+<p class="Pp">References <b>manpage_content_free_usage()</b>, and
+    <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_free_usage()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_manpage_content_generate_usage_(const_"><a class="permalink" href="#char_*_manpage_content_generate_usage_(const_">char
@@ -84,8 +86,8 @@
     descriptors with proper groff tagged paragraph formatting.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
-  configuration with usage descriptors</b></div>
+<div class="Bd-indent"><i>config</i> Options configuration with usage
+  descriptors</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Newly allocated content string (caller must free)</div>
 <p class="Pp">Definition at line <b>15</b> of file <b>usage.c</b>.</p>
@@ -95,21 +97,21 @@
 18     buffer[0] = '\0';
 19     return buffer;
 20   }
-21 
+21
 22   // Allocate growing buffer for usage section
 23   size_t buffer_capacity = 4096;
 24   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
 25   size_t offset = 0;
-26 
+26
 27   for (size_t i = 0; i &lt; config-&gt;num_usage_lines; i++) {
 28     const usage_descriptor_t *usage = &amp;config-&gt;usage_lines[i];
-29 
+29
 30     // Ensure buffer is large enough
 31     if (offset + 512 &gt;= buffer_capacity) {
 32       buffer_capacity *= 2;
 33       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
 34     }
-35 
+35
 36     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.TP\n&quot;);
 37     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B ascii-chat&quot;);
 38     if (usage-&gt;mode) {
@@ -122,24 +124,27 @@
 45       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; [options...]&quot;);
 46     }
 47     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
-48 
+48
 49     if (usage-&gt;description) {
 50       offset +=
 51           safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;, escape_groff_special(usage-&gt;description));
 52     }
 53   }
-54 
+54
 55   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
-56 
+56
 57   log_debug(&quot;Generated USAGE section (%zu bytes)&quot;, offset);
 58   return buffer;
 59 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>escape_groff_special()</b>, <b>log_debug</b>,
+<p class="Pp">References <b>buffer_capacity()</b>,
+    <b>escape_groff_special()</b>, <b>log_debug</b>,
+    <b>manpage_content_generate_usage()</b>,
     <b>options_config_t::num_usage_lines</b>, <b>SAFE_MALLOC</b>,
     <b>SAFE_REALLOC</b>, <b>safe_snprintf()</b>, <b>usage()</b>, and
     <b>options_config_t::usage_lines</b>.</p>
+<p class="Pp">Referenced by <b>manpage_content_generate_usage()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -149,7 +154,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

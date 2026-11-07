@@ -46,7 +46,9 @@
   <br/>
   Decoder state (NULL if encoder). int <b>sample_rate</b>
   <br/>
-  Sample rate in Hz (e.g., 44100). int <b>bitrate</b>
+  Sample rate in Hz (e.g., 44100). int <b>channels</b>
+  <br/>
+  PCM channels (1 or 2); sample counts include all channels. int <b>bitrate</b>
   <br/>
   Bitrate in bits per second (encoder only). <b>uint8_t</b> * <b>tmp_buffer</b>
   <br/>
@@ -66,7 +68,7 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">This is an opaque type. Do not access fields
   directly.</div>
-<p class="Pp">Definition at line <b>95</b> of file <b>opus.h</b>.</p>
+<p class="Pp">Definition at line <b>102</b> of file <b>opus.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -75,24 +77,34 @@
 <h2 class="Ss" id="int_opus_codec_t::bitrate"><a class="permalink" href="#int_opus_codec_t::bitrate">int
   opus_codec_t::bitrate</a></h2>
 <p class="Pp">Bitrate in bits per second (encoder only).</p>
-<p class="Pp">Definition at line <b>99</b> of file <b>opus.h</b>.</p>
-<p class="Pp">Referenced by <b>opus_codec_create_decoder()</b>,
-    <b>opus_codec_create_encoder()</b>, and <b>opus_codec_set_bitrate()</b>.</p>
+<p class="Pp">Definition at line <b>107</b> of file <b>opus.h</b>.</p>
+<p class="Pp">Referenced by <b>opus_codec_create_decoder_channels()</b>,
+    <b>opus_codec_create_encoder_channels()</b>, <b>opus_codec_encode()</b>, and
+    <b>opus_codec_set_bitrate()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_opus_codec_t::channels"><a class="permalink" href="#int_opus_codec_t::channels">int
+  opus_codec_t::channels</a></h2>
+<p class="Pp">PCM channels (1 or 2); sample counts include all channels.</p>
+<p class="Pp">Definition at line <b>106</b> of file <b>opus.h</b>.</p>
+<p class="Pp">Referenced by <b>opus_codec_create_decoder_channels()</b>,
+    <b>opus_codec_create_encoder_channels()</b>, <b>opus_codec_decode()</b>, and
+    <b>opus_codec_encode()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>OpusDecoder</b>* opus_codec_t::decoder</h2>
 <p class="Pp">Decoder state (NULL if encoder).</p>
-<p class="Pp">Definition at line <b>97</b> of file <b>opus.h</b>.</p>
-<p class="Pp">Referenced by <b>opus_codec_create_decoder()</b>,
-    <b>opus_codec_create_encoder()</b>, <b>opus_codec_decode()</b>, and
+<p class="Pp">Definition at line <b>104</b> of file <b>opus.h</b>.</p>
+<p class="Pp">Referenced by <b>opus_codec_create_decoder_channels()</b>,
+    <b>opus_codec_create_encoder_channels()</b>, <b>opus_codec_decode()</b>, and
     <b>opus_codec_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>OpusEncoder</b>* opus_codec_t::encoder</h2>
 <p class="Pp">Encoder state (NULL if decoder).</p>
-<p class="Pp">Definition at line <b>96</b> of file <b>opus.h</b>.</p>
-<p class="Pp">Referenced by <b>opus_codec_create_decoder()</b>,
-    <b>opus_codec_create_encoder()</b>, <b>opus_codec_destroy()</b>,
+<p class="Pp">Definition at line <b>103</b> of file <b>opus.h</b>.</p>
+<p class="Pp">Referenced by <b>opus_codec_create_decoder_channels()</b>,
+    <b>opus_codec_create_encoder_channels()</b>, <b>opus_codec_destroy()</b>,
     <b>opus_codec_encode()</b>, <b>opus_codec_get_bitrate()</b>,
     <b>opus_codec_set_bitrate()</b>, and <b>opus_codec_set_dtx()</b>.</p>
 </section>
@@ -100,16 +112,18 @@
 <h2 class="Ss" id="int_opus_codec_t::sample_rate"><a class="permalink" href="#int_opus_codec_t::sample_rate">int
   opus_codec_t::sample_rate</a></h2>
 <p class="Pp">Sample rate in Hz (e.g., 44100).</p>
-<p class="Pp">Definition at line <b>98</b> of file <b>opus.h</b>.</p>
-<p class="Pp">Referenced by <b>opus_codec_create_decoder()</b>, and
-    <b>opus_codec_create_encoder()</b>.</p>
+<p class="Pp">Definition at line <b>105</b> of file <b>opus.h</b>.</p>
+<p class="Pp">Referenced by <b>opus_codec_create_decoder_channels()</b>,
+    <b>opus_codec_create_encoder_channels()</b>, <b>opus_codec_decode()</b>, and
+    <b>opus_codec_encode()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b>* opus_codec_t::tmp_buffer</h2>
 <p class="Pp">Temporary buffer for internal use.</p>
-<p class="Pp">Definition at line <b>100</b> of file <b>opus.h</b>.</p>
-<p class="Pp">Referenced by <b>opus_codec_create_decoder()</b>,
-    <b>opus_codec_create_encoder()</b>, and <b>opus_codec_destroy()</b>.</p>
+<p class="Pp">Definition at line <b>108</b> of file <b>opus.h</b>.</p>
+<p class="Pp">Referenced by <b>opus_codec_create_decoder_channels()</b>,
+    <b>opus_codec_create_encoder_channels()</b>, and
+    <b>opus_codec_destroy()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -120,7 +134,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

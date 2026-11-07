@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>md_docs_2audio-channels(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">md_docs_2audio-channels(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">md_docs_2audio-channels(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">md_docs_2audio-channels - Audio channels</p>
+<p class="Pp">All call encoders and decoders use stereo Opus. Speech uses
+    centered input at 32 kbit/s; stereo microphones and media use 128 kbit/s.
+    Internal PCM is interleaved stereo at 48 kHz, independent of device layouts
+    and rates. PCM counts include both channels; codec frame durations are
+    measured per channel.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Microphones"><a class="permalink" href="#Microphones">Microphones</a></h1>
+<p class="Pp">Use --list-microphones to choose a device. A multichannel device
+    can still be used for mono speech. The device opener tries supported layouts
+    and routes the selected input before resampling, echo cancellation, and
+    microphone enhancement.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre># Stereo microphone, or the first pair on an audio interface
+ascii-chat client --microphone-index 2 --microphone-channels 2
+# A single microphone connected to input 3 (indices start at zero)
+ascii-chat client --microphone-index 2 --microphone-channel 2
+# Interface inputs 3 and 4 as a stereo pair
+ascii-chat client --microphone-index 2 --microphone-channel 2 --microphone-channels 2
+# Explicitly average all available inputs to centered mono
+ascii-chat client --microphone-index 2 --microphone-channel -1</pre>
+<p class="Pp">The same options apply to mirror and discovery modes and have
+    corresponding ASCII_CHAT_MICROPHONE_CHANNEL and
+    ASCII_CHAT_MICROPHONE_CHANNELS environment variables. The default selects
+    input zero as mono speech. A microphone array's physical channels are not
+    automatically treated as a stereo pair. Prefer its processed speech endpoint
+    when available. Invalid selected pairs fail before opening a stream.</p>
+<p class="Pp"></p>
+<p class="Pp">The browser device dialog offers <b>Mono speech</b>, <b>Stereo
+    pair</b>, and a first input number starting at one. Browser support for
+    exposing individual interface inputs varies. A browser-provided single
+    channel stays centered. Browser AEC runs on microphone capture; shared
+    C/WASM enhancement processes the microphone before stereo screen/media audio
+    is mixed in.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Playback_and_media"><a class="permalink" href="#Playback_and_media">Playback
+  and media</a></h1>
+<ul class="Bl-bullet">
+  <li>Mono microphones are centered in both playback channels. Stereo sources
+      retain their left/right separation through resampling, mix-minus,
+      encoding, and recording.</li>
+  <li>Mono-only speaker devices receive a downmix. Multichannel outputs use the
+      first stereo pair and silence the other outputs.</li>
+  <li>Clients advertise stereo support with <b>AUDIO_CAP_STEREO</b><b>. Call
+      encoders and decoders default to two channels, and servers always send
+      stereo output. There is no legacy-peer mono fallback.</b></li>
+  <li>Speech filters maintain independent channel state. Stereo gain control,
+      compression, and gating use a shared detector to preserve channel
+    balance.</li>
+  <li>Recordings retain stereo. Waveform/FFT displays downmix only their
+      analysis copy.</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Hardware-free_validation"><a class="permalink" href="#Hardware-free_validation">Hardware-free
+  validation</a></h1>
+<p class="Pp">tests/unit/audio/stereo_test.c uses generated signals to check
+    routing, resampling across callback boundaries, stereo codec defaults and
+    explicit mono downmixing, stereo dynamics, jitter frame alignment,
+    mix-minus, AEC buffer sizing, and recording timestamps.
+    tests/contracts/audio/device_test.c simulates the PortAudio boundary while
+    running the production callbacks and worker, including stereo-only
+    microphones, mono speakers, and four-channel interface routing. Browser
+    worklet tests generate independent microphone and media inputs.</p>
+<p class="Pp"></p>
+<p class="Pp">tests/python/integration/stereo/test_audio_channels.py generates
+    different tones in each channel and checks a real client/server call,
+    including the received stereo WAV. Pass --artifacts-dir DIRECTORY to retain
+    its logs and audio. The Chromium proof at
+    web/web/tests/wasm/stereo-audio.mjs runs the real worklet, worker, C/WASM
+    DSP, and Opus codec with generated microphone and media tracks. Run it
+    against a local Vite server after rebuilding the WASM artifacts.</p>
+<p class="Pp"></p>
+<p class="Pp">tests/audio/probe_aec3_echo.py LIBRARY --stereo checks independent
+    playback channels, delayed synthetic echoes, and near-end speech while echo
+    is present. The default invocation retains the mono regression.</p>
+<p class="Pp"></p>
+<p class="Pp">These checks do not require a stereo microphone. Physical driver
+    behavior and speaker-to-microphone acoustics still need hardware
+  validation.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

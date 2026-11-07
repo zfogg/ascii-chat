@@ -42,7 +42,7 @@
 <br/>
 <p class="Pp">struct <b>digital_rain_column_t</b>
   <br/>
-  Digital rain column state. struct <b>digital_rain_t</b>
+  Digital rain column state. struct <b>digital_rain</b>
   <br/>
   Digital rain effect context.
   <br/>
@@ -51,7 +51,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>DIGITAL_RAIN_DEFAULT_FALL_SPEED</b> 3.0f
+<p class="Pp">#define <b>DIGITAL_RAIN_DEFAULT_FALL_SPEED</b> 10.0f
   <br/>
   Default fall speed for raindrops. #define
     <b>DIGITAL_RAIN_DEFAULT_RAINDROP_LENGTH</b> 12.0f
@@ -77,6 +77,15 @@
 </p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>digital_rain</b> <b>digital_rain_t</b>
+  <br/>
+  Digital rain effect context.
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>digital_rain_t</b> * <b>digital_rain_init</b> (int num_columns,
@@ -86,7 +95,7 @@
     (<b>digital_rain_t</b> *rain)
   <br/>
   Destroy digital rain effect context. char * <b>digital_rain_apply</b>
-    (<b>digital_rain_t</b> *rain, const char *<b>frame</b>, float delta_time)
+    (<b>digital_rain_t</b> *rain, const char *frame, float delta_time)
   <br/>
   Apply digital rain effect to ASCII frame. void <b>digital_rain_reset</b>
     (<b>digital_rain_t</b> *rain)
@@ -104,7 +113,9 @@
   Set digital rain color. void <b>digital_rain_set_color_from_filter</b>
     (<b>digital_rain_t</b> *rain, <b>color_filter_t</b> filter)
   <br/>
-  Set digital rain color from color filter.
+  Set digital rain color from color filter. int <b>digital_rain_glyph_group</b>
+    (<b>uint32_t</b> codepoint)
+  <br/>
   <br/>
 </p>
 </section>
@@ -124,7 +135,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

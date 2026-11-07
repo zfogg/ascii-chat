@@ -44,7 +44,7 @@
   Application name for key comments (<i>ascii-chat&quot;).</i> #define
     <b>PLATFORM_MAX_PATH_LENGTH</b> 4096
   <br/>
-  #define <b>NONSTRING</b> /* nothing */
+  #define <b>NONSTRING</b>
   <br/>
   #define <b>FATAL</b>(code, ...)
   <br/>
@@ -154,9 +154,8 @@
     code, const char *file, int line, const char *function, const char
     *format,...)
   <br/>
-  Exit with error code and context (used by FATAL macro).
-    <b>asciichat_error_t</b> <b>asciichat_shared_init</b> (const char
-    *<b>log_file</b>, <b>bool</b> is_client)
+  <b>asciichat_error_t</b> <b>asciichat_shared_init</b> (const char *log_file,
+    <b>bool</b> is_client, <b>bool</b> quiet_startup)
   <br/>
   Initialize common subsystems shared by client and server. void
     <b>asciichat_shared_destroy</b> (void)
@@ -205,7 +204,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

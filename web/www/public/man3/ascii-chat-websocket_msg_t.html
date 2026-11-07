@@ -63,7 +63,7 @@
     complete message or a fragment of a larger fragmented message. The receiver
     checks first/final flags to reassemble if needed. Used in both send_queue
     and recv_queue.</p>
-<p class="Pp">Definition at line <b>24</b> of file
+<p class="Pp">Definition at line <b>25</b> of file
     <b>network/websocket/internal.h</b>.</p>
 </section>
 <section class="Sh">
@@ -72,27 +72,29 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b>* websocket_msg_t::data</h2>
 <p class="Pp">Frame data (allocated, caller must free).</p>
-<p class="Pp">Definition at line <b>25</b> of file
+<p class="Pp">Definition at line <b>26</b> of file
     <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>websocket_transport_write_pending()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> websocket_msg_t::final</h2>
 <p class="Pp">1 if final frame of message (or complete message)</p>
-<p class="Pp">Definition at line <b>28</b> of file
+<p class="Pp">Definition at line <b>29</b> of file
     <b>network/websocket/internal.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> websocket_msg_t::first</h2>
 <p class="Pp">1 if first frame of message (or complete message)</p>
-<p class="Pp">Definition at line <b>27</b> of file
+<p class="Pp">Definition at line <b>28</b> of file
     <b>network/websocket/internal.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_websocket_msg_t::len"><a class="permalink" href="#size_t_websocket_msg_t::len">size_t
   websocket_msg_t::len</a></h2>
 <p class="Pp">Frame length in bytes.</p>
-<p class="Pp">Definition at line <b>26</b> of file
+<p class="Pp">Definition at line <b>27</b> of file
     <b>network/websocket/internal.h</b>.</p>
+<p class="Pp">Referenced by <b>websocket_transport_write_pending()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -103,7 +105,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

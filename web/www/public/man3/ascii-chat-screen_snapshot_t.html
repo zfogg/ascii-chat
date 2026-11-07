@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>screen_snapshot_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">screen_snapshot_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">screen_snapshot_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">screen_snapshot_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">_Atomic unsigned <b>references</b>
+  <br/>
+  <b>media_snapshot_slot_t</b> * <b>slot</b>
+  <br/>
+  <b>screen_terminal_t</b> * <b>terminal</b>
+  <br/>
+  <b>uint64_t</b> <b>frame_id</b>
+  <br/>
+  <b>uint64_t</b> <b>submitted_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>acquisition_started_ns</b>
+  <br/>
+  <b>terminal_screen_config_t</b> <b>config</b>
+  <br/>
+  unsigned char <b>header</b> []
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>57</b> of file <b>tui/controller.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> screen_snapshot_t::acquisition_started_ns</h2>
+<p class="Pp">Definition at line <b>61</b> of file <b>tui/controller.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>terminal_screen_config_t</b> screen_snapshot_t::config</h2>
+<p class="Pp">Definition at line <b>343</b> of file
+  <b>terminal_screen.c</b>.</p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> screen_snapshot_t::frame_id</h2>
+<p class="Pp">Definition at line <b>61</b> of file <b>tui/controller.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="unsigned_char_screen_snapshot_t::header__"><a class="permalink" href="#unsigned_char_screen_snapshot_t::header__">unsigned
+  char screen_snapshot_t::header[]</a></h2>
+<p class="Pp">Definition at line <b>344</b> of file
+  <b>terminal_screen.c</b>.</p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_Atomic_unsigned_screen_snapshot_t::references"><a class="permalink" href="#_Atomic_unsigned_screen_snapshot_t::references">_Atomic
+  unsigned screen_snapshot_t::references</a></h2>
+<p class="Pp">Definition at line <b>58</b> of file <b>tui/controller.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_first_use_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>media_snapshot_slot_t</b>* screen_snapshot_t::slot</h2>
+<p class="Pp">Definition at line <b>59</b> of file <b>tui/controller.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> screen_snapshot_t::submitted_ns</h2>
+<p class="Pp">Definition at line <b>61</b> of file <b>tui/controller.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>screen_terminal_t</b>* screen_snapshot_t::terminal</h2>
+<p class="Pp">Definition at line <b>60</b> of file <b>tui/controller.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

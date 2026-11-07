@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii_temporal_cell_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii_temporal_cell_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ascii_temporal_cell_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ascii_temporal_cell_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/video/ascii/render.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint8_t</b> <b>samples</b> [16]
+  <br/>
+  <b>uint32_t</b> <b>glyph</b>
+  <br/>
+  <b>uint32_t</b> <b>color</b>
+  <br/>
+  <b>uint64_t</b> <b>source_owner</b>
+  <br/>
+  <b>bool</b> <b>valid</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">A renderer-owned history; one instance must not be shared by
+    independent streams.</p>
+<p class="Pp">Definition at line <b>21</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> ascii_temporal_cell_t::color</h2>
+<p class="Pp">Definition at line <b>24</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_emit_row()</b>, and
+    <b>ascii_stabilizer_choose()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> ascii_temporal_cell_t::glyph</h2>
+<p class="Pp">Definition at line <b>23</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_emit_row()</b>,
+    <b>ascii_render_glyph_match()</b>, and <b>ascii_stabilizer_choose()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b> ascii_temporal_cell_t::samples[16]</h2>
+<p class="Pp">Definition at line <b>22</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_emit_row()</b>, and
+    <b>ascii_stabilizer_choose()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> ascii_temporal_cell_t::source_owner</h2>
+<p class="Pp">Definition at line <b>25</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_temporal_cell_t::valid</h2>
+<p class="Pp">Definition at line <b>26</b> of file
+    <b>include/ascii-chat/video/ascii/render.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_emit_row()</b>,
+    <b>ascii_render_glyph_match()</b>, and <b>ascii_stabilizer_choose()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

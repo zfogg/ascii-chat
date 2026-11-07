@@ -58,12 +58,19 @@
     const char * <b>colored_string</b> (<b>log_color_t</b> color, const char
     *text)
   <br/>
-  Build a colored string for terminal output. void <b>truncate_with_ellipsis</b>
-    (const char *input, char *output, size_t output_size, int max_width)
+  Build a colored string for terminal output. int
+    <b>colored_string_set_output_fd</b> (int fd)
+  <br/>
+  void <b>truncate_with_ellipsis</b> (const char *input, char *output, size_t
+    output_size, int max_width)
   <br/>
   Truncate a string to a maximum display width, with ellipsis. void
-    <b>strip_ansi_codes</b> (const char *input, char *output, size_t
-    output_size)
+    <b>truncate_with_ellipsis_mode</b> (const char *input, char *output, size_t
+    output_size, int max_width, <b>bool</b> utf8)
+  <br/>
+  Truncate a string to a maximum display width with a terminal-appropriate
+    ellipsis. void <b>strip_ansi_codes</b> (const char *input, char *output,
+    size_t output_size)
   <br/>
   Strip ANSI escape codes from a string.
   <br/>
@@ -85,7 +92,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

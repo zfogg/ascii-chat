@@ -175,17 +175,15 @@
 <p class="Pp">Definition at line <b>217</b> of file <b>video_frame.h</b>.</p>
 <p class="Pp">Referenced by <b>video_frame_begin_write()</b>,
     <b>video_frame_buffer_create()</b>, <b>video_frame_buffer_destroy()</b>,
-    <b>video_frame_commit()</b>, <b>video_frame_get_latest()</b>, and
-    <b>video_frame_get_stats()</b>.</p>
+    <b>video_frame_commit()</b>, <b>video_frame_get_latest()</b>,
+    <b>video_frame_get_stats()</b>, and <b>video_frame_peek_latest()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_video_frame_buffer_t::allocated_buffer_size"><a class="permalink" href="#size_t_video_frame_buffer_t::allocated_buffer_size">size_t
   video_frame_buffer_t::allocated_buffer_size</a></h2>
 <p class="Pp">Size of allocated data buffers (for cleanup).</p>
 <p class="Pp">Definition at line <b>223</b> of file <b>video_frame.h</b>.</p>
-<p class="Pp">Referenced by <b>client_video_render_thread()</b>,
-    <b>video_frame_buffer_create()</b>, and
-  <b>video_frame_buffer_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>video_frame_buffer_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> video_frame_buffer_t::avg_decode_time_ns</h2>
@@ -226,7 +224,8 @@
 <p class="Pp">Currently displayed frame (reader owns).</p>
 <p class="Pp">Definition at line <b>181</b> of file <b>video_frame.h</b>.</p>
 <p class="Pp">Referenced by <b>video_frame_buffer_create()</b>,
-    <b>video_frame_commit()</b>, and <b>video_frame_get_latest()</b>.</p>
+    <b>video_frame_commit()</b>, <b>video_frame_get_latest()</b>, and
+    <b>video_frame_peek_latest()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> video_frame_buffer_t::last_frame_sequence</h2>
@@ -248,8 +247,8 @@
 <p class="Pp">Brief mutex for pointer swap only.</p>
 <p class="Pp">Definition at line <b>189</b> of file <b>video_frame.h</b>.</p>
 <p class="Pp">Referenced by <b>video_frame_buffer_create()</b>,
-    <b>video_frame_buffer_destroy()</b>, <b>video_frame_commit()</b>, and
-    <b>video_frame_get_latest()</b>.</p>
+    <b>video_frame_buffer_destroy()</b>, <b>video_frame_commit()</b>,
+    <b>video_frame_get_latest()</b>, and <b>video_frame_peek_latest()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>atomic_t</b> video_frame_buffer_t::total_frames_dropped</h2>
@@ -276,7 +275,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

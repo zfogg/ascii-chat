@@ -39,7 +39,9 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>CAPTURE_TARGET_FPS</b> 144
+<p class="Pp">#define <b>CLIENT_CAPTURE_WEBCAM_INDEX_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>CAPTURE_TARGET_FPS</b> 144
   <br/>
   <br/>
 </p>
@@ -49,15 +51,21 @@
 <br/>
 <p class="Pp">int <b>capture_init</b> ()
   <br/>
-  Initialize capture subsystem. int <b>capture_start_thread</b> ()
+  Initialize capture subsystem. int <b>capture_start_thread</b>
+    (<b>client_connection_t</b> *connection)
   <br/>
-  Start capture thread. void <b>capture_stop_thread</b> ()
+  Start capture thread. void <b>capture_stop_thread</b>
+    (<b>client_connection_t</b> *connection)
   <br/>
-  Stop capture thread. <b>bool</b> <b>capture_thread_exited</b> ()
+  Stop capture thread. <b>bool</b> <b>capture_thread_exited</b>
+    (<b>client_connection_t</b> *connection)
   <br/>
   Check if capture thread has exited. void <b>capture_cleanup</b> ()
   <br/>
-  Cleanup capture subsystem.
+  Cleanup capture subsystem. void * <b>capture_get_media_source</b> (void)
+  <br/>
+  <b>session_capture_ctx_t</b> * <b>capture_get_context</b> (void)
+  <br/>
   <br/>
 </p>
 </section>
@@ -208,9 +216,14 @@
 <section class="Ss">
 <h2 class="Ss" id="_define_CAPTURE_TARGET_FPS___144"><a class="permalink" href="#_define_CAPTURE_TARGET_FPS___144">#define
   CAPTURE_TARGET_FPS 144</a></h2>
-<p class="Pp">Target capture FPS for network transmission (144 FPS for
-    high-refresh displays)</p>
-<p class="Pp">Definition at line <b>155</b> of file <b>client/capture.c</b>.</p>
+<p class="Pp">Fallback capture FPS when no target was configured</p>
+<p class="Pp">Definition at line <b>142</b> of file <b>client/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CLIENT_CAPTURE_WEBCAM_INDEX_BUFFER_SIZE___32"><a class="permalink" href="#_define_CLIENT_CAPTURE_WEBCAM_INDEX_BUFFER_SIZE___32">#define
+  CLIENT_CAPTURE_WEBCAM_INDEX_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>client/capture.c</b>.</p>
 <p class="Pp">Referenced by <b>capture_init()</b>.</p>
 </section>
 </section>
@@ -218,211 +231,28 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="void_capture_cleanup_()"><a class="permalink" href="#void_capture_cleanup_()">void
-  capture_cleanup ()</a></h2>
-<p class="Pp">Cleanup capture subsystem. Cleanup capture subsystem</p>
-<p class="Pp"></p>
-<p class="Pp">Stops capture thread and cleans up media source resources. Called
-    during client shutdown.</p>
-<p class="Pp">Definition at line <b>546</b> of file <b>client/capture.c</b>.</p>
-<pre>546                        {
-547   capture_stop_thread();
-548 
-549   // Destroy capture context
-550   if (g_capture_capture_ctx) {
-551     session_capture_destroy(g_capture_capture_ctx);
-552     g_capture_capture_ctx = NULL;
-553   }
-554 }</pre>
+<h2 class="Ss"><b>session_capture_ctx_t</b> * capture_get_context (void )</h2>
+<p class="Pp">Definition at line <b>558</b> of file <b>client/capture.c</b>.</p>
+<pre>558                                                  {
+559   return g_capture_capture_ctx;
+560 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>capture_stop_thread()</b>, and
-    <b>session_capture_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>.</p>
+<p class="Pp">References <b>capture_get_context()</b>.</p>
+<p class="Pp">Referenced by <b>capture_get_context()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="int_capture_init_()"><a class="permalink" href="#int_capture_init_()">int
-  capture_init ()</a></h2>
-<p class="Pp">Initialize capture subsystem. Initialize capture subsystem</p>
-<p class="Pp"></p>
-<p class="Pp">Sets up media source (webcam, file, or stdin) and prepares capture
-    system for operation. Must be called once during client initialization.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, negative on error</div>
-<p class="Pp">Definition at line <b>405</b> of file <b>client/capture.c</b>.</p>
-<pre>405                    {
-406   // Build capture configuration from options
-407   session_capture_config_t config = {0};
-408   const char *media_url = GET_OPTION(media_url);
-409   const char *media_file = GET_OPTION(media_file);
-410   bool media_from_stdin = GET_OPTION(media_from_stdin);
-411 
-412   if (media_url &amp;&amp; media_url[0] != '\0') {
-413     // Network URL streaming (takes priority over --file)
-414     // Don't open webcam when streaming from URL
-415     config.type = MEDIA_SOURCE_FILE;
-416     config.path = media_url;
-417     config.loop = false; // Network URLs cannot be looped
-418     log_debug(&quot;Using network URL: %s (webcam disabled)&quot;, media_url);
-419   } else if (media_file &amp;&amp; media_file[0] != '\0') {
-420     // File or stdin streaming - don't open webcam
-421     config.type = media_from_stdin ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
-422     config.path = media_file;
-423     config.loop = GET_OPTION(media_loop) &amp;&amp; !media_from_stdin;
-424     log_debug(&quot;Using media %s: %s (webcam disabled)&quot;, media_from_stdin ? &quot;stdin&quot; : &quot;file&quot;, media_file);
-425   } else if (GET_OPTION(test_pattern)) {
-426     // Test pattern mode - don't open real webcam
-427     config.type = MEDIA_SOURCE_TEST;
-428     config.path = NULL;
-429     log_debug(&quot;Using test pattern mode&quot;);
-430   } else {
-431     // Webcam mode (default)
-432     static char webcam_index_str[32];
-433     safe_snprintf(webcam_index_str, sizeof(webcam_index_str), &quot;%u&quot;, GET_OPTION(webcam_index));
-434     config.type = MEDIA_SOURCE_WEBCAM;
-435     config.path = webcam_index_str;
-436     log_debug(&quot;Using webcam device %u&quot;, GET_OPTION(webcam_index));
-437   }
-438   config.target_fps = CAPTURE_TARGET_FPS;
-439   config.resize_for_network = true; // Client always resizes for network transmission
-440 
-441   // Configure audio capture with fallback to microphone
-442   config.enable_audio = true;
-443   config.audio_fallback_to_mic = true;
-444   config.mic_audio_ctx = audio_get_context();
-445 
-446   // Add seek timestamp if specified
-447   config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
-448 
-449   // Create capture context using session library
-450   g_capture_capture_ctx = session_capture_create(&amp;config);
-451   if (!g_capture_capture_ctx) {
-452     // Check if there's already an error set (e.g., ERROR_WEBCAM_IN_USE)
-453     asciichat_error_t existing_error = GET_ERRNO();
-454     log_debug(&quot;session_capture_create failed, GET_ERRNO() returned: %d&quot;, existing_error);
-455     if (existing_error != ASCIICHAT_OK) {
-456       log_debug(&quot;Returning existing error code %d&quot;, existing_error);
-457       return existing_error;
-458     }
-459     SET_ERRNO(ERROR_MEDIA_INIT, &quot;Failed to initialize capture source&quot;);
-460     return -1;
-461   }
-462 
-463   return 0;
-464 }</pre>
+<h2 class="Ss" id="void_*_capture_get_media_source_(void_)"><a class="permalink" href="#void_*_capture_get_media_source_(void_)">void
+  * capture_get_media_source (void )</a></h2>
+<p class="Pp">Definition at line <b>554</b> of file <b>client/capture.c</b>.</p>
+<pre>554                                      {
+555   return session_capture_get_media_source(g_capture_capture_ctx);
+556 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>session_capture_config_t::audio_fallback_to_mic</b>,
-    <b>audio_get_context()</b>, <b>CAPTURE_TARGET_FPS</b>,
-    <b>session_capture_config_t::enable_audio</b>, <b>ERROR_MEDIA_INIT</b>,
-    <b>GET_ERRNO</b>, <b>GET_OPTION</b>,
-    <b>session_capture_config_t::initial_seek_timestamp</b>, <b>log_debug</b>,
-    <b>session_capture_config_t::loop</b>, <b>MEDIA_SOURCE_FILE</b>,
-    <b>MEDIA_SOURCE_STDIN</b>, <b>MEDIA_SOURCE_TEST</b>,
-    <b>MEDIA_SOURCE_WEBCAM</b>, <b>session_capture_config_t::mic_audio_ctx</b>,
-    <b>session_capture_config_t::path</b>,
-    <b>session_capture_config_t::resize_for_network</b>, <b>safe_snprintf()</b>,
-    <b>session_capture_create()</b>, <b>SET_ERRNO</b>,
-    <b>session_capture_config_t::target_fps</b>, and
-    <b>session_capture_config_t::type</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_capture_start_thread_()"><a class="permalink" href="#int_capture_start_thread_()">int
-  capture_start_thread ()</a></h2>
-<p class="Pp">Start capture thread. Start capture thread</p>
-<p class="Pp"></p>
-<p class="Pp">Creates and starts the webcam capture thread. Also sends stream
-    start notification to server.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">0 on success, negative on error</div>
-<p class="Pp">Definition at line <b>475</b> of file <b>client/capture.c</b>.</p>
-<pre>475                            {
-476   if (THREAD_IS_CREATED(g_capture_thread_created)) {
-477     log_warn(&quot;Capture thread already created&quot;);
-478     return 0;
-479   }
-480 
-481   // Register capture atomics with named debug registry
-482   static bool capture_atomics_registered = false;
-483   if (!capture_atomics_registered) {
-484     NAMED_REGISTER_ATOMIC(&amp;g_capture_thread_exited, &quot;capture_webcam_thread_exit_confirmation&quot;, NULL);
-485     capture_atomics_registered = true;
-486   }
-487 
-488   // Start webcam capture thread
-489   atomic_store_bool(&amp;g_capture_thread_exited, false);
-490   if (thread_pool_spawn(g_client_worker_pool, webcam_capture_thread_func, NULL, 2, &quot;webcam_capture&quot;) != ASCIICHAT_OK) {
-491     SET_ERRNO(ERROR_THREAD, &quot;Webcam capture thread creation failed&quot;);
-492     LOG_ERRNO_IF_SET(&quot;Webcam capture thread creation failed&quot;);
-493     return -1;
-494   }
-495 
-496   g_capture_thread_created = true;
-497   log_debug(&quot;Webcam capture thread created successfully&quot;);
-498 
-499   return 0;
-500 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
-    <b>ERROR_THREAD</b>, <b>g_client_worker_pool</b>, <b>log_debug</b>,
-    <b>LOG_ERRNO_IF_SET</b>, <b>log_warn</b>, <b>NAMED_REGISTER_ATOMIC</b>,
-    <b>SET_ERRNO</b>, <b>THREAD_IS_CREATED</b>, and
-  <b>thread_pool_spawn()</b>.</p>
-<p class="Pp">Referenced by <b>protocol_start_connection()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_capture_stop_thread_()"><a class="permalink" href="#void_capture_stop_thread_()">void
-  capture_stop_thread ()</a></h2>
-<p class="Pp">Stop capture thread. Stop capture thread</p>
-<p class="Pp"></p>
-<p class="Pp">Gracefully stops the capture thread and cleans up resources. Safe
-    to call multiple times.</p>
-<p class="Pp">Definition at line <b>509</b> of file <b>client/capture.c</b>.</p>
-<pre>509                            {
-510   if (!THREAD_IS_CREATED(g_capture_thread_created)) {
-511     return;
-512   }
-513 
-514   // Wait for thread to exit gracefully
-515   int wait_count = 0;
-516   while (wait_count &lt; 20 &amp;&amp; !atomic_load_bool(&amp;g_capture_thread_exited)) {
-517     platform_sleep_us(100 * US_PER_MS_INT); // 100ms
-518     wait_count++;
-519   }
-520 
-521   if (!atomic_load_bool(&amp;g_capture_thread_exited)) {
-522     log_warn(&quot;Capture thread not responding after 2 seconds - will be joined by thread pool&quot;);
-523   }
-524 
-525   // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
-526   g_capture_thread_created = false;
-527 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, <b>log_warn</b>,
-    <b>platform_sleep_us()</b>, <b>THREAD_IS_CREATED</b>, and
-    <b>US_PER_MS_INT</b>.</p>
-<p class="Pp">Referenced by <b>capture_cleanup()</b>, and
-    <b>protocol_stop_connection()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> capture_thread_exited ()</h2>
-<p class="Pp">Check if capture thread has exited. Check if capture thread has
-    exited</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">true if thread has exited, false otherwise</div>
-<p class="Pp">Definition at line <b>535</b> of file <b>client/capture.c</b>.</p>
-<pre>535                              {
-536   return atomic_load_bool(&amp;g_capture_thread_exited);
-537 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>.</p>
+<p class="Pp">References <b>capture_get_media_source()</b>, and
+    <b>session_capture_get_media_source()</b>.</p>
+<p class="Pp">Referenced by <b>capture_get_media_source()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -432,7 +262,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

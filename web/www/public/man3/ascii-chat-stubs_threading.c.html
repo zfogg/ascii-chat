@@ -46,17 +46,17 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">int <b>thread_join_timeout</b>
+<p class="Pp">int <b>asciichat_thread_join_timeout</b>
     (<b>asciichat_thread_t</b> *thread, void **retval, <b>uint64_t</b>
     timeout_ns)
   <br/>
   Wait for a thread to complete with timeout. <b>bool</b>
-    <b>thread_is_initialized</b> (<b>asciichat_thread_t</b> *thread)
+    <b>asciichat_thread_is_initialized</b> (<b>asciichat_thread_t</b> *thread)
   <br/>
   Check if a thread handle has been initialized. <b>thread_pool_t</b> *
     <b>thread_pool_create</b> (int num_threads)
   <br/>
-  void <b>thread_pool_destroy</b> (<b>thread_pool_t</b> *<b>pool</b>)
+  void <b>thread_pool_destroy</b> (<b>thread_pool_t</b> *pool)
   <br/>
   Destroy a thread pool. int <b>cond_init</b> (<b>cond_t</b> *cond, const char
     *name)
@@ -70,11 +70,11 @@
     <b>cond_broadcast</b> (<b>cond_t</b> *cond)
   <br/>
   Broadcast to a condition variable (wake all waiting threads). int
-    <b>cond_wait_impl</b> (<b>cond_t</b> *cond, <b>mutex_t</b> *<b>mutex</b>)
+    <b>cond_wait_impl</b> (<b>cond_t</b> *cond, <b>mutex_t</b> *mutex)
   <br/>
   Wait on a condition variable (blocking) - implementation function. int
-    <b>cond_timedwait_impl</b> (<b>cond_t</b> *cond, <b>mutex_t</b>
-    *<b>mutex</b>, <b>uint64_t</b> timeout_ns)
+    <b>cond_timedwait_impl</b> (<b>cond_t</b> *cond, <b>mutex_t</b> *mutex,
+    <b>uint64_t</b> timeout_ns)
   <br/>
   Wait on a condition variable with timeout - implementation function.
   <br/>
@@ -121,8 +121,8 @@
     even if threads are still running - they will be stopped first.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>pool</b><i></i><b> Thread pool to destroy (NULL
-  is safe, does nothing)</b></div>
+<div class="Bd-indent"><i>pool</i> Thread pool to destroy (NULL is safe, does
+  nothing)</div>
 <p class="Pp">Definition at line <b>31</b> of file <b>stubs/threading.c</b>.</p>
 <pre>31                                               {
 32   (void)pool;
@@ -142,7 +142,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.11.25</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

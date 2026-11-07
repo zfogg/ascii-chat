@@ -36,6 +36,21 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>LOG_FORMAT_STRFTIME_LITERAL_MAX</b> 64
+  <br/>
+  #define <b>LOG_FORMAT_FORMAT_BUFFER_SIZE</b> (1 +
+    <b>LOG_FORMAT_STRFTIME_LITERAL_MAX</b> + 1)
+  <br/>
+  #define <b>LOG_FORMAT_LEVEL_NAME_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>LOG_FORMAT_CONTENT_BUFFER_SIZE</b> 512
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>log_template_t</b> * <b>log_template_parse</b> (const char
@@ -64,13 +79,42 @@
 <p class="Pp">Definition in file <b>log/format.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_FORMAT_CONTENT_BUFFER_SIZE___512"><a class="permalink" href="#_define_LOG_FORMAT_CONTENT_BUFFER_SIZE___512">#define
+  LOG_FORMAT_CONTENT_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>log/format.c</b>.</p>
+<p class="Pp">Referenced by <b>log_template_apply()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_FORMAT_FORMAT_BUFFER_SIZE___(1_+_"><a class="permalink" href="#_define_LOG_FORMAT_FORMAT_BUFFER_SIZE___(1_+_">#define
+  LOG_FORMAT_FORMAT_BUFFER_SIZE (1 + <b>LOG_FORMAT_STRFTIME_LITERAL_MAX</b> +
+  1)</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>log/format.c</b>.</p>
+<p class="Pp">Referenced by <b>log_template_apply()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_FORMAT_LEVEL_NAME_BUFFER_SIZE___32"><a class="permalink" href="#_define_LOG_FORMAT_LEVEL_NAME_BUFFER_SIZE___32">#define
+  LOG_FORMAT_LEVEL_NAME_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>log/format.c</b>.</p>
+<p class="Pp">Referenced by <b>log_template_apply()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_FORMAT_STRFTIME_LITERAL_MAX___64"><a class="permalink" href="#_define_LOG_FORMAT_STRFTIME_LITERAL_MAX___64">#define
+  LOG_FORMAT_STRFTIME_LITERAL_MAX 64</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>log/format.c</b>.</p>
+<p class="Pp">Referenced by <b>log_template_apply()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

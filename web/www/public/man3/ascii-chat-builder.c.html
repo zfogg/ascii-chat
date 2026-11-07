@@ -38,7 +38,11 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>asprintf</b> <b>platform_asprintf</b>
+<p class="Pp">#define <b>OPTIONS_BUILDER_FORMATTED_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>OPTIONS_MAX_INT_DEFAULTS</b> 256
+  <br/>
+  #define <b>OPTIONS_MAX_DOUBLE_DEFAULTS</b> 1024
   <br/>
   <br/>
 </p>
@@ -98,33 +102,32 @@
     (<b>options_builder_t</b> *builder, const char *long_name, char short_name,
     size_t offset, int default_value, const char *help_text, const char *group,
     <b>bool</b> required, const char *env_var_name, <b>bool</b>(*validate)(const
-    void *, char **))
+    void *))
   <br/>
   Add integer option. void <b>options_builder_add_int_with_metadata</b>
     (<b>options_builder_t</b> *builder, const char *long_name, char short_name,
     size_t offset, int default_value, const char *help_text, const char *group,
     <b>bool</b> required, const char *env_var_name, <b>bool</b>(*validate)(const
-    void *options_struct, char **error_msg), const <b>option_metadata_t</b>
-    *metadata)
+    void *options_struct), const <b>option_metadata_t</b> *metadata)
   <br/>
   Add integer option with metadata (for numeric ranges and examples). void
     <b>options_builder_add_string</b> (<b>options_builder_t</b> *builder, const
     char *long_name, char short_name, size_t offset, const char *default_value,
     const char *help_text, const char *group, <b>bool</b> required, const char
-    *env_var_name, <b>bool</b>(*validate)(const void *, char **))
+    *env_var_name, <b>bool</b>(*validate)(const void *))
   <br/>
   Add string option. void <b>options_builder_add_double</b>
     (<b>options_builder_t</b> *builder, const char *long_name, char short_name,
     size_t offset, double default_value, const char *help_text, const char
     *group, <b>bool</b> required, const char *env_var_name,
-    <b>bool</b>(*validate)(const void *, char **), <b>bool</b> optional_arg)
+    <b>bool</b>(*validate)(const void *), <b>bool</b> optional_arg)
   <br/>
   Add double/float option. void <b>options_builder_add_double_with_metadata</b>
     (<b>options_builder_t</b> *builder, const char *long_name, char short_name,
     size_t offset, double default_value, const char *help_text, const char
     *group, <b>bool</b> required, const char *env_var_name,
-    <b>bool</b>(*validate)(const void *, char **), const
-    <b>option_metadata_t</b> *metadata, <b>bool</b> optional_arg)
+    <b>bool</b>(*validate)(const void *), const <b>option_metadata_t</b>
+    *metadata, <b>bool</b> optional_arg)
   <br/>
   void <b>options_builder_add_callback</b> (<b>options_builder_t</b> *builder,
     const char *long_name, char short_name, size_t offset, const void
@@ -157,8 +160,11 @@
     const <b>option_descriptor_t</b> *descriptor)
   <br/>
   Add full option descriptor (advanced). void
-    <b>options_builder_set_mode_bitmask</b> (<b>options_builder_t</b> *builder,
-    <b>option_mode_bitmask_t</b> mode_bitmask)
+    <b>options_builder_set_string_parser</b> (<b>options_builder_t</b> *builder,
+    <b>bool</b>(*parser)(const char *, void *, char **))
+  <br/>
+  void <b>options_builder_set_mode_bitmask</b> (<b>options_builder_t</b>
+    *builder, <b>option_mode_bitmask_t</b> mode_bitmask)
   <br/>
   Set mode bitmask on the last added option descriptor. void
     <b>options_builder_set_arg_placeholder</b> (<b>options_builder_t</b>
@@ -222,11 +228,11 @@
   <br/>
   Add usage line descriptor. void <b>options_builder_add_example</b>
     (<b>options_builder_t</b> *builder, <b>uint32_t</b> mode_bitmask, const char
-    *<b>args</b>, const char *description, <b>bool</b> owns_args)
+    *args, const char *description, <b>bool</b> owns_args)
   <br/>
   Add example descriptor. void <b>options_builder_add_example_utility</b>
     (<b>options_builder_t</b> *builder, <b>uint32_t</b> mode_bitmask, const char
-    *<b>args</b>, const char *description, <b>bool</b> is_utility_command)
+    *args, const char *description, <b>bool</b> is_utility_command)
   <br/>
   Add an example with utility command support. void
     <b>options_builder_add_mode</b> (<b>options_builder_t</b> *builder, const
@@ -274,10 +280,23 @@
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="_define_asprintf___"><a class="permalink" href="#_define_asprintf___">#define
-  asprintf <b>platform_asprintf</b></a></h2>
-<p class="Pp">Definition at line <b>24</b> of file <b>builder.c</b>.</p>
-<p class="Pp">Referenced by <b>options_config_validate()</b>.</p>
+<h2 class="Ss" id="_define_OPTIONS_BUILDER_FORMATTED_BUFFER_SIZE___32"><a class="permalink" href="#_define_OPTIONS_BUILDER_FORMATTED_BUFFER_SIZE___32">#define
+  OPTIONS_BUILDER_FORMATTED_BUFFER_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>builder.c</b>.</p>
+<p class="Pp">Referenced by <b>format_option_default_value_str()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_MAX_DOUBLE_DEFAULTS___1024"><a class="permalink" href="#_define_OPTIONS_MAX_DOUBLE_DEFAULTS___1024">#define
+  OPTIONS_MAX_DOUBLE_DEFAULTS 1024</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>builder.c</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_double()</b>,
+    <b>options_builder_add_double_with_metadata()</b>, and
+    <b>options_builder_add_string()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_MAX_INT_DEFAULTS___256"><a class="permalink" href="#_define_OPTIONS_MAX_INT_DEFAULTS___256">#define
+  OPTIONS_MAX_INT_DEFAULTS 256</a></h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>builder.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -287,26 +306,28 @@
 <h2 class="Ss" id="void_ensure_dependency_capacity_("><a class="permalink" href="#void_ensure_dependency_capacity_(">void
   ensure_dependency_capacity (<b>options_builder_t</b> * builder)</a></h2>
 <p class="Pp">Grow dependency array if needed.</p>
-<p class="Pp">Definition at line <b>230</b> of file <b>builder.c</b>.</p>
-<pre>230                                                             {
-231   if (builder-&gt;num_dependencies &gt;= builder-&gt;dependency_capacity) {
-232     size_t new_capacity = builder-&gt;dependency_capacity * 2;
-233     option_dependency_t *new_dependencies =
-234         SAFE_REALLOC(builder-&gt;dependencies, new_capacity * sizeof(option_dependency_t), option_dependency_t *);
-235     if (!new_dependencies) {
-236       log_fatal(&quot;Failed to reallocate dependencies array&quot;);
-237       return;
-238     }
-239     builder-&gt;dependencies = new_dependencies;
-240     builder-&gt;dependency_capacity = new_capacity;
-241   }
-242 }</pre>
+<p class="Pp">Definition at line <b>264</b> of file <b>builder.c</b>.</p>
+<pre>264                                                             {
+265   if (builder-&gt;num_dependencies &gt;= builder-&gt;dependency_capacity) {
+266     size_t new_capacity = builder-&gt;dependency_capacity * 2;
+267     option_dependency_t *new_dependencies =
+268         SAFE_REALLOC(builder-&gt;dependencies, new_capacity * sizeof(option_dependency_t), option_dependency_t *);
+269     if (!new_dependencies) {
+270       log_fatal(&quot;Failed to reallocate dependencies array&quot;);
+271       return;
+272     }
+273     builder-&gt;dependencies = new_dependencies;
+274     builder-&gt;dependency_capacity = new_capacity;
+275   }
+276 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::dependencies</b>,
-    <b>options_builder_t::dependency_capacity</b>, <b>log_fatal</b>,
+    <b>options_builder_t::dependency_capacity</b>,
+    <b>ensure_dependency_capacity()</b>, <b>log_fatal</b>,
     <b>options_builder_t::num_dependencies</b>, and <b>SAFE_REALLOC</b>.</p>
-<p class="Pp">Referenced by <b>options_builder_add_dependency()</b>,
+<p class="Pp">Referenced by <b>ensure_dependency_capacity()</b>,
+    <b>options_builder_add_dependency()</b>,
     <b>options_builder_add_dependency_conflicts()</b>,
     <b>options_builder_add_dependency_implies()</b>, and
     <b>options_builder_add_dependency_requires()</b>.</p>
@@ -315,27 +336,29 @@
 <h2 class="Ss" id="void_ensure_descriptor_capacity_("><a class="permalink" href="#void_ensure_descriptor_capacity_(">void
   ensure_descriptor_capacity (<b>options_builder_t</b> * builder)</a></h2>
 <p class="Pp">Grow descriptor array if needed.</p>
-<p class="Pp">Definition at line <b>213</b> of file <b>builder.c</b>.</p>
-<pre>213                                                             {
-214   if (builder-&gt;num_descriptors &gt;= builder-&gt;descriptor_capacity) {
-215     size_t new_capacity = builder-&gt;descriptor_capacity * 2;
-216     option_descriptor_t *new_descriptors =
-217         SAFE_REALLOC(builder-&gt;descriptors, new_capacity * sizeof(option_descriptor_t), option_descriptor_t *);
-218     if (!new_descriptors) {
-219       log_fatal(&quot;Failed to reallocate descriptors array&quot;);
-220       return;
-221     }
-222     builder-&gt;descriptors = new_descriptors;
-223     builder-&gt;descriptor_capacity = new_capacity;
-224   }
-225 }</pre>
+<p class="Pp">Definition at line <b>247</b> of file <b>builder.c</b>.</p>
+<pre>247                                                             {
+248   if (builder-&gt;num_descriptors &gt;= builder-&gt;descriptor_capacity) {
+249     size_t new_capacity = builder-&gt;descriptor_capacity * 2;
+250     option_descriptor_t *new_descriptors =
+251         SAFE_REALLOC(builder-&gt;descriptors, new_capacity * sizeof(option_descriptor_t), option_descriptor_t *);
+252     if (!new_descriptors) {
+253       log_fatal(&quot;Failed to reallocate descriptors array&quot;);
+254       return;
+255     }
+256     builder-&gt;descriptors = new_descriptors;
+257     builder-&gt;descriptor_capacity = new_capacity;
+258   }
+259 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptor_capacity</b>,
-    <b>options_builder_t::descriptors</b>, <b>log_fatal</b>,
-    <b>options_builder_t::num_descriptors</b>, and <b>SAFE_REALLOC</b>.</p>
-<p class="Pp">Referenced by <b>options_builder_add_action()</b>,
-    <b>options_builder_add_bool()</b>, <b>options_builder_add_callback()</b>,
+    <b>options_builder_t::descriptors</b>, <b>ensure_descriptor_capacity()</b>,
+    <b>log_fatal</b>, <b>options_builder_t::num_descriptors</b>, and
+    <b>SAFE_REALLOC</b>.</p>
+<p class="Pp">Referenced by <b>ensure_descriptor_capacity()</b>,
+    <b>options_builder_add_action()</b>, <b>options_builder_add_bool()</b>,
+    <b>options_builder_add_callback()</b>,
     <b>options_builder_add_callback_optional()</b>,
     <b>options_builder_add_callback_with_metadata()</b>,
     <b>options_builder_add_descriptor()</b>,
@@ -349,94 +372,98 @@
 <h2 class="Ss" id="void_ensure_positional_arg_capacity_("><a class="permalink" href="#void_ensure_positional_arg_capacity_(">void
   ensure_positional_arg_capacity (<b>options_builder_t</b> * builder)</a></h2>
 <p class="Pp">Grow positional arg array if needed.</p>
-<p class="Pp">Definition at line <b>247</b> of file <b>builder.c</b>.</p>
-<pre>247                                                                 {
-248   if (builder-&gt;num_positional_args &gt;= builder-&gt;positional_arg_capacity) {
-249     size_t new_capacity = builder-&gt;positional_arg_capacity * 2;
-250     if (new_capacity == 0)
-251       new_capacity = INITIAL_POSITIONAL_ARG_CAPACITY;
-252 
-253     positional_arg_descriptor_t *new_positional = SAFE_REALLOC(
-254         builder-&gt;positional_args, new_capacity * sizeof(positional_arg_descriptor_t), positional_arg_descriptor_t *);
-255     if (!new_positional) {
-256       log_fatal(&quot;Failed to reallocate positional_args array&quot;);
-257       return;
-258     }
-259     builder-&gt;positional_args = new_positional;
-260     builder-&gt;positional_arg_capacity = new_capacity;
-261   }
-262 }</pre>
+<p class="Pp">Definition at line <b>281</b> of file <b>builder.c</b>.</p>
+<pre>281                                                                 {
+282   if (builder-&gt;num_positional_args &gt;= builder-&gt;positional_arg_capacity) {
+283     size_t new_capacity = builder-&gt;positional_arg_capacity * 2;
+284     if (new_capacity == 0)
+285       new_capacity = INITIAL_POSITIONAL_ARG_CAPACITY;
+286
+287     positional_arg_descriptor_t *new_positional = SAFE_REALLOC(
+288         builder-&gt;positional_args, new_capacity * sizeof(positional_arg_descriptor_t), positional_arg_descriptor_t *);
+289     if (!new_positional) {
+290       log_fatal(&quot;Failed to reallocate positional_args array&quot;);
+291       return;
+292     }
+293     builder-&gt;positional_args = new_positional;
+294     builder-&gt;positional_arg_capacity = new_capacity;
+295   }
+296 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>INITIAL_POSITIONAL_ARG_CAPACITY</b>,
-    <b>log_fatal</b>, <b>options_builder_t::num_positional_args</b>,
+<p class="Pp">References <b>ensure_positional_arg_capacity()</b>,
+    <b>INITIAL_POSITIONAL_ARG_CAPACITY</b>, <b>log_fatal</b>,
+    <b>options_builder_t::num_positional_args</b>,
     <b>options_builder_t::positional_arg_capacity</b>,
     <b>options_builder_t::positional_args</b>, and <b>SAFE_REALLOC</b>.</p>
-<p class="Pp">Referenced by <b>options_builder_add_positional()</b>.</p>
+<p class="Pp">Referenced by <b>ensure_positional_arg_capacity()</b>, and
+    <b>options_builder_add_positional()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">const <b>option_descriptor_t</b> * find_option (const
   <b>options_config_t</b> * config, const char * long_name)</h2>
 <p class="Pp">Find option descriptor by long name.</p>
-<p class="Pp">Definition at line <b>344</b> of file <b>builder.c</b>.</p>
-<pre>344                                                                                               {
-345   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-346     if (strcmp(config-&gt;descriptors[i].long_name, long_name) == 0) {
-347       return &amp;config-&gt;descriptors[i];
-348     }
-349   }
-350   return NULL;
-351 }</pre>
+<p class="Pp">Definition at line <b>378</b> of file <b>builder.c</b>.</p>
+<pre>378                                                                                               {
+379   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+380     if (strcmp(config-&gt;descriptors[i].long_name, long_name) == 0) {
+381       return &amp;config-&gt;descriptors[i];
+382     }
+383   }
+384   return NULL;
+385 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_config_t::descriptors</b>,
-    <b>option_descriptor_t::long_name</b>, and
+    <b>find_option()</b>, <b>option_descriptor_t::long_name</b>, and
     <b>options_config_t::num_descriptors</b>.</p>
-<p class="Pp">Referenced by <b>is_option_set()</b>.</p>
+<p class="Pp">Referenced by <b>ensure_owned_strings_capacity()</b>,
+    <b>find_option()</b>, and <b>is_option_set()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss">const <b>option_descriptor_t</b> * find_option_descriptor (const
   <b>options_config_t</b> * config, const char * opt_name)</h2>
 <p class="Pp">Find option descriptor by short or long name.</p>
-<p class="Pp">Definition at line <b>1488</b> of file <b>builder.c</b>.</p>
-<pre>1488                                                                                                         {
-1489   if (!opt_name || opt_name[0] == '\0')
-1490     return NULL;
-1491 
-1492   // Handle short options: -x (single dash, single char)
-1493   if (opt_name[0] == '-' &amp;&amp; opt_name[1] != '-' &amp;&amp; opt_name[1] != '\0') {
-1494     // This is a short option like -x
-1495     char short_char = opt_name[1];
-1496     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-1497       if (config-&gt;descriptors[i].short_name == short_char) {
-1498         return &amp;config-&gt;descriptors[i];
-1499       }
-1500     }
-1501     // Short option not found
-1502     return NULL;
-1503   }
-1504 
-1505   // Handle long options: --name (double dash)
-1506   if (opt_name[0] == '-' &amp;&amp; opt_name[1] == '-' &amp;&amp; opt_name[2] != '\0') {
-1507     const char *long_name = opt_name + 2; // Skip the '--'
-1508     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-1509       if (strcmp(config-&gt;descriptors[i].long_name, long_name) == 0) {
-1510         return &amp;config-&gt;descriptors[i];
-1511       }
-1512     }
-1513     // Long option not found
-1514     return NULL;
-1515   }
-1516 
-1517   // Not a recognized option format
-1518   return NULL;
-1519 }</pre>
+<p class="Pp">Definition at line <b>1532</b> of file <b>builder.c</b>.</p>
+<pre>1532                                                                                                         {
+1533   if (!opt_name || opt_name[0] == '\0')
+1534     return NULL;
+1535
+1536   // Handle short options: -x (single dash, single char)
+1537   if (opt_name[0] == '-' &amp;&amp; opt_name[1] != '-' &amp;&amp; opt_name[1] != '\0') {
+1538     // This is a short option like -x
+1539     char short_char = opt_name[1];
+1540     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+1541       if (config-&gt;descriptors[i].short_name == short_char) {
+1542         return &amp;config-&gt;descriptors[i];
+1543       }
+1544     }
+1545     // Short option not found
+1546     return NULL;
+1547   }
+1548
+1549   // Handle long options: --name (double dash)
+1550   if (opt_name[0] == '-' &amp;&amp; opt_name[1] == '-' &amp;&amp; opt_name[2] != '\0') {
+1551     const char *long_name = opt_name + 2; // Skip the '--'
+1552     for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+1553       if (strcmp(config-&gt;descriptors[i].long_name, long_name) == 0) {
+1554         return &amp;config-&gt;descriptors[i];
+1555       }
+1556     }
+1557     // Long option not found
+1558     return NULL;
+1559   }
+1560
+1561   // Not a recognized option format
+1562   return NULL;
+1563 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_config_t::descriptors</b>,
-    <b>option_descriptor_t::long_name</b>,
+    <b>find_option_descriptor()</b>, <b>option_descriptor_t::long_name</b>,
     <b>options_config_t::num_descriptors</b>, and
     <b>option_descriptor_t::short_name</b>.</p>
+<p class="Pp">Referenced by <b>find_option_descriptor()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_format_option_default_value_str_(const_"><a class="permalink" href="#int_format_option_default_value_str_(const_">int
@@ -451,99 +478,101 @@
 <i>bufsize</i> Size of buffer</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of characters written to buf</div>
-<p class="Pp">Definition at line <b>83</b> of file <b>builder.c</b>.</p>
-<pre>83                                                                                                 {
-84   if (!desc || !buf || bufsize == 0) {
-85     return 0;
-86   }
-87 
-88   // For callback options with enums, look up the enum string by matching the default value
-89   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;metadata.enum_values &amp;&amp; desc-&gt;default_value) {
-90     int default_int_val = 0;
-91     memcpy(&amp;default_int_val, desc-&gt;default_value, sizeof(int));
-92 
-93     // Try to find matching enum value
-94     if (desc-&gt;metadata.enum_integer_values) {
-95       for (size_t i = 0; desc-&gt;metadata.enum_values[i] != NULL; i++) {
-96         if (desc-&gt;metadata.enum_integer_values[i] == default_int_val) {
-97           return safe_snprintf(buf, bufsize, &quot;%s&quot;, desc-&gt;metadata.enum_values[i]);
-98         }
-99       }
-100     } else {
-101       // Fallback: assume sequential 0-based indices if integer values not provided
-102       // Count enum values to check bounds
-103       size_t enum_count = 0;
-104       while (desc-&gt;metadata.enum_values[enum_count] != NULL) {
-105         enum_count++;
-106       }
-107       if (default_int_val &gt;= 0 &amp;&amp; (size_t)default_int_val &lt; enum_count) {
-108         return safe_snprintf(buf, bufsize, &quot;%s&quot;, desc-&gt;metadata.enum_values[default_int_val]);
-109       }
-110     }
-111   }
-112 
-113   // For callback options storing numeric types (int/double/float), format them as numbers
-114   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;default_value &amp;&amp; desc-&gt;metadata.enum_values == NULL) {
-115     // Check if this is a numeric callback by looking for numeric_range metadata
-116     // Numeric callbacks have min/max range constraints set (max != 0 indicates a range was set)
-117     if (desc-&gt;metadata.numeric_range.max != 0 || desc-&gt;metadata.numeric_range.min != 0) {
-118       // This is a numeric callback option - extract and format the value
-119       // Determine if it's int or double based on range (int max is 2147483647)
-120       double default_double = 0.0;
-121       if (desc-&gt;metadata.numeric_range.max &lt;= 2147483647.0 &amp;&amp; desc-&gt;metadata.numeric_range.min &gt;= -2147483648.0) {
-122         // Integer-ranged value (like port 1-65535) - stored as int
-123         int default_int = 0;
-124         memcpy(&amp;default_int, desc-&gt;default_value, sizeof(int));
-125         default_double = (double)default_int;
-126       } else {
-127         // Double-ranged value - stored as double
-128         memcpy(&amp;default_double, desc-&gt;default_value, sizeof(double));
-129       }
-130 
-131       // Format with appropriate precision (remove trailing zeros for integers)
-132       char formatted[32];
-133       safe_snprintf(formatted, sizeof(formatted), &quot;%.1f&quot;, default_double);
-134 
-135       // Remove trailing zeros after decimal point
-136       char *dot = strchr(formatted, '.');
-137       if (dot) {
-138         char *end = formatted + strlen(formatted) - 1;
-139         while (end &gt; dot &amp;&amp; *end == '0') {
-140           end--;
-141         }
-142         if (*end == '.') {
-143           *end = '\0';
-144         } else {
-145           *(end + 1) = '\0';
-146         }
-147       }
-148 
-149       return safe_snprintf(buf, bufsize, &quot;%s&quot;, formatted);
-150     }
-151   }
-152 
-153   // For callback options with string defaults (no enum, no numeric range)
-154   // Treat default_value as a const char* string pointer
-155   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;default_value &amp;&amp; desc-&gt;metadata.enum_values == NULL &amp;&amp;
-156       desc-&gt;metadata.numeric_range.max == 0 &amp;&amp; desc-&gt;metadata.numeric_range.min == 0) {
-157     const char *str_default = (const char *)desc-&gt;default_value;
-158     if (str_default &amp;&amp; str_default[0] != '\0') {
-159       return safe_snprintf(buf, bufsize, &quot;%s&quot;, str_default);
-160     }
-161   }
-162 
-163   return options_format_default_value(desc-&gt;type, desc-&gt;default_value, buf, bufsize);
-164 }</pre>
+<p class="Pp">Definition at line <b>117</b> of file <b>builder.c</b>.</p>
+<pre>117                                                                                                 {
+118   if (!desc || !buf || bufsize == 0) {
+119     return 0;
+120   }
+121
+122   // For callback options with enums, look up the enum string by matching the default value
+123   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;metadata.enum_values &amp;&amp; desc-&gt;default_value) {
+124     int default_int_val = 0;
+125     memcpy(&amp;default_int_val, desc-&gt;default_value, sizeof(int));
+126
+127     // Try to find matching enum value
+128     if (desc-&gt;metadata.enum_integer_values) {
+129       for (size_t i = 0; desc-&gt;metadata.enum_values[i] != NULL; i++) {
+130         if (desc-&gt;metadata.enum_integer_values[i] == default_int_val) {
+131           return safe_snprintf(buf, bufsize, &quot;%s&quot;, desc-&gt;metadata.enum_values[i]);
+132         }
+133       }
+134     } else {
+135       // Fallback: assume sequential 0-based indices if integer values not provided
+136       // Count enum values to check bounds
+137       size_t enum_count = 0;
+138       while (desc-&gt;metadata.enum_values[enum_count] != NULL) {
+139         enum_count++;
+140       }
+141       if (default_int_val &gt;= 0 &amp;&amp; (size_t)default_int_val &lt; enum_count) {
+142         return safe_snprintf(buf, bufsize, &quot;%s&quot;, desc-&gt;metadata.enum_values[default_int_val]);
+143       }
+144     }
+145   }
+146
+147   // For callback options storing numeric types (int/double/float), format them as numbers
+148   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;default_value &amp;&amp; desc-&gt;metadata.enum_values == NULL) {
+149     // Check if this is a numeric callback by looking for numeric_range metadata
+150     // Numeric callbacks have min/max range constraints set (max != 0 indicates a range was set)
+151     if (desc-&gt;metadata.numeric_range.max != 0 || desc-&gt;metadata.numeric_range.min != 0) {
+152       // This is a numeric callback option - extract and format the value
+153       // Determine if it's int or double based on range (int max is 2147483647)
+154       double default_double = 0.0;
+155       if (desc-&gt;metadata.numeric_range.max &lt;= 2147483647.0 &amp;&amp; desc-&gt;metadata.numeric_range.min &gt;= -2147483648.0) {
+156         // Integer-ranged value (like port 1-65535) - stored as int
+157         int default_int = 0;
+158         memcpy(&amp;default_int, desc-&gt;default_value, sizeof(int));
+159         default_double = (double)default_int;
+160       } else {
+161         // Double-ranged value - stored as double
+162         memcpy(&amp;default_double, desc-&gt;default_value, sizeof(double));
+163       }
+164
+165       // Format with appropriate precision (remove trailing zeros for integers)
+166       char formatted[OPTIONS_BUILDER_FORMATTED_BUFFER_SIZE];
+167       safe_snprintf(formatted, sizeof(formatted), &quot;%.1f&quot;, default_double);
+168
+169       // Remove trailing zeros after decimal point
+170       char *dot = strchr(formatted, '.');
+171       if (dot) {
+172         char *end = formatted + strlen(formatted) - 1;
+173         while (end &gt; dot &amp;&amp; *end == '0') {
+174           end--;
+175         }
+176         if (*end == '.') {
+177           *end = '\0';
+178         } else {
+179           *(end + 1) = '\0';
+180         }
+181       }
+182
+183       return safe_snprintf(buf, bufsize, &quot;%s&quot;, formatted);
+184     }
+185   }
+186
+187   // For callback options with string defaults (no enum, no numeric range)
+188   // Treat default_value as a const char* string pointer
+189   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;default_value &amp;&amp; desc-&gt;metadata.enum_values == NULL &amp;&amp;
+190       desc-&gt;metadata.numeric_range.max == 0 &amp;&amp; desc-&gt;metadata.numeric_range.min == 0) {
+191     const char *str_default = (const char *)desc-&gt;default_value;
+192     if (str_default &amp;&amp; str_default[0] != '\0') {
+193       return safe_snprintf(buf, bufsize, &quot;%s&quot;, str_default);
+194     }
+195   }
+196
+197   return options_format_default_value(desc-&gt;type, desc-&gt;default_value, buf, bufsize);
+198 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>option_descriptor_t::default_value</b>,
     <b>option_metadata_t::enum_integer_values</b>,
-    <b>option_metadata_t::enum_values</b>, <b>option_metadata_t::max</b>,
-    <b>option_descriptor_t::metadata</b>, <b>option_metadata_t::min</b>,
+    <b>option_metadata_t::enum_values</b>,
+    <b>format_option_default_value_str()</b>,
+    <b>option_descriptor_t::metadata</b>,
     <b>option_metadata_t::numeric_range</b>, <b>OPTION_TYPE_CALLBACK</b>,
+    <b>OPTIONS_BUILDER_FORMATTED_BUFFER_SIZE</b>,
     <b>options_format_default_value()</b>, <b>safe_snprintf()</b>, and
     <b>option_descriptor_t::type</b>.</p>
-<p class="Pp">Referenced by
+<p class="Pp">Referenced by <b>format_option_default_value_str()</b>,
     <b>options_config_print_options_sections_with_width()</b>, and
     <b>options_config_print_usage()</b>.</p>
 </section>
@@ -558,46 +587,49 @@
 <div class="Bd-indent">Pointer to string literal (&quot;INTEGER&quot;,
   &quot;NUMBER&quot;, &quot;STRING&quot;, &quot;VALUE&quot;,
   &quot;[BOOLEAN]&quot;), custom placeholder, or empty string</div>
-<p class="Pp">Definition at line <b>43</b> of file <b>builder.c</b>.</p>
-<pre>43                                                                              {
-44   if (!desc) {
-45     return &quot;&quot;;
-46   }
-47   // Check for custom placeholder first
-48   if (desc-&gt;arg_placeholder != NULL) {
-49     return desc-&gt;arg_placeholder;
-50   }
-51 
-52   // For callback options, check if it's a boolean based on enum values
-53   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;metadata.enum_values) {
-54     // Check if enum values contain &quot;true&quot; and &quot;false&quot; (boolean-like)
-55     const char *const *values = desc-&gt;metadata.enum_values;
-56     bool has_true = false, has_false = false;
-57 
-58     for (int i = 0; values[i] != NULL; i++) {
-59       if (strcmp(values[i], &quot;true&quot;) == 0 || strcmp(values[i], &quot;yes&quot;) == 0 || strcmp(values[i], &quot;on&quot;) == 0) {
-60         has_true = true;
-61       }
-62       if (strcmp(values[i], &quot;false&quot;) == 0 || strcmp(values[i], &quot;no&quot;) == 0 || strcmp(values[i], &quot;off&quot;) == 0) {
-63         has_false = true;
-64       }
-65     }
-66 
-67     // If it has both true-like and false-like values, it's boolean
-68     if (has_true &amp;&amp; has_false) {
-69       return &quot;BOOLEAN&quot;;
-70     }
-71   }
-72 
-73   return options_get_type_placeholder(desc-&gt;type);
-74 }</pre>
+<p class="Pp">Definition at line <b>77</b> of file <b>builder.c</b>.</p>
+<pre>77                                                                              {
+78   if (!desc) {
+79     return &quot;&quot;;
+80   }
+81   // Check for custom placeholder first
+82   if (desc-&gt;arg_placeholder != NULL) {
+83     return desc-&gt;arg_placeholder;
+84   }
+85
+86   // For callback options, check if it's a boolean based on enum values
+87   if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;metadata.enum_values) {
+88     // Check if enum values contain OPT_VALUE_TRUE and OPT_VALUE_FALSE (boolean-like)
+89     const char *const *values = desc-&gt;metadata.enum_values;
+90     bool has_true = false, has_false = false;
+91
+92     for (int i = 0; values[i] != NULL; i++) {
+93       if (strcmp(values[i], OPT_VALUE_TRUE) == 0 || strcmp(values[i], &quot;yes&quot;) == 0 || strcmp(values[i], &quot;on&quot;) == 0) {
+94         has_true = true;
+95       }
+96       if (strcmp(values[i], OPT_VALUE_FALSE) == 0 || strcmp(values[i], &quot;no&quot;) == 0 || strcmp(values[i], &quot;off&quot;) == 0) {
+97         has_false = true;
+98       }
+99     }
+100
+101     // If it has both true-like and false-like values, it's boolean
+102     if (has_true &amp;&amp; has_false) {
+103       return &quot;BOOLEAN&quot;;
+104     }
+105   }
+106
+107   return options_get_type_placeholder(desc-&gt;type);
+108 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>option_descriptor_t::arg_placeholder</b>,
-    <b>option_metadata_t::enum_values</b>, <b>option_descriptor_t::metadata</b>,
-    <b>OPTION_TYPE_CALLBACK</b>, <b>options_get_type_placeholder()</b>, and
-    <b>option_descriptor_t::type</b>.</p>
-<p class="Pp">Referenced by
+    <b>option_metadata_t::enum_values</b>,
+    <b>get_option_help_placeholder_str()</b>,
+    <b>option_descriptor_t::metadata</b>, <b>OPT_VALUE_FALSE</b>,
+    <b>OPT_VALUE_TRUE</b>, <b>OPTION_TYPE_CALLBACK</b>,
+    <b>options_get_type_placeholder()</b>, and
+  <b>option_descriptor_t::type</b>.</p>
+<p class="Pp">Referenced by <b>get_option_help_placeholder_str()</b>,
     <b>options_config_print_options_sections_with_width()</b>, and
     <b>options_config_print_usage()</b>.</p>
 </section>
@@ -605,30 +637,32 @@
 <h2 class="Ss"><b>bool</b> is_option_set (const <b>options_config_t</b> *
   config, const void * options_struct, const char * option_name)</h2>
 <p class="Pp">Check if an option is set (has non-default value).</p>
-<p class="Pp">Definition at line <b>356</b> of file <b>builder.c</b>.</p>
-<pre>356                                                                                                         {
-357   const option_descriptor_t *desc = find_option(config, option_name);
-358   if (!desc)
-359     return false;
-360 
-361   const char *base = (const char *)options_struct;
-362   const void *field = base + desc-&gt;offset;
-363 
-364   // Use handler registry to check if option is set
-365   if (desc-&gt;type &gt;= 0 &amp;&amp; desc-&gt;type &lt; (int)(NUM_OPTION_TYPES)) {
-366     if (g_builder_handlers[desc-&gt;type].is_set) {
-367       return g_builder_handlers[desc-&gt;type].is_set(field, desc);
-368     }
-369   }
-370 
-371   return false;
-372 }</pre>
+<p class="Pp">Definition at line <b>390</b> of file <b>builder.c</b>.</p>
+<pre>390                                                                                                         {
+391   const option_descriptor_t *desc = find_option(config, option_name);
+392   if (!desc)
+393     return false;
+394
+395   const char *base = (const char *)options_struct;
+396   const void *field = base + desc-&gt;offset;
+397
+398   // Use handler registry to check if option is set
+399   if (desc-&gt;type &gt;= 0 &amp;&amp; desc-&gt;type &lt; (int)(NUM_OPTION_TYPES)) {
+400     if (g_builder_handlers[desc-&gt;type].is_set) {
+401       return g_builder_handlers[desc-&gt;type].is_set(field, desc);
+402     }
+403   }
+404
+405   return false;
+406 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>find_option()</b>, <b>g_builder_handlers</b>,
+    <b>is_option_set()</b>, <b>option_builder_handler_t::is_set</b>,
     <b>NUM_OPTION_TYPES</b>, <b>option_descriptor_t::offset</b>, and
     <b>option_descriptor_t::type</b>.</p>
-<p class="Pp">Referenced by <b>options_config_validate()</b>.</p>
+<p class="Pp">Referenced by <b>ensure_owned_strings_capacity()</b>,
+    <b>is_option_set()</b>, and <b>options_config_validate()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> option_applies_to_mode (const
@@ -643,48 +677,48 @@
 <i>for_binary_help</i> If true, show binary options; if false, hide them</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if option should be shown for this mode</div>
-<p class="Pp">Definition at line <b>177</b> of file <b>builder.c</b>.</p>
-<pre>177                                                                                                           {
-178   if (!desc) {
-179     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Descriptor is NULL&quot;);
-180     return false;
-181   }
-182 
-183   // When for_binary_help is true (i.e., for 'ascii-chat --help'),
-184   // show options that apply to the default mode (DISCOVERY) or binary-level options only.
-185   // Don't show mode-specific options for other modes (server, client, mirror, discovery-service).
-186   if (for_binary_help) {
-187     // Binary-level options or options that apply to discovery mode (the default)
-188     option_mode_bitmask_t default_modes = OPTION_MODE_BINARY | OPTION_MODE_DISCOVERY;
-189     return (desc-&gt;mode_bitmask &amp; default_modes) != 0 &amp;&amp; !desc-&gt;hide_from_binary_help;
-190   }
-191 
-192   // For mode-specific help (non-discovery modes), show only options for that mode.
-193   // Do not show binary options here unless it also specifically applies to the mode.
-194   // The 'mode' parameter is the actual mode (e.g., MODE_CLIENT, MODE_SERVER).
-195   if (mode &lt; 0 || mode &gt; MODE_DISCOVERY) { // Use MODE_INVALID as upper bound for valid modes
-196     return false;
-197   }
-198   option_mode_bitmask_t mode_bit = (1 &lt;&lt; mode);
-199 
-200   // Check if it's a binary option. If so, only show if it also explicitly applies to this mode.
-201   if ((desc-&gt;mode_bitmask &amp; OPTION_MODE_BINARY) &amp;&amp; !(desc-&gt;mode_bitmask &amp; mode_bit)) {
-202     return false; // Binary options not shown in mode-specific help unless also mode-specific
-203   }
-204 
-205   bool applies = (desc-&gt;mode_bitmask &amp; mode_bit) != 0;
-206 
-207   return applies &amp;&amp; !desc-&gt;hide_from_mode_help;
-208 }</pre>
+<p class="Pp">Definition at line <b>211</b> of file <b>builder.c</b>.</p>
+<pre>211                                                                                                           {
+212   if (!desc) {
+213     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Descriptor is NULL&quot;);
+214     return false;
+215   }
+216
+217   // When for_binary_help is true (i.e., for 'ascii-chat --help'),
+218   // show options that apply to the default mode (DISCOVERY) or binary-level options only.
+219   // Don't show mode-specific options for other modes (server, client, mirror, discovery-service).
+220   if (for_binary_help) {
+221     // Binary-level options or options that apply to discovery mode (the default)
+222     option_mode_bitmask_t default_modes = OPTION_MODE_BINARY | OPTION_MODE_DISCOVERY;
+223     return (desc-&gt;mode_bitmask &amp; default_modes) != 0 &amp;&amp; !desc-&gt;hide_from_binary_help;
+224   }
+225
+226   // For mode-specific help (non-discovery modes), show only options for that mode.
+227   // Do not show binary options here unless it also specifically applies to the mode.
+228   // The 'mode' parameter is the actual mode (e.g., MODE_CLIENT, MODE_SERVER).
+229   if (mode &lt; 0 || mode &gt;= MODE_INVALID) { // Use MODE_INVALID as upper bound for valid modes
+230     return false;
+231   }
+232   option_mode_bitmask_t mode_bit = (1 &lt;&lt; mode);
+233
+234   // Check if it's a binary option. If so, only show if it also explicitly applies to this mode.
+235   if ((desc-&gt;mode_bitmask &amp; OPTION_MODE_BINARY) &amp;&amp; !(desc-&gt;mode_bitmask &amp; mode_bit)) {
+236     return false; // Binary options not shown in mode-specific help unless also mode-specific
+237   }
+238
+239   bool applies = (desc-&gt;mode_bitmask &amp; mode_bit) != 0;
+240
+241   return applies &amp;&amp; !desc-&gt;hide_from_mode_help;
+242 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_INVALID_PARAM</b>,
     <b>option_descriptor_t::hide_from_binary_help</b>,
     <b>option_descriptor_t::hide_from_mode_help</b>,
-    <b>option_descriptor_t::mode_bitmask</b>, <b>MODE_DISCOVERY</b>,
-    <b>OPTION_MODE_BINARY</b>, <b>OPTION_MODE_DISCOVERY</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by
+    <b>option_descriptor_t::mode_bitmask</b>, <b>MODE_INVALID</b>,
+    <b>option_applies_to_mode()</b>, <b>OPTION_MODE_BINARY</b>,
+    <b>OPTION_MODE_DISCOVERY</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>option_applies_to_mode()</b>,
     <b>options_config_print_options_sections_with_width()</b>, and
     <b>options_config_print_usage()</b>.</p>
 </section>
@@ -709,43 +743,44 @@
 <i>help_text</i> Help description
 <br/>
 <i>group</i> Group name for help</div>
-<p class="Pp">Definition at line <b>943</b> of file <b>builder.c</b>.</p>
-<pre>944                                                                                                    {
-945   ensure_descriptor_capacity(builder);
-946 
-947   option_descriptor_t desc = {.long_name = long_name,
-948                               .short_name = short_name,
-949                               .type = OPTION_TYPE_ACTION,
-950                               .offset = 0, // Actions don't store values
-951                               .help_text = help_text,
-952                               .group = group,
-953                               .default_value = NULL,
-954                               .required = false, // Actions are never required
-955                               .env_var_name = NULL,
-956                               .validate = NULL,
-957                               .parse_fn = NULL,
-958                               .action_fn = action_fn,
-959                               .owns_memory = false,
-960                               .hide_from_mode_help = false,
-961                               .hide_from_binary_help = false,
-962                               .mode_bitmask = OPTION_MODE_NONE};
-963 
-964   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
-965 
-966   // Set hide_from_binary_help after adding (so we can check the option name)
-967   if (strcmp(long_name, &quot;create-man-page&quot;) == 0) {
-968     // Always hide from help and man page (this is a development tool)
-969     builder-&gt;descriptors[builder-&gt;num_descriptors - 1].hide_from_binary_help = true;
-970   }
-971 }</pre>
+<p class="Pp">Definition at line <b>977</b> of file <b>builder.c</b>.</p>
+<pre>978                                                                                                    {
+979   ensure_descriptor_capacity(builder);
+980
+981   option_descriptor_t desc = {.long_name = long_name,
+982                               .short_name = short_name,
+983                               .type = OPTION_TYPE_ACTION,
+984                               .offset = 0, // Actions don't store values
+985                               .help_text = help_text,
+986                               .group = group,
+987                               .default_value = NULL,
+988                               .required = false, // Actions are never required
+989                               .env_var_name = NULL,
+990                               .validate = NULL,
+991                               .parse_fn = NULL,
+992                               .action_fn = action_fn,
+993                               .owns_memory = false,
+994                               .hide_from_mode_help = false,
+995                               .hide_from_binary_help = false,
+996                               .mode_bitmask = OPTION_MODE_NONE};
+997
+998   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
+999
+1000   // Set hide_from_binary_help after adding (so we can check the option name)
+1001   if (strcmp(long_name, &quot;create-man-page&quot;) == 0) {
+1002     // Always hide from help and man page (this is a development tool)
+1003     builder-&gt;descriptors[builder-&gt;num_descriptors - 1].hide_from_binary_help = true;
+1004   }
+1005 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ensure_descriptor_capacity()</b>,
     <b>option_descriptor_t::hide_from_binary_help</b>,
-    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>, and
-    <b>OPTION_TYPE_ACTION</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
+    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>,
+    <b>OPTION_TYPE_ACTION</b>, and <b>options_builder_add_action()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_action()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_bool_("><a class="permalink" href="#void_options_builder_add_bool_(">void
@@ -772,35 +807,36 @@
 <i>required</i> If true, option must be provided
 <br/>
 <i>env_var_name</i> Environment variable fallback (or NULL)</div>
-<p class="Pp">Definition at line <b>657</b> of file <b>builder.c</b>.</p>
-<pre>659                                                         {
-660   ensure_descriptor_capacity(builder);
-661 
-662   static bool default_vals[2] = {false, true};
-663 
-664   option_descriptor_t desc = {.long_name = long_name,
-665                               .short_name = short_name,
-666                               .type = OPTION_TYPE_BOOL,
-667                               .offset = offset,
-668                               .help_text = help_text,
-669                               .group = group,
-670                               .default_value = &amp;default_vals[default_value ? 1 : 0],
-671                               .required = required,
-672                               .env_var_name = env_var_name,
-673                               .mode_bitmask = OPTION_MODE_NONE,
-674                               .validate = NULL,
-675                               .parse_fn = NULL,
-676                               .owns_memory = false};
-677 
-678   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
-679 }</pre>
+<p class="Pp">Definition at line <b>691</b> of file <b>builder.c</b>.</p>
+<pre>693                                                         {
+694   ensure_descriptor_capacity(builder);
+695
+696   static bool default_vals[2] = {false, true};
+697
+698   option_descriptor_t desc = {.long_name = long_name,
+699                               .short_name = short_name,
+700                               .type = OPTION_TYPE_BOOL,
+701                               .offset = offset,
+702                               .help_text = help_text,
+703                               .group = group,
+704                               .default_value = &amp;default_vals[default_value ? 1 : 0],
+705                               .required = required,
+706                               .env_var_name = env_var_name,
+707                               .mode_bitmask = OPTION_MODE_NONE,
+708                               .validate = NULL,
+709                               .parse_fn = NULL,
+710                               .owns_memory = false};
+711
+712   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
+713 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ensure_descriptor_capacity()</b>,
-    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>, and
-    <b>OPTION_TYPE_BOOL</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
+    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>,
+    <b>OPTION_TYPE_BOOL</b>, and <b>options_builder_add_bool()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_bool()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_callback_("><a class="permalink" href="#void_options_builder_add_callback_(">void
@@ -832,42 +868,44 @@
 <i>required</i> If true, option must be provided
 <br/>
 <i>env_var_name</i> Environment variable fallback (or NULL)</div>
-<p class="Pp">Definition at line <b>849</b> of file <b>builder.c</b>.</p>
-<pre>852                                                                                               {
-853   (void)value_size; // Unused parameter
-854   ensure_descriptor_capacity(builder);
-855 
-856   option_descriptor_t desc = {.long_name = long_name,
-857                               .short_name = short_name,
-858                               .type = OPTION_TYPE_CALLBACK,
-859                               .offset = offset,
-860                               .help_text = help_text,
-861                               .group = group,
-862                               .default_value = default_value,
-863                               .required = required,
-864                               .env_var_name = env_var_name,
-865                               .validate = NULL,
-866                               .parse_fn = parse_fn,
-867                               .owns_memory = false,
-868                               .optional_arg = false,
-869                               .mode_bitmask = OPTION_MODE_NONE};
-870 
-871   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
-872 }</pre>
+<p class="Pp">Definition at line <b>883</b> of file <b>builder.c</b>.</p>
+<pre>886                                                                                               {
+887   (void)value_size; // Unused parameter
+888   ensure_descriptor_capacity(builder);
+889
+890   option_descriptor_t desc = {.long_name = long_name,
+891                               .short_name = short_name,
+892                               .type = OPTION_TYPE_CALLBACK,
+893                               .offset = offset,
+894                               .help_text = help_text,
+895                               .group = group,
+896                               .default_value = default_value,
+897                               .required = required,
+898                               .env_var_name = env_var_name,
+899                               .validate = NULL,
+900                               .parse_fn = parse_fn,
+901                               .owns_memory = false,
+902                               .optional_arg = false,
+903                               .mode_bitmask = OPTION_MODE_NONE};
+904
+905   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
+906 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ensure_descriptor_capacity()</b>,
-    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>, and
-    <b>OPTION_TYPE_CALLBACK</b>.</p>
+    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>,
+    <b>OPTION_TYPE_CALLBACK</b>, and <b>options_builder_add_callback()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_callback()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_callback_optional_("><a class="permalink" href="#void_options_builder_add_callback_optional_(">void
   options_builder_add_callback_optional (<b>options_builder_t</b> * builder,
   const char * long_name, char short_name, size_t offset, const void *
-  default_value, size_t value_size, <b>bool</b>(* parse_fn )(const char *, void
-  *, char **), const char * help_text, const char * group, <b>bool</b> required,
-  const char * env_var_name, <b>bool</b> optional_arg)</a></h2>
+  default_value, size_t value_size, <b>bool</b>(* parse_fn )(const char *arg,
+  void *dest, char **error_msg), const char * help_text, const char * group,
+  <b>bool</b> required, const char * env_var_name, <b>bool</b>
+  optional_arg)</a></h2>
 <p class="Pp">Add callback option with optional argument support. Add option
     with custom callback parser that supports optional arguments.</p>
 <p class="Pp"></p>
@@ -896,34 +934,65 @@
 <br/>
 <i>optional_arg</i> If true, argument is optional (parser receives NULL if not
   provided)</div>
-<p class="Pp">Definition at line <b>890</b> of file <b>builder.c</b>.</p>
-<pre>894                                                               {
-895   (void)value_size; // Unused parameter
-896   ensure_descriptor_capacity(builder);
-897 
-898   option_descriptor_t desc = {.long_name = long_name,
-899                               .short_name = short_name,
-900                               .type = OPTION_TYPE_CALLBACK,
-901                               .offset = offset,
-902                               .help_text = help_text,
-903                               .group = group,
-904                               .default_value = default_value,
-905                               .required = required,
-906                               .env_var_name = env_var_name,
-907                               .validate = NULL,
-908                               .parse_fn = parse_fn,
-909                               .owns_memory = false,
-910                               .optional_arg = optional_arg,
-911                               .mode_bitmask = OPTION_MODE_NONE};
-912 
-913   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
-914 }</pre>
+<p class="Pp">Add callback option with optional argument support.</p>
+<p class="Pp"></p>
+<p class="Pp">Allows the callback to receive NULL if no argument is provided
+    (when next arg is a flag).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>builder</i> Builder to add to
+<br/>
+<i>long_name</i> Long option name
+<br/>
+<i>short_name</i> Short option char (or '\0')
+<br/>
+<i>offset</i> offsetof(struct, field)
+<br/>
+<i>default_value</i> Pointer to default value (or NULL)
+<br/>
+<i>value_size</i> sizeof(field_type)
+<br/>
+<i>parse_fn</i> Custom parser function (receives NULL if arg not provided)
+<br/>
+<i>help_text</i> Help description
+<br/>
+<i>group</i> Group name for help
+<br/>
+<i>required</i> If true, option must be provided
+<br/>
+<i>env_var_name</i> Environment variable fallback (or NULL)
+<br/>
+<i>optional_arg</i> If true, argument is optional for this callback</div>
+<p class="Pp">Definition at line <b>924</b> of file <b>builder.c</b>.</p>
+<pre>928                                                               {
+929   (void)value_size; // Unused parameter
+930   ensure_descriptor_capacity(builder);
+931
+932   option_descriptor_t desc = {.long_name = long_name,
+933                               .short_name = short_name,
+934                               .type = OPTION_TYPE_CALLBACK,
+935                               .offset = offset,
+936                               .help_text = help_text,
+937                               .group = group,
+938                               .default_value = default_value,
+939                               .required = required,
+940                               .env_var_name = env_var_name,
+941                               .validate = NULL,
+942                               .parse_fn = parse_fn,
+943                               .owns_memory = false,
+944                               .optional_arg = optional_arg,
+945                               .mode_bitmask = OPTION_MODE_NONE};
+946
+947   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
+948 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ensure_descriptor_capacity()</b>,
-    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>, and
-    <b>OPTION_TYPE_CALLBACK</b>.</p>
+    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>,
+    <b>OPTION_TYPE_CALLBACK</b>, and
+    <b>options_builder_add_callback_optional()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_callback_optional()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_callback_with_metadata_("><a class="permalink" href="#void_options_builder_add_callback_with_metadata_(">void
@@ -963,36 +1032,38 @@
 <i>optional_arg</i> If true, argument is optional for this callback
 <br/>
 <i>metadata</i> Completion metadata (enums, ranges, examples, etc.)</div>
-<p class="Pp">Definition at line <b>916</b> of file <b>builder.c</b>.</p>
-<pre>920                                                                                                       {
-921   (void)value_size; // Unused parameter
-922   ensure_descriptor_capacity(builder);
-923 
-924   option_descriptor_t desc = {.long_name = long_name,
-925                               .short_name = short_name,
-926                               .type = OPTION_TYPE_CALLBACK,
-927                               .offset = offset,
-928                               .help_text = help_text,
-929                               .group = group,
-930                               .default_value = default_value,
-931                               .required = required,
-932                               .env_var_name = env_var_name,
-933                               .validate = NULL,
-934                               .parse_fn = parse_fn,
-935                               .owns_memory = false,
-936                               .optional_arg = optional_arg,
-937                               .mode_bitmask = OPTION_MODE_NONE,
-938                               .metadata = metadata ? *metadata : (option_metadata_t){0}};
-939 
-940   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
-941 }</pre>
+<p class="Pp">Definition at line <b>950</b> of file <b>builder.c</b>.</p>
+<pre>954                                                                                                       {
+955   (void)value_size; // Unused parameter
+956   ensure_descriptor_capacity(builder);
+957
+958   option_descriptor_t desc = {.long_name = long_name,
+959                               .short_name = short_name,
+960                               .type = OPTION_TYPE_CALLBACK,
+961                               .offset = offset,
+962                               .help_text = help_text,
+963                               .group = group,
+964                               .default_value = default_value,
+965                               .required = required,
+966                               .env_var_name = env_var_name,
+967                               .validate = NULL,
+968                               .parse_fn = parse_fn,
+969                               .owns_memory = false,
+970                               .optional_arg = optional_arg,
+971                               .mode_bitmask = OPTION_MODE_NONE,
+972                               .metadata = metadata ? *metadata : (option_metadata_t){0}};
+973
+974   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
+975 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ensure_descriptor_capacity()</b>,
-    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>, and
-    <b>OPTION_TYPE_CALLBACK</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
+    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>,
+    <b>OPTION_TYPE_CALLBACK</b>, and
+    <b>options_builder_add_callback_with_metadata()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_callback_with_metadata()</b>,
+    and <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_custom_section_("><a class="permalink" href="#void_options_builder_add_custom_section_(">void
@@ -1011,22 +1082,24 @@
 <br/>
 <i>mode_bitmask</i> Which modes show this section (use MODE_BITMASK_*
   constants)</div>
-<p class="Pp">Definition at line <b>1319</b> of file <b>builder.c</b>.</p>
-<pre>1320                                                                             {
-1321   if (!builder || !heading || !content)
-1322     return;
-1323 
-1324   ensure_custom_section_capacity(builder);
-1325 
-1326   custom_section_descriptor_t section = {.heading = heading, .content = content, .mode_bitmask = mode_bitmask};
-1327 
-1328   builder-&gt;custom_sections[builder-&gt;num_custom_sections++] = section;
-1329 }</pre>
+<p class="Pp">Definition at line <b>1359</b> of file <b>builder.c</b>.</p>
+<pre>1360                                                                             {
+1361   if (!builder || !heading || !content)
+1362     return;
+1363
+1364   ensure_custom_section_capacity(builder);
+1365
+1366   custom_section_descriptor_t section = {.heading = heading, .content = content, .mode_bitmask = mode_bitmask};
+1367
+1368   builder-&gt;custom_sections[builder-&gt;num_custom_sections++] = section;
+1369 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>options_builder_t::custom_sections</b>, and
-    <b>options_builder_t::num_custom_sections</b>.</p>
-<p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
+<p class="Pp">References <b>options_builder_t::custom_sections</b>,
+    <b>options_builder_t::num_custom_sections</b>, and
+    <b>options_builder_add_custom_section()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_custom_section()</b>, and
+    <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_dependency_("><a class="permalink" href="#void_options_builder_add_dependency_(">void
@@ -1037,20 +1110,22 @@
 <div class="Bd-indent"><i>builder</i> Builder to add to
 <br/>
 <i>dependency</i> Dependency to copy</div>
-<p class="Pp">Definition at line <b>1164</b> of file <b>builder.c</b>.</p>
-<pre>1164                                                                                                        {
-1165   if (!builder || !dependency)
-1166     return;
-1167 
-1168   ensure_dependency_capacity(builder);
-1169   builder-&gt;dependencies[builder-&gt;num_dependencies++] = *dependency;
-1170 }</pre>
+<p class="Pp">Definition at line <b>1204</b> of file <b>builder.c</b>.</p>
+<pre>1204                                                                                                        {
+1205   if (!builder || !dependency)
+1206     return;
+1207
+1208   ensure_dependency_capacity(builder);
+1209   builder-&gt;dependencies[builder-&gt;num_dependencies++] = *dependency;
+1210 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::dependencies</b>,
-    <b>ensure_dependency_capacity()</b>, and
-    <b>options_builder_t::num_dependencies</b>.</p>
-<p class="Pp">Referenced by <b>options_builder_from_preset()</b>.</p>
+    <b>ensure_dependency_capacity()</b>,
+    <b>options_builder_t::num_dependencies</b>, and
+    <b>options_builder_add_dependency()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_dependency()</b>, and
+    <b>options_builder_from_preset()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_dependency_conflicts_("><a class="permalink" href="#void_options_builder_add_dependency_conflicts_(">void
@@ -1067,23 +1142,25 @@
 <i>conflicts_with</i> Option it conflicts with
 <br/>
 <i>error_message</i> Custom error message (or NULL for default)</div>
-<p class="Pp">Definition at line <b>1142</b> of file <b>builder.c</b>.</p>
-<pre>1143                                                                                                      {
-1144   ensure_dependency_capacity(builder);
-1145 
-1146   option_dependency_t dep = {.option_name = option_name,
-1147                              .type = DEPENDENCY_CONFLICTS,
-1148                              .depends_on = conflicts_with,
-1149                              .error_message = error_message};
-1150 
-1151   builder-&gt;dependencies[builder-&gt;num_dependencies++] = dep;
-1152 }</pre>
+<p class="Pp">Definition at line <b>1182</b> of file <b>builder.c</b>.</p>
+<pre>1183                                                                                                      {
+1184   ensure_dependency_capacity(builder);
+1185
+1186   option_dependency_t dep = {.option_name = option_name,
+1187                              .type = DEPENDENCY_CONFLICTS,
+1188                              .depends_on = conflicts_with,
+1189                              .error_message = error_message};
+1190
+1191   builder-&gt;dependencies[builder-&gt;num_dependencies++] = dep;
+1192 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::dependencies</b>,
-    <b>DEPENDENCY_CONFLICTS</b>, <b>ensure_dependency_capacity()</b>, and
-    <b>options_builder_t::num_dependencies</b>.</p>
-<p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
+    <b>DEPENDENCY_CONFLICTS</b>, <b>ensure_dependency_capacity()</b>,
+    <b>options_builder_t::num_dependencies</b>, and
+    <b>options_builder_add_dependency_conflicts()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_dependency_conflicts()</b>,
+    and <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_dependency_implies_("><a class="permalink" href="#void_options_builder_add_dependency_implies_(">void
@@ -1100,20 +1177,22 @@
 <i>implies</i> Option that is implied
 <br/>
 <i>error_message</i> Custom message (rarely used, can be NULL)</div>
-<p class="Pp">Definition at line <b>1154</b> of file <b>builder.c</b>.</p>
-<pre>1155                                                                        {
-1156   ensure_dependency_capacity(builder);
-1157 
-1158   option_dependency_t dep = {
-1159       .option_name = option_name, .type = DEPENDENCY_IMPLIES, .depends_on = implies, .error_message = error_message};
-1160 
-1161   builder-&gt;dependencies[builder-&gt;num_dependencies++] = dep;
-1162 }</pre>
+<p class="Pp">Definition at line <b>1194</b> of file <b>builder.c</b>.</p>
+<pre>1195                                                                        {
+1196   ensure_dependency_capacity(builder);
+1197
+1198   option_dependency_t dep = {
+1199       .option_name = option_name, .type = DEPENDENCY_IMPLIES, .depends_on = implies, .error_message = error_message};
+1200
+1201   builder-&gt;dependencies[builder-&gt;num_dependencies++] = dep;
+1202 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::dependencies</b>,
-    <b>DEPENDENCY_IMPLIES</b>, <b>ensure_dependency_capacity()</b>, and
-    <b>options_builder_t::num_dependencies</b>.</p>
+    <b>DEPENDENCY_IMPLIES</b>, <b>ensure_dependency_capacity()</b>,
+    <b>options_builder_t::num_dependencies</b>, and
+    <b>options_builder_add_dependency_implies()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_dependency_implies()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_dependency_requires_("><a class="permalink" href="#void_options_builder_add_dependency_requires_(">void
@@ -1129,23 +1208,25 @@
 <i>depends_on</i> Option it depends on
 <br/>
 <i>error_message</i> Custom error message (or NULL for default)</div>
-<p class="Pp">Definition at line <b>1130</b> of file <b>builder.c</b>.</p>
-<pre>1131                                                                                                 {
-1132   ensure_dependency_capacity(builder);
-1133 
-1134   option_dependency_t dep = {.option_name = option_name,
-1135                              .type = DEPENDENCY_REQUIRES,
-1136                              .depends_on = depends_on,
-1137                              .error_message = error_message};
-1138 
-1139   builder-&gt;dependencies[builder-&gt;num_dependencies++] = dep;
-1140 }</pre>
+<p class="Pp">Definition at line <b>1170</b> of file <b>builder.c</b>.</p>
+<pre>1171                                                                                                 {
+1172   ensure_dependency_capacity(builder);
+1173
+1174   option_dependency_t dep = {.option_name = option_name,
+1175                              .type = DEPENDENCY_REQUIRES,
+1176                              .depends_on = depends_on,
+1177                              .error_message = error_message};
+1178
+1179   builder-&gt;dependencies[builder-&gt;num_dependencies++] = dep;
+1180 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::dependencies</b>,
-    <b>DEPENDENCY_REQUIRES</b>, <b>ensure_dependency_capacity()</b>, and
-    <b>options_builder_t::num_dependencies</b>.</p>
-<p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
+    <b>DEPENDENCY_REQUIRES</b>, <b>ensure_dependency_capacity()</b>,
+    <b>options_builder_t::num_dependencies</b>, and
+    <b>options_builder_add_dependency_requires()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_dependency_requires()</b>,
+    and <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_descriptor_("><a class="permalink" href="#void_options_builder_add_descriptor_(">void
@@ -1156,31 +1237,33 @@
 <div class="Bd-indent"><i>builder</i> Builder to add to
 <br/>
 <i>descriptor</i> Descriptor to copy</div>
-<p class="Pp">Definition at line <b>973</b> of file <b>builder.c</b>.</p>
-<pre>973                                                                                                        {
-974   if (!builder || !descriptor) {
-975     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder is NULL or descriptor is NULL&quot;);
-976     return;
-977   }
-978   return;
-979 
-980   ensure_descriptor_capacity(builder);
-981   builder-&gt;descriptors[builder-&gt;num_descriptors++] = *descriptor;
-982 }</pre>
+<p class="Pp">Definition at line <b>1007</b> of file <b>builder.c</b>.</p>
+<pre>1007                                                                                                        {
+1008   if (!builder || !descriptor) {
+1009     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder is NULL or descriptor is NULL&quot;);
+1010     return;
+1011   }
+1012   return;
+1013
+1014   ensure_descriptor_capacity(builder);
+1015   builder-&gt;descriptors[builder-&gt;num_descriptors++] = *descriptor;
+1016 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ensure_descriptor_capacity()</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>options_builder_t::num_descriptors</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>options_builder_from_preset()</b>.</p>
+    <b>options_builder_t::num_descriptors</b>,
+    <b>options_builder_add_descriptor()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_descriptor()</b>, and
+    <b>options_builder_from_preset()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_double_("><a class="permalink" href="#void_options_builder_add_double_(">void
   options_builder_add_double (<b>options_builder_t</b> * builder, const char *
   long_name, char short_name, size_t offset, double default_value, const char *
   help_text, const char * group, <b>bool</b> required, const char *
-  env_var_name, <b>bool</b>(* validate )(const void *options_struct, char
-  **error_msg), <b>bool</b> optional_arg)</a></h2>
+  env_var_name, <b>bool</b>(* validate )(const void *options_struct),
+  <b>bool</b> optional_arg)</a></h2>
 <p class="Pp">Add double/float option.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>builder</i> Builder to add to
@@ -1202,92 +1285,97 @@
 <i>env_var_name</i> Environment variable fallback (or NULL)
 <br/>
 <i>validate</i> Validator function receiving full struct (or NULL)</div>
-<p class="Pp">Definition at line <b>779</b> of file <b>builder.c</b>.</p>
-<pre>781                                                                                                                       {
-782   ensure_descriptor_capacity(builder);
-783 
-784   // Increased from 256 to 1024 to support multiple test builders without overflow
-785   static double defaults[1024];
-786   static size_t num_defaults = 0;
-787 
-788   if (num_defaults &gt;= 1024) {
-789     log_error(&quot;Too many double options (max 1024)&quot;);
-790     return;
-791   }
-792 
-793   defaults[num_defaults] = default_value;
-794 
-795   option_descriptor_t desc = {.long_name = long_name,
-796                               .short_name = short_name,
-797                               .type = OPTION_TYPE_DOUBLE,
-798                               .offset = offset,
-799                               .help_text = help_text,
-800                               .group = group,
-801                               .default_value = &amp;defaults[num_defaults++],
-802                               .required = required,
-803                               .env_var_name = env_var_name,
-804                               .validate = validate,
-805                               .parse_fn = NULL,
-806                               .owns_memory = false,
-807                               .mode_bitmask = OPTION_MODE_NONE,
-808                               .optional_arg = optional_arg};
-809 
-810   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
-811 }</pre>
+<p class="Pp">Definition at line <b>813</b> of file <b>builder.c</b>.</p>
+<pre>815                                                                                                              {
+816   ensure_descriptor_capacity(builder);
+817
+818   // Increased from 256 to 1024 to support multiple test builders without overflow
+819   static double defaults[OPTIONS_MAX_DOUBLE_DEFAULTS];
+820   static size_t num_defaults = 0;
+821
+822   if (num_defaults &gt;= OPTIONS_MAX_DOUBLE_DEFAULTS) {
+823     log_error(&quot;Too many double options (max 1024)&quot;);
+824     return;
+825   }
+826
+827   defaults[num_defaults] = default_value;
+828
+829   option_descriptor_t desc = {.long_name = long_name,
+830                               .short_name = short_name,
+831                               .type = OPTION_TYPE_DOUBLE,
+832                               .offset = offset,
+833                               .help_text = help_text,
+834                               .group = group,
+835                               .default_value = &amp;defaults[num_defaults++],
+836                               .required = required,
+837                               .env_var_name = env_var_name,
+838                               .validate = validate,
+839                               .parse_fn = NULL,
+840                               .owns_memory = false,
+841                               .mode_bitmask = OPTION_MODE_NONE,
+842                               .optional_arg = optional_arg};
+843
+844   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
+845 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ensure_descriptor_capacity()</b>, <b>log_error</b>,
-    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>, and
-    <b>OPTION_TYPE_DOUBLE</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
+    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>,
+    <b>OPTION_TYPE_DOUBLE</b>, <b>options_builder_add_double()</b>, and
+    <b>OPTIONS_MAX_DOUBLE_DEFAULTS</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_double()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_double_with_metadata_("><a class="permalink" href="#void_options_builder_add_double_with_metadata_(">void
   options_builder_add_double_with_metadata (<b>options_builder_t</b> * builder,
   const char * long_name, char short_name, size_t offset, double default_value,
   const char * help_text, const char * group, <b>bool</b> required, const char *
-  env_var_name, <b>bool</b>(* validate )(const void *, char **), const
+  env_var_name, <b>bool</b>(* validate )(const void *), const
   <b>option_metadata_t</b> * metadata, <b>bool</b> optional_arg)</a></h2>
-<p class="Pp">Definition at line <b>813</b> of file <b>builder.c</b>.</p>
-<pre>817                                                                                                     {
-818   ensure_descriptor_capacity(builder);
-819 
-820   static double defaults[1024];
-821   static size_t num_defaults = 0;
-822 
-823   if (num_defaults &gt;= 1024) {
-824     log_error(&quot;Too many double options (max 1024)&quot;);
-825     return;
-826   }
-827 
-828   defaults[num_defaults] = default_value;
-829 
-830   option_descriptor_t desc = {.long_name = long_name,
-831                               .short_name = short_name,
-832                               .type = OPTION_TYPE_DOUBLE,
-833                               .offset = offset,
-834                               .help_text = help_text,
-835                               .group = group,
-836                               .default_value = &amp;defaults[num_defaults++],
-837                               .required = required,
-838                               .env_var_name = env_var_name,
-839                               .validate = validate,
-840                               .parse_fn = NULL,
-841                               .owns_memory = false,
-842                               .mode_bitmask = OPTION_MODE_NONE,
-843                               .metadata = metadata ? *metadata : (option_metadata_t){0},
-844                               .optional_arg = optional_arg};
-845 
-846   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
-847 }</pre>
+<p class="Pp">Definition at line <b>847</b> of file <b>builder.c</b>.</p>
+<pre>851                                                                  {
+852   ensure_descriptor_capacity(builder);
+853
+854   static double defaults[OPTIONS_MAX_DOUBLE_DEFAULTS];
+855   static size_t num_defaults = 0;
+856
+857   if (num_defaults &gt;= OPTIONS_MAX_DOUBLE_DEFAULTS) {
+858     log_error(&quot;Too many double options (max 1024)&quot;);
+859     return;
+860   }
+861
+862   defaults[num_defaults] = default_value;
+863
+864   option_descriptor_t desc = {.long_name = long_name,
+865                               .short_name = short_name,
+866                               .type = OPTION_TYPE_DOUBLE,
+867                               .offset = offset,
+868                               .help_text = help_text,
+869                               .group = group,
+870                               .default_value = &amp;defaults[num_defaults++],
+871                               .required = required,
+872                               .env_var_name = env_var_name,
+873                               .validate = validate,
+874                               .parse_fn = NULL,
+875                               .owns_memory = false,
+876                               .mode_bitmask = OPTION_MODE_NONE,
+877                               .metadata = metadata ? *metadata : (option_metadata_t){0},
+878                               .optional_arg = optional_arg};
+879
+880   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
+881 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ensure_descriptor_capacity()</b>, <b>log_error</b>,
-    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>, and
-    <b>OPTION_TYPE_DOUBLE</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
+    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>,
+    <b>OPTION_TYPE_DOUBLE</b>,
+    <b>options_builder_add_double_with_metadata()</b>, and
+    <b>OPTIONS_MAX_DOUBLE_DEFAULTS</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_double_with_metadata()</b>,
+    and <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_example_("><a class="permalink" href="#void_options_builder_add_example_(">void
@@ -1306,8 +1394,8 @@
 <i>mode</i> Mode name (NULL or &quot;server&quot;, &quot;client&quot;,
   &quot;mirror&quot;, etc.)
 <br/>
-<i></i><b>args</b><i></i><b> Arguments (NULL or &quot;example.com&quot;,
-  &quot;swift-river-mountain&quot;, etc.)</b>
+<i>args</i> Arguments (NULL or &quot;example.com&quot;,
+  &quot;swift-river-mountain&quot;, etc.)
 <br/>
 <i>description</i> Help text for this example</div>
 <p class="Pp">Example:</p>
@@ -1330,45 +1418,46 @@ options_builder_add_example(b, &quot;client&quot;, &quot;example.com&quot;,
 <i>mode_bitmask</i> Bitmask of modes (OPTION_MODE_SERVER | OPTION_MODE_CLIENT,
   etc.) Use OPTION_MODE_BINARY for binary-level examples
 <br/>
-<i></i><b>args</b><i></i><b> Arguments (NULL or &quot;example.com&quot;,
-  etc.)</b>
+<i>args</i> Arguments (NULL or &quot;example.com&quot;, etc.)
 <br/>
 <i>description</i> Help text for this example
 <br/>
 <i>owns_args</i> If true, duplicate and track the args string</div>
-<p class="Pp">Definition at line <b>1255</b> of file <b>builder.c</b>.</p>
-<pre>1256                                                                           {
-1257   if (!builder || !description)
-1258     return;
-1259 
-1260   ensure_example_capacity(builder);
-1261 
-1262   example_descriptor_t example = {.mode_bitmask = mode_bitmask,
-1263                                   .description = description,
-1264                                   .owns_args_memory = owns_args,
-1265                                   .is_utility_command = false};
-1266 
-1267   if (owns_args) {
-1268     // If owning, duplicate the string and track it
-1269     char *owned_args = platform_strdup(args);
-1270     if (!owned_args) {
-1271       log_fatal(&quot;Failed to duplicate example args string&quot;);
-1272       return;
-1273     }
-1274     example.args = owned_args;
-1275     track_owned_string_builder(builder, owned_args);
-1276   } else {
-1277     example.args = args;
-1278   }
-1279 
-1280   builder-&gt;examples[builder-&gt;num_examples++] = example;
-1281 }</pre>
+<p class="Pp">Definition at line <b>1295</b> of file <b>builder.c</b>.</p>
+<pre>1296                                                                           {
+1297   if (!builder || !description)
+1298     return;
+1299
+1300   ensure_example_capacity(builder);
+1301
+1302   example_descriptor_t example = {.mode_bitmask = mode_bitmask,
+1303                                   .description = description,
+1304                                   .owns_args_memory = owns_args,
+1305                                   .is_utility_command = false};
+1306
+1307   if (owns_args) {
+1308     // If owning, duplicate the string and track it
+1309     char *owned_args = platform_strdup(args);
+1310     if (!owned_args) {
+1311       log_fatal(&quot;Failed to duplicate example args string&quot;);
+1312       return;
+1313     }
+1314     example.args = owned_args;
+1315     track_owned_string_builder(builder, owned_args);
+1316   } else {
+1317     example.args = args;
+1318   }
+1319
+1320   builder-&gt;examples[builder-&gt;num_examples++] = example;
+1321 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>, <b>example_descriptor_t::args</b>,
+<p class="Pp">References <b>example_descriptor_t::args</b>,
     <b>options_builder_t::examples</b>, <b>log_fatal</b>,
-    <b>options_builder_t::num_examples</b>, and <b>platform_strdup()</b>.</p>
-<p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
+    <b>options_builder_t::num_examples</b>,
+    <b>options_builder_add_example()</b>, and <b>platform_strdup()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_example()</b>, and
+    <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_example_utility_("><a class="permalink" href="#void_options_builder_add_example_utility_(">void
@@ -1378,38 +1467,53 @@ options_builder_add_example(b, &quot;client&quot;, &quot;example.com&quot;,
 <p class="Pp">Add an example with utility command support. Allows marking
     utility commands (like pbpaste, grep, etc.) that shouldn't be prepended with
     program name in help output.</p>
-<p class="Pp">Definition at line <b>1289</b> of file <b>builder.c</b>.</p>
-<pre>1290                                                                                            {
-1291   if (!builder || !description)
-1292     return;
-1293 
-1294   ensure_example_capacity(builder);
-1295 
-1296   example_descriptor_t example = {.mode_bitmask = mode_bitmask,
-1297                                   .description = description,
-1298                                   .owns_args_memory = false,
-1299                                   .is_utility_command = is_utility_command};
-1300 
-1301   if (args) {
-1302     example.args = args;
-1303   }
-1304 
-1305   builder-&gt;examples[builder-&gt;num_examples++] = example;
-1306 }</pre>
+<p class="Pp"></p>
+<p class="Pp">Utility commands (like pbpaste, cat, etc.) that shouldn't be
+    prepended with program name or mode in help output.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>builder</i> Builder instance
+<br/>
+<i>mode_bitmask</i> Bitmask of modes (OPTION_MODE_MIRROR, etc.)
+<br/>
+<i>args</i> Arguments (e.g., &quot;pbpaste | cat -&quot;, &quot;cat video.avi |
+  ascii-chat mirror -f '-'&quot;)
+<br/>
+<i>description</i> Help text for this example
+<br/>
+<i>is_utility_command</i> Must be true for utility commands</div>
+<p class="Pp">Definition at line <b>1329</b> of file <b>builder.c</b>.</p>
+<pre>1330                                                                                            {
+1331   if (!builder || !description)
+1332     return;
+1333
+1334   ensure_example_capacity(builder);
+1335
+1336   example_descriptor_t example = {.mode_bitmask = mode_bitmask,
+1337                                   .description = description,
+1338                                   .owns_args_memory = false,
+1339                                   .is_utility_command = is_utility_command};
+1340
+1341   if (args) {
+1342     example.args = args;
+1343   }
+1344
+1345   builder-&gt;examples[builder-&gt;num_examples++] = example;
+1346 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>, <b>example_descriptor_t::args</b>,
-    <b>options_builder_t::examples</b>, and
-    <b>options_builder_t::num_examples</b>.</p>
-<p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
+<p class="Pp">References <b>example_descriptor_t::args</b>,
+    <b>options_builder_t::examples</b>, <b>options_builder_t::num_examples</b>,
+    and <b>options_builder_add_example_utility()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_example_utility()</b>, and
+    <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_int_("><a class="permalink" href="#void_options_builder_add_int_(">void
   options_builder_add_int (<b>options_builder_t</b> * builder, const char *
   long_name, char short_name, size_t offset, int default_value, const char *
   help_text, const char * group, <b>bool</b> required, const char *
-  env_var_name, <b>bool</b>(* validate )(const void *options_struct, char
-  **error_msg))</a></h2>
+  env_var_name, <b>bool</b>(* validate )(const void *options_struct))</a></h2>
 <p class="Pp">Add integer option.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>builder</i> Builder to add to
@@ -1431,48 +1535,49 @@ options_builder_add_example(b, &quot;client&quot;, &quot;example.com&quot;,
 <i>env_var_name</i> Environment variable fallback (or NULL)
 <br/>
 <i>validate</i> Validator function receiving full struct (or NULL)</div>
-<p class="Pp">Definition at line <b>681</b> of file <b>builder.c</b>.</p>
-<pre>683                                                                                                 {
-684   ensure_descriptor_capacity(builder);
-685 
-686   if (g_int_defaults_counter &gt;= 256) {
-687     log_error(&quot;Too many int options (max 256)&quot;);
-688     return;
-689   }
-690 
-691   g_int_defaults[g_int_defaults_counter] = default_value;
-692 
-693   option_descriptor_t desc = {.long_name = long_name,
-694                               .short_name = short_name,
-695                               .type = OPTION_TYPE_INT,
-696                               .offset = offset,
-697                               .help_text = help_text,
-698                               .group = group,
-699                               .default_value = &amp;g_int_defaults[g_int_defaults_counter++],
-700                               .required = required,
-701                               .env_var_name = env_var_name,
-702                               .validate = validate,
-703                               .parse_fn = NULL,
-704                               .owns_memory = false,
-705                               .mode_bitmask = OPTION_MODE_NONE};
-706 
-707   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
-708 }</pre>
+<p class="Pp">Definition at line <b>715</b> of file <b>builder.c</b>.</p>
+<pre>717                                                                                        {
+718   ensure_descriptor_capacity(builder);
+719
+720   if (g_int_defaults_counter &gt;= 256) {
+721     log_error(&quot;Too many int options (max 256)&quot;);
+722     return;
+723   }
+724
+725   g_int_defaults[g_int_defaults_counter] = default_value;
+726
+727   option_descriptor_t desc = {.long_name = long_name,
+728                               .short_name = short_name,
+729                               .type = OPTION_TYPE_INT,
+730                               .offset = offset,
+731                               .help_text = help_text,
+732                               .group = group,
+733                               .default_value = &amp;g_int_defaults[g_int_defaults_counter++],
+734                               .required = required,
+735                               .env_var_name = env_var_name,
+736                               .validate = validate,
+737                               .parse_fn = NULL,
+738                               .owns_memory = false,
+739                               .mode_bitmask = OPTION_MODE_NONE};
+740
+741   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
+742 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ensure_descriptor_capacity()</b>, <b>log_error</b>,
-    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>, and
-    <b>OPTION_TYPE_INT</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
+    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>,
+    <b>OPTION_TYPE_INT</b>, and <b>options_builder_add_int()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_int()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_int_with_metadata_("><a class="permalink" href="#void_options_builder_add_int_with_metadata_(">void
   options_builder_add_int_with_metadata (<b>options_builder_t</b> * builder,
   const char * long_name, char short_name, size_t offset, int default_value,
   const char * help_text, const char * group, <b>bool</b> required, const char *
-  env_var_name, <b>bool</b>(* validate )(const void *options_struct, char
-  **error_msg), const <b>option_metadata_t</b> * metadata)</a></h2>
+  env_var_name, <b>bool</b>(* validate )(const void *options_struct), const
+  <b>option_metadata_t</b> * metadata)</a></h2>
 <p class="Pp">Add integer option with metadata (for numeric ranges and
     examples). Like <b>options_builder_add_int()</b> but also includes metadata
     for numeric ranges, examples, and completions.</p>
@@ -1480,41 +1585,43 @@ options_builder_add_example(b, &quot;client&quot;, &quot;example.com&quot;,
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>metadata</i> Pointer to <b>option_metadata_t</b> with
   numeric_range, examples, etc. (can be NULL)</div>
-<p class="Pp">Definition at line <b>710</b> of file <b>builder.c</b>.</p>
-<pre>714                                                                               {
-715   ensure_descriptor_capacity(builder);
-716 
-717   if (g_int_defaults_counter &gt;= 256) {
-718     log_error(&quot;Too many int options (max 256)&quot;);
-719     return;
-720   }
-721 
-722   g_int_defaults[g_int_defaults_counter] = default_value;
-723 
-724   option_descriptor_t desc = {.long_name = long_name,
-725                               .short_name = short_name,
-726                               .type = OPTION_TYPE_INT,
-727                               .offset = offset,
-728                               .help_text = help_text,
-729                               .group = group,
-730                               .default_value = &amp;g_int_defaults[g_int_defaults_counter++],
-731                               .required = required,
-732                               .env_var_name = env_var_name,
-733                               .validate = validate,
-734                               .parse_fn = NULL,
-735                               .owns_memory = false,
-736                               .mode_bitmask = OPTION_MODE_NONE,
-737                               .metadata = metadata ? *metadata : (option_metadata_t){0}};
-738 
-739   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
-740 }</pre>
+<p class="Pp">Definition at line <b>744</b> of file <b>builder.c</b>.</p>
+<pre>748                                                                               {
+749   ensure_descriptor_capacity(builder);
+750
+751   if (g_int_defaults_counter &gt;= 256) {
+752     log_error(&quot;Too many int options (max 256)&quot;);
+753     return;
+754   }
+755
+756   g_int_defaults[g_int_defaults_counter] = default_value;
+757
+758   option_descriptor_t desc = {.long_name = long_name,
+759                               .short_name = short_name,
+760                               .type = OPTION_TYPE_INT,
+761                               .offset = offset,
+762                               .help_text = help_text,
+763                               .group = group,
+764                               .default_value = &amp;g_int_defaults[g_int_defaults_counter++],
+765                               .required = required,
+766                               .env_var_name = env_var_name,
+767                               .validate = validate,
+768                               .parse_fn = NULL,
+769                               .owns_memory = false,
+770                               .mode_bitmask = OPTION_MODE_NONE,
+771                               .metadata = metadata ? *metadata : (option_metadata_t){0}};
+772
+773   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
+774 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ensure_descriptor_capacity()</b>, <b>log_error</b>,
-    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>, and
-    <b>OPTION_TYPE_INT</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
+    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>,
+    <b>OPTION_TYPE_INT</b>, and
+  <b>options_builder_add_int_with_metadata()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_int_with_metadata()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_mode_("><a class="permalink" href="#void_options_builder_add_mode_(">void
@@ -1536,22 +1643,24 @@ options_builder_add_example(b, &quot;client&quot;, &quot;example.com&quot;,
 options_builder_add_mode(b, &quot;client&quot;, &quot;Run as video chat client (connect to server)&quot;);
 options_builder_add_mode(b, &quot;mirror&quot;, &quot;View local webcam as ASCII art (no server)&quot;);
 </pre>
-<p class="Pp">Definition at line <b>1308</b> of file <b>builder.c</b>.</p>
-<pre>1308                                                                                                      {
-1309   if (!builder || !name || !description)
-1310     return;
-1311 
-1312   ensure_mode_capacity(builder);
-1313 
-1314   help_mode_descriptor_t mode = {.name = name, .description = description};
-1315 
-1316   builder-&gt;modes[builder-&gt;num_modes++] = mode;
-1317 }</pre>
+<p class="Pp">Definition at line <b>1348</b> of file <b>builder.c</b>.</p>
+<pre>1348                                                                                                      {
+1349   if (!builder || !name || !description)
+1350     return;
+1351
+1352   ensure_mode_capacity(builder);
+1353
+1354   help_mode_descriptor_t mode = {.name = name, .description = description};
+1355
+1356   builder-&gt;modes[builder-&gt;num_modes++] = mode;
+1357 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>options_builder_t::modes</b>, and
-    <b>options_builder_t::num_modes</b>.</p>
-<p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
+<p class="Pp">References <b>options_builder_t::modes</b>,
+    <b>options_builder_t::num_modes</b>, and
+  <b>options_builder_add_mode()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_mode()</b>, and
+    <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_positional_("><a class="permalink" href="#void_options_builder_add_positional_(">void
@@ -1615,39 +1724,40 @@ options_builder_add_mode(b, &quot;mirror&quot;, &quot;View local webcam as ASCII
 <br/>
 <i>parse_fn</i> Custom parser (receives arg, config, remaining args, error_msg)
   Returns number of args consumed (usually 1), or -1 on error</div>
-<p class="Pp">Definition at line <b>1192</b> of file <b>builder.c</b>.</p>
-<pre>1196                                                                        {
-1197   if (!builder || !name || !parse_fn)
-1198     return;
-1199 
-1200   ensure_positional_arg_capacity(builder);
-1201 
-1202   positional_arg_descriptor_t pos_arg = {.name = name,
-1203                                          .help_text = help_text,
-1204                                          .required = required,
-1205                                          .section_heading = section_heading,
-1206                                          .examples = examples,
-1207                                          .num_examples = num_examples,
-1208                                          .mode_bitmask = mode_bitmask,
-1209                                          .parse_fn = parse_fn};
-1210 
-1211   builder-&gt;positional_args[builder-&gt;num_positional_args++] = pos_arg;
-1212 }</pre>
+<p class="Pp">Definition at line <b>1232</b> of file <b>builder.c</b>.</p>
+<pre>1236                                                                        {
+1237   if (!builder || !name || !parse_fn)
+1238     return;
+1239
+1240   ensure_positional_arg_capacity(builder);
+1241
+1242   positional_arg_descriptor_t pos_arg = {.name = name,
+1243                                          .help_text = help_text,
+1244                                          .required = required,
+1245                                          .section_heading = section_heading,
+1246                                          .examples = examples,
+1247                                          .num_examples = num_examples,
+1248                                          .mode_bitmask = mode_bitmask,
+1249                                          .parse_fn = parse_fn};
+1250
+1251   builder-&gt;positional_args[builder-&gt;num_positional_args++] = pos_arg;
+1252 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ensure_positional_arg_capacity()</b>,
-    <b>options_builder_t::num_positional_args</b>, and
+    <b>options_builder_t::num_positional_args</b>,
+    <b>options_builder_add_positional()</b>, and
     <b>options_builder_t::positional_args</b>.</p>
-<p class="Pp">Referenced by <b>options_builder_from_preset()</b>, and
-    <b>options_preset_unified()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_positional()</b>,
+    <b>options_builder_from_preset()</b>, and
+  <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_string_("><a class="permalink" href="#void_options_builder_add_string_(">void
   options_builder_add_string (<b>options_builder_t</b> * builder, const char *
   long_name, char short_name, size_t offset, const char * default_value, const
   char * help_text, const char * group, <b>bool</b> required, const char *
-  env_var_name, <b>bool</b>(* validate )(const void *options_struct, char
-  **error_msg))</a></h2>
+  env_var_name, <b>bool</b>(* validate )(const void *options_struct))</a></h2>
 <p class="Pp">Add string option. Strings are automatically strdup'd during
     parsing and freed during cleanup.</p>
 <p class="Pp"></p>
@@ -1671,48 +1781,50 @@ options_builder_add_mode(b, &quot;mirror&quot;, &quot;View local webcam as ASCII
 <i>env_var_name</i> Environment variable fallback (or NULL)
 <br/>
 <i>validate</i> Validator function receiving full struct (or NULL)</div>
-<p class="Pp">Definition at line <b>742</b> of file <b>builder.c</b>.</p>
-<pre>744                                                                                                    {
-745   ensure_descriptor_capacity(builder);
-746 
-747   // Store default string pointer in static storage to avoid stack-use-after-return
-748   // Increased from 256 to 1024 to support multiple test builders without overflow
-749   static const char *defaults[1024];
-750   static size_t num_defaults = 0;
-751 
-752   const void *default_ptr = NULL;
-753   if (default_value) {
-754     if (num_defaults &gt;= 1024) {
-755       log_error(&quot;Too many string options (max 1024)&quot;);
-756       return;
-757     }
-758     defaults[num_defaults] = default_value;
-759     default_ptr = &amp;defaults[num_defaults++];
-760   }
-761 
-762   option_descriptor_t desc = {.long_name = long_name,
-763                               .short_name = short_name,
-764                               .type = OPTION_TYPE_STRING,
-765                               .offset = offset,
-766                               .help_text = help_text,
-767                               .group = group,
-768                               .default_value = default_ptr,
-769                               .required = required,
-770                               .env_var_name = env_var_name,
-771                               .validate = validate,
-772                               .parse_fn = NULL,
-773                               .owns_memory = true, // Strings are always owned
-774                               .mode_bitmask = OPTION_MODE_NONE};
-775 
-776   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
-777 }</pre>
+<p class="Pp">Definition at line <b>776</b> of file <b>builder.c</b>.</p>
+<pre>778                                                                                           {
+779   ensure_descriptor_capacity(builder);
+780
+781   // Store default string pointer in static storage to avoid stack-use-after-return
+782   // Increased from 256 to 1024 to support multiple test builders without overflow
+783   static const char *defaults[OPTIONS_MAX_DOUBLE_DEFAULTS];
+784   static size_t num_defaults = 0;
+785
+786   const void *default_ptr = NULL;
+787   if (default_value) {
+788     if (num_defaults &gt;= OPTIONS_MAX_DOUBLE_DEFAULTS) {
+789       log_error(&quot;Too many string options (max 1024)&quot;);
+790       return;
+791     }
+792     defaults[num_defaults] = default_value;
+793     default_ptr = &amp;defaults[num_defaults++];
+794   }
+795
+796   option_descriptor_t desc = {.long_name = long_name,
+797                               .short_name = short_name,
+798                               .type = OPTION_TYPE_STRING,
+799                               .offset = offset,
+800                               .help_text = help_text,
+801                               .group = group,
+802                               .default_value = default_ptr,
+803                               .required = required,
+804                               .env_var_name = env_var_name,
+805                               .validate = validate,
+806                               .parse_fn = NULL,
+807                               .owns_memory = true, // Strings are always owned
+808                               .mode_bitmask = OPTION_MODE_NONE};
+809
+810   builder-&gt;descriptors[builder-&gt;num_descriptors++] = desc;
+811 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ensure_descriptor_capacity()</b>, <b>log_error</b>,
-    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>, and
-    <b>OPTION_TYPE_STRING</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
+    <b>options_builder_t::num_descriptors</b>, <b>OPTION_MODE_NONE</b>,
+    <b>OPTION_TYPE_STRING</b>, <b>options_builder_add_string()</b>, and
+    <b>OPTIONS_MAX_DOUBLE_DEFAULTS</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_string()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_add_usage_("><a class="permalink" href="#void_options_builder_add_usage_(">void
@@ -1751,23 +1863,25 @@ options_builder_add_usage(b, &quot;&lt;mode&gt;&quot;, NULL, true,
 <br/>
                           &quot;Run in a specific mode&quot;);
 </pre>
-<p class="Pp">Definition at line <b>1242</b> of file <b>builder.c</b>.</p>
-<pre>1243                                                         {
-1244   if (!builder || !description)
-1245     return;
-1246 
-1247   ensure_usage_line_capacity(builder);
-1248 
-1249   usage_descriptor_t usage = {
-1250       .mode = mode, .positional = positional, .show_options = show_options, .description = description};
-1251 
-1252   builder-&gt;usage_lines[builder-&gt;num_usage_lines++] = usage;
-1253 }</pre>
+<p class="Pp">Definition at line <b>1282</b> of file <b>builder.c</b>.</p>
+<pre>1283                                                         {
+1284   if (!builder || !description)
+1285     return;
+1286
+1287   ensure_usage_line_capacity(builder);
+1288
+1289   usage_descriptor_t usage = {
+1290       .mode = mode, .positional = positional, .show_options = show_options, .description = description};
+1291
+1292   builder-&gt;usage_lines[builder-&gt;num_usage_lines++] = usage;
+1293 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::num_usage_lines</b>,
-    <b>usage()</b>, and <b>options_builder_t::usage_lines</b>.</p>
-<p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
+    <b>options_builder_add_usage()</b>, <b>usage()</b>, and
+    <b>options_builder_t::usage_lines</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_add_usage()</b>, and
+    <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>options_config_t</b> * options_builder_build
@@ -1782,155 +1896,155 @@ options_builder_add_usage(b, &quot;&lt;mode&gt;&quot;, NULL, true,
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Immutable config (must be freed with
   options_config_destroy)</div>
-<p class="Pp">Definition at line <b>482</b> of file <b>builder.c</b>.</p>
-<pre>482                                                                     {
-483   if (!builder) {
-484     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder is NULL&quot;);
-485     return NULL;
-486   }
-487 
-488   options_config_t *config = SAFE_MALLOC(sizeof(options_config_t), options_config_t *);
-489   if (!config) {
-490     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate options config&quot;);
-491     return NULL;
-492   }
-493 
-494   // Allocate and copy descriptors
-495   config-&gt;descriptors = SAFE_MALLOC(builder-&gt;num_descriptors * sizeof(option_descriptor_t), option_descriptor_t *);
-496   if (!config-&gt;descriptors &amp;&amp; builder-&gt;num_descriptors &gt; 0) {
-497     SAFE_FREE(config);
-498     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate descriptors&quot;);
-499     return NULL;
-500   }
-501   memcpy(config-&gt;descriptors, builder-&gt;descriptors, builder-&gt;num_descriptors * sizeof(option_descriptor_t));
-502   config-&gt;num_descriptors = builder-&gt;num_descriptors;
-503 
-504   // Allocate and copy dependencies
-505   config-&gt;dependencies = SAFE_MALLOC(builder-&gt;num_dependencies * sizeof(option_dependency_t), option_dependency_t *);
-506   if (!config-&gt;dependencies &amp;&amp; builder-&gt;num_dependencies &gt; 0) {
-507     SAFE_FREE(config-&gt;descriptors);
-508     SAFE_FREE(config);
-509     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate dependencies&quot;);
-510     return NULL;
-511   }
-512   memcpy(config-&gt;dependencies, builder-&gt;dependencies, builder-&gt;num_dependencies * sizeof(option_dependency_t));
-513   config-&gt;num_dependencies = builder-&gt;num_dependencies;
-514 
-515   // Allocate and copy positional args
-516   if (builder-&gt;num_positional_args &gt; 0) {
-517     config-&gt;positional_args =
-518         SAFE_MALLOC(builder-&gt;num_positional_args * sizeof(positional_arg_descriptor_t), positional_arg_descriptor_t *);
-519     if (!config-&gt;positional_args) {
-520       SAFE_FREE(config-&gt;descriptors);
-521       SAFE_FREE(config-&gt;dependencies);
-522       SAFE_FREE(config);
-523       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate positional args&quot;);
-524       return NULL;
-525     }
-526     memcpy(config-&gt;positional_args, builder-&gt;positional_args,
-527            builder-&gt;num_positional_args * sizeof(positional_arg_descriptor_t));
-528     config-&gt;num_positional_args = builder-&gt;num_positional_args;
-529   } else {
-530     config-&gt;positional_args = NULL;
-531     config-&gt;num_positional_args = 0;
-532   }
-533 
-534   // Allocate and copy usage lines
-535   if (builder-&gt;num_usage_lines &gt; 0) {
-536     config-&gt;usage_lines = SAFE_MALLOC(builder-&gt;num_usage_lines * sizeof(usage_descriptor_t), usage_descriptor_t *);
-537     if (!config-&gt;usage_lines) {
-538       SAFE_FREE(config-&gt;descriptors);
-539       SAFE_FREE(config-&gt;dependencies);
-540       SAFE_FREE(config-&gt;positional_args);
-541       SAFE_FREE(config);
-542       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate usage lines&quot;);
-543       return NULL;
-544     }
-545     memcpy(config-&gt;usage_lines, builder-&gt;usage_lines, builder-&gt;num_usage_lines * sizeof(usage_descriptor_t));
-546     config-&gt;num_usage_lines = builder-&gt;num_usage_lines;
-547   } else {
-548     config-&gt;usage_lines = NULL;
-549     config-&gt;num_usage_lines = 0;
-550   }
-551 
-552   // Allocate and copy examples
-553   if (builder-&gt;num_examples &gt; 0) {
-554     config-&gt;examples = SAFE_MALLOC(builder-&gt;num_examples * sizeof(example_descriptor_t), example_descriptor_t *);
-555     if (!config-&gt;examples) {
-556       SAFE_FREE(config-&gt;descriptors);
-557       SAFE_FREE(config-&gt;dependencies);
-558       SAFE_FREE(config-&gt;positional_args);
-559       SAFE_FREE(config-&gt;usage_lines);
-560       SAFE_FREE(config);
-561       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate examples&quot;);
-562       return NULL;
-563     }
-564     memcpy(config-&gt;examples, builder-&gt;examples, builder-&gt;num_examples * sizeof(example_descriptor_t));
-565     config-&gt;num_examples = builder-&gt;num_examples;
-566   } else {
-567     config-&gt;examples = NULL;
-568     config-&gt;num_examples = 0;
-569   }
-570 
-571   // Allocate and copy modes
-572   if (builder-&gt;num_modes &gt; 0) {
-573     config-&gt;modes = SAFE_MALLOC(builder-&gt;num_modes * sizeof(help_mode_descriptor_t), help_mode_descriptor_t *);
-574     if (!config-&gt;modes) {
-575       SAFE_FREE(config-&gt;descriptors);
-576       SAFE_FREE(config-&gt;dependencies);
-577       SAFE_FREE(config-&gt;positional_args);
-578       SAFE_FREE(config-&gt;usage_lines);
-579       SAFE_FREE(config-&gt;examples);
-580       SAFE_FREE(config);
-581       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate modes&quot;);
-582       return NULL;
-583     }
-584     memcpy(config-&gt;modes, builder-&gt;modes, builder-&gt;num_modes * sizeof(help_mode_descriptor_t));
-585     config-&gt;num_modes = builder-&gt;num_modes;
-586   } else {
-587     config-&gt;modes = NULL;
-588     config-&gt;num_modes = 0;
-589   }
-590 
-591   // Allocate and copy custom sections
-592   if (builder-&gt;num_custom_sections &gt; 0) {
-593     config-&gt;custom_sections =
-594         SAFE_MALLOC(builder-&gt;num_custom_sections * sizeof(custom_section_descriptor_t), custom_section_descriptor_t *);
-595     if (!config-&gt;custom_sections) {
-596       SAFE_FREE(config-&gt;descriptors);
-597       SAFE_FREE(config-&gt;dependencies);
-598       SAFE_FREE(config-&gt;positional_args);
-599       SAFE_FREE(config-&gt;usage_lines);
-600       SAFE_FREE(config-&gt;examples);
-601       SAFE_FREE(config-&gt;modes);
-602       SAFE_FREE(config);
-603       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate custom sections&quot;);
-604       return NULL;
-605     }
-606     memcpy(config-&gt;custom_sections, builder-&gt;custom_sections,
-607            builder-&gt;num_custom_sections * sizeof(custom_section_descriptor_t));
-608     config-&gt;num_custom_sections = builder-&gt;num_custom_sections;
-609   } else {
-610     config-&gt;custom_sections = NULL;
-611     config-&gt;num_custom_sections = 0;
-612   }
-613 
-614   config-&gt;struct_size = builder-&gt;struct_size;
-615   config-&gt;program_name = builder-&gt;program_name;
-616   config-&gt;description = builder-&gt;description;
-617 
-618   // Initialize memory management
-619   config-&gt;owned_strings = builder-&gt;owned_strings_builder;
-620   config-&gt;num_owned_strings = builder-&gt;num_owned_strings_builder;
-621   config-&gt;owned_strings_capacity = builder-&gt;owned_strings_builder_capacity;
-622 
-623   // Clear builder's ownership so it doesn't free them
-624   builder-&gt;owned_strings_builder = NULL;
-625   builder-&gt;num_owned_strings_builder = 0;
-626   builder-&gt;owned_strings_builder_capacity = 0;
-627 
-628   return config;
-629 }</pre>
+<p class="Pp">Definition at line <b>516</b> of file <b>builder.c</b>.</p>
+<pre>516                                                                     {
+517   if (!builder) {
+518     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder is NULL&quot;);
+519     return NULL;
+520   }
+521
+522   options_config_t *config = SAFE_MALLOC(sizeof(options_config_t), options_config_t *);
+523   if (!config) {
+524     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate options config&quot;);
+525     return NULL;
+526   }
+527
+528   // Allocate and copy descriptors
+529   config-&gt;descriptors = SAFE_MALLOC(builder-&gt;num_descriptors * sizeof(option_descriptor_t), option_descriptor_t *);
+530   if (!config-&gt;descriptors &amp;&amp; builder-&gt;num_descriptors &gt; 0) {
+531     SAFE_FREE(config);
+532     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate descriptors&quot;);
+533     return NULL;
+534   }
+535   memcpy(config-&gt;descriptors, builder-&gt;descriptors, builder-&gt;num_descriptors * sizeof(option_descriptor_t));
+536   config-&gt;num_descriptors = builder-&gt;num_descriptors;
+537
+538   // Allocate and copy dependencies
+539   config-&gt;dependencies = SAFE_MALLOC(builder-&gt;num_dependencies * sizeof(option_dependency_t), option_dependency_t *);
+540   if (!config-&gt;dependencies &amp;&amp; builder-&gt;num_dependencies &gt; 0) {
+541     SAFE_FREE(config-&gt;descriptors);
+542     SAFE_FREE(config);
+543     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate dependencies&quot;);
+544     return NULL;
+545   }
+546   memcpy(config-&gt;dependencies, builder-&gt;dependencies, builder-&gt;num_dependencies * sizeof(option_dependency_t));
+547   config-&gt;num_dependencies = builder-&gt;num_dependencies;
+548
+549   // Allocate and copy positional args
+550   if (builder-&gt;num_positional_args &gt; 0) {
+551     config-&gt;positional_args =
+552         SAFE_MALLOC(builder-&gt;num_positional_args * sizeof(positional_arg_descriptor_t), positional_arg_descriptor_t *);
+553     if (!config-&gt;positional_args) {
+554       SAFE_FREE(config-&gt;descriptors);
+555       SAFE_FREE(config-&gt;dependencies);
+556       SAFE_FREE(config);
+557       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate positional args&quot;);
+558       return NULL;
+559     }
+560     memcpy(config-&gt;positional_args, builder-&gt;positional_args,
+561            builder-&gt;num_positional_args * sizeof(positional_arg_descriptor_t));
+562     config-&gt;num_positional_args = builder-&gt;num_positional_args;
+563   } else {
+564     config-&gt;positional_args = NULL;
+565     config-&gt;num_positional_args = 0;
+566   }
+567
+568   // Allocate and copy usage lines
+569   if (builder-&gt;num_usage_lines &gt; 0) {
+570     config-&gt;usage_lines = SAFE_MALLOC(builder-&gt;num_usage_lines * sizeof(usage_descriptor_t), usage_descriptor_t *);
+571     if (!config-&gt;usage_lines) {
+572       SAFE_FREE(config-&gt;descriptors);
+573       SAFE_FREE(config-&gt;dependencies);
+574       SAFE_FREE(config-&gt;positional_args);
+575       SAFE_FREE(config);
+576       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate usage lines&quot;);
+577       return NULL;
+578     }
+579     memcpy(config-&gt;usage_lines, builder-&gt;usage_lines, builder-&gt;num_usage_lines * sizeof(usage_descriptor_t));
+580     config-&gt;num_usage_lines = builder-&gt;num_usage_lines;
+581   } else {
+582     config-&gt;usage_lines = NULL;
+583     config-&gt;num_usage_lines = 0;
+584   }
+585
+586   // Allocate and copy examples
+587   if (builder-&gt;num_examples &gt; 0) {
+588     config-&gt;examples = SAFE_MALLOC(builder-&gt;num_examples * sizeof(example_descriptor_t), example_descriptor_t *);
+589     if (!config-&gt;examples) {
+590       SAFE_FREE(config-&gt;descriptors);
+591       SAFE_FREE(config-&gt;dependencies);
+592       SAFE_FREE(config-&gt;positional_args);
+593       SAFE_FREE(config-&gt;usage_lines);
+594       SAFE_FREE(config);
+595       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate examples&quot;);
+596       return NULL;
+597     }
+598     memcpy(config-&gt;examples, builder-&gt;examples, builder-&gt;num_examples * sizeof(example_descriptor_t));
+599     config-&gt;num_examples = builder-&gt;num_examples;
+600   } else {
+601     config-&gt;examples = NULL;
+602     config-&gt;num_examples = 0;
+603   }
+604
+605   // Allocate and copy modes
+606   if (builder-&gt;num_modes &gt; 0) {
+607     config-&gt;modes = SAFE_MALLOC(builder-&gt;num_modes * sizeof(help_mode_descriptor_t), help_mode_descriptor_t *);
+608     if (!config-&gt;modes) {
+609       SAFE_FREE(config-&gt;descriptors);
+610       SAFE_FREE(config-&gt;dependencies);
+611       SAFE_FREE(config-&gt;positional_args);
+612       SAFE_FREE(config-&gt;usage_lines);
+613       SAFE_FREE(config-&gt;examples);
+614       SAFE_FREE(config);
+615       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate modes&quot;);
+616       return NULL;
+617     }
+618     memcpy(config-&gt;modes, builder-&gt;modes, builder-&gt;num_modes * sizeof(help_mode_descriptor_t));
+619     config-&gt;num_modes = builder-&gt;num_modes;
+620   } else {
+621     config-&gt;modes = NULL;
+622     config-&gt;num_modes = 0;
+623   }
+624
+625   // Allocate and copy custom sections
+626   if (builder-&gt;num_custom_sections &gt; 0) {
+627     config-&gt;custom_sections =
+628         SAFE_MALLOC(builder-&gt;num_custom_sections * sizeof(custom_section_descriptor_t), custom_section_descriptor_t *);
+629     if (!config-&gt;custom_sections) {
+630       SAFE_FREE(config-&gt;descriptors);
+631       SAFE_FREE(config-&gt;dependencies);
+632       SAFE_FREE(config-&gt;positional_args);
+633       SAFE_FREE(config-&gt;usage_lines);
+634       SAFE_FREE(config-&gt;examples);
+635       SAFE_FREE(config-&gt;modes);
+636       SAFE_FREE(config);
+637       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate custom sections&quot;);
+638       return NULL;
+639     }
+640     memcpy(config-&gt;custom_sections, builder-&gt;custom_sections,
+641            builder-&gt;num_custom_sections * sizeof(custom_section_descriptor_t));
+642     config-&gt;num_custom_sections = builder-&gt;num_custom_sections;
+643   } else {
+644     config-&gt;custom_sections = NULL;
+645     config-&gt;num_custom_sections = 0;
+646   }
+647
+648   config-&gt;struct_size = builder-&gt;struct_size;
+649   config-&gt;program_name = builder-&gt;program_name;
+650   config-&gt;description = builder-&gt;description;
+651
+652   // Initialize memory management
+653   config-&gt;owned_strings = builder-&gt;owned_strings_builder;
+654   config-&gt;num_owned_strings = builder-&gt;num_owned_strings_builder;
+655   config-&gt;owned_strings_capacity = builder-&gt;owned_strings_builder_capacity;
+656
+657   // Clear builder's ownership so it doesn't free them
+658   builder-&gt;owned_strings_builder = NULL;
+659   builder-&gt;num_owned_strings_builder = 0;
+660   builder-&gt;owned_strings_builder_capacity = 0;
+661
+662   return config;
+663 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::custom_sections</b>,
@@ -1956,7 +2070,7 @@ options_builder_add_usage(b, &quot;&lt;mode&gt;&quot;, NULL, true,
     <b>options_builder_t::num_positional_args</b>,
     <b>options_config_t::num_positional_args</b>,
     <b>options_builder_t::num_usage_lines</b>,
-    <b>options_config_t::num_usage_lines</b>,
+    <b>options_config_t::num_usage_lines</b>, <b>options_builder_build()</b>,
     <b>options_config_t::owned_strings</b>,
     <b>options_builder_t::owned_strings_builder</b>,
     <b>options_builder_t::owned_strings_builder_capacity</b>,
@@ -1968,8 +2082,9 @@ options_builder_add_usage(b, &quot;&lt;mode&gt;&quot;, NULL, true,
     <b>SET_ERRNO</b>, <b>options_builder_t::struct_size</b>,
     <b>options_config_t::struct_size</b>, <b>options_builder_t::usage_lines</b>,
     and <b>options_config_t::usage_lines</b>.</p>
-<p class="Pp">Referenced by <b>options_builder_generate_manpage_template()</b>,
-    and <b>options_preset_unified()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_build()</b>,
+    <b>options_builder_generate_manpage_template()</b>, and
+    <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>options_builder_t</b> * options_builder_create (size_t
@@ -1981,60 +2096,60 @@ options_builder_add_usage(b, &quot;&lt;mode&gt;&quot;, NULL, true,
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">New builder (must be freed with
   options_builder_destroy)</div>
-<p class="Pp">Definition at line <b>378</b> of file <b>builder.c</b>.</p>
-<pre>378                                                               {
-379   // Reset int defaults counter for new builder
-380   g_int_defaults_counter = 0;
-381 
-382   options_builder_t *builder = SAFE_MALLOC(sizeof(options_builder_t), options_builder_t *);
-383   if (!builder) {
-384     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate options builder&quot;);
-385     return NULL;
-386   }
-387 
-388   builder-&gt;descriptors = SAFE_MALLOC(INITIAL_DESCRIPTOR_CAPACITY * sizeof(option_descriptor_t), option_descriptor_t *);
-389   if (!builder-&gt;descriptors) {
-390     free(builder);
-391     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate descriptors array&quot;);
-392     return NULL;
-393   }
-394 
-395   builder-&gt;dependencies = SAFE_MALLOC(INITIAL_DEPENDENCY_CAPACITY * sizeof(option_dependency_t), option_dependency_t *);
-396   if (!builder-&gt;dependencies) {
-397     SAFE_FREE(builder-&gt;descriptors);
-398     SAFE_FREE(builder);
-399     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate dependencies array&quot;);
-400     return NULL;
-401   }
-402 
-403   builder-&gt;num_descriptors = 0;
-404   builder-&gt;descriptor_capacity = INITIAL_DESCRIPTOR_CAPACITY;
-405   builder-&gt;num_dependencies = 0;
-406   builder-&gt;dependency_capacity = INITIAL_DEPENDENCY_CAPACITY;
-407   builder-&gt;positional_args = NULL;
-408   builder-&gt;num_positional_args = 0;
-409   builder-&gt;positional_arg_capacity = 0;
-410   builder-&gt;usage_lines = NULL;
-411   builder-&gt;num_usage_lines = 0;
-412   builder-&gt;usage_line_capacity = 0;
-413   builder-&gt;examples = NULL;
-414   builder-&gt;num_examples = 0;
-415   builder-&gt;example_capacity = 0;
-416   builder-&gt;modes = NULL;
-417   builder-&gt;num_modes = 0;
-418   builder-&gt;mode_capacity = 0;
-419   builder-&gt;custom_sections = NULL;
-420   builder-&gt;num_custom_sections = 0;
-421   builder-&gt;custom_section_capacity = 0;
-422   builder-&gt;struct_size = struct_size;
-423   builder-&gt;program_name = NULL;
-424   builder-&gt;description = NULL;
-425   builder-&gt;owned_strings_builder = NULL;
-426   builder-&gt;num_owned_strings_builder = 0;
-427   builder-&gt;owned_strings_builder_capacity = 0;
-428 
-429   return builder;
-430 }</pre>
+<p class="Pp">Definition at line <b>412</b> of file <b>builder.c</b>.</p>
+<pre>412                                                               {
+413   // Reset int defaults counter for new builder
+414   g_int_defaults_counter = 0;
+415
+416   options_builder_t *builder = SAFE_MALLOC(sizeof(options_builder_t), options_builder_t *);
+417   if (!builder) {
+418     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate options builder&quot;);
+419     return NULL;
+420   }
+421
+422   builder-&gt;descriptors = SAFE_MALLOC(INITIAL_DESCRIPTOR_CAPACITY * sizeof(option_descriptor_t), option_descriptor_t *);
+423   if (!builder-&gt;descriptors) {
+424     SAFE_FREE(builder);
+425     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate descriptors array&quot;);
+426     return NULL;
+427   }
+428
+429   builder-&gt;dependencies = SAFE_MALLOC(INITIAL_DEPENDENCY_CAPACITY * sizeof(option_dependency_t), option_dependency_t *);
+430   if (!builder-&gt;dependencies) {
+431     SAFE_FREE(builder-&gt;descriptors);
+432     SAFE_FREE(builder);
+433     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate dependencies array&quot;);
+434     return NULL;
+435   }
+436
+437   builder-&gt;num_descriptors = 0;
+438   builder-&gt;descriptor_capacity = INITIAL_DESCRIPTOR_CAPACITY;
+439   builder-&gt;num_dependencies = 0;
+440   builder-&gt;dependency_capacity = INITIAL_DEPENDENCY_CAPACITY;
+441   builder-&gt;positional_args = NULL;
+442   builder-&gt;num_positional_args = 0;
+443   builder-&gt;positional_arg_capacity = 0;
+444   builder-&gt;usage_lines = NULL;
+445   builder-&gt;num_usage_lines = 0;
+446   builder-&gt;usage_line_capacity = 0;
+447   builder-&gt;examples = NULL;
+448   builder-&gt;num_examples = 0;
+449   builder-&gt;example_capacity = 0;
+450   builder-&gt;modes = NULL;
+451   builder-&gt;num_modes = 0;
+452   builder-&gt;mode_capacity = 0;
+453   builder-&gt;custom_sections = NULL;
+454   builder-&gt;num_custom_sections = 0;
+455   builder-&gt;custom_section_capacity = 0;
+456   builder-&gt;struct_size = struct_size;
+457   builder-&gt;program_name = NULL;
+458   builder-&gt;description = NULL;
+459   builder-&gt;owned_strings_builder = NULL;
+460   builder-&gt;num_owned_strings_builder = 0;
+461   builder-&gt;owned_strings_builder_capacity = 0;
+462
+463   return builder;
+464 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::custom_section_capacity</b>,
@@ -2054,7 +2169,7 @@ options_builder_add_usage(b, &quot;&lt;mode&gt;&quot;, NULL, true,
     <b>options_builder_t::num_examples</b>, <b>options_builder_t::num_modes</b>,
     <b>options_builder_t::num_owned_strings_builder</b>,
     <b>options_builder_t::num_positional_args</b>,
-    <b>options_builder_t::num_usage_lines</b>,
+    <b>options_builder_t::num_usage_lines</b>, <b>options_builder_create()</b>,
     <b>options_builder_t::owned_strings_builder</b>,
     <b>options_builder_t::owned_strings_builder_capacity</b>,
     <b>options_builder_t::positional_arg_capacity</b>,
@@ -2063,8 +2178,9 @@ options_builder_add_usage(b, &quot;&lt;mode&gt;&quot;, NULL, true,
     <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>options_builder_t::struct_size</b>,
     <b>options_builder_t::usage_line_capacity</b>, and
     <b>options_builder_t::usage_lines</b>.</p>
-<p class="Pp">Referenced by <b>options_builder_from_preset()</b>, and
-    <b>options_preset_unified()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_create()</b>,
+    <b>options_builder_from_preset()</b>, and
+  <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_destroy_("><a class="permalink" href="#void_options_builder_destroy_(">void
@@ -2072,31 +2188,32 @@ options_builder_add_usage(b, &quot;&lt;mode&gt;&quot;, NULL, true,
 <p class="Pp">Free options builder.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>builder</i> Builder to free (can be NULL)</div>
-<p class="Pp">Definition at line <b>467</b> of file <b>builder.c</b>.</p>
-<pre>467                                                          {
-468   if (!builder)
-469     return;
-470 
-471   SAFE_FREE(builder-&gt;descriptors);
-472   SAFE_FREE(builder-&gt;dependencies);
-473   SAFE_FREE(builder-&gt;positional_args);
-474   SAFE_FREE(builder-&gt;usage_lines);
-475   SAFE_FREE(builder-&gt;examples);
-476   SAFE_FREE(builder-&gt;modes);
-477   SAFE_FREE(builder-&gt;custom_sections);
-478   SAFE_FREE(builder-&gt;owned_strings_builder); // Free the builder's owned strings
-479   SAFE_FREE(builder);
-480 }</pre>
+<p class="Pp">Definition at line <b>501</b> of file <b>builder.c</b>.</p>
+<pre>501                                                          {
+502   if (!builder)
+503     return;
+504
+505   SAFE_FREE(builder-&gt;descriptors);
+506   SAFE_FREE(builder-&gt;dependencies);
+507   SAFE_FREE(builder-&gt;positional_args);
+508   SAFE_FREE(builder-&gt;usage_lines);
+509   SAFE_FREE(builder-&gt;examples);
+510   SAFE_FREE(builder-&gt;modes);
+511   SAFE_FREE(builder-&gt;custom_sections);
+512   SAFE_FREE(builder-&gt;owned_strings_builder); // Free the builder's owned strings
+513   SAFE_FREE(builder);
+514 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::custom_sections</b>,
     <b>options_builder_t::dependencies</b>,
     <b>options_builder_t::descriptors</b>, <b>options_builder_t::examples</b>,
-    <b>options_builder_t::modes</b>,
+    <b>options_builder_t::modes</b>, <b>options_builder_destroy()</b>,
     <b>options_builder_t::owned_strings_builder</b>,
     <b>options_builder_t::positional_args</b>, <b>SAFE_FREE</b>, and
     <b>options_builder_t::usage_lines</b>.</p>
-<p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_destroy()</b>, and
+    <b>options_preset_unified()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>options_builder_t</b> * options_builder_from_preset (const
@@ -2109,41 +2226,41 @@ options_builder_add_usage(b, &quot;&lt;mode&gt;&quot;, NULL, true,
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">New builder (must be freed with
   options_builder_destroy)</div>
-<p class="Pp">Definition at line <b>432</b> of file <b>builder.c</b>.</p>
-<pre>432                                                                                {
-433   if (!preset) {
-434     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Preset config is NULL&quot;);
-435     return NULL;
-436   }
-437 
-438   options_builder_t *builder = options_builder_create(preset-&gt;struct_size);
-439   if (!builder) {
-440     return NULL;
-441   }
-442 
-443   builder-&gt;program_name = preset-&gt;program_name;
-444   builder-&gt;description = preset-&gt;description;
-445 
-446   // Copy all descriptors
-447   for (size_t i = 0; i &lt; preset-&gt;num_descriptors; i++) {
-448     options_builder_add_descriptor(builder, &amp;preset-&gt;descriptors[i]);
-449   }
-450 
-451   // Copy all dependencies
-452   for (size_t i = 0; i &lt; preset-&gt;num_dependencies; i++) {
-453     options_builder_add_dependency(builder, &amp;preset-&gt;dependencies[i]);
-454   }
-455 
-456   // Copy all positional arguments
-457   for (size_t i = 0; i &lt; preset-&gt;num_positional_args; i++) {
-458     const positional_arg_descriptor_t *pos_arg = &amp;preset-&gt;positional_args[i];
-459     options_builder_add_positional(builder, pos_arg-&gt;name, pos_arg-&gt;help_text, pos_arg-&gt;required,
-460                                    pos_arg-&gt;section_heading, pos_arg-&gt;examples, pos_arg-&gt;num_examples,
-461                                    pos_arg-&gt;mode_bitmask, pos_arg-&gt;parse_fn);
-462   }
-463 
-464   return builder;
-465 }</pre>
+<p class="Pp">Definition at line <b>466</b> of file <b>builder.c</b>.</p>
+<pre>466                                                                                {
+467   if (!preset) {
+468     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Preset config is NULL&quot;);
+469     return NULL;
+470   }
+471
+472   options_builder_t *builder = options_builder_create(preset-&gt;struct_size);
+473   if (!builder) {
+474     return NULL;
+475   }
+476
+477   builder-&gt;program_name = preset-&gt;program_name;
+478   builder-&gt;description = preset-&gt;description;
+479
+480   // Copy all descriptors
+481   for (size_t i = 0; i &lt; preset-&gt;num_descriptors; i++) {
+482     options_builder_add_descriptor(builder, &amp;preset-&gt;descriptors[i]);
+483   }
+484
+485   // Copy all dependencies
+486   for (size_t i = 0; i &lt; preset-&gt;num_dependencies; i++) {
+487     options_builder_add_dependency(builder, &amp;preset-&gt;dependencies[i]);
+488   }
+489
+490   // Copy all positional arguments
+491   for (size_t i = 0; i &lt; preset-&gt;num_positional_args; i++) {
+492     const positional_arg_descriptor_t *pos_arg = &amp;preset-&gt;positional_args[i];
+493     options_builder_add_positional(builder, pos_arg-&gt;name, pos_arg-&gt;help_text, pos_arg-&gt;required,
+494                                    pos_arg-&gt;section_heading, pos_arg-&gt;examples, pos_arg-&gt;num_examples,
+495                                    pos_arg-&gt;mode_bitmask, pos_arg-&gt;parse_fn);
+496   }
+497
+498   return builder;
+499 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_config_t::dependencies</b>,
@@ -2160,6 +2277,7 @@ options_builder_add_usage(b, &quot;&lt;mode&gt;&quot;, NULL, true,
     <b>options_builder_add_dependency()</b>,
     <b>options_builder_add_descriptor()</b>,
     <b>options_builder_add_positional()</b>, <b>options_builder_create()</b>,
+    <b>options_builder_from_preset()</b>,
     <b>positional_arg_descriptor_t::parse_fn</b>,
     <b>options_config_t::positional_args</b>,
     <b>options_builder_t::program_name</b>,
@@ -2167,6 +2285,7 @@ options_builder_add_usage(b, &quot;&lt;mode&gt;&quot;, NULL, true,
     <b>positional_arg_descriptor_t::required</b>,
     <b>positional_arg_descriptor_t::section_heading</b>, <b>SET_ERRNO</b>, and
     <b>options_config_t::struct_size</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_from_preset()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_mark_as_list_("><a class="permalink" href="#void_options_builder_mark_as_list_(">void
@@ -2183,27 +2302,29 @@ options_builder_add_usage(b, &quot;&lt;mode&gt;&quot;, NULL, true,
 <p class="Pp"></p>
 <pre>options_builder_mark_as_list(builder, &quot;stun-servers&quot;);  // Accepts comma-separated URLs
 </pre>
-<p class="Pp">Definition at line <b>1093</b> of file <b>builder.c</b>.</p>
-<pre>1093                                                                                        {
-1094   if (!builder || !option_name) {
-1095     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder or option_name is NULL&quot;);
-1096     return;
-1097   }
-1098 
-1099   int idx = find_descriptor_in_builder(builder, option_name);
-1100   if (idx &lt; 0) {
-1101     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option '%s' not found in builder&quot;, option_name);
-1102     return;
-1103   }
-1104 
-1105   option_descriptor_t *desc = &amp;builder-&gt;descriptors[idx];
-1106   desc-&gt;metadata.is_list = true;
-1107 }</pre>
+<p class="Pp">Definition at line <b>1133</b> of file <b>builder.c</b>.</p>
+<pre>1133                                                                                        {
+1134   if (!builder || !option_name) {
+1135     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder or option_name is NULL&quot;);
+1136     return;
+1137   }
+1138
+1139   int idx = find_descriptor_in_builder(builder, option_name);
+1140   if (idx &lt; 0) {
+1141     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option '%s' not found in builder&quot;, option_name);
+1142     return;
+1143   }
+1144
+1145   option_descriptor_t *desc = &amp;builder-&gt;descriptors[idx];
+1146   desc-&gt;metadata.is_list = true;
+1147 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>option_metadata_t::is_list</b>,
-    <b>option_descriptor_t::metadata</b>, and <b>SET_ERRNO</b>.</p>
+    <b>option_descriptor_t::metadata</b>, <b>options_builder_mark_as_list()</b>,
+    and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_mark_as_list()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_mark_binary_only_("><a class="permalink" href="#void_options_builder_mark_binary_only_(">void
@@ -2224,28 +2345,30 @@ options_builder_add_usage(b, &quot;&lt;mode&gt;&quot;, NULL, true,
 <pre>options_builder_add_string(b, &quot;log-file&quot;, 'L', ...);
 options_builder_mark_binary_only(b, &quot;log-file&quot;);
 </pre>
-<p class="Pp">Definition at line <b>1172</b> of file <b>builder.c</b>.</p>
-<pre>1172                                                                                            {
-1173   if (!builder || !option_name)
-1174     return;
-1175 
-1176   // Find the option by name and mark it
-1177   for (size_t i = 0; i &lt; builder-&gt;num_descriptors; i++) {
-1178     if (strcmp(builder-&gt;descriptors[i].long_name, option_name) == 0) {
-1179       builder-&gt;descriptors[i].hide_from_mode_help = true;
-1180       return;
-1181     }
-1182   }
-1183 
-1184   // Option not found - this is a programming error
-1185   log_warn(&quot;Attempted to mark non-existent option '%s' as binary-only&quot;, option_name);
-1186 }</pre>
+<p class="Pp">Definition at line <b>1212</b> of file <b>builder.c</b>.</p>
+<pre>1212                                                                                            {
+1213   if (!builder || !option_name)
+1214     return;
+1215
+1216   // Find the option by name and mark it
+1217   for (size_t i = 0; i &lt; builder-&gt;num_descriptors; i++) {
+1218     if (strcmp(builder-&gt;descriptors[i].long_name, option_name) == 0) {
+1219       builder-&gt;descriptors[i].hide_from_mode_help = true;
+1220       return;
+1221     }
+1222   }
+1223
+1224   // Option not found - this is a programming error
+1225   log_warn(&quot;Attempted to mark non-existent option '%s' as binary-only&quot;, option_name);
+1226 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>option_descriptor_t::hide_from_mode_help</b>, <b>log_warn</b>,
-    <b>option_descriptor_t::long_name</b>, and
-    <b>options_builder_t::num_descriptors</b>.</p>
+    <b>option_descriptor_t::long_name</b>,
+    <b>options_builder_t::num_descriptors</b>, and
+    <b>options_builder_mark_binary_only()</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_mark_binary_only()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_set_arg_placeholder_("><a class="permalink" href="#void_options_builder_set_arg_placeholder_(">void
@@ -2261,20 +2384,22 @@ options_builder_mark_binary_only(b, &quot;log-file&quot;);
 <br/>
 <i>arg_placeholder</i> Custom placeholder text (e.g., &quot;SHELL [FILE]&quot;),
   or NULL to use type-based placeholder</div>
-<p class="Pp">Definition at line <b>992</b> of file <b>builder.c</b>.</p>
-<pre>992                                                                                                   {
-993   if (!builder || builder-&gt;num_descriptors == 0) {
-994     SET_ERRNO(ERROR_INVALID_STATE, &quot;Builder is NULL or has no descriptors&quot;);
-995     return;
-996   }
-997   builder-&gt;descriptors[builder-&gt;num_descriptors - 1].arg_placeholder = arg_placeholder;
-998 }</pre>
+<p class="Pp">Definition at line <b>1032</b> of file <b>builder.c</b>.</p>
+<pre>1032                                                                                                   {
+1033   if (!builder || builder-&gt;num_descriptors == 0) {
+1034     SET_ERRNO(ERROR_INVALID_STATE, &quot;Builder is NULL or has no descriptors&quot;);
+1035     return;
+1036   }
+1037   builder-&gt;descriptors[builder-&gt;num_descriptors - 1].arg_placeholder = arg_placeholder;
+1038 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>option_descriptor_t::arg_placeholder</b>,
     <b>options_builder_t::descriptors</b>, <b>ERROR_INVALID_STATE</b>,
-    <b>options_builder_t::num_descriptors</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
+    <b>options_builder_t::num_descriptors</b>,
+    <b>options_builder_set_arg_placeholder()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_set_arg_placeholder()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_set_default_value_display_("><a class="permalink" href="#void_options_builder_set_default_value_display_(">void
@@ -2290,27 +2415,31 @@ options_builder_mark_binary_only(b, &quot;log-file&quot;);
 <i>option_name</i> Long name of option to set metadata for
 <br/>
 <i>default_value</i> Default value as string for display</div>
-<p class="Pp">Definition at line <b>1109</b> of file <b>builder.c</b>.</p>
-<pre>1110                                                                           {
-1111   if (!builder || !option_name) {
-1112     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder or option_name is NULL&quot;);
-1113     return;
-1114   }
-1115 
-1116   int idx = find_descriptor_in_builder(builder, option_name);
-1117   if (idx &lt; 0) {
-1118     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option '%s' not found in builder&quot;, option_name);
-1119     return;
-1120   }
-1121 
-1122   option_descriptor_t *desc = &amp;builder-&gt;descriptors[idx];
-1123   desc-&gt;metadata.default_value = default_value;
-1124 }</pre>
+<p class="Pp">Definition at line <b>1149</b> of file <b>builder.c</b>.</p>
+<pre>1150                                                                           {
+1151   if (!builder || !option_name) {
+1152     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder or option_name is NULL&quot;);
+1153     return;
+1154   }
+1155
+1156   int idx = find_descriptor_in_builder(builder, option_name);
+1157   if (idx &lt; 0) {
+1158     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option '%s' not found in builder&quot;, option_name);
+1159     return;
+1160   }
+1161
+1162   option_descriptor_t *desc = &amp;builder-&gt;descriptors[idx];
+1163   desc-&gt;metadata.default_value = default_value;
+1164 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>option_metadata_t::default_value</b>,
     <b>options_builder_t::descriptors</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>option_descriptor_t::metadata</b>, and <b>SET_ERRNO</b>.</p>
+    <b>option_descriptor_t::metadata</b>,
+    <b>options_builder_set_default_value_display()</b>, and
+  <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by
+  <b>options_builder_set_default_value_display()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_set_enum_values_("><a class="permalink" href="#void_options_builder_set_enum_values_(">void
@@ -2349,29 +2478,32 @@ const char *color_descs[] = {
 options_builder_set_enum_values(builder, &quot;color-mode&quot;, color_values, color_descs, 5);
 options_builder_set_input_type(builder, &quot;color-mode&quot;, OPTION_INPUT_ENUM);
 </pre>
-<p class="Pp">Definition at line <b>1022</b> of file <b>builder.c</b>.</p>
-<pre>1023                                                                 {
-1024   if (!builder || !option_name || !values || !descriptions) {
-1025     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder or arguments are NULL&quot;);
-1026     return;
-1027   }
-1028 
-1029   int idx = find_descriptor_in_builder(builder, option_name);
-1030   if (idx &lt; 0) {
-1031     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option '%s' not found in builder&quot;, option_name);
-1032     return;
-1033   }
-1034 
-1035   option_descriptor_t *desc = &amp;builder-&gt;descriptors[idx];
-1036   desc-&gt;metadata.enum_values = values;
-1037   desc-&gt;metadata.enum_descriptions = descriptions;
-1038 }</pre>
+<p class="Pp">Definition at line <b>1062</b> of file <b>builder.c</b>.</p>
+<pre>1063                                                                 {
+1064   if (!builder || !option_name || !values) {
+1065     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder or arguments are NULL&quot;);
+1066     return;
+1067   }
+1068
+1069   int idx = find_descriptor_in_builder(builder, option_name);
+1070   if (idx &lt; 0) {
+1071     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option '%s' not found in builder&quot;, option_name);
+1072     return;
+1073   }
+1074
+1075   option_descriptor_t *desc = &amp;builder-&gt;descriptors[idx];
+1076   desc-&gt;metadata.enum_values = values;
+1077   desc-&gt;metadata.enum_descriptions = descriptions;
+1078 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>option_metadata_t::enum_descriptions</b>,
     <b>option_metadata_t::enum_values</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>option_descriptor_t::metadata</b>, and <b>SET_ERRNO</b>.</p>
+    <b>option_descriptor_t::metadata</b>,
+    <b>options_builder_set_enum_values()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_set_enum_values()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_set_examples_("><a class="permalink" href="#void_options_builder_set_examples_(">void
@@ -2392,28 +2524,30 @@ options_builder_set_input_type(builder, &quot;color-mode&quot;, OPTION_INPUT_ENU
 <pre>const char *fps_examples[] = {&quot;30&quot;, &quot;60&quot;, &quot;144&quot;, NULL};
 options_builder_set_examples(builder, &quot;fps&quot;, fps_examples);
 </pre>
-<p class="Pp">Definition at line <b>1059</b> of file <b>builder.c</b>.</p>
-<pre>1059                                                                                                               {
-1060   if (!builder || !option_name || !examples) {
-1061     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder or arguments are NULL&quot;);
-1062     return;
-1063   }
-1064 
-1065   int idx = find_descriptor_in_builder(builder, option_name);
-1066   if (idx &lt; 0) {
-1067     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option '%s' not found in builder&quot;, option_name);
-1068     return;
-1069   }
-1070 
-1071   option_descriptor_t *desc = &amp;builder-&gt;descriptors[idx];
-1072   desc-&gt;metadata.examples = examples;
-1073   // Note: examples array must be null-terminated
-1074 }</pre>
+<p class="Pp">Definition at line <b>1099</b> of file <b>builder.c</b>.</p>
+<pre>1099                                                                                                               {
+1100   if (!builder || !option_name || !examples) {
+1101     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder or arguments are NULL&quot;);
+1102     return;
+1103   }
+1104
+1105   int idx = find_descriptor_in_builder(builder, option_name);
+1106   if (idx &lt; 0) {
+1107     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option '%s' not found in builder&quot;, option_name);
+1108     return;
+1109   }
+1110
+1111   option_descriptor_t *desc = &amp;builder-&gt;descriptors[idx];
+1112   desc-&gt;metadata.examples = examples;
+1113   // Note: examples array must be null-terminated
+1114 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>option_metadata_t::examples</b>,
-    <b>option_descriptor_t::metadata</b>, and <b>SET_ERRNO</b>.</p>
+    <b>option_descriptor_t::metadata</b>, <b>options_builder_set_examples()</b>,
+    and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_set_examples()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_set_input_type_("><a class="permalink" href="#void_options_builder_set_input_type_(">void
@@ -2435,27 +2569,30 @@ options_builder_set_examples(builder, &quot;fps&quot;, fps_examples);
 <pre>options_builder_set_input_type(builder, &quot;color-mode&quot;, OPTION_INPUT_ENUM);
 options_builder_set_input_type(builder, &quot;log-file&quot;, OPTION_INPUT_FILEPATH);
 </pre>
-<p class="Pp">Definition at line <b>1076</b> of file <b>builder.c</b>.</p>
-<pre>1077                                                                     {
-1078   if (!builder || !option_name) {
-1079     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder or option_name is NULL&quot;);
-1080     return;
-1081   }
-1082 
-1083   int idx = find_descriptor_in_builder(builder, option_name);
-1084   if (idx &lt; 0) {
-1085     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option '%s' not found in builder&quot;, option_name);
-1086     return;
-1087   }
-1088 
-1089   option_descriptor_t *desc = &amp;builder-&gt;descriptors[idx];
-1090   desc-&gt;metadata.input_type = input_type;
-1091 }</pre>
+<p class="Pp">Definition at line <b>1116</b> of file <b>builder.c</b>.</p>
+<pre>1117                                                                     {
+1118   if (!builder || !option_name) {
+1119     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder or option_name is NULL&quot;);
+1120     return;
+1121   }
+1122
+1123   int idx = find_descriptor_in_builder(builder, option_name);
+1124   if (idx &lt; 0) {
+1125     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option '%s' not found in builder&quot;, option_name);
+1126     return;
+1127   }
+1128
+1129   option_descriptor_t *desc = &amp;builder-&gt;descriptors[idx];
+1130   desc-&gt;metadata.input_type = input_type;
+1131 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ERROR_INVALID_PARAM</b>, <b>option_metadata_t::input_type</b>,
-    <b>option_descriptor_t::metadata</b>, and <b>SET_ERRNO</b>.</p>
+    <b>option_descriptor_t::metadata</b>,
+    <b>options_builder_set_input_type()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_set_input_type()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_set_mode_bitmask_("><a class="permalink" href="#void_options_builder_set_mode_bitmask_(">void
@@ -2469,20 +2606,22 @@ options_builder_set_input_type(builder, &quot;log-file&quot;, OPTION_INPUT_FILEP
 <div class="Bd-indent"><i>builder</i> Options builder
 <br/>
 <i>mode_bitmask</i> Bitmask indicating which modes this option applies to</div>
-<p class="Pp">Definition at line <b>984</b> of file <b>builder.c</b>.</p>
-<pre>984                                                                                                       {
-985   if (!builder || builder-&gt;num_descriptors == 0) {
-986     SET_ERRNO(ERROR_INVALID_STATE, &quot;Builder is NULL or has no descriptors&quot;);
-987     return;
-988   }
-989   builder-&gt;descriptors[builder-&gt;num_descriptors - 1].mode_bitmask = mode_bitmask;
-990 }</pre>
+<p class="Pp">Definition at line <b>1024</b> of file <b>builder.c</b>.</p>
+<pre>1024                                                                                                       {
+1025   if (!builder || builder-&gt;num_descriptors == 0) {
+1026     SET_ERRNO(ERROR_INVALID_STATE, &quot;Builder is NULL or has no descriptors&quot;);
+1027     return;
+1028   }
+1029   builder-&gt;descriptors[builder-&gt;num_descriptors - 1].mode_bitmask = mode_bitmask;
+1030 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
     <b>ERROR_INVALID_STATE</b>, <b>option_descriptor_t::mode_bitmask</b>,
-    <b>options_builder_t::num_descriptors</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>options_registry_add_all_to_builder()</b>.</p>
+    <b>options_builder_t::num_descriptors</b>,
+    <b>options_builder_set_mode_bitmask()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_set_mode_bitmask()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_builder_set_numeric_range_("><a class="permalink" href="#void_options_builder_set_numeric_range_(">void
@@ -2506,31 +2645,53 @@ options_builder_set_input_type(builder, &quot;log-file&quot;, OPTION_INPUT_FILEP
 <pre>options_builder_set_numeric_range(builder, &quot;compression-level&quot;, 1, 9, 1);
 options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_INPUT_NUMERIC);
 </pre>
-<p class="Pp">Definition at line <b>1040</b> of file <b>builder.c</b>.</p>
-<pre>1041                                                  {
-1042   if (!builder || !option_name) {
-1043     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder or option_name is NULL&quot;);
-1044     return;
-1045   }
-1046 
-1047   int idx = find_descriptor_in_builder(builder, option_name);
-1048   if (idx &lt; 0) {
-1049     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option '%s' not found in builder&quot;, option_name);
-1050     return;
-1051   }
-1052 
-1053   option_descriptor_t *desc = &amp;builder-&gt;descriptors[idx];
-1054   desc-&gt;metadata.numeric_range.min = min;
-1055   desc-&gt;metadata.numeric_range.max = max;
-1056   desc-&gt;metadata.numeric_range.step = step;
-1057 }</pre>
+<p class="Pp">Definition at line <b>1080</b> of file <b>builder.c</b>.</p>
+<pre>1081                                                  {
+1082   if (!builder || !option_name) {
+1083     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder or option_name is NULL&quot;);
+1084     return;
+1085   }
+1086
+1087   int idx = find_descriptor_in_builder(builder, option_name);
+1088   if (idx &lt; 0) {
+1089     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option '%s' not found in builder&quot;, option_name);
+1090     return;
+1091   }
+1092
+1093   option_descriptor_t *desc = &amp;builder-&gt;descriptors[idx];
+1094   desc-&gt;metadata.numeric_range.min = min;
+1095   desc-&gt;metadata.numeric_range.max = max;
+1096   desc-&gt;metadata.numeric_range.step = step;
+1097 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_builder_t::descriptors</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>option_metadata_t::max</b>,
-    <b>option_descriptor_t::metadata</b>, <b>option_metadata_t::min</b>,
-    <b>option_metadata_t::numeric_range</b>, <b>SET_ERRNO</b>, and
-    <b>option_metadata_t::step</b>.</p>
+    <b>ERROR_INVALID_PARAM</b>, <b>option_descriptor_t::metadata</b>,
+    <b>option_metadata_t::numeric_range</b>,
+    <b>options_builder_set_numeric_range()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_set_numeric_range()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_options_builder_set_string_parser_("><a class="permalink" href="#void_options_builder_set_string_parser_(">void
+  options_builder_set_string_parser (<b>options_builder_t</b> * builder,
+  <b>bool</b>(* parser )(const char *, void *, char **))</a></h2>
+<p class="Pp">Set the CLI parser for the last added string option; environment
+    strings remain scalar.</p>
+<p class="Pp">Definition at line <b>1018</b> of file <b>builder.c</b>.</p>
+<pre>1018                                                                                                                   {
+1019   if (builder &amp;&amp; builder-&gt;num_descriptors &amp;&amp;
+1020       builder-&gt;descriptors[builder-&gt;num_descriptors - 1].type == OPTION_TYPE_STRING)
+1021     builder-&gt;descriptors[builder-&gt;num_descriptors - 1].parse_fn = parser;
+1022 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_builder_t::descriptors</b>,
+    <b>options_builder_t::num_descriptors</b>, <b>OPTION_TYPE_STRING</b>,
+    <b>options_builder_set_string_parser()</b>,
+    <b>option_descriptor_t::parse_fn</b>, and
+  <b>option_descriptor_t::type</b>.</p>
+<p class="Pp">Referenced by <b>options_builder_set_string_parser()</b>, and
+    <b>options_registry_add_all_to_builder()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_options_config_destroy_("><a class="permalink" href="#void_options_config_destroy_(">void
@@ -2540,40 +2701,41 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
     that.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Config to free (can
-  be NULL)</b></div>
-<p class="Pp">Definition at line <b>631</b> of file <b>builder.c</b>.</p>
-<pre>631                                                       {
-632   if (!config)
-633     return;
-634 
-635   SAFE_FREE(config-&gt;descriptors);
-636   SAFE_FREE(config-&gt;dependencies);
-637   SAFE_FREE(config-&gt;positional_args);
-638   SAFE_FREE(config-&gt;usage_lines);
-639   SAFE_FREE(config-&gt;examples);
-640   SAFE_FREE(config-&gt;modes);
-641   SAFE_FREE(config-&gt;custom_sections);
-642 
-643   // Free all owned strings before freeing the array
-644   // Use SAFE_FREE because platform_strdup uses SAFE_MALLOC (mimalloc on Windows)
-645   for (size_t i = 0; i &lt; config-&gt;num_owned_strings; i++) {
-646     SAFE_FREE(config-&gt;owned_strings[i]);
-647   }
-648   SAFE_FREE(config-&gt;owned_strings);
-649 
-650   SAFE_FREE(config);
-651 }</pre>
+<div class="Bd-indent"><i>config</i> Config to free (can be NULL)</div>
+<p class="Pp">Definition at line <b>665</b> of file <b>builder.c</b>.</p>
+<pre>665                                                       {
+666   if (!config)
+667     return;
+668
+669   SAFE_FREE(config-&gt;descriptors);
+670   SAFE_FREE(config-&gt;dependencies);
+671   SAFE_FREE(config-&gt;positional_args);
+672   SAFE_FREE(config-&gt;usage_lines);
+673   SAFE_FREE(config-&gt;examples);
+674   SAFE_FREE(config-&gt;modes);
+675   SAFE_FREE(config-&gt;custom_sections);
+676
+677   // Free all owned strings before freeing the array
+678   // Use SAFE_FREE because platform_strdup uses SAFE_MALLOC (mimalloc on Windows)
+679   for (size_t i = 0; i &lt; config-&gt;num_owned_strings; i++) {
+680     SAFE_FREE(config-&gt;owned_strings[i]);
+681   }
+682   SAFE_FREE(config-&gt;owned_strings);
+683
+684   SAFE_FREE(config);
+685 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_config_t::custom_sections</b>,
     <b>options_config_t::dependencies</b>, <b>options_config_t::descriptors</b>,
     <b>options_config_t::examples</b>, <b>options_config_t::modes</b>,
-    <b>options_config_t::num_owned_strings</b>,
+    <b>options_config_t::num_owned_strings</b>, <b>options_config_destroy()</b>,
     <b>options_config_t::owned_strings</b>,
     <b>options_config_t::positional_args</b>, <b>SAFE_FREE</b>, and
     <b>options_config_t::usage_lines</b>.</p>
-<p class="Pp">Referenced by <b>options_init()</b>, and <b>usage()</b>.</p>
+<p class="Pp">Referenced by <b>config_create_default()</b>,
+    <b>options_config_destroy()</b>, <b>options_init()</b>, and
+  <b>usage()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> options_config_parse (const
@@ -2585,8 +2747,7 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
     checked for missing options.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
-  configuration</b>
+<div class="Bd-indent"><i>config</i> Options configuration
 <br/>
 <i>argc</i> Argument count
 <br/>
@@ -2600,34 +2761,34 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, ERROR_USAGE on parse
   errors</div>
-<p class="Pp">Definition at line <b>1813</b> of file <b>builder.c</b>.</p>
-<pre>1815                                                                {
-1816   if (!config || !options_struct) {
-1817     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options struct is NULL&quot;);
-1818   }
-1819 
-1820   // Use the new unified parser that handles mixed positional and flag arguments
-1821   asciichat_error_t result = options_config_parse_unified(config, argc, argv, options_struct, detected_mode);
-1822   if (result != ASCIICHAT_OK) {
-1823     return result;
-1824   }
-1825 
-1826   // Since unified parser handles all arguments, there are no remaining args
-1827   // (backward compatibility: set remaining_argc to 0)
-1828   if (remaining_argc) {
-1829     *remaining_argc = 0;
-1830   }
-1831   if (remaining_argv) {
-1832     *remaining_argv = NULL;
-1833   }
-1834 
-1835   return ASCIICHAT_OK;
-1836 }</pre>
+<p class="Pp">Definition at line <b>1860</b> of file <b>builder.c</b>.</p>
+<pre>1862                                                                {
+1863   if (!config || !options_struct) {
+1864     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options struct is NULL&quot;);
+1865   }
+1866
+1867   // Use the new unified parser that handles mixed positional and flag arguments
+1868   asciichat_error_t result = options_config_parse_unified(config, argc, argv, options_struct, detected_mode);
+1869   if (result != ASCIICHAT_OK) {
+1870     return result;
+1871   }
+1872
+1873   // Since unified parser handles all arguments, there are no remaining args
+1874   // (backward compatibility: set remaining_argc to 0)
+1875   if (remaining_argc) {
+1876     *remaining_argc = 0;
+1877   }
+1878   if (remaining_argv) {
+1879     *remaining_argv = NULL;
+1880   }
+1881
+1882   return ASCIICHAT_OK;
+1883 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, and
-    <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>options_init()</b>.</p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>options_config_parse()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_config_parse()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> options_config_parse_positional (const
@@ -2642,8 +2803,7 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
     flow.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
-  configuration</b>
+<div class="Bd-indent"><i>config</i> Options configuration
 <br/>
 <i>remaining_argc</i> Count of remaining args
 <br/>
@@ -2653,79 +2813,82 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, ERROR_USAGE on parse
   errors</div>
-<p class="Pp">Definition at line <b>1331</b> of file <b>builder.c</b>.</p>
-<pre>1332                                                                                                {
-1333   if (!config || !options_struct) {
-1334     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options struct is NULL&quot;);
-1335   }
-1336 
-1337   if (remaining_argc &lt; 0 || (remaining_argc &gt; 0 &amp;&amp; !remaining_argv)) {
-1338     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid remaining args&quot;);
-1339   }
-1340 
-1341   // No positional args defined - but we got some positional arguments
-1342   if (config-&gt;num_positional_args == 0 &amp;&amp; remaining_argc &gt; 0) {
-1343     log_error(&quot;Error: Unexpected positional argument '%s'&quot;, remaining_argv[0]);
-1344     return ERROR_USAGE;
-1345   }
-1346 
-1347   // Check if required positional args are missing
-1348   for (size_t i = 0; i &lt; config-&gt;num_positional_args; i++) {
-1349     const positional_arg_descriptor_t *pos_arg = &amp;config-&gt;positional_args[i];
-1350     if (pos_arg-&gt;required &amp;&amp; remaining_argc == 0) {
-1351       log_error(&quot;Error: Missing required positional argument '%s'&quot;, pos_arg-&gt;name);
-1352       if (pos_arg-&gt;help_text) {
-1353         log_error(&quot;  %s&quot;, pos_arg-&gt;help_text);
-1354       }
-1355       return ERROR_USAGE;
-1356     }
-1357   }
-1358 
-1359   // Parse positional arguments
-1360   int arg_index = 0;
-1361   for (size_t i = 0; i &lt; config-&gt;num_positional_args &amp;&amp; arg_index &lt; remaining_argc; i++) {
-1362     const positional_arg_descriptor_t *pos_arg = &amp;config-&gt;positional_args[i];
-1363 
-1364     const char *arg = remaining_argv[arg_index];
-1365     char **remaining = (arg_index + 1 &lt; remaining_argc) ? &amp;remaining_argv[arg_index + 1] : NULL;
-1366     int num_remaining = remaining_argc - arg_index - 1;
-1367     char *error_msg = NULL;
-1368 
-1369     // Call custom parser
-1370     int consumed = pos_arg-&gt;parse_fn(arg, options_struct, remaining, num_remaining, &amp;error_msg);
-1371 
-1372     if (consumed &lt; 0) {
-1373       // Parse error
-1374       if (error_msg) {
-1375         log_error(&quot;Error parsing positional argument '%s': %s&quot;, pos_arg-&gt;name, error_msg);
-1376         free(error_msg);
-1377       } else {
-1378         log_error(&quot;Error parsing positional argument '%s': %s&quot;, pos_arg-&gt;name, arg);
-1379       }
-1380       return ERROR_USAGE;
-1381     }
-1382 
-1383     // Advance by consumed args (usually 1, but can be more for multi-arg parsers)
-1384     arg_index += consumed;
+<p class="Pp">Definition at line <b>1371</b> of file <b>builder.c</b>.</p>
+<pre>1372                                                                                                {
+1373   if (!config || !options_struct) {
+1374     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options struct is NULL&quot;);
+1375   }
+1376
+1377   if (remaining_argc &lt; 0 || (remaining_argc &gt; 0 &amp;&amp; !remaining_argv)) {
+1378     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid remaining args&quot;);
+1379   }
+1380
+1381   // No positional args defined - but we got some positional arguments
+1382   if (config-&gt;num_positional_args == 0 &amp;&amp; remaining_argc &gt; 0) {
+1383     log_error(&quot;Unexpected positional argument '%s'&quot;, remaining_argv[0]);
+1384     return ERROR_USAGE;
 1385   }
-1386 
-1387   // Check for extra unconsumed positional arguments
-1388   if (arg_index &lt; remaining_argc) {
-1389     log_error(&quot;Error: Unexpected positional argument '%s'&quot;, remaining_argv[arg_index]);
-1390     return ERROR_USAGE;
-1391   }
-1392 
-1393   return ASCIICHAT_OK;
-1394 }</pre>
+1386
+1387   // Check if required positional args are missing
+1388   for (size_t i = 0; i &lt; config-&gt;num_positional_args; i++) {
+1389     const positional_arg_descriptor_t *pos_arg = &amp;config-&gt;positional_args[i];
+1390     if (pos_arg-&gt;required &amp;&amp; remaining_argc == 0) {
+1391       log_error(&quot;Missing required positional argument '%s'&quot;, pos_arg-&gt;name);
+1392       if (pos_arg-&gt;help_text) {
+1393         log_error(&quot;  %s&quot;, pos_arg-&gt;help_text);
+1394       }
+1395       return ERROR_USAGE;
+1396     }
+1397   }
+1398
+1399   // Parse positional arguments
+1400   int arg_index = 0;
+1401   for (size_t i = 0; i &lt; config-&gt;num_positional_args &amp;&amp; arg_index &lt; remaining_argc; i++) {
+1402     const positional_arg_descriptor_t *pos_arg = &amp;config-&gt;positional_args[i];
+1403
+1404     const char *arg = remaining_argv[arg_index];
+1405     char **remaining = (arg_index + 1 &lt; remaining_argc) ? &amp;remaining_argv[arg_index + 1] : NULL;
+1406     int num_remaining = remaining_argc - arg_index - 1;
+1407     char *error_msg = NULL;
+1408
+1409     // Call custom parser
+1410     int consumed = pos_arg-&gt;parse_fn(arg, options_struct, remaining, num_remaining, &amp;error_msg);
+1411
+1412     if (consumed &lt; 0) {
+1413       // Parse error
+1414       if (error_msg) {
+1415         log_error(&quot;Error parsing positional argument '%s': %s&quot;, pos_arg-&gt;name, error_msg);
+1416         SAFE_FREE(error_msg);
+1417       } else {
+1418         log_error(&quot;Error parsing positional argument '%s': %s&quot;, pos_arg-&gt;name, arg);
+1419       }
+1420       return ERROR_USAGE;
+1421     }
+1422
+1423     // Advance by consumed args (usually 1, but can be more for multi-arg parsers)
+1424     arg_index += consumed;
+1425   }
+1426
+1427   // Check for extra unconsumed positional arguments
+1428   if (arg_index &lt; remaining_argc) {
+1429     log_error(&quot;Unexpected positional argument '%s'&quot;, remaining_argv[arg_index]);
+1430     return ERROR_USAGE;
+1431   }
+1432
+1433   return ASCIICHAT_OK;
+1434 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>ERROR_USAGE</b>, <b>positional_arg_descriptor_t::help_text</b>,
     <b>log_error</b>, <b>positional_arg_descriptor_t::name</b>,
     <b>options_config_t::num_positional_args</b>,
+    <b>options_config_parse_positional()</b>,
     <b>positional_arg_descriptor_t::parse_fn</b>,
     <b>options_config_t::positional_args</b>,
-    <b>positional_arg_descriptor_t::required</b>, and <b>SET_ERRNO</b>.</p>
+    <b>positional_arg_descriptor_t::required</b>, <b>SAFE_FREE</b>, and
+    <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>options_config_parse_positional()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> options_config_set_defaults (const
@@ -2735,67 +2898,68 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
     set.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
-  configuration</b>
+<div class="Bd-indent"><i>config</i> Options configuration
 <br/>
 <i>options_struct</i> Options struct to initialize</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>1400</b> of file <b>builder.c</b>.</p>
-<pre>1400                                                                                                     {
-1401   if (!config || !options_struct) {
-1402     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options struct is NULL&quot;);
-1403   }
-1404 
-1405   char *base = (char *)options_struct;
-1406 
-1407   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-1408     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-1409     void *field = base + desc-&gt;offset;
-1410 
-1411     // Check environment variable first (primary)
-1412     const char *env_value = NULL;
-1413     if (desc-&gt;env_var_name) {
-1414       env_value = SAFE_GETENV(desc-&gt;env_var_name);
-1415     }
-1416     // Check shorter alias names as fallback if primary not set
-1417     if (!env_value) {
-1418       if (desc-&gt;env_var_name &amp;&amp; strcmp(desc-&gt;env_var_name, &quot;ASCII_CHAT_PORT&quot;) == 0) {
-1419         env_value = SAFE_GETENV(&quot;PORT&quot;);
-1420       } else if (desc-&gt;env_var_name &amp;&amp; strcmp(desc-&gt;env_var_name, &quot;ASCII_CHAT_WEBSOCKET_PORT&quot;) == 0) {
-1421         env_value = SAFE_GETENV(&quot;WS_PORT&quot;);
-1422       }
-1423     }
-1424 
-1425     // Use handler registry to apply environment variables and defaults
-1426     if (desc-&gt;type &gt;= 0 &amp;&amp; desc-&gt;type &lt; (int)(NUM_OPTION_TYPES)) {
-1427       if (g_builder_handlers[desc-&gt;type].apply_env) {
-1428         g_builder_handlers[desc-&gt;type].apply_env(field, env_value, desc);
-1429       }
-1430     } else if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;parse_fn &amp;&amp; desc-&gt;default_value) {
-1431       // Special handling for callbacks with parse_fn
-1432       char *error_msg = NULL;
-1433       desc-&gt;parse_fn(NULL, field, &amp;error_msg);
-1434       if (error_msg) {
-1435         free(error_msg);
-1436       }
-1437     }
-1438   }
-1439 
-1440   return ASCIICHAT_OK;
-1441 }</pre>
+<p class="Pp">Definition at line <b>1440</b> of file <b>builder.c</b>.</p>
+<pre>1440                                                                                                     {
+1441   if (!config || !options_struct) {
+1442     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options struct is NULL&quot;);
+1443   }
+1444
+1445   char *base = (char *)options_struct;
+1446
+1447   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+1448     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+1449     void *field = base + desc-&gt;offset;
+1450
+1451     // Check environment variable first (primary)
+1452     const char *env_value = NULL;
+1453     if (desc-&gt;env_var_name) {
+1454       env_value = SAFE_GETENV(desc-&gt;env_var_name);
+1455     }
+1456     // Check shorter alias names as fallback if primary not set
+1457     if (!env_value) {
+1458       if (desc-&gt;env_var_name &amp;&amp; strcmp(desc-&gt;env_var_name, &quot;ASCII_CHAT_PORT&quot;) == 0) {
+1459         env_value = SAFE_GETENV(&quot;PORT&quot;);
+1460       } else if (desc-&gt;env_var_name &amp;&amp; strcmp(desc-&gt;env_var_name, &quot;ASCII_CHAT_WEBSOCKET_PORT&quot;) == 0) {
+1461         env_value = SAFE_GETENV(&quot;WS_PORT&quot;);
+1462       }
+1463     }
+1464
+1465     // Use handler registry to apply environment variables and defaults
+1466     if (desc-&gt;type &gt;= 0 &amp;&amp; desc-&gt;type &lt; (int)(NUM_OPTION_TYPES)) {
+1467       if (g_builder_handlers[desc-&gt;type].apply_env) {
+1468         asciichat_error_t result = g_builder_handlers[desc-&gt;type].apply_env(field, env_value, desc);
+1469         if (result != ASCIICHAT_OK)
+1470           return result;
+1471       }
+1472     } else if (desc-&gt;type == OPTION_TYPE_CALLBACK &amp;&amp; desc-&gt;parse_fn &amp;&amp; desc-&gt;default_value) {
+1473       // Special handling for callbacks with parse_fn
+1474       char *error_msg = NULL;
+1475       desc-&gt;parse_fn(NULL, field, &amp;error_msg);
+1476       if (error_msg) {
+1477         SAFE_FREE(error_msg);
+1478       }
+1479     }
+1480   }
+1481
+1482   return ASCIICHAT_OK;
+1483 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>option_descriptor_t::default_value</b>,
+<p class="Pp">References <b>option_builder_handler_t::apply_env</b>,
+    <b>ASCIICHAT_OK</b>, <b>option_descriptor_t::default_value</b>,
     <b>options_config_t::descriptors</b>,
     <b>option_descriptor_t::env_var_name</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>g_builder_handlers</b>, <b>options_config_t::num_descriptors</b>,
     <b>NUM_OPTION_TYPES</b>, <b>option_descriptor_t::offset</b>,
-    <b>OPTION_TYPE_CALLBACK</b>, <b>option_descriptor_t::parse_fn</b>,
-    <b>SAFE_GETENV</b>, <b>SET_ERRNO</b>, and
-  <b>option_descriptor_t::type</b>.</p>
-<p class="Pp">Referenced by <b>options_init()</b>.</p>
+    <b>OPTION_TYPE_CALLBACK</b>, <b>options_config_set_defaults()</b>,
+    <b>option_descriptor_t::parse_fn</b>, <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>,
+    <b>SET_ERRNO</b>, and <b>option_descriptor_t::type</b>.</p>
+<p class="Pp">Referenced by <b>options_config_set_defaults()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> options_config_validate (const
@@ -2808,156 +2972,163 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
   <li>Custom validators pass</li>
 </ul>
 <p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Options
-  configuration</b>
+<div class="Bd-indent"><i>config</i> Options configuration
 <br/>
 <i>options_struct</i> Options struct to validate
 <br/>
 <i>error_message</i> Optional: receives detailed error message (must free)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK if valid, error code otherwise</div>
-<p class="Pp">Definition at line <b>1838</b> of file <b>builder.c</b>.</p>
-<pre>1839                                                                 {
-1840   if (!config || !options_struct) {
-1841     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options struct is NULL&quot;);
-1842   }
-1843 
-1844   const char *base = (const char *)options_struct;
-1845 
-1846   // Check required fields
-1847   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-1848     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-1849     if (!desc-&gt;required)
-1850       continue;
-1851 
-1852     const void *field = base + desc-&gt;offset;
-1853     // Use handler registry to check if option is set (for required field validation)
-1854     bool is_set = true;
-1855     if (desc-&gt;type &gt;= 0 &amp;&amp; desc-&gt;type &lt; (int)(NUM_OPTION_TYPES)) {
-1856       if (g_builder_handlers[desc-&gt;type].is_set) {
-1857         is_set = g_builder_handlers[desc-&gt;type].is_set(field, desc);
-1858       }
-1859     }
-1860 
-1861     if (!is_set) {
-1862       if (error_message) {
-1863         int asprintf_result;
-1864         if (desc-&gt;env_var_name) {
-1865           asprintf_result = asprintf(error_message, &quot;Required option --%s is not set (set %s env var or use --%s)&quot;, desc-&gt;long_name,
-1866                                      desc-&gt;env_var_name, desc-&gt;long_name);
-1867         } else {
-1868           asprintf_result = asprintf(error_message, &quot;Required option --%s is not set&quot;, desc-&gt;long_name);
-1869         }
-1870         if (asprintf_result &lt; 0) {
-1871           log_error(&quot;Failed to format error message for missing required option --%s&quot;, desc-&gt;long_name);
-1872           *error_message = NULL;
-1873         }
-1874       }
-1875       return ERROR_USAGE;
-1876     }
-1877   }
-1878 
-1879   // Check dependencies
-1880   for (size_t i = 0; i &lt; config-&gt;num_dependencies; i++) {
-1881     const option_dependency_t *dep = &amp;config-&gt;dependencies[i];
-1882 
-1883     bool option_is_set = is_option_set(config, options_struct, dep-&gt;option_name);
-1884     bool depends_is_set = is_option_set(config, options_struct, dep-&gt;depends_on);
-1885 
-1886     switch (dep-&gt;type) {
-1887     case DEPENDENCY_REQUIRES:
-1888       if (option_is_set &amp;&amp; !depends_is_set) {
-1889         if (error_message) {
-1890           if (dep-&gt;error_message) {
-1891             *error_message = platform_strdup(dep-&gt;error_message);
-1892           } else {
-1893             int asprintf_result = asprintf(error_message, &quot;Option --%s requires --%s to be set&quot;, dep-&gt;option_name, dep-&gt;depends_on);
-1894             if (asprintf_result &lt; 0) {
-1895               log_error(&quot;Failed to format error message for option dependency: --%s requires --%s&quot;, dep-&gt;option_name, dep-&gt;depends_on);
-1896               *error_message = NULL;
-1897             }
-1898           }
-1899         }
-1900         return ERROR_USAGE;
-1901       }
-1902       break;
-1903 
-1904     case DEPENDENCY_CONFLICTS:
-1905       if (option_is_set &amp;&amp; depends_is_set) {
-1906         if (error_message) {
-1907           if (dep-&gt;error_message) {
-1908             *error_message = platform_strdup(dep-&gt;error_message);
-1909           } else {
-1910             int asprintf_result = asprintf(error_message, &quot;Option --%s conflicts with --%s&quot;, dep-&gt;option_name, dep-&gt;depends_on);
-1911             if (asprintf_result &lt; 0) {
-1912               log_error(&quot;Failed to format error message for option conflict: --%s conflicts with --%s&quot;, dep-&gt;option_name, dep-&gt;depends_on);
-1913               *error_message = NULL;
-1914             }
-1915           }
-1916         }
-1917         return ERROR_USAGE;
-1918       }
-1919       break;
-1920 
-1921     case DEPENDENCY_IMPLIES:
-1922       // Implies is handled during parsing, not validation
-1923       break;
+<p class="Pp">Definition at line <b>1885</b> of file <b>builder.c</b>.</p>
+<pre>1886                                                                 {
+1887   if (!config || !options_struct) {
+1888     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options struct is NULL&quot;);
+1889   }
+1890
+1891   const char *base = (const char *)options_struct;
+1892
+1893   // Check required fields
+1894   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+1895     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+1896     if (!desc-&gt;required)
+1897       continue;
+1898
+1899     const void *field = base + desc-&gt;offset;
+1900     // Use handler registry to check if option is set (for required field validation)
+1901     bool is_set = true;
+1902     if (desc-&gt;type &gt;= 0 &amp;&amp; desc-&gt;type &lt; (int)(NUM_OPTION_TYPES)) {
+1903       if (g_builder_handlers[desc-&gt;type].is_set) {
+1904         is_set = g_builder_handlers[desc-&gt;type].is_set(field, desc);
+1905       }
+1906     }
+1907
+1908     if (!is_set) {
+1909       if (error_message) {
+1910         asciichat_error_t format_result;
+1911         if (desc-&gt;env_var_name) {
+1912           format_result =
+1913               builder_format_error(error_message, &quot;Required option --%s is not set (set %s env var or use --%s)&quot;,
+1914                                    desc-&gt;long_name, desc-&gt;env_var_name, desc-&gt;long_name);
+1915         } else {
+1916           format_result = builder_format_error(error_message, &quot;Required option --%s is not set&quot;, desc-&gt;long_name);
+1917         }
+1918         if (format_result != ASCIICHAT_OK) {
+1919           log_error(&quot;Failed to format error message for missing required option --%s&quot;, desc-&gt;long_name);
+1920           *error_message = NULL;
+1921         }
+1922       }
+1923       return ERROR_USAGE;
 1924     }
 1925   }
-1926 
-1927   // Run custom validators
-1928   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-1929     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-1930     if (!desc-&gt;validate)
-1931       continue;
-1932 
-1933     char *custom_error = NULL;
-1934     if (!desc-&gt;validate(options_struct, &amp;custom_error)) {
-1935       if (error_message) {
-1936         *error_message = custom_error;
-1937       } else {
-1938         free(custom_error);
-1939       }
-1940       return ERROR_USAGE;
-1941     }
-1942   }
-1943 
-1944   // Cross-field validation: Check for conflicting color options
-1945   // Cannot use --color with --color-mode none
-1946   const options_t *opts = (const options_t *)options_struct;
-1947   if (opts-&gt;color &amp;&amp; opts-&gt;color_mode == TERM_COLOR_NONE) {
-1948     if (error_message) {
-1949       int asprintf_result = asprintf(error_message, &quot;Option --color cannot be used with --color-mode=none (conflicting color settings)&quot;);
-1950       if (asprintf_result &lt; 0) {
-1951         log_error(&quot;Failed to format error message for color option conflict&quot;);
-1952         *error_message = NULL;
-1953       }
-1954     }
-1955     return ERROR_USAGE;
-1956   }
-1957 
-1958   return ASCIICHAT_OK;
-1959 }</pre>
+1926
+1927   // Check dependencies
+1928   for (size_t i = 0; i &lt; config-&gt;num_dependencies; i++) {
+1929     const option_dependency_t *dep = &amp;config-&gt;dependencies[i];
+1930
+1931     bool option_is_set = is_option_set(config, options_struct, dep-&gt;option_name);
+1932     bool depends_is_set = is_option_set(config, options_struct, dep-&gt;depends_on);
+1933
+1934     switch (dep-&gt;type) {
+1935     case DEPENDENCY_REQUIRES:
+1936       if (option_is_set &amp;&amp; !depends_is_set) {
+1937         if (error_message) {
+1938           if (dep-&gt;error_message) {
+1939             *error_message = platform_strdup(dep-&gt;error_message);
+1940           } else {
+1941             asciichat_error_t format_result = builder_format_error(error_message, &quot;Option --%s requires --%s to be set&quot;,
+1942                                                                    dep-&gt;option_name, dep-&gt;depends_on);
+1943             if (format_result != ASCIICHAT_OK) {
+1944               log_error(&quot;Failed to format error message for option dependency: --%s requires --%s&quot;, dep-&gt;option_name,
+1945                         dep-&gt;depends_on);
+1946               *error_message = NULL;
+1947             }
+1948           }
+1949         }
+1950         return ERROR_USAGE;
+1951       }
+1952       break;
+1953
+1954     case DEPENDENCY_CONFLICTS:
+1955       if (option_is_set &amp;&amp; depends_is_set) {
+1956         if (error_message) {
+1957           if (dep-&gt;error_message) {
+1958             *error_message = platform_strdup(dep-&gt;error_message);
+1959           } else {
+1960             asciichat_error_t format_result = builder_format_error(error_message, &quot;Option --%s conflicts with --%s&quot;,
+1961                                                                    dep-&gt;option_name, dep-&gt;depends_on);
+1962             if (format_result != ASCIICHAT_OK) {
+1963               log_error(&quot;Failed to format error message for option conflict: --%s conflicts with --%s&quot;,
+1964                         dep-&gt;option_name, dep-&gt;depends_on);
+1965               *error_message = NULL;
+1966             }
+1967           }
+1968         }
+1969         return ERROR_USAGE;
+1970       }
+1971       break;
+1972
+1973     case DEPENDENCY_IMPLIES:
+1974       // Implies is handled during parsing, not validation
+1975       break;
+1976     }
+1977   }
+1978
+1979   // Run custom validators
+1980   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+1981     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+1982     if (!desc-&gt;validate)
+1983       continue;
+1984
+1985     asciichat_errno_scope_t validation_scope = errno_checkpoint();
+1986     if (!desc-&gt;validate(options_struct)) {
+1987       asciichat_error_context_t error;
+1988       if (errno_peek_since(validation_scope, &amp;error))
+1989         return error.code;
+1990       return SET_ERRNO(ERROR_USAGE, &quot;Option '--%s' failed validation&quot;, desc-&gt;long_name);
+1991     }
+1992   }
+1993
+1994   // Cross-field validation: Check for conflicting color options
+1995   // Cannot use --color with --color-mode none
+1996   const options_t *opts = (const options_t *)options_struct;
+1997   if (opts-&gt;color &amp;&amp; opts-&gt;color_mode == TERM_COLOR_NONE) {
+1998     if (error_message) {
+1999       asciichat_error_t format_result = builder_format_error(
+2000           error_message, &quot;Option --color cannot be used with --color-mode=none (conflicting color settings)&quot;);
+2001       if (format_result != ASCIICHAT_OK) {
+2002         log_error(&quot;Failed to format error message for color option conflict&quot;);
+2003         *error_message = NULL;
+2004       }
+2005     }
+2006     return ERROR_USAGE;
+2007   }
+2008
+2009   return ASCIICHAT_OK;
+2010 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asprintf</b>,
-    <b>options_state::color</b>, <b>options_state::color_mode</b>,
-    <b>options_config_t::dependencies</b>, <b>DEPENDENCY_CONFLICTS</b>,
-    <b>DEPENDENCY_IMPLIES</b>, <b>DEPENDENCY_REQUIRES</b>,
-    <b>option_dependency_t::depends_on</b>,
+<p class="Pp">References <b>ASCIICHAT_OK</b>,
+    <b>asciichat_error_context_t::code</b>, <b>options_state::color</b>,
+    <b>options_state::color_mode</b>, <b>options_config_t::dependencies</b>,
+    <b>DEPENDENCY_CONFLICTS</b>, <b>DEPENDENCY_IMPLIES</b>,
+    <b>DEPENDENCY_REQUIRES</b>, <b>option_dependency_t::depends_on</b>,
     <b>options_config_t::descriptors</b>,
-    <b>option_descriptor_t::env_var_name</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>option_descriptor_t::env_var_name</b>, <b>errno_checkpoint()</b>,
+    <b>errno_peek_since()</b>, <b>ERROR_INVALID_PARAM</b>,
     <b>option_dependency_t::error_message</b>, <b>ERROR_USAGE</b>,
-    <b>g_builder_handlers</b>, <b>is_option_set()</b>, <b>is_set</b>,
-    <b>log_error</b>, <b>option_descriptor_t::long_name</b>,
+    <b>g_builder_handlers</b>, <b>is_option_set()</b>,
+    <b>option_builder_handler_t::is_set</b>, <b>log_error</b>,
+    <b>option_descriptor_t::long_name</b>,
     <b>options_config_t::num_dependencies</b>,
     <b>options_config_t::num_descriptors</b>, <b>NUM_OPTION_TYPES</b>,
     <b>option_descriptor_t::offset</b>, <b>option_dependency_t::option_name</b>,
-    <b>platform_strdup()</b>, <b>option_descriptor_t::required</b>,
-    <b>SET_ERRNO</b>, <b>TERM_COLOR_NONE</b>, <b>option_dependency_t::type</b>,
+    <b>options_config_validate()</b>, <b>platform_strdup()</b>,
+    <b>option_descriptor_t::required</b>, <b>SET_ERRNO</b>,
+    <b>TERM_COLOR_NONE</b>, <b>option_dependency_t::type</b>,
     <b>option_descriptor_t::type</b>, and
   <b>option_descriptor_t::validate</b>.</p>
-<p class="Pp">Referenced by <b>validate_options_and_report()</b>.</p>
+<p class="Pp">Referenced by <b>options_config_validate()</b>, and
+    <b>validate_options_and_report()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -2967,7 +3138,7 @@ options_builder_set_input_type(builder, &quot;compression-level&quot;, OPTION_IN
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

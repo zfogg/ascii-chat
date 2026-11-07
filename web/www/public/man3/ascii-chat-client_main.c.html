@@ -57,12 +57,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
 <br/>
-<p class="Pp"><b>thread_pool_t</b> * <b>g_client_worker_pool</b> = NULL
-  <br/>
-  Global client worker thread pool. <b>app_client_t</b> * <b>g_client</b> = NULL
-  <br/>
-  Global client application context. struct <b>webrtc_peer_manager</b> *
-    <b>g_peer_manager</b> = NULL
+<p class="Pp">struct <b>webrtc_peer_manager</b> * <b>g_peer_manager</b> = NULL
   <br/>
   Global WebRTC peer manager (legacy compatibility).
   <br/>
@@ -147,7 +142,8 @@
 <ul class="Bl-bullet">
   <li>Fatal initialization errors cause immediate exit</li>
   <li>Network errors trigger reconnection attempts</li>
-  <li>Signal handling for graceful shutdown (SIGINT, SIGWINCH)</li>
+  <li>Signal handling for graceful shutdown and platform terminal resize
+      detection</li>
   <li>Resource cleanup on all exit paths</li>
 </ul>
 </section>
@@ -298,346 +294,154 @@ ascii-chat client --address localhost --audio
 <p class="Pp"></p>
 <p class="Pp">topic_client_protocol &quot;Packet Processing&quot;</p>
 </div>
-<p class="Pp">Definition at line <b>622</b> of file <b>client/main.c</b>.</p>
-<pre>622                       {
-623   log_debug(&quot;client_main() starting&quot;);
-624 
-625   // Register client crypto callbacks for TCP connection path
-626   // The TCP path in lib/network/connection_attempt.c relies on these callbacks
-627   // to handle cryptographic operations and key exchange
-628   static const app_callbacks_t client_crypto_callbacks = {
-629       .should_exit = should_exit,
-630       .signal_exit = signal_exit,
-631       .platform_get_monotonic_time_us = platform_get_monotonic_time_us,
-632       .platform_sleep_ms = platform_sleep_ms,
-633       .server_connection_set_ip = server_connection_set_ip,
-634       .server_connection_set_port = server_connection_set_port,
-635       .client_crypto_set_mode = client_crypto_set_mode,
-636       .client_crypto_init = client_crypto_init,
-637       .client_crypto_handshake = client_crypto_handshake,
-638       .crypto_client_is_ready = crypto_client_is_ready,
-639       .crypto_client_get_context = crypto_client_get_context,
-640   };
-641   app_callbacks_register(&amp;client_crypto_callbacks);
-642 
-643   // Initialize client-specific systems (NOT shared with session_client_like)
-644   // This includes: thread pool, display layer, app client context, server connection
-645   int init_result = initialize_client_systems();
-646   if (init_result != 0) {
-647 #ifndef NDEBUG
-648     // Debug builds: automatically fall back to test pattern if webcam is in use
-649     if (init_result == ERROR_WEBCAM_IN_USE &amp;&amp; !GET_OPTION(test_pattern)) {
-650       log_warn(&quot;Webcam is in use - automatically falling back to test pattern mode (debug build only)&quot;);
-651 
-652       // Enable test pattern mode via RCU update
-653       asciichat_error_t update_result = options_set_bool(&quot;test_pattern&quot;, true);
-654       if (update_result != ASCIICHAT_OK) {
-655         log_error(&quot;Failed to update options for test pattern fallback&quot;);
-656         FATAL(init_result, &quot;%s&quot;, asciichat_error_string(init_result));
-657       }
-658 
-659       // Retry initialization with test pattern enabled
-660       init_result = initialize_client_systems();
-661       if (init_result != 0) {
-662         log_error(&quot;Failed to initialize even with test pattern fallback&quot;);
-663         webcam_print_init_error_help(init_result);
-664         FATAL(init_result, &quot;%s&quot;, asciichat_error_string(init_result));
-665       }
-666       log_debug(&quot;Successfully initialized with test pattern fallback&quot;);
-667 
-668       // Clear the error state since we successfully recovered
-669       CLEAR_ERRNO();
-670     } else
-671 #endif
-672     {
-673       // Release builds or other errors: print help and exit
-674       if (init_result == ERROR_WEBCAM || init_result == ERROR_WEBCAM_IN_USE || init_result == ERROR_WEBCAM_PERMISSION) {
-675         webcam_print_init_error_help(init_result);
-676         FATAL(init_result, &quot;%s&quot;, asciichat_error_string(init_result));
-677       }
-678       // For other errors, just exit with the error code
-679       return init_result;
-680     }
-681   }
-682 
-683   // Register cleanup function for graceful shutdown
-684   (void)atexit(shutdown_client);
-685 
-686   // Register client interrupt callback (socket shutdown on SIGTERM/Ctrl+C)
-687   // Global signal handlers (SIGTERM, SIGPIPE, Ctrl+C) are set up in setup_signal_handlers() in src/main.c
-688   set_interrupt_callback(server_connection_shutdown);
-689 
-690 #ifndef _WIN32
-691   // Register SIGWINCH for terminal resize handling (client-specific, not in framework)
-692   platform_signal(SIGWINCH, client_handle_sigwinch);
-693 #endif
-694 
-695   /* ========================================================================
-696    * Client-Specific: LAN/Session Discovery
-697    * ========================================================================
-698    * This phase discovers the server to connect to via:
-699    * - LAN discovery (mDNS)
-700    * - Session string lookup (ACDS)
-701    * - Direct address/port
-702    */
-703 
-704   // LAN Discovery: If --scan flag is set, discover servers on local network
-705   const options_t *opts = options_get();
-706   if (opts &amp;&amp; opts-&gt;lan_discovery &amp;&amp;
-707       (opts-&gt;address[0] == '\0' || is_localhost_ipv4(opts-&gt;address) || strcmp(opts-&gt;address, &quot;localhost&quot;) == 0)) {
-708     log_debug(&quot;LAN discovery: --scan flag set, querying for available servers&quot;);
-709 
-710     ui_mdns_config_t lan_config;
-711     memset(&amp;lan_config, 0, sizeof(lan_config));
-712     lan_config.timeout_ms = 2 * MS_PER_SEC_INT; // Wait up to 2 seconds for responses
-713     lan_config.max_servers = 20;                // Support up to 20 servers on LAN
-714     lan_config.quiet = true;                    // Quiet during discovery, TUI will show status
-715 
-716     int discovered_count = 0;
-717     ui_mdns_server_t *discovered_servers = ui_mdns_query(&amp;lan_config, &amp;discovered_count);
-718 
-719     // Use TUI for server selection
-720     int selected_index = ui_mdns_select(discovered_servers, discovered_count);
-721 
-722     if (selected_index &lt; 0) {
-723       // User cancelled or no servers found
-724       if (discovered_count == 0) {
-725         // No servers found - log message and prevent any further output
-726         // Lock the terminal so other threads can't write and our error
-727         // will be the last message
-728         log_lock_terminal();
-729 
-730         // Log single message with embedded newlines to prevent multiple log entries
-731         log_error(&quot;No ascii-chat servers found on the local network.\nUse 'ascii-chat client &lt;address&gt;' to connect &quot;
-732                   &quot;manually.&quot;);
-733 
-734         // Exit without cleanup
-735         platform_force_exit(1);
-736       }
-737       // User cancelled (had servers to choose from but pressed cancel)
-738       log_debug(&quot;LAN discovery: User cancelled server selection&quot;);
-739       if (discovered_servers) {
-740         ui_mdns_free_results(discovered_servers);
-741       }
-742       return 1; // User cancelled
-743     }
-744 
-745     // Update options with discovered server's address and port
-746     ui_mdns_server_t *selected = &amp;discovered_servers[selected_index];
-747     const char *selected_address = ui_mdns_get_best_address(selected);
-748 
-749     // We need to modify options, but they're immutable via RCU
-750     // Create a new options copy with updated address/port
-751     options_t *opts_new = SAFE_MALLOC(sizeof(options_t), options_t *);
-752     if (opts_new) {
-753       memcpy(opts_new, opts, sizeof(options_t));
-754       SAFE_STRNCPY(opts_new-&gt;address, selected_address, sizeof(opts_new-&gt;address));
-755 
-756       opts_new-&gt;port = (int)selected-&gt;port;
-757 
-758       log_debug(&quot;LAN discovery: Selected server '%s' at %s:%d&quot;, selected-&gt;name, opts_new-&gt;address, opts_new-&gt;port);
-759 
-760       // Note: In a real scenario, we'd update the global options via RCU
-761       // For now, we'll use the updated values directly for connection
-762       // This is a known limitation - proper RCU update requires more infrastructure
-763     }
-764 
-765     ui_mdns_free_results(discovered_servers);
-766   }
-767 
-768   // =========================================================================
-769   // Client-Specific: Server Address Resolution
-770   // =========================================================================
-771   // Client mode supports:
-772   // 1. Direct address/port (--address HOST --port PORT) - handled by options
-773   // 2. LAN discovery (--scan) - handled above
-774   // 3. WebSocket URL (direct ws:// or wss:// connection string)
-775   //
-776   // Note: Session string discovery via ACDS is handled by discovery mode only.
-777   //       Client mode does NOT use ACDS or session strings.
-778 
-779   const char *discovered_address = NULL;
-780   int discovered_port = 0;
-781 
-782   // Check if user provided a WebSocket URL as the server address
-783   const options_t *opts_websocket = options_get();
-784   const char *provided_address = opts_websocket &amp;&amp; opts_websocket-&gt;address[0] != '\0' ? opts_websocket-&gt;address : NULL;
-785 
-786   if (provided_address &amp;&amp; url_is_websocket(provided_address)) {
-787     // Direct WebSocket connection
-788     log_debug(&quot;Client: Direct WebSocket URL: %s&quot;, provided_address);
-789     discovered_address = provided_address;
-790     discovered_port = 0; // Port is embedded in the URL
-791   }
-792 
-793   if (discovered_port &gt; 0) {
-794     log_debug(&quot;Client: discovered_address=%s, discovered_port=%d&quot;, discovered_address ? discovered_address : &quot;NULL&quot;,
-795               discovered_port);
-796   } else {
-797     log_debug(&quot;Client: discovered_address=%s&quot;, discovered_address ? discovered_address : &quot;NULL&quot;);
-798   }
-799 
-800   // Store discovered address/port in session state for client_run() callback
-801   static char address_storage[BUFFER_SIZE_SMALL];
-802   if (discovered_address) {
-803     SAFE_STRNCPY(address_storage, discovered_address, sizeof(address_storage));
-804     g_client_session.discovered_address = address_storage;
-805     g_client_session.discovered_port = discovered_port;
-806   } else {
-807     const options_t *opts_fallback = options_get();
-808     if (opts_fallback &amp;&amp; opts_fallback-&gt;address[0] != '\0') {
-809       SAFE_STRNCPY(address_storage, opts_fallback-&gt;address, sizeof(address_storage));
-810       g_client_session.discovered_address = address_storage;
-811       g_client_session.discovered_port = opts_fallback-&gt;port;
-812     } else {
-813       g_client_session.discovered_address = &quot;localhost&quot;;
-814       g_client_session.discovered_port = 27224;
-815     }
-816   }
-817 
-818   // Initialize connection context for first attempt
-819   asciichat_error_t ctx_init_result = connection_context_init(&amp;g_client_session.connection_ctx);
-820   if (ctx_init_result != ASCIICHAT_OK) {
-821     log_error(&quot;Failed to initialize connection context&quot;);
-822     return 1;
-823   }
-824 
-825   /* ========================================================================
-826    * Configure and Run Shared Client-Like Session Framework
-827    * ========================================================================
-828    * session_client_like_run() handles all shared initialization:
-829    * - Terminal output management (force stderr if piped)
-830    * - Keepawake system (platform sleep prevention)
-831    * - Splash screen lifecycle
-832    * - Media source selection (webcam, file, URL, test pattern)
-833    * - FPS probing for media files
-834    * - Audio initialization and lifecycle
-835    * - Display context creation
-836    * - Proper cleanup ordering (critical for PortAudio)
-837    *
-838    * Client mode provides:
-839    * - client_run() callback: connection loop, protocol startup, monitoring
-840    * - client_should_reconnect() callback: reconnection policy
-841    * - Reconnection configuration: attempts, delay, callbacks
-842    */
-843 
-844   // Get reconnect attempts setting (-1 = unlimited, 0 = no retry, &gt;0 = retry N times)
-845   int reconnect_attempts = GET_OPTION(reconnect_attempts);
-846 
-847   // Configure session_client_like with client-specific settings
-848   session_client_like_config_t config = {
-849       .run_fn = client_run,
-850       .run_user_data = NULL,
-851       .kind = SESSION_CLIENT_LIKE_KIND_CLIENT,
-852       .discovery = NULL,
-853       .custom_should_exit = NULL,
-854       .exit_user_data = NULL,
-855       .keyboard_handler = NULL, // Client mode: server drives display
-856       .max_reconnect_attempts = reconnect_attempts,
-857       .should_reconnect_callback = client_should_reconnect,
-858       .reconnect_user_data = NULL,
-859       .reconnect_delay_ms = 1000,         // 1 second delay between reconnection attempts
-860       .print_newline_on_tty_exit = false, // Server/client manages cursor
-861   };
-862 
-863   log_debug(&quot;[CLIENT_MAIN] About to call session_client_like_run() with %d attempts&quot;, reconnect_attempts);
-864   asciichat_error_t session_result = session_client_like_run(&amp;config);
-865   log_debug(&quot;[CLIENT_MAIN] session_client_like_run() returned %d&quot;, session_result);
-866 
-867   // Network client lifecycle is owned by connection_context_cleanup() after the session returns.
-868 
-869   // Cleanup connection context
-870   log_debug(&quot;[CLIENT_MAIN] About to call connection_context_cleanup()&quot;);
-871   connection_context_cleanup(&amp;g_client_session.connection_ctx);
-872   log_debug(&quot;[CLIENT_MAIN] connection_context_cleanup() returned&quot;);
-873 
-874   // Cleanup session log buffer (used by splash screen in session_client_like)
-875   // NOTE: session_log_buffer_destroy() is already called in session_client_like_run()
-876   // during its cleanup phase, so we don't call it here to avoid double-destroy of mutex
-877 
-878   log_debug(&quot;[CLIENT_MAIN] ascii-chat client shutting down&quot;);
-879 
-880   // IMPORTANT: Stop worker threads and join them BEFORE memory report
-881   // atexit(shutdown_client) won't run if interrupted by SIGTERM, so call explicitly
-882   log_debug(&quot;[CLIENT_MAIN] About to call shutdown_client()&quot;);
-883   fflush(stderr);
-884   shutdown_client();
-885   log_debug(&quot;[CLIENT_MAIN] shutdown_client() returned&quot;);
-886   fflush(stderr);
-887 
-888   // Cleanup remaining shared subsystems (buffer pool, platform, etc.)
-889   log_debug(&quot;[CLIENT_MAIN] About to call asciichat_shared_destroy()&quot;);
-890   asciichat_shared_destroy();
-891 
-892   // Log final session statistics before exit
-893   // Note: Frame count is logged in protocol_stop_connection() if connection was established
-894   // This is a fallback in case the connection never started
-895   return (session_result == ASCIICHAT_OK) ? 0 : 1;
-896 }</pre>
+<p class="Pp">Definition at line <b>613</b> of file <b>client/main.c</b>.</p>
+<pre>613                       {
+614   // Register cleanup function for graceful shutdown
+615   (void)atexit(shutdown_client);
+616
+617   // Register client interrupt callback (socket shutdown on SIGTERM/Ctrl+C)
+618   // Global signal handlers (SIGTERM, SIGPIPE, Ctrl+C) are set up in setup_signal_handlers() in src/main.c
+619   set_interrupt_callback(NULL); // Signal handlers publish application exit only.
+620
+621   /* ========================================================================
+622    * Client-Specific: LAN/Session Discovery
+623    * ========================================================================
+624    * This phase discovers the server to connect to via:
+625    * - LAN discovery (mDNS)
+626    * - Session string lookup (ACDS)
+627    * - Direct address/port
+628    */
+629
+630   // =========================================================================
+631   // Client-Specific: Server Address Resolution
+632   // =========================================================================
+633   // Client mode supports:
+634   // 1. Direct positional address/port - handled by options
+635   // 2. Interactive default LAN discovery or --scan - prepared after splash startup
+636   // 3. WebSocket URL (direct ws:// or wss:// connection string)
+637   //
+638   // Note: Session string discovery via ACDS is handled by discovery mode only.
+639   //       Client mode does NOT use ACDS or session strings.
+640
+641   const char *discovered_address = NULL;
+642   int discovered_port = 0;
+643
+644   // Check if user provided a WebSocket URL as the server address
+645   const options_t *opts_websocket = options_get();
+646   const char *provided_address = opts_websocket &amp;&amp; opts_websocket-&gt;address[0] != '\0' ? opts_websocket-&gt;address : NULL;
+647
+648   if (provided_address &amp;&amp; url_is_websocket(provided_address)) {
+649     // Direct WebSocket connection
+650     log_debug(&quot;Client: Direct WebSocket URL: %s&quot;, provided_address);
+651     discovered_address = provided_address;
+652     discovered_port = 0; // Port is embedded in the URL
+653   }
+654
+655   if (discovered_port &gt; 0) {
+656     log_debug(&quot;Client: discovered_address=%s, discovered_port=%d&quot;, discovered_address ? discovered_address : &quot;NULL&quot;,
+657               discovered_port);
+658   } else {
+659     log_debug(&quot;Client: discovered_address=%s&quot;, discovered_address ? discovered_address : &quot;NULL&quot;);
+660   }
+661
+662   // Store discovered address/port in session state for client_run() callback
+663   static char address_storage[BUFFER_SIZE_SMALL];
+664   if (discovered_address) {
+665     SAFE_STRNCPY(address_storage, discovered_address, sizeof(address_storage));
+666     g_client_session.discovered_address = address_storage;
+667     g_client_session.discovered_port = discovered_port;
+668   } else {
+669     const options_t *opts_fallback = options_get();
+670     if (opts_fallback &amp;&amp; opts_fallback-&gt;address[0] != '\0') {
+671       SAFE_STRNCPY(address_storage, opts_fallback-&gt;address, sizeof(address_storage));
+672       g_client_session.discovered_address = address_storage;
+673       g_client_session.discovered_port = opts_fallback-&gt;port;
+674     } else {
+675       g_client_session.discovered_address = &quot;localhost&quot;;
+676       g_client_session.discovered_port = 27224;
+677     }
+678   }
+679
+680   /* ========================================================================
+681    * Configure and Run Shared Client-Like Session Framework
+682    * ========================================================================
+683    * session_client_like_run() handles all shared initialization:
+684    * - Terminal output management (force stderr if piped)
+685    * - Keepawake system (platform sleep prevention)
+686    * - Splash screen lifecycle
+687    * - Media source selection (webcam, file, URL, test pattern)
+688    * - FPS probing for media files
+689    * - Audio initialization and lifecycle
+690    * - Display context creation
+691    * - Proper cleanup ordering (critical for PortAudio)
+692    *
+693    * Client mode provides:
+694    * - client_run() callback: connection loop, protocol startup, monitoring
+695    * - client_should_reconnect() callback: reconnection policy
+696    * - Reconnection configuration: attempts, delay, callbacks
+697    */
+698
+699   // Get reconnect attempts setting (-1 = unlimited, 0 = no retry, &gt;0 = retry N times)
+700   int reconnect_attempts = GET_OPTION(reconnect_attempts);
+701
+702   // Configure session_client_like with client-specific settings
+703   session_client_like_config_t config = {
+704       .run_fn = client_run,
+705       .prepare_fn = client_prepare_destination,
+706       .run_user_data = NULL,
+707       .kind = SESSION_CLIENT_LIKE_KIND_CLIENT,
+708       .discovery = NULL,
+709       .custom_should_exit = NULL,
+710       .exit_user_data = NULL,
+711       .keyboard_handler = NULL, // Client mode: server drives display
+712       .max_reconnect_attempts = reconnect_attempts,
+713       .should_reconnect_callback = client_should_reconnect,
+714       .reconnect_user_data = NULL,
+715       .reconnect_delay_ms = 1000,         // 1 second delay between reconnection attempts
+716       .print_newline_on_tty_exit = false, // Server/client manages cursor
+717   };
+718
+719   log_debug(&quot;About to call session_client_like_run() with %d attempts&quot;, reconnect_attempts);
+720   asciichat_error_t session_result = session_client_like_run(&amp;config);
+721   log_debug(&quot;session_client_like_run() returned %d&quot;, session_result);
+722
+723   // Cleanup session log buffer (used by splash screen in session_client_like)
+724   // NOTE: session_log_buffer_destroy() is already called in session_client_like_run()
+725   // during its cleanup phase, so we don't call it here to avoid double-destroy of mutex
+726
+727   log_debug(&quot;ascii-chat client shutting down&quot;);
+728
+729   // IMPORTANT: Stop worker threads and join them BEFORE memory report
+730   // atexit(shutdown_client) won't run if interrupted by SIGTERM, so call explicitly
+731   log_debug(&quot;About to call shutdown_client()&quot;);
+732   fflush(stderr);
+733   shutdown_client();
+734   log_debug(&quot;shutdown_client() returned&quot;);
+735   fflush(stderr);
+736
+737   // Cleanup remaining shared subsystems (buffer domain, platform, etc.)
+738   log_debug(&quot;About to call asciichat_shared_destroy()&quot;);
+739   asciichat_shared_destroy();
+740
+741   // Log final session statistics before exit
+742   // Note: Frame count is logged in client_connection_stop() if connection was established
+743   // This is a fallback in case the connection never started
+744   return session_result;
+745 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_state::address</b>,
-    <b>app_callbacks_register()</b>, <b>ASCIICHAT_OK</b>,
     <b>asciichat_shared_destroy()</b>, <b>BUFFER_SIZE_SMALL</b>,
-    <b>CLEAR_ERRNO</b>, <b>client_crypto_handshake()</b>,
-    <b>client_crypto_init()</b>, <b>client_crypto_set_mode()</b>,
-    <b>connection_context_cleanup()</b>, <b>connection_context_init()</b>,
-    <b>crypto_client_get_context()</b>, <b>crypto_client_is_ready()</b>,
-    <b>ERROR_WEBCAM</b>, <b>ERROR_WEBCAM_IN_USE</b>,
-    <b>ERROR_WEBCAM_PERMISSION</b>, <b>FATAL</b>, <b>GET_OPTION</b>,
-    <b>is_localhost_ipv4()</b>, <b>options_state::lan_discovery</b>,
-    <b>log_debug</b>, <b>log_error</b>, <b>log_lock_terminal()</b>,
-    <b>log_warn</b>, <b>ui_mdns_config_t::max_servers</b>,
-    <b>MS_PER_SEC_INT</b>, <b>ui_mdns_server_t::name</b>, <b>options_get()</b>,
-    <b>options_set_bool()</b>, <b>platform_force_exit()</b>,
-    <b>platform_get_monotonic_time_us()</b>, <b>platform_signal()</b>,
-    <b>platform_sleep_ms()</b>, <b>options_state::port</b>,
-    <b>ui_mdns_server_t::port</b>, <b>ui_mdns_config_t::quiet</b>,
-    <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>server_connection_set_ip()</b>,
-    <b>server_connection_set_port()</b>, <b>server_connection_shutdown()</b>,
+    <b>client_main()</b>, <b>GET_OPTION</b>, <b>log_debug</b>,
+    <b>options_get()</b>, <b>options_state::port</b>, <b>SAFE_STRNCPY</b>,
     <b>SESSION_CLIENT_LIKE_KIND_CLIENT</b>, <b>session_client_like_run()</b>,
-    <b>set_interrupt_callback()</b>, <b>should_exit()</b>, <b>signal_exit()</b>,
-    <b>ui_mdns_config_t::timeout_ms</b>, <b>ui_mdns_free_results()</b>,
-    <b>ui_mdns_get_best_address()</b>, <b>ui_mdns_query()</b>,
-    <b>ui_mdns_select()</b>, <b>url_is_websocket()</b>, and
-    <b>webcam_print_init_error_help()</b>.</p>
+    <b>set_interrupt_callback()</b>, and <b>url_is_websocket()</b>.</p>
+<p class="Pp">Referenced by <b>client_main()</b>.</p>
 </section>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
   Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>app_client_t</b>* g_client = NULL</h2>
-<p class="Pp">Global client application context. Global application client
-    context</p>
-<p class="Pp"></p>
-<p class="Pp">Central connection and application state for the client. Contains
-    transport-agnostic state: audio, threads, display, crypto. Network-specific
-    state (socket, connection flags) is in the active transport client.</p>
-<p class="Pp"></p>
-<p class="Pp">Initialized by <b>app_client_create()</b> in <b>client_main()</b>.
-    Destroyed by <b>app_client_destroy()</b> at cleanup.</p>
-<p class="Pp">Definition at line <b>152</b> of file <b>client/main.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>thread_pool_t</b>* g_client_worker_pool = NULL</h2>
-<p class="Pp">Global client worker thread pool. Global client worker thread
-  pool</p>
-<p class="Pp"></p>
-<p class="Pp">Manages all client worker threads including:</p>
-<ul class="Bl-bullet">
-  <li>Data reception thread (protocol.c)</li>
-  <li>Webcam capture thread (capture.c)</li>
-  <li>Ping/keepalive thread (<b>keepalive.c</b>)</li>
-  <li>Audio capture thread (audio.c)</li>
-  <li>Audio sender thread (audio.c)</li>
-</ul>
-<p class="Pp">Definition at line <b>140</b> of file <b>client/main.c</b>.</p>
-<p class="Pp">Referenced by <b>audio_sender_init()</b>,
-    <b>audio_start_thread()</b>, <b>capture_start_thread()</b>,
-    <b>keepalive_start_thread()</b>, <b>protocol_start_connection()</b>, and
-    <b>protocol_stop_connection()</b>.</p>
-</section>
 <section class="Ss">
 <h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
   <b>webrtc_peer_manager</b>* g_peer_manager = NULL</a></h2>
@@ -646,7 +450,16 @@ ascii-chat client --address localhost --audio
 <p class="Pp"></p>
 <p class="Pp">Client mode no longer uses WebRTC, but protocol.c still references
     this. Always NULL in client mode.</p>
-<p class="Pp">Definition at line <b>160</b> of file <b>client/main.c</b>.</p>
+<p class="Pp"></p>
+<p class="Pp">Global WebRTC peer manager (legacy compatibility).</p>
+<p class="Pp"></p>
+<p class="Pp">Manages WebRTC peer connections for ACDS session participants.
+    Handles SDP/ICE exchange and DataChannel lifecycle for P2P ACIP
+  transport.</p>
+<p class="Pp"></p>
+<p class="Pp">NULL if WebRTC not initialized (TCP-only mode). Initialized when
+    joining/creating ACDS sessions with WebRTC transport.</p>
+<p class="Pp">Definition at line <b>144</b> of file <b>client/main.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -656,7 +469,7 @@ ascii-chat client --address localhost --audio
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

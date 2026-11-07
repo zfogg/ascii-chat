@@ -35,7 +35,7 @@
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<p class="Pp">#include &lt;include/ascii-chat/ui/mdns.h&gt;</p>
+<p class="Pp">#include &lt;include/ascii-chat/tui/mdns.h&gt;</p>
 <section class="Ss">
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
@@ -43,7 +43,9 @@
 <p class="Pp">char <b>name</b> [256]
   <br/>
   Service instance name (e.g., <i>swift-river-canyon&quot;).</i> char
-    <b>address</b> [256]
+    <b>session_string</b> [256]
+  <br/>
+  Session identity advertised in TXT metadata. char <b>address</b> [256]
   <br/>
   Server address (IPv4, IPv6, or hostname). <b>uint16_t</b> <b>port</b>
   <br/>
@@ -62,7 +64,7 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">Discovered server information from mDNS.</p>
-<p class="Pp">Definition at line <b>57</b> of file <b>ui/mdns.h</b>.</p>
+<p class="Pp">Definition at line <b>64</b> of file <b>tui/mdns.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -71,43 +73,44 @@
 <h2 class="Ss" id="char_ui_mdns_server_t::address_256_"><a class="permalink" href="#char_ui_mdns_server_t::address_256_">char
   ui_mdns_server_t::address[256]</a></h2>
 <p class="Pp">Server address (IPv4, IPv6, or hostname).</p>
-<p class="Pp">Definition at line <b>59</b> of file <b>ui/mdns.h</b>.</p>
+<p class="Pp">Definition at line <b>67</b> of file <b>tui/mdns.h</b>.</p>
 <p class="Pp">Referenced by <b>ui_mdns_get_best_address()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_ui_mdns_server_t::ipv4_16_"><a class="permalink" href="#char_ui_mdns_server_t::ipv4_16_">char
   ui_mdns_server_t::ipv4[16]</a></h2>
 <p class="Pp">IPv4 address (if available).</p>
-<p class="Pp">Definition at line <b>61</b> of file <b>ui/mdns.h</b>.</p>
+<p class="Pp">Definition at line <b>69</b> of file <b>tui/mdns.h</b>.</p>
 <p class="Pp">Referenced by <b>ui_mdns_get_best_address()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_ui_mdns_server_t::ipv6_46_"><a class="permalink" href="#char_ui_mdns_server_t::ipv6_46_">char
   ui_mdns_server_t::ipv6[46]</a></h2>
 <p class="Pp">IPv6 address (if available).</p>
-<p class="Pp">Definition at line <b>62</b> of file <b>ui/mdns.h</b>.</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>tui/mdns.h</b>.</p>
 <p class="Pp">Referenced by <b>ui_mdns_get_best_address()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_ui_mdns_server_t::name_256_"><a class="permalink" href="#char_ui_mdns_server_t::name_256_">char
   ui_mdns_server_t::name[256]</a></h2>
 <p class="Pp">Service instance name (e.g., &quot;swift-river-canyon&quot;).</p>
-<p class="Pp">Definition at line <b>58</b> of file <b>ui/mdns.h</b>.</p>
-<p class="Pp">Referenced by <b>client_main()</b>,
-    <b>ui_mdns_get_best_address()</b>, <b>ui_mdns_prompt_selection()</b>, and
-    <b>ui_mdns_select()</b>.</p>
+<p class="Pp">Definition at line <b>65</b> of file <b>tui/mdns.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> ui_mdns_server_t::port</h2>
 <p class="Pp">Server port number.</p>
-<p class="Pp">Definition at line <b>60</b> of file <b>ui/mdns.h</b>.</p>
-<p class="Pp">Referenced by <b>client_main()</b>,
-    <b>ui_mdns_prompt_selection()</b>, and <b>ui_mdns_select()</b>.</p>
+<p class="Pp">Definition at line <b>68</b> of file <b>tui/mdns.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_ui_mdns_server_t::session_string_256_"><a class="permalink" href="#char_ui_mdns_server_t::session_string_256_">char
+  ui_mdns_server_t::session_string[256]</a></h2>
+<p class="Pp">Session identity advertised in TXT metadata.</p>
+<p class="Pp">Definition at line <b>66</b> of file <b>tui/mdns.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> ui_mdns_server_t::ttl</h2>
 <p class="Pp">TTL remaining (seconds).</p>
-<p class="Pp">Definition at line <b>63</b> of file <b>ui/mdns.h</b>.</p>
+<p class="Pp">Definition at line <b>71</b> of file <b>tui/mdns.h</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -118,7 +121,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

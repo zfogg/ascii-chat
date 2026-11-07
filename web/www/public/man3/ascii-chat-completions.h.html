@@ -158,11 +158,11 @@ ascii-chat --completions powershell | Out-String | Invoke-Expression</pre>
 </dl>
 <p class="Pp">Definition at line <b>66</b> of file <b>completions.h</b>.</p>
 <pre>66              {
-67   COMPLETION_FORMAT_BASH,       
-68   COMPLETION_FORMAT_FISH,       
-69   COMPLETION_FORMAT_ZSH,        
-70   COMPLETION_FORMAT_POWERSHELL, 
-71   COMPLETION_FORMAT_UNKNOWN     
+67   COMPLETION_FORMAT_BASH,
+68   COMPLETION_FORMAT_FISH,
+69   COMPLETION_FORMAT_ZSH,
+70   COMPLETION_FORMAT_POWERSHELL,
+71   COMPLETION_FORMAT_UNKNOWN
 72 } completion_format_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
@@ -190,55 +190,58 @@ ascii-chat --completions powershell | Out-String | Invoke-Expression</pre>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">The caller must free the returned pointer with
   <b>SAFE_FREE()</b></div>
-<p class="Pp">Definition at line <b>96</b> of file <b>completions.c</b>.</p>
-<pre>96                                                                          {
-97   if (!count) {
-98     return NULL;
-99   }
-100 
-101   option_descriptor_t *combined_opts = NULL;
-102   size_t combined_count = 0;
-103 
-104   /* All completion modes to iterate through */
-105   asciichat_mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE};
-106   const size_t modes_len = sizeof(modes) / sizeof(modes[0]);
-107 
-108   for (size_t m = 0; m &lt; modes_len; m++) {
-109     size_t mode_count = 0;
-110     const option_descriptor_t *mode_opts = options_registry_get_for_mode(modes[m], &amp;mode_count);
-111     if (mode_opts) {
-112       /* Collect unique options by long_name */
-113       for (size_t i = 0; i &lt; mode_count; i++) {
-114         bool already_has = false;
-115         for (size_t j = 0; j &lt; combined_count; j++) {
-116           if (strcmp(combined_opts[j].long_name, mode_opts[i].long_name) == 0) {
-117             already_has = true;
-118             break;
-119           }
-120         }
-121         if (!already_has) {
-122           combined_count++;
-123           option_descriptor_t *temp = (option_descriptor_t *)SAFE_REALLOC(
-124               combined_opts, combined_count * sizeof(option_descriptor_t), option_descriptor_t *);
-125           if (temp) {
-126             combined_opts = temp;
-127             combined_opts[combined_count - 1] = mode_opts[i];
-128           }
-129         }
-130       }
-131       SAFE_FREE(mode_opts);
-132     }
-133   }
-134 
-135   *count = combined_count;
-136   return combined_opts;
-137 }</pre>
+<p class="Pp">Definition at line <b>100</b> of file <b>completions.c</b>.</p>
+<pre>100                                                                          {
+101   if (!count) {
+102     return NULL;
+103   }
+104
+105   option_descriptor_t *combined_opts = NULL;
+106   size_t combined_count = 0;
+107
+108   /* All completion modes to iterate through */
+109   asciichat_mode_t modes[] = {MODE_DISCOVERY,         MODE_SERVER,    MODE_CLIENT, MODE_MIRROR,
+110                               MODE_DISCOVERY_SERVICE, MODE_MCP_SERVER};
+111   const size_t modes_len = sizeof(modes) / sizeof(modes[0]);
+112
+113   for (size_t m = 0; m &lt; modes_len; m++) {
+114     size_t mode_count = 0;
+115     const option_descriptor_t *mode_opts = options_registry_get_for_mode(modes[m], &amp;mode_count);
+116     if (mode_opts) {
+117       /* Collect unique options by long_name */
+118       for (size_t i = 0; i &lt; mode_count; i++) {
+119         bool already_has = false;
+120         for (size_t j = 0; j &lt; combined_count; j++) {
+121           if (strcmp(combined_opts[j].long_name, mode_opts[i].long_name) == 0) {
+122             already_has = true;
+123             break;
+124           }
+125         }
+126         if (!already_has) {
+127           combined_count++;
+128           option_descriptor_t *temp = (option_descriptor_t *)SAFE_REALLOC(
+129               combined_opts, combined_count * sizeof(option_descriptor_t), option_descriptor_t *);
+130           if (temp) {
+131             combined_opts = temp;
+132             combined_opts[combined_count - 1] = mode_opts[i];
+133           }
+134         }
+135       }
+136       SAFE_FREE(mode_opts);
+137     }
+138   }
+139
+140   *count = combined_count;
+141   return combined_opts;
+142 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>MODE_CLIENT</b>, <b>MODE_DISCOVERY</b>,
-    <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_MIRROR</b>, <b>MODE_SERVER</b>,
+<p class="Pp">References <b>completions_collect_all_modes_unique()</b>,
+    <b>MODE_CLIENT</b>, <b>MODE_DISCOVERY</b>, <b>MODE_DISCOVERY_SERVICE</b>,
+    <b>MODE_MCP_SERVER</b>, <b>MODE_MIRROR</b>, <b>MODE_SERVER</b>,
     <b>options_registry_get_for_mode()</b>, <b>SAFE_FREE</b>, and
     <b>SAFE_REALLOC</b>.</p>
+<p class="Pp">Referenced by <b>completions_collect_all_modes_unique()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> completions_generate_for_shell
@@ -253,34 +256,35 @@ ascii-chat --completions powershell | Out-String | Invoke-Expression</pre>
 <i>output</i> FILE stream to write completion script to (e.g., stdout)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>20</b> of file <b>completions.c</b>.</p>
-<pre>20                                                                                            {
-21   if (!output) {
-22     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
-23   }
-24 
-25   switch (format) {
-26   case COMPLETION_FORMAT_BASH:
-27     return completions_generate_bash(output);
-28   case COMPLETION_FORMAT_FISH:
-29     return completions_generate_fish(output);
-30   case COMPLETION_FORMAT_ZSH:
-31     return completions_generate_zsh(output);
-32   case COMPLETION_FORMAT_POWERSHELL:
-33     return completions_generate_powershell(output);
-34   default:
-35     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown completion format: %d&quot;, format);
-36   }
-37 }</pre>
+<p class="Pp">Definition at line <b>24</b> of file <b>completions.c</b>.</p>
+<pre>24                                                                                            {
+25   if (!output) {
+26     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
+27   }
+28
+29   switch (format) {
+30   case COMPLETION_FORMAT_BASH:
+31     return completions_generate_bash(output);
+32   case COMPLETION_FORMAT_FISH:
+33     return completions_generate_fish(output);
+34   case COMPLETION_FORMAT_ZSH:
+35     return completions_generate_zsh(output);
+36   case COMPLETION_FORMAT_POWERSHELL:
+37     return completions_generate_powershell(output);
+38   default:
+39     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown completion format: %d&quot;, format);
+40   }
+41 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>COMPLETION_FORMAT_BASH</b>,
     <b>COMPLETION_FORMAT_FISH</b>, <b>COMPLETION_FORMAT_POWERSHELL</b>,
     <b>COMPLETION_FORMAT_ZSH</b>, <b>completions_generate_bash()</b>,
-    <b>completions_generate_fish()</b>,
+    <b>completions_generate_fish()</b>, <b>completions_generate_for_shell()</b>,
     <b>completions_generate_powershell()</b>, <b>completions_generate_zsh()</b>,
     <b>ERROR_INVALID_PARAM</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>action_completions()</b>.</p>
+<p class="Pp">Referenced by <b>action_completions()</b>, and
+    <b>completions_generate_for_shell()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_completions_get_shell_name_("><a class="permalink" href="#const_char_*_completions_get_shell_name_(">const
@@ -291,27 +295,31 @@ ascii-chat --completions powershell | Out-String | Invoke-Expression</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Shell name string (e.g., &quot;bash&quot;,
   &quot;fish&quot;), or &quot;unknown&quot; if invalid</div>
-<p class="Pp">Definition at line <b>39</b> of file <b>completions.c</b>.</p>
-<pre>39                                                                    {
-40   switch (format) {
-41   case COMPLETION_FORMAT_BASH:
-42     return &quot;bash&quot;;
-43   case COMPLETION_FORMAT_FISH:
-44     return &quot;fish&quot;;
-45   case COMPLETION_FORMAT_ZSH:
-46     return &quot;zsh&quot;;
-47   case COMPLETION_FORMAT_POWERSHELL:
-48     return &quot;powershell&quot;;
-49   default:
-50     return &quot;unknown&quot;;
-51   }
-52 }</pre>
+<p class="Pp">Definition at line <b>43</b> of file <b>completions.c</b>.</p>
+<pre>43                                                                    {
+44   switch (format) {
+45   case COMPLETION_FORMAT_BASH:
+46     return OPT_COMPLETION_SHELL_BASH;
+47   case COMPLETION_FORMAT_FISH:
+48     return OPT_COMPLETION_SHELL_FISH;
+49   case COMPLETION_FORMAT_ZSH:
+50     return OPT_COMPLETION_SHELL_ZSH;
+51   case COMPLETION_FORMAT_POWERSHELL:
+52     return OPT_COMPLETION_SHELL_POWERSHELL;
+53   default:
+54     return &quot;unknown&quot;;
+55   }
+56 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>COMPLETION_FORMAT_BASH</b>,
-    <b>COMPLETION_FORMAT_FISH</b>, <b>COMPLETION_FORMAT_POWERSHELL</b>, and
-    <b>COMPLETION_FORMAT_ZSH</b>.</p>
-<p class="Pp">Referenced by <b>action_completions()</b>.</p>
+    <b>COMPLETION_FORMAT_FISH</b>, <b>COMPLETION_FORMAT_POWERSHELL</b>,
+    <b>COMPLETION_FORMAT_ZSH</b>, <b>completions_get_shell_name()</b>,
+    <b>OPT_COMPLETION_SHELL_BASH</b>, <b>OPT_COMPLETION_SHELL_FISH</b>,
+    <b>OPT_COMPLETION_SHELL_POWERSHELL</b>, and
+  <b>OPT_COMPLETION_SHELL_ZSH</b>.</p>
+<p class="Pp">Referenced by <b>action_completions()</b>, and
+    <b>completions_get_shell_name()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>completion_format_t</b> completions_parse_shell_name (const
@@ -326,41 +334,46 @@ ascii-chat --completions powershell | Out-String | Invoke-Expression</pre>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Completion format, or COMPLETION_FORMAT_UNKNOWN if not
   recognized</div>
-<p class="Pp">Definition at line <b>54</b> of file <b>completions.c</b>.</p>
-<pre>54                                                                          {
-55   if (!shell_name) {
-56     return COMPLETION_FORMAT_UNKNOWN;
-57   }
-58 
-59   /* Convert to lowercase for case-insensitive matching */
-60   char lower[32] = {0};
-61   size_t len = strlen(shell_name);
-62   if (len &gt;= sizeof(lower)) {
-63     return COMPLETION_FORMAT_UNKNOWN;
-64   }
-65 
-66   for (size_t i = 0; i &lt; len; i++) {
-67     lower[i] = tolower((unsigned char)shell_name[i]);
+<p class="Pp">Definition at line <b>58</b> of file <b>completions.c</b>.</p>
+<pre>58                                                                          {
+59   if (!shell_name) {
+60     return COMPLETION_FORMAT_UNKNOWN;
+61   }
+62
+63   /* Convert to lowercase for case-insensitive matching */
+64   char lower[OPTIONS_COMPLETIONS_LOWER_BUFFER_SIZE] = {0};
+65   size_t len = strlen(shell_name);
+66   if (len &gt;= sizeof(lower)) {
+67     return COMPLETION_FORMAT_UNKNOWN;
 68   }
-69 
-70   if (strcmp(lower, &quot;bash&quot;) == 0) {
-71     return COMPLETION_FORMAT_BASH;
-72   } else if (strcmp(lower, &quot;fish&quot;) == 0) {
-73     return COMPLETION_FORMAT_FISH;
-74   } else if (strcmp(lower, &quot;zsh&quot;) == 0) {
-75     return COMPLETION_FORMAT_ZSH;
-76   } else if (strcmp(lower, &quot;powershell&quot;) == 0 || strcmp(lower, &quot;ps&quot;) == 0) {
-77     return COMPLETION_FORMAT_POWERSHELL;
-78   }
-79 
-80   return COMPLETION_FORMAT_UNKNOWN;
-81 }</pre>
+69
+70   for (size_t i = 0; i &lt; len; i++) {
+71     lower[i] = tolower((unsigned char)shell_name[i]);
+72   }
+73
+74   if (strcmp(lower, OPT_COMPLETION_SHELL_BASH) == 0) {
+75     return COMPLETION_FORMAT_BASH;
+76   } else if (strcmp(lower, OPT_COMPLETION_SHELL_FISH) == 0) {
+77     return COMPLETION_FORMAT_FISH;
+78   } else if (strcmp(lower, OPT_COMPLETION_SHELL_ZSH) == 0) {
+79     return COMPLETION_FORMAT_ZSH;
+80   } else if (strcmp(lower, OPT_COMPLETION_SHELL_POWERSHELL) == 0 || strcmp(lower, &quot;ps&quot;) == 0) {
+81     return COMPLETION_FORMAT_POWERSHELL;
+82   }
+83
+84   return COMPLETION_FORMAT_UNKNOWN;
+85 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>COMPLETION_FORMAT_BASH</b>,
     <b>COMPLETION_FORMAT_FISH</b>, <b>COMPLETION_FORMAT_POWERSHELL</b>,
-    <b>COMPLETION_FORMAT_UNKNOWN</b>, and <b>COMPLETION_FORMAT_ZSH</b>.</p>
-<p class="Pp">Referenced by <b>action_completions()</b>.</p>
+    <b>COMPLETION_FORMAT_UNKNOWN</b>, <b>COMPLETION_FORMAT_ZSH</b>,
+    <b>completions_parse_shell_name()</b>, <b>OPT_COMPLETION_SHELL_BASH</b>,
+    <b>OPT_COMPLETION_SHELL_FISH</b>, <b>OPT_COMPLETION_SHELL_POWERSHELL</b>,
+    <b>OPT_COMPLETION_SHELL_ZSH</b>, and
+    <b>OPTIONS_COMPLETIONS_LOWER_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>action_completions()</b>, and
+    <b>completions_parse_shell_name()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -370,7 +383,7 @@ ascii-chat --completions powershell | Out-String | Invoke-Expression</pre>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

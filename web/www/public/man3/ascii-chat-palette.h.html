@@ -54,6 +54,13 @@
 </section>
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>VIDEO_ASCII_PALETTE_TERMINAL_TYPE_BUFFER_SIZE</b> 32
+  <br/>
+  #define <b>VIDEO_ASCII_PALETTE_LOCALE_ENCODING_BUFFER_SIZE</b> 16
+  <br/>
+  <br/>
+</p>
 <p class="Pp"><b>Built-in Palette Character Strings</b></p>
 <p class="Pp">
   <br/>
@@ -121,12 +128,14 @@
   <br/>
   Apply palette configuration (set global palette). int
     <b>build_client_luminance_palette</b> (const char *palette_chars, size_t
-    palette_len, char luminance_mapping[256])
+    palette_len, char luminance_mapping[<b>ASCII_LUMINANCE_LEVELS</b>])
   <br/>
   Build luminance mapping table from palette characters. int
     <b>initialize_client_palette</b> (<b>palette_type_t</b> palette_type, const
-    char *custom_chars, char client_palette_chars[256], size_t
-    *client_palette_len, char client_luminance_palette[256])
+    char *custom_chars, char
+    client_palette_chars[<b>ASCII_PALETTE_BUFFER_SIZE</b>], size_t
+    *client_palette_len, char
+    client_luminance_palette[<b>ASCII_LUMINANCE_LEVELS</b>])
   <br/>
   Initialize client palette with full configuration.
   <br/>
@@ -199,7 +208,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

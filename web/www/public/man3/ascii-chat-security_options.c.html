@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>security_options.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">security_options.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">security_options.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">security_options.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>acip_security_init_options</b>
+    (<b>acip_security_t</b> *security, <b>bool</b> server, <b>bool</b>
+    transport_secure, const char *password_override)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acip_security_init_options
+  (<b>acip_security_t</b> * security, <b>bool</b> server, <b>bool</b>
+  transport_secure, const char * password)</h2>
+<p class="Pp">Initialize a peer from native CLI options; cleanup releases owned
+    credentials.</p>
+<p class="Pp">Definition at line <b>6</b> of file <b>security_options.c</b>.</p>
+<pre>7                                                                             {
+8   if (!security)
+9     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing peer security state&quot;);
+10   memset(security, 0, sizeof(*security));
+11   const options_t *options = options_get();
+12   if (!options)
+13     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Peer security requires initialized options&quot;);
+14   const char *password = password_override ? password_override : options-&gt;password;
+15   crypto_policy_t policy = {
+16       .transport_secure = transport_secure,
+17       .encrypt = options-&gt;encrypt_enabled,
+18       .no_encrypt = options-&gt;no_encrypt,
+19       .no_auth = options-&gt;no_auth,
+20       .has_password = password[0] != '\0',
+21       .has_identity = options-&gt;encrypt_key[0] != '\0',
+22       .has_verification_key = server ? options-&gt;client_keys[0] != '\0' : options-&gt;server_key[0] != '\0',
+23   };
+24   asciichat_error_t result = crypto_policy_resolve(&amp;policy, &amp;security-&gt;mode);
+25   security-&gt;forbid_encryption = policy.no_encrypt;
+26   security-&gt;require_encryption = policy.encrypt;
+27   if (result != ASCIICHAT_OK)
+28     return result;
+29   crypto_handshake_context_t *ctx = &amp;security-&gt;handshake;
+30   result = policy.has_password ? crypto_handshake_init_with_password(&quot;webrtc_peer&quot;, ctx, server, password)
+31                                : crypto_handshake_init(&quot;webrtc_peer&quot;, ctx, server);
+32   if (result != ASCIICHAT_OK)
+33     return result;
+34   ctx-&gt;require_client_auth = server &amp;&amp; options-&gt;require_server_verify;
+35   ctx-&gt;crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(security-&gt;mode);
+36   if (policy.has_identity) {
+37     private_key_t *private_key = server ? &amp;ctx-&gt;server_private_key : &amp;ctx-&gt;client_private_key;
+38     public_key_t *public_key = server ? &amp;ctx-&gt;server_public_key : &amp;ctx-&gt;client_public_key;
+39     result = parse_private_key(options-&gt;encrypt_key, private_key);
+40     if (result != ASCIICHAT_OK)
+41       goto failed;
+42     public_key-&gt;type = KEY_TYPE_ED25519;
+43     memcpy(public_key-&gt;key, private_key-&gt;public_key, ED25519_PUBLIC_KEY_SIZE);
+44     if (!server &amp;&amp; strncmp(options-&gt;encrypt_key, &quot;gpg:&quot;, 4) == 0)
+45       SAFE_STRNCPY(ctx-&gt;client_gpg_key_id, options-&gt;encrypt_key + 4, sizeof(ctx-&gt;client_gpg_key_id));
+46   }
+47   if (server &amp;&amp; policy.has_verification_key) {
+48     ctx-&gt;client_whitelist = SAFE_CALLOC(MAX_CLIENTS, sizeof(public_key_t), public_key_t *);
+49     if (!ctx-&gt;client_whitelist) {
+50       result = SET_ERRNO(ERROR_MEMORY, &quot;Cannot allocate WebRTC client key list&quot;);
+51       goto failed;
+52     }
+53     result = parse_public_keys(options-&gt;client_keys, ctx-&gt;client_whitelist, &amp;ctx-&gt;num_whitelisted_clients, MAX_CLIENTS);
+54     if (result != ASCIICHAT_OK)
+55       goto failed;
+56     if (!ctx-&gt;num_whitelisted_clients) {
+57       result = SET_ERRNO(ERROR_CRYPTO_AUTH, &quot;WebRTC client key list is empty&quot;);
+58       goto failed;
+59     }
+60     ctx-&gt;require_client_auth = true;
+61   } else if (!server &amp;&amp; policy.has_verification_key) {
+62     ctx-&gt;verify_server_key = true;
+63     SAFE_STRNCPY(ctx-&gt;expected_server_key, options-&gt;server_key, sizeof(ctx-&gt;expected_server_key));
+64     SAFE_STRNCPY(ctx-&gt;server_hostname, options-&gt;session_string, sizeof(ctx-&gt;server_hostname));
+65   }
+66   return ASCIICHAT_OK;
+67 failed:
+68   acip_security_cleanup(security);
+69   return result;
+70 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ACIP_CRYPTO_HAS_ENCRYPT</b>,
+    <b>acip_security_cleanup()</b>, <b>acip_security_init_options()</b>,
+    <b>ASCIICHAT_OK</b>, <b>crypto_handshake_context_t::client_gpg_key_id</b>,
+    <b>options_state::client_keys</b>,
+    <b>crypto_handshake_context_t::client_private_key</b>,
+    <b>crypto_handshake_context_t::client_public_key</b>,
+    <b>crypto_handshake_context_t::client_whitelist</b>,
+    <b>crypto_handshake_context_t::crypto_ctx</b>,
+    <b>crypto_handshake_init()</b>,
+    <b>crypto_handshake_init_with_password()</b>,
+    <b>crypto_policy_resolve()</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+    <b>crypto_policy_t::encrypt</b>, <b>crypto_context_t::encrypt_data</b>,
+    <b>options_state::encrypt_enabled</b>, <b>options_state::encrypt_key</b>,
+    <b>ERROR_CRYPTO_AUTH</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
+    <b>crypto_handshake_context_t::expected_server_key</b>,
+    <b>acip_security::forbid_encryption</b>, <b>acip_security::handshake</b>,
+    <b>crypto_policy_t::has_identity</b>, <b>crypto_policy_t::has_password</b>,
+    <b>crypto_policy_t::has_verification_key</b>, <b>public_key_t::key</b>,
+    <b>KEY_TYPE_ED25519</b>, <b>MAX_CLIENTS</b>, <b>acip_security::mode</b>,
+    <b>options_state::no_auth</b>, <b>crypto_policy_t::no_encrypt</b>,
+    <b>options_state::no_encrypt</b>,
+    <b>crypto_handshake_context_t::num_whitelisted_clients</b>,
+    <b>options_get()</b>, <b>parse_private_key()</b>,
+    <b>parse_public_keys()</b>, <b>options_state::password</b>,
+    <b>private_key_t::public_key</b>,
+    <b>crypto_handshake_context_t::require_client_auth</b>,
+    <b>acip_security::require_encryption</b>,
+    <b>options_state::require_server_verify</b>, <b>SAFE_CALLOC</b>,
+    <b>SAFE_STRNCPY</b>, <b>crypto_handshake_context_t::server_hostname</b>,
+    <b>options_state::server_key</b>,
+    <b>crypto_handshake_context_t::server_private_key</b>,
+    <b>crypto_handshake_context_t::server_public_key</b>,
+    <b>options_state::session_string</b>, <b>SET_ERRNO</b>,
+    <b>public_key_t::type</b>, and
+    <b>crypto_handshake_context_t::verify_server_key</b>.</p>
+<p class="Pp">Referenced by <b>acip_security_init_options()</b>, and
+    <b>network_connection_prepare_security()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

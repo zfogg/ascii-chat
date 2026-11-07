@@ -55,6 +55,14 @@
 </p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>TOOLING_PANIC_REPORT_BUFFER_BUFFER_SIZE</b> 8192
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
 <p class="Pp">typedef struct <b>thread_filter_list</b>
@@ -92,6 +100,15 @@
 <p class="Pp">Definition in file <b>report.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_TOOLING_PANIC_REPORT_BUFFER_BUFFER_SIZE___8192"><a class="permalink" href="#_define_TOOLING_PANIC_REPORT_BUFFER_BUFFER_SIZE___8192">#define
+  TOOLING_PANIC_REPORT_BUFFER_BUFFER_SIZE 8192</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file <b>report.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
   Documentation</a></h1>
 <section class="Ss">
@@ -122,45 +139,45 @@
 <section class="Ss">
 <h2 class="Ss" id="int_main_(int_argc,_char_**_argv)"><a class="permalink" href="#int_main_(int_argc,_char_**_argv)">int
   main (int argc, char ** argv)</a></h2>
-<p class="Pp">Definition at line <b>576</b> of file <b>report.c</b>.</p>
-<pre>576                                 {
-577   report_config_t config = {
-578       .log_dir = NULL,
-579       .log_file = NULL,
-580       .include_filter = NULL,
-581       .exclude_filter = NULL,
-582       .threads = {.values = NULL, .count = 0, .capacity = 0},
-583       .emit_raw_line = false,
-584   };
-585 
-586   log_init(NULL, LOG_INFO, false, false);
-587 
-588   int exit_code = EXIT_SUCCESS;
-589   if (!parse_arguments(argc, argv, &amp;config)) {
-590     exit_code = ERROR_USAGE;
-591     goto cleanup;
-592   }
-593 
-594   thread_entry_t *entries = NULL;
-595   if (!collect_entries(&amp;config, &amp;entries)) {
-596     exit_code = ERROR_GENERAL;
-597     destroy_entries(&amp;entries);
-598     goto cleanup;
-599   }
-600 
-601   print_summary(&amp;config, &amp;entries);
-602   destroy_entries(&amp;entries);
-603 
-604 cleanup:
-605   thread_filter_list_destroy(&amp;config.threads);
-606   log_destroy();
-607   return exit_code;
-608 }</pre>
+<p class="Pp">Definition at line <b>589</b> of file <b>report.c</b>.</p>
+<pre>589                                 {
+590   report_config_t config = {
+591       .log_dir = NULL,
+592       .log_file = NULL,
+593       .include_filter = NULL,
+594       .exclude_filter = NULL,
+595       .threads = {.values = NULL, .count = 0, .capacity = 0},
+596       .emit_raw_line = false,
+597   };
+598
+599   log_init(NULL, LOG_INFO, false, false);
+600
+601   int exit_code = EXIT_SUCCESS;
+602   if (!parse_arguments(argc, argv, &amp;config)) {
+603     exit_code = config.help_requested ? EXIT_SUCCESS : ERROR_USAGE;
+604     goto cleanup;
+605   }
+606
+607   thread_entry_t *entries = NULL;
+608   if (!collect_entries(&amp;config, &amp;entries)) {
+609     exit_code = ERROR_GENERAL;
+610     destroy_entries(&amp;entries);
+611     goto cleanup;
+612   }
+613
+614   print_summary(&amp;config, &amp;entries);
+615   destroy_entries(&amp;entries);
+616
+617 cleanup:
+618   thread_filter_list_destroy(&amp;config.threads);
+619   log_destroy();
+620   return exit_code;
+621 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ERROR_GENERAL</b>, <b>ERROR_USAGE</b>,
-    <b>log_destroy()</b>, <b>LOG_INFO</b>, <b>log_init()</b>, and
-    <b>report_config::threads</b>.</p>
+    <b>report_config::help_requested</b>, <b>log_destroy()</b>, <b>LOG_INFO</b>,
+    <b>log_init()</b>, <b>main()</b>, and <b>report_config::threads</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -170,7 +187,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

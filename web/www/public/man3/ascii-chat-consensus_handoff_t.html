@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>consensus_handoff_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">consensus_handoff_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">consensus_handoff_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">consensus_handoff_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include
+  &lt;include/ascii-chat/network/consensus/handoff.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>uint8_t</b> <b>session</b> [<b>SESSION_ID_SIZE</b>]
+  <br/>
+  <b>uint8_t</b> <b>host</b> [<b>SESSION_ID_SIZE</b>]
+  <br/>
+  <b>uint8_t</b> <b>successor</b> [<b>SESSION_ID_SIZE</b>]
+  <br/>
+  <b>uint32_t</b> <b>generation</b>
+  <br/>
+  <b>uint32_t</b> <b>round</b>
+  <br/>
+  <b>uint32_t</b> <b>host_sequence</b>
+  <br/>
+  Last committed round; preparation does not change host authority.
+    <b>uint64_t</b> <b>prepare_deadline_ms</b>
+  <br/>
+  <b>bool</b> <b>ready</b>
+  <br/>
+  <b>bool</b> <b>host_lost</b>
+  <br/>
+  <b>bool</b> <b>failure_announced</b>
+  <br/>
+  <b>uint64_t</b> <b>failure_deadline_ms</b>
+  <br/>
+  <b>uint64_t</b> <b>monitoring_started_ms</b>
+  <br/>
+  <b>bool</b> <b>monitoring</b>
+  <br/>
+  <b>consensus_handoff_peer_t</b> <b>peers</b> [<b>MAX_SESSION_PARTICIPANTS</b>]
+  <br/>
+  size_t <b>count</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>59</b> of file <b>handoff.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="size_t_consensus_handoff_t::count"><a class="permalink" href="#size_t_consensus_handoff_t::count">size_t
+  consensus_handoff_t::count</a></h2>
+<p class="Pp">Definition at line <b>74</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_join()</b>,
+    <b>consensus_handoff_leave()</b>, and <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> consensus_handoff_t::failure_announced</h2>
+<p class="Pp">Definition at line <b>69</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> consensus_handoff_t::failure_deadline_ms</h2>
+<p class="Pp">Definition at line <b>70</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> consensus_handoff_t::generation</h2>
+<p class="Pp">Definition at line <b>63</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_send_current_host()</b>,
+    <b>consensus_handoff_init()</b>, <b>consensus_handoff_join()</b>,
+    <b>consensus_handoff_leave()</b>, <b>consensus_handoff_receive()</b>, and
+    <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  consensus_handoff_t::host[<b>SESSION_ID_SIZE</b>]</h2>
+<p class="Pp">Definition at line <b>61</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_host_lost()</b>,
+    <b>consensus_handoff_init()</b>, <b>consensus_handoff_leave()</b>, and
+    <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> consensus_handoff_t::host_lost</h2>
+<p class="Pp">Definition at line <b>68</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_host_lost()</b>,
+    <b>consensus_handoff_leave()</b>, <b>consensus_handoff_receive()</b>, and
+    <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> consensus_handoff_t::host_sequence</h2>
+<p class="Pp">Last committed round; preparation does not change host
+  authority.</p>
+<p class="Pp">Definition at line <b>65</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>acds_send_current_host()</b>, and
+    <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> consensus_handoff_t::monitoring</h2>
+<p class="Pp">Definition at line <b>72</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> consensus_handoff_t::monitoring_started_ms</h2>
+<p class="Pp">Definition at line <b>71</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>consensus_handoff_peer_t</b>
+  consensus_handoff_t::peers[<b>MAX_SESSION_PARTICIPANTS</b>]</h2>
+<p class="Pp">Definition at line <b>73</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_join()</b>,
+    <b>consensus_handoff_leave()</b>, and <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> consensus_handoff_t::prepare_deadline_ms</h2>
+<p class="Pp">Definition at line <b>66</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> consensus_handoff_t::ready</h2>
+<p class="Pp">Definition at line <b>67</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_join()</b>,
+    <b>consensus_handoff_leave()</b>, <b>consensus_handoff_receive()</b>, and
+    <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> consensus_handoff_t::round</h2>
+<p class="Pp">Definition at line <b>64</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_receive()</b>, and
+    <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  consensus_handoff_t::session[<b>SESSION_ID_SIZE</b>]</h2>
+<p class="Pp">Definition at line <b>60</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_init()</b>,
+    <b>consensus_handoff_receive()</b>, and <b>consensus_handoff_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint8_t</b>
+  consensus_handoff_t::successor[<b>SESSION_ID_SIZE</b>]</h2>
+<p class="Pp">Definition at line <b>62</b> of file <b>handoff.h</b>.</p>
+<p class="Pp">Referenced by <b>consensus_handoff_join()</b>,
+    <b>consensus_handoff_leave()</b>, <b>consensus_handoff_receive()</b>, and
+    <b>consensus_handoff_tick()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

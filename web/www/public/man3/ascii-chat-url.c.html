@@ -39,9 +39,15 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>bool</b> <b>url_is_valid</b> (const char *url)
+<p class="Pp">void <b>url_redact_diagnostic</b> (char *text, <b>bool</b>
+    truncated)
   <br/>
-  Fast URL validation using production-grade regex (HTTP/HTTPS/WebSocket/TCP).
+  <b>asciichat_error_t</b> <b>hostname_to_ascii</b> (const char *hostname, char
+    *output, size_t capacity)
+  <br/>
+  <b>bool</b> <b>url_is_valid</b> (const char *url)
+  <br/>
+  URL validation using shared parsing and ICU hostname checks.
     <b>asciichat_error_t</b> <b>url_parse</b> (const char *url,
     <b>url_parts_t</b> *parts_out)
   <br/>
@@ -75,8 +81,8 @@
   Description</a></h1>
 <p class="Pp">Production-grade URL parsing and validation using PCRE2.</p>
 <p class="Pp">Implements robust HTTP(S) URL validation using the
-    production-grade regex by Diego Perini (MIT License), compiled with PCRE2
-    and JIT for high performance.</p>
+    production-grade regex by Diego Perini (MIT License), compiled with
+  PCRE2.</p>
 <p class="Pp">Definition in file <b>url.c</b>.</p>
 </section>
 <section class="Sh">
@@ -86,7 +92,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

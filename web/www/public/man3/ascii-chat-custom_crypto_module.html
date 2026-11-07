@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>custom_crypto_module(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">custom_crypto_module(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">custom_crypto_module(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">custom_crypto_module - Crypto Module</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Crypto_Module_-_lib/crypto/"><a class="permalink" href="#Crypto_Module_-_lib/crypto/">Crypto
+  Module - lib/crypto/</a></h1>
+<p class="Pp">End-to-end encrypted communication for ascii-chat using modern
+    cryptography (X25519, XSalsa20-Poly1305, Ed25519).</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Quick_Overview"><a class="permalink" href="#Quick_Overview">Quick
+  Overview</a></h2>
+<pre>Core Crypto (libsodium)
+<br/>
+  &#x251C;&#x2500;&#x2500; X25519 key exchange (Diffie-Hellman)
+<br/>
+  &#x251C;&#x2500;&#x2500; XSalsa20-Poly1305 encryption/decryption
+<br/>
+  &#x251C;&#x2500;&#x2500; HMAC-SHA256 authentication
+<br/>
+  &#x2514;&#x2500;&#x2500; Argon2id password-based KDF
+Key Management
+<br/>
+  &#x251C;&#x2500;&#x2500; SSH keys + SSH agent support
+<br/>
+  &#x251C;&#x2500;&#x2500; GPG keys + GPG agent support
+<br/>
+  &#x251C;&#x2500;&#x2500; GitHub/GitLab key fetching
+<br/>
+  &#x2514;&#x2500;&#x2500; Known hosts verification (TOFU)
+Handshake Protocol
+<br/>
+  &#x251C;&#x2500;&#x2500; Client-side state machine (handshake/client.c)
+<br/>
+  &#x251C;&#x2500;&#x2500; Server-side state machine (handshake/server.c)
+<br/>
+  &#x2514;&#x2500;&#x2500; Shared utilities (handshake/common.c)</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="File_Organization"><a class="permalink" href="#File_Organization">File
+  Organization</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Core_Cryptography"><a class="permalink" href="#Core_Cryptography">Core
+  Cryptography</a></h2>
+<ul class="Bl-bullet">
+  <li><b></b>crypto.c<b> / </b>crypto.h<b></b> - Main interface (encryption, key
+      exchange, HMAC, rekeying)</li>
+  <li><b></b>pem.c<b> / </b>pem.h<b></b> - PEM/OpenSSH format parsing</li>
+  <li><b></b><b>sha1.c</b><b>/h</b><b> - SHA-1 for fingerprinting</b></li>
+  <li><b></b><b>regex.c</b><b>/h</b><b> - Format detection</b></li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="SSH_Integration"><a class="permalink" href="#SSH_Integration">SSH
+  Integration</a></h2>
+<ul class="Bl-bullet">
+  <li><b></b><b>ssh/ssh_agent.c</b><b>/h</b><b> - SSH agent communication
+      (signing, key listing)</b></li>
+  <li><b></b><b>ssh/ssh_keys.c</b><b>/h</b><b> - OpenSSH format parsing</b></li>
+  <li><b></b><b>known_hosts.c</b><b>/h</b><b> - SSH-style known_hosts
+    file</b></li>
+  <li><b></b><b>keys_validation.c</b><b>/h</b><b> - SSH key validation</b></li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="GPG_Integration"><a class="permalink" href="#GPG_Integration">GPG
+  Integration</a></h2>
+<ul class="Bl-bullet">
+  <li><b></b><b>gpg/agent.c</b><b>/h</b><b> - GPG agent communication</b></li>
+  <li><b></b><b>gpg/export.c</b><b>/h</b><b> - Export keys from GPG
+    keyring</b></li>
+  <li><b></b><b>gpg/signing.c</b><b>/h</b><b> - GPG signing operations</b></li>
+  <li><b></b><b>gpg/verification.c</b><b>/h</b><b> - Signature
+    verification</b></li>
+  <li><b></b><b>gpg/gpg_keys.c</b><b>/h</b><b> - GPG key format parsing</b></li>
+  <li><b></b><b>gpg/openpgp.c</b><b>/h</b><b> - OpenPGP format handling</b></li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="HTTPS_&amp;_Discovery"><a class="permalink" href="#HTTPS_&amp;_Discovery">HTTPS
+  &amp; Discovery</a></h2>
+<ul class="Bl-bullet">
+  <li><b></b><b>https_keys.c</b><b>/h</b><b> - Fetch keys from HTTPS URLs
+      (BearSSL)</b></li>
+  <li><b></b><b>discovery_keys.c</b><b>/h</b><b> - ACDS discovery server key
+      management</b></li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Handshake_Protocol"><a class="permalink" href="#Handshake_Protocol">Handshake
+  Protocol</a></h2>
+<ul class="Bl-bullet">
+  <li><b></b><b>handshake/client.c</b><b>/h</b><b> - Client-side
+    handshake</b></li>
+  <li><b></b><b>handshake/server.c</b><b>/h</b><b> - Server-side
+    handshake</b></li>
+  <li><b></b><b>handshake/common.c</b><b>/h</b><b> - Shared utilities</b></li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Key_Management"><a class="permalink" href="#Key_Management">Key
+  Management</a></h2>
+<ul class="Bl-bullet">
+  <li><b></b><b>keys.c</b><b>/h</b><b> - Master key loading interface</b></li>
+  <li><b></b><b>key_types.h</b><b></b><b> - Key structure definitions</b></li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Usage_Examples"><a class="permalink" href="#Usage_Examples">Usage
+  Examples</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Basic_Key_Exchange"><a class="permalink" href="#Basic_Key_Exchange">Basic
+  Key Exchange</a></h2>
+<pre>#include &quot;ascii-chat/crypto/crypto.h&quot;
+crypto_context_t ctx;
+crypto_init(&amp;ctx);
+// Step 1: Send our ephemeral public key
+uint8_t our_pubkey[32];
+crypto_get_public_key(&amp;ctx, our_pubkey);
+// Step 2: Receive peer's ephemeral public key and compute shared secret
+uint8_t peer_pubkey[32];  // Received from peer
+crypto_set_peer_public_key(&amp;ctx, peer_pubkey);
+// Step 3: Check if ready for encryption
+if (crypto_is_ready(&amp;ctx)) {
+<br/>
+    printf(&quot;Key exchange complete, ready for encryption\n&quot;);
+}
+// Encrypt data
+uint8_t plaintext[] = &quot;Hello, World!&quot;;
+uint8_t ciphertext[1024];
+size_t ciphertext_len;
+crypto_encrypt(&amp;ctx, plaintext, strlen((char*)plaintext),
+<br/>
+               ciphertext, sizeof(ciphertext), &amp;ciphertext_len);
+// Decrypt data
+uint8_t decrypted[1024];
+size_t decrypted_len;
+crypto_decrypt(&amp;ctx, ciphertext, ciphertext_len,
+<br/>
+               decrypted, sizeof(decrypted), &amp;decrypted_len);
+crypto_destroy(&amp;ctx);</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="SSH_Key_Authentication"><a class="permalink" href="#SSH_Key_Authentication">SSH
+  Key Authentication</a></h2>
+<pre>#include &quot;ascii-chat/crypto/ssh/ssh_agent.h&quot;
+#include &quot;ascii-chat/crypto/ssh/ssh_keys.h&quot;
+// Load SSH key
+uint8_t key_data[4096];
+size_t key_len = read_file(&quot;~/.ssh/id_ed25519&quot;, key_data, sizeof(key_data));
+ssh_keys_t key;
+ssh_keys_parse(key_data, key_len, &amp;key);
+// Check if SSH agent is available
+if (ssh_agent_is_available()) {
+<br/>
+    // Use agent for signing (no passphrase prompt)
+<br/>
+    uint8_t signature[64];
+<br/>
+    ssh_agent_sign(&amp;key, data_to_sign, sizeof(data_to_sign), signature);
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="GPG_Key_Authentication"><a class="permalink" href="#GPG_Key_Authentication">GPG
+  Key Authentication</a></h2>
+<pre>#include &quot;ascii-chat/crypto/gpg/gpg.h&quot;
+// Export public key from GPG keyring
+uint8_t pubkey[32];
+gpg_export_public_key(&quot;zfogg&quot;, pubkey);
+// Sign with GPG agent (no passphrase prompt if agent is running)
+uint8_t signature[64];
+gpg_agent_sign(&quot;zfogg&quot;, data_to_sign, sizeof(data_to_sign), signature);</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Known_Hosts_Verification"><a class="permalink" href="#Known_Hosts_Verification">Known
+  Hosts Verification</a></h2>
+<pre>#include &quot;ascii-chat/crypto/known_hosts.h&quot;
+// Verify server identity key
+uint8_t server_key[32];  // Received from server during handshake
+if (!known_hosts_verify(&quot;localhost:27224&quot;, server_key)) {
+<br/>
+    if (known_hosts_key_changed(&quot;localhost:27224&quot;, server_key)) {
+<br/>
+        printf(&quot;ERROR: Server key has changed! Possible MITM attack!\n&quot;);
+<br/>
+        return -1;
+<br/>
+    }
+<br/>
+    // New server: Ask user to trust
+<br/>
+    if (user_confirms_server_key(&quot;localhost:27224&quot;, server_key)) {
+<br/>
+        known_hosts_add(&quot;localhost:27224&quot;, server_key);
+<br/>
+    }
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="GitHub_Key_Fetching"><a class="permalink" href="#GitHub_Key_Fetching">GitHub
+  Key Fetching</a></h2>
+<pre>#include &quot;ascii-chat/crypto/https_keys.h&quot;
+// Fetch SSH public keys from GitHub
+uint8_t github_keys[8192];
+size_t keys_len;
+https_keys_fetch_github(&quot;zfogg&quot;, github_keys, sizeof(github_keys), &amp;keys_len);
+// Verify server identity against GitHub key
+uint8_t server_identity_key[32];  // From handshake
+if (verify_key_in_buffer(server_identity_key, github_keys, keys_len)) {
+<br/>
+    printf(&quot;Server identity verified via GitHub!\n&quot;);
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Key_Concepts"><a class="permalink" href="#Key_Concepts">Key
+  Concepts</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="X25519_Key_Exchange"><a class="permalink" href="#X25519_Key_Exchange">X25519
+  Key Exchange</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Ephemeral:</b> New key pair for each connection</li>
+  <li><b>Perfect Forward Secrecy:</b> Old connections safe even if long-term key
+      compromised</li>
+  <li><b>32-byte keys:</b> Compact, secure</li>
+  <li><b>libsodium:</b> Hardware-optimized, constant-time</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="XSalsa20-Poly1305_Encryption"><a class="permalink" href="#XSalsa20-Poly1305_Encryption">XSalsa20-Poly1305
+  Encryption</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Authenticated encryption:</b> Detects tampering</li>
+  <li><b>Nonce-based:</b> Different nonce per packet (prevents replay)</li>
+  <li><b>MAC verification:</b> Automatic, returns error on mismatch</li>
+  <li><b>Speed:</b> ~20&#x03BC;s per KB on modern CPUs</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="HMAC-SHA256_Authentication"><a class="permalink" href="#HMAC-SHA256_Authentication">HMAC-SHA256
+  Authentication</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Challenge-response:</b> Server sends random nonce</li>
+  <li><b>Password binding:</b> HMAC includes shared secret (MITM
+    protection)</li>
+  <li><b>Constant-time verification:</b> No timing attacks</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Argon2id_Password_KDF"><a class="permalink" href="#Argon2id_Password_KDF">Argon2id
+  Password KDF</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Memory-hard:</b> Resists GPU/ASIC brute-force</li>
+  <li><b>Interactive limits:</b> ~0.1s, ~64MB memory</li>
+  <li><b>Deterministic salt:</b> Same password produces same key</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Session_Rekeying"><a class="permalink" href="#Session_Rekeying">Session
+  Rekeying</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Automatic:</b> After 1 hour or 1M packets (whichever first)</li>
+  <li><b>DH re-exchange:</b> New ephemeral keys generated</li>
+  <li><b>Seamless:</b> No interruption to connection</li>
+  <li><b>Test mode:</b> 30 seconds / 1000 packets for fast testing</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Configuration"><a class="permalink" href="#Configuration">Configuration</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Environment_Variables"><a class="permalink" href="#Environment_Variables">Environment
+  Variables</a></h2>
+<ul class="Bl-bullet">
+  <li>SSH_AUTH_SOCK - SSH agent socket (Unix domain socket or named pipe)</li>
+  <li>GNUPGHOME - GPG home directory (default: ~/.gnupg)</li>
+  <li>CRITERION_TEST / TESTING - Enable test mode (reduced rekeying
+    thresholds)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Configuration_Files"><a class="permalink" href="#Configuration_Files">Configuration
+  Files</a></h2>
+<ul class="Bl-bullet">
+  <li>~/.ascii-chat/authorized_clients.txt - Server whitelist (one key per
+    line)</li>
+  <li>~/.ascii-chat/known_hosts - SSH-style known hosts (hostname:port
+      ssh-ed25519 &lt;key&gt;)</li>
+  <li>~/.ascii-chat/acds_keys/ - Cached ACDS server keys</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Dependencies"><a class="permalink" href="#Dependencies">Dependencies</a></h2>
+<ul class="Bl-bullet">
+  <li><b>libsodium</b> - Modern cryptography (X25519, XSalsa20-Poly1305,
+      Argon2id, Ed25519)</li>
+  <li><b>BearSSL</b> - TLS for HTTPS key fetching (OpenSSL compatibility)</li>
+  <li><b>OpenSSL</b> (optional) - For gpg-agent communication</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Building"><a class="permalink" href="#Building">Building</a></h2>
+<pre># Configure and build
+cmake --preset default -B build
+cmake --build build
+# Build just the crypto library
+cmake --build build --target ascii-chat-lib-crypto
+# Run crypto tests
+ctest --test-dir build -R crypto</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Performance"><a class="permalink" href="#Performance">Performance</a></h2>
+<p class="Pp">Operation Time Notes <b>crypto_init()</b> ~100&#x03BC;s libsodium
+    init + key gen Key exchange ~500&#x03BC;s X25519 computation Encrypt 1KB
+    ~20&#x03BC;s XSalsa20 Decrypt 1KB ~20&#x03BC;s XSalsa20 + Poly1305 verify
+    SSH agent sign ~1ms IPC + SSH protocol GPG agent sign ~50ms IPC + GPG
+    protocol HTTPS key fetch ~200ms Network + TLS</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Testing"><a class="permalink" href="#Testing">Testing</a></h2>
+<pre># Unit tests
+ctest --test-dir build -R crypto
+# Handshake tests
+ctest --test-dir build -R handshake
+# SSH key tests
+ctest --test-dir build -R ssh
+# All crypto-related tests
+ctest --test-dir build -R crypto</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Security_Properties"><a class="permalink" href="#Security_Properties">Security
+  Properties</a></h2>
+<p class="Pp">&#x2705; <b>Encryption:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>XSalsa20-Poly1305 (AEAD)</li>
+  <li>Unique nonces per packet (session_id || counter)</li>
+  <li>Automatic MAC verification</li>
+  <li>Constant-time comparison</li>
+</ul>
+<p class="Pp">&#x2705; <b>Key Exchange:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>X25519 ephemeral keys</li>
+  <li>Forward secrecy</li>
+  <li>Optional authentication via SSH/GPG</li>
+</ul>
+<p class="Pp">&#x2705; <b>Authentication:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>HMAC-SHA256 challenge-response</li>
+  <li>Ed25519 signatures</li>
+  <li>SSH agent integration (keys never in memory)</li>
+  <li>GPG agent integration (keys never in memory)</li>
+</ul>
+<p class="Pp">&#x26A0;&#xFE0F; <b>Known Limitations:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>TOFU (Trust On First Use) for known_hosts - first connection vulnerable to
+      MITM</li>
+  <li>No post-quantum cryptography (planned for future)</li>
+  <li>No Certificate Authority (planned: verification server)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Debugging"><a class="permalink" href="#Debugging">Debugging</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enable_Verbose_Logging"><a class="permalink" href="#Enable_Verbose_Logging">Enable
+  Verbose Logging</a></h2>
+<pre>./build/bin/ascii-chat --log-level debug server --grep &quot;/crypto|handshake/i&quot;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Inspect_Known_Hosts"><a class="permalink" href="#Inspect_Known_Hosts">Inspect
+  Known Hosts</a></h2>
+<pre>cat ~/.ascii-chat/known_hosts</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Check_SSH_Agent"><a class="permalink" href="#Check_SSH_Agent">Check
+  SSH Agent</a></h2>
+<pre>ssh-add -L  # List available keys</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Check_GPG_Agent"><a class="permalink" href="#Check_GPG_Agent">Check
+  GPG Agent</a></h2>
+<pre>gpg --list-keys
+echo &quot;test&quot; | gpg -s  # Test agent availability</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Further_Reading"><a class="permalink" href="#Further_Reading">Further
+  Reading</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Complete documentation:</b> <b>docs/topics/crypto.dox</b></li>
+  <li><b>Module organization:</b>
+      <b>docs/topics/module_crypto_organization.dox</b></li>
+  <li><b>Client-specific:</b> <b>docs/topics/client_crypto.dox</b></li>
+  <li><b>Server-specific:</b> <b>docs/topics/server_crypto.dox</b></li>
+  <li><b>Protocol specification:</b> docs/handshake_protocol.md</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Contributing"><a class="permalink" href="#Contributing">Contributing</a></h2>
+<p class="Pp">When modifying crypto code:</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Always use </b>sodium_memcmp()<b></b> for comparing sensitive data
+      (keys, MACs)</dd>
+  <dt>2.</dt>
+  <dd><b>Use </b>SAFE_MALLOC/FREE<b></b> for all memory allocation</dd>
+  <dt>3.</dt>
+  <dd><b>Add comprehensive comments</b> - cryptography is complex</dd>
+  <dt>4.</dt>
+  <dd><b>Test timing</b> - ensure no timing variations in comparisons</dd>
+  <dt>5.</dt>
+  <dd><b>Update Doxygen docs</b> - keep inline documentation current</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="License"><a class="permalink" href="#License">License</a></h2>
+<p class="Pp">Same as ascii-chat project.</p>
+</section>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

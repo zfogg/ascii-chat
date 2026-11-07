@@ -30,22 +30,25 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">audio_send_packet_t - Audio packet for async sending.</p>
-<p class="Pp"></p>
+<p class="Pp">audio_send_packet_t</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/client/connection_internal.h&gt;</p>
 <section class="Ss">
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp"><b>uint8_t</b> <b>data</b> [8 *4000]
+<p class="Pp"><b>uint8_t</b> <b>data</b> [8
+    *<b>CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET</b>]
   <br/>
   size_t <b>size</b>
   <br/>
   <b>uint16_t</b> <b>frame_sizes</b> [8]
   <br/>
   int <b>frame_count</b>
+  <br/>
+  gotel_context_t <b>telemetry_context</b>
   <br/>
   <br/>
 </p>
@@ -54,36 +57,40 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Audio packet for async sending.</p>
-<p class="Pp">Represents a batch of Opus frames ready to be sent to the server.
-    The sender thread pulls these from the queue and handles network I/O.</p>
-<p class="Pp">Definition at line <b>199</b> of file
-  <b>src/client/audio.c</b>.</p>
+<p class="Pp">Definition at line <b>28</b> of file
+  <b>connection_internal.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss"><b>uint8_t</b> audio_send_packet_t::data[8 *4000]</h2>
-<p class="Pp">Definition at line <b>200</b> of file
-  <b>src/client/audio.c</b>.</p>
+<h2 class="Ss"><b>uint8_t</b> audio_send_packet_t::data[8
+  *<b>CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET</b>]</h2>
+<p class="Pp">Definition at line <b>29</b> of file
+  <b>connection_internal.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_audio_send_packet_t::frame_count"><a class="permalink" href="#int_audio_send_packet_t::frame_count">int
   audio_send_packet_t::frame_count</a></h2>
-<p class="Pp">Definition at line <b>203</b> of file
-  <b>src/client/audio.c</b>.</p>
+<p class="Pp">Definition at line <b>33</b> of file
+  <b>connection_internal.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint16_t</b> audio_send_packet_t::frame_sizes[8]</h2>
-<p class="Pp">Definition at line <b>202</b> of file
-  <b>src/client/audio.c</b>.</p>
+<p class="Pp">Definition at line <b>32</b> of file
+  <b>connection_internal.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_audio_send_packet_t::size"><a class="permalink" href="#size_t_audio_send_packet_t::size">size_t
   audio_send_packet_t::size</a></h2>
-<p class="Pp">Definition at line <b>201</b> of file
-  <b>src/client/audio.c</b>.</p>
+<p class="Pp">Definition at line <b>31</b> of file
+  <b>connection_internal.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="gotel_context_t_audio_send_packet_t::telemetry_context"><a class="permalink" href="#gotel_context_t_audio_send_packet_t::telemetry_context">gotel_context_t
+  audio_send_packet_t::telemetry_context</a></h2>
+<p class="Pp">Definition at line <b>34</b> of file
+  <b>connection_internal.h</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -94,7 +101,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

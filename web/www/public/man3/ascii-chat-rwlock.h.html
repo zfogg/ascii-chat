@@ -49,7 +49,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>LOG_RWLOCK_STATE</b>(<b>rwlock</b>)
+<p class="Pp">#define <b>LOG_RWLOCK_STATE</b>(rwlock)
   <br/>
   <br/>
 </p>
@@ -78,17 +78,17 @@
 <br/>
 <p class="Pp"><b>bool</b> <b>debug_sync_is_initialized</b> (void)
   <br/>
-  int <b>debug_sync_rwlock_rdlock</b> (<b>rwlock_t</b> *<b>rwlock</b>, const
-    char *file_name, int line_number, const char *function_name)
+  int <b>debug_sync_rwlock_rdlock</b> (<b>rwlock_t</b> *rwlock, const char
+    *file_name, int line_number, const char *function_name)
   <br/>
-  int <b>debug_sync_rwlock_wrlock</b> (<b>rwlock_t</b> *<b>rwlock</b>, const
-    char *file_name, int line_number, const char *function_name)
+  int <b>debug_sync_rwlock_wrlock</b> (<b>rwlock_t</b> *rwlock, const char
+    *file_name, int line_number, const char *function_name)
   <br/>
-  int <b>debug_sync_rwlock_rdunlock</b> (<b>rwlock_t</b> *<b>rwlock</b>, const
-    char *file_name, int line_number, const char *function_name)
+  int <b>debug_sync_rwlock_rdunlock</b> (<b>rwlock_t</b> *rwlock, const char
+    *file_name, int line_number, const char *function_name)
   <br/>
-  int <b>debug_sync_rwlock_wrunlock</b> (<b>rwlock_t</b> *<b>rwlock</b>, const
-    char *file_name, int line_number, const char *function_name)
+  int <b>debug_sync_rwlock_wrunlock</b> (<b>rwlock_t</b> *rwlock, const char
+    *file_name, int line_number, const char *function_name)
   <br/>
   int <b>rwlock_init</b> (<b>rwlock_t</b> *lock, const char *name)
   <br/>
@@ -96,17 +96,17 @@
     (<b>rwlock_t</b> *lock)
   <br/>
   Destroy a read-write lock. void <b>rwlock_on_rdlock</b> (<b>rwlock_t</b>
-    *<b>rwlock</b>)
+    *rwlock)
   <br/>
   Hook called when a read lock is successfully acquired. void
-    <b>rwlock_on_wrlock</b> (<b>rwlock_t</b> *<b>rwlock</b>)
+    <b>rwlock_on_wrlock</b> (<b>rwlock_t</b> *rwlock)
   <br/>
   Hook called when a write lock is successfully acquired. void
-    <b>rwlock_on_unlock</b> (<b>rwlock_t</b> *<b>rwlock</b>)
+    <b>rwlock_on_unlock</b> (<b>rwlock_t</b> *rwlock)
   <br/>
   Hook called when an rwlock is unlocked (read or write). void
-    <b>rwlock_log_state</b> (const <b>rwlock_t</b> *<b>rwlock</b>, const char
-    *file, int line, const char *func)
+    <b>rwlock_log_state</b> (const <b>rwlock_t</b> *rwlock, const char *file,
+    int line, const char *func)
   <br/>
   Log the state of a read-write lock. int <b>rwlock_init_impl</b>
     (<b>rwlock_t</b> *lock)
@@ -117,8 +117,10 @@
   Destroy a read-write lock (implementation function). int
     <b>rwlock_rdlock_impl</b> (<b>rwlock_t</b> *lock)
   <br/>
-  Acquire a read lock (implementation function). int <b>rwlock_wrlock_impl</b>
-    (<b>rwlock_t</b> *lock)
+  Acquire a read lock (implementation function). <b>asciichat_error_t</b>
+    <b>rwlock_tryrdlock</b> (<b>rwlock_t</b> *lock, <b>bool</b> *acquired)
+  <br/>
+  int <b>rwlock_wrlock_impl</b> (<b>rwlock_t</b> *lock)
   <br/>
   Acquire a write lock (implementation function). int
     <b>rwlock_rdunlock_impl</b> (<b>rwlock_t</b> *lock)
@@ -146,7 +148,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

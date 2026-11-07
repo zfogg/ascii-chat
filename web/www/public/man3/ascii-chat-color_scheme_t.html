@@ -64,7 +64,7 @@
 <p class="Pp">Color scheme definition.</p>
 <p class="Pp">Defines a color scheme with RGB colors for logging levels.
     Supports both dark and light mode variants.</p>
-<p class="Pp">Definition at line <b>62</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>colorscheme.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -73,45 +73,45 @@
 <h2 class="Ss" id="char_color_scheme_t::description_256_"><a class="permalink" href="#char_color_scheme_t::description_256_">char
   color_scheme_t::description[256]</a></h2>
 <p class="Pp">Scheme description</p>
-<p class="Pp">Definition at line <b>64</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Definition at line <b>75</b> of file <b>colorscheme.h</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_export_scheme()</b>, and
     <b>colorscheme_load_from_file()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> color_scheme_t::has_light_variant</h2>
 <p class="Pp">Whether light variant is defined</p>
-<p class="Pp">Definition at line <b>70</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Definition at line <b>81</b> of file <b>colorscheme.h</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_compile_scheme()</b>,
-    <b>colorscheme_export_scheme()</b>, and
-  <b>colorscheme_load_from_file()</b>.</p>
+    <b>colorscheme_current_palette()</b>, <b>colorscheme_export_scheme()</b>,
+    and <b>colorscheme_load_from_file()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> color_scheme_t::is_builtin</h2>
 <p class="Pp">Whether scheme is built-in</p>
-<p class="Pp">Definition at line <b>74</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Definition at line <b>85</b> of file <b>colorscheme.h</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_load_from_file()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>rgb_pixel_t</b> color_scheme_t::log_colors_dark[8]</h2>
 <p class="Pp">DEV, DEBUG, WARN, INFO, ERROR, FATAL, GREY, RESET</p>
-<p class="Pp">Definition at line <b>67</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Definition at line <b>78</b> of file <b>colorscheme.h</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_compile_scheme()</b>,
-    <b>colorscheme_export_scheme()</b>, and
-  <b>colorscheme_load_from_file()</b>.</p>
+    <b>colorscheme_current_palette()</b>, <b>colorscheme_export_scheme()</b>,
+    and <b>colorscheme_load_from_file()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>rgb_pixel_t</b> color_scheme_t::log_colors_light[8]</h2>
 <p class="Pp">Light variant colors</p>
-<p class="Pp">Definition at line <b>71</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Definition at line <b>82</b> of file <b>colorscheme.h</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_compile_scheme()</b>,
-    <b>colorscheme_export_scheme()</b>, and
-  <b>colorscheme_load_from_file()</b>.</p>
+    <b>colorscheme_current_palette()</b>, <b>colorscheme_export_scheme()</b>,
+    and <b>colorscheme_load_from_file()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_color_scheme_t::name_64_"><a class="permalink" href="#char_color_scheme_t::name_64_">char
   color_scheme_t::name[64]</a></h2>
 <p class="Pp">Scheme name (e.g., &quot;pastel&quot;, &quot;nord&quot;)</p>
-<p class="Pp">Definition at line <b>63</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Definition at line <b>74</b> of file <b>colorscheme.h</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_export_scheme()</b>,
     <b>colorscheme_load_from_file()</b>, and
     <b>options_colorscheme_init_early()</b>.</p>
@@ -120,7 +120,7 @@
 <h2 class="Ss" id="char_color_scheme_t::source_file_4096_"><a class="permalink" href="#char_color_scheme_t::source_file_4096_">char
   color_scheme_t::source_file[4096]</a></h2>
 <p class="Pp">Source file path if loaded from file</p>
-<p class="Pp">Definition at line <b>75</b> of file <b>colorscheme.h</b>.</p>
+<p class="Pp">Definition at line <b>86</b> of file <b>colorscheme.h</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_load_from_file()</b>.</p>
 <p class="Pp"></p>
 </section>
@@ -132,7 +132,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

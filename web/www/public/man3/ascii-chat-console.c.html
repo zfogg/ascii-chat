@@ -129,12 +129,12 @@
 154       size_t copy_len = (count &lt; sizeof(msg_buffer) - 1) ? count : (sizeof(msg_buffer) - 1);
 155       memcpy(msg_buffer, buf, copy_len);
 156       msg_buffer[copy_len] = '\0';
-157 
+157
 158       // Remove trailing newline if present (console adds it automatically)
 159       if (copy_len &gt; 0 &amp;&amp; msg_buffer[copy_len - 1] == '\n') {
 160         msg_buffer[copy_len - 1] = '\0';
 161       }
-162 
+162
 163       // Route to console
 164       js_console_log(level, msg_buffer);
 165     }
@@ -162,12 +162,12 @@
 95   if (!buf || count &lt; 5) {
 96     return -1; // Too short to contain [LEVEL]
 97   }
-98 
+98
 99   // Check if message starts with [
 100   if (buf[0] != '[') {
 101     return -1;
 102   }
-103 
+103
 104   // Look for closing ]
 105   int bracket_end = -1;
 106   for (size_t i = 1; i &lt; count &amp;&amp; i &lt; 10; i++) {
@@ -176,15 +176,15 @@
 109       break;
 110     }
 111   }
-112 
+112
 113   if (bracket_end &lt; 3) {
 114     return -1; // Too short, minimum is [XX]
 115   }
-116 
+116
 117   // Extract level string
 118   int level_len = bracket_end - 1;
 119   const char *level_start = (const char *)&amp;buf[1];
-120 
+120
 121   // Match against known level strings (from logging.c)
 122   if (level_len == 3 &amp;&amp; strncmp(level_start, &quot;DEV&quot;, 3) == 0) {
 123     return LOG_DEV;
@@ -204,7 +204,7 @@
 137   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;FATAL&quot;, 5) == 0) {
 138     return LOG_FATAL;
 139   }
-140 
+140
 141   return -1; // Level not recognized
 142 }</pre>
 <pre></pre>

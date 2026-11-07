@@ -82,7 +82,7 @@
   <dt>2.</dt>
   <dd>Work queue mode (new): pre-created workers pull tasks from a queue</dd>
 </dl>
-<p class="Pp">Definition at line <b>118</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>121</b> of file <b>thread_pool.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -90,55 +90,55 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> thread_pool::is_work_queue_mode</h2>
 <p class="Pp">True if using work queue mode.</p>
-<p class="Pp">Definition at line <b>125</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>128</b> of file <b>thread_pool.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_thread_pool::name_64_"><a class="permalink" href="#char_thread_pool::name_64_">char
   thread_pool::name[64]</a></h2>
 <p class="Pp">Pool name for debugging.</p>
-<p class="Pp">Definition at line <b>119</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>122</b> of file <b>thread_pool.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_thread_pool::num_workers"><a class="permalink" href="#size_t_thread_pool::num_workers">size_t
   thread_pool::num_workers</a></h2>
 <p class="Pp">Number of pre-created worker threads.</p>
-<p class="Pp">Definition at line <b>126</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>129</b> of file <b>thread_pool.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> thread_pool::shutdown_requested</h2>
 <p class="Pp">Signal workers to exit.</p>
-<p class="Pp">Definition at line <b>130</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>133</b> of file <b>thread_pool.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_thread_pool::thread_count"><a class="permalink" href="#size_t_thread_pool::thread_count">size_t
   thread_pool::thread_count</a></h2>
 <p class="Pp">Number of threads in pool.</p>
-<p class="Pp">Definition at line <b>122</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>125</b> of file <b>thread_pool.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>thread_pool_entry_t</b>* thread_pool::threads</h2>
 <p class="Pp">Linked list of threads (sorted by stop_id).</p>
-<p class="Pp">Definition at line <b>120</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>123</b> of file <b>thread_pool.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> thread_pool::threads_mutex</h2>
 <p class="Pp">Mutex protecting thread list.</p>
-<p class="Pp">Definition at line <b>121</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>124</b> of file <b>thread_pool.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>cond_t</b> thread_pool::work_available</h2>
 <p class="Pp">Condition variable for workers to wait on.</p>
-<p class="Pp">Definition at line <b>129</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>132</b> of file <b>thread_pool.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>thread_pool_work_entry_t</b>* thread_pool::work_queue</h2>
 <p class="Pp">Queue of pending work.</p>
-<p class="Pp">Definition at line <b>127</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>130</b> of file <b>thread_pool.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> thread_pool::work_queue_mutex</h2>
 <p class="Pp">Mutex protecting work queue.</p>
-<p class="Pp">Definition at line <b>128</b> of file <b>thread_pool.h</b>.</p>
+<p class="Pp">Definition at line <b>131</b> of file <b>thread_pool.h</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -149,7 +149,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -41,9 +41,15 @@
 <br/>
 <p class="Pp"><b>socket_t</b> <b>sockfd</b>
   <br/>
-  Socket descriptor (NOT owned - don't close). <b>bool</b> <b>is_connected</b>
+  Connected socket descriptor. <b>bool</b> <b>owns_socket</b>
   <br/>
-  Connection state. <b>mutex_t</b> <b>send_mutex</b>
+  Close the socket when this transport is closed or destroyed. <b>bool</b>
+    <b>is_connected</b>
+  <br/>
+  Connection state. <b>bool</b> <b>zerocopy_disabled</b>
+  <br/>
+  Disable copy avoidance after unsupported or copied completion. <b>mutex_t</b>
+    <b>send_mutex</b>
   <br/>
   Mutex to protect concurrent sends (multiple threads may send packets).
   <br/>
@@ -54,7 +60,7 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">TCP transport implementation data.</p>
-<p class="Pp">Definition at line <b>27</b> of file <b>tcp/transport.c</b>.</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>tcp/transport.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -62,21 +68,35 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> tcp_transport_data_t::is_connected</h2>
 <p class="Pp">Connection state.</p>
-<p class="Pp">Definition at line <b>29</b> of file <b>tcp/transport.c</b>.</p>
+<p class="Pp">Definition at line <b>33</b> of file <b>tcp/transport.c</b>.</p>
+<p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> tcp_transport_data_t::owns_socket</h2>
+<p class="Pp">Close the socket when this transport is closed or destroyed.</p>
+<p class="Pp">Definition at line <b>32</b> of file <b>tcp/transport.c</b>.</p>
 <p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>mutex_t</b> tcp_transport_data_t::send_mutex</h2>
 <p class="Pp">Mutex to protect concurrent sends (multiple threads may send
     packets).</p>
-<p class="Pp">Definition at line <b>30</b> of file <b>tcp/transport.c</b>.</p>
-<p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>.</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>tcp/transport.c</b>.</p>
+<p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>, and
+    <b>acip_tcp_transport_set_zerocopy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>socket_t</b> tcp_transport_data_t::sockfd</h2>
-<p class="Pp">Socket descriptor (NOT owned - don't close).</p>
-<p class="Pp">Definition at line <b>28</b> of file <b>tcp/transport.c</b>.</p>
+<p class="Pp">Connected socket descriptor.</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>tcp/transport.c</b>.</p>
 <p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> tcp_transport_data_t::zerocopy_disabled</h2>
+<p class="Pp">Disable copy avoidance after unsupported or copied completion.</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>tcp/transport.c</b>.</p>
+<p class="Pp">Referenced by <b>acip_tcp_transport_create()</b>, and
+    <b>acip_tcp_transport_set_zerocopy()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -87,7 +107,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

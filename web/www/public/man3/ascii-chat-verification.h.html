@@ -43,7 +43,7 @@
   <br/>
   int <b>gpg_verify_detached_ed25519</b> (const char *key_id, const
     <b>uint8_t</b> *message, size_t message_len, const <b>uint8_t</b>
-    signature[64])
+    signature[<b>ED25519_SIGNATURE_SIZE</b>])
   <br/>
   Verify Ed25519 signature using GPG binary. int <b>gpg_verify_signature</b>
     (const <b>uint8_t</b> *public_key, const <b>uint8_t</b> *message, size_t
@@ -75,7 +75,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

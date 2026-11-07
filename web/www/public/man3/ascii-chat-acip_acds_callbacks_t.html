@@ -41,52 +41,56 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">void(* <b>on_session_create</b> )(const
+<p class="Pp">void(*) <b>on_session_create</b> (const
     <b>acip_session_create_t</b> *req, <b>acip_transport_t</b> *transport, const
     char *client_ip, void *<b>app_ctx</b>)
   <br/>
-  Called when client requests session creation. void(* <b>on_session_lookup</b>
-    )(const <b>acip_session_lookup_t</b> *req, <b>acip_transport_t</b>
+  Called when client requests session creation. void(*) <b>on_session_lookup</b>
+    (const <b>acip_session_lookup_t</b> *req, <b>acip_transport_t</b>
     *transport, const char *client_ip, void *<b>app_ctx</b>)
   <br/>
-  Called when client looks up session info. void(* <b>on_session_join</b>
-    )(const <b>acip_session_join_t</b> *req, <b>acip_transport_t</b> *transport,
+  Called when client looks up session info. void(*) <b>on_session_join</b>
+    (const <b>acip_session_join_t</b> *req, <b>acip_transport_t</b> *transport,
     const char *client_ip, void *<b>app_ctx</b>)
   <br/>
-  Called when client joins a session. void(* <b>on_session_leave</b> )(const
+  Called when client joins a session. void(*) <b>on_session_leave</b> (const
     <b>acip_session_leave_t</b> *req, <b>acip_transport_t</b> *transport, const
     char *client_ip, void *<b>app_ctx</b>)
   <br/>
-  Called when client leaves a session. void(* <b>on_webrtc_sdp</b> )(const
+  Called when client leaves a session. void(*) <b>on_webrtc_sdp</b> (const
     <b>acip_webrtc_sdp_t</b> *sdp, size_t payload_len, <b>acip_transport_t</b>
     *transport, const char *client_ip, void *<b>app_ctx</b>)
   <br/>
-  Called when client sends WebRTC SDP offer/answer. void(* <b>on_webrtc_ice</b>
-    )(const <b>acip_webrtc_ice_t</b> *ice, size_t payload_len,
+  Called when client sends WebRTC SDP offer/answer. void(*) <b>on_webrtc_ice</b>
+    (const <b>acip_webrtc_ice_t</b> *ice, size_t payload_len,
     <b>acip_transport_t</b> *transport, const char *client_ip, void
     *<b>app_ctx</b>)
   <br/>
-  Called when client sends WebRTC ICE candidate. void(* <b>on_discovery_ping</b>
-    )(const void *payload, size_t payload_len, <b>acip_transport_t</b>
-    *transport, const char *client_ip, void *<b>app_ctx</b>)
-  <br/>
-  Called when client sends discovery ping. void(* <b>on_host_announcement</b>
-    )(const <b>acip_host_announcement_t</b> *announcement,
+  Called when client sends WebRTC ICE candidate. void(*)
+    <b>on_discovery_ping</b> (const void *payload, size_t payload_len,
     <b>acip_transport_t</b> *transport, const char *client_ip, void
     *<b>app_ctx</b>)
   <br/>
-  Called when client announces they are hosting (discovery mode). void(*
-    <b>on_host_lost</b> )(const <b>acip_host_lost_t</b> *host_lost,
+  Called when client sends discovery ping. void(*) <b>on_host_announcement</b>
+    (const <b>acip_host_announcement_t</b> *announcement,
     <b>acip_transport_t</b> *transport, const char *client_ip, void
     *<b>app_ctx</b>)
   <br/>
-  Called when participant reports host has disconnected (discovery mode). void(*
-    <b>on_network_quality</b> )(const void *payload, size_t payload_len,
+  Called when client announces they are hosting (discovery mode). void(*)
+    <b>on_host_lost</b> (const <b>acip_host_lost_t</b> *host_lost,
+    <b>acip_transport_t</b> *transport, const char *client_ip, void
+    *<b>app_ctx</b>)
+  <br/>
+  Called when participant reports host has disconnected (discovery mode).
+    void(*) <b>on_network_quality</b> (const void *payload, size_t payload_len,
     <b>acip_transport_t</b> *transport, const char *client_ip, void
     *<b>app_ctx</b>)
   <br/>
   Called when client sends NAT network quality for negotiation (discovery mode).
-    void * <b>app_ctx</b>
+    <b>asciichat_error_t</b>(*) <b>on_handoff</b> (const void *, size_t,
+    <b>acip_transport_t</b> *, void *)
+  <br/>
+  void * <b>app_ctx</b>
   <br/>
   Application context (passed to all callbacks).
   <br/>
@@ -116,92 +120,98 @@
 <h2 class="Ss" id="void*_acip_acds_callbacks_t::app_ctx"><a class="permalink" href="#void*_acip_acds_callbacks_t::app_ctx">void*
   acip_acds_callbacks_t::app_ctx</a></h2>
 <p class="Pp">Application context (passed to all callbacks).</p>
-<p class="Pp">Definition at line <b>74</b> of file <b>acds_handlers.h</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>, and
-    <b>acds_websocket_client_handler()</b>.</p>
+<p class="Pp">Definition at line <b>81</b> of file <b>acds_handlers.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_handle_acds_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_acip_acds_callbacks_t::on_discovery_ping)_(const_void_*payload,_size_t_payload_len,_"><a class="permalink" href="#void(*_acip_acds_callbacks_t::on_discovery_ping)_(const_void_*payload,_size_t_payload_len,_">void(*
-  acip_acds_callbacks_t::on_discovery_ping) (const void *payload, size_t
+<h2 class="Ss" id="void(*)_acip_acds_callbacks_t::on_discovery_ping(const_void_*payload,_size_t_payload_len,_"><a class="permalink" href="#void(*)_acip_acds_callbacks_t::on_discovery_ping(const_void_*payload,_size_t_payload_len,_">void(*)
+  acip_acds_callbacks_t::on_discovery_ping(const void *payload, size_t
   payload_len, <b>acip_transport_t</b> *transport, const char *client_ip, void
   *<b>app_ctx</b>)</a></h2>
 <p class="Pp">Called when client sends discovery ping.</p>
-<p class="Pp">Definition at line <b>59</b> of file <b>acds_handlers.h</b>.</p>
+<p class="Pp">Definition at line <b>63</b> of file <b>acds_handlers.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_acip_acds_callbacks_t::on_host_announcement)_(const_"><a class="permalink" href="#void(*_acip_acds_callbacks_t::on_host_announcement)_(const_">void(*
-  acip_acds_callbacks_t::on_host_announcement) (const
+<h2 class="Ss"><b>asciichat_error_t</b>(*)
+  acip_acds_callbacks_t::on_handoff(const void *, size_t,
+  <b>acip_transport_t</b> *, void *)</h2>
+<p class="Pp">Definition at line <b>78</b> of file <b>acds_handlers.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_handle_acds_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*)_acip_acds_callbacks_t::on_host_announcement(const_"><a class="permalink" href="#void(*)_acip_acds_callbacks_t::on_host_announcement(const_">void(*)
+  acip_acds_callbacks_t::on_host_announcement(const
   <b>acip_host_announcement_t</b> *announcement, <b>acip_transport_t</b>
   *transport, const char *client_ip, void *<b>app_ctx</b>)</a></h2>
 <p class="Pp">Called when client announces they are hosting (discovery
   mode).</p>
-<p class="Pp">Definition at line <b>63</b> of file <b>acds_handlers.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void(*_acip_acds_callbacks_t::on_host_lost)_(const_"><a class="permalink" href="#void(*_acip_acds_callbacks_t::on_host_lost)_(const_">void(*
-  acip_acds_callbacks_t::on_host_lost) (const <b>acip_host_lost_t</b>
-  *host_lost, <b>acip_transport_t</b> *transport, const char *client_ip, void
-  *<b>app_ctx</b>)</a></h2>
-<p class="Pp">Called when participant reports host has disconnected (discovery
-    mode).</p>
 <p class="Pp">Definition at line <b>67</b> of file <b>acds_handlers.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_acip_acds_callbacks_t::on_network_quality)_(const_void_*payload,_size_t_payload_len,_"><a class="permalink" href="#void(*_acip_acds_callbacks_t::on_network_quality)_(const_void_*payload,_size_t_payload_len,_">void(*
-  acip_acds_callbacks_t::on_network_quality) (const void *payload, size_t
+<h2 class="Ss" id="void(*)_acip_acds_callbacks_t::on_host_lost(const_"><a class="permalink" href="#void(*)_acip_acds_callbacks_t::on_host_lost(const_">void(*)
+  acip_acds_callbacks_t::on_host_lost(const <b>acip_host_lost_t</b> *host_lost,
+  <b>acip_transport_t</b> *transport, const char *client_ip, void
+  *<b>app_ctx</b>)</a></h2>
+<p class="Pp">Called when participant reports host has disconnected (discovery
+    mode).</p>
+<p class="Pp">Definition at line <b>71</b> of file <b>acds_handlers.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*)_acip_acds_callbacks_t::on_network_quality(const_void_*payload,_size_t_payload_len,_"><a class="permalink" href="#void(*)_acip_acds_callbacks_t::on_network_quality(const_void_*payload,_size_t_payload_len,_">void(*)
+  acip_acds_callbacks_t::on_network_quality(const void *payload, size_t
   payload_len, <b>acip_transport_t</b> *transport, const char *client_ip, void
   *<b>app_ctx</b>)</a></h2>
 <p class="Pp">Called when client sends NAT network quality for negotiation
     (discovery mode).</p>
-<p class="Pp">Definition at line <b>70</b> of file <b>acds_handlers.h</b>.</p>
+<p class="Pp">Definition at line <b>75</b> of file <b>acds_handlers.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_acip_acds_callbacks_t::on_session_create)_(const_"><a class="permalink" href="#void(*_acip_acds_callbacks_t::on_session_create)_(const_">void(*
-  acip_acds_callbacks_t::on_session_create) (const <b>acip_session_create_t</b>
+<h2 class="Ss" id="void(*)_acip_acds_callbacks_t::on_session_create(const_"><a class="permalink" href="#void(*)_acip_acds_callbacks_t::on_session_create(const_">void(*)
+  acip_acds_callbacks_t::on_session_create(const <b>acip_session_create_t</b>
   *req, <b>acip_transport_t</b> *transport, const char *client_ip, void
   *<b>app_ctx</b>)</a></h2>
 <p class="Pp">Called when client requests session creation.</p>
 <p class="Pp">Definition at line <b>39</b> of file <b>acds_handlers.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_acip_acds_callbacks_t::on_session_join)_(const_"><a class="permalink" href="#void(*_acip_acds_callbacks_t::on_session_join)_(const_">void(*
-  acip_acds_callbacks_t::on_session_join) (const <b>acip_session_join_t</b>
-  *req, <b>acip_transport_t</b> *transport, const char *client_ip, void
+<h2 class="Ss" id="void(*)_acip_acds_callbacks_t::on_session_join(const_"><a class="permalink" href="#void(*)_acip_acds_callbacks_t::on_session_join(const_">void(*)
+  acip_acds_callbacks_t::on_session_join(const <b>acip_session_join_t</b> *req,
+  <b>acip_transport_t</b> *transport, const char *client_ip, void
   *<b>app_ctx</b>)</a></h2>
 <p class="Pp">Called when client joins a session.</p>
-<p class="Pp">Definition at line <b>45</b> of file <b>acds_handlers.h</b>.</p>
+<p class="Pp">Definition at line <b>47</b> of file <b>acds_handlers.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_acip_acds_callbacks_t::on_session_leave)_(const_"><a class="permalink" href="#void(*_acip_acds_callbacks_t::on_session_leave)_(const_">void(*
-  acip_acds_callbacks_t::on_session_leave) (const <b>acip_session_leave_t</b>
+<h2 class="Ss" id="void(*)_acip_acds_callbacks_t::on_session_leave(const_"><a class="permalink" href="#void(*)_acip_acds_callbacks_t::on_session_leave(const_">void(*)
+  acip_acds_callbacks_t::on_session_leave(const <b>acip_session_leave_t</b>
   *req, <b>acip_transport_t</b> *transport, const char *client_ip, void
   *<b>app_ctx</b>)</a></h2>
 <p class="Pp">Called when client leaves a session.</p>
-<p class="Pp">Definition at line <b>48</b> of file <b>acds_handlers.h</b>.</p>
+<p class="Pp">Definition at line <b>51</b> of file <b>acds_handlers.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_acip_acds_callbacks_t::on_session_lookup)_(const_"><a class="permalink" href="#void(*_acip_acds_callbacks_t::on_session_lookup)_(const_">void(*
-  acip_acds_callbacks_t::on_session_lookup) (const <b>acip_session_lookup_t</b>
+<h2 class="Ss" id="void(*)_acip_acds_callbacks_t::on_session_lookup(const_"><a class="permalink" href="#void(*)_acip_acds_callbacks_t::on_session_lookup(const_">void(*)
+  acip_acds_callbacks_t::on_session_lookup(const <b>acip_session_lookup_t</b>
   *req, <b>acip_transport_t</b> *transport, const char *client_ip, void
   *<b>app_ctx</b>)</a></h2>
 <p class="Pp">Called when client looks up session info.</p>
-<p class="Pp">Definition at line <b>42</b> of file <b>acds_handlers.h</b>.</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>acds_handlers.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_acip_acds_callbacks_t::on_webrtc_ice)_(const_"><a class="permalink" href="#void(*_acip_acds_callbacks_t::on_webrtc_ice)_(const_">void(*
-  acip_acds_callbacks_t::on_webrtc_ice) (const <b>acip_webrtc_ice_t</b> *ice,
+<h2 class="Ss" id="void(*)_acip_acds_callbacks_t::on_webrtc_ice(const_"><a class="permalink" href="#void(*)_acip_acds_callbacks_t::on_webrtc_ice(const_">void(*)
+  acip_acds_callbacks_t::on_webrtc_ice(const <b>acip_webrtc_ice_t</b> *ice,
   size_t payload_len, <b>acip_transport_t</b> *transport, const char *client_ip,
   void *<b>app_ctx</b>)</a></h2>
 <p class="Pp">Called when client sends WebRTC ICE candidate.</p>
-<p class="Pp">Definition at line <b>55</b> of file <b>acds_handlers.h</b>.</p>
+<p class="Pp">Definition at line <b>59</b> of file <b>acds_handlers.h</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_acip_acds_callbacks_t::on_webrtc_sdp)_(const_"><a class="permalink" href="#void(*_acip_acds_callbacks_t::on_webrtc_sdp)_(const_">void(*
-  acip_acds_callbacks_t::on_webrtc_sdp) (const <b>acip_webrtc_sdp_t</b> *sdp,
+<h2 class="Ss" id="void(*)_acip_acds_callbacks_t::on_webrtc_sdp(const_"><a class="permalink" href="#void(*)_acip_acds_callbacks_t::on_webrtc_sdp(const_">void(*)
+  acip_acds_callbacks_t::on_webrtc_sdp(const <b>acip_webrtc_sdp_t</b> *sdp,
   size_t payload_len, <b>acip_transport_t</b> *transport, const char *client_ip,
   void *<b>app_ctx</b>)</a></h2>
 <p class="Pp">Called when client sends WebRTC SDP offer/answer.</p>
-<p class="Pp">Definition at line <b>51</b> of file <b>acds_handlers.h</b>.</p>
+<p class="Pp">Definition at line <b>55</b> of file <b>acds_handlers.h</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -212,7 +222,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

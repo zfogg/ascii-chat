@@ -37,7 +37,7 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp"><b>std::mutex</b> &amp; <b>outputRegistryMutex</b> ()
+<p class="Pp">std::mutex &amp; <b>outputRegistryMutex</b> ()
   <br/>
   std::unordered_set&lt; std::string &gt; &amp; <b>outputRegistry</b> ()
   <br/>
@@ -73,10 +73,10 @@
 <pre>676                                       {
 677   // Initialize LLVM infrastructure (this triggers command-line option registration!)
 678   llvm::InitLLVM InitLLVM(argc, argv);
-679 
+679
 680   // Parse command-line options
 681   cl::ParseCommandLineOptions(argc, argv, &quot;ascii-chat instrumentation tool\n&quot;);
-682 
+682
 683   const fs::path outputDir = fs::path(OutputDirectoryOption.getValue());
 684   fs::path inputRoot;
 685   if (!InputRootOption.getValue().empty()) {
@@ -84,7 +84,7 @@
 687   } else {
 688     inputRoot = fs::current_path();
 689   }
-690 
+690
 691   std::vector&lt;std::string&gt; rawSourceArgs;
 692   rawSourceArgs.reserve(SourcePaths.size());
 693   for (const auto &amp;path : SourcePaths) {
@@ -120,7 +120,7 @@
 723       llvm::errs() &lt;&lt; &quot;Failed to open file list: &quot; &lt;&lt; FileListOption.getValue() &lt;&lt; &quot;\n&quot;;
 724       return 1;
 725     }
-726 
+726
 727     std::string line;
 728     while (std::getline(listStream, line)) {
 729       llvm::StringRef trimmed(line);
@@ -131,14 +131,14 @@
 734       sourcePaths.emplace_back(trimmed.str());
 735     }
 736   }
-737 
+737
 738   if (sourcePaths.empty()) {
 739     llvm::errs()
 740         &lt;&lt; &quot;No translation units specified for instrumentation. Provide positional source paths or --file-list.&quot;
 741         &lt;&lt; &quot;\n&quot;;
 742     return 1;
 743   }
-744 
+744
 745   if (fs::exists(outputDir)) {
 746     if (!fs::is_directory(outputDir)) {
 747       llvm::errs() &lt;&lt; &quot;Output path exists and is not a directory: &quot; &lt;&lt; outputDir.c_str() &lt;&lt; &quot;\n&quot;;
@@ -153,14 +153,14 @@
 756       return 1;
 757     }
 758   }
-759 
+759
 760   const bool logMacroExpansions = LogMacroExpansionsOption.getValue() || LegacyIncludeMacroExpansionsOption.getValue();
 761   const bool logMacroInvocations = LogMacroInvocationsOption.getValue();
-762 
+762
 763   if (!LogMacroExpansionsOption.getValue() &amp;&amp; LegacyIncludeMacroExpansionsOption.getValue()) {
 764     llvm::errs() &lt;&lt; &quot;warning: --include-macro-expansions is deprecated; use --log-macro-expansions instead\n&quot;;
 765   }
-766 
+766
 767   // Load compilation database
 768   std::string buildPath = BuildPath.getValue();
 769   if (buildPath.empty()) {
@@ -173,9 +173,9 @@
 776     llvm::errs() &lt;&lt; &quot;Error loading compilation database from '&quot; &lt;&lt; buildPath &lt;&lt; &quot;': &quot; &lt;&lt; errorMessage &lt;&lt; &quot;\n&quot;;
 777     return 1;
 778   }
-779 
+779
 780   clang::tooling::ClangTool tool(*compilations, sourcePaths);
-781 
+781
 782   if (!extraCompilerArgs.empty()) {
 783     const std::vector&lt;std::string&gt; extraArgsCopy(extraCompilerArgs.begin(), extraCompilerArgs.end());
 784     tool.appendArgumentsAdjuster([extraArgsCopy](const clang::tooling::CommandLineArguments &amp;args, llvm::StringRef) {
@@ -184,15 +184,15 @@
 787       return adjusted;
 788     });
 789   }
-790 
+790
 791   auto stripPchAdjuster = [](const clang::tooling::CommandLineArguments &amp;args, llvm::StringRef) {
 792     clang::tooling::CommandLineArguments result;
 793     const auto containsCMakePch = [](llvm::StringRef value) { return value.contains(&quot;cmake_pch&quot;); };
-794 
+794
 795     for (std::size_t i = 0; i &lt; args.size(); ++i) {
 796       const std::string &amp;arg = args[i];
 797       llvm::StringRef argRef(arg);
-798 
+798
 799       if ((argRef == &quot;-include&quot; || argRef == &quot;--include&quot; || argRef == &quot;-include-pch&quot; || argRef == &quot;--include-pch&quot;) &amp;&amp;
 800           (i + 1) &lt; args.size()) {
 801         if (containsCMakePch(args[i + 1])) {
@@ -200,23 +200,23 @@
 803           continue;
 804         }
 805       }
-806 
+806
 807       if ((argRef.starts_with(&quot;-include=&quot;) || argRef.starts_with(&quot;--include=&quot;) || argRef.starts_with(&quot;-include-pch=&quot;) ||
 808            argRef.starts_with(&quot;--include-pch=&quot;)) &amp;&amp;
 809           containsCMakePch(argRef)) {
 810         continue;
 811       }
-812 
+812
 813       result.push_back(arg);
 814     }
-815 
+815
 816     return result;
 817   };
 818   tool.appendArgumentsAdjuster(stripPchAdjuster);
-819 
+819
 820   auto ensureSourceIncludeAdjuster = [&amp;inputRoot](const clang::tooling::CommandLineArguments &amp;args, llvm::StringRef) {
 821     clang::tooling::CommandLineArguments result = args;
-822 
+822
 823     const auto hasInclude = [&amp;result](const std::string &amp;dir) {
 824       const std::string combined = &quot;-I&quot; + dir;
 825       if (std::find(result.begin(), result.end(), combined) != result.end()) {
@@ -229,40 +229,40 @@
 832       }
 833       return false;
 834     };
-835 
+835
 836     const auto appendInclude = [&amp;result](const std::string &amp;dir) {
 837       result.push_back(&quot;-I&quot;);
 838       result.push_back(dir);
 839     };
-840 
+840
 841     const std::string libDir = (inputRoot / &quot;lib&quot;).generic_string();
 842     const std::string srcDir = (inputRoot / &quot;src&quot;).generic_string();
-843 
+843
 844     if (!hasInclude(libDir)) {
 845       appendInclude(libDir);
 846     }
 847     if (!hasInclude(srcDir)) {
 848       appendInclude(srcDir);
 849     }
-850 
+850
 851     return result;
 852   };
 853   tool.appendArgumentsAdjuster(ensureSourceIncludeAdjuster);
-854 
+854
 855   // Instrumented headers are now hard-linked into the output tree, so we can
 856   // rely on the original include paths without further adjustment.
-857 
+857
 858   // NOTE: -skip-function-bodies optimization removed - it was causing errors with LibTooling
 859   // LibTooling handles arguments differently than the clang driver, so -Xclang flags don't work
 860   // The optimization wasn't providing significant benefit anyway
-861 
+861
 862   // Optimization: strip unnecessary compilation flags
 863   auto stripUnnecessaryFlags = [](const clang::tooling::CommandLineArguments &amp;args, llvm::StringRef) {
 864     clang::tooling::CommandLineArguments result;
-865 
+865
 866     for (size_t i = 0; i &lt; args.size(); ++i) {
 867       const std::string &amp;arg = args[i];
-868 
+868
 869       // Skip sanitizer flags (not needed for instrumentation, slow down parsing)
 870       if (arg.find(&quot;-fsanitize&quot;) != std::string::npos)
 871         continue;
@@ -270,7 +270,7 @@
 873         continue;
 874       if (arg.find(&quot;sanitize&quot;) != std::string::npos)
 875         continue;
-876 
+876
 877       // Skip debug info generation flags (not needed, slow down codegen)
 878       if (arg == &quot;-g&quot; || arg == &quot;-g2&quot; || arg == &quot;-g3&quot;)
 879         continue;
@@ -282,33 +282,33 @@
 885         continue;
 886       if (arg.find(&quot;-gdwarf&quot;) != std::string::npos)
 887         continue;
-888 
+888
 889       // Skip stack protector (not needed for instrumentation)
 890       if (arg.find(&quot;-fstack-protector&quot;) != std::string::npos)
 891         continue;
-892 
+892
 893       // Skip frame pointer flags
 894       if (arg.find(&quot;-fno-omit-frame-pointer&quot;) != std::string::npos)
 895         continue;
 896       if (arg.find(&quot;-fomit-frame-pointer&quot;) != std::string::npos)
 897         continue;
-898 
+898
 899       // Skip optimization-related debug flags
 900       if (arg == &quot;-fno-inline&quot;)
 901         continue;
 902       if (arg == &quot;-fno-eliminate-unused-debug-types&quot;)
 903         continue;
-904 
+904
 905       result.push_back(arg);
 906     }
-907 
+907
 908     // NOTE: -w flag removed - it was causing &quot;no such file or directory&quot; errors with LibTooling
 909     // Warnings are already suppressed by the stripped flags above
-910 
+910
 911     return result;
 912   };
 913   tool.appendArgumentsAdjuster(stripUnnecessaryFlags);
-914 
+914
 915   InstrumentationActionFactory actionFactory(outputDir, inputRoot, !FileIncludeFilters.empty(),
 916                                              !FunctionIncludeFilters.empty(), logMacroInvocations, logMacroExpansions);
 917   const int executionResult = tool.run(&amp;actionFactory);
@@ -319,7 +319,7 @@
 922 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">References <b>main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="std::unordered_set__std::string___&amp;_outputRegistry_()"><a class="permalink" href="#std::unordered_set__std::string___&amp;_outputRegistry_()">std::unordered_set&lt;
@@ -331,11 +331,11 @@
 43 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>registerOutputPath()</b>, and
-    <b>unregisterOutputPath()</b>.</p>
+<p class="Pp">References <b>outputRegistry()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>std::mutex</b> &amp; outputRegistryMutex ()</h2>
+<h2 class="Ss" id="std::mutex_&amp;_outputRegistryMutex_()"><a class="permalink" href="#std::mutex_&amp;_outputRegistryMutex_()">std::mutex
+  &amp; outputRegistryMutex ()</a></h2>
 <p class="Pp">Definition at line <b>35</b> of file <b>panic/tool.cpp</b>.</p>
 <pre>35                                 {
 36   static std::mutex mutex;
@@ -343,9 +343,7 @@
 38 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>mutex</b>.</p>
-<p class="Pp">Referenced by <b>registerOutputPath()</b>, and
-    <b>unregisterOutputPath()</b>.</p>
+<p class="Pp">References <b>outputRegistryMutex()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> registerOutputPath (const std::string &amp;
@@ -359,8 +357,8 @@
 50 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>outputRegistry()</b>, and
-    <b>outputRegistryMutex()</b>.</p>
+<p class="Pp">References <b>outputRegistry()</b>, <b>outputRegistryMutex()</b>,
+    and <b>registerOutputPath()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_unregisterOutputPath_(const_std::string_&amp;_path)"><a class="permalink" href="#void_unregisterOutputPath_(const_std::string_&amp;_path)">void
@@ -372,8 +370,8 @@
 55 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>outputRegistry()</b>, and
-    <b>outputRegistryMutex()</b>.</p>
+<p class="Pp">References <b>outputRegistry()</b>, <b>outputRegistryMutex()</b>,
+    and <b>unregisterOutputPath()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -402,7 +400,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

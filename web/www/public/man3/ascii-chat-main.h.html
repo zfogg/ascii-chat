@@ -96,14 +96,16 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>cb</i> Function to call on exit signal, or NULL to
   unregister</div>
-<p class="Pp">Definition at line <b>129</b> of file <b>misc.c</b>.</p>
-<pre>129                                                     {
-130   (void)callback;
-131 }</pre>
+<p class="Pp">Definition at line <b>127</b> of file <b>misc.c</b>.</p>
+<pre>127                                                     {
+128   (void)callback;
+129 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>client_main()</b>, and
-  <b>discovery_main()</b>.</p>
+<p class="Pp">References <b>set_interrupt_callback()</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, <b>client_main()</b>,
+    <b>discovery_main()</b>, <b>set_interrupt_callback()</b>, and
+    <b>set_interrupt_callback()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_setup_signal_handlers_(void_)"><a class="permalink" href="#void_setup_signal_handlers_(void_)">void
@@ -124,26 +126,28 @@
 <p class="Pp"></p>
 <p class="Pp">Set up global signal handlers Called once at startup before mode
     dispatch</p>
-<p class="Pp">Definition at line <b>346</b> of file <b>main.c</b>.</p>
-<pre>346                                  {
-347   platform_set_console_ctrl_handler(console_ctrl_handler);
-348 
-349 #ifndef _WIN32
-350   platform_signal_handler_t handlers[] = {
-351       {SIGINT, handle_sigterm},
-352       {SIGTERM, handle_sigterm},
-353       {SIGPIPE, SIG_IGN},
-354   };
-355   platform_register_signal_handlers(handlers, 3);
-356   log_debug(&quot;Signal handlers registered&quot;);
-357 #endif
-358 }</pre>
+<p class="Pp">Definition at line <b>371</b> of file <b>main.c</b>.</p>
+<pre>371                                  {
+372   platform_set_console_ctrl_handler(console_ctrl_handler);
+373
+374 #ifndef _WIN32
+375   platform_signal_handler_t handlers[] = {
+376       {SIGINT, handle_sigterm},
+377       {SIGTERM, handle_sigterm},
+378       {SIGPIPE, SIG_IGN},
+379   };
+380   platform_register_signal_handlers(handlers, 3);
+381   log_debug(&quot;Signal handlers registered&quot;);
+382 #endif
+383 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_debug</b>,
-    <b>platform_register_signal_handlers()</b>, and
-    <b>platform_set_console_ctrl_handler()</b>.</p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
+    <b>platform_register_signal_handlers()</b>,
+    <b>platform_set_console_ctrl_handler()</b>, and
+    <b>setup_signal_handlers()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, and
+  <b>setup_signal_handlers()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> should_exit (void )</h2>
@@ -155,20 +159,18 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if shutdown has been requested, false
   otherwise</div>
-<p class="Pp">Definition at line <b>136</b> of file <b>misc.c</b>.</p>
-<pre>136                        {
-137   return false;
-138 }</pre>
+<p class="Pp">Definition at line <b>133</b> of file <b>misc.c</b>.</p>
+<pre>133                        {
+134   return false;
+135 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, and
-  <b>g_should_exit</b>.</p>
-<p class="Pp">Referenced by <b>client_main()</b>,
-    <b>connection_attempt_tcp()</b>, <b>connection_attempt_websocket()</b>,
-    <b>display_full_reset()</b>, <b>main()</b>,
-    <b>protocol_start_connection()</b>, <b>server_connection_establish()</b>,
-    <b>session_client_like_run()</b>, <b>session_pipeline_run_main()</b>, and
-    <b>session_render_loop()</b>.</p>
+<p class="Pp">References <b>atomic_load_bool()</b>, <b>g_should_exit</b>, and
+    <b>should_exit()</b>.</p>
+<p class="Pp">Referenced by <b>client_connection_start()</b>,
+    <b>display_full_reset()</b>, <b>main()</b>, <b>mcp_http_run()</b>,
+    <b>session_pipeline_run_main()</b>, <b>session_render_loop()</b>, and
+    <b>should_exit()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_signal_exit_(void_)"><a class="permalink" href="#void_signal_exit_(void_)">void
@@ -179,15 +181,16 @@
     callback if set. Safe to call from signal handlers (uses only atomics and
     function pointers). Called by signal handlers (SIGTERM, Ctrl+C) and normal
     code (errors, timeouts).</p>
-<p class="Pp">Definition at line <b>133</b> of file <b>misc.c</b>.</p>
-<pre>133                        {
-134 }</pre>
+<p class="Pp">Definition at line <b>131</b> of file <b>misc.c</b>.</p>
+<pre>131 {}</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, and
-  <b>g_should_exit</b>.</p>
-<p class="Pp">Referenced by <b>client_main()</b>, <b>main()</b>, and
-    <b>session_render_loop()</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>, <b>g_should_exit</b>, and
+    <b>signal_exit()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>,
+    <b>session_display_write_ascii_frame()</b>, <b>session_render_loop()</b>,
+    <b>signal_exit()</b>, <b>ui_input_password()</b>, and
+    <b>update_banner_install_update()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -217,7 +220,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>process_title.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">process_title.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">process_title.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">process_title.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define
+    <b>PLATFORM_MACOS_PROCESS_TITLE_THREAD_NAME_BUFFER_SIZE</b> 64
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>platform_process_title_native_set</b>
+    (const char *title, const char *short_name)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_MACOS_PROCESS_TITLE_THREAD_NAME_BUFFER_SIZE___64"><a class="permalink" href="#_define_PLATFORM_MACOS_PROCESS_TITLE_THREAD_NAME_BUFFER_SIZE___64">#define
+  PLATFORM_MACOS_PROCESS_TITLE_THREAD_NAME_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file
+  <b>macos/process_title.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_process_title_native_set()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_process_title_native_set (const
+  char * title, const char * short_name)</h2>
+<p class="Pp">Definition at line <b>34</b> of file
+  <b>macos/process_title.c</b>.</p>
+<pre>34                                                                                                {
+35   if (!pthread_main_np()) {
+36     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Process title must be set by the main thread&quot;);
+37   }
+38   char thread_name[PLATFORM_MACOS_PROCESS_TITLE_THREAD_NAME_BUFFER_SIZE];
+39   size_t length = strlen(short_name);
+40   if (length &gt;= sizeof(thread_name)) {
+41     length = sizeof(thread_name) - 1;
+42   }
+43   memcpy(thread_name, short_name, length);
+44   thread_name[length] = '\0';
+45   int thread_error = pthread_setname_np(thread_name);
+46
+47   // These Launch Services functions are private. Resolve every symbol before
+48   // using it so an unavailable framework/session leaves the ps title usable.
+49   void *services =
+50       dlopen(&quot;/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices&quot;, RTLD_LAZY | RTLD_LOCAL);
+51   if (!services) {
+52     return SET_ERRNO(ERROR_PLATFORM_INIT, &quot;Activity Monitor naming: ApplicationServices unavailable&quot;);
+53   }
+54   CFBundleRef bundle = CFBundleGetBundleWithIdentifier(CFSTR(&quot;com.apple.LaunchServices&quot;));
+55   CFTypeRef (*get_asn)(void) = NULL;
+56   OSStatus (*set_information)(int, CFTypeRef, CFStringRef, CFStringRef, CFDictionaryRef *) = NULL;
+57   CFDictionaryRef (*check_in)(int, CFDictionaryRef) = NULL;
+58   void (*set_connection)(uint64_t, void *) = NULL;
+59   CFStringRef *display_name = NULL;
+60   if (bundle) {
+61     *(void **)(&amp;get_asn) = CFBundleGetFunctionPointerForName(bundle, CFSTR(&quot;_LSGetCurrentApplicationASN&quot;));
+62     *(void **)(&amp;set_information) = CFBundleGetFunctionPointerForName(bundle, CFSTR(&quot;_LSSetApplicationInformationItem&quot;));
+63     *(void **)(&amp;check_in) = CFBundleGetFunctionPointerForName(bundle, CFSTR(&quot;_LSApplicationCheckIn&quot;));
+64     *(void **)(&amp;set_connection) =
+65         CFBundleGetFunctionPointerForName(bundle, CFSTR(&quot;_LSSetApplicationLaunchServicesServerConnectionStatus&quot;));
+66     display_name = CFBundleGetDataPointerForName(bundle, CFSTR(&quot;_kLSDisplayNameKey&quot;));
+67   }
+68   if (!get_asn || !set_information || !check_in || !set_connection || !display_name || !*display_name) {
+69     dlclose(services);
+70     return SET_ERRNO(ERROR_PLATFORM_INIT, &quot;Activity Monitor naming: Launch Services API unavailable&quot;);
+71   }
+72   static bool checked_in;
+73   if (!checked_in) {
+74     CFBundleRef main_bundle = CFBundleGetMainBundle();
+75     CFDictionaryRef info = main_bundle ? CFBundleGetInfoDictionary(main_bundle) : NULL;
+76     CFMutableDictionaryRef properties =
+77         info ? CFDictionaryCreateMutableCopy(NULL, 0, info)
+78              : CFDictionaryCreateMutable(NULL, 0, &amp;kCFTypeDictionaryKeyCallBacks, &amp;kCFTypeDictionaryValueCallBacks);
+79     if (!properties) {
+80       dlclose(services);
+81       return SET_ERRNO(ERROR_MEMORY, &quot;Activity Monitor naming: could not allocate application properties&quot;);
+82     }
+83     // A terminal program must not acquire a Dock icon or activate a GUI window.
+84     CFDictionarySetValue(properties, CFSTR(&quot;LSUIElement&quot;), kCFBooleanTrue);
+85     set_connection(0, NULL);
+86     check_in(-2, properties);
+87     CFRelease(properties);
+88     checked_in = get_asn() != NULL;
+89   }
+90   CFTypeRef asn = get_asn();
+91   CFStringRef name = CFStringCreateWithCString(NULL, title, kCFStringEncodingUTF8);
+92   OSStatus status = -1;
+93   if (asn &amp;&amp; name) {
+94     status = set_information(-2, asn, *display_name, name, NULL);
+95   }
+96   if (name) {
+97     CFRelease(name);
+98   }
+99   dlclose(services);
+100   if (status != 0) {
+101     return SET_ERRNO(ERROR_PLATFORM_INIT, &quot;Activity Monitor naming failed (status %d)&quot;, (int)status);
+102   }
+103   if (thread_error != 0) {
+104     return SET_ERRNO(ERROR_PLATFORM_INIT, &quot;macOS main-thread naming failed (error %d)&quot;, thread_error);
+105   }
+106   return ASCIICHAT_OK;
+107 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_STATE</b>,
+    <b>ERROR_MEMORY</b>, <b>ERROR_PLATFORM_INIT</b>,
+    <b>PLATFORM_MACOS_PROCESS_TITLE_THREAD_NAME_BUFFER_SIZE</b>,
+    <b>platform_process_title_native_set()</b>, and <b>SET_ERRNO</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

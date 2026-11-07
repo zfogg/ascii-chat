@@ -60,7 +60,7 @@
 <p class="Pp"></p>
 <p class="Pp">Columns represent width (horizontal dimension).</p>
 </div>
-<p class="Pp">Definition at line <b>163</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Definition at line <b>168</b> of file <b>terminal.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -69,23 +69,42 @@
 <h2 class="Ss" id="int_terminal_size_t::cols"><a class="permalink" href="#int_terminal_size_t::cols">int
   terminal_size_t::cols</a></h2>
 <p class="Pp">Number of columns (width) in terminal.</p>
-<p class="Pp">Definition at line <b>165</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Definition at line <b>170</b> of file <b>terminal.h</b>.</p>
 <p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
+    <b>invitation_render()</b>, <b>key_identity_format_terminal()</b>,
     <b>options_config_print_options_sections_with_width()</b>,
     <b>options_print_help_for_mode()</b>,
     <b>sdp_detect_terminal_capabilities()</b>,
-    <b>terminal_get_effective_width()</b>, and
-  <b>terminal_screen_render()</b>.</p>
+    <b>session_protocol_update_settings()</b>,
+    <b>terminal_get_effective_width()</b>, <b>terminal_resize_poll()</b>,
+    <b>terminal_screen_compose()</b>, <b>terminal_screen_logs_handle_key()</b>,
+    <b>tui_stats_render()</b>, <b>ui_controller_size()</b>,
+    <b>ui_error_popup_preserve()</b>, <b>ui_error_popup_render()</b>,
+    <b>ui_layout_measure()</b>, <b>ui_media_panel_render()</b>,
+    <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>,
+    <b>ui_popup_render()</b>, <b>ui_session_context_help_render()</b>,
+    <b>ui_session_help_render()</b>, <b>ui_session_render()</b>,
+    <b>ui_session_resize()</b>, <b>ui_session_splash_render()</b>,
+    <b>ui_status_render_header()</b>, <b>ui_sync_render()</b>,
+    <b>ui_too_small()</b>, and <b>ui_too_small_format()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_terminal_size_t::rows"><a class="permalink" href="#int_terminal_size_t::rows">int
   terminal_size_t::rows</a></h2>
 <p class="Pp">Number of rows (height) in terminal.</p>
-<p class="Pp">Definition at line <b>164</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Definition at line <b>169</b> of file <b>terminal.h</b>.</p>
 <p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
-    <b>sdp_detect_terminal_capabilities()</b>,
-    <b>terminal_get_effective_height()</b>, and
-  <b>terminal_screen_render()</b>.</p>
+    <b>invitation_render()</b>, <b>sdp_detect_terminal_capabilities()</b>,
+    <b>session_protocol_update_settings()</b>,
+    <b>terminal_get_effective_height()</b>, <b>terminal_resize_poll()</b>,
+    <b>terminal_screen_compose()</b>, <b>terminal_screen_logs_handle_key()</b>,
+    <b>tui_stats_render()</b>, <b>ui_controller_size()</b>,
+    <b>ui_error_popup_render()</b>, <b>ui_layout_measure()</b>,
+    <b>ui_media_panel_render()</b>, <b>ui_popup_render()</b>,
+    <b>ui_prompt_present_kind()</b>, <b>ui_session_context_help_render()</b>,
+    <b>ui_session_help_render()</b>, <b>ui_session_render()</b>,
+    <b>ui_session_resize()</b>, <b>ui_sync_render()</b>, <b>ui_too_small()</b>,
+    and <b>ui_too_small_format()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -96,7 +115,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

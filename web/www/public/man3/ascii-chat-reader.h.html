@@ -87,14 +87,15 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success</div>
 <p class="Pp">Width is auto-detected from the first frame's line length.</p>
-<p class="Pp">Definition at line <b>52</b> of file
-    <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>52                                                                                                   {
-53   (void)fd;
-54   (void)frame_height;
-55   if (out) *out = NULL;
-56   return ASCIICHAT_OK;  // Stub - no stdin available in WASM
-57 }</pre>
+<p class="Pp">Definition at line <b>309</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>309                                                                                                   {
+310   (void)fd;
+311   (void)frame_height;
+312   if (out)
+313     *out = NULL;
+314   return ASCIICHAT_OK;
+315 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>,
@@ -105,8 +106,9 @@
     <b>terminal_fd_reader_s::line_buffer</b>, <b>LINE_BUFFER_SIZE</b>,
     <b>terminal_fd_reader_s::line_buffer_size</b>, <b>log_debug</b>,
     <b>platform_fdopen()</b>, <b>SAFE_CALLOC</b>, <b>SAFE_MALLOC</b>,
-    <b>SET_ERRNO</b>, and <b>SET_ERRNO_SYS</b>.</p>
-<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
+    <b>SET_ERRNO</b>, <b>SET_ERRNO_SYS</b>, and
+    <b>terminal_fd_reader_create()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_fd_reader_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_terminal_fd_reader_destroy_("><a class="permalink" href="#void_terminal_fd_reader_destroy_(">void
@@ -114,17 +116,17 @@
 <p class="Pp">Destroy terminal FD reader.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>reader</i> Reader context to destroy</div>
-<p class="Pp">Definition at line <b>59</b> of file
-    <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>59                                                               {
-60   (void)reader;
-61   // No-op
-62 }</pre>
+<p class="Pp">Definition at line <b>317</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>317                                                               {
+318   (void)reader;
+319 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>terminal_fd_reader_s::fp</b>,
-    <b>terminal_fd_reader_s::line_buffer</b>, and <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
+    <b>terminal_fd_reader_s::line_buffer</b>, <b>SAFE_FREE</b>, and
+    <b>terminal_fd_reader_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_fd_reader_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_error_t</b> terminal_fd_reader_next
@@ -140,13 +142,14 @@
   SAFE_FREE)</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success (including EOF)</div>
-<p class="Pp">Definition at line <b>64</b> of file
-    <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>64                                                                                           {
-65   (void)reader;
-66   if (out_frame) *out_frame = NULL;  // Signal EOF immediately
-67   return ASCIICHAT_OK;
-68 }</pre>
+<p class="Pp">Definition at line <b>321</b> of file
+    <b>platform/wasm/terminal.c</b>.</p>
+<pre>321                                                                                           {
+322   (void)reader;
+323   if (out_frame)
+324     *out_frame = NULL;
+325   return ASCIICHAT_OK;
+326 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCIICHAT_OK</b>, <b>display_width()</b>,
@@ -157,8 +160,9 @@
     <b>terminal_fd_reader_s::line_buffer</b>, <b>LINE_BUFFER_SIZE</b>,
     <b>terminal_fd_reader_s::line_buffer_size</b>, <b>log_debug</b>,
     <b>log_debug_every</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>NS_PER_SEC_INT</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and
-    <b>SET_ERRNO</b>.</p>
+    <b>NS_PER_SEC_INT</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>SET_ERRNO</b>, and <b>terminal_fd_reader_next()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_fd_reader_next()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -168,7 +172,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

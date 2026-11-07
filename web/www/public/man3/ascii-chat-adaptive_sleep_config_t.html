@@ -67,7 +67,7 @@
 <p class="Pp">Defines how a thread should adjust its sleep time based on
     workload. Threads can speed up (sleep less) when queues build up and slow
     down (sleep more) when queues are empty.</p>
-<p class="Pp">Definition at line <b>677</b> of file <b>time.h</b>.</p>
+<p class="Pp">Definition at line <b>686</b> of file <b>time.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -75,7 +75,7 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> adaptive_sleep_config_t::baseline_sleep_ns</h2>
 <p class="Pp">Normal sleep time in nanoseconds (when queue is at target).</p>
-<p class="Pp">Definition at line <b>678</b> of file <b>time.h</b>.</p>
+<p class="Pp">Definition at line <b>687</b> of file <b>time.h</b>.</p>
 <p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>, and
     <b>adaptive_sleep_init()</b>.</p>
 </section>
@@ -83,14 +83,15 @@
 <h2 class="Ss" id="double_adaptive_sleep_config_t::max_speed_multiplier"><a class="permalink" href="#double_adaptive_sleep_config_t::max_speed_multiplier">double
   adaptive_sleep_config_t::max_speed_multiplier</a></h2>
 <p class="Pp">Maximum speed (min sleep) - e.g., 4.0 = process 4x faster.</p>
-<p class="Pp">Definition at line <b>680</b> of file <b>time.h</b>.</p>
-<p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>.</p>
+<p class="Pp">Definition at line <b>689</b> of file <b>time.h</b>.</p>
+<p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>, and
+    <b>adaptive_sleep_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="double_adaptive_sleep_config_t::min_speed_multiplier"><a class="permalink" href="#double_adaptive_sleep_config_t::min_speed_multiplier">double
   adaptive_sleep_config_t::min_speed_multiplier</a></h2>
 <p class="Pp">Minimum speed (max sleep) - usually 1.0 (baseline speed).</p>
-<p class="Pp">Definition at line <b>679</b> of file <b>time.h</b>.</p>
+<p class="Pp">Definition at line <b>688</b> of file <b>time.h</b>.</p>
 <p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>, and
     <b>adaptive_sleep_init()</b>.</p>
 </section>
@@ -99,7 +100,7 @@
   adaptive_sleep_config_t::slowdown_rate</a></h2>
 <p class="Pp">Ramp-down rate when queue empties (0.0-1.0, higher = faster
   ramp).</p>
-<p class="Pp">Definition at line <b>682</b> of file <b>time.h</b>.</p>
+<p class="Pp">Definition at line <b>691</b> of file <b>time.h</b>.</p>
 <p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>.</p>
 </section>
 <section class="Ss">
@@ -107,7 +108,7 @@
   adaptive_sleep_config_t::speedup_rate</a></h2>
 <p class="Pp">Ramp-up rate when queue builds (0.0-1.0, higher = faster
   ramp).</p>
-<p class="Pp">Definition at line <b>681</b> of file <b>time.h</b>.</p>
+<p class="Pp">Definition at line <b>690</b> of file <b>time.h</b>.</p>
 <p class="Pp">Referenced by <b>adaptive_sleep_calculate()</b>.</p>
 <p class="Pp"></p>
 </section>
@@ -119,7 +120,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

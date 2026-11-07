@@ -154,7 +154,7 @@ foreach(MANPAGE \${MANPAGES})
     get_filename_component(FILENAME \"\${MANPAGE}\" NAME)
 
     # Skip/delete path-based entries (Doxygen directory documentation)
-    if(FILENAME MATCHES \"_home_|_usr_|_opt_|_var_\")
+    if(FILENAME MATCHES \"_home_|_usr_|_opt_|_var_|_Users_\")
         file(REMOVE \"\${MANPAGE}\")
         math(EXPR DELETED_COUNT \"\${DELETED_COUNT} + 1\")
         continue()

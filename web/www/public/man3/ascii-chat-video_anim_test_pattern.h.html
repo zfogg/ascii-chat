@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>test_pattern.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">test_pattern.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">test_pattern.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">test_pattern.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>test_pattern</b> <b>test_pattern_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>test_pattern_create</b> (int width,
+    int height, <b>test_pattern_t</b> **out)
+  <br/>
+  <b>asciichat_error_t</b> <b>test_pattern_resize</b> (<b>test_pattern_t</b>
+    *pattern, int width, int height)
+  <br/>
+  <b>asciichat_error_t</b> <b>test_pattern_render</b> (<b>test_pattern_t</b>
+    *pattern, int index, double time_ms, <b>bool</b> cadence)
+  <br/>
+  const <b>uint8_t</b> * <b>test_pattern_rgba</b> (<b>test_pattern_t</b>
+    *pattern)
+  <br/>
+  <b>image_t</b> * <b>test_pattern_image</b> (<b>test_pattern_t</b> *pattern)
+  <br/>
+  void <b>test_pattern_destroy</b> (<b>test_pattern_t</b> *pattern)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>test_pattern</b> <b>test_pattern_t</b></a></h2>
+<p class="Pp">Definition at line <b>4</b> of file
+    <b>video/anim/test_pattern.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> test_pattern_create (int width, int
+  height, <b>test_pattern_t</b> ** out)</h2>
+<p class="Pp">Independent, reusable RGB renderer. Time is elapsed milliseconds,
+    not frame count.</p>
+<p class="Pp">Definition at line <b>104</b> of file
+    <b>lib/video/anim/test_pattern.c</b>.</p>
+<pre>104                                                                                    {
+105   if (!out)
+106     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing test pattern output&quot;);
+107   *out = NULL;
+108   test_pattern_t *p = SAFE_CALLOC(1, sizeof(*p), test_pattern_t *);
+109   asciichat_error_t result = test_pattern_resize(p, width, height);
+110   if (result != ASCIICHAT_OK) {
+111     test_pattern_destroy(p);
+112     return result;
+113   }
+114   *out = p;
+115   return ASCIICHAT_OK;
+116 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>SAFE_CALLOC</b>, <b>SET_ERRNO</b>, <b>test_pattern_create()</b>,
+    <b>test_pattern_destroy()</b>, and <b>test_pattern_resize()</b>.</p>
+<p class="Pp">Referenced by <b>test_pattern_create()</b>, and
+    <b>wasm_test_pattern_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_test_pattern_destroy_("><a class="permalink" href="#void_test_pattern_destroy_(">void
+  test_pattern_destroy (<b>test_pattern_t</b> * pattern)</a></h2>
+<p class="Pp">Definition at line <b>117</b> of file
+    <b>lib/video/anim/test_pattern.c</b>.</p>
+<pre>117                                              {
+118   if (!p)
+119     return;
+120   if (p-&gt;image)
+121     image_destroy(p-&gt;image);
+122   SAFE_FREE(p-&gt;rgba);
+123   SAFE_FREE(p);
+124 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>test_pattern::image</b>, <b>image_destroy()</b>,
+    <b>test_pattern::rgba</b>, <b>SAFE_FREE</b>, and
+    <b>test_pattern_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>media_source_destroy()</b>,
+    <b>test_pattern_create()</b>, <b>test_pattern_destroy()</b>, and
+    <b>wasm_test_pattern_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>image_t</b> * test_pattern_image (<b>test_pattern_t</b> *
+  pattern)</h2>
+<p class="Pp">Definition at line <b>125</b> of file
+    <b>lib/video/anim/test_pattern.c</b>.</p>
+<pre>125                                                {
+126   return p ? p-&gt;image : NULL;
+127 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>test_pattern::image</b>, and
+    <b>test_pattern_image()</b>.</p>
+<p class="Pp">Referenced by <b>test_pattern_image()</b>, and
+    <b>wasm_test_pattern_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> test_pattern_render
+  (<b>test_pattern_t</b> * pattern, int index, double time_ms, <b>bool</b>
+  cadence)</h2>
+<p class="Pp">Definition at line <b>144</b> of file
+    <b>lib/video/anim/test_pattern.c</b>.</p>
+<pre>144                                                                                                   {
+145   animation_sample_t sample;
+146   animation_config_t config = {.type = ANIMATION_TEST_PATTERN, .fps = 60, .speed = 1};
+147   asciichat_error_t err = animation_sample_at(config, time_ms / 1000.0, &amp;sample);
+148   if (err != ASCIICHAT_OK)
+149     return err;
+150   animation_target_t target = {.type = ANIMATION_TARGET_TEST_PATTERN,
+151                                .test_pattern = {.context = p, .index = index, .cadence = cadence}};
+152   return animation_apply(&amp;sample, &amp;target);
+153 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>animation_apply()</b>, <b>animation_sample_at()</b>,
+    <b>ANIMATION_TARGET_TEST_PATTERN</b>, <b>ANIMATION_TEST_PATTERN</b>,
+    <b>ASCIICHAT_OK</b>, and <b>test_pattern_render()</b>.</p>
+<p class="Pp">Referenced by <b>test_pattern_render()</b>, and
+    <b>wasm_test_pattern_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> test_pattern_resize
+  (<b>test_pattern_t</b> * pattern, int width, int height)</h2>
+<p class="Pp">Definition at line <b>60</b> of file
+    <b>lib/video/anim/test_pattern.c</b>.</p>
+<pre>60                                                                                 {
+61   if (!p || width &lt; 1 || height &lt; 1)
+62     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid test pattern dimensions&quot;);
+63   if (p-&gt;image &amp;&amp; p-&gt;image-&gt;w == width &amp;&amp; p-&gt;image-&gt;h == height)
+64     return ASCIICHAT_OK;
+65   image_t *next = image_new(width, height);
+66   if (!next)
+67     return SET_ERRNO(ERROR_MEMORY, &quot;Test pattern image allocation failed&quot;);
+68   if (p-&gt;image)
+69     image_destroy(p-&gt;image);
+70   p-&gt;image = next;
+71   SAFE_FREE(p-&gt;rgba);
+72   return ASCIICHAT_OK;
+73 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEMORY</b>, <b>image_t::h</b>, <b>test_pattern::image</b>,
+    <b>image_destroy()</b>, <b>image_new()</b>, <b>test_pattern::rgba</b>,
+    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, <b>test_pattern_resize()</b>, and
+    <b>image_t::w</b>.</p>
+<p class="Pp">Referenced by <b>test_pattern_create()</b>,
+    <b>test_pattern_resize()</b>, and <b>wasm_test_pattern_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>uint8_t</b> * test_pattern_rgba (<b>test_pattern_t</b> * pattern)</a></h2>
+<p class="Pp">Reusable RGBA view for browser upload; invalidated by
+    resize/destroy.</p>
+<p class="Pp">Definition at line <b>129</b> of file
+    <b>lib/video/anim/test_pattern.c</b>.</p>
+<pre>129                                                     {
+130   if (!p || !p-&gt;image)
+131     return NULL;
+132   size_t count = (size_t)p-&gt;image-&gt;w * p-&gt;image-&gt;h;
+133   if (!p-&gt;rgba)
+134     p-&gt;rgba = SAFE_MALLOC(count * 4, uint8_t *);
+135   for (size_t i = 0; i &lt; count; i++) {
+136     p-&gt;rgba[i * 4] = p-&gt;image-&gt;pixels[i].r;
+137     p-&gt;rgba[i * 4 + 1] = p-&gt;image-&gt;pixels[i].g;
+138     p-&gt;rgba[i * 4 + 2] = p-&gt;image-&gt;pixels[i].b;
+139     p-&gt;rgba[i * 4 + 3] = 255;
+140   }
+141   return p-&gt;rgba;
+142 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rgb_pixel_t::b</b>, <b>rgb_pixel_t::g</b>,
+    <b>image_t::h</b>, <b>test_pattern::image</b>, <b>image_t::pixels</b>,
+    <b>rgb_pixel_t::r</b>, <b>test_pattern::rgba</b>, <b>SAFE_MALLOC</b>,
+    <b>test_pattern_rgba()</b>, and <b>image_t::w</b>.</p>
+<p class="Pp">Referenced by <b>test_pattern_rgba()</b>, and
+    <b>wasm_test_pattern_render_rgba()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

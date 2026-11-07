@@ -41,7 +41,6 @@
 <br/>
 <p class="Pp">struct <b>prompt_opts_t</b>
   <br/>
-  Options for text prompts.
   <br/>
 </p>
 </section>
@@ -64,6 +63,21 @@
 </p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>ui_prompt_kind_t</b> { <b>UI_PROMPT_INPUT</b>,
+    <b>UI_PROMPT_PASSWORD</b>, <b>UI_PROMPT_MEDIA_INPUT</b>,
+    <b>UI_PROMPT_CONFIRMATION</b>, <b>UI_PROMPT_SSH_PASSPHRASE</b>,
+    <b>UI_PROMPT_GPG_PASSPHRASE</b>, <b>UI_PROMPT_TRUST_HOST</b>,
+    <b>UI_PROMPT_UNVERIFIED_HOST</b>, <b>UI_PROMPT_DISCOVERY_KEY_CHANGE</b>,
+    <b>UI_PROMPT_IP_DISCLOSURE</b>, <b>UI_PROMPT_CONFIG_OVERWRITE</b>,
+    <b>UI_PROMPT_MANPAGE_OVERWRITE</b>, <b>UI_PROMPT_COMPLETION_OVERWRITE</b> }
+  <br/>
+  Options for text prompts.
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">int <b>platform_prompt_question</b> (const char *prompt, char
@@ -73,7 +87,10 @@
     (const char *prompt, <b>bool</b> default_yes)
   <br/>
   Prompt the user for a yes/no answer. <b>bool</b>
-    <b>platform_is_interactive</b> (void)
+    <b>platform_prompt_yes_no_timeout</b> (const char *prompt, <b>bool</b>
+    default_yes, unsigned timeout_seconds)
+  <br/>
+  <b>bool</b> <b>platform_is_interactive</b> (void)
   <br/>
   Check if interactive prompting is available.
   <br/>
@@ -95,7 +112,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

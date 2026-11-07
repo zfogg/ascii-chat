@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>dispatch.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">dispatch.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">dispatch.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">dispatch.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const <b>simd_backend_t</b> * <b>simd_select_backend</b>
+    (<b>uint32_t</b> features)
+  <br/>
+  const <b>simd_backend_t</b> * <b>simd_backend</b> (void)
+  <br/>
+  void <b>simd_luminance_scalar</b> (const <b>uint8_t</b> *rgb, <b>uint8_t</b>
+    *out, size_t count)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">const <b>simd_backend_t</b> * simd_backend (void )</h2>
+<p class="Pp">Immutable dispatch table cached per thread; no startup
+    constructors required.</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>dispatch.c</b>.</p>
+<pre>31                                          {
+32   static _Thread_local const simd_backend_t *selected;
+33   if (!selected) {
+34     uint32_t features = platform_cpu_features();
+35     selected = simd_select_backend(features);
+36     const char *requested = platform_simd_override();
+37     if (requested &amp;&amp; requested[0] &amp;&amp; strcmp(requested, &quot;auto&quot;) != 0) {
+38       // A diagnostic override can never bypass the CPU/OS safety check.
+39       selected = simd_select_backend(0);
+40       for (size_t i = 0; i &lt; sizeof(backends) / sizeof(backends[0]); i++) {
+41         if (strcmp(requested, backends[i].name) == 0 &amp;&amp;
+42             (features &amp; backends[i].required_features) == backends[i].required_features) {
+43           selected = &amp;backends[i];
+44           break;
+45         }
+46       }
+47     }
+48   }
+49   return selected;
+50 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_cpu_features()</b>,
+    <b>platform_simd_override()</b>, <b>simd_backend()</b>, and
+    <b>simd_select_backend()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, <b>simd_backend()</b>, and
+    <b>simd_cells_backend()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_simd_luminance_scalar_(const_"><a class="permalink" href="#void_simd_luminance_scalar_(const_">void
+  simd_luminance_scalar (const <b>uint8_t</b> * rgb, <b>uint8_t</b> * out,
+  size_t count)</a></h2>
+<p class="Pp">Definition at line <b>52</b> of file <b>dispatch.c</b>.</p>
+<pre>52                                                                            {
+53   for (size_t i = 0; i &lt; count; i++)
+54     out[i] = (uint8_t)((77u * rgb[3 * i] + 150u * rgb[3 * i + 1] + 29u * rgb[3 * i + 2] + 128u) &gt;&gt; 8);
+55 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>simd_luminance_scalar()</b>.</p>
+<p class="Pp">Referenced by <b>simd_luminance_avx2()</b>,
+    <b>simd_luminance_neon()</b>, <b>simd_luminance_scalar()</b>,
+    <b>simd_luminance_sse2()</b>, and <b>simd_luminance_ssse3()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">const <b>simd_backend_t</b> * simd_select_backend
+  (<b>uint32_t</b> features)</h2>
+<p class="Pp">Select only from compiled implementations whose requirements are
+    satisfied.</p>
+<p class="Pp">Definition at line <b>23</b> of file <b>dispatch.c</b>.</p>
+<pre>23                                                              {
+24   for (size_t i = 0; i &lt; sizeof(backends) / sizeof(backends[0]); i++) {
+25     if ((features &amp; backends[i].required_features) == backends[i].required_features)
+26       return &amp;backends[i];
+27   }
+28   return &amp;backends[sizeof(backends) / sizeof(backends[0]) - 1];
+29 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>simd_select_backend()</b>.</p>
+<p class="Pp">Referenced by <b>simd_backend()</b>, and
+    <b>simd_select_backend()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

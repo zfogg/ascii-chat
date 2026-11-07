@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>visualization.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">visualization.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">visualization.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">visualization.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>AUDIO_VISUALIZATION_SAMPLE_RATE</b> 48000
+  <br/>
+  #define <b>AUDIO_VISUALIZATION_COLOR_STANDARD</b> 0
+  <br/>
+  #define <b>AUDIO_VISUALIZATION_COLOR_DARKER</b> 1
+  <br/>
+  #define <b>AUDIO_VISUALIZATION_COLOR_BRIGHTER</b> 2
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>audio_visualization_source_t</b> {
+    <b>AUDIO_VISUALIZATION_SOURCE_MIC</b> = 0,
+    <b>AUDIO_VISUALIZATION_SOURCE_MEDIA</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_REMOTE</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_MIX</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_COUNT</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>audio_visualization_submit</b>
+    (<b>audio_visualization_source_t</b> source, const float *samples, size_t
+    count)
+  <br/>
+  void <b>audio_visualization_submit_stereo</b>
+    (<b>audio_visualization_source_t</b> source, const float *samples, size_t
+    count)
+  <br/>
+  void <b>audio_visualization_read</b> (<b>audio_visualization_source_t</b>
+    source, float *samples, size_t count)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_AUDIO_VISUALIZATION_COLOR_BRIGHTER___2"><a class="permalink" href="#_define_AUDIO_VISUALIZATION_COLOR_BRIGHTER___2">#define
+  AUDIO_VISUALIZATION_COLOR_BRIGHTER 2</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file <b>visualization.h</b>.</p>
+<p class="Pp">Referenced by <b>mirror_render_audio_visualization()</b>, and
+    <b>visualization_color_for_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_AUDIO_VISUALIZATION_COLOR_DARKER___1"><a class="permalink" href="#_define_AUDIO_VISUALIZATION_COLOR_DARKER___1">#define
+  AUDIO_VISUALIZATION_COLOR_DARKER 1</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>visualization.h</b>.</p>
+<p class="Pp">Referenced by <b>visualization_color_for_level()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_AUDIO_VISUALIZATION_COLOR_STANDARD___0"><a class="permalink" href="#_define_AUDIO_VISUALIZATION_COLOR_STANDARD___0">#define
+  AUDIO_VISUALIZATION_COLOR_STANDARD 0</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file <b>visualization.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_AUDIO_VISUALIZATION_SAMPLE_RATE___48000"><a class="permalink" href="#_define_AUDIO_VISUALIZATION_SAMPLE_RATE___48000">#define
+  AUDIO_VISUALIZATION_SAMPLE_RATE 48000</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file <b>visualization.h</b>.</p>
+<p class="Pp">Referenced by <b>audio_visualization_render_fft()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>audio_visualization_source_t</b></a></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="AUDIO_VISUALIZATION_SOURCE_MIC"><a class="permalink" href="#AUDIO_VISUALIZATION_SOURCE_MIC"><b><i>AUDIO_VISUALIZATION_SOURCE_MIC
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="AUDIO_VISUALIZATION_SOURCE_MEDIA"><a class="permalink" href="#AUDIO_VISUALIZATION_SOURCE_MEDIA"><b><i>AUDIO_VISUALIZATION_SOURCE_MEDIA
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="AUDIO_VISUALIZATION_SOURCE_REMOTE"><a class="permalink" href="#AUDIO_VISUALIZATION_SOURCE_REMOTE"><b><i>AUDIO_VISUALIZATION_SOURCE_REMOTE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX"><a class="permalink" href="#AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX"><b><i>AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="AUDIO_VISUALIZATION_SOURCE_MIX"><a class="permalink" href="#AUDIO_VISUALIZATION_SOURCE_MIX"><b><i>AUDIO_VISUALIZATION_SOURCE_MIX
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="AUDIO_VISUALIZATION_SOURCE_COUNT"><a class="permalink" href="#AUDIO_VISUALIZATION_SOURCE_COUNT"><b><i>AUDIO_VISUALIZATION_SOURCE_COUNT
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>5</b> of file <b>visualization.h</b>.</p>
+<pre>5              {
+6   AUDIO_VISUALIZATION_SOURCE_MIC = 0,
+7   AUDIO_VISUALIZATION_SOURCE_MEDIA,
+8   AUDIO_VISUALIZATION_SOURCE_REMOTE,
+9   AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX,
+10   AUDIO_VISUALIZATION_SOURCE_MIX,
+11   AUDIO_VISUALIZATION_SOURCE_COUNT
+12 } audio_visualization_source_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_visualization_read_("><a class="permalink" href="#void_audio_visualization_read_(">void
+  audio_visualization_read (<b>audio_visualization_source_t</b> source, float *
+  samples, size_t count)</a></h2>
+<p class="Pp">Definition at line <b>100</b> of file <b>visualization.c</b>.</p>
+<pre>100                                                                                                  {
+101   if (!samples)
+102     return;
+103   if (source &lt; AUDIO_VISUALIZATION_SOURCE_MIC || source &gt;= AUDIO_VISUALIZATION_SOURCE_COUNT) {
+104     memset(samples, 0, count * sizeof(float));
+105     return;
+106   }
+107   static_mutex_lock_named(&amp;history_mutex, &quot;audio_visualization_history&quot;);
+108   size_t available_count = count &lt; VISUALIZATION_HISTORY ? count : VISUALIZATION_HISTORY;
+109   size_t output_offset = count - available_count;
+110   for (size_t i = 0; i &lt; count; i++)
+111     samples[i] = 0.0f;
+112   size_t first_source = source;
+113   size_t last_source = source;
+114   if (source == AUDIO_VISUALIZATION_SOURCE_MIX) {
+115     first_source = AUDIO_VISUALIZATION_SOURCE_MIC;
+116     last_source = AUDIO_VISUALIZATION_SOURCE_REMOTE;
+117   } else if (source == AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX) {
+118     first_source = AUDIO_VISUALIZATION_SOURCE_MIC;
+119     last_source = AUDIO_VISUALIZATION_SOURCE_MEDIA;
+120   }
+121   for (size_t current = first_source; current &lt;= last_source; current++) {
+122     size_t start = (write_position[current] + VISUALIZATION_HISTORY - available_count) % VISUALIZATION_HISTORY;
+123     for (size_t i = 0; i &lt; available_count; i++)
+124       samples[output_offset + i] += history[current][(start + i) % VISUALIZATION_HISTORY];
+125   }
+126   static_mutex_unlock(&amp;history_mutex);
+127   for (size_t i = 0; i &lt; count; i++)
+128     samples[i] = fmaxf(-1.0f, fminf(1.0f, samples[i]));
+129 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>audio_visualization_read()</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_COUNT</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_MEDIA</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_MIC</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_MIX</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_REMOTE</b>, and
+  <b>VISUALIZATION_HISTORY</b>.</p>
+<p class="Pp">Referenced by <b>audio_visualization_read()</b>,
+    <b>audio_visualization_render_fft()</b>, and
+    <b>audio_visualization_render_waveform()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_visualization_submit_("><a class="permalink" href="#void_audio_visualization_submit_(">void
+  audio_visualization_submit (<b>audio_visualization_source_t</b> source, const
+  float * samples, size_t count)</a></h2>
+<p class="Pp">Definition at line <b>85</b> of file <b>visualization.c</b>.</p>
+<pre>85                                                                                                          {
+86   if ((!GET_OPTION(waveform) &amp;&amp; !GET_OPTION(fft)) || !samples || source &lt; AUDIO_VISUALIZATION_SOURCE_MIC ||
+87       source &gt; AUDIO_VISUALIZATION_SOURCE_REMOTE)
+88     return;
+89   static_mutex_lock_named(&amp;history_mutex, &quot;audio_visualization_history&quot;);
+90   size_t position = write_position[source];
+91   for (size_t i = 0; i &lt; count; i++) {
+92     float sample = samples[i];
+93     history[source][position] = isfinite(sample) ? fmaxf(-1.0f, fminf(1.0f, sample)) : 0.0f;
+94     position = (position + 1) % VISUALIZATION_HISTORY;
+95   }
+96   write_position[source] = position;
+97   static_mutex_unlock(&amp;history_mutex);
+98 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>AUDIO_VISUALIZATION_SOURCE_MIC</b>,
+    <b>AUDIO_VISUALIZATION_SOURCE_REMOTE</b>,
+    <b>audio_visualization_submit()</b>, <b>GET_OPTION</b>, and
+    <b>VISUALIZATION_HISTORY</b>.</p>
+<p class="Pp">Referenced by <b>audio_visualization_submit()</b>,
+    <b>audio_visualization_submit_stereo()</b>, and
+    <b>mirror_submit_audio_samples()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_audio_visualization_submit_stereo_("><a class="permalink" href="#void_audio_visualization_submit_stereo_(">void
+  audio_visualization_submit_stereo (<b>audio_visualization_source_t</b> source,
+  const float * samples, size_t count)</a></h2>
+<p class="Pp">Downmix interleaved stereo only for display analysis, preserving
+    its sample clock.</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>visualization.c</b>.</p>
+<pre>70                                                                                                                 {
+71   if (!samples || count % 2)
+72     return;
+73   float mono[480];
+74   for (size_t offset = 0; offset &lt; count;) {
+75     size_t frames = (count - offset) / 2;
+76     if (frames &gt; 480)
+77       frames = 480;
+78     for (size_t i = 0; i &lt; frames; i++)
+79       mono[i] = samples[offset + i * 2] * 0.5f + samples[offset + i * 2 + 1] * 0.5f;
+80     audio_visualization_submit(source, mono, frames);
+81     offset += frames * 2;
+82   }
+83 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>audio_visualization_submit()</b>, and
+    <b>audio_visualization_submit_stereo()</b>.</p>
+<p class="Pp">Referenced by <b>audio_visualization_submit_stereo()</b>, and
+    <b>audio_write_samples()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

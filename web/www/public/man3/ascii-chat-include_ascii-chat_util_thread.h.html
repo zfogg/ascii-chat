@@ -148,7 +148,7 @@ void stop_worker(void) {
 <p class="Pp"><b>Value:</b></p>
 <pre>do {                                                                                                                 \
 <br/>
-  if (acthread_create(&amp;(thread_var), (func), (arg)) != 0) {                                                  \
+  if (acthread_create(&amp;(thread_var), (func), (arg)) != 0) {                                                          \
 <br/>
     log_error(&quot;%s&quot;, (error_msg));                                                                                    \
 <br/>
@@ -183,15 +183,6 @@ void stop_worker(void) {
 </pre>
 <p class="Pp">Definition at line <b>97</b> of file
     <b>include/ascii-chat/util/thread.h</b>.</p>
-<pre>97 #define THREAD_CREATE_OR_RETURN_VOID(thread_var, func, arg, error_msg)                                                 \
-98   do {                                                                                                                 \
-99     if (acthread_create(&amp;(thread_var), (func), (arg)) != 0) {                                                  \
-100       log_error(&quot;%s&quot;, (error_msg));                                                                                    \
-101       return;                                                                                                          \
-102     }                                                                                                                  \
-103   } while (0)</pre>
-<pre></pre>
-<p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_THREAD_CREATE_SAFE(_thread_var,__func,__arg)"><a class="permalink" href="#_define_THREAD_CREATE_SAFE(_thread_var,__func,__arg)">#define
@@ -210,10 +201,9 @@ void stop_worker(void) {
 <br/>
 <i>arg</i> Thread argument (void *)</div>
 <p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Return value from acthread_create (0 on
-  success)</div>
-<p class="Pp">This is a direct call to acthread_create with no error
-    handling. Caller should check return value and log if needed.</p>
+<div class="Bd-indent">Return value from acthread_create (0 on success)</div>
+<p class="Pp">This is a direct call to acthread_create with no error handling.
+    Caller should check return value and log if needed.</p>
 <p class="Pp">Definition at line <b>76</b> of file
     <b>include/ascii-chat/util/thread.h</b>.</p>
 </section>
@@ -287,7 +277,7 @@ log_debug(&quot;Worker thread exited with code %p&quot;, exit_code);
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

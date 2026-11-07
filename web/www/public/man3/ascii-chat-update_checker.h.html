@@ -47,10 +47,28 @@
 </p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>NETWORK_UPDATE_CHECKER_LATEST_VERSION_BUFFER_SIZE</b>
+    64
+  <br/>
+  #define <b>NETWORK_UPDATE_CHECKER_LATEST_SHA_BUFFER_SIZE</b> 41
+  <br/>
+  #define <b>NETWORK_UPDATE_CHECKER_CURRENT_VERSION_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>NETWORK_UPDATE_CHECKER_CURRENT_SHA_BUFFER_SIZE</b> 41
+  <br/>
+  #define <b>NETWORK_UPDATE_CHECKER_RELEASE_URL_BUFFER_SIZE</b> 512
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
 <br/>
 <p class="Pp">enum <b>install_method_t</b> { <b>INSTALL_METHOD_HOMEBREW</b>,
-    <b>INSTALL_METHOD_ARCH_AUR</b>, <b>INSTALL_METHOD_GITHUB</b>,
+    <b>INSTALL_METHOD_SCOOP</b>, <b>INSTALL_METHOD_ARCH_AUR</b>,
+    <b>INSTALL_METHOD_INSTALLER</b>, <b>INSTALL_METHOD_GITHUB</b>,
     <b>INSTALL_METHOD_UNKNOWN</b> }
   <br/>
   Installation method for suggesting upgrade command.
@@ -69,20 +87,29 @@
   Load cached update check result. <b>asciichat_error_t</b>
     <b>update_check_save_cache</b> (const <b>update_check_result_t</b> *result)
   <br/>
-  Save update check result to cache. <b>bool</b>
-    <b>update_check_is_cache_fresh</b> (const <b>update_check_result_t</b>
-    *result)
+  Save update check result to cache. void <b>update_check_dismiss_for_a_week</b>
+    (<b>update_check_result_t</b> *result)
   <br/>
-  Check if cache is fresh (&lt; 7 days old). <b>install_method_t</b>
-    <b>update_check_detect_install_method</b> (void)
+  <b>bool</b> <b>update_check_is_dismissed</b> (const
+    <b>update_check_result_t</b> *result)
+  <br/>
+  <b>bool</b> <b>update_check_is_cache_fresh</b> (const
+    <b>update_check_result_t</b> *result)
+  <br/>
+  Check if cache is fresh (&lt; 7 days old). <b>bool</b>
+    <b>update_check_try_fresh_cache</b> (<b>update_check_result_t</b> *result)
+  <br/>
+  <b>install_method_t</b> <b>update_check_detect_install_method</b> (void)
   <br/>
   Detect installation method. void <b>update_check_get_upgrade_suggestion</b>
     (<b>install_method_t</b> method, const char *latest_version, char *buffer,
-    size_t <b>buffer_size</b>)
+    size_t buffer_size)
   <br/>
-  Get upgrade suggestion string. void <b>update_check_format_notification</b>
-    (const <b>update_check_result_t</b> *result, char *buffer, size_t
-    <b>buffer_size</b>)
+  Get upgrade suggestion string. const char * <b>update_check_get_aur_helper</b>
+    (void)
+  <br/>
+  void <b>update_check_format_notification</b> (const
+    <b>update_check_result_t</b> *result, char *buffer, size_t buffer_size)
   <br/>
   Format update notification message. <b>asciichat_error_t</b>
     <b>update_check_startup</b> (<b>update_check_result_t</b> *result)
@@ -108,7 +135,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>md_docs_2deployment-notifications(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">md_docs_2deployment-notifications(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">md_docs_2deployment-notifications(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">md_docs_2deployment-notifications - Release and deployment
+    notifications</p>
+<p class="Pp">.github/workflows/notify.yml sends the notifications for CLI
+    releases and the three Vercel websites. Documentation deployments and
+    container builds do not send notifications. Each caller supplies the
+    subject, body, and job results; the shared workflow uses the existing SMTP
+    secrets and dawidd6/action-send-mail action.</p>
+<p class="Pp"></p>
+<p class="Pp">The existing SMTP_TO_EMAIL destination routes release
+    notifications to Pushover. Keep that destination unchanged to retain its
+    configured sound and delivery settings. The workflow does not set a sound or
+    require a Pushover API token. See Pushover's email gateway
+  documentation.</p>
+<p class="Pp"></p>
+<p class="Pp">Notification jobs run after their deployment or publication job,
+    including on failure, and include a link to the workflow run. A successful
+    notification job confirms that the SMTP server accepted the email; device
+    delivery and sound are controlled by Pushover and the recipient's device
+    settings.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

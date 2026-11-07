@@ -95,7 +95,9 @@
 <h2 class="Ss" id="int_debug_atomic_format_timing_(const_"><a class="permalink" href="#int_debug_atomic_format_timing_(const_">int
   debug_atomic_format_timing (const <b>atomic_t</b> * atomic, char * buffer,
   size_t size)</a></h2>
-<p class="Pp">Format timing info for an <b>atomic_t</b> to a buffer.</p>
+<p class="Pp">Format timing info for an <b>atomic_t</b> to a buffer. Format
+    timing info for an atomic and write to buffer.</p>
+<p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>atomic</i> Pointer to <b>atomic_t</b>
 <br/>
@@ -117,51 +119,54 @@
 <i>size</i> Buffer size</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of bytes written to buffer</div>
-<p class="Pp">Definition at line <b>53</b> of file <b>debug/atomic.c</b>.</p>
-<pre>53                                                                                   {
-54     if (!atomic || !buffer || size == 0) return 0;
-55 
-56     // If never accessed, return empty (so caller can skip output)
-57     if (atomic-&gt;last_load_time_ns == 0 &amp;&amp; atomic-&gt;last_store_time_ns == 0) {
-58         return 0;
-59     }
-60 
-61     int offset = 0;
-62     uint64_t now_ns = time_get_ns();
-63 
-64     char load_str[64] = &quot;&quot;;
-65     char store_str[64] = &quot;&quot;;
-66     char count_str[128] = &quot;&quot;;
-67 
-68     if (atomic-&gt;last_load_time_ns &gt; 0 &amp;&amp; atomic-&gt;last_load_time_ns &lt;= now_ns) {
-69         char elapsed_str[64];
-70         time_pretty(now_ns - atomic-&gt;last_load_time_ns, -1, elapsed_str, sizeof(elapsed_str));
-71         snprintf(load_str, sizeof(load_str), &quot;load=%s&quot;, elapsed_str);
-72     }
-73 
-74     if (atomic-&gt;last_store_time_ns &gt; 0 &amp;&amp; atomic-&gt;last_store_time_ns &lt;= now_ns) {
-75         char elapsed_str[64];
-76         time_pretty(now_ns - atomic-&gt;last_store_time_ns, -1, elapsed_str, sizeof(elapsed_str));
-77         snprintf(store_str, sizeof(store_str), &quot;store=%s&quot;, elapsed_str);
-78     }
-79 
-80     if (atomic-&gt;load_count &gt; 0 || atomic-&gt;store_count &gt; 0 || atomic-&gt;cas_count &gt; 0 || atomic-&gt;fetch_count &gt; 0) {
-81         snprintf(count_str, sizeof(count_str), &quot;[ops: load=%llu store=%llu cas=%llu/%llu fetch=%llu]&quot;,
-82                  (unsigned long long)atomic-&gt;load_count, (unsigned long long)atomic-&gt;store_count,
-83                  (unsigned long long)atomic-&gt;cas_success_count, (unsigned long long)atomic-&gt;cas_count,
-84                  (unsigned long long)atomic-&gt;fetch_count);
-85     }
-86 
-87     offset += snprintf(buffer + offset, size - offset, &quot;%s %s %s&quot;, load_str, store_str, count_str);
-88     return offset;
-89 }</pre>
+<p class="Pp">Definition at line <b>59</b> of file <b>debug/atomic.c</b>.</p>
+<pre>59                                                                                   {
+60   if (!atomic || !buffer || size == 0)
+61     return 0;
+62
+63   // If never accessed, return empty (so caller can skip output)
+64   if (atomic-&gt;last_load_time_ns == 0 &amp;&amp; atomic-&gt;last_store_time_ns == 0) {
+65     return 0;
+66   }
+67
+68   int offset = 0;
+69   uint64_t now_ns = time_get_ns();
+70
+71   char load_str[DEBUG_ATOMIC_LOAD_BUFFER_SIZE] = &quot;&quot;;
+72   char store_str[DEBUG_ATOMIC_STORE_BUFFER_SIZE] = &quot;&quot;;
+73   char count_str[DEBUG_ATOMIC_COUNT_BUFFER_SIZE] = &quot;&quot;;
+74
+75   if (atomic-&gt;last_load_time_ns &gt; 0 &amp;&amp; atomic-&gt;last_load_time_ns &lt;= now_ns) {
+76     char elapsed_str[DEBUG_ATOMIC_ELAPSED_BUFFER_SIZE];
+77     time_pretty(now_ns - atomic-&gt;last_load_time_ns, -1, elapsed_str, sizeof(elapsed_str));
+78     snprintf(load_str, sizeof(load_str), &quot;load=%s&quot;, elapsed_str);
+79   }
+80
+81   if (atomic-&gt;last_store_time_ns &gt; 0 &amp;&amp; atomic-&gt;last_store_time_ns &lt;= now_ns) {
+82     char elapsed_str[DEBUG_ATOMIC_ELAPSED_BUFFER_SIZE];
+83     time_pretty(now_ns - atomic-&gt;last_store_time_ns, -1, elapsed_str, sizeof(elapsed_str));
+84     snprintf(store_str, sizeof(store_str), &quot;store=%s&quot;, elapsed_str);
+85   }
+86
+87   if (atomic-&gt;load_count &gt; 0 || atomic-&gt;store_count &gt; 0 || atomic-&gt;cas_count &gt; 0 || atomic-&gt;fetch_count &gt; 0) {
+88     snprintf(count_str, sizeof(count_str), &quot;[ops: load=%llu store=%llu cas=%llu/%llu fetch=%llu]&quot;,
+89              (unsigned long long)atomic-&gt;load_count, (unsigned long long)atomic-&gt;store_count,
+90              (unsigned long long)atomic-&gt;cas_success_count, (unsigned long long)atomic-&gt;cas_count,
+91              (unsigned long long)atomic-&gt;fetch_count);
+92   }
+93
+94   offset += snprintf(buffer + offset, size - offset, &quot;%s %s %s&quot;, load_str, store_str, count_str);
+95   return offset;
+96 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_t::cas_count</b>,
-    <b>atomic_t::cas_success_count</b>, <b>atomic_t::fetch_count</b>,
-    <b>atomic_t::last_load_time_ns</b>, <b>atomic_t::last_store_time_ns</b>,
-    <b>atomic_t::load_count</b>, <b>atomic_t::store_count</b>,
-    <b>time_get_ns()</b>, and <b>time_pretty()</b>.</p>
+<p class="Pp">References <b>DEBUG_ATOMIC_COUNT_BUFFER_SIZE</b>,
+    <b>DEBUG_ATOMIC_ELAPSED_BUFFER_SIZE</b>,
+    <b>debug_atomic_format_timing()</b>, <b>DEBUG_ATOMIC_LOAD_BUFFER_SIZE</b>,
+    <b>DEBUG_ATOMIC_STORE_BUFFER_SIZE</b>, <b>time_get_ns()</b>, and
+    <b>time_pretty()</b>.</p>
+<p class="Pp">Referenced by <b>debug_atomic_format_timing()</b>, and
+    <b>debug_atomic_ptr_unregister()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_atomic_init_(void_)"><a class="permalink" href="#void_debug_atomic_init_(void_)">void
@@ -169,23 +174,25 @@
 <p class="Pp">Lifecycle initialization for debug atomic tracking. In release
     builds (NDEBUG), this is a no-op macro. In debug builds, this initializes
     atomic operation tracking.</p>
-<p class="Pp">Definition at line <b>30</b> of file <b>debug/atomic.c</b>.</p>
-<pre>30                              {
-31     g_atomic_debug_initialized = true;
-32 }</pre>
+<p class="Pp">Definition at line <b>36</b> of file <b>debug/atomic.c</b>.</p>
+<pre>36                              {
+37   g_atomic_debug_initialized = true;
+38 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>main()</b>.</p>
+<p class="Pp">References <b>debug_atomic_init()</b>.</p>
+<p class="Pp">Referenced by <b>debug_atomic_init()</b>,
+    <b>debug_atomic_ptr_unregister()</b>, and <b>main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> debug_atomic_is_initialized (void )</h2>
 <p class="Pp">Check if debug atomic tracking is initialized. In release builds
     (NDEBUG), returns true. In debug builds, returns actual initialization
     state.</p>
-<p class="Pp">Definition at line <b>38</b> of file <b>debug/atomic.c</b>.</p>
-<pre>38                                        {
-39     return g_atomic_debug_initialized;
-40 }</pre>
+<p class="Pp">Definition at line <b>44</b> of file <b>debug/atomic.c</b>.</p>
+<pre>44                                        {
+45   return g_atomic_debug_initialized;
+46 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -197,23 +204,29 @@
     operations in sync state output. In release builds (NDEBUG), this is a no-op
     macro. In debug builds, this prints detailed atomic operation
   statistics.</p>
-<p class="Pp">Definition at line <b>136</b> of file <b>debug/atomic.c</b>.</p>
-<pre>136                                     {
-137     if (!g_atomic_debug_initialized) return;
-138 
-139     // Iterate named registry for atomic entries
-140     // Note: this is now kept for backward compatibility
-141     // The preferred method is to use sync.c's atomic_iter_callback
-142     // which integrates atomics into the synchronized output buffer
-143 }</pre>
+<p class="Pp">Definition at line <b>144</b> of file <b>debug/atomic.c</b>.</p>
+<pre>144                                     {
+145   if (!g_atomic_debug_initialized)
+146     return;
+147
+148   // Iterate named registry for atomic entries
+149   // Note: this is now kept for backward compatibility
+150   // The preferred method is to use sync.c's atomic_iter_callback
+151   // which integrates atomics into the synchronized output buffer
+152 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>debug_atomic_print_state()</b>.</p>
+<p class="Pp">Referenced by <b>debug_atomic_print_state()</b>, and
+    <b>debug_atomic_ptr_unregister()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_debug_atomic_ptr_format_timing_(const_"><a class="permalink" href="#int_debug_atomic_ptr_format_timing_(const_">int
   debug_atomic_ptr_format_timing (const <b>atomic_ptr_t</b> * atomic, char *
   buffer, size_t size)</a></h2>
-<p class="Pp">Format timing info for an <b>atomic_ptr_t</b> to a buffer.</p>
+<p class="Pp">Format timing info for an <b>atomic_ptr_t</b> to a buffer. Format
+    timing info for an <b>atomic_ptr_t</b> and write to buffer.</p>
+<p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>atomic</i> Pointer to <b>atomic_ptr_t</b>
 <br/>
@@ -235,52 +248,55 @@
 <i>size</i> Buffer size</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Number of bytes written to buffer</div>
-<p class="Pp">Definition at line <b>98</b> of file <b>debug/atomic.c</b>.</p>
-<pre>98                                                                                           {
-99     if (!atomic || !buffer || size == 0) return 0;
-100 
-101     // If never accessed, return empty (so caller can skip output)
-102     if (atomic-&gt;last_load_time_ns == 0 &amp;&amp; atomic-&gt;last_store_time_ns == 0) {
-103         return 0;
-104     }
-105 
-106     int offset = 0;
-107     uint64_t now_ns = time_get_ns();
-108 
-109     char load_str[64] = &quot;&quot;;
-110     char store_str[64] = &quot;&quot;;
-111     char count_str[128] = &quot;&quot;;
-112 
-113     if (atomic-&gt;last_load_time_ns &gt; 0 &amp;&amp; atomic-&gt;last_load_time_ns &lt;= now_ns) {
-114         char elapsed_str[64];
-115         time_pretty(now_ns - atomic-&gt;last_load_time_ns, -1, elapsed_str, sizeof(elapsed_str));
-116         snprintf(load_str, sizeof(load_str), &quot;load=%s&quot;, elapsed_str);
-117     }
-118 
-119     if (atomic-&gt;last_store_time_ns &gt; 0 &amp;&amp; atomic-&gt;last_store_time_ns &lt;= now_ns) {
-120         char elapsed_str[64];
-121         time_pretty(now_ns - atomic-&gt;last_store_time_ns, -1, elapsed_str, sizeof(elapsed_str));
-122         snprintf(store_str, sizeof(store_str), &quot;store=%s&quot;, elapsed_str);
-123     }
-124 
-125     if (atomic-&gt;load_count &gt; 0 || atomic-&gt;store_count &gt; 0 || atomic-&gt;cas_count &gt; 0 || atomic-&gt;exchange_count &gt; 0) {
-126         snprintf(count_str, sizeof(count_str), &quot;[ops: load=%llu store=%llu cas=%llu/%llu exchange=%llu]&quot;,
-127                  (unsigned long long)atomic-&gt;load_count, (unsigned long long)atomic-&gt;store_count,
-128                  (unsigned long long)atomic-&gt;cas_success_count, (unsigned long long)atomic-&gt;cas_count,
-129                  (unsigned long long)atomic-&gt;exchange_count);
-130     }
-131 
-132     offset += snprintf(buffer + offset, size - offset, &quot;%s %s %s&quot;, load_str, store_str, count_str);
-133     return offset;
-134 }</pre>
+<p class="Pp">Definition at line <b>105</b> of file <b>debug/atomic.c</b>.</p>
+<pre>105                                                                                           {
+106   if (!atomic || !buffer || size == 0)
+107     return 0;
+108
+109   // If never accessed, return empty (so caller can skip output)
+110   if (atomic-&gt;last_load_time_ns == 0 &amp;&amp; atomic-&gt;last_store_time_ns == 0) {
+111     return 0;
+112   }
+113
+114   int offset = 0;
+115   uint64_t now_ns = time_get_ns();
+116
+117   char load_str[DEBUG_ATOMIC_LOAD_BUFFER_SIZE] = &quot;&quot;;
+118   char store_str[DEBUG_ATOMIC_STORE_BUFFER_SIZE] = &quot;&quot;;
+119   char count_str[DEBUG_ATOMIC_COUNT_BUFFER_SIZE] = &quot;&quot;;
+120
+121   if (atomic-&gt;last_load_time_ns &gt; 0 &amp;&amp; atomic-&gt;last_load_time_ns &lt;= now_ns) {
+122     char elapsed_str[DEBUG_ATOMIC_ELAPSED_BUFFER_SIZE];
+123     time_pretty(now_ns - atomic-&gt;last_load_time_ns, -1, elapsed_str, sizeof(elapsed_str));
+124     snprintf(load_str, sizeof(load_str), &quot;load=%s&quot;, elapsed_str);
+125   }
+126
+127   if (atomic-&gt;last_store_time_ns &gt; 0 &amp;&amp; atomic-&gt;last_store_time_ns &lt;= now_ns) {
+128     char elapsed_str[DEBUG_ATOMIC_ELAPSED_BUFFER_SIZE];
+129     time_pretty(now_ns - atomic-&gt;last_store_time_ns, -1, elapsed_str, sizeof(elapsed_str));
+130     snprintf(store_str, sizeof(store_str), &quot;store=%s&quot;, elapsed_str);
+131   }
+132
+133   if (atomic-&gt;load_count &gt; 0 || atomic-&gt;store_count &gt; 0 || atomic-&gt;cas_count &gt; 0 || atomic-&gt;exchange_count &gt; 0) {
+134     snprintf(count_str, sizeof(count_str), &quot;[ops: load=%llu store=%llu cas=%llu/%llu exchange=%llu]&quot;,
+135              (unsigned long long)atomic-&gt;load_count, (unsigned long long)atomic-&gt;store_count,
+136              (unsigned long long)atomic-&gt;cas_success_count, (unsigned long long)atomic-&gt;cas_count,
+137              (unsigned long long)atomic-&gt;exchange_count);
+138   }
+139
+140   offset += snprintf(buffer + offset, size - offset, &quot;%s %s %s&quot;, load_str, store_str, count_str);
+141   return offset;
+142 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_ptr_t::cas_count</b>,
-    <b>atomic_ptr_t::cas_success_count</b>, <b>atomic_ptr_t::exchange_count</b>,
-    <b>atomic_ptr_t::last_load_time_ns</b>,
-    <b>atomic_ptr_t::last_store_time_ns</b>, <b>atomic_ptr_t::load_count</b>,
-    <b>atomic_ptr_t::store_count</b>, <b>time_get_ns()</b>, and
+<p class="Pp">References <b>DEBUG_ATOMIC_COUNT_BUFFER_SIZE</b>,
+    <b>DEBUG_ATOMIC_ELAPSED_BUFFER_SIZE</b>,
+    <b>DEBUG_ATOMIC_LOAD_BUFFER_SIZE</b>,
+    <b>debug_atomic_ptr_format_timing()</b>,
+    <b>DEBUG_ATOMIC_STORE_BUFFER_SIZE</b>, <b>time_get_ns()</b>, and
     <b>time_pretty()</b>.</p>
+<p class="Pp">Referenced by <b>debug_atomic_ptr_format_timing()</b>, and
+    <b>debug_atomic_ptr_unregister()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_atomic_ptr_register_(_Atomic(void_*)_*_a,_const_char_*_name)"><a class="permalink" href="#void_debug_atomic_ptr_register_(_Atomic(void_*)_*_a,_const_char_*_name)">void
@@ -290,6 +306,8 @@
 <div class="Bd-indent"><i>a</i> Pointer to _Atomic(void *) to register
 <br/>
 <i>name</i> Human-readable name</div>
+<p class="Pp">References <b>debug_atomic_ptr_register()</b>.</p>
+<p class="Pp">Referenced by <b>debug_atomic_ptr_register()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_atomic_ptr_unregister_(_Atomic(void_*)_*_a)"><a class="permalink" href="#void_debug_atomic_ptr_unregister_(_Atomic(void_*)_*_a)">void
@@ -297,6 +315,12 @@
 <p class="Pp">Unregister an _Atomic(void *) from the debug named registry.</p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>a</i> Pointer to _Atomic(void *) to unregister</div>
+<p class="Pp">References <b>debug_atomic_format_timing()</b>,
+    <b>debug_atomic_init()</b>, <b>debug_atomic_is_initialized()</b>,
+    <b>debug_atomic_print_state()</b>, <b>debug_atomic_ptr_format_timing()</b>,
+    <b>debug_atomic_ptr_unregister()</b>, and
+  <b>debug_atomic_shutdown()</b>.</p>
+<p class="Pp">Referenced by <b>debug_atomic_ptr_unregister()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_atomic_register_("><a class="permalink" href="#void_debug_atomic_register_(">void
@@ -308,6 +332,8 @@
 <i>name</i> Human-readable name</div>
 <p class="Pp">Called automatically by atomic_init_impl() in debug builds.
     Registers the atomic's address as a uintptr_t with the named registry.</p>
+<p class="Pp">References <b>debug_atomic_register()</b>.</p>
+<p class="Pp">Referenced by <b>debug_atomic_register()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_atomic_shutdown_(void_)"><a class="permalink" href="#void_debug_atomic_shutdown_(void_)">void
@@ -315,13 +341,16 @@
 <p class="Pp">Lifecycle shutdown for debug atomic tracking. In release builds
     (NDEBUG), this is a no-op macro. In debug builds, this cleans up atomic
     operation tracking.</p>
-<p class="Pp">Definition at line <b>34</b> of file <b>debug/atomic.c</b>.</p>
-<pre>34                                  {
-35     g_atomic_debug_initialized = false;
-36 }</pre>
+<p class="Pp">Definition at line <b>40</b> of file <b>debug/atomic.c</b>.</p>
+<pre>40                                  {
+41   g_atomic_debug_initialized = false;
+42 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+<p class="Pp">References <b>debug_atomic_shutdown()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
+    <b>debug_atomic_ptr_unregister()</b>, and
+  <b>debug_atomic_shutdown()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_debug_atomic_unregister_("><a class="permalink" href="#void_debug_atomic_unregister_(">void
@@ -330,6 +359,8 @@
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>a</i> Pointer to <b>atomic_t</b> to unregister</div>
 <p class="Pp">Called automatically by atomic_destroy() in debug builds.</p>
+<p class="Pp">References <b>debug_atomic_unregister()</b>.</p>
+<p class="Pp">Referenced by <b>debug_atomic_unregister()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -339,7 +370,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

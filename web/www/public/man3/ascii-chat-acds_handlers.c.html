@@ -61,8 +61,8 @@
 <section class="Ss">
 <h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
 <br/>
-<p class="Pp">typedef <b>asciichat_error_t</b>(*
-    <b>acip_acds_handler_func_t</b>) (const void *payload, size_t payload_len,
+<p class="Pp">typedef <b>asciichat_error_t</b>(*)
+    <b>acip_acds_handler_func_t</b>(const void *payload, size_t payload_len,
     <b>acip_transport_t</b> *transport, const char *client_ip, const
     <b>acip_acds_callbacks_t</b> *callbacks)
   <br/>
@@ -103,7 +103,7 @@
 <section class="Ss">
 <h2 class="Ss" id="_define_ACDS_HANDLER_COUNT___11"><a class="permalink" href="#_define_ACDS_HANDLER_COUNT___11">#define
   ACDS_HANDLER_COUNT 11</a></h2>
-<p class="Pp">Definition at line <b>33</b> of file <b>acds_handlers.c</b>.</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>acds_handlers.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ACDS_HASH(_type)"><a class="permalink" href="#_define_ACDS_HASH(_type)">#define
@@ -112,12 +112,12 @@
 <pre>((type) % ACDS_HASH_SIZE)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>43</b> of file <b>acds_handlers.c</b>.</p>
+<p class="Pp">Definition at line <b>45</b> of file <b>acds_handlers.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ACDS_HASH_SIZE___32"><a class="permalink" href="#_define_ACDS_HASH_SIZE___32">#define
   ACDS_HASH_SIZE 32</a></h2>
-<p class="Pp">Definition at line <b>32</b> of file <b>acds_handlers.c</b>.</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>acds_handlers.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -125,10 +125,10 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="typedef_"><a class="permalink" href="#typedef_">typedef
-  <b>asciichat_error_t</b>(* acip_acds_handler_func_t) (const void *payload,
+  <b>asciichat_error_t</b>(*) acip_acds_handler_func_t(const void *payload,
   size_t payload_len, <b>acip_transport_t</b> *transport, const char *client_ip,
   const <b>acip_acds_callbacks_t</b> *callbacks)</a></h2>
-<p class="Pp">Definition at line <b>28</b> of file <b>acds_handlers.c</b>.</p>
+<p class="Pp">Definition at line <b>29</b> of file <b>acds_handlers.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -158,34 +158,56 @@
 <i>callbacks</i> Application callbacks</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Definition at line <b>120</b> of file <b>acds_handlers.c</b>.</p>
-<pre>122                                                                                   {
-123   if (!callbacks) {
-124     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid callbacks&quot;);
-125   }
-126 
-127   if (type == PACKET_TYPE_ACIP_NETWORK_QUALITY) {
-128     log_info(&quot;&#x2605; ACIP_HANDLE_ACDS_PACKET: Dispatching type=%u (NETWORK_QUALITY) from %s, payload_len=%zu&quot;, type, client_ip, payload_len);
-129   }
-130 
-131   // O(1) dispatch via hash table lookup
-132   int idx = acds_handler_hash_lookup(g_acds_handler_hash, type);
-133   if (idx &lt; 0) {
-134     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled ACDS packet type: %d from %s&quot;, type, client_ip);
-135   }
-136 
-137   if (type == PACKET_TYPE_ACIP_NETWORK_QUALITY) {
-138     log_info(&quot;&#x2605; ACIP_HANDLE_ACDS_PACKET: Found handler at index=%d&quot;, idx);
-139   }
-140 
-141   return g_acds_handlers[idx](payload, payload_len, transport, client_ip, callbacks);
-142 }</pre>
+<p class="Pp">Definition at line <b>126</b> of file <b>acds_handlers.c</b>.</p>
+<pre>128                                                                                   {
+129   stats_runtime_packet(transport ? transport-&gt;stats_peer : NULL, type, payload_len, false, true);
+130   if (!callbacks) {
+131     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid callbacks&quot;);
+132   }
+133
+134   if (type == PACKET_TYPE_ACIP_NETWORK_QUALITY) {
+135     log_debug_every(US_PER_SEC_INT,
+136                     &quot;&#x2605; ACIP_HANDLE_ACDS_PACKET: Dispatching type=%u (NETWORK_QUALITY) from %s, payload_len=%zu&quot;, type,
+137                     client_ip, payload_len);
+138   }
+139
+140   if ((unsigned)type == CONSENSUS_HANDOFF_PACKET) {
+141     if (!callbacks-&gt;on_handoff)
+142       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Handoff unsupported&quot;);
+143     return callbacks-&gt;on_handoff(payload, payload_len, transport, callbacks-&gt;app_ctx);
+144   }
+145
+146   // O(1) dispatch via hash table lookup
+147   int idx = acds_handler_hash_lookup(g_acds_handler_hash, type);
+148   if (idx &lt; 0) {
+149     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled ACDS packet type: %d from %s&quot;, type, client_ip);
+150   }
+151
+152   if (type == PACKET_TYPE_ACIP_NETWORK_QUALITY) {
+153     log_debug_every(US_PER_SEC_INT, &quot;&#x2605; ACIP_HANDLE_ACDS_PACKET: Found handler at index=%d&quot;, idx);
+154   }
+155
+156   uint64_t stats_start = time_get_ns();
+157   asciichat_error_t result = g_acds_handlers[idx](payload, payload_len, transport, client_ip, callbacks);
+158   stats_duration_record(stats_runtime_scope(), STATS_DURATION_REQUEST, time_get_ns() - stats_start);
+159   if (result != ASCIICHAT_OK)
+160     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_REQUEST_FAILURES, 1);
+161   return result;
+162 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>,
-    <b>PACKET_TYPE_ACIP_NETWORK_QUALITY</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>, and
-    <b>acds_websocket_client_handler()</b>.</p>
+<p class="Pp">References <b>acip_handle_acds_packet()</b>,
+    <b>acip_acds_callbacks_t::app_ctx</b>, <b>ASCIICHAT_OK</b>,
+    <b>CONSENSUS_HANDOFF_PACKET</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>log_debug_every</b>,
+    <b>acip_acds_callbacks_t::on_handoff</b>,
+    <b>PACKET_TYPE_ACIP_NETWORK_QUALITY</b>, <b>SET_ERRNO</b>,
+    <b>stats_counter_add()</b>, <b>STATS_COUNTER_REQUEST_FAILURES</b>,
+    <b>stats_duration_record()</b>, <b>STATS_DURATION_REQUEST</b>,
+    <b>acip_transport::stats_peer</b>, <b>stats_runtime_packet()</b>,
+    <b>stats_runtime_scope()</b>, <b>time_get_ns()</b>, and
+    <b>US_PER_SEC_INT</b>.</p>
+<p class="Pp">Referenced by <b>acip_handle_acds_packet()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -195,7 +217,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

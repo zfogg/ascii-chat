@@ -89,7 +89,7 @@
     <b>g_server_private_key</b>
   <br/>
   Server's private key. <b>private_key_t</b> <b>g_server_identity_keys</b>
-    [<b>MAX_IDENTITY_KEYS</b>]
+    [<b>MAX_SESSION_KEYS</b>]
   <br/>
   Array of server identity keys. size_t <b>g_num_server_identity_keys</b>
   <br/>
@@ -162,41 +162,6 @@
 </section>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_server_context_t_server_context_t"><a class="permalink" href="#typedef_struct_server_context_t_server_context_t">typedef
-  struct server_context_t server_context_t</a></h2>
-<p class="Pp">Server context - encapsulates all server state. This structure
-    holds all server-wide state that was previously stored in global variables.
-    It's passed to client handlers via <b>tcp_server</b> user_data, reducing
-    global state and improving modularity.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="DESIGN_RATIONALE:"><a class="permalink" href="#DESIGN_RATIONALE:">DESIGN
-  RATIONALE: </a></h1>
-<ul class="Bl-bullet">
-  <li>Reduces global state: All server state in one place</li>
-  <li>Improves testability: Can create multiple independent server
-    instances</li>
-  <li>Better encapsulation: Clear ownership of resources</li>
-  <li>Thread-safe: Context is read-only after initialization</li>
-</ul>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="LIFETIME:"><a class="permalink" href="#LIFETIME:">LIFETIME:
-  </a></h1>
-<ul class="Bl-bullet">
-  <li>Created in <b>server_main()</b> before <b>tcp_server_init()</b></li>
-  <li>Passed to <b>tcp_server</b> via config.user_data</li>
-  <li>Available to client handlers via
-    <b>tcp_client_context_t.user_data</b></li>
-  <li>Destroyed in <b>server_main()</b> after <b>tcp_server_destroy()</b></li>
-</ul>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
@@ -225,112 +190,109 @@ ascii-chat server --port 8080
 # Options parsed in main.c, then server_main() called
 </pre>
 </div>
-<p class="Pp">Definition at line <b>2153</b> of file <b>server/main.c</b>.</p>
-<pre>2153                       {
-2154   // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
-2155 
-2156   // Register atomic for debug tracking
-2157   ATOMIC_REGISTER_AUTO(g_should_exit, NULL);
-2158 
-2159   // Register shutdown check callback for library code
-2160   shutdown_register_callback(check_shutdown);
-2161 
-2162   // Initialize crypto after logging is ready
-2163   log_debug(&quot;Initializing crypto...&quot;);
-2164   if (init_server_crypto() != 0) {
-2165     LOG_ERRNO_IF_SET(&quot;Crypto initialization failed&quot;);
-2166     FATAL(ERROR_CRYPTO, &quot;Crypto initialization failed&quot;);
-2167   }
-2168   log_debug(&quot;Crypto initialized successfully&quot;);
-2169 
-2170   log_info(&quot;ascii-chat server starting...&quot;);
-2171 
-2172   int port = GET_OPTION(port);
-2173   if (port &lt; 1 || port &gt; 65535) {
-2174     log_error(&quot;Invalid port configuration: %d&quot;, port);
-2175     FATAL(ERROR_CONFIG, &quot;Invalid port configuration: %d&quot;, port);
-2176   }
-2177 
-2178   ascii_simd_init();
-2179   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
-2180 
-2181 #ifndef NDEBUG
-2182   if (stats_init() != 0) {
-2183     FATAL(ERROR_THREAD, &quot;Statistics system initialization failed&quot;);
-2184   }
-2185 #endif
-2186 
-2187   // Create background worker thread pool for server operations
-2188   g_server_worker_pool = thread_pool_create(&quot;server_workers&quot;);
-2189   if (!g_server_worker_pool) {
-2190     LOG_ERRNO_IF_SET(&quot;Failed to create server worker thread pool&quot;);
-2191     FATAL(ERROR_MEMORY, &quot;Failed to create server worker thread pool&quot;);
-2192   }
-2193 
-2194   // Spawn statistics logging thread in worker pool
-2195   if (thread_pool_spawn(g_server_worker_pool, stats_logger_thread, NULL, 0, &quot;stats_logger&quot;) != ASCIICHAT_OK) {
-2196     LOG_ERRNO_IF_SET(&quot;Statistics logger thread creation failed&quot;);
-2197   } else {
-2198     log_debug(&quot;Statistics logger thread started&quot;);
-2199   }
-2200 
-2201   // Initialize static server context (populated further in server_init_fn)
-2202   // H.265 context is initialized in server_init_fn, not here
-2203   g_server_ctx = (server_context_t){
-2204       .tcp_server = NULL, // Set in server_init_fn after TCP server is ready
-2205       .rate_limiter = g_rate_limiter,
-2206       .client_manager = &amp;g_client_manager,
-2207       .client_manager_rwlock = &amp;g_client_manager_rwlock,
-2208       .server_should_exit = &amp;g_should_exit,
-2209       .audio_mixer = g_audio_mixer,
-2210       .stats = &amp;g_stats,
-2211       .stats_mutex = &amp;g_stats_mutex,
-2212       .encryption_enabled = g_server_encryption_enabled,
-2213       .server_private_key = &amp;g_server_private_key,
-2214       .client_whitelist = g_client_whitelist,
-2215       .num_whitelisted_clients = g_num_whitelisted_clients,
-2216       .session_host = NULL,
-2217       .h265_server = NULL, // Initialized in server_init_fn
-2218   };
-2219 
-2220   session_server_like_config_t config = {
-2221       .init_fn = server_init_fn,
-2222       .init_user_data = NULL,
-2223       .interrupt_fn = server_handle_sigint,
-2224       .cleanup_fn = server_cleanup_fn,
-2225       .cleanup_user_data = NULL,
-2226       .status_fn = server_status_fn,
-2227       .status_user_data = NULL,
-2228       .tcp_handler = ascii_chat_client_handler,
-2229       .tcp_user_data = &amp;g_server_ctx,
-2230       .websocket =
-2231           {
-2232               .enabled = true,
-2233               .handler = websocket_client_handler,
-2234               .user_data = &amp;g_server_ctx,
-2235           },
-2236       .mdns =
-2237           {
-2238               .enabled = !GET_OPTION(no_mdns_advertise),
-2239               .service_name = NULL, // Deferred: advertised after ACDS or mDNS session string is ready
-2240               .service_type = &quot;_ascii-chat._tcp&quot;,
-2241           },
-2242       .upnp =
-2243           {
-2244               .enabled = GET_OPTION(enable_upnp),
-2245               .description = &quot;ascii-chat Server&quot;,
-2246           },
-2247       // Raise FD limit for high-client-count scenarios (matches discovery-service policy)
-2248       // Server accepts MAX_CLIENTS connections plus WebSocket, TCP, UPnP, mDNS, etc.
-2249       // Each client may use multiple FDs (socket, media buffers, file handles)
-2250       // Raising to 65536 ensures we don't hit system limits under load
-2251       .raise_fd_limit = true,
-2252       .fd_limit_target = 65536,
-2253   };
-2254 
-2255   asciichat_error_t result = session_server_like_run(&amp;config);
-2256   return (result == ASCIICHAT_OK) ? 0 : 1;
-2257 }</pre>
+<p class="Pp">Definition at line <b>2053</b> of file <b>server/main.c</b>.</p>
+<pre>2053                       {
+2054   // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
+2055
+2056   // Register atomic for debug tracking
+2057   ATOMIC_REGISTER_AUTO(g_should_exit, NULL);
+2058
+2059   // Register shutdown check callback for library code
+2060   shutdown_register_callback(check_shutdown);
+2061
+2062   // Initialize crypto after logging is ready
+2063   log_debug(&quot;Initializing crypto...&quot;);
+2064   if (init_server_crypto() != 0) {
+2065     LOG_ERRNO_IF_SET(&quot;Crypto initialization failed&quot;);
+2066     FATAL(ERROR_CRYPTO, &quot;Crypto initialization failed&quot;);
+2067   }
+2068   log_debug(&quot;Crypto initialized successfully&quot;);
+2069
+2070   log_info(&quot;ascii-chat server starting...&quot;);
+2071
+2072   int port = GET_OPTION(port);
+2073   if (port &lt; 1 || port &gt; 65535) {
+2074     log_error(&quot;Invalid port configuration: %d&quot;, port);
+2075     FATAL(ERROR_CONFIG, &quot;Invalid port configuration: %d&quot;, port);
+2076   }
+2077
+2078   ascii_simd_init();
+2079   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
+2080
+2081 #ifndef NDEBUG
+2082   if (stats_init() != 0) {
+2083     FATAL(ERROR_THREAD, &quot;Statistics system initialization failed&quot;);
+2084   }
+2085 #endif
+2086
+2087   // Create background worker thread pool for server operations
+2088   g_server_worker_pool = thread_pool_create(&quot;server_workers&quot;);
+2089   if (!g_server_worker_pool) {
+2090     LOG_ERRNO_IF_SET(&quot;Failed to create server worker thread pool&quot;);
+2091     FATAL(ERROR_MEMORY, &quot;Failed to create server worker thread pool&quot;);
+2092   }
+2093
+2094   // Spawn statistics logging thread in worker pool
+2095   if (thread_pool_spawn(g_server_worker_pool, stats_logger_thread, NULL, 0, &quot;stats_logger&quot;) != ASCIICHAT_OK) {
+2096     LOG_ERRNO_IF_SET(&quot;Statistics logger thread creation failed&quot;);
+2097   } else {
+2098     log_debug(&quot;Statistics logger thread started&quot;);
+2099   }
+2100
+2101   // Initialize static server context (populated further in server_init_fn)
+2102   // H.265 context is initialized in server_init_fn, not here
+2103   g_server_ctx = (server_context_t){
+2104       .network_server = NULL, // Set in server_init_fn after TCP server is ready
+2105       .rate_limiter = g_rate_limiter,
+2106       .client_manager = &amp;g_client_manager,
+2107       .client_manager_rwlock = &amp;g_client_manager_rwlock,
+2108       .server_should_exit = &amp;g_should_exit,
+2109       .audio_mixer = g_audio_mixer,
+2110       .stats = &amp;g_stats,
+2111       .stats_mutex = &amp;g_stats_mutex,
+2112       .encryption_enabled = g_server_encryption_enabled,
+2113       .server_private_key = &amp;g_server_private_key,
+2114       .client_whitelist = g_client_whitelist,
+2115       .num_whitelisted_clients = g_num_whitelisted_clients,
+2116       .session_host = NULL,
+2117       .h265_server = NULL, // Initialized in server_init_fn
+2118   };
+2119
+2120   session_server_like_config_t config = {
+2121       .init_fn = server_init_fn,
+2122       .tick_fn = server_tick_fn,
+2123       .init_user_data = NULL,
+2124       .interrupt_fn = server_handle_sigint,
+2125       .cleanup_fn = server_cleanup_fn,
+2126       .cleanup_user_data = NULL,
+2127       .status_fn = server_status_fn,
+2128       .status_user_data = NULL,
+2129       .connections = server_network_callbacks,
+2130       .connection_user_data = &amp;g_server_ctx,
+2131       .websocket_enabled = true,
+2132       .partial_timeout_ms = 30000,
+2133       .mdns =
+2134           {
+2135               .enabled = !GET_OPTION(no_mdns_advertise),
+2136               .service_name = NULL, // Deferred: advertised after ACDS or mDNS session string is ready
+2137               .service_type = &quot;_ascii-chat._tcp&quot;,
+2138           },
+2139       .upnp =
+2140           {
+2141               .enabled = GET_OPTION(enable_upnp),
+2142               .description = &quot;ascii-chat Server&quot;,
+2143           },
+2144       // Raise FD limit for high-client-count scenarios (matches discovery-service policy)
+2145       // Server accepts MAX_CLIENTS connections plus WebSocket, TCP, UPnP, mDNS, etc.
+2146       // Each client may use multiple FDs (socket, media buffers, file handles)
+2147       // Raising to 65536 ensures we don't hit system limits under load
+2148       .raise_fd_limit = true,
+2149       .fd_limit_target = 65536,
+2150   };
+2151
+2152   asciichat_error_t result = session_server_like_run(&amp;config);
+2153   return (result == ASCIICHAT_OK) ? 0 : 1;
+2154 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_simd_init()</b>, <b>ASCIICHAT_OK</b>,
@@ -343,10 +305,12 @@ ascii-chat server --port 8080
     <b>g_should_exit</b>, <b>g_stats</b>, <b>g_stats_mutex</b>,
     <b>GET_OPTION</b>, <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>,
     <b>log_error</b>, <b>log_info</b>, <b>precalc_rgb_palettes()</b>,
+    <b>server_main()</b>, <b>server_network_callbacks</b>,
     <b>session_server_like_run()</b>, <b>shutdown_register_callback()</b>,
     <b>stats_init()</b>, <b>stats_logger_thread()</b>,
     <b>thread_pool_create()</b>, <b>thread_pool_spawn()</b>, <b>weight_blue</b>,
     <b>weight_green</b>, and <b>weight_red</b>.</p>
+<p class="Pp">Referenced by <b>server_main()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -354,8 +318,11 @@ ascii-chat server --port 8080
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>mixer_t</b>* volatile g_audio_mixer [extern]</h2>
-<p class="Pp">Global audio mixer. Volatile pointer to the multi-client audio
-    mixer instance. Used to mix audio from multiple clients for playback.</p>
+<p class="Pp">Global audio mixer. Global audio mixer instance for multi-client
+    audio processing.</p>
+<p class="Pp"></p>
+<p class="Pp">Volatile pointer to the multi-client audio mixer instance. Used to
+    mix audio from multiple clients for playback.</p>
 <p class="Pp"></p>
 <p class="Pp">Global audio mixer.</p>
 <p class="Pp"></p>
@@ -368,18 +335,17 @@ ascii-chat server --port 8080
     concurrently by multiple render.c audio threads without external
     synchronization. During shutdown, set to NULL before destroying to prevent
     use-after-free.</p>
-<p class="Pp">Definition at line <b>175</b> of file <b>server/main.c</b>.</p>
-<p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
-    <b>client_audio_render_thread()</b>, <b>remove_client()</b>, and
+<p class="Pp">Definition at line <b>199</b> of file <b>server/main.c</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_render_thread()</b>, and
     <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>client_manager_t</b> g_client_manager [extern]</h2>
-<p class="Pp">Global client manager. Registry for all connected clients. Used to
-    track client state, routing, and lifecycle management across server
-  threads.</p>
+<p class="Pp">Global client manager. Global client manager singleton - central
+    coordination point.</p>
 <p class="Pp"></p>
-<p class="Pp">Global client manager.</p>
+<p class="Pp">Registry for all connected clients. Used to track client state,
+    routing, and lifecycle management across server threads.</p>
 <p class="Pp"></p>
 <p class="Pp">This is the primary data structure for managing all connected
     clients. It serves as the bridge between main.c's connection accept loop and
@@ -396,22 +362,21 @@ ascii-chat server --port 8080
 </ul>
 <p class="Pp">THREAD SAFETY: Protected by g_client_manager_rwlock for concurrent
     access</p>
-<p class="Pp">Definition at line <b>336</b> of file
+<p class="Pp">Definition at line <b>189</b> of file
   <b>src/server/client.c</b>.</p>
-<p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
-    <b>any_clients_sending_video()</b>,
-    <b>broadcast_server_state_to_all_clients()</b>, <b>find_client_by_id()</b>,
-    <b>find_client_by_socket()</b>, <b>remove_client()</b>,
-    <b>send_server_state_to_client()</b>, <b>server_main()</b>,
-    <b>stats_logger_thread()</b>, and <b>update_server_stats()</b>.</p>
+<p class="Pp">Referenced by <b>add_transport_client()</b>,
+    <b>any_clients_sending_video()</b>, <b>find_client_by_id()</b>,
+    <b>send_server_state_to_client()</b>, <b>server_main()</b>, and
+    <b>stats_logger_thread()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>rwlock_t</b> g_client_manager_rwlock [extern]</h2>
-<p class="Pp">Read-write lock protecting client manager. Protects concurrent
-    access to g_client_manager from server threads. Use <b>rwlock_rdlock()</b>
-    for reads, <b>rwlock_wrlock()</b> for writes.</p>
+<p class="Pp">Read-write lock protecting client manager. Reader-writer lock
+    protecting the global client manager.</p>
 <p class="Pp"></p>
-<p class="Pp">Read-write lock protecting client manager.</p>
+<p class="Pp">Protects concurrent access to g_client_manager from server
+    threads. Use <b>rwlock_rdlock()</b> for reads, <b>rwlock_wrlock()</b> for
+    writes.</p>
 <p class="Pp"></p>
 <p class="Pp">This lock enables high-performance concurrent access patterns:</p>
 <ul class="Bl-bullet">
@@ -425,44 +390,18 @@ ascii-chat server --port 8080
 <ul class="Bl-bullet">
   <li>Read operations: <b>rwlock_rdlock()</b> for client lookups, stats
       gathering</li>
-  <li>Write operations: <b>rwlock_wrlock()</b> for <b>add_client()</b>,
-      <b>remove_client()</b></li>
+  <li>Write operations: <b>rwlock_wrlock()</b> for
+      <b>add_transport_client()</b>, <b>remove_client()</b></li>
   <li>Always acquire THIS lock before per-client mutexes (lock ordering)</li>
 </ul>
-<p class="Pp">Definition at line <b>351</b> of file
+<p class="Pp">Definition at line <b>204</b> of file
   <b>src/server/client.c</b>.</p>
-<pre>351 {0};</pre>
+<pre>204 {0};</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
-    <b>broadcast_server_state_to_all_clients()</b>, <b>find_client_by_id()</b>,
-    <b>find_client_by_socket()</b>, <b>remove_client()</b>,
-    <b>server_main()</b>, <b>stats_logger_thread()</b>, and
-    <b>update_server_stats()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>public_key_t</b> g_client_whitelist[<b>MAX_CLIENTS</b>]
-  [extern]</h2>
-<p class="Pp">Whitelist of allowed client public keys. Array of allowed client
-    Ed25519 public keys for authentication. Size is limited by MAX_CLIENTS.</p>
-<p class="Pp"></p>
-<p class="Pp">Whitelist of allowed client public keys.</p>
-<p class="Pp"></p>
-<p class="Pp">Array of public keys for clients that are authorized to connect to
-    the server. Used for client authentication when whitelist mode is enabled.
-    Sized to hold up to MAX_CLIENTS entries.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Only used when client authentication is enabled
-<p class="Pp"></p>
-<p class="Pp">Accessed from crypto.c for client authentication</p>
-</div>
-<p class="Pp">Definition at line <b>408</b> of file <b>server/main.c</b>.</p>
-<pre>408 {0};</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>server_crypto_handshake()</b>, and
-    <b>server_main()</b>.</p>
+<p class="Pp">Referenced by <b>add_transport_client()</b>,
+    <b>find_client_by_id()</b>, <b>server_main()</b>, and
+    <b>stats_logger_thread()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>h265_server_context_t</b>* volatile g_h265_server
@@ -478,40 +417,16 @@ ascii-chat server --port 8080
     used concurrently by multiple client handlers. Decoders are per-client.
     During shutdown, set to NULL before destroying to prevent
   use-after-free.</p>
-<p class="Pp">Definition at line <b>187</b> of file <b>server/main.c</b>.</p>
+<p class="Pp">Definition at line <b>211</b> of file <b>server/main.c</b>.</p>
 <p class="Pp">Referenced by <b>handle_image_frame_h265_packet()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="size_t_g_num_server_identity_keys"><a class="permalink" href="#size_t_g_num_server_identity_keys">size_t
-  g_num_server_identity_keys [extern]</a></h2>
-<p class="Pp">Number of server identity keys in use. Tracks how many keys in
-    g_server_identity_keys are valid.</p>
-<p class="Pp"></p>
-<p class="Pp">Number of server identity keys in use.</p>
-<p class="Pp"></p>
-<p class="Pp">Tracks how many identity keys were successfully loaded from --key
-    flags. Zero means server is running in simple mode (no identity key).</p>
-<p class="Pp">Definition at line <b>395</b> of file <b>server/main.c</b>.</p>
-<p class="Pp">Referenced by <b>server_crypto_handshake()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_g_num_whitelisted_clients"><a class="permalink" href="#size_t_g_num_whitelisted_clients">size_t
-  g_num_whitelisted_clients [extern]</a></h2>
-<p class="Pp">Number of whitelisted clients. Tracks how many keys in
-    g_client_whitelist are valid.</p>
-<p class="Pp"></p>
-<p class="Pp">Tracks the current number of entries in g_client_whitelist that
-    are valid and active. Used to iterate the whitelist and check
-  authorization.</p>
-<p class="Pp">Definition at line <b>418</b> of file <b>server/main.c</b>.</p>
-<p class="Pp">Referenced by <b>server_crypto_handshake()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss"><b>rate_limiter_t</b>* g_rate_limiter [extern]</h2>
-<p class="Pp">Global connection rate limiter. Shared rate limiter instance used
-    by packet handlers to prevent DoS attacks. Tracks connection attempts and
-    packet rates per IP address.</p>
+<p class="Pp">Global connection rate limiter. Global rate limiter for connection
+    attempts and packet processing.</p>
+<p class="Pp"></p>
+<p class="Pp">Shared rate limiter instance used by packet handlers to prevent
+    DoS attacks. Tracks connection attempts and packet rates per IP address.</p>
 <p class="Pp"></p>
 <p class="Pp">Global connection rate limiter.</p>
 <p class="Pp"></p>
@@ -534,73 +449,8 @@ ascii-chat server --port 8080
 <p class="Pp"></p>
 <p class="Pp"><b>See also</b></p>
 <div class="Bd-indent">main.h for extern declaration</div>
-<p class="Pp">Definition at line <b>217</b> of file <b>server/main.c</b>.</p>
+<p class="Pp">Definition at line <b>241</b> of file <b>server/main.c</b>.</p>
 <p class="Pp">Referenced by <b>process_decrypted_packet()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> g_server_encryption_enabled [extern]</h2>
-<p class="Pp">Server encryption enabled flag. Indicates whether end-to-end
-    encryption is enabled for this server.</p>
-<p class="Pp"></p>
-<p class="Pp">Server encryption enabled flag.</p>
-<p class="Pp"></p>
-<p class="Pp">Set to true when the server is configured to use encryption and
-    has successfully loaded a private key. Controls whether the server performs
-    cryptographic handshakes with clients.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Accessed from crypto.c for server-side crypto
-  operations</div>
-<p class="Pp">Definition at line <b>359</b> of file <b>server/main.c</b>.</p>
-<p class="Pp">Referenced by <b>server_crypto_handshake()</b>, and
-    <b>server_main()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>private_key_t</b>
-  g_server_identity_keys[<b>MAX_IDENTITY_KEYS</b>] [extern]</h2>
-<p class="Pp">Array of server identity keys. Additional server identity keys for
-    multi-key support. Size is limited by MAX_IDENTITY_KEYS.</p>
-<p class="Pp"></p>
-<p class="Pp">Array of server identity keys.</p>
-<p class="Pp"></p>
-<p class="Pp">Stores all server identity keys loaded from multiple --key flags.
-    Enables servers to present different keys (SSH, GPG) based on client
-    expectations. Server selects the appropriate key during handshake based on
-    what the client downloaded from ACDS.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">g_server_private_key points to g_server_identity_keys[0]
-  for compatibility</div>
-<p class="Pp">Definition at line <b>385</b> of file <b>server/main.c</b>.</p>
-<pre>385 {0};</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>server_crypto_handshake()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>private_key_t</b> g_server_private_key [extern]</h2>
-<p class="Pp">Server's private key. Server's Ed25519 private key used for
-    digital signatures and key exchange.</p>
-<p class="Pp"></p>
-<p class="Pp">Server's private key.</p>
-<p class="Pp"></p>
-<p class="Pp">Stores the server's primary private key loaded from the first
-    --key flag. Used for cryptographic handshakes and packet
-    encryption/decryption. Initialized during server startup from the configured
-    key file path.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This is an alias to g_server_identity_keys[0] for
-  backward compatibility
-<p class="Pp"></p>
-<p class="Pp">Accessed from crypto.c for server-side crypto operations</p>
-</div>
-<p class="Pp">Definition at line <b>372</b> of file <b>server/main.c</b>.</p>
-<pre>372 {0};</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>server_crypto_handshake()</b>, and
     <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
@@ -613,6 +463,11 @@ ascii-chat server --port 8080
     lib/debug/lock.c In production builds, this is defined in main.c and set
     during shutdown. For tests, we stub it out as false (tests don't perform
     shutdown).</p>
+<p class="Pp"></p>
+<p class="Pp">Global exit flag used by all modes</p>
+<p class="Pp"></p>
+<p class="Pp">Set to true when the application should exit (SIGTERM, Ctrl+C,
+    error, etc). All modes check this flag regularly to exit gracefully.</p>
 <p class="Pp">Definition at line <b>34</b> of file <b>globals.c</b>.</p>
 <pre>34 {0};</pre>
 <pre></pre>
@@ -626,7 +481,7 @@ ascii-chat server --port 8080
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

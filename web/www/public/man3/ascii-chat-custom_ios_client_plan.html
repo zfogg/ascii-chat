@@ -1,0 +1,1861 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>custom_ios_client_plan(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">custom_ios_client_plan(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">custom_ios_client_plan(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">custom_ios_client_plan - ascii-chat iOS Client - Implementation
+    Plan (WIP)</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ascii-chat_iOS_Client_-_Implementation_Plan_(WIP)"><a class="permalink" href="#ascii-chat_iOS_Client_-_Implementation_Plan_(WIP)">ascii-chat
+  iOS Client - Implementation Plan (WIP)</a></h1>
+<div class="Bd-indent"><b>Status</b>: Draft / Research Phase <b>Last
+  Updated</b>: 2026-03-06 <b>Goal</b>: Native iOS app in Swift that uses
+  libasciichat (compiled for iOS) to support server, client, mirror, and
+  discovery modes.</div>
+<section class="Ss">
+<h2 class="Ss" id="Overview"><a class="permalink" href="#Overview">Overview</a></h2>
+<p class="Pp">The iOS client runs the <b>actual C main functions</b>
+    (<b>client_main</b><b>, </b><b>mirror_main</b><b>,
+    </b><b>server_main</b><b>, </b><b>discovery_main</b><b>) natively on iOS.
+    All terminal output is captured into a buffer, rendered through libvterm +
+    FreeType into an RGB24 pixel buffer, and delivered to Swift via a registered
+    callback every frame. The Swift app is a thin display layer &#x2014; it
+    never reimplements session logic, handshake state machines, packet parsing,
+    or connection management. All of that stays in C where it already
+  works.</b></p>
+<p class="Pp"></p>
+<p class="Pp">This is the same philosophy as the WASM web client, but taken
+    further: instead of reimplementing the session orchestration in Swift by
+    calling library functions, the C session code runs unmodified and the iOS
+    platform layer redirects its output to a pixel buffer callback.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>The Swift app is responsible for:</b></p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Displaying pixel buffers from the C render callback (CGImage/Metal)</li>
+  <li>Providing camera frames via AVFoundation (the library's webcam code is
+      shared macOS/iOS)</li>
+  <li>Audio capture/playback via AVAudioEngine shim (replaces PortAudio
+    symbols)</li>
+  <li>Platform stubs where iOS differs from POSIX (terminal dimensions,
+      filesystem, keepawake)</li>
+  <li>UI chrome: mode selection, settings, session discovery browser</li>
+</ul>
+<p class="Pp"><b>Everything else runs in C</b> &#x2014; ACIP protocol, crypto
+    handshake, ASCII art conversion, color filters, packet framing,
+    WebSocket/TCP transport, options system, session lifecycle, render loop
+    timing.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Unified_C_Main_"><a class="permalink" href="#Unified_C_Main_">Unified
+  C Main &#x2192; iOS Callback Architecture</a></h2>
+<p class="Pp">The key insight: every byte of terminal output goes through
+    platform_write_all(STDOUT_FILENO, ...) in <b>lib/platform/system.c</b><b>.
+    On iOS, we override this single function to feed bytes to libvterm instead
+    of writing to a file descriptor. libvterm + FreeType renders the terminal
+    state to an RGB24 pixel buffer, and a registered Swift callback receives it
+    every frame.</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>&#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;
+&#x2502;                    Swift / SwiftUI App                      &#x2502;
+&#x2502;  &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;  &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;  &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;  &#x2502;
+&#x2502;  &#x2502; FrameBuffer  &#x2502;  &#x2502; Mode Select   &#x2502;  &#x2502; Settings UI      &#x2502;  &#x2502;
+&#x2502;  &#x2502; View (pixel  &#x2502;  &#x2502; + Session     &#x2502;  &#x2502; (options pass    &#x2502;  &#x2502;
+&#x2502;  &#x2502;  display)    &#x2502;  &#x2502; Browser       &#x2502;  &#x2502;  through to C)   &#x2502;  &#x2502;
+&#x2502;  &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x25B2;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;  &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x252C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;  &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x252C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;  &#x2502;
+&#x2502;         &#x2502;                  &#x2502;                   &#x2502;            &#x2502;
+&#x2502;  &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2534;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x25BC;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x25BC;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510; &#x2502;
+&#x2502;  &#x2502;     Swift &#x2194; C Bridge (module map + callbacks)          &#x2502; &#x2502;
+&#x2502;  &#x2502;  ios_register_frame_callback(swift_fn)                  &#x2502; &#x2502;
+&#x2502;  &#x2502;  asciichat_main(argc, argv) &#x2014; runs on background thread&#x2502; &#x2502;
+&#x2502;  &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x252C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x252C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x252C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518; &#x2502;
+&#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x253C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x253C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x253C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;
+<br/>
+          &#x2502;                  &#x2502;                   &#x2502;
+&#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x25BC;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x25BC;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x25BC;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;
+&#x2502;                    libasciichat.a                           &#x2502;
+&#x2502;                                                             &#x2502;
+&#x2502;  client_main() / mirror_main() / server_main() /            &#x2502;
+&#x2502;  discovery_main() &#x2014; run unmodified                           &#x2502;
+&#x2502;                                                             &#x2502;
+&#x2502;  All ANSI output &#x2192; platform_write_all(STDOUT_FILENO, ...)   &#x2502;
+&#x2502;         &#x2502;                                                   &#x2502;
+&#x2502;         &#x25BC;                                                   &#x2502;
+&#x2502;  iOS override: ios_output_feed(buf, len)                     &#x2502;
+&#x2502;         &#x2502;                                                   &#x2502;
+&#x2502;         &#x25BC;                                                   &#x2502;
+&#x2502;  vterm_input_write(vt, buf, len)    [libvterm parses ANSI]   &#x2502;
+&#x2502;         &#x2502;                                                   &#x2502;
+&#x2502;         &#x25BC;                                                   &#x2502;
+&#x2502;  term_renderer_feed() &#x2192; RGB24 pixel buffer                   &#x2502;
+&#x2502;         &#x2502;                                                   &#x2502;
+&#x2502;         &#x25BC;                                                   &#x2502;
+&#x2502;  ios_frame_callback(pixels, w, h, pitch)  &#x2192; Swift            &#x2502;
+&#x2502;                                                             &#x2502;
+&#x2502;  &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510; &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510; &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510; &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;           &#x2502;
+&#x2502;  &#x2502; Network &#x2502; &#x2502; Video /  &#x2502; &#x2502; Crypto &#x2502; &#x2502; Options &#x2502;           &#x2502;
+&#x2502;  &#x2502; TCP/WS  &#x2502; &#x2502; ASCII    &#x2502; &#x2502; Sodium &#x2502; &#x2502; System  &#x2502;           &#x2502;
+&#x2502;  &#x2502; ACIP    &#x2502; &#x2502; Render   &#x2502; &#x2502; E2E    &#x2502; &#x2502;         &#x2502;           &#x2502;
+&#x2502;  &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518; &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518; &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518; &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;           &#x2502;
+&#x2502;  &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510; &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510; &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510; &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;           &#x2502;
+&#x2502;  &#x2502; Audio   &#x2502; &#x2502; Media    &#x2502; &#x2502; Discov &#x2502; &#x2502;Platform &#x2502;           &#x2502;
+&#x2502;  &#x2502; Opus    &#x2502; &#x2502; FFmpeg   &#x2502; &#x2502; ACDS   &#x2502; &#x2502; iOS     &#x2502;           &#x2502;
+&#x2502;  &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518; &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518; &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518; &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;           &#x2502;
+&#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="How_it_compares"><a class="permalink" href="#How_it_compares">How
+  it compares</a></h2>
+<p class="Pp">Approach iOS Client (Unified) Web client reimplements session iOS
+    runs actual C session code unmodified Swift ConnectionManager
+    <b>Eliminated</b> &#x2014; C client_main handles connections Swift
+    PacketParser <b>Eliminated</b> &#x2014; C ACIP code handles packets Swift
+    handshake state machine <b>Eliminated</b> &#x2014; C crypto handshake runs
+    as-is Camera capture Shared webcam/apple/ (AVFoundation, macOS+iOS) Audio
+    pipeline AVAudioEngine shim replaces PortAudio symbols Display rendering
+    libvterm + FreeType &#x2192; pixel buffer &#x2192; Swift callback Timing /
+    FPS C render loop handles timing (CADisplayLink not needed) React state /
+    hooks (web) SwiftUI @Observable on frame callback</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Workstreams"><a class="permalink" href="#Workstreams">Workstreams</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="1"><a class="permalink" href="#1">1. Compile libasciichat for
+  iOS</a></h2>
+<p class="Pp"><b>Goal</b>: Produce libasciichat.a (static library) for arm64 iOS
+    and arm64 iOS Simulator.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="1a"><a class="permalink" href="#1a">1a. iOS CMake toolchain
+  file</a></h2>
+<p class="Pp">Create cmake/toolchains/iOS.cmake:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>set(CMAKE_SYSTEM_NAME iOS)
+set(CMAKE_OSX_DEPLOYMENT_TARGET &quot;16.0&quot;)
+# CMAKE_OSX_ARCHITECTURES set by preset (arm64)
+# CMAKE_OSX_SYSROOT auto-detected by CMake when CMAKE_SYSTEM_NAME=iOS
+set(CMAKE_CROSSCOMPILING TRUE)
+# Use Clang (already project default)
+set(CMAKE_C_COMPILER_TARGET arm-apple-ios${CMAKE_OSX_DEPLOYMENT_TARGET})
+# Bitcode is dead (Xcode 14+), skip it
+set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE NO)
+# Framework search paths
+set(CMAKE_FIND_FRAMEWORK FIRST)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="1b"><a class="permalink" href="#1b">1b. CMake
+  options</a></h2>
+<p class="Pp">Add BUILD_IOS and BUILD_IOS_SIM cache options (not presets):</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre># In CMakeLists.txt or cmake/init/
+option(BUILD_IOS &quot;Build for iOS device (arm64)&quot; OFF)
+option(BUILD_IOS_SIM &quot;Build for iOS Simulator (arm64)&quot; OFF)
+if(BUILD_IOS OR BUILD_IOS_SIM)
+<br/>
+    set(PLATFORM_IOS TRUE)
+<br/>
+    set(PLATFORM_POSIX TRUE)
+<br/>
+    set(PLATFORM_DARWIN TRUE)
+<br/>
+    set(CMAKE_CROSSCOMPILING TRUE)
+<br/>
+    set(CMAKE_SYSTEM_NAME iOS)
+<br/>
+    set(CMAKE_OSX_DEPLOYMENT_TARGET &quot;16.0&quot;)
+<br/>
+    set(CMAKE_OSX_ARCHITECTURES &quot;arm64&quot;)
+<br/>
+    set(CMAKE_XCODE_ATTRIBUTE_ENABLE_BITCODE NO)
+<br/>
+    set(BUILD_SHARED_LIBS OFF)
+<br/>
+    set(BUILD_TESTING OFF)
+<br/>
+    set(BUILD_EXECUTABLES OFF)
+<br/>
+    if(BUILD_IOS_SIM)
+<br/>
+        set(CMAKE_OSX_SYSROOT &quot;iphonesimulator&quot;)
+<br/>
+        message(STATUS &quot;Platform: iOS Simulator (arm64)&quot;)
+<br/>
+    else()
+<br/>
+        message(STATUS &quot;Platform: iOS Device (arm64)&quot;)
+<br/>
+    endif()
+endif()</pre>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre># iOS device
+cmake --preset default -B build-ios -DBUILD_IOS=ON
+cmake --build build-ios
+# iOS simulator
+cmake --preset default -B build-ios-sim -DBUILD_IOS_SIM=ON
+cmake --build build-ios-sim</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="1c"><a class="permalink" href="#1c">1c. Platform
+  detection</a></h2>
+<p class="Pp">Extend cmake/init/PlatformDetection.cmake:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>if(CMAKE_SYSTEM_NAME STREQUAL &quot;iOS&quot;)
+<br/>
+    set(PLATFORM_IOS TRUE)
+<br/>
+    set(PLATFORM_POSIX TRUE)
+<br/>
+    set(PLATFORM_DARWIN TRUE)
+<br/>
+    message(STATUS &quot;Platform: iOS (${CMAKE_OSX_ARCHITECTURES})&quot;)
+endif()</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="1d"><a class="permalink" href="#1d">1d. Dependency
+  strategy</a></h2>
+<p class="Pp">Dependency iOS Strategy Notes libsodium vcpkg arm64-ios or build
+    from source Has official iOS support FFmpeg Build from source with
+    --enable-cross-compile Mobile builds well-documented Opus vcpkg or source
+    build Lightweight, easy cross-compile libwebsockets Build from source (has
+    contrib/iOS.cmake) Already in .deps-cache libdatachannel Build from source
+    For WebRTC/discovery mode yyjson Header-only-ish, trivial Just compiles
+    PCRE2 vcpkg or source build Standard cross-compile BearSSL Build from source
+    Small, portable zstd vcpkg or source build Easy cross-compile sqlite3 Use
+    iOS system sqlite3 Ships with iOS libvterm Build from source Small, no deps,
+    easy cross-compile FreeType vcpkg or source build Widely cross-compiled for
+    iOS PortAudio <b>Replace</b> - AVAudioEngine shim
+    (lib/audio/ios/portaudio_shim.m) 13 functions, same callback API</p>
+<p class="Pp"></p>
+<p class="Pp"><b>XCFramework target</b> (combine device + simulator):</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>xcodebuild -create-xcframework \
+<br/>
+  -library build-ios/lib/libasciichat.a -headers include/ \
+<br/>
+  -library build-ios-sim/lib/libasciichat.a -headers include/ \
+<br/>
+  -output libasciichat.xcframework</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="2"><a class="permalink" href="#2">2. iOS Platform Layer
+  (lib/platform/ios/)</a></h2>
+<p class="Pp"><b>Key insight</b>: iOS is Darwin, which is POSIX. Unlike WASM
+    (which needs its own stubs for everything because it runs in a browser), iOS
+    can directly reuse the existing POSIX and macOS platform layers. The iOS
+    layer only needs to <i>override</i> the handful of things that differ.</p>
+<p class="Pp"></p>
+<p class="Pp">Some stubs are genuinely shared between WASM and iOS (and future
+    mobile/embedded targets) &#x2014; things like &quot;no real TTY&quot;,
+    &quot;no fork/exec&quot;, &quot;no PortAudio&quot;. These live in a new
+    shared lib/platform/stubs/ directory that both wasm/ and ios/ pull from via
+    CMake.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Do NOT blindly copy the WASM stubs to iOS.</b> The WASM layer
+    makes dangerous simplifications:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>WASM mutexes are <b>no-ops</b> (JS is single-threaded) &#x2014; iOS is
+      multithreaded, needs real pthreads</li>
+  <li>WASM crypto stubs <b>auto-accept all hosts</b> and disable key
+      verification &#x2014; iOS needs full crypto</li>
+  <li>WASM terminal code uses <b></b><b>EM_JS()</b><b> bridges to
+      JavaScript</b><b> &#x2014; doesn't exist on iOS</b></li>
+  <li>WASM logging routes to <b>browser console.log</b> &#x2014; iOS needs
+      os_log or NSLog</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Inheritance_strategy"><a class="permalink" href="#Inheritance_strategy">Inheritance
+  strategy</a></h2>
+<pre>lib/platform/posix/      &#x2190; iOS inherits everything here (pthreads, BSD sockets, time, strings, ...)
+lib/platform/macos/      &#x2190; iOS inherits most of this (Darwin syscalls, CoreText, ...)
+lib/platform/stubs/      &#x2190; Shared non-desktop stubs (WASM + iOS + future mobile/embedded)
+lib/platform/ios/        &#x2190; Only the iOS-specific differences (5-6 files)</pre>
+<p class="Pp">In CMake, the iOS target links the POSIX sources + macOS sources +
+    iOS overrides. The iOS files only provide implementations for symbols that
+    need to differ from macOS.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Shared_non-desktop_stubs_("><a class="permalink" href="#Shared_non-desktop_stubs_(">Shared
+  non-desktop stubs (lib/platform/stubs/)</a></h2>
+<p class="Pp">These stubs apply to both WASM and iOS (and future mobile/embedded
+    platforms). They handle the &quot;no real terminal, no shell, no
+    PortAudio&quot; reality of non-desktop targets. Currently they live in
+    lib/platform/wasm/stubs/ &#x2014; the plan is to promote the shared ones up
+    to lib/platform/stubs/ and have both WASM and iOS CMake targets pull from
+    there.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>lib/platform/stubs/
+&#x251C;&#x2500;&#x2500; terminal.c         # get_terminal_size from options, cursor hide/show no-ops
+&#x251C;&#x2500;&#x2500; video.c            # image_validate_dimensions (range check, portable)
+&#x251C;&#x2500;&#x2500; process.c          # popen/fork return ENOSYS (no shell on mobile/WASM)
+&#x251C;&#x2500;&#x2500; portaudio.h        # Stub types &#x2014; WASM only (iOS uses AVAudioEngine shim instead)
+&#x251C;&#x2500;&#x2500; audio.h            # Type definitions for audio_batch_info_t, audio_frame_t
+&#x251C;&#x2500;&#x2500; actions.c          # action_list_webcams, action_create_manpage, etc. &#x2014; no-ops
+&#x251C;&#x2500;&#x2500; manpage.c          # get_manpage_template/content return empty (no man pages)
+&#x2514;&#x2500;&#x2500; session_log_buffer.h  # Empty header (session log buffering handled by UI layer)</pre>
+<p class="Pp"><b>What stays in </b>wasm/stubs/<b> (WASM-only)</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>crypto.c &#x2014; auto-accepts hosts, disables key verification. iOS needs
+      REAL crypto.</li>
+  <li>filesystem.c &#x2014; routes fd 1/2 to <b>wasm_log_to_console()</b><b> via
+      EM_JS. iOS uses real files.</b></li>
+  <li>log.c &#x2014; mmap stubs. iOS can use real mmap logging.</li>
+</ul>
+<p class="Pp"><b>What stays in </b>wasm/<b> (WASM-only)</b>:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>threading.c &#x2014; no-op mutexes. iOS needs real pthreads.</li>
+  <li>terminal.c &#x2014; EM_JS bridges to xterm.js. iOS doesn't have JS.</li>
+  <li>console.c &#x2014; EM_JS to browser console. iOS uses os_log.</li>
+</ul>
+<p class="Pp">The WASM CMake target would change from wasm/stubs/* to stubs/* +
+    wasm/stubs/* (shared + WASM-only). The iOS CMake target would use stubs/* +
+    ios/* (shared + iOS-only).</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="What_works_as-is_from_POSIX_(no_iOS_code_needed)"><a class="permalink" href="#What_works_as-is_from_POSIX_(no_iOS_code_needed)">What
+  works as-is from POSIX (no iOS code needed)</a></h2>
+<p class="Pp">Module Why it works threading.c pthreads (mutex, rwlock, condvar,
+    TLS) work on iOS <b>socket.c</b><b> BSD sockets work on iOS </b>time.c<b>
+    </b>clock_gettime<b>, </b>gettimeofday<b>, </b>nanosleep<b> all work
+    </b>string.c<b> Standard libc string functions </b>memory.c<b>
+    </b>malloc<b>/</b>free<b>/</b>mmap<b> work </b>pipe.c<b> POSIX pipes work
+    </b><b>errno.c</b><b> Standard errno </b>backtrace.c<b> Darwin backtrace
+    works on iOS (Mach-O symbols) </b>lifecycle.c<b> Atomic operations and
+    pthreads work</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="What_works_from_macOS_(no_or_minor_changes)"><a class="permalink" href="#What_works_from_macOS_(no_or_minor_changes)">What
+  works from macOS (no or minor changes)</a></h2>
+<p class="Pp">Module Notes system.c Darwin system calls, signal handling.
+    fork/exec restricted but rarely called. font.c CoreText works on iOS. Bundle
+    paths may differ slightly. crypto/ Full libsodium crypto &#x2014; works
+    as-is on iOS arm64 webcam/macos/ Pure AVFoundation/CoreMedia/CoreVideo
+    &#x2014; rename to webcam/apple/ and it works on iOS as-is. Zero macOS-only
+    APIs.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="What_iOS_needs_to_override"><a class="permalink" href="#What_iOS_needs_to_override">What
+  iOS needs to override</a></h2>
+<p class="Pp">Platform module (lib/platform/ios/) &#x2014; only what the
+    platform layer actually owns:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>lib/platform/ios/
+&#x251C;&#x2500;&#x2500; system.c               # platform_write() override &#x2014; routes STDOUT to render bridge
+&#x251C;&#x2500;&#x2500; render_bridge.c        # libvterm + term_renderer + frame callback management
+&#x251C;&#x2500;&#x2500; render_bridge.h        # Public API for registering callbacks
+&#x251C;&#x2500;&#x2500; stdin_bridge.c         # Condvar + ring buffer: Swift pushes keystrokes, C blocks
+&#x2502;                          # on platform_read(STDIN_FILENO) until data arrives.
+&#x2502;                          # When C code first reads stdin, triggers a callback to
+&#x2502;                          # Swift to present the on-screen keyboard UI automatically.
+&#x251C;&#x2500;&#x2500; keyboard.c             # keyboard_init/destroy overrides (posix/keyboard.c calls
+&#x2502;                          # tcgetattr(stdin) and /dev/tty, which don't exist on iOS;
+&#x2502;                          # iOS keyboard reads from the stdin_bridge queue instead)
+&#x251C;&#x2500;&#x2500; terminal.c             # No TTY &#x2014; return options-based dimensions, truecolor
+&#x251C;&#x2500;&#x2500; keepawake.m            # UIApplication.idleTimerDisabled (macOS uses IOKit)
+&#x251C;&#x2500;&#x2500; filesystem.m           # Sandbox-aware paths (NSDocumentDirectory, app container)
+&#x251C;&#x2500;&#x2500; process.c              # Stub popen/fork (restricted on iOS)
+&#x2514;&#x2500;&#x2500; question.c             # Delegate prompts to Swift UI via registered callback</pre>
+<p class="Pp">Files that live in their own modules, not in platform:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>lib/log/ios_log.c                      # platform_log_hook() &#x2192; os_log (#397)
+lib/options/registry/ios_mode_defaults.c  # iOS defaults (truecolor, dimensions)</pre>
+<p class="Pp">That's ~9 platform files + 2 module files vs. the WASM layer's ~22
+    files.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<div class="Bd-indent"><b></b>isatty()<b> routing</b>: All isatty() calls in
+  <b>lib/tui/splash.c</b><b>, </b><b>lib/tui/status.c</b><b>,
+  </b>lib/platform/posix/keyboard.c<b>, and </b>lib/platform/posix/terminal.c<b>
+  now go through </b><b>platform_isatty()</b><b>. On iOS, the platform layer can
+  override this to control which screens display. By default, </b>fd 1<b> is not
+  a TTY on iOS, so splash/status screens will suppress themselves &#x2014;
+  correct behavior since the pixel render bridge handles display.</b></div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="iOS_override_implementations"><a class="permalink" href="#iOS_override_implementations">iOS
+  override implementations</a></h2>
+<p class="Pp"><b>terminal.c</b> &#x2014; no TTY, but we know what the display
+    supports:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>int get_terminal_size(unsigned short *rows, unsigned short *cols) {
+<br/>
+    // Dimensions come from the Swift UI layer via options
+<br/>
+    *cols = GET_OPTION(width) &gt; 0 ? GET_OPTION(width) : 80;
+<br/>
+    *rows = GET_OPTION(height) &gt; 0 ? GET_OPTION(height) : 40;
+<br/>
+    return 0;
+}
+term_color_support_t detect_color_support(void) {
+<br/>
+    return TERM_COLOR_TRUECOLOR;  // iOS display supports full color
+}
+bool terminal_supports_utf8(void) { return true; }
+bool is_output_piped(void) { return false; }
+bool is_interactive_terminal(void) { return false; }
+// Cursor control &#x2014; no-ops (rendering handled by Swift view)
+asciichat_error_t terminal_cursor_hide(void) { return ASCIICHAT_OK; }
+asciichat_error_t terminal_cursor_show(void) { return ASCIICHAT_OK; }</pre>
+<p class="Pp"><b>keepawake.m</b> &#x2014; Objective-C for UIKit:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>#import &lt;UIKit/UIKit.h&gt;
+#include &quot;ascii-chat/error.h&quot;
+asciichat_error_t platform_enable_keepawake(void) {
+<br/>
+    dispatch_async(dispatch_get_main_queue(), ^{
+<br/>
+        [UIApplication sharedApplication].idleTimerDisabled = YES;
+<br/>
+    });
+<br/>
+    return ASCIICHAT_OK;
+}
+void platform_disable_keepawake(void) {
+<br/>
+    dispatch_async(dispatch_get_main_queue(), ^{
+<br/>
+        [UIApplication sharedApplication].idleTimerDisabled = NO;
+<br/>
+    });
+}</pre>
+<p class="Pp"><b></b><b>filesystem.m</b><b></b><b> &#x2014; sandbox-aware
+    paths:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>#import &lt;Foundation/Foundation.h&gt;
+#include &quot;ascii-chat/error.h&quot;
+#include &quot;ascii-chat/platform/filesystem.h&quot;
+const char *platform_get_home_dir(void) {
+<br/>
+    static char home[PATH_MAX];
+<br/>
+    NSString *dir = NSHomeDirectory();
+<br/>
+    strlcpy(home, [dir UTF8String], sizeof(home));
+<br/>
+    return home;
+}
+// Returns heap-allocated string (caller frees)
+char *platform_get_config_dir(void) {
+<br/>
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(
+<br/>
+        NSApplicationSupportDirectory, NSUserDomainMask, YES);
+<br/>
+    const char *path = [[paths firstObject] UTF8String];
+<br/>
+    size_t len = strlen(path) + 1;
+<br/>
+    char *result = SAFE_MALLOC(len, char *);
+<br/>
+    strlcpy(result, path, len);
+<br/>
+    return result;
+}
+// Returns heap-allocated string (caller frees)
+char *platform_get_data_dir(void) {
+<br/>
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(
+<br/>
+        NSDocumentDirectory, NSUserDomainMask, YES);
+<br/>
+    const char *path = [[paths firstObject] UTF8String];
+<br/>
+    size_t len = strlen(path) + 1;
+<br/>
+    char *result = SAFE_MALLOC(len, char *);
+<br/>
+    strlcpy(result, path, len);
+<br/>
+    return result;
+}
+// Config file search: check app bundle + Documents
+asciichat_error_t platform_find_config_file(const char *filename,
+<br/>
+                                            config_file_list_t *list_out) {
+<br/>
+    // 1. Check app bundle
+<br/>
+    NSString *bundlePath = [[NSBundle mainBundle] pathForResource:
+<br/>
+        [NSString stringWithUTF8String:filename] ofType:nil];
+<br/>
+    if (bundlePath) {
+<br/>
+        // Add to list_out...
+<br/>
+        return ASCIICHAT_OK;
+<br/>
+    }
+<br/>
+    // 2. Check Documents directory
+<br/>
+    // ...
+<br/>
+    return SET_ERRNO(ERROR_NOT_FOUND, &quot;Config file not found: %s&quot;, filename);
+}</pre>
+<p class="Pp"><b>question.c</b> &#x2014; delegate to Swift UI:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Register a callback from Swift that handles user prompts in the UI
+typedef bool (*ios_prompt_callback_t)(const char *prompt, char *response, size_t max_len);
+static ios_prompt_callback_t g_prompt_callback = NULL;
+void ios_register_prompt_callback(ios_prompt_callback_t cb) {
+<br/>
+    g_prompt_callback = cb;
+}
+bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
+<br/>
+    if (g_prompt_callback) {
+<br/>
+        char response[8] = {0};
+<br/>
+        if (g_prompt_callback(prompt, response, sizeof(response))) {
+<br/>
+            return response[0] == 'y' || response[0] == 'Y';
+<br/>
+        }
+<br/>
+    }
+<br/>
+    return default_yes;  // Fallback to default
+}</pre>
+<p class="Pp"><b>process.c</b> &#x2014; stubs for restricted APIs:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>#include &quot;ascii-chat/error.h&quot;
+#include &quot;ascii-chat/platform/process.h&quot;
+// iOS doesn't support fork/exec/popen
+asciichat_error_t platform_popen(const char *name, const char *command,
+<br/>
+                                  const char *mode, FILE **out_stream) {
+<br/>
+    (void)name; (void)command; (void)mode; (void)out_stream;
+<br/>
+    return SET_ERRNO(ERROR_NOT_SUPPORTED,
+<br/>
+                     &quot;popen not available on iOS: %s&quot;, command);
+}
+// yt-dlp subprocess won't work on iOS &#x2014; media URLs must be
+// resolved by the Swift layer or pre-resolved before passing to library</pre>
+<p class="Pp"><b>lib/log/ios_log.c</b> &#x2014; route library logs to os_log
+    (#397):</p>
+<p class="Pp"></p>
+<p class="Pp">Implements the <b>platform_log_hook()</b><b> weak symbol defined
+    in </b><b>lib/log/log.c</b><b>.</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// lib/log/ios_log.c
+// Overrides the weak symbol platform_log_hook() from lib/log/log.c
+#include &lt;os/log.h&gt;
+#include &lt;ascii-chat/log/log.h&gt;
+static os_log_t g_os_log = NULL;
+void platform_log_hook(log_level_t level, const char *message) {
+<br/>
+    if (!g_os_log) g_os_log = os_log_create(&quot;com.ascii-chat&quot;, &quot;lib&quot;);
+<br/>
+    os_log_with_type(g_os_log, level &gt;= LOG_ERROR ? OS_LOG_TYPE_ERROR
+<br/>
+                              : level &gt;= LOG_WARN  ? OS_LOG_TYPE_DEFAULT
+<br/>
+                              : OS_LOG_TYPE_DEBUG, &quot;%{public}s&quot;, message);
+}</pre>
+<p class="Pp">This makes all <b>log_debug()</b><b>, </b><b>log_info()</b><b>,
+    </b><b>log_error()</b><b> etc. show up natively in the unified logging
+    system. Debug from a physical device without Xcode open:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre># libimobiledevice &#x2014; pipe device logs to terminal
+brew install libimobiledevice
+idevicesyslog | grep ascii-chat
+# Or filter by process
+idevicesyslog --process ascii-chat
+# Simulator
+xcrun simctl spawn booted log stream --predicate 'subsystem == &quot;com.ascii-chat&quot;'
+# Xcode's devicectl
+xcrun devicectl device syslog --device &lt;UDID&gt; | grep ascii-chat</pre>
+<p class="Pp">The existing --grep patterns work on the host side: idevicesyslog
+    | grep &quot;/handshake/i&quot;. Same debugging workflow, just over USB
+    instead of in the same terminal.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>lib/options/registry/ios_mode_defaults.c</b> &#x2014;
+    iOS-appropriate defaults:</p>
+<p class="Pp"></p>
+<p class="Pp">Lives alongside the existing
+    <b>lib/options/registry/mode_defaults.c</b><b>.</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>const char *get_default_log_file(void) {
+<br/>
+    return NULL;  // Log to os_log, not file
+}
+int get_default_port(void) {
+<br/>
+    return 27224;  // Same as desktop
+}
+void apply_ios_defaults(options_t *opts) {
+<br/>
+    // iOS defaults: truecolor, UTF-8, reasonable dimensions.
+<br/>
+    // Called during option parsing before options_state_set().
+<br/>
+    if (opts-&gt;color_mode == 0)
+<br/>
+        opts-&gt;color_mode = TERM_COLOR_TRUECOLOR;
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="PortAudio_on_iOS:_AVAudioEngine_shim"><a class="permalink" href="#PortAudio_on_iOS:_AVAudioEngine_shim">PortAudio
+  on iOS: AVAudioEngine shim</a></h2>
+<p class="Pp">PortAudio itself can't be compiled for iOS (its CoreAudio host API
+    is macOS-specific, missing AVAudioSession integration). But instead of
+    stubbing it out, we replace the PortAudio symbols with real AVAudioEngine
+    implementations so the library's entire audio pipeline &#x2014; callbacks,
+    Opus encoding/decoding, mixing, AEC3 &#x2014; works unchanged on iOS.</p>
+<p class="Pp"></p>
+<p class="Pp">The library only uses 13 PortAudio functions:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>Pa_Initialize          Pa_Terminate           Pa_GetErrorText
+Pa_OpenStream          Pa_StartStream         Pa_StopStream
+Pa_CloseStream         Pa_Sleep               Pa_WriteStream
+Pa_GetDefaultInputDevice   Pa_GetDefaultOutputDevice
+Pa_GetDeviceCount      Pa_GetDeviceInfo</pre>
+<p class="Pp">And ~11 types/constants: <b>PaError</b><b>,
+    </b><b>PaStream</b><b>, </b>PaDeviceIndex<b>, </b>PaDeviceInfo<b>,
+    </b>PaStreamParameters<b>, </b>PaStreamCallback<b>,
+    </b><b>PaStreamCallbackTimeInfo</b><b>, </b><b>PaStreamCallbackFlags</b><b>,
+    </b>paFloat32<b>, </b>paClipOff<b>, </b><b>paNoError</b><b>,
+    </b>paNoDevice<b>.</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Implementation</b>: lib/audio/ios/portaudio_shim.m</p>
+<p class="Pp"></p>
+<p class="Pp">An Objective-C file that provides these symbols using
+    AVAudioEngine:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// lib/audio/ios/portaudio_shim.m
+#import &lt;AVFoundation/AVFoundation.h&gt;
+#include &quot;portaudio.h&quot;  // Use the same header for type definitions
+// Internal state per stream
+typedef struct {
+<br/>
+    AVAudioEngine *engine;
+<br/>
+    PaStreamCallback *callback;
+<br/>
+    void *user_data;
+<br/>
+    bool is_input;
+<br/>
+    bool is_output;
+<br/>
+    bool is_running;
+} pa_ios_stream_t;
+PaError Pa_Initialize(void) {
+<br/>
+    // Configure AVAudioSession for playback + recording
+<br/>
+    AVAudioSession *session = [AVAudioSession sharedInstance];
+<br/>
+    NSError *error = nil;
+<br/>
+    [session setCategory:AVAudioSessionCategoryPlayAndRecord
+<br/>
+             withOptions:AVAudioSessionCategoryOptionDefaultToSpeaker |
+<br/>
+                         AVAudioSessionCategoryOptionAllowBluetooth
+<br/>
+                   error:&amp;error];
+<br/>
+    [session setActive:YES error:&amp;error];
+<br/>
+    return error ? paInternalError : paNoError;
+}
+PaError Pa_OpenStream(PaStream **stream,
+<br/>
+                      const PaStreamParameters *inputParams,
+<br/>
+                      const PaStreamParameters *outputParams,
+<br/>
+                      double sampleRate, unsigned long framesPerBuffer,
+<br/>
+                      PaStreamFlags flags, PaStreamCallback *callback,
+<br/>
+                      void *userData) {
+<br/>
+    pa_ios_stream_t *s = SAFE_CALLOC(1, sizeof(pa_ios_stream_t), pa_ios_stream_t *);
+<br/>
+    s-&gt;engine = [[AVAudioEngine alloc] init];
+<br/>
+    s-&gt;callback = callback;
+<br/>
+    s-&gt;user_data = userData;
+<br/>
+    s-&gt;is_input = (inputParams != NULL);
+<br/>
+    s-&gt;is_output = (outputParams != NULL);
+<br/>
+    if (s-&gt;is_input) {
+<br/>
+        // Install tap on inputNode &#x2014; delivers mic PCM to the PA callback
+<br/>
+        AVAudioFormat *fmt = [[AVAudioFormat alloc]
+<br/>
+            initWithCommonFormat:AVAudioPCMFormatFloat32
+<br/>
+            sampleRate:sampleRate channels:1 interleaved:NO];
+<br/>
+        [s-&gt;engine.inputNode installTapOnBus:0 bufferSize:(AVAudioFrameCount)framesPerBuffer
+<br/>
+            format:fmt block:^(AVAudioPCMBuffer *buffer, AVAudioTime *when) {
+<br/>
+            // Call the PortAudio callback with input data
+<br/>
+            // ...
+<br/>
+        }];
+<br/>
+    }
+<br/>
+    // Output: use AVAudioSourceNode to pull from PA callback
+<br/>
+    // ...
+<br/>
+    *stream = (PaStream *)s;
+<br/>
+    return paNoError;
+}
+// Pa_StartStream, Pa_StopStream, Pa_CloseStream, etc. map to
+// [engine startAndReturnError:], [engine stop], cleanup</pre>
+<p class="Pp">This means:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>The library's audio.c code works <b>unchanged</b> on iOS</li>
+  <li>Full duplex audio, Opus codec, AEC3 echo cancellation &#x2014; all
+      library-owned</li>
+  <li>AVAudioSession lifecycle managed properly (categories, interruptions,
+      Bluetooth)</li>
+  <li>No Swift audio bridge needed &#x2014; the AudioBridge.swift from the app
+      structure is eliminated</li>
+  <li>Device enumeration (Pa_GetDeviceCount/Pa_GetDeviceInfo) returns iOS audio
+      routes</li>
+</ul>
+<p class="Pp">The shim lives alongside the library code, not in the Swift app.
+    It links against AVFoundation.framework and AudioToolbox.framework.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="CMake_integration"><a class="permalink" href="#CMake_integration">CMake
+  integration</a></h2>
+<pre># In lib/CMakeLists.txt or cmake/platform/
+# Shared non-desktop stubs (used by both WASM and iOS)
+set(PLATFORM_STUBS_SOURCES
+<br/>
+    lib/platform/stubs/terminal.c
+<br/>
+    lib/platform/stubs/video.c
+<br/>
+    lib/platform/stubs/process.c
+<br/>
+    lib/platform/stubs/actions.c
+<br/>
+    lib/platform/stubs/manpage.c
+)
+if(PLATFORM_IOS)
+<br/>
+    # POSIX + macOS base (iOS inherits these)
+<br/>
+    list(APPEND PLATFORM_SOURCES
+<br/>
+        lib/platform/posix/threading.c
+<br/>
+        lib/platform/posix/socket.c
+<br/>
+        lib/platform/posix/time.c
+<br/>
+        lib/platform/posix/string.c
+<br/>
+        lib/platform/posix/memory.c
+<br/>
+        lib/platform/posix/pipe.c
+<br/>
+        lib/platform/posix/errno.c
+<br/>
+        lib/platform/posix/backtrace.c
+<br/>
+        lib/platform/posix/lifecycle.c
+<br/>
+        lib/platform/macos/system.c
+<br/>
+        lib/platform/macos/font.c
+<br/>
+        # ... other shared POSIX/macOS files
+<br/>
+    )
+<br/>
+    # Shared non-desktop stubs
+<br/>
+    list(APPEND PLATFORM_SOURCES ${PLATFORM_STUBS_SOURCES})
+<br/>
+    # iOS platform overrides
+<br/>
+    list(APPEND PLATFORM_SOURCES
+<br/>
+        lib/platform/ios/keepawake.m
+<br/>
+        lib/platform/ios/filesystem.m
+<br/>
+        lib/platform/ios/process.c
+<br/>
+        lib/platform/ios/question.c
+<br/>
+    )
+<br/>
+    # iOS files in their own modules
+<br/>
+    list(APPEND LOG_SOURCES lib/log/ios_log.c)
+<br/>
+    list(APPEND OPTIONS_SOURCES lib/options/registry/ios_mode_defaults.c)
+elseif(EMSCRIPTEN)
+<br/>
+    # WASM gets shared stubs + its own stubs + its own implementations
+<br/>
+    list(APPEND PLATFORM_SOURCES ${PLATFORM_STUBS_SOURCES})
+<br/>
+    list(APPEND PLATFORM_SOURCES
+<br/>
+        lib/platform/wasm/thread.c         # No-op mutexes (WASM-specific!)
+<br/>
+        lib/platform/wasm/terminal.c       # EM_JS to xterm.js (WASM-specific!)
+<br/>
+        lib/platform/wasm/console.c        # EM_JS to browser console
+<br/>
+        lib/platform/wasm/system.c
+<br/>
+        lib/platform/wasm/time.c
+<br/>
+        lib/platform/wasm/string.c
+<br/>
+        lib/platform/wasm/init.c
+<br/>
+        lib/platform/wasm/stubs/crypto.c   # Auto-accept (WASM-specific!)
+<br/>
+        lib/platform/wasm/filesystem.c
+<br/>
+        lib/platform/wasm/stubs/log.c
+<br/>
+    )
+endif()</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="3"><a class="permalink" href="#3">3. Swift &#x2194; C
+  Bridge</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="3a"><a class="permalink" href="#3a">3a. Render bridge
+  (lib/platform/ios/render_bridge.c)</a></h2>
+<p class="Pp">The render bridge is the core of the unified architecture. It
+    manages the libvterm + term_renderer instance and the registered Swift
+    callback. It sits between <b>platform_write_all()</b><b> and the Swift
+    display layer.</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// lib/platform/ios/render_bridge.h
+#pragma once
+#include &lt;stdint.h&gt;
+#include &lt;stddef.h&gt;
+// Callback type: receives RGB24 pixel buffer every frame
+typedef void (*ios_frame_callback_t)(const uint8_t *pixels,
+<br/>
+                                     int width, int height,
+<br/>
+                                     int pitch, void *ctx);
+// Register the Swift callback that receives rendered frames
+void ios_register_frame_callback(ios_frame_callback_t cb, void *ctx);
+// Called by platform_write_all() when fd == STDOUT_FILENO
+// Feeds bytes to libvterm, renders to pixels, calls callback
+void ios_output_feed(const char *data, size_t len);
+// Initialize the render bridge (creates libvterm + term_renderer)
+// Called before any mode main function starts
+void ios_render_bridge_init(int cols, int rows,
+<br/>
+                            const char *font_path, double font_size);
+// Teardown
+void ios_render_bridge_destroy(void);
+// Flush accumulated output &#x2192; render to pixels &#x2192; call Swift callback.
+// Called by platform_frame_flush() on iOS (see lib/platform/ios/frame_flush.c).
+// Not called directly by render paths &#x2014; use platform_frame_flush() instead.
+void ios_render_bridge_flush(void);</pre>
+<p class="Pp"></p>
+<pre>// lib/platform/ios/render_bridge.c
+#include &quot;render_bridge.h&quot;
+#include &quot;ascii-chat/media/render/renderer.h&quot;
+#include &lt;vterm.h&gt;
+#include &lt;string.h&gt;
+static terminal_renderer_t *g_renderer = NULL;
+static ios_frame_callback_t g_frame_cb = NULL;
+static void *g_frame_ctx = NULL;
+// Accumulation buffer for partial writes within a frame
+static char *g_write_buf = NULL;
+static size_t g_write_len = 0;
+static size_t g_write_cap = 0;
+void ios_register_frame_callback(ios_frame_callback_t cb, void *ctx) {
+<br/>
+    g_frame_cb = cb;
+<br/>
+    g_frame_ctx = ctx;
+}
+void ios_render_bridge_init(int cols, int rows,
+<br/>
+                            const char *font_path, double font_size) {
+<br/>
+    term_renderer_config_t cfg = {
+<br/>
+        .cols = cols,
+<br/>
+        .rows = rows,
+<br/>
+        .font_size_pt = font_size,
+<br/>
+        .theme = TERM_RENDERER_THEME_DARK,
+<br/>
+        .font_is_path = true,
+<br/>
+    };
+<br/>
+    strlcpy(cfg.font_spec, font_path, sizeof(cfg.font_spec));
+<br/>
+    term_renderer_create(&amp;cfg, &amp;g_renderer);
+<br/>
+    // Pre-allocate write buffer
+<br/>
+    g_write_cap = 64 * 1024;
+<br/>
+    g_write_buf = SAFE_MALLOC(g_write_cap, char *);
+<br/>
+    g_write_len = 0;
+}
+void ios_output_feed(const char *data, size_t len) {
+<br/>
+    // Accumulate writes (a single frame may involve multiple write() calls)
+<br/>
+    if (g_write_len + len &gt; g_write_cap) {
+<br/>
+        g_write_cap = (g_write_len + len) * 2;
+<br/>
+        char *new_buf = SAFE_MALLOC(g_write_cap, char *);
+<br/>
+        memcpy(new_buf, g_write_buf, g_write_len);
+<br/>
+        SAFE_FREE(g_write_buf);
+<br/>
+        g_write_buf = new_buf;
+<br/>
+    }
+<br/>
+    memcpy(g_write_buf + g_write_len, data, len);
+<br/>
+    g_write_len += len;
+}
+void ios_render_bridge_flush(void) {
+<br/>
+    if (!g_renderer || !g_frame_cb || g_write_len == 0) return;
+<br/>
+    // Feed accumulated ANSI output to libvterm &#x2192; pixel buffer
+<br/>
+    term_renderer_feed(g_renderer, g_write_buf, g_write_len);
+<br/>
+    g_write_len = 0;
+<br/>
+    // Deliver pixels to Swift
+<br/>
+    g_frame_cb(
+<br/>
+        term_renderer_pixels(g_renderer),
+<br/>
+        term_renderer_width_px(g_renderer),
+<br/>
+        term_renderer_height_px(g_renderer),
+<br/>
+        term_renderer_pitch(g_renderer),
+<br/>
+        g_frame_ctx
+<br/>
+    );
+}
+void ios_render_bridge_destroy(void) {
+<br/>
+    if (g_renderer) term_renderer_destroy(g_renderer);
+<br/>
+    g_renderer = NULL;
+<br/>
+    SAFE_FREE(g_write_buf);
+<br/>
+    g_write_buf = NULL;
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="3b"><a class="permalink" href="#3b">3b.
+  <b>platform_write()</b> iOS override</a></h2>
+<p class="Pp">In lib/platform/ios/system.c, override <b>platform_write()</b><b>
+    (not </b><b>platform_write_all()</b><b>). </b><b>platform_write_all()</b><b>
+    is defined in the shared </b><b>lib/platform/system.c</b><b> and calls
+    </b><b>platform_write()</b><b> in a loop &#x2014; overriding at the inner
+    function is the correct layer, and matches what the WASM layer does in
+    </b><b>lib/platform/wasm/filesystem.c</b><b>.</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// lib/platform/ios/system.c
+#include &quot;render_bridge.h&quot;
+#include &lt;unistd.h&gt;
+ssize_t platform_write(int fd, const void *buf, size_t count) {
+<br/>
+    if (fd == STDOUT_FILENO) {
+<br/>
+        // Route terminal output to libvterm render bridge
+<br/>
+        ios_output_feed((const char *)buf, count);
+<br/>
+        return (ssize_t)count;
+<br/>
+    }
+<br/>
+    // All other FDs (stderr, sockets, files) use real write()
+<br/>
+    return write(fd, buf, count);
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="3c"><a class="permalink" href="#3c">3c. Frame boundary
+  detection</a></h2>
+<p class="Pp">The C render loop already has frame boundaries &#x2014;
+    <b>session_display_render_frame()</b><b> writes a complete frame then
+    flushes. Instead of hooking </b><b>terminal_flush()</b><b> separately and
+    hoping it fires exactly once per frame in all modes, we introduce a unified
+    function that all render paths call exactly once per frame:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// lib/platform/frame_flush.h
+#pragma once
+// Called exactly once per completed frame by all render paths.
+// On desktop: calls terminal_flush(STDOUT_FILENO).
+// On iOS: calls terminal_flush(STDOUT_FILENO) + ios_render_bridge_flush().
+// All platforms go through this single function &#x2014; no #ifdefs at call sites.
+void platform_frame_flush(void);</pre>
+<p class="Pp"></p>
+<pre>// lib/platform/frame_flush.c (desktop / default implementation)
+#include &quot;frame_flush.h&quot;
+#include &quot;ascii-chat/platform/terminal.h&quot;
+void platform_frame_flush(void) {
+<br/>
+    terminal_flush(STDOUT_FILENO);
+}</pre>
+<p class="Pp"></p>
+<pre>// lib/platform/ios/frame_flush.c (iOS override)
+#include &quot;frame_flush.h&quot;
+#include &quot;render_bridge.h&quot;
+#include &quot;ascii-chat/platform/terminal.h&quot;
+void platform_frame_flush(void) {
+<br/>
+    terminal_flush(STDOUT_FILENO);
+<br/>
+    ios_render_bridge_flush();
+}</pre>
+<p class="Pp">Refactor all render paths
+    (<b>session_display_render_frame()</b><b>, splash screen, status screen,
+    discovery screen) to call </b>platform_frame_flush()<b> instead of
+    </b><b>terminal_flush()</b><b> directly. This is a single call site change
+    per render path and eliminates the question of whether
+    </b><b>terminal_flush()</b><b> fires exactly once per frame &#x2014;
+    </b>platform_frame_flush()<b> is the canonical frame boundary, on all
+    platforms.</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="3d"><a class="permalink" href="#3d">3d. Module map for Swift
+  imports</a></h2>
+<pre>// AsciiChatLib/module.modulemap
+module AsciiChatLib {
+<br/>
+    header &quot;ascii-chat-bridge.h&quot;
+<br/>
+    link &quot;asciichat&quot;
+<br/>
+    export *
+}</pre>
+<p class="Pp">The bridge header is now much simpler &#x2014; just lifecycle +
+    callbacks:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// ascii-chat-bridge.h
+#pragma once
+#include &lt;stdint.h&gt;
+#include &lt;stdbool.h&gt;
+// -- Render Bridge --
+typedef void (*ios_frame_callback_t)(const uint8_t *pixels,
+<br/>
+                                     int w, int h, int pitch, void *ctx);
+void ios_register_frame_callback(ios_frame_callback_t cb, void *ctx);
+void ios_render_bridge_init(int cols, int rows,
+<br/>
+                            const char *font, double font_size);
+void ios_render_bridge_destroy(void);
+// -- Audio Bridge --
+typedef void (*ios_audio_callback_t)(const float *samples,
+<br/>
+                                     int frame_count, void *ctx);
+void ios_register_audio_callback(ios_audio_callback_t cb, void *ctx);
+// -- Prompt Bridge --
+typedef bool (*ios_prompt_callback_t)(const char *prompt,
+<br/>
+                                      char *response, size_t max_len);
+void ios_register_prompt_callback(ios_prompt_callback_t cb);
+// -- Lifecycle --
+// NEW WRAPPER: Wraps main() from src/main.c &#x2014; renamed so it doesn't
+// conflict with Swift's @main entry point. Implementation is just:
+//   int asciichat_main(int argc, char **argv) { return main(argc, argv); }
+// Compiled only when BUILD_IOS is set. Blocks until mode exits.
+// argv[0] = &quot;ascii-chat&quot;, argv[1] = mode, argv[2..] = options
+int asciichat_main(int argc, char **argv);
+// EXISTING: from src/main.c &#x2014; sets g_should_exit atomic flag.
+// All mode loops check should_exit() and will exit cleanly.
+void signal_exit(void);
+bool should_exit(void);
+// -- Stdin bridge (keyboard/touch input) --
+// Push bytes into the stdin queue (read by the C code via platform_read).
+// Condvar + ring buffer: platform_read(STDIN_FILENO) blocks until data arrives.
+void ios_stdin_push(const char *data, size_t len);
+// Register a callback that's invoked when the C code first reads stdin.
+// Swift uses this to automatically present the on-screen keyboard.
+typedef void (*ios_keyboard_request_callback_t)(void *ctx);
+void ios_register_keyboard_request_callback(ios_keyboard_request_callback_t cb, void *ctx);
+// -- Options (C code uses GET_OPTION(field) macro internally) --
+// Options are set via argv passed to main(). At runtime, the C code
+// accesses them via the RCU-based options system:
+//   const options_t *opts = options_get();
+//   opts-&gt;width, opts-&gt;height, opts-&gt;color_mode, etc.
+// Swift sets options by passing CLI flags in argv to main().</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="3e"><a class="permalink" href="#3e">3e. Swift engine
+  class</a></h2>
+<pre>import AsciiChatLib
+@Observable
+class AsciiChatEngine {
+<br/>
+    var frameImage: CGImage?
+<br/>
+    var isRunning = false
+<br/>
+    private var modeThread: Thread?
+<br/>
+    func start(mode: String, options: [String] = []) {
+<br/>
+        isRunning = true
+<br/>
+        // Initialize render bridge with terminal dimensions
+<br/>
+        let cols = options.intValue(for: &quot;--width&quot;) ?? 80
+<br/>
+        let rows = options.intValue(for: &quot;--height&quot;) ?? 40
+<br/>
+        ios_render_bridge_init(Int32(cols), Int32(rows),
+<br/>
+                               fontPath, fontSize)
+<br/>
+        // Register pixel callback.
+<br/>
+        // Copy pixel data immediately &#x2014; the C renderer overwrites the buffer on
+<br/>
+        // the next call to term_renderer_feed(), so the pointer is only valid
+<br/>
+        // for the duration of this callback.
+<br/>
+        let ctx = Unmanaged.passUnretained(self).toOpaque()
+<br/>
+        ios_register_frame_callback({ pixels, w, h, pitch, ctx in
+<br/>
+            guard let ctx = ctx, let pixels = pixels else { return }
+<br/>
+            let size = Int(pitch) * Int(h)
+<br/>
+            let pixelData = Data(bytes: pixels, count: size)
+<br/>
+            let engine = Unmanaged&lt;AsciiChatEngine&gt;.fromOpaque(ctx)
+<br/>
+                .takeUnretainedValue()
+<br/>
+            let image = cgImageFromRGB(pixelData, width: Int(w),
+<br/>
+                                       height: Int(h), pitch: Int(pitch))
+<br/>
+            DispatchQueue.main.async {
+<br/>
+                engine.frameImage = image
+<br/>
+            }
+<br/>
+        }, ctx)
+<br/>
+        // Build argv: [&quot;ascii-chat&quot;, mode, ...options]
+<br/>
+        var argv = [&quot;ascii-chat&quot;, mode] + options
+<br/>
+        // Run the actual C main on a background thread
+<br/>
+        DispatchQueue.global(qos: .userInteractive).async {
+<br/>
+            argv.withCStringArray { cArgs in
+<br/>
+                asciichat_main(Int32(cArgs.count), cArgs)
+<br/>
+            }
+<br/>
+            DispatchQueue.main.async {
+<br/>
+                self.isRunning = false
+<br/>
+            }
+<br/>
+        }
+<br/>
+    }
+<br/>
+    func stop() {
+<br/>
+        signal_exit()
+<br/>
+    }
+<br/>
+    // Send keyboard input to the C code
+<br/>
+    func sendKey(_ key: String) {
+<br/>
+        key.withCString { ios_stdin_push($0, key.utf8.count) }
+<br/>
+    }
+}</pre>
+<p class="Pp">No ConnectionManager. No PacketParser. No handshake state machine.
+    The C code handles all of that &#x2014; the Swift side just displays pixels
+    and sends keystrokes.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="4"><a class="permalink" href="#4">4. Swift App
+  Structure</a></h2>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="4a"><a class="permalink" href="#4a">4a. Project
+  setup</a></h2>
+<p class="Pp">The app structure is dramatically simpler because the C code
+    handles session lifecycle, networking, handshakes, and packet parsing. Swift
+    only does: UI chrome, pixel display, and input forwarding.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>src/ios/
+&#x251C;&#x2500;&#x2500; AsciiChat.xcodeproj
+&#x251C;&#x2500;&#x2500; AsciiChat/
+&#x2502;   &#x251C;&#x2500;&#x2500; App.swift                    # @main, app entry
+&#x2502;   &#x251C;&#x2500;&#x2500; ContentView.swift            # Tab view: Mirror / Client / Server / Discovery
+&#x2502;   &#x251C;&#x2500;&#x2500; Engine/
+&#x2502;   &#x2502;   &#x2514;&#x2500;&#x2500; AsciiChatEngine.swift   # C bridge wrapper (@Observable) &#x2014; starts/stops modes
+&#x2502;   &#x251C;&#x2500;&#x2500; Views/
+&#x2502;   &#x2502;   &#x251C;&#x2500;&#x2500; FrameBufferView.swift    # Renders pixel buffer from callback (RGB24 &#x2192; CGImage)
+&#x2502;   &#x2502;   &#x251C;&#x2500;&#x2500; ModeView.swift           # Shared view for all modes (pixel display + input)
+&#x2502;   &#x2502;   &#x251C;&#x2500;&#x2500; MirrorView.swift         # Mirror mode config + ModeView
+&#x2502;   &#x2502;   &#x251C;&#x2500;&#x2500; ClientView.swift         # Client mode config (host/port) + ModeView
+&#x2502;   &#x2502;   &#x251C;&#x2500;&#x2500; ServerView.swift         # Server mode config + ModeView
+&#x2502;   &#x2502;   &#x251C;&#x2500;&#x2500; DiscoveryView.swift      # Session browser + ModeView
+&#x2502;   &#x2502;   &#x2514;&#x2500;&#x2500; SettingsView.swift       # Color mode, palette, render mode, dimensions
+&#x2502;   &#x251C;&#x2500;&#x2500; Input/
+&#x2502;   &#x2502;   &#x251C;&#x2500;&#x2500; KeyboardHandler.swift   # On-screen keyboard &#x2192; ios_stdin_push()
+&#x2502;   &#x2502;   &#x2514;&#x2500;&#x2500; GestureHandler.swift    # Tap/swipe &#x2192; key sequences (q, ?, arrows)
+&#x2502;   &#x2514;&#x2500;&#x2500; Resources/
+&#x2502;       &#x2514;&#x2500;&#x2500; Assets.xcassets
+&#x2514;&#x2500;&#x2500; libasciichat.xcframework/        # Pre-built C library</pre>
+<p class="Pp"><b>What's gone</b> (handled by C code running natively):</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>ConnectionManager.swift &#x2014; C <b>client_main()</b><b> handles
+      connections</b></li>
+  <li>PacketParser.swift &#x2014; C ACIP code handles packets</li>
+  <li>CameraManager.swift &#x2014; C webcam code (webcam/apple/) handles
+    capture</li>
+  <li>FrameThrottler.swift &#x2014; C render loop handles timing</li>
+  <li>Network/WebSocketTransport.swift &#x2014; C libwebsockets handles
+      WebSocket</li>
+  <li>Network/TCPTransport.swift &#x2014; C TCP code handles connections</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="4b"><a class="permalink" href="#4b">4b. Key Swift
+  components</a></h2>
+<p class="Pp"><b>ModeView</b> &#x2014; The shared display view for all modes.
+    Since every mode produces terminal output that gets rendered to pixels, one
+    view handles them all. AsciiChatEngine uses @Observable (iOS 17+), so views
+    hold a direct var reference &#x2014; not @ObservedObject (which is for
+    ObservableObject/Combine):</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>struct ModeView: View {
+<br/>
+    var engine: AsciiChatEngine  // @Observable &#x2014; no @ObservedObject needed (iOS 17+)
+<br/>
+    var body: some View {
+<br/>
+        ZStack {
+<br/>
+            Color.black.ignoresSafeArea()
+<br/>
+            if let image = engine.frameImage {
+<br/>
+                Image(decorative: image, scale: 1.0)
+<br/>
+                    .interpolation(.none)
+<br/>
+                    .resizable()
+<br/>
+                    .aspectRatio(contentMode: .fit)
+<br/>
+            }
+<br/>
+        }
+<br/>
+        .onTapGesture { engine.sendKey(&quot;?&quot;) }  // Toggle help
+<br/>
+        .gesture(
+<br/>
+            DragGesture(minimumDistance: 50)
+<br/>
+                .onEnded { value in
+<br/>
+                    // Swipe down = quit
+<br/>
+                    if value.translation.height &gt; 100 { engine.stop() }
+<br/>
+                }
+<br/>
+        )
+<br/>
+    }
+}</pre>
+<p class="Pp"><b>ClientView</b> &#x2014; just a config form that starts the C
+    client_main:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>struct ClientView: View {
+<br/>
+    var engine: AsciiChatEngine  // @Observable &#x2014; direct reference
+<br/>
+    @State private var host = &quot;localhost&quot;
+<br/>
+    @State private var port = &quot;27224&quot;
+<br/>
+    @State private var password = &quot;&quot;
+<br/>
+    var body: some View {
+<br/>
+        if engine.isRunning {
+<br/>
+            ModeView(engine: engine)
+<br/>
+        } else {
+<br/>
+            Form {
+<br/>
+                TextField(&quot;Host&quot;, text: $host)
+<br/>
+                TextField(&quot;Port&quot;, text: $port)
+<br/>
+                SecureField(&quot;Password (optional)&quot;, text: $password)
+<br/>
+                Button(&quot;Connect&quot;) {
+<br/>
+                    var opts = [&quot;--address&quot;, host, &quot;--port&quot;, port]
+<br/>
+                    if !password.isEmpty { opts += [&quot;--password&quot;, password] }
+<br/>
+                    engine.start(mode: &quot;client&quot;, options: opts)
+<br/>
+                }
+<br/>
+            }
+<br/>
+        }
+<br/>
+    }
+}</pre>
+<p class="Pp">Same pattern for MirrorView, ServerView, DiscoveryView &#x2014;
+    just different option forms.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="5"><a class="permalink" href="#5">5. stdout Capture &#x2192;
+  libvterm &#x2192; Callback Pipeline</a></h2>
+<p class="Pp">This is the core innovation of the iOS architecture. Instead of
+    reimplementing session logic in Swift, we intercept all terminal output at
+    the platform layer.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="How_terminal_output_flows_today_(desktop)"><a class="permalink" href="#How_terminal_output_flows_today_(desktop)">How
+  terminal output flows today (desktop)</a></h2>
+<pre>session_display_convert_to_ascii()     # Image &#x2192; ANSI escape codes
+<br/>
+    &#x2193;
+session_display_render_frame()         # Adds cursor control, frame boundary
+<br/>
+    &#x2193;
+session_display_write_ascii()          # Chooses write path based on TTY mode
+<br/>
+    &#x2193;
+platform_write_all(STDOUT_FILENO, buf, len)    # Single interception point
+<br/>
+    &#x2193;
+write() syscall &#x2192; terminal emulator &#x2192; user sees ASCII art</pre>
+<p class="Pp">Every mode's output goes through platform_write_all(STDOUT_FILENO,
+    ...):</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Mirror</b>: webcam &#x2192; ASCII frames &#x2192; stdout</li>
+  <li><b>Client</b>: received network frames &#x2192; ASCII &#x2192; stdout;
+      status screens &#x2192; stdout</li>
+  <li><b>Server</b>: status screen with live logs &#x2192; stdout</li>
+  <li><b>Discovery</b>: status/session UI &#x2192; stdout</li>
+</ul>
+<p class="Pp">The session screens (splash, status) also go through this path via
+    the <b>frame_buffer</b><b> abstraction, which ultimately calls
+    </b>platform_write_all(g_terminal_screen_output_fd, ...)<b>.</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="How_it_flows_on_iOS"><a class="permalink" href="#How_it_flows_on_iOS">How
+  it flows on iOS</a></h2>
+<pre>session_display_convert_to_ascii()     # Same as desktop
+<br/>
+    &#x2193;
+session_display_render_frame()         # Same as desktop
+<br/>
+    &#x2193;
+session_display_write_ascii()          # Same as desktop
+<br/>
+    &#x2193;
+platform_write_all(STDOUT_FILENO, buf, len)    # iOS OVERRIDE
+<br/>
+    &#x2193;
+ios_output_feed(buf, len)              # Accumulates in write buffer
+<br/>
+    &#x2193;
+platform_frame_flush()                 # Unified frame boundary (all platforms)
+<br/>
+    &#x2193;  (on iOS: terminal_flush + ios_render_bridge_flush)
+<br/>
+    &#x2193;
+term_renderer_feed(renderer, accumulated_buf, len)   # libvterm parses ANSI
+<br/>
+    &#x2193;
+FreeType renders glyphs &#x2192; RGB24 pixel buffer
+<br/>
+    &#x2193;
+ios_frame_callback(pixels, w, h, pitch, ctx)  &#x2192; Swift UI update</pre>
+<p class="Pp">Zero changes to the C render pipeline. All render paths call
+    platform_frame_flush() (replacing direct <b>terminal_flush()</b><b> calls).
+    On desktop, it flushes the terminal. On iOS, it also triggers the render
+    bridge.</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Why_this_works"><a class="permalink" href="#Why_this_works">Why
+  this works</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Single interception point</b>: All output goes through
+      <b>platform_write_all()</b><b>. One function override captures
+      everything.</b></dd>
+  <dt>2.</dt>
+  <dd><b>Frame boundaries are unified</b>: All render paths call
+      platform_frame_flush() exactly once per frame. On iOS this triggers the
+      render bridge. No per-mode verification needed.</dd>
+  <dt>3.</dt>
+  <dd><b>libvterm handles all state</b>: Cursor positioning, scrolling, colors,
+      attributes &#x2014; libvterm maintains full terminal state. We don't need
+      to track anything.</dd>
+  <dt>4.</dt>
+  <dd><b>term_renderer is production code</b>: Already used for render-file
+      mode. Tested, handles all ANSI escape sequences, produces clean RGB24
+      output.</dd>
+  <dt>5.</dt>
+  <dd><b>Buffering is already disabled</b>: setvbuf(stdout, NULL, _IONBF, 0)
+      ensures writes happen immediately. No surprises from libc buffering.</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="6"><a class="permalink" href="#6">6. Display: Pixel Buffer
+  Rendering</a></h2>
+<p class="Pp">The library already has a complete terminal renderer that takes
+    ANSI text and produces a pixel buffer: <b>lib/media/render/terminal.c</b><b>
+    (public API in </b><b>include/ascii-chat/media/render/renderer.h</b><b>). It
+    uses libvterm for terminal emulation and FreeType for font rasterization.
+    It's production code, already used for render-file mode.</b></p>
+<p class="Pp"></p>
+<p class="Pp">The iOS app does <b>not</b> parse ANSI escape codes &#x2014; it
+    feeds ANSI text to the terminal renderer and blits the resulting RGB24 pixel
+    buffer to the screen. Same model as the WASM web client rendering to a
+    canvas.</p>
+<p class="Pp"></p>
+<p class="Pp">The flow:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>Library (C)                                          Swift App
+&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;                                          &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;
+term_renderer_create(cols, rows, font, theme)
+term_renderer_feed(renderer, ansi_frame, len)   &#x2192;  pixels = term_renderer_pixels(renderer)
+<br/>
+  libvterm parses ANSI &#x2192; screen state                  width = term_renderer_width_px(renderer)
+<br/>
+  FreeType renders glyphs &#x2192; RGB24 buffer               height = term_renderer_height_px(renderer)
+<br/>
+                                                       pitch = term_renderer_pitch(renderer)
+<br/>
+                                                          &#x2193;
+<br/>
+                                                   CGImage / CALayer / Metal texture</pre>
+<p class="Pp">The Swift side is trivial &#x2014; just display an image that
+    updates every frame:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>struct FrameBufferView: View {
+<br/>
+    let pixelData: Data  // Copied RGB24 from term_renderer_pixels()
+<br/>
+    let width: Int
+<br/>
+    let height: Int
+<br/>
+    let pitch: Int  // from term_renderer_pitch()
+<br/>
+    var body: some View {
+<br/>
+        if let image = cgImageFromRGB(pixelData, width: width, height: height, pitch: pitch) {
+<br/>
+            Image(decorative: image, scale: 1.0)
+<br/>
+                .interpolation(.none)  // Crisp pixels, no smoothing
+<br/>
+                .resizable()
+<br/>
+                .aspectRatio(contentMode: .fit)
+<br/>
+        }
+<br/>
+    }
+}
+func cgImageFromRGB(_ data: Data, width: Int, height: Int, pitch: Int) -&gt; CGImage? {
+<br/>
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
+<br/>
+    let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue)
+<br/>
+    // CGDataProvider(data:) copies the Data, so the C renderer buffer can be
+<br/>
+    // reused immediately after the frame callback returns.
+<br/>
+    guard let provider = CGDataProvider(data: data as CFData) else { return nil }
+<br/>
+    return CGImage(width: width, height: height,
+<br/>
+                   bitsPerComponent: 8, bitsPerPixel: 24,
+<br/>
+                   bytesPerRow: pitch, space: colorSpace,
+<br/>
+                   bitmapInfo: bitmapInfo, provider: provider,
+<br/>
+                   decode: nil, shouldInterpolate: false,
+<br/>
+                   intent: .defaultIntent)
+}</pre>
+<p class="Pp">The frame callback in AsciiChatEngine must copy the pixel data
+    before returning, because <b>term_renderer_pixels()</b><b> returns a pointer
+    into the renderer's internal buffer that will be overwritten on the next
+    call to </b><b>term_renderer_feed()</b><b>:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>ios_register_frame_callback({ pixels, w, h, pitch, ctx in
+<br/>
+    guard let ctx = ctx, let pixels = pixels else { return }
+<br/>
+    // Copy before the C renderer overwrites the buffer on the next frame
+<br/>
+    let size = Int(pitch) * Int(h)
+<br/>
+    let pixelData = Data(bytes: pixels, count: size)
+<br/>
+    let engine = Unmanaged&lt;AsciiChatEngine&gt;.fromOpaque(ctx).takeUnretainedValue()
+<br/>
+    let image = cgImageFromRGB(pixelData, width: Int(w), height: Int(h), pitch: Int(pitch))
+<br/>
+    DispatchQueue.main.async { engine.frameImage = image }
+}, ctx)
+For better performance at high frame rates, use a `CALayer` or `MTKView` (Metal) instead
+of SwiftUI `Image` &#x2014; avoid re-creating CGImage every frame by reusing a
+`CGContext` and just updating the backing data.
+---
+### 7. Audio Pipeline
+Audio is handled entirely by the library via the PortAudio &#x2192; AVAudioEngine shim
+(`lib/audio/ios/portaudio_shim.m`). No Swift audio code needed. The library's full audio
+pipeline works unchanged: mic capture, Opus encoding, network transport, Opus decoding,
+speaker playback, AEC3 echo cancellation, and audio mixing.
+---
+### 8. Mode Support Matrix
+| Mode              | iOS Support | C Function        | What Displays                    |
+|-------------------|-------------|--------------------|---------------------------------|
+| Mirror            | Full        | `mirror_main()`   | Webcam &#x2192; ASCII art &#x2192; pixels     |
+| Client            | Full        | `client_main()`   | Network frames &#x2192; ASCII &#x2192; pixels |
+| Server            | Full        | `server_main()`   | Status screen + logs &#x2192; pixels   |
+| Discovery         | Full        | `discovery_main()` | Session UI + ASCII &#x2192; pixels     |
+| Discovery Service | **Skip**    | `acds_main()`     | Not appropriate for mobile      |
+All modes produce terminal output that goes through the same stdout capture &#x2192; libvterm &#x2192; pixel
+callback pipeline. The Swift app doesn't need mode-specific rendering logic.
+---
+### 9. iOS-Specific Considerations
+#### App lifecycle
+- **Background**: iOS suspends apps aggressively. Server mode is foreground-only &#x2014; iOS will kill it when it backgrounds, and that's fine.
+- **Interruptions**: Handle phone calls, notifications gracefully. Pause capture, maintain connection if possible.
+- **Memory**: Monitor memory pressure. The ASCII rendering pipeline is lightweight but video frames can be large.
+#### Network
+- **Local network**: iOS requires `NSLocalNetworkUsageDescription` in Info.plist for LAN discovery (mDNS, direct TCP to local IPs).
+- **WebSocket**: `URLSessionWebSocketTask` is built-in and works well. Handles TLS, reconnection.
+- **TCP**: `NWConnection` from Network.framework. Modern, async, handles IPv4/IPv6.
+- **NAT traversal**: UPnP/NAT-PMP from library should work (just UDP/TCP calls). May need `NSBonjourServices` for mDNS.
+#### Camera
+- **Privacy**: `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` in Info.plist.
+- **Orientation**: Handle device rotation. Feed correct orientation to library.
+- **Front/back**: Support camera switching. Front camera should mirror horizontally (library already handles horizontal flip).
+#### Battery
+- **Frame throttle**: Don't render at 60fps if 15-20fps is fine. CADisplayLink with preferred frame rate.
+- **Resolution**: Capture at lower resolution for ASCII art (320x240 is plenty for 80x24 terminal).
+- **CPU**: ASCII conversion is CPU-bound. The library has SIMD paths (NEON on arm64) which help.
+---
+### 10. Third-Party Swift Libraries (Candidates)
+| Library                | Purpose                        | Why                                    |
+|------------------------|--------------------------------|----------------------------------------|
+| swift-async-algorithms | Async sequences                | Clean async frame pipeline             |
+| Network.framework      | TCP/UDP (built-in)             | Modern Apple networking                |
+| AVFoundation (built-in)| Camera + audio                 | Standard iOS media APIs                |
+| Combine (built-in)     | Reactive state                 | Settings changes &#x2192; library updates     |
+Intentionally minimal. The C library does the heavy lifting.
+---
+### 11. Implementation Phases
+#### Phase 1: Library Compilation + iOS Platform Layer (1-2 weeks)
+- [ ] Create `cmake/toolchains/iOS.cmake`
+- [ ] Add `BUILD_IOS` and `BUILD_IOS_SIM` CMake options
+- [ ] Extend `PlatformDetection.cmake` with `PLATFORM_IOS`
+- [ ] Create `lib/platform/ios/` directory with overrides:
+<br/>
+    - [ ] `system.c` &#x2014; `platform_write()` routes STDOUT to render bridge
+<br/>
+    - [ ] `render_bridge.c` &#x2014; libvterm + term_renderer + frame callback
+<br/>
+    - [ ] `terminal.c` &#x2014; dimensions from options, truecolor, no TTY
+<br/>
+    - [ ] `keyboard.c` &#x2014; override `keyboard_init()`/`keyboard_destroy()` to skip TTY setup; reads from stdin_bridge queue
+<br/>
+    - [ ] `keepawake.m` &#x2014; UIApplication.idleTimerDisabled
+<br/>
+    - [ ] `filesystem.m` &#x2014; sandbox-aware paths
+<br/>
+    - [ ] `process.c` &#x2014; stub popen/fork
+<br/>
+    - [ ] `question.c` &#x2014; delegate prompts to Swift callback
+<br/>
+    - [ ] `stdin_bridge.c` &#x2014; condvar + ring buffer for keyboard input from Swift; auto-triggers keyboard UI on first read
+<br/>
+    - [ ] `frame_flush.c` &#x2014; iOS override of `platform_frame_flush()` (terminal_flush + render bridge flush)
+- [ ] Create module files:
+<br/>
+    - [ ] `lib/log/ios_log.c` &#x2014; os_log integration
+<br/>
+    - [ ] `lib/options/registry/ios_mode_defaults.c`
+- [ ] Add `lib/platform/frame_flush.h` and `lib/platform/frame_flush.c` (desktop default)
+- [ ] Refactor all render paths to call `platform_frame_flush()` instead of `terminal_flush()` directly
+- [ ] Rename `lib/video/webcam/macos/` &#x2192; `lib/video/webcam/apple/`
+- [ ] Write PortAudio &#x2192; AVAudioEngine shim (`lib/audio/ios/portaudio_shim.m`)
+- [ ] Cross-compile dependencies (libsodium, FFmpeg, Opus, zstd, PCRE2, yyjson, libwebsockets, libvterm, FreeType)
+- [ ] Build `libasciichat.a` for arm64 + arm64-simulator
+- [ ] Package as `.xcframework`
+- [ ] Verify: link into empty Xcode project, call `asciichat_main()` with mirror mode
+#### Phase 2: Mirror Mode &#x2014; First Pixels (1 week)
+This is the &quot;hello world&quot; milestone: the actual C `mirror_main()` runs on iOS and
+produces pixels on screen.
+- [ ] Xcode project setup with SwiftUI in `src/ios/`
+- [ ] Module map for C library import
+- [ ] `AsciiChatEngine.swift` &#x2014; start/stop modes, frame callback &#x2192; CGImage
+- [ ] `FrameBufferView.swift` &#x2014; display CGImage from callback
+- [ ] `ModeView.swift` &#x2014; shared pixel display with gesture input
+- [ ] `MirrorView.swift` &#x2014; options form + ModeView
+- [ ] Verify: mirror mode shows ASCII webcam output on device
+- [ ] Settings UI: color mode, palette, render mode, dimensions (passed as argv)
+#### Phase 3: Client + Server + Discovery Modes (1-2 weeks)
+Because the C code runs unmodified, each mode is just a new options form that
+calls `asciichat_main()` with different argv. The display is the same ModeView.
+- [ ] `ClientView.swift` &#x2014; host/port/password form &#x2192; starts client_main
+- [ ] `ServerView.swift` &#x2014; port/max-clients form &#x2192; starts server_main
+- [ ] `DiscoveryView.swift` &#x2014; session string entry &#x2192; starts discovery_main
+- [ ] `KeyboardHandler.swift` &#x2014; on-screen keyboard &#x2192; ios_stdin_push()
+- [ ] `GestureHandler.swift` &#x2014; tap/swipe &#x2192; key sequences
+- [ ] Verify: connect iOS client to desktop server, see ASCII video
+- [ ] Verify: run server on iOS, connect desktop client
+- [ ] Verify: discovery mode works through ACDS
+#### Phase 4: Polish (ongoing)
+- [ ] App icon, launch screen
+- [ ] iPad layout (larger terminal, split view)
+- [ ] External keyboard support (physical keyboards send to stdin bridge)
+- [ ] Share sheet (share session string)
+- [ ] TestFlight distribution
+- [ ] Performance profiling: CGImage vs CALayer vs Metal for pixel display
+- [ ] Battery optimization: ensure render loop FPS matches C-side frame rate
+- [ ] Accessibility
+- [ ] Handle iOS audio interruptions in AVAudioEngine shim (phone calls, etc.)
+---
+### 12. Resolved Questions
+1. ~~**Frame boundary detection**~~ **Resolved**: Introduced `platform_frame_flush()` &#x2014; a
+<br/>
+   unified function that all render paths call exactly once per frame. On desktop it calls
+<br/>
+   `terminal_flush(STDOUT_FILENO)`. On iOS it calls `terminal_flush()` +
+<br/>
+   `ios_render_bridge_flush()`. Refactor all render paths (session display, splash, status,
+<br/>
+   discovery) to call `platform_frame_flush()` instead of `terminal_flush()` directly. No
+<br/>
+   per-mode verification needed &#x2014; one function, one call site per render path, all platforms.
+2. ~~**Stdin bridge threading**~~ **Resolved**: Build with condvar + ring buffer.
+<br/>
+   `platform_read(STDIN_FILENO)` blocks on the condvar until Swift pushes data via
+<br/>
+   `ios_stdin_push()`. When the C code first calls `platform_read(STDIN_FILENO)`, the bridge
+<br/>
+   fires a registered callback (`ios_keyboard_request_callback_t`) so Swift can automatically
+<br/>
+   present the on-screen keyboard UI.
+3. ~~**Server mode background**~~ **Resolved**: iOS will kill the app when it wants to. Server
+<br/>
+   mode is designed for foreground use while the app is open. No background audio tricks.
+4. ~~**FFmpeg on iOS**~~ **Resolved**: Build only what we need &#x2014; `libavcodec`, `libavformat`,
+<br/>
+   `libavutil`, `libswscale`. Skip `libavfilter`, `libavdevice`, `libpostproc`.
+5. ~~**PortAudio shim completeness**~~ **Resolved**: The AVAudioEngine shim will handle basic
+<br/>
+   audio for v1. iOS audio interruptions (phone calls), route changes (Bluetooth
+<br/>
+   connect/disconnect), and `AVAudioSession` reactivation have no PortAudio equivalent.
+<br/>
+   We may need to redesign the library's audio API to handle these iOS-specific lifecycle
+<br/>
+   events &#x2014; the current PortAudio callback model doesn't have hooks for session interruption
+<br/>
+   or route change notification. This is deferred to the audio workstream.
+6. ~~**App Store review**~~ **Resolved**: Apps are allowed to use the internet. Server mode
+<br/>
+   accepting inbound connections on a local network is standard networking behavior.
+7. ~~**H.265 hardware encoding**~~ **Deferred**: VideoToolbox hardware H.265 encoding is a
+<br/>
+   future version optimization. Software encoding via FFmpeg for v1.
+8. ~~**FreeType on iOS**~~ **Resolved**: FreeType cross-compiles for iOS without issue. We
+<br/>
+   already bundle a monospace font &#x2014; same font ships in the iOS app bundle.
+9. ~~**Pixel buffer copy cost**~~ **Resolved**: ~36MB/s of memcpy is nothing on arm64.
+10. ~~**Multiple modes**~~ **No**: One mode at a time. `asciichat_main()` is blocking with
+<br/>
+    global state. Not a goal for the iOS client.
+---
+### 13. Build &amp; Run (Target)
+```bash
+# Build library for iOS device
+cmake --preset default -B build-ios -DBUILD_IOS=ON
+cmake --build build-ios
+# Build library for iOS simulator
+cmake --preset default -B build-ios-sim -DBUILD_IOS_SIM=ON
+cmake --build build-ios-sim
+# Create XCFramework
+xcodebuild -create-xcframework \
+<br/>
+  -library build-ios/lib/libasciichat.a -headers include/ \
+<br/>
+  -library build-ios-sim/lib/libasciichat.a -headers include/ \
+<br/>
+  -output ios/libasciichat.xcframework
+# Open Xcode project
+open src/ios/AsciiChat.xcodeproj</pre>
+<p class="Pp"><i>This is a living document. Updated as research continues and
+    implementation progresses.</i></p>
+</section>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

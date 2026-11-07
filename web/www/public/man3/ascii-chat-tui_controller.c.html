@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>controller.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">controller.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">controller.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">controller.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>screen_terminal_t</b>
+  <br/>
+  struct <b>screen_snapshot_t</b>
+  <br/>
+  struct <b>media_snapshot_slot</b>
+  <br/>
+  struct <b>text_snapshot_t</b>
+  <br/>
+  struct <b>screen</b>
+  <br/>
+  struct <b>native_view_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>TUI_CONTROLLER_LAST_TITLE_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>TUI_CONTROLLER_TITLE_BUFFER_SIZE</b> 512
+  <br/>
+  #define <b>TUI_CONTROLLER_BUFFER_BUFFER_SIZE</b> 16384
+  <br/>
+  #define <b>TUI_MEDIA_SNAPSHOT_CAPACITY</b> 3
+  <br/>
+  #define <b>TUI_LAYER_CAPACITY</b> 3
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>media_snapshot_slot</b>
+    <b>media_snapshot_slot_t</b>
+  <br/>
+  typedef struct <b>screen</b> <b>screen_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>ui_controller_show_volume</b> (void)
+  <br/>
+  int <b>ui_controller_current_screen</b> (void)
+  <br/>
+  int <b>ui_controller_active_fd</b> (void)
+  <br/>
+  int <b>ui_controller_interactive_screen</b> (void)
+  <br/>
+  void <b>ui_controller_select_interactive</b> (int screen)
+  <br/>
+  void <b>ui_controller_frame_acquired_at</b> (<b>uint64_t</b> started_ns)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_controller_write</b> (int fd, const char *data,
+    size_t len)
+  <br/>
+  void <b>ui_controller_finish</b> (int fd, const char *data, size_t len)
+  <br/>
+  <b>bool</b> <b>ui_controller_is_blocked</b> (void)
+  <br/>
+  <b>bool</b> <b>ui_controller_is_presenting</b> (void)
+  <br/>
+  <b>bool</b> <b>ui_controller_is_owner</b> (void)
+  <br/>
+  <b>terminal_size_t</b> <b>ui_controller_size</b> (void)
+  <br/>
+  const <b>animation_sample_t</b> * <b>ui_controller_animation_sample</b> (void)
+  <br/>
+  void <b>ui_controller_title_ready</b> (void)
+  <br/>
+  void <b>ui_controller_title_render</b> (<b>ui_title_render_t</b> phase)
+  <br/>
+  void <b>ui_controller_title_activity</b> (<b>ui_title_activity_t</b> activity)
+  <br/>
+  void <b>ui_controller_title_discovery</b> (<b>bool</b> has_session,
+    <b>bool</b> joining)
+  <br/>
+  void <b>ui_controller_packet_begin</b> (void)
+  <br/>
+  void <b>ui_controller_packet_end</b> (void)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_controller_start_terminal</b> (int fd)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_controller_title_start</b> (const char *mode,
+    int fd)
+  <br/>
+  <b>bool</b> <b>ui_controller_screen_live</b> (<b>ui_screen_t</b> screen)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_controller_submit</b> (<b>ui_screen_t</b>
+    screen, int fd, <b>terminal_size_t</b> minimum, <b>ui_render_fn</b> render,
+    const void *snapshot, size_t bytes)
+  <br/>
+  void <b>ui_controller_remove</b> (<b>ui_screen_t</b> screen)
+  <br/>
+  void <b>ui_controller_dismiss</b> (<b>ui_screen_t</b> screen, int previous)
+  <br/>
+  <b>bool</b> <b>ui_controller_first_use_key</b> (int key)
+  <br/>
+  <b>ui_presentation_state_t</b> <b>ui_controller_state</b> (void)
+  <br/>
+  void <b>ui_controller_redraw</b> (void)
+  <br/>
+  void <b>ui_controller_shutdown</b> (void)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_controller_printf</b> (int fd, const char
+    *format,...)
+  <br/>
+  void <b>ui_controller_restore_terminal</b> (void)
+  <br/>
+  void <b>ui_controller_hide_logs</b> (void)
+  <br/>
+  void <b>ui_controller_toggle_logs</b> (void)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_controller_present</b> (<b>ui_screen_t</b>
+    screen, int fd, <b>terminal_size_t</b> minimum, const char *data, size_t
+    len)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_controller_present_retained</b>
+    (<b>ui_screen_t</b> screen, int fd, <b>terminal_size_t</b> minimum, const
+    char *data, size_t len)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_CONTROLLER_BUFFER_BUFFER_SIZE___16384"><a class="permalink" href="#_define_TUI_CONTROLLER_BUFFER_BUFFER_SIZE___16384">#define
+  TUI_CONTROLLER_BUFFER_BUFFER_SIZE 16384</a></h2>
+<p class="Pp">Definition at line <b>5</b> of file <b>tui/controller.c</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_printf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_CONTROLLER_LAST_TITLE_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_CONTROLLER_LAST_TITLE_BUFFER_SIZE___512">#define
+  TUI_CONTROLLER_LAST_TITLE_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>3</b> of file <b>tui/controller.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_CONTROLLER_TITLE_BUFFER_SIZE___512"><a class="permalink" href="#_define_TUI_CONTROLLER_TITLE_BUFFER_SIZE___512">#define
+  TUI_CONTROLLER_TITLE_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Definition at line <b>4</b> of file <b>tui/controller.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_LAYER_CAPACITY___3"><a class="permalink" href="#_define_TUI_LAYER_CAPACITY___3">#define
+  TUI_LAYER_CAPACITY 3</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>tui/controller.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_TUI_MEDIA_SNAPSHOT_CAPACITY___3"><a class="permalink" href="#_define_TUI_MEDIA_SNAPSHOT_CAPACITY___3">#define
+  TUI_MEDIA_SNAPSHOT_CAPACITY 3</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>tui/controller.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>media_snapshot_slot</b>
+  <b>media_snapshot_slot_t</b></h2>
+<p class="Pp">Definition at line <b>55</b> of file <b>tui/controller.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>screen</b> <b>screen_t</b></h2>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_ui_controller_active_fd_(void_)"><a class="permalink" href="#int_ui_controller_active_fd_(void_)">int
+  ui_controller_active_fd (void )</a></h2>
+<p class="Pp">Output descriptor owned by the active screen, or stdout when none
+    is active.</p>
+<p class="Pp">Definition at line <b>232</b> of file <b>tui/controller.c</b>.</p>
+<pre>232                                   {
+233   int fd = atomic_load(&amp;g_default_fd);
+234   if (!lifecycle_is_initialized(&amp;g_lifecycle))
+235     return fd;
+236   mutex_lock(&amp;g_mutex);
+237   if (g_active &gt;= 0 &amp;&amp; g_active &lt; UI_SCREEN_COUNT &amp;&amp; g_screens[g_active].render)
+238     fd = g_screens[g_active].fd;
+239   mutex_unlock(&amp;g_mutex);
+240   return fd;
+241 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>screen::fd</b>, <b>lifecycle_is_initialized()</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>screen::render</b>,
+    <b>ui_controller_active_fd()</b>, and <b>UI_SCREEN_COUNT</b>.</p>
+<p class="Pp">Referenced by <b>tui_stats_render()</b>,
+    <b>ui_controller_active_fd()</b>, <b>ui_controller_first_use_key()</b>,
+    <b>ui_errno_stacks_toggle()</b>, and <b>ui_input_read_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>animation_sample_t</b> * ui_controller_animation_sample (void )</a></h2>
+<p class="Pp">Animation sample owned by the common runtime during a presentation
+    callback.</p>
+<p class="Pp">Definition at line <b>602</b> of file <b>tui/controller.c</b>.</p>
+<pre>602                                                                {
+603   return g_animation;
+604 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_animation_sample()</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_animation_sample()</b>, and
+    <b>ui_media_panel_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ui_controller_current_screen_(void_)"><a class="permalink" href="#int_ui_controller_current_screen_(void_)">int
+  ui_controller_current_screen (void )</a></h2>
+<p class="Pp">Last published screen priority; does not acquire application
+    locks.</p>
+<p class="Pp">Definition at line <b>216</b> of file <b>tui/controller.c</b>.</p>
+<pre>216                                        {
+217   int background = atomic_load(&amp;g_background_screen);
+218   int interactive = atomic_load(&amp;g_interactive_screen);
+219   if (interactive == UI_SCREEN_HELP &amp;&amp; (atomic_load(&amp;g_screen_mask) &amp; (1u &lt;&lt; UI_SCREEN_HELP)) &amp;&amp;
+220       (background != UI_SCREEN_UPDATE || keyboard_help_parent_screen() == UI_SCREEN_UPDATE ||
+221        keyboard_help_parent_screen() == UI_SCREEN_ERROR))
+222     return UI_SCREEN_HELP;
+223   if ((background &gt;= 0 || interactive &gt;= 0) &amp;&amp; ui_error_popup_visible())
+224     return UI_SCREEN_ERROR;
+225   if (interactive &lt; 0 &amp;&amp; background &lt; UI_SCREEN_MDNS &amp;&amp; (atomic_load(&amp;g_screen_mask) &amp; (1u &lt;&lt; UI_SCREEN_MDNS)))
+226     return UI_SCREEN_MDNS;
+227   return background &gt; interactive ? background : interactive;
+228 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>keyboard_help_parent_screen()</b>,
+    <b>ui_controller_current_screen()</b>, <b>ui_error_popup_visible()</b>,
+    <b>UI_SCREEN_ERROR</b>, <b>UI_SCREEN_HELP</b>, <b>UI_SCREEN_MDNS</b>, and
+    <b>UI_SCREEN_UPDATE</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_help_toggle_terminal()</b>,
+    <b>session_pipeline_run_main()</b>, <b>ui_controller_current_screen()</b>,
+    <b>ui_controller_is_presenting()</b>, <b>ui_controller_state()</b>,
+    <b>ui_controller_toggle_logs()</b>, <b>ui_controller_write()</b>,
+    <b>ui_errno_stacks_handle_key()</b>, and <b>ui_input_poll_sync()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_dismiss_("><a class="permalink" href="#void_ui_controller_dismiss_(">void
+  ui_controller_dismiss (<b>ui_screen_t</b> screen, int previous)</a></h2>
+<p class="Pp">Retire a modal and atomically restore its previous interactive
+    owner if still live. Does not steal focus from a screen selected after the
+    modal opened.</p>
+<p class="Pp">Definition at line <b>1561</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1561                                                              {
+1562   remove_screen(screen, previous, NULL);
+1563 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_dismiss()</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_help_toggle_terminal()</b>,
+    <b>ui_controller_dismiss()</b>, and <b>ui_prompt_dismiss()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_finish_(int_fd,_const_char_*_data,_size_t_len)"><a class="permalink" href="#void_ui_controller_finish_(int_fd,_const_char_*_data,_size_t_len)">void
+  ui_controller_finish (int fd, const char * data, size_t len)</a></h2>
+<p class="Pp">Retire live screens and synchronously render final text before the
+    caller exits.</p>
+<p class="Pp">Definition at line <b>542</b> of file <b>tui/controller.c</b>.</p>
+<pre>542                                                                 {
+543   atomic_store(&amp;g_sync_finishing, true);
+544   if (!g_owner)
+545     while (atomic_load(&amp;g_sync_rendering))
+546       platform_sleep_ms(1);
+547   errno_notifications_enable(false);
+548   screen_t retired[UI_SCREEN_COUNT] = {0};
+549   bool locked = lifecycle_is_initialized(&amp;g_lifecycle);
+550   if (locked) {
+551     mutex_lock(&amp;g_mutex);
+552     g_finished = true;
+553     memcpy(retired, g_screens, sizeof(retired));
+554     memset(g_screens, 0, sizeof(g_screens));
+555     atomic_store(&amp;g_background_screen, -1);
+556     atomic_store(&amp;g_screen_mask, 0);
+557     ui_controller_select_interactive(-1);
+558     cond_signal(&amp;g_render_requested);
+559     uint64_t pending = g_render_started;
+560     while (!g_render_snapshot &amp;&amp; g_render_completed &lt; pending)
+561       cond_wait(&amp;g_render_done, &amp;g_mutex);
+562     mutex_unlock(&amp;g_mutex);
+563   }
+564   for (int i = 0; i &lt; UI_SCREEN_COUNT; ++i)
+565     release_screen(&amp;retired[i], i == UI_SCREEN_NOTICE);
+566   platform_write_all(fd, data, len);
+567   atomic_store_bool(&amp;g_live, false);
+568 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>, <b>cond_signal()</b>,
+    <b>cond_wait</b>, <b>errno_notifications_enable()</b>, <b>screen::fd</b>,
+    <b>lifecycle_is_initialized()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>platform_sleep_ms()</b>, <b>platform_write_all()</b>,
+    <b>ui_controller_finish()</b>, <b>ui_controller_select_interactive()</b>,
+    <b>UI_SCREEN_COUNT</b>, and <b>UI_SCREEN_NOTICE</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_finish()</b>,
+    <b>ui_notice_present()</b>, and
+  <b>update_banner_print_instructions()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_controller_first_use_key (int key)</h2>
+<p class="Pp">Handle input for a first-use notice, retaining its snapshot while
+    it is used.</p>
+<p class="Pp">Definition at line <b>1565</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1565                                           {
+1566   if (!lifecycle_is_initialized(&amp;g_lifecycle))
+1567     return false;
+1568   mutex_lock(&amp;g_mutex);
+1569   screen_snapshot_t *owned = g_screens[UI_SCREEN_NOTICE].owned;
+1570   if (owned)
+1571     atomic_fetch_add(&amp;owned-&gt;references, 1);
+1572   mutex_unlock(&amp;g_mutex);
+1573   if (!owned)
+1574     return false;
+1575   ui_notice_key_result_t result = ui_notice_first_use_key(owned-&gt;data, key);
+1576   if (result == UI_NOTICE_KEY_HELP)
+1577     keyboard_help_toggle_terminal(ui_controller_active_fd());
+1578   if (result == UI_NOTICE_KEY_COMPLETE)
+1579     ui_notice_first_use_complete(owned-&gt;data);
+1580   if (result == UI_NOTICE_KEY_COMPLETE || result == UI_NOTICE_KEY_DISMISS)
+1581     remove_screen(UI_SCREEN_NOTICE, -1, owned);
+1582   else if (result == UI_NOTICE_KEY_HANDLED &amp;&amp; (key == '\r' || key == '\n' || key == KEY_LEFT || key == KEY_RIGHT))
+1583     ui_controller_redraw();
+1584   release_snapshot(owned);
+1585   return result != UI_NOTICE_KEY_ORDINARY;
+1586 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>KEY_LEFT</b>, <b>KEY_RIGHT</b>,
+    <b>keyboard_help_toggle_terminal()</b>, <b>lifecycle_is_initialized()</b>,
+    <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    <b>screen_snapshot_t::references</b>, <b>ui_controller_active_fd()</b>,
+    <b>ui_controller_first_use_key()</b>, <b>ui_controller_redraw()</b>,
+    <b>ui_notice_first_use_complete()</b>, <b>ui_notice_first_use_key()</b>,
+    <b>UI_NOTICE_KEY_COMPLETE</b>, <b>UI_NOTICE_KEY_DISMISS</b>,
+    <b>UI_NOTICE_KEY_HANDLED</b>, <b>UI_NOTICE_KEY_HELP</b>,
+    <b>UI_NOTICE_KEY_ORDINARY</b>, and <b>UI_SCREEN_NOTICE</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_first_use_key()</b>, and
+    <b>ui_input_read_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_frame_acquired_at_("><a class="permalink" href="#void_ui_controller_frame_acquired_at_(">void
+  ui_controller_frame_acquired_at (<b>uint64_t</b> started_ns)</a></h2>
+<p class="Pp">Carry the acquisition start time with the next media snapshot on
+    this producer thread.</p>
+<p class="Pp">Definition at line <b>307</b> of file <b>tui/controller.c</b>.</p>
+<pre>307                                                           {
+308   g_acquisition_started_ns = started_ns;
+309 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_frame_acquired_at()</b>.</p>
+<p class="Pp">Referenced by <b>session_pipeline_run_main()</b>, and
+    <b>ui_controller_frame_acquired_at()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_hide_logs_(void_)"><a class="permalink" href="#void_ui_controller_hide_logs_(void_)">void
+  ui_controller_hide_logs (void )</a></h2>
+<p class="Pp">Definition at line <b>1829</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1829                                    {
+1830   ui_controller_remove(UI_SCREEN_LOGS);
+1831   terminal_screen_logs_reset();
+1832 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_screen_logs_reset()</b>,
+    <b>ui_controller_hide_logs()</b>, <b>ui_controller_remove()</b>, and
+    <b>UI_SCREEN_LOGS</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_hide_logs()</b>, and
+    <b>ui_controller_toggle_logs()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ui_controller_interactive_screen_(void_)"><a class="permalink" href="#int_ui_controller_interactive_screen_(void_)">int
+  ui_controller_interactive_screen (void )</a></h2>
+<p class="Pp">One interactive screen replaces the previous one; sync can switch
+    without application locks.</p>
+<p class="Pp">Definition at line <b>249</b> of file <b>tui/controller.c</b>.</p>
+<pre>249                                            {
+250   return atomic_load(&amp;g_interactive_screen);
+251 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_interactive_screen()</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_help_is_active()</b>,
+    <b>keyboard_help_is_active_global()</b>,
+    <b>keyboard_help_toggle_terminal()</b>,
+    <b>session_handle_keyboard_input()</b>, <b>stats_runtime_active()</b>,
+    <b>ui_controller_interactive_screen()</b>, and
+  <b>ui_sync_is_visible()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_controller_is_blocked (void )</h2>
+<p class="Pp">Atomic query, safe for interrupt handling.</p>
+<p class="Pp">Definition at line <b>570</b> of file <b>tui/controller.c</b>.</p>
+<pre>570                                     {
+571   return atomic_load_bool(&amp;g_blocked);
+572 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>, and
+    <b>ui_controller_is_blocked()</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_help_is_active_global()</b>,
+    <b>ui_controller_is_blocked()</b>, and <b>ui_input_poll_sync()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_controller_is_owner (void )</h2>
+<p class="Pp">Definition at line <b>578</b> of file <b>tui/controller.c</b>.</p>
+<pre>578                                   {
+579   return g_owner;
+580 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_is_owner()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_controller_is_presenting (void )</h2>
+<p class="Pp">Lock-free query for console logging, including logs from rendering
+    callbacks.</p>
+<p class="Pp">Definition at line <b>574</b> of file <b>tui/controller.c</b>.</p>
+<pre>574                                        {
+575   return ui_controller_current_screen() &gt;= 0;
+576 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_current_screen()</b>, and
+    <b>ui_controller_is_presenting()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_packet_begin_(void_)"><a class="permalink" href="#void_ui_controller_packet_begin_(void_)">void
+  ui_controller_packet_begin (void )</a></h2>
+<p class="Pp">Keep a complete terminal protocol packet and its flush separate
+    from title updates. Call outside presentation callbacks; application
+    shutdown must follow packet completion.</p>
+<p class="Pp">Definition at line <b>1290</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1290                                       {
+1291   if (lifecycle_is_initialized(&amp;g_lifecycle))
+1292     mutex_lock(&amp;g_title_packet_mutex);
+1293 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, <b>mutex_lock</b>,
+    and <b>ui_controller_packet_begin()</b>.</p>
+<p class="Pp">Referenced by <b>kitty_image_write()</b>, and
+    <b>ui_controller_packet_begin()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_packet_end_(void_)"><a class="permalink" href="#void_ui_controller_packet_end_(void_)">void
+  ui_controller_packet_end (void )</a></h2>
+<p class="Pp">Definition at line <b>1295</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1295                                     {
+1296   if (lifecycle_is_initialized(&amp;g_lifecycle))
+1297     mutex_unlock(&amp;g_title_packet_mutex);
+1298 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, <b>mutex_unlock</b>,
+    and <b>ui_controller_packet_end()</b>.</p>
+<p class="Pp">Referenced by <b>kitty_image_write()</b>, and
+    <b>ui_controller_packet_end()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_controller_present
+  (<b>ui_screen_t</b> screen, int fd, <b>terminal_size_t</b> minimum, const char
+  * data, size_t len)</h2>
+<p class="Pp">Publish an owned copy of an already rendered frame.</p>
+<p class="Pp">Definition at line <b>1850</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1851                                                     {
+1852   return present_text(screen, fd, minimum, data, len, true);
+1853 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_present()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_write()</b>,
+    <b>session_display_write_ascii_frame()</b>, and
+    <b>ui_controller_present()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_controller_present_retained
+  (<b>ui_screen_t</b> screen, int fd, <b>terminal_size_t</b> minimum, const char
+  * data, size_t len)</h2>
+<p class="Pp">Redraw retained media without treating it as a newly acquired
+    frame for FPS.</p>
+<p class="Pp">Definition at line <b>1854</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1855                                                              {
+1856   return present_text(screen, fd, minimum, data, len, false);
+1857 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_present_retained()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>,
+    <b>session_display_write_ascii_frame()</b>, and
+    <b>ui_controller_present_retained()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_controller_printf (int fd, const char
+  * format, ...)</h2>
+<p class="Pp">Definition at line <b>1806</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1806                                                                         {
+1807   char buffer[TUI_CONTROLLER_BUFFER_BUFFER_SIZE];
+1808   va_list args;
+1809   va_start(args, format);
+1810   int len = vsnprintf(buffer, sizeof(buffer), format, args);
+1811   va_end(args);
+1812   if (len &lt; 0)
+1813     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Cannot format terminal output&quot;);
+1814   size_t bytes = (size_t)len &lt; sizeof(buffer) ? (size_t)len : sizeof(buffer) - 1;
+1815   return ui_controller_write(fd, buffer, bytes);
+1816 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>SET_ERRNO</b>,
+    <b>TUI_CONTROLLER_BUFFER_BUFFER_SIZE</b>, <b>ui_controller_printf()</b>, and
+    <b>ui_controller_write()</b>.</p>
+<p class="Pp">Referenced by <b>session_render_loop()</b>, and
+    <b>ui_controller_printf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_redraw_(void_)"><a class="permalink" href="#void_ui_controller_redraw_(void_)">void
+  ui_controller_redraw (void )</a></h2>
+<p class="Pp">Definition at line <b>1735</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1735                                 {
+1736   if (!lifecycle_is_initialized(&amp;g_lifecycle))
+1737     return;
+1738   mutex_lock(&amp;g_mutex);
+1739   g_redraw = true;
+1740   cond_signal(&amp;g_render_requested);
+1741   mutex_unlock(&amp;g_mutex);
+1742 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>cond_signal()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+    and <b>ui_controller_redraw()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_write_init()</b>,
+    <b>keyboard_help_render()</b>, <b>session_display_clear()</b>,
+    <b>session_display_cursor_home()</b>, <b>session_display_reset()</b>,
+    <b>terminal_screen_logs_handle_key()</b>,
+    <b>ui_controller_first_use_key()</b>, <b>ui_controller_redraw()</b>,
+    <b>ui_error_popup_key()</b>, and <b>update_banner_install_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_remove_("><a class="permalink" href="#void_ui_controller_remove_(">void
+  ui_controller_remove (<b>ui_screen_t</b> screen)</a></h2>
+<p class="Pp">Definition at line <b>1557</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1557                                               {
+1558   remove_screen(screen, -1, NULL);
+1559 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_remove()</b>.</p>
+<p class="Pp">Referenced by <b>display_cleanup()</b>, <b>mcp_http_run()</b>,
+    <b>render_progress_destroy()</b>, <b>session_capture_cancel_open()</b>,
+    <b>session_capture_complete_open()</b>, <b>session_capture_destroy()</b>,
+    <b>session_display_begin_drain()</b>, <b>session_display_destroy()</b>,
+    <b>session_display_write_ascii_frame()</b>, <b>session_render_loop()</b>,
+    <b>terminal_screen_log_destroy()</b>, <b>ui_controller_hide_logs()</b>,
+    <b>ui_controller_remove()</b>, <b>ui_errno_stacks_handle_key()</b>,
+    <b>ui_errno_stacks_hide()</b>, <b>ui_errno_stacks_toggle()</b>,
+    <b>ui_input_read_key()</b>, <b>ui_notice_dismiss()</b>,
+    <b>update_banner_show_prompt()</b>, and
+    <b>update_banner_toggle_overlay()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_restore_terminal_(void_)"><a class="permalink" href="#void_ui_controller_restore_terminal_(void_)">void
+  ui_controller_restore_terminal (void )</a></h2>
+<p class="Pp">Stop presentation and restore cursor visibility on an interactive
+    terminal.</p>
+<p class="Pp">Definition at line <b>1818</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1818                                           {
+1819   ui_controller_shutdown();
+1820   if (platform_isatty(STDOUT_FILENO))
+1821     ui_controller_write(STDOUT_FILENO, &quot;\033[0m\033[?25h&quot;, 10);
+1822 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_isatty()</b>,
+    <b>ui_controller_restore_terminal()</b>, <b>ui_controller_shutdown()</b>,
+    and <b>ui_controller_write()</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_restore_terminal()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_controller_screen_live (<b>ui_screen_t</b>
+  screen)</h2>
+<p class="Pp">Definition at line <b>1334</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1334                                                    {
+1335   return screen &gt;= 0 &amp;&amp; screen &lt; UI_SCREEN_COUNT &amp;&amp; (atomic_load(&amp;g_screen_mask) &amp; (1u &lt;&lt; screen));
+1336 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_screen_live()</b>, and
+    <b>UI_SCREEN_COUNT</b>.</p>
+<p class="Pp">Referenced by <b>stats_runtime_start()</b>,
+    <b>ui_controller_screen_live()</b>, and <b>ui_input_read_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_select_interactive_(int_screen)"><a class="permalink" href="#void_ui_controller_select_interactive_(int_screen)">void
+  ui_controller_select_interactive (int screen)</a></h2>
+<p class="Pp">Definition at line <b>253</b> of file <b>tui/controller.c</b>.</p>
+<pre>253                                                   {
+254   atomic_store(&amp;g_interactive_screen, screen);
+255 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_select_interactive()</b>.</p>
+<p class="Pp">Referenced by <b>stats_runtime_toggle()</b>,
+    <b>ui_controller_finish()</b>, <b>ui_controller_select_interactive()</b>,
+    <b>ui_controller_shutdown()</b>, <b>ui_sync_handle_key()</b>, and
+    <b>ui_sync_stop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_show_volume_(void_)"><a class="permalink" href="#void_ui_controller_show_volume_(void_)">void
+  ui_controller_show_volume (void )</a></h2>
+<p class="Pp">Show volume feedback for 1.5 seconds after a volume or mute
+    control is used.</p>
+<p class="Pp">Definition at line <b>173</b> of file <b>tui/controller.c</b>.</p>
+<pre>173                                      {
+174   if (!GET_OPTION(snapshot_mode))
+175     atomic_store_u64(&amp;g_volume_until, time_get_ns() + 1500 * NS_PER_MS_INT);
+176 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>, <b>GET_OPTION</b>,
+    <b>NS_PER_MS_INT</b>, <b>time_get_ns()</b>, and
+    <b>ui_controller_show_volume()</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_show_volume()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_shutdown_(void_)"><a class="permalink" href="#void_ui_controller_shutdown_(void_)">void
+  ui_controller_shutdown (void )</a></h2>
+<p class="Pp">Definition at line <b>1766</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1766                                   {
+1767   if (!lifecycle_destroy_once(&amp;g_lifecycle))
+1768     return;
+1769   mutex_lock(&amp;g_mutex);
+1770   atomic_store_bool(&amp;g_presentation_stop_requested, true);
+1771   cond_signal(&amp;g_render_requested);
+1772   mutex_unlock(&amp;g_mutex);
+1773   thread_join(&amp;g_thread, NULL);
+1774   // Shutdown may precede the next presentation tick. Keep pending errors readable
+1775   // after exit without delaying transport teardown or waiting for terminal input.
+1776   ui_error_popup_preserve(atomic_load(&amp;g_default_fd), unpack_size(atomic_load(&amp;g_size)));
+1777   ui_session_destroy(g_session);
+1778   g_session = NULL;
+1779   errno_notifications_enable(false);
+1780   ui_error_popup_reset();
+1781   atomic_store_u64(&amp;g_volume_until, 0);
+1782   ui_sync_stop();
+1783   for (int i = 0; i &lt; UI_SCREEN_COUNT; ++i) {
+1784     release_screen(&amp;g_screens[i], i == UI_SCREEN_NOTICE);
+1785   }
+1786   destroy_media_snapshots();
+1787   cond_destroy(&amp;g_render_requested);
+1788   cond_destroy(&amp;g_render_done);
+1789   mutex_destroy(&amp;g_title_packet_mutex);
+1790   mutex_destroy(&amp;g_mutex);
+1791   atomic_store_bool(&amp;g_live, false);
+1792   atomic_store(&amp;g_background_screen, -1);
+1793   atomic_store(&amp;g_screen_mask, 0);
+1794   ui_controller_select_interactive(-1);
+1795   NAMED_UNREGISTER(&amp;g_title_active);
+1796   NAMED_UNREGISTER(&amp;g_title_render);
+1797   NAMED_UNREGISTER(&amp;g_title_ready);
+1798   NAMED_UNREGISTER(&amp;g_title_activity);
+1799   NAMED_UNREGISTER(&amp;g_live);
+1800   NAMED_UNREGISTER(&amp;g_presentation_stop_requested);
+1801   NAMED_UNREGISTER(&amp;g_blocked);
+1802   NAMED_UNREGISTER(&amp;g_lifecycle.state);
+1803   lifecycle_destroy_commit(&amp;g_lifecycle);
+1804 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
+    <b>cond_destroy()</b>, <b>cond_signal()</b>,
+    <b>errno_notifications_enable()</b>, <b>lifecycle_destroy_commit()</b>,
+    <b>lifecycle_destroy_once()</b>, <b>mutex_destroy()</b>, <b>mutex_lock</b>,
+    <b>mutex_unlock</b>, <b>NAMED_UNREGISTER</b>, <b>thread_join</b>,
+    <b>ui_controller_select_interactive()</b>, <b>ui_controller_shutdown()</b>,
+    <b>ui_error_popup_preserve()</b>, <b>ui_error_popup_reset()</b>,
+    <b>UI_SCREEN_COUNT</b>, <b>UI_SCREEN_NOTICE</b>,
+    <b>ui_session_destroy()</b>, and <b>ui_sync_stop()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
+    <b>stats_runtime_stop()</b>, <b>ui_controller_restore_terminal()</b>, and
+    <b>ui_controller_shutdown()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>terminal_size_t</b> ui_controller_size (void )</h2>
+<p class="Pp">Definition at line <b>582</b> of file <b>tui/controller.c</b>.</p>
+<pre>582                                          {
+583   if (g_owner)
+584     return g_render_size;
+585   terminal_size_t size = {.cols = 80, .rows = 24};
+586   if (lifecycle_is_initialized(&amp;g_lifecycle)) {
+587     size = unpack_size(atomic_load(&amp;g_size));
+588   }
+589   // A title-only controller has no screen to poll geometry yet.
+590   if (!lifecycle_is_initialized(&amp;g_lifecycle) || atomic_load(&amp;g_screen_mask) == 0) {
+591     terminal_size_t detected = {0};
+592     asciichat_errno_scope_t scope = errno_scope_begin();
+593     int fd = atomic_load(&amp;g_default_fd);
+594     if (platform_isatty(fd) &amp;&amp; terminal_get_size_fd(fd, &amp;detected) == ASCIICHAT_OK &amp;&amp; detected.cols &gt; 0 &amp;&amp;
+595         detected.rows &gt; 0)
+596       size = detected;
+597     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+598   }
+599   return size;
+600 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_ERRNO_DISMISSED</b>, <b>ASCIICHAT_OK</b>,
+    <b>terminal_size_t::cols</b>, <b>errno_scope_begin()</b>,
+    <b>errno_scope_end()</b>, <b>screen::fd</b>,
+    <b>lifecycle_is_initialized()</b>, <b>platform_isatty()</b>,
+    <b>terminal_size_t::rows</b>, <b>terminal_get_size_fd()</b>, and
+    <b>ui_controller_size()</b>.</p>
+<p class="Pp">Referenced by <b>key_identity_format_terminal()</b>,
+    <b>keyboard_help_toggle_terminal()</b>, <b>prompt_unknown_host()</b>,
+    <b>terminal_screen_logs_handle_key()</b>, <b>ui_controller_size()</b>,
+    <b>ui_controller_state()</b>, and <b>ui_notice_present()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_controller_start_terminal (int
+  fd)</h2>
+<p class="Pp">Start terminal interaction without publishing a background
+  screen.</p>
+<p class="Pp">Definition at line <b>1300</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1300                                                        {
+1301   if (fd &lt; 0)
+1302     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid UI terminal descriptor&quot;);
+1303   atomic_store(&amp;g_default_fd, fd);
+1304   asciichat_error_t result = controller_start();
+1305   return result == ASCIICHAT_OK ? ui_sync_start(fd) : result;
+1306 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>SET_ERRNO</b>, <b>ui_controller_start_terminal()</b>, and
+    <b>ui_sync_start()</b>.</p>
+<p class="Pp">Referenced by <b>stats_runtime_start()</b>, and
+    <b>ui_controller_start_terminal()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ui_presentation_state_t</b> ui_controller_state (void )</h2>
+<p class="Pp">Definition at line <b>1588</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1588                                                   {
+1589   ui_presentation_state_t state = {.screen = -1};
+1590   if (!lifecycle_is_initialized(&amp;g_lifecycle))
+1591     return state;
+1592   state.screen = ui_controller_current_screen();
+1593   if (state.screen == UI_SCREEN_ERROR) {
+1594     state.covered = ui_too_small(ui_controller_size(), ui_error_popup_minimum());
+1595     return state;
+1596   }
+1597   if (state.screen &gt;= 0 &amp;&amp; state.screen &lt; UI_SCREEN_COUNT) {
+1598     uint64_t published = atomic_load(&amp;g_input_state);
+1599     // Sync has an independent mailbox instead of a controller slot. Treat an
+1600     // unpublished slot as absent so the session can dispatch queued switches.
+1601     if (!(published &amp; (UINT64_C(1) &lt;&lt; state.screen)))
+1602       state.screen = -1;
+1603     else
+1604       state.covered = (published &amp; (UINT64_C(1) &lt;&lt; (state.screen + 32))) != 0;
+1605   }
+1606   return state;
+1607 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_presentation_state_t::covered</b>,
+    <b>lifecycle_is_initialized()</b>, <b>ui_presentation_state_t::screen</b>,
+    <b>ui_controller_current_screen()</b>, <b>ui_controller_size()</b>,
+    <b>ui_controller_state()</b>, <b>ui_error_popup_minimum()</b>,
+    <b>UI_SCREEN_COUNT</b>, <b>UI_SCREEN_ERROR</b>, and
+  <b>ui_too_small()</b>.</p>
+<p class="Pp">Referenced by <b>stats_runtime_start()</b>,
+    <b>ui_controller_state()</b>, and <b>ui_input_read_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_controller_submit (<b>ui_screen_t</b>
+  screen, int fd, <b>terminal_size_t</b> minimum, <b>ui_render_fn</b> render,
+  const void * snapshot, size_t bytes)</h2>
+<p class="Pp">Copies snapshot before returning. Interactive callbacks run on the
+    presentation thread; batch output renders synchronously. Pointer members
+    must remain valid until <b>ui_controller_remove()</b> returns. Callbacks may
+    remove themselves. Callbacks run without the controller mutex. External
+    removal waits for an in-flight callback to finish, so producers must not
+    hold locks needed by that callback while removing its screen.</p>
+<p class="Pp">Definition at line <b>1501</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1502                                                                            {
+1503   return submit_screen(screen, fd, minimum, render, snapshot, bytes, NULL, true);
+1504 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_submit()</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_help_toggle_terminal()</b>,
+    <b>terminal_screen_render()</b>, <b>ui_controller_submit()</b>,
+    <b>ui_controller_toggle_logs()</b>, <b>ui_media_loading_present()</b>,
+    <b>ui_notice_present()</b>, <b>ui_notice_present_first_use()</b>,
+    <b>ui_password_prompt_present()</b>, <b>ui_prompt_present_kind()</b>, and
+    <b>update_banner_show_prompt()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_title_activity_("><a class="permalink" href="#void_ui_controller_title_activity_(">void
+  ui_controller_title_activity (<b>ui_title_activity_t</b> activity)</a></h2>
+<p class="Pp">Definition at line <b>675</b> of file <b>tui/controller.c</b>.</p>
+<pre>675                                                                 {
+676   atomic_store_int(&amp;g_title_activity, activity);
+677 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_int()</b>, and
+    <b>ui_controller_title_activity()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_title_discovery_("><a class="permalink" href="#void_ui_controller_title_discovery_(">void
+  ui_controller_title_discovery (<b>bool</b> has_session, <b>bool</b>
+  joining)</a></h2>
+<p class="Pp">Definition at line <b>678</b> of file <b>tui/controller.c</b>.</p>
+<pre>678                                                                    {
+679   ui_controller_title_activity(joining       ? UI_TITLE_JOINING_SESSION
+680                                : has_session ? UI_TITLE_WAITING_PEERS
+681                                              : UI_TITLE_CREATING_SESSION);
+682 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ui_controller_title_activity()</b>,
+    <b>ui_controller_title_discovery()</b>, <b>UI_TITLE_CREATING_SESSION</b>,
+    <b>UI_TITLE_JOINING_SESSION</b>, and <b>UI_TITLE_WAITING_PEERS</b>.</p>
+<p class="Pp">Referenced by <b>splash_set_discovery_session()</b>, and
+    <b>ui_controller_title_discovery()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_title_ready_(void_)"><a class="permalink" href="#void_ui_controller_title_ready_(void_)">void
+  ui_controller_title_ready (void )</a></h2>
+<p class="Pp">Definition at line <b>666</b> of file <b>tui/controller.c</b>.</p>
+<pre>666                                      {
+667   atomic_store_bool(&amp;g_title_ready, true);
+668 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>, and
+    <b>ui_controller_title_ready()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_title_render_("><a class="permalink" href="#void_ui_controller_title_render_(">void
+  ui_controller_title_render (<b>ui_title_render_t</b> phase)</a></h2>
+<p class="Pp">Definition at line <b>669</b> of file <b>tui/controller.c</b>.</p>
+<pre>669                                                          {
+670   atomic_store_int(&amp;g_title_render, phase);
+671   if (phase != UI_TITLE_IDLE)
+672     ui_controller_title_ready();
+673 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_int()</b>,
+    <b>ui_controller_title_ready()</b>, <b>ui_controller_title_render()</b>, and
+    <b>UI_TITLE_IDLE</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>,
+    <b>render_file_destroy()</b>, <b>render_file_write_frame()</b>, and
+    <b>ui_controller_title_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_controller_title_start (const char *
+  mode, int fd)</h2>
+<p class="Pp">Start interactive title presentation. Producer events never write
+    to the terminal.</p>
+<p class="Pp">Definition at line <b>1308</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1308                                                                       {
+1309   if (!mode || !platform_isatty(fd) ||
+1310       (GET_OPTION(snapshot_mode) &amp;&amp; !GET_OPTION(render_file)[0] &amp;&amp; !GET_OPTION(render_kitty)))
+1311     return ASCIICHAT_OK;
+1312   if (atomic_load_bool(&amp;g_title_active))
+1313     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Terminal title is already initialized&quot;);
+1314   atomic_store(&amp;g_default_fd, fd);
+1315   asciichat_error_t result = controller_start();
+1316   if (result != ASCIICHAT_OK)
+1317     return result;
+1318   g_title_fd = platform_dup(fd);
+1319   if (g_title_fd &lt; 0)
+1320     return SET_ERRNO_SYS(ERROR_TERMINAL, &quot;Cannot retain title terminal&quot;);
+1321   g_title_mode = mode;
+1322   g_title_started = time_get_ns();
+1323   g_last_title[0] = '\0';
+1324   g_title_written = false;
+1325   g_title_startup_finished = false;
+1326   atomic_store_int(&amp;g_title_render, UI_TITLE_IDLE);
+1327   atomic_store_int(&amp;g_title_activity, UI_TITLE_ACTIVITY_IDLE);
+1328   atomic_store_bool(&amp;g_title_ready, false);
+1329   // Publish only after the retained descriptor and immutable configuration are ready.
+1330   atomic_store_bool(&amp;g_title_active, true);
+1331   return ASCIICHAT_OK;
+1332 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+    <b>atomic_store_bool()</b>, <b>atomic_store_int()</b>,
+    <b>ERROR_INVALID_STATE</b>, <b>ERROR_TERMINAL</b>, <b>GET_OPTION</b>,
+    <b>platform_dup()</b>, <b>platform_isatty()</b>, <b>SET_ERRNO</b>,
+    <b>SET_ERRNO_SYS</b>, <b>time_get_ns()</b>,
+    <b>ui_controller_title_start()</b>, <b>UI_TITLE_ACTIVITY_IDLE</b>, and
+    <b>UI_TITLE_IDLE</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, and
+    <b>ui_controller_title_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_controller_toggle_logs_(void_)"><a class="permalink" href="#void_ui_controller_toggle_logs_(void_)">void
+  ui_controller_toggle_logs (void )</a></h2>
+<p class="Pp">Definition at line <b>1834</b> of file
+  <b>tui/controller.c</b>.</p>
+<pre>1834                                      {
+1835   ui_errno_stacks_hide();
+1836   if (ui_controller_current_screen() == UI_SCREEN_LOGS) {
+1837     ui_controller_hide_logs();
+1838     return;
+1839   }
+1840   if (!platform_isatty(STDOUT_FILENO) || GET_OPTION(snapshot_mode))
+1841     return;
+1842   const bool snapshot = true;
+1843   asciichat_error_t result =
+1844       ui_controller_submit(UI_SCREEN_LOGS, STDOUT_FILENO, (terminal_size_t){.cols = 40, .rows = 6}, render_logs,
+1845                            &amp;snapshot, sizeof(snapshot));
+1846   if (result != ASCIICHAT_OK)
+1847     log_warn(&quot;Cannot show application logs: %d&quot;, result);
+1848 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>GET_OPTION</b>,
+    <b>log_warn</b>, <b>platform_isatty()</b>,
+    <b>ui_controller_current_screen()</b>, <b>ui_controller_hide_logs()</b>,
+    <b>ui_controller_submit()</b>, <b>ui_controller_toggle_logs()</b>,
+    <b>ui_errno_stacks_hide()</b>, and <b>UI_SCREEN_LOGS</b>.</p>
+<p class="Pp">Referenced by <b>ui_controller_toggle_logs()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_controller_write (int fd, const char
+  * data, size_t len)</h2>
+<p class="Pp">Final output sink. Live screen writes must originate in a
+    presentation callback. Other terminal text is suppressed while a screen owns
+    the terminal; non-TTY output remains synchronous.</p>
+<p class="Pp">Definition at line <b>382</b> of file <b>tui/controller.c</b>.</p>
+<pre>382                                                                             {
+383   if (!data || !len)
+384     return ASCIICHAT_OK;
+385   if (g_capture) {
+386     frame_buffer_append(g_capture, data, len);
+387     return ASCIICHAT_OK;
+388   }
+389   // Logging may call this while holding subsystem locks; never wait for a
+390   // renderer callback here. Live screens already capture logs in their model.
+391   if (!g_owner &amp;&amp; ui_controller_is_presenting())
+392     return ASCIICHAT_OK;
+393   if (g_owner &amp;&amp; g_render_fd &gt;= 0)
+394     fd = g_render_fd;
+395   fps_counter_write_begin(g_fps);
+396   uint64_t stats_start = g_stats_media ? time_get_ns() : 0;
+397   // Terminals supporting synchronized output present the art and its overlays
+398   // together, even when a large UTF-8 frame requires several writes.
+399   bool synchronized = g_render_snapshot != NULL;
+400   bool started = !synchronized || write_output_chunk(fd, &quot;\033[?2026h&quot;, 8) == 8;
+401   uint64_t sync_started_ns = g_stats_media &amp;&amp; synchronized ? time_get_ns() : 0;
+402   size_t written = 0;
+403   bool superseded = false;
+404   while (started &amp;&amp; written &lt; len) {
+405     // A pending editor or overlay supersedes the remainder of a media frame.
+406     // Bound each console write so a large frame cannot delay that transition.
+407     if (g_stats_media &amp;&amp; ui_controller_current_screen() != UI_SCREEN_MEDIA) {
+408       superseded = true;
+409       break;
+410     }
+411     size_t count = len - written;
+412     bool row_boundary = false;
+413     if (g_stats_media &amp;&amp; count &gt; 32768) {
+414       count = 32768;
+415       size_t boundary = media_chunk_boundary(data + written, count);
+416       if (boundary) {
+417         count = boundary;
+418         row_boundary = true;
+419       }
+420       while (count &amp;&amp; ((unsigned char)data[written + count] &amp; 0xc0) == 0x80)
+421         --count;
+422     }
+423     size_t sent = write_output_chunk(fd, data + written, count);
+424     written += sent;
+425     if (sent != count)
+426       break;
+427     if (synchronized &amp;&amp; g_stats_media &amp;&amp; row_boundary &amp;&amp; written &lt; len &amp;&amp;
+428         time_get_ns() - sync_started_ns &gt;= 40 * NS_PER_MS_INT) {
+429       // Give the terminal a complete set of rows before its synchronized
+430       // output watchdog can expose a partly written row.
+431       if (write_output_chunk(fd, &quot;\033[?2026l\033[?2026h&quot;, 16) != 16) {
+432         started = false;
+433         break;
+434       }
+435       sync_started_ns = time_get_ns();
+436     }
+437   }
+438   // End the update even when input superseded the frame halfway through.
+439   static const char end_with_query[] = &quot;\033[?2026l\033]11;?\033\\&quot;;
+440   bool probe = synchronized &amp;&amp; g_probe_frame &amp;&amp; written == len &amp;&amp; started;
+441   if (probe)
+442     g_probe_requested_ns = time_get_ns();
+443   size_t end_length = probe ? sizeof(end_with_query) - 1 : 8;
+444   bool ended = !synchronized || write_output_chunk(fd, end_with_query, end_length) == end_length;
+445   if (!ended)
+446     g_probe_requested_ns = 0;
+447   // Switching screens intentionally cancels the remainder of an old media frame.
+448   bool complete = (written == len || superseded) &amp;&amp; started &amp;&amp; ended;
+449   if (g_stats_media) {
+450     g_stats_write_ns += time_get_ns() - stats_start;
+451     g_stats_writes++;
+452     g_stats_failed |= !complete;
+453   }
+454   fps_counter_write_end(g_fps, complete);
+455   return complete ? ASCIICHAT_OK
+456                   : SET_ERRNO(ERROR_FILE_OPERATION, &quot;Incomplete terminal frame write (%zu/%zu bytes)&quot;, written, len);
+457 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_FILE_OPERATION</b>,
+    <b>screen::fd</b>, <b>fps_counter_write_begin()</b>,
+    <b>fps_counter_write_end()</b>, <b>frame_buffer_append()</b>,
+    <b>NS_PER_MS_INT</b>, <b>SET_ERRNO</b>, <b>time_get_ns()</b>,
+    <b>ui_controller_current_screen()</b>, <b>ui_controller_is_presenting()</b>,
+    <b>ui_controller_write()</b>, and <b>UI_SCREEN_MEDIA</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

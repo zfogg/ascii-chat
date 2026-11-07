@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>input.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">input.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">input.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">input.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>ui_input_edit_key</b> (char *buffer, size_t capacity,
+    size_t *length, size_t *cursor, <b>keyboard_key_t</b> key)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_input_render</b> (<b>frame_buffer_t</b>
+    *output, int row, int column, int width, int height, const char *text,
+    size_t cursor, <b>bool</b> preserve_quotes)
+  <br/>
+  <b>asciichat_error_t</b> <b>ui_input_insert</b> (char *buffer, size_t
+    capacity, size_t *length, size_t *cursor, const char *text)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_input_edit_key_(char_*_buffer,_size_t_capacity,_size_t_*_length,_size_t_*_cursor,_"><a class="permalink" href="#void_ui_input_edit_key_(char_*_buffer,_size_t_capacity,_size_t_*_length,_size_t_*_cursor,_">void
+  ui_input_edit_key (char * buffer, size_t capacity, size_t * length, size_t *
+  cursor, <b>keyboard_key_t</b> key)</a></h2>
+<p class="Pp">UTF-8 cursor movement/deletion in caller-owned single-line
+    storage.</p>
+<p class="Pp">Definition at line <b>83</b> of file <b>ui/input.c</b>.</p>
+<pre>83                                                                                                             {
+84   if (!buffer || !capacity || !length || !position || *length &gt;= capacity || *position &gt; *length ||
+85       strnlen(buffer, capacity) != *length || !utf8_is_valid(buffer) ||
+86       (*position &amp;&amp; ((unsigned char)buffer[*position] &amp; 0xc0) == 0x80)) {
+87     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid line editor storage, UTF-8 or cursor&quot;);
+88     return;
+89   }
+90   size_t len = *length, cursor = *position, start = cursor, end = cursor;
+91   if (key == KEY_HOME)
+92     cursor = 0;
+93   else if (key == KEY_END)
+94     cursor = len;
+95   else if (key == KEY_LEFT)
+96     cursor = previous(buffer, cursor);
+97   else if (key == KEY_RIGHT &amp;&amp; cursor &lt; len)
+98     cursor += (size_t)utf8_next_char_bytes(buffer + cursor, len - cursor);
+99   else if (key == 8 || key == 127)
+100     start = previous(buffer, cursor);
+101   else if (key == KEY_DELETE &amp;&amp; cursor &lt; len)
+102     end += (size_t)utf8_next_char_bytes(buffer + cursor, len - cursor);
+103   else if (key == 23) {
+104     while (start &amp;&amp; word_space((unsigned char)buffer[start - 1]))
+105       start = previous(buffer, start);
+106     while (start &amp;&amp; !word_space((unsigned char)buffer[start - 1]))
+107       start = previous(buffer, start);
+108   } else if (key == KEY_CTRL_DELETE) {
+109     while (end &lt; len &amp;&amp; !word_space((unsigned char)buffer[end]))
+110       end += (size_t)utf8_next_char_bytes(buffer + end, len - end);
+111     while (end &lt; len &amp;&amp; word_space((unsigned char)buffer[end]))
+112       ++end;
+113   } else {
+114     char text[UTF8_BUFFER_SIZE];
+115     if (key == '\t' || (key &gt;= 32 &amp;&amp; key != 127)) {
+116       if (keyboard_text_encode(key, text))
+117         (void)ui_input_insert(buffer, capacity, length, position, text);
+118     }
+119     return;
+120   }
+121   if (start != end) {
+122     memmove(buffer + start, buffer + end, len - end + 1);
+123     len -= end - start;
+124     cursor = start;
+125   }
+126   *length = len;
+127   *position = cursor;
+128 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>KEY_CTRL_DELETE</b>,
+    <b>KEY_DELETE</b>, <b>KEY_END</b>, <b>KEY_HOME</b>, <b>KEY_LEFT</b>,
+    <b>KEY_RIGHT</b>, <b>keyboard_text_encode()</b>, <b>SET_ERRNO</b>,
+    <b>ui_input_edit_key()</b>, <b>ui_input_insert()</b>,
+    <b>UTF8_BUFFER_SIZE</b>, <b>utf8_is_valid()</b>, and
+    <b>utf8_next_char_bytes()</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_apply_key()</b>,
+    <b>ui_input_edit_key()</b>, and <b>ui_input_read_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_input_insert (char * buffer, size_t
+  capacity, size_t * length, size_t * cursor, const char * text)</h2>
+<p class="Pp">Insert UTF-8 text atomically, retaining storage unchanged on
+    failure.</p>
+<p class="Pp">Definition at line <b>130</b> of file <b>ui/input.c</b>.</p>
+<pre>130                                                                                                                    {
+131   if (!buffer || !length || !cursor || !text || *length &gt;= capacity || *cursor &gt; *length ||
+132       strnlen(buffer, capacity) != *length || !utf8_is_valid(text) || !utf8_is_valid(buffer) ||
+133       (*cursor &amp;&amp; ((unsigned char)buffer[*cursor] &amp; 0xc0) == 0x80))
+134     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid input insertion storage, text or cursor&quot;);
+135   size_t bytes = strlen(text);
+136   if (bytes &gt;= capacity - *length)
+137     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Input insertion exceeds field capacity&quot;);
+138   memmove(buffer + *cursor + bytes, buffer + *cursor, *length - *cursor + 1);
+139   memcpy(buffer + *cursor, text, bytes);
+140   *cursor += bytes;
+141   *length += bytes;
+142   return ASCIICHAT_OK;
+143 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_BUFFER_OVERFLOW</b>,
+    <b>ERROR_INVALID_PARAM</b>, <b>SET_ERRNO</b>, <b>ui_input_insert()</b>, and
+    <b>utf8_is_valid()</b>.</p>
+<p class="Pp">Referenced by <b>ui_input_edit_key()</b>, and
+    <b>ui_input_insert()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> ui_input_render (<b>frame_buffer_t</b> *
+  output, int row, int column, int width, int height, const char * text, size_t
+  cursor, <b>bool</b> preserve_quotes)</h2>
+<p class="Pp">Render a scrollable UTF-8 field with an active-row marker and
+    visible cursor. Width excludes the two-cell marker. Quoted paths may retain
+    their opening quote.</p>
+<p class="Pp">Definition at line <b>6</b> of file <b>ui/input.c</b>.</p>
+<pre>7                                                                        {
+8   if (!buffer || !text || row &lt; 1 || col &lt; 1 || width &lt; 5 || height &lt; 1 || cursor &gt; strlen(text) ||
+9       !utf8_is_valid(text) || (cursor &amp;&amp; ((unsigned char)text[cursor] &amp; 0xc0) == 0x80))
+10     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid input field text, cursor or geometry&quot;);
+11   int lines = 1;
+12   size_t cursor_line = 0;
+13   for (size_t i = 0; text[i]; ++i)
+14     if (text[i] == '\n') {
+15       ++lines;
+16       if (i &lt; cursor)
+17         ++cursor_line;
+18     }
+19   int shown = lines &lt; height ? lines : height;
+20   int first = cursor_line &gt;= (size_t)shown ? (int)cursor_line - shown + 1 : 0;
+21   const char *line = text;
+22   int number = 0, cursor_col = col + 2;
+23   while (line &amp;&amp; number &lt; first + shown) {
+24     const char *end = strchr(line, '\n');
+25     if (!end)
+26       end = line + strlen(line);
+27     if (number &gt;= first) {
+28       const char *start = line;
+29       bool active_line = (size_t)number == cursor_line;
+30       bool quoted = preserve_quotes &amp;&amp; end - line &gt;= 2 &amp;&amp; (*line == '&quot;' || *line == '\'') &amp;&amp; end[-1] == *line;
+31       const char *anchor = active_line ? text + cursor : end;
+32       int prefix = 0;
+33       if (quoted &amp;&amp; utf8_display_width_n(line, (size_t)(anchor - line)) &gt; width - 1) {
+34         // Keep the opening quote visible while scrolling the path's interior.
+35         // The tail includes the closing quote when the cursor is at the end.
+36         start = line + 1;
+37         prefix = 4;
+38         while (start &lt; anchor &amp;&amp; utf8_display_width_n(start, (size_t)(anchor - start)) &gt; width - prefix - 1)
+39           start += utf8_next_char_bytes(start, (size_t)(end - start));
+40       } else if (active_line) {
+41         while (start &lt; anchor &amp;&amp; utf8_display_width_n(start, (size_t)(anchor - start)) &gt; width - 1)
+42           start += utf8_next_char_bytes(start, (size_t)(end - start));
+43       }
+44       if (active_line)
+45         cursor_col = col + 2 + prefix + utf8_display_width_n(start, (size_t)(anchor - start));
+46       frame_buffer_printf(buffer, &quot;\033[%d;%dH%s&quot;, row + number - first, col, active_line ? &quot;&gt; &quot; : &quot;  &quot;);
+47       if (prefix)
+48         frame_buffer_printf(buffer, &quot;%c...&quot;, *line);
+49       int used = prefix;
+50       while (start &lt; end) {
+51         int bytes = utf8_next_char_bytes(start, (size_t)(end - start));
+52         if (bytes &lt;= 0)
+53           break;
+54         int cells = utf8_display_width_n(start, (size_t)bytes);
+55         if (used + cells &gt; width)
+56           break;
+57         frame_buffer_append(buffer, start, (size_t)bytes);
+58         used += cells;
+59         start += bytes;
+60       }
+61       frame_buffer_printf(buffer, &quot;%*s&quot;, width - used, &quot;&quot;);
+62     }
+63     ++number;
+64     line = *end ? end + 1 : NULL;
+65   }
+66   frame_buffer_printf(buffer, &quot;\033[%d;%dH\033[?25h&quot;, row + (int)cursor_line - first, cursor_col);
+67   return ASCIICHAT_OK;
+68 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>frame_buffer_append()</b>, <b>frame_buffer_printf()</b>,
+    <b>SET_ERRNO</b>, <b>ui_input_render()</b>, <b>utf8_display_width_n()</b>,
+    <b>utf8_is_valid()</b>, and <b>utf8_next_char_bytes()</b>.</p>
+<p class="Pp">Referenced by <b>ui_input_render()</b>, and
+    <b>ui_media_panel_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

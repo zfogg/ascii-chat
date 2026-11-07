@@ -39,7 +39,31 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp"><b>uint64_t</b> <b>frame_times</b> [30]
+<p class="Pp"><b>bool</b> <b>visible</b>
+  <br/>
+  int <b>last_fps</b>
+  <br/>
+  <b>bool</b> <b>measuring</b>
+  <br/>
+  <b>bool</b> <b>written</b>
+  <br/>
+  <b>bool</b> <b>failed</b>
+  <br/>
+  <b>uint64_t</b> <b>current_frame_id</b>
+  <br/>
+  <b>uint64_t</b> <b>completed_frame_id</b>
+  <br/>
+  <b>uint64_t</b> <b>write_start</b>
+  <br/>
+  <b>uint64_t</b> <b>frame_write_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>report_start</b>
+  <br/>
+  <b>uint64_t</b> <b>report_writes</b>
+  <br/>
+  <b>uint64_t</b> <b>report_frames</b>
+  <br/>
+  <b>uint64_t</b> <b>frame_times</b> [30]
   <br/>
   Circular buffer of timestamps (ns). int <b>head</b>
   <br/>
@@ -56,33 +80,110 @@
 <p class="Pp">FPS counter state.</p>
 <p class="Pp">Maintains a circular buffer of frame timestamps for rolling-window
     FPS calculation.</p>
-<p class="Pp">Definition at line <b>23</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Definition at line <b>24</b> of file <b>fps_counter.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> fps_counter_s::completed_frame_id</h2>
+<p class="Pp">Definition at line <b>30</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_frame_begin_id()</b>, and
+    <b>fps_counter_frame_end()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="int_fps_counter_s::count"><a class="permalink" href="#int_fps_counter_s::count">int
   fps_counter_s::count</a></h2>
 <p class="Pp">Number of valid entries in buffer (0 to FPS_WINDOW_SIZE).</p>
-<p class="Pp">Definition at line <b>26</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Definition at line <b>38</b> of file <b>fps_counter.c</b>.</p>
 <p class="Pp">Referenced by <b>fps_counter_create()</b>,
-    <b>fps_counter_get()</b>, and <b>fps_counter_tick()</b>.</p>
+    <b>fps_counter_get_at()</b>, <b>fps_counter_reset()</b>, and
+    <b>fps_counter_tick_at()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> fps_counter_s::current_frame_id</h2>
+<p class="Pp">Definition at line <b>30</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_frame_begin()</b>,
+    <b>fps_counter_frame_begin_id()</b>, and <b>fps_counter_frame_end()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> fps_counter_s::failed</h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_frame_begin()</b>,
+    <b>fps_counter_frame_end()</b>, and <b>fps_counter_write_end()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint64_t</b> fps_counter_s::frame_times[30]</h2>
 <p class="Pp">Circular buffer of timestamps (ns).</p>
-<p class="Pp">Definition at line <b>24</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Definition at line <b>36</b> of file <b>fps_counter.c</b>.</p>
 <p class="Pp">Referenced by <b>fps_counter_create()</b>,
-    <b>fps_counter_get()</b>, and <b>fps_counter_tick()</b>.</p>
+    <b>fps_counter_get_at()</b>, <b>fps_counter_reset()</b>, and
+    <b>fps_counter_tick_at()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> fps_counter_s::frame_write_ns</h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_frame_begin()</b>,
+    <b>fps_counter_frame_end()</b>, and <b>fps_counter_write_end()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_fps_counter_s::head"><a class="permalink" href="#int_fps_counter_s::head">int
   fps_counter_s::head</a></h2>
 <p class="Pp">Current write position (0 to FPS_WINDOW_SIZE-1).</p>
-<p class="Pp">Definition at line <b>25</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Definition at line <b>37</b> of file <b>fps_counter.c</b>.</p>
 <p class="Pp">Referenced by <b>fps_counter_create()</b>,
-    <b>fps_counter_get()</b>, and <b>fps_counter_tick()</b>.</p>
+    <b>fps_counter_get_at()</b>, <b>fps_counter_reset()</b>, and
+    <b>fps_counter_tick_at()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_fps_counter_s::last_fps"><a class="permalink" href="#int_fps_counter_s::last_fps">int
+  fps_counter_s::last_fps</a></h2>
+<p class="Pp">Definition at line <b>26</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_create()</b>,
+    <b>fps_counter_render()</b>, and <b>fps_counter_set_visible()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> fps_counter_s::measuring</h2>
+<p class="Pp">Definition at line <b>27</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_frame_begin()</b>,
+    <b>fps_counter_frame_begin_id()</b>, <b>fps_counter_frame_end()</b>,
+    <b>fps_counter_write_begin()</b>, and <b>fps_counter_write_end()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> fps_counter_s::report_frames</h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_frame_end()</b>, and
+    <b>fps_counter_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> fps_counter_s::report_start</h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_create()</b>, and
+    <b>fps_counter_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> fps_counter_s::report_writes</h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_frame_end()</b>, and
+    <b>fps_counter_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> fps_counter_s::visible</h2>
+<p class="Pp">Definition at line <b>25</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_render()</b>, and
+    <b>fps_counter_set_visible()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> fps_counter_s::write_start</h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_write_begin()</b>, and
+    <b>fps_counter_write_end()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> fps_counter_s::written</h2>
+<p class="Pp">Definition at line <b>28</b> of file <b>fps_counter.c</b>.</p>
+<p class="Pp">Referenced by <b>fps_counter_frame_begin()</b>,
+    <b>fps_counter_frame_end()</b>, and <b>fps_counter_write_end()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -93,7 +194,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

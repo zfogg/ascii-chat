@@ -44,9 +44,9 @@
   <br/>
   Saved stdout file descriptor. int <b>saved_stderr_fd</b>
   <br/>
-  Saved stderr file descriptor. int <b>pipe_fd</b>
+  Saved stderr file descriptor. FILE * <b>output</b>
   <br/>
-  Read end of pipe for captured output.
+  Temporary capture file, deleted on close.
   <br/>
 </p>
 </section>
@@ -55,30 +55,30 @@
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
 <p class="Pp">Opaque handle for IO capture state.</p>
-<p class="Pp">Definition at line <b>29</b> of file <b>io.h</b>.</p>
+<p class="Pp">Definition at line <b>32</b> of file <b>io.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="int_log_io_t::pipe_fd"><a class="permalink" href="#int_log_io_t::pipe_fd">int
-  log_io_t::pipe_fd</a></h2>
-<p class="Pp">Read end of pipe for captured output.</p>
-<p class="Pp">Definition at line <b>32</b> of file <b>io.h</b>.</p>
+<h2 class="Ss" id="FILE*_log_io_t::output"><a class="permalink" href="#FILE*_log_io_t::output">FILE*
+  log_io_t::output</a></h2>
+<p class="Pp">Temporary capture file, deleted on close.</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>io.h</b>.</p>
 <p class="Pp">Referenced by <b>log_io_start()</b>, and <b>log_io_stop()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_log_io_t::saved_stderr_fd"><a class="permalink" href="#int_log_io_t::saved_stderr_fd">int
   log_io_t::saved_stderr_fd</a></h2>
 <p class="Pp">Saved stderr file descriptor.</p>
-<p class="Pp">Definition at line <b>31</b> of file <b>io.h</b>.</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>io.h</b>.</p>
 <p class="Pp">Referenced by <b>log_io_start()</b>, and <b>log_io_stop()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_log_io_t::saved_stdout_fd"><a class="permalink" href="#int_log_io_t::saved_stdout_fd">int
   log_io_t::saved_stdout_fd</a></h2>
 <p class="Pp">Saved stdout file descriptor.</p>
-<p class="Pp">Definition at line <b>30</b> of file <b>io.h</b>.</p>
+<p class="Pp">Definition at line <b>33</b> of file <b>io.h</b>.</p>
 <p class="Pp">Referenced by <b>log_io_start()</b>, and <b>log_io_stop()</b>.</p>
 <p class="Pp"></p>
 </section>
@@ -90,7 +90,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

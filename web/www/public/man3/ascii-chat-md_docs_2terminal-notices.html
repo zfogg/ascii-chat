@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>md_docs_2terminal-notices(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">md_docs_2terminal-notices(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">md_docs_2terminal-notices(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">md_docs_2terminal-notices - Important terminal notices</p>
+<p class="Pp">Issue #255 uses one layout for important printed messages and
+    interactive prompts.</p>
+<p class="Pp"></p>
+<p class="Pp">Severity Terminal color Use <b>UI_NOTICE_INFO</b><b> White Session
+    strings and join instructions </b><b>UI_NOTICE_WARNING</b><b> Yellow Missing
+    credentials, unavailable features, overwrite confirmations, actionable
+    configuration errors </b><b>UI_NOTICE_DANGER</b><b> Red Identity changes,
+    failed authentication, disabled encryption, privacy exposure
+    </b><b>UI_NOTICE_FATAL</b><b> Purple (ANSI magenta) Fatal errors and their
+    immediate context</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>NOTICE</b>(DANGER, &quot;SERVER IDENTITY CHANGED&quot;,
+    &quot;s&quot;, details)<b> records an ordinary log message and presents the
+    complete title and body in a box. Do not include borders or ANSI escapes in
+    the supplied text. Use a literal format string when including remote
+    messages. The renderer makes terminal control characters visible instead of
+    executing them. Fingerprints, paths, and commands wrap without
+  ellipses.</b></p>
+<p class="Pp"></p>
+<p class="Pp">ui_notice_confirm(severity, text, timeout_seconds) uses the
+    existing yes/no prompt policy with a No default. This is presentation only:
+    changing a notice must not change host trust, authentication, timeout, or
+    persistence decisions. Ordinary text/password prompts also use the shared
+    layout; only their existing display-safe, masked text reaches the
+  renderer.</p>
+<p class="Pp"></p>
+<p class="Pp">The layout uses physical terminal columns, reserves the last
+    column against autowrap, and caps boxes at 80 columns. It falls back to
+    ASCII borders when UTF-8 is unavailable and to plain wrapping in
+    exceptionally narrow terminals. Color follows terminal capabilities,
+    --color, --color-mode, and --strip-ansi. Redirected output has no cursor
+    movement. Terminal boxes do not decorate file or JSON message bodies;
+    existing log header formatting is retained. Log levels, quiet mode, and grep
+    filtering still apply to logged notices. Grep matches the uncolored log
+    template, including severity, source file, function, and the notice body;
+    box decorations are not part of the filter input. Session invitations use
+    <b>NOTICE_ANNOUNCE</b><b> to remain visible at every log level; quiet mode,
+    grep filtering, and JSON output still apply to these announcements.</b></p>
+<p class="Pp"></p>
+<p class="Pp">During live presentation, notices queue above ordinary screens and
+    below input prompts. Long notices advance a page every ten seconds; resizing
+    restarts the reading interval. Enter/Escape dismiss a notice through the
+    normal input loop; quit remains available. Prompt input is never interpreted
+    as notice dismissal. The display queue holds up to 64 notices; overflow
+    stays in the log and produces a rate-limited diagnostic. Pending notices are
+    printed in full on controller teardown. Fatal notices retire the active
+    screens and print synchronously. No new confirmation is required for
+    ordinary notices. Security prompts retain their original deadlines.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Coverage_checklist"><a class="permalink" href="#Coverage_checklist">Coverage
+  checklist</a></h1>
+<p class="Pp">Family Covered entry points Unknown host
+    <b>prompt_unknown_host</b><b>: fingerprint prompt, noninteractive refusal,
+    explicit/debug verification bypass Changed host key
+    </b><b>display_mitm_warning</b><b>: received/expected fingerprints,
+    known-hosts path, recovery guidance, rejection Missing/removed identity
+    </b><b>prompt_unknown_host_no_identity</b><b>,
+    </b><b>check_known_host_no_identity</b><b>, handshake client/server:
+    unverified peer and identity downgrade Discovery lookup Expected host-key
+    mismatch rejects the lookup result; insecure lookup without a pinned host
+    key warns about MITM risk ACDS trust
+    </b><b>discovery_keys_verify_change</b><b>: old/new fingerprints, operator
+    verification, default-No confirmation and noninteractive refusal
+    Verification failure Handshake client: invalid server signature,
+    browser-pinned key mismatch, configured server-key mismatch, invalid HMAC
+    Authentication rejection Handshake reason flags and client protocol:
+    incorrect/missing password, missing/rejected client key, invalid signature
+    Credentials and persistence Client identity loading, private-key file
+    permissions, known-hosts write/flush failures, discovery identity fallback
+    Encryption Client/server </b>--no-encrypt<b>, encryption mode mismatch,
+    server encryption unavailable, received encryption-policy violation Privacy
+    Public IP disclosure confirmation/result; discovery disabled when security
+    was not configured TLS downgrade WebSocket certificate/key configuration
+    falling back to plain WS Session information LAN-only and global session
+    strings and join commands Operational failures Invalid startup options, no
+    discovered servers, connection failure, camera/media failure, audio
+    unavailable, discovery/mirror failure Destructive local actions Config,
+    completions, and man-page overwrite prompts use yellow warnings with their
+    existing No default Fatal failures </b><b>FATAL</b><b> context summary and
+    explicit fatal notices use purple boxes; ordinary </b><b>log_fatal</b><b>
+    records do not retire screens</b></p>
+<p class="Pp"></p>
+<p class="Pp">Routine packet diagnostics, per-frame errors, backtraces, and
+    debug reports remain logs. Existing specialized help/update screens retain
+    their own layouts. WASM uses textual console logging and its existing prompt
+    implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Verification"><a class="permalink" href="#Verification">Verification</a></h1>
+<p class="Pp">Build with the default CMake preset, then run:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>python tests/integration/terminal_notices.py --library build/bin/asciichat.dll
+python tests/integration/terminal_prompt.py --library build/bin/asciichat.dll
+python tests/integration/prompt_timeouts.py --library build/bin/asciichat.dll</pre>
+<p class="Pp">The notice suite also accepts a Linux shared-library path. It
+    checks Unicode and ASCII layouts, seven widths, all four color mappings,
+    complete long fingerprints, control-character escaping, multiline log
+    retention, grep/JSON behavior, changed-key rejection, real unknown-host/ACDS
+    prompts, default-No behavior after resizing, queued live notices, and fatal
+    screen teardown. Regression cases cover non-terminating fatal-level logging,
+    invitations at WARN/ERROR/FATAL levels, announcement quiet/grep/JSON
+    behavior, restored terminal output, and flushing a queued warning before
+    forced exit. The PTY assertions inspect the rendered terminal cells, not
+    just log output. The existing prompt suites cover masked input, discarded
+    covered input, absolute timeouts, noninteractive refusal, and automated
+    responses.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -36,6 +36,29 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>manpage_merge_state_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>OPTIONS_MANPAGE_MODE_BUFFER_SIZE</b> 256
+  <br/>
+  #define <b>OPTIONS_MANPAGE_CURRENT_AUTO_SECTION_BUFFER_SIZE</b> 128
+  <br/>
+  #define <b>OPTIONS_MANPAGE_CURRENT_MERGE_SECTION_BUFFER_SIZE</b> 64
+  <br/>
+  #define <b>OPTIONS_MANPAGE_QUESTION_BUFFER_SIZE</b> 4096
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">const char * <b>escape_groff_special</b> (const char *str)
@@ -96,13 +119,38 @@
 <p class="Pp">Definition in file <b>options/manpage.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_MANPAGE_CURRENT_AUTO_SECTION_BUFFER_SIZE___128"><a class="permalink" href="#_define_OPTIONS_MANPAGE_CURRENT_AUTO_SECTION_BUFFER_SIZE___128">#define
+  OPTIONS_MANPAGE_CURRENT_AUTO_SECTION_BUFFER_SIZE 128</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file <b>options/manpage.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_MANPAGE_CURRENT_MERGE_SECTION_BUFFER_SIZE___64"><a class="permalink" href="#_define_OPTIONS_MANPAGE_CURRENT_MERGE_SECTION_BUFFER_SIZE___64">#define
+  OPTIONS_MANPAGE_CURRENT_MERGE_SECTION_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>options/manpage.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_MANPAGE_MODE_BUFFER_SIZE___256"><a class="permalink" href="#_define_OPTIONS_MANPAGE_MODE_BUFFER_SIZE___256">#define
+  OPTIONS_MANPAGE_MODE_BUFFER_SIZE 256</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file <b>options/manpage.c</b>.</p>
+<p class="Pp">Referenced by <b>format_mode_names()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_OPTIONS_MANPAGE_QUESTION_BUFFER_SIZE___4096"><a class="permalink" href="#_define_OPTIONS_MANPAGE_QUESTION_BUFFER_SIZE___4096">#define
+  OPTIONS_MANPAGE_QUESTION_BUFFER_SIZE 4096</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file <b>options/manpage.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

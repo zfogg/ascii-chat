@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>face_follow_state_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">face_follow_state_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">face_follow_state_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">face_follow_state_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/video/face_follow.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>face_follow_rect_t</b> <b>crop</b>
+  <br/>
+  <b>face_follow_rect_t</b> <b>target</b>
+  <br/>
+  <b>face_follow_rect_t</b> <b>face</b>
+  <br/>
+  double <b>last_tick</b>
+  <br/>
+  double <b>last_seen</b>
+  <br/>
+  double <b>pan_outside_since</b>
+  <br/>
+  double <b>zoom_outside_since</b>
+  <br/>
+  float <b>anchor_x</b>
+  <br/>
+  float <b>anchor_y</b>
+  <br/>
+  float <b>pan_direction_x</b>
+  <br/>
+  float <b>pan_direction_y</b>
+  <br/>
+  float <b>zoom_direction</b>
+  <br/>
+  <b>bool</b> <b>initialized</b>
+  <br/>
+  <b>bool</b> <b>tracking</b>
+  <br/>
+  <b>bool</b> <b>detected</b>
+  <br/>
+  <b>bool</b> <b>pan_pending</b>
+  <br/>
+  <b>bool</b> <b>zoom_pending</b>
+  <br/>
+  unsigned int <b>misses</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">One instance per capture source; times are monotonic seconds.</p>
+<p class="Pp">Definition at line <b>27</b> of file <b>face_follow.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="float_face_follow_state_t::anchor_x"><a class="permalink" href="#float_face_follow_state_t::anchor_x">float
+  face_follow_state_t::anchor_x</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_observe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_face_follow_state_t::anchor_y"><a class="permalink" href="#float_face_follow_state_t::anchor_y">float
+  face_follow_state_t::anchor_y</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_observe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>face_follow_rect_t</b> face_follow_state_t::crop</h2>
+<p class="Pp">Definition at line <b>28</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_image_process()</b>,
+    <b>face_follow_init()</b>, <b>face_follow_tick()</b>, and
+    <b>face_web_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> face_follow_state_t::detected</h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_image_process()</b>,
+    <b>face_follow_observe()</b>, and <b>face_web_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>face_follow_rect_t</b> face_follow_state_t::face</h2>
+<p class="Pp">Definition at line <b>28</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_image_process()</b>,
+    <b>face_follow_observe()</b>, and <b>face_web_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> face_follow_state_t::initialized</h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_face_follow_state_t::last_seen"><a class="permalink" href="#double_face_follow_state_t::last_seen">double
+  face_follow_state_t::last_seen</a></h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_image_process()</b>,
+    <b>face_follow_observe()</b>, <b>face_follow_tick()</b>, and
+    <b>face_web_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_face_follow_state_t::last_tick"><a class="permalink" href="#double_face_follow_state_t::last_tick">double
+  face_follow_state_t::last_tick</a></h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="unsigned_int_face_follow_state_t::misses"><a class="permalink" href="#unsigned_int_face_follow_state_t::misses">unsigned
+  int face_follow_state_t::misses</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_observe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_face_follow_state_t::pan_direction_x"><a class="permalink" href="#float_face_follow_state_t::pan_direction_x">float
+  face_follow_state_t::pan_direction_x</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_observe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_face_follow_state_t::pan_direction_y"><a class="permalink" href="#float_face_follow_state_t::pan_direction_y">float
+  face_follow_state_t::pan_direction_y</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_observe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_face_follow_state_t::pan_outside_since"><a class="permalink" href="#double_face_follow_state_t::pan_outside_since">double
+  face_follow_state_t::pan_outside_since</a></h2>
+<p class="Pp">Definition at line <b>30</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_observe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> face_follow_state_t::pan_pending</h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_observe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>face_follow_rect_t</b> face_follow_state_t::target</h2>
+<p class="Pp">Definition at line <b>28</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_init()</b>,
+    <b>face_follow_observe()</b>, and <b>face_follow_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> face_follow_state_t::tracking</h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_observe()</b>,
+    <b>face_follow_tick()</b>, and <b>face_web_tick()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_face_follow_state_t::zoom_direction"><a class="permalink" href="#float_face_follow_state_t::zoom_direction">float
+  face_follow_state_t::zoom_direction</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_observe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_face_follow_state_t::zoom_outside_since"><a class="permalink" href="#double_face_follow_state_t::zoom_outside_since">double
+  face_follow_state_t::zoom_outside_since</a></h2>
+<p class="Pp">Definition at line <b>30</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_observe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> face_follow_state_t::zoom_pending</h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>face_follow.h</b>.</p>
+<p class="Pp">Referenced by <b>face_follow_observe()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

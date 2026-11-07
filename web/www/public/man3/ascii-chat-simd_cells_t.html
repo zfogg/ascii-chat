@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>simd_cells_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">simd_cells_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">simd_cells_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">simd_cells_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;include/ascii-chat/video/ascii/simd/cells.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>simd_luminance_fn</b> <b>luminance</b>
+  <br/>
+  void(*) <b>pack</b> (const <b>uint8_t</b> *rgb, <b>uint32_t</b> *out, size_t
+    count)
+  <br/>
+  void(*) <b>lookup</b> (const <b>uint8_t</b> *luma, const <b>uint32_t</b>
+    table[64], <b>uint32_t</b> *out, size_t count)
+  <br/>
+  void(*) <b>quantize</b> (const <b>uint32_t</b> *rgb, <b>uint32_t</b> *out,
+    size_t count, unsigned colors)
+  <br/>
+  void(*) <b>halfblock</b> (const <b>uint32_t</b> *top, const <b>uint32_t</b>
+    *bottom, <b>uint32_t</b> *glyph, <b>uint32_t</b> *fg, <b>uint32_t</b> *bg,
+    size_t count, unsigned mode, const <b>uint32_t</b> keys[5])
+  <br/>
+  size_t(*) <b>run</b> (const <b>uint32_t</b> *glyph, const <b>uint32_t</b> *fg,
+    const <b>uint32_t</b> *bg, size_t count)
+  <br/>
+  void(*) <b>emit_mono</b> (<b>outbuf_t</b> *out, const <b>uint32_t</b> *glyph,
+    size_t count)
+  <br/>
+  int(*) <b>glyph_shape_correlation</b> (const int16_t samples[16], const
+    int16_t mask[16])
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">SIMD stages operate on complete rows of host-order packed RGB and
+    UTF-8 keys. Row callbacks read/write exactly count elements. Glyph
+    correlation reads 16 samples. Only short row tails use scalar code.</p>
+<p class="Pp">Definition at line <b>9</b> of file <b>cells.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void(*)_simd_cells_t::emit_mono("><a class="permalink" href="#void(*)_simd_cells_t::emit_mono(">void(*)
+  simd_cells_t::emit_mono(<b>outbuf_t</b> *out, const <b>uint32_t</b> *glyph,
+  size_t count)</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>cells.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int(*)_simd_cells_t::glyph_shape_correlation(const_int16_t_samples_16_,_const_int16_t_mask_16_)"><a class="permalink" href="#int(*)_simd_cells_t::glyph_shape_correlation(const_int16_t_samples_16_,_const_int16_t_mask_16_)">int(*)
+  simd_cells_t::glyph_shape_correlation(const int16_t samples[16], const int16_t
+  mask[16])</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file <b>cells.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_render_glyph_match()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*)_simd_cells_t::halfblock(const_"><a class="permalink" href="#void(*)_simd_cells_t::halfblock(const_">void(*)
+  simd_cells_t::halfblock(const <b>uint32_t</b> *top, const <b>uint32_t</b>
+  *bottom, <b>uint32_t</b> *glyph, <b>uint32_t</b> *fg, <b>uint32_t</b> *bg,
+  size_t count, unsigned mode, const <b>uint32_t</b> keys[5])</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file <b>cells.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>, and
+    <b>ascii_render_halfblocks()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*)_simd_cells_t::lookup(const_"><a class="permalink" href="#void(*)_simd_cells_t::lookup(const_">void(*)
+  simd_cells_t::lookup(const <b>uint8_t</b> *luma, const <b>uint32_t</b>
+  table[64], <b>uint32_t</b> *out, size_t count)</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>cells.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>simd_luminance_fn</b> simd_cells_t::luminance</h2>
+<p class="Pp">Definition at line <b>10</b> of file <b>cells.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*)_simd_cells_t::pack(const_"><a class="permalink" href="#void(*)_simd_cells_t::pack(const_">void(*)
+  simd_cells_t::pack(const <b>uint8_t</b> *rgb, <b>uint32_t</b> *out, size_t
+  count)</a></h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>cells.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_render()</b>, and
+    <b>ascii_render_halfblocks()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*)_simd_cells_t::quantize(const_"><a class="permalink" href="#void(*)_simd_cells_t::quantize(const_">void(*)
+  simd_cells_t::quantize(const <b>uint32_t</b> *rgb, <b>uint32_t</b> *out,
+  size_t count, unsigned colors)</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>cells.h</b>.</p>
+<p class="Pp">Referenced by <b>ascii_frame_emit_halfrow()</b>,
+    <b>ascii_frame_emit_row()</b>, <b>ascii_render()</b>,
+    <b>ascii_render_glyph_match()</b>, and <b>ascii_render_halfblocks()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t(*)_simd_cells_t::run(const_"><a class="permalink" href="#size_t(*)_simd_cells_t::run(const_">size_t(*)
+  simd_cells_t::run(const <b>uint32_t</b> *glyph, const <b>uint32_t</b> *fg,
+  const <b>uint32_t</b> *bg, size_t count)</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file <b>cells.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

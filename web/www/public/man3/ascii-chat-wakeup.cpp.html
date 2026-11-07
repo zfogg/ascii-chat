@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>wakeup.cpp(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">wakeup.cpp(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">wakeup.cpp(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">wakeup.cpp</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>platform_wakeup</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>platform_wakeup_create</b>
+    (<b>platform_wakeup_t</b> **out)
+  <br/>
+  void <b>platform_wakeup_signal</b> (<b>platform_wakeup_t</b> *wake)
+  <br/>
+  <b>bool</b> <b>platform_wakeup_wait</b> (<b>platform_wakeup_t</b> *wake,
+    <b>uint64_t</b> timeout_ns)
+  <br/>
+  void <b>platform_wakeup_destroy</b> (<b>platform_wakeup_t</b> *wake)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> platform_wakeup_create
+  (<b>platform_wakeup_t</b> ** out)</h2>
+<p class="Pp">Coalescing notification for a single consumer. Publish work before
+    signal; after wait returns, inspect the work even if the wait timed out.
+    Join all users before destroying the notification.</p>
+<p class="Pp">Definition at line <b>13</b> of file <b>wakeup.cpp</b>.</p>
+<pre>13                                                                   {
+14   if (!out)
+15     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL wakeup output&quot;);
+16   auto *storage = SAFE_MALLOC(sizeof(platform_wakeup_t), platform_wakeup_t *);
+17   *out = new (storage) platform_wakeup_t;
+18   return ASCIICHAT_OK;
+19 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>platform_wakeup_create()</b>, <b>SAFE_MALLOC</b>, and
+  <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>platform_wakeup_create()</b>, and
+    <b>session_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_wakeup_destroy_("><a class="permalink" href="#void_platform_wakeup_destroy_(">void
+  platform_wakeup_destroy (<b>platform_wakeup_t</b> * wake)</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>wakeup.cpp</b>.</p>
+<pre>35                                                       {
+36   if (wake) {
+37     wake-&gt;~platform_wakeup();
+38     SAFE_FREE(wake);
+39   }
+40 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_wakeup_destroy()</b>, and
+  <b>SAFE_FREE</b>.</p>
+<p class="Pp">Referenced by <b>platform_wakeup_destroy()</b>,
+    <b>session_pipeline_create()</b>, and <b>session_pipeline_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_wakeup_signal_("><a class="permalink" href="#void_platform_wakeup_signal_(">void
+  platform_wakeup_signal (<b>platform_wakeup_t</b> * wake)</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file <b>wakeup.cpp</b>.</p>
+<pre>21                                                      {
+22   if (!wake-&gt;pending.exchange(true))
+23     wake-&gt;ready.release();
+24 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_wakeup::pending</b>,
+    <b>platform_wakeup_signal()</b>, and <b>platform_wakeup::ready</b>.</p>
+<p class="Pp">Referenced by <b>platform_wakeup_signal()</b>, and
+    <b>session_pipeline_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> platform_wakeup_wait (<b>platform_wakeup_t</b> *
+  wake, <b>uint64_t</b> timeout_ns)</h2>
+<p class="Pp">Definition at line <b>26</b> of file <b>wakeup.cpp</b>.</p>
+<pre>26                                                                         {
+27   if (!wake-&gt;ready.try_acquire_for(std::chrono::nanoseconds(timeout_ns)))
+28     return false;
+29   // The consumer inspects published work after clearing pending. A producer
+30   // racing this store either has its work consumed or leaves another token.
+31   wake-&gt;pending.store(false);
+32   return true;
+33 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_wakeup::pending</b>,
+    <b>platform_wakeup_wait()</b>, and <b>platform_wakeup::ready</b>.</p>
+<p class="Pp">Referenced by <b>platform_wakeup_wait()</b>, and
+    <b>session_pipeline_run_main()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

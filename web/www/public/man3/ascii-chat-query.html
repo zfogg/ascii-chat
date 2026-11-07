@@ -119,9 +119,10 @@ QUERY_SHUTDOWN();</pre>
     production builds.</p>
 <p class="Pp"></p>
 <p class="Pp"><b>See also</b></p>
-<div class="Bd-indent">docs/tooling/query.md for full documentation
+<div class="Bd-indent"><b>docs/tooling/query.md</b> for full documentation
 <p class="Pp"></p>
-<p class="Pp">docs/tooling/QUERY_TOOL_PLAN.md for implementation details</p>
+<p class="Pp"><b>docs/tooling/QUERY_TOOL_PLAN.md</b> for implementation
+  details</p>
 </div>
 </section>
 </section>
@@ -202,67 +203,67 @@ QUERY_SHUTDOWN();</pre>
 <p class="Pp"></p>
 <p class="Pp">Only available in debug builds (NDEBUG not defined)</p>
 </div>
-<p class="Pp">Definition at line <b>311</b> of file <b>query.c</b>.</p>
-<pre>311                          {
-312   if (!g_query_active &amp;&amp; g_controller_pid &lt;= 0) {
-313     return;
-314   }
-315 
-316   fprintf(stderr, &quot;[query] Shutting down query server...\n&quot;);
-317 
-318 #ifdef _WIN32
-319   if (g_controller_handle != NULL) {
-320     // Send termination signal
-321     TerminateProcess(g_controller_handle, 0);
-322 
-323     // Wait for process to exit (with timeout)
-324     WaitForSingleObject(g_controller_handle, 3000);
-325 
-326     CloseHandle(g_controller_handle);
-327     g_controller_handle = NULL;
-328     g_controller_pid = 0;
-329   }
-330 
-331   // Winsock cleanup handled by platform_cleanup()
-332 #else
-333   if (g_controller_pid &gt; 0) {
-334     // Send SIGTERM for graceful shutdown
-335     kill(g_controller_pid, SIGTERM);
-336 
-337     // Wait for process to exit (with timeout)
-338     int status;
-339     int wait_count = 0;
-340     while (wait_count &lt; 30) { // 3 second timeout
-341       pid_t result = waitpid(g_controller_pid, &amp;status, WNOHANG);
-342       if (result == g_controller_pid) {
-343         break;
-344       }
-345       if (result &lt; 0) {
-346         break;
-347       }
-348       usleep(100 * US_PER_MS_INT); // 100ms
-349       wait_count++;
-350     }
-351 
-352     // If still running, force kill
-353     if (wait_count &gt;= 30) {
-354       kill(g_controller_pid, SIGKILL);
-355       waitpid(g_controller_pid, &amp;status, 0);
-356     }
-357 
-358     g_controller_pid = -1;
-359   }
-360 #endif
-361 
-362   g_query_active = false;
-363   g_query_port = -1;
-364 
-365   fprintf(stderr, &quot;[query] Query server stopped\n&quot;);
-366 }</pre>
+<p class="Pp">Definition at line <b>316</b> of file <b>query.c</b>.</p>
+<pre>316                          {
+317   if (!g_query_active &amp;&amp; g_controller_pid &lt;= 0) {
+318     return;
+319   }
+320
+321   fprintf(stderr, &quot;[query] Shutting down query server...\n&quot;);
+322
+323 #ifdef _WIN32
+324   if (g_controller_handle != NULL) {
+325     // Send termination signal
+326     TerminateProcess(g_controller_handle, 0);
+327
+328     // Wait for process to exit (with timeout)
+329     WaitForSingleObject(g_controller_handle, 3000);
+330
+331     CloseHandle(g_controller_handle);
+332     g_controller_handle = NULL;
+333     g_controller_pid = 0;
+334   }
+335
+336   // Winsock cleanup handled by platform_cleanup()
+337 #else
+338   if (g_controller_pid &gt; 0) {
+339     // Send SIGTERM for graceful shutdown
+340     kill(g_controller_pid, SIGTERM);
+341
+342     // Wait for process to exit (with timeout)
+343     int status;
+344     int wait_count = 0;
+345     while (wait_count &lt; 30) { // 3 second timeout
+346       pid_t result = waitpid(g_controller_pid, &amp;status, WNOHANG);
+347       if (result == g_controller_pid) {
+348         break;
+349       }
+350       if (result &lt; 0) {
+351         break;
+352       }
+353       usleep(100 * US_PER_MS_INT); // 100ms
+354       wait_count++;
+355     }
+356
+357     // If still running, force kill
+358     if (wait_count &gt;= 30) {
+359       kill(g_controller_pid, SIGKILL);
+360       waitpid(g_controller_pid, &amp;status, 0);
+361     }
+362
+363     g_controller_pid = -1;
+364   }
+365 #endif
+366
+367   g_query_active = false;
+368   g_query_port = -1;
+369
+370   fprintf(stderr, &quot;[query] Query server stopped\n&quot;);
+371 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>US_PER_MS_INT</b>.</p>
-<p class="Pp">Referenced by <b>query_init()</b>.</p>
+<p class="Pp">References <b>query_destroy()</b>, and <b>US_PER_MS_INT</b>.</p>
+<p class="Pp">Referenced by <b>query_destroy()</b>, and <b>query_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_query_get_port_(void_)"><a class="permalink" href="#int_query_get_port_(void_)">int
@@ -274,12 +275,14 @@ QUERY_SHUTDOWN();</pre>
 <div class="Bd-indent">The port number if active, -1 if not active</div>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Only available in debug builds (NDEBUG not defined)</div>
-<p class="Pp">Definition at line <b>400</b> of file <b>query.c</b>.</p>
-<pre>400                          {
-401   return g_query_port;
-402 }</pre>
+<p class="Pp">Definition at line <b>405</b> of file <b>query.c</b>.</p>
+<pre>405                          {
+406   return g_query_port;
+407 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>query_get_port()</b>.</p>
+<p class="Pp">Referenced by <b>query_get_port()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_query_init_(int_preferred_port)"><a class="permalink" href="#int_query_init_(int_preferred_port)">int
@@ -317,108 +320,112 @@ QUERY_SHUTDOWN();</pre>
       /proc/sys/kernel/yama/ptrace_scope)</li>
   <li>Windows: Uses CreateProcess instead of fork/exec</li>
 </ul>
-<p class="Pp">Definition at line <b>214</b> of file <b>query.c</b>.</p>
-<pre>214                                    {
-215   // Already initialized?
-216   if (g_query_active) {
-217     return g_query_port;
-218   }
-219 
-220   // Find the query server executable
-221   char server_path[PLATFORM_MAX_PATH_LENGTH];
-222   if (!find_query_server_path(server_path, sizeof(server_path))) {
-223     fprintf(stderr, &quot;[query] Could not find ascii-query-server executable\n&quot;);
-224     fprintf(stderr, &quot;[query] Set ASCIICHAT_QUERY_SERVER environment variable or ensure &quot;
-225                     &quot;it's in .deps-cache/query-tool/\n&quot;);
-226     return -1;
-227   }
-228 
-229 #ifdef _WIN32
-230   // Windows implementation using CreateProcess
-231   // Winsock is already initialized by platform_init()
-232 
-233   char cmdline[2048];
-234   safe_snprintf(cmdline, sizeof(cmdline), &quot;\&quot;%s\&quot; --attach %lu --port %d&quot;, server_path,
-235                 (unsigned long)GetCurrentProcessId(), preferred_port);
-236 
-237   STARTUPINFOA si;
-238   PROCESS_INFORMATION pi;
-239   memset(&amp;si, 0, sizeof(si));
-240   si.cb = sizeof(si);
-241   memset(&amp;pi, 0, sizeof(pi));
-242 
-243   // Create the controller process
-244   if (!CreateProcessA(NULL,               // Use command line
-245                       cmdline,            // Command line
-246                       NULL,               // Process security attributes
-247                       NULL,               // Thread security attributes
-248                       FALSE,              // Don't inherit handles
-249                       CREATE_NEW_CONSOLE, // Creation flags
-250                       NULL,               // Use parent's environment
-251                       NULL,               // Use parent's directory
-252                       &amp;si, &amp;pi)) {
-253     fprintf(stderr, &quot;[query] Failed to start query server: error %lu\n&quot;, GetLastError());
-254     return -1;
-255   }
-256 
-257   g_controller_handle = pi.hProcess;
-258   g_controller_pid = pi.dwProcessId;
-259   CloseHandle(pi.hThread); // Don't need the thread handle
-260 
-261   fprintf(stderr, &quot;[query] Started query server (PID %lu) on port %d\n&quot;, (unsigned long)g_controller_pid,
-262           preferred_port);
-263 
-264 #else
-265   // Unix implementation using fork/exec
-266   pid_t self_pid = getpid();
-267 
-268   char port_str[16];
-269   char pid_str[16];
-270   safe_snprintf(port_str, sizeof(port_str), &quot;%d&quot;, preferred_port);
-271   safe_snprintf(pid_str, sizeof(pid_str), &quot;%d&quot;, self_pid);
-272 
-273   pid_t child = fork();
-274   if (child &lt; 0) {
-275     fprintf(stderr, &quot;[query] fork() failed: %s\n&quot;, strerror(errno));
-276     return -1;
-277   }
-278 
-279   if (child == 0) {
-280     // Child process: exec the controller
-281     // Redirect stdout/stderr to /dev/null or a log file to avoid clutter
-282     // (The controller has its own logging)
-283 
-284     execl(server_path, &quot;ascii-query-server&quot;, &quot;--attach&quot;, pid_str, &quot;--port&quot;, port_str, (char *)NULL);
-285 
-286     // If exec fails
-287     fprintf(stderr, &quot;[query] exec(%s) failed: %s\n&quot;, server_path, strerror(errno));
-288     exit(1);
-289   }
-290 
-291   // Parent process
-292   g_controller_pid = child;
-293   fprintf(stderr, &quot;[query] Started query server (PID %d) on port %d\n&quot;, child, preferred_port);
-294 #endif
-295 
-296   // Wait for the HTTP server to become ready
-297   fprintf(stderr, &quot;[query] Waiting for HTTP server to be ready...\n&quot;);
-298   if (!wait_for_http_ready(preferred_port, HEALTH_CHECK_TIMEOUT_NS)) {
-299     fprintf(stderr, &quot;[query] Timeout waiting for query server to start\n&quot;);
-300     query_destroy();
-301     return -1;
-302   }
-303 
-304   g_query_active = true;
-305   g_query_port = preferred_port;
-306 
-307   fprintf(stderr, &quot;[query] Query server ready at http://localhost:%d\n&quot;, preferred_port);
-308   return preferred_port;
-309 }</pre>
+<p class="Pp">Definition at line <b>219</b> of file <b>query.c</b>.</p>
+<pre>219                                    {
+220   // Already initialized?
+221   if (g_query_active) {
+222     return g_query_port;
+223   }
+224
+225   // Find the query server executable
+226   char server_path[PLATFORM_MAX_PATH_LENGTH];
+227   if (!find_query_server_path(server_path, sizeof(server_path))) {
+228     fprintf(stderr, &quot;[query] Could not find ascii-query-server executable\n&quot;);
+229     fprintf(stderr, &quot;[query] Set ASCIICHAT_QUERY_SERVER environment variable or ensure &quot;
+230                     &quot;it's in .deps-cache/query-tool/\n&quot;);
+231     return -1;
+232   }
+233
+234 #ifdef _WIN32
+235   // Windows implementation using CreateProcess
+236   // Winsock is already initialized by platform_init()
+237
+238   char cmdline[TOOLING_QUERY_CMDLINE_BUFFER_SIZE];
+239   safe_snprintf(cmdline, sizeof(cmdline), &quot;\&quot;%s\&quot; --attach %lu --port %d&quot;, server_path,
+240                 (unsigned long)GetCurrentProcessId(), preferred_port);
+241
+242   STARTUPINFOA si;
+243   PROCESS_INFORMATION pi;
+244   memset(&amp;si, 0, sizeof(si));
+245   si.cb = sizeof(si);
+246   memset(&amp;pi, 0, sizeof(pi));
+247
+248   // Create the controller process
+249   if (!CreateProcessA(NULL,               // Use command line
+250                       cmdline,            // Command line
+251                       NULL,               // Process security attributes
+252                       NULL,               // Thread security attributes
+253                       FALSE,              // Don't inherit handles
+254                       CREATE_NEW_CONSOLE, // Creation flags
+255                       NULL,               // Use parent's environment
+256                       NULL,               // Use parent's directory
+257                       &amp;si, &amp;pi)) {
+258     fprintf(stderr, &quot;[query] Failed to start query server: error %lu\n&quot;, GetLastError());
+259     return -1;
+260   }
+261
+262   g_controller_handle = pi.hProcess;
+263   g_controller_pid = pi.dwProcessId;
+264   CloseHandle(pi.hThread); // Don't need the thread handle
+265
+266   fprintf(stderr, &quot;[query] Started query server (PID %lu) on port %d\n&quot;, (unsigned long)g_controller_pid,
+267           preferred_port);
+268
+269 #else
+270   // Unix implementation using fork/exec
+271   pid_t self_pid = getpid();
+272
+273   char port_str[TOOLING_QUERY_PORT_BUFFER_SIZE];
+274   char pid_str[TOOLING_QUERY_PID_BUFFER_SIZE];
+275   safe_snprintf(port_str, sizeof(port_str), &quot;%d&quot;, preferred_port);
+276   safe_snprintf(pid_str, sizeof(pid_str), &quot;%d&quot;, self_pid);
+277
+278   pid_t child = fork();
+279   if (child &lt; 0) {
+280     fprintf(stderr, &quot;[query] fork() failed: %s\n&quot;, strerror(errno));
+281     return -1;
+282   }
+283
+284   if (child == 0) {
+285     // Child process: exec the controller
+286     // Redirect stdout/stderr to /dev/null or a log file to avoid clutter
+287     // (The controller has its own logging)
+288
+289     execl(server_path, &quot;ascii-query-server&quot;, &quot;--attach&quot;, pid_str, &quot;--port&quot;, port_str, (char *)NULL);
+290
+291     // If exec fails
+292     fprintf(stderr, &quot;[query] exec(%s) failed: %s\n&quot;, server_path, strerror(errno));
+293     exit(1);
+294   }
+295
+296   // Parent process
+297   g_controller_pid = child;
+298   fprintf(stderr, &quot;[query] Started query server (PID %d) on port %d\n&quot;, child, preferred_port);
+299 #endif
+300
+301   // Wait for the HTTP server to become ready
+302   fprintf(stderr, &quot;[query] Waiting for HTTP server to be ready...\n&quot;);
+303   if (!wait_for_http_ready(preferred_port, HEALTH_CHECK_TIMEOUT_NS)) {
+304     fprintf(stderr, &quot;[query] Timeout waiting for query server to start\n&quot;);
+305     query_destroy();
+306     return -1;
+307   }
+308
+309   g_query_active = true;
+310   g_query_port = preferred_port;
+311
+312   fprintf(stderr, &quot;[query] Query server ready at http://localhost:%d\n&quot;, preferred_port);
+313   return preferred_port;
+314 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>errno</b>, <b>HEALTH_CHECK_TIMEOUT_NS</b>,
-    <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>query_destroy()</b>, and
-    <b>safe_snprintf()</b>.</p>
+    <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>query_destroy()</b>,
+    <b>query_init()</b>, <b>safe_snprintf()</b>,
+    <b>TOOLING_QUERY_CMDLINE_BUFFER_SIZE</b>,
+    <b>TOOLING_QUERY_PID_BUFFER_SIZE</b>, and
+    <b>TOOLING_QUERY_PORT_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>query_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> query_is_active (void )</h2>
@@ -432,40 +439,42 @@ QUERY_SHUTDOWN();</pre>
 </div>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">Only available in debug builds (NDEBUG not defined)</div>
-<p class="Pp">Definition at line <b>368</b> of file <b>query.c</b>.</p>
-<pre>368                            {
-369   if (!g_query_active) {
-370     return false;
-371   }
-372 
-373 // Verify the controller is still running
-374 #ifdef _WIN32
-375   if (g_controller_handle != NULL) {
-376     DWORD exit_code;
-377     if (GetExitCodeProcess(g_controller_handle, &amp;exit_code)) {
-378       if (exit_code != STILL_ACTIVE) {
-379         g_query_active = false;
-380         g_controller_handle = NULL;
-381         g_controller_pid = 0;
-382         return false;
-383       }
-384     }
-385   }
-386 #else
-387   if (g_controller_pid &gt; 0) {
-388     // Check if process is still alive
-389     if (kill(g_controller_pid, 0) != 0) {
-390       g_query_active = false;
-391       g_controller_pid = -1;
-392       return false;
-393     }
-394   }
-395 #endif
-396 
-397   return g_query_active;
-398 }</pre>
+<p class="Pp">Definition at line <b>373</b> of file <b>query.c</b>.</p>
+<pre>373                            {
+374   if (!g_query_active) {
+375     return false;
+376   }
+377
+378 // Verify the controller is still running
+379 #ifdef _WIN32
+380   if (g_controller_handle != NULL) {
+381     DWORD exit_code;
+382     if (GetExitCodeProcess(g_controller_handle, &amp;exit_code)) {
+383       if (exit_code != STILL_ACTIVE) {
+384         g_query_active = false;
+385         g_controller_handle = NULL;
+386         g_controller_pid = 0;
+387         return false;
+388       }
+389     }
+390   }
+391 #else
+392   if (g_controller_pid &gt; 0) {
+393     // Check if process is still alive
+394     if (kill(g_controller_pid, 0) != 0) {
+395       g_query_active = false;
+396       g_controller_pid = -1;
+397       return false;
+398     }
+399   }
+400 #endif
+401
+402   return g_query_active;
+403 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>query_is_active()</b>.</p>
+<p class="Pp">Referenced by <b>query_is_active()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -475,7 +484,7 @@ QUERY_SHUTDOWN();</pre>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

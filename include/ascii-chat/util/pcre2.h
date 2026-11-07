@@ -1,12 +1,9 @@
 /**
  * @file util/pcre2.h
- * @brief 🔍 Centralized PCRE2 singleton pattern for efficient regex compilation
+ * @brief PCRE2 compilation and match helpers
  * @ingroup util
  *
- * Provides thread-safe lazy initialization of PCRE2 compiled regexes with
- * automatic JIT compilation. Each regex pattern is compiled once per process
- * on first use, enabling safe concurrent reads with zero initialization
- * overhead for unused patterns.
+ * Compiled patterns are owned and freed by their callers.
  */
 
 #pragma once
@@ -15,83 +12,8 @@
 #include <pcre2.h>
 #include <stdbool.h>
 
-/**
- * @brief Opaque handle to a compiled PCRE2 regex singleton
- *
- * Represents a thread-safe compiled regex with JIT optimization.
- * Handles are returned by pcre2_singleton_compile() and are valid
- * for the lifetime of the program.
- */
-typedef struct pcre2_singleton pcre2_singleton_t;
-
-/**
- * @brief Compile and cache a PCRE2 regex pattern with thread-safe singleton semantics
- *
- * Allocates a singleton structure to store the pattern and flags. Actual compilation
- * happens lazily on first call to asciichat_pcre2_singleton_get_code().
- *
- * This function returns immediately without doing expensive regex compilation.
- * Compilation happens later when the code is first accessed.
- *
- * @param pattern PCRE2 regex pattern (e.g., "^[a-z]+$")
- * @param flags PCRE2 compile flags (e.g., PCRE2_CASELESS | PCRE2_MULTILINE)
- * @return Opaque singleton handle, or NULL on allocation failure
- *
- * Example:
- * @code
- * static pcre2_singleton_t *g_email_regex = NULL;
- *
- * void init_validators() {
- *   g_email_regex = asciichat_pcre2_singleton_compile(
- *       "^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$",
- *       PCRE2_CASELESS
- *   );
- * }
- * @endcode
- */
-pcre2_singleton_t *asciichat_pcre2_singleton_compile(const char *pattern, uint32_t flags);
-
-/** Register a static owner slot, which is cleared when the singleton is freed.
- * The slot must remain valid until cleanup, and cleanup must not race with users. */
-pcre2_singleton_t *asciichat_pcre2_singleton_compile_owned(const char *pattern, uint32_t flags,
-                                                             pcre2_singleton_t **owner);
-
-/**
- * @brief Get the compiled pcre2_code from a singleton handle
- *
- * Lazily compiles the regex on first call. Subsequent calls return the cached code.
- * Thread-safe: multiple threads can call this concurrently; compilation happens once.
- *
- * @param singleton Handle returned by asciichat_pcre2_singleton_compile()
- * @return Compiled regex code (read-only), or NULL if compilation failed
- */
-pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton);
-
-/**
- * @brief Check if a singleton was successfully initialized
- *
- * @param singleton Handle returned by asciichat_pcre2_singleton_compile()
- * @return true if regex compiled successfully, false otherwise
- */
-bool asciichat_pcre2_singleton_is_initialized(pcre2_singleton_t *singleton);
-
-/**
- * @brief Free a PCRE2 singleton and its resources
- *
- * Frees the compiled regex code, JIT stack, and singleton structure.
- * After calling this, the singleton pointer is invalid and should not be used.
- *
- * @param singleton Handle returned by asciichat_pcre2_singleton_compile()
- */
-void asciichat_pcre2_singleton_free(pcre2_singleton_t *singleton);
-
-/**
- * @brief Free all PCRE2 singletons
- *
- * Automatically frees all singletons created with asciichat_pcre2_singleton_compile().
- * Safe to call multiple times (idempotent). Should be called once during shutdown.
- */
-void asciichat_pcre2_cleanup_all(void);
+/** Compile a pattern owned by the caller, who must call pcre2_code_free(). */
+pcre2_code *asciichat_pcre2_compile(const char *pattern, uint32_t flags);
 
 /**
  * @brief Extract named substring from PCRE2 match data

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>dispatch.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">dispatch.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">dispatch.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">dispatch.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>simd_backend_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef void(*) <b>simd_luminance_fn</b>(const <b>uint8_t</b>
+    *rgb, <b>uint8_t</b> *out, size_t count)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const <b>simd_backend_t</b> * <b>simd_select_backend</b>
+    (<b>uint32_t</b> features)
+  <br/>
+  const <b>simd_backend_t</b> * <b>simd_backend</b> (void)
+  <br/>
+  void <b>simd_luminance_scalar</b> (const <b>uint8_t</b> *rgb, <b>uint8_t</b>
+    *out, size_t count)
+  <br/>
+  void <b>simd_luminance_sse2</b> (const <b>uint8_t</b> *rgb, <b>uint8_t</b>
+    *out, size_t count)
+  <br/>
+  void <b>simd_luminance_ssse3</b> (const <b>uint8_t</b> *rgb, <b>uint8_t</b>
+    *out, size_t count)
+  <br/>
+  void <b>simd_luminance_avx2</b> (const <b>uint8_t</b> *rgb, <b>uint8_t</b>
+    *out, size_t count)
+  <br/>
+  void <b>simd_luminance_neon</b> (const <b>uint8_t</b> *rgb, <b>uint8_t</b>
+    *out, size_t count)
+  <br/>
+  void <b>simd_luminance_sve</b> (const <b>uint8_t</b> *rgb, <b>uint8_t</b>
+    *out, size_t count)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_void(*)_simd_luminance_fn(const_"><a class="permalink" href="#typedef_void(*)_simd_luminance_fn(const_">typedef
+  void(*) simd_luminance_fn(const <b>uint8_t</b> *rgb, <b>uint8_t</b> *out,
+  size_t count)</a></h2>
+<p class="Pp">RGB24 to rounded BT.601 luminance. Exactly count pixels are
+    read/written.</p>
+<p class="Pp">Definition at line <b>8</b> of file <b>dispatch.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">const <b>simd_backend_t</b> * simd_backend (void )</h2>
+<p class="Pp">Immutable dispatch table cached per thread; no startup
+    constructors required.</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>dispatch.c</b>.</p>
+<pre>31                                          {
+32   static _Thread_local const simd_backend_t *selected;
+33   if (!selected) {
+34     uint32_t features = platform_cpu_features();
+35     selected = simd_select_backend(features);
+36     const char *requested = platform_simd_override();
+37     if (requested &amp;&amp; requested[0] &amp;&amp; strcmp(requested, &quot;auto&quot;) != 0) {
+38       // A diagnostic override can never bypass the CPU/OS safety check.
+39       selected = simd_select_backend(0);
+40       for (size_t i = 0; i &lt; sizeof(backends) / sizeof(backends[0]); i++) {
+41         if (strcmp(requested, backends[i].name) == 0 &amp;&amp;
+42             (features &amp; backends[i].required_features) == backends[i].required_features) {
+43           selected = &amp;backends[i];
+44           break;
+45         }
+46       }
+47     }
+48   }
+49   return selected;
+50 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_cpu_features()</b>,
+    <b>platform_simd_override()</b>, <b>simd_backend()</b>, and
+    <b>simd_select_backend()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, <b>simd_backend()</b>, and
+    <b>simd_cells_backend()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_simd_luminance_avx2_(const_"><a class="permalink" href="#void_simd_luminance_avx2_(const_">void
+  simd_luminance_avx2 (const <b>uint8_t</b> * rgb, <b>uint8_t</b> * out, size_t
+  count)</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>avx2/luminance.c</b>.</p>
+<pre>17                                                                          {
+18   const rgb_pixel_t *row = (const rgb_pixel_t *)rgb;
+19   size_t x = 0;
+20   for (; width - x &gt;= 32; x += 32) {
+21     avx2_load_rgb32_optimized(row + x, avx2_r_buffer, avx2_g_buffer, avx2_b_buffer);
+22     avx2_compute_luminance_32(avx2_r_buffer, avx2_g_buffer, avx2_b_buffer, avx2_luminance_buffer);
+23     memcpy(out + x, avx2_luminance_buffer, 32);
+24   }
+25   simd_luminance_scalar((const uint8_t *)(row + x), out + x, width - x);
+26 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>simd_luminance_avx2()</b>, and
+    <b>simd_luminance_scalar()</b>.</p>
+<p class="Pp">Referenced by <b>simd_luminance_avx2()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_simd_luminance_neon_(const_"><a class="permalink" href="#void_simd_luminance_neon_(const_">void
+  simd_luminance_neon (const <b>uint8_t</b> * rgb, <b>uint8_t</b> * out, size_t
+  count)</a></h2>
+<p class="Pp">Definition at line <b>6</b> of file <b>neon/luminance.c</b>.</p>
+<pre>6                                                                          {
+7   const rgb_pixel_t *row = (const rgb_pixel_t *)rgb;
+8   size_t x = 0;
+9   for (; width - x &gt;= 16; x += 16) {
+10     // Load 16 RGB pixels (48 bytes)
+11     uint8x16x3_t pixels = vld3q_u8((const uint8_t *)(row + x));
+12
+13     // Calculate luminance for all 16 pixels: (77*R + 150*G + 29*B + 128) &gt;&gt; 8
+14     uint16x8_t luma_lo = vmull_u8(vget_low_u8(pixels.val[0]), vdup_n_u8(LUMA_RED)); // R * 77
+15     luma_lo = vmlal_u8(luma_lo, vget_low_u8(pixels.val[1]), vdup_n_u8(LUMA_GREEN)); // + G * 150
+16     luma_lo = vmlal_u8(luma_lo, vget_low_u8(pixels.val[2]), vdup_n_u8(LUMA_BLUE));  // + B * 29
+17     luma_lo = vaddq_u16(luma_lo, vdupq_n_u16(128));                                 // + 128 (rounding)
+18     luma_lo = vshrq_n_u16(luma_lo, 8);                                              // &gt;&gt; 8
+19
+20     uint16x8_t luma_hi = vmull_u8(vget_high_u8(pixels.val[0]), vdup_n_u8(LUMA_RED));
+21     luma_hi = vmlal_u8(luma_hi, vget_high_u8(pixels.val[1]), vdup_n_u8(LUMA_GREEN));
+22     luma_hi = vmlal_u8(luma_hi, vget_high_u8(pixels.val[2]), vdup_n_u8(LUMA_BLUE));
+23     luma_hi = vaddq_u16(luma_hi, vdupq_n_u16(128));
+24     luma_hi = vshrq_n_u16(luma_hi, 8);
+25
+26     // Convert 16-bit luminance back to 8-bit
+27     uint8x16_t luminance = vcombine_u8(vmovn_u16(luma_lo), vmovn_u16(luma_hi));
+28
+29     vst1q_u8(out + x, luminance);
+30   }
+31   simd_luminance_scalar((const uint8_t *)(row + x), out + x, width - x);
+32 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>LUMA_BLUE</b>, <b>LUMA_GREEN</b>, <b>LUMA_RED</b>,
+    <b>simd_luminance_neon()</b>, and <b>simd_luminance_scalar()</b>.</p>
+<p class="Pp">Referenced by <b>simd_luminance_neon()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_simd_luminance_scalar_(const_"><a class="permalink" href="#void_simd_luminance_scalar_(const_">void
+  simd_luminance_scalar (const <b>uint8_t</b> * rgb, <b>uint8_t</b> * out,
+  size_t count)</a></h2>
+<p class="Pp">Definition at line <b>52</b> of file <b>dispatch.c</b>.</p>
+<pre>52                                                                            {
+53   for (size_t i = 0; i &lt; count; i++)
+54     out[i] = (uint8_t)((77u * rgb[3 * i] + 150u * rgb[3 * i + 1] + 29u * rgb[3 * i + 2] + 128u) &gt;&gt; 8);
+55 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>simd_luminance_scalar()</b>.</p>
+<p class="Pp">Referenced by <b>simd_luminance_avx2()</b>,
+    <b>simd_luminance_neon()</b>, <b>simd_luminance_scalar()</b>,
+    <b>simd_luminance_sse2()</b>, and <b>simd_luminance_ssse3()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_simd_luminance_sse2_(const_"><a class="permalink" href="#void_simd_luminance_sse2_(const_">void
+  simd_luminance_sse2 (const <b>uint8_t</b> * rgb, <b>uint8_t</b> * out, size_t
+  count)</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>sse2/luminance.c</b>.</p>
+<pre>17                                                                          {
+18   const rgb_pixel_t *row = (const rgb_pixel_t *)rgb;
+19   size_t x = 0;
+20   for (; width - x &gt;= 16; x += 16) {
+21     // Manual deinterleave RGB components (SSE2 limitation vs NEON's vld3q_u8)
+22     uint8_t r_array[16], g_array[16], b_array[16];
+23     for (int j = 0; j &lt; 16; j++) {
+24       r_array[j] = row[x + j].r;
+25       g_array[j] = row[x + j].g;
+26       b_array[j] = row[x + j].b;
+27     }
+28
+29     // Load full 16 bytes into SSE2 registers (process in two 8-pixel batches)
+30     __m128i r_vec_lo = _mm_loadl_epi64((__m128i *)(r_array + 0)); // First 8 pixels
+31     __m128i r_vec_hi = _mm_loadl_epi64((__m128i *)(r_array + 8)); // Second 8 pixels
+32     __m128i g_vec_lo = _mm_loadl_epi64((__m128i *)(g_array + 0));
+33     __m128i g_vec_hi = _mm_loadl_epi64((__m128i *)(g_array + 8));
+34     __m128i b_vec_lo = _mm_loadl_epi64((__m128i *)(b_array + 0));
+35     __m128i b_vec_hi = _mm_loadl_epi64((__m128i *)(b_array + 8));
+36
+37     // Process first 8 pixels
+38     __m128i r_16_lo = _mm_unpacklo_epi8(r_vec_lo, _mm_setzero_si128());
+39     __m128i g_16_lo = _mm_unpacklo_epi8(g_vec_lo, _mm_setzero_si128());
+40     __m128i b_16_lo = _mm_unpacklo_epi8(b_vec_lo, _mm_setzero_si128());
+41
+42     __m128i luma_r_lo = _mm_mullo_epi16(r_16_lo, _mm_set1_epi16(LUMA_RED));
+43     __m128i luma_g_lo = _mm_mullo_epi16(g_16_lo, _mm_set1_epi16(150));
+44     __m128i luma_b_lo = _mm_mullo_epi16(b_16_lo, _mm_set1_epi16(29));
+45
+46     __m128i luma_sum_lo = _mm_add_epi16(luma_r_lo, luma_g_lo);
+47     luma_sum_lo = _mm_add_epi16(luma_sum_lo, luma_b_lo);
+48     luma_sum_lo = _mm_add_epi16(luma_sum_lo, _mm_set1_epi16(128));
+49     luma_sum_lo = _mm_srli_epi16(luma_sum_lo, 8);
+50
+51     // Process second 8 pixels
+52     __m128i r_16_hi = _mm_unpacklo_epi8(r_vec_hi, _mm_setzero_si128());
+53     __m128i g_16_hi = _mm_unpacklo_epi8(g_vec_hi, _mm_setzero_si128());
+54     __m128i b_16_hi = _mm_unpacklo_epi8(b_vec_hi, _mm_setzero_si128());
+55
+56     __m128i luma_r_hi = _mm_mullo_epi16(r_16_hi, _mm_set1_epi16(LUMA_RED));
+57     __m128i luma_g_hi = _mm_mullo_epi16(g_16_hi, _mm_set1_epi16(150));
+58     __m128i luma_b_hi = _mm_mullo_epi16(b_16_hi, _mm_set1_epi16(29));
+59
+60     __m128i luma_sum_hi = _mm_add_epi16(luma_r_hi, luma_g_hi);
+61     luma_sum_hi = _mm_add_epi16(luma_sum_hi, luma_b_hi);
+62     luma_sum_hi = _mm_add_epi16(luma_sum_hi, _mm_set1_epi16(128));
+63     luma_sum_hi = _mm_srli_epi16(luma_sum_hi, 8);
+64
+65     // Pack both halves to 8-bit
+66     __m128i luminance_lo = _mm_packus_epi16(luma_sum_lo, _mm_setzero_si128());
+67     __m128i luminance_hi = _mm_packus_epi16(luma_sum_hi, _mm_setzero_si128());
+68
+69     // Store and convert to ASCII characters
+70     uint8_t luma_array[16];
+71     _mm_storel_epi64((__m128i *)(luma_array + 0), luminance_lo);
+72     _mm_storel_epi64((__m128i *)(luma_array + 8), luminance_hi);
+73
+74     memcpy(out + x, luma_array, 16);
+75   }
+76   simd_luminance_scalar((const uint8_t *)(row + x), out + x, width - x);
+77 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rgb_pixel_t::b</b>, <b>rgb_pixel_t::g</b>,
+    <b>LUMA_RED</b>, <b>rgb_pixel_t::r</b>, <b>simd_luminance_scalar()</b>, and
+    <b>simd_luminance_sse2()</b>.</p>
+<p class="Pp">Referenced by <b>simd_luminance_sse2()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_simd_luminance_ssse3_(const_"><a class="permalink" href="#void_simd_luminance_ssse3_(const_">void
+  simd_luminance_ssse3 (const <b>uint8_t</b> * rgb, <b>uint8_t</b> * out, size_t
+  count)</a></h2>
+<p class="Pp">Definition at line <b>5</b> of file <b>ssse3/luminance.c</b>.</p>
+<pre>5                                                                           {
+6   const rgb_pixel_t *row = (const rgb_pixel_t *)rgb;
+7   size_t x = 0;
+8   for (; width - x &gt;= 16; x += 16) {
+9     // Manual deinterleave RGB components (SSSE3 limitation vs NEON's vld3q_u8)
+10     uint8_t r_array[16], g_array[16], b_array[16];
+11     for (int j = 0; j &lt; 16; j++) {
+12       r_array[j] = row[x + j].r;
+13       g_array[j] = row[x + j].g;
+14       b_array[j] = row[x + j].b;
+15     }
+16
+17     // Process 16 pixels in two 8-pixel SSSE3 batches (same as SSE2 approach)
+18     __m128i r_vec_lo = _mm_loadl_epi64((__m128i *)(r_array + 0));
+19     __m128i r_vec_hi = _mm_loadl_epi64((__m128i *)(r_array + 8));
+20     __m128i g_vec_lo = _mm_loadl_epi64((__m128i *)(g_array + 0));
+21     __m128i g_vec_hi = _mm_loadl_epi64((__m128i *)(g_array + 8));
+22     __m128i b_vec_lo = _mm_loadl_epi64((__m128i *)(b_array + 0));
+23     __m128i b_vec_hi = _mm_loadl_epi64((__m128i *)(b_array + 8));
+24
+25     // Process first 8 pixels
+26     __m128i r_16_lo = _mm_unpacklo_epi8(r_vec_lo, _mm_setzero_si128());
+27     __m128i g_16_lo = _mm_unpacklo_epi8(g_vec_lo, _mm_setzero_si128());
+28     __m128i b_16_lo = _mm_unpacklo_epi8(b_vec_lo, _mm_setzero_si128());
+29
+30     __m128i luma_r_lo = _mm_mullo_epi16(r_16_lo, _mm_set1_epi16(LUMA_RED));
+31     __m128i luma_g_lo = _mm_mullo_epi16(g_16_lo, _mm_set1_epi16(LUMA_GREEN));
+32     __m128i luma_b_lo = _mm_mullo_epi16(b_16_lo, _mm_set1_epi16(LUMA_BLUE));
+33
+34     __m128i luma_sum_lo = _mm_add_epi16(luma_r_lo, luma_g_lo);
+35     luma_sum_lo = _mm_add_epi16(luma_sum_lo, luma_b_lo);
+36     luma_sum_lo = _mm_add_epi16(luma_sum_lo, _mm_set1_epi16(LUMA_THRESHOLD));
+37     luma_sum_lo = _mm_srli_epi16(luma_sum_lo, 8);
+38
+39     // Process second 8 pixels
+40     __m128i r_16_hi = _mm_unpacklo_epi8(r_vec_hi, _mm_setzero_si128());
+41     __m128i g_16_hi = _mm_unpacklo_epi8(g_vec_hi, _mm_setzero_si128());
+42     __m128i b_16_hi = _mm_unpacklo_epi8(b_vec_hi, _mm_setzero_si128());
+43
+44     __m128i luma_r_hi = _mm_mullo_epi16(r_16_hi, _mm_set1_epi16(LUMA_RED));
+45     __m128i luma_g_hi = _mm_mullo_epi16(g_16_hi, _mm_set1_epi16(LUMA_GREEN));
+46     __m128i luma_b_hi = _mm_mullo_epi16(b_16_hi, _mm_set1_epi16(LUMA_BLUE));
+47
+48     __m128i luma_sum_hi = _mm_add_epi16(luma_r_hi, luma_g_hi);
+49     luma_sum_hi = _mm_add_epi16(luma_sum_hi, luma_b_hi);
+50     luma_sum_hi = _mm_add_epi16(luma_sum_hi, _mm_set1_epi16(LUMA_THRESHOLD));
+51     luma_sum_hi = _mm_srli_epi16(luma_sum_hi, 8);
+52
+53     // Pack and store
+54     __m128i luminance_lo = _mm_packus_epi16(luma_sum_lo, _mm_setzero_si128());
+55     __m128i luminance_hi = _mm_packus_epi16(luma_sum_hi, _mm_setzero_si128());
+56
+57     uint8_t luma_array[16];
+58     _mm_storel_epi64((__m128i *)(luma_array + 0), luminance_lo);
+59     _mm_storel_epi64((__m128i *)(luma_array + 8), luminance_hi);
+60     memcpy(out + x, luma_array, 16);
+61   }
+62   simd_luminance_scalar((const uint8_t *)(row + x), out + x, width - x);
+63 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rgb_pixel_t::b</b>, <b>rgb_pixel_t::g</b>,
+    <b>LUMA_BLUE</b>, <b>LUMA_GREEN</b>, <b>LUMA_RED</b>, <b>LUMA_THRESHOLD</b>,
+    <b>rgb_pixel_t::r</b>, <b>simd_luminance_scalar()</b>, and
+    <b>simd_luminance_ssse3()</b>.</p>
+<p class="Pp">Referenced by <b>simd_luminance_ssse3()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_simd_luminance_sve_(const_"><a class="permalink" href="#void_simd_luminance_sve_(const_">void
+  simd_luminance_sve (const <b>uint8_t</b> * rgb, <b>uint8_t</b> * out, size_t
+  count)</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>sve/luminance.c</b>.</p>
+<pre>17                                                                         {
+18   const rgb_pixel_t *row = (const rgb_pixel_t *)rgb;
+19   size_t x = 0;
+20   while (x &lt; width) {
+21     // Widening consumes half the byte lanes; predicate the active halfword lanes.
+22     size_t process_count = width - x &lt; svcnth() ? width - x : svcnth();
+23     svbool_t pg_active = svwhilelt_b8((uint64_t)0, (uint64_t)process_count);
+24     // Retain the renderer's channel scratch layout before widening arithmetic.
+25     uint8_t r_array[256], g_array[256], b_array[256]; // Max SVE vector size
+26     for (int j = 0; j &lt; process_count; j++) {
+27       if (x + j &lt; width) {
+28         r_array[j] = row[x + j].r;
+29         g_array[j] = row[x + j].g;
+30         b_array[j] = row[x + j].b;
+31       }
+32     }
+33
+34     // Load into SVE vectors
+35     svuint8_t r_vec = svld1_u8(pg_active, r_array);
+36     svuint8_t g_vec = svld1_u8(pg_active, g_array);
+37     svuint8_t b_vec = svld1_u8(pg_active, b_array);
+38
+39     // Convert to 16-bit for arithmetic
+40     svuint16_t r_16 = svunpklo_u16(r_vec);
+41     svuint16_t g_16 = svunpklo_u16(g_vec);
+42     svuint16_t b_16 = svunpklo_u16(b_vec);
+43
+44     // Calculate luminance: (77*R + 150*G + 29*B + 128) &gt;&gt; 8
+45     svuint16_t luma = svmul_n_u16_x(svptrue_b16(), r_16, LUMA_RED);
+46     luma = svmla_n_u16_x(svptrue_b16(), luma, g_16, LUMA_GREEN);
+47     luma = svmla_n_u16_x(svptrue_b16(), luma, b_16, LUMA_BLUE);
+48     luma = svadd_n_u16_x(svptrue_b16(), luma, LUMA_THRESHOLD);
+49     luma = svlsr_n_u16_x(svptrue_b16(), luma, 8);
+50
+51     // Store u16 luminance values (SVE1 compatible - no SVE2 narrowing intrinsics)
+52     // After right-shift by 8, values are already in 0-255 range
+53     uint16_t luma_temp[256];
+54     svst1_u16(svptrue_b16(), luma_temp, luma);
+55
+56     // Convert to u8 array for ASCII lookup
+57     uint8_t luma_array[256];
+58     for (int j = 0; j &lt; process_count; j++) {
+59       luma_array[j] = (uint8_t)luma_temp[j];
+60     }
+61
+62     memcpy(out + x, luma_array, process_count);
+63     x += process_count;
+64   }
+65 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rgb_pixel_t::b</b>, <b>rgb_pixel_t::g</b>,
+    <b>LUMA_BLUE</b>, <b>LUMA_GREEN</b>, <b>LUMA_RED</b>, <b>LUMA_THRESHOLD</b>,
+    <b>rgb_pixel_t::r</b>, and <b>simd_luminance_sve()</b>.</p>
+<p class="Pp">Referenced by <b>simd_luminance_sve()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">const <b>simd_backend_t</b> * simd_select_backend
+  (<b>uint32_t</b> features)</h2>
+<p class="Pp">Select only from compiled implementations whose requirements are
+    satisfied.</p>
+<p class="Pp">Definition at line <b>23</b> of file <b>dispatch.c</b>.</p>
+<pre>23                                                              {
+24   for (size_t i = 0; i &lt; sizeof(backends) / sizeof(backends[0]); i++) {
+25     if ((features &amp; backends[i].required_features) == backends[i].required_features)
+26       return &amp;backends[i];
+27   }
+28   return &amp;backends[sizeof(backends) / sizeof(backends[0]) - 1];
+29 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>simd_select_backend()</b>.</p>
+<p class="Pp">Referenced by <b>simd_backend()</b>, and
+    <b>simd_select_backend()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

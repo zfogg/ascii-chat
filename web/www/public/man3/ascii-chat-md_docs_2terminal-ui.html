@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>md_docs_2terminal-ui(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">md_docs_2terminal-ui(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">md_docs_2terminal-ui(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">md_docs_2terminal-ui - Terminal presentation</p>
+<p class="Pp"><b>lib/tui/controller.c</b><b> owns terminal rendering only. It
+    never reads keys, queues input, edits answers, or interprets commands.
+    Capture, encoding, networking, and status producers publish screen
+    snapshots; they do not decide when to show the terminal-size
+  warning.</b></p>
+<p class="Pp"></p>
+<p class="Pp">Each screen supplies an output descriptor, its minimum
+    rows/columns, a renderer, and a snapshot. <b>ui_controller_submit()</b><b>
+    copies the snapshot. Renderers receive physical dimensions from the output
+    descriptor, independent of media dimension overrides. Screens with pointer
+    members must remove their slot before destroying the pointed-to objects.
+    Removal waits for any in-progress rendering to finish.</b></p>
+<p class="Pp"></p>
+<p class="Pp">The controller selects the highest-priority registered screen:
+    authentication/text prompt, update prompt, mDNS selection, help, splash,
+    media, then status. It retains covered screens and the latest media frame. A
+    16 ms tick detects resizing even when no producer has a new frame. Below the
+    active screen's minimum it presents <b>tui/too_small.h</b><b>; recovery
+    restores the underlying screen. Interrupts still terminate the process while
+    the warning is visible.</b></p>
+<p class="Pp"></p>
+<p class="Pp">Media uses the same 20-column and 10-row minimum as the option
+    registry. Help's height comes from the rows built by its layout, including
+    conditional controls. Splash and status provide their header geometry.
+    Paused media retains its last frame; if that frame is larger than the
+    resized terminal, presentation clips it without resuming capture.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>lib/tui/input.c</b><b> owns keyboard polling, covered-input
+    suppression, and prompt editing. It reads the controller's presentation
+    state, then lets the appropriate consumer handle the key. It has no
+    presentation thread or rendering callbacks. The media consumer also handles
+    help keys. Prompt editing publishes only visible text; passwords are masked
+    before publication and raw key bytes are not logged. Authentication warnings
+    and fingerprints are part of the prompt snapshot so they survive resize and
+    cannot be covered by the splash or media screen.</b></p>
+<p class="Pp"></p>
+<p class="Pp">All session and UI writes (including ASCII writer compatibility
+    calls, grep, logging, prompt text, and final upgrade instructions) use the
+    controller output sink. A callback may write its selected screen; unrelated
+    terminal text cannot paint over an active screen.
+    <b>ui_controller_finish()</b><b> retires the live screens and writes final
+    text synchronously. The obsolete standalone FPS writer is gone; FPS is part
+    of the media snapshot. CLI document generation, files, and emergency crash
+    output are not live screen rendering.</b></p>
+<p class="Pp"></p>
+<p class="Pp">Screen callbacks run outside the controller mutex and may submit
+    or remove screens. Producers must not hold locks needed by a callback while
+    removing its screen. The stop, blocked, live-screen, and lifecycle states
+    use custom atomics and named registry entries. Other controller state is
+    mutex-protected.</p>
+<p class="Pp"></p>
+<p class="Pp">Non-terminal output and finite snapshots use synchronous output,
+    without the interactive warning. Recording happens before terminal
+    presentation and is not suppressed by the warning. Shutdown joins the
+    presentation thread before keyboard, log, option, and named-registry
+    teardown.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Audio_visualizations"><a class="permalink" href="#Audio_visualizations">Audio
+  visualizations</a></h1>
+<p class="Pp">Keyboard help places Current Settings and Animations to the right
+    of Navigation &amp; Control. Its width is measured from both columns and its
+    height from the longer column; undersized terminals show the shared size
+    warning.</p>
+<p class="Pp"></p>
+<p class="Pp">The keyboard help menu's Animations section lists 2 (audio
+    waveform) and 3 (audio frequencies/FFT), with live on/off indicators. Either
+    key selects its visualization and disables the other and Matrix rain. Matrix
+    (1) disables both audio visualizations. Pressing the active animation key
+    again restores video. Both audio visualizations follow --audio-source and
+    require audio to be enabled. Mirror mode initializes microphone capture even
+    without a media audio track or recording, so keyboard activation has an
+    audio source available.</p>
+<p class="Pp"></p>
+<p class="Pp">tests/integration/audio_visualization_keys.py --binary
+    build/bin/ascii-chat generates a changing audio signal and checks real
+    terminal output after keyboard activation, help state, mutual exclusion,
+    both off toggles, and video restoration. It uses the same terminal
+    dependencies as terminal_ui.py, plus ffmpeg and an audio output device.
+    Playback volume is zero during the test.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Sync_diagnostics_(Debug_builds)"><a class="permalink" href="#Sync_diagnostics_(Debug_builds)">Sync
+  diagnostics (Debug builds)</a></h1>
+<p class="Pp">Press 0 to replace media or help with the sync screen; 0 or Escape
+    restores what was underneath. ? switches to help. Matrix rain uses 1.
+    Left/Right pages through every registered mutex, rwlock, condition variable,
+    wrapped atomic, and atomic pointer. Up/Down selects a row for its address,
+    owner/waiter, source location, and last-operation age. Source locations
+    start at lib/, src/, or include/ and use forward slashes; media paths are
+    omitted from the details. Home/End selects the first/last page.
+    Higher-priority prompts still cover diagnostics. The list repaginates on
+    live resize. The Name column fits the longest registered primitive name
+    across all pages. The minimum width is measured from the rendered header,
+    columns, details, and footer; the minimum height fits those lines plus one
+    entry. The shared &quot;Terminal too small&quot; screen appears below that
+    size; resizing back restores the list.</p>
+<p class="Pp"></p>
+<p class="Pp">The table shows lock/unlock rates (wait/signal rates for
+    conditions), atomic values, and actual value changes per second. Repeated
+    stores of the same value, failed compare/exchanges, and zero-delta fetches
+    do not count as changes. Rates are red at 60 or more, yellow at 10 or more,
+    green when nonzero, and blue at zero.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>lib/tui/sync.c</b><b> collects protected copies on its own
+    thread using try-locks. The presentation thread renders a separate owned
+    mailbox; terminal output never holds a mailbox lock. Input continues polling
+    independently of the main loop. Registry contention retains the last
+    complete sample and displays its growing age. The registry snapshot grows
+    dynamically without a 256-entry limit. Mutex wait cycles use the existing
+    stack graph detector; its bounded thread, stack, and cycle capacities are
+    reported when reached. An idle condition wait is shown as a wait, not proof
+    of a deadlock. These are sampled diagnostics, not an atomic snapshot of the
+    entire process.</b></p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Verification"><a class="permalink" href="#Verification">Verification</a></h1>
+<p class="Pp">tests/python/integration/terminal_ui/test_ui.py drives the real
+    executable in a resizable PTY (ConPTY on Windows), interprets its output
+    using pyte, and checks startup-small, resize recovery, a live WebSocket
+    handshake while covered, ignored keyboard input, help restoration, paused
+    playback, explicit dimensions, recording while covered, interrupt shutdown,
+    and redirected snapshots. It requires pyte, pywinpty on Windows or pexpect
+    on POSIX, and ffmpeg.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/terminal_ui --ascii-chat-binary build/bin/ascii-chat --debug-sync
+cmake --build build --target test-sync-regressions
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/sync --sync-probe build/bin/test-sync-regressions</pre>
+<p class="Pp">The Criterion <b>ui_too_small</b><b> suite checks exact boundaries
+    and the 1x1/unknown-size formatting cases. Criterion runs on supported POSIX
+    hosts; the PTY suite also runs on Windows.</b></p>
+<p class="Pp"></p>
+<p class="Pp">tests/integration/terminal_prompt.py --library
+    build/bin/asciichat.dll drives native Windows prompt APIs over a live media
+    screen and checks text editing, password masking, covered input, resize
+    restoration, visible host fingerprints, and absence of plaintext passwords
+    in terminal output and logs.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Docker_and_tmux_matrix"><a class="permalink" href="#Docker_and_tmux_matrix">Docker
+  and tmux matrix</a></h2>
+<p class="Pp">The tmux_*.py drivers run the native executable in detached tmux
+    PTYs and save plain/ANSI pane captures, exit status, application logs, and
+    sanitizer reports. They require Python 3, tmux, ffmpeg/ffprobe, and
+    ssh-keygen inside the Linux test container. Use a private tmux socket; these
+    tests use ascii390.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>tmux -L ascii390 new-session -d -s setup -x 80 -y 40
+tmux -L ascii390 set-option -g remain-on-exit on
+mkdir -p /tmp/render-evidence
+ffmpeg -y -v error -f lavfi -i testsrc2=size=160x120:rate=10 \
+<br/>
+  -f lavfi -i sine=frequency=440:sample_rate=48000 -t 10 \
+<br/>
+  -c:v libx264 -pix_fmt yuv420p -c:a aac /tmp/render-evidence/media.mp4
+python tests/integration/tmux_rendering.py --binary build/bin/ascii-chat \
+<br/>
+  --artifacts /tmp/render-evidence
+python tests/integration/tmux_flows.py --binary build/bin/ascii-chat \
+<br/>
+  --artifacts /tmp/render-evidence
+python tests/integration/tmux_auth.py --binary build/bin/ascii-chat \
+<br/>
+  --artifacts /tmp/render-evidence
+python tests/integration/tmux_exports.py --binary build/bin/ascii-chat \
+<br/>
+  --artifacts /tmp/render-evidence</pre>
+<p class="Pp">Build the native prompt fixture with the same compiler, library
+    and sanitizer settings as the application:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>cmake --build build --target ui-native-probe
+python tests/integration/tmux_prompts.py --probe build/bin/ui-native-probe \
+<br/>
+  --artifacts /tmp/render-evidence</pre>
+<p class="Pp">Coverage is explicit rather than every possible Cartesian
+  product:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>84 live cases: all three render modes, six color spellings, render
+      aliases, six palettes, all 13 filter spellings across render modes,
+      Matrix, FPS, waveform/FFT with all four audio selections, flips/stretch,
+      and UTF-8 off. Each checks startup-small, recovery, blocked keys, help,
+      and shutdown.</li>
+  <li>13 flows: server status/grep with a live WebSocket handshake while
+      covered, ACDS startup, accept/decline for three overwrite prompts, IP
+      disclosure refusal, paused/help recovery with explicit dimensions, and
+      recording while covered with all three render themes.</li>
+  <li>Four loopback authentication flows: encrypted SSH key, server password,
+      missing client identity, and host-key acceptance.</li>
+  <li>16 native prompt/TUI fixtures: text editing, password variants, yes/no
+      defaults, cancellation, host/ACDS fingerprints, update choices, mDNS
+      selection/cancellation, and splash. Four additional PCM fixtures exercise
+      microphone/remote waveform and FFT with a nonzero 440 Hz signal.</li>
+  <li>Seven advertised file extensions and three redirected plain
+    snapshots.</li>
+</ul>
+<p class="Pp">mDNS, update availability, GPG passphrase entry, and changed ACDS
+    identities use deterministic native API fixtures; they do not prove external
+    discovery/update services or GPG decryption. The Docker mirror's
+    microphone/call sources are silent; injected PCM fixtures cover their
+    nonzero rendering. ACDS currently has no status callback, so its startup
+    output is tested without claiming a status TUI. Hardware cameras, physical
+    audio devices, browser/WASM rendering, and every combination of independent
+    options are outside this matrix.</p>
+<p class="Pp"></p>
+<p class="Pp">Expected refusal exit codes are checked explicitly. Interactive
+    client shutdown currently returns 1 for an interrupted connection.
+    Sanitizers remain enabled; the harness treats any sanitizer report as a
+    failure and retains previous-run logs when retrying a case.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Stdio_capture_regression"><a class="permalink" href="#Stdio_capture_regression">Stdio
+  capture regression</a></h2>
+<p class="Pp">Live screens retain a duplicate of their output descriptor until
+    removal. Media libraries temporarily redirect process stdout/stderr through
+    <b>LOG_IO</b><b>; presentation uses the retained terminal for geometry and
+    writes, and keeps accepting snapshots as live output during capture. This
+    prevents a one-time size warning from being captured as a diagnostic instead
+    of displayed. Keyboard initialization also retries when stdout is
+    temporarily redirected, rather than committing an unconfigured
+  keyboard.</b></p>
+<p class="Pp"></p>
+<p class="Pp">The additional deterministic fixture holds <b>LOG_IO</b><b> active
+    for five seconds and requires both the small-terminal warning and restored
+    frame before capture ends:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>python tests/integration/tmux_capture.py --probe build/bin/ui-native-probe \
+<br/>
+  --artifacts /tmp/render-evidence
+python tests/integration/tmux_startup.py --binary build/bin/ascii-chat \
+<br/>
+  --artifacts /tmp/render-evidence --count 40 --color-mode 16</pre>
+<p class="Pp">Startup stress defaults to warning-level logging so debug logging
+    does not mask initialization races. These checks supplement the 131-case
+    matrix above.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Half-block_geometry_and_playback_regression"><a class="permalink" href="#Half-block_geometry_and_playback_regression">Half-block
+  geometry and playback regression</a></h2>
+<p class="Pp">tmux_animation.py samples 36 ANSI frames over more than 14 seconds
+    from the 10-second testsrc2 fixture above. It requires changing frames
+    before resize, after restoration, and after the loop boundary. Run it with
+    the ordinary fixture and again with an -an -c:v copy video-only copy to
+    cover both decoder layouts.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>python tests/integration/tmux_animation.py --binary build/bin/ascii-chat \
+<br/>
+  --artifacts /tmp/render-evidence</pre>
+<p class="Pp">The halfblock_cover_uses_cell_geometry Criterion test verifies
+    that half-block sampling does not double the viewport height used for
+    aspect-ratio cropping. These longer animation and geometry checks supplement
+    the 131-case interaction matrix; that matrix alone does not establish
+    continuous playback across EOF.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Procedural_animation_controller"><a class="permalink" href="#Procedural_animation_controller">Procedural
+  animation controller</a></h1>
+<p class="Pp"><b>video/anim/controller.h</b><b> provides typed dispatch for
+    splash rainbow, digital rain, rainbow filtering, and the generated test
+    pattern. Instances are independent; there are no groups or background
+    animation threads in this layer. Existing producers own and serialize their
+    instances, registered by name for diagnostics. No new shared atomics are
+    needed. Immutable samples can be copied to the presentation thread.</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>animation_update()</b><b> accepts monotonic timestamps in a
+    caller-selected domain, advances the local clock, and returns frame-change
+    and next-deadline information. Pause, visibility policy, and speed are per
+    instance. Update at a control-change boundary before changing controls;
+    continue ticking suspended instances so hidden or paused time is discarded.
+    Call </b><b>animation_reset()</b><b> before seeking backwards.
+    </b><b>animation_sample_at()</b><b> samples an already-scaled elapsed time
+    without allocating an instance; the rainbow adapter uses the renderer's
+    existing timestamps. Both shared test patterns use elapsed timestamps from
+    their native or browser producer; pattern 0 is the gradient/square and
+    pattern 1 the rainbow/circle.</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>animation_apply()</b><b> switches on effect type and validates
+    the target: splash writes RGB colors, rainbow writes RGB or allocated ANSI,
+    digital rain writes allocated ANSI, and test patterns render into their
+    reusable pattern context. ANSI outputs belong to the caller and must be
+    released with </b><b>SAFE_FREE</b><b>. Digital rain's target includes its
+    producer-owned column state. Application is stateful for rain (brightness
+    smoothing); sample values are immutable, but a rain target must not be
+    shared across concurrent renders.</b></p>
+<p class="Pp"></p>
+<p class="Pp">Native and WASM renderers retain their existing public effect
+    entry points, which now delegate to this controller. Existing effect
+    ordering, terminal presentation, and video/GIF decoding, playback clocks,
+    and audio synchronization are unchanged. The presentation scheduler still
+    controls terminal refreshes; deadline metadata is available for producers
+    without adding a global animation registry or scheduler.</p>
+<p class="Pp"></p>
+<p class="Pp">Validation: tests/unit/video/animation_test.c covers clocks,
+    independent instances, visibility, reset, typed targets, both shared
+    patterns, and rain/rainbow composition. tests/integration/tmux_animations.py
+    records all four animations and combined Matrix/rainbow from real tmux panes
+    before and after resize. Stationary video input isolates effect motion from
+    source motion. Captures/reports are generated outside Git, not checked into
+    the repository.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Shared_components_and_screens"><a class="permalink" href="#Shared_components_and_screens">Shared
+  components and screens</a></h1>
+<p class="Pp">Reusable terminal widgets live in lib/ui/, with public headers
+    under include/ascii-chat/ui/. Complete screens and their input/presentation
+    runtime live in lib/tui/ and include/ascii-chat/tui/. The size warning is a
+    screen. The generic UI output sink keeps widgets independent of the TUI
+    controller.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>ui/popup.h</b><b> provides overdrawn dialog frames and rules.
+    </b><b>ui/help_menu.h</b><b> builds help popups from separate binding and
+    description fields: binding tokens are yellow, separators retain the
+    foreground, and numeric values use the theme's number color. Help retains
+    the underlying screen, including animated media. Server and
+    discovery-service help contain their own mode controls and settings.</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>ui/table.h</b><b> formats ANSI-aware cells and renders
+    rectangular tables with fixed headers. Callers own sorting and data; a cell
+    callback supplies each visible row. </b><b>ui/viewport.h</b><b> keeps
+    selection, page size, and the scroll offset within a page independent. A
+    zero page size means one scrollable dataset. </b><b>ui/scrollbar.h</b><b>
+    provides proportional thumb geometry and rendering, also usable by non-table
+    screens such as logs and LAN selection. Tables reserve their rightmost
+    column for this scrollbar. Streaming tables can use the allocation-free row
+    formatter.</b></p>
+<p class="Pp"></p>
+<p class="Pp">Other components include buttons, a UTF-8 line editor,
+    fixed-region layout, text clipping/styling, progress bars, and spinners.
+    Caller-owned storage has explicit capacities; invalid arguments and capacity
+    errors set error context with <b>SET_ERRNO</b><b>.
+    </b><b>terminal_should_use_utf8()</b><b> resolves the explicit UTF-8 option
+    before capability detection. Widget colors go through
+    </b><b>colored_string()</b><b>; </b><b>ui_text_color_prefix()</b><b>
+    supports incremental formatting with the same policy.</b></p>
+<p class="Pp"></p>
+<p class="Pp">tests/python/integration/tui_modes/test_shortcuts.py covers help,
+    logs, sync, stats and error stacks in mirror and both server modes, with
+    status screens enabled and disabled.
+    tests/python/integration/native_ui/test_screens.py covers prompts, identity
+    warnings, update buttons, LAN selection, notices, recording progress and
+    splash, including size recovery. Both can export terminal-cell screenshots
+    and original ANSI streams.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

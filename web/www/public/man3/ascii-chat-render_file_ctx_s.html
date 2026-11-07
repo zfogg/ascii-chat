@@ -38,15 +38,35 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp"><b>terminal_renderer_t</b> * <b>renderer</b>
+<p class="Pp"><b>render_progress_t</b> * <b>progress</b>
+  <br/>
+  <b>asciichat_error_t</b> <b>error</b>
+  <br/>
+  <b>terminal_renderer_t</b> * <b>renderer</b>
   <br/>
   <b>ffmpeg_encoder_t</b> * <b>encoder</b>
   <br/>
-  <b>media_source_t</b> * <b>audio_media_source</b>
+  <b>audio_recording_t</b> * <b>recording</b>
   <br/>
-  <b>audio_ring_buffer_t</b> * <b>audio_capture_rb</b>
+  <b>uint64_t</b> <b>frames_written</b>
+  <br/>
+  <b>uint64_t</b> <b>audio_samples_written</b>
+  <br/>
+  <b>uint64_t</b> <b>first_frame_ns</b>
+  <br/>
+  <b>uint64_t</b> <b>last_frame_index</b>
+  <br/>
+  <b>uint64_t</b> <b>audio_target</b>
+  <br/>
+  <b>bool</b> <b>live_timing</b>
+  <br/>
+  <b>bool</b> <b>kitty</b>
+  <br/>
+  <b>bool</b> <b>kitty_only</b>
   <br/>
   <b>uint32_t</b> <b>audio_sample_rate</b>
+  <br/>
+  int <b>fps</b>
   <br/>
   float * <b>audio_read_buf</b>
   <br/>
@@ -59,7 +79,7 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Definition at line <b>18</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Definition at line <b>26</b> of file <b>renderer.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -67,51 +87,98 @@
 <section class="Ss">
 <h2 class="Ss" id="int_render_file_ctx_s::audio_buf_size"><a class="permalink" href="#int_render_file_ctx_s::audio_buf_size">int
   render_file_ctx_s::audio_buf_size</a></h2>
-<p class="Pp">Definition at line <b>25</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>renderer.c</b>.</p>
 <p class="Pp">Referenced by <b>render_file_create()</b>, and
-    <b>render_file_write_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>audio_ring_buffer_t</b>*
-  render_file_ctx_s::audio_capture_rb</h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>renderer.c</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>,
-    <b>render_file_set_audio_source()</b>, and
-  <b>render_file_write_frame()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>media_source_t</b>* render_file_ctx_s::audio_media_source</h2>
-<p class="Pp">Definition at line <b>21</b> of file <b>renderer.c</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>,
-    <b>render_file_set_audio_source()</b>, and
-  <b>render_file_write_frame()</b>.</p>
+    <b>render_file_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="float*_render_file_ctx_s::audio_read_buf"><a class="permalink" href="#float*_render_file_ctx_s::audio_read_buf">float*
   render_file_ctx_s::audio_read_buf</a></h2>
-<p class="Pp">Definition at line <b>24</b> of file <b>renderer.c</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>,
-    <b>render_file_destroy()</b>, and <b>render_file_write_frame()</b>.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>, and
+    <b>render_file_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> render_file_ctx_s::audio_sample_rate</h2>
-<p class="Pp">Definition at line <b>23</b> of file <b>renderer.c</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>, and
-    <b>render_file_write_frame()</b>.</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> render_file_ctx_s::audio_samples_written</h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>render_file_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> render_file_ctx_s::audio_target</h2>
+<p class="Pp">Definition at line <b>36</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>render_file_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>ffmpeg_encoder_t</b>* render_file_ctx_s::encoder</h2>
-<p class="Pp">Definition at line <b>20</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>renderer.c</b>.</p>
 <p class="Pp">Referenced by <b>render_file_create()</b>,
-    <b>render_file_destroy()</b>,
-    <b>render_file_set_snapshot_actual_duration()</b>, and
+    <b>render_file_destroy()</b>, <b>render_file_set_live_timing()</b>, and
+    <b>render_file_set_snapshot_actual_duration()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> render_file_ctx_s::error</h2>
+<p class="Pp">Definition at line <b>28</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>render_file_destroy()</b>, and
     <b>render_file_write_frame()</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> render_file_ctx_s::first_frame_ns</h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_render_file_ctx_s::fps"><a class="permalink" href="#int_render_file_ctx_s::fps">int
+  render_file_ctx_s::fps</a></h2>
+<p class="Pp">Definition at line <b>41</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> render_file_ctx_s::frames_written</h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>render_file_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> render_file_ctx_s::kitty</h2>
+<p class="Pp">Definition at line <b>38</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>, and
+    <b>render_file_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> render_file_ctx_s::kitty_only</h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>uint64_t</b> render_file_ctx_s::last_frame_index</h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>renderer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> render_file_ctx_s::live_timing</h2>
+<p class="Pp">Definition at line <b>37</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>render_file_set_live_timing()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>render_progress_t</b>* render_file_ctx_s::progress</h2>
+<p class="Pp">Definition at line <b>27</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>render_file_begin_drain()</b>,
+    <b>render_file_create()</b>, <b>render_file_destroy()</b>, and
+    <b>render_file_write_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>audio_recording_t</b>* render_file_ctx_s::recording</h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>, and
+    <b>render_file_destroy()</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss"><b>terminal_renderer_t</b>* render_file_ctx_s::renderer</h2>
-<p class="Pp">Definition at line <b>19</b> of file <b>renderer.c</b>.</p>
-<p class="Pp">Referenced by <b>render_file_create()</b>,
-    <b>render_file_destroy()</b>, and <b>render_file_write_frame()</b>.</p>
+<p class="Pp">Definition at line <b>29</b> of file <b>renderer.c</b>.</p>
+<p class="Pp">Referenced by <b>render_file_create()</b>, and
+    <b>render_file_destroy()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -122,7 +189,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -36,10 +36,20 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>LOG_WASM_CLEAN_MESSAGE_BUFFER_SIZE</b> 4096
+  <br/>
+  #define <b>LOG_WASM_MSG_BUFFER_SIZE</b> 4096
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>EM_JS</b> (void, js_console_log,(int level, const char
-    *message), { const msg=UTF8ToString(message);const levelNames=['DEV',
+    *message), { const msg=UTF8ToString(message);const levelNames=[ 'DEV',
     'DEBUG', 'INFO', 'WARN', 'ERROR', '<b>FATAL</b>'];const levelName=(level
     &gt;=0 &amp;&amp;level&lt;=5) ? levelNames[level] :'???^;const
     msgLen=msg.length;const hasTimestamp=msg.startsWith('[')
@@ -71,12 +81,28 @@
 <p class="Pp">Definition in file <b>wasm.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_WASM_CLEAN_MESSAGE_BUFFER_SIZE___4096"><a class="permalink" href="#_define_LOG_WASM_CLEAN_MESSAGE_BUFFER_SIZE___4096">#define
+  LOG_WASM_CLEAN_MESSAGE_BUFFER_SIZE 4096</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>wasm.c</b>.</p>
+<p class="Pp">Referenced by <b>platform_log_hook()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_WASM_MSG_BUFFER_SIZE___4096"><a class="permalink" href="#_define_LOG_WASM_MSG_BUFFER_SIZE___4096">#define
+  LOG_WASM_MSG_BUFFER_SIZE 4096</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file <b>wasm.c</b>.</p>
+<p class="Pp">Referenced by <b>wasm_log_to_console()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="EM_JS_(void_,_js_console_log_,_(int_level,_const_char_*message)_,___const_msg=UTF8ToString(message);const_levelNames=_'DEV',_'DEBUG',_'INFO',_'WARN',_'ERROR',_'"><a class="permalink" href="#EM_JS_(void_,_js_console_log_,_(int_level,_const_char_*message)_,___const_msg=UTF8ToString(message);const_levelNames=_'DEV',_'DEBUG',_'INFO',_'WARN',_'ERROR',_'">EM_JS
+<h2 class="Ss" id="EM_JS_(void_,_js_console_log_,_(int_level,_const_char_*message)_,___const_msg=UTF8ToString(message);const_levelNames=__'DEV',_'DEBUG',_'INFO',_'WARN',_'ERROR',_'"><a class="permalink" href="#EM_JS_(void_,_js_console_log_,_(int_level,_const_char_*message)_,___const_msg=UTF8ToString(message);const_levelNames=__'DEV',_'DEBUG',_'INFO',_'WARN',_'ERROR',_'">EM_JS
   (void , js_console_log , (int level, const char *message) , { const
-  msg=UTF8ToString(message);const levelNames=['DEV', 'DEBUG', 'INFO', 'WARN',
+  msg=UTF8ToString(message);const levelNames=[ 'DEV', 'DEBUG', 'INFO', 'WARN',
   'ERROR', '<b>FATAL</b>'];const levelName=(level &gt;=0 &amp;&amp;level&lt;=5)
   ? levelNames[level] :'???^;const msgLen=msg.length;const
   hasTimestamp=msg.startsWith('[') &amp;&amp;msg.includes(':')
@@ -85,21 +111,26 @@
   case 0:case 1:case 2:console.log(debugInfo, msg);break;case
   3:console.warn(debugInfo, msg);break;case 4:case 5:console.error(debugInfo,
   msg);break;default:console.log(debugInfo, msg);} } )</a></h2>
+<p class="Pp">References <b>EM_JS()</b>.</p>
+<p class="Pp">Referenced by <b>EM_JS()</b>, <b>EM_JS()</b>, <b>EM_JS()</b>,
+    <b>EM_JS()</b>, <b>EM_JS()</b>, and <b>EM_JS()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_platform_log_hook_("><a class="permalink" href="#void_platform_log_hook_(">void
   platform_log_hook (<b>log_level_t</b> level, const char * message)</a></h2>
-<p class="Pp">Definition at line <b>51</b> of file <b>wasm.c</b>.</p>
-<pre>51                                                                {
-52   if (message) {
-53     // Strip ANSI codes for clean browser console output
-54     static char clean_message[4096];
-55     strip_ansi_codes(message, clean_message, sizeof(clean_message));
-56     js_console_log((int)level, clean_message);
-57   }
-58 }</pre>
+<p class="Pp">Definition at line <b>58</b> of file <b>wasm.c</b>.</p>
+<pre>58                                                                {
+59   if (message) {
+60     // Strip ANSI codes for clean browser console output
+61     static char clean_message[LOG_WASM_CLEAN_MESSAGE_BUFFER_SIZE];
+62     strip_ansi_codes(message, clean_message, sizeof(clean_message));
+63     js_console_log((int)level, clean_message);
+64   }
+65 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>LOG_WASM_CLEAN_MESSAGE_BUFFER_SIZE</b>,
+    <b>platform_log_hook()</b>, and <b>strip_ansi_codes()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_wasm_log_to_console_(int_fd,_const_"><a class="permalink" href="#void_wasm_log_to_console_(int_fd,_const_">void
@@ -116,33 +147,35 @@
 <i>buf</i> Message buffer
 <br/>
 <i>count</i> Message length</div>
-<p class="Pp">Definition at line <b>113</b> of file <b>wasm.c</b>.</p>
-<pre>113                                                                    {
-114   // For WASM, route stdout/stderr to browser console
-115   if ((fd == 1 || fd == 2) &amp;&amp; buf &amp;&amp; count &gt; 0) {
-116     // Parse log level from formatted message
-117     int level = wasm_parse_log_level(buf, count);
-118     if (level &gt;= 0) {
-119       // Create null-terminated string for console output
-120       // Copy buffer to local array and null-terminate
-121       static char msg_buffer[4096];
-122       size_t copy_len = (count &lt; sizeof(msg_buffer) - 1) ? count : (sizeof(msg_buffer) - 1);
-123       memcpy(msg_buffer, buf, copy_len);
-124       msg_buffer[copy_len] = '\0';
-125 
-126       // Remove trailing newline if present (console adds it automatically)
-127       if (copy_len &gt; 0 &amp;&amp; msg_buffer[copy_len - 1] == '\n') {
-128         msg_buffer[copy_len - 1] = '\0';
-129       }
-130 
-131       // Route to console
-132       js_console_log(level, msg_buffer);
-133     }
-134   }
-135 }</pre>
+<p class="Pp">Definition at line <b>120</b> of file <b>wasm.c</b>.</p>
+<pre>120                                                                    {
+121   // For WASM, route stdout/stderr to browser console
+122   if ((fd == 1 || fd == 2) &amp;&amp; buf &amp;&amp; count &gt; 0) {
+123     // Parse log level from formatted message
+124     int level = wasm_parse_log_level(buf, count);
+125     if (level &gt;= 0) {
+126       // Create null-terminated string for console output
+127       // Copy buffer to local array and null-terminate
+128       static char msg_buffer[LOG_WASM_MSG_BUFFER_SIZE];
+129       size_t copy_len = (count &lt; sizeof(msg_buffer) - 1) ? count : (sizeof(msg_buffer) - 1);
+130       memcpy(msg_buffer, buf, copy_len);
+131       msg_buffer[copy_len] = '\0';
+132
+133       // Remove trailing newline if present (console adds it automatically)
+134       if (copy_len &gt; 0 &amp;&amp; msg_buffer[copy_len - 1] == '\n') {
+135         msg_buffer[copy_len - 1] = '\0';
+136       }
+137
+138       // Route to console
+139       js_console_log(level, msg_buffer);
+140     }
+141   }
+142 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>wasm_parse_log_level()</b>.</p>
+<p class="Pp">References <b>LOG_WASM_MSG_BUFFER_SIZE</b>,
+    <b>wasm_log_to_console()</b>, and <b>wasm_parse_log_level()</b>.</p>
+<p class="Pp">Referenced by <b>wasm_log_to_console()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_wasm_parse_log_level_(const_"><a class="permalink" href="#int_wasm_parse_log_level_(const_">int
@@ -157,61 +190,63 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent"><b>log_level_t</b> enum value (0-5), or -1 if not
   found</div>
-<p class="Pp">Definition at line <b>62</b> of file <b>wasm.c</b>.</p>
-<pre>62                                                            {
-63   if (!buf || count &lt; 5) {
-64     return -1; // Too short to contain [LEVEL]
-65   }
-66 
-67   // Check if message starts with [
-68   if (buf[0] != '[') {
-69     return -1;
-70   }
-71 
-72   // Look for closing ]
-73   int bracket_end = -1;
-74   for (size_t i = 1; i &lt; count &amp;&amp; i &lt; 10; i++) {
-75     if (buf[i] == ']') {
-76       bracket_end = (int)i;
-77       break;
-78     }
-79   }
-80 
-81   if (bracket_end &lt; 3) {
-82     return -1; // Too short, minimum is [XX]
-83   }
-84 
-85   // Extract level string
-86   int level_len = bracket_end - 1;
-87   const char *level_start = (const char *)&amp;buf[1];
-88 
-89   // Match against known level strings (from logging.c)
-90   if (level_len == 3 &amp;&amp; strncmp(level_start, &quot;DEV&quot;, 3) == 0) {
-91     return LOG_DEV;
-92   }
-93   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;DEBUG&quot;, 5) == 0) {
-94     return LOG_DEBUG;
-95   }
-96   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;INFO&quot;, 4) == 0) {
-97     return LOG_INFO;
-98   }
-99   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;WARN&quot;, 4) == 0) {
-100     return LOG_WARN;
-101   }
-102   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;ERROR&quot;, 5) == 0) {
-103     return LOG_ERROR;
-104   }
-105   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;FATAL&quot;, 5) == 0) {
-106     return LOG_FATAL;
-107   }
-108 
-109   return -1; // Level not recognized
-110 }</pre>
+<p class="Pp">Definition at line <b>69</b> of file <b>wasm.c</b>.</p>
+<pre>69                                                            {
+70   if (!buf || count &lt; 5) {
+71     return -1; // Too short to contain [LEVEL]
+72   }
+73
+74   // Check if message starts with [
+75   if (buf[0] != '[') {
+76     return -1;
+77   }
+78
+79   // Look for closing ]
+80   int bracket_end = -1;
+81   for (size_t i = 1; i &lt; count &amp;&amp; i &lt; 10; i++) {
+82     if (buf[i] == ']') {
+83       bracket_end = (int)i;
+84       break;
+85     }
+86   }
+87
+88   if (bracket_end &lt; 3) {
+89     return -1; // Too short, minimum is [XX]
+90   }
+91
+92   // Extract level string
+93   int level_len = bracket_end - 1;
+94   const char *level_start = (const char *)&amp;buf[1];
+95
+96   // Match against known level strings (from logging.c)
+97   if (level_len == 3 &amp;&amp; strncmp(level_start, &quot;DEV&quot;, 3) == 0) {
+98     return LOG_DEV;
+99   }
+100   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;DEBUG&quot;, 5) == 0) {
+101     return LOG_DEBUG;
+102   }
+103   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;INFO&quot;, 4) == 0) {
+104     return LOG_INFO;
+105   }
+106   if (level_len == 4 &amp;&amp; strncmp(level_start, &quot;WARN&quot;, 4) == 0) {
+107     return LOG_WARN;
+108   }
+109   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;ERROR&quot;, 5) == 0) {
+110     return LOG_ERROR;
+111   }
+112   if (level_len == 5 &amp;&amp; strncmp(level_start, &quot;FATAL&quot;, 5) == 0) {
+113     return LOG_FATAL;
+114   }
+115
+116   return -1; // Level not recognized
+117 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>LOG_DEBUG</b>, <b>LOG_DEV</b>, <b>LOG_ERROR</b>,
-    <b>LOG_FATAL</b>, <b>LOG_INFO</b>, and <b>LOG_WARN</b>.</p>
-<p class="Pp">Referenced by <b>wasm_log_to_console()</b>.</p>
+    <b>LOG_FATAL</b>, <b>LOG_INFO</b>, <b>LOG_WARN</b>, and
+    <b>wasm_parse_log_level()</b>.</p>
+<p class="Pp">Referenced by <b>wasm_log_to_console()</b>, and
+    <b>wasm_parse_log_level()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -221,7 +256,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

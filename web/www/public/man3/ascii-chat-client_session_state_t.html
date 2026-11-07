@@ -40,13 +40,13 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp"><b>connection_attempt_context_t</b> <b>connection_ctx</b>
-  <br/>
-  const char * <b>discovered_address</b>
+<p class="Pp">const char * <b>discovered_address</b>
   <br/>
   int <b>discovered_port</b>
   <br/>
   int <b>reconnect_attempt</b>
+  <br/>
+  char <b>password</b> [<b>PASSWORD_BUFFER_SIZE</b>]
   <br/>
   <b>bool</b> <b>has_ever_connected</b>
   <br/>
@@ -68,34 +68,34 @@
 </ul>
 <p class="Pp">Used by client_run() callback to manage the
     connection/reconnection loop.</p>
-<p class="Pp">Definition at line <b>173</b> of file <b>client/main.c</b>.</p>
+<p class="Pp">Definition at line <b>157</b> of file <b>client/main.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss"><b>connection_attempt_context_t</b>
-  client_session_state_t::connection_ctx</h2>
-<p class="Pp">Definition at line <b>174</b> of file <b>client/main.c</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="const_char*_client_session_state_t::discovered_address"><a class="permalink" href="#const_char*_client_session_state_t::discovered_address">const
   char* client_session_state_t::discovered_address</a></h2>
-<p class="Pp">Definition at line <b>175</b> of file <b>client/main.c</b>.</p>
+<p class="Pp">Definition at line <b>158</b> of file <b>client/main.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_client_session_state_t::discovered_port"><a class="permalink" href="#int_client_session_state_t::discovered_port">int
   client_session_state_t::discovered_port</a></h2>
-<p class="Pp">Definition at line <b>176</b> of file <b>client/main.c</b>.</p>
+<p class="Pp">Definition at line <b>159</b> of file <b>client/main.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> client_session_state_t::has_ever_connected</h2>
-<p class="Pp">Definition at line <b>178</b> of file <b>client/main.c</b>.</p>
+<p class="Pp">Definition at line <b>162</b> of file <b>client/main.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_client_session_state_t::password_"><a class="permalink" href="#char_client_session_state_t::password_">char
+  client_session_state_t::password[<b>PASSWORD_BUFFER_SIZE</b>]</a></h2>
+<p class="Pp">Definition at line <b>161</b> of file <b>client/main.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_client_session_state_t::reconnect_attempt"><a class="permalink" href="#int_client_session_state_t::reconnect_attempt">int
   client_session_state_t::reconnect_attempt</a></h2>
-<p class="Pp">Definition at line <b>177</b> of file <b>client/main.c</b>.</p>
+<p class="Pp">Definition at line <b>160</b> of file <b>client/main.c</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -106,7 +106,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

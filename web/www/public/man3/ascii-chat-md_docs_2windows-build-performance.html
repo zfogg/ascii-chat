@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>md_docs_2windows-build-performance(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">md_docs_2windows-build-performance(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">md_docs_2windows-build-performance(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">md_docs_2windows-build-performance - Windows build performance</p>
+<p class="Pp">The native build keeps the Debug sanitizers enabled. Performance
+    measurements should use the same sources, compiler, dependency SDK and build
+    configuration, with other builds idle. A clean build with ccache disabled
+    measures compilation; a clean build with a populated cache measures cache
+    restoration. An unchanged Ninja invocation measures neither.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Build_concurrency"><a class="permalink" href="#Build_concurrency">Build
+  concurrency</a></h1>
+<p class="Pp">On the Ryzen 7 5800X workstation, clean native builds took 89.1
+    seconds with eight jobs, 97.0 seconds with twelve, and 107.0 seconds with
+    sixteen. These are individual measurements, not a guarantee for other
+    machines or workloads.</p>
+<p class="Pp"></p>
+<p class="Pp">Windows Ninja builds default to a compile pool matching physical
+    cores when there is no explicit parallelism setting. An existing
+    CMAKE_BUILD_PARALLEL_LEVEL or CMAKE_JOB_POOL_COMPILE setting is respected.
+    Configure-time environment changes do not persist into a later terminal
+    process; the Ninja pool does.</p>
+<p class="Pp"></p>
+<p class="Pp">For this workstation, use cmake --<b>Build System</b> <b>Build
+    System</b> --target ascii-chat --parallel 8<b>. To persist that limit in an
+    existing build directory with a different global environment setting,
+    configure with:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>cmake --preset default -B build `
+<br/>
+  -DCMAKE_JOB_POOLS=asciichat_compile=8 `
+<br/>
+  -DCMAKE_JOB_POOL_COMPILE=asciichat_compile</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Unity_builds"><a class="permalink" href="#Unity_builds">Unity
+  builds</a></h1>
+<pre>cmake --preset windows-unity -B build
+cmake --build build --target ascii-chat --parallel 8</pre>
+<p class="Pp">This is a sanitized Debug build. On Windows the unity option
+    batches project library sources as well as application mode sources.
+    Vendored sources stay separate so DLL export filtering retains their source
+    paths. Library batches contain four files; the executable uses CMake's
+    normal batch size.</p>
+<p class="Pp"></p>
+<p class="Pp">The first unity experiment took 72.7 seconds versus 89.1 seconds
+    without unity. Rebuilding an individual source can require recompiling its
+    batch, and source name or macro conflicts can arise as code changes.
+    Ordinary development builds therefore keep unity disabled by default. Switch
+    back with:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>cmake --preset default -B build -DASCIICHAT_ENABLE_UNITY_BUILDS=OFF</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Export_generation_and_headers"><a class="permalink" href="#Export_generation_and_headers">Export
+  generation and headers</a></h1>
+<p class="Pp">DLL export generation scans all active object files in one llvm-nm
+    invocation using a response file. PCH files and vendored objects are
+    excluded, filename headings are discarded, and extraction failures stop the
+    build. Bulk filtering and one output write avoid per-symbol file operations.
+    A comparison of the same 338 manifest entries produced the same 2,694
+    exports in 0.39 seconds instead of 27.5 seconds.</p>
+<p class="Pp"></p>
+<p class="Pp">Clang time traces showed roughly 0.8&#x2013;1 second of
+    Windows-header parsing in sampled audio, crypto and application C sources
+    without PCH. Existing PCH coverage made that cost much smaller in covered
+    sources. Extending PCH to more modules created a C++ macro conflict; a
+    C-only variant compiled, but its full build took 104.2 seconds and did not
+    demonstrate a benefit. The existing coverage was retained.</p>
+<p class="Pp"></p>
+<p class="Pp">Later validation builds overlapped unrelated workstation
+    workloads, so their wall-clock times should not be treated as a controlled
+    speed comparison.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Compiler_cache"><a class="permalink" href="#Compiler_cache">Compiler
+  cache</a></h1>
+<p class="Pp">Native launchers pass max_size=12G <b>Compression
+    Module</b>=<b>true</b> compression_level=1<b> directly to ccache when its
+    installed version supports configuration arguments. PCH targets also pass
+    </b>sloppiness=pch_defines,time_macros<b> and Clang's
+    </b>-fno-pch-timestamp<b>. This avoids launching one or two extra CMake
+    processes per source file. Older ccache versions retain the
+    environment-launcher fallback; the Emscripten compiler wrapper remains
+    unchanged.</b></p>
+<p class="Pp"></p>
+<p class="Pp">A full native unity build with an isolated empty cache took 90.9
+    seconds. After cleaning all objects and rebuilding, all 211 compiler calls
+    were direct cache hits with zero misses, and the build took 18.2 seconds.
+    This includes restoring objects, regenerating exports and linking; it is not
+    an unchanged-build timing. These two runs also switch from the old
+    environment launchers to the direct native launchers, so their timing
+    combines cache hits and launcher savings.</p>
+<p class="Pp"></p>
+<p class="Pp">The C/C++ PCH regression and Windows export tests can be run
+    separately from Criterion:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/cmake/test_ccache_pch.py
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/cmake/test_windows_exports.py</pre>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

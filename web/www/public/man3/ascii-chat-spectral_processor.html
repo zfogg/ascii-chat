@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>spectral_processor(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">spectral_processor(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">spectral_processor(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">spectral_processor</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>spectral_config_t</b> <b>config</b>
+  <br/>
+  fftw_plan <b>forward</b>
+  <br/>
+  fftw_plan <b>inverse</b>
+  <br/>
+  double <b>time</b> [2048]
+  <br/>
+  double <b>restored</b> [2048]
+  <br/>
+  fftw_complex <b>frequency</b> [(2048/2+1)]
+  <br/>
+  float <b>input</b> [2048]
+  <br/>
+  float <b>overlap</b> [2048]
+  <br/>
+  float <b>ready</b> [2048/4]
+  <br/>
+  float <b>window</b> [2048]
+  <br/>
+  float <b>magnitude</b> [(2048/2+1)]
+  <br/>
+  float <b>noise</b> [(2048/2+1)]
+  <br/>
+  float <b>smoothed</b> [(2048/2+1)]
+  <br/>
+  float <b>gains</b> [(2048/2+1)]
+  <br/>
+  float <b>band_gain</b> [<b>SPECTRAL_BAND_COUNT</b>]
+  <br/>
+  float <b>band_average</b> [4]
+  <br/>
+  float <b>eq_gain</b> [4]
+  <br/>
+  double <b>previous_phase</b> [(2048/2+1)]
+  <br/>
+  double <b>synthesis_phase</b> [(2048/2+1)]
+  <br/>
+  double <b>shifted_magnitude</b> [(2048/2+1)]
+  <br/>
+  double <b>shifted_frequency</b> [(2048/2+1)]
+  <br/>
+  float <b>pitch_hz</b>
+  <br/>
+  float <b>auto_gain</b>
+  <br/>
+  int <b>pending</b>
+  <br/>
+  int <b>cursor</b>
+  <br/>
+  size_t <b>frames</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>11</b> of file <b>spectral.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="float_spectral_processor::auto_gain"><a class="permalink" href="#float_spectral_processor::auto_gain">float
+  spectral_processor::auto_gain</a></h2>
+<p class="Pp">Definition at line <b>22</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_spectral_processor::band_average_4_"><a class="permalink" href="#float_spectral_processor::band_average_4_">float
+  spectral_processor::band_average[4]</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_spectral_processor::band_gain_"><a class="permalink" href="#float_spectral_processor::band_gain_">float
+  spectral_processor::band_gain[<b>SPECTRAL_BAND_COUNT</b>]</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>spectral_config_t</b> spectral_processor::config</h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_create()</b>, <b>spectral_process()</b>,
+    and <b>spectral_spectrum()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_spectral_processor::cursor"><a class="permalink" href="#int_spectral_processor::cursor">int
+  spectral_processor::cursor</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_process()</b>, and
+    <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_spectral_processor::eq_gain_4_"><a class="permalink" href="#float_spectral_processor::eq_gain_4_">float
+  spectral_processor::eq_gain[4]</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="fftw_plan_spectral_processor::forward"><a class="permalink" href="#fftw_plan_spectral_processor::forward">fftw_plan
+  spectral_processor::forward</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_create()</b>, and
+    <b>spectral_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_spectral_processor::frames"><a class="permalink" href="#size_t_spectral_processor::frames">size_t
+  spectral_processor::frames</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="fftw_complex_spectral_processor::frequency_(2048/2+1)_"><a class="permalink" href="#fftw_complex_spectral_processor::frequency_(2048/2+1)_">fftw_complex
+  spectral_processor::frequency[(2048/2+1)]</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_spectral_processor::gains_(2048/2+1)_"><a class="permalink" href="#float_spectral_processor::gains_(2048/2+1)_">float
+  spectral_processor::gains[(2048/2+1)]</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_spectral_processor::input_2048_"><a class="permalink" href="#float_spectral_processor::input_2048_">float
+  spectral_processor::input[2048]</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_process()</b>, and
+    <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="fftw_plan_spectral_processor::inverse"><a class="permalink" href="#fftw_plan_spectral_processor::inverse">fftw_plan
+  spectral_processor::inverse</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_create()</b>, and
+    <b>spectral_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_spectral_processor::magnitude_(2048/2+1)_"><a class="permalink" href="#float_spectral_processor::magnitude_(2048/2+1)_">float
+  spectral_processor::magnitude[(2048/2+1)]</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_reset()</b>, and
+    <b>spectral_spectrum()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_spectral_processor::noise_(2048/2+1)_"><a class="permalink" href="#float_spectral_processor::noise_(2048/2+1)_">float
+  spectral_processor::noise[(2048/2+1)]</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_spectral_processor::overlap_2048_"><a class="permalink" href="#float_spectral_processor::overlap_2048_">float
+  spectral_processor::overlap[2048]</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_spectral_processor::pending"><a class="permalink" href="#int_spectral_processor::pending">int
+  spectral_processor::pending</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_process()</b>, and
+    <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_spectral_processor::pitch_hz"><a class="permalink" href="#float_spectral_processor::pitch_hz">float
+  spectral_processor::pitch_hz</a></h2>
+<p class="Pp">Definition at line <b>22</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_pitch_hz()</b>, and
+    <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_spectral_processor::previous_phase_(2048/2+1)_"><a class="permalink" href="#double_spectral_processor::previous_phase_(2048/2+1)_">double
+  spectral_processor::previous_phase[(2048/2+1)]</a></h2>
+<p class="Pp">Definition at line <b>20</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_spectral_processor::ready_2048/4_"><a class="permalink" href="#float_spectral_processor::ready_2048/4_">float
+  spectral_processor::ready[2048/4]</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_process()</b>, and
+    <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_spectral_processor::restored_2048_"><a class="permalink" href="#double_spectral_processor::restored_2048_">double
+  spectral_processor::restored[2048]</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_spectral_processor::shifted_frequency_(2048/2+1)_"><a class="permalink" href="#double_spectral_processor::shifted_frequency_(2048/2+1)_">double
+  spectral_processor::shifted_frequency[(2048/2+1)]</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file <b>spectral.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_spectral_processor::shifted_magnitude_(2048/2+1)_"><a class="permalink" href="#double_spectral_processor::shifted_magnitude_(2048/2+1)_">double
+  spectral_processor::shifted_magnitude[(2048/2+1)]</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file <b>spectral.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_spectral_processor::smoothed_(2048/2+1)_"><a class="permalink" href="#float_spectral_processor::smoothed_(2048/2+1)_">float
+  spectral_processor::smoothed[(2048/2+1)]</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_spectral_processor::synthesis_phase_(2048/2+1)_"><a class="permalink" href="#double_spectral_processor::synthesis_phase_(2048/2+1)_">double
+  spectral_processor::synthesis_phase[(2048/2+1)]</a></h2>
+<p class="Pp">Definition at line <b>20</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_reset()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_spectral_processor::time_2048_"><a class="permalink" href="#double_spectral_processor::time_2048_">double
+  spectral_processor::time[2048]</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_spectral_processor::window_2048_"><a class="permalink" href="#float_spectral_processor::window_2048_">float
+  spectral_processor::window[2048]</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file <b>spectral.c</b>.</p>
+<p class="Pp">Referenced by <b>spectral_create()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

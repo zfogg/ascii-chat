@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>cpu.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">cpu.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">cpu.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">cpu.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp"><b>enum </b>{ <b>CPU_FEATURE_SSE2</b> = 1u &lt;&lt; 0,
+    <b>CPU_FEATURE_SSSE3</b> = 1u &lt;&lt; 1, <b>CPU_FEATURE_AVX2</b> = 1u
+    &lt;&lt; 2, <b>CPU_FEATURE_NEON</b> = 1u &lt;&lt; 3, <b>CPU_FEATURE_SVE</b>
+    = 1u &lt;&lt; 4, <b>CPU_FEATURE_CRC32</b> = 1u &lt;&lt; 5 }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>uint32_t</b> <b>platform_cpu_features</b> (void)
+  <br/>
+  const char * <b>platform_simd_override</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="anonymous_enum"><a class="permalink" href="#anonymous_enum">anonymous
+  enum</a></h2>
+<p class="Pp">CPU features usable by this process, including operating system
+    support.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="CPU_FEATURE_SSE2"><a class="permalink" href="#CPU_FEATURE_SSE2"><b><i>CPU_FEATURE_SSE2
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="CPU_FEATURE_SSSE3"><a class="permalink" href="#CPU_FEATURE_SSSE3"><b><i>CPU_FEATURE_SSSE3
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="CPU_FEATURE_AVX2"><a class="permalink" href="#CPU_FEATURE_AVX2"><b><i>CPU_FEATURE_AVX2
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="CPU_FEATURE_NEON"><a class="permalink" href="#CPU_FEATURE_NEON"><b><i>CPU_FEATURE_NEON
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="CPU_FEATURE_SVE"><a class="permalink" href="#CPU_FEATURE_SVE"><b><i>CPU_FEATURE_SVE
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="CPU_FEATURE_CRC32"><a class="permalink" href="#CPU_FEATURE_CRC32"><b><i>CPU_FEATURE_CRC32
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>6</b> of file <b>cpu.h</b>.</p>
+<pre>6      {
+7   CPU_FEATURE_SSE2 = 1u &lt;&lt; 0,
+8   CPU_FEATURE_SSSE3 = 1u &lt;&lt; 1,
+9   CPU_FEATURE_AVX2 = 1u &lt;&lt; 2,
+10   CPU_FEATURE_NEON = 1u &lt;&lt; 3,
+11   CPU_FEATURE_SVE = 1u &lt;&lt; 4,
+12   CPU_FEATURE_CRC32 = 1u &lt;&lt; 5,
+13 };</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>uint32_t</b> platform_cpu_features (void )</h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>cpu.c</b>.</p>
+<pre>24                                      {
+25   uint32_t features = 0;
+26 #if defined(__x86_64__) || defined(__i386__)
+27   unsigned int eax, ebx, ecx, edx;
+28   if (!__get_cpuid(1, &amp;eax, &amp;ebx, &amp;ecx, &amp;edx))
+29     return 0;
+30   if (edx &amp; (1u &lt;&lt; 26))
+31     features |= CPU_FEATURE_SSE2;
+32   if (ecx &amp; (1u &lt;&lt; 9))
+33     features |= CPU_FEATURE_SSSE3;
+34   if (ecx &amp; (1u &lt;&lt; 20))
+35     features |= CPU_FEATURE_CRC32;
+36   // XGETBV is legal only with XSAVE and OSXSAVE. AVX also needs OS-managed YMM state.
+37   const unsigned int avx_state = (1u &lt;&lt; 26) | (1u &lt;&lt; 27) | (1u &lt;&lt; 28);
+38   if ((ecx &amp; avx_state) == avx_state) {
+39     unsigned int xcr0_low, xcr0_high;
+40     __asm__ volatile(&quot;xgetbv&quot; : &quot;=a&quot;(xcr0_low), &quot;=d&quot;(xcr0_high) : &quot;c&quot;(0));
+41     if ((xcr0_low &amp; 6) == 6 &amp;&amp; __get_cpuid_count(7, 0, &amp;eax, &amp;ebx, &amp;ecx, &amp;edx) &amp;&amp; (ebx &amp; (1u &lt;&lt; 5)))
+42       features |= CPU_FEATURE_AVX2;
+43   }
+44 #elif defined(__linux__) &amp;&amp; defined(__aarch64__)
+45   unsigned long hwcap = getauxval(AT_HWCAP);
+46   if (hwcap &amp; HWCAP_ASIMD)
+47     features |= CPU_FEATURE_NEON;
+48   if (hwcap &amp; HWCAP_SVE)
+49     features |= CPU_FEATURE_SVE;
+50   if (hwcap &amp; HWCAP_CRC32)
+51     features |= CPU_FEATURE_CRC32;
+52 #elif defined(__linux__) &amp;&amp; defined(__arm__)
+53   if (getauxval(AT_HWCAP) &amp; HWCAP_NEON)
+54     features |= CPU_FEATURE_NEON;
+55 #elif defined(__APPLE__) &amp;&amp; defined(__aarch64__)
+56   features |= CPU_FEATURE_NEON;
+57   int crc32 = 0;
+58   size_t size = sizeof(crc32);
+59   if (sysctlbyname(&quot;hw.optional.armv8_crc32&quot;, &amp;crc32, &amp;size, NULL, 0) == 0 &amp;&amp; crc32)
+60     features |= CPU_FEATURE_CRC32;
+61 #elif defined(_WIN32) &amp;&amp; defined(__aarch64__)
+62   features |= CPU_FEATURE_NEON;
+63   if (IsProcessorFeaturePresent(PF_ARM_V8_CRC32_INSTRUCTIONS_AVAILABLE))
+64     features |= CPU_FEATURE_CRC32;
+65 #endif
+66   return features;
+67 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>CPU_FEATURE_AVX2</b>, <b>CPU_FEATURE_CRC32</b>,
+    <b>CPU_FEATURE_NEON</b>, <b>CPU_FEATURE_SSE2</b>, <b>CPU_FEATURE_SSSE3</b>,
+    <b>CPU_FEATURE_SVE</b>, and <b>platform_cpu_features()</b>.</p>
+<p class="Pp">Referenced by <b>platform_cpu_features()</b>,
+    <b>simd_backend()</b>, and <b>simd_caches_destroy_all()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_platform_simd_override_(void_)"><a class="permalink" href="#const_char_*_platform_simd_override_(void_)">const
+  char * platform_simd_override (void )</a></h2>
+<p class="Pp">Optional diagnostic backend preference from ASCII_CHAT_SIMD (set
+    before startup).</p>
+<p class="Pp">Definition at line <b>69</b> of file <b>cpu.c</b>.</p>
+<pre>69                                          {
+70 #ifdef _WIN32
+71   static _Thread_local char value[PLATFORM_CPU_VALUE_BUFFER_SIZE];
+72   DWORD length = GetEnvironmentVariableA(&quot;ASCII_CHAT_SIMD&quot;, value, sizeof(value));
+73   return length &gt;= sizeof(value) ? &quot;invalid&quot; : (length ? value : NULL);
+74 #else
+75   return getenv(&quot;ASCII_CHAT_SIMD&quot;);
+76 #endif
+77 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>PLATFORM_CPU_VALUE_BUFFER_SIZE</b>, and
+    <b>platform_simd_override()</b>.</p>
+<p class="Pp">Referenced by <b>platform_simd_override()</b>, and
+    <b>simd_backend()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

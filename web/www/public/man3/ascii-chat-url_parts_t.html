@@ -48,7 +48,7 @@
   Optional userinfo (user:pass) - may be NULL (allocated if present). char *
     <b>host</b>
   <br/>
-  Extracted hostname or IP address (allocated). char * <b>ipv6</b>
+  Canonical ASCII hostname or IP address (allocated). char * <b>ipv6</b>
   <br/>
   IPv6 address if host is bracketed IPv6 - may be NULL (allocated if present).
     int <b>port</b>
@@ -69,7 +69,7 @@
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">All string fields are allocated with <b>SAFE_MALLOC()</b>
   and must be freed by caller</div>
-<p class="Pp">Definition at line <b>57</b> of file <b>url.h</b>.</p>
+<p class="Pp">Definition at line <b>64</b> of file <b>url.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -77,8 +77,8 @@
 <section class="Ss">
 <h2 class="Ss" id="char*_url_parts_t::host"><a class="permalink" href="#char*_url_parts_t::host">char*
   url_parts_t::host</a></h2>
-<p class="Pp">Extracted hostname or IP address (allocated).</p>
-<p class="Pp">Definition at line <b>60</b> of file <b>url.h</b>.</p>
+<p class="Pp">Canonical ASCII hostname or IP address (allocated).</p>
+<p class="Pp">Definition at line <b>67</b> of file <b>url.h</b>.</p>
 <p class="Pp">Referenced by <b>parse_public_key()</b>, <b>url_parse()</b>, and
     <b>url_parts_destroy()</b>.</p>
 </section>
@@ -87,7 +87,7 @@
   url_parts_t::ipv6</a></h2>
 <p class="Pp">IPv6 address if host is bracketed IPv6 - may be NULL (allocated if
     present).</p>
-<p class="Pp">Definition at line <b>61</b> of file <b>url.h</b>.</p>
+<p class="Pp">Definition at line <b>68</b> of file <b>url.h</b>.</p>
 <p class="Pp">Referenced by <b>url_parse()</b>, and
   <b>url_parts_destroy()</b>.</p>
 </section>
@@ -96,7 +96,7 @@
   url_parts_t::path</a></h2>
 <p class="Pp">Extracted path, query, and fragment (allocated if present, may be
     NULL).</p>
-<p class="Pp">Definition at line <b>63</b> of file <b>url.h</b>.</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>url.h</b>.</p>
 <p class="Pp">Referenced by <b>parse_public_key()</b>, <b>url_parse()</b>, and
     <b>url_parts_destroy()</b>.</p>
 </section>
@@ -104,7 +104,7 @@
 <h2 class="Ss" id="int_url_parts_t::port"><a class="permalink" href="#int_url_parts_t::port">int
   url_parts_t::port</a></h2>
 <p class="Pp">Extracted port number (0 if not specified).</p>
-<p class="Pp">Definition at line <b>62</b> of file <b>url.h</b>.</p>
+<p class="Pp">Definition at line <b>69</b> of file <b>url.h</b>.</p>
 <p class="Pp">Referenced by <b>url_parse()</b>, and
   <b>url_parts_destroy()</b>.</p>
 </section>
@@ -113,7 +113,7 @@
   url_parts_t::scheme</a></h2>
 <p class="Pp">Extracted scheme: &quot;http&quot; or &quot;https&quot;
     (allocated).</p>
-<p class="Pp">Definition at line <b>58</b> of file <b>url.h</b>.</p>
+<p class="Pp">Definition at line <b>65</b> of file <b>url.h</b>.</p>
 <p class="Pp">Referenced by <b>url_is_tcp()</b>, <b>url_is_websocket()</b>,
     <b>url_parse()</b>, and <b>url_parts_destroy()</b>.</p>
 </section>
@@ -122,7 +122,7 @@
   url_parts_t::userinfo</a></h2>
 <p class="Pp">Optional userinfo (user:pass) - may be NULL (allocated if
     present).</p>
-<p class="Pp">Definition at line <b>59</b> of file <b>url.h</b>.</p>
+<p class="Pp">Definition at line <b>66</b> of file <b>url.h</b>.</p>
 <p class="Pp">Referenced by <b>url_parse()</b>, and
   <b>url_parts_destroy()</b>.</p>
 <p class="Pp"></p>
@@ -135,7 +135,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

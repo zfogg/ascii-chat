@@ -46,16 +46,32 @@
 </p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>MEDIA_SOURCE_MEDIA_TYPE_BUFFER_SIZE</b> 64
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp"><b>media_source_t</b> * <b>media_source_create</b>
     (<b>media_source_type_t</b> type, const char *path)
   <br/>
-  Create a new media source. void <b>media_source_destroy</b>
-    (<b>media_source_t</b> *source)
+  Create a new media source. <b>media_source_t</b> *
+    <b>media_source_create_interruptible</b> (<b>media_source_type_t</b> type,
+    const char *path, <b>bool</b>(*cancel)(void *), void *data)
   <br/>
-  Destroy media source and free resources. <b>image_t</b> *
-    <b>media_source_read_video</b> (<b>media_source_t</b> *source)
+  void <b>media_source_destroy</b> (<b>media_source_t</b> *source)
+  <br/>
+  Destroy media source and free resources. <b>asciichat_error_t</b>
+    <b>media_source_start_video</b> (<b>media_source_t</b> *source)
+  <br/>
+  <b>bool</b> <b>media_source_uses_webcam</b> (<b>media_source_t</b> *source)
+  <br/>
+  <b>image_t</b> * <b>media_source_read_video</b> (<b>media_source_t</b>
+    *source)
   <br/>
   Read next video frame from media source. <b>bool</b>
     <b>media_source_has_video</b> (<b>media_source_t</b> *source)
@@ -124,13 +140,397 @@
 <p class="Pp">Definition in file <b>source.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_MEDIA_SOURCE_MEDIA_TYPE_BUFFER_SIZE___64"><a class="permalink" href="#_define_MEDIA_SOURCE_MEDIA_TYPE_BUFFER_SIZE___64">#define
+  MEDIA_SOURCE_MEDIA_TYPE_BUFFER_SIZE 64</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>source.c</b>.</p>
+<p class="Pp">Referenced by <b>media_source_create_interruptible()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>media_source_t</b> * media_source_create_interruptible
+  (<b>media_source_type_t</b> type, const char * path, <b>bool</b>(* cancel
+  )(void *), void * data)</h2>
+<p class="Pp">Definition at line <b>221</b> of file <b>source.c</b>.</p>
+<pre>222                                                               {
+223   ASCII_OTEL_SCOPE(MEDIA_SOURCE_CREATE_INTERRUPTIBLE);
+224   media_source_t *source = SAFE_MALLOC(sizeof(media_source_t), media_source_t *);
+225   if (!source) {
+226     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate media source&quot;);
+227     return NULL;
+228   }
+229
+230   memset(source, 0, sizeof(*source));
+231   source-&gt;type = type;
+232   source-&gt;loop_enabled = false;
+233   atomic_store_bool(&amp;source-&gt;is_paused, false);
+234
+235   // Initialize mutex for protecting shared decoder access (for YouTube URLs)
+236   if (mutex_init(&amp;source-&gt;decoder_mutex, &quot;media_decoder&quot;) != 0) {
+237     SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize mutex&quot;);
+238     SAFE_FREE(source);
+239     return NULL;
+240   }
+241
+242   switch (type) {
+243   case MEDIA_SOURCE_WEBCAM: {
+244     // Parse webcam index from path (if provided)
+245     unsigned short int index = 0;
+246     if (path) {
+247       char *endptr;
+248       errno = 0;
+249       long parsed = strtol(path, &amp;endptr, 10);
+250       if (*endptr == '\0' &amp;&amp; errno == 0 &amp;&amp; parsed &gt;= 0 &amp;&amp; parsed &lt;= USHRT_MAX) {
+251         index = (unsigned short int)parsed;
+252       } else if (*endptr != '\0' || errno != 0) {
+253         log_error(&quot;Invalid webcam index: %s&quot;, path);
+254       }
+255     }
+256
+257     source-&gt;webcam_index = index;
+258     if (GET_OPTION(waveform) || GET_OPTION(fft))
+259       break;
+260     asciichat_error_t webcam_error = webcam_init_context(&amp;source-&gt;webcam_ctx, index);
+261     if (webcam_error != ASCIICHAT_OK) {
+262       asciichat_error_context_t webcam_context;
+263       bool has_webcam_context = HAS_ERRNO(&amp;webcam_context);
+264       // Webcam init failed - log and cleanup
+265       NOTICE(WARNING, &quot;CAMERA UNAVAILABLE&quot;, &quot;Failed to initialize webcam device %u: %s&quot;, index,
+266              asciichat_error_format(has_webcam_context ? webcam_context.context_message : NULL, webcam_error));
+267       // Destroy mutexes before freeing source
+268       mutex_destroy(&amp;source-&gt;decoder_mutex);
+269       SAFE_FREE(source);
+270
+271       // Add media-level context while preserving the webcam failure as its cause.
+272       if (webcam_error == ERROR_WEBCAM_IN_USE) {
+273         SET_ERRNO(ERROR_WEBCAM_IN_USE, &quot;Webcam device %u is in use&quot;, index);
+274       } else {
+275         SET_ERRNO(ERROR_WEBCAM, &quot;Failed to initialize webcam device %u&quot;, index);
+276       }
+277       return NULL;
+278     }
+279
+280     log_debug(&quot;Media source: Webcam device %u&quot;, index);
+281     break;
+282   }
+283
+284   case MEDIA_SOURCE_FILE: {
+285     asciichat_errno_scope_t media_scope = errno_scope_begin();
+286     if (!path || path[0] == '\0') {
+287       SET_ERRNO(ERROR_INVALID_PARAM, &quot;File path is required for FILE source&quot;);
+288       // Destroy mutexes before freeing source
+289       mutex_destroy(&amp;source-&gt;decoder_mutex);
+290       SAFE_FREE(source);
+291       return NULL;
+292     }
+293
+294     // Resolve URL using smart FFmpeg/yt-dlp routing
+295     const char *effective_path = path;
+296     char resolved_url[MEDIA_STREAM_URL_SIZE] = {0};
+297     char resolved_audio_url[MEDIA_STREAM_URL_SIZE] = {0};
+298     yt_dlp_request_options_t video_request = {0}, audio_request = {0};
+299     const char *yt_dlp_options = GET_OPTION(yt_dlp_options);
+300
+301     log_debug(&quot;Resolving URL: %s&quot;, path);
+302     asciichat_error_t resolve_err =
+303         media_source_resolve_url(path, yt_dlp_options, resolved_url, sizeof(resolved_url), resolved_audio_url,
+304                                  sizeof(resolved_audio_url), &amp;video_request, &amp;audio_request, cancel, data);
+305     if (resolve_err != ASCIICHAT_OK) {
+306       log_debug(&quot;Failed to resolve URL %s&quot;, asciichat_error_format(NULL, resolve_err));
+307       // Destroy mutexes before freeing source
+308       mutex_destroy(&amp;source-&gt;decoder_mutex);
+309       SAFE_FREE(source);
+310       return NULL;
+311     }
+312     if (cancel &amp;&amp; cancel(data)) {
+313       mutex_destroy(&amp;source-&gt;decoder_mutex);
+314       SAFE_FREE(source);
+315       return NULL;
+316     }
+317     effective_path = resolved_url;
+318     log_debug(&quot;Using resolved URL for playback&quot;);
+319
+320     // Store original URL for potential re-extraction if needed
+321     source-&gt;original_youtube_url = platform_strdup(path);
+322     if (!source-&gt;original_youtube_url) {
+323       log_warn(&quot;Failed to cache original URL&quot;);
+324     }
+325
+326     // Cache file path for potential reopen on loop
+327     source-&gt;file_path = platform_strdup(effective_path);
+328     if (!source-&gt;file_path) {
+329       SET_ERRNO(ERROR_MEMORY, &quot;Failed to duplicate file path&quot;);
+330       SAFE_FREE(source-&gt;original_youtube_url);
+331       // Destroy mutexes before freeing source
+332       mutex_destroy(&amp;source-&gt;decoder_mutex);
+333       SAFE_FREE(source);
+334       return NULL;
+335     }
+336
+337     // Always use separate decoders for video and audio
+338     // This allows independent read rates and avoids lock contention
+339     asciichat_errno_scope_t decoder_scope = errno_checkpoint();
+340     source-&gt;video_decoder = ffmpeg_decoder_create_with_request_options(
+341         effective_path, cancel, data, video_request.headers, video_request.cookies,
+342         video_request.proxy_specified ? video_request.proxy : NULL);
+343     if (!source-&gt;video_decoder) {
+344       SET_ERRNO(ERROR_MEDIA_OPEN, &quot;Media initialization failed: video decoder could not open input&quot;);
+345       if (!cancel)
+346         NOTICE(WARNING, &quot;MEDIA COULD NOT BE OPENED&quot;, &quot;Failed to open media file for video: %s: %s&quot;, effective_path,
+347                asciichat_error_format(NULL, ERROR_MEDIA_OPEN));
+348       LOG_ERRNO_IF_SET(&quot;Media initialization failed&quot;);
+349       SAFE_FREE(source-&gt;file_path);
+350       SAFE_FREE(source-&gt;original_youtube_url);
+351       // Destroy mutexes before freeing source
+352       mutex_destroy(&amp;source-&gt;decoder_mutex);
+353       SAFE_FREE(source);
+354       return NULL;
+355     }
+356
+357     ASSERT_NO_ERRNO_SINCE(decoder_scope);
+358
+359     decoder_scope = errno_checkpoint();
+360     const char *audio_path = resolved_audio_url[0] ? resolved_audio_url : effective_path;
+361     const yt_dlp_request_options_t *audio_settings = resolved_audio_url[0] ? &amp;audio_request : &amp;video_request;
+362     source-&gt;audio_decoder = ffmpeg_decoder_create_with_request_options(
+363         audio_path, cancel, data, audio_settings-&gt;headers, audio_settings-&gt;cookies,
+364         audio_settings-&gt;proxy_specified ? audio_settings-&gt;proxy : NULL);
+365     if (!source-&gt;audio_decoder) {
+366       SET_ERRNO(ERROR_MEDIA_OPEN, &quot;Media initialization failed: audio decoder could not open input&quot;);
+367       LOG_ERRNO_IF_SET(&quot;Media initialization failed&quot;);
+368       ffmpeg_decoder_destroy(source-&gt;video_decoder);
+369       source-&gt;video_decoder = NULL;
+370       SAFE_FREE(source-&gt;file_path);
+371       SAFE_FREE(source-&gt;original_youtube_url);
+372       // Destroy mutexes before freeing source
+373       mutex_destroy(&amp;source-&gt;decoder_mutex);
+374       SAFE_FREE(source);
+375       return NULL;
+376     }
+377     source-&gt;is_shared_decoder = false;
+378
+379     ASSERT_NO_ERRNO_SINCE(decoder_scope);
+380     // yt-dlp emits selected formats in selector order, which may be audio first.
+381     if (resolved_audio_url[0] &amp;&amp; !ffmpeg_decoder_has_video(source-&gt;video_decoder) &amp;&amp;
+382         ffmpeg_decoder_has_video(source-&gt;audio_decoder) &amp;&amp; ffmpeg_decoder_has_audio(source-&gt;video_decoder)) {
+383       ffmpeg_decoder_t *audio = source-&gt;video_decoder;
+384       source-&gt;video_decoder = source-&gt;audio_decoder;
+385       source-&gt;audio_decoder = audio;
+386     }
+387
+388     // Start prefetch after choosing the decoder that actually contains video.
+389     asciichat_errno_scope_t prefetch_scope = errno_scope_begin();
+390     asciichat_error_t prefetch_err = ffmpeg_decoder_has_video(source-&gt;video_decoder)
+391                                          ? ffmpeg_decoder_start_prefetch(source-&gt;video_decoder)
+392                                          : ASCIICHAT_OK;
+393     if (prefetch_err != ASCIICHAT_OK) {
+394       log_error(&quot;Failed to start video prefetch thread: %s&quot;, asciichat_error_format(NULL, prefetch_err));
+395       ffmpeg_decoder_destroy(source-&gt;video_decoder);
+396       ffmpeg_decoder_destroy(source-&gt;audio_decoder);
+397       SAFE_FREE(source-&gt;file_path);
+398       SAFE_FREE(source-&gt;original_youtube_url);
+399       mutex_destroy(&amp;source-&gt;decoder_mutex);
+400       SAFE_FREE(source);
+401       return NULL;
+402     }
+403     ASSERT_NO_ERRNO_SINCE(prefetch_scope);
+404     errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
+405     // Both decoders succeeded: failed extraction/prefetch attempts are resolved.
+406     errno_scope_end(media_scope, ASCIICHAT_ERRNO_DISMISSED);
+407     ASSERT_NO_ERRNO_SINCE(media_scope);
+408     log_debug(&quot;Media source: URL resolved to stream (separate video/audio decoders)&quot;);
+409     break;
+410   }
+411
+412   case MEDIA_SOURCE_STDIN: {
+413     // Create separate decoders for video and audio from stdin
+414     source-&gt;video_decoder = ffmpeg_decoder_create_stdin();
+415     if (!source-&gt;video_decoder) {
+416       log_error(&quot;Failed to open stdin for video input&quot;);
+417       // Destroy mutexes before freeing source
+418       mutex_destroy(&amp;source-&gt;decoder_mutex);
+419       SAFE_FREE(source);
+420       return NULL;
+421     }
+422
+423     // Start prefetch thread for stdin video frames
+424     asciichat_errno_scope_t prefetch_scope = errno_scope_begin();
+425     asciichat_error_t prefetch_err = ffmpeg_decoder_has_video(source-&gt;video_decoder)
+426                                          ? ffmpeg_decoder_start_prefetch(source-&gt;video_decoder)
+427                                          : ASCIICHAT_OK;
+428     if (prefetch_err != ASCIICHAT_OK) {
+429       log_error(&quot;Failed to start stdin video prefetch thread: %s&quot;, asciichat_error_format(NULL, prefetch_err));
+430       ffmpeg_decoder_destroy(source-&gt;video_decoder);
+431       SAFE_FREE(source-&gt;file_path);
+432       SAFE_FREE(source-&gt;original_youtube_url);
+433       mutex_destroy(&amp;source-&gt;decoder_mutex);
+434       SAFE_FREE(source);
+435       return NULL;
+436     }
+437
+438     ASSERT_NO_ERRNO_SINCE(prefetch_scope);
+439     errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
+440     source-&gt;audio_decoder = ffmpeg_decoder_create_stdin();
+441     if (!source-&gt;audio_decoder) {
+442       log_error(&quot;Failed to open stdin for audio input&quot;);
+443       ffmpeg_decoder_destroy(source-&gt;video_decoder);
+444       source-&gt;video_decoder = NULL;
+445       // Destroy mutexes before freeing source
+446       mutex_destroy(&amp;source-&gt;decoder_mutex);
+447       SAFE_FREE(source);
+448       return NULL;
+449     }
+450
+451     log_debug(&quot;Media source: stdin (separate video/audio decoders)&quot;);
+452     break;
+453   }
+454
+455   case MEDIA_SOURCE_TEST: {
+456     // Test pattern state is encapsulated in media_source_t
+457     source-&gt;webcam_index = 0;
+458     source-&gt;webcam_ctx = NULL; // No context needed for test pattern
+459     source-&gt;test_pattern = NULL;
+460     source-&gt;test_start_ns = 0;
+461
+462     log_debug(&quot;Media source: Test pattern&quot;);
+463     break;
+464   }
+465
+466   default:
+467     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown media source type: %d&quot;, type);
+468     // Destroy mutexes before freeing source
+469     mutex_destroy(&amp;source-&gt;decoder_mutex);
+470     SAFE_FREE(source);
+471     return NULL;
+472   }
+473
+474   if ((type == MEDIA_SOURCE_FILE || type == MEDIA_SOURCE_STDIN) &amp;&amp; !ffmpeg_decoder_has_video(source-&gt;video_decoder) &amp;&amp;
+475       ffmpeg_decoder_has_audio(source-&gt;audio_decoder)) {
+476     source-&gt;audio_only = true;
+477   }
+478
+479   /* Register media source with named registry */
+480   char media_type_str[MEDIA_SOURCE_MEDIA_TYPE_BUFFER_SIZE];
+481   switch (type) {
+482   case MEDIA_SOURCE_WEBCAM:
+483     snprintf(media_type_str, sizeof(media_type_str), &quot;media_source:webcam&quot;);
+484     break;
+485   case MEDIA_SOURCE_FILE:
+486     snprintf(media_type_str, sizeof(media_type_str), &quot;media_source:file&quot;);
+487     break;
+488   case MEDIA_SOURCE_TEST:
+489     snprintf(media_type_str, sizeof(media_type_str), &quot;media_source:test&quot;);
+490     break;
+491   default:
+492     snprintf(media_type_str, sizeof(media_type_str), &quot;media_source:unknown&quot;);
+493     break;
+494   }
+495   NAMED_REGISTER(source, media_type_str, &quot;media_source_t&quot;, &quot;0x%tx&quot;, NULL);
+496
+497   /* Register media source's sync primitives with hierarchical naming */
+498   NAMED_REGISTER_MUTEX(&amp;source-&gt;decoder_mutex, &quot;decoder_mutex&quot;, (uintptr_t)(const void *)(source));
+499   NAMED_REGISTER_ATOMIC(&amp;source-&gt;is_paused, &quot;media_paused&quot;, source);
+500
+501   return source;
+502 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>,
+    <b>ASCIICHAT_ERRNO_DISMISSED</b>, <b>ASCIICHAT_ERRNO_HANDLED</b>,
+    <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+    <b>ASSERT_NO_ERRNO_SINCE</b>, <b>atomic_store_bool()</b>,
+    <b>media_source_t::audio_decoder</b>, <b>media_source_t::audio_only</b>,
+    <b>asciichat_error_context_t::context_message</b>,
+    <b>yt_dlp_request_options_t::cookies</b>,
+    <b>media_source_t::decoder_mutex</b>, <b>errno</b>,
+    <b>errno_checkpoint()</b>, <b>errno_scope_begin()</b>,
+    <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>ERROR_MEDIA_OPEN</b>, <b>ERROR_MEMORY</b>, <b>ERROR_WEBCAM</b>,
+    <b>ERROR_WEBCAM_IN_USE</b>, <b>ffmpeg_decoder_create_stdin()</b>,
+    <b>ffmpeg_decoder_create_with_request_options()</b>,
+    <b>ffmpeg_decoder_destroy()</b>, <b>ffmpeg_decoder_has_audio()</b>,
+    <b>ffmpeg_decoder_has_video()</b>, <b>ffmpeg_decoder_start_prefetch()</b>,
+    <b>media_source_t::file_path</b>, <b>GET_OPTION</b>, <b>HAS_ERRNO</b>,
+    <b>yt_dlp_request_options_t::headers</b>, <b>media_source_t::is_paused</b>,
+    <b>media_source_t::is_shared_decoder</b>, <b>log_debug</b>,
+    <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>log_warn</b>,
+    <b>media_source_t::loop_enabled</b>,
+    <b>media_source_create_interruptible()</b>, <b>MEDIA_SOURCE_FILE</b>,
+    <b>MEDIA_SOURCE_MEDIA_TYPE_BUFFER_SIZE</b>, <b>MEDIA_SOURCE_STDIN</b>,
+    <b>MEDIA_SOURCE_TEST</b>, <b>MEDIA_SOURCE_WEBCAM</b>,
+    <b>MEDIA_STREAM_URL_SIZE</b>, <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+    <b>NAMED_REGISTER</b>, <b>NAMED_REGISTER_ATOMIC</b>,
+    <b>NAMED_REGISTER_MUTEX</b>, <b>NOTICE</b>,
+    <b>media_source_t::original_youtube_url</b>, <b>platform_strdup()</b>,
+    <b>yt_dlp_request_options_t::proxy</b>,
+    <b>yt_dlp_request_options_t::proxy_specified</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>media_source_t::test_pattern</b>,
+    <b>media_source_t::test_start_ns</b>, <b>media_source_t::type</b>,
+    <b>media_source_t::video_decoder</b>, <b>media_source_t::webcam_ctx</b>,
+    <b>media_source_t::webcam_index</b>, and <b>webcam_init_context()</b>.</p>
+<p class="Pp">Referenced by <b>media_source_create()</b>,
+    <b>media_source_create_interruptible()</b>, and
+    <b>session_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> media_source_start_video
+  (<b>media_source_t</b> * source)</h2>
+<p class="Pp">Definition at line <b>567</b> of file <b>source.c</b>.</p>
+<pre>567                                                                    {
+568   ASCII_OTEL_SCOPE(MEDIA_SOURCE_START_VIDEO);
+569   if (!source)
+570     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing media source&quot;);
+571   if ((!source-&gt;audio_only &amp;&amp; source-&gt;type != MEDIA_SOURCE_WEBCAM) || source-&gt;webcam_ctx || GET_OPTION(test_pattern) ||
+572       GET_OPTION(waveform) || GET_OPTION(fft))
+573     return ASCIICHAT_OK;
+574   if (source-&gt;type != MEDIA_SOURCE_WEBCAM)
+575     source-&gt;webcam_index = GET_OPTION(webcam_index);
+576   asciichat_error_t err = webcam_init_context(&amp;source-&gt;webcam_ctx, source-&gt;webcam_index);
+577   if (err != ASCIICHAT_OK)
+578     return SET_ERRNO(err, &quot;Audio-only media requires webcam %u&quot;, source-&gt;webcam_index);
+579   log_info(&quot;Audio-only media: using webcam %u for video&quot;, source-&gt;webcam_index);
+580   return ASCIICHAT_OK;
+581 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ASCII_OTEL_SCOPE</b>, <b>ASCIICHAT_OK</b>,
+    <b>media_source_t::audio_only</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>GET_OPTION</b>, <b>log_info</b>, <b>media_source_start_video()</b>,
+    <b>MEDIA_SOURCE_WEBCAM</b>, <b>SET_ERRNO</b>, <b>media_source_t::type</b>,
+    <b>media_source_t::webcam_ctx</b>, <b>media_source_t::webcam_index</b>, and
+    <b>webcam_init_context()</b>.</p>
+<p class="Pp">Referenced by <b>media_source_read_video()</b>,
+    <b>media_source_start_video()</b>, and <b>session_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> media_source_uses_webcam (<b>media_source_t</b> *
+  source)</h2>
+<p class="Pp">Definition at line <b>583</b> of file <b>source.c</b>.</p>
+<pre>583                                                       {
+584   return source &amp;&amp; ((source-&gt;type == MEDIA_SOURCE_WEBCAM &amp;&amp; !GET_OPTION(waveform) &amp;&amp; !GET_OPTION(fft)) ||
+585                     (source-&gt;audio_only &amp;&amp; !GET_OPTION(test_pattern) &amp;&amp; !GET_OPTION(waveform) &amp;&amp; !GET_OPTION(fft)));
+586 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>media_source_t::audio_only</b>, <b>GET_OPTION</b>,
+    <b>media_source_uses_webcam()</b>, <b>MEDIA_SOURCE_WEBCAM</b>, and
+    <b>media_source_t::type</b>.</p>
+<p class="Pp">Referenced by <b>media_source_uses_webcam()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>text.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">text.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">text.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">text.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>UI_CLIPPED_TEXT_OVERHEAD</b> 32
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>ui_alignment_t</b> { <b>UI_ALIGN_LEFT</b>,
+    <b>UI_ALIGN_RIGHT</b>, <b>UI_ALIGN_CENTER</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">size_t <b>ui_text_cell</b> (char *out, size_t capacity, const char
+    *text, int width, <b>ui_alignment_t</b> alignment)
+  <br/>
+  void <b>ui_text_values</b> (char *out, size_t capacity, const char *text)
+  <br/>
+  void <b>ui_text_values_style</b> (char *out, size_t capacity, const char
+    *text, <b>log_color_t</b> zero_color)
+  <br/>
+  void <b>ui_text_render_values</b> (<b>frame_buffer_t</b> *out, const char
+    *text)
+  <br/>
+  const char * <b>ui_text_color_prefix</b> (<b>log_color_t</b> color)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_UI_CLIPPED_TEXT_OVERHEAD___32"><a class="permalink" href="#_define_UI_CLIPPED_TEXT_OVERHEAD___32">#define
+  UI_CLIPPED_TEXT_OVERHEAD 32</a></h2>
+<p class="Pp">Extra clipping storage for ellipsis, ANSI resets, and the
+    terminating NUL.</p>
+<p class="Pp">Definition at line <b>4</b> of file <b>text.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>ui_alignment_t</b></a></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="UI_ALIGN_LEFT"><a class="permalink" href="#UI_ALIGN_LEFT"><b><i>UI_ALIGN_LEFT
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="UI_ALIGN_RIGHT"><a class="permalink" href="#UI_ALIGN_RIGHT"><b><i>UI_ALIGN_RIGHT
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="UI_ALIGN_CENTER"><a class="permalink" href="#UI_ALIGN_CENTER"><b><i>UI_ALIGN_CENTER
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>9</b> of file <b>text.h</b>.</p>
+<pre>9 { UI_ALIGN_LEFT, UI_ALIGN_RIGHT, UI_ALIGN_CENTER } ui_alignment_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ui_text_cell_(char_*_out,_size_t_capacity,_const_char_*_text,_int_width,_"><a class="permalink" href="#size_t_ui_text_cell_(char_*_out,_size_t_capacity,_const_char_*_text,_int_width,_">size_t
+  ui_text_cell (char * out, size_t capacity, const char * text, int width,
+  <b>ui_alignment_t</b> alignment)</a></h2>
+<p class="Pp">ANSI-aware, UTF-8-safe clipping/padding into caller-owned
+  storage.</p>
+<p class="Pp">Definition at line <b>48</b> of file <b>text.c</b>.</p>
+<pre>48                                                                                               {
+49   if (!out || !cap) {
+50     SET_ERRNO(ERROR_INVALID_PARAM, &quot;UI text requires output storage&quot;);
+51     return 0;
+52   }
+53   out[0] = '\0';
+54   if (width &lt;= 0)
+55     return 0;
+56   if (!text)
+57     text = &quot;&quot;;
+58   int columns = 0;
+59   const char *end = text;
+60   while (*end) {
+61     if (end[0] == '\033' &amp;&amp; end[1] == '[') {
+62       const char *escape = end + 2;
+63       while (*escape &amp;&amp; !(*escape &gt;= '@' &amp;&amp; *escape &lt;= '~'))
+64         ++escape;
+65       if (!*escape)
+66         break;
+67       end = escape + 1;
+68       continue;
+69     }
+70     if ((unsigned char)*end &lt; 32)
+71       break;
+72     int bytes = utf8_next_char_bytes(end, strlen(end));
+73     if (bytes &lt;= 0)
+74       break;
+75     int n = utf8_display_width_n(end, (size_t)bytes);
+76     if (n &lt; 0 || columns + n &gt; width)
+77       break;
+78     columns += n;
+79     end += bytes;
+80   }
+81   size_t used = 0;
+82   int pad = width - columns;
+83   int left = align == UI_ALIGN_RIGHT ? pad : align == UI_ALIGN_CENTER ? pad / 2 : 0;
+84   for (int i = 0; i &lt; left; ++i)
+85     append(out, cap, &amp;used, &quot; &quot;, 1);
+86   append(out, cap, &amp;used, text, (size_t)(end - text));
+87   // A clipped styled cell must not bleed into the following column.
+88   if (memchr(text, '\033', (size_t)(end - text)))
+89     append(out, cap, &amp;used, &quot;\033[0m&quot;, 4);
+90   for (int i = left; i &lt; pad; ++i)
+91     append(out, cap, &amp;used, &quot; &quot;, 1);
+92   return used;
+93 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ERROR_INVALID_PARAM</b>, <b>SET_ERRNO</b>,
+    <b>UI_ALIGN_CENTER</b>, <b>UI_ALIGN_RIGHT</b>, <b>ui_text_cell()</b>,
+    <b>utf8_display_width_n()</b>, and <b>utf8_next_char_bytes()</b>.</p>
+<p class="Pp">Referenced by <b>ui_error_popup_preserve()</b>,
+    <b>ui_error_popup_render()</b>, <b>ui_help_menu_render()</b>,
+    <b>ui_table_row()</b>, and <b>ui_text_cell()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_ui_text_color_prefix_("><a class="permalink" href="#const_char_*_ui_text_color_prefix_(">const
+  char * ui_text_color_prefix (<b>log_color_t</b> color)</a></h2>
+<p class="Pp">Theme-aware prefix for incremental formatting, derived from
+    <b>colored_string()</b>.</p>
+<p class="Pp">Definition at line <b>18</b> of file <b>text.c</b>.</p>
+<pre>18                                                     {
+19   static _Thread_local char buffers[LOG_COLOR_WHITE + 1][UI_TEXT_COLOR_BUFFER_SIZE];
+20   if (color &lt; LOG_COLOR_DEV || color &gt; LOG_COLOR_WHITE) {
+21     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid UI text color&quot;);
+22     return &quot;&quot;;
+23   }
+24   char *out = buffers[color];
+25   const char *styled = colored_string(color, &quot;!&quot;);
+26   const char *marker = strchr(styled, '!');
+27   size_t length = marker ? (size_t)(marker - styled) : 0;
+28   if (length &gt;= sizeof(buffers[0]))
+29     length = sizeof(buffers[0]) - 1;
+30   memcpy(out, styled, length);
+31   out[length] = '\0';
+32   return out;
+33 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colored_string()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>LOG_COLOR_WHITE</b>, <b>SET_ERRNO</b>, <b>UI_TEXT_COLOR_BUFFER_SIZE</b>,
+    and <b>ui_text_color_prefix()</b>.</p>
+<p class="Pp">Referenced by <b>frame_buffer_render_divider()</b>,
+    <b>tui_stats_render()</b>, <b>ui_error_popup_render()</b>,
+    <b>ui_table_render()</b>, and <b>ui_text_color_prefix()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_text_render_values_("><a class="permalink" href="#void_ui_text_render_values_(">void
+  ui_text_render_values (<b>frame_buffer_t</b> * out, const char *
+  text)</a></h2>
+<p class="Pp">Definition at line <b>146</b> of file <b>text.c</b>.</p>
+<pre>146                                                                   {
+147   char styled[UI_TEXT_STYLED_BUFFER_SIZE];
+148   ui_text_values_style(styled, sizeof(styled), text, LOG_COLOR_FATAL);
+149   frame_buffer_append(out, styled, strlen(styled));
+150 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame_buffer_append()</b>, <b>LOG_COLOR_FATAL</b>,
+    <b>ui_text_render_values()</b>, <b>UI_TEXT_STYLED_BUFFER_SIZE</b>, and
+    <b>ui_text_values_style()</b>.</p>
+<p class="Pp">Referenced by <b>tui_stats_render()</b>, and
+    <b>ui_text_render_values()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_text_values_(char_*_out,_size_t_capacity,_const_char_*_text)"><a class="permalink" href="#void_ui_text_values_(char_*_out,_size_t_capacity,_const_char_*_text)">void
+  ui_text_values (char * out, size_t capacity, const char * text)</a></h2>
+<p class="Pp">Theme-aware numeric/boolean styling; numeric suffixes retain
+    default color.</p>
+<p class="Pp">Definition at line <b>142</b> of file <b>text.c</b>.</p>
+<pre>142                                                              {
+143   ui_text_values_style(out, cap, text, LOG_COLOR_ERROR);
+144 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>LOG_COLOR_ERROR</b>, <b>ui_text_values()</b>, and
+    <b>ui_text_values_style()</b>.</p>
+<p class="Pp">Referenced by <b>ui_text_values()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_text_values_style_(char_*_out,_size_t_capacity,_const_char_*_text,_"><a class="permalink" href="#void_ui_text_values_style_(char_*_out,_size_t_capacity,_const_char_*_text,_">void
+  ui_text_values_style (char * out, size_t capacity, const char * text,
+  <b>log_color_t</b> zero_color)</a></h2>
+<p class="Pp">Definition at line <b>95</b> of file <b>text.c</b>.</p>
+<pre>95                                                                                            {
+96   if (!out || !cap) {
+97     SET_ERRNO(ERROR_INVALID_PARAM, &quot;UI text requires output storage&quot;);
+98     return;
+99   }
+100   size_t used = 0;
+101   out[0] = '\0';
+102   if (!text)
+103     return;
+104   for (const char *p = text; *p;) {
+105     if (p[0] == '\033' &amp;&amp; p[1] == '[') {
+106       const char *end = p + 2;
+107       while (*end &amp;&amp; !(*end &gt;= '@' &amp;&amp; *end &lt;= '~'))
+108         ++end;
+109       if (*end)
+110         ++end;
+111       append(out, cap, &amp;used, p, (size_t)(end - p));
+112       p = end;
+113     } else if (isdigit((unsigned char)*p)) {
+114       char *end;
+115       double value = p[0] == '0' &amp;&amp; p[1] == 'x' ? (double)strtoull(p, &amp;end, 16) : strtod(p, &amp;end);
+116       char number[UI_TEXT_NUMBER_BUFFER_SIZE];
+117       size_t length = (size_t)(end - p);
+118       if (length &gt;= sizeof(number))
+119         length = sizeof(number) - 1;
+120       memcpy(number, p, length);
+121       number[length] = '\0';
+122       const char *styled = colored_string(value == 0 ? zero_color : LOG_COLOR_FATAL, number);
+123       append(out, cap, &amp;used, styled, strlen(styled));
+124       p = end;
+125     } else if ((p == text || !isalnum((unsigned char)p[-1])) &amp;&amp;
+126                ((!strncmp(p, &quot;enabled&quot;, 7) &amp;&amp; !isalnum((unsigned char)p[7])) ||
+127                 (!strncmp(p, &quot;disabled&quot;, 8) &amp;&amp; !isalnum((unsigned char)p[8])))) {
+128       bool enabled = *p == 'e';
+129       const char *styled = colored_string(enabled ? LOG_COLOR_INFO : LOG_COLOR_ERROR, enabled ? &quot;enabled&quot; : &quot;disabled&quot;);
+130       append(out, cap, &amp;used, styled, strlen(styled));
+131       p += enabled ? 7 : 8;
+132     } else {
+133       int bytes = utf8_next_char_bytes(p, strlen(p));
+134       if (bytes &lt;= 0)
+135         break;
+136       append(out, cap, &amp;used, p, (size_t)bytes);
+137       p += bytes;
+138     }
+139   }
+140 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colored_string()</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>LOG_COLOR_ERROR</b>, <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_INFO</b>,
+    <b>SET_ERRNO</b>, <b>UI_TEXT_NUMBER_BUFFER_SIZE</b>,
+    <b>ui_text_values_style()</b>, and <b>utf8_next_char_bytes()</b>.</p>
+<p class="Pp">Referenced by <b>ui_help_menu_render()</b>,
+    <b>ui_text_render_values()</b>, <b>ui_text_values()</b>, and
+    <b>ui_text_values_style()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

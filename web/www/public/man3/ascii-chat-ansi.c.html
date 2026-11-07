@@ -37,6 +37,14 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>ANSI_16_SGR_BUFFER_SIZE</b> 16
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">char * <b>ansi_strip_escapes</b> (const char *input, size_t
@@ -55,9 +63,9 @@
   char * <b>append_truecolor_bg</b> (char *dst, <b>uint8_t</b> r, <b>uint8_t</b>
     g, <b>uint8_t</b> b)
   <br/>
-  char * <b>append_truecolor_fg_bg</b> (char *dst, <b>uint8_t</b> fg_r,
-    <b>uint8_t</b> fg_g, <b>uint8_t</b> fg_b, <b>uint8_t</b> bg_r,
-    <b>uint8_t</b> bg_g, <b>uint8_t</b> bg_b)
+  char * <b>append_truecolor_fg_bg</b> (char *dst, <b>uint8_t</b> fr,
+    <b>uint8_t</b> fg, <b>uint8_t</b> fb, <b>uint8_t</b> br, <b>uint8_t</b> bg,
+    <b>uint8_t</b> bb)
   <br/>
   void <b>ansi_rle_init</b> (<b>ansi_rle_context_t</b> *ctx, char *buffer,
     size_t capacity, <b>ansi_color_mode_t</b> mode)
@@ -71,12 +79,15 @@
   <br/>
   void <b>ansi_fast_init_256color</b> (void)
   <br/>
-  char * <b>append_256color_fg</b> (char *dst, <b>uint8_t</b> color_index)
+  char * <b>append_256color_fg</b> (char *dst, <b>uint8_t</b> index)
   <br/>
-  char * <b>append_256color_bg</b> (char *dst, <b>uint8_t</b> color_index)
+  char * <b>append_256color_bg</b> (char *dst, <b>uint8_t</b> index)
   <br/>
   <b>uint8_t</b> <b>rgb_to_256color</b> (<b>uint8_t</b> r, <b>uint8_t</b> g,
     <b>uint8_t</b> b)
+  <br/>
+  void <b>get_256color_rgb</b> (<b>uint8_t</b> index, <b>uint8_t</b> *r,
+    <b>uint8_t</b> *g, <b>uint8_t</b> *b)
   <br/>
   void <b>ansi_fast_init_16color</b> (void)
   <br/>
@@ -110,13 +121,22 @@
 <p class="Pp">Definition in file <b>ansi.c</b>.</p>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ANSI_16_SGR_BUFFER_SIZE___16"><a class="permalink" href="#_define_ANSI_16_SGR_BUFFER_SIZE___16">#define
+  ANSI_16_SGR_BUFFER_SIZE 16</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>ansi.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
 <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

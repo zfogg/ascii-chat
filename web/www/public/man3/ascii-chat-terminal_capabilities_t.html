@@ -58,7 +58,13 @@
   True if detection is confident (reliable detection). <b>render_mode_t</b>
     <b>render_mode</b>
   <br/>
-  Preferred rendering mode (<b>render_mode_t</b>). char <b>term_type</b> [64]
+  Preferred rendering mode (<b>render_mode_t</b>). int <b>text_renderer</b>
+  <br/>
+  <b>bool</b> <b>stabilize</b>
+  <br/>
+  <b>bool</b> <b>palette_explicit</b>
+  <br/>
+  char <b>term_type</b> [64]
   <br/>
   $TERM environment variable value (for debugging) char <b>colorterm</b> [64]
   <br/>
@@ -134,7 +140,7 @@
   <li>term_type: Value of $TERM environment variable (for troubleshooting)</li>
   <li>colorterm: Value of $COLORTERM (RGB/256/none hints)</li>
 </ul>
-<p class="Pp">Definition at line <b>707</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Definition at line <b>736</b> of file <b>terminal.h</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -142,140 +148,181 @@
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> terminal_capabilities_t::capabilities</h2>
 <p class="Pp">Capability flags bitmask (<b>terminal_capability_flags_t</b>).</p>
-<p class="Pp">Definition at line <b>711</b> of file <b>terminal.h</b>.</p>
-<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
-    <b>detect_terminal_capabilities()</b>,
-    <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
-    and <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+<p class="Pp">Definition at line <b>740</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_capabilities()</b>,
+    <b>acip_render_settings_options()</b>,
+    <b>acip_render_settings_prepare()</b>,
+    <b>action_show_capabilities_immediate()</b>,
+    <b>detect_terminal_capabilities()</b>, <b>mirror_convert_frame()</b>,
+    <b>server_send_video()</b>, and
+    <b>session_protocol_build_capabilities()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint32_t</b> terminal_capabilities_t::color_count</h2>
 <p class="Pp">Maximum number of colors (2, 16, 256, or 16777216).</p>
-<p class="Pp">Definition at line <b>713</b> of file <b>terminal.h</b>.</p>
-<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
-    <b>detect_terminal_capabilities()</b>,
-    <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
-    and <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+<p class="Pp">Definition at line <b>742</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_prepare()</b>,
+    <b>action_show_capabilities_immediate()</b>,
+    <b>detect_terminal_capabilities()</b>, <b>mirror_convert_frame()</b>, and
+    <b>session_protocol_build_capabilities()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>color_filter_t</b> terminal_capabilities_t::color_filter</h2>
 <p class="Pp">Monochromatic color filter enum value (<b>color_filter_t</b>).</p>
-<p class="Pp">Definition at line <b>733</b> of file <b>terminal.h</b>.</p>
-<p class="Pp">Referenced by <b>detect_terminal_capabilities()</b>, and
-    <b>mirror_convert_frame()</b>.</p>
+<p class="Pp">Definition at line <b>765</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_options()</b>,
+    <b>acip_render_settings_prepare()</b>,
+    <b>ascii_convert_with_buffers_stabilized()</b>,
+    <b>detect_terminal_capabilities()</b>, and
+  <b>mirror_convert_frame()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>terminal_color_mode_t</b>
   terminal_capabilities_t::color_level</h2>
 <p class="Pp">Detected color support level (<b>terminal_color_mode_t</b>).</p>
-<p class="Pp">Definition at line <b>709</b> of file <b>terminal.h</b>.</p>
-<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
+<p class="Pp">Definition at line <b>738</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_options()</b>,
+    <b>acip_render_settings_prepare()</b>,
+    <b>action_show_capabilities_immediate()</b>,
+    <b>ascii_convert_with_buffers_stabilized()</b>,
     <b>detect_terminal_capabilities()</b>,
     <b>handle_client_capabilities_packet()</b>,
     <b>image_print_with_capabilities()</b>, <b>mirror_convert_frame()</b>,
-    <b>session_display_convert_to_ascii()</b>, <b>session_display_create()</b>,
-    <b>session_display_write_ascii()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+    <b>session_display_create()</b>, <b>session_display_write_ascii_frame()</b>,
+    <b>session_participant_request_settings()</b>,
+    <b>session_protocol_build_capabilities()</b>,
+    <b>session_protocol_update_settings()</b>, <b>tui_stats_render()</b>,
+    <b>ui_session_render()</b>, and <b>ui_sync_render()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_terminal_capabilities_t::colorterm_64_"><a class="permalink" href="#char_terminal_capabilities_t::colorterm_64_">char
   terminal_capabilities_t::colorterm[64]</a></h2>
 <p class="Pp">$COLORTERM environment variable value (for debugging)</p>
-<p class="Pp">Definition at line <b>723</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Definition at line <b>755</b> of file <b>terminal.h</b>.</p>
 <p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
-    <b>detect_terminal_capabilities()</b>,
-    <b>handle_client_capabilities_packet()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+    <b>detect_terminal_capabilities()</b>, and
+    <b>session_protocol_build_capabilities()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>uint8_t</b> terminal_capabilities_t::desired_fps</h2>
 <p class="Pp">Client's desired frame rate (1-144 FPS).</p>
-<p class="Pp">Definition at line <b>731</b> of file <b>terminal.h</b>.</p>
-<p class="Pp">Referenced by <b>client_video_render_thread()</b>,
+<p class="Pp">Definition at line <b>763</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_options()</b>,
+    <b>acip_render_settings_prepare()</b>, <b>client_video_render_thread()</b>,
     <b>detect_terminal_capabilities()</b>,
     <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
-    and <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+    and <b>session_protocol_build_capabilities()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_capabilities_t::detection_reliable</h2>
 <p class="Pp">True if detection is confident (reliable detection).</p>
-<p class="Pp">Definition at line <b>717</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Definition at line <b>746</b> of file <b>terminal.h</b>.</p>
 <p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
-    <b>detect_terminal_capabilities()</b>,
-    <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
-    and <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+    <b>detect_terminal_capabilities()</b>, <b>mirror_convert_frame()</b>,
+    <b>session_participant_request_settings()</b>,
+    <b>session_protocol_build_capabilities()</b>, and
+    <b>session_protocol_update_settings()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_terminal_capabilities_t::pad_height"><a class="permalink" href="#size_t_terminal_capabilities_t::pad_height">size_t
   terminal_capabilities_t::pad_height</a></h2>
 <p class="Pp">Number of top padding lines when wants_padding is true.</p>
-<p class="Pp">Definition at line <b>737</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Definition at line <b>769</b> of file <b>terminal.h</b>.</p>
 <p class="Pp">Referenced by <b>session_display_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_terminal_capabilities_t::palette_custom_64_"><a class="permalink" href="#char_terminal_capabilities_t::palette_custom_64_">char
   terminal_capabilities_t::palette_custom[64]</a></h2>
 <p class="Pp">Custom palette characters (if palette_type == PALETTE_CUSTOM).</p>
-<p class="Pp">Definition at line <b>729</b> of file <b>terminal.h</b>.</p>
-<p class="Pp">Referenced by <b>handle_client_capabilities_packet()</b>.</p>
+<p class="Pp">Definition at line <b>761</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_options()</b>, and
+    <b>acip_render_settings_prepare()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> terminal_capabilities_t::palette_explicit</h2>
+<p class="Pp">Definition at line <b>751</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_options()</b>,
+    <b>acip_render_settings_prepare()</b>,
+    <b>ascii_convert_with_buffers_stabilized()</b>, and
+    <b>mirror_convert_frame()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_terminal_capabilities_t::palette_type"><a class="permalink" href="#int_terminal_capabilities_t::palette_type">int
   terminal_capabilities_t::palette_type</a></h2>
 <p class="Pp">Palette type enum value (<b>palette_type_t</b>).</p>
-<p class="Pp">Definition at line <b>727</b> of file <b>terminal.h</b>.</p>
-<p class="Pp">Referenced by <b>detect_terminal_capabilities()</b>,
+<p class="Pp">Definition at line <b>759</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_options()</b>,
+    <b>acip_render_settings_prepare()</b>,
+    <b>detect_terminal_capabilities()</b>,
     <b>handle_client_capabilities_packet()</b>, and
     <b>mirror_convert_frame()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>render_mode_t</b> terminal_capabilities_t::render_mode</h2>
 <p class="Pp">Preferred rendering mode (<b>render_mode_t</b>).</p>
-<p class="Pp">Definition at line <b>719</b> of file <b>terminal.h</b>.</p>
-<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
-    <b>ascii_convert_with_capabilities()</b>,
+<p class="Pp">Definition at line <b>748</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_options()</b>,
+    <b>acip_render_settings_prepare()</b>,
+    <b>action_show_capabilities_immediate()</b>,
+    <b>ascii_convert_with_buffers_stabilized()</b>,
     <b>detect_terminal_capabilities()</b>,
+    <b>frame_render_contract_decode()</b>,
+    <b>frame_render_contract_encode()</b>,
     <b>handle_client_capabilities_packet()</b>,
-    <b>image_print_with_capabilities()</b>, <b>mirror_convert_frame()</b>,
-    <b>session_display_convert_to_ascii()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+    <b>image_print_with_capabilities()</b>, and
+  <b>mirror_convert_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> terminal_capabilities_t::stabilize</h2>
+<p class="Pp">Definition at line <b>750</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_options()</b>,
+    <b>acip_render_settings_prepare()</b>, and
+  <b>mirror_convert_frame()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_terminal_capabilities_t::term_type_64_"><a class="permalink" href="#char_terminal_capabilities_t::term_type_64_">char
   terminal_capabilities_t::term_type[64]</a></h2>
 <p class="Pp">$TERM environment variable value (for debugging)</p>
-<p class="Pp">Definition at line <b>721</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Definition at line <b>753</b> of file <b>terminal.h</b>.</p>
 <p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
-    <b>detect_terminal_capabilities()</b>,
-    <b>handle_client_capabilities_packet()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+    <b>detect_terminal_capabilities()</b>, and
+    <b>session_protocol_build_capabilities()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_terminal_capabilities_t::text_renderer"><a class="permalink" href="#int_terminal_capabilities_t::text_renderer">int
+  terminal_capabilities_t::text_renderer</a></h2>
+<p class="Pp">Definition at line <b>749</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_options()</b>,
+    <b>acip_render_settings_prepare()</b>,
+    <b>ascii_convert_with_buffers_stabilized()</b>, and
+    <b>mirror_convert_frame()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_capabilities_t::utf8_support</h2>
 <p class="Pp">True if terminal supports UTF-8 encoding.</p>
-<p class="Pp">Definition at line <b>715</b> of file <b>terminal.h</b>.</p>
-<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
-    <b>detect_terminal_capabilities()</b>,
-    <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
-    and <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+<p class="Pp">Definition at line <b>744</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_capabilities()</b>,
+    <b>action_show_capabilities_immediate()</b>,
+    <b>detect_terminal_capabilities()</b>, <b>mirror_convert_frame()</b>,
+    <b>session_protocol_build_capabilities()</b>, and
+    <b>session_protocol_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_capabilities_t::wants_background</h2>
 <p class="Pp">True if background colors are preferred.</p>
-<p class="Pp">Definition at line <b>725</b> of file <b>terminal.h</b>.</p>
-<p class="Pp">Referenced by <b>detect_terminal_capabilities()</b>,
-    <b>handle_client_capabilities_packet()</b>, and
-    <b>mirror_convert_frame()</b>.</p>
+<p class="Pp">Definition at line <b>757</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_prepare()</b>,
+    <b>detect_terminal_capabilities()</b>, and
+  <b>mirror_convert_frame()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> terminal_capabilities_t::wants_padding</h2>
 <p class="Pp">Whether client wants frame padding (centering) - false for
     snapshot/piped modes.</p>
-<p class="Pp">Definition at line <b>735</b> of file <b>terminal.h</b>.</p>
-<p class="Pp">Referenced by <b>ascii_convert_with_capabilities()</b>,
-    <b>handle_client_capabilities_packet()</b>, <b>mirror_convert_frame()</b>,
-    <b>session_display_create()</b>, and
-    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+<p class="Pp">Definition at line <b>767</b> of file <b>terminal.h</b>.</p>
+<p class="Pp">Referenced by <b>acip_render_settings_capabilities()</b>,
+    <b>mirror_convert_frame()</b>, <b>session_display_create()</b>, and
+    <b>session_protocol_build_capabilities()</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>
@@ -286,7 +333,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

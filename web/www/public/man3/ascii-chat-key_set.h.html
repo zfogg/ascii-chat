@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>key_set.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">key_set.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">key_set.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">key_set.h</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>acds_create_key_set_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>asciichat_error_t</b> <b>acds_create_key_set_collect</b>
+    (<b>acds_create_key_set_t</b> *set, const <b>acip_session_create_t</b> *req,
+    <b>bool</b> require_identity, <b>bool</b> *complete)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>asciichat_error_t</b> acds_create_key_set_collect
+  (<b>acds_create_key_set_t</b> * set, const <b>acip_session_create_t</b> * req,
+  <b>bool</b> require_identity, <b>bool</b> * complete)</h2>
+<p class="Pp">Validate order, bounds, deduplication and individual possession
+    proofs. Errors clear the sequence. complete is true only when every key is
+    present.</p>
+<p class="Pp">Definition at line <b>6</b> of file <b>key_set.c</b>.</p>
+<pre>7                                                                                      {
+8   if (!set || !req || !complete)
+9     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing create sequence parameters&quot;);
+10   *complete = false;
+11   size_t total = req-&gt;total_keys ? req-&gt;total_keys : 1;
+12   if (total &gt; MAX_SESSION_KEYS || req-&gt;key_index &gt;= total || req-&gt;key_index != set-&gt;count ||
+13       (!req-&gt;total_keys &amp;&amp; set-&gt;count) ||
+14       (set-&gt;count &amp;&amp; (req-&gt;total_keys != set-&gt;request.total_keys || req-&gt;capabilities != set-&gt;request.capabilities ||
+15                       req-&gt;max_participants != set-&gt;request.max_participants)) ||
+16       req-&gt;reserved_string_len &gt;= ACIP_MAX_SESSION_STRING_LEN ||
+17       !memchr(req-&gt;server_address, '\0', sizeof(req-&gt;server_address)) ||
+18       (req-&gt;has_password &amp;&amp; !memchr(req-&gt;password_hash, '\0', sizeof(req-&gt;password_hash)))) {
+19     memset(set, 0, sizeof(*set));
+20     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Malformed or out-of-order create sequence&quot;);
+21   }
+22   for (size_t i = 0; i &lt; set-&gt;count; ++i) {
+23     if (memcmp(set-&gt;keys[i], req-&gt;identity_pubkey, sizeof(req-&gt;identity_pubkey)) == 0) {
+24       memset(set, 0, sizeof(*set));
+25       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Duplicate Ed25519 identity&quot;);
+26     }
+27   }
+28   // Every member of a restricted set proves possession. Optional single-key
+29   // identity keeps its existing service-wide policy.
+30   if (require_identity || total &gt; 1) {
+31     if (!acds_validate_timestamp(req-&gt;timestamp, 300) ||
+32         acds_verify_session_create(req-&gt;identity_pubkey, req-&gt;timestamp, req-&gt;capabilities, req-&gt;max_participants,
+33                                    req-&gt;signature) != ASCIICHAT_OK) {
+34       memset(set, 0, sizeof(*set));
+35       return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, &quot;Invalid create identity proof&quot;);
+36     }
+37   }
+38   if (!set-&gt;count) {
+39     memcpy(&amp;set-&gt;request, req, sizeof(*req));
+40     if (req-&gt;reserved_string_len)
+41       memcpy(set-&gt;reserved_string, req + 1, (size_t)req-&gt;reserved_string_len);
+42   }
+43   memcpy(set-&gt;keys[set-&gt;count++], req-&gt;identity_pubkey, sizeof(req-&gt;identity_pubkey));
+44   *complete = set-&gt;count == total;
+45   return ASCIICHAT_OK;
+46 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acds_create_key_set_collect()</b>,
+    <b>acds_validate_timestamp()</b>, <b>acds_verify_session_create()</b>,
+    <b>ACIP_MAX_SESSION_STRING_LEN</b>, <b>acip_session_create_t</b>,
+    <b>ASCIICHAT_OK</b>, <b>acds_create_key_set_t::count</b>,
+    <b>ERROR_CRYPTO_VERIFICATION</b>, <b>ERROR_INVALID_PARAM</b>,
+    <b>acds_create_key_set_t::keys</b>, <b>MAX_SESSION_KEYS</b>,
+    <b>acds_create_key_set_t::request</b>,
+    <b>acds_create_key_set_t::reserved_string</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">Referenced by <b>acds_create_key_set_collect()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

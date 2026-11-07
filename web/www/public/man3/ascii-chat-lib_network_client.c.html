@@ -78,13 +78,13 @@
 28     log_error(&quot;Failed to allocate app_client_t&quot;);
 29     return NULL;
 30   }
-31 
+31
 32   // Zero-initialize all fields
 33   memset(client, 0, sizeof(*client));
-34 
+34
 35   /* Transport */
 36   connection_handle_init(&amp;client-&gt;connection);
-37 
+37
 38   /* Audio State */
 39   memset(&amp;client-&gt;audio_ctx, 0, sizeof(client-&gt;audio_ctx));
 40   memset(client-&gt;audio_send_queue, 0, sizeof(client-&gt;audio_send_queue));
@@ -95,21 +95,21 @@
 45   client-&gt;audio_capture_thread_created = false;
 46   client-&gt;audio_sender_thread_created = false;
 47   atomic_store_bool(&amp;client-&gt;audio_capture_thread_exited, false);
-48 
+48
 49   // Initialize audio queue mutex and condition variable
 50   if (mutex_init(&amp;client-&gt;audio_send_queue_mutex, &quot;audio_queue&quot;) != 0) {
 51     log_error(&quot;Failed to initialize audio queue mutex&quot;);
 52     SAFE_FREE(client);
 53     return NULL;
 54   }
-55 
+55
 56   if (cond_init(&amp;client-&gt;audio_send_queue_cond, &quot;audio_queue&quot;) != 0) {
 57     log_error(&quot;Failed to initialize audio queue cond&quot;);
 58     mutex_destroy(&amp;client-&gt;audio_send_queue_mutex);
 59     SAFE_FREE(client);
 60     return NULL;
 61   }
-62 
+62
 63   /* Protocol State */
 64   client-&gt;data_thread_created = false;
 65   atomic_store_bool(&amp;client-&gt;data_thread_exited, false);
@@ -118,52 +118,52 @@
 68   client-&gt;should_clear_before_next_frame = false;
 69   client-&gt;my_client_id = 0;
 70   client-&gt;encryption_enabled = false;
-71 
+71
 72   /* Capture State */
 73   client-&gt;capture_thread_created = false;
 74   atomic_store_bool(&amp;client-&gt;capture_thread_exited, false);
-75 
+75
 76   /* Keepalive State */
 77   client-&gt;ping_thread_created = false;
 78   atomic_store_bool(&amp;client-&gt;ping_thread_exited, false);
-79 
+79
 80   /* Display State */
 81   client-&gt;has_tty = false;
 82   atomic_store_bool(&amp;client-&gt;is_first_frame_of_connection, false);
 83   memset(&amp;client-&gt;tty_info, 0, sizeof(client-&gt;tty_info));
-84 
+84
 85   /* Crypto State */
 86   memset(&amp;client-&gt;crypto_ctx, 0, sizeof(client-&gt;crypto_ctx));
 87   client-&gt;crypto_initialized = false;
-88 
+88
 89   // Register atomic fields for sync state monitoring with fully descriptive names
 90   char atomic_name[256];
-91 
+91
 92   // Audio subsystem control and status
 93   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.audio_sender_thread_should_exit_signal&quot;);
 94   NAMED_REGISTER_ATOMIC(&amp;client-&gt;audio_sender_should_exit, atomic_name, NULL);
-95 
+95
 96   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.audio_capture_thread_has_exited_status&quot;);
 97   NAMED_REGISTER_ATOMIC(&amp;client-&gt;audio_capture_thread_exited, atomic_name, NULL);
-98 
+98
 99   // Protocol and network data handling
 100   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.protocol_data_dispatch_thread_has_exited_status&quot;);
 101   NAMED_REGISTER_ATOMIC(&amp;client-&gt;data_thread_exited, atomic_name, NULL);
-102 
+102
 103   // Media capture control and status
 104   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.media_capture_thread_has_exited_status&quot;);
 105   NAMED_REGISTER_ATOMIC(&amp;client-&gt;capture_thread_exited, atomic_name, NULL);
-106 
+106
 107   // Keepalive and connection health monitoring
 108   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.keepalive_ping_thread_has_exited_status&quot;);
 109   NAMED_REGISTER_ATOMIC(&amp;client-&gt;ping_thread_exited, atomic_name, NULL);
-110 
+110
 111   // Display frame sequencing
 112   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.is_first_frame_of_new_connection_flag&quot;);
 113   NAMED_REGISTER_ATOMIC(&amp;client-&gt;is_first_frame_of_connection, atomic_name, NULL);
-114 
+114
 115   log_debug(&quot;App client created&quot;);
-116 
+116
 117   return client;
 118 }</pre>
 <pre></pre>
@@ -186,11 +186,11 @@
 124   if (!client_ptr || !*client_ptr) {
 125     return; // No-op if NULL
 126   }
-127 
+127
 128   app_client_t *client = *client_ptr;
-129 
+129
 130   log_debug(&quot;Destroying app client&quot;);
-131 
+131
 132   // Unregister atomic fields
 133   NAMED_UNREGISTER(&amp;client-&gt;audio_sender_should_exit);
 134   NAMED_UNREGISTER(&amp;client-&gt;audio_capture_thread_exited);
@@ -198,13 +198,13 @@
 136   NAMED_UNREGISTER(&amp;client-&gt;capture_thread_exited);
 137   NAMED_UNREGISTER(&amp;client-&gt;ping_thread_exited);
 138   NAMED_UNREGISTER(&amp;client-&gt;is_first_frame_of_connection);
-139 
+139
 140   // Destroy mutexes and condition variables
 141   mutex_destroy(&amp;client-&gt;audio_send_queue_mutex);
 142   cond_destroy(&amp;client-&gt;audio_send_queue_cond);
-143 
+143
 144   connection_handle_cleanup(&amp;client-&gt;connection);
-145 
+145
 146   SAFE_FREE(*client_ptr);
 147 }</pre>
 <pre></pre>
@@ -221,7 +221,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.11.25</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

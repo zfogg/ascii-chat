@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>descriptors.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">descriptors.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">descriptors.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">descriptors.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const <b>stats_descriptor_t</b> * <b>stats_counter_descriptor</b>
+    (<b>stats_counter_id_t</b> id)
+  <br/>
+  const <b>stats_descriptor_t</b> * <b>stats_gauge_descriptor</b>
+    (<b>stats_gauge_id_t</b> id)
+  <br/>
+  const <b>stats_descriptor_t</b> * <b>stats_duration_descriptor</b>
+    (<b>stats_duration_id_t</b> id)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">const <b>stats_descriptor_t</b> * stats_counter_descriptor
+  (<b>stats_counter_id_t</b> id)</h2>
+<p class="Pp">Static metadata; NULL for an invalid ID. Names are stable,
+    lowercase identifiers.</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>descriptors.c</b>.</p>
+<pre>73                                                                           {
+74   return (unsigned)id &lt; STATS_COUNTER_COUNT ? &amp;counter_descriptors[id] : NULL;
+75 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>STATS_COUNTER_COUNT</b>, and
+    <b>stats_counter_descriptor()</b>.</p>
+<p class="Pp">Referenced by <b>stats_counter_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">const <b>stats_descriptor_t</b> * stats_duration_descriptor
+  (<b>stats_duration_id_t</b> id)</h2>
+<p class="Pp">Definition at line <b>81</b> of file <b>descriptors.c</b>.</p>
+<pre>81                                                                             {
+82   return (unsigned)id &lt; STATS_DURATION_COUNT ? &amp;duration_descriptors[id] : NULL;
+83 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>STATS_DURATION_COUNT</b>, and
+    <b>stats_duration_descriptor()</b>.</p>
+<p class="Pp">Referenced by <b>stats_duration_descriptor()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">const <b>stats_descriptor_t</b> * stats_gauge_descriptor
+  (<b>stats_gauge_id_t</b> id)</h2>
+<p class="Pp">Definition at line <b>77</b> of file <b>descriptors.c</b>.</p>
+<pre>77                                                                       {
+78   return (unsigned)id &lt; STATS_GAUGE_COUNT ? &amp;gauge_descriptors[id] : NULL;
+79 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>STATS_GAUGE_COUNT</b>, and
+    <b>stats_gauge_descriptor()</b>.</p>
+<p class="Pp">Referenced by <b>stats_gauge_descriptor()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

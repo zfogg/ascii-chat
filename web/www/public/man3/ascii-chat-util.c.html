@@ -68,7 +68,11 @@
     <b>platform_prompt_yes_no</b> (const char *question, <b>bool</b>
     default_yes)
   <br/>
-  Prompt the user for a yes/no answer. int <b>platform_get_last_error</b> (void)
+  Prompt the user for a yes/no answer. <b>bool</b>
+    <b>platform_prompt_yes_no_timeout</b> (const char *question, <b>bool</b>
+    default_yes, unsigned timeout_seconds)
+  <br/>
+  int <b>platform_get_last_error</b> (void)
   <br/>
   Get the last system error code. const char * <b>platform_get_home_dir</b>
     (void)
@@ -119,12 +123,21 @@
 66 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Referenced by <b>session_display_create()</b>,
-    <b>splash_intro_start()</b>, <b>terminal_is_stderr_tty()</b>,
+<p class="Pp">References <b>platform_isatty()</b>.</p>
+<p class="Pp">Referenced by <b>key_identity_format_terminal()</b>,
+    <b>log_console_impl()</b>, <b>main()</b>, <b>platform_isatty()</b>,
+    <b>platform_set_console_ctrl_handler()</b>, <b>prompt_unknown_host()</b>,
+    <b>session_display_create()</b>, <b>splash_intro_start()</b>,
+    <b>stats_runtime_start()</b>, <b>terminal_is_stderr_tty()</b>,
     <b>terminal_is_stdin_tty()</b>, <b>terminal_is_stdout_tty()</b>,
     <b>terminal_should_color_output()</b>,
-    <b>terminal_should_use_control_sequences()</b>, and
-    <b>ui_status_display()</b>.</p>
+    <b>terminal_should_use_control_sequences()</b>,
+    <b>ui_controller_restore_terminal()</b>, <b>ui_controller_size()</b>,
+    <b>ui_controller_title_start()</b>, <b>ui_controller_toggle_logs()</b>,
+    <b>ui_notice_flush_snapshot()</b>, <b>ui_notice_present()</b>,
+    <b>ui_notice_present_first_use()</b>, <b>ui_status_display()</b>,
+    <b>ui_status_display_interactive()</b>, <b>ui_sync_start()</b>, and
+    <b>yt_dlp_extract_with_options()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_platform_print_backtrace_(int_skip_frames)"><a class="permalink" href="#void_platform_print_backtrace_(int_skip_frames)">void
@@ -136,6 +149,8 @@
 47 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>platform_print_backtrace()</b>.</p>
+<p class="Pp">Referenced by <b>platform_print_backtrace()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_platform_print_backtrace_symbols_(const_char_*_label,_char_**_symbols,_int_count,_int_skip_frames,_int_max_frames,_"><a class="permalink" href="#void_platform_print_backtrace_symbols_(const_char_*_label,_char_**_symbols,_int_count,_int_skip_frames,_int_max_frames,_">void
@@ -154,6 +169,8 @@
 42 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>platform_print_backtrace_symbols()</b>.</p>
+<p class="Pp">Referenced by <b>platform_print_backtrace_symbols()</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -163,7 +180,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

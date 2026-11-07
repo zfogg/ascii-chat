@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>[struct].g_timer_manager(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">[struct].g_timer_manager(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">[struct].g_timer_manager(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">[struct].g_timer_manager - Global timer manager.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>timer_record_t</b> * <b>timers</b>
+  <br/>
+  Hash table of active timers (uthash head pointer). <b>rwlock_t</b>
+    <b>rwlock</b>
+  <br/>
+  Read-write lock for thread-safe access (uthash requires external locking).
+    <b>lifecycle_t</b> <b>lifecycle</b>
+  <br/>
+  Lifecycle state machine for init/shutdown synchronization.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Global timer manager.</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>util/time.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="lifecycle_t_"><a class="permalink" href="#lifecycle_t_">lifecycle_t
+  <b>[struct].g_timer_manager</b> lifecycle</a></h2>
+<p class="Pp">Lifecycle state machine for init/shutdown synchronization.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="rwlock_t_"><a class="permalink" href="#rwlock_t_">rwlock_t
+  <b>[struct].g_timer_manager</b> rwlock</a></h2>
+<p class="Pp">Read-write lock for thread-safe access (uthash requires external
+    locking).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="timer_record_t*_"><a class="permalink" href="#timer_record_t*_">timer_record_t*
+  <b>[struct].g_timer_manager</b> timers</a></h2>
+<p class="Pp">Hash table of active timers (uthash head pointer).</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

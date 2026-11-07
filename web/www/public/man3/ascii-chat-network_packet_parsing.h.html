@@ -53,6 +53,11 @@
     <b>uint32_t</b> compressed_size)
   <br/>
   Decode frame data (fixed buffer version for server handlers).
+    <b>asciichat_error_t</b> <b>packet_decode_frame_data_workspace</b>
+    (<b>buffer_workspace_t</b> *workspace, const void *data, size_t length,
+    <b>bool</b> compressed, <b>uint32_t</b> original_size, <b>uint32_t</b>
+    compressed_size)
+  <br/>
   <br/>
   <br/>
 </p>
@@ -111,7 +116,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

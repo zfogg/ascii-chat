@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>filesystem.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">filesystem.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">filesystem.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">filesystem.c - Filesystem abstraction for WASM.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">FILE * <b>platform_fopen</b> (const char *name, const char
+    *filename, const char *mode)
+  <br/>
+  Safe file open stream (fopen replacement). FILE * <b>platform_tmpfile</b>
+    (void)
+  <br/>
+  Create a temporary file (tmpfile replacement). <b>asciichat_error_t</b>
+    <b>platform_mkdir_recursive</b> (const char *path, int mode)
+  <br/>
+  Create directories recursively (mkdir -p equivalent). <b>asciichat_error_t</b>
+    <b>platform_find_config_file</b> (const char *filename,
+    <b>config_file_list_t</b> *list_out)
+  <br/>
+  Find config file across multiple standard locations. void
+    <b>config_file_list_destroy</b> (<b>config_file_list_t</b> *list)
+  <br/>
+  Free config file list resources. ssize_t <b>platform_read</b> (int fd, void
+    *buf, size_t count)
+  <br/>
+  Safe file read (read replacement). int <b>platform_open</b> (const char *name,
+    const char *pathname, int flags,...)
+  <br/>
+  Safe file open (open replacement). int <b>platform_close</b> (int fd)
+  <br/>
+  Safe file close (close replacement). int <b>platform_access</b> (const char
+    *pathname, int mode)
+  <br/>
+  Check file/directory access permissions. char * <b>platform_get_data_dir</b>
+    (void)
+  <br/>
+  Get the application data directory. <b>asciichat_error_t</b>
+    <b>platform_get_data_dir_candidates</b> (<b>platform_directory_list_t</b>
+    *list_out)
+  <br/>
+  Get application data directory candidates.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Filesystem abstraction for WASM.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>wasm/filesystem.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -24,7 +24,6 @@
 #include <ascii-chat/video/ascii/common.h>  // For simd_caches_destroy_all()
 #include <ascii-chat/options/colorscheme.h> // For colorscheme_destroy()
 #include <ascii-chat/util/time.h>           // For timer_system_destroy()
-#include <ascii-chat/util/pcre2.h>          // For asciichat_pcre2_cleanup_all()
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/crypto/known_hosts.h>
 #include <ascii-chat/options/options.h>
@@ -304,10 +303,6 @@ void asciichat_shared_destroy(void) {
   debug_sync_final_cleanup();
 #endif
 
-  // Release regex caches before reporting live allocations. Owner slots are reset
-  // so any later shutdown code can safely recreate a cache if needed.
-  asciichat_pcre2_cleanup_all();
-
   // 14. Memory stats (debug builds only) - runs with colors still available
   //     Note: debug_memory_report() is also called manually during shutdown in server_main()
   //     The function is safe to call multiple times with polling-based locking
@@ -337,9 +332,6 @@ void asciichat_shared_destroy(void) {
   // 19. Named registry - cleanup all registered thread names and debug entries
   named_destroy();
 #endif
-
-  // 20. PCRE2 - cleanup all regex singletons together (after named_destroy)
-  asciichat_pcre2_cleanup_all();
 
   // 21. timer resolution restore
   platform_restore_timer_resolution(); // Restore timer resolution (no-op on POSIX)

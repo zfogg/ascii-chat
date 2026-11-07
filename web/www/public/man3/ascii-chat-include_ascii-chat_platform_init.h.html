@@ -57,13 +57,13 @@
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
 <p class="Pp">#define <b>STATIC_MUTEX_INIT</b> {.mutex.impl =
-    PTHREAD_MUTEX_INITIALIZER, .mutex.name = NULL, .<b>initialized</b> = 1}
+    PTHREAD_MUTEX_INITIALIZER, .mutex.name = NULL, .initialized = 1}
   <br/>
   #define <b>STATIC_RWLOCK_INIT</b> {.lock.impl = PTHREAD_RWLOCK_INITIALIZER,
-    .lock.name = NULL, .<b>initialized</b> = 1}
+    .lock.name = NULL, .initialized = 1}
   <br/>
   #define <b>STATIC_COND_INIT</b> {.cond.impl = PTHREAD_COND_INITIALIZER,
-    .cond.name = NULL, .<b>initialized</b> = 1}
+    .cond.name = NULL, .initialized = 1}
   <br/>
   <br/>
 </p>
@@ -95,7 +95,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

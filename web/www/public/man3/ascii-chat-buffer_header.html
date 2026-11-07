@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>buffer_header(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">buffer_header(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">buffer_header(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">buffer_header</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">struct <b>buffer_header</b> * <b>next</b>
+  <br/>
+  <b>buffer_domain_t</b> * <b>domain</b>
+  <br/>
+  void * <b>allocation</b>
+  <br/>
+  void * <b>data</b>
+  <br/>
+  size_t <b>capacity</b>
+  <br/>
+  size_t <b>length</b>
+  <br/>
+  size_t <b>charge</b>
+  <br/>
+  size_t <b>alignment</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>28</b> of file <b>buffer.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="size_t_buffer_header::alignment"><a class="permalink" href="#size_t_buffer_header::alignment">size_t
+  buffer_header::alignment</a></h2>
+<p class="Pp">Definition at line <b>36</b> of file <b>buffer.c</b>.</p>
+<p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_buffer_header::allocation"><a class="permalink" href="#void*_buffer_header::allocation">void*
+  buffer_header::allocation</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>buffer.c</b>.</p>
+<p class="Pp">Referenced by <b>buffer_acquire()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_buffer_header::capacity"><a class="permalink" href="#size_t_buffer_header::capacity">size_t
+  buffer_header::capacity</a></h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>buffer.c</b>.</p>
+<p class="Pp">Referenced by <b>buffer_acquire()</b>, <b>buffer_capacity()</b>,
+    and <b>buffer_unref()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_buffer_header::charge"><a class="permalink" href="#size_t_buffer_header::charge">size_t
+  buffer_header::charge</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>buffer.c</b>.</p>
+<p class="Pp">Referenced by <b>buffer_acquire()</b>, and
+  <b>buffer_unref()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_buffer_header::data"><a class="permalink" href="#void*_buffer_header::data">void*
+  buffer_header::data</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>buffer.c</b>.</p>
+<p class="Pp">Referenced by <b>buffer_acquire()</b>, and
+  <b>buffer_unref()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>buffer_domain_t</b>* buffer_header::domain</h2>
+<p class="Pp">Definition at line <b>30</b> of file <b>buffer.c</b>.</p>
+<p class="Pp">Referenced by <b>buffer_acquire()</b>, <b>buffer_set_size()</b>,
+    and <b>buffer_unref()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_buffer_header::length"><a class="permalink" href="#size_t_buffer_header::length">size_t
+  buffer_header::length</a></h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>buffer.c</b>.</p>
+<p class="Pp">Referenced by <b>buffer_acquire()</b>, <b>buffer_set_size()</b>,
+    <b>buffer_size()</b>, and <b>buffer_unref()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
+  <b>buffer_header</b>* buffer_header::next</a></h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>buffer.c</b>.</p>
+<p class="Pp">Referenced by <b>buffer_acquire()</b>, and
+  <b>buffer_unref()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.14.7</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -50,7 +50,11 @@
 <section class="Ss">
 <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
 <br/>
-<p class="Pp">#define <b>BUFFER_SIZE_SMALL</b> 256
+<p class="Pp">#define <b>UTF8_MAX_BYTES</b> 4
+  <br/>
+  #define <b>UTF8_BUFFER_SIZE</b> (<b>UTF8_MAX_BYTES</b> + 1)
+  <br/>
+  #define <b>BUFFER_SIZE_SMALL</b> 256
   <br/>
   Small buffer size (256 bytes). #define <b>BUFFER_SIZE_MEDIUM</b> 512
   <br/>
@@ -111,7 +115,8 @@
     &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
 <p class="Pp">Huge buffer size (16kb). Used for huge buffers like stack traces
     and other system messages.</p>
-<p class="Pp">Definition at line <b>76</b> of file <b>buffer_sizes.h</b>.</p>
+<p class="Pp">Definition at line <b>80</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_BUFFER_SIZE_LARGE___1024"><a class="permalink" href="#_define_BUFFER_SIZE_LARGE___1024">#define
@@ -120,11 +125,12 @@
     &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
 <p class="Pp">Large buffer size (1024 bytes). Used for longer strings, full
     paths, and larger temporary buffers.</p>
-<p class="Pp">Definition at line <b>40</b> of file <b>buffer_sizes.h</b>.</p>
+<p class="Pp">Definition at line <b>44</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
 <p class="Pp">Referenced by <b>check_gpg_key_expiry()</b>,
     <b>gpg_get_public_key()</b>, <b>gpg_verify_signature_with_binary()</b>,
-    <b>https_get()</b>, <b>parse_keys_from_file()</b>,
-    <b>parse_public_key()</b>, and <b>parse_ssh_private_key()</b>.</p>
+    <b>https_get()</b>, <b>parse_keys_from_file()</b>, and
+    <b>parse_public_key()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_BUFFER_SIZE_MEDIUM___512"><a class="permalink" href="#_define_BUFFER_SIZE_MEDIUM___512">#define
@@ -133,10 +139,11 @@
     &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
 <p class="Pp">Medium buffer size (512 bytes). Used for medium-length strings,
     paths, and intermediate buffers.</p>
-<p class="Pp">Definition at line <b>31</b> of file <b>buffer_sizes.h</b>.</p>
+<p class="Pp">Definition at line <b>35</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
 <p class="Pp">Referenced by <b>add_known_host()</b>,
-    <b>check_gpg_key_expiry()</b>, <b>check_known_host()</b>,
-    <b>check_known_host_no_identity()</b>, <b>config_create_default()</b>,
+    <b>check_gpg_key_expiry()</b>, <b>check_known_host_no_identity()</b>,
+    <b>check_known_host_with_key()</b>, <b>config_create_default()</b>,
     <b>config_load_and_apply()</b>, <b>display_mitm_warning()</b>,
     <b>gpg_get_public_key()</b>, <b>gpg_verify_signature_with_binary()</b>,
     <b>layout_print_wrapped_description()</b>,
@@ -154,7 +161,8 @@
     &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
 <p class="Pp">Small buffer size (256 bytes). Used for short strings, error
     messages, and small temporary buffers.</p>
-<p class="Pp">Definition at line <b>22</b> of file <b>buffer_sizes.h</b>.</p>
+<p class="Pp">Definition at line <b>26</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
 <p class="Pp">Referenced by <b>build_github_gpg_url()</b>,
     <b>build_gitlab_gpg_url()</b>, <b>client_main()</b>,
     <b>config_schema_build_from_configs()</b>,
@@ -166,8 +174,7 @@
     <b>options_config_print_options_sections_with_width()</b>,
     <b>options_config_print_usage()</b>, <b>parse_gpg_keys_from_response()</b>,
     <b>parse_ip_with_port()</b>, <b>parse_log_level_option()</b>,
-    <b>parse_ssh_private_key()</b>, <b>prompt_password()</b>,
-    <b>prompt_password_simple()</b>, <b>ssh_agent_add_key()</b>,
+    <b>prompt_password_simple_kind()</b>, <b>ssh_agent_add_key()</b>,
     <b>validate_ssh_key_file()</b>, and <b>validate_webcam_index()</b>.</p>
 </section>
 <section class="Ss">
@@ -177,11 +184,11 @@
     &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
 <p class="Pp">Extra large buffer size (2048 bytes). Used for very long strings,
     multiple paths, and large temporary buffers.</p>
-<p class="Pp">Definition at line <b>49</b> of file <b>buffer_sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>check_known_host()</b>,
-    <b>check_known_host_no_identity()</b>, <b>gpg_get_public_key()</b>,
-    <b>media_source_create()</b>, <b>remove_known_host()</b>, and
-    <b>stats_logger_thread()</b>.</p>
+<p class="Pp">Definition at line <b>53</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
+<p class="Pp">Referenced by <b>check_known_host_no_identity()</b>,
+    <b>check_known_host_with_key()</b>, <b>gpg_get_public_key()</b>, and
+    <b>remove_known_host()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_BUFFER_SIZE_XXLARGE___4096"><a class="permalink" href="#_define_BUFFER_SIZE_XXLARGE___4096">#define
@@ -190,9 +197,10 @@
     &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
 <p class="Pp">Extra extra large buffer size (4096 bytes). Used for
     maximum-length paths and very large temporary buffers.</p>
-<p class="Pp">Definition at line <b>58</b> of file <b>buffer_sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>parse_ssh_private_key()</b>,
-    <b>ssh_agent_add_key()</b>, and <b>ssh_agent_sign()</b>.</p>
+<p class="Pp">Definition at line <b>62</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
+<p class="Pp">Referenced by <b>ssh_agent_add_key()</b>, and
+    <b>ssh_agent_sign()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_BUFFER_SIZE_XXXLARGE___8192"><a class="permalink" href="#_define_BUFFER_SIZE_XXXLARGE___8192">#define
@@ -201,7 +209,8 @@
     &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
 <p class="Pp">Extra extra extra large buffer size (8192 bytes). Used for
     extremely large buffers like exception messages and stack traces.</p>
-<p class="Pp">Definition at line <b>67</b> of file <b>buffer_sizes.h</b>.</p>
+<p class="Pp">Definition at line <b>71</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
 <p class="Pp">Referenced by <b>gpg_get_public_key()</b>, and
     <b>ssh_agent_has_key()</b>.</p>
 </section>
@@ -211,7 +220,8 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
 <p class="Pp">Bytes per pixel in RGB24 format (red + green + blue).</p>
-<p class="Pp">Definition at line <b>87</b> of file <b>buffer_sizes.h</b>.</p>
+<p class="Pp">Definition at line <b>91</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_IMAGE_FRAME_HEADER_SIZE_LEGACY___8"><a class="permalink" href="#_define_IMAGE_FRAME_HEADER_SIZE_LEGACY___8">#define
@@ -220,7 +230,8 @@
     &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
 <p class="Pp">Legacy image frame header size (width:4 + height:4). Used for
     backward compatibility with older frame format.</p>
-<p class="Pp">Definition at line <b>96</b> of file <b>buffer_sizes.h</b>.</p>
+<p class="Pp">Definition at line <b>100</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_IMAGE_FRAME_HEADER_SIZE_NEW___16"><a class="permalink" href="#_define_IMAGE_FRAME_HEADER_SIZE_NEW___16">#define
@@ -230,7 +241,8 @@
 <p class="Pp">New image frame header size (width:4 + height:4 + compressed:4 +
     size:4). Used for new compressed frame format with compression flag and data
     size.</p>
-<p class="Pp">Definition at line <b>105</b> of file <b>buffer_sizes.h</b>.</p>
+<p class="Pp">Definition at line <b>109</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_MAX_FRAME_BUFFER_SIZE___(2_*_1024_*_1024)"><a class="permalink" href="#_define_MAX_FRAME_BUFFER_SIZE___(2_*_1024_*_1024)">#define
@@ -241,11 +253,12 @@
     as a practical limit to prevent memory exhaustion from oversized frames.
     This is larger than typical compressed frames but smaller than uncompressed
     RGB.</p>
-<p class="Pp">Definition at line <b>143</b> of file <b>buffer_sizes.h</b>.</p>
-<p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
-    <b>handle_image_frame_packet()</b>, <b>simple_frame_swap_create()</b>,
-    <b>simple_frame_swap_update()</b>, <b>socket_optimize_for_streaming()</b>,
-    and <b>video_frame_buffer_create()</b>.</p>
+<p class="Pp">Definition at line <b>147</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
+<p class="Pp">Referenced by <b>handle_image_frame_packet()</b>,
+    <b>simple_frame_swap_create()</b>, <b>simple_frame_swap_update()</b>,
+    <b>socket_optimize_for_streaming()</b>, and
+    <b>video_frame_buffer_create()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_MAX_FRAME_HEIGHT___1080"><a class="permalink" href="#_define_MAX_FRAME_HEIGHT___1080">#define
@@ -253,7 +266,8 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
 <p class="Pp">Maximum reasonable frame height (prevents memory exhaustion).</p>
-<p class="Pp">Definition at line <b>119</b> of file <b>buffer_sizes.h</b>.</p>
+<p class="Pp">Definition at line <b>123</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_MAX_FRAME_PIXELS___("><a class="permalink" href="#_define_MAX_FRAME_PIXELS___(">#define
@@ -261,7 +275,8 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
 <p class="Pp">Maximum total frame pixels (width * height).</p>
-<p class="Pp">Definition at line <b>126</b> of file <b>buffer_sizes.h</b>.</p>
+<p class="Pp">Definition at line <b>130</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_MAX_FRAME_RGB_SIZE___("><a class="permalink" href="#_define_MAX_FRAME_RGB_SIZE___(">#define
@@ -271,7 +286,8 @@
     &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
 <p class="Pp">Maximum RGB buffer size (MAX_FRAME_PIXELS *
   BYTES_PER_RGB_PIXEL).</p>
-<p class="Pp">Definition at line <b>133</b> of file <b>buffer_sizes.h</b>.</p>
+<p class="Pp">Definition at line <b>137</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_MAX_FRAME_WIDTH___1920"><a class="permalink" href="#_define_MAX_FRAME_WIDTH___1920">#define
@@ -279,7 +295,28 @@
 <p class="Pp">#include
     &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
 <p class="Pp">Maximum reasonable frame width (prevents memory exhaustion).</p>
-<p class="Pp">Definition at line <b>112</b> of file <b>buffer_sizes.h</b>.</p>
+<p class="Pp">Definition at line <b>116</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_UTF8_BUFFER_SIZE___("><a class="permalink" href="#_define_UTF8_BUFFER_SIZE___(">#define
+  UTF8_BUFFER_SIZE (<b>UTF8_MAX_BYTES</b> + 1)</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b></b></p>
+<p class="Pp">Definition at line <b>17</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
+<p class="Pp">Referenced by <b>ansi_expand_rle()</b>,
+    <b>keyboard_text_encode()</b>, <b>tui_input_events_read()</b>,
+    <b>ui_input_edit_key()</b>, and <b>validate_palette_chars()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_UTF8_MAX_BYTES___4"><a class="permalink" href="#_define_UTF8_MAX_BYTES___4">#define
+  UTF8_MAX_BYTES 4</a></h2>
+<p class="Pp">#include
+    &lt;<b>include/ascii-chat/common/buffer_sizes.h</b>&gt;<b>Unicode scalar
+    encoding storage; text capacity includes NUL.</b></p>
+<p class="Pp">Definition at line <b>16</b> of file
+    <b>include/ascii-chat/common/buffer_sizes.h</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -289,7 +326,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>

@@ -41,17 +41,17 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp"><b>asciichat_error_t</b>(* <b>check</b> )(void *backend_data,
+<p class="Pp"><b>asciichat_error_t</b>(*) <b>check</b> (void *backend_data,
     const char *ip_address, <b>rate_event_type_t</b> event_type, const
     <b>rate_limit_config_t</b> *config, <b>bool</b> *allowed)
   <br/>
-  <b>asciichat_error_t</b>(* <b>record</b> )(void *backend_data, const char
+  <b>asciichat_error_t</b>(*) <b>record</b> (void *backend_data, const char
     *ip_address, <b>rate_event_type_t</b> event_type)
   <br/>
-  <b>asciichat_error_t</b>(* <b>cleanup</b> )(void *backend_data,
+  <b>asciichat_error_t</b>(*) <b>cleanup</b> (void *backend_data,
     <b>uint32_t</b> max_age_secs)
   <br/>
-  void(* <b>destroy</b> )(void *backend_data)
+  void(*) <b>destroy</b> (void *backend_data)
   <br/>
   <br/>
 </p>
@@ -68,29 +68,30 @@
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b>(* rate_limiter_backend_ops_t::check)
-  (void *backend_data, const char *ip_address, <b>rate_event_type_t</b>
-  event_type, const <b>rate_limit_config_t</b> *config, <b>bool</b>
-  *allowed)</h2>
+<h2 class="Ss"><b>asciichat_error_t</b>(*)
+  rate_limiter_backend_ops_t::check(void *backend_data, const char *ip_address,
+  <b>rate_event_type_t</b> event_type, const <b>rate_limit_config_t</b> *config,
+  <b>bool</b> *allowed)</h2>
 <p class="Pp">Definition at line <b>84</b> of file <b>rate_limit.h</b>.</p>
 <p class="Pp">Referenced by <b>rate_limiter_check()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b>(* rate_limiter_backend_ops_t::cleanup)
-  (void *backend_data, <b>uint32_t</b> max_age_secs)</h2>
+<h2 class="Ss"><b>asciichat_error_t</b>(*)
+  rate_limiter_backend_ops_t::cleanup(void *backend_data, <b>uint32_t</b>
+  max_age_secs)</h2>
 <p class="Pp">Definition at line <b>89</b> of file <b>rate_limit.h</b>.</p>
 <p class="Pp">Referenced by <b>rate_limiter_prune()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void(*_rate_limiter_backend_ops_t::destroy)_(void_*backend_data)"><a class="permalink" href="#void(*_rate_limiter_backend_ops_t::destroy)_(void_*backend_data)">void(*
-  rate_limiter_backend_ops_t::destroy) (void *backend_data)</a></h2>
+<h2 class="Ss" id="void(*)_rate_limiter_backend_ops_t::destroy(void_*backend_data)"><a class="permalink" href="#void(*)_rate_limiter_backend_ops_t::destroy(void_*backend_data)">void(*)
+  rate_limiter_backend_ops_t::destroy(void *backend_data)</a></h2>
 <p class="Pp">Definition at line <b>91</b> of file <b>rate_limit.h</b>.</p>
 <p class="Pp">Referenced by <b>rate_limiter_destroy()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b>(* rate_limiter_backend_ops_t::record)
-  (void *backend_data, const char *ip_address, <b>rate_event_type_t</b>
-  event_type)</h2>
+<h2 class="Ss"><b>asciichat_error_t</b>(*)
+  rate_limiter_backend_ops_t::record(void *backend_data, const char *ip_address,
+  <b>rate_event_type_t</b> event_type)</h2>
 <p class="Pp">Definition at line <b>87</b> of file <b>rate_limit.h</b>.</p>
 <p class="Pp">Referenced by <b>rate_limiter_record()</b>.</p>
 <p class="Pp"></p>
@@ -103,7 +104,7 @@
 </div>
 <table class="foot">
   <tr>
-    <td class="foot-date">Version 0.11.2</td>
+    <td class="foot-date">Version 0.14.7</td>
     <td class="foot-os">ascii-chat</td>
   </tr>
 </table>
