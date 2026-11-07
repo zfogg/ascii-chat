@@ -1,3 +1,5 @@
+include(${CMAKE_SOURCE_DIR}/cmake/test/LeakSanitizer.cmake)
+
 # =============================================================================
 # Tests Module (Criterion-based tests)
 # =============================================================================
@@ -186,6 +188,7 @@ function(asciichat_add_contract_test name target)
     set_property(DIRECTORY APPEND PROPERTY ASCIICHAT_CONTRACT_TESTS ${name})
     add_test(NAME ${name} COMMAND ${target} --jobs 1 --timeout 60
         --xml=${CRITERION_XML_DIR}/${name}.xml)
+    asciichat_fail_on_lsan_report(${name})
     set_tests_properties(${name} PROPERTIES LABELS "criterion;contract"
         ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
         TIMEOUT 180 RUN_SERIAL TRUE)
@@ -683,6 +686,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 add_test(NAME ${_case_test_name}
                     COMMAND ${test_exe_name} ${_criterion_args} --filter "*${_case}*"
                 )
+                asciichat_fail_on_lsan_report(${_case_test_name})
                 set_tests_properties(${_case_test_name} PROPERTIES
                     ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                     TIMEOUT ${_test_ctest_timeout}
@@ -697,6 +701,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             )
 
             # Set test properties
+            asciichat_fail_on_lsan_report(${test_exe_name})
             set_tests_properties(${test_exe_name} PROPERTIES
                 ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                 TIMEOUT ${_test_ctest_timeout}
@@ -718,12 +723,9 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         COMMENT "Building Criterion test executables"
     )
 
-    # Build all registered test executables without running them.
-    add_custom_target(tests
-        COMMENT "Building all test executables"
-    )
+    # Build all test executables without running them.
+    add_custom_target(tests COMMENT "Building all test executables")
 
-    # Timer end target runs after all tests are built
     if(TARGET tests-timer-start)
         add_custom_target(tests-timer-end
             COMMAND ${CMAKE_COMMAND}
@@ -735,12 +737,9 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             COMMENT "Finishing test build timing"
             VERBATIM
         )
-        # Timer end depends on timer start and the actual test build
         add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
-        # Main tests target depends on timer end (so timing is shown)
         add_dependencies(tests tests-timer-end)
     else()
-        # No timer, just depend on the build target directly
         add_dependencies(tests tests-criterion-build)
     endif()
 
@@ -1615,6 +1614,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_target_properties(test-nat-refresh PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     add_test(NAME discovery-nat-refresh COMMAND test-nat-refresh --jobs 1 --timeout 30
         --xml=${CRITERION_XML_DIR}/discovery-nat-refresh.xml)
+    asciichat_fail_on_lsan_report(discovery-nat-refresh)
     set_tests_properties(discovery-nat-refresh PROPERTIES LABELS "unit;criterion;contract" TIMEOUT 60
         ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
 endif()
@@ -1811,7 +1811,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
     add_executable(test-mcp-requests contracts/mcp/request_contract_test.c)
     asciichat_configure_contract(test-mcp-requests)
-    target_link_libraries(test-mcp-requests PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES}
+    target_link_libraries(test-mcp-requests PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES}
         ${YYJSON_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
     target_include_directories(test-mcp-requests PRIVATE ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include}

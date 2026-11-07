@@ -12,7 +12,7 @@ ascii-chat --log-level debug --grep 'MCP|render' mcp-server --transport http --s
 
 The `--http-tls-cert`, `--http-tls-key`, and `--http-tls-key-password` configure HTTPS for this HTTP listener too. `--port-forwarding` maps the HTTP port with the existing UPnP implementation. Concurrent render jobs default to the number of CPUs available to the process; `--max-clients` can set a lower limit. HTTP status uses the shared terminal controller and log viewer, including error popups and debug controls. Debug builds retain `--sync-state`, `--backtrace`, and memory diagnostics. Stdio does not consume terminal keys: stdin is the protocol stream.
 
-For mcp.ascii-chat.com, terminate HTTPS and enforce rate/body/concurrency limits at a reverse proxy. The configured browser Origin defaults to `https://mcp.ascii-chat.com`; change it with `--http-origin`. Requests without Origin are accepted for native MCP clients. The initial implementation uses stateless JSON responses; POST handles requests and notifications, GET/DELETE return 405. It supports MCP versions 2025-03-26, 2025-06-18, and 2025-11-25. Clients send Accept including application/json and text/event-stream.
+For mcp.ascii-chat.com, terminate HTTPS and enforce rate/body/concurrency limits at a reverse proxy. The configured browser Origin defaults to `https://mcp.ascii-chat.com`; change it with `--http-origin`. Requests without Origin are accepted for native MCP clients. The implementation uses stateless JSON responses; POST to `/mcp` handles requests and notifications, while GET/DELETE on `/mcp` return 405. In restricted HTTP mode, GET `/downloads/<name>` serves temporary exports. It supports MCP versions 2025-03-26, 2025-06-18, and 2025-11-25. Clients send Accept including application/json and text/event-stream.
 
 ## Tools
 
@@ -22,7 +22,7 @@ For mcp.ascii-chat.com, terminate HTTPS and enforce rate/body/concurrency limits
 - `render_webcam`: optional `video_device` (default 0), `audio_device` (-1 or omitted uses the system microphone), and `volume` (microphone gain, 0 to 1). Timed saved exports capture microphone audio unless `options.audio` is false. `options.test-pattern` uses synthetic video instead.
 - `render_visualization`: `visualization` is `waveform` or `fft`; optional `audio` selects `{ "type": "test" }` (default), `{ "type": "file", "path": "..." }`, `{ "type": "file", "data_base64": "...", "mime_type": "audio/wav" }`, `{ "type": "url", "url": "..." }`, or local `{ "type": "microphone" }` with top-level `audio_device: 0` and optional `volume` (0-1). Supplying `audio_device` or `volume` without an audio source selects microphone input. Both fields are unavailable with `--server`.
 
-Rendering tools accept `options`, `timeout_ms` (1000–60000, default 45000), and a local-only optional `output_path`.
+Rendering tools accept `options`, `timeout_ms` (1000–60000, default 45000), and a local-only optional `output_path`. Restricted HTTP mode accepts `output_format` instead and automatically produces a temporary download.
 
 ```json
 {
@@ -40,7 +40,7 @@ Rendering tools accept `options`, `timeout_ms` (1000–60000, default 45000), an
 }
 ```
 
-For uploaded media, the client must read and base64-encode the bytes; an attachment in a conversation is not automatically accessible to an MCP server. This uses normal JSON tool arguments with no upload endpoint or public URL requirement. Decoded uploads are limited to 16 MiB; request bodies to 24 MiB; returned ASCII to 8 MiB.
+For uploaded media, the client can pass an HTTP(S) media URL to `render_url` or read and base64-encode the bytes for `render_file`; an attachment in a conversation is not automatically accessible to an MCP server. Decoded uploads are limited to 16 MiB; request bodies to 24 MiB; returned ASCII to 8 MiB.
 
 The shared option schema is generated from the CLI registry through an explicit exposure table in `src/mcp-server/request.c` and the shared `lib/options/json.c` adapter. It covers palette/characters, color/filter/render mode, dimensions, transforms, effects, FPS, snapshot/delay, seek/loop, test pattern/audio, audio processing, and render styling. Local mode additionally exposes custom render fonts and yt-dlp options. Unsupported/unknown arguments are rejected, including arguments hidden from the hosted schema.
 
@@ -67,6 +67,25 @@ Set local `output_path` to an image/video filename. The existing render-file pip
     "output_path": "/home/me/fft.mp4"
   }
 }
+```
+
+In restricted HTTP mode, each successful render is exported automatically. `output_format` accepts `png`, `jpg`, `jpeg`, `bmp`, `webp`, `gif`, `mp4`, `mov`, `mkv`, `webm`, `avi`, `flv`, `ogv`, `ogg`, and `3gp`; availability of individual formats depends on the FFmpeg encoders in the build. The default is PNG for a single-frame snapshot and MP4 for a timed or continuous render. GIF output from a media file or URL renders to the end by default, producing animation for video. Set `options.snapshot` to true for one frame or `options.snapshot-delay` for a timed clip; the request timeout still applies. For video with source audio, set `options.audio` to true and `snapshot-delay` above zero. The response includes `download_url` and `expires_at` (UTC RFC 3339) in `structuredContent`; `saved_files` contains the same URL. Links expire 30 minutes after publication, and expired files are removed. A missing or expired file returns HTTP 404. Downloads use unpredictable names, but anyone possessing a link can access it until it expires.
+
+The download settings are also available in `config.toml`:
+
+```toml
+[mcp]
+server = true
+transport = "http"
+downloads_dir = "/var/lib/ascii-chat/downloads"
+downloads_url_prefix = "https://mcp.ascii-chat.com"
+```
+
+The server stores downloads in the platform application data directory under `ascii-chat/downloads` (XDG data on Unix, Local AppData on Windows). `--downloads-dir` or `ASCII_CHAT_DOWNLOADS_DIR` overrides that directory. The default public base URL is `http://127.0.0.1:<port>` (HTTPS when the listener has TLS). Behind a reverse proxy, set `--downloads-url-prefix https://your-domain.example` to the externally reachable base URL and route `/downloads/` to the server. The server appends `/downloads/` to generated links. The prefix is configuration, not derived from untrusted request headers.
+
+```sh
+ascii-chat mcp-server --transport http --server --address 127.0.0.1 \
+  --downloads-url-prefix https://mcp.example.com
 ```
 
 Results contain `content` text plus `structuredContent` with `ascii`, `elapsed_ms`, and `saved_files`. Decoder/render errors use `isError: true`; JSON-RPC errors cover malformed protocol requests. Each render is isolated in a child mirror process with an explicit environment and no user/system configuration. The parent handles deadlines, output limits, and local cancellation while keeping its transport responsive.

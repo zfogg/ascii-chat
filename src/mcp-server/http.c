@@ -18,16 +18,25 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <uv.h>
+#include <ascii-chat/platform/stat.h>
 
 typedef struct {
   char *body, *response;
   size_t length, response_size, sent;
-  bool pending;
+  bool pending, file_open;
+  uv_file file;
+  const char *mime;
   bool issue_session;
   char session_id[MCP_SESSION_ID_LENGTH + 1];
   unsigned status;
 } http_session_t;
 static void clear_session(http_session_t *session) {
+  if (session->file_open) {
+    uv_fs_t close_request;
+    uv_fs_close(NULL, &close_request, session->file, NULL);
+    uv_fs_req_cleanup(&close_request);
+  }
   SAFE_FREE(session->body);
   free(session->response);
   memset(session, 0, sizeof(*session));
@@ -56,6 +65,51 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     if (!h)
       return -1;
     clear_session(h);
+    if (s->policy.restricted && !strncmp((const char *)in, "/downloads/", sizeof("/downloads/") - 1)) {
+      if (lws_hdr_total_length(wsi, WSI_TOKEN_GET_URI) <= 0)
+        return respond(wsi, h, 405, NULL);
+      const char *name = (const char *)in + 11;
+      int64_t expires;
+      if (!mcp_download_name(name, &expires))
+        return respond(wsi, h, 404, NULL);
+      char path[PLATFORM_MAX_PATH_LENGTH];
+      int n = safe_snprintf(path, sizeof(path), "%s/%s", s->policy.downloads_dir, name);
+      if (n < 0 || (size_t)n >= sizeof(path))
+        return respond(wsi, h, 404, NULL);
+      uv_fs_t fs = {0};
+      if (expires <= (int64_t)time(NULL)) {
+        uv_fs_unlink(NULL, &fs, path, NULL);
+        uv_fs_req_cleanup(&fs);
+        return respond(wsi, h, 404, NULL);
+      }
+      int rc = uv_fs_lstat(NULL, &fs, path, NULL);
+      uv_stat_t before = fs.statbuf;
+      bool regular = rc == 0 && S_ISREG(before.st_mode);
+      uv_fs_req_cleanup(&fs);
+      if (!regular)
+        return respond(wsi, h, 404, NULL);
+      rc = uv_fs_open(NULL, &fs, path, UV_FS_O_RDONLY | UV_FS_O_NOFOLLOW, 0, NULL);
+      uv_fs_req_cleanup(&fs);
+      if (rc < 0)
+        return respond(wsi, h, 404, NULL);
+      h->file = rc;
+      h->file_open = true;
+      rc = uv_fs_fstat(NULL, &fs, h->file, NULL);
+      regular = rc == 0 && S_ISREG(fs.statbuf.st_mode) && before.st_dev == fs.statbuf.st_dev &&
+                before.st_ino == fs.statbuf.st_ino;
+      if (regular)
+        h->response_size = (size_t)fs.statbuf.st_size;
+      uv_fs_req_cleanup(&fs);
+      if (!regular) {
+        clear_session(h);
+        return respond(wsi, h, 404, NULL);
+      }
+      const char *ext = strrchr(name, '.');
+      h->mime = mcp_output_mime(ext + 1);
+      h->status = 200;
+      lws_callback_on_writable(wsi);
+      return 0;
+    }
     if (!origin_allowed(wsi, &s->policy))
       return respond(wsi, h, 403, NULL);
     if (strcmp((const char *)in, "/mcp"))
@@ -64,7 +118,7 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
       return respond(wsi, h, 405, NULL);
     char type[MCP_SERVER_HTTP_TYPE_BUFFER_SIZE];
     lws_hdr_copy(wsi, type, sizeof(type), WSI_TOKEN_HTTP_CONTENT_TYPE);
-    if (strncmp(type, "application/json", 16))
+    if (strncmp(type, "application/json", sizeof("application/json") - 1))
       return respond(wsi, h, 415, NULL);
     char accept[MCP_SERVER_HTTP_ACCEPT_BUFFER_SIZE];
     lws_hdr_copy(wsi, accept, sizeof(accept), WSI_TOKEN_HTTP_ACCEPT);
@@ -131,6 +185,15 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
         if (j->started && j->connection == wsi && atomic_load_bool(&j->done)) {
           h->pending = false;
           h->status = 200;
+          if (s->policy.restricted &&
+              mcp_download_finalize(&s->policy, j->response, (int64_t)time(NULL)) != ASCIICHAT_OK) {
+            yyjson_mut_val *root = yyjson_mut_doc_get_root(j->response);
+            yyjson_mut_obj_remove_str(root, "result");
+            yyjson_mut_val *error = yyjson_mut_obj(j->response);
+            yyjson_mut_obj_add_int(j->response, error, "code", -32603);
+            yyjson_mut_obj_add_str(j->response, error, "message", "Cannot publish download");
+            yyjson_mut_obj_add_val(j->response, root, "error", error);
+          }
           h->response = yyjson_mut_write(j->response, 0, &h->response_size);
           j->connection = NULL;
           mcp_jobs_reap(s, false);
@@ -148,7 +211,10 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
       ASCII_OTEL_ATTR_INT("http.response.body.size", (int64_t)h->response_size);
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_HTTP_RESPONSES, 1);
       unsigned char buffer[LWS_PRE + 1024], *p = buffer + LWS_PRE, *end = buffer + sizeof(buffer);
-      if (lws_add_http_common_headers(wsi, h->status, "application/json", (lws_filepos_t)h->response_size, &p, end) ||
+      if (lws_add_http_common_headers(wsi, h->status, h->mime ? h->mime : "application/json",
+                                      (lws_filepos_t)h->response_size, &p, end) ||
+          (h->file_open && lws_add_http_header_by_name(wsi, (const unsigned char *)"cache-control:",
+                                                       (const unsigned char *)"no-store", 8, &p, end)) ||
           (h->issue_session && lws_add_http_header_by_name(
                                    wsi, (const unsigned char *)"mcp-session-id:", (const unsigned char *)h->session_id,
                                    MCP_SESSION_ID_LENGTH, &p, end)) ||
@@ -163,7 +229,17 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     if (n > 16384)
       n = 16384;
     unsigned char buffer[LWS_PRE + 16384];
-    memcpy(buffer + LWS_PRE, h->response + h->sent, n);
+    if (h->file_open) {
+      uv_buf_t chunk = uv_buf_init((char *)buffer + LWS_PRE, (unsigned int)n);
+      uv_fs_t read_request;
+      int read_size = uv_fs_read(NULL, &read_request, h->file, &chunk, 1, (int64_t)h->sent, NULL);
+      uv_fs_req_cleanup(&read_request);
+      if (read_size <= 0)
+        return -1;
+      n = (size_t)read_size;
+    } else {
+      memcpy(buffer + LWS_PRE, h->response + h->sent, n);
+    }
     bool final = h->sent + n == h->response_size;
     int wrote = lws_write(wsi, buffer + LWS_PRE, n, final ? LWS_WRITE_HTTP_FINAL : LWS_WRITE_HTTP);
     if (wrote < 0 || (size_t)wrote != n)
@@ -176,6 +252,8 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     lws_callback_on_writable(wsi);
     return 0;
   }
+  case LWS_CALLBACK_HTTP_FILE_COMPLETION:
+    return lws_http_transaction_completed(wsi) ? -1 : 0;
   case LWS_CALLBACK_CLOSED_HTTP:
     for (unsigned i = 0; i < s->policy.max_jobs; ++i)
       if (s->jobs[i].started && s->jobs[i].connection == wsi) {
@@ -261,8 +339,14 @@ asciichat_error_t mcp_http_run(mcp_server_t *s) {
   SAFE_SNPRINTF(status.ipv6_address, sizeof(status.ipv6_address), "[%s]:%d", addresses[1], s->policy.port);
   http_pulse_t pulse = {.context = context};
   lws_sul_schedule(context, 0, &pulse.timer, http_pulse, 16000);
+  int64_t last_prune = 0;
   while (!atomic_load_bool(&s->stopping) && !APP_CALLBACK_BOOL(should_exit)) {
     lws_service(context, 16);
+    int64_t now = (int64_t)time(NULL);
+    if (s->policy.restricted && (last_prune == 0 || now - last_prune >= 1)) {
+      mcp_download_prune(s->policy.downloads_dir, now);
+      last_prune = now;
+    }
     mcp_jobs_reap(s, false);
     if (mapping && time_get_ns() >= mapping->refresh_at_ns) {
       asciichat_error_t e = nat_upnp_refresh(mapping);

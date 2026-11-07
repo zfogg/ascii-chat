@@ -1,0 +1,126 @@
+name: ascii-chat-mcp
+
+services:
+  mcp:
+    image: ${MCP_IMAGE:-ghcr.io/zfogg/ascii-chat:latest}
+    entrypoint: ["/usr/local/bin/ascii-chat"]
+    command: ["--config=/tmp/ascii-chat-config.toml", "mcp-server"]
+    environment:
+      HOME: /tmp
+      TMPDIR: /tmp
+    init: true
+    # Compose must start the guard and wait for health on every start.
+    restart: "no"
+    read_only: true
+    user: "1001:1001"
+    working_dir: /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: ${MCP_CPUS:-4.0}
+    mem_limit: ${MCP_MEMORY:-4g}
+    pids_limit: ${MCP_PIDS:-128}
+    volumes:
+      - ./ascii-chat/config.toml:/tmp/ascii-chat-config.toml:ro
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: ${MCP_SCRATCH_BYTES:-536870912}
+          mode: 01777
+      - type: tmpfs
+        target: /acds
+        tmpfs:
+          size: 4096
+          mode: 0700
+      - type: tmpfs
+        target: /downloads
+        tmpfs:
+          size: ${MCP_DOWNLOAD_BYTES:-1073741824}
+          mode: 01777
+    network_mode: service:egress
+    depends_on:
+      egress:
+        condition: service_healthy
+        restart: true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  egress:
+    image: ascii-chat-mcp-egress:local
+    build:
+      context: ./egress
+    init: true
+    restart: unless-stopped
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    cpus: "0.25"
+    mem_limit: 64m
+    pids_limit: 32
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+    environment:
+      MCP_BLOCKED_PUBLIC_IPS: ${MCP_BLOCKED_PUBLIC_IPS:-}
+      MCP_BIND_ADDRESS: ${MCP_BIND_ADDRESS:-127.0.0.1}
+    networks:
+      backend:
+        ipv4_address: 172.30.253.10
+        aliases: [mcp]
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/egress-guard", "check"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "2"
+
+  caddy:
+    image: ascii-chat-mcp-caddy:local
+    build:
+      context: ./caddy
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${MCP_BIND_ADDRESS:-127.0.0.1}:${MCP_HTTP_PORT:-8080}:80"
+      - "${MCP_BIND_ADDRESS:-127.0.0.1}:${MCP_HTTPS_PORT:-8443}:443"
+    environment:
+      MCP_SITE: ${MCP_SITE:-http://localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-you@example.com}
+      ACME_DIRECTORY: ${ACME_DIRECTORY:-https://acme-staging-v02.api.letsencrypt.org/directory}
+      MCP_RATE_EVENTS: ${MCP_RATE_EVENTS:-30}
+      MCP_RATE_WINDOW: ${MCP_RATE_WINDOW:-1m}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    cpus: ${CADDY_CPUS:-1.0}
+    mem_limit: ${CADDY_MEMORY:-256m}
+    pids_limit: ${CADDY_PIDS:-64}
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      mcp:
+        condition: service_started
+    networks: [backend]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  backend:
+    ipam:
+      config:
+        - subnet: 172.30.253.0/24
+
+volumes:
+  caddy_data:
+  caddy_config:

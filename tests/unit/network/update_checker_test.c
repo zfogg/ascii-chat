@@ -45,6 +45,7 @@ static void restore_test_config_root(void) {
   (void)remove(cache_path);
   (void)rmdir(cache_dir);
   (void)rmdir(test_config_root);
+  free(test_config_root);
   test_config_root = NULL;
 }
 

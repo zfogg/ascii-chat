@@ -307,7 +307,7 @@ rm -rf build_docker
 echo 'Configuring CMake using docker preset (Debug with BUILD_TESTS=ON)...'
 cmake --preset docker -B build_docker
 echo 'Building test executables...'
-cmake --build build_docker --target all tests-criterion-build
+cmake --build build_docker --target tests
 "@
     } else {
         $BuildCommand = @"
@@ -316,7 +316,7 @@ if [ ! -f build_docker/CMakeCache.txt ] || [ ! -f build_docker/build.ninja ]; th
     cmake --preset docker -B build_docker
 fi
 echo 'Building test executables...'
-cmake --build build_docker --target all tests-criterion-build
+cmake --build build_docker --target tests
 "@
     }
 
@@ -359,12 +359,15 @@ if ($Interactive) {
     docker run `
         $DockerFlags `
         --rm `
+        --cap-add SYS_PTRACE `
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
         -v "${DepsCacheVolume}:/app/.deps-cache" `
         -e CCACHE_DIR=/ccache `
         -e TESTING=1 `
+        -e ASAN_OPTIONS=detect_leaks=1 `
+        -e LSAN_OPTIONS=detect_leaks=1 `
         -w /app `
         $ImageName `
         bash -c "$FullCommand"
