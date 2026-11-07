@@ -883,12 +883,41 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   cr_assert_eq(strlen(restricted), 2);
   cr_assert(strspn(restricted, "@#") == 2, "glyphs must come from the requested palette");
   SAFE_FREE(restricted);
-  const char *invalid_palettes[] = {"", "@\xe2\x96\x88", "@\x01", "@\x7f", "\xe2\x96\x88"};
+  const char *invalid_palettes[] = {"", "@\x01", "@\x7f", "\xe2\x98\x83"};
   for (size_t i = 0; i < sizeof(invalid_palettes) / sizeof(invalid_palettes[0]); ++i) {
     cr_assert(!ascii_glyph_palette_supported(invalid_palettes[i]));
     cr_assert_null(ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, invalid_palettes[i]));
   }
 
+  cr_assert(ascii_glyph_palette_supported(" \xe2\x96\x88"));
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 16; ++x)
+      pixels[y * 16 + x] = x < 8 ? (rgb_pixel_t){0, 0, 0} : (rgb_pixel_t){255, 255, 255};
+  char *blocks = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, " \xe2\x96\x88");
+  cr_assert_not_null(blocks);
+  terminal_cell_t block_cells[2] = {0};
+  decode(blocks, block_cells, 2, 1, false);
+  cr_assert_str_eq(block_cells[0].glyph, " ");
+  cr_assert_str_eq(block_cells[1].glyph, "\xe2\x96\x88");
+  SAFE_FREE(blocks);
+
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 16; ++x) {
+      bool bright = x < 8 ? y < 4 : y >= 4;
+      uint8_t value = bright ? 255 : 0;
+      pixels[y * 16 + x] = (rgb_pixel_t){value, value, value};
+    }
+  blocks = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, "\xe2\x96\x80\xe2\x96\x84");
+  cr_assert_not_null(blocks);
+  decode(blocks, block_cells, 2, 1, false);
+  cr_assert_str_eq(block_cells[0].glyph, "\xe2\x96\x80");
+  cr_assert_str_eq(block_cells[1].glyph, "\xe2\x96\x84");
+  SAFE_FREE(blocks);
+
+  memset(pixels, 0, sizeof(pixels));
+  for (int y = 0; y < 8; ++y)
+    for (int x = 3; x <= 4; ++x)
+      pixels[y * 16 + x] = (rgb_pixel_t){255, 255, 255};
   pixels[0] = (rgb_pixel_t){80, 110, 140};
   char *color = ascii_render_glyph_match(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, NULL);
   cr_assert_not_null(color);

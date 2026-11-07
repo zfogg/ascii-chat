@@ -449,17 +449,70 @@ void ascii_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool mor
   ++frame->row;
 }
 
-/* Compare a small spatial image patch against rasterized printable glyphs.
+/* Compare a small spatial image patch against glyph coverage masks.
  * The source is fitted at 8x8 samples per output cell, then averaged to 4x4.
- * Glyph coverage comes from DejaVu Sans Mono; real terminal fonts may differ. */
+ * ASCII coverage comes from DejaVu Sans Mono; real terminal fonts may differ. */
 #include "glyph_masks.h"
+
+#define GLYPH_ASCII_COUNT 95
+#define GLYPH_BLOCK_COUNT 20
+#define GLYPH_COUNT (GLYPH_ASCII_COUNT + GLYPH_BLOCK_COUNT)
+
+static int glyph_palette_index(const uint8_t *p, size_t *length) {
+  if (*p >= 32 && *p <= 126) {
+    *length = 1;
+    return (int)*p - 32;
+  }
+  if (*p == 0xe2 && p[1] == 0x96 && p[2] >= 0x80 && p[2] <= 0x93) {
+    *length = 3;
+    return GLYPH_ASCII_COUNT + (int)(p[2] - 0x80);
+  }
+  return -1;
+}
+
+// Block elements have font-independent geometry. Coverage is the area of
+// each quarter-cell covered by the block, including eighth-cell boundaries.
+static void glyph_block_mask(int block, uint8_t mask[16]) {
+  for (int y = 0; y < 4; ++y) {
+    for (int x = 0; x < 4; ++x) {
+      int coverage = 0;
+      for (int sy = 0; sy < 2; ++sy) {
+        for (int sx = 0; sx < 2; ++sx) {
+          int px = 2 * x + sx, py = 2 * y + sy;
+          bool set = block == 0    ? py < 4
+                     : block <= 7  ? py >= 8 - block
+                     : block == 8  ? true
+                     : block <= 15 ? px < 16 - block
+                     : block == 16 ? px >= 4
+                                   : false;
+          coverage += set ? 1 : 0;
+        }
+      }
+      mask[y * 4 + x] = block >= 17 ? (uint8_t)((block - 16) * 255 / 4) : (uint8_t)(coverage * 255 / 4);
+    }
+  }
+}
+
+static uint32_t glyph_key(int index) {
+  if (index < GLYPH_ASCII_COUNT)
+    return (uint32_t)(index + 32);
+  uint32_t cp = 0x2580u + (uint32_t)(index - GLYPH_ASCII_COUNT);
+  const uint8_t bytes[4] = {(uint8_t)(0xe0u | (cp >> 12)), (uint8_t)(0x80u | ((cp >> 6) & 63)),
+                            (uint8_t)(0x80u | (cp & 63)), 0};
+  uint32_t key = 0;
+  memcpy(&key, bytes, sizeof(key));
+  return key;
+}
 
 bool ascii_glyph_palette_supported(const char *palette) {
   if (!palette || !*palette)
     return false;
-  for (const unsigned char *p = (const unsigned char *)palette; *p; ++p)
-    if (*p < 32 || *p > 126)
+  for (const uint8_t *p = (const uint8_t *)palette; *p;) {
+    size_t length;
+    if (glyph_palette_index(p, &length) < 0)
       return false;
+    p += length;
+  }
   return true;
 }
 
@@ -469,34 +522,46 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid glyph matching input");
     return NULL;
   }
-  bool allowed[95] = {false};
+  bool allowed[GLYPH_COUNT] = {false};
   int (*shape_correlation)(const int16_t[16], const int16_t[16]) =
       ops->glyph_shape_correlation ? ops->glyph_shape_correlation : glyph_shape_correlation_scalar;
   if (palette) {
     if (!ascii_glyph_palette_supported(palette)) {
-      SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette must contain printable ASCII characters");
+      SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains an unsupported character");
       return NULL;
     }
-    for (const unsigned char *p = (const unsigned char *)palette; *p; ++p)
-      allowed[*p - 32] = true;
+    for (const uint8_t *p = (const uint8_t *)palette; *p;) {
+      size_t length;
+      int index = glyph_palette_index(p, &length);
+      allowed[index] = true;
+      p += length;
+    }
   } else {
-    for (int i = 0; i < 95; ++i)
+    for (int i = 0; i < GLYPH_ASCII_COUNT; ++i)
       allowed[i] = true;
   }
   // Glyph masks do not change between cells. Prepare their tone and centered
   // shape once per frame instead of recomputing them for every candidate.
-  int glyph_tone[95];
-  int glyph_energy[95];
-  int16_t centered_masks[95][16];
-  for (int g = 0; g < 95; ++g) {
+  int glyph_tone[GLYPH_COUNT];
+  int glyph_energy[GLYPH_COUNT];
+  int16_t centered_masks[GLYPH_COUNT][16];
+  uint32_t glyph_keys[GLYPH_COUNT];
+  for (int g = 0; g < GLYPH_COUNT; ++g) {
+    if (!allowed[g])
+      continue;
+    glyph_keys[g] = glyph_key(g);
+    uint8_t block_mask[16];
+    const uint8_t *mask = g < GLYPH_ASCII_COUNT ? glyph_masks[g] : block_mask;
+    if (g >= GLYPH_ASCII_COUNT)
+      glyph_block_mask(g - GLYPH_ASCII_COUNT, block_mask);
     int sum = 0;
     for (int i = 0; i < 16; ++i)
-      sum += glyph_masks[g][i];
+      sum += mask[i];
     int mean = sum / 16;
-    glyph_tone[g] = sum * 255 / GLYPH_MASK_MAX_SUM;
+    glyph_tone[g] = sum * 255 / (g < GLYPH_ASCII_COUNT ? GLYPH_MASK_MAX_SUM : 16 * 255);
     glyph_energy[g] = 0;
     for (int i = 0; i < 16; ++i) {
-      int centered = (int)glyph_masks[g][i] - mean;
+      int centered = (int)mask[i] - mean;
       centered_masks[g][i] = (int16_t)centered;
       glyph_energy[g] += centered * centered;
     }
@@ -542,13 +607,13 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
       int64_t best_error = INT64_MAX;
       uint64_t previous_error = UINT64_MAX;
       ascii_temporal_cell_t *previous = frame.stabilizer ? &frame.stabilizer->cells[(size_t)y * frame.width + x] : NULL;
-      for (int g = 0; g < 95; ++g) {
+      for (int g = 0; g < GLYPH_COUNT; ++g) {
         if (!allowed[g])
           continue;
         // Normalize glyph density and compare local deviations around each mean.
         int tone_error = sample_mean - glyph_tone[g];
         int tone_cost = 16 * tone_error * tone_error;
-        bool is_previous = previous && previous->valid && previous->glyph == (uint32_t)(g + 32);
+        bool is_previous = previous && previous->valid && previous->glyph == glyph_keys[g];
         // Shape error is nonnegative, so this candidate cannot improve the
         // current best if its tone term already exceeds the whole score.
         // The previous glyph still needs a score for temporal hysteresis.
@@ -565,9 +630,8 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
       }
       // Average the cell rather than sampling one corner, which can change
       // abruptly when a small feature moves across the cell boundary.
-      uint32_t rgb = ((color_sum[0] + 32) / 64 << 16) | ((color_sum[1] + 32) / 64 << 8) |
-                     ((color_sum[2] + 32) / 64);
-      uint32_t selected = (uint32_t)(best + 32);
+      uint32_t rgb = ((color_sum[0] + 32) / 64 << 16) | ((color_sum[1] + 32) / 64 << 8) | ((color_sum[2] + 32) / 64);
+      uint32_t selected = glyph_keys[best];
       if (previous) {
         uint8_t patch[16];
         for (int i = 0; i < 16; ++i)

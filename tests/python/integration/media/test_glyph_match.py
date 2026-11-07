@@ -51,9 +51,9 @@ def test_glyph_match(binary, test_environment):
         allowed = set(b"   ...',;:clodxkO0KXNWM")
         for line in standard:
             assert set(re.sub(rb"\x1b\[[0-9;]*[a-zA-Z]", b"", line)) <= allowed, line
-        # A Unicode palette remains usable via the luminance fallback.
+        # Block symbols are eligible for spatial matching, including UTF-8 emission.
         unicode = capture(["--renderer=glyph", "--palette=blocks"])
-        assert unicode == capture(["--renderer=luminance", "--palette=blocks"]), "Unicode fallback differs"
+        assert any(b >= 128 for b in b"".join(unicode)), "block glyphs were not emitted"
         large = [arg for arg in common if not arg.startswith("--width=")]
         result = subprocess.run(large + ["--width=481", "--renderer=glyph", "--palette=blocks"],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=test_environment, timeout=40, check=True)

@@ -314,8 +314,7 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
                      resized_height <= IMAGE_MAX_HEIGHT / 8 &&
                      (!explicit_palette || ascii_glyph_palette_supported(palette_chars));
   if (caps->text_renderer == ASCII_RENDERER_GLYPH && explicit_palette && !ascii_glyph_palette_supported(palette_chars))
-    log_warn_every(5 * NS_PER_SEC_INT,
-                   "Unicode palettes use the luminance renderer; glyph masks currently cover printable ASCII");
+    log_warn_every(5 * NS_PER_SEC_INT, "Palette contains characters without glyph masks; using the luminance renderer");
   if (glyph_match) {
     resized_width *= 8;
     resized_height *= 8;
