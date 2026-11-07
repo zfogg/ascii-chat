@@ -2,6 +2,9 @@
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
+#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/platform/system.h>
+#include <stdatomic.h>
 #include <string.h>
 
 static sqlite3 *db;
@@ -29,6 +32,49 @@ TestSuite(database_lifecycle, .init = setup, .fini = teardown);
 
 Test(database_lifecycle, shared_connection_is_serialized) {
   cr_assert_not_null(sqlite3_db_mutex(db), "Discovery's shared SQLite connection must have a mutex");
+}
+
+typedef struct {
+  sqlite3 *db;
+  const uint8_t *session_id;
+  atomic_bool *start;
+  bool success;
+} concurrent_lookup_t;
+
+static void *concurrent_session_lookup(void *data) {
+  concurrent_lookup_t *lookup = data;
+  while (!atomic_load(lookup->start))
+    platform_sleep_ms(1);
+  lookup->success = true;
+  for (int i = 0; i < 100; ++i) {
+    session_entry_t *entry = database_session_find_by_id(lookup->db, lookup->session_id);
+    if (!entry) {
+      lookup->success = false;
+      break;
+    }
+    session_entry_destroy(entry);
+  }
+  return NULL;
+}
+
+Test(database_lifecycle, shared_connection_handles_concurrent_session_lookups) {
+  enum { WORKERS = 4 };
+  atomic_bool start = false;
+  concurrent_lookup_t lookups[WORKERS] = {0};
+  asciichat_thread_t threads[WORKERS];
+  int created = 0;
+  for (int i = 0; i < WORKERS; ++i) {
+    lookups[i] = (concurrent_lookup_t){.db = db, .session_id = session.session_id, .start = &start};
+    if (acthread_create(&threads[i], "discovery_lookup", concurrent_session_lookup, &lookups[i]) != ASCIICHAT_OK)
+      break;
+    ++created;
+  }
+  atomic_store(&start, true);
+  for (int i = 0; i < created; ++i)
+    cr_assert_eq(thread_join(&threads[i], NULL), ASCIICHAT_OK);
+  cr_assert_eq(created, WORKERS, "Could not start all lookup workers");
+  for (int i = 0; i < WORKERS; ++i)
+    cr_assert(lookups[i].success, "Concurrent discovery lookup failed");
 }
 
 Test(database_lifecycle, key_rotation_is_ordered_bounded_and_revocation_cannot_be_undone_by_readding) {
