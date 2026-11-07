@@ -545,3 +545,125 @@ def test_multiline_return_preserves_expression_line(
     assert compiled.returncode == 0, compiled.stderr
     run = subprocess.run([str(executable)], capture_output=True, text=True, check=False)
     assert run.returncode == 0, run.stderr
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        pytest.param(
+            r"""
+static int trace, releases;
+static void release(int id) { trace = trace * 10 + id; releases++; }
+static int use_resources(int fail) {
+    defer(release(1));
+    if (fail == 1) return 11;
+    { defer(release(2)); if (fail == 2) return 22; }
+    return 0;
+}
+int main(void) {
+    if (use_resources(1) != 11 || trace != 1 || releases != 1) return 1;
+    trace = releases = 0;
+    if (use_resources(2) != 22 || trace != 21 || releases != 2) return 2;
+    trace = releases = 0;
+    if (use_resources(0) != 0 || trace != 21 || releases != 2) return 3;
+    return 0;
+}
+""",
+            id="resource-cleanup-early-return-and-fallthrough",
+        ),
+        pytest.param(
+            r"""
+static int trace;
+static void record(int n) { trace = trace * 10 + n; }
+static void work(int selected) {
+    for (int i = 0; i < 3; i++) {
+        defer(record(1));
+        switch (selected) {
+        case 0: { defer(record(2)); continue; }
+        case 1: { defer(record(3)); break; }
+        default: { defer(record(4)); goto done; }
+        }
+        break;
+    }
+done:;
+}
+int main(void) {
+    work(0); if (trace != 212121) return 1;
+    trace = 0; work(1); if (trace != 31) return 2;
+    trace = 0; work(2); if (trace != 41) return 3;
+    return 0;
+}
+""",
+            id="nested-switch-loop-continue-break-goto",
+        ),
+        pytest.param(
+            r"""
+static int trace;
+static void record(int n) { trace = trace * 10 + n; }
+static int descend(int n) {
+    defer(record(n));
+    if (n == 0) return 7;
+    return descend(n - 1) + 1;
+}
+int main(void) {
+    int value = descend(3);
+    return value != 10 || trace != 123;
+}
+""",
+            id="recursive-calls-own-cleanup-state",
+        ),
+        pytest.param(
+            r"""
+static int values[2] = {1, 2};
+static int *choose(int which) {
+    int *result = &values[which];
+    defer(result = &values[1 - which]);
+    return result;
+}
+static int *cleanup_side_effect(int which) {
+    defer(values[0] = 9);
+    return &values[which];
+}
+int main(void) {
+    if (choose(0) != &values[0]) return 1;
+    if (cleanup_side_effect(1) != &values[1] || values[0] != 9) return 2;
+    return 0;
+}
+""",
+            id="pointer-return-captured-before-cleanup",
+        ),
+        pytest.param(
+            r"""
+static int trace;
+static void record(int n) { trace = trace * 10 + n; }
+static void work(int skip) {
+    if (skip) goto end;
+    defer(record(1));
+    { defer(record(2)); goto end; }
+end:;
+}
+int main(void) {
+    work(1); if (trace != 0) return 1;
+    work(0); if (trace != 21) return 2;
+    return 0;
+}
+""",
+            id="forward-goto-registration-and-inner-cleanup",
+        ),
+    ],
+)
+def test_varied_c_programs(
+    tmp_path: Path, compiler_environment: dict[str, str], source: str
+) -> None:
+    result = transform(tmp_path, compiler_environment, source)
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    compiled = subprocess.run(
+        [str(CLANG), "-std=c17", str(tmp_path / "output.c"), "-o", str(executable)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert compiled.returncode == 0, compiled.stderr
+    run = subprocess.run([str(executable)], capture_output=True, text=True, check=False)
+    assert run.returncode == 0, f"exit {run.returncode}: {run.stderr}"
