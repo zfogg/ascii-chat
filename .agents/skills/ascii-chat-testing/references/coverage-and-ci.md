@@ -28,7 +28,7 @@ cmake --preset default -B build_coverage \
 cmake --build build_coverage --target ascii-chat tests
 ctest --test-dir build_coverage -L '^unit$' --no-tests=error \
   --output-junit Testing/ctest-results.xml --output-on-failure --parallel
-python -m pip install gcovr==8.6
+uv sync
 python .github/scripts/generate-coverage.py --build build_coverage --output build_coverage/coverage.xml
 python .github/scripts/criterion-to-junit.py build_coverage/Testing/criterion-xml build_coverage/Testing/junit
 ```
