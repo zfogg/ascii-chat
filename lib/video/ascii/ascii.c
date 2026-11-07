@@ -500,19 +500,9 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
   uint64_t prof_pad_end_ns = time_get_ns();
 
   uint64_t pad_time_ns = time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns);
-  char alloc_str[TIME_DURATION_BUFFER_SIZE], resize_str[TIME_DURATION_BUFFER_SIZE],
-      print_str[TIME_DURATION_BUFFER_SIZE], pad_str[TIME_DURATION_BUFFER_SIZE], total_str[TIME_DURATION_BUFFER_SIZE];
-  time_pretty(alloc_time_us * 1000, -1, alloc_str, sizeof(alloc_str));
-  time_pretty(resize_time_us * 1000, -1, resize_str, sizeof(resize_str));
-  time_pretty(print_time_us * 1000, -1, print_str, sizeof(print_str));
-  time_pretty(pad_time_ns, -1, pad_str, sizeof(pad_str));
-  uint64_t total_time_ns = (alloc_time_us + resize_time_us + print_time_us) * 1000 + pad_time_ns;
-  time_pretty(total_time_ns, -1, total_str, sizeof(total_str));
-  log_debug("ASCII_STAGE: alloc_ms=%.3f resize_ms=%.3f glyph_ms=%.3f padding_ms=%.3f bytes=%zu",
-            (double)alloc_time_us / 1000, (double)resize_time_us / 1000, (double)print_time_us / 1000,
-            (double)pad_time_ns / NS_PER_MS_INT, strlen(ascii_padded));
-  log_dev("ASCII_BREAKDOWN: alloc=%s, resize=%s, print=%s, pad=%s (total=%s)", alloc_str, resize_str, print_str,
-          pad_str, total_str);
+  log_debug_every(US_PER_SEC_INT, "ASCII_STAGE: alloc_ms=%.3f resize_ms=%.3f glyph_ms=%.3f padding_ms=%.3f bytes=%zu",
+                  (double)alloc_time_us / 1000, (double)resize_time_us / 1000, (double)print_time_us / 1000,
+                  (double)pad_time_ns / NS_PER_MS_INT, ascii_len);
 
   if (!workspace)
     image_destroy(resized);

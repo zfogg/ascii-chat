@@ -301,25 +301,51 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
 void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows,
                           const simd_cells_t *ops) {
   if (frame->stabilizer && !frame->temporal_preselected && !background) {
+    const uint64_t elapsed = frame->stabilizer->elapsed_ns;
+    const bool recent = elapsed <= 250000000ULL;
+    const unsigned weight = recent ? (unsigned)(elapsed * 256 / (elapsed + 50000000ULL)) : 256;
     for (size_t x = 0; x < frame->width; ++x) {
       ascii_temporal_cell_t *cell = &frame->stabilizer->cells[frame->row * frame->width + x];
-      uint8_t samples[16];
-      memset(samples, frame->luma[x], sizeof(samples));
-      uint64_t best_error = UINT64_MAX, previous_error = UINT64_MAX;
-      if (cell->valid && cell->glyph == frame->glyph[x]) {
-        best_error = previous_error = 0;
-      } else {
-        for (size_t i = 0; i < 64; ++i) {
-          int delta = (int)frame->luma[x] - ((int)i * 4 + 2);
-          uint64_t error = (uint64_t)(delta * delta);
-          if (frame->table[i] == frame->glyph[x] && error < best_error)
-            best_error = error;
-          if (cell->valid && frame->table[i] == cell->glyph && error < previous_error)
-            previous_error = error;
+      uint8_t luma = frame->luma[x];
+      uint32_t glyph = frame->glyph[x];
+      uint32_t color = frame->packed[x];
+      if (cell->valid && recent && abs((int)luma - (int)cell->samples[0]) <= 8) {
+        if (cell->glyph != glyph) {
+          // Only nearby brightness bins can win the hysteresis test. Searching
+          // outward avoids scanning the entire 64-entry palette for every cell.
+          unsigned bin = luma >> 2;
+          int best_delta = (int)luma - ((int)bin * 4 + 2);
+          uint64_t best_error = (uint64_t)(best_delta * best_delta);
+          uint64_t margin = best_error / 8 + 128;
+          for (unsigned distance = 1; distance < 64; ++distance) {
+            bool found = false;
+            for (int direction = -1; direction <= 1; direction += 2) {
+              int index = (int)bin + direction * (int)distance;
+              if (index < 0 || index >= 64 || frame->table[index] != cell->glyph)
+                continue;
+              int delta = (int)luma - (index * 4 + 2);
+              uint64_t error = (uint64_t)(delta * delta);
+              if (error <= best_error || error - best_error <= margin)
+                glyph = cell->glyph;
+              found = true;
+            }
+            // Bins farther than this cannot fall within the error margin.
+            int nearest_delta = (int)distance * 4 - 3;
+            if (found || (uint64_t)(nearest_delta * nearest_delta) > best_error + margin)
+              break;
+          }
+        }
+        color = 0;
+        for (unsigned shift = 0; shift <= 16; shift += 8) {
+          unsigned previous = (cell->color >> shift) & 255;
+          unsigned current = (frame->packed[x] >> shift) & 255;
+          color |= (uint32_t)((previous * (256 - weight) + current * weight + 128) / 256) << shift;
         }
       }
-      frame->glyph[x] = ascii_stabilizer_choose(cell, samples, frame->glyph[x], best_error, previous_error,
-                                                frame->packed[x], frame->stabilizer->elapsed_ns, &frame->packed[x]);
+      cell->samples[0] = luma;
+      cell->glyph = frame->glyph[x] = glyph;
+      cell->color = frame->packed[x] = color;
+      cell->valid = true;
     }
     if (!frame->dithered && (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256))
       ops->quantize(frame->packed, frame->index, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
@@ -417,6 +443,24 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
     for (int i = 0; i < 95; ++i)
       allowed[i] = true;
   }
+  // Glyph masks do not change between cells. Prepare their tone and centered
+  // shape once per frame instead of recomputing them for every candidate.
+  int glyph_tone[95];
+  int glyph_energy[95];
+  int16_t centered_masks[95][16];
+  for (int g = 0; g < 95; ++g) {
+    int sum = 0;
+    for (int i = 0; i < 16; ++i)
+      sum += glyph_masks[g][i];
+    int mean = sum / 16;
+    glyph_tone[g] = sum * 255 / GLYPH_MASK_MAX_SUM;
+    glyph_energy[g] = 0;
+    for (int i = 0; i < 16; ++i) {
+      int centered = (int)glyph_masks[g][i] - mean;
+      centered_masks[g][i] = (int16_t)centered;
+      glyph_energy[g] += centered * centered;
+    }
+  }
   image_t cells = *image;
   cells.w /= 8;
   cells.h /= 8;
@@ -446,6 +490,13 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
       for (int i = 0; i < 16; ++i)
         sample_mean += luminance[i];
       sample_mean /= 16;
+      int16_t centered_samples[16];
+      int sample_energy = 0;
+      for (int i = 0; i < 16; ++i) {
+        int centered = luminance[i] - sample_mean;
+        centered_samples[i] = (int16_t)centered;
+        sample_energy += centered * centered;
+      }
       int best = -1;
       int64_t best_error = INT64_MAX;
       uint64_t previous_error = UINT64_MAX;
@@ -453,19 +504,20 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
       for (int g = 0; g < 95; ++g) {
         if (!allowed[g])
           continue;
-        int mask_sum = 0;
+        // Normalize glyph density and compare local deviations around each mean.
+        int tone_error = sample_mean - glyph_tone[g];
+        int tone_cost = 16 * tone_error * tone_error;
+        bool is_previous = previous && previous->valid && previous->glyph == (uint32_t)(g + 32);
+        // Shape error is nonnegative, so this candidate cannot improve the
+        // current best if its tone term already exceeds the whole score.
+        // The previous glyph still needs a score for temporal hysteresis.
+        if (!is_previous && tone_cost > best_error)
+          continue;
+        int dot = 0;
         for (int i = 0; i < 16; ++i)
-          mask_sum += glyph_masks[g][i];
-        int mask_mean = mask_sum / 16;
-        // Normalize the darkest and lightest available glyphs across the tone range.
-        // The second term compares local deviations, so edges influence the choice.
-        int tone_error = sample_mean - mask_sum * 255 / GLYPH_MASK_MAX_SUM;
-        int64_t error = (int64_t)16 * tone_error * tone_error;
-        for (int i = 0; i < 16; ++i) {
-          int delta = (luminance[i] - sample_mean) - ((int)glyph_masks[g][i] - mask_mean);
-          error += (int64_t)delta * delta;
-        }
-        if (previous && previous->valid && previous->glyph == (uint32_t)(g + 32))
+          dot += centered_samples[i] * centered_masks[g][i];
+        int64_t error = tone_cost + sample_energy + glyph_energy[g] - 2 * dot;
+        if (is_previous)
           previous_error = (uint64_t)error;
         if (error < best_error) {
           best_error = error;

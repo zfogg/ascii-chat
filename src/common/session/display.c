@@ -781,6 +781,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
     log_dev("DIGITAL_RAIN: Effect applied (%s)", rain_str);
   }
 
+  uint64_t validation_started_ns = time_get_ns();
   // Validate the completed local frame using the same policy as received text.
   // Wide palettes use the existing cell composer before the rectangular check.
   bool explicit_palette = caps_copy.palette_explicit;
@@ -809,6 +810,10 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
     }
   }
 
+  uint64_t validation_finished_ns = time_get_ns();
+  log_debug_every(US_PER_SEC_INT, "DISPLAY_STAGE: conversion_ms=%.2f validation_ms=%.2f",
+                  (double)(t_convert_end - t_convert_start) / NS_PER_MS_INT,
+                  (double)(validation_finished_ns - validation_started_ns) / NS_PER_MS_INT);
   uint64_t t_cleanup_start = time_get_ns();
   // Scratch images remain owned by the display until resize or teardown.
   if (ctx->render_file) {
@@ -895,6 +900,11 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 char *session_display_convert_to_ascii_reuse(session_display_ctx_t *ctx, const image_t *image) {
   ASCII_OTEL_SCOPE(SESSION_DISPLAY_CONVERT_TO_ASCII_REUSE);
   return convert_to_ascii(ctx, image, true);
+}
+
+void session_display_reset_stabilizer(session_display_ctx_t *ctx, bool recording) {
+  if (ctx)
+    ascii_stabilizer_reset(recording ? &ctx->recording_stabilizer : &ctx->stabilizer);
 }
 
 void session_display_release_ascii(session_display_ctx_t *ctx, char *ascii) {
@@ -1168,7 +1178,9 @@ asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const
   }
 
   // Convert image to ASCII
+  uint64_t conversion_started_ns = time_get_ns();
   char *ascii = session_display_convert_to_ascii(ctx, image);
+  uint64_t converted_ns = time_get_ns();
   if (!ascii) {
     log_warn("Failed to convert image to ASCII");
     return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot convert recording frame to ASCII");
@@ -1185,6 +1197,11 @@ asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const
 
   uint64_t stats_record_start = time_get_ns();
   asciichat_error_t fe = render_file_write_frame(ctx->render_file, render_frame, captured_ns);
+  uint64_t recorded_ns = time_get_ns();
+  log_debug_every(US_PER_SEC_INT, "RECORD_FRAME: convert_ms=%.2f output_ms=%.2f total_ms=%.2f",
+                  (double)(converted_ns - conversion_started_ns) / NS_PER_MS_INT,
+                  (double)(recorded_ns - converted_ns) / NS_PER_MS_INT,
+                  (double)(recorded_ns - conversion_started_ns) / NS_PER_MS_INT);
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_RECORDING, time_get_ns() - stats_record_start);
   if (fe == ASCIICHAT_OK)
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RECORDING_FRAMES, 1);

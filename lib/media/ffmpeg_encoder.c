@@ -18,11 +18,13 @@
 #include <ascii-chat/options/options.h>
 #include <string.h>
 #include <ascii-chat/util/stdout_writer.h>
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/abstraction.h>
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/opt.h>
+#include <libavutil/cpu.h>
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
 
@@ -482,7 +484,7 @@ static asciichat_error_t encoder_init_video_stream(ffmpeg_encoder_t *enc, const 
     log_debug("x265 preset=ultrafast crf=32");
   }
 
-  // Open codec (capture libx264 startup logs)
+  // Open codec (capture encoder startup logs).
   LOG_IO("ffmpeg", { ret = avcodec_open2(enc->codec_ctx, codec, &codec_opts); });
   av_dict_free(&codec_opts);
   if (ret < 0) {
@@ -565,10 +567,30 @@ static asciichat_error_t encoder_init_video_frames(ffmpeg_encoder_t *enc) {
     return SET_ERRNO(ERROR_INIT, "ffmpeg: av_frame_get_buffer failed");
   }
 
-  // Create SWS context for RGBA → target format conversion
+  // Large recordings otherwise convert millions of pixels on one thread.
+  // swscale owns its workers; small outputs avoid the synchronization cost.
+  int conversion_threads = av_cpu_count();
+  if (conversion_threads > 4)
+    conversion_threads = 4;
   LOG_IO("swscaler", {
-    enc->sws_ctx = sws_getContext(width_px, height_px, AV_PIX_FMT_RGBA, width_px, height_px, enc->target_pix_fmt,
-                                  SWS_BICUBIC, NULL, NULL, NULL);
+    if ((int64_t)width_px * height_px >= 1000000 && conversion_threads > 1) {
+      struct SwsContext *context = sws_alloc_context();
+      if (context) {
+        int configured = av_opt_set_int(context, "srcw", width_px, 0) | av_opt_set_int(context, "srch", height_px, 0) |
+                         av_opt_set_int(context, "dstw", width_px, 0) | av_opt_set_int(context, "dsth", height_px, 0) |
+                         av_opt_set_int(context, "src_format", AV_PIX_FMT_RGBA, 0) |
+                         av_opt_set_int(context, "dst_format", enc->target_pix_fmt, 0) |
+                         av_opt_set_int(context, "sws_flags", SWS_BICUBIC, 0) |
+                         av_opt_set_int(context, "threads", conversion_threads, 0);
+        if (configured >= 0 && sws_init_context(context, NULL, NULL) >= 0)
+          enc->sws_ctx = context;
+        else
+          sws_freeContext(context);
+      }
+    }
+    if (!enc->sws_ctx)
+      enc->sws_ctx = sws_getContext(width_px, height_px, AV_PIX_FMT_RGBA, width_px, height_px, enc->target_pix_fmt,
+                                    SWS_BICUBIC, NULL, NULL, NULL);
   });
   if (!enc->sws_ctx) {
     av_frame_free(&enc->frame);
@@ -788,10 +810,7 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
     log_debug("first frame captured at %llu ns", (unsigned long long)captured_ns);
   }
 
-  log_info("[FFMPEG_ENCODER_WRITE] frame %d, pitch=%d, dims=%dx%d", enc->frame_count, pitch, enc->width_px,
-           enc->height_px);
-  log_debug("frame %d, pitch=%d, dims=%dx%d, captured_ns=%llu", enc->frame_count, pitch, enc->width_px, enc->height_px,
-            (unsigned long long)captured_ns);
+  log_debug_every(5 * US_PER_SEC_INT, "Encoding frame %d, %dx%d", enc->frame_count, enc->width_px, enc->height_px);
 
   // Set up RGBA frame for conversion
   uint8_t *data[1] = {(uint8_t *)rgb};
@@ -802,8 +821,10 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   enc->frame_encoded->format = enc->target_pix_fmt;
 
   // Convert RGBA to target format
+  uint64_t conversion_started_ns = time_get_ns();
   sws_scale(enc->sws_ctx, (const uint8_t *const *)data, linesize, 0, enc->height_px, enc->frame_encoded->data,
             enc->frame_encoded->linesize);
+  uint64_t converted_ns = time_get_ns();
 
   // Set frame duration based on mode
   int64_t frame_duration;
@@ -879,12 +900,13 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   enc->video_pts += frame_duration;
 
   if (!snapshot_mode) {
-    log_debug("PTS calculation - elapsed_ns=%llu, pts_from_timestamp=%lld, fps=%d", (unsigned long long)elapsed_ns,
-              (long long)pts_from_timestamp, enc->fps);
+    log_debug_every(US_PER_SEC_INT, "PTS calculation - elapsed_ns=%llu, pts_from_timestamp=%lld, fps=%d",
+                    (unsigned long long)elapsed_ns, (long long)pts_from_timestamp, enc->fps);
   }
 
   // Send frame to encoder
   int ret = avcodec_send_frame(enc->codec_ctx, enc->frame_encoded);
+  uint64_t submitted_ns = time_get_ns();
   if (ret < 0) {
     return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot encode recording frame: %d", ret);
   }
@@ -929,9 +951,11 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
     }
 
     if (write_frame_pkt_count <= 2 || write_frame_pkt_count >= 16) {
-      log_debug("ffmpeg: write_frame pkt %d with final duration=%lld (%.6f sec in stream time_base), total frames=%d",
-                write_frame_pkt_count, (long long)enc->pkt->duration,
-                (double)enc->pkt->duration / enc->stream->time_base.den, enc->frame_count);
+      log_debug_every(
+          US_PER_SEC_INT,
+          "ffmpeg: write_frame pkt %d with final duration=%lld (%.6f sec in stream time_base), total frames=%d",
+          write_frame_pkt_count, (long long)enc->pkt->duration, (double)enc->pkt->duration / enc->stream->time_base.den,
+          enc->frame_count);
     }
 
     ret = av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
@@ -946,6 +970,11 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
     }
   }
 
+  uint64_t muxed_ns = time_get_ns();
+  log_debug_every(US_PER_SEC_INT, "ENCODER_STAGE: convert_ms=%.2f submit_ms=%.2f packets_ms=%.2f",
+                  (double)(converted_ns - conversion_started_ns) / NS_PER_MS_INT,
+                  (double)(submitted_ns - converted_ns) / NS_PER_MS_INT,
+                  (double)(muxed_ns - submitted_ns) / NS_PER_MS_INT);
   enc->frame_count++;
   return ASCIICHAT_OK;
 }

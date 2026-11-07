@@ -1590,6 +1590,12 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN AND CMAKE_BUILD_TYPE MAT
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
+    asciichat_add_python_test(render-file-sizing
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/render_file_sizing.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(render-file-sizing PROPERTIES LABELS "integration;media" TIMEOUT 180 SKIP_RETURN_CODE 77)
+endif()
+
+if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
     asciichat_add_python_test(remote-error-popup
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/remote_error_popup.py $<TARGET_FILE:ascii-chat>)
     set_tests_properties(remote-error-popup PROPERTIES LABELS "integration;tui;network"
@@ -2058,6 +2064,16 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_tests_properties(media-input PROPERTIES LABELS "unit" TIMEOUT 30)
     if(TARGET tests)
         add_dependencies(tests test-media-input)
+    endif()
+endif()
+
+if(BUILD_TESTS AND NOT EMSCRIPTEN)
+    add_executable(test-media-capture-pacing standalone/media/capture_pacing_test.c)
+    target_include_directories(test-media-capture-pacing PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
+    add_test(NAME media-capture-pacing COMMAND test-media-capture-pacing)
+    set_tests_properties(media-capture-pacing PROPERTIES LABELS "unit;media" TIMEOUT 10)
+    if(TARGET tests)
+        add_dependencies(tests test-media-capture-pacing)
     endif()
 endif()
 

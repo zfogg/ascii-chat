@@ -18,7 +18,8 @@ For mcp.ascii-chat.com, terminate HTTPS and enforce rate/body/concurrency limits
 
 - `render_file`: exactly one of `path` or `data_base64`, optional `mime_type`. A source may be omitted when options select synthetic test video/audio.
 - `render_url`: `url` for media supported by the CLI FFmpeg/yt-dlp resolver.
-- `device_list`: no arguments. Returns `video_devices` and `audio_devices` (microphones), each with `index`, `name`, and `is_default`, plus `default_video_device` and `default_audio_device` (null when absent). Webcam default is index 0; microphone default comes from the OS. Enumeration failures appear in `errors`, preserving devices discovered in the other category. Hidden with `--server`.- `render_webcam`: optional `video_device` (default 0), `audio_device` (-1 or omitted uses the system microphone), and `volume` (microphone gain, 0 to 1). Timed saved exports capture microphone audio unless `options.audio` is false. `options.test-pattern` uses synthetic video instead.
+- `device_list`: no arguments. Returns `video_devices` and `audio_devices` (microphones), each with `index`, `name`, and `is_default`, plus `default_video_device` and `default_audio_device` (null when absent). Webcam default is index 0; microphone default comes from the OS. Enumeration failures appear in `errors`, preserving devices discovered in the other category. Hidden with `--server`.
+- `render_webcam`: optional `video_device` (default 0), `audio_device` (-1 or omitted uses the system microphone), and `volume` (microphone gain, 0 to 1). Timed saved exports capture microphone audio unless `options.audio` is false. `options.test-pattern` uses synthetic video instead.
 - `render_visualization`: `visualization` is `waveform` or `fft`; optional `audio` selects `{ "type": "test" }` (default), `{ "type": "file", "path": "..." }`, `{ "type": "file", "data_base64": "...", "mime_type": "audio/wav" }`, `{ "type": "url", "url": "..." }`, or local `{ "type": "microphone" }` with top-level `audio_device: 0` and optional `volume` (0-1). Supplying `audio_device` or `volume` without an audio source selects microphone input. Both fields are unavailable with `--server`.
 
 Rendering tools accept `options`, `timeout_ms` (1000–60000, default 45000), and a local-only optional `output_path`.
@@ -47,7 +48,7 @@ Defaults are 100×40, monochrome, snapshot enabled with delay zero, splash and s
 
 ## Saved images and videos
 
-Set `options.render-font-size` (for example, 28) to increase the pixel size of images or videos; `width` and `height` set the character grid. Use `color-mode` for rendered colors, rather than the CLI diagnostic `color` option.
+Video output automatically chooses a font size to keep large recordings near 1280 pixels per side. Set `options.render-font-size` (for example, 28) to choose an explicit size; `width` and `height` set the character grid. Images retain the 12-point default. Use `color-mode` for rendered colors, rather than the CLI diagnostic `color` option.
 
 Set local `output_path` to an image/video filename. The existing render-file pipeline renders the ASCII grid into the encoded artifact, with format selected by extension. Parent directories must exist. The server stages the encoded artifact in a private directory beside the destination, then publishes with an atomic non-replacing hard link. Existing regular files, symlinks, and destinations won by concurrent writers are preserved. Filesystems without hard-link support return an error instead of falling back to an overwriting rename. Cancellation/failure removes staged artifacts; successful results contain absolute paths in `structuredContent.saved_files`.
 

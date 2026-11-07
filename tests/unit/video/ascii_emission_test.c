@@ -15,6 +15,7 @@
 #include <ascii-chat/video/ascii/scalar/halfblock.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <string.h>
+#include "../../../lib/video/ascii/glyph_masks.h"
 #if defined(ASCII_EMISSION_STANDALONE) && defined(__aarch64__)
 #include <sys/prctl.h>
 #endif
@@ -528,6 +529,95 @@ Test(ascii_emission, temporal_stabilization_reduces_threshold_flicker) {
   }
 }
 
+Test(ascii_emission, optimized_glyph_scoring_matches_reference) {
+  rgb_pixel_t pixels[64];
+  image_t image = {.w = 8, .h = 8, .pixels = pixels};
+  uint32_t rng = 1234567;
+  for (int sample = 0; sample < 500; ++sample) {
+    int sums[16] = {0};
+    for (int y = 0; y < 8; ++y) {
+      for (int x = 0; x < 8; ++x) {
+        rng = rng * 1664525u + 1013904223u;
+        uint8_t v = (uint8_t)(rng >> 24);
+        pixels[y * 8 + x] = (rgb_pixel_t){v, v, v};
+        sums[(y / 2) * 4 + x / 2] += v;
+      }
+    }
+    int luminance[16], mean = 0;
+    for (int i = 0; i < 16; ++i) {
+      // The renderer averages each channel before computing luminance.
+      int v = sums[i] / 4;
+      luminance[i] = (77 * v + 150 * v + 29 * v) >> 8;
+      mean += luminance[i];
+    }
+    mean /= 16;
+    int best = -1;
+    int64_t best_error = INT64_MAX;
+    for (int g = 0; g < 95; ++g) {
+      int mask_sum = 0;
+      for (int i = 0; i < 16; ++i)
+        mask_sum += glyph_masks[g][i];
+      int tone = mean - mask_sum * 255 / GLYPH_MASK_MAX_SUM;
+      int64_t error = (int64_t)16 * tone * tone;
+      for (int i = 0; i < 16; ++i) {
+        int delta = (luminance[i] - mean) - ((int)glyph_masks[g][i] - mask_sum / 16);
+        error += (int64_t)delta * delta;
+      }
+      if (error < best_error) {
+        best = g;
+        best_error = error;
+      }
+    }
+    char *output = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
+    cr_assert_not_null(output);
+    cr_assert_eq((unsigned char)output[0], (unsigned)(best + 32), "sample=%d", sample);
+    SAFE_FREE(output);
+  }
+}
+
+Test(ascii_emission, optimized_luminance_matches_generic_hysteresis) {
+  rgb_pixel_t pixel = {0};
+  image_t image = {.w = 1, .h = 1, .pixels = &pixel};
+  ascii_frame_t frame;
+  cr_assert_eq(ascii_frame_init(&frame, &image, " .#@"), ASCIICHAT_OK);
+  ascii_stabilizer_t state = {0};
+  cr_assert_eq(ascii_stabilizer_prepare(&state, 1, 1, 1), ASCIICHAT_OK);
+  state.elapsed_ns = 16666667;
+  ascii_stabilizer_t *prior = ascii_stabilizer_set_target(&state);
+  for (unsigned old = 0; old < 256; old += 3) {
+    for (unsigned current = 0; current < 256; current += 5) {
+      unsigned old_bin = old >> 2, bin = current >> 2;
+      ascii_temporal_cell_t reference = {.glyph = frame.table[old_bin], .color = 0x646464, .valid = true};
+      memset(reference.samples, old, sizeof(reference.samples));
+      state.cells[0] = reference;
+      uint64_t best = UINT64_MAX, previous = UINT64_MAX;
+      for (unsigned i = 0; i < 64; ++i) {
+        int delta = (int)current - ((int)i * 4 + 2);
+        uint64_t error = (uint64_t)(delta * delta);
+        if (frame.table[i] == frame.table[bin] && error < best)
+          best = error;
+        if (frame.table[i] == reference.glyph && error < previous)
+          previous = error;
+      }
+      uint8_t samples[16];
+      memset(samples, current, sizeof(samples));
+      uint32_t expected_color;
+      uint32_t expected = ascii_stabilizer_choose(&reference, samples, frame.table[bin], best, previous,
+                                                  current * 0x010101u, state.elapsed_ns, &expected_color);
+      pixel = (rgb_pixel_t){current, current, current};
+      char *output = ascii_render(&image, " .#@", ASCII_COLOR_TRUE, false, false, &simd_cells_scalar);
+      cr_assert_not_null(output);
+      cr_assert_eq(state.cells[0].glyph, expected, "old=%u current=%u", old, current);
+      cr_assert_eq(state.cells[0].color, expected_color, "old=%u current=%u", old, current);
+      SAFE_FREE(output);
+    }
+  }
+  ascii_stabilizer_set_target(prior);
+  char *frame_output = ascii_frame_finish(&frame);
+  SAFE_FREE(frame_output);
+  ascii_stabilizer_reset(&state);
+}
+
 Test(ascii_emission, temporal_first_frame_preserves_dithered_colors) {
   rgb_pixel_t pixels[16];
   for (int i = 0; i < 16; ++i)
@@ -649,6 +739,8 @@ int main(int argc, char **argv) {
   ascii_emission_rejects_invalid_input();
   ascii_emission_temporal_history_tracks_motion_and_configuration();
   ascii_emission_temporal_stabilization_reduces_threshold_flicker();
+  ascii_emission_optimized_glyph_scoring_matches_reference();
+  ascii_emission_optimized_luminance_matches_generic_hysteresis();
   ascii_emission_temporal_first_frame_preserves_dithered_colors();
   ascii_emission_capability_dispatch_preserves_background();
   ascii_emission_glyph_matching_uses_shape_and_rejects_invalid_sizes();

@@ -1,5 +1,5 @@
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/options/colorscheme.h>
-#include <ascii-chat/buffer.h>
 /**
  * @file media/render/renderer.c
  * @ingroup media
@@ -19,8 +19,11 @@
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/media/kitty/image.h>
 
+#define RENDER_AUTO_FONT_SIZE_PT 12.0
+#define RENDER_AUTO_VIDEO_MAX_DIMENSION 1280
+#define RENDER_AUTO_MIN_FONT_SIZE_PT 3.0
+
 struct render_file_ctx_s {
-  buffer_workspace_t pixels;
   render_progress_t *progress;
   asciichat_error_t error;
   terminal_renderer_t *renderer;
@@ -102,8 +105,25 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   log_debug("Font resolved: font_spec='%s', font_is_path=%d, font_data=%p (size=%zu)", font_spec, font_is_path,
             (void *)font_data, font_data_size);
 
-  // Use reasonable default font size for render-file quality
+  // A zero size selects a compact default for video; explicit font sizes keep
+  // their exact dimensions. Images and Kitty snapshots retain the 12 pt default.
   double font_size_pt = GET_OPTION(render_font_size);
+  const char *extension = strrchr(output_path, '.');
+  bool is_image =
+      extension && (!strcmp(extension, ".png") || !strcmp(extension, ".jpg") || !strcmp(extension, ".jpeg"));
+  bool automatic_video_size = font_size_pt == 0.0 && !is_image && !ctx->kitty;
+  if (font_size_pt == 0.0) {
+    font_size_pt = RENDER_AUTO_FONT_SIZE_PT;
+    if (automatic_video_size) {
+      double width_scale = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / ((double)cols * 10.0);
+      double height_scale = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / ((double)rows * 20.0);
+      double scale = width_scale < height_scale ? width_scale : height_scale;
+      if (scale < 1.0)
+        font_size_pt *= scale;
+      if (font_size_pt < RENDER_AUTO_MIN_FONT_SIZE_PT)
+        font_size_pt = RENDER_AUTO_MIN_FONT_SIZE_PT;
+    }
+  }
   term_renderer_theme_t resolved_theme = (term_renderer_theme_t)theme;
   if (resolved_theme == TERM_RENDERER_THEME_AUTO) {
     resolved_theme =
@@ -130,6 +150,36 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   }
   int actual_width_px = term_renderer_width_px(ctx->renderer);
   int actual_height_px = term_renderer_height_px(ctx->renderer);
+  // Hinting and font metrics vary. Recalculate once if the initial estimate
+  // exceeds the target, retaining the original renderer if a bitmap font
+  // cannot be scaled down.
+  if (automatic_video_size &&
+      (actual_width_px > RENDER_AUTO_VIDEO_MAX_DIMENSION || actual_height_px > RENDER_AUTO_VIDEO_MAX_DIMENSION) &&
+      font_size_pt > RENDER_AUTO_MIN_FONT_SIZE_PT) {
+    double width_scale = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / actual_width_px;
+    double height_scale = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / actual_height_px;
+    double scale = width_scale < height_scale ? width_scale : height_scale;
+    double smaller = font_size_pt * scale * 0.98;
+    if (smaller < RENDER_AUTO_MIN_FONT_SIZE_PT)
+      smaller = RENDER_AUTO_MIN_FONT_SIZE_PT;
+    tr_cfg.font_size_pt = smaller;
+    terminal_renderer_t *candidate = NULL;
+    if (term_renderer_create(&tr_cfg, &candidate) == ASCIICHAT_OK) {
+      int candidate_width = term_renderer_width_px(candidate);
+      int candidate_height = term_renderer_height_px(candidate);
+      if (candidate_width <= actual_width_px && candidate_height <= actual_height_px &&
+          (candidate_width < actual_width_px || candidate_height < actual_height_px)) {
+        term_renderer_destroy(ctx->renderer);
+        ctx->renderer = candidate;
+        actual_width_px = candidate_width;
+        actual_height_px = candidate_height;
+      } else {
+        term_renderer_destroy(candidate);
+      }
+    } else {
+      CLEAR_ERRNO();
+    }
+  }
   log_info("GRID DIMENSIONS: %ux%u cells -> PIXEL DIMENSIONS: %dx%d px", cols, rows, actual_width_px, actual_height_px);
   log_debug("term_renderer created (%dx%d cells, %dx%d px)", cols, rows, actual_width_px, actual_height_px);
 
@@ -189,8 +239,6 @@ void render_file_set_live_timing(render_file_ctx_t *ctx) {
 static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx, const char *ansi_frame,
                                                           uint64_t captured_ns) {
 
-  log_info("ctx=%p, captured_ns=%llu", (void *)ctx, (unsigned long long)captured_ns);
-
   if (!ctx) {
     log_warn("ctx is NULL");
     return ASCIICHAT_OK;
@@ -209,12 +257,9 @@ static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx
     if (frame_index <= ctx->last_frame_index)
       return ASCIICHAT_OK;
   }
-  log_info("processing frame (len=%zu)", frame_len);
-  if (frame_len > 0) {
-    log_info("  first 100 chars: %.100s", ansi_frame);
-  }
-
+  uint64_t render_started_ns = time_get_ns();
   asciichat_error_t err = term_renderer_feed(ctx->renderer, ansi_frame, frame_len);
+  uint64_t rasterized_ns = time_get_ns();
   if (err != ASCIICHAT_OK) {
     log_warn("term_renderer_feed failed: %s", asciichat_error_format(NULL, err));
     return err;
@@ -226,41 +271,17 @@ static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx
 
   const uint8_t *pixels = term_renderer_pixels(ctx->renderer);
   int pitch = term_renderer_pitch(ctx->renderer);
-  int width_px = term_renderer_width_px(ctx->renderer);
-  int height_px = term_renderer_height_px(ctx->renderer);
-
-  log_info("pixels=%p pitch=%d dims=%dx%d", (void *)pixels, pitch, width_px, height_px);
-
-  if (pixels) {
-    uint8_t sample_r = pixels[0], sample_g = pixels[1], sample_b = pixels[2], sample_a = pixels[3];
-    size_t mid_offset = (size_t)(height_px / 2) * (size_t)pitch + (size_t)(width_px / 2) * 4;
-    uint8_t sample_r_mid = pixels[mid_offset], sample_g_mid = pixels[mid_offset + 1],
-            sample_b_mid = pixels[mid_offset + 2], sample_a_mid = pixels[mid_offset + 3];
-
-    log_info("  pixel[0,0]: RGBA(%u,%u,%u,%u), pixel[%d,%d]: RGBA(%u,%u,%u,%u)", sample_r, sample_g, sample_b, sample_a,
-             width_px / 2, height_px / 2, sample_r_mid, sample_g_mid, sample_b_mid, sample_a_mid);
-  }
-
-  // term_renderer_pixels() returns a pointer to the renderer's internal buffer which gets
-  // overwritten on the next frame. We must copy the data before passing to the encoder.
-  uint8_t *pixels_copy = NULL;
-  if (pixels) {
-    size_t pixel_buffer_size = (size_t)pitch * (size_t)height_px;
-    err = buffer_workspace_reserve(&ctx->pixels, NULL, pixel_buffer_size);
-    if (err != ASCIICHAT_OK)
-      return err;
-    pixels_copy = ctx->pixels.data;
-    memcpy(pixels_copy, pixels, pixel_buffer_size);
-    log_info("copied %zu bytes of pixel data (was at %p, now at %p)", pixel_buffer_size, (void *)pixels,
-             (void *)pixels_copy);
-  }
-
-  err = ffmpeg_encoder_write_frame(ctx->encoder, pixels_copy, pitch, captured_ns);
+  // sws_scale consumes the renderer's pixels synchronously before returning.
+  // The renderer is owned by this encoder thread and is not updated until the
+  // next call, so copying the entire RGBA frame is unnecessary.
+  err = ffmpeg_encoder_write_frame(ctx->encoder, pixels, pitch, captured_ns);
+  uint64_t encoded_ns = time_get_ns();
+  log_debug_every(US_PER_SEC_INT, "RECORD_STAGE: raster_ms=%.2f encode_ms=%.2f bytes=%zu",
+                  (double)(rasterized_ns - render_started_ns) / NS_PER_MS_INT,
+                  (double)(encoded_ns - rasterized_ns) / NS_PER_MS_INT, frame_len);
   if (err != ASCIICHAT_OK) {
     log_warn("ffmpeg_encoder_write_frame failed: %s", asciichat_error_format(NULL, err));
   }
-
-  // The encoder consumes the view synchronously; retain storage for the next frame.
 
   if (err == ASCIICHAT_OK) {
     if (ctx->frames_written == 0) {
@@ -346,7 +367,6 @@ asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
                             term_renderer_height_px(ctx->renderer), term_renderer_pitch(ctx->renderer));
   ui_controller_title_render(err == ASCIICHAT_OK ? UI_TITLE_IDLE : UI_TITLE_FAILED);
   term_renderer_destroy(ctx->renderer);
-  buffer_workspace_destroy(&ctx->pixels);
   SAFE_FREE(ctx->audio_read_buf);
   SAFE_FREE(ctx);
   return err;
