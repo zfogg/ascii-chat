@@ -984,6 +984,13 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     append_base_if_valid(cwd_base, bases, &base_count);
   }
 
+#ifndef NDEBUG
+  // Debug builds select the source checkout as their default log directory,
+  // even when the process was launched from another working directory.
+  if (role == PATH_ROLE_LOG_FILE)
+    append_base_if_valid(ASCIICHAT_SOURCE_ROOT, bases, &base_count);
+#endif
+
   char temp_base[PLATFORM_MAX_PATH_LENGTH];
   if (platform_get_temp_dir(temp_base, sizeof(temp_base))) {
     append_base_if_valid(temp_base, bases, &base_count);

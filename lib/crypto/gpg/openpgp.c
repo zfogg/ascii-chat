@@ -587,7 +587,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   log_debug("Importing GPG key into temporary homedir");
   const char *argv_import[] = {"gpg", "--homedir", homedir_path, "--batch", "--import", input_path, NULL};
   int status = 0;
-  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_import, NULL, 0); });
+  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_import, NULL, 0, NULL, NULL); });
 
   // Clean up input file (no longer needed)
   platform_unlink(input_path);
@@ -603,7 +603,8 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   log_debug("Retrieving GPG key fingerprint");
   char fpr_output[CRYPTO_GPG_OPENPGP_FPR_OUTPUT_BUFFER_SIZE];
   const char *argv_list[] = {"gpg", "--homedir", homedir_path, "--batch", "--list-secret-keys", "--with-colons", NULL};
-  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_list, fpr_output, sizeof(fpr_output)); });
+  LOG_IO("gpg",
+         { status = platform_execute_subprocess("gpg", argv_list, fpr_output, sizeof(fpr_output), NULL, NULL); });
 
   if (status != 0) {
     platform_unlink(output_path);
@@ -675,7 +676,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
                                output_path,
                                key_fpr,
                                NULL};
-  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_export, NULL, 0); });
+  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_export, NULL, 0, NULL, NULL); });
 
   if (status != 0) {
     platform_unlink(output_path);

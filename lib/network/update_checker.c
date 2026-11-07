@@ -477,9 +477,9 @@ const char *update_check_get_aur_helper(void) {
   if (helper == -1) {
     const char *paru[] = {"paru", "--version", NULL};
     const char *yay[] = {"yay", "--version", NULL};
-    helper = platform_execute_subprocess("paru", paru, NULL, 0) == 0 ? 1
-             : platform_execute_subprocess("yay", yay, NULL, 0) == 0 ? 2
-                                                                     : 0;
+    helper = platform_execute_subprocess("paru", paru, NULL, 0, NULL, NULL) == 0 ? 1
+             : platform_execute_subprocess("yay", yay, NULL, 0, NULL, NULL) == 0 ? 2
+                                                                                 : 0;
   }
   return helper == 1 ? "paru" : helper == 2 ? "yay" : NULL;
 }

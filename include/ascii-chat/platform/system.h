@@ -678,7 +678,9 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
  * @param argv NULL-terminated array of arguments (argv[0] should be executable name or path)
  * @param output_buffer Optional buffer to store captured stdout (NULL to skip output capture)
  * @param output_size Size of output buffer (ignored if output_buffer is NULL)
- * @return Exit code of the process, or -1 on error
+ * @param cancel Optional callback to terminate the child and its descendants
+ * @param data Context passed to cancel
+ * @return Exit code of the process, or -1 on error or cancellation
  *
  * Executes a subprocess using platform-specific mechanisms:
  *   - POSIX: fork() + execvp(), with a pipe when capturing output
@@ -691,12 +693,12 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
  * @code
  * // No output capture
  * const char *argv[] = {"gpg", "--version", NULL};
- * int exit_code = platform_execute_subprocess("gpg", argv, NULL, 0);
+ * int exit_code = platform_execute_subprocess("gpg", argv, NULL, 0, NULL, NULL);
  *
  * // With output capture
  * char output[1024];
  * const char *argv[] = {"gpg", "--list-secret-keys", "--with-colons", NULL};
- * int exit_code = platform_execute_subprocess("gpg", argv, output, sizeof(output));
+ * int exit_code = platform_execute_subprocess("gpg", argv, output, sizeof(output), NULL, NULL);
  * if (exit_code == 0) {
  *     // Parse output (null-terminated)
  * }
@@ -710,7 +712,8 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
  *
  * @ingroup platform_system
  */
-int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size);
+int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size,
+                                bool (*cancel)(void *), void *data);
 
 // ============================================================================
 // I/O Functions

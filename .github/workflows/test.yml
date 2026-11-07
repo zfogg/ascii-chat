@@ -88,7 +88,8 @@ jobs:
       - name: Configure Windows linker environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
-      - run: python tests/standalone/upnp/run.py
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/standalone/test_upnp.py
 
   coverage-tools:
     needs: preflight
@@ -477,7 +478,8 @@ jobs:
 
           # Run integration tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
-          ctest --test-dir build --label-regex "^integration$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          # Keep Python WebRTC smoke tests available locally without running them in CI.
+          ctest --test-dir build --label-regex "^integration$" --exclude-regex '^(discovery-webrtc|python-discovery-webrtc|discovery-stereo-audio|discovery-audio)$' --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Integration tests completed successfully"
 

@@ -768,6 +768,12 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
 }
 
 ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*cancel)(void *), void *data) {
+  return ffmpeg_decoder_create_with_request_options(path, cancel, data, NULL, NULL, NULL);
+}
+
+ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, bool (*cancel)(void *), void *data,
+                                                             const char *headers, const char *cookies,
+                                                             const char *proxy) {
   ASCII_OTEL_SCOPE(FFMPEG_DECODER_CREATE_INTERRUPTIBLE);
   if (!path) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Path is NULL");
@@ -817,6 +823,12 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
     errno_scope_end(url_scope, ASCIICHAT_ERRNO_DISMISSED);
     // For HTTP/HTTPS streams: enable fast probing and reconnection.
     if (is_url) {
+      if (headers && *headers)
+        av_dict_set(&options, "headers", headers, 0);
+      if (cookies && *cookies)
+        av_dict_set(&options, "cookies", cookies, 0);
+      if (proxy)
+        av_dict_set(&options, "http_proxy", proxy, 0);
       // Limit probing to 32KB for faster format detection
       av_dict_set(&options, "probesize", "32768", 0);
       // Analyze for 100ms max to determine streams quickly

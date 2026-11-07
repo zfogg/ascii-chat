@@ -11,6 +11,7 @@
 
 #ifndef _WIN32
 
+#include "terminal.h"
 #include <ascii-chat/otel.h>
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/platform/terminal.h>
@@ -29,6 +30,7 @@
 #include <ascii-chat/platform/backtrace.h>
 #include <ascii-chat/options/options.h> // For options_get()
 #include <unistd.h>
+#include <poll.h>
 #include <fcntl.h>
 #include <string.h>
 #include <strings.h>
@@ -37,6 +39,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <termios.h>
 // execinfo.h provides backtrace functions - available in glibc
 // For musl, libexecinfo provides it but may not be available during compile
 #ifndef USE_MUSL
@@ -1132,7 +1135,58 @@ asciichat_error_t platform_restore_timer_resolution(void) {
 /**
  * Execute a subprocess using fork+exec (POSIX implementation)
  */
-int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size) {
+// Serialize foreground ownership checks and changes across concurrent loaders.
+static pthread_mutex_t subprocess_terminal_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pid_t subprocess_terminal_owner = -1;
+
+void terminal_input_lock(void) {
+  pthread_mutex_lock(&subprocess_terminal_mutex);
+}
+
+bool terminal_input_trylock(void) {
+  return pthread_mutex_trylock(&subprocess_terminal_mutex) == 0;
+}
+
+void terminal_input_unlock(void) {
+  pthread_mutex_unlock(&subprocess_terminal_mutex);
+}
+
+static int subprocess_set_foreground(int fd, pid_t group) {
+  sigset_t block, previous;
+  sigemptyset(&block);
+  sigaddset(&block, SIGTTOU);
+  if (pthread_sigmask(SIG_BLOCK, &block, &previous) != 0)
+    return -1;
+  int result = tcsetpgrp(fd, group);
+  pthread_sigmask(SIG_SETMASK, &previous, NULL);
+  return result;
+}
+
+// A child may exit before its start gate is released. Do not let a broken
+// gate deliver SIGPIPE to the application, and preserve any pre-existing one.
+bool terminal_release_subprocess_gate(int fd) {
+  sigset_t blocked, previous, pending;
+  sigemptyset(&blocked);
+  sigaddset(&blocked, SIGPIPE);
+  if (pthread_sigmask(SIG_BLOCK, &blocked, &previous) != 0)
+    return false;
+  sigpending(&pending);
+  bool already_pending = sigismember(&pending, SIGPIPE) == 1;
+  ssize_t written;
+  do {
+    written = write(fd, "x", 1);
+  } while (written < 0 && errno == EINTR);
+  if (written < 0 && errno == EPIPE && !already_pending && sigpending(&pending) == 0 &&
+      sigismember(&pending, SIGPIPE) == 1) {
+    int received;
+    sigwait(&blocked, &received);
+  }
+  pthread_sigmask(SIG_SETMASK, &previous, NULL);
+  return written == 1;
+}
+
+int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size,
+                                bool (*cancel)(void *), void *data) {
   if (!executable || !argv || !argv[0]) {
     log_error("Invalid subprocess parameters");
     return -1;
@@ -1149,16 +1203,59 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
       return -1;
     }
   }
+  int tty = cancel ? open("/dev/tty", O_RDWR | O_CLOEXEC) : -1;
+  int start_pipe[2] = {-1, -1};
+  bool gate_open = false;
+  if (tty >= 0 && isatty(STDIN_FILENO)) {
+    pthread_mutex_lock(&subprocess_terminal_mutex);
+    pid_t foreground = tcgetpgrp(tty);
+    gate_open = foreground == getpgrp() || (subprocess_terminal_owner > 0 && foreground == subprocess_terminal_owner);
+    pthread_mutex_unlock(&subprocess_terminal_mutex);
+  }
+  if (gate_open && (pipe(start_pipe) != 0 || fcntl(start_pipe[0], F_SETFD, FD_CLOEXEC) < 0 ||
+                    fcntl(start_pipe[1], F_SETFD, FD_CLOEXEC) < 0)) {
+    if (start_pipe[0] >= 0)
+      close(start_pipe[0]);
+    if (start_pipe[1] >= 0)
+      close(start_pipe[1]);
+    if (capture) {
+      close(output_pipe[0]);
+      close(output_pipe[1]);
+    }
+    close(tty);
+    return -1;
+  }
   pid_t pid = fork();
   if (pid < 0) {
     if (capture) {
       close(output_pipe[0]);
       close(output_pipe[1]);
     }
+    if (gate_open) {
+      close(start_pipe[0]);
+      close(start_pipe[1]);
+    }
+    if (tty >= 0)
+      close(tty);
     log_error("Failed to fork process: %s", SAFE_STRERROR(errno));
     return -1;
   }
   if (pid == 0) {
+    if (tty >= 0)
+      close(tty);
+    if (cancel && setpgid(0, 0) != 0)
+      _exit(126);
+    if (gate_open) {
+      close(start_pipe[1]);
+      char ignored;
+      ssize_t count;
+      do {
+        count = read(start_pipe[0], &ignored, 1);
+      } while (count < 0 && errno == EINTR);
+      close(start_pipe[0]);
+      if (count != 1)
+        _exit(126);
+    }
     if (capture) {
       close(output_pipe[0]);
       if (output_pipe[1] == STDOUT_FILENO) {
@@ -1174,38 +1271,168 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
     execvp(executable, (char *const *)argv);
     _exit(127);
   }
+  if (cancel)
+    (void)setpgid(pid, pid);
+  if (gate_open)
+    close(start_pipe[0]);
   bool capture_failed = false;
-  if (capture) {
-    close(output_pipe[1]);
-    size_t position = 0;
-    char chunk[PLATFORM_POSIX_SYSTEM_CHUNK_BUFFER_SIZE];
-    for (;;) {
-      ssize_t count = read(output_pipe[0], chunk, sizeof(chunk));
-      if (count < 0 && errno == EINTR)
-        continue;
-      if (count <= 0) {
-        if (count < 0)
-          capture_failed = true;
-        break;
-      }
-      size_t available = output_size - 1 - position;
-      size_t copied = (size_t)count < available ? (size_t)count : available;
-      memcpy(output_buffer + position, chunk, copied);
-      position += copied;
-      if ((size_t)count > available)
-        capture_failed = true;
-      // Drain excess output so a full pipe cannot deadlock the child during wait.
-    }
-    output_buffer[position] = '\0';
-    close(output_pipe[0]);
-  }
+  bool wait_failed = false;
+  bool cancelled = false;
+  size_t position = 0;
   int status = 0;
-  pid_t waited;
-  do {
-    waited = waitpid(pid, &status, 0);
-  } while (waited < 0 && errno == EINTR);
-  if (waited < 0 || capture_failed)
-    return -1;
-  return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+  bool exited = false;
+  bool pipe_open = capture;
+  bool terminal_stopped = false;
+  bool terminal_owned = false;
+  struct termios terminal_attributes;
+  bool have_terminal_attributes = false;
+  if (capture)
+    close(output_pipe[1]);
+  while (!exited || pipe_open) {
+    if (cancel && cancel(data)) {
+      cancelled = true;
+      kill(-pid, SIGKILL);
+      if (!exited) {
+        kill(pid, SIGKILL);
+        siginfo_t info = {0};
+        int waited;
+        do {
+          waited = waitid(P_PID, (id_t)pid, &info, WEXITED | WNOWAIT);
+        } while (waited < 0 && errno == EINTR);
+        wait_failed = waited < 0;
+      }
+      if (pipe_open)
+        close(output_pipe[0]);
+      if (gate_open) {
+        close(start_pipe[1]);
+        gate_open = false;
+      }
+      if (capture)
+        output_buffer[position] = '\0';
+      break;
+    }
+    if (pipe_open) {
+      struct pollfd fd = {.fd = output_pipe[0], .events = POLLIN | POLLHUP};
+      int ready = poll(&fd, 1, 50);
+      if (ready < 0 && errno != EINTR) {
+        capture_failed = true;
+        close(output_pipe[0]);
+        pipe_open = false;
+      } else if (ready > 0) {
+        char chunk[PLATFORM_POSIX_SYSTEM_CHUNK_BUFFER_SIZE];
+        ssize_t count = read(output_pipe[0], chunk, sizeof(chunk));
+        if (count > 0) {
+          size_t available = output_size - 1 - position;
+          size_t copied = (size_t)count < available ? (size_t)count : available;
+          memcpy(output_buffer + position, chunk, copied);
+          position += copied;
+          if ((size_t)count > available)
+            capture_failed = true;
+        } else if (count == 0 || errno != EINTR) {
+          if (count < 0)
+            capture_failed = true;
+          close(output_pipe[0]);
+          pipe_open = false;
+        }
+      }
+    } else if (!exited) {
+      poll(NULL, 0, 50);
+    }
+    if (!exited) {
+      siginfo_t info = {0};
+      int waited = waitid(P_PID, (id_t)pid, &info, WEXITED | WSTOPPED | WNOHANG | WNOWAIT);
+      if (waited == 0 && info.si_pid == pid) {
+        if (info.si_code == CLD_STOPPED) {
+          // Consume stop notifications so the next wait can observe exit.
+          siginfo_t stopped = {0};
+          (void)waitid(P_PID, (id_t)pid, &stopped, WSTOPPED | WNOHANG);
+          if (info.si_status == SIGTTIN && tty >= 0)
+            terminal_stopped = true;
+          else {
+            // A stopped foreground child otherwise blocks the TUI indefinitely.
+            capture_failed = true;
+            kill(-pid, SIGKILL);
+            kill(pid, SIGKILL);
+          }
+        } else {
+          exited = true;
+        }
+      } else if (waited < 0 && errno != EINTR) {
+        exited = true;
+        capture_failed = true;
+        wait_failed = true;
+      }
+    }
+    if ((gate_open || terminal_stopped) && !exited) {
+      pthread_mutex_lock(&subprocess_terminal_mutex);
+      pid_t foreground = tcgetpgrp(tty);
+      if (terminal_stopped && terminal_owned && foreground == pid) {
+        terminal_stopped = false;
+        kill(-pid, SIGCONT);
+      } else if (foreground == getpgrp()) {
+        have_terminal_attributes = tcgetattr(tty, &terminal_attributes) == 0;
+        // The application still renders while the child owns input. Prevent a
+        // terminal configured with TOSTOP from suspending those writes.
+        bool cleared_tostop = false;
+        if (have_terminal_attributes && (terminal_attributes.c_lflag & TOSTOP)) {
+          struct termios foreground_attributes = terminal_attributes;
+          foreground_attributes.c_lflag &= ~(tcflag_t)TOSTOP;
+          cleared_tostop = tcsetattr(tty, TCSANOW, &foreground_attributes) == 0;
+        }
+        if (have_terminal_attributes && (!(terminal_attributes.c_lflag & TOSTOP) || cleared_tostop) &&
+            subprocess_set_foreground(tty, pid) == 0) {
+          terminal_owned = true;
+          subprocess_terminal_owner = pid;
+          if (gate_open) {
+            bool released = terminal_release_subprocess_gate(start_pipe[1]);
+            close(start_pipe[1]);
+            gate_open = false;
+            if (!released) {
+              capture_failed = true;
+              kill(-pid, SIGKILL);
+            }
+          }
+          if (terminal_stopped) {
+            terminal_stopped = false;
+            kill(-pid, SIGCONT);
+          }
+        } else {
+          if (cleared_tostop)
+            tcsetattr(tty, TCSANOW, &terminal_attributes);
+          capture_failed = true;
+          kill(-pid, SIGKILL);
+          if (gate_open) {
+            close(start_pipe[1]);
+            gate_open = false;
+          }
+          terminal_stopped = false;
+        }
+      }
+      pthread_mutex_unlock(&subprocess_terminal_mutex);
+    }
+  }
+  if (capture)
+    output_buffer[position] = '\0';
+  if (gate_open)
+    close(start_pipe[1]);
+  if (terminal_owned) {
+    pthread_mutex_lock(&subprocess_terminal_mutex);
+    if (tcgetpgrp(tty) == pid && subprocess_set_foreground(tty, getpgrp()) == 0 && have_terminal_attributes)
+      tcsetattr(tty, TCSANOW, &terminal_attributes);
+    if (subprocess_terminal_owner == pid)
+      subprocess_terminal_owner = -1;
+    pthread_mutex_unlock(&subprocess_terminal_mutex);
+  }
+  if (tty >= 0)
+    close(tty);
+  if (!wait_failed) {
+    pid_t waited;
+    do {
+      waited = waitpid(pid, &status, 0);
+    } while (waited < 0 && errno == EINTR);
+    if (waited != pid)
+      wait_failed = true;
+  }
+  return !cancelled && !capture_failed && !wait_failed && WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
 #endif // !_WIN32

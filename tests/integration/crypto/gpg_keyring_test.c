@@ -28,9 +28,9 @@ static void generate_key(unsigned int sequence) {
                             "sign",
                             "0",
                             NULL};
-  cr_assert_eq(platform_execute_subprocess("gpg", generate, NULL, 0), 0);
+  cr_assert_eq(platform_execute_subprocess("gpg", generate, NULL, 0, NULL, NULL), 0);
   const char *list[] = {"gpg", "--with-colons", "--list-keys", identity, NULL};
-  cr_assert_eq(platform_execute_subprocess("gpg", list, output, sizeof(output)), 0);
+  cr_assert_eq(platform_execute_subprocess("gpg", list, output, sizeof(output), NULL, NULL), 0);
   char *field = strstr(output, "fpr:");
   cr_assert_not_null(field);
   for (int i = 0; i < 9; ++i) {
@@ -45,7 +45,7 @@ static void generate_key(unsigned int sequence) {
 static void setup(void) {
   const char *version[] = {"gpg", "--version", NULL};
   char output[8192];
-  if (platform_execute_subprocess("gpg", version, output, sizeof(output)) != 0)
+  if (platform_execute_subprocess("gpg", version, output, sizeof(output), NULL, NULL) != 0)
     cr_skip_test("GnuPG is required for isolated keyring integration");
   cr_assert_eq(platform_mkdtemp(home, sizeof(home), "ascii-gpg-test"), ASCIICHAT_OK);
   cr_assert_eq(platform_setenv("GNUPGHOME", home), 0);
@@ -55,7 +55,7 @@ static void setup(void) {
 static void teardown(void) {
   if (home[0]) {
     const char *stop[] = {"gpgconf", "--kill", "all", NULL};
-    platform_execute_subprocess("gpgconf", stop, NULL, 0);
+    platform_execute_subprocess("gpgconf", stop, NULL, 0, NULL, NULL);
     platform_unsetenv("GNUPGHOME");
     platform_rmdir_recursive(home);
     home[0] = 0;
@@ -72,7 +72,7 @@ Test(gpg_keyring, exported_public_and_private_packets_reconstruct_the_same_ed255
     if (attempt)
       generate_key(attempt);
     const char *public_args[] = {"gpg", "--armor", "--export", fingerprint, NULL};
-    cr_assert_eq(platform_execute_subprocess("gpg", public_args, armor, sizeof(armor)), 0);
+    cr_assert_eq(platform_execute_subprocess("gpg", public_args, armor, sizeof(armor), NULL, NULL), 0);
     cr_assert_eq(openpgp_parse_armored_pubkey(armor, armored_public), ASCIICHAT_OK);
     for (size_t i = 0; i < sizeof(armored_public); ++i)
       escaped |= armored_public[i] == '%' || armored_public[i] == '\r' || armored_public[i] == '\n';
@@ -82,7 +82,7 @@ Test(gpg_keyring, exported_public_and_private_packets_reconstruct_the_same_ed255
   cr_assert_eq(strlen(grip), 40);
   cr_assert_arr_eq(exported, armored_public, 32);
   const char *private_args[] = {"gpg", "--batch", "--armor", "--export-secret-keys", fingerprint, NULL};
-  cr_assert_eq(platform_execute_subprocess("gpg", private_args, armor, sizeof(armor)), 0);
+  cr_assert_eq(platform_execute_subprocess("gpg", private_args, armor, sizeof(armor), NULL, NULL), 0);
   cr_assert_eq(openpgp_parse_armored_seckey(armor, private_public, seed), ASCIICHAT_OK);
   cr_assert_arr_eq(private_public, exported, 32);
   cr_assert_eq(crypto_sign_seed_keypair(regenerated, secret, seed), 0);
@@ -110,12 +110,12 @@ Test(gpg_keyring, native_detached_signature_is_accepted_by_gnupg_and_tampering_i
   platform_close(message_fd);
   platform_close(signature_fd);
   const char *verify[] = {"gpg", "--batch", "--verify", signature_path, message_path, NULL};
-  cr_assert_eq(platform_execute_subprocess("gpg", verify, NULL, 0), 0);
+  cr_assert_eq(platform_execute_subprocess("gpg", verify, NULL, 0, NULL, NULL), 0);
   FILE *file = platform_fopen("tamper-fixture", message_path, "wb");
   cr_assert_not_null(file);
   cr_assert_eq(fwrite("tampered", 1, 8, file), 8);
   fclose(file);
-  cr_assert_neq(platform_execute_subprocess("gpg", verify, NULL, 0), 0);
+  cr_assert_neq(platform_execute_subprocess("gpg", verify, NULL, 0, NULL, NULL), 0);
   cr_assert_eq(gpg_sign_detached_ed25519(fingerprint, message, sizeof(message) - 1, raw), 0);
   cr_assert_not(sodium_is_zero(raw, sizeof(raw)));
   platform_delete_temp_file(message_path);

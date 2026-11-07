@@ -328,7 +328,13 @@ static void stats_media_end(void) {
 
 static size_t write_output_chunk(int fd, const void *data, size_t length) {
   uint64_t started_ns = g_stats_media ? time_get_ns() : 0;
+  // A presentation write must not split an image protocol packet emitted by
+  // another thread. Non-owner logging must remain nonblocking here.
+  if (g_owner)
+    ui_controller_packet_begin();
   size_t written = platform_write_all(fd, data, length);
+  if (g_owner)
+    ui_controller_packet_end();
   if (g_stats_media) {
     uint64_t elapsed_ns = time_get_ns() - started_ns;
     if (elapsed_ns > g_stats_max_chunk_ns)

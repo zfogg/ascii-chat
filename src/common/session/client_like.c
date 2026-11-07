@@ -197,7 +197,17 @@ static asciichat_error_t client_like_setup_keepawake(void) {
 
   // Enable keepawake unless explicitly disabled
   if (!disable_ka) {
-    (void)platform_enable_keepawake();
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    bool suppressed = errno_notifications_suppress(true);
+    asciichat_error_t keepawake_result = platform_enable_keepawake();
+    errno_notifications_suppress(suppressed);
+    if (keepawake_result != ASCIICHAT_OK) {
+      if (enable_ka)
+        log_warn("Unable to inhibit system sleep: %s", asciichat_error_string(keepawake_result));
+      else
+        log_debug("Unable to inhibit system sleep: %s", asciichat_error_string(keepawake_result));
+    }
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
 
   return ASCIICHAT_OK;
@@ -326,7 +336,8 @@ static uint32_t client_like_select_capture_fps(client_like_state_t *state) {
   if (state->capture_config.type == MEDIA_SOURCE_FILE || state->capture_config.type == MEDIA_SOURCE_STDIN) {
     log_debug("Probing media source FPS");
     asciichat_errno_scope_t probe_scope = errno_scope_begin();
-    state->probe_source = media_source_create(state->capture_config.type, state->capture_config.path);
+    state->probe_source = media_source_create_interruptible(state->capture_config.type, state->capture_config.path,
+                                                            client_like_capture_should_exit_adapter, NULL);
     if (state->probe_source) {
       ASSERT_NO_ERRNO_SINCE(probe_scope);
       errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);

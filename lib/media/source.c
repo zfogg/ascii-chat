@@ -153,13 +153,18 @@ static bool url_is_direct_stream(const char *url) {
  * @brief Resolve URL to playable stream URL using smart routing
  */
 static asciichat_error_t media_source_resolve_url(const char *url, const char *yt_dlp_options, char *output_url,
-                                                  size_t output_size, char *audio_url, size_t audio_size) {
+                                                  size_t output_size, char *audio_url, size_t audio_size,
+                                                  yt_dlp_request_options_t *video_request,
+                                                  yt_dlp_request_options_t *audio_request, bool (*cancel)(void *),
+                                                  void *data) {
   ASCII_OTEL_SCOPE(MEDIA_SOURCE_RESOLVE_URL);
   if (!url || !output_url || output_size < 256 || !audio_url || audio_size < 256) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for URL resolution");
     return ERROR_INVALID_PARAM;
   }
   audio_url[0] = '\0';
+  memset(video_request, 0, sizeof(*video_request));
+  memset(audio_request, 0, sizeof(*audio_request));
 
   // Local paths and native FFmpeg protocols never need site extraction.
   bool is_site = platform_strncasecmp(url, "http://", sizeof("http://") - 1) == 0 ||
@@ -179,14 +184,20 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
 
   // Try yt-dlp extraction (for complex sites like YouTube, Twitch, etc.)
   asciichat_errno_scope_t extraction_scope = errno_scope_begin();
-  asciichat_error_t yt_dlp_result =
-      yt_dlp_extract_stream_urls(url, yt_dlp_options, output_url, output_size, audio_url, audio_size);
+  asciichat_error_t yt_dlp_result = yt_dlp_extract_with_options(url, yt_dlp_options, output_url, output_size, audio_url,
+                                                                audio_size, video_request, audio_request, cancel, data);
   errno_scope_end(extraction_scope, ASCIICHAT_ERRNO_HANDLED);
   if (yt_dlp_result == ASCIICHAT_OK) {
     log_debug("yt-dlp successfully extracted stream URL");
     return ASCIICHAT_OK;
   }
+  if (yt_dlp_result == ERROR_NOT_SUPPORTED)
+    return SET_ERRNO(ERROR_NOT_SUPPORTED, "The selected yt-dlp proxy cannot be used for media requests");
+  if (yt_dlp_result == ERROR_INVALID_PARAM)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid yt-dlp options");
   audio_url[0] = '\0';
+  video_request->headers[0] = video_request->cookies[0] = '\0';
+  audio_request->headers[0] = audio_request->cookies[0] = '\0';
 
   log_debug("URL extraction failed; trying the native decoder");
 
@@ -283,11 +294,13 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     const char *effective_path = path;
     char resolved_url[MEDIA_STREAM_URL_SIZE] = {0};
     char resolved_audio_url[MEDIA_STREAM_URL_SIZE] = {0};
+    yt_dlp_request_options_t video_request = {0}, audio_request = {0};
     const char *yt_dlp_options = GET_OPTION(yt_dlp_options);
 
     log_debug("Resolving URL: %s", path);
-    asciichat_error_t resolve_err = media_source_resolve_url(path, yt_dlp_options, resolved_url, sizeof(resolved_url),
-                                                             resolved_audio_url, sizeof(resolved_audio_url));
+    asciichat_error_t resolve_err =
+        media_source_resolve_url(path, yt_dlp_options, resolved_url, sizeof(resolved_url), resolved_audio_url,
+                                 sizeof(resolved_audio_url), &video_request, &audio_request, cancel, data);
     if (resolve_err != ASCIICHAT_OK) {
       log_debug("Failed to resolve URL %s", asciichat_error_format(NULL, resolve_err));
       // Destroy mutexes before freeing source
@@ -323,7 +336,9 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     // Always use separate decoders for video and audio
     // This allows independent read rates and avoids lock contention
     asciichat_errno_scope_t decoder_scope = errno_checkpoint();
-    source->video_decoder = ffmpeg_decoder_create_interruptible(effective_path, cancel, data);
+    source->video_decoder = ffmpeg_decoder_create_with_request_options(
+        effective_path, cancel, data, video_request.headers, video_request.cookies,
+        video_request.proxy_specified ? video_request.proxy : NULL);
     if (!source->video_decoder) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: video decoder could not open input");
       if (!cancel)
@@ -340,27 +355,12 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
 
     ASSERT_NO_ERRNO_SINCE(decoder_scope);
 
-    // Start prefetch only when a video stream exists.
-    // This thread continuously reads frames into a buffer so the render loop never blocks
-    asciichat_errno_scope_t prefetch_scope = errno_scope_begin();
-    asciichat_error_t prefetch_err = ffmpeg_decoder_has_video(source->video_decoder)
-                                         ? ffmpeg_decoder_start_prefetch(source->video_decoder)
-                                         : ASCIICHAT_OK;
-    if (prefetch_err != ASCIICHAT_OK) {
-      log_error("Failed to start video prefetch thread: %s", asciichat_error_format(NULL, prefetch_err));
-      ffmpeg_decoder_destroy(source->video_decoder);
-      SAFE_FREE(source->file_path);
-      SAFE_FREE(source->original_youtube_url);
-      mutex_destroy(&source->decoder_mutex);
-      SAFE_FREE(source);
-      return NULL;
-    }
-
-    ASSERT_NO_ERRNO_SINCE(prefetch_scope);
-    errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
     decoder_scope = errno_checkpoint();
     const char *audio_path = resolved_audio_url[0] ? resolved_audio_url : effective_path;
-    source->audio_decoder = ffmpeg_decoder_create_interruptible(audio_path, cancel, data);
+    const yt_dlp_request_options_t *audio_settings = resolved_audio_url[0] ? &audio_request : &video_request;
+    source->audio_decoder = ffmpeg_decoder_create_with_request_options(
+        audio_path, cancel, data, audio_settings->headers, audio_settings->cookies,
+        audio_settings->proxy_specified ? audio_settings->proxy : NULL);
     if (!source->audio_decoder) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: audio decoder could not open input");
       LOG_ERRNO_IF_SET("Media initialization failed");
@@ -376,6 +376,31 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     source->is_shared_decoder = false;
 
     ASSERT_NO_ERRNO_SINCE(decoder_scope);
+    // yt-dlp emits selected formats in selector order, which may be audio first.
+    if (resolved_audio_url[0] && !ffmpeg_decoder_has_video(source->video_decoder) &&
+        ffmpeg_decoder_has_video(source->audio_decoder) && ffmpeg_decoder_has_audio(source->video_decoder)) {
+      ffmpeg_decoder_t *audio = source->video_decoder;
+      source->video_decoder = source->audio_decoder;
+      source->audio_decoder = audio;
+    }
+
+    // Start prefetch after choosing the decoder that actually contains video.
+    asciichat_errno_scope_t prefetch_scope = errno_scope_begin();
+    asciichat_error_t prefetch_err = ffmpeg_decoder_has_video(source->video_decoder)
+                                         ? ffmpeg_decoder_start_prefetch(source->video_decoder)
+                                         : ASCIICHAT_OK;
+    if (prefetch_err != ASCIICHAT_OK) {
+      log_error("Failed to start video prefetch thread: %s", asciichat_error_format(NULL, prefetch_err));
+      ffmpeg_decoder_destroy(source->video_decoder);
+      ffmpeg_decoder_destroy(source->audio_decoder);
+      SAFE_FREE(source->file_path);
+      SAFE_FREE(source->original_youtube_url);
+      mutex_destroy(&source->decoder_mutex);
+      SAFE_FREE(source);
+      return NULL;
+    }
+    ASSERT_NO_ERRNO_SINCE(prefetch_scope);
+    errno_scope_end(prefetch_scope, ASCIICHAT_ERRNO_HANDLED);
     // Both decoders succeeded: failed extraction/prefetch attempts are resolved.
     errno_scope_end(media_scope, ASCIICHAT_ERRNO_DISMISSED);
     ASSERT_NO_ERRNO_SINCE(media_scope);

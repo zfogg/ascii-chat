@@ -4,8 +4,9 @@ from types import SimpleNamespace
 #!/usr/bin/env python3
 """Real mDNS advertisements, terminal navigation, and same-address reconnect.
 
-Run with a native binary and pyte/pexpect (pywinpty on Windows). --artifacts
-captures terminal cells and raw ANSI externally; Pillow adds PNG captures.
+Run with pytest and --ascii-chat-binary build/bin/ascii-chat after building
+test-mdns-advertiser in the same bin directory. pytest captures terminal cells,
+raw ANSI, and PNGs in its temporary artifacts directory.
 """
 
 from ascii_chat_tests.cli import cli_command
@@ -15,6 +16,7 @@ from pathlib import Path
 import re
 import shutil
 import socket
+import subprocess
 import sys
 import tempfile
 import time
@@ -45,7 +47,7 @@ from ascii_chat_tests.terminal import capture_mdns as capture
 
 
 def test_mdns_terminal(binary, tmp_path, monkeypatch):
-    args = SimpleNamespace(artifacts=tmp_path)
+    args = SimpleNamespace(artifacts=tmp_path, advertiser=binary.parent / ("test-mdns-advertiser.exe" if os.name == "nt" else "test-mdns-advertiser"))
     with tempfile.TemporaryDirectory(prefix="ascii-mdns-") as temporary:
         root = Path(temporary)
         for key in list(os.environ):
@@ -53,16 +55,19 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
                 monkeypatch.delenv(key, raising=False)
         for key, value in dict(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root),
                                XDG_CONFIG_HOME=str(root), TERM="xterm-256color",
+                               ASCII_CHAT_DISABLE_FIRST_USE="1",
                                ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1",
                                ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none").items():
             monkeypatch.setenv(key, value)
         port_pairs = service_port_pairs(14)
         ports = [pair[0] for pair in port_pairs]
         services, terminals = [], []
+        advertiser = None
+        advertiser_output = None
 
         def server(index, name):
             service = Service(binary, root, name, "server", ["0.0.0.0", "--port", str(ports[index]),
-                "--websocket-port", str(port_pairs[index][1]), "--status-screen=false"])
+                "--websocket-port", str(port_pairs[index][1]), "--status-screen=false"], log_level="info")
             services.append(service)
             service.wait_for("Server accepting connections")
             try:
@@ -188,7 +193,8 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
             current = int(require_match(r"> \[(\d+)\]", selected_line).group(1))
             if current > 1:
                 term.write("k" * (current - 1))
-            term.expect(lambda text: "> [1]" in text, "k did not move selection to the first row")
+            term.expect(lambda text: "> [1]" in text and "Auto-refresh" in text,
+                        "k did not move selection to the first row with a complete frame")
             term.write("\x1b[B")
             term.expect(lambda text: "> [2]" in text, "Down arrow did not move selection")
             term.resize(4, 44)
@@ -259,8 +265,17 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
             explicit.interrupt()
             print("PASS cancellation precedes media; explicit destination bypasses LAN picker")
 
-            for index in range(2, 14):
-                server(index, f"boundary-{index + 1}")
+            advertiser_log = root / "boundary-advertiser.log"
+            advertiser_output = advertiser_log.open("w", encoding="utf-8")
+            advertiser = subprocess.Popen([str(args.advertiser.resolve()), *(str(port) for port in ports[2:14])],
+                                          stdin=subprocess.PIPE, stdout=advertiser_output, stderr=subprocess.STDOUT,
+                                          text=True, env=os.environ.copy())
+            deadline = time.monotonic() + 30
+            while "READY" not in (advertiser_text := advertiser_log.read_text(errors="replace")):
+                returncode = advertiser.poll()
+                assert returncode is None and time.monotonic() < deadline, (
+                    f"Could not start mDNS advertisements: rc={returncode}\n{advertiser_text[-3000:]}")
+                time.sleep(.05)
             boundary = client("boundary")
             boundary.expect(lambda text: "LAN servers" in text and " [12]" in text,
                             "Twelve-row LAN viewport did not fill")
@@ -299,6 +314,19 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
             boundary.expect(lambda text: not boundary.process.isalive(), "Boundary picker did not exit")
             print("PASS 12-row viewport scrolls selection to 14 and wraps above server 1 without a negative index")
         finally:
+            active_failure = sys.exc_info()[0] is not None
+            advertiser_error = None
+            if advertiser is not None:
+                try:
+                    advertiser.communicate(input="\n", timeout=20)
+                except subprocess.TimeoutExpired:
+                    advertiser.kill()
+                    advertiser.communicate()
+                advertiser_output.close()
+                if advertiser.returncode != 0:
+                    advertiser_error = advertiser_log.read_text(errors="replace")[-3000:]
+            elif advertiser_output is not None:
+                advertiser_output.close()
             if args.artifacts:
                 args.artifacts.mkdir(parents=True, exist_ok=True)
                 for path in root.glob("*.log"):
@@ -317,5 +345,7 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
                     service.stop()
                 except Exception as error:
                     failures.append(error)
+            if advertiser_error is not None and not active_failure:
+                failures.append(AssertionError(f"mDNS advertiser failed: {advertiser_error}"))
             if failures:
                 raise ExceptionGroup("mDNS fixture cleanup failed", failures)

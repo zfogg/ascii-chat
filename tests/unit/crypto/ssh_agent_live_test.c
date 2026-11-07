@@ -20,7 +20,7 @@ static void teardown(void) {
   if (agent_started) {
     const char *args[] = {"ssh-agent", "-k", NULL};
     char output[512];
-    platform_execute_subprocess("/usr/bin/ssh-agent", args, output, sizeof(output));
+    platform_execute_subprocess("/usr/bin/ssh-agent", args, output, sizeof(output), NULL, NULL);
     agent_started = false;
   }
   if (old_agent_pid) {
@@ -67,7 +67,7 @@ static void setup(void) {
   cr_assert_eq(platform_setenv("SSH_AUTH_SOCK", socket_path), 0);
   const char *args[] = {"ssh-agent", "-s", "-a", socket_path, NULL};
   char output[1024];
-  cr_assert_eq(platform_execute_subprocess("/usr/bin/ssh-agent", args, output, sizeof(output)), 0);
+  cr_assert_eq(platform_execute_subprocess("/usr/bin/ssh-agent", args, output, sizeof(output), NULL, NULL), 0);
   char *pid_start = strstr(output, "SSH_AGENT_PID=");
   cr_assert_not_null(pid_start);
   pid_start += strlen("SSH_AGENT_PID=");
@@ -168,7 +168,7 @@ Test(ssh_agent_live, openssh_generated_plain_and_encrypted_keys_sign_the_matchin
     const char *password = index ? "fixture-passphrase" : "";
     const char *args[] = {"ssh-keygen", "-q",           "-t", "ed25519",         "-a", "1",          "-N", password,
                           "-Z",         ciphers[index], "-C", "fixture-comment", "-f", private_path, NULL};
-    cr_assert_eq(platform_execute_subprocess("/usr/bin/ssh-keygen", args, NULL, 0), 0);
+    cr_assert_eq(platform_execute_subprocess("/usr/bin/ssh-keygen", args, NULL, 0, NULL, NULL), 0);
     cr_assert_eq(platform_setenv("ASCII_CHAT_KEY_PASSWORD", password), 0);
     public_key_t public;
     private_key_t secret;
@@ -246,7 +246,7 @@ Test(ssh_agent_live, encrypted_openssh_truncations_are_rejected_before_decryptio
   safe_snprintf(malformed, sizeof(malformed), "%s/encrypted-malformed", directory);
   const char *args[] = {"ssh-keygen", "-q",         "-t", "ed25519", "-a", "1",  "-N", "fixture-passphrase",
                         "-Z",         "aes256-ctr", "-C", "fixture", "-f", path, NULL};
-  cr_assert_eq(platform_execute_subprocess("/usr/bin/ssh-keygen", args, NULL, 0), 0);
+  cr_assert_eq(platform_execute_subprocess("/usr/bin/ssh-keygen", args, NULL, 0, NULL, NULL), 0);
   uint8_t blob[2048];
   size_t length = read_blob(path, blob, sizeof(blob));
   platform_setenv("ASCII_CHAT_KEY_PASSWORD", "fixture-passphrase");
@@ -268,7 +268,7 @@ Test(ssh_agent_live, truncated_and_oversized_openssh_fields_are_rejected) {
   safe_snprintf(path, sizeof(path), "%s/source", directory);
   safe_snprintf(malformed, sizeof(malformed), "%s/malformed", directory);
   const char *args[] = {"ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "fixture", "-f", path, NULL};
-  cr_assert_eq(platform_execute_subprocess("/usr/bin/ssh-keygen", args, NULL, 0), 0);
+  cr_assert_eq(platform_execute_subprocess("/usr/bin/ssh-keygen", args, NULL, 0, NULL, NULL), 0);
   FILE *file = platform_fopen("openssh-source-fixture", path, "rb");
   cr_assert_not_null(file);
   char text[4096];
