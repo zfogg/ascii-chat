@@ -3,7 +3,7 @@
 server = true
 transport = "http"
 downloads_dir = "/downloads"
-downloads_url_prefix = "https://mcp.ascii-chat.com/downloads"
+downloads_url_prefix = "https://mcp.ascii-chat.com"
 
 [network]
 address = "0.0.0.0"

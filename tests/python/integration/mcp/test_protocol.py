@@ -299,7 +299,7 @@ class Protocol(unittest.TestCase):
         config = self.directory / "mcp.toml"
         config.write_text('[mcp]\nserver = true\ntransport = "http"\n' +
                           f'downloads_dir = {json.dumps(downloads.as_posix())}\n' +
-                          'downloads_url_prefix = "https://example.test/assets"\n' +
+                          'downloads_url_prefix = "https://example.test"\n' +
                           f'[network]\naddress = "127.0.0.1"\nport = {port}\nmax_clients = 1\n', encoding="utf-8")
         env = os.environ.copy()
         for key in ("ASCII_CHAT_DOWNLOADS_DIR", "ASCII_CHAT_DOWNLOADS_URL_PREFIX", "ASCII_CHAT_TRANSPORT", "ASCII_CHAT_SERVER"):
@@ -326,7 +326,7 @@ class Protocol(unittest.TestCase):
         response = conn.getresponse(); result = json.loads(response.read()); conn.close()
         self.assertEqual(response.status, 200); self.assertFalse(result["result"]["isError"], result)
         url = result["result"]["structuredContent"]["download_url"]
-        self.assertTrue(url.startswith("https://example.test/assets/"), url)
+        self.assertTrue(url.startswith("https://example.test/downloads/"), url)
         self.assertTrue((downloads / url.rsplit("/", 1)[-1]).is_file())
 
     def test_hosted_uses_xdg_data_directory_by_default(self):
@@ -466,7 +466,7 @@ class Protocol(unittest.TestCase):
         port = free_port()
         log = open(self.directory / "http.log", "wb"); self.addCleanup(log.close)
         downloads = self.directory / "downloads"
-        prefix = f"http://127.0.0.1:{port}/downloads"
+        prefix = f"http://127.0.0.1:{port}"
         hosted_options = ["--server", "--downloads-dir", os.path.relpath(downloads), "--downloads-url-prefix", prefix] if restricted else []
         p = subprocess.Popen([str(self.binary), "mcp-server", "--transport", "http", *hosted_options, "--address", "127.0.0.1",
                               "--port", str(port), "--http-origin", "https://tools.example.test", "--status-screen=false"], stdout=log, stderr=log)

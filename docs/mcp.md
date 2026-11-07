@@ -73,14 +73,14 @@ The download settings are also available in `config.toml`:
 server = true
 transport = "http"
 downloads_dir = "/var/lib/ascii-chat/downloads"
-downloads_url_prefix = "https://mcp.ascii-chat.com/downloads"
+downloads_url_prefix = "https://mcp.ascii-chat.com"
 ```
 
-The server stores downloads in the platform application data directory under `ascii-chat/downloads` (XDG data on Unix, Local AppData on Windows). `--downloads-dir` or `ASCII_CHAT_DOWNLOADS_DIR` overrides that directory. The default link prefix is `http://127.0.0.1:<port>/downloads` (HTTPS when the listener has TLS). Behind a reverse proxy, set `--downloads-url-prefix https://your-domain.example/downloads` to the externally reachable prefix and route it to the server's `/downloads/` path. The prefix is configuration, not derived from untrusted request headers.
+The server stores downloads in the platform application data directory under `ascii-chat/downloads` (XDG data on Unix, Local AppData on Windows). `--downloads-dir` or `ASCII_CHAT_DOWNLOADS_DIR` overrides that directory. The default public base URL is `http://127.0.0.1:<port>` (HTTPS when the listener has TLS). Behind a reverse proxy, set `--downloads-url-prefix https://your-domain.example` to the externally reachable base URL and route `/downloads/` to the server. The server appends `/downloads/` to generated links. The prefix is configuration, not derived from untrusted request headers.
 
 ```sh
 ascii-chat mcp-server --transport http --server --address 127.0.0.1 \
-  --downloads-url-prefix https://mcp.example.com/downloads
+  --downloads-url-prefix https://mcp.example.com
 ```
 
 Results contain `content` text plus `structuredContent` with `ascii`, `elapsed_ms`, and `saved_files`. Decoder/render errors use `isError: true`; JSON-RPC errors cover malformed protocol requests. Each render is isolated in a child mirror process with an explicit environment and no user/system configuration. The parent handles deadlines, output limits, and local cancellation while keeping its transport responsive.
