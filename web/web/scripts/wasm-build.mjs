@@ -110,6 +110,22 @@ if (
   mkdirSync(output, { recursive: true });
   for (const file of files)
     copyArtifact(resolve(source, file), resolve(output, file));
+  // Format generated glue before recording artifact hashes so the pre-commit
+  // formatter and published manifest agree on the exact bytes.
+  execFileSync(
+    process.execPath,
+    [
+      resolve(repo, "node_modules/vite-plus/bin/vp"),
+      "fmt",
+      "--config",
+      resolve(repo, ".oxfmtrc.json"),
+      "--ignore-path",
+      resolve(repo, "scripts/format-empty-ignore"),
+      resolve(output, "mirror.js"),
+      resolve(output, "client.js"),
+    ],
+    { cwd: repo, stdio: "inherit" },
+  );
   writeFileSync(
     manifestPath,
     JSON.stringify(
