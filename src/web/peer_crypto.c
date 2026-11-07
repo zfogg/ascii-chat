@@ -262,7 +262,7 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_receive(browser_peer_crypto_t
 EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_init(browser_peer_crypto_t *peer) {
   if (!peer || !peer->security.ready || !ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode))
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC requires an authenticated encrypted peer");
-  return acip_quic_security_init(&peer->quic.security, &peer->security.handshake.crypto_ctx, false);
+  return quic_security_init(&peer->quic.security, &peer->security.handshake.crypto_ctx, false);
 }
 
 EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_packet(browser_peer_crypto_t *peer, bool seal, uint32_t flow,
@@ -282,9 +282,9 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_packet(browser_peer_cryp
   if (quiet)
     scope = errno_scope_begin();
   asciichat_error_t result =
-      seal ? acip_quic_security_seal(&peer->quic.security, (acip_traffic_class_t)flow, (acip_delivery_t)delivery,
+      seal ? quic_security_seal(&peer->quic.security, (acip_traffic_class_t)flow, (acip_delivery_t)delivery,
                                      packet, length, &result_packet, &result_length)
-           : acip_quic_security_open_sequence(&peer->quic.security, (acip_traffic_class_t)flow,
+           : quic_security_open_sequence(&peer->quic.security, (acip_traffic_class_t)flow,
                                               (acip_delivery_t)delivery, packet, length, &result_packet, &result_length,
                                               sequence);
   bool consumed = false;

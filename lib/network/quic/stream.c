@@ -6,7 +6,7 @@
 
 static const uint8_t stream_magic[4] = {'A', 'C', 'Q', 'S'};
 
-asciichat_error_t acip_quic_stream_preamble(acip_traffic_class_t traffic_class,
+asciichat_error_t quic_stream_preamble(acip_traffic_class_t traffic_class,
                                             uint8_t output[ACIP_QUIC_STREAM_PREAMBLE_SIZE]) {
   if (!output || (unsigned)traffic_class > ACIP_TRAFFIC_VISUAL)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC stream traffic class");
@@ -35,7 +35,7 @@ static asciichat_error_t emit_packet(const void *packet, size_t size, void *arg)
   return context->emit(context->reader->traffic_class, packet, size, context->context);
 }
 
-asciichat_error_t acip_quic_stream_read(acip_quic_stream_reader_t *reader, const void *bytes, size_t length,
+asciichat_error_t quic_stream_read(acip_quic_stream_reader_t *reader, const void *bytes, size_t length,
                                         acip_quic_stream_emit_fn emit, void *context) {
   if (!reader || (!bytes && length) || !emit || reader->failed || reader->finished)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC stream input");
@@ -66,7 +66,7 @@ asciichat_error_t acip_quic_stream_read(acip_quic_stream_reader_t *reader, const
   return result;
 }
 
-asciichat_error_t acip_quic_stream_finish(acip_quic_stream_reader_t *reader) {
+asciichat_error_t quic_stream_finish(acip_quic_stream_reader_t *reader) {
   if (!reader || reader->failed || reader->finished)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC stream finish");
   if (reader->preamble_used != sizeof(reader->preamble) || packet_decoder_pending(&reader->packets)) {
@@ -77,7 +77,7 @@ asciichat_error_t acip_quic_stream_finish(acip_quic_stream_reader_t *reader) {
   return ASCIICHAT_OK;
 }
 
-void acip_quic_stream_reset(acip_quic_stream_reader_t *reader) {
+void quic_stream_reset(acip_quic_stream_reader_t *reader) {
   if (reader) {
     packet_decoder_reset(&reader->packets);
     memset(reader, 0, sizeof(*reader));

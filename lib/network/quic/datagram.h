@@ -32,15 +32,15 @@ typedef struct {
 
 /* unit is the payload capacity of every non-final fragment. IDs must be
  * unique per flow and key epoch. The output buffer is owned by the caller. */
-asciichat_error_t acip_quic_datagram_fragment(acip_traffic_class_t traffic_class, uint64_t id, const void *packet,
+asciichat_error_t quic_datagram_fragment(acip_traffic_class_t traffic_class, uint64_t id, const void *packet,
                                               size_t length, uint16_t unit, uint16_t index, void *out, size_t capacity,
                                               size_t *out_length);
 
 /* Returns a buffer-owned complete encrypted packet in *out, or NULL if still
  * incomplete. Identical duplicates are ignored; conflicting fragments fail.
  * now_ns is monotonic and expiry is measured from the first fragment. */
-asciichat_error_t acip_quic_datagram_read(acip_quic_datagram_reader_t *reader, const void *data, size_t length,
+asciichat_error_t quic_datagram_read(acip_quic_datagram_reader_t *reader, const void *data, size_t length,
                                           uint64_t now_ns, acip_traffic_class_t *traffic_class, uint8_t **out,
                                           size_t *out_length);
-void acip_quic_datagram_expire(acip_quic_datagram_reader_t *reader, uint64_t now_ns);
-void acip_quic_datagram_reset(acip_quic_datagram_reader_t *reader);
+void quic_datagram_expire(acip_quic_datagram_reader_t *reader, uint64_t now_ns);
+void quic_datagram_reset(acip_quic_datagram_reader_t *reader);

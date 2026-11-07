@@ -7,7 +7,7 @@
 
 #define QUIC_REKEY_TIMEOUT_NS (30ULL * NS_PER_SEC_INT)
 
-bool acip_quic_rekey_packet(uint16_t type) {
+bool quic_rekey_packet(uint16_t type) {
   return type == PACKET_TYPE_QUIC_EPOCH_MARKER || type == PACKET_TYPE_QUIC_REKEY_NEEDED ||
          type == PACKET_TYPE_QUIC_EPOCH_ACK ||
          (type >= PACKET_TYPE_CRYPTO_REKEY_REQUEST && type <= PACKET_TYPE_CRYPTO_REKEY_COMPLETE);
@@ -68,7 +68,7 @@ static asciichat_error_t observe_epoch(acip_quic_rekey_t *s) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_rekey_init(acip_quic_rekey_t *s, acip_quic_security_t *security,
+asciichat_error_t quic_rekey_init(acip_quic_rekey_t *s, acip_quic_security_t *security,
                                        acip_quic_rekey_send_fn send, void *context, uint64_t now) {
   if (!s || s->security || !security || !security->crypto || !send || now == UINT64_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC rekey initialization");
@@ -87,7 +87,7 @@ static bool request_allowed(acip_quic_rekey_t *s, uint64_t now) {
          (!s->last_request_ns || now - s->last_request_ns >= (uint64_t)REKEY_MIN_REQUEST_INTERVAL);
 }
 
-asciichat_error_t acip_quic_rekey_tick(acip_quic_rekey_t *s, uint64_t now) {
+asciichat_error_t quic_rekey_tick(acip_quic_rekey_t *s, uint64_t now) {
   asciichat_error_t result = clock_step(s, now);
   if (result != ASCIICHAT_OK)
     return result;
@@ -107,7 +107,7 @@ asciichat_error_t acip_quic_rekey_tick(acip_quic_rekey_t *s, uint64_t now) {
     if (crypto_rekey_init(crypto) != CRYPTO_OK || crypto_rekey_process_request(crypto, s->deferred_key) != CRYPTO_OK)
       return SET_ERRNO(ERROR_CRYPTO, "Cannot compute QUIC rekey response");
     sodium_memzero(s->deferred_key, sizeof(s->deferred_key));
-    result = acip_quic_security_prepare_epoch(s->security);
+    result = quic_security_prepare_epoch(s->security);
     if (result == ASCIICHAT_OK)
       result = send_rekey_packet(s, ACIP_TRAFFIC_CONTROL, PACKET_TYPE_CRYPTO_REKEY_RESPONSE, crypto->temp_public_key,
                                  CRYPTO_PUBLIC_KEY_SIZE);
@@ -135,16 +135,16 @@ asciichat_error_t acip_quic_rekey_tick(acip_quic_rekey_t *s, uint64_t now) {
                            CRYPTO_PUBLIC_KEY_SIZE);
 }
 
-asciichat_error_t acip_quic_rekey_request(acip_quic_rekey_t *s, uint64_t now) {
+asciichat_error_t quic_rekey_request(acip_quic_rekey_t *s, uint64_t now) {
   asciichat_error_t result = clock_step(s, now);
   if (result != ASCIICHAT_OK)
     return result;
   if (!s->exchange_ns)
     s->requested = true;
-  return acip_quic_rekey_tick(s, now);
+  return quic_rekey_tick(s, now);
 }
 
-asciichat_error_t acip_quic_rekey_receive(acip_quic_rekey_t *s, acip_traffic_class_t flow, acip_delivery_t delivery,
+asciichat_error_t quic_rekey_receive(acip_quic_rekey_t *s, acip_traffic_class_t flow, acip_delivery_t delivery,
                                           const void *packet, size_t length, uint64_t now, bool *consumed) {
   if (!consumed || !packet || length < sizeof(packet_header_t) || (unsigned)flow > ACIP_TRAFFIC_VISUAL)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC rekey input");
@@ -158,8 +158,8 @@ asciichat_error_t acip_quic_rekey_receive(acip_quic_rekey_t *s, acip_traffic_cla
   packet_header_t header;
   memcpy(&header, packet, sizeof(header));
   uint16_t type = NET_TO_HOST_U16(header.type);
-  if (!acip_quic_rekey_packet(type))
-    return acip_quic_rekey_tick(s, now);
+  if (!quic_rekey_packet(type))
+    return quic_rekey_tick(s, now);
   *consumed = true;
   const uint8_t *payload = (const uint8_t *)packet + sizeof(header);
   size_t bytes = length - sizeof(header);
@@ -178,7 +178,7 @@ asciichat_error_t acip_quic_rekey_receive(acip_quic_rekey_t *s, acip_traffic_cla
     if (type == PACKET_TYPE_QUIC_EPOCH_MARKER) {
       if (!s->security->previous_valid || !s->security->previous_allowed[flow])
         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Duplicate QUIC flow retirement marker");
-      result = acip_quic_security_retire_epoch_flow(s->security, flow, epoch);
+      result = quic_security_retire_epoch_flow(s->security, flow, epoch);
     } else {
       s->peer_ack = epoch;
     }
@@ -200,9 +200,9 @@ asciichat_error_t acip_quic_rekey_receive(acip_quic_rekey_t *s, acip_traffic_cla
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected QUIC ephemeral rekey response");
     if (crypto_rekey_process_response(crypto, payload) != CRYPTO_OK)
       return SET_ERRNO(ERROR_CRYPTO, "Cannot compute QUIC next epoch");
-    result = acip_quic_security_prepare_epoch(s->security);
+    result = quic_security_prepare_epoch(s->security);
     if (result == ASCIICHAT_OK)
-      result = acip_quic_security_commit_epoch(s->security);
+      result = quic_security_commit_epoch(s->security);
     if (result == ASCIICHAT_OK) {
       s->waiting_response = false;
       s->activated_ns = now;
@@ -221,10 +221,10 @@ asciichat_error_t acip_quic_rekey_receive(acip_quic_rekey_t *s, acip_traffic_cla
   result = observe_epoch(s);
   if (result != ASCIICHAT_OK)
     return result;
-  return acip_quic_rekey_tick(s, now);
+  return quic_rekey_tick(s, now);
 }
 
-void acip_quic_rekey_cleanup(acip_quic_rekey_t *s) {
+void quic_rekey_cleanup(acip_quic_rekey_t *s) {
   if (!s)
     return;
   if (s->exchange_ns && s->security && s->security->crypto && s->security->crypto->rekey_in_progress)

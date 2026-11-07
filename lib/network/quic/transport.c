@@ -38,14 +38,14 @@ typedef struct {
 
 static const acip_transport_methods_t quic_methods;
 
-asciichat_error_t acip_quic_transport_peer_address(acip_transport_t *transport, struct sockaddr_storage *address,
+asciichat_error_t quic_transport_peer_address(acip_transport_t *transport, struct sockaddr_storage *address,
                                                    socklen_t *length) {
   if (!transport || transport->methods != &quic_methods || !address || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC peer address query");
   quic_transport_t *quic = transport->impl_data;
   if (quic->lane)
     mutex_lock(quic->lane);
-  asciichat_error_t result = quic->connected ? acip_quic_connection_peer_address(quic->connection, address, length)
+  asciichat_error_t result = quic->connected ? quic_connection_peer_address(quic->connection, address, length)
                                              : SET_ERRNO(quic->failure, "QUIC transport is closed");
   if (quic->lane)
     mutex_unlock(quic->lane);
@@ -148,9 +148,9 @@ static asciichat_error_t quic_sendv_ex(acip_transport_t *transport, const socket
   asciichat_error_t result =
       !quic->connected ? SET_ERRNO(quic->failure, "QUIC transport is closed")
       : options->delivery == ACIP_DELIVERY_DATAGRAM
-          ? acip_quic_connection_submit_datagram(quic->connection, options->traffic_class, packet, length,
+          ? quic_connection_submit_datagram(quic->connection, options->traffic_class, packet, length,
                                                  options->deadline_ns)
-          : acip_quic_connection_submit(quic->connection, options->traffic_class, packet, length);
+          : quic_connection_submit(quic->connection, options->traffic_class, packet, length);
   if (result == ASCIICHAT_OK && quic->wake)
     quic->wake(quic->wake_context);
   lane_unlock(quic);
@@ -226,7 +226,7 @@ static asciichat_error_t quic_close_locked(quic_transport_t *quic, asciichat_err
     cond_broadcast(&quic->received);
     cond_broadcast(&quic->security_changed);
   }
-  asciichat_error_t result = acip_quic_connection_clear_receiver(quic->connection, quic);
+  asciichat_error_t result = quic_connection_clear_receiver(quic->connection, quic);
   quic->connection = NULL;
   while (quic->head) {
     received_packet_t *item = quic->head;
@@ -249,14 +249,14 @@ static asciichat_error_t quic_close(acip_transport_t *transport) {
   return result;
 }
 
-void acip_quic_transport_set_close_on_lane(acip_transport_t *transport, void (*close)(acip_quic_connection_t *, void *),
+void quic_transport_set_close_on_lane(acip_transport_t *transport, void (*close)(acip_quic_connection_t *, void *),
                                            void *context) {
   quic_transport_t *quic = transport->impl_data;
   quic->on_close = close;
   quic->close_context = context;
 }
 
-asciichat_error_t acip_quic_transport_fail(acip_transport_t *transport, asciichat_error_t reason) {
+asciichat_error_t quic_transport_fail(acip_transport_t *transport, asciichat_error_t reason) {
   if (!transport || transport->methods != &quic_methods || reason == ASCIICHAT_OK)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC transport failure");
   quic_transport_t *quic = transport->impl_data;
@@ -266,13 +266,13 @@ asciichat_error_t acip_quic_transport_fail(acip_transport_t *transport, asciicha
   return result;
 }
 
-asciichat_error_t acip_quic_transport_fail_on_lane(acip_transport_t *transport, asciichat_error_t reason) {
+asciichat_error_t quic_transport_fail_on_lane(acip_transport_t *transport, asciichat_error_t reason) {
   if (!transport || transport->methods != &quic_methods || reason == ASCIICHAT_OK)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC transport failure");
   return quic_close_locked(transport->impl_data, reason);
 }
 
-asciichat_error_t acip_quic_transport_destroy_unclaimed_on_lane(acip_transport_t **transport,
+asciichat_error_t quic_transport_destroy_unclaimed_on_lane(acip_transport_t **transport,
                                                                 asciichat_error_t reason) {
   if (!transport || !*transport || (*transport)->methods != &quic_methods || (*transport)->outbound ||
       (*transport)->stats_peer || reason == ASCIICHAT_OK)
@@ -291,7 +291,7 @@ asciichat_error_t acip_quic_transport_destroy_unclaimed_on_lane(acip_transport_t
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_transport_set_waker_on_lane(acip_transport_t *transport, void (*wake)(void *),
+asciichat_error_t quic_transport_set_waker_on_lane(acip_transport_t *transport, void (*wake)(void *),
                                                         void *context) {
   if (!transport || transport->methods != &quic_methods)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC transport waker");
@@ -303,22 +303,22 @@ asciichat_error_t acip_quic_transport_set_waker_on_lane(acip_transport_t *transp
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_transport_set_waker(acip_transport_t *transport, void (*wake)(void *), void *context) {
+asciichat_error_t quic_transport_set_waker(acip_transport_t *transport, void (*wake)(void *), void *context) {
   if (!transport || transport->methods != &quic_methods)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC transport waker");
   quic_transport_t *quic = transport->impl_data;
   lane_lock(quic);
-  asciichat_error_t result = acip_quic_transport_set_waker_on_lane(transport, wake, context);
+  asciichat_error_t result = quic_transport_set_waker_on_lane(transport, wake, context);
   lane_unlock(quic);
   return result;
 }
 
-asciichat_error_t acip_quic_transport_begin_security(acip_transport_t *transport, crypto_context_t *crypto) {
+asciichat_error_t quic_transport_begin_security(acip_transport_t *transport, crypto_context_t *crypto) {
   if (!transport || transport->methods != &quic_methods || !crypto)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC transport security context");
   quic_transport_t *quic = transport->impl_data;
   lane_lock(quic);
-  asciichat_error_t result = quic->connected ? acip_quic_connection_enable_security(quic->connection, crypto)
+  asciichat_error_t result = quic->connected ? quic_connection_enable_security(quic->connection, crypto)
                                              : SET_ERRNO(quic->failure, "QUIC transport is closed");
   if (result == ASCIICHAT_OK) {
     transport->crypto_ctx = crypto;
@@ -329,17 +329,17 @@ asciichat_error_t acip_quic_transport_begin_security(acip_transport_t *transport
   return result;
 }
 
-bool acip_quic_transport_security_ready(acip_transport_t *transport) {
+bool quic_transport_security_ready(acip_transport_t *transport) {
   if (!transport || transport->methods != &quic_methods)
     return false;
   quic_transport_t *quic = transport->impl_data;
   lane_lock(quic);
-  bool ready = quic->connected && acip_quic_connection_security_ready(quic->connection);
+  bool ready = quic->connected && quic_connection_security_ready(quic->connection);
   lane_unlock(quic);
   return ready;
 }
 
-asciichat_error_t acip_quic_transport_wait_security(acip_transport_t *transport, uint64_t timeout_ns) {
+asciichat_error_t quic_transport_wait_security(acip_transport_t *transport, uint64_t timeout_ns) {
   if (!transport || transport->methods != &quic_methods)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC transport");
   quic_transport_t *quic = transport->impl_data;
@@ -347,7 +347,7 @@ asciichat_error_t acip_quic_transport_wait_security(acip_transport_t *transport,
     return SET_ERRNO(ERROR_NOT_SUPPORTED, "QUIC security wait requires a serialized endpoint");
   uint64_t start = time_get_ns();
   lane_lock(quic);
-  while (quic->connected && !acip_quic_connection_security_ready(quic->connection)) {
+  while (quic->connected && !quic_connection_security_ready(quic->connection)) {
     uint64_t elapsed = time_get_ns() - start;
     if (elapsed >= timeout_ns) {
       lane_unlock(quic);
@@ -364,12 +364,12 @@ asciichat_error_t acip_quic_transport_wait_security(acip_transport_t *transport,
   return result;
 }
 
-asciichat_error_t acip_quic_transport_allow_media(acip_transport_t *transport) {
+asciichat_error_t quic_transport_allow_media(acip_transport_t *transport) {
   if (!transport || transport->methods != &quic_methods)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC transport");
   quic_transport_t *quic = transport->impl_data;
   lane_lock(quic);
-  asciichat_error_t result = quic->connected ? acip_quic_connection_allow_media(quic->connection)
+  asciichat_error_t result = quic->connected ? quic_connection_allow_media(quic->connection)
                                              : SET_ERRNO(quic->failure, "QUIC transport is closed");
   lane_unlock(quic);
   return result;
@@ -403,7 +403,7 @@ static bool quic_pending(acip_transport_t *transport) {
 static size_t quic_queued(acip_transport_t *transport) {
   quic_transport_t *quic = transport->impl_data;
   lane_lock(quic);
-  size_t bytes = quic->connection ? acip_quic_connection_pending_bytes(quic->connection) : 0;
+  size_t bytes = quic->connection ? quic_connection_pending_bytes(quic->connection) : 0;
   lane_unlock(quic);
   return bytes;
 }
@@ -415,11 +415,11 @@ static asciichat_error_t quic_capabilities(acip_transport_t *transport, acip_tra
     lane_unlock(quic);
     return result;
   }
-  if (!acip_quic_connection_tls_ready(quic->connection)) {
+  if (!quic_connection_tls_ready(quic->connection)) {
     lane_unlock(quic);
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC capabilities are not negotiated yet");
   }
-  size_t payload = acip_quic_connection_datagram_payload(quic->connection);
+  size_t payload = quic_connection_datagram_payload(quic->connection);
   *out =
       (acip_transport_capabilities_t){.independent_streams = true,
                                       .datagrams = payload != 0,
@@ -437,7 +437,7 @@ static asciichat_error_t quic_validate_options(acip_transport_t *transport, cons
   lane_lock(quic);
   asciichat_error_t result =
       quic->connected
-          ? acip_quic_connection_validate_datagram(quic->connection, options->traffic_class, options->deadline_ns)
+          ? quic_connection_validate_datagram(quic->connection, options->traffic_class, options->deadline_ns)
           : SET_ERRNO(quic->failure, "QUIC transport is closed");
   lane_unlock(quic);
   return result;
@@ -454,7 +454,7 @@ static void quic_destroy_impl(acip_transport_t *transport) {
 static asciichat_error_t quic_request_rekey(acip_transport_t *transport) {
   quic_transport_t *quic = transport->impl_data;
   lane_lock(quic);
-  asciichat_error_t result = quic->connected ? acip_quic_connection_request_rekey(quic->connection)
+  asciichat_error_t result = quic->connected ? quic_connection_request_rekey(quic->connection)
                                              : SET_ERRNO(quic->failure, "QUIC transport is closed");
   if (result == ASCIICHAT_OK && quic->wake)
     quic->wake(quic->wake_context);
@@ -517,10 +517,10 @@ static asciichat_error_t attach_transport(acip_quic_connection_t *connection, cr
   transport->crypto_ctx = crypto;
   if (!lane_held)
     lane_lock(quic);
-  asciichat_error_t result = acip_quic_connection_set_receiver(connection, queue_received_packet, quic);
+  asciichat_error_t result = quic_connection_set_receiver(connection, queue_received_packet, quic);
   if (result == ASCIICHAT_OK) {
-    acip_quic_connection_set_security_notifier(connection, security_ready_notify, quic);
-    acip_quic_connection_set_keyframe_notifier(connection, keyframe_notify, quic);
+    quic_connection_set_security_notifier(connection, security_ready_notify, quic);
+    quic_connection_set_keyframe_notifier(connection, keyframe_notify, quic);
   }
   if (!lane_held)
     lane_unlock(quic);
@@ -537,12 +537,12 @@ static asciichat_error_t attach_transport(acip_quic_connection_t *connection, cr
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_transport_attach(acip_quic_connection_t *connection, crypto_context_t *crypto,
+asciichat_error_t quic_transport_attach(acip_quic_connection_t *connection, crypto_context_t *crypto,
                                              acip_transport_t **out) {
   return attach_transport(connection, crypto, NULL, false, NULL, NULL, NULL, NULL, out);
 }
 
-asciichat_error_t acip_quic_transport_attach_serialized(acip_quic_connection_t *connection, crypto_context_t *crypto,
+asciichat_error_t quic_transport_attach_serialized(acip_quic_connection_t *connection, crypto_context_t *crypto,
                                                         mutex_t *lane, acip_transport_t **out) {
   if (!lane) {
     if (out)
@@ -552,7 +552,7 @@ asciichat_error_t acip_quic_transport_attach_serialized(acip_quic_connection_t *
   return attach_transport(connection, crypto, lane, false, NULL, NULL, NULL, NULL, out);
 }
 
-asciichat_error_t acip_quic_transport_attach_on_lane(acip_quic_connection_t *connection, crypto_context_t *crypto,
+asciichat_error_t quic_transport_attach_on_lane(acip_quic_connection_t *connection, crypto_context_t *crypto,
                                                      mutex_t *lane, acip_transport_t **out) {
   if (!lane) {
     if (out)
@@ -562,7 +562,7 @@ asciichat_error_t acip_quic_transport_attach_on_lane(acip_quic_connection_t *con
   return attach_transport(connection, crypto, lane, true, NULL, NULL, NULL, NULL, out);
 }
 
-asciichat_error_t acip_quic_transport_attach_on_lane_with_waker(acip_quic_connection_t *connection, mutex_t *lane,
+asciichat_error_t quic_transport_attach_on_lane_with_waker(acip_quic_connection_t *connection, mutex_t *lane,
                                                                 void (*wake)(void *), void *context,
                                                                 void (*on_destroy)(acip_transport_t *, void *),
                                                                 void *destroy_context, acip_transport_t **out) {

@@ -42,7 +42,7 @@ static uint64_t get64(const uint8_t *p) {
   return NET_TO_HOST_U64(value);
 }
 
-asciichat_error_t acip_quic_datagram_fragment(acip_traffic_class_t flow, uint64_t id, const void *packet, size_t length,
+asciichat_error_t quic_datagram_fragment(acip_traffic_class_t flow, uint64_t id, const void *packet, size_t length,
                                               uint16_t unit, uint16_t index, void *out, size_t capacity,
                                               size_t *out_length) {
   if (!out_length)
@@ -82,7 +82,7 @@ static void clear_slot(acip_quic_datagram_reader_t *reader, acip_quic_datagram_s
   memset(slot, 0, sizeof(*slot));
 }
 
-void acip_quic_datagram_expire(acip_quic_datagram_reader_t *reader, uint64_t now_ns) {
+void quic_datagram_expire(acip_quic_datagram_reader_t *reader, uint64_t now_ns) {
   if (!reader || now_ns < reader->last_time_ns)
     return;
   reader->last_time_ns = now_ns;
@@ -93,7 +93,7 @@ void acip_quic_datagram_expire(acip_quic_datagram_reader_t *reader, uint64_t now
   }
 }
 
-void acip_quic_datagram_reset(acip_quic_datagram_reader_t *reader) {
+void quic_datagram_reset(acip_quic_datagram_reader_t *reader) {
   if (!reader)
     return;
   for (size_t i = 0; i < ACIP_QUIC_DATAGRAM_SLOTS; ++i)
@@ -101,7 +101,7 @@ void acip_quic_datagram_reset(acip_quic_datagram_reader_t *reader) {
   memset(reader, 0, sizeof(*reader));
 }
 
-asciichat_error_t acip_quic_datagram_read(acip_quic_datagram_reader_t *reader, const void *data, size_t length,
+asciichat_error_t quic_datagram_read(acip_quic_datagram_reader_t *reader, const void *data, size_t length,
                                           uint64_t now_ns, acip_traffic_class_t *flow_out, uint8_t **out,
                                           size_t *out_length) {
   if (!out || !out_length || !flow_out)
@@ -123,7 +123,7 @@ asciichat_error_t acip_quic_datagram_read(acip_quic_datagram_reader_t *reader, c
   size_t part = total - offset < unit ? total - offset : unit;
   if (length != ACIP_QUIC_DATAGRAM_HEADER_SIZE + part)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid QUIC datagram fragment size");
-  acip_quic_datagram_expire(reader, now_ns);
+  quic_datagram_expire(reader, now_ns);
   size_t first = flow == ACIP_TRAFFIC_AUDIO ? 0 : FLOW_SLOTS;
   acip_quic_datagram_slot_t *slot = NULL, *empty = NULL;
   size_t flow_bytes = 0;

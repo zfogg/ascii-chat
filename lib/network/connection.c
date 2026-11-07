@@ -212,11 +212,11 @@ static void connection_finish(void *arg) {
   acip_transport_destroy(c->transport);
   c->transport = NULL;
   if (c->owned_quic_endpoint) {
-    asciichat_error_t result = acip_quic_endpoint_stop(c->owned_quic_endpoint);
+    asciichat_error_t result = quic_endpoint_stop(c->owned_quic_endpoint);
     if (result != ASCIICHAT_OK)
-      result = acip_quic_endpoint_stop(c->owned_quic_endpoint);
+      result = quic_endpoint_stop(c->owned_quic_endpoint);
     if (result == ASCIICHAT_OK)
-      result = acip_quic_endpoint_destroy(&c->owned_quic_endpoint);
+      result = quic_endpoint_destroy(&c->owned_quic_endpoint);
     if (result != ASCIICHAT_OK) {
       c->result = result;
       c->cleanup_failed = true;
@@ -509,7 +509,7 @@ static void server_tick(void *arg) {
     for (unsigned i = 0; i < 16; ++i) {
       acip_transport_t *transport = NULL;
       asciichat_errno_scope_t scope = errno_scope_begin();
-      asciichat_error_t result = acip_quic_accept(listeners[listener], &transport);
+      asciichat_error_t result = quic_accept(listeners[listener], &transport);
       if (result == ERROR_NETWORK_TIMEOUT) {
         errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
         break;
@@ -523,7 +523,7 @@ static void server_tick(void *arg) {
       struct sockaddr_storage address;
       socklen_t length = 0;
       char peer[INET6_ADDRSTRLEN] = "";
-      result = acip_quic_transport_peer_address(transport, &address, &length);
+      result = quic_transport_peer_address(transport, &address, &length);
       if (result == ASCIICHAT_OK)
         result = format_ip_address(address.ss_family, (const struct sockaddr *)&address, peer, sizeof(peer));
       if (result == ASCIICHAT_OK)
@@ -746,9 +746,9 @@ static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpo
                                .enable_datagrams = true,
                                .prefer_audio_datagrams = settings && settings->quic_audio_datagrams,
                                .prefer_visual_datagrams = settings && settings->quic_visual_datagrams};
-  result = acip_quic_endpoint_open((struct sockaddr *)&local, local_length, false, &config, owner);
+  result = quic_endpoint_open((struct sockaddr *)&local, local_length, false, &config, owner);
   if (result == ASCIICHAT_OK)
-    result = acip_quic_connect(*owner, (struct sockaddr *)&remote, remote_length, endpoint->host, transport);
+    result = quic_connect(*owner, (struct sockaddr *)&remote, remote_length, endpoint->host, transport);
   if (result == ASCIICHAT_OK) {
     uint64_t start = time_get_ns();
     uint64_t timeout = (settings ? (uint64_t)settings->timeout_ms : 10000) * NS_PER_MS_INT;
@@ -781,8 +781,8 @@ static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpo
       *transport = NULL;
     }
     if (*owner) {
-      (void)acip_quic_endpoint_stop(*owner);
-      asciichat_error_t cleanup = acip_quic_endpoint_destroy(owner);
+      (void)quic_endpoint_stop(*owner);
+      asciichat_error_t cleanup = quic_endpoint_destroy(owner);
       if (cleanup != ASCIICHAT_OK || *owner)
         return SET_ERRNO(ERROR_THREAD, "Cannot clean up failed QUIC connection");
     }
@@ -845,8 +845,8 @@ asciichat_error_t network_connection_open(const char *name, const char *address,
   if (!c) {
     acip_transport_destroy(transport);
     if (quic_endpoint) {
-      (void)acip_quic_endpoint_stop(quic_endpoint);
-      (void)acip_quic_endpoint_destroy(&quic_endpoint);
+      (void)quic_endpoint_stop(quic_endpoint);
+      (void)quic_endpoint_destroy(&quic_endpoint);
     }
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate connection");
   }

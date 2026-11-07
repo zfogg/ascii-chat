@@ -249,7 +249,7 @@ The UDP driver routes packets by connection ID, so a server can accept a
 client's NAT rebinding and ngtcp2 validates the new peer path.
 A process test changes the server-facing port of a loopback UDP proxy during a
 call and checks path validation and continued media. Native applications can
-also call `acip_quic_endpoint_migrate()` to move a single-connection client
+also call `quic_endpoint_migrate()` to move a single-connection client
 endpoint to another concrete local address in the same address family. Port
 zero binds a new ephemeral UDP port. Producers must be paused during this
 lifecycle operation; the endpoint stops and joins its worker before replacing

@@ -52,7 +52,7 @@ static asciichat_error_t create_context(bool server, const char *alpn, acip_quic
       SSL_CTX_set_max_proto_version(tls->ssl_ctx, TLS1_3_VERSION) != 1 ||
       SSL_CTX_set_max_early_data(tls->ssl_ctx, 0) != 1) {
     asciichat_error_t result = tls_error("Cannot configure QUIC TLS 1.3");
-    acip_quic_tls_destroy(&tls);
+    quic_tls_destroy(&tls);
     return result;
   }
   SSL_CTX_set_options(tls->ssl_ctx, SSL_OP_NO_COMPRESSION | SSL_OP_NO_RENEGOTIATION);
@@ -64,7 +64,7 @@ static asciichat_error_t create_context(bool server, const char *alpn, acip_quic
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_tls_server_create(const char *alpn, const char *certificate_file,
+asciichat_error_t quic_tls_server_create(const char *alpn, const char *certificate_file,
                                               const char *private_key_file, acip_quic_tls_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC server requires a certificate and private key");
@@ -80,14 +80,14 @@ asciichat_error_t acip_quic_tls_server_create(const char *alpn, const char *cert
       SSL_CTX_use_PrivateKey_file(tls->ssl_ctx, private_key_file, SSL_FILETYPE_PEM) != 1 ||
       SSL_CTX_check_private_key(tls->ssl_ctx) != 1) {
     result = tls_error("Cannot load QUIC server certificate or private key");
-    acip_quic_tls_destroy(&tls);
+    quic_tls_destroy(&tls);
     return result;
   }
   *out = tls;
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_tls_client_create(const char *alpn, const char *ca_file, acip_quic_tls_t **out) {
+asciichat_error_t quic_tls_client_create(const char *alpn, const char *ca_file, acip_quic_tls_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC client trust configuration");
   *out = NULL;
@@ -102,14 +102,14 @@ asciichat_error_t acip_quic_tls_client_create(const char *alpn, const char *ca_f
                        : SSL_CTX_set_default_verify_paths(tls->ssl_ctx);
   if (loaded != 1) {
     result = tls_error("Cannot load QUIC client trust roots");
-    acip_quic_tls_destroy(&tls);
+    quic_tls_destroy(&tls);
     return result;
   }
   *out = tls;
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_tls_client_configure(acip_quic_tls_t *tls, SSL *ssl, const char *server_name) {
+asciichat_error_t quic_tls_client_configure(acip_quic_tls_t *tls, SSL *ssl, const char *server_name) {
   if (!tls || tls->server || !ssl || SSL_get_SSL_CTX(ssl) != tls->ssl_ctx || !server_name || !*server_name)
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC client requires the expected server identity");
   ERR_clear_error();
@@ -123,7 +123,7 @@ asciichat_error_t acip_quic_tls_client_configure(acip_quic_tls_t *tls, SSL *ssl,
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_tls_session_create(acip_quic_tls_t *tls, const char *server_name,
+asciichat_error_t quic_tls_session_create(acip_quic_tls_t *tls, const char *server_name,
                                                ngtcp2_crypto_conn_ref *connection, SSL **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC TLS session arguments");
@@ -146,19 +146,19 @@ asciichat_error_t acip_quic_tls_session_create(acip_quic_tls_t *tls, const char 
       result = tls_error("Cannot configure server QUIC TLS callbacks");
   } else {
     SSL_set_connect_state(ssl);
-    result = acip_quic_tls_client_configure(tls, ssl, server_name);
+    result = quic_tls_client_configure(tls, ssl, server_name);
     if (result == ASCIICHAT_OK && ngtcp2_crypto_ossl_configure_client_session(ssl) != 0)
       result = tls_error("Cannot configure client QUIC TLS callbacks");
   }
   if (result != ASCIICHAT_OK) {
-    acip_quic_tls_session_destroy(&ssl);
+    quic_tls_session_destroy(&ssl);
     return result;
   }
   *out = ssl;
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_tls_verify_ready(acip_quic_tls_t *tls, SSL *ssl) {
+asciichat_error_t quic_tls_verify_ready(acip_quic_tls_t *tls, SSL *ssl) {
   if (!tls || !ssl || SSL_get_SSL_CTX(ssl) != tls->ssl_ctx || !SSL_is_init_finished(ssl))
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC TLS handshake is not complete");
   const unsigned char *selected = NULL;
@@ -191,7 +191,7 @@ asciichat_error_t acip_quic_tls_verify_ready(acip_quic_tls_t *tls, SSL *ssl) {
   return ASCIICHAT_OK;
 }
 
-void acip_quic_tls_session_destroy(SSL **ssl) {
+void quic_tls_session_destroy(SSL **ssl) {
   if (ssl && *ssl) {
     SSL_set_app_data(*ssl, NULL);
     SSL_free(*ssl);
@@ -199,7 +199,7 @@ void acip_quic_tls_session_destroy(SSL **ssl) {
   }
 }
 
-void acip_quic_tls_destroy(acip_quic_tls_t **tls) {
+void quic_tls_destroy(acip_quic_tls_t **tls) {
   if (tls && *tls) {
     SSL_CTX_free((*tls)->ssl_ctx);
     SAFE_FREE(*tls);

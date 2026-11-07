@@ -39,7 +39,7 @@ static asciichat_error_t validate_packet(const void *packet, size_t length, acip
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_security_init(acip_quic_security_t *state, crypto_context_t *crypto, bool server) {
+asciichat_error_t quic_security_init(acip_quic_security_t *state, crypto_context_t *crypto, bool server) {
   if (!state || state->crypto || !crypto || !crypto->initialized || !crypto->encrypt_data ||
       !crypto->key_exchange_complete || !crypto->handshake_complete || crypto->nonce_size != CRYPTO_NONCE_SIZE ||
       crypto->mac_size != CRYPTO_MAC_SIZE || crypto->rekey_in_progress)
@@ -48,7 +48,7 @@ asciichat_error_t acip_quic_security_init(acip_quic_security_t *state, crypto_co
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_security_seal(acip_quic_security_t *state, acip_traffic_class_t traffic_class,
+asciichat_error_t quic_security_seal(acip_quic_security_t *state, acip_traffic_class_t traffic_class,
                                           acip_delivery_t delivery, const void *packet, size_t length, uint8_t **out,
                                           size_t *out_length) {
   if (!out || !out_length)
@@ -105,7 +105,7 @@ asciichat_error_t acip_quic_security_seal(acip_quic_security_t *state, acip_traf
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_security_open_sequence(acip_quic_security_t *state, acip_traffic_class_t traffic_class,
+asciichat_error_t quic_security_open_sequence(acip_quic_security_t *state, acip_traffic_class_t traffic_class,
                                                    acip_delivery_t delivery, const void *packet, size_t length,
                                                    uint8_t **out, size_t *out_length, uint64_t *sequence_out) {
   if (!out || !out_length)
@@ -191,7 +191,7 @@ asciichat_error_t acip_quic_security_open_sequence(acip_quic_security_t *state, 
     return result;
   }
   if (pending) {
-    result = acip_quic_security_commit_epoch(state);
+    result = quic_security_commit_epoch(state);
     if (result != ASCIICHAT_OK) {
       buffer_release(plain);
       return result;
@@ -219,13 +219,13 @@ asciichat_error_t acip_quic_security_open_sequence(acip_quic_security_t *state, 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_security_open(acip_quic_security_t *state, acip_traffic_class_t traffic_class,
+asciichat_error_t quic_security_open(acip_quic_security_t *state, acip_traffic_class_t traffic_class,
                                           acip_delivery_t delivery, const void *packet, size_t length, uint8_t **out,
                                           size_t *out_length) {
-  return acip_quic_security_open_sequence(state, traffic_class, delivery, packet, length, out, out_length, NULL);
+  return quic_security_open_sequence(state, traffic_class, delivery, packet, length, out, out_length, NULL);
 }
 
-asciichat_error_t acip_quic_security_prepare_epoch(acip_quic_security_t *state) {
+asciichat_error_t quic_security_prepare_epoch(acip_quic_security_t *state) {
   if (!ready(state) || state->previous_valid || state->pending_prepared || state->key_epoch == UINT64_MAX ||
       !state->crypto->rekey_in_progress || !state->crypto->has_temp_key)
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC key epoch is not ready to prepare");
@@ -233,7 +233,7 @@ asciichat_error_t acip_quic_security_prepare_epoch(acip_quic_security_t *state) 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_security_commit_epoch(acip_quic_security_t *state) {
+asciichat_error_t quic_security_commit_epoch(acip_quic_security_t *state) {
   if (!ready(state) || !state->pending_prepared || state->previous_valid || !state->crypto->rekey_in_progress ||
       !state->crypto->has_temp_key)
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC key epoch is not ready to commit");
@@ -257,7 +257,7 @@ asciichat_error_t acip_quic_security_commit_epoch(acip_quic_security_t *state) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_security_retire_epoch_flow(acip_quic_security_t *state, acip_traffic_class_t traffic_class,
+asciichat_error_t quic_security_retire_epoch_flow(acip_quic_security_t *state, acip_traffic_class_t traffic_class,
                                                        uint64_t epoch) {
   if (!ready(state) || (unsigned)traffic_class > ACIP_TRAFFIC_VISUAL || epoch != state->key_epoch ||
       !state->previous_valid)
@@ -270,7 +270,7 @@ asciichat_error_t acip_quic_security_retire_epoch_flow(acip_quic_security_t *sta
   return ASCIICHAT_OK;
 }
 
-void acip_quic_security_cleanup(acip_quic_security_t *state) {
+void quic_security_cleanup(acip_quic_security_t *state) {
   if (state)
     sodium_memzero(state, sizeof(*state));
 }

@@ -9,7 +9,7 @@ static asciichat_error_t enqueue(void *context, acip_traffic_class_t flow, const
   if (state->count == BROWSER_QUIC_REKEY_QUEUE)
     return SET_ERRNO(ERROR_NETWORK, "Browser QUIC rekey queue is full");
   size_t i = state->count;
-  asciichat_error_t result = acip_quic_security_seal(&state->security, flow, ACIP_DELIVERY_RELIABLE, packet, length,
+  asciichat_error_t result = quic_security_seal(&state->security, flow, ACIP_DELIVERY_RELIABLE, packet, length,
                                                      &state->output[i], &state->length[i]);
   if (result == ASCIICHAT_OK) {
     state->flow[i] = flow;
@@ -25,9 +25,9 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_quic_tick(browser_quic_security_t
     return state->failure;
   uint64_t now = time_get_ns();
   if (!state->rekey.security)
-    state->failure = acip_quic_rekey_init(&state->rekey, &state->security, enqueue, state, now);
+    state->failure = quic_rekey_init(&state->rekey, &state->security, enqueue, state, now);
   if (!state->failure)
-    state->failure = acip_quic_rekey_tick(&state->rekey, now);
+    state->failure = quic_rekey_tick(&state->rekey, now);
   return state->failure;
 }
 
@@ -38,7 +38,7 @@ asciichat_error_t browser_quic_receive(browser_quic_security_t *state, acip_traf
     return state->failure;
   if (!state->rekey.security)
     return ASCIICHAT_OK;
-  state->failure = acip_quic_rekey_receive(&state->rekey, flow, delivery, packet, length, time_get_ns(), consumed);
+  state->failure = quic_rekey_receive(&state->rekey, flow, delivery, packet, length, time_get_ns(), consumed);
   return state->failure;
 }
 
@@ -67,10 +67,10 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_quic_output(browser_quic_security
 }
 
 void browser_quic_cleanup(browser_quic_security_t *state) {
-  acip_quic_rekey_cleanup(&state->rekey);
+  quic_rekey_cleanup(&state->rekey);
   for (size_t i = 0; i < state->count; ++i)
     buffer_release(state->output[i]);
-  acip_quic_security_cleanup(&state->security);
+  quic_security_cleanup(&state->security);
   sodium_memzero(state, sizeof(*state));
 }
 

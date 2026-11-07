@@ -36,11 +36,11 @@ static asciichat_error_t finish_quic_security(acip_transport_t *transport, crypt
     return ASCIICHAT_OK;
   if (!handshake->crypto_ctx.encrypt_data || !crypto_handshake_is_ready(handshake))
     return SET_ERRNO(ERROR_CRYPTO, "QUIC requires authenticated ACIP encryption");
-  asciichat_error_t result = acip_quic_transport_begin_security(transport, &handshake->crypto_ctx);
+  asciichat_error_t result = quic_transport_begin_security(transport, &handshake->crypto_ctx);
   if (result == ASCIICHAT_OK)
-    result = acip_quic_transport_wait_security(transport, 30 * NS_PER_SEC_INT);
+    result = quic_transport_wait_security(transport, 30 * NS_PER_SEC_INT);
   if (result == ASCIICHAT_OK)
-    result = acip_quic_transport_allow_media(transport);
+    result = quic_transport_allow_media(transport);
   return result;
 #endif
 }

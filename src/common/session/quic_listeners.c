@@ -47,7 +47,7 @@ asciichat_error_t session_quic_listeners_open(int port, acip_quic_endpoint_t **n
                                .prefer_visual_datagrams = GET_OPTION(quic_visual_datagrams)};
   // One endpoint owns the UDP socket and dispatches each connection by ALPN.
   // Keep the second output empty so teardown and accept never alias ownership.
-  result = acip_quic_endpoint_open((const struct sockaddr *)&bind_address, bind_length, true, &config, native);
+  result = quic_endpoint_open((const struct sockaddr *)&bind_address, bind_length, true, &config, native);
   if (result != ASCIICHAT_OK)
     return result;
   log_info("Native QUIC listener initialized on %s UDP port %u", address, selected_port);
@@ -64,9 +64,9 @@ asciichat_error_t session_quic_listeners_close(acip_quic_endpoint_t **native, ac
   for (size_t i = 0; i < 2; ++i) {
     if (!*endpoints[i])
       continue;
-    asciichat_error_t result = acip_quic_endpoint_stop(*endpoints[i]);
+    asciichat_error_t result = quic_endpoint_stop(*endpoints[i]);
     if (result == ASCIICHAT_OK)
-      result = acip_quic_endpoint_destroy(endpoints[i]);
+      result = quic_endpoint_destroy(endpoints[i]);
     if (result != ASCIICHAT_OK)
       return result;
   }

@@ -858,7 +858,7 @@ int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint
 EMSCRIPTEN_KEEPALIVE asciichat_error_t client_quic_security_init(void) {
   if (!g_handshake_complete)
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC security requires an authenticated handshake");
-  return acip_quic_security_init(&g_quic_security.security, &g_crypto_handshake_ctx.crypto_ctx, false);
+  return quic_security_init(&g_quic_security.security, &g_crypto_handshake_ctx.crypto_ctx, false);
 }
 
 EMSCRIPTEN_KEEPALIVE asciichat_error_t client_quic_security_seal(uint32_t flow, uint32_t delivery,
@@ -871,7 +871,7 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_quic_security_seal(uint32_t flow, 
   uint8_t *sealed = NULL;
   size_t sealed_len = 0;
   asciichat_error_t result =
-      acip_quic_security_seal(&g_quic_security.security, (acip_traffic_class_t)flow, (acip_delivery_t)delivery, packet,
+      quic_security_seal(&g_quic_security.security, (acip_traffic_class_t)flow, (acip_delivery_t)delivery, packet,
                               packet_len, &sealed, &sealed_len);
   if (result == ASCIICHAT_OK) {
     memcpy(output, sealed, sealed_len);
@@ -895,12 +895,12 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_quic_security_open(uint32_t flow, 
   if (delivery == ACIP_DELIVERY_DATAGRAM) {
     asciichat_errno_scope_t scope = errno_scope_begin();
     result =
-        acip_quic_security_open_sequence(&g_quic_security.security, (acip_traffic_class_t)flow,
+        quic_security_open_sequence(&g_quic_security.security, (acip_traffic_class_t)flow,
                                          (acip_delivery_t)delivery, packet, packet_len, &plain, &plain_len, sequence);
     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   } else {
     result =
-        acip_quic_security_open_sequence(&g_quic_security.security, (acip_traffic_class_t)flow,
+        quic_security_open_sequence(&g_quic_security.security, (acip_traffic_class_t)flow,
                                          (acip_delivery_t)delivery, packet, packet_len, &plain, &plain_len, sequence);
   }
   bool consumed = false;

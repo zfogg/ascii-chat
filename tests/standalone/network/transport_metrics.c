@@ -226,17 +226,17 @@ int main(int argc, char **argv) {
                                    .enable_datagrams = datagrams,
                                    .prefer_audio_datagrams = datagrams,
                                    .prefer_visual_datagrams = datagrams};
-      CHECK(acip_quic_endpoint_open((struct sockaddr *)&local, sizeof(local), true, &server, &endpoints[1]) ==
+      CHECK(quic_endpoint_open((struct sockaddr *)&local, sizeof(local), true, &server, &endpoints[1]) ==
             ASCIICHAT_OK);
-      CHECK(acip_quic_endpoint_open((struct sockaddr *)&local, sizeof(local), false, &client, &endpoints[0]) ==
+      CHECK(quic_endpoint_open((struct sockaddr *)&local, sizeof(local), false, &client, &endpoints[0]) ==
             ASCIICHAT_OK);
       struct sockaddr_storage address;
       socklen_t length;
-      CHECK(acip_quic_endpoint_address(endpoints[1], &address, &length) == ASCIICHAT_OK);
-      CHECK(acip_quic_connect(endpoints[0], (struct sockaddr *)&address, length, "localhost", &sender) == ASCIICHAT_OK);
+      CHECK(quic_endpoint_address(endpoints[1], &address, &length) == ASCIICHAT_OK);
+      CHECK(quic_connect(endpoints[0], (struct sockaddr *)&address, length, "localhost", &sender) == ASCIICHAT_OK);
       uint64_t start = time_get_ns();
       while (!receiver && time_get_ns() - start < 20 * NS_PER_SEC_INT) {
-        asciichat_error_t result = acip_quic_accept(endpoints[1], &receiver);
+        asciichat_error_t result = quic_accept(endpoints[1], &receiver);
         CHECK(result == ASCIICHAT_OK || result == ERROR_NETWORK_TIMEOUT);
         platform_sleep_ms(1);
       }
@@ -352,7 +352,7 @@ int main(int argc, char **argv) {
   log_warn("METRICS_QUEUE peak_bytes=%zu limit_bytes=%u", peak_queue, ACIP_OUTBOUND_BUDGET);
   if (endpoints[0])
     for (int i = 0; i < 2; ++i)
-      CHECK(acip_quic_endpoint_stop(endpoints[i]) == ASCIICHAT_OK);
+      CHECK(quic_endpoint_stop(endpoints[i]) == ASCIICHAT_OK);
   acip_transport_destroy(sender);
   acip_transport_destroy(receiver);
   if (!strcmp(mode, "webrtc"))
@@ -365,7 +365,7 @@ int main(int argc, char **argv) {
       crypto_handshake_destroy(&handshake[i]);
     if (endpoints[0])
       for (int i = 0; i < 2; ++i)
-        CHECK(acip_quic_endpoint_destroy(&endpoints[i]) == ASCIICHAT_OK);
+        CHECK(quic_endpoint_destroy(&endpoints[i]) == ASCIICHAT_OK);
   }
   SAFE_FREE(payload);
   SAFE_FREE(r);

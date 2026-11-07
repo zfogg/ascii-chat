@@ -114,7 +114,7 @@ static asciichat_error_t queue_rekey(void *context, acip_traffic_class_t flow, c
   uint8_t *wire = NULL;
   size_t wire_length = 0;
   asciichat_error_t result =
-      acip_quic_security_seal(&connection->security, flow, ACIP_DELIVERY_RELIABLE, packet, length, &wire, &wire_length);
+      quic_security_seal(&connection->security, flow, ACIP_DELIVERY_RELIABLE, packet, length, &wire, &wire_length);
   if (result == ASCIICHAT_OK)
     result = queue_wire_packet_internal(connection, flow, wire, wire_length, true);
   buffer_release(wire);
@@ -139,7 +139,7 @@ static asciichat_error_t queue_keyframe_request(acip_quic_connection_t *connecti
   memcpy(packet + sizeof(header), payload, sizeof(payload));
   uint8_t *wire = NULL;
   size_t wire_length = 0;
-  asciichat_error_t result = acip_quic_security_seal(
+  asciichat_error_t result = quic_security_seal(
       &connection->security, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, packet, sizeof(packet), &wire, &wire_length);
   if (result == ASCIICHAT_OK)
     result = queue_wire_packet(connection, ACIP_TRAFFIC_CONTROL, wire, wire_length);
@@ -160,7 +160,7 @@ static asciichat_error_t queue_security_barrier(acip_quic_connection_t *connecti
   memcpy(marker + sizeof(header), payload, payload_length);
   uint8_t *wire = NULL;
   size_t wire_length = 0;
-  asciichat_error_t result = acip_quic_security_seal(
+  asciichat_error_t result = quic_security_seal(
       &connection->security, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, marker, sizeof(marker), &wire, &wire_length);
   if (result == ASCIICHAT_OK)
     result = queue_wire_packet(connection, ACIP_TRAFFIC_CONTROL, wire, wire_length);
@@ -172,7 +172,7 @@ static asciichat_error_t open_security_packet(acip_quic_connection_t *connection
                                               const void *packet, size_t size) {
   uint8_t *plaintext = NULL;
   size_t plaintext_length = 0;
-  asciichat_error_t result = acip_quic_security_open(&connection->security, traffic_class, ACIP_DELIVERY_RELIABLE,
+  asciichat_error_t result = quic_security_open(&connection->security, traffic_class, ACIP_DELIVERY_RELIABLE,
                                                      packet, size, &plaintext, &plaintext_length);
   if (result != ASCIICHAT_OK)
     return result;
@@ -182,7 +182,7 @@ static asciichat_error_t open_security_packet(acip_quic_connection_t *connection
   if (connection->rekey.security) {
     bool consumed = false;
     result =
-        acip_quic_rekey_receive(&connection->rekey, traffic_class, ACIP_DELIVERY_RELIABLE, plaintext, plaintext_length,
+        quic_rekey_receive(&connection->rekey, traffic_class, ACIP_DELIVERY_RELIABLE, plaintext, plaintext_length,
                                 MAX(connection->last_time_ns, connection->rekey.last_ns), &consumed);
     if (result != ASCIICHAT_OK || consumed) {
       if (result != ASCIICHAT_OK) {
@@ -204,7 +204,7 @@ static asciichat_error_t open_security_packet(acip_quic_connection_t *connection
     } else if (connection->peer_ready_seen && !connection->peer_security_ready &&
                memcmp(payload, quic_ack_payload, sizeof(quic_ack_payload)) == 0) {
       connection->peer_security_ready = true;
-      result = acip_quic_rekey_init(&connection->rekey, &connection->security, queue_rekey, connection,
+      result = quic_rekey_init(&connection->rekey, &connection->security, queue_rekey, connection,
                                     connection->last_time_ns);
       if (result == ASCIICHAT_OK && connection->security_notify)
         connection->security_notify(connection->security_notify_context);
@@ -213,7 +213,7 @@ static asciichat_error_t open_security_packet(acip_quic_connection_t *connection
     }
   } else if (!connection->peer_ready_seen) {
     result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Missing authenticated QUIC readiness barrier");
-  } else if (acip_quic_rekey_packet(type)) {
+  } else if (quic_rekey_packet(type)) {
     result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "QUIC rekey before security readiness");
   } else if (type == PACKET_TYPE_QUIC_KEYFRAME_REQUEST) {
     uint16_t requested_type;
@@ -382,11 +382,11 @@ static int receive_acip_stream(ngtcp2_conn *conn, acip_quic_connection_t *connec
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
   receive_context_t context = {.connection = connection, .stream = stream};
-  asciichat_error_t result = acip_quic_stream_read(&stream->reader, data, length, emit_received_packet, &context);
+  asciichat_error_t result = quic_stream_read(&stream->reader, data, length, emit_received_packet, &context);
   if (result == ASCIICHAT_OK && stream->reader.preamble_used == ACIP_QUIC_STREAM_PREAMBLE_SIZE)
     result = register_receive_class(&context);
   if (result == ASCIICHAT_OK && (flags & NGTCP2_STREAM_DATA_FLAG_FIN))
-    result = acip_quic_stream_finish(&stream->reader);
+    result = quic_stream_finish(&stream->reader);
   if (result != ASCIICHAT_OK) {
     connection->callback_error = result;
     return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -577,14 +577,14 @@ static int receive_datagram(ngtcp2_conn *conn, uint32_t flags, const uint8_t *da
   size_t wire_length = 0, plain_length = 0;
   uint64_t sequence = 0;
   acip_traffic_class_t flow = ACIP_TRAFFIC_CONTROL;
-  asciichat_error_t result = acip_quic_datagram_read(&connection->datagram_reader, data, length,
+  asciichat_error_t result = quic_datagram_read(&connection->datagram_reader, data, length,
                                                      connection->last_time_ns, &flow, &wire, &wire_length);
   if (result == ASCIICHAT_OK && wire)
-    result = acip_quic_security_open_sequence(&connection->security, flow, ACIP_DELIVERY_DATAGRAM, wire, wire_length,
+    result = quic_security_open_sequence(&connection->security, flow, ACIP_DELIVERY_DATAGRAM, wire, wire_length,
                                               &plain, &plain_length, &sequence);
   if (result == ASCIICHAT_OK && plain && connection->rekey.security) {
     bool consumed = false;
-    result = acip_quic_rekey_receive(&connection->rekey, flow, ACIP_DELIVERY_DATAGRAM, plain, plain_length,
+    result = quic_rekey_receive(&connection->rekey, flow, ACIP_DELIVERY_DATAGRAM, plain, plain_length,
                                      MAX(connection->last_time_ns, connection->rekey.last_ns), &consumed);
     if (result != ASCIICHAT_OK) {
       connection->failed = true;
@@ -793,18 +793,18 @@ static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *ser
                                             &settings, &params, NULL, connection);
   if (rc != 0) {
     asciichat_error_t result = SET_ERRNO(ERROR_NETWORK, "Cannot create QUIC connection: %s", ngtcp2_strerror(rc));
-    acip_quic_connection_destroy(&connection);
+    quic_connection_destroy(&connection);
     return result;
   }
-  asciichat_error_t result = acip_quic_tls_session_create(tls, server_name, &connection->reference, &connection->ssl);
+  asciichat_error_t result = quic_tls_session_create(tls, server_name, &connection->reference, &connection->ssl);
   if (result != ASCIICHAT_OK) {
-    acip_quic_connection_destroy(&connection);
+    quic_connection_destroy(&connection);
     return result;
   }
   rc = ngtcp2_crypto_ossl_ctx_new(&connection->crypto, connection->ssl);
   if (rc != 0) {
     result = SET_ERRNO(ERROR_CRYPTO, "Cannot create QUIC OpenSSL connection context: %d", rc);
-    acip_quic_connection_destroy(&connection);
+    quic_connection_destroy(&connection);
     return result;
   }
   ngtcp2_conn_set_tls_native_handle(connection->conn, connection->crypto);
@@ -812,13 +812,13 @@ static asciichat_error_t connection_create(acip_quic_tls_t *tls, const char *ser
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_connection_client_create(acip_quic_tls_t *tls, const char *server_name,
+asciichat_error_t quic_connection_client_create(acip_quic_tls_t *tls, const char *server_name,
                                                      const ngtcp2_path *path, uint64_t now_ns,
                                                      acip_quic_connection_t **out) {
   return connection_create(tls, server_name, path, NULL, NULL, now_ns, out);
 }
 
-asciichat_error_t acip_quic_connection_server_create(acip_quic_tls_t *tls, const ngtcp2_path *path, const void *initial,
+asciichat_error_t quic_connection_server_create(acip_quic_tls_t *tls, const ngtcp2_path *path, const void *initial,
                                                      size_t initial_length, uint64_t now_ns,
                                                      acip_quic_connection_t **out) {
   if (!out)
@@ -833,7 +833,7 @@ asciichat_error_t acip_quic_connection_server_create(acip_quic_tls_t *tls, const
   return connection_create(tls, NULL, path, &header, NULL, now_ns, out);
 }
 
-asciichat_error_t acip_quic_connection_server_create_validated(acip_quic_tls_t *tls, const ngtcp2_path *path,
+asciichat_error_t quic_connection_server_create_validated(acip_quic_tls_t *tls, const ngtcp2_path *path,
                                                                const void *initial, size_t initial_length,
                                                                const ngtcp2_cid *original_dcid, uint64_t now_ns,
                                                                acip_quic_connection_t **out) {
@@ -852,7 +852,7 @@ asciichat_error_t acip_quic_connection_server_create_validated(acip_quic_tls_t *
 
 static asciichat_error_t update_readiness(acip_quic_connection_t *connection) {
   if (!connection->tls_ready && ngtcp2_conn_get_handshake_completed2(connection->conn)) {
-    asciichat_error_t result = acip_quic_tls_verify_ready(connection->tls, connection->ssl);
+    asciichat_error_t result = quic_tls_verify_ready(connection->tls, connection->ssl);
     if (result != ASCIICHAT_OK) {
       connection->failed = true;
       return result;
@@ -890,7 +890,7 @@ static asciichat_error_t update_time(acip_quic_connection_t *connection, uint64_
   if (now_ns < connection->last_time_ns || now_ns == UINT64_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC monotonic time moved backwards or is invalid");
   connection->last_time_ns = now_ns;
-  acip_quic_datagram_expire(&connection->datagram_reader, now_ns);
+  quic_datagram_expire(&connection->datagram_reader, now_ns);
   for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i) {
     datagram_send_t **link = &connection->datagram_head[i], *tail = NULL;
     while (*link) {
@@ -910,7 +910,7 @@ static asciichat_error_t update_time(acip_quic_connection_t *connection, uint64_
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_connection_matches_cid(const acip_quic_connection_t *connection, const uint8_t *cid,
+asciichat_error_t quic_connection_matches_cid(const acip_quic_connection_t *connection, const uint8_t *cid,
                                                    size_t length, bool *matches) {
   if (!connection || !connection->conn || !cid || !matches)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC connection ID lookup");
@@ -941,7 +941,7 @@ asciichat_error_t acip_quic_connection_matches_cid(const acip_quic_connection_t 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_connection_set_receiver(acip_quic_connection_t *connection, acip_quic_stream_emit_fn emit,
+asciichat_error_t quic_connection_set_receiver(acip_quic_connection_t *connection, acip_quic_stream_emit_fn emit,
                                                     void *context) {
   if (!connection || !connection->conn || connection->failed || !emit || connection->emit)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC receive callback");
@@ -950,7 +950,7 @@ asciichat_error_t acip_quic_connection_set_receiver(acip_quic_connection_t *conn
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_connection_clear_receiver(acip_quic_connection_t *connection, void *context) {
+asciichat_error_t quic_connection_clear_receiver(acip_quic_connection_t *connection, void *context) {
   if (!connection || !connection->emit || connection->emit_context != context)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC receive callback context");
   connection->emit = NULL;
@@ -962,7 +962,7 @@ asciichat_error_t acip_quic_connection_clear_receiver(acip_quic_connection_t *co
   return ASCIICHAT_OK;
 }
 
-void acip_quic_connection_set_keyframe_notifier(acip_quic_connection_t *connection,
+void quic_connection_set_keyframe_notifier(acip_quic_connection_t *connection,
                                                 void (*notify)(uint16_t, uint32_t, void *), void *context) {
   if (connection) {
     connection->keyframe_notify = notify;
@@ -970,7 +970,7 @@ void acip_quic_connection_set_keyframe_notifier(acip_quic_connection_t *connecti
   }
 }
 
-void acip_quic_connection_set_security_notifier(acip_quic_connection_t *connection, void (*notify)(void *),
+void quic_connection_set_security_notifier(acip_quic_connection_t *connection, void (*notify)(void *),
                                                 void *context) {
   if (connection) {
     connection->security_notify = notify;
@@ -978,7 +978,7 @@ void acip_quic_connection_set_security_notifier(acip_quic_connection_t *connecti
   }
 }
 
-asciichat_error_t acip_quic_connection_allow_media(acip_quic_connection_t *connection) {
+asciichat_error_t quic_connection_allow_media(acip_quic_connection_t *connection) {
   if (!connection || !connection->conn || connection->failed || !connection->tls_ready ||
       !connection->security.crypto || !connection->peer_security_ready)
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC and authenticated ACIP encryption are not ready for media");
@@ -986,10 +986,10 @@ asciichat_error_t acip_quic_connection_allow_media(acip_quic_connection_t *conne
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_connection_enable_security(acip_quic_connection_t *connection, crypto_context_t *crypto) {
+asciichat_error_t quic_connection_enable_security(acip_quic_connection_t *connection, crypto_context_t *crypto) {
   if (!connection || !connection->conn || connection->failed || !connection->tls_ready || !connection->emit)
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC is not ready for the ACIP security transition");
-  asciichat_error_t result = acip_quic_security_init(&connection->security, crypto, connection->tls->server);
+  asciichat_error_t result = quic_security_init(&connection->security, crypto, connection->tls->server);
   if (result != ASCIICHAT_OK)
     return result;
   result = queue_security_barrier(connection, quic_ready_payload, sizeof(quic_ready_payload));
@@ -1004,11 +1004,11 @@ asciichat_error_t acip_quic_connection_enable_security(acip_quic_connection_t *c
   return result;
 }
 
-bool acip_quic_connection_security_ready(const acip_quic_connection_t *connection) {
+bool quic_connection_security_ready(const acip_quic_connection_t *connection) {
   return connection && connection->security.crypto && connection->peer_security_ready && !connection->failed;
 }
 
-size_t acip_quic_connection_datagram_payload(const acip_quic_connection_t *connection) {
+size_t quic_connection_datagram_payload(const acip_quic_connection_t *connection) {
   if (!connection || !connection->conn || connection->failed || !connection->tls_ready ||
       !connection->datagrams_enabled)
     return 0;
@@ -1036,11 +1036,11 @@ size_t acip_quic_connection_datagram_payload(const acip_quic_connection_t *conne
   return frame > ACIP_QUIC_DATAGRAM_HEADER_SIZE ? frame - ACIP_QUIC_DATAGRAM_HEADER_SIZE : 0;
 }
 
-asciichat_error_t acip_quic_connection_validate_datagram(const acip_quic_connection_t *connection,
+asciichat_error_t quic_connection_validate_datagram(const acip_quic_connection_t *connection,
                                                          acip_traffic_class_t flow, uint64_t deadline_ns) {
   if (!connection || (flow != ACIP_TRAFFIC_AUDIO && flow != ACIP_TRAFFIC_VISUAL))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC datagram flow");
-  if (!acip_quic_connection_datagram_payload(connection))
+  if (!quic_connection_datagram_payload(connection))
     return SET_ERRNO(ERROR_NOT_SUPPORTED, "QUIC datagrams were not negotiated");
   if (!connection->security.crypto || !connection->peer_security_ready || !connection->media_allowed)
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC media security is not ready");
@@ -1049,9 +1049,9 @@ asciichat_error_t acip_quic_connection_validate_datagram(const acip_quic_connect
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_connection_submit_datagram(acip_quic_connection_t *connection, acip_traffic_class_t flow,
+asciichat_error_t quic_connection_submit_datagram(acip_quic_connection_t *connection, acip_traffic_class_t flow,
                                                        const void *packet, size_t length, uint64_t deadline_ns) {
-  asciichat_error_t validation = acip_quic_connection_validate_datagram(connection, flow, deadline_ns);
+  asciichat_error_t validation = quic_connection_validate_datagram(connection, flow, deadline_ns);
   if (validation != ASCIICHAT_OK)
     return validation;
   if (flow == ACIP_TRAFFIC_VISUAL && packet && length >= sizeof(packet_header_t)) {
@@ -1061,7 +1061,7 @@ asciichat_error_t acip_quic_connection_submit_datagram(acip_quic_connection_t *c
     if ((type == PACKET_TYPE_IMAGE_FRAME_H264 || type == PACKET_TYPE_IMAGE_FRAME_H265) && header.client_id != 0)
       return SET_ERRNO(ERROR_NOT_SUPPORTED, "QUIC encoded datagrams require stream ID zero");
   }
-  size_t unit = acip_quic_connection_datagram_payload(connection);
+  size_t unit = quic_connection_datagram_payload(connection);
   if (connection->datagram_id[flow] == UINT64_MAX)
     return SET_ERRNO(ERROR_NETWORK_SIZE, "QUIC datagram ID exhausted");
   size_t reserve = flow == ACIP_TRAFFIC_VISUAL ? ACIP_OUTBOUND_CONTROL_RESERVE + ACIP_OUTBOUND_AUDIO_RESERVE
@@ -1072,7 +1072,7 @@ asciichat_error_t acip_quic_connection_submit_datagram(acip_quic_connection_t *c
   uint8_t *wire = NULL;
   size_t wire_length = 0;
   asciichat_error_t result =
-      acip_quic_security_seal(&connection->security, flow, ACIP_DELIVERY_DATAGRAM, packet, length, &wire, &wire_length);
+      quic_security_seal(&connection->security, flow, ACIP_DELIVERY_DATAGRAM, packet, length, &wire, &wire_length);
   if (result != ASCIICHAT_OK)
     return result;
   size_t count = (wire_length + unit - 1) / unit;
@@ -1146,7 +1146,7 @@ static asciichat_error_t queue_wire_packet_internal(acip_quic_connection_t *conn
       prefix_length += write_quic_varint(preamble + prefix_length, 0x54);
       prefix_length += write_quic_varint(preamble + prefix_length, (uint64_t)session_id);
     }
-    asciichat_error_t preamble_result = acip_quic_stream_preamble(traffic_class, preamble + prefix_length);
+    asciichat_error_t preamble_result = quic_stream_preamble(traffic_class, preamble + prefix_length);
     if (preamble_result != ASCIICHAT_OK)
       return preamble_result;
     prefix_length += ACIP_QUIC_STREAM_PREAMBLE_SIZE;
@@ -1185,7 +1185,7 @@ static asciichat_error_t queue_wire_packet_internal(acip_quic_connection_t *conn
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
+asciichat_error_t quic_connection_submit(acip_quic_connection_t *connection, acip_traffic_class_t traffic_class,
                                               const void *packet, size_t length) {
   if (connection && !connection->security.crypto && packet && length >= sizeof(packet_header_t)) {
     packet_header_t header;
@@ -1203,7 +1203,7 @@ asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection
     memcpy(&header, packet, sizeof(header));
     if (NET_TO_HOST_U16(header.type) == PACKET_TYPE_QUIC_READY ||
         NET_TO_HOST_U16(header.type) == PACKET_TYPE_QUIC_KEYFRAME_REQUEST ||
-        acip_quic_rekey_packet(NET_TO_HOST_U16(header.type)))
+        quic_rekey_packet(NET_TO_HOST_U16(header.type)))
       return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC readiness marker is reserved");
   }
   if (!connection->conn || connection->failed || !connection->tls_ready ||
@@ -1214,7 +1214,7 @@ asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC traffic stream is closing");
   uint8_t *wire = NULL;
   size_t wire_length = 0;
-  asciichat_error_t result = acip_quic_security_seal(&connection->security, traffic_class, ACIP_DELIVERY_RELIABLE,
+  asciichat_error_t result = quic_security_seal(&connection->security, traffic_class, ACIP_DELIVERY_RELIABLE,
                                                      packet, length, &wire, &wire_length);
   if (result == ASCIICHAT_OK)
     result = queue_wire_packet(connection, traffic_class, wire, wire_length);
@@ -1222,11 +1222,11 @@ asciichat_error_t acip_quic_connection_submit(acip_quic_connection_t *connection
   return result;
 }
 
-size_t acip_quic_connection_pending_bytes(const acip_quic_connection_t *connection) {
+size_t quic_connection_pending_bytes(const acip_quic_connection_t *connection) {
   return connection ? connection->pending_bytes : 0;
 }
 
-asciichat_error_t acip_quic_connection_finish_stream(acip_quic_connection_t *connection,
+asciichat_error_t quic_connection_finish_stream(acip_quic_connection_t *connection,
                                                      acip_traffic_class_t traffic_class) {
   if (!connection || !connection->conn || connection->failed || (unsigned)traffic_class >= ACIP_QUIC_FLOW_COUNT)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC traffic stream");
@@ -1237,7 +1237,7 @@ asciichat_error_t acip_quic_connection_finish_stream(acip_quic_connection_t *con
   return ASCIICHAT_OK;
 }
 
-bool acip_quic_connection_received_fin(const acip_quic_connection_t *connection, acip_traffic_class_t traffic_class) {
+bool quic_connection_received_fin(const acip_quic_connection_t *connection, acip_traffic_class_t traffic_class) {
   if (!connection || (unsigned)traffic_class >= ACIP_QUIC_FLOW_COUNT)
     return false;
   for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i)
@@ -1246,7 +1246,7 @@ bool acip_quic_connection_received_fin(const acip_quic_connection_t *connection,
   return false;
 }
 
-asciichat_error_t acip_quic_connection_receive(acip_quic_connection_t *connection, const ngtcp2_path *path,
+asciichat_error_t quic_connection_receive(acip_quic_connection_t *connection, const ngtcp2_path *path,
                                                const void *packet, size_t length, uint64_t now_ns) {
   if (!connection || !connection->conn || connection->failed || !valid_path(path) || !packet || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC packet input");
@@ -1307,7 +1307,7 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
     acip_traffic_class_t flow = (acip_traffic_class_t)i;
     while (connection->datagram_head[i] &&
            ((connection->datagram_head[i]->deadline_ns && connection->datagram_head[i]->deadline_ns <= now_ns) ||
-            connection->datagram_head[i]->unit > acip_quic_connection_datagram_payload(connection)))
+            connection->datagram_head[i]->unit > quic_connection_datagram_payload(connection)))
       pop_datagram(connection, flow);
     datagram_send_t *item = connection->datagram_head[i];
     if (item) {
@@ -1319,7 +1319,7 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
           return NGTCP2_ERR_CALLBACK_FAILURE;
         prefix_length = write_quic_varint(fragment, (uint64_t)session_id / 4);
       }
-      if (acip_quic_datagram_fragment(flow, item->id, item->data, item->length, item->unit, item->index,
+      if (quic_datagram_fragment(flow, item->id, item->data, item->length, item->unit, item->index,
                                       fragment + prefix_length, sizeof(fragment) - prefix_length,
                                       &fragment_length) != ASCIICHAT_OK)
         return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -1381,7 +1381,7 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
   return ngtcp2_conn_write_pkt(connection->conn, path, info, packet, capacity, now_ns);
 }
 
-bool acip_quic_connection_pending_packet_class(const acip_quic_connection_t *connection,
+bool quic_connection_pending_packet_class(const acip_quic_connection_t *connection,
                                                acip_traffic_class_t *traffic_class) {
   if (!connection || !connection->packet_pending || !connection->packet_has_stream_data || !traffic_class)
     return false;
@@ -1389,7 +1389,7 @@ bool acip_quic_connection_pending_packet_class(const acip_quic_connection_t *con
   return true;
 }
 
-asciichat_error_t acip_quic_connection_write_close(acip_quic_connection_t *connection, ngtcp2_path_storage *path,
+asciichat_error_t quic_connection_write_close(acip_quic_connection_t *connection, ngtcp2_path_storage *path,
                                                    void *packet, size_t capacity, size_t *length, uint64_t now_ns) {
   if (!connection || !connection->conn || !path || !packet || capacity < 1200 || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC close packet output");
@@ -1412,7 +1412,7 @@ asciichat_error_t acip_quic_connection_write_close(acip_quic_connection_t *conne
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_connection_write(acip_quic_connection_t *connection, ngtcp2_path_storage *path,
+asciichat_error_t quic_connection_write(acip_quic_connection_t *connection, ngtcp2_path_storage *path,
                                              void *packet, size_t capacity, size_t *length, uint64_t now_ns) {
   if (!length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC packet length output");
@@ -1437,7 +1437,7 @@ asciichat_error_t acip_quic_connection_write(acip_quic_connection_t *connection,
   return update_readiness(connection);
 }
 
-asciichat_error_t acip_quic_connection_packet_sent(acip_quic_connection_t *connection, uint64_t now_ns) {
+asciichat_error_t quic_connection_packet_sent(acip_quic_connection_t *connection, uint64_t now_ns) {
   if (!connection || !connection->conn || connection->failed || !connection->packet_pending)
     return SET_ERRNO(ERROR_INVALID_STATE, "No QUIC packet awaiting transmission");
   asciichat_error_t result = update_time(connection, now_ns);
@@ -1448,7 +1448,7 @@ asciichat_error_t acip_quic_connection_packet_sent(acip_quic_connection_t *conne
   return ASCIICHAT_OK;
 }
 
-uint64_t acip_quic_connection_expiry(const acip_quic_connection_t *connection) {
+uint64_t quic_connection_expiry(const acip_quic_connection_t *connection) {
   if (!connection || !connection->conn || connection->failed)
     return UINT64_MAX;
   uint64_t expiry = ngtcp2_conn_get_expiry(connection->conn);
@@ -1468,14 +1468,14 @@ uint64_t acip_quic_connection_expiry(const acip_quic_connection_t *connection) {
   return expiry;
 }
 
-asciichat_error_t acip_quic_connection_handle_expiry(acip_quic_connection_t *connection, uint64_t now_ns) {
+asciichat_error_t quic_connection_handle_expiry(acip_quic_connection_t *connection, uint64_t now_ns) {
   if (!connection || !connection->conn || connection->failed)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC timeout state");
   asciichat_error_t result = update_time(connection, now_ns);
   if (result != ASCIICHAT_OK)
     return result;
   if (connection->rekey.security) {
-    result = acip_quic_rekey_tick(&connection->rekey, MAX(now_ns, connection->rekey.last_ns));
+    result = quic_rekey_tick(&connection->rekey, MAX(now_ns, connection->rekey.last_ns));
     if (result != ASCIICHAT_OK) {
       connection->failed = true;
       return result;
@@ -1489,21 +1489,21 @@ asciichat_error_t acip_quic_connection_handle_expiry(acip_quic_connection_t *con
   return update_readiness(connection);
 }
 
-bool acip_quic_connection_accept_ready(const acip_quic_connection_t *connection) {
+bool quic_connection_accept_ready(const acip_quic_connection_t *connection) {
   return connection && connection->tls_ready && !connection->failed &&
-         (!connection->webtransport || acip_quic_connection_webtransport_ready(connection));
+         (!connection->webtransport || quic_connection_webtransport_ready(connection));
 }
 
-bool acip_quic_connection_webtransport_ready(const acip_quic_connection_t *connection) {
+bool quic_connection_webtransport_ready(const acip_quic_connection_t *connection) {
   return connection && connection->webtransport && connection->http3 &&
          acip_http3_server_accepted(connection->http3, NULL) && !connection->failed;
 }
 
-bool acip_quic_connection_tls_ready(const acip_quic_connection_t *connection) {
+bool quic_connection_tls_ready(const acip_quic_connection_t *connection) {
   return connection && !connection->failed && connection->tls_ready;
 }
 
-asciichat_error_t acip_quic_connection_peer_address(const acip_quic_connection_t *connection,
+asciichat_error_t quic_connection_peer_address(const acip_quic_connection_t *connection,
                                                     struct sockaddr_storage *address, socklen_t *length) {
   if (!connection || !connection->conn || connection->failed || !address || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC peer address query");
@@ -1516,14 +1516,14 @@ asciichat_error_t acip_quic_connection_peer_address(const acip_quic_connection_t
   return ASCIICHAT_OK;
 }
 
-void acip_quic_connection_destroy(acip_quic_connection_t **connection) {
+void quic_connection_destroy(acip_quic_connection_t **connection) {
   if (!connection || !*connection)
     return;
   ngtcp2_conn_del((*connection)->conn);
   (*connection)->conn = NULL;
   acip_http3_server_destroy(&(*connection)->http3);
   buffer_release((*connection)->early_security_packet);
-  acip_quic_datagram_reset(&(*connection)->datagram_reader);
+  quic_datagram_reset(&(*connection)->datagram_reader);
   for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i) {
     while ((*connection)->datagram_head[i])
       pop_datagram(*connection, (acip_traffic_class_t)i);
@@ -1533,16 +1533,16 @@ void acip_quic_connection_destroy(acip_quic_connection_t **connection) {
       free_chunk(*connection, chunk);
       chunk = next;
     }
-    acip_quic_stream_reset(&(*connection)->receives[i].reader);
+    quic_stream_reset(&(*connection)->receives[i].reader);
   }
-  acip_quic_tls_session_destroy(&(*connection)->ssl);
+  quic_tls_session_destroy(&(*connection)->ssl);
   ngtcp2_crypto_ossl_ctx_del((*connection)->crypto);
-  acip_quic_rekey_cleanup(&(*connection)->rekey);
-  acip_quic_security_cleanup(&(*connection)->security);
+  quic_rekey_cleanup(&(*connection)->rekey);
+  quic_security_cleanup(&(*connection)->security);
   SAFE_FREE(*connection);
 }
 
-asciichat_error_t acip_quic_connection_migrate(acip_quic_connection_t *connection, const struct sockaddr *local,
+asciichat_error_t quic_connection_migrate(acip_quic_connection_t *connection, const struct sockaddr *local,
                                                socklen_t length, uint64_t now_ns) {
   if (!connection || !connection->conn || connection->failed || connection->tls->server || !local ||
       (size_t)length > sizeof(ngtcp2_sockaddr_union))
@@ -1566,10 +1566,10 @@ asciichat_error_t acip_quic_connection_migrate(acip_quic_connection_t *connectio
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_quic_connection_request_rekey(acip_quic_connection_t *connection) {
+asciichat_error_t quic_connection_request_rekey(acip_quic_connection_t *connection) {
   if (!connection || connection->failed || !connection->rekey.security)
     return SET_ERRNO(ERROR_INVALID_STATE, "QUIC rekey is not ready");
-  asciichat_error_t result = acip_quic_rekey_request(&connection->rekey, time_get_ns());
+  asciichat_error_t result = quic_rekey_request(&connection->rekey, time_get_ns());
   if (result != ASCIICHAT_OK)
     connection->failed = true;
   return result;
