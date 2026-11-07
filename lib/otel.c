@@ -693,6 +693,9 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   return ASCIICHAT_OK;
 }
 void ascii_otel_log(int level, const char *file, int line, const char *function, const char *format, va_list args) {
+  (void)file;
+  (void)line;
+  (void)function;
   if (in_log || level < minimum_log_level || !atomic_load_explicit(&host, memory_order_acquire))
     return;
   in_log = true;

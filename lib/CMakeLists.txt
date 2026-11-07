@@ -1006,6 +1006,13 @@ add_library(ascii-chat-shared SHARED
     # Generate the .def file using a custom command
     # Windows: Auto-generate .def file for symbol export
     if(WIN32)
+        if(CMAKE_NM)
+            set(_export_nm "${CMAKE_NM}")
+        elseif(ASCIICHAT_LLVM_NM_EXECUTABLE)
+            set(_export_nm "${ASCIICHAT_LLVM_NM_EXECUTABLE}")
+        else()
+            message(FATAL_ERROR "llvm-nm is required to generate Windows DLL exports")
+        endif()
         # Convert list to string for passing to script
         string(REPLACE ";" "," MODULE_TARGETS_STR "${MODULE_TARGETS}")
 
@@ -1020,7 +1027,7 @@ add_library(ascii-chat-shared SHARED
         add_custom_command(
             OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
             COMMAND ${CMAKE_COMMAND}
-                -DNM_TOOL=${CMAKE_NM}
+                -DNM_TOOL=${_export_nm}
                 -DOBJECT_LIST_FILE=${_export_object_manifest}
                 -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
                 -DLIBRARY_NAME=asciichat
