@@ -61,15 +61,10 @@ def check(binary, unicode):
             assert term.titles[-1][1] == error + "(3) ERROR code=43 - Network timeout"
             term.write("?")
             term.write("q")
-            term.pump(.3)
-            assert term.titles[-1][1] == error + "(3) ERROR code=43 - Network timeout", "Dismissal hid pending stacks"
-            command("mainclear")
-            term.expect_title(error + "(2) ERROR code=43 - Network timeout", timeout=20)
-            command("error", 12)
             if unicode:
                 term.expect(lambda _: term.titles and re.fullmatch(
                     r"[⠋⠙⠴⠦]  ascii-chat • mirror", term.titles[-1][1]),
-                    "Loading title did not return after errors were cleared", timeout=20)
+                    "Loading title did not return after dismissal", timeout=20)
             else:
                 term.expect_title(base, timeout=20)
             command("idle")
@@ -79,6 +74,11 @@ def check(binary, unicode):
             term.expect_title(error + "ERROR code=23 - Audio device error", timeout=20)
             term.write("q")
             term.expect_title(base, timeout=20)
+            for request, key in ((8, "\x1b"), (9, "\r")):
+                command("error", request)
+                term.expect_title(error + "ERROR code=23 - Audio device error", timeout=20)
+                term.write(key)
+                term.expect_title(base, timeout=20)
             command("stop")
             deadline = time.monotonic() + 15
             while term.process.isalive() and time.monotonic() < deadline:

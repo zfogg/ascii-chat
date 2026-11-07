@@ -74,6 +74,8 @@ static PLATFORM_THREAD_LOCAL bool g_suppress_notifications;
 static asciichat_error_context_t g_notifications[ASCIICHAT_ERRNO_HISTORY_SIZE];
 static size_t g_notification_first, g_notification_count;
 static uint64_t g_notification_dropped;
+// Dismissed errors remain in their owning stacks but no longer affect the title.
+static uint64_t g_title_dismissed_through;
 static bool g_notifications_enabled;
 static atomic_t g_notifications_pending = {0};
 
@@ -111,6 +113,8 @@ size_t errno_notifications_snapshot(asciichat_error_context_t *out, size_t capac
 
 void errno_notifications_dismiss(uint64_t through_id) {
   registry_lock();
+  if (through_id > g_title_dismissed_through)
+    g_title_dismissed_through = through_id;
   while (g_notification_count && g_notifications[g_notification_first].error_id <= through_id) {
     memset(&g_notifications[g_notification_first], 0, sizeof(g_notifications[0]));
     g_notification_first = (g_notification_first + 1) % ASCIICHAT_ERRNO_HISTORY_SIZE;
@@ -181,11 +185,17 @@ static error_thread_t *find_thread(uint64_t id) {
 size_t errno_title_snapshot(asciichat_error_context_t *latest) {
   asciichat_error_context_t newest = {0};
   registry_lock();
-  size_t count = g_stats.pending_errors;
+  size_t count = 0;
   for (size_t i = 0; i < ASCIICHAT_ERRNO_MAX_THREADS; ++i) {
     error_thread_t *thread = &g_threads[i];
-    if (thread->depth && g_frames[thread->top].context.error_id > newest.error_id)
-      newest = g_frames[thread->top].context;
+    for (int frame = thread->depth ? thread->top : NO_FRAME; frame != NO_FRAME; frame = g_frames[frame].next) {
+      const asciichat_error_context_t *entry = &g_frames[frame].context;
+      if (entry->error_id <= g_title_dismissed_through)
+        continue;
+      ++count;
+      if (entry->error_id > newest.error_id)
+        newest = *entry;
+    }
   }
   for (size_t i = 0; i < g_notification_count; ++i) {
     const asciichat_error_context_t *entry =

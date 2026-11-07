@@ -159,7 +159,7 @@ asciichat_errno_snapshot_t errno_snapshot(uint64_t thread_id, asciichat_error_co
 /** Copy registered thread IDs. Returns the total count so truncation is visible. */
 size_t errno_threads_snapshot(uint64_t *out, size_t capacity);
 size_t errno_history_snapshot(asciichat_errno_history_t *out, size_t capacity);
-/** Count distinct pending frames and visible notifications, copying the newest.
+/** Count distinct unacknowledged pending frames and visible notifications, copying the newest.
  * The count and value come from the same synchronized registry snapshot. */
 size_t errno_title_snapshot(asciichat_error_context_t *latest);
 /** Independent, bounded UI notifications. Acknowledgment never changes pending stacks.

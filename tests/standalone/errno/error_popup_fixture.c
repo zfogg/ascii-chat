@@ -127,14 +127,18 @@ static int journal_contract(void) {
   errno_notifications_dismiss(cutoff);
   CHECK(errno_notifications_snapshot(entries, ARRAY_SIZE(entries), &dropped) == 1);
   CHECK(entries[0].code == ERROR_CRYPTO_AUTH);
+  asciichat_error_context_t title_latest;
+  CHECK(errno_title_snapshot(&title_latest) == 1 && title_latest.code == ERROR_CRYPTO_AUTH);
   CHECK(HAS_ERRNO_CODE(ERROR_NETWORK_TIMEOUT));
   errno_notifications_dismiss(entries[0].error_id);
   CHECK(!errno_notifications_pending());
   CHECK(HAS_ERRNO_CODE(ERROR_CRYPTO_AUTH));
+  CHECK(errno_title_snapshot(&title_latest) == 0);
   SET_ERRNO(ERROR_AUDIO, "Cleared by caller");
   CLEAR_ERRNO();
   CHECK(errno_notifications_snapshot(entries, ARRAY_SIZE(entries), &dropped) == 1);
   CHECK(entries[0].code == ERROR_AUDIO);
+  CHECK(errno_title_snapshot(&title_latest) == 1 && title_latest.code == ERROR_AUDIO);
   errno_notifications_enable(false);
   CHECK(!errno_notifications_pending());
   SET_ERRNO(ERROR_GENERAL, "After TUI");
