@@ -271,6 +271,7 @@ struct session_pipeline_s {
   asciichat_thread_t capture_tid;
   asciichat_thread_t encode_tid;
   asciichat_thread_t input_tid;
+  atomic_int input_start_status;
   session_keyboard_handler_fn keyboard_handler;
   session_should_exit_fn should_exit;
   void *input_data;
@@ -591,6 +592,10 @@ asciichat_error_t session_pipeline_create(session_capture_ctx_t *capture, sessio
 // must never determine when an interactive command is consumed.
 static void *pipeline_input_thread(void *data) {
   session_pipeline_t *pipeline = data;
+  asciichat_error_t result = keyboard_init();
+  atomic_store(&pipeline->input_start_status, result == ASCIICHAT_OK ? 1 : -1);
+  if (result != ASCIICHAT_OK)
+    return NULL;
   while (!atomic_load_bool(&pipeline->stop) && !pipeline->should_exit(pipeline->input_data)) {
     keyboard_key_t key = ui_input_read_key(UI_SCREEN_MEDIA);
     if (key != KEY_NONE)
@@ -609,14 +614,18 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
   log_debug("[PIPELINE_MAIN] Starting main thread loop");
   if (keyboard_handler && !GET_OPTION(snapshot_mode)) {
-    asciichat_error_t keyboard_result = keyboard_init();
-    if (keyboard_result != ASCIICHAT_OK)
-      return keyboard_result;
     pipeline->keyboard_handler = keyboard_handler;
     pipeline->should_exit = should_exit;
     pipeline->input_data = user_data;
+    atomic_store(&pipeline->input_start_status, 0);
     if (acthread_create(&pipeline->input_tid, "pipeline_input", pipeline_input_thread, pipeline) != ASCIICHAT_OK)
       return SET_ERRNO(ERROR_THREAD, "Cannot start responsive session input");
+    while (atomic_load(&pipeline->input_start_status) == 0)
+      platform_sleep_ms(1);
+    if (atomic_load(&pipeline->input_start_status) < 0) {
+      thread_join(&pipeline->input_tid, NULL);
+      return SET_ERRNO(ERROR_INIT, "Cannot initialize session keyboard input");
+    }
   }
 
   // Snapshot duration is owned by the capture thread. It records the first
