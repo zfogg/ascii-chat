@@ -67,7 +67,7 @@ sync_python_tooling() {
 }
 
 verify_llvm_for_defer() {
-  local compiler="$1" compiler_dir major libdir library found=0
+  local compiler="$1" compiler_dir resolved_dir major libdir library found=0
   if [ ! -x "$compiler" ]; then
     echo >&2 "ERROR: LLVM 19-23 Clang was not found at $compiler"
     exit 1
@@ -78,8 +78,10 @@ verify_llvm_for_defer() {
     exit 1
   fi
   compiler_dir="$(cd "$(dirname "$compiler")" && pwd -P)"
+  resolved_dir="$(dirname "$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$compiler")")"
   libdir="${compiler_dir}/../lib"
-  for library in "$libdir/libclang.dylib" "$libdir/libclang.so" "$libdir/libclang.so.$major"; do
+  for library in "$libdir/libclang.dylib" "$libdir/libclang.so" "$libdir/libclang.so.$major" \
+      "$resolved_dir/../lib/libclang.dylib" "$resolved_dir/../lib/libclang.so" "$resolved_dir/../lib/libclang.so.$major"; do
     if [ -f "$library" ]; then found=1; break; fi
   done
   if [ "$found" -ne 1 ]; then
@@ -126,11 +128,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
 
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
-  if [ -f /etc/debian_version ]; then
-      if ! bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" -- 23; then
-        echo >&2 "LLVM 23 bootstrap unavailable; trying packaged versions down to LLVM 19"
-      fi
-  fi
+  # Use the configured package repositories; never run a remote script as root.
 
   if command -v apt-get &>/dev/null; then
     echo "Detected apt-get package manager"

@@ -34,8 +34,6 @@ function(ascii_defer_apply_target target)
         endif()
         set(_generated "${CMAKE_BINARY_DIR}/defer_transformed/${target}/${_relative}")
         get_filename_component(_original_dir "${_absolute}" DIRECTORY)
-        # Targets with identical prerequisites share a batch. This avoids introducing
-        # dependencies between unrelated build stages or cycles through linked targets.
         set(_batch_prerequisites "")
         if(_prerequisites)
             set(_batch_prerequisites ${_prerequisites})
@@ -43,13 +41,7 @@ function(ascii_defer_apply_target target)
         if(TARGET generate_version AND NOT "generate_version" IN_LIST _batch_prerequisites)
             list(APPEND _batch_prerequisites generate_version)
         endif()
-        list(SORT _batch_prerequisites)
-        string(MD5 _batch_id "${_batch_stage}|${_batch_prerequisites}")
-        set_property(GLOBAL APPEND PROPERTY ASCII_DEFER_BATCH_IDS "${_batch_id}")
-        set_property(GLOBAL APPEND PROPERTY "ASCII_DEFER_${_batch_id}_SOURCES" "${_absolute}")
-        set_property(GLOBAL APPEND PROPERTY "ASCII_DEFER_${_batch_id}_OUTPUTS" "${_generated}")
-        set_property(GLOBAL APPEND PROPERTY "ASCII_DEFER_${_batch_id}_TARGETS" "${target}")
-        set_property(GLOBAL PROPERTY "ASCII_DEFER_${_batch_id}_PREREQUISITES" "${_batch_prerequisites}")
+        file(APPEND "${_plan_records}" "${target}\t${_absolute}\t${_generated}\t${_batch_prerequisites}\n")
         set_source_files_properties("${_generated}" TARGET_DIRECTORY "${target}"
             PROPERTIES GENERATED TRUE SKIP_UNITY_BUILD_INCLUSION TRUE)
         foreach(_property COMPILE_DEFINITIONS COMPILE_OPTIONS COMPILE_FLAGS INCLUDE_DIRECTORIES OBJECT_DEPENDS)
@@ -66,48 +58,17 @@ function(ascii_defer_apply_target target)
 endfunction()
 
 function(ascii_defer_finish_batches)
-    get_property(_ids GLOBAL PROPERTY ASCII_DEFER_BATCH_IDS)
-    list(REMOVE_DUPLICATES _ids)
-    foreach(_id IN LISTS _ids)
-        get_property(_sources GLOBAL PROPERTY "ASCII_DEFER_${_id}_SOURCES")
-        get_property(_outputs GLOBAL PROPERTY "ASCII_DEFER_${_id}_OUTPUTS")
-        get_property(_targets GLOBAL PROPERTY "ASCII_DEFER_${_id}_TARGETS")
-        get_property(_prerequisites GLOBAL PROPERTY "ASCII_DEFER_${_id}_PREREQUISITES")
-        set(_manifest "${CMAKE_BINARY_DIR}/defer_transformed/batch-${_id}.txt")
-        set(_depfile "${CMAKE_BINARY_DIR}/defer_transformed/batch-${_id}.d")
-        set(_content "")
-        list(LENGTH _sources _count)
-        math(EXPR _last "${_count} - 1")
-        foreach(_index RANGE ${_last})
-            list(GET _sources ${_index} _source)
-            list(GET _outputs ${_index} _output)
-            string(APPEND _content "${_source}\t${_output}\n")
-        endforeach()
-        file(GENERATE OUTPUT "${_manifest}" CONTENT "${_content}")
-        add_custom_command(
-            OUTPUT ${_outputs}
-            COMMAND "${ASCIICHAT_PYTHON3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/src/tooling/defer/defer.py"
-                --batch "${_manifest}" --libclang "${ASCIICHAT_LIBCLANG_PATH}"
-                --compilation-database "${CMAKE_BINARY_DIR}" --depfile "${_depfile}"
-            DEPENDS ${_sources} "${_manifest}" "${CMAKE_SOURCE_DIR}/src/tooling/defer/defer.py"
-                "${CMAKE_SOURCE_DIR}/src/tooling/defer/vendor/clang/cindex.py"
-                "${CMAKE_BINARY_DIR}/compile_commands.json"
-            DEPFILE "${_depfile}"
-            COMMENT "Transforming defer source batch"
-            VERBATIM)
-        add_custom_target("ascii-defer-${_id}" DEPENDS ${_outputs})
-        if(_prerequisites)
-            add_dependencies("ascii-defer-${_id}" ${_prerequisites})
-        endif()
-        list(REMOVE_DUPLICATES _targets)
-        foreach(_target IN LISTS _targets)
-            add_dependencies("${_target}" "ascii-defer-${_id}")
-        endforeach()
-        foreach(_key SOURCES OUTPUTS TARGETS PREREQUISITES)
-            set_property(GLOBAL PROPERTY "ASCII_DEFER_${_id}_${_key}" "")
-        endforeach()
-    endforeach()
-    set_property(GLOBAL PROPERTY ASCII_DEFER_BATCH_IDS "")
+    set(_plan "${CMAKE_BINARY_DIR}/defer-plan-${_batch_stage}.cmake")
+    set(_planner "${CMAKE_SOURCE_DIR}/src/tooling/defer/plan.py")
+    set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_planner}")
+    execute_process(COMMAND "${ASCIICHAT_PYTHON3_EXECUTABLE}" "${_planner}"
+        --records "${_plan_records}" --build-dir "${CMAKE_BINARY_DIR}"
+        --stage "${_batch_stage}" --output "${_plan}"
+        RESULT_VARIABLE _result ERROR_VARIABLE _error ENCODING UTF-8)
+    if(NOT _result EQUAL 0)
+        message(FATAL_ERROR "defer batch planning failed: ${_error}")
+    endif()
+    include("${_plan}")
 endfunction()
 
 function(ascii_defer_scan_targets out_var)
@@ -136,7 +97,7 @@ function(ascii_defer_scan_targets out_var)
     file(WRITE "${_scan_input}" "${_scan_content}\n")
     set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/tooling/defer/scan.py")
     execute_process(COMMAND "${ASCIICHAT_PYTHON3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/src/tooling/defer/scan.py"
-        INPUT_FILE "${_scan_input}" OUTPUT_VARIABLE _scan_output ERROR_VARIABLE _scan_error RESULT_VARIABLE _scan_result
+        ENCODING UTF-8 INPUT_FILE "${_scan_input}" OUTPUT_VARIABLE _scan_output ERROR_VARIABLE _scan_error RESULT_VARIABLE _scan_result
         OUTPUT_STRIP_TRAILING_WHITESPACE)
     if(NOT _scan_result EQUAL 0)
         message(FATAL_ERROR "defer source scan failed: ${_scan_error}")
@@ -147,6 +108,8 @@ endfunction()
 
 function(ascii_defer_prepare)
     set(_batch_stage production)
+    set(_plan_records "${CMAKE_BINARY_DIR}/defer-records-${_batch_stage}.txt")
+    file(WRITE "${_plan_records}" "")
     if(NOT CMAKE_GENERATOR MATCHES "^(Ninja|Unix Makefiles)$")
         message(FATAL_ERROR "defer requires the single-config Ninja or Unix Makefiles generator; choose the default Ninja preset")
     endif()
@@ -207,6 +170,8 @@ endfunction()
 
 function(ascii_defer_prepare_tests)
     set(_batch_stage tests)
+    set(_plan_records "${CMAKE_BINARY_DIR}/defer-records-${_batch_stage}.txt")
+    file(WRITE "${_plan_records}" "")
     get_property(_test_targets DIRECTORY "${CMAKE_SOURCE_DIR}/tests" PROPERTY BUILDSYSTEM_TARGETS)
     ascii_defer_scan_targets(_defer_sources ${_test_targets})
     foreach(_target IN LISTS _test_targets)
@@ -217,6 +182,8 @@ endfunction()
 
 function(ascii_defer_prepare_web)
     set(_batch_stage web)
+    set(_plan_records "${CMAKE_BINARY_DIR}/defer-records-${_batch_stage}.txt")
+    file(WRITE "${_plan_records}" "")
     get_property(_web_targets DIRECTORY "${CMAKE_SOURCE_DIR}/src/web" PROPERTY BUILDSYSTEM_TARGETS)
     ascii_defer_scan_targets(_defer_sources ${_web_targets})
     foreach(_target IN LISTS _web_targets)

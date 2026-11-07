@@ -3,12 +3,16 @@
 
 from __future__ import annotations
 
+import io
 import re
 import sys
 from pathlib import Path
+from typing import cast
 
 
 def main() -> int:
+    cast(io.TextIOWrapper, sys.stdin).reconfigure(encoding="utf-8")
+    cast(io.TextIOWrapper, sys.stdout).reconfigure(encoding="utf-8")
     pattern = re.compile(
         rb"(?<![A-Za-z0-9_])defer(?:[ \t\r\n]|/\*.*?\*/|//[^\r\n]*|\\\r?\n)*\(",
         re.DOTALL,

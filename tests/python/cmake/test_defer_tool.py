@@ -137,6 +137,9 @@ int main(void) {
         "void f(int x) { switch(x) { case 0: ; defer(x++); break; case 1: break; } }",
         "#define ESC(x) if (x) goto out\nvoid f(int x) { { defer(x++); ESC(x); } out:; }",
         "#define ESC(x) if (x) break\nvoid f(int x) { while (x) { defer(x++); ESC(x); } }",
+        "#define break_if(x) if (x) break\nvoid f(int x) { while (x) { defer(x++); break_if(x); } }",
+        "#define return_if(x) if (x) return\nvoid f(int x) { defer(x++); return_if(x); }",
+        "#define continue_if(x) if (x) continue\nvoid f(int x) { while (x) { defer(x++); continue_if(x); } }",
         "void f(int x) { if (x) defer(x++); }",
         "void f(int x) { defer({ if (x) return; }); }",
         "void f(int x) { goto inner; { inner: defer(x++); } }",
@@ -205,6 +208,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
     tool_dir.mkdir(parents=True)
     shutil.copy2(TOOL, tool_dir / "defer.py")
     shutil.copy2(TOOL.parent / "scan.py", tool_dir / "scan.py")
+    shutil.copy2(TOOL.parent / "plan.py", tool_dir / "plan.py")
     shutil.copytree(TOOL.parent / "vendor" / "clang", tool_dir / "vendor" / "clang")
     second = source_dir / "second.c"
     second.write_text(

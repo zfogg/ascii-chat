@@ -233,6 +233,16 @@ class Transformer:
         for child in cursor.get_children():
             self.index_control_flow(child, scopes, limit)
 
+    def require_keyword(self, offset: int, keyword: bytes) -> None:
+        """Reject macro expansions whose spelling is not a standalone keyword."""
+        suffix = self.source[offset + len(keyword) : offset + len(keyword) + 1]
+        if self.source[offset : offset + len(keyword)] != keyword or (
+            suffix and (suffix.isalnum() or suffix == b"_" or suffix[0] >= 128)
+        ):
+            raise TransformError(
+                f"control transfer from a macro cannot be transformed (byte {offset})"
+            )
+
     def visit(
         self, cursor: cindex.Cursor, parent_kind: cindex.CursorKind | None = None
     ) -> None:
@@ -373,19 +383,7 @@ class Transformer:
                 )
             cleanup = self.cleanup(self.scopes[len(target_scopes) :], start)
             if cleanup:
-                keyword = (
-                    b"goto"
-                    if kind == cindex.CursorKind.GOTO_STMT
-                    else (
-                        b"break"
-                        if kind == cindex.CursorKind.BREAK_STMT
-                        else b"continue"
-                    )
-                )
-                if self.source[start : start + len(keyword)] != keyword:
-                    raise TransformError(
-                        f"control transfer from a macro cannot be transformed (byte {start})"
-                    )
+                self.require_keyword(start, b"goto")
                 stop = self.after_semicolon(end)
                 self.edits.append(
                     (start, stop, b"{ " + cleanup + self.source[start:stop] + b" }")
@@ -394,10 +392,7 @@ class Transformer:
         if kind == cindex.CursorKind.RETURN_STMT:
             cleanup = self.cleanup(self.scopes, start)
             if cleanup:
-                if self.source[start : start + 6] != b"return":
-                    raise TransformError(
-                        f"return from a macro cannot be transformed (byte {start})"
-                    )
+                self.require_keyword(start, b"return")
                 stop = self.after_semicolon(end)
                 raw_expr = self.source[start + 6 : end]
                 expr_start = start + 6 + len(raw_expr) - len(raw_expr.lstrip())
@@ -438,18 +433,9 @@ class Transformer:
             cleanup = self.cleanup(self.scopes[targets[-1][1] :], start)
             if cleanup:
                 keyword = (
-                    b"goto"
-                    if kind == cindex.CursorKind.GOTO_STMT
-                    else (
-                        b"break"
-                        if kind == cindex.CursorKind.BREAK_STMT
-                        else b"continue"
-                    )
+                    b"break" if kind == cindex.CursorKind.BREAK_STMT else b"continue"
                 )
-                if self.source[start : start + len(keyword)] != keyword:
-                    raise TransformError(
-                        f"control transfer from a macro cannot be transformed (byte {start})"
-                    )
+                self.require_keyword(start, keyword)
                 stop = self.after_semicolon(end)
                 self.edits.append(
                     (start, stop, b"{ " + cleanup + self.source[start:stop] + b" }")

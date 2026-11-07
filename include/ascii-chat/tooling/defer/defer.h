@@ -10,7 +10,9 @@
 #pragma once
 
 #ifdef ASCIICHAT_DEFER_PARSING
-#define defer(...) do { } while (0)
+#define defer(...)                                                                                                     \
+  do {                                                                                                                 \
+  } while (0)
 #else
 #define defer(...) _Static_assert(0, "defer() requires the source transformation")
 #endif
