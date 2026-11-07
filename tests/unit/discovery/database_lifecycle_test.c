@@ -27,6 +27,10 @@ static void teardown(void) {
 
 TestSuite(database_lifecycle, .init = setup, .fini = teardown);
 
+Test(database_lifecycle, shared_connection_is_serialized) {
+  cr_assert_not_null(sqlite3_db_mutex(db), "Discovery's shared SQLite connection must have a mutex");
+}
+
 Test(database_lifecycle, key_rotation_is_ordered_bounded_and_revocation_cannot_be_undone_by_readding) {
   uint8_t first[32] = {1}, second[32] = {2}, missing[32] = {3}, keys[3][32] = {{0}};
   const char *name = session.session_string;

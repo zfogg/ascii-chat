@@ -204,7 +204,8 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
 
   log_info("Opening database: %s", db_path);
 
-  int rc = sqlite3_open(db_path, db);
+  // Signaling workers share this connection; macOS SQLite defaults to multi-thread mode.
+  int rc = sqlite3_open_v2(db_path, db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, NULL);
   if (rc != SQLITE_OK) {
     if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
       ascii_otel_metric(ASCII_OTEL_METRIC_DB_BUSY, 1);
