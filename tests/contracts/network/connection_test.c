@@ -170,6 +170,7 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
                                     .max_connections = 4,
                                     .handshake_timeout_ms = 250,
                                     .partial_timeout_ms = 250,
+                                    .idle_timeout_ms = stall && rtc ? 250 : 0,
                                     .callbacks = {opened, packet, closing, closed},
                                     .user_data = &f};
   cr_assert_eq(network_server_create(&config, &f.server), ASCIICHAT_OK);
@@ -575,7 +576,7 @@ Test(network_connections, webrtc_reject) {
   webrtc_destroy();
 }
 
-Test(network_connections, webrtc_handshake_timeout_reports_error) {
+Test(network_connections, webrtc_idle_timeout_reports_error) {
   cr_assert_eq(webrtc_init(), ASCIICHAT_OK);
   scenario(2, false, true, 0, false);
   webrtc_destroy();

@@ -23,6 +23,7 @@
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/url.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/mutex.h>
 #include <ascii-chat/tests/test_env.h>
@@ -682,6 +683,7 @@ void ascii_otel_log(int level, const char *file, int line, const char *function,
     char body[OTEL_BODY_BUFFER_SIZE];
     int n = safe_vsnprintf(body, sizeof(body), format, args);
     if (n >= 0) {
+      url_redact_diagnostic(body, (size_t)n >= sizeof(body));
       otlp_severity_t severity = level >= LOG_FATAL   ? OTLP_SEVERITY_FATAL
                                  : level >= LOG_ERROR ? OTLP_SEVERITY_ERROR
                                  : level >= LOG_WARN  ? OTLP_SEVERITY_WARN
@@ -748,7 +750,12 @@ ascii_otel_operation_t ascii_otel_failure_operation(asciichat_error_t code, cons
 void ascii_otel_error_code(asciichat_error_t code, const char *message) {
   if (code == ASCIICHAT_OK || code == ERROR_SIGNAL_INTERRUPT || code == ERROR_NETWORK_INCOMPLETE)
     return;
-  ascii_otel_error(message);
+  char redacted[OTEL_BODY_BUFFER_SIZE];
+  int written = safe_snprintf(redacted, sizeof(redacted), "%s", message ? message : "");
+  if (written < 0)
+    return;
+  url_redact_diagnostic(redacted, (size_t)written >= sizeof(redacted));
+  gotel_current_error("ascii_chat.error", redacted);
   if (!ascii_otel_enabled())
     return;
   const char *origin = ascii_otel_current_operation();
@@ -766,10 +773,15 @@ void ascii_otel_error_code(asciichat_error_t code, const char *message) {
   gotel_attr_string(&report.scope, "ascii_chat.failure.operation", origin);
   gotel_attr_int(&report.scope, "asciichat_errno.code", code);
   gotel_attr_string(&report.scope, "asciichat_errno.code_message", asciichat_error_string(code));
-  gotel_error(&report.scope, category, message);
+  gotel_error(&report.scope, category, redacted);
 }
 void ascii_otel_error(const char *message) {
-  gotel_current_error("ascii_chat.error", message);
+  char redacted[OTEL_BODY_BUFFER_SIZE];
+  int written = safe_snprintf(redacted, sizeof(redacted), "%s", message ? message : "");
+  if (written < 0)
+    return;
+  url_redact_diagnostic(redacted, (size_t)written >= sizeof(redacted));
+  gotel_current_error("ascii_chat.error", redacted);
 }
 void ascii_otel_http(ascii_otel_scope_t *s, const char *hostname, const char *path) {
   if (!s->retained || !hostname || !path)
