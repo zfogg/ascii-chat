@@ -292,17 +292,28 @@ def main():
             boundary = client("boundary")
             boundary.expect(lambda text: "LAN servers" in text and " [12]" in text,
                             "Twelve-row LAN viewport did not fill")
-            boundary.pump(2)
             text = boundary.expect(lambda text: re.search(r"> \[\d+\]", text)
                                    and "Auto-refresh" in text,
                                    "Boundary picker did not finish drawing its selected row and footer")
-            # Refresh sorts discoveries while preserving the selected endpoint,
-            # so its row need not remain one after the initial discovery query.
-            current = int(re.search(r"> \[(\d+)\]", text).group(1))
-            if current > 1:
-                boundary.write("k" * (current - 1))
-                boundary.expect(lambda text: "> [1]" in text,
-                                "Could not establish the first row before testing thirteen Down events")
+            # The viewport shows only twelve rows. Probe the wrapped last row
+            # until all fourteen advertisements are present before navigating.
+            deadline = time.monotonic() + 20
+            while True:
+                current = int(re.search(r"> \[(\d+)\]", text).group(1))
+                if current > 1:
+                    boundary.write("k" * (current - 1))
+                    boundary.expect(lambda text: "> [1]" in text, "Could not select first LAN server")
+                boundary.write("k")
+                text = boundary.expect(lambda text: re.search(r"> \[(\d+)\]", text)
+                                       and "> [1]" not in text, "Could not select last LAN server")
+                if int(re.search(r"> \[(\d+)\]", text).group(1)) >= 14:
+                    break
+                if time.monotonic() >= deadline:
+                    raise AssertionError("Timed out waiting for all fourteen LAN servers")
+                boundary.pump(.25)
+                text = "\n".join(boundary.screen.display)
+            boundary.write("j")
+            boundary.expect(lambda text: "> [1]" in text, "Could not return to first LAN server")
             boundary.write("j" * 13)
             text = boundary.expect(lambda text: "> [14]" in text,
                                    "Selection could not move safely to server 14")

@@ -57,4 +57,4 @@ RUN pacman -S --noconfirm --needed \
 WORKDIR /app
 
 # Default command builds and runs tests with ctest
-CMD ["sh", "-c", "cmake --preset docker && cmake --build build_docker --target tests && ctest --test-dir build_docker --output-on-failure --parallel 0"]
+CMD ["sh", "-c", "cmake --preset docker && cmake --build build_docker --target all tests-criterion-build && ctest --test-dir build_docker --output-on-failure --parallel 0"]
