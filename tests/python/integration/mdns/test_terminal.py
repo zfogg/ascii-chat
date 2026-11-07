@@ -4,9 +4,9 @@ from types import SimpleNamespace
 #!/usr/bin/env python3
 """Real mDNS advertisements, terminal navigation, and same-address reconnect.
 
-Run with --binary build/bin/ascii-chat --advertiser build/bin/test-mdns-advertiser
-and pyte/pexpect (pywinpty on Windows). --artifacts captures terminal cells and
-raw ANSI externally; Pillow adds PNG captures.
+Run with pytest and --ascii-chat-binary build/bin/ascii-chat after building
+test-mdns-advertiser in the same bin directory. pytest captures terminal cells,
+raw ANSI, and PNGs in its temporary artifacts directory.
 """
 
 from ascii_chat_tests.cli import cli_command
