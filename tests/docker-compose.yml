@@ -44,7 +44,7 @@ services:
     command: >
       sh -c "cmake --preset docker &&
              cmake --build build_docker --target tests &&
-             ctest --test-dir build_docker --output-on-failure --parallel 0"
+             ctest --test-dir build_docker --output-on-failure --parallel"
 
     # Optional: Override command for interactive shell
     # docker-compose run --rm ascii-chat-tests /bin/bash
@@ -99,7 +99,7 @@ services:
     command: >
       sh -c "cmake --preset docker &&
              cmake --build build_docker --target tests &&
-             ctest --test-dir build_docker --output-on-failure --parallel 0"
+             ctest --test-dir build_docker --output-on-failure --parallel"
 
     environment:
       # Architecture-specific deps cache (prevents cross-arch binary conflicts)

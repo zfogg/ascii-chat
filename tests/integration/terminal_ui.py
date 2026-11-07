@@ -31,7 +31,7 @@ import time
 prerequisites = ["pyte"] + ([] if os.name == "nt" else ["pexpect"])
 missing = [name for name in prerequisites if importlib.util.find_spec(name) is None]
 if missing:
-    print("SKIP: terminal tests need " + ", ".join(missing) + "; run uv sync --project tests/ascii_chat_tests --extra terminal")
+    print("SKIP: terminal tests need " + ", ".join(missing) + "; run uv sync --project tests/ascii_chat_tests")
     raise SystemExit(77)
 
 import pyte
