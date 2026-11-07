@@ -82,10 +82,7 @@ Collected on November 3, 2026, using Clang 23, `-O3 -DNDEBUG`, and no coverage
 or sanitizers. The host was an Intel Core i7-9750H at 2.60 GHz; Docker provided
 two CPUs, approximately 4 GiB RAM, and Linux 6.10.14-linuxkit. Each table value
 is the median of three runs unless a range or maximum is identified. All 24
-32 KiB runs and both 64 KiB stress runs completed successfully. The JSON retains
-every run, the binary and benchmark-source fingerprints, and NetEm counters:
-[32 KiB comparison](benchmarks/quic-transport-32k-2026-11-03.json) and
-[64 KiB stress case](benchmarks/quic-transport-64k-2026-11-03.json).
+32 KiB runs and both 64 KiB stress runs completed successfully.
 
 | Profile | Transport | Setup ms | Audio p95 ms | Audio gaps >60 ms | Control p95 ms | Visual p95 ms |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
