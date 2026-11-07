@@ -117,6 +117,8 @@ static int journal_contract(void) {
   SET_ERRNO(ERROR_NETWORK_TIMEOUT, "First batch");
   CHECK(errno_notifications_snapshot(entries, ARRAY_SIZE(entries), &dropped) == 1);
   uint64_t cutoff = entries[0].error_id;
+  CHECK(errno_import(&entries[0]) == ERROR_NETWORK_TIMEOUT);
+  CHECK(errno_notifications_snapshot(entries, ARRAY_SIZE(entries), &dropped) == 1);
   // This models a producer publishing between the UI snapshot and acknowledgment.
   SET_ERRNO(ERROR_CRYPTO_AUTH, "Concurrent arrival");
   errno_notifications_dismiss(cutoff);

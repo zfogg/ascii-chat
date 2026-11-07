@@ -153,6 +153,8 @@ Test(option_documentation, mode_names_and_groff_escaping_are_stable) {
   cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_SERVER | OPTION_MODE_CLIENT), "server"));
   cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_BINARY | OPTION_MODE_MIRROR), "global"));
   cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_DISCOVERY_SVC), "discovery-service"));
+  cr_assert_str_eq(format_mode_names(OPTION_MODE_MCP_SERVER), "mcp-server");
+  cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_BINARY | OPTION_MODE_MCP_SERVER), "mcp-server"));
   cr_assert_str_eq(escape_groff_special("--file"), "--file");
   cr_assert_str_eq(escape_groff_special(NULL), "");
   options_config_t *config = documentation_config();

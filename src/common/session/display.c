@@ -49,6 +49,7 @@
 #include <ascii-chat/audio/visualization.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/ascii/neon.h>
+#include <ascii-chat/platform/cpu.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -652,19 +653,20 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
       // Apply horizontal flip (X-axis)
       if (flip_x_enabled) {
 #if SIMD_SUPPORT_NEON
-        // Use NEON-accelerated flip on ARM processors
-        image_flip_horizontal_neon(flipped_image);
-#else
-        // Scalar fallback for non-NEON systems
-        for (int y = 0; y < image->h; y++) {
-          rgb_pixel_t *row = &flipped_image->pixels[y * image->w];
-          for (int x = 0; x < image->w / 2; x++) {
-            rgb_pixel_t temp = row[x];
-            row[x] = row[image->w - 1 - x];
-            row[image->w - 1 - x] = temp;
+        if (platform_cpu_features() & CPU_FEATURE_NEON) {
+          image_flip_horizontal_neon(flipped_image);
+        } else
+#endif
+        {
+          for (int y = 0; y < image->h; y++) {
+            rgb_pixel_t *row = &flipped_image->pixels[y * image->w];
+            for (int x = 0; x < image->w / 2; x++) {
+              rgb_pixel_t temp = row[x];
+              row[x] = row[image->w - 1 - x];
+              row[image->w - 1 - x] = temp;
+            }
           }
         }
-#endif
       }
 
       // Apply vertical flip (Y-axis)
@@ -813,7 +815,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
 static char *session_display_create_visualization_frame(session_display_ctx_t *ctx) {
   unsigned int width = terminal_get_effective_width();
   unsigned int height = terminal_get_effective_height();
-  bool use_color = ctx->caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
+  bool use_color = ctx->caps.color_level == TERM_COLOR_TRUECOLOR && GET_OPTION(color) != COLOR_SETTING_FALSE;
   int color_mode = colorscheme_current_background() == TERM_BACKGROUND_DARK ? AUDIO_VISUALIZATION_COLOR_BRIGHTER
                                                                             : AUDIO_VISUALIZATION_COLOR_DARKER;
   audio_source_t selected_audio = GET_OPTION(audio_source);

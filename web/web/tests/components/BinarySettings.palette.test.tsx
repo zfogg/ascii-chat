@@ -125,3 +125,32 @@ test("restores the configured palette after an empty edit", () => {
   expect((input as HTMLInputElement).value).toBe(DEFAULT_PALETTE_CHARS);
   expect(onChange).not.toHaveBeenCalled();
 });
+
+test("cancels a pending palette edit when settings are disabled", () => {
+  vi.useFakeTimers();
+  const onChange = vi.fn();
+  const view = render(
+    <BinarySettings
+      config={DEFAULT_SETTINGS}
+      mode={AsciiChatMode.MIRROR}
+      onChange={onChange}
+    />,
+    { wrapper: HeadingProvider },
+  );
+  fireEvent.change(screen.getByLabelText("Palette characters"), {
+    target: { value: " .#" },
+  });
+  view.rerender(
+    <BinarySettings
+      config={DEFAULT_SETTINGS}
+      mode={AsciiChatMode.MIRROR}
+      onChange={onChange}
+      disabled
+    />,
+  );
+  act(() => vi.advanceTimersByTime(PALETTE_INPUT_DEBOUNCE_MS));
+  expect(onChange).not.toHaveBeenCalled();
+  expect(
+    (screen.getByLabelText("Palette characters") as HTMLInputElement).value,
+  ).toBe(DEFAULT_PALETTE_CHARS);
+});

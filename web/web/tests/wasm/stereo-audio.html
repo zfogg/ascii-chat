@@ -32,12 +32,8 @@ Running generated stereo audio through the real worklet and C/WASM codec…</pre
           const start = packets * 960;
           for (let frame = 0; frame < 960; frame++) {
             const t = (start + frame) / 48000;
-            const left =
-              0.2 * Math.sin(2 * Math.PI * 440 * t) +
-              0.1 * Math.sin(2 * Math.PI * 1100 * t);
-            const right =
-              0.2 * Math.sin(2 * Math.PI * 880 * t) +
-              0.1 * Math.sin(2 * Math.PI * 2200 * t);
+            const left = 0.2 * Math.sin(2 * Math.PI * 440 * t);
+            const right = 0.2 * Math.sin(2 * Math.PI * 880 * t);
             largestError = Math.max(
               largestError,
               Math.abs(samples[frame * 2] - left),
@@ -101,6 +97,8 @@ Running generated stereo audio through the real worklet and C/WASM codec…</pre
     if (
       left < 0.08 ||
       right < 0.08 ||
+      amplitude(0, 1100) < 0.03 ||
+      amplitude(1, 2200) < 0.03 ||
       left < 6 * amplitude(0, 880) ||
       right < 6 * amplitude(1, 440)
     )

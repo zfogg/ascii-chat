@@ -83,13 +83,13 @@ self.onmessage = async ({
           scratch >> 2,
           (scratch >> 2) + input.length,
         );
-        for (let i = 0; i < samples.length; i++)
-          samples[i] = Math.max(-1, Math.min(1, samples[i]! + frame.media[i]!));
+        const mixed = (index: number) =>
+          Math.max(-1, Math.min(1, samples[index]! + frame.media[index]!));
         for (let i = 0; i < pcm.length; ++i) {
           const sample =
             encoderChannels === 2
-              ? samples[i]!
-              : (samples[i * 2]! + samples[i * 2 + 1]!) * 0.5;
+              ? mixed(i)
+              : (mixed(i * 2) + mixed(i * 2 + 1)) * 0.5;
           pcm[i] = Math.round(sample * (sample < 0 ? 32768 : 32767));
         }
         const opus = codec.encode(pcm);

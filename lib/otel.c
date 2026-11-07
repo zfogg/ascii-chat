@@ -123,6 +123,7 @@ static gotel_scope_t command_scope;
 static _Thread_local ascii_otel_scope_t *current_scope;
 static uint64_t shutdown_timeout_ns;
 static atomic_uint_fast64_t exporter_retries, exporter_batches;
+static atomic_size_t exporter_queue_capacity;
 static void exporter_event(void *context, const otlp_event_t *event) {
   (void)context;
   if (event->code == OTLP_EVT_RETRY_ARMED)
@@ -356,7 +357,7 @@ static void *export_worker(void *arg) {
       uint64_t failed = stats.dropped_err + stats.dropped_logs_err + stats.dropped_metrics_err;
       uint64_t pending = accepted > sent + failed ? accepted - sent - failed : 0;
       (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_QUEUE,
-                                            (double)pending / (3.0 * options_get()->otel_queue_capacity)),
+                                            (double)pending / (3.0 * atomic_load(&exporter_queue_capacity))),
                         "gotel_metric_record");
       (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_SENT, (double)sent), "gotel_metric_record");
       (void)otel_status(gotel_metric_record(h, ASCII_OTEL_METRIC_EXPORT_DROP,
@@ -656,6 +657,7 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   gotel_set_logger(h, exporter_diagnostic, NULL);
   shutdown_timeout_ns = (uint64_t)o->otel_timeout * NS_PER_MS_INT;
   atomic_store(&stopping, false);
+  atomic_store(&exporter_queue_capacity, config.exporter.queue_capacity);
   if (acthread_create(&worker, "otel_export", export_worker, h) != 0) {
     gotel_destroy(h);
     gotel_command_args_destroy(&command_args);

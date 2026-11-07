@@ -293,13 +293,25 @@ static void push_context(asciichat_error_context_t *context) {
     registry_unlock();
     return;
   }
+  bool already_notified = false;
+  if (context->cause_id) {
+    for (size_t i = 0; i < g_notification_count; ++i) {
+      const asciichat_error_context_t *entry =
+          &g_notifications[(g_notification_first + i) % ASCIICHAT_ERRNO_HISTORY_SIZE];
+      if (entry->error_id == context->cause_id || entry->cause_id == context->cause_id) {
+        already_notified = true;
+        break;
+      }
+    }
+  }
   record_stats_locked(context->code, context->timestamp);
   context->error_id = ++g_next_id;
   error_thread_t *thread = register_current_locked(context->thread_id);
   if (!thread) {
     ++g_stats.dropped_errors;
     remember_locked(context, ASCIICHAT_ERRNO_OVERFLOW, context->created_ns);
-    notify_locked(context);
+    if (!already_notified)
+      notify_locked(context);
     registry_unlock();
     return;
   }
@@ -341,7 +353,8 @@ static void push_context(asciichat_error_context_t *context) {
   thread->top = index;
   ++thread->depth;
   ++g_stats.pending_errors;
-  notify_locked(context);
+  if (!already_notified)
+    notify_locked(context);
   registry_unlock();
 }
 

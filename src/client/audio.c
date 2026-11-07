@@ -258,10 +258,10 @@ static void *audio_sender_thread_func(void *arg) {
 
     // Dequeue packet
     audio_send_packet_t packet = connection->audio_send_queue[connection->audio_send_queue_tail];
-    ASCII_OTEL_SCOPE_PARENT(CLIENT_AUDIO_SEND, &packet.telemetry_context);
     connection->audio_send_queue_tail = (connection->audio_send_queue_tail + 1) % AUDIO_SEND_QUEUE_SIZE;
 
     mutex_unlock(&connection->audio_send_queue_mutex);
+    ASCII_OTEL_SCOPE_PARENT(CLIENT_AUDIO_SEND, &packet.telemetry_context);
 
     // Send packet (may block on network I/O - that's OK, we're not in capture thread)
     asciichat_errno_scope_t send_scope = errno_scope_begin();

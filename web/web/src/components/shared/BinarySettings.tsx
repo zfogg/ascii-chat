@@ -112,6 +112,13 @@ export function BinarySettings({
       setPaletteDraft(config.paletteChars ?? DEFAULT_PALETTE_CHARS);
     }
   }, [config.paletteChars]);
+  useEffect(() => {
+    if (disabled && paletteTimerRef.current !== null) {
+      clearTimeout(paletteTimerRef.current);
+      paletteTimerRef.current = null;
+      setPaletteDraft(configRef.current.paletteChars ?? DEFAULT_PALETTE_CHARS);
+    }
+  }, [disabled]);
   useEffect(
     () => () => {
       if (paletteTimerRef.current !== null) {

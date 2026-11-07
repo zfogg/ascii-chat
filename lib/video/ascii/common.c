@@ -135,22 +135,32 @@ static const size_t g_utf8_heap_capacity = 2048;  // Max heap size (matching uth
 // char_index_ramp_cache removed - data is already stored in utf8_palette_cache_t.char_index_ramp[64]
 
 // Initialize UTF-8 cache system with min-heap (thread-safe)
-static void init_utf8_cache_system(void) {
+static bool init_utf8_cache_system(void) {
   if (!lifecycle_init_once(&g_utf8_cache_lc)) {
     // A competing renderer must wait for both the lock and heap to exist.
     while (atomic_load_u64(&g_utf8_cache_lc.state) == LIFECYCLE_INITIALIZING)
       platform_sleep_us(1);
-    return;
+    return lifecycle_is_initialized(&g_utf8_cache_lc);
+  }
+  if (rwlock_init(&g_utf8_cache_rwlock, "utf8_cache") != 0) {
+    lifecycle_init_abort(&g_utf8_cache_lc);
+    return false;
   }
   g_utf8_cache_lc.sync_type = LIFECYCLE_SYNC_RWLOCK;
   g_utf8_cache_lc.sync.rwlock = &g_utf8_cache_rwlock;
-  rwlock_init(&g_utf8_cache_rwlock, "utf8_cache");
 
   // Initialize uthash head to NULL (required)
   g_utf8_cache_table = NULL;
   g_utf8_heap = SAFE_MALLOC(g_utf8_heap_capacity * sizeof(utf8_palette_cache_t *), utf8_palette_cache_t **);
   g_utf8_heap_size = 0;
+  if (!g_utf8_heap) {
+    rwlock_destroy(&g_utf8_cache_rwlock);
+    g_utf8_cache_lc.sync_type = LIFECYCLE_SYNC_NONE;
+    lifecycle_init_abort(&g_utf8_cache_lc);
+    return false;
+  }
   lifecycle_init_commit(&g_utf8_cache_lc);
+  return true;
 }
 
 // Min-heap management functions for UTF-8 cache
@@ -284,7 +294,8 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   uint32_t palette_hash = hash_palette_string(ascii_chars);
 
   // Ensure the cache system is initialized
-  init_utf8_cache_system();
+  if (!init_utf8_cache_system())
+    return NULL;
 
   // First try: read lock for cache lookup (allows multiple concurrent readers)
   rwlock_rdlock(&g_utf8_cache_rwlock);

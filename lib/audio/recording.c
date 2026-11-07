@@ -89,10 +89,28 @@ void audio_recording_submit(audio_recording_source_t source, const float *sample
   if (recording->source_started[source] &&
       position < recording->source_position[source] + RECORDING_RATE * recording->channels / 10)
     position = recording->source_position[source];
-  if (position < recording->read_position)
+  if (position < recording->read_position) {
     position = recording->read_position;
+    if (position % recording->channels) {
+      uint64_t padding = recording->channels - position % recording->channels;
+      if (position > UINT64_MAX - padding) {
+        static_mutex_unlock(&recording_mutex);
+        return;
+      }
+      position += padding;
+    }
+  }
+  if (position > UINT64_MAX - (recording->channels - 1) || count > UINT64_MAX - position - (recording->channels - 1)) {
+    static_mutex_unlock(&recording_mutex);
+    return;
+  }
   recording->source_started[source] = true;
+  // Each submission starts at channel zero. An incomplete final frame leaves
+  // its missing channels silent rather than shifting the next submission.
   recording->source_position[source] = position + count;
+  if (recording->source_position[source] % recording->channels)
+    recording->source_position[source] +=
+        recording->channels - recording->source_position[source] % recording->channels;
   for (size_t i = 0; i < count; i++, position++) {
     if (position >= recording->read_position &&
         position - recording->read_position < RECORDING_CAPACITY * recording->channels && isfinite(samples[i]))

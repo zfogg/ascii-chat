@@ -1475,6 +1475,8 @@ static void initialize_mode_defaults(options_t *opts, asciichat_mode_t detected_
   // Initialize all defaults using options_t_new_preserve_binary() to keep binary-level
   // options (--quiet, --verbose, --log-level, etc.) from being reset
   (*opts) = options_t_new_preserve_binary(opts);
+  if (detected_mode == MODE_MCP_SERVER)
+    opts->port = OPT_MCP_PORT_DEFAULT;
   // If a session string was detected during mode detection, restore it after options reset
   // This ensures discovery mode knows which session to join
   if (detected_session_string[0] != '\0') {
