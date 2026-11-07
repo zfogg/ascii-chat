@@ -112,6 +112,9 @@ bool update_check_is_dismissed(const update_check_result_t *result);
  */
 bool update_check_is_cache_fresh(const update_check_result_t *result);
 
+/** Load a fresh cached result without treating a cache miss as an error. */
+bool update_check_try_fresh_cache(update_check_result_t *result);
+
 /**
  * @brief Detect installation method
  *

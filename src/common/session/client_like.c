@@ -262,7 +262,7 @@ static asciichat_error_t client_like_prepare_session_splash(const session_client
   bool has_media = (media_url && strlen(media_url) > 0) || (media_file && strlen(media_file) > 0);
 
   // Show splash briefly for webcam, but skip sleep for media (which takes time anyway)
-  if (!has_media && !GET_OPTION(snapshot_mode)) {
+  if (splash_is_running() && !has_media && !GET_OPTION(snapshot_mode)) {
     APP_CALLBACK_VOID(platform_pump_events);
     APP_CALLBACK_VOID_UINT(platform_sleep_ms, 250);
   }
@@ -272,8 +272,9 @@ static asciichat_error_t client_like_prepare_session_splash(const session_client
   splash_restore_stderr();
 
   // Discovery keeps the invitation as the only waiting UI.
-  update_banner_wait_for_check();
-  if (GET_OPTION(detected_mode) != MODE_DISCOVERY) {
+  if (splash_should_display(true))
+    update_banner_wait_for_check();
+  if (splash_should_display(true) && GET_OPTION(detected_mode) != MODE_DISCOVERY) {
     if (update_banner_has_update() && !GET_OPTION(snapshot_mode)) {
       bool wants_update = update_banner_show_prompt(state->display);
       if (wants_update) {
@@ -791,6 +792,7 @@ static asciichat_error_t client_like_cleanup_session(const session_client_like_c
                                                      client_like_state_t *state, asciichat_error_t result) {
   ASCII_OTEL_SCOPE(SESSION_CLEANUP);
   // Preparation can fail before the normal update check wait above.
+  update_banner_cancel_check();
   update_banner_wait_for_check();
   // Stop the terminal writer before restoring output or destroying the display.
   splash_intro_done();
