@@ -384,6 +384,17 @@ def main():
     parser.add_argument("--artifacts", type=Path, required=True)
     parser.add_argument("--diagnostics", action="store_true")
     args = parser.parse_args()
+    try:
+        import PIL.ImageFont
+    except ImportError:
+        print("SKIP: Pillow is required for terminal screenshots")
+        raise SystemExit(77)
+    fonts = [Path("C:/Windows/Fonts/consola.ttf"), Path("/System/Library/Fonts/Menlo.ttc"),
+             Path("/usr/share/fonts/TTF/DejaVuSansMono.ttf"),
+             Path("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf")]
+    if not any(path.exists() for path in fonts):
+        print("SKIP: a monospace font is required for terminal screenshots")
+        raise SystemExit(77)
     args.binary = args.binary.resolve()
     subprocess.run([str(args.binary), "--contract"], check=True, timeout=20)
     navigation(args)

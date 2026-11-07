@@ -684,6 +684,8 @@ options_t options_t_new(void) {
   opts.audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
   opts.audio_source = OPT_AUDIO_SOURCE_DEFAULT;
   opts.audio_capture_source = OPT_AUDIO_CAPTURE_SOURCE_DEFAULT;
+  opts.microphone_channels = 1;
+  opts.microphone_channel = 0;
   opts.microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
   opts.speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
   opts.microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT;

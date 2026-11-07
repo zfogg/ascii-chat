@@ -72,7 +72,9 @@ test.beforeAll(async () => {
   const appData = path.join(root, "appdata");
   mkdirSync(appData);
   serverPort = getRandomPort();
-  acdsPort = getRandomPort();
+  do {
+    acdsPort = getRandomPort();
+  } while (Math.abs(acdsPort - serverPort) <= 1);
   acds = new NativeProcess(
     [
       "discovery-service",

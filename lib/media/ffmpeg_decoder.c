@@ -18,6 +18,7 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/url.h>
 #include <ascii-chat/options/options.h>
 
 #include <libavformat/avformat.h>
@@ -805,7 +806,10 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
     // Classify the protocol rather than validating the host for timeout settings.
     bool is_http = path && (platform_strncasecmp(path, "http://", sizeof("http://") - 1) == 0 ||
                             platform_strncasecmp(path, "https://", sizeof("https://") - 1) == 0);
-    if (is_http) {
+    asciichat_errno_scope_t url_scope = errno_scope_begin();
+    bool is_url = is_http || (path && strstr(path, "://") && url_is_valid(path));
+    errno_scope_end(url_scope, ASCIICHAT_ERRNO_DISMISSED);
+    if (is_url) {
       // Limit probing to 32KB for faster format detection
       av_dict_set(&options, "probesize", "32768", 0);
       // Analyze for 100ms max to determine streams quickly

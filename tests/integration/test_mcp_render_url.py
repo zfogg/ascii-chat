@@ -15,6 +15,7 @@ import http.server
 import json
 import queue
 import re
+import shutil
 import subprocess
 import threading
 
@@ -75,11 +76,14 @@ def main():
     parser.add_argument("--output", type=Path, default=Path("build/mcp-evidence/render_url"))
     args = parser.parse_args()
     binary = args.binary.resolve()
-    assert binary.is_file(), binary
+    ffmpeg = shutil.which("ffmpeg")
+    if not binary.is_file() or not ffmpeg:
+        print("SKIP: ascii-chat binary and ffmpeg are required")
+        raise SystemExit(77)
     evidence = args.output.resolve() / f"run-{time.time_ns()}"
     evidence.mkdir(parents=True, exist_ok=True)
     fixture = evidence / "pattern.png"
-    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
+    subprocess.run([ffmpeg, "-y", "-v", "error", "-f", "lavfi", "-i",
                     "testsrc=size=160x120:rate=1", "-frames:v", "1", str(fixture)],
                    check=True, timeout=30)
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(evidence))

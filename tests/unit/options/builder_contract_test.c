@@ -126,6 +126,13 @@ Test(builder_contract, environment_then_explicit_cli_and_already_set_values) {
   platform_setenv("ASCII_TEST_BUILDER_DOUBLE", "2.5");
   platform_setenv("ASCII_TEST_BUILDER_STRING", "from-env");
   sample_t sample = defaults();
+  sample.enabled = true;
+  sample.ratio = 7.0;
+  SAFE_STRNCPY(sample.label, "from-config", sizeof(sample.label));
+  platform_setenv("ASCII_TEST_BUILDER_BOOL", "false");
+  cr_assert_eq(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
+  cr_assert_not(sample.enabled);
+  platform_setenv("ASCII_TEST_BUILDER_BOOL", "yes");
   cr_assert_eq(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
   cr_assert(sample.enabled);
   cr_assert_eq(sample.count, 12);

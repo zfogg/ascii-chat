@@ -75,6 +75,21 @@ class MediaSessions(unittest.TestCase):
         self.assertGreater(len(result.stdout), 100, "Snapshot did not contain a rendered frame")
         return result.stdout
 
+    def test_generated_configuration_loads_in_every_mode(self):
+        path = self.root / "generated-roundtrip.toml"
+        created = subprocess.run(self.command("--config-create", str(path)), env=self.env,
+                                 capture_output=True, timeout=20)
+        self.assertEqual(created.returncode, 0, created.stderr.decode(errors="replace")[-3000:])
+        for mode in ("mirror", "client", "server", "discovery-service", "mcp-server"):
+            with self.subTest(mode=mode):
+                result = subprocess.run(self.command("--config", str(path), mode, "--show-capabilities"),
+                                        env=self.env, capture_output=True, timeout=20)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-3000:])
+        path.write_text("[display]\nzalgo = 0\n", encoding="utf-8")
+        invalid = subprocess.run(self.command("--config", str(path), "mirror", "--show-capabilities"),
+                                 env=self.env, capture_output=True, timeout=20)
+        self.assertNotEqual(invalid.returncode, 0, "strict config accepted an invalid value")
+
     @unittest.skipIf(tomllib is None, "Independent TOML validation requires Python 3.11 or later")
     def test_generated_configuration_is_valid_and_controls_snapshot_dimensions(self):
         result = subprocess.run(self.command("--config-create", "-"), env=self.env,

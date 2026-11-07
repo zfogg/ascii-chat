@@ -132,8 +132,8 @@ static void apply_env_bool(void *field, const char *env_value, const option_desc
     default_val = (default_byte != 0);
   }
 
-  if (current_value != default_val) {
-    return; // Already set, skip env var
+  if (!env_value && current_value != default_val) {
+    return; // Preserve a configured value when the environment is unset.
   }
 
   bool value = false;
@@ -178,7 +178,7 @@ static void apply_env_string(void *field, const char *env_value, const option_de
   if (desc->default_value) {
     default_val = *(const char *const *)desc->default_value;
   }
-  if (current_value && current_value[0] != '\0') {
+  if (!env_value && current_value && current_value[0] != '\0') {
     if (!default_val || strcmp(current_value, default_val) != 0) {
       return; // Already set, skip
     }
@@ -189,7 +189,7 @@ static void apply_env_string(void *field, const char *env_value, const option_de
   } else if (desc->default_value) {
     value = *(const char *const *)desc->default_value;
   }
-  if (value && value[0] != '\0') {
+  if (value && (env_value || value[0] != '\0')) {
     char *dest = (char *)field;
     safe_snprintf(dest, OPTIONS_BUFF_SIZE, "%s", value);
     dest[OPTIONS_BUFF_SIZE - 1] = '\0';
@@ -203,8 +203,8 @@ static void apply_env_double(void *field, const char *env_value, const option_de
   if (desc->default_value) {
     memcpy(&default_val, desc->default_value, sizeof(double));
   }
-  if (current_value != default_val) {
-    return; // Already set, skip env var
+  if (!env_value && current_value != default_val) {
+    return; // Preserve a configured value when the environment is unset.
   }
   double value = 0.0;
   if (env_value) {

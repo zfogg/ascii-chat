@@ -201,17 +201,24 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                 conn.getState() !== ConnectionState.CONNECTED
               )
                 return;
-              conn.sendPacket(
-                codec === "hevc"
-                  ? PacketType.IMAGE_FRAME_H265
-                  : PacketType.IMAGE_FRAME_H264,
-                buildImageFrameH265Payload(
-                  chunk.flags,
-                  chunk.width,
-                  chunk.height,
-                  chunk.data,
-                ),
-              );
+              try {
+                conn.sendPacket(
+                  codec === "hevc"
+                    ? PacketType.IMAGE_FRAME_H265
+                    : PacketType.IMAGE_FRAME_H264,
+                  buildImageFrameH265Payload(
+                    chunk.flags,
+                    chunk.width,
+                    chunk.height,
+                    chunk.data,
+                  ),
+                );
+              } catch (err) {
+                console.error(
+                  "[Client] Failed to send encoded video frame:",
+                  err,
+                );
+              }
             },
             after,
           );
