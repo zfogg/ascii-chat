@@ -66,7 +66,12 @@ static void test_transactions(void) {
   cr_assert_eq(options_set_int("renderer", ASCII_RENDERER_GLYPH), ASCIICHAT_OK);
   cr_assert(GET_OPTION(renderer) == ASCII_RENDERER_GLYPH);
   cr_assert_eq(options_set_int("renderer", ASCII_RENDERER_LUMINANCE), ASCIICHAT_OK);
-  cr_assert_not(GET_OPTION(renderer) == ASCII_RENDERER_GLYPH);
+  cr_assert_eq(GET_OPTION(renderer), ASCII_RENDERER_LUMINANCE);
+  uint64_t renderer_revision = options_revision();
+  cr_assert_neq(options_set_int("renderer", 99), ASCIICHAT_OK);
+  CLEAR_ERRNO();
+  cr_assert_eq(GET_OPTION(renderer), ASCII_RENDERER_LUMINANCE);
+  cr_assert_eq(options_revision(), renderer_revision);
   cr_assert_eq(options_set_int("color_mode", TERM_COLOR_AUTO), ASCIICHAT_OK);
   cr_assert_eq(options_set_int("width", 80), ASCIICHAT_OK);
   const options_t *borrowed = options_get();

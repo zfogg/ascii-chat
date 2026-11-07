@@ -489,7 +489,11 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   cr_assert_eq(strlen(restricted), 2);
   cr_assert(strspn(restricted, "@#") == 2, "glyphs must come from the requested palette");
   SAFE_FREE(restricted);
-  cr_assert(!ascii_glyph_palette_supported("\xe2\x96\x88"));
+  const char *invalid_palettes[] = {"", "@\xe2\x96\x88", "@\x01", "@\x7f", "\xe2\x96\x88"};
+  for (size_t i = 0; i < sizeof(invalid_palettes) / sizeof(invalid_palettes[0]); ++i) {
+    cr_assert(!ascii_glyph_palette_supported(invalid_palettes[i]));
+    cr_assert_null(ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, invalid_palettes[i]));
+  }
 
   pixels[0] = (rgb_pixel_t){80, 110, 140};
   char *color = ascii_render_glyph_match(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, NULL);
