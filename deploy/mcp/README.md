@@ -6,12 +6,12 @@ This stack runs the restricted ascii-chat MCP server behind Caddy. The default p
 
 - `compose.yml`: production image, Caddy, an egress guard, resource limits and bounded ephemeral storage.
 - `compose.dev.yml`: builds the MCP image from this checkout using `docker/Dockerfile`, tagged `ascii-chat-mcp:dev`.
-- `ascii-chat/config.toml`: mounted read-only as `/tmp/ascii-chat-config.toml`; this location is allowed by ascii-chat's config path validator. It configures restricted HTTP mode, port, four jobs, and downloads. The production download URL comes from TOML. The development override sets `ASCII_CHAT_DOWNLOADS_URL_PREFIX` from `MCP_PUBLIC_URL` for local testing; environment values override TOML. The binary's `--config` argument precedes `mcp-server`.
+- `ascii-chat/config.toml`: mounted read-only as `/tmp/ascii-chat-config.toml`; this location is allowed by ascii-chat's config path validator. It configures restricted HTTP mode, port, four jobs, and downloads. The production download URL comes from TOML; the base file therefore returns that URL even when run on localhost. The development override sets `ASCII_CHAT_DOWNLOADS_URL_PREFIX` from `MCP_PUBLIC_URL` for local testing; environment values override TOML. The binary's `--config` argument precedes `mcp-server`.
 - `caddy/`: Caddyfile and a Caddy image with a pinned rate-limit plugin.
 - `egress/`: a firewall sidecar that owns the MCP network namespace.
 - `letsencrypt/`: certificate management and staging notes. Caddy manages certificates itself; no Certbot service or systemd in a container is needed.
 
-Copy `.env.example` to `.env`, set a real `ACME_EMAIL`, and edit the other values. `.env` is local configuration and must not contain secrets. For a real deployment, set `MCP_BLOCKED_PUBLIC_IPS` to a space-separated list of **all** public IPs of the origin host and protected infrastructure reachable from it. Include public addresses that route back into the host or into otherwise protected services. Private and special-use IPv4 ranges are blocked automatically, IPv6 is disabled, and DNS replies cannot bypass the destination firewall. See the security section below.
+Copy `.env.example` to `.env`, set a real `ACME_EMAIL`, and edit the other values. `.env` is local configuration and must not contain secrets. For a real deployment, set `MCP_BLOCKED_PUBLIC_IPS` to a space-separated list of **all** public IPs of the origin host and protected infrastructure reachable from it. Include public addresses that route back into the host or into otherwise protected services. The guard refuses to start when the proxy bind address is not `127.0.0.1` and this list is empty. Private and special-use IPv4 ranges are blocked automatically, IPv6 is disabled, and DNS replies cannot bypass the destination firewall. See the security section below.
 
 From this directory:
 
@@ -26,7 +26,7 @@ docker compose --env-file .env -f compose.yml -f compose.dev.yml up -d --build
 
 For plain local HTTP testing, set `MCP_SITE=http://localhost`, `MCP_PUBLIC_URL=http://localhost:8080`, and use the development override with the default loopback ports. Requests must use the configured Host name. To switch back to GHCR, use only the base Compose file and run `docker compose --env-file .env pull mcp`, then `docker compose --env-file .env up -d --build`. `--build` builds the local guard and Caddy images; the base file does not build MCP. Compose environment variables override TOML, and CLI options override both.
 
-The image runs `/usr/local/bin/ascii-chat` directly instead of its discovery-service entrypoint, which generates keys. A root-only tmpfs masks `/acds`; do not put credentials in the image or mount Docker's socket. The container is non-root with a read-only root filesystem, no added capabilities, and `no-new-privileges`. The guard has `NET_ADMIN` in its own shared network namespace; the MCP container has no such capability.
+The Dockerfile installs `yt-dlp` for sites that need URL extraction; verify the production image contains it and keep it updated. The image runs `/usr/local/bin/ascii-chat` directly instead of its discovery-service entrypoint, which generates keys. A root-only tmpfs masks `/acds`; do not put credentials in the image or mount Docker's socket. The container is non-root with a read-only root filesystem, no added capabilities, and `no-new-privileges`. The guard has `NET_ADMIN` in its own shared network namespace; the MCP container has no such capability.
 
 ## Limits and storage
 

@@ -64,6 +64,7 @@ services:
       net.ipv6.conf.all.disable_ipv6: "1"
     environment:
       MCP_BLOCKED_PUBLIC_IPS: ${MCP_BLOCKED_PUBLIC_IPS:-}
+      MCP_BIND_ADDRESS: ${MCP_BIND_ADDRESS:-127.0.0.1}
     networks:
       backend:
         ipv4_address: 172.30.253.10
@@ -89,9 +90,9 @@ services:
       - "${MCP_BIND_ADDRESS:-127.0.0.1}:${MCP_HTTP_PORT:-8080}:80"
       - "${MCP_BIND_ADDRESS:-127.0.0.1}:${MCP_HTTPS_PORT:-8443}:443"
     environment:
-      MCP_SITE: ${MCP_SITE:-mcp.ascii-chat.com}
-      ACME_EMAIL: ${ACME_EMAIL:-admin@ascii-chat.com}
-      ACME_DIRECTORY: ${ACME_DIRECTORY:-https://acme-v02.api.letsencrypt.org/directory}
+      MCP_SITE: ${MCP_SITE:-http://localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-you@example.com}
+      ACME_DIRECTORY: ${ACME_DIRECTORY:-https://acme-staging-v02.api.letsencrypt.org/directory}
       MCP_RATE_EVENTS: ${MCP_RATE_EVENTS:-30}
       MCP_RATE_WINDOW: ${MCP_RATE_WINDOW:-1m}
     volumes:

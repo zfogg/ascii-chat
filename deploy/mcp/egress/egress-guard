@@ -31,6 +31,12 @@ if [ "${1:-}" = check ] || [ "${1:-}" = probe ]; then
   exit 0
 fi
 
+# A public listener must not start until the operator identifies protected public IPs.
+if [ "${MCP_BIND_ADDRESS:-127.0.0.1}" != "127.0.0.1" ] && [ -z "${MCP_BLOCKED_PUBLIC_IPS:-}" ]; then
+  echo "Set MCP_BLOCKED_PUBLIC_IPS before binding the proxy outside loopback" >&2
+  exit 1
+fi
+
 # The guard owns this network namespace; start closed before adding allowances.
 iptables -P INPUT DROP
 iptables -P FORWARD DROP

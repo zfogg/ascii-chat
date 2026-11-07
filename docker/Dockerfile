@@ -63,7 +63,7 @@ RUN apt-get update && \
 # Install minimal runtime dependencies for dynamically-linked Debug build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      ca-certificates curl wget unzip openssh-client gpg \
+      ca-certificates curl wget unzip openssh-client gpg yt-dlp \
       libportaudio2 libopus0 libsodium23 libzstd1 \
       libssl3 libfreetype6 libfontconfig1 libvterm0 libsqlite3-0 && \
     apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/tmp/*
