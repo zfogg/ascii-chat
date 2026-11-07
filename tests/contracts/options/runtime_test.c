@@ -36,7 +36,7 @@ static void test_flip_defaults(void) {
     cr_assert(GET_OPTION(flip_x));
   }
   options_edit_t invalid[] = {{.name = "flip_x", .type = OPTIONS_VALUE_BOOL, .value.boolean = false},
-                              {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = 0}};
+                              {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
   options_patch_t patch = {.edits = invalid, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   cr_assert_neq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   CLEAR_ERRNO();
@@ -83,7 +83,7 @@ static void test_transactions(void) {
   const options_t *borrowed = options_get();
   uint64_t before = options_revision();
   options_edit_t edits[] = {{.name = "width", .type = OPTIONS_VALUE_INT, .value.integer = 120},
-                            {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = 0}};
+                            {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
   options_patch_t patch = {.edits = edits, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   cr_assert_neq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   cr_assert(GET_OPTION(width) == 80 && options_revision() == before);

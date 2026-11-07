@@ -80,8 +80,10 @@ Test(common_parsers, numeric_options_enforce_ranges_and_do_not_commit_rejected_v
   cr_assert_eq(port, 65535);
   int fps = 10;
   cr_assert(validate_fps_opt("30", &fps));
-  cr_assert_not(validate_fps_opt("0", &fps));
-  cr_assert_eq(fps, 30);
+  cr_assert(validate_fps_opt("0", &fps));
+  cr_assert_eq(fps, 0);
+  cr_assert_not(validate_fps_opt("-1", &fps));
+  cr_assert_eq(fps, 0);
   SAFE_FREE(options);
 }
 

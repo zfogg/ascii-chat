@@ -15,10 +15,12 @@
 #include <ascii-chat/options/registry/core.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <sodium.h>
+#include <libavcodec/avcodec.h>
 #include <uv.h>
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <time.h>
 
 // Exposure is explicit; types, descriptions, enums and CLI parsers remain in the registry.
 static const char *const shared_options[] = {"width",
@@ -95,6 +97,32 @@ static void enum_strings(yyjson_mut_doc *d, yyjson_mut_val *v, const char *const
     yyjson_mut_arr_add_str(d, a, values[i]);
   yyjson_mut_obj_add_val(d, v, "enum", a);
 }
+static bool output_format_available(const char *format) {
+  const char *codec = NULL;
+  if (!strcmp(format, "png"))
+    codec = "png";
+  else if (!strcmp(format, "jpg") || !strcmp(format, "jpeg"))
+    codec = "mjpeg";
+  else if (!strcmp(format, "bmp"))
+    codec = "bmp";
+  else if (!strcmp(format, "webp"))
+    codec = "libwebp";
+  else if (!strcmp(format, "gif"))
+    codec = "gif";
+  else if (!strcmp(format, "avi"))
+    codec = "mpeg4";
+  else if (!strcmp(format, "ogv") || !strcmp(format, "ogg"))
+    codec = "libtheora";
+  else if (!strcmp(format, "webm"))
+    return avcodec_find_encoder_by_name("libvpx-vp9") || avcodec_find_encoder_by_name("libvpx") ||
+           avcodec_find_encoder_by_name("vp9") || avcodec_find_encoder_by_name("libvpx-vp8") ||
+           avcodec_find_encoder_by_name("vp8");
+  else
+    return avcodec_find_encoder_by_name("libx264") || avcodec_find_encoder_by_name("libopenh264") ||
+           avcodec_find_encoder_by_name("h264_mf") || avcodec_find_encoder(AV_CODEC_ID_H264);
+  return avcodec_find_encoder_by_name(codec) != NULL;
+}
+
 static yyjson_mut_val *options_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
   yyjson_mut_val *s = object_schema(d), *props = yyjson_mut_obj_get(s, "properties");
   registry_init_size();
@@ -143,6 +171,17 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
     yyjson_mut_obj_add_str(d, tool, "description", descs[i]);
     yyjson_mut_obj_add_val(d, props, "options", options_schema(d, p));
     property(d, s, "timeout_ms", "integer", "Maximum job time, 1000–60000 ms; default 45000.");
+    if (p->restricted && p->hosted) {
+      property(d, s, "output_format", "string",
+               "Output format: png, jpg, jpeg, bmp, webp, gif, mp4, mov, mkv, webm, avi, flv, ogv, ogg or 3gp. "
+               "Defaults to png for a single frame or mp4 for a timed or continuous render. GIF renders media to EOF "
+               "unless snapshot or snapshot-delay is specified.");
+      yyjson_mut_val *available = yyjson_mut_arr(d);
+      for (size_t i = 0; mcp_output_formats[i]; ++i)
+        if (output_format_available(mcp_output_formats[i]))
+          yyjson_mut_arr_add_str(d, available, mcp_output_formats[i]);
+      yyjson_mut_obj_add_val(d, yyjson_mut_obj_get(props, "output_format"), "enum", available);
+    }
     if (!p->restricted)
       property(d, s, "output_path", "string",
                "Save rendered ASCII art as an image/video, selected by extension. Existing files are never replaced.");
@@ -195,6 +234,10 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
     yyjson_mut_val *out = object_schema(d);
     property(d, out, "ascii", "string", "Rendered text; saved media may have no terminal text.");
     property(d, out, "elapsed_ms", "integer", "Worker wall-clock duration.");
+    if (p->restricted && p->hosted) {
+      property(d, out, "download_url", "string", "Temporary URL for the rendered file.");
+      property(d, out, "expires_at", "string", "UTC expiration timestamp in RFC 3339 format.");
+    }
     yyjson_mut_val *saved = yyjson_mut_obj(d), *items = yyjson_mut_obj(d);
     yyjson_mut_obj_add_str(d, saved, "type", "array");
     yyjson_mut_obj_add_str(d, items, "type", "string");
@@ -311,8 +354,9 @@ static asciichat_error_t source_url(const mcp_policy_t *p, yyjson_val *v, mcp_re
   if (!yyjson_is_str(v) || !*yyjson_get_str(v) || yyjson_get_len(v) > 4000)
     return SET_ERRNO(ERROR_INVALID_PARAM, "url must be a nonempty string");
   const char *url = yyjson_get_str(v);
-  if (strncmp(url, "https://", 8) && strncmp(url, "http://", 7) &&
-      (p->restricted || (strncmp(url, "rtsp://", 7) && strncmp(url, "rtmp://", 7))))
+  if (strncmp(url, "https://", sizeof("https://") - 1) && strncmp(url, "http://", sizeof("http://") - 1) &&
+      (p->restricted ||
+       (strncmp(url, "rtsp://", sizeof("rtsp://") - 1) && strncmp(url, "rtmp://", sizeof("rtmp://") - 1))))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported URL scheme");
   return option(r, "url", url);
 }
@@ -341,9 +385,7 @@ static asciichat_error_t stage_output(const char *path, mcp_render_request_t *r)
   } else
     SAFE_STRNCPY(parent, ".", sizeof(parent));
   const char *ext = strrchr(filename, '.');
-  static const char *const extensions[] = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp",
-                                           ".mp4", ".mkv", ".webm", ".mov", ".avi", NULL};
-  if (!ext || !in_names(ext, extensions))
+  if (!ext || !mcp_output_mime(ext + 1) || !output_format_available(ext + 1))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported output extension");
   rc = uv_fs_realpath(NULL, &fs, parent, NULL);
   if (rc < 0) {
@@ -368,9 +410,9 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   memset(r, 0, sizeof(*r));
   r->timeout_ms = 45000;
   r->argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **);
-  static const char *const fields[] = {"path",         "data_base64",   "mime_type", "url",         "video_device",
-                                       "audio",        "visualization", "options",   "output_path", "timeout_ms",
-                                       "audio_device", "volume",        NULL};
+  static const char *const fields[] = {"path",         "data_base64",   "mime_type",     "url",         "video_device",
+                                       "audio",        "visualization", "options",       "output_path", "timeout_ms",
+                                       "audio_device", "volume",        "output_format", NULL};
   asciichat_error_t err = check_fields(a, fields);
   if (err)
     return err;
@@ -393,6 +435,19 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   char exe[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_executable_path(exe, sizeof(exe)))
     return SET_ERRNO(ERROR_FILE_OPERATION, "Cannot locate renderer executable");
+  yyjson_val *opts = mcp_get(a, "options");
+  if (opts && !yyjson_is_obj(opts))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "options must be an object");
+  yyjson_val *format_value = mcp_get(a, "output_format"), *output_value = mcp_get(a, "output_path");
+  const char *output_name = yyjson_is_str(output_value) ? yyjson_get_str(output_value) : "";
+  const char *output_ext = strrchr(output_name, '.');
+  bool gif_requested = yyjson_is_str(format_value) && !strcmp(yyjson_get_str(format_value), "gif");
+  bool gif_path = output_ext && !strcmp(output_ext, ".gif");
+  bool gif_output = gif_requested || gif_path;
+  bool media_tool = tool == MCP_URL || tool == MCP_FILE;
+  bool media_source = mcp_get(a, "url") || mcp_get(a, "path") || mcp_get(a, "data_base64");
+  bool snapshot_requested = mcp_get(opts, "snapshot") || mcp_get(opts, "snapshot-delay");
+  bool gif_auto = gif_output && media_tool && media_source && !snapshot_requested;
   arg(r, exe);
   arg(r, "--log-level=error");
   arg(r, "--no-check-update");
@@ -401,14 +456,12 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   option(r, "height", "40");
   option(r, "color-mode", "none");
   option(r, "strip-ansi", "true");
-  option(r, "snapshot", "true");
-  option(r, "snapshot-delay", "0");
+  option(r, "snapshot", gif_auto ? "false" : "true");
+  if (!gif_auto && !yyjson_is_false(mcp_get(opts, "snapshot")))
+    option(r, "snapshot-delay", "0");
   option(r, "splash-screen", "false");
   option(r, "no-audio-playback", "true");
   option(r, "audio", "false");
-  yyjson_val *opts = mcp_get(a, "options");
-  if (opts && !yyjson_is_obj(opts))
-    return SET_ERRNO(ERROR_INVALID_PARAM, "options must be an object");
   size_t i, max;
   yyjson_val *k, *v;
   if (opts)
@@ -551,6 +604,28 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
     option(r, "audio", "true");
   if (tool != MCP_WEBCAM && tool != MCP_VISUALIZATION && !test_audio)
     option(r, "audio-capture-source", "media");
+  yyjson_val *format = mcp_get(a, "output_format");
+  if (format && (!p->restricted || !p->hosted))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "output_format is available only in HTTP server mode");
+  if (p->restricted && p->hosted) {
+    const char *ext =
+        format && yyjson_is_str(format) ? yyjson_get_str(format)
+        : (yyjson_is_false(mcp_get(opts, "snapshot")) || yyjson_get_num(mcp_get(opts, "snapshot-delay")) > 0) ? "mp4"
+                                                                                                              : "png";
+    if ((format && !yyjson_is_str(format)) || !mcp_output_mime(ext) || !output_format_available(ext))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported output_format");
+    unsigned char random[16];
+    char token[33], path[PLATFORM_MAX_PATH_LENGTH];
+    randombytes_buf(random, sizeof(random));
+    sodium_bin2hex(token, sizeof(token), random, sizeof(random));
+    int path_len =
+        safe_snprintf(path, sizeof(path), "%s/%lld-%s.%s", p->downloads_dir, (long long)time(NULL) + 1800, token, ext);
+    if (path_len < 0 || (size_t)path_len >= sizeof(path))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Download path is too long");
+    err = stage_output(path, r);
+    if (err)
+      return err;
+  }
   yyjson_val *output = mcp_get(a, "output_path");
   if (output) {
     if (!yyjson_is_str(output))
