@@ -25,6 +25,7 @@ import { useVideoEncodings } from "./useVideoEncodings";
 import type { CompressedVideoEncoding } from "../network/VideoUploadEncoder";
 import type { ClientSession } from "../network/Transport";
 import { orientUpload } from "../utils/orientUpload";
+import { publishBrowserError } from "../errors/errorBus";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import type { BinarySettingsConfig } from "../components";
 import { resolveCameraDeviceId } from "../utils/mediaDevicePreferences";
@@ -187,6 +188,7 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
     ) => {
       const conn = clientRef.current;
       if (!conn || conn.getState() !== ConnectionState.CONNECTED) return;
+      let sendFailureReported = false;
       const encoder = conn.sendVideoFrame
         ? null
         : await createEncoder(
@@ -213,11 +215,21 @@ export function useWebcamStream(options: UseWebcamStreamOptions) {
                     chunk.data,
                   ),
                 );
+                sendFailureReported = false;
               } catch (err) {
-                console.error(
-                  "[Client] Failed to send encoded video frame:",
-                  err,
-                );
+                if (!sendFailureReported) {
+                  sendFailureReported = true;
+                  publishBrowserError({
+                    source: "JavaScript",
+                    title: "Failed to send encoded video frame",
+                    frames: [
+                      {
+                        message:
+                          err instanceof Error ? err.message : String(err),
+                      },
+                    ],
+                  });
+                }
               }
             },
             after,

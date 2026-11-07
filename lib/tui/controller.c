@@ -1364,6 +1364,12 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     copy->terminal->fd = retained_fd;
   }
   int output_fd = copy->terminal->fd;
+  err = ui_sync_start(output_fd);
+  if (err != ASCIICHAT_OK) {
+    mutex_unlock(&g_mutex);
+    release_snapshot(copy);
+    return err;
+  }
   if (queue_notice) {
     size_t pending = 1;
     screen_t *tail = slot;
@@ -1402,18 +1408,12 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   uint64_t published_ns = time_get_ns();
   release_snapshot(retired);
   uint64_t retired_ns = time_get_ns();
-  asciichat_errno_scope_t sync_scope = errno_scope_begin();
-  asciichat_error_t sync_result = ui_sync_start(output_fd);
-  errno_scope_end(sync_scope, ASCIICHAT_ERRNO_DISMISSED);
-  if (sync_result != ASCIICHAT_OK)
-    log_warn("Cannot start optional sync screen: %d", sync_result);
   uint64_t finished_ns = time_get_ns();
   if (screen == UI_SCREEN_MEDIA && finished_ns - entered_ns > 50 * NS_PER_MS_INT)
     log_debug_every(
-        US_PER_SEC_INT, "UI_SUBMIT_STAGE: build_ms=%.2f lock_ms=%.2f publish_ms=%.2f retire_ms=%.2f sync_ms=%.2f",
+        US_PER_SEC_INT, "UI_SUBMIT_STAGE: build_ms=%.2f lock_ms=%.2f publish_ms=%.2f retire_ms=%.2f",
         (double)(prepared_ns - entered_ns) / NS_PER_MS_INT, (double)(locked_ns - prepared_ns) / NS_PER_MS_INT,
-        (double)(published_ns - locked_ns) / NS_PER_MS_INT, (double)(retired_ns - published_ns) / NS_PER_MS_INT,
-        (double)(finished_ns - retired_ns) / NS_PER_MS_INT);
+        (double)(published_ns - locked_ns) / NS_PER_MS_INT, (double)(retired_ns - published_ns) / NS_PER_MS_INT);
   return ASCIICHAT_OK;
 }
 

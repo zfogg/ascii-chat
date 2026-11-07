@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vite-plus/test";
 import { useWebcamStream } from "../../src/hooks/useWebcamStream";
 import { ConnectionState, PacketType } from "../../src/wasm/client";
 import { DEFAULT_SETTINGS } from "../../src/utils/defaultSettings";
+import { subscribeBrowserErrors } from "../../src/errors/errorBus";
 
 // These host lifecycle tests isolate C transforms; browser tests execute their
 // actual C policy and pixels through the raw upload path.
@@ -16,13 +17,18 @@ vi.mock("../../src/utils/orientUpload", () => ({
 const media = vi.hoisted(() => ({
   cameraId: "selected-camera",
   pattern: vi.fn(),
+  encoder: vi.fn(),
 }));
 vi.mock("@ascii-chat/shared", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   createTestPatternVideoSource: media.pattern,
 }));
 vi.mock("../../src/hooks/useVideoEncodings", () => ({
-  useVideoEncodings: () => ({ preference: "raw", validate: () => {} }),
+  useVideoEncodings: () => ({
+    preference: "raw",
+    validate: () => {},
+    createEncoder: media.encoder,
+  }),
 }));
 vi.mock("../../src/utils/mediaDevicePreferences", () => ({
   getMediaDevicePreferences: () => ({ cameraId: media.cameraId }),
@@ -55,6 +61,7 @@ vi.mock("../../src/wasm/AVState", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   media.cameraId = "selected-camera";
+  media.encoder.mockResolvedValue(null);
   history.replaceState({}, "", "/client");
 });
 
@@ -105,6 +112,76 @@ it("a failed display startup does not leave the recovered camera marked as displ
   expect(result.current.isWebcamRunning).toBe(true);
 });
 afterEach(cleanup);
+
+it("shows an encoded-frame transport error once until sending recovers", async () => {
+  let output:
+    | ((
+        chunk: {
+          flags: number;
+          width: number;
+          height: number;
+          data: Uint8Array;
+        },
+        codec: string,
+      ) => void)
+    | undefined;
+  media.encoder.mockImplementation(async (_width, _height, _fps, callback) => {
+    output = callback;
+    return { codec: "h264", destroy: vi.fn() };
+  });
+  const reports = vi.fn();
+  const unsubscribe = subscribeBrowserErrors(reports);
+  const { result, options } = setup();
+  const video = options.videoRef.current!;
+  Object.defineProperties(video, {
+    videoWidth: { value: 640 },
+    videoHeight: { value: 480 },
+  });
+  video.play = vi.fn().mockResolvedValue(undefined);
+  const sendPacket = vi.fn();
+  Object.assign(options.clientRef.current!, { sendPacket });
+  const track = {
+    kind: "video",
+    readyState: "live",
+    getSettings: () => ({ width: 640, height: 480, frameRate: 30 }),
+    applyConstraints: vi.fn().mockResolvedValue(undefined),
+    stop: vi.fn(),
+  };
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: {
+      getUserMedia: vi
+        .fn()
+        .mockResolvedValue({
+          getTracks: () => [track],
+          getVideoTracks: () => [track],
+          getAudioTracks: () => [],
+        }),
+    },
+  });
+  await act(async () => expect(await result.current.startWebcam()).toBe(true));
+  const chunk = { flags: 0, width: 2, height: 2, data: new Uint8Array([1]) };
+  sendPacket.mockImplementation(() => {
+    throw new Error("transport unavailable");
+  });
+  output!(chunk, "h264");
+  output!(chunk, "h264");
+  expect(reports).toHaveBeenCalledTimes(1);
+  expect(reports).toHaveBeenCalledWith(
+    expect.objectContaining({
+      title: "Failed to send encoded video frame",
+      frames: [{ message: "transport unavailable" }],
+    }),
+  );
+  sendPacket.mockReset();
+  output!(chunk, "h264");
+  sendPacket.mockImplementation(() => {
+    throw new Error("transport unavailable again");
+  });
+  output!(chunk, "h264");
+  expect(reports).toHaveBeenCalledTimes(2);
+  unsubscribe();
+});
 
 it("sends selected file pixels without acquiring a webcam and respects backpressure", () => {
   const { result, options } = setup();

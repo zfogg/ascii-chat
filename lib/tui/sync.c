@@ -295,8 +295,8 @@ static void *sync_collect_main(void *unused) {
 }
 
 asciichat_error_t ui_sync_start(int fd) {
-  if (atomic_flag_test_and_set(&g_sync_starting))
-    return ASCIICHAT_OK;
+  while (atomic_flag_test_and_set(&g_sync_starting))
+    platform_sleep_ms(1);
   asciichat_error_t result = ASCIICHAT_OK;
   if (!g_sync_started && platform_isatty(fd) && platform_isatty(STDIN_FILENO)) {
     g_sync_fd = platform_dup(fd);
