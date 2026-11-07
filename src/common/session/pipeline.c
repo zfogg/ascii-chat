@@ -16,6 +16,7 @@
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/wakeup.h>
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/util/time.h>
@@ -616,7 +617,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
   log_debug("[PIPELINE_MAIN] Starting main thread loop");
   uint64_t display_epoch = UINT64_MAX;
-  if (keyboard_handler && !GET_OPTION(snapshot_mode)) {
+  if (keyboard_handler && !GET_OPTION(snapshot_mode) && !(pipeline->has_render_file && !terminal_is_interactive())) {
     pipeline->keyboard_handler = keyboard_handler;
     pipeline->should_exit = should_exit;
     pipeline->input_data = user_data;

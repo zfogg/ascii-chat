@@ -412,3 +412,23 @@ Test(mcp_requests, hosted_default_format_tracks_snapshot_mode) {
   }
   cr_assert_eq(platform_rmdir_recursive(directory), ASCIICHAT_OK);
 }
+
+Test(mcp_requests, gif_media_defaults_to_animation_and_respects_snapshot_options) {
+  char directory[PLATFORM_MAX_PATH_LENGTH];
+  cr_assert_eq(platform_mkdtemp(directory, sizeof(directory), "mcp-gif-contract"), ASCIICHAT_OK);
+  mcp_policy_t policy = {.hosted = true, .restricted = true};
+  SAFE_STRNCPY(policy.downloads_dir, directory, sizeof(policy.downloads_dir));
+  const char *inputs[] = {
+      "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\"}",
+      "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\",\"options\":{\"snapshot\":true}}",
+      "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\",\"options\":{\"snapshot-delay\":2}}"};
+  for (size_t i = 0; i < 3; ++i) {
+    yyjson_doc *doc = read_json(inputs[i]);
+    mcp_render_request_t request;
+    cr_assert_eq(mcp_request_parse(&policy, MCP_URL, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK);
+    cr_assert_eq(has_arg(&request, "--snapshot=false"), i == 0);
+    mcp_request_destroy(&request);
+    yyjson_doc_free(doc);
+  }
+  cr_assert_eq(platform_rmdir_recursive(directory), ASCIICHAT_OK);
+}

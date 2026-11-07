@@ -831,6 +831,10 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   uint8_t *data[1] = {(uint8_t *)rgb};
   int linesize[1] = {pitch};
 
+  // Encoders may retain references to earlier frames for motion or transparency detection.
+  if (av_frame_make_writable(enc->frame_encoded) < 0)
+    return SET_ERRNO(ERROR_MEMORY, "ffmpeg: cannot make video frame writable");
+
   // Ensure frame format is set before each sws_scale call.
   // Some FFmpeg versions reset the format field, so we set it explicitly.
   enc->frame_encoded->format = enc->target_pix_fmt;

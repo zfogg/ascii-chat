@@ -322,7 +322,7 @@ class Protocol(unittest.TestCase):
             self.skipTest("ffmpeg and ffprobe are required to generate and inspect the clip")
         source = self.directory / "source.mp4"
         subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
-                        "testsrc=size=80x64:rate=10", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000",
+                        "testsrc2=size=80x64:rate=10", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000",
                         "-t", "3", "-c:v", "mpeg4", "-c:a", "aac", "-movflags", "+faststart", "-y", str(source)],
                        check=True, timeout=30)
         class MediaHandler(BaseHTTPRequestHandler):
@@ -374,6 +374,31 @@ class Protocol(unittest.TestCase):
                                check=True, capture_output=True, text=True, timeout=20)
         kinds = {stream["codec_type"] for stream in json.loads(probe.stdout)["streams"]}
         self.assertEqual(kinds, {"video", "audio"})
+
+        body["id"] = 2
+        body["params"]["arguments"] = {"url": f"http://127.0.0.1:{media.server_port}/source.mp4",
+                                         "output_format": "gif", "options": {"width": 40, "height": 16, "fps": 10}}
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=70)
+        conn.request("POST", "/mcp", json.dumps(body), {"Content-Type": "application/json",
+                     "Accept": "application/json, text/event-stream"})
+        response = conn.getresponse(); result = json.loads(response.read()); conn.close()
+        self.assertEqual(response.status, 200); self.assertFalse(result["result"]["isError"], result)
+        link = result["result"]["structuredContent"]["download_url"]
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=20)
+        conn.request("GET", urlparse(link).path)
+        response = conn.getresponse(); animation = response.read(); conn.close()
+        self.assertEqual(response.status, 200)
+        output = self.directory / "animated.gif"; output.write_bytes(animation)
+        probe = subprocess.run([ffprobe, "-v", "error", "-count_frames", "-select_streams", "v:0",
+                                "-show_entries", "stream=nb_read_frames,duration", "-of", "json", str(output)],
+                               check=True, capture_output=True, text=True, timeout=20)
+        video = json.loads(probe.stdout)["streams"][0]
+        self.assertGreater(int(video["nb_read_frames"]), 1)
+        self.assertGreater(float(video["duration"]), 0.5)
+        hashes = subprocess.run([ffmpeg, "-v", "error", "-i", str(output), "-f", "framemd5", "-"],
+                                check=True, capture_output=True, text=True, timeout=20)
+        frames = [line.rsplit(",", 1)[-1].strip() for line in hashes.stdout.splitlines() if line and not line.startswith("#")]
+        self.assertGreater(len(set(frames)), 1, "GIF frames must show motion")
 
     def http_profile(self, restricted):
         port = free_port()

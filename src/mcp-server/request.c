@@ -174,7 +174,8 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
     if (p->restricted && p->hosted) {
       property(d, s, "output_format", "string",
                "Output format: png, jpg, jpeg, bmp, webp, gif, mp4, mov, mkv, webm, avi, flv, ogv, ogg or 3gp. "
-               "Defaults to png for a single frame or mp4 for a timed or continuous render.");
+               "Defaults to png for a single frame or mp4 for a timed or continuous render. GIF renders media to EOF "
+               "unless snapshot or snapshot-delay is specified.");
       yyjson_mut_val *available = yyjson_mut_arr(d);
       for (size_t i = 0; mcp_output_formats[i]; ++i)
         if (output_format_available(mcp_output_formats[i]))
@@ -433,6 +434,17 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   char exe[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_executable_path(exe, sizeof(exe)))
     return SET_ERRNO(ERROR_FILE_OPERATION, "Cannot locate renderer executable");
+  yyjson_val *opts = mcp_get(a, "options");
+  if (opts && !yyjson_is_obj(opts))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "options must be an object");
+  yyjson_val *format_value = mcp_get(a, "output_format"), *output_value = mcp_get(a, "output_path");
+  const char *output_name = yyjson_is_str(output_value) ? yyjson_get_str(output_value) : "";
+  const char *output_ext = strrchr(output_name, '.');
+  bool gif_auto = ((yyjson_is_str(format_value) && !strcmp(yyjson_get_str(format_value), "gif")) ||
+                   (output_ext && !strcmp(output_ext, ".gif"))) &&
+                  (tool == MCP_URL || tool == MCP_FILE) &&
+                  (mcp_get(a, "url") || mcp_get(a, "path") || mcp_get(a, "data_base64")) &&
+                  !mcp_get(opts, "snapshot") && !mcp_get(opts, "snapshot-delay");
   arg(r, exe);
   arg(r, "--log-level=error");
   arg(r, "--no-check-update");
@@ -441,14 +453,12 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   option(r, "height", "40");
   option(r, "color-mode", "none");
   option(r, "strip-ansi", "true");
-  option(r, "snapshot", "true");
-  option(r, "snapshot-delay", "0");
+  option(r, "snapshot", gif_auto ? "false" : "true");
+  if (!gif_auto && !yyjson_is_false(mcp_get(opts, "snapshot")))
+    option(r, "snapshot-delay", "0");
   option(r, "splash-screen", "false");
   option(r, "no-audio-playback", "true");
   option(r, "audio", "false");
-  yyjson_val *opts = mcp_get(a, "options");
-  if (opts && !yyjson_is_obj(opts))
-    return SET_ERRNO(ERROR_INVALID_PARAM, "options must be an object");
   size_t i, max;
   yyjson_val *k, *v;
   if (opts)
