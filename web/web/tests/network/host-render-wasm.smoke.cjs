@@ -96,6 +96,75 @@ const path = require("node:path");
         m._wasm_options_revision() !== revision
       )
         throw new Error("font selection changed engine preferences");
+      // The bundled font omits Braille; all eight positions must still render.
+      const brailleConfig = m._malloc(m._wasm_renderer_config_size());
+      const brailleOut = m._malloc(4);
+      if (
+        m._wasm_renderer_config_write(
+          brailleConfig,
+          1,
+          1,
+          24,
+          0,
+          normalFont,
+          m._get_font_default_size(1),
+          0,
+        ) ||
+        m._term_renderer_create(brailleConfig, brailleOut)
+      )
+        throw new Error("Braille terminal creation failed");
+      const brailleRenderer = new DataView(
+        m.HEAPU8.buffer,
+        brailleOut,
+        4,
+      ).getUint32(0, true);
+      const pixelsFor = (text) => {
+        const bytes = new TextEncoder().encode("\x1b[H" + text);
+        const input = m._malloc(bytes.length);
+        m.HEAPU8.set(bytes, input);
+        const error = m._term_renderer_feed(
+          brailleRenderer,
+          input,
+          bytes.length,
+        );
+        m._free(input);
+        if (error) throw new Error("Braille terminal feed failed");
+        const size =
+          m._term_renderer_pitch(brailleRenderer) *
+          m._term_renderer_height_px(brailleRenderer);
+        const pixels = m._term_renderer_pixels(brailleRenderer);
+        return Array.from(m.HEAPU8.subarray(pixels, pixels + size));
+      };
+      try {
+        const blank = pixelsFor(" ");
+        const brailleBlank = pixelsFor("⠀");
+        const patterns = ["⠁", "⠈", "⢀", "⣿"].map(pixelsFor);
+        const same = (a, b) => a.every((value, i) => value === b[i]);
+        if (!same(blank, brailleBlank))
+          throw new Error("Blank Braille pattern was not blank");
+        if (
+          patterns.some((pixels) => same(blank, pixels)) ||
+          patterns.some((pixels, i) =>
+            patterns.some((other, j) => i !== j && same(pixels, other)),
+          )
+        )
+          throw new Error("Braille dot patterns did not render distinctly");
+        for (let i = 0; i < 2; i++) {
+          let failed = false;
+          try {
+            pixelsFor("\u0378");
+          } catch {
+            failed = true;
+          }
+          if (!failed)
+            throw new Error("Missing font glyph did not report an error");
+        }
+        pixelsFor("A");
+      } finally {
+        m._term_renderer_destroy(brailleRenderer);
+        m._free(brailleConfig);
+        m._free(brailleOut);
+      }
       if (m._browser_host_create()) throw new Error("host create failed");
       const ids = [m._browser_host_add_client(), m._browser_host_add_client()];
       if (m._browser_host_set_local_client(ids[0]))

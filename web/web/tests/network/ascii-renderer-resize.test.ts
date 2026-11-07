@@ -75,7 +75,7 @@ it.each([false, true])(
         }
       },
     );
-    const feed = vi.fn(),
+    const feed = vi.fn(() => 0),
       draw = vi.fn(),
       fps = vi.fn();
     const ref = { current: null as AsciiRendererHandle | null };
@@ -164,5 +164,14 @@ it.each([false, true])(
     expect(fps).toHaveBeenLastCalledWith(60);
     vi.advanceTimersByTime(1100);
     expect(fps).toHaveBeenLastCalledWith(0);
+    if (!workerRendering) {
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      feed.mockReturnValueOnce(30);
+      const painted = draw.mock.calls.length;
+      expect(ref.current!.writeFrame("unsupported character")).toBe(false);
+      expect(draw).toHaveBeenCalledTimes(painted);
+      expect(log).toHaveBeenCalled();
+      log.mockRestore();
+    }
   },
 );

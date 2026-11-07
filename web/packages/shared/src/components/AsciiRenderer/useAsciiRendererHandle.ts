@@ -224,7 +224,7 @@ export function useAsciiRendererHandle({
         wasmMemory.set(data, ptr);
 
         // Render frame - call term_renderer_feed with renderer pointer
-        moduleRef.current._term_renderer_feed(
+        const renderResult = moduleRef.current._term_renderer_feed(
           rendererPtrRef.current,
           ptr,
           data.length,
@@ -232,6 +232,11 @@ export function useAsciiRendererHandle({
 
         // Free memory
         moduleRef.current._free(ptr);
+        if (renderResult !== 0) {
+          throw new Error(
+            `[AsciiRenderer] Frame rendering failed (error ${renderResult}); the font may not support a character`,
+          );
+        }
 
         // Display framebuffer on canvas
         try {
