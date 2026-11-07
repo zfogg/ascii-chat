@@ -650,10 +650,14 @@ void ui_sync_render(terminal_size_t size) {
                sync_color(LOG_COLOR_RESET));
       snprintf(unlocks, sizeof(unlocks), "%s%6.1f%s", sync_rate_color(r->unlock_rate), r->unlock_rate,
                sync_color(LOG_COLOR_RESET));
-      const ui_table_column_t columns[] = {{"Type", 8, UI_ALIGN_LEFT},         {"Name", name_width, UI_ALIGN_LEFT},
-                                           {"State/value", 13, UI_ALIGN_LEFT}, {"Total Actions", 13, UI_ALIGN_RIGHT},
-                                           {"L/s", 6, UI_ALIGN_RIGHT},         {"U/s", 6, UI_ALIGN_RIGHT},
-                                           {"Change/s", 7, UI_ALIGN_RIGHT},    {"Total Wait", 12, UI_ALIGN_RIGHT}};
+      const ui_table_column_t columns[] = {{"Type", 8, UI_ALIGN_LEFT, false},
+                                           {"Name", name_width, UI_ALIGN_LEFT, false},
+                                           {"State/value", 13, UI_ALIGN_LEFT, false},
+                                           {"Total Actions", 13, UI_ALIGN_RIGHT, false},
+                                           {"L/s", 6, UI_ALIGN_RIGHT, false},
+                                           {"U/s", 6, UI_ALIGN_RIGHT, false},
+                                           {"Change/s", 7, UI_ALIGN_RIGHT, false},
+                                           {"Total Wait", 12, UI_ALIGN_RIGHT, false}};
       const char *cells[] = {r->type, name, padded_state, actions, locks, unlocks, changes, colored_wait};
       ui_table_row(line, sizeof(line), columns, cells, 8, name_width + 83, true, (int)i == selected);
       sync_write_line(line, size.cols, true, measure);
