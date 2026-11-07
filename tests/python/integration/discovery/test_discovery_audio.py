@@ -1,20 +1,15 @@
-"""Verify bidirectional synthetic audio and mixed video in a native discovery session."""
-
-# Apply the shared test policy before importing helpers or starting native children.
-from pathlib import Path as _TestPath
-import sys as _test_sys
-_test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
-import _environment  # noqa: F401
-
-from pathlib import Path
+"""Exercise bidirectional synthetic audio and mixed video in discovery."""
 import re
-import sys
-import tempfile
 import time
+
+import pytest
 from ascii_chat_tests.process import Service, free_port
 
+pytestmark = [pytest.mark.integration, pytest.mark.network]
 
-def exercise(binary, directory):
+
+def test_discovery_audio(binary, tmp_path):
+    directory = tmp_path
     for suffix in ['ascii-chat', '.config/ascii-chat']:
         (directory/suffix).mkdir(parents=True, exist_ok=True)
     identity = directory/'identity'
@@ -69,10 +64,3 @@ def exercise(binary, directory):
                 failures.append(error)
         if failures:
             raise AssertionError('Discovery service cleanup failed: ' + '; '.join(map(str, failures)))
-
-
-
-
-if __name__ == '__main__':
-    with tempfile.TemporaryDirectory(prefix='ascii-discovery-audio-') as tmp:
-        exercise(Path(sys.argv[1]).resolve(), Path(tmp))

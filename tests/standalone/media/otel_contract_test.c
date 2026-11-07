@@ -7,11 +7,13 @@
 #include <ascii-chat/network/rate_limit/rate_limit.h>
 #include "../../../lib/discovery/queries.h"
 
+#ifndef CHECK
 #define CHECK(value)                                                                                                   \
   do {                                                                                                                 \
     if (!(value))                                                                                                      \
       FATAL(ERROR_ASSERTION_FAILED, "%s", #value);                                                                     \
   } while (0)
+#endif
 
 static gotel_test_capture_t *capture;
 

@@ -52,15 +52,15 @@ The locked uv project provides pytest and pytest-xdist. `tests/python/` is the
 only default collection tree; its modules must not start processes or parse CLI
 arguments at import time. Fixtures in `tests/python/conftest.py` provide the
 native binary, isolated environment, managed services, and PTY/ConPTY terminals. Pass `--terminal-probe` to exercise the native terminal fixture in direct pytest runs. CTest registers `python-unit`,
-`python-cli`, `python-media`, `python-network`, `python-mcp`, and `python-terminal`; each emits
+`python-cli`, `python-media`, `python-network`, `python-discovery`, `python-mcp`, `python-terminal`, `python-telemetry`, `python-lifecycle`, and `python-capture`; each emits
 `build/Testing/python-*.xml` and reserves all cores while xdist runs.
 
 ```sh
 uv sync --project tests/ascii_chat_tests --frozen
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/unit
-uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python --ascii-chat-binary build/bin/ascii-chat --terminal-probe build/bin/test-terminal-pty
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python --ascii-chat-binary build/bin/ascii-chat --terminal-probe build/bin/test-terminal-pty --lifecycle-probe build/bin/test-client-like-lifecycle --media-capture-probe build/bin/test-media-capture-open
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/cli/test_options.py --ascii-chat-binary build/bin/ascii-chat -k seek -n 0
-ctest --test-dir build -R '^python-(unit|cli|media|network|mcp|terminal)$' --no-tests=error --output-on-failure --parallel
+ctest --test-dir build -R '^python-(unit|cli|media|network|discovery|mcp|terminal|telemetry|lifecycle|capture)$' --no-tests=error --output-on-failure --parallel
 ```
 
 Use the platform executable suffix on Windows. pytest defaults to `-n logical`;
@@ -75,7 +75,7 @@ work. Do not collect the entire legacy tree or run a migrated case twice.
 ```sh
 cmake --build build --target ascii-chat
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network --ascii-chat-binary build/bin/ascii-chat
-python tests/integration/server_client_lifecycle.py build/bin/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network/test_server_client_lifecycle.py --ascii-chat-binary build/bin/ascii-chat
 python tests/integration/terminal_ui.py --binary build/bin/ascii-chat
 python tests/integration/network_terminal_backpressure.py \
   --binary build/bin/ascii-chat --output build/backpressure

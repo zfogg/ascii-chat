@@ -1,25 +1,24 @@
-"""Prove test processes never export, even with an explicit collector and signals."""
-from pathlib import Path as _TestPath
-import sys as _test_sys
-_test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
-import _environment
-from ascii_chat_tests.process import free_port
+"""Test processes must not export telemetry, even when explicitly configured."""
 from itertools import product
-import os
 import http.client
 import json
-import socket
-import time
+import os
 from pathlib import Path
+import socket
 import subprocess
-import sys
+import time
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "deps/ascii-chat-deps/gotel/c/testing/python"))
-from gotel_testing import Collector
+import pytest
+from ascii_chat_tests.process import free_port
 
-def main():
-    binary = str(Path(sys.argv[1]).resolve())
+pytestmark = [pytest.mark.integration, pytest.mark.network]
+
+
+def test_telemetry_disabled(binary, monkeypatch):
+    root = Path(__file__).resolve().parents[4]
+    monkeypatch.syspath_prepend(str(root / "deps/ascii-chat-deps/gotel/c/testing/python"))
+    from gotel_testing import Collector
+    binary = str(binary)
     # A listening loopback receiver proves the prohibition; no OTLP is sent to it.
     with Collector() as receiver:
         for flag, protocol in product(("1", "true", "0"), ("http/protobuf", "grpc")):
@@ -69,5 +68,3 @@ def main():
         assert not receiver.records, "MCP HTTP test sent OTLP to the collector"
     print("test-mode OTLP prohibition: 6 media endpoint/signal overrides plus MCP stdio/HTTP, zero exported requests")
 
-if __name__ == "__main__":
-    main()

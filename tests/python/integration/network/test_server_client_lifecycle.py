@@ -1,23 +1,12 @@
-"""Regression coverage for client admission, failed handshakes, and slot reuse."""
-
-# Apply the shared test policy before importing helpers or starting native children.
-from pathlib import Path as _TestPath
-import sys as _test_sys
-_test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
-import _environment  # noqa: F401
-from ascii_chat_tests.cli import run_cli
-from ascii_chat_tests.cli import clean_environment
-from ascii_chat_tests.cli import cli_command
-
-import os
-from pathlib import Path
+"""Client admission, failed handshakes, and slot reuse."""
 import socket
-import subprocess
-import sys
-import tempfile
 import time
 
+import pytest
+from ascii_chat_tests.cli import clean_environment, run_cli
 from ascii_chat_tests.process import check_client, free_port, running, server_options
+
+pytestmark = [pytest.mark.integration, pytest.mark.network]
 
 
 def wait_new_log(service, message, previous, timeout=15):
@@ -62,29 +51,24 @@ def check_capacity(binary, directory, server, destination, name):
     print("PASS:", name, "capacity rejection and three reconnects", flush=True)
 
 
-def main():
-    binary = Path(sys.argv[1]).resolve()
-    with tempfile.TemporaryDirectory(prefix="ascii-client-lifecycle-") as tmp:
-        directory = Path(tmp)
-        tcp_port, ws_port = free_port(), free_port()
-        with running(binary, directory, "server", "server",
-                     server_options(tcp_port, ws_port) + ["--max-clients", "1"]) as server:
-            server.wait_for("Server accepting connections")
-            for attempt in range(3):
-                with socket.create_connection(("127.0.0.1", tcp_port), timeout=3) as broken:
-                    # Disconnect during the crypto handshake, before worker startup.
-                    broken.sendall(b"\x00")
-                    broken.shutdown(socket.SHUT_RDWR)
-                # The event backend does not allocate a client slot for an
-                # incomplete header. A following snapshot proves admission works.
-                check_client(binary, directory, f"127.0.0.1:{tcp_port}", f"after-failure-{attempt}")
-            print("PASS: three aborted handshakes followed by successful snapshots", flush=True)
-            check_capacity(binary, directory, server, f"127.0.0.1:{tcp_port}", "tcp")
-            for attempt in range(3):
-                check_client(binary, directory, f"ws://127.0.0.1:{ws_port}", f"websocket-reuse-{attempt}")
-            print("PASS: three WebSocket reconnects", flush=True)
-        if "Server shutdown complete" not in server.text():
-            raise AssertionError("Server cleanup did not finish")
-
-if __name__ == "__main__":
-    main()
+def test_server_client_lifecycle(binary, tmp_path):
+    directory = tmp_path
+    tcp_port, ws_port = free_port(), free_port()
+    with running(binary, directory, "server", "server",
+                 server_options(tcp_port, ws_port) + ["--max-clients", "1"]) as server:
+        server.wait_for("Server accepting connections")
+        for attempt in range(3):
+            with socket.create_connection(("127.0.0.1", tcp_port), timeout=3) as broken:
+                # Disconnect during the crypto handshake, before worker startup.
+                broken.sendall(b"\x00")
+                broken.shutdown(socket.SHUT_RDWR)
+            # The event backend does not allocate a client slot for an
+            # incomplete header. A following snapshot proves admission works.
+            check_client(binary, directory, f"127.0.0.1:{tcp_port}", f"after-failure-{attempt}")
+        print("PASS: three aborted handshakes followed by successful snapshots", flush=True)
+        check_capacity(binary, directory, server, f"127.0.0.1:{tcp_port}", "tcp")
+        for attempt in range(3):
+            check_client(binary, directory, f"ws://127.0.0.1:{ws_port}", f"websocket-reuse-{attempt}")
+        print("PASS: three WebSocket reconnects", flush=True)
+    if "Server shutdown complete" not in server.text():
+        raise AssertionError("Server cleanup did not finish")
