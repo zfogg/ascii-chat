@@ -11,6 +11,7 @@
 
 #ifndef _WIN32
 
+#include "terminal.h"
 #include <ascii-chat/otel.h>
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/platform/terminal.h>
@@ -1138,11 +1139,11 @@ asciichat_error_t platform_restore_timer_resolution(void) {
 static pthread_mutex_t subprocess_terminal_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pid_t subprocess_terminal_owner = -1;
 
-void platform_terminal_input_lock(void) {
+void terminal_input_lock(void) {
   pthread_mutex_lock(&subprocess_terminal_mutex);
 }
 
-void platform_terminal_input_unlock(void) {
+void terminal_input_unlock(void) {
   pthread_mutex_unlock(&subprocess_terminal_mutex);
 }
 

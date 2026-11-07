@@ -24,10 +24,4 @@
 // Add platform-specific implementation details here as needed.
 // Keep this minimal - public APIs go in platform/util.h.
 
-#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
-// Serialize terminal queries against foreground process-group handoffs.
-void platform_terminal_input_lock(void);
-void platform_terminal_input_unlock(void);
-#endif
-
 /** @} */

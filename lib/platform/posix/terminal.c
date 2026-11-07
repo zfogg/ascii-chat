@@ -13,6 +13,7 @@
 
 #ifndef _WIN32
 
+#include "terminal.h"
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/internal.h>
@@ -103,9 +104,9 @@ asciichat_error_t terminal_set_raw_mode(bool enable) {
   static struct termios orig_termios;
   static bool saved = false;
 
-  platform_terminal_input_lock();
+  terminal_input_lock();
   if (isatty(STDIN_FILENO) && tcgetpgrp(STDIN_FILENO) != getpgrp()) {
-    platform_terminal_input_unlock();
+    terminal_input_unlock();
     return SET_ERRNO(ERROR_TERMINAL, "Terminal input is owned by another process");
   }
 
@@ -120,19 +121,19 @@ asciichat_error_t terminal_set_raw_mode(bool enable) {
     raw.c_cflag |= (CS8);
     raw.c_lflag &= ~(tcflag_t)(ECHO | ICANON | IEXTEN | ISIG);
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) != 0) {
-      platform_terminal_input_unlock();
+      terminal_input_unlock();
       return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to set raw mode");
     }
-    platform_terminal_input_unlock();
+    terminal_input_unlock();
     return ASCIICHAT_OK;
   }
   if (saved) {
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) != 0) {
-      platform_terminal_input_unlock();
+      terminal_input_unlock();
       return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to restore terminal mode");
     }
   }
-  platform_terminal_input_unlock();
+  terminal_input_unlock();
   return ASCIICHAT_OK;
 }
 
@@ -143,13 +144,13 @@ asciichat_error_t terminal_set_raw_mode(bool enable) {
  */
 asciichat_error_t terminal_set_echo(bool enable) {
   struct termios tty;
-  platform_terminal_input_lock();
+  terminal_input_lock();
   if (isatty(STDIN_FILENO) && tcgetpgrp(STDIN_FILENO) != getpgrp()) {
-    platform_terminal_input_unlock();
+    terminal_input_unlock();
     return SET_ERRNO(ERROR_TERMINAL, "Terminal input is owned by another process");
   }
   if (tcgetattr(STDIN_FILENO, &tty) != 0) {
-    platform_terminal_input_unlock();
+    terminal_input_unlock();
     return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to get terminal attributes");
   }
 
@@ -160,11 +161,11 @@ asciichat_error_t terminal_set_echo(bool enable) {
   }
 
   if (tcsetattr(STDIN_FILENO, TCSANOW, &tty) != 0) {
-    platform_terminal_input_unlock();
+    terminal_input_unlock();
     return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to set echo mode");
   }
 
-  platform_terminal_input_unlock();
+  terminal_input_unlock();
   return ASCIICHAT_OK;
 }
 
@@ -977,7 +978,7 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   if (tty_fd < 0) {
     return false;
   }
-  platform_terminal_input_lock();
+  terminal_input_lock();
 
   // Check if we're the foreground process group
   // If not, tcsetattr() will send us SIGTTOU and stop the process
@@ -986,7 +987,7 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   if (fg_pgrp != our_pgrp) {
     // We're not in the foreground, don't try to modify terminal
     close(tty_fd);
-    platform_terminal_input_unlock();
+    terminal_input_unlock();
     return false;
   }
 
@@ -994,7 +995,7 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   struct termios old_tio, new_tio;
   if (tcgetattr(tty_fd, &old_tio) != 0) {
     close(tty_fd);
-    platform_terminal_input_unlock();
+    terminal_input_unlock();
     return false;
   }
 
@@ -1010,7 +1011,7 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   if (write(tty_fd, query, strlen(query)) < 0) {
     tcsetattr(tty_fd, TCSANOW, &old_tio);
     close(tty_fd);
-    platform_terminal_input_unlock();
+    terminal_input_unlock();
     return false;
   }
 
@@ -1034,7 +1035,7 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
   // Restore terminal state
   tcsetattr(tty_fd, TCSANOW, &old_tio);
   close(tty_fd);
-  platform_terminal_input_unlock();
+  terminal_input_unlock();
 
   if (total < 10) {
     return false; // No response or too short
