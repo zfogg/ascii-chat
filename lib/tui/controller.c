@@ -103,6 +103,8 @@ static uint64_t g_render_started;
 static uint64_t g_render_completed;
 static asciichat_thread_t g_thread;
 static atomic_t g_presentation_stop_requested = {0};
+static _Atomic bool g_sync_finishing;
+static _Atomic bool g_sync_rendering;
 static _Thread_local bool g_owner;
 static _Thread_local int g_render_fd = -1;
 static _Thread_local screen_snapshot_t *g_render_snapshot;
@@ -482,6 +484,10 @@ static void release_screen(screen_t *screen, bool flush_notices) {
 }
 
 void ui_controller_finish(int fd, const char *data, size_t len) {
+  atomic_store(&g_sync_finishing, true);
+  if (!g_owner)
+    while (atomic_load(&g_sync_rendering))
+      platform_sleep_ms(1);
   errno_notifications_enable(false);
   screen_t retired[UI_SCREEN_COUNT] = {0};
   bool locked = lifecycle_is_initialized(&g_lifecycle);
@@ -819,6 +825,12 @@ static void *presentation_main(void *unused) {
     if (ui_sync_is_visible() && ui_controller_current_screen() >= 0 &&
         (ui_controller_current_screen() <= UI_SCREEN_SYNC || ui_controller_current_screen() == UI_SCREEN_ERROR) &&
         !shutdown_is_requested()) {
+      atomic_store(&g_sync_rendering, true);
+      if (atomic_load(&g_sync_finishing)) {
+        atomic_store(&g_sync_rendering, false);
+        platform_sleep_ms(1);
+        continue;
+      }
       if (!was_sync) {
         const ui_session_view_t hidden = {.screen = -1};
         ui_session_render(g_session, &hidden, time_get_ns());
@@ -848,6 +860,7 @@ static void *presentation_main(void *unused) {
         atomic_store(&g_size, pack_size(size));
       }
       g_render_fd = -1;
+      atomic_store(&g_sync_rendering, false);
       was_sync = true;
       platform_sleep_ns(50 * NS_PER_MS_INT);
       continue;
@@ -1137,6 +1150,8 @@ static asciichat_error_t controller_start(void) {
   ui_output_set_writer(ui_controller_write);
   if (lifecycle_init_once(&g_lifecycle)) {
     atomic_store_bool(&g_presentation_stop_requested, false);
+    atomic_store(&g_sync_finishing, false);
+    atomic_store(&g_sync_rendering, false);
     atomic_store_bool(&g_blocked, false);
     g_active = -1;
     g_redraw = false;
