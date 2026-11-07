@@ -178,6 +178,39 @@ static error_thread_t *find_thread(uint64_t id) {
   return NULL;
 }
 
+size_t errno_title_snapshot(asciichat_error_context_t *latest) {
+  asciichat_error_context_t newest = {0};
+  registry_lock();
+  size_t count = g_stats.pending_errors;
+  for (size_t i = 0; i < ASCIICHAT_ERRNO_MAX_THREADS; ++i) {
+    error_thread_t *thread = &g_threads[i];
+    if (thread->depth && g_frames[thread->top].context.error_id > newest.error_id)
+      newest = g_frames[thread->top].context;
+  }
+  for (size_t i = 0; i < g_notification_count; ++i) {
+    const asciichat_error_context_t *entry =
+        &g_notifications[(g_notification_first + i) % ASCIICHAT_ERRNO_HISTORY_SIZE];
+    error_thread_t *thread = find_thread(entry->thread_id);
+    bool pending = false;
+    if (thread && thread->generation == entry->generation) {
+      for (int frame = thread->top; frame != NO_FRAME; frame = g_frames[frame].next) {
+        if (g_frames[frame].context.error_id == entry->error_id) {
+          pending = true;
+          break;
+        }
+      }
+    }
+    if (!pending)
+      ++count;
+    if (entry->error_id > newest.error_id)
+      newest = *entry;
+  }
+  if (latest)
+    *latest = newest;
+  registry_unlock();
+  return count;
+}
+
 static void initialize_locked(void) {
   if (g_initialized)
     return;

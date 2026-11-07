@@ -49,6 +49,7 @@ void ui_controller_title_render(ui_title_render_t phase);
 void ui_controller_title_ready(void);
 typedef enum {
   UI_TITLE_ACTIVITY_IDLE,
+  UI_TITLE_LOADING_URL,
   UI_TITLE_CONNECTING,
   UI_TITLE_RECONNECTING,
   UI_TITLE_CREATING_SESSION,
