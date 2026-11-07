@@ -8,7 +8,7 @@ import sys
 def main():
     library = Path(sys.argv[1]).resolve()
     if os.name == "nt":
-        dll_directory = os.add_dll_directory(str(library.parent))
+        _dll_directory = os.add_dll_directory(str(library.parent))
     lib = c.CDLL(str(library))
 
 

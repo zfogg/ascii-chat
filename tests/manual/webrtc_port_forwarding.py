@@ -90,7 +90,7 @@ def msg(dc, data, size, user):
     q.put(('msg', int(user or 0), c.string_at(data, size)))
 D = callback([P, S, S, P], desc)
 C = callback([P, S, S, P], cand)
-O = callback([P, P], opened)
+OPENED = callback([P, P], opened)
 M = callback([P, P, N, P], msg)
 lib.webrtc_create_peer_connection.argtypes = [c.POINTER(Config), c.POINTER(P)]
 lib.webrtc_create_datachannel.argtypes = [P, S, c.POINTER(P)]
@@ -117,7 +117,7 @@ try:
         cfg.mapping = True
         cfg.description = D
         cfg.candidate = C
-        cfg.opened = O
+        cfg.opened = OPENED
         cfg.message = M
         cfg.user = i
         configs.append(cfg)

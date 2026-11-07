@@ -5,6 +5,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.patterns import require_match
 
 from pathlib import Path
 import re
@@ -42,7 +43,7 @@ with running(binary, directory, "acds", "discovery-service", ["--key", str(ident
             continue
         with running(binary, directory, name + "-host", "server", server_options(free_port(), free_port()) + ["--discovery", "--webrtc", "--discovery-expose-ip"] + discovery + host_extra) as host:
             host.wait_for("Session created:", 40)
-            session = re.search(r"Session created: ([a-z0-9-]+)", host.text()).group(1)
+            session = require_match(r"Session created: ([a-z0-9-]+)", host.text()).group(1)
             with running(binary, directory, name + "-client", session, discovery + client_extra + ["--prefer-webrtc", "--test-pattern", "--audio=false", "--splash-screen=false", "--width", "40", "--height", "12"]) as client:
                 client.wait_for("WebRTC Media Channel ACTIVE", 45)
                 deadline = time.monotonic() + 20

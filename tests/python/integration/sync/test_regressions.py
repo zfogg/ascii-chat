@@ -1,3 +1,4 @@
+from ascii_chat_tests.patterns import require_match
 import pytest
 """Run native synchronization regressions, including real PTY presentation.
 
@@ -6,11 +7,9 @@ Run: python tests/python/integration/sync/test_regressions.py build/bin/test-syn
 Requires the same pyte/pywinpty (Windows) or pexpect (POSIX) as terminal_ui.py.
 """
 
-import importlib.util
 import os
 import re
 import subprocess
-import sys
 import tempfile
 import time
 from pathlib import Path
@@ -120,7 +119,7 @@ def test_sync_regressions(sync_probe, tmp_path):
                     terminal.expect(lambda text: "item 7/" in text, "Left on first page preserves selection")
                     terminal.write("\x1b[F")
                     last_page = terminal.expect(lambda text: re.search(r"item (\d+)/\1(?:\s|$)", text) is not None, "Cannot reach final page")
-                    total = int(re.search(r"(\d+) objects", last_page).group(1))
+                    total = int(require_match(r"(\d+) objects", last_page).group(1))
                     terminal.expect(lambda text: f"item {total}/{total}" in text, "End selects last item")
                     terminal.write("\x1b[F")
                     terminal.expect(lambda text: f"item {total}/{total}" in text, "End remains at last item")
@@ -146,7 +145,7 @@ def test_sync_regressions(sync_probe, tmp_path):
                     pointer_total_seen = False
                     atomic_total_seen = False
                     reserved_buffer_seen = False
-                    pages = int(re.search(r"page 1/(\d+)", terminal.pump()).group(1))
+                    pages = int(require_match(r"page 1/(\d+)", terminal.pump()).group(1))
                     for page in range(1, pages + 1):
                         text = terminal.expect(lambda t: f"page {page}/{pages}" in t, "Missing inventory page")
                         # ConPTY can expose a partially repainted row even on a
@@ -179,7 +178,7 @@ def test_sync_regressions(sync_probe, tmp_path):
                 terminal.resize(12, 60)
                 warning = terminal.expect(lambda text: "Terminal too small" in text and "need " in text,
                                           "Missing measured size warning")
-                min_cols, min_rows = map(int, re.search(r"need (\d+)x(\d+)", warning).groups())
+                min_cols, min_rows = map(int, require_match(r"need (\d+)x(\d+)", warning).groups())
                 for rows, cols in ((12, min_cols - 1), (min_rows - 1, 120)):
                     terminal.resize(rows, cols)
                     terminal.expect(lambda text: "Terminal too small" in text, "Missing sync size warning")

@@ -1,16 +1,12 @@
 import pytest
 #!/usr/bin/env python3
 """Real ACIP TCP packets -> native CLI callbacks -> PTY/ConPTY presentation."""
-from pathlib import Path
-import sys
 from ascii_chat_tests.cli import cli_command
 
-import argparse
 import re
 import socket
 import struct
 import subprocess
-import tempfile
 import time
 from ascii_chat_tests.protocol import crc32c
 from ascii_chat_tests.process import free_port

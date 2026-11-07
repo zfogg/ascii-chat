@@ -26,3 +26,13 @@ markers = [
   "terminal: PTY and terminal behavior",
   "mcp: MCP protocol tests",
 ]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+# Some legacy probes initialize their test environment before imports and use
+# compact one-line statements; keep those conventions while checking errors.
+ignore = ["E402", "E701", "E702"]
+
+[tool.ty.environment]
+python-platform = "all"
+extra-paths = ["deps/ascii-chat-deps/gotel/c/testing/python"]

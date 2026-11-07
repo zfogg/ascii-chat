@@ -6,12 +6,9 @@ from ascii_chat_tests.media import ppm_image
 from ascii_chat_tests.cli import cli_command
 
 
-import argparse
 import os
 from pathlib import Path
-import socket
 import subprocess
-import tempfile
 import time
 
 

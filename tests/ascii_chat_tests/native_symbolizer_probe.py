@@ -67,7 +67,7 @@ def main():
             release.wait(10)
             self.send_response(404)
             self.end_headers()
-        def log_message(self, *_):
+        def log_message(self, format, *args):
             pass
     server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), UnavailableDebugServer)
     server.daemon_threads = True

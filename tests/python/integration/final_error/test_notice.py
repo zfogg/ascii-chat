@@ -1,11 +1,6 @@
 import pytest
 """Check the error retained after an interactive session exits."""
-from pathlib import Path
-import argparse
-import importlib.util
-import os
 import re
-import sys
 import time
 
 from ascii_chat_tests.cli import cli_command

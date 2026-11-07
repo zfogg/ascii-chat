@@ -4,7 +4,6 @@ from ascii_chat_tests.media import ppm_image, write_pcm_wav
 from ascii_chat_tests.cli import clean_environment
 from ascii_chat_tests.cli import cli_command
 
-import argparse
 import functools
 import http.server
 import os
@@ -15,7 +14,6 @@ import subprocess
 import tempfile
 import threading
 import unittest
-import wave
 
 
 pytestmark = [pytest.mark.integration, pytest.mark.media]
@@ -46,7 +44,7 @@ class MediaExtractor(unittest.TestCase):
                 """Record each media request before serving it."""
                 requests.append(self.path)
                 super().do_GET()
-            def log_message(self, *_args):
+            def log_message(self, format, *args):
                 """Keep the test output quiet."""
                 pass
         handler = functools.partial(Handler, directory=str(self.root))
@@ -153,7 +151,9 @@ class MediaExtractor(unittest.TestCase):
     def test_combined_stream_produces_audio_samples(self):
         """Decode audio from a combined extracted stream."""
         combined = self.root / "combined.avi"
-        subprocess.run([shutil.which("ffmpeg"), "-v", "error", "-loop", "1", "-i", str(self.root / "video.ppm"),
+        ffmpeg = shutil.which("ffmpeg")
+        assert ffmpeg is not None
+        subprocess.run([ffmpeg, "-v", "error", "-loop", "1", "-i", str(self.root / "video.ppm"),
                         "-i", str(self.root / "audio.wav"), "-t", "1", "-c:v", "mpeg4", "-c:a", "pcm_s16le",
                         "-shortest", str(combined)], check=True, capture_output=True, timeout=30)
         env = dict(self.env, FAKE_YTDLP_MODE="combined", FAKE_YTDLP_VIDEO=self.base + "/combined.avi")

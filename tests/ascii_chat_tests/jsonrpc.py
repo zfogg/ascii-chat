@@ -4,6 +4,7 @@ import queue
 import subprocess
 import threading
 import time
+from typing import IO, cast
 
 
 class JsonRpcProcess:
@@ -17,6 +18,9 @@ class JsonRpcProcess:
         except BaseException:
             self.stderr.close()
             raise
+        self.stdin = cast(IO[bytes], self.process.stdin)
+        self.stdout = cast(IO[bytes], self.process.stdout)
+        assert self.stdin is not None and self.stdout is not None
         self.lines = queue.Queue()
         self.reader = threading.Thread(target=self._read, daemon=True)
         self.reader.start()
@@ -25,14 +29,14 @@ class JsonRpcProcess:
 
     def _read(self):
         try:
-            for line in self.process.stdout:
+            for line in self.stdout:
                 self.lines.put(line)
         finally:
             self.lines.put(None)
 
     def send_message(self, message):
-        self.process.stdin.write((json.dumps(message) + "\n").encode("utf-8"))
-        self.process.stdin.flush()
+        self.stdin.write((json.dumps(message) + "\n").encode("utf-8"))
+        self.stdin.flush()
 
     def receive(self, timeout=90):
         try:
@@ -73,7 +77,7 @@ class JsonRpcProcess:
     def close(self):
         try:
             try:
-                self.process.stdin.close()
+                self.stdin.close()
             except (BrokenPipeError, OSError):
                 pass
             try:
@@ -83,5 +87,5 @@ class JsonRpcProcess:
                 self.process.wait(timeout=10)
         finally:
             self.reader.join(timeout=2)
-            self.process.stdout.close()
+            self.stdout.close()
             self.stderr.close()

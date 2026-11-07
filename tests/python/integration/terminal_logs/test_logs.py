@@ -5,11 +5,8 @@ from types import SimpleNamespace
 from ascii_chat_tests.media import lavfi_fixture
 from ascii_chat_tests.cli import cli_command
 
-import argparse
-import os
 import socket
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
 from ascii_chat_tests.terminal import Terminal, load_terminal_font
@@ -21,7 +18,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.terminal, pytest.mark.network
 
 def capture(term, path):
     """Render the observed ConPTY cell grid, preserving terminal colors."""
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw
     font = load_terminal_font(16)
     image = Image.new("RGB", (term.screen.columns * 10, term.screen.lines * 20), "black")
     draw = ImageDraw.Draw(image)

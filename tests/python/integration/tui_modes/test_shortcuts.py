@@ -7,8 +7,6 @@ Exports terminal cells and ANSI streams alongside screenshots when requested.
 
 from ascii_chat_tests.cli import cli_command
 
-import argparse
-import os
 from pathlib import Path
 import tempfile
 import time

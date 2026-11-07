@@ -3,15 +3,11 @@ import sys
 """Exercise encrypted two-client video/audio sessions using synthetic inputs."""
 from ascii_chat_tests.cli import start_cli
 from ascii_chat_tests.cli import clean_environment
-from ascii_chat_tests.cli import cli_command
 
-import argparse
-import os
 from pathlib import Path
 import re
 import signal
 import socket
-import subprocess
 import tempfile
 import time
 import unittest

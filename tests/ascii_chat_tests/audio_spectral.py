@@ -5,6 +5,9 @@ from pathlib import Path
 import numpy as np
 
 
+dll_dirs = []
+
+
 class Config(c.Structure):
     _fields_ = [
         ("sample_rate", c.c_int),

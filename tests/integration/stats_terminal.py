@@ -13,7 +13,6 @@ from ascii_chat_tests.cli import cli_command
 import argparse
 import os
 from pathlib import Path
-import time
 from ascii_chat_tests.terminal import Terminal
 from ascii_chat_tests.process import free_port
 

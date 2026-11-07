@@ -11,14 +11,13 @@ import _environment  # noqa: F401
 
 import ctypes as c
 import json
-import os
 from pathlib import Path
 import sys
 import time
 import numpy as np
 
 
-from ascii_chat_tests.audio_spectral import Config, Processor, load
+from ascii_chat_tests.audio_spectral import Processor, load
 
 
 def test(lib):
@@ -84,7 +83,7 @@ def test(lib):
     t = np.arange(96000) / 48000
     sharp = 0.2 * np.sin(2 * np.pi * 450 * t)
     out = p.process(np.r_[sharp, np.zeros(2048)])[2048:]
-    detected = lib.spectral_pitch_hz(p.handle)
+    lib.spectral_pitch_hz(p.handle)
     frequency = np.fft.rfftfreq(48000, 1 / 48000)[
         np.argmax(np.abs(np.fft.rfft(out[24000:72000])))
     ]

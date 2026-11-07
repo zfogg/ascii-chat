@@ -20,7 +20,7 @@ def check_span(term, label, span, color):
     pattern = re.compile(r"\s+".join(re.escape(part) for part in label.split()))
     matches = [(i, pattern.search(text)) for i, text in enumerate(term.screen.display)]
     row, match = next(((i, match) for i, match in matches if match), (None, None))
-    assert row is not None, (label, "\n".join(term.screen.display))
+    assert row is not None and match is not None, (label, "\n".join(term.screen.display))
     col = term.screen.display[row].index(span, match.start())
     actual = [term.screen.buffer[row][col + i].fg for i in range(len(span))]
     assert actual == [color] * len(span), (label, span, actual, color)

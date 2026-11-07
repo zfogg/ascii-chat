@@ -13,7 +13,6 @@ import functools
 import http.server
 import os
 from pathlib import Path
-import subprocess
 import tempfile
 import threading
 import time

@@ -6,7 +6,8 @@ _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().paren
 import _environment  # noqa: F401
 
 from pathlib import Path
-import sys, json, argparse
+import json
+import argparse
 import numpy as np
 from scipy.io import wavfile
 from scipy.signal import resample_poly

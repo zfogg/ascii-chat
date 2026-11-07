@@ -11,16 +11,12 @@ from ascii_chat_tests.cli import cli_command
 import argparse
 import itertools
 import json
-import os
 import re
 from pathlib import Path
-import shlex
-import subprocess
 import time
 
 
-from ascii_chat_tests import tmux as tmux_helpers
-from ascii_chat_tests.tmux import Pane, tmux
+from ascii_chat_tests.tmux import Pane
 
 
 def matrix():

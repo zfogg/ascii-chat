@@ -1,8 +1,6 @@
 import pytest
 """Check panic-report CLI parsing, filtering and latest-record ownership."""
 from ascii_chat_tests.cli import clean_environment
-import argparse
-import os
 from pathlib import Path
 import subprocess
 import tempfile

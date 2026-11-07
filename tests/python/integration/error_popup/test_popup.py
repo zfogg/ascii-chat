@@ -4,7 +4,6 @@ from types import SimpleNamespace
 """Exercise error notifications through the production presenter and PTY/ConPTY input."""
 from pathlib import Path
 import sys
-import argparse
 import json
 import re
 import subprocess
@@ -139,6 +138,7 @@ def navigation(args):
                           if re.search(r"\[\d+\].*?([\w:]+)\(\).*?error_popup_fixture\.c:(\d+)", line)), None)
             assert frame, "Backtrace did not identify the fixture error site"
             row, match = frame
+            assert match is not None
             assert f.term.screen.buffer[row][match.start(1)].fg == shortcut_color
             assert f.term.screen.buffer[row][match.start(2)].fg == thread_color
             if sys.platform == "win32":

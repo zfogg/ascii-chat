@@ -3,9 +3,7 @@ import sys
 #!/usr/bin/env python3
 """Verify errno-stack long fields stay clipped at the table edge after PTY resize."""
 
-import argparse
 from pathlib import Path
-import tempfile
 import time
 
 from ascii_chat_tests.terminal import Terminal

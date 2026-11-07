@@ -8,7 +8,6 @@ from ascii_chat_tests.media import ppm_image
 from ascii_chat_tests.cli import clean_environment
 from ascii_chat_tests.cli import cli_command
 
-import argparse
 import functools
 import http.server
 import json
@@ -21,7 +20,6 @@ import socket
 import struct
 import subprocess
 import sys
-import tempfile
 import threading
 import time
 import unittest
@@ -31,10 +29,7 @@ if os.name != "nt":
     import pty
     import termios
 
-try:
-    import tomllib
-except ImportError:
-    tomllib = None
+import tomllib
 
 
 from ascii_chat_tests.process import free_port
@@ -71,7 +66,6 @@ class MediaSessions(unittest.TestCase):
         self.assertGreater(len(result.stdout), 100, "Snapshot did not contain a rendered frame")
         return result.stdout
 
-    @unittest.skipIf(tomllib is None, "Independent TOML validation requires Python 3.11 or later")
     def test_generated_configuration_is_valid_and_controls_snapshot_dimensions(self):
         result = subprocess.run(self.command("--config-create", "-"), env=self.env,
                                 capture_output=True, timeout=20)
@@ -82,7 +76,7 @@ class MediaSessions(unittest.TestCase):
         self.assertIn("network", document)
         # The unified template includes other modes; select the terminal settings for mirror.
         terminal = re.search(r"(?ms)^\[terminal\]\n.*?(?=^\[|\Z)", template)
-        self.assertIsNotNone(terminal)
+        assert terminal is not None
         configured = re.sub(r"^width = \d+$", "width = 37", terminal[0], flags=re.MULTILINE)
         configured = re.sub(r"^height = \d+$", "height = 18", configured, flags=re.MULTILINE)
         path = self.root / "generated.toml"

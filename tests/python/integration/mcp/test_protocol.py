@@ -2,17 +2,14 @@
 from ascii_chat_tests.jsonrpc import JsonRpcProcess
 from ascii_chat_tests.process import free_port
 
-import argparse
 import hashlib
 import http.client
 import json
 import os
 from pathlib import Path
-import queue
 import socket
 import subprocess
 import tempfile
-import threading
 import time
 import unittest
 import pytest

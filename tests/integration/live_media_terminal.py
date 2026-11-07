@@ -19,7 +19,6 @@ import os
 import re
 from pathlib import Path
 import struct
-import subprocess
 import tempfile
 import threading
 import time

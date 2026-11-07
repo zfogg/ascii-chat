@@ -1,3 +1,4 @@
+from ascii_chat_tests.patterns import require_match
 import pytest
 from types import SimpleNamespace
 #!/usr/bin/env python3
@@ -9,7 +10,6 @@ captures terminal cells and raw ANSI externally; Pillow adds PNG captures.
 
 from ascii_chat_tests.cli import cli_command
 
-import argparse
 import os
 from pathlib import Path
 import re
@@ -19,7 +19,7 @@ import sys
 import tempfile
 import time
 
-from ascii_chat_tests.terminal import Terminal, load_terminal_font
+from ascii_chat_tests.terminal import Terminal
 from ascii_chat_tests.process import Service
 
 
@@ -148,7 +148,7 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
                                "Background refresh omitted the restarted server")
             assert "r: refresh" not in text
             assert "ascii-chat | LAN servers" not in text
-            current = int(re.search(r"> \[(\d+)\]", text).group(1))
+            current = int(require_match(r"> \[(\d+)\]", text).group(1))
             if current > 1:
                 term.write("k" * (current - 1))
                 term.expect(lambda text: "> [1]" in text, "Could not establish the first row for navigation")
@@ -173,7 +173,7 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
             assert term.screen.buffer[footer_row][slash].fg == term.screen.buffer[footer_row][footer.index("move")].fg
             assert term.screen.buffer[footer_row][slash - 1].fg != term.screen.buffer[footer_row][slash].fg
             owned_line = next(line for line in term.screen.display if str(ports[0]) in line)
-            target = int(re.search(r"\[(\d+)\]", owned_line).group(1))
+            target = int(require_match(r"\[(\d+)\]", owned_line).group(1))
             term.write("k" + "j" * (target - 1))
             term.expect(lambda text: any(
                 "> [" in line and str(ports[0]) in line for line in text.splitlines()),
@@ -185,7 +185,7 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
             selected_line = next(line for line in text.splitlines() if "> [" in line)
             assert str(selected_port) in selected_line, "Background refresh moved the selection"
             capture(term, args.artifacts, "highlighted-selection")
-            current = int(re.search(r"> \[(\d+)\]", selected_line).group(1))
+            current = int(require_match(r"> \[(\d+)\]", selected_line).group(1))
             if current > 1:
                 term.write("k" * (current - 1))
             term.expect(lambda text: "> [1]" in text, "k did not move selection to the first row")
@@ -204,7 +204,7 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
             if not any(str(port) in chosen_line for port in ports[:2]):
                 # Other development servers may share this LAN; select only our fixture.
                 owned_line = next(line for line in text.splitlines() if str(ports[0]) in line)
-                target = int(re.search(r"\[(\d+)\]", owned_line).group(1))
+                target = int(require_match(r"\[(\d+)\]", owned_line).group(1))
                 term.write("k" + "j" * (target - 1))
                 text = term.expect(lambda text: f"> [{target}]" in text and str(ports[0]) in text,
                                    "Could not select the fixture server among other LAN services")
@@ -270,7 +270,7 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
                                    "Boundary picker did not finish drawing its selected row and footer")
             # Refresh sorts discoveries while preserving the selected endpoint,
             # so its row need not remain one after the initial discovery query.
-            current = int(re.search(r"> \[(\d+)\]", text).group(1))
+            current = int(require_match(r"> \[(\d+)\]", text).group(1))
             if current > 1:
                 boundary.write("k" * (current - 1))
                 boundary.expect(lambda text: "> [1]" in text,
@@ -285,9 +285,9 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
             boundary.expect(lambda text: "> [1]" in text, "Could not return to the first server")
             boundary.write("k")
             text = boundary.expect(lambda text: re.search(r"> \[(\d+)\]", text)
-                                   and int(re.search(r"> \[(\d+)\]", text).group(1)) >= 14,
+                                   and int(require_match(r"> \[(\d+)\]", text).group(1)) >= 14,
                                    "Up from server 1 produced an invalid negative selection")
-            last = int(re.search(r"> \[(\d+)\]", text).group(1))
+            last = int(require_match(r"> \[(\d+)\]", text).group(1))
             boundary.write("j")
             boundary.expect(lambda text: "> [1]" in text, "Down from the last server did not wrap to server 1")
             boundary.write("k")

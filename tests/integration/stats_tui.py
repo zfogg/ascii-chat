@@ -13,7 +13,6 @@ import json
 from pathlib import Path
 import re
 import shlex
-import socket
 import subprocess
 import time
 import signal
@@ -343,7 +342,7 @@ def main():
             return m[1] if m else None
 
         session_name = wait(session, 40)
-        participant = launch("participant", [session_name, *common])
+        launch("participant", [session_name, *common])
         wait(
             lambda: (root / "participant.log").exists()
             and "DataChannel opened"

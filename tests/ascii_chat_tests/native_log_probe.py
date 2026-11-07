@@ -9,7 +9,7 @@ import tempfile
 
 def main():
     library = Path(sys.argv[1]).resolve()
-    dll_directory = os.add_dll_directory(str(library.parent)) if os.name == "nt" else None
+    _dll_directory = os.add_dll_directory(str(library.parent)) if os.name == "nt" else None
     lib = C.CDLL(str(library))
     lib.asciichat_shared_init.argtypes = [C.c_char_p, C.c_bool, C.c_bool]
     lib.log_get_history_buffer.restype = C.c_void_p

@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 import queue
 import re
-import shlex
 import subprocess
 import threading
 import time
@@ -31,6 +30,11 @@ def load_terminal_font(size):
 
 class CaptureScreen(pyte.Screen):
     """Handle REP, used by the renderer and ConPTY to compress repeated cells."""
+
+    media_leaks: list[str]
+    forbid_media: bool
+    preserved: list[tuple[int, int, str]]
+    preservation_failures: list[tuple[int, str, str]]
 
     def reset(self):
         self.last_character = ""

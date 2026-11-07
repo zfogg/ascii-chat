@@ -7,13 +7,10 @@ Run: uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/pyt
 """
 from ascii_chat_tests.cli import cli_command
 
-import argparse
 import os
-from pathlib import Path
 import re
 import socket
 import subprocess
-import time
 
 from ascii_chat_tests.terminal import TitleTerminal
 from ascii_chat_tests.process import free_port

@@ -9,12 +9,10 @@ positive transitions. Missing devices return 77; video-only startup is checked f
 from ascii_chat_tests.media import lavfi_fixture
 from ascii_chat_tests.cli import cli_command
 
-import argparse
 import functools
 import http.server
 import json
 from pathlib import Path
-import subprocess
 import tempfile
 import threading
 import time

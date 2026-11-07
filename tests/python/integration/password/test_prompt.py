@@ -1,3 +1,4 @@
+from ascii_chat_tests.patterns import require_match
 import pytest
 from types import SimpleNamespace
 """Password dialog smoke tests against native TCP and discovery processes.
@@ -5,10 +6,8 @@ from types import SimpleNamespace
 Optional PNGs render the observed terminal cells, preserving terminal colors.
 """
 from pathlib import Path
-import sys
 from ascii_chat_tests.cli import run_cli, start_cli
 from ascii_chat_tests.cli import cli_command
-import argparse
 import os
 import re
 import shutil
@@ -307,7 +306,7 @@ def test_password_prompt(binary, tmp_path, monkeypatch):
             invitation = host.expect(lambda s: 'Run: ascii-chat ' in s, 'Host invitation missing', timeout=35)
             assert stun_probe_seen.wait(10), 'NAT detection ignored the configured local STUN server'
             assert 'ERROR_FORMAT' not in host.pump(.1), 'Recoverable STUN failure opened an error popup'
-            session = re.search(r'Run: ascii-chat ([a-z]+-[a-z]+-[a-z]+)', invitation).group(1)
+            session = require_match(r'Run: ascii-chat ([a-z]+-[a-z]+-[a-z]+)', invitation).group(1)
             joiner = terminal('discovery-retry', [session, *discovery])
             prompt(joiner)
             save(joiner, 'discovery-initial')

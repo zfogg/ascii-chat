@@ -10,17 +10,12 @@ establish that physical camera capture works.
 
 from ascii_chat_tests.jsonrpc import JsonRpcProcess
 
-import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
-import queue
 import re
 import subprocess
-import threading
 import unittest
-import time
 
 
 ROOT = Path(__file__).resolve().parents[4]

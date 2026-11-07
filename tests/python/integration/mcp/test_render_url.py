@@ -4,18 +4,13 @@ import pytest
 Run with --binary build/bin/ascii-chat.exe.
 Evidence is retained in build/mcp-evidence/render_url (or --output).
 """
-from pathlib import Path
-import sys
 from ascii_chat_tests.jsonrpc import JsonRpcProcess
 from ascii_chat_tests.media import lavfi_fixture
 from ascii_chat_tests.cli import cli_command
 
-import argparse
-import time
 import functools
 import http.server
 import json
-import queue
 import re
 import subprocess
 import threading

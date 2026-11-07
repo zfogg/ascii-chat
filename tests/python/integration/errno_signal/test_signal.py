@@ -3,18 +3,14 @@ from types import SimpleNamespace
 """Verify separate diagnostics workers and SIGUSR1 reports on stdout (Linux)."""
 
 from ascii_chat_tests.cli import start_cli
-from ascii_chat_tests.cli import cli_command
 
-import argparse
 import os
 from pathlib import Path
 import re
 import select
 import signal
 import sys
-import socket
 import subprocess
-import tempfile
 import time
 
 

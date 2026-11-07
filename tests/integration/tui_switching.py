@@ -16,7 +16,6 @@ import argparse
 import itertools
 import os
 from pathlib import Path
-import subprocess
 import tempfile
 
 from ascii_chat_tests.terminal import CaptureScreen, Terminal

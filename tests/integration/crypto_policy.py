@@ -11,7 +11,6 @@ _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().paren
 import _environment  # noqa: F401
 from ascii_chat_tests.cli import clean_environment
 
-import os
 from contextlib import contextmanager
 from pathlib import Path
 import subprocess

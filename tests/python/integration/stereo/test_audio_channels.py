@@ -3,16 +3,13 @@ import pytest
 
 from ascii_chat_tests.media import lavfi_fixture
 
-import argparse
 import contextlib
 import json
 import math
-from pathlib import Path
 import shutil
 import socket
 import struct
 import subprocess
-import tempfile
 import time
 
 from ascii_chat_tests.process import Service, free_port, server_options

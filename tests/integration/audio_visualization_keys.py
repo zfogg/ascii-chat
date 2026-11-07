@@ -14,7 +14,6 @@ from ascii_chat_tests.cli import cli_command
 
 import argparse
 from pathlib import Path
-import subprocess
 import shutil
 import tempfile
 from ascii_chat_tests.terminal import Terminal
@@ -85,7 +84,7 @@ def main():
             term.write('2')
             term.expect(lambda s: '(2) Audio Waveform : O' in s and '(1) Matrix \"Digital Rain\" : X' in s, 'Waveform disables Matrix')
             term.write('?')
-            wave = term.expect(lambda s: set(s.strip()) <= set(' #+\n') and s.count('#') > 100, 'Non-silent waveform')
+            term.expect(lambda s: set(s.strip()) <= set(' #+\n') and s.count('#') > 100, 'Non-silent waveform')
             before = term.pump(.5)
             assert term.pump(.7) != before, 'Waveform did not update'
             term.write('?')
@@ -96,7 +95,7 @@ def main():
             term.write('3')
             term.expect(lambda s: '(3) Audio Frequencies (FFT) : O' in s and '(1) Matrix \"Digital Rain\" : X' in s, 'FFT disables Matrix')
             term.write('?')
-            fft = term.expect(lambda s: set(s.strip()) <= set(' .:-=+*#%@\n') and len(s.strip()) > 100
+            term.expect(lambda s: set(s.strip()) <= set(' .:-=+*#%@\n') and len(s.strip()) > 100
                               and any(c in s for c in ':%@'), 'Non-silent frequency display')
             before = term.pump(.5)
             assert term.pump(.7) != before, 'FFT did not update'

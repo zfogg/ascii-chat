@@ -1,3 +1,4 @@
+from ascii_chat_tests.patterns import require_match
 """Join a WebRTC-advertised host over authenticated TCP."""
 import re
 
@@ -33,7 +34,7 @@ def test_discovery_direct_tcp(binary, tmp_path):
                        server_options(tcp_port, ws_port) + discovery +
                        ["--discovery", "--webrtc", "--password", "route-test-password"], environment)
         host.wait_for("Session created:")
-        session = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())[1]
+        session = require_match(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())[1]
         client = Service(binary, directory, "client", session,
                          discovery + ["--no-webrtc", "--password", "route-test-password", "--test-pattern",
                                       "--audio=false", "--width", "40", "--height", "12",

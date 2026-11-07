@@ -5,12 +5,8 @@ import sys
 
 from ascii_chat_tests.media import ppm_image, reconstruct
 
-import argparse
-import base64
-import ctypes as c
 import os
 from pathlib import Path
-import re
 import subprocess
 import tempfile
 
@@ -79,6 +75,7 @@ def test_kitty_output(binary):
         for output_flag in ["--render-file=-", "--render-file=--kitty"]:
             proc = subprocess.Popen(common + [output_flag], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE, cwd=root, env=env)
+            assert proc.stdout is not None
             proc.stdout.close()
             proc.stdout = None
             _, diagnostic = proc.communicate(ppm, timeout=45)

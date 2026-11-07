@@ -14,7 +14,6 @@ import subprocess
 import sys
 import time
 import tempfile
-import json
 import socket
 import struct
 import socketserver

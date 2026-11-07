@@ -7,24 +7,18 @@ This standalone harness does not build or require camera/audio hardware.
 """
 
 from pathlib import Path
-import sys
 
 from ascii_chat_tests.jsonrpc import JsonRpcProcess
 from ascii_chat_tests.cli import clean_environment
 from ascii_chat_tests.cli import cli_command
 
-import argparse
 import base64
 import hashlib
 import json
-import os
-import queue
 import re
 import shutil
 import struct
 import subprocess
-import threading
-import time
 import zlib
 
 

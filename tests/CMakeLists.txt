@@ -49,6 +49,18 @@ if(BUILD_TESTS)
     # never replace one another's virtual environment. CTest reserves all cores
     # for each xdist batch rather than oversubscribing concurrent batches.
     find_program(ASCIICHAT_UV_EXECUTABLE uv REQUIRED)
+    foreach(check IN ITEMS ruff ty)
+        if(check STREQUAL "ruff")
+            set(check_paths ${CMAKE_SOURCE_DIR}/tests)
+        else()
+            set(check_paths ${CMAKE_SOURCE_DIR}/tests/python ${CMAKE_SOURCE_DIR}/tests/ascii_chat_tests)
+        endif()
+        add_test(NAME python-${check} COMMAND ${CMAKE_COMMAND} -E env
+            "UV_PROJECT_ENVIRONMENT=${CMAKE_BINARY_DIR}/python-test-venv"
+            ${ASCIICHAT_UV_EXECUTABLE} run --project ${CMAKE_SOURCE_DIR}/tests/ascii_chat_tests
+            --frozen --python ${Python3_EXECUTABLE} ${check} check ${check_paths})
+        set_tests_properties(python-${check} PROPERTIES LABELS "unit;python;static" TIMEOUT 120)
+    endforeach()
     function(asciichat_add_pytest name suite)
         set(_coverage_args)
         if(ASCIICHAT_ENABLE_COVERAGE)

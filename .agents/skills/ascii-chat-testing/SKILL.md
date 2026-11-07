@@ -48,6 +48,11 @@ Use the locked uv project at `tests/ascii_chat_tests`. New Python tests go under
 `tests/python/` and must be import-safe: create processes, parse arguments, and
 mutate environment only in fixtures or test functions. Share non-pytest mechanics
 through `ascii_chat_tests`; use pytest fixtures for isolation and lifecycle.
+Run `uv run --project tests/ascii_chat_tests --frozen ruff check tests` and
+`uv run --project tests/ascii_chat_tests --frozen ty check tests/python tests/ascii_chat_tests`
+after Python changes. Ruff checks the entire test tree; ty checks the collected
+pytest suite and shared test library. CTest also registers these as
+`python-ruff` and `python-ty`.
 Pass the built binary with `--ascii-chat-binary` (or `ASCII_CHAT_TEST_BINARY`).
 Pytest uses xdist on all logical cores by default. CTest coordinates separate
 pytest batches using `PROCESSORS` to avoid nested oversubscription; preserve

@@ -20,7 +20,6 @@ import subprocess
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HERE = ROOT / "tests/standalone/crc32"
-import sys
 
 from ascii_chat_tests.standalone import coverage_flags, standalone_output_directory
 parser = argparse.ArgumentParser(description=__doc__)

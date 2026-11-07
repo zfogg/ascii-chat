@@ -13,7 +13,6 @@ import _environment  # noqa: F401
 
 import os
 from pathlib import Path
-import re
 import socket
 import struct
 import subprocess

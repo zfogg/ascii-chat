@@ -2,14 +2,10 @@ import pytest
 import shutil
 #!/usr/bin/env python3
 """Exercise URL loading and Escape through a real terminal and delayed HTTP media."""
-import argparse
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-import os
 from pathlib import Path
 import re
-import subprocess
-import sys
 import tempfile
 import threading
 import time
