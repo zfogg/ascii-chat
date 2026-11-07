@@ -157,6 +157,17 @@ Test(client_lifecycle, optional_keepawake_failure_preserves_prior_errors_without
   cr_assert(HAS_ERRNO_CODE(ERROR_NETWORK));
   cr_assert_eq(errno_notifications_snapshot(NULL, ASCIICHAT_ERRNO_HISTORY_SIZE, NULL), notifications);
 }
+Test(client_lifecycle, successful_keepawake_restores_error_cause_scope) {
+  SET_ERRNO(ERROR_NETWORK, "Earlier failure");
+  asciichat_error_context_t previous, next;
+  cr_assert(errno_has(&previous));
+  keepawake_failure = false;
+  cr_assert_eq(client_like_setup_keepawake(), ASCIICHAT_OK);
+  cr_assert_eq(keepawake_calls, 1);
+  SET_ERRNO(ERROR_INVALID_STATE, "Later failure");
+  cr_assert(errno_has(&next));
+  cr_assert_eq(next.cause_id, previous.error_id);
+}
 static options_t *lifecycle_options(void) {
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
   *v = *options_get();

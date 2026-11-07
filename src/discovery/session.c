@@ -115,18 +115,21 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
     id_result = acds_identity_default_path(identity_path, sizeof(identity_path));
   }
   if (id_result == ASCIICHAT_OK) {
-    asciichat_errno_scope_t load_scope = errno_scope_begin();
+    asciichat_errno_scope_t load_scope = {0};
     bool suppressed = false;
-    if (!explicit_identity)
+    if (!explicit_identity) {
+      load_scope = errno_scope_begin();
       suppressed = errno_notifications_suppress(true);
+    }
     if (!explicit_identity && platform_access(identity_path, PLATFORM_ACCESS_EXISTS) != 0)
       id_result = ERROR_CONFIG;
     else
       id_result = acds_identity_load(identity_path, session->identity_pubkey, session->identity_seckey);
-    if (!explicit_identity)
+    if (!explicit_identity) {
       errno_notifications_suppress(suppressed);
-    if (id_result != ASCIICHAT_OK && !explicit_identity) {
       errno_scope_end(load_scope, ASCIICHAT_ERRNO_HANDLED);
+    }
+    if (id_result != ASCIICHAT_OK && !explicit_identity) {
       // File doesn't exist or is corrupted - generate new key
       log_info("Identity key not found, generating new key");
       id_result = acds_identity_generate(session->identity_pubkey, session->identity_seckey);

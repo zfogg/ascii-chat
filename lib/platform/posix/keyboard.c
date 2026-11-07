@@ -223,7 +223,8 @@ bool keyboard_request_background(void) {
   if (!keyboard_is_initialized())
     return false;
   int fd = g_tty_fd >= 0 ? g_tty_fd : STDIN_FILENO;
-  terminal_input_lock();
+  if (!terminal_input_trylock())
+    return false;
   bool result = isatty(fd) && tcgetpgrp(fd) == getpgrp() && send_background_query();
   terminal_input_unlock();
   return result;

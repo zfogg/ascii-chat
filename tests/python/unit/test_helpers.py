@@ -1,5 +1,6 @@
 """Contract checks for the shared Python smoke-test helpers."""
 import os
+import psutil
 from pathlib import Path
 import sys
 import tempfile
@@ -118,8 +119,10 @@ class HelperTests(unittest.TestCase):
             deadline = time.monotonic() + 5
             while time.monotonic() < deadline:
                 try:
+                    if psutil.Process(child).status() == psutil.STATUS_ZOMBIE:
+                        break
                     os.kill(child, 0)
-                except ProcessLookupError:
+                except (ProcessLookupError, psutil.NoSuchProcess):
                     break
                 time.sleep(0.05)
             else:

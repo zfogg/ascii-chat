@@ -248,9 +248,9 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     asciichat_error_t keepawake_result = platform_enable_keepawake();
     errno_notifications_suppress(suppressed);
     if (keepawake_result != ASCIICHAT_OK) {
-      log_debug("Unable to inhibit system sleep: %s", asciichat_error_string(keepawake_result));
-      errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+      log_warn("Unable to inhibit system sleep: %s", asciichat_error_string(keepawake_result));
     }
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
 
   /* === 2. File descriptor limit === */

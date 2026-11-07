@@ -1143,6 +1143,10 @@ void terminal_input_lock(void) {
   pthread_mutex_lock(&subprocess_terminal_mutex);
 }
 
+bool terminal_input_trylock(void) {
+  return pthread_mutex_trylock(&subprocess_terminal_mutex) == 0;
+}
+
 void terminal_input_unlock(void) {
   pthread_mutex_unlock(&subprocess_terminal_mutex);
 }
