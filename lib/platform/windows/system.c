@@ -1535,8 +1535,8 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
 /**
  * Execute a subprocess using CreateProcess (Windows implementation)
  */
-int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer,
-                                             size_t output_size, bool (*cancel)(void *), void *data) {
+int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size,
+                                bool (*cancel)(void *), void *data) {
   if (!executable || !argv) {
     log_error("invalid parameters");
     return -1;
@@ -1620,16 +1620,16 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
     startup_info.dwFlags |= STARTF_USESTDHANDLES;
   }
 
-  BOOL success = CreateProcessA(NULL,           // lpApplicationName - NULL so PATH is searched
-                                command_line,   // lpCommandLine - full command line
-                                NULL,           // lpProcessAttributes
-                                NULL,           // lpThreadAttributes
-                                capture_output, // bInheritHandles - only when capturing output
+  BOOL success = CreateProcessA(NULL,                          // lpApplicationName - NULL so PATH is searched
+                                command_line,                  // lpCommandLine - full command line
+                                NULL,                          // lpProcessAttributes
+                                NULL,                          // lpThreadAttributes
+                                capture_output,                // bInheritHandles - only when capturing output
                                 cancel ? CREATE_SUSPENDED : 0, // Assign cancellable processes to a job first
-                                NULL,           // lpEnvironment
-                                NULL,           // lpCurrentDirectory
-                                &startup_info,  // lpStartupInfo
-                                &process_info   // lpProcessInformation
+                                NULL,                          // lpEnvironment
+                                NULL,                          // lpCurrentDirectory
+                                &startup_info,                 // lpStartupInfo
+                                &process_info                  // lpProcessInformation
   );
 
   SAFE_FREE(command_line);
@@ -1648,13 +1648,16 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
   if (cancel) {
     job = CreateJobObjectA(NULL, NULL);
     if (!job || !AssignProcessToJobObject(job, process_info.hProcess)) {
-      if (job) CloseHandle(job);
+      if (job)
+        CloseHandle(job);
       TerminateProcess(process_info.hProcess, 1);
       WaitForSingleObject(process_info.hProcess, INFINITE);
       CloseHandle(process_info.hProcess);
       CloseHandle(process_info.hThread);
-      if (stdout_read) CloseHandle(stdout_read);
-      if (stdout_write) CloseHandle(stdout_write);
+      if (stdout_read)
+        CloseHandle(stdout_read);
+      if (stdout_write)
+        CloseHandle(stdout_write);
       return -1;
     }
     ResumeThread(process_info.hThread);
@@ -1729,6 +1732,5 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
 
   return cancelled || capture_failed ? -1 : (int)exit_code;
 }
-
 
 #endif // _WIN32

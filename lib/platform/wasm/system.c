@@ -38,7 +38,12 @@
 
 int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size,
                                 bool (*cancel)(void *), void *data) {
-  (void)executable; (void)argv; (void)output_buffer; (void)output_size; (void)cancel; (void)data;
+  (void)executable;
+  (void)argv;
+  (void)output_buffer;
+  (void)output_size;
+  (void)cancel;
+  (void)data;
   return -1;
 }
 

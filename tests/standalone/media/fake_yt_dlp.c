@@ -11,7 +11,8 @@
 static void json_string(const char *s) {
   putchar('"');
   for (; *s; ++s) {
-    if (*s == '"' || *s == '\\') putchar('\\');
+    if (*s == '"' || *s == '\\')
+      putchar('\\');
     putchar(*s);
   }
   putchar('"');

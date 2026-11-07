@@ -155,8 +155,8 @@ static bool url_is_direct_stream(const char *url) {
 static asciichat_error_t media_source_resolve_url(const char *url, const char *yt_dlp_options, char *output_url,
                                                   size_t output_size, char *audio_url, size_t audio_size,
                                                   yt_dlp_request_options_t *video_request,
-                                                  yt_dlp_request_options_t *audio_request,
-                                                  bool (*cancel)(void *), void *data) {
+                                                  yt_dlp_request_options_t *audio_request, bool (*cancel)(void *),
+                                                  void *data) {
   ASCII_OTEL_SCOPE(MEDIA_SOURCE_RESOLVE_URL);
   if (!url || !output_url || output_size < 256 || !audio_url || audio_size < 256) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for URL resolution");
@@ -184,9 +184,8 @@ static asciichat_error_t media_source_resolve_url(const char *url, const char *y
 
   // Try yt-dlp extraction (for complex sites like YouTube, Twitch, etc.)
   asciichat_errno_scope_t extraction_scope = errno_scope_begin();
-  asciichat_error_t yt_dlp_result =
-      yt_dlp_extract_with_options(url, yt_dlp_options, output_url, output_size, audio_url, audio_size,
-                                  video_request, audio_request, cancel, data);
+  asciichat_error_t yt_dlp_result = yt_dlp_extract_with_options(url, yt_dlp_options, output_url, output_size, audio_url,
+                                                                audio_size, video_request, audio_request, cancel, data);
   errno_scope_end(extraction_scope, ASCIICHAT_ERRNO_HANDLED);
   if (yt_dlp_result == ASCIICHAT_OK) {
     log_debug("yt-dlp successfully extracted stream URL");
@@ -295,9 +294,9 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     const char *yt_dlp_options = GET_OPTION(yt_dlp_options);
 
     log_debug("Resolving URL: %s", path);
-    asciichat_error_t resolve_err = media_source_resolve_url(path, yt_dlp_options, resolved_url, sizeof(resolved_url),
-                                                             resolved_audio_url, sizeof(resolved_audio_url),
-                                                             &video_request, &audio_request, cancel, data);
+    asciichat_error_t resolve_err =
+        media_source_resolve_url(path, yt_dlp_options, resolved_url, sizeof(resolved_url), resolved_audio_url,
+                                 sizeof(resolved_audio_url), &video_request, &audio_request, cancel, data);
     if (resolve_err != ASCIICHAT_OK) {
       log_debug("Failed to resolve URL %s", asciichat_error_format(NULL, resolve_err));
       // Destroy mutexes before freeing source
@@ -333,9 +332,8 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     // Always use separate decoders for video and audio
     // This allows independent read rates and avoids lock contention
     asciichat_errno_scope_t decoder_scope = errno_checkpoint();
-    source->video_decoder = ffmpeg_decoder_create_with_request_options(effective_path, cancel, data,
-                                                                        video_request.headers, video_request.cookies,
-                                                                        video_request.proxy);
+    source->video_decoder = ffmpeg_decoder_create_with_request_options(
+        effective_path, cancel, data, video_request.headers, video_request.cookies, video_request.proxy);
     if (!source->video_decoder) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: video decoder could not open input");
       if (!cancel)
@@ -355,9 +353,8 @@ media_source_t *media_source_create_interruptible(media_source_type_t type, cons
     decoder_scope = errno_checkpoint();
     const char *audio_path = resolved_audio_url[0] ? resolved_audio_url : effective_path;
     const yt_dlp_request_options_t *audio_settings = resolved_audio_url[0] ? &audio_request : &video_request;
-    source->audio_decoder = ffmpeg_decoder_create_with_request_options(audio_path, cancel, data,
-                                                                        audio_settings->headers, audio_settings->cookies,
-                                                                        audio_settings->proxy);
+    source->audio_decoder = ffmpeg_decoder_create_with_request_options(
+        audio_path, cancel, data, audio_settings->headers, audio_settings->cookies, audio_settings->proxy);
     if (!source->audio_decoder) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Media initialization failed: audio decoder could not open input");
       LOG_ERRNO_IF_SET("Media initialization failed");

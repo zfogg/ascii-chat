@@ -47,9 +47,18 @@ static void setup(void) {
     SAFE_STRDUP(old_home, original);
   cr_assert_eq(platform_mkdtemp(directory, sizeof(directory), "gpg-live"), ASCIICHAT_OK);
   cr_assert_eq(platform_setenv("GNUPGHOME", directory), 0);
-  const char *create[] = {"gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "",
-                          "--quick-generate-key", "Coverage Fixture <coverage@example.invalid>",
-                          "ed25519", "sign,auth", "0", NULL};
+  const char *create[] = {"gpg",
+                          "--batch",
+                          "--pinentry-mode",
+                          "loopback",
+                          "--passphrase",
+                          "",
+                          "--quick-generate-key",
+                          "Coverage Fixture <coverage@example.invalid>",
+                          "ed25519",
+                          "sign,auth",
+                          "0",
+                          NULL};
   cr_assert_eq(platform_execute_subprocess("gpg", create, NULL, 0, NULL, NULL), 0);
   const char *list[] = {"gpg", "--batch", "--with-colons", "--list-keys", NULL};
   char output[4096];
@@ -78,7 +87,8 @@ Test(gpg_live, packet_signatures_verify_and_reject_altered_messages_signatures_a
   cr_assert_eq(gpg_verify_signature_with_binary(signature, length, message, sizeof(message), NULL), 0);
   cr_assert_eq(gpg_verify_signature_with_binary(signature, length, message, sizeof(message), ""), 0);
   cr_assert_neq(gpg_verify_signature_with_binary(signature, length, message, sizeof(message),
-                                                "0000000000000000000000000000000000000000"), 0);
+                                                 "0000000000000000000000000000000000000000"),
+                0);
   message[2] ^= 1;
   cr_assert_neq(gpg_verify_signature_with_binary(signature, length, message, sizeof(message), fingerprint), 0);
   message[2] ^= 1;
@@ -96,8 +106,9 @@ Test(gpg_live, exported_public_key_matches_independent_gpg_ssh_export) {
   cr_assert_not_null(end);
   uint8_t wire[128];
   size_t length = 0;
-  cr_assert_eq(sodium_base642bin(wire, sizeof(wire), output + 12, (size_t)(end - output - 12), NULL, &length,
-                                NULL, sodium_base64_VARIANT_ORIGINAL), 0);
+  cr_assert_eq(sodium_base642bin(wire, sizeof(wire), output + 12, (size_t)(end - output - 12), NULL, &length, NULL,
+                                 sodium_base64_VARIANT_ORIGINAL),
+               0);
   cr_assert_eq(length, 51);
   cr_assert_arr_eq(wire + 4, "ssh-ed25519", 11);
   uint8_t public_key[32];
@@ -134,8 +145,8 @@ Test(gpg_live, real_armored_keys_parse_to_the_same_public_key_and_a_usable_ed255
   cr_assert_eq(gpg_get_public_key(fingerprint, exported, NULL), 0);
   cr_assert_eq(openpgp_parse_armored_pubkey(armor, parsed), ASCIICHAT_OK);
   cr_assert_arr_eq(parsed, exported, 32);
-  const char *secargs[] = {"gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "",
-                           "--armor", "--export-secret-keys", fingerprint, NULL};
+  const char *secargs[] = {"gpg", "--batch", "--pinentry-mode",      "loopback",  "--passphrase",
+                           "",    "--armor", "--export-secret-keys", fingerprint, NULL};
   cr_assert_eq(platform_execute_subprocess("gpg", secargs, armor, sizeof(armor), NULL, NULL), 0);
   cr_assert_eq(openpgp_parse_armored_seckey(armor, secret_public, seed), ASCIICHAT_OK);
   cr_assert_arr_eq(secret_public, exported, 32);
@@ -219,7 +230,9 @@ Test(gpg_live, agent_signature_verifies_independently_over_the_documented_sha512
   cr_assert_neq(crypto_sign_verify_detached(signature, digest, sizeof(digest), public_key), 0);
 }
 static socket_t wire_client = INVALID_SOCKET_VALUE, wire_peer = INVALID_SOCKET_VALUE;
-static void wire_setup(void) { log_init(NULL, LOG_FATAL, false, false); }
+static void wire_setup(void) {
+  log_init(NULL, LOG_FATAL, false, false);
+}
 static void wire_cleanup(void) {
   if (wire_client != INVALID_SOCKET_VALUE)
     socket_close(wire_client);
@@ -283,8 +296,8 @@ Test(gpg_agent_wire, binary_nulls_and_percent_escapes_preserve_signature_bytes_a
     memset(actual, 0xa5, sizeof(actual));
     size_t signature_len = 999;
     const uint8_t message[] = "wire";
-    int result = gpg_agent_sign((int)wire_client, "0123456789012345678901234567890123456789",
-                                message, sizeof(message), actual, &signature_len);
+    int result = gpg_agent_sign((int)wire_client, "0123456789012345678901234567890123456789", message, sizeof(message),
+                                actual, &signature_len);
     if (malformed) {
       cr_assert_neq(result, 0);
       cr_assert_eq(signature_len, 999);

@@ -1133,8 +1133,8 @@ asciichat_error_t platform_restore_timer_resolution(void) {
 /**
  * Execute a subprocess using fork+exec (POSIX implementation)
  */
-int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer,
-                                             size_t output_size, bool (*cancel)(void *), void *data) {
+int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size,
+                                bool (*cancel)(void *), void *data) {
   if (!executable || !argv || !argv[0]) {
     log_error("Invalid subprocess parameters");
     return -1;
@@ -1192,7 +1192,8 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
       kill(-pid, SIGKILL);
       if (!exited) {
         kill(pid, SIGKILL);
-        while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
+        while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+        }
       }
       if (pipe_open)
         close(output_pipe[0]);

@@ -603,7 +603,8 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   log_debug("Retrieving GPG key fingerprint");
   char fpr_output[CRYPTO_GPG_OPENPGP_FPR_OUTPUT_BUFFER_SIZE];
   const char *argv_list[] = {"gpg", "--homedir", homedir_path, "--batch", "--list-secret-keys", "--with-colons", NULL};
-  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_list, fpr_output, sizeof(fpr_output), NULL, NULL); });
+  LOG_IO("gpg",
+         { status = platform_execute_subprocess("gpg", argv_list, fpr_output, sizeof(fpr_output), NULL, NULL); });
 
   if (status != 0) {
     platform_unlink(output_path);

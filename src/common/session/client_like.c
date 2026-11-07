@@ -327,7 +327,7 @@ static uint32_t client_like_select_capture_fps(client_like_state_t *state) {
     log_debug("Probing media source FPS");
     asciichat_errno_scope_t probe_scope = errno_scope_begin();
     state->probe_source = media_source_create_interruptible(state->capture_config.type, state->capture_config.path,
-                                                             client_like_capture_should_exit_adapter, NULL);
+                                                            client_like_capture_should_exit_adapter, NULL);
     if (state->probe_source) {
       ASSERT_NO_ERRNO_SINCE(probe_scope);
       errno_scope_end(probe_scope, ASCIICHAT_ERRNO_HANDLED);

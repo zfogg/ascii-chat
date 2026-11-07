@@ -46,8 +46,8 @@ typedef struct {
   char audio_url[MEDIA_STREAM_URL_SIZE];                        // Separate audio stream, if needed
   char yt_dlp_options[MEDIA_YT_DLP_YT_DLP_OPTIONS_BUFFER_SIZE]; // yt-dlp options used
   yt_dlp_request_options_t video_request, audio_request;
-  time_t extracted_time;                                        // When URL was extracted
-  bool valid;                                                   // Whether cache entry is valid
+  time_t extracted_time; // When URL was extracted
+  bool valid;            // Whether cache entry is valid
 } yt_dlp_cache_entry_t;
 
 static yt_dlp_cache_entry_t g_yt_dlp_cache = {0};
@@ -125,8 +125,8 @@ static bool yt_dlp_cache_get(const char *url, const char *yt_dlp_options, char *
  * If stream_url is empty/NULL, caches a failure state so we don't retry
  * the same failed URL multiple times.
  */
-static void yt_dlp_cache_set(const char *url, const char *yt_dlp_options, const char *stream_url,
-                             const char *audio_url, const yt_dlp_request_options_t *video_request,
+static void yt_dlp_cache_set(const char *url, const char *yt_dlp_options, const char *stream_url, const char *audio_url,
+                             const yt_dlp_request_options_t *video_request,
                              const yt_dlp_request_options_t *audio_request) {
   if (strlen(url) >= sizeof(g_yt_dlp_cache.url)) {
     return; // URL too long to cache
@@ -245,12 +245,20 @@ static bool yt_dlp_is_stream_url(const char *line) {
 
 static char *yt_dlp_next_cookie_attribute(char **cursor) {
   char *start = *cursor;
-  if (!start || !*start) return NULL;
+  if (!start || !*start)
+    return NULL;
   bool quoted = false, escaped = false;
   for (char *p = start; *p; ++p) {
-    if (escaped) { escaped = false; continue; }
-    if (*p == '\\' && quoted) { escaped = true; continue; }
-    if (*p == '"') quoted = !quoted;
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (*p == '\\' && quoted) {
+      escaped = true;
+      continue;
+    }
+    if (*p == '"')
+      quoted = !quoted;
     if (*p == ';' && !quoted) {
       *p = '\0';
       *cursor = p + 1;
@@ -282,7 +290,8 @@ static bool yt_dlp_parse_request(yyjson_val *format, yyjson_val *root, const cha
     }
   }
   yyjson_val *cookie_value = yyjson_obj_get(format, "cookies");
-  if (!yyjson_is_str(cookie_value)) cookie_value = yyjson_obj_get(root, "cookies");
+  if (!yyjson_is_str(cookie_value))
+    cookie_value = yyjson_obj_get(root, "cookies");
   const char *cookies = yyjson_get_str(cookie_value);
   if (cookies && *cookies) {
     if (strlen(cookies) != yyjson_get_len(cookie_value) || strlen(cookies) >= sizeof(request->cookies) ||
@@ -305,26 +314,34 @@ static bool yt_dlp_parse_request(yyjson_val *format, yyjson_val *root, const cha
     used = 0;
     bool first = true;
     while (token) {
-      while (isspace((unsigned char)*token)) ++token;
+      while (isspace((unsigned char)*token))
+        ++token;
       bool attribute = !platform_strncasecmp(token, "domain=", 7) || !platform_strncasecmp(token, "path=", 5) ||
                        !platform_strncasecmp(token, "expires=", 8) || !platform_strncasecmp(token, "version=", 8) ||
                        !platform_strcasecmp(token, "secure") || !platform_strcasecmp(token, "httponly");
-      if (!attribute && !strchr(token, '=')) return false;
+      if (!attribute && !strchr(token, '='))
+        return false;
       // FFmpeg compares cookie domains against its Host header, including a
       // non-default port. Preserve domain scoping when that port is present.
       bool domain = !platform_strncasecmp(token, "domain=", 7);
       int n = port && domain && !strchr(token + 7, ':')
-                  ? snprintf(request->cookies + used, sizeof(request->cookies) - used, "%s%s:%d",
-                             first ? "" : "; ", token, port)
+                  ? snprintf(request->cookies + used, sizeof(request->cookies) - used, "%s%s:%d", first ? "" : "; ",
+                             token, port)
                   : snprintf(request->cookies + used, sizeof(request->cookies) - used, "%s%s",
-                             first ? "" : attribute ? "; " : "\n", token);
-      if (n < 0 || (size_t)n >= sizeof(request->cookies) - used) return false;
+                             first       ? ""
+                             : attribute ? "; "
+                                         : "\n",
+                             token);
+      if (n < 0 || (size_t)n >= sizeof(request->cookies) - used)
+        return false;
       used += (size_t)n;
       first = false;
       token = yt_dlp_next_cookie_attribute(&context);
     }
-    if (context) return false;
-    if (used + 1 >= sizeof(request->cookies)) return false;
+    if (context)
+      return false;
+    if (used + 1 >= sizeof(request->cookies))
+      return false;
     request->cookies[used++] = '\n';
     request->cookies[used] = '\0';
   }
@@ -332,10 +349,10 @@ static bool yt_dlp_parse_request(yyjson_val *format, yyjson_val *root, const cha
 }
 
 asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dlp_options, char *output_url,
-                                               size_t output_size, char *audio_url, size_t audio_size,
-                                               yt_dlp_request_options_t *video_request,
-                                               yt_dlp_request_options_t *audio_request,
-                                               bool (*cancel)(void *), void *data) {
+                                              size_t output_size, char *audio_url, size_t audio_size,
+                                              yt_dlp_request_options_t *video_request,
+                                              yt_dlp_request_options_t *audio_request, bool (*cancel)(void *),
+                                              void *data) {
   if (!video_request || !audio_request)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing yt-dlp request options output");
   memset(video_request, 0, sizeof(*video_request));
@@ -354,7 +371,8 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for yt-dlp URL extraction");
   }
   static_mutex_lock_named(&g_yt_dlp_cache_lock, "yt_dlp_cache");
-  bool cached = yt_dlp_cache_get(url, yt_dlp_options, output_url, output_size, audio_url, audio_size, video_request, audio_request);
+  bool cached = yt_dlp_cache_get(url, yt_dlp_options, output_url, output_size, audio_url, audio_size, video_request,
+                                 audio_request);
   static_mutex_unlock(&g_yt_dlp_cache_lock);
   if (cached) {
     ascii_otel_metric(ASCII_OTEL_METRIC_YTDLP_HIT, 1);
@@ -418,7 +436,8 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
   yyjson_val *formats = root ? yyjson_obj_get(root, "requested_formats") : NULL;
   size_t total = yyjson_is_arr(formats) ? yyjson_arr_size(formats) : 1;
   if (!root || total > 2) {
-    if (doc) yyjson_doc_free(doc);
+    if (doc)
+      yyjson_doc_free(doc);
     return SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned invalid stream metadata");
   }
   for (size_t i = 0; i < total; ++i) {
@@ -428,8 +447,8 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
     char *dest = i == 0 ? output_url : audio_url;
     size_t capacity = i == 0 ? output_size : audio_size;
     yt_dlp_request_options_t *request = i == 0 ? video_request : audio_request;
-    if (!stream || strlen(stream) != yyjson_get_len(stream_value) || !yt_dlp_is_stream_url(stream) || strlen(stream) >= capacity ||
-        !yt_dlp_parse_request(format, root, stream, request)) {
+    if (!stream || strlen(stream) != yyjson_get_len(stream_value) || !yt_dlp_is_stream_url(stream) ||
+        strlen(stream) >= capacity || !yt_dlp_parse_request(format, root, stream, request)) {
       yyjson_doc_free(doc);
       output_url[0] = audio_url[0] = '\0';
       return SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned invalid stream metadata");
@@ -441,8 +460,10 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
   // Pass the explicit yt-dlp proxy to the independent FFmpeg requests.
   for (size_t i = 0; i < argc; ++i) {
     const char *proxy = NULL;
-    if (!strcmp(argv[i], "--proxy") && i + 1 < argc) proxy = argv[++i];
-    else if (!strncmp(argv[i], "--proxy=", 8)) proxy = argv[i] + 8;
+    if (!strcmp(argv[i], "--proxy") && i + 1 < argc)
+      proxy = argv[++i];
+    else if (!strncmp(argv[i], "--proxy=", 8))
+      proxy = argv[i] + 8;
     if (proxy) {
       if (strlen(proxy) >= sizeof(video_request->proxy))
         return SET_ERRNO(ERROR_INVALID_PARAM, "yt-dlp proxy is too long");
@@ -465,17 +486,17 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
 }
 
 asciichat_error_t yt_dlp_extract_stream_urls_interruptible(const char *url, const char *yt_dlp_options,
-                                                            char *output_url, size_t output_size, char *audio_url,
-                                                            size_t audio_size, bool (*cancel)(void *), void *data) {
+                                                           char *output_url, size_t output_size, char *audio_url,
+                                                           size_t audio_size, bool (*cancel)(void *), void *data) {
   yt_dlp_request_options_t video_request, audio_request;
   return yt_dlp_extract_with_options(url, yt_dlp_options, output_url, output_size, audio_url, audio_size,
-                                      &video_request, &audio_request, cancel, data);
+                                     &video_request, &audio_request, cancel, data);
 }
 
 asciichat_error_t yt_dlp_extract_stream_urls(const char *url, const char *yt_dlp_options, char *output_url,
                                              size_t output_size, char *audio_url, size_t audio_size) {
   return yt_dlp_extract_stream_urls_interruptible(url, yt_dlp_options, output_url, output_size, audio_url, audio_size,
-                                                   NULL, NULL);
+                                                  NULL, NULL);
 }
 
 asciichat_error_t yt_dlp_extract_stream_url(const char *url, const char *yt_dlp_options, char *output_url,
