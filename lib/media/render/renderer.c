@@ -164,7 +164,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
       smaller = RENDER_AUTO_MIN_FONT_SIZE_PT;
     tr_cfg.font_size_pt = smaller;
     terminal_renderer_t *candidate = NULL;
-    if (term_renderer_create(&tr_cfg, &candidate) == ASCIICHAT_OK) {
+    err = term_renderer_create(&tr_cfg, &candidate);
+    if (err == ASCIICHAT_OK) {
       int candidate_width = term_renderer_width_px(candidate);
       int candidate_height = term_renderer_height_px(candidate);
       if (candidate_width <= actual_width_px && candidate_height <= actual_height_px &&
@@ -177,7 +178,9 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
         term_renderer_destroy(candidate);
       }
     } else {
-      CLEAR_ERRNO();
+      term_renderer_destroy(ctx->renderer);
+      SAFE_FREE(ctx);
+      return err;
     }
   }
   log_info("GRID DIMENSIONS: %ux%u cells -> PIXEL DIMENSIONS: %dx%d px", cols, rows, actual_width_px, actual_height_px);

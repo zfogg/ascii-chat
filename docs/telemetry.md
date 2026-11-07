@@ -64,7 +64,7 @@ those variables to enable export in tests.
 
 Collector-based OTEL smoke scripts now report skip code 77. In-process gotel
 transport tests still validate spans, metrics, sampling and failures without
-network I/O. `test_otel_disabled.py` runs real native media with explicit collector
+network I/O. `tests/python/integration/telemetry/test_disabled.py` runs real native media with explicit collector
 and signal overrides and asserts zero received requests. Historical exported-load
 measurements below describe earlier manual runs; they are not test permissions.
 
@@ -129,7 +129,7 @@ fixtures, sends no OTLP, switches to an empty session, checks all panels/rules,
 and restores the original session in a finally block:
 
 ```sh
-python tests/integration/test_spaniel_alert_pack.py
+python tests/manual/probe_spaniel_alert_pack.py
 ```
 
 
@@ -393,7 +393,7 @@ attributes. Loader and commit spans are independent control-operation roots:
 the loader crosses a thread boundary, and commit must not inherit a discarded
 frame's sampling decision.
 
-`tests/integration/test_otel.py BINARY` runs a synthetic mirror snapshot against
+`tests/manual/disabled_otel_export.py BINARY` runs a synthetic mirror snapshot against
 a loopback OTLP receiver, verifies each signal mask, sampling and metric
 independence, CLI/config/environment precedence, invalid configuration, and a
 bounded collector outage, encrypted client/server delivery and named ACDS SQL. With `BUILD_TESTS=ON` it is registered as CTest

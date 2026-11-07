@@ -51,16 +51,15 @@ Compose adds `SYS_PTRACE` and disables LeakSanitizer detection through its envir
 The locked uv project provides pytest and pytest-xdist. `tests/python/` is the
 only default collection tree; its modules must not start processes or parse CLI
 arguments at import time. Fixtures in `tests/python/conftest.py` provide the
-native binary, isolated environment, managed services, and PTY/ConPTY terminals. Pass `--terminal-probe` to exercise the native terminal fixture in direct pytest runs. CTest registers `python-unit`,
-`python-cli`, `python-media`, `python-network`, `python-mcp`, and `python-terminal`; each emits
+native binary, isolated environment, managed services, and PTY/ConPTY terminals. Pass `--terminal-probe` to exercise the native terminal fixture in direct pytest runs. CTest registers Python batches with the `python` label; each emits
 `build/Testing/python-*.xml` and reserves all cores while xdist runs.
 
 ```sh
 uv sync --project tests/ascii_chat_tests --frozen
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/unit
-uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python --ascii-chat-binary build/bin/ascii-chat --terminal-probe build/bin/test-terminal-pty
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python --ascii-chat-binary build/bin/ascii-chat --terminal-probe build/bin/test-terminal-pty --lifecycle-probe build/bin/test-client-like-lifecycle --media-capture-probe build/bin/test-media-capture-open
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/cli/test_options.py --ascii-chat-binary build/bin/ascii-chat -k seek -n 0
-ctest --test-dir build -R '^python-(unit|cli|media|network|mcp|terminal)$' --no-tests=error --output-on-failure --parallel
+ctest --test-dir build -L '^python$' --no-tests=error --output-on-failure --parallel
 ```
 
 Use the platform executable suffix on Windows. pytest defaults to `-n logical`;
@@ -75,15 +74,15 @@ work. Do not collect the entire legacy tree or run a migrated case twice.
 ```sh
 cmake --build build --target ascii-chat
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network --ascii-chat-binary build/bin/ascii-chat
-python tests/integration/server_client_lifecycle.py build/bin/ascii-chat
-python tests/integration/terminal_ui.py --binary build/bin/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network/test_server_client_lifecycle.py --ascii-chat-binary build/bin/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/terminal_ui --ascii-chat-binary build/bin/ascii-chat
 python tests/integration/network_terminal_backpressure.py \
   --binary build/bin/ascii-chat --output build/backpressure
 # Harness unit tests are separate from exercising real processes:
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/unit/test_receive_timing.py
 ```
 
-On Windows pass the actual native `.exe` path; host Python cannot run a Linux Docker executable. `terminal_ui.py` requires pyte, ffmpeg, and pywinpty on Windows / pexpect on POSIX. tmux probes require tmux and a POSIX terminal. `os.fork`/PTY probes do not prove native Windows behavior; inspect `windows_console.py`, `terminal_resize_windows.py`, and other native harnesses for that surface. Audio scripts under `tests/audio/` have separate dependencies and may require hardware; inspect prerequisites individually.
+On Windows pass the actual native `.exe` path; host Python cannot run a Linux Docker executable. `terminal_ui.py` requires pyte, ffmpeg, and pywinpty on Windows / pexpect on POSIX. tmux probes require tmux and a POSIX terminal. `os.fork`/PTY probes do not prove native Windows behavior; inspect `windows_console.py`, `tests/python/integration/resize/test_terminal_resize.py`, and other native harnesses for that surface. Audio scripts under `tests/audio/` have separate dependencies and may require hardware; inspect prerequisites individually.
 
 Prefer registered CTest wrappers for lifecycle, backpressure, terminal-resize, media capture, dependency paths and crypto logging. They supply fixture executable paths and timeout/skip/serialization properties. Some standalone targets are `EXCLUDE_FROM_ALL`; enabling tests does not necessarily build every fixture. Look up target dependencies in `tests/CMakeLists.txt` and build the required target rather than inventing compile/link commands. Preserve intentional skip semantics (for example media capture return code 77).
 

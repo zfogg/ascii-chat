@@ -277,7 +277,7 @@ static asciichat_error_t parse_bool_value(const char *value_str, bool *out_value
 }
 
 static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, const option_descriptor_t *desc) {
-  bool new_value;
+  bool new_value = false;
 
   if (opt_value == NULL) {
     // No value provided (flag without =value), toggle the current value

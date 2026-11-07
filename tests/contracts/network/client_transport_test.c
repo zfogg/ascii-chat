@@ -134,6 +134,9 @@ Test(client_transport, zero_clock_value_does_not_collide_with_the_no_ping_sentin
   client_connection_mark_ping_sent(&connection, 0);
   client_connection_mark_ping_sent(&connection, 0);
   cr_assert_eq(atomic_load_u64(&connection.telemetry_ping_ns), UINT64_MAX);
+  atomic_store_u64(&connection.telemetry_ping_ns, 0);
+  client_connection_mark_ping_sent(&connection, 42);
+  cr_assert_eq(atomic_load_u64(&connection.telemetry_ping_ns), 42);
 }
 Test(client_transport, local_payload_rejection_keeps_the_connection_but_network_failure_marks_it_lost) {
   const uint8_t pixel[3] = {10, 20, 30};

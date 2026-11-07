@@ -80,9 +80,9 @@ Homebrew or vcpkg). The musl build fetches libuv as a static dependency.
 cmake --preset default -B build
 cmake --build build --target ascii-chat test-network-events
 ./build/bin/test-network-events
-python3 tests/integration/event_io.py build/bin/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/event_io --ascii-chat-binary build/bin/ascii-chat
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network --ascii-chat-binary build/bin/ascii-chat
-python3 tests/integration/server_client_lifecycle.py build/bin/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network/test_server_client_lifecycle.py --ascii-chat-binary build/bin/ascii-chat
 ```
 
 Use `.exe` executable names on Windows. The standalone test covers fragmented

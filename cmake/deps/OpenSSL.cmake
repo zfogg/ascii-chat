@@ -382,7 +382,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYP
     endif()
     set(OPENSSL_LIBDIR "lib")
 
-    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};no_asm=${OPENSSL_NO_ASM};shared=${OPENSSL_BUILD_SHARED};version=${OPENSSL_VERSION};prefix=${OPENSSL_CONFIGURE_PREFIX}")
+    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};no_asm=${OPENSSL_NO_ASM};shared=${OPENSSL_BUILD_SHARED};version=${OPENSSL_VERSION};prefix=${OPENSSL_CONFIGURE_PREFIX};cc=${CMAKE_C_COMPILER};cc_version=${CMAKE_C_COMPILER_VERSION}")
 
     if(OPENSSL_BUILD_SHARED)
         set(_OPENSSL_EXPECTED_SSL_LIB "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl${CMAKE_SHARED_LIBRARY_SUFFIX}")
@@ -465,12 +465,8 @@ if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYP
             list(APPEND OPENSSL_CONFIGURE_ARGS no-shared)
         endif()
         message(STATUS "  Configuring OpenSSL for ${OPENSSL_TARGET}...")
-        # Use Apple clang on macOS to ensure stdarg.h and other builtins are found
-        if(APPLE)
-            set(_OPENSSL_ENV_CMD ${CMAKE_COMMAND} -E env CC=/usr/bin/clang)
-        else()
-            set(_OPENSSL_ENV_CMD ${CMAKE_COMMAND} -E env)
-        endif()
+        # Keep dependency compilation consistent with the selected project toolchain.
+        set(_OPENSSL_ENV_CMD ${CMAKE_COMMAND} -E env "CC=${CMAKE_C_COMPILER}")
         execute_process(
             COMMAND ${_OPENSSL_ENV_CMD}
                 "${OPENSSL_SOURCE_DIR}/Configure"
@@ -497,7 +493,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYP
         # Install OpenSSL
         message(STATUS "  Installing OpenSSL...")
         execute_process(
-            COMMAND make install_sw ${OPENSSL_INSTALL_ARGS}
+            COMMAND ${_OPENSSL_ENV_CMD} make install_sw ${OPENSSL_INSTALL_ARGS}
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE INSTALL_RESULT
         )

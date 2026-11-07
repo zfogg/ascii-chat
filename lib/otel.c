@@ -487,8 +487,8 @@ void ascii_otel_shutdown(void) {
     uint64_t elapsed_ns = time_get_ns() - started;
     int joined = -1;
     if (done && elapsed_ns < budget_ns) {
-#ifdef __APPLE__
-      // The POSIX timed join implementation blocks on macOS. The worker has
+#if !defined(__linux__) && !defined(_WIN32)
+      // The POSIX timed join implementation blocks on these platforms. The worker has
       // finished using the exporter, so detach its remaining wrapper cleanup.
       joined = thread_detach(&worker);
 #else
