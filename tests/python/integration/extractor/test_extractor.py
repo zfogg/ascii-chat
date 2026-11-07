@@ -1,4 +1,5 @@
 import pytest
+import psutil
 """Exercise yt-dlp argument handling and separate stream playback end to end."""
 from ascii_chat_tests.media import ppm_image, write_pcm_wav
 from ascii_chat_tests.cli import clean_environment
@@ -291,8 +292,10 @@ class MediaExtractor(unittest.TestCase):
             deadline = time.monotonic() + 3
             while time.monotonic() < deadline:
                 try:
+                    if psutil.Process(child).status() == psutil.STATUS_ZOMBIE:
+                        break
                     os.kill(child, 0)
-                except ProcessLookupError:
+                except (ProcessLookupError, psutil.NoSuchProcess):
                     break
                 time.sleep(0.05)
             else:

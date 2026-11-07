@@ -194,6 +194,7 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
             if current > 1:
                 term.write("k" * (current - 1))
             term.expect(lambda text: "> [1]" in text, "k did not move selection to the first row")
+            term.pump(.5)
             term.write("\x1b[B")
             term.expect(lambda text: "> [2]" in text, "Down arrow did not move selection")
             term.resize(4, 44)
