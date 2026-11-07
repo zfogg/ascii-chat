@@ -48,6 +48,10 @@ console.log("[vite.config.js] Commit SHA:", commitSha);
 
 // https://vite.dev/config/
 export default defineConfig({
+  test: {
+    exclude: ["**/e2e/**", "**/node_modules/**"],
+    passWithNoTests: true,
+  },
   define: {
     __COMMIT_SHA__: JSON.stringify(commitSha),
     __WASM_ASSET_BASE__: JSON.stringify(`/wasm/${wasmVersion}/`),

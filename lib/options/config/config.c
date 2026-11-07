@@ -1370,9 +1370,10 @@ asciichat_error_t config_create_default(const char *config_path) {
   size_t metadata_count = 0;
   const config_option_metadata_t *metadata = config_schema_get_all(&metadata_count);
   {
-    const options_config_t *unified_config = options_preset_unified(NULL, NULL);
+    options_config_t *unified_config = options_preset_unified(NULL, NULL);
     if (unified_config) {
-      (void)config_schema_build_from_configs(&unified_config, 1);
+      const options_config_t *schema_config = unified_config;
+      (void)config_schema_build_from_configs(&schema_config, 1);
       options_config_destroy(unified_config);
       metadata = config_schema_get_all(&metadata_count);
     }
