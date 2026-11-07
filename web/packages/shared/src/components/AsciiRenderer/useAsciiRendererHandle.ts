@@ -177,7 +177,14 @@ export function useAsciiRendererHandle({
       worker.close();
       rasterWorkerRef.current = null;
     };
-  }, [clientLikeKind, workerRendering, canvasRef, resizeTimeoutRef, showFps]);
+  }, [
+    clientLikeKind,
+    workerRendering,
+    canvasRef,
+    resizeTimeoutRef,
+    rendererPtrRef,
+    showFps,
+  ]);
 
   const paintFrame = useCallback(
     (ansiString: string): boolean => {
@@ -465,7 +472,14 @@ export function useAsciiRendererHandle({
         onRecreateRenderer?.();
       },
     }),
-    [ensureUi, paintFrame, onRecreateRenderer],
+    [
+      ensureUi,
+      paintFrame,
+      onRecreateRenderer,
+      canvasRef,
+      resizeTimeoutRef,
+      rendererPtrRef,
+    ],
   );
 
   return {
