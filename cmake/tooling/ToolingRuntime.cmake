@@ -9,9 +9,7 @@
 #   - ascii-panic-runtime: Runtime library for panic instrumentation logging
 #   - ascii-panic-report: Optional log analysis utility (Unix only)
 #
-# Note: The panic and defer TOOLS (ascii-instr-panic, ascii-instr-defer) are
-# built separately via ExternalProject in Panic.cmake and Defer.cmake to
-# avoid inheriting musl/static flags from the main build.
+# The panic tool is built separately by Panic.cmake.
 # =============================================================================
 
 include_guard(GLOBAL)
@@ -93,7 +91,7 @@ endfunction()
 # =============================================================================
 # Windows DLL Copying for Tooling
 # =============================================================================
-# The tooling executables (ascii-instr-panic, ascii-instr-defer) need
+# The panic instrumentation executable may need
 # zstd.dll and zlibd1.dll at runtime. This is handled by each tool's
 # ExternalProject post-build step, but we provide a fallback here.
 
@@ -104,20 +102,6 @@ function(ascii_copy_tooling_dlls)
 
     # DLL source directory
     set(_dll_source "$ENV{VCPKG_ROOT}/installed/x64-windows/debug/bin")
-
-    # Copy DLLs for ascii-instr-defer (if built locally, not cached)
-    if(TARGET ascii-instr-defer AND NOT ASCII_DEFER_TOOL_CACHED)
-        add_custom_command(TARGET ascii-instr-defer POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${_dll_source}/zstd.dll"
-                "$<TARGET_FILE_DIR:ascii-instr-defer>/"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${_dll_source}/zlibd1.dll"
-                "$<TARGET_FILE_DIR:ascii-instr-defer>/"
-            COMMENT "Copying zstd.dll and zlibd1.dll for ascii-instr-defer"
-            VERBATIM
-        )
-    endif()
 
     # Copy DLLs for ascii-instr-panic (if built locally, not cached)
     if(TARGET ascii-instr-panic AND NOT ASCII_PANIC_TOOL_CACHED)

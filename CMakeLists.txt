@@ -39,8 +39,8 @@ if(NOT DEFINED ASCIICHAT_DEPS_CACHE_ROOT OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "
 endif()
 
 # Build-type-specific cache directory
-# Note: Only compute if not already passed from parent build (e.g., temp build for defer tool)
-# This allows the defer tool's temp cmake build to use the same cache as the parent
+# Note: Only compute if not already passed from parent build (e.g., auxiliary build)
+# This allows the auxiliary CMake build to use the same cache as the parent
 if(NOT DEFINED ASCIICHAT_DEPS_CACHE_DIR OR ASCIICHAT_DEPS_CACHE_DIR STREQUAL "")
     set(ASCIICHAT_DEPS_CACHE_DIR "${CMAKE_BINARY_DIR}/_deps/legacy/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type" FORCE)
 endif()
@@ -114,7 +114,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/platform/iOS.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
 configure_llvm_pre_project()
 
-# Always enable C++ for Clang tooling (defer() and source instrumentation)
+# Enable C++ for project dependencies and source instrumentation
 if(APPLE)
     set(PROJECT_LANGUAGES C CXX OBJC)
 else()
@@ -384,20 +384,9 @@ foreach(_package_manager HOMEBREW SCOOP AUR)
     endif()
 endforeach()
 
-if(false)
-    include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
-endif()
+include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
-# IMPORTANT: Defer must run BEFORE panic so that:
-# 1. Defer analyzes clean original sources (correct scope analysis)
-# 2. Panic then transforms defer's output (just adds logging)
-# Skip defer tool for musl builds (C++ header compatibility issues with musl libc++)
-if(false)
-    if(NOT USE_MUSL)
-        ascii_defer_prepare()
-    endif()
-endif()
 ascii_panic_prepare()
 # Query tool is independent of defer/panic - it doesn't do source transformation
 ascii_query_prepare()
@@ -411,15 +400,11 @@ ascii_build_tooling_runtime()
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
+ascii_defer_prepare()
 enable_testing()
 add_test(NAME ascii-chat-version COMMAND $<TARGET_FILE:ascii-chat> --version)
 set_tests_properties(ascii-chat-version PROPERTIES LABELS smoke TIMEOUT 15)
 ascii_panic_finalize()
-if(false)
-    if(NOT USE_MUSL)
-        ascii_defer_finalize()
-    endif()
-endif()
 ascii_query_finalize()
 
 # =============================================================================
@@ -497,6 +482,7 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)
     enable_testing()
   endif()
   add_subdirectory(${CMAKE_SOURCE_DIR}/tests ${CMAKE_BINARY_DIR}/tests)
+  ascii_defer_prepare_tests()
 endif()
 
 # Explicit local telemetry probe; never built or run by the test suite.

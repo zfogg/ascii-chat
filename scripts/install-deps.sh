@@ -85,7 +85,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
   if [ -f /etc/debian_version ]; then
-      bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+      bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" -- 23
   fi
 
   if command -v apt-get &>/dev/null; then
@@ -169,13 +169,12 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
     curl -fsSL https://bun.com/install | bash
 
-    # Try LLVM versions in order from newest to oldest
-    LLVM_VERSIONS="23 22 21 20 19 18"
+    # The source transformer uses LLVM 23's libclang and matching bindings.
+    LLVM_VERSIONS="23"
     LLVM_VERSION=""
     for ver in $LLVM_VERSIONS; do
       echo "Trying LLVM $ver..."
-      # libclang-cpp$ver-dev provides the shared libclang-cpp.so needed by the defer tool
-      # libclang-common-$ver-dev provides Clang AST headers (clang/AST/*.h) needed for defer tool compilation
+      # Development headers and libraries are needed by the other Clang tools.
       # libclang1-$ver provides the libclang runtime library
       # libclang-rt-$ver-dev provides compiler runtime (sanitizers, builtins)
       # libc++-$ver-dev and libc++abi-$ver-dev provide LLVM C++ standard library (required for musl builds)

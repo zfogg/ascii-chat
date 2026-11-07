@@ -1,0 +1,19 @@
+[project]
+name = "ascii-chat-defer"
+version = "0.1.0"
+description = "Clang-based defer source transformation for ascii-chat"
+requires-python = ">=3.10"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14,<1",
+    "ty>=0.0.99,<0.1",
+]
+[tool.ruff]
+extend-exclude = ["vendor"]
+
+[tool.ty.src]
+exclude = ["vendor"]
+[tool.ty.environment]
+extra-paths = ["vendor"]

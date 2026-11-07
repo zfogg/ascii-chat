@@ -34,9 +34,6 @@ inputs:
     default: "both"
 
 outputs:
-  defer-tool-path:
-    description: "Path to the defer tool executable"
-    value: ${{ steps.download-prebuilt.outputs.defer-tool-path || steps.download-prebuilt-macos.outputs.defer-tool-path }}
   cmake-cache-key:
     description: "Cache key for CMake dependencies (computed by cache-keys step)"
     value: ${{ steps.cache-keys.outputs.cmake-cache-key || steps.cache-keys-win.outputs.cmake-cache-key }}
@@ -97,7 +94,7 @@ runs:
       shell: bash
       run: |
         # Hash install-deps.sh to invalidate cmake-deps cache when system packages change
-        # This ensures the defer tool gets rebuilt when Clang packages are updated
+        # Include compiler package changes in the dependency cache key.
         if command -v sha256sum &>/dev/null; then
           hash=$(sha256sum scripts/install-deps.sh | cut -c1-8)
         else
@@ -125,16 +122,16 @@ runs:
         install_hash="${{ steps.install-deps-hash.outputs.hash }}"
 
         # Output cache keys
-        # v13/v2/v6: Invalidate defer tool build failures and corrupted caches
+        # Versioned keys invalidate incompatible dependency caches.
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
         echo "cmake-cache-key=${os}-${arch}-cmake-deps-v15-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
         echo "ccache-key=${os}-${arch}-ccache-v2" >> $GITHUB_OUTPUT
-        echo "build-cache-key=${os}-${arch}-build-v7" >> $GITHUB_OUTPUT
+        echo "build-cache-key=${os}-${arch}-build-v8" >> $GITHUB_OUTPUT
 
         echo "Computed cache keys:"
         echo "  cmake: ${os}-${arch}-cmake-deps-v15-${deps_hash}-${install_hash}"
         echo "  ccache: ${os}-${arch}-ccache-v2"
-        echo "  build: ${os}-${arch}-build-v7"
+        echo "  build: ${os}-${arch}-build-v8"
 
     - name: Compute cache keys (Windows)
       if: inputs.os == 'windows'
@@ -159,16 +156,16 @@ runs:
         $installHash = "${{ steps.install-deps-hash.outputs.hash }}"
 
         # Output cache keys
-        # v13/v2/v6: Invalidate defer tool build failures and corrupted caches
+        # Versioned keys invalidate incompatible dependency caches.
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
         Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v15-${depsHash}-${installHash}"
         Add-Content -Path $env:GITHUB_OUTPUT -Value "ccache-key=${os}-${arch}-ccache-v2"
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v7"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v8"
 
         Write-Host "Computed cache keys:"
         Write-Host "  cmake: ${os}-${arch}-cmake-deps-v15-${depsHash}-${installHash}"
         Write-Host "  ccache: ${os}-${arch}-ccache-v2"
-        Write-Host "  build: ${os}-${arch}-build-v7"
+        Write-Host "  build: ${os}-${arch}-build-v8"
 
     - name: Restore CMake dependency cache (All platforms)
       id: cmake-cache
@@ -332,8 +329,8 @@ runs:
         echo "Running scripts/install-deps.sh to install build dependencies..."
         # install-deps.sh handles:
         # - CMake 4.2.0 installation via Kitware APT repository
-        # - All build dependencies (clang-21, llvm-21-dev, etc.)
-        # - LLVM 21 update-alternatives configuration
+        # - All build dependencies, including LLVM 23 and libclang
+        # - LLVM 23 update-alternatives configuration
         # --dangerously-delete-conflicts: GitHub runners have pre-installed binaries
         # in /usr/bin that shadow update-alternatives. The flag allows deletion
         # only when CI=true (set by GitHub Actions).
@@ -459,46 +456,29 @@ runs:
           exit 1
         }
 
-    # =========================================================================
-    # LLVM with Development Libraries (Windows)
-    # =========================================================================
-    # The official LLVM Windows installer and scoop/choco/winget packages only
-    # include compiler binaries (clang.exe), NOT the development libraries
-    # (LLVMSupport.lib, clangTooling.lib, etc.) needed to build the defer tool.
-    # Use the official LLVM installers for both AMD64 and ARM64.
-    - name: Install LLVM with dev libraries (Windows)
+    # LLVM 23 supplies the compiler and matching libclang used by the Python transformer.
+    - name: Install LLVM 23 (Windows)
       if: inputs.os == 'windows'
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
         $arch = "${{ runner.arch }}"
-        if ($arch -eq "X64") {
-          # The x64 release runs on Windows Server 2022 with Visual Studio 17.
-          $LLVM_VERSION = "19.1.6"
-          $LLVM_INSTALLER = "LLVM-${LLVM_VERSION}-win64.exe"
-          $LLVM_INSTALL_DIR = "C:\LLVM"
-        } else {
-          $LLVM_VERSION = "21.1.8"
-          $LLVM_INSTALLER = "LLVM-${LLVM_VERSION}-woa64.exe"
-          $LLVM_INSTALL_DIR = "C:\LLVM-ARM64"
-        }
-
+        $LLVM_VERSION = "23.1.3"
+        $LLVM_INSTALLER = if ($arch -eq "X64") { "LLVM-${LLVM_VERSION}-win64.msi" } else { "LLVM-${LLVM_VERSION}-woa64.msi" }
+        $LLVM_BASE = "C:\LLVM-${LLVM_VERSION}"
+        $LLVM_INSTALL_DIR = "${LLVM_BASE}\SourceDir\LLVM"
         $LLVM_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/${LLVM_INSTALLER}"
 
-        if (Test-Path "${LLVM_INSTALL_DIR}\bin\clang.exe") {
-          Write-Host "LLVM ${LLVM_VERSION} already installed at ${LLVM_INSTALL_DIR}"
-        } else {
-          Write-Host "Installing official LLVM ${LLVM_VERSION} (${arch})..."
-          $installerPath = "$env:TEMP\${LLVM_INSTALLER}"
+        if (-not (Test-Path "${LLVM_INSTALL_DIR}\bin\clang.exe") -or -not (Test-Path "${LLVM_INSTALL_DIR}\bin\libclang.dll")) {
+          New-Item -ItemType Directory -Force -Path $LLVM_BASE | Out-Null
+          $installerPath = Join-Path $env:TEMP $LLVM_INSTALLER
           Invoke-WebRequest -Uri $LLVM_URL -OutFile $installerPath -UseBasicParsing
-          if (Test-Path $LLVM_INSTALL_DIR) { Remove-Item -Recurse -Force $LLVM_INSTALL_DIR }
-          Start-Process -Wait -FilePath $installerPath -ArgumentList "/S","/D=${LLVM_INSTALL_DIR}"
-          Remove-Item $installerPath -Force -ErrorAction SilentlyContinue
-          if (-not (Test-Path "${LLVM_INSTALL_DIR}\bin\clang.exe")) {
-            Write-Host "ERROR: LLVM installation failed - clang.exe not found" -ForegroundColor Red
-            exit 1
+          $process = Start-Process -FilePath msiexec.exe -ArgumentList @('/a', "`"$installerPath`"", '/qn', "TARGETDIR=${LLVM_BASE}\SourceDir") -WindowStyle Hidden -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "LLVM MSI extraction failed with exit code $($process.ExitCode)" }
+          Remove-Item -LiteralPath $installerPath -Force
+          if (-not (Test-Path "${LLVM_INSTALL_DIR}\bin\clang.exe") -or -not (Test-Path "${LLVM_INSTALL_DIR}\bin\libclang.dll")) {
+            throw "LLVM 23 clang.exe or libclang.dll missing after MSI extraction"
           }
-          Write-Host "LLVM ${LLVM_VERSION} installed successfully"
         }
 
         $llvmBinPath = "${LLVM_INSTALL_DIR}\bin"
@@ -640,49 +620,6 @@ runs:
           fi
         done
 
-    # =========================================================================
-    # Pre-built Tools Download (macOS)
-    # =========================================================================
-    # Download pre-built defer tool from build-tools release to work around
-    # LLVM 21 LibTooling bug with __has_include_next (see PR #173717)
-    # The universal binary contains both x86_64 and arm64 slices built with LLVM 22
-    - name: Download pre-built tools (macOS)
-      id: download-prebuilt-macos
-      if: inputs.os == 'macos' && inputs.github-token != ''
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        DEFER_TOOL_DIR="${PWD}/.deps-cache/defer-tool"
-        mkdir -p "$DEFER_TOOL_DIR"
-
-        # Check if build-tools release exists
-        if gh release view build-tools --json tagName &>/dev/null; then
-          echo "Found build-tools release, attempting to download pre-built defer tool..."
-
-          if gh release download build-tools --pattern "ascii-instr-defer.macOS.universal" --dir "$DEFER_TOOL_DIR"; then
-            DEFER_TOOL_PATH="${DEFER_TOOL_DIR}/ascii-instr-defer"
-            mv "${DEFER_TOOL_DIR}/ascii-instr-defer.macOS.universal" "$DEFER_TOOL_PATH"
-            chmod +x "$DEFER_TOOL_PATH"
-
-            # The pre-built defer tool uses libSystem.B.dylib for C runtime (no external libunwind needed)
-            echo "Downloaded pre-built defer tool (LLVM 22 universal binary)"
-            file "$DEFER_TOOL_PATH"
-            # Skip version test - binary may have been built for a newer macOS version than the runner
-            # The tool still works correctly for compilation via LibTooling
-
-            echo "defer-tool-path=$DEFER_TOOL_PATH" >> $GITHUB_OUTPUT
-          else
-            echo "Failed to download pre-built defer tool, will build from source"
-            echo "defer-tool-path=" >> $GITHUB_OUTPUT
-          fi
-        else
-          echo "build-tools release not found, defer tool will be built from source"
-          echo "defer-tool-path=" >> $GITHUB_OUTPUT
-        fi
-      env:
-        GH_TOKEN: ${{ inputs.github-token }}
-
     - name: Set vcpkg triplet for Windows (AMD64)
       if: inputs.os == 'windows' && runner.arch == 'X64'
       shell: pwsh
@@ -734,75 +671,18 @@ runs:
 
     # =========================================================================
     # Pre-built Tools Download (Windows)
-    # =========================================================================
-    # Try to download pre-built defer tool and BearSSL from build-tools release
-    # This avoids needing full LLVM dev libraries and nmake build issues
-    # If build-tools release doesn't exist, CMake will build from source
-    # AMD64: Try to download pre-built binaries, fall back to source build
-    # ARM64: Will be built from source by CMake (no pre-built ARM64 binaries yet)
-    - name: Download pre-built tools (Windows)
-      id: download-prebuilt
-      if: inputs.os == 'windows' && inputs.github-token != ''
+    # A prebuilt BearSSL library is optional on Windows x64.
+    - name: Download pre-built BearSSL (Windows)
+      if: inputs.os == 'windows' && inputs.github-token != '' && runner.arch == 'X64'
       shell: pwsh
       run: |
-        $arch = "${{ runner.arch }}"
-        Write-Host "Detected architecture: $arch"
-
-        if ($arch -eq "X64") {
-          # AMD64: Try to download pre-built binaries
-          $deferToolDir = Join-Path $PWD ".deps-cache" "defer-tool"
-          New-Item -ItemType Directory -Force -Path $deferToolDir | Out-Null
-
-          # Check if build-tools release exists
-          $releaseExists = $false
-          try {
-            $result = gh release view build-tools --json tagName 2>&1
-            if ($LASTEXITCODE -eq 0) {
-              $releaseExists = $true
-              Write-Host "Found build-tools release, attempting to download pre-built binaries..."
-            }
-          } catch {
-            Write-Host "build-tools release not found, will build from source"
-          }
-
-          if ($releaseExists) {
-            try {
-              gh release download build-tools --pattern "ascii-instr-defer.Windows.amd64.exe" --dir $deferToolDir
-              $deferToolSrcPath = Join-Path $deferToolDir "ascii-instr-defer.Windows.amd64.exe"
-              $deferToolDstPath = Join-Path $deferToolDir "ascii-instr-defer.exe"
-              Move-Item -Path $deferToolSrcPath -Destination $deferToolDstPath -Force
-              gh release download build-tools --pattern "zlib1.Windows.amd64.dll" --dir $deferToolDir
-              $zlibSrcPath = Join-Path $deferToolDir "zlib1.Windows.amd64.dll"
-              $zlibDstPath = Join-Path $deferToolDir "zlib1.dll"
-              Move-Item -Path $zlibSrcPath -Destination $zlibDstPath -Force
-              gh release download build-tools --pattern "zstd.Windows.amd64.dll" --dir $deferToolDir
-              $zstdSrcPath = Join-Path $deferToolDir "zstd.Windows.amd64.dll"
-              $zstdDstPath = Join-Path $deferToolDir "zstd.dll"
-              Move-Item -Path $zstdSrcPath -Destination $zstdDstPath -Force
-              Write-Host "Downloaded defer tool to: $dstPath"
-              Add-Content -Path $env:GITHUB_OUTPUT -Value "defer-tool-path=$dstPath"
-
-              # Download pre-built BearSSL
-              $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
-              New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
-              gh release download build-tools --pattern "bearssls.Windows.amd64.lib" --dir $bearsslDir
-              $srcPathBearssl = Join-Path $bearsslDir "bearssls.Windows.amd64.lib"
-              $dstPathBearssl = Join-Path $bearsslDir "bearssls.lib"
-              Move-Item -Path $srcPathBearssl -Destination $dstPathBearssl -Force
-              Write-Host "Downloaded BearSSL to: $dstPathBearssl"
-            } catch {
-              Write-Host "Failed to download pre-built binaries: $_"
-              Write-Host "Will build from source instead"
-              Add-Content -Path $env:GITHUB_OUTPUT -Value "defer-tool-path="
-            }
-          } else {
-            Write-Host "No build-tools release available - defer tool and BearSSL will be built from source"
-            Add-Content -Path $env:GITHUB_OUTPUT -Value "defer-tool-path="
-          }
+        $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
+        New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
+        gh release download build-tools --pattern "bearssls.Windows.amd64.lib" --dir $bearsslDir
+        if ($LASTEXITCODE -eq 0) {
+          Move-Item -LiteralPath (Join-Path $bearsslDir "bearssls.Windows.amd64.lib") -Destination (Join-Path $bearsslDir "bearssls.lib") -Force
         } else {
-          # ARM64: No pre-built binaries available - CMake will build from source
-          Write-Host "ARM64: No pre-built binaries available - defer tool and BearSSL will be built from source"
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "defer-tool-path="
+          Write-Host "Prebuilt BearSSL unavailable; CMake will build it from source"
         }
       env:
         GH_TOKEN: ${{ inputs.github-token }}

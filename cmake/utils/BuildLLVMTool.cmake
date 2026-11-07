@@ -6,11 +6,11 @@
 #
 # Usage:
 #   build_llvm_tool(
-#       NAME <tool_name>                    # e.g., "defer", "panic"
+#       NAME <tool_name>                    # e.g., "panic"
 #       SOURCE_DIR <path>                   # Path to tool's CMakeLists.txt directory
-#       CACHE_DIR_NAME <name>               # Cache subdirectory name (e.g., "defer-tool")
-#       OUTPUT_EXECUTABLE <name>            # Executable name (e.g., "ascii-instr-defer")
-#       [PREBUILT_VAR <var_name>]           # Cache variable for pre-built path (e.g., ASCIICHAT_DEFER_TOOL)
+#       CACHE_DIR_NAME <name>               # Cache subdirectory name (e.g., "panic-tool")
+#       OUTPUT_EXECUTABLE <name>            # Executable name (e.g., "ascii-instr-panic")
+#       [PREBUILT_VAR <var_name>]           # Cache variable for pre-built path (e.g., ASCIICHAT_PANIC_TOOL)
 #       [PASS_LLVM_CONFIG]                  # Pass LLVM_CONFIG_EXECUTABLE to external project
 #       [CLEAN_INCOMPLETE_CACHE]            # Clean partial cache state before building
 #       [CREATE_IMPORTED_TARGET <name>]     # Create IMPORTED executable target
@@ -25,11 +25,11 @@
 #
 # Example:
 #   build_llvm_tool(
-#       NAME defer
-#       SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/tooling/defer"
-#       CACHE_DIR_NAME "defer-tool"
-#       OUTPUT_EXECUTABLE "ascii-instr-defer"
-#       PREBUILT_VAR ASCIICHAT_DEFER_TOOL
+#       NAME panic
+#       SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/tooling/panic"
+#       CACHE_DIR_NAME "panic-tool"
+#       OUTPUT_EXECUTABLE "ascii-instr-panic"
+#       PREBUILT_VAR ASCIICHAT_PANIC_TOOL
 #       PASS_LLVM_CONFIG
 #       ENABLE_LOG_OUTPUT
 #       ISOLATE_FROM_ENV
