@@ -9,6 +9,7 @@ from ascii_chat_tests.terminal import Terminal, TerminalProcess
 import functools
 import http.server
 import os
+import re
 from pathlib import Path
 import shutil
 import shlex
@@ -106,6 +107,33 @@ class MediaExtractor(unittest.TestCase):
             index = args.index(tokens[0], args.index("b/bv[vcodec^=avc1]+ba/bv+ba") + 1)
             self.assertEqual(args[index:index + len(tokens)], tokens)
         return result
+
+    @pytest.mark.terminal
+    def test_youtube_startup_transitions_directly_to_media(self):
+        """Exercise the reported URL using deterministic local extractor output."""
+        url = "https://www.youtube.com/watch?v=M1b0Ka2gAak"
+        env = dict(self.env, FAKE_YTDLP_MODE="combined")
+        term = Terminal(cli_command(self.binary, "mirror", url, "--audio=false", "--palette", "custom",
+                                    "--palette-chars", "QQ", "--color-mode", "none"),
+                        rows=24, cols=100, terminal_replies=True, environment=env)
+        try:
+            term.expect(lambda text: "Using network media source" in text, "Startup screen did not appear", timeout=30)
+            term.expect(lambda text: "QQQQQQQQ" in text, "Media frame did not appear", timeout=45)
+            raw = "".join(term.raw)
+            frames = list(re.finditer(r"\x1b\[\?2026h(.*?)\x1b\[\?2026l", raw, re.S))
+            startup = [i for i, frame in enumerate(frames) if "Using network media source" in frame[1]]
+            self.assertTrue(startup, "Startup screen was not published as a terminal frame")
+            following = frames[startup[-1] + 1:]
+            self.assertTrue(following, "No frame followed the startup screen")
+            first_frame = re.sub(r"(.)\x1b\[(\d+)b", lambda match: match[1] * (int(match[2]) + 1), following[0][1])
+            self.assertIn("QQQQQQQQ", first_frame, "The next frame after startup was not the media frame")
+            between = raw[frames[startup[-1]].end():following[0].start()]
+            between = re.sub(r"\x1b\](?:[^\x07\x1b]|\x1b(?!\\))*(?:\x07|\x1b\\)", "", between)
+            between = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", between)
+            self.assertFalse(between.strip(), f"Unexpected output between startup and media: {between!r}")
+            self.assertIn(url, self.trace.read_text())
+        finally:
+            term.close()
 
     def test_combined_stream_is_used_for_both_decoders(self):
         """Use the combined URL without requesting separate audio."""

@@ -1074,6 +1074,8 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
       asciichat_error_t presented = (fresh ? ui_controller_present : ui_controller_present_retained)(
           UI_SCREEN_MEDIA, ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO,
           (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, frame_buffer, total_size);
+      if (was_first_frame && presented == ASCIICHAT_OK)
+        ui_controller_remove(UI_SCREEN_SPLASH);
       ssize_t written = presented == ASCIICHAT_OK ? (ssize_t)total_size : -1;
       log_debug_every(US_PER_SEC_INT, "FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)", written, total_size);
 

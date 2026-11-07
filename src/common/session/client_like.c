@@ -781,6 +781,7 @@ static asciichat_error_t client_like_cleanup_session(const session_client_like_c
   // Stop the terminal writer before restoring output or destroying the display.
   splash_intro_done();
   splash_wait_for_animation();
+  ui_controller_remove(UI_SCREEN_SPLASH);
   // Re-enable terminal output for shutdown logs
   log_set_terminal_output(true);
 
