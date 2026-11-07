@@ -6,7 +6,7 @@ import _environment  # noqa: F401
 from ascii_chat_tests.media import ppm_image, write_pcm_wav
 from ascii_chat_tests.cli import clean_environment
 from ascii_chat_tests.cli import cli_command
-from ascii_chat_tests.terminal import TerminalProcess
+from ascii_chat_tests.terminal import Terminal, TerminalProcess
 
 import argparse
 import functools
@@ -254,6 +254,19 @@ class MediaExtractor(unittest.TestCase):
             code, stdout, stderr = terminal.wait()
             self.assertEqual(code, 0, (stdout, stderr[-4000:]))
             self.assertTrue(termios.tcgetattr(terminal.master)[3] & termios.TOSTOP)
+
+    @unittest.skipUnless(os.name == "nt", "Windows console")
+    def test_interactive_extractor_prompt_is_visible_on_windows(self):
+        env = dict(self.env, FAKE_YTDLP_MODE="interactive", FAKE_YTDLP_EXPECT_TERMINAL="1")
+        terminal = Terminal([AUDIO_PROBE, self.base + "/watch", self.base + "/video.ppm"],
+                            rows=24, cols=100, environment=env)
+        try:
+            terminal.expect(lambda text: "fixture prompt:" in text, "Extractor prompt was not visible", timeout=20)
+            terminal.write("yes\r")
+            terminal.expect(lambda _text: not terminal.process.isalive(), "Extractor did not exit", timeout=20)
+            self.assertEqual(terminal.process.exitstatus, 0, "".join(terminal.raw)[-4000:])
+        finally:
+            terminal.close()
 
     @unittest.skipIf(os.name == "nt", "POSIX terminal job control")
     def test_cancelling_interactive_extractor_kills_descendants_and_restores_terminal(self):

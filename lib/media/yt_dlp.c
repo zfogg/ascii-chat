@@ -455,13 +455,9 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
   // Two URLs can each occupy the full stream URL capacity, plus diagnostics.
   char output[MEDIA_YT_DLP_FULL_OUTPUT_BUFFER_SIZE + MEDIA_STREAM_URL_SIZE] = {0};
   int status = 0;
-#ifndef _WIN32
   // Interactive extractors need their prompts visible on the real terminal.
-  if (platform_isatty(STDIN_FILENO))
-    status = platform_execute_subprocess("yt-dlp", argv, output, sizeof(output), cancel, data);
-  else
-#endif
-    LOG_IO("yt-dlp", { status = platform_execute_subprocess("yt-dlp", argv, output, sizeof(output), cancel, data); });
+  LOG_IO_IF(!platform_isatty(STDIN_FILENO), "yt-dlp",
+            { status = platform_execute_subprocess("yt-dlp", argv, output, sizeof(output), cancel, data); });
   if (cancel && cancel(data)) {
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }

@@ -52,6 +52,15 @@ int main(int argc, char **argv) {
     fclose(file);
   }
   const char *mode = getenv("FAKE_YTDLP_MODE");
+#ifdef _WIN32
+  if (mode && strcmp(mode, "interactive") == 0) {
+    char answer[64];
+    fputs("fixture prompt: ", stderr);
+    fflush(stderr);
+    if (!fgets(answer, sizeof(answer), stdin) || strcmp(answer, "yes\n") != 0)
+      return 6;
+  }
+#endif
 #ifndef _WIN32
   if (mode && (strcmp(mode, "interactive") == 0 || strcmp(mode, "interactive-hang") == 0)) {
     char answer[64];
