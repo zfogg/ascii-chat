@@ -2,11 +2,12 @@
 
 `--renderer=glyph` enables experimental glyph matching in mirror, client,
 discovery, and MCP rendering. It samples an 8×8 pixel patch per terminal cell,
-averages the patch to 4×4, and compares the reconstructed pixels against the
-source. It fits a foreground color per candidate and, with
-`--render-mode=background`, fits a background color too. For 16- and 256-color
-output the score uses the quantized colors. Monochrome and foreground-only
-matching assume a black background. The default luminance renderer is unchanged.
+averages the patch to 4×4, and matches both luminance and local shape to glyph
+masks. It colors the selected character using its covered pixels, boosting dim
+colors to keep the ink visible. With `--render-mode=background`, the background
+receives a dark tint derived from the cell's average color. Terminal color
+quantization happens after glyph selection. The default luminance renderer is
+unchanged.
 
 The design was informed by [Chafa](https://github.com/hpjansson/chafa), inspected
 at `c897fce60cc4e947a254770ea1c2e320d58e7dce`. Chafa uses 8×8 symbol
@@ -26,8 +27,8 @@ flicker in foreground, background, and half-block modes.
 
 ## Visual comparison
 
-These historical side-by-side captures predate reconstructed-pixel color fitting
-and Unicode block support. They were made with Windows x64 debug builds at 80×32 cells,
+These historical side-by-side captures predate the current glyph scoring and
+Unicode block support. They were made with Windows x64 debug builds at 80×32 cells,
 truecolor, 8 fps. The emitted terminal frames were rasterized with Pillow and
 the same DejaVu font used for the atlas. The app-produced GIFs repeated their
 first image in this run, so they were not used for the comparisons. The left
