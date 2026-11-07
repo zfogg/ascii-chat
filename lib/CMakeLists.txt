@@ -1208,6 +1208,7 @@ add_library(ascii-chat-shared SHARED
     target_link_libraries(ascii-chat-shared PRIVATE
         ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
         ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
+        shell32  # CommandLineToArgvW
         crypt32  # For Windows crypto certificate functions (matches ascii-chat-platform)
         Winmm    # For timeBeginPeriod/timeEndPeriod
         ${CORE_LIBS}
