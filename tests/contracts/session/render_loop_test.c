@@ -30,6 +30,7 @@ static void setup(void) {
   cr_assert_eq(options_set_int("width", 40), ASCIICHAT_OK);
   cr_assert_eq(options_set_int("height", 12), ASCIICHAT_OK);
   cr_assert_eq(options_set_bool("stretch", true), ASCIICHAT_OK);
+  cr_assert_eq(options_set_bool("palette_explicit", true), ASCIICHAT_OK);
   cr_assert_eq(options_set_int("render_mode", RENDER_MODE_FOREGROUND), ASCIICHAT_OK);
   ascii_simd_init();
   output = platform_tmpfile();
