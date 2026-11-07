@@ -237,6 +237,14 @@ test("compiled C runtime retains newest covered frame, bounds input and tears do
 test("C application logs survive closed overlays and share exclusive presentation", async ({
   page,
 }) => {
+  const renderErrors: string[] = [];
+  page.on("console", (message) => {
+    if (
+      message.type() === "error" &&
+      message.text().includes("Frame rendering failed")
+    )
+      renderErrors.push(message.text());
+  });
   await observe(page);
   const canvas = page.locator("canvas.ascii-canvas");
   await canvas.focus();
@@ -300,6 +308,7 @@ test("C application logs survive closed overlays and share exclusive presentatio
       );
     })
     .toBe(true);
+  expect(renderErrors).toEqual([]);
 });
 
 test("connected web client shows its C network logs", async ({ page }) => {
