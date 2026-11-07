@@ -2,8 +2,10 @@
 
 `--renderer=glyph` enables experimental glyph matching in mirror, client,
 discovery, and MCP rendering. It samples an 8×8 pixel patch per terminal cell,
-averages the patch to 4×4, and matches both luminance and local shape to glyph
-masks. It colors the selected character using its covered pixels, boosting dim
+averages the patch to 4×4, and scores luminance, local shape, and chromatic
+edges against glyph masks. It refines a shortlist using 8×8 masks and source
+samples. It colors the selected character using a blend of its coverage-weighted
+average and representative median pixel, boosting dim
 colors to keep the ink visible. With `--render-mode=background`, the background
 receives a dark tint derived from the cell's average color. Terminal color
 quantization happens after glyph selection. The default luminance renderer is
@@ -81,18 +83,16 @@ ascii-chat --quiet --no-check-update mirror \
 python scripts/render_ansi_video.py baseline.log glyph.log website-demo.mp4 DejaVuSansMono.ttf
 ```
 
-## Renderer-only timing
+## Historical renderer-only timing
 
 On the development machine, a Linux x86-64 Docker run using Clang 23, Release
 `-O3`, and AVX2 rendered an 80×32 truecolor gradient in 6.7 ms per frame over
 200 measured frames after five warmups. A separate run of the previous glyph
 matcher on the same input measured 1.1 ms per frame. These are renderer-only
-measurements under shared load, not an end-to-end video throughput guarantee;
-the color fitting adds substantial work. A smaller selected palette evaluates
-fewer candidates, and truecolor scoring skips remaining channels once a
-candidate cannot beat the best score.
+measurements under shared load, not an end-to-end video throughput guarantee.
+They predate the current two-stage matcher and are not measurements of it.
 
-### Historical renderer-only timing
+### Earlier renderer-only timing
 
 These measurements predate reconstructed-pixel color fitting; they are not a
 performance measurement of the current implementation.
