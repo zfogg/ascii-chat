@@ -43,8 +43,10 @@
  * CMake uses the Python transformer and LLVM 19 or newer libclang to write generated
  * sources below `build/defer_transformed/`; original source files are unchanged.
  * Set `ASCIICHAT_LIBCLANG_PATH` to the LLVM 19 or newer libclang shared library if CMake cannot
- * find it beside the compiler. The matching LLVM Python bindings are vendored
- * under `src/tooling/defer/vendor/`. A compilation database is required.
+ * find it beside the compiler. The LLVM 23 Python bindings are vendored under
+ * `src/tooling/defer/vendor/` and use the libclang C API with LLVM 19 or newer.
+ * A compilation database is required; use the single-config Ninja or Unix
+ * Makefiles generator.
  * Directly compiling an untransformed source containing defer fails rather than
  * turning cleanup into a no-op. Panic instrumentation cannot currently be used
  * with defer transformation.

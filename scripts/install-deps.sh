@@ -53,6 +53,19 @@ fi
 echo "Detected platform: $PLATFORM"
 echo ""
 
+sync_python_tooling() {
+  local script_dir project_root python_exe
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  project_root="$(cd "${script_dir}/.." && pwd -P)"
+  python_exe="$(command -v python3 || true)"
+  if [ -z "$python_exe" ] || ! "$python_exe" -c 'import sys; sys.exit(sys.version_info < (3, 10))'; then
+    echo >&2 "ERROR: Python 3.10 or newer is required"
+    exit 1
+  fi
+  command -v uv >/dev/null || { echo >&2 "ERROR: uv is required"; exit 1; }
+  uv sync --project "${project_root}/src/tooling/defer" --frozen --python "$python_exe"
+}
+
 verify_llvm_for_defer() {
   local compiler="$1" compiler_dir major libdir library found=0
   if [ ! -x "$compiler" ]; then
@@ -93,11 +106,17 @@ if [[ "$PLATFORM" == "macos" ]]; then
     libvterm freetype fontconfig expat \
     >/dev/null 2>&1 || true
 
-  # uv is required by the Python test runner; do not ignore its installation failure.
+  if ! command -v python3 &>/dev/null || ! python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))'; then
+    brew install python
+    export PATH="$(brew --prefix python)/libexec/bin:${PATH}"
+  fi
+
+  # uv is required by the Python development tools.
   if ! command -v uv &>/dev/null; then
     brew install uv
   fi
 
+  sync_python_tooling
   verify_llvm_for_defer "$(brew --prefix llvm)/bin/clang"
   echo "Homebrew packages: installation attempt completed"
 
@@ -162,6 +181,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     fi
 
     apt-get update
+    apt-get install -y python3 python3-venv
 
     uname -a
 
@@ -331,8 +351,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Detected yum package manager"
     echo "Installing dependencies..."
     yum install -y \
-      pkg-config make autoconf automake libtool \
-      clang llvm lld \
+      pkg-config make autoconf automake libtool python3 python3-pip \
+      clang clang-devel llvm lld \
       libcxx-devel libcxxabi-devel \
       cmake ninja-build \
       musl-devel musl-gcc musl-libc-static \
@@ -360,7 +380,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Detected pacman package manager"
     echo "Installing dependencies..."
     pacman -S --needed \
-      pkg-config autoconf automake libtool \
+      pkg-config autoconf automake libtool python python-pip \
       ccache \
       clang llvm lldb lld \
       libc++ libc++abi \
@@ -414,6 +434,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Ensure ${uv_install_dir} is on PATH in future shells."
   fi
   command -v uv >/dev/null || { echo >&2 "ERROR: uv installation failed"; exit 1; }
+  sync_python_tooling
 
   echo ""
   if [ -n "${LLVM_VERSION:-}" ]; then
