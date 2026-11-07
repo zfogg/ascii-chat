@@ -240,8 +240,8 @@ test("C application logs survive closed overlays and share exclusive presentatio
   const renderErrors: string[] = [];
   page.on("console", (message) => {
     if (
-      message.type() === "error" &&
-      message.text().includes("Frame rendering failed")
+      ["warning", "error"].includes(message.type()) &&
+      /Frame rendering failed|Camera frame failed/.test(message.text())
     )
       renderErrors.push(message.text());
   });

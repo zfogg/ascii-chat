@@ -483,7 +483,19 @@ void ascii_otel_shutdown(void) {
   if (worker_started) {
     while (!atomic_load_explicit(&worker_done, memory_order_acquire) && time_get_ns() - started < budget_ns)
       platform_sleep_ms(1);
-    if (!atomic_load_explicit(&worker_done, memory_order_acquire) || thread_join(&worker, NULL) != 0) {
+    bool done = atomic_load_explicit(&worker_done, memory_order_acquire);
+    uint64_t elapsed_ns = time_get_ns() - started;
+    int joined = -1;
+    if (done && elapsed_ns < budget_ns) {
+#ifdef __APPLE__
+      // The POSIX timed join implementation blocks on macOS. The worker has
+      // finished using the exporter, so detach its remaining wrapper cleanup.
+      joined = thread_detach(&worker);
+#else
+      joined = thread_join_timeout(&worker, NULL, budget_ns - elapsed_ns);
+#endif
+    }
+    if (joined != 0) {
       log_warn("Telemetry worker did not stop within its deadline; exporter retained until process exit");
       return;
     }
