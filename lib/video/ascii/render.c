@@ -523,6 +523,8 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
     return NULL;
   }
   bool allowed[GLYPH_COUNT] = {false};
+  int candidates[GLYPH_COUNT];
+  size_t candidate_count = 0;
   int (*shape_correlation)(const int16_t[16], const int16_t[16]) =
       ops->glyph_shape_correlation ? ops->glyph_shape_correlation : glyph_shape_correlation_scalar;
   if (palette) {
@@ -533,12 +535,17 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
     for (const uint8_t *p = (const uint8_t *)palette; *p;) {
       size_t length;
       int index = glyph_palette_index(p, &length);
-      allowed[index] = true;
+      if (!allowed[index]) {
+        allowed[index] = true;
+        candidates[candidate_count++] = index;
+      }
       p += length;
     }
   } else {
-    for (int i = 0; i < GLYPH_ASCII_COUNT; ++i)
+    for (int i = 0; i < GLYPH_ASCII_COUNT; ++i) {
       allowed[i] = true;
+      candidates[candidate_count++] = i;
+    }
   }
   // Glyph masks do not change between cells. Prepare their tone and centered
   // shape once per frame instead of recomputing them for every candidate.
@@ -546,9 +553,8 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
   int glyph_energy[GLYPH_COUNT];
   int16_t centered_masks[GLYPH_COUNT][16];
   uint32_t glyph_keys[GLYPH_COUNT];
-  for (int g = 0; g < GLYPH_COUNT; ++g) {
-    if (!allowed[g])
-      continue;
+  for (size_t c = 0; c < candidate_count; ++c) {
+    int g = candidates[c];
     glyph_keys[g] = glyph_key(g);
     uint8_t block_mask[16];
     const uint8_t *mask = g < GLYPH_ASCII_COUNT ? glyph_masks[g] : block_mask;
@@ -607,9 +613,8 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
       int64_t best_error = INT64_MAX;
       uint64_t previous_error = UINT64_MAX;
       ascii_temporal_cell_t *previous = frame.stabilizer ? &frame.stabilizer->cells[(size_t)y * frame.width + x] : NULL;
-      for (int g = 0; g < GLYPH_COUNT; ++g) {
-        if (!allowed[g])
-          continue;
+      for (size_t c = 0; c < candidate_count; ++c) {
+        int g = candidates[c];
         // Normalize glyph density and compare local deviations around each mean.
         int tone_error = sample_mean - glyph_tone[g];
         int tone_cost = 16 * tone_error * tone_error;

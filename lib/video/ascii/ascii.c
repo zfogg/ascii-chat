@@ -309,12 +309,14 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
 
   // Preserve an 8x8 sample grid for each glyph in the experimental renderer.
   bool explicit_palette = caps->palette_explicit;
+  if (caps->text_renderer == ASCII_RENDERER_GLYPH && explicit_palette &&
+      !ascii_glyph_palette_supported(palette_chars)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains characters without glyph masks");
+    return NULL;
+  }
   bool glyph_match = caps->text_renderer == ASCII_RENDERER_GLYPH && caps->render_mode == RENDER_MODE_FOREGROUND &&
                      resized_width > 0 && resized_height > 0 && resized_width <= IMAGE_MAX_WIDTH / 8 &&
-                     resized_height <= IMAGE_MAX_HEIGHT / 8 &&
-                     (!explicit_palette || ascii_glyph_palette_supported(palette_chars));
-  if (caps->text_renderer == ASCII_RENDERER_GLYPH && explicit_palette && !ascii_glyph_palette_supported(palette_chars))
-    log_warn_every(5 * NS_PER_SEC_INT, "Palette contains characters without glyph masks; using the luminance renderer");
+                     resized_height <= IMAGE_MAX_HEIGHT / 8;
   if (glyph_match) {
     resized_width *= 8;
     resized_height *= 8;

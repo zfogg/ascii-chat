@@ -39,6 +39,7 @@ def test_glyph_match(binary, test_environment):
         glyph_chars = set(b"".join(re.sub(rb"\x1b\[[0-9;]*[a-zA-Z]", b"", line) for line in glyph))
         assert glyph_chars - standard_chars, "default glyph mode should use the 95-glyph atlas"
         restricted = capture(["--renderer=glyph", "--palette-chars=@#"])
+        assert restricted == capture(["--renderer=glyph", "--palette-chars=@@##"]), "duplicate glyphs changed output"
         for line in restricted:
             # Monochrome rows may use CSI repeat to compress a run.
             assert set(re.sub(rb"\x1b\[[0-9;]*[a-zA-Z]", b"", line)) <= set(b"@#"), line
@@ -62,4 +63,9 @@ def test_glyph_match(binary, test_environment):
         invalid = subprocess.run(common + ["--renderer=unknown"], stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE, env=test_environment, timeout=40)
         assert invalid.returncode != 0, "invalid renderer must be rejected"
+        unsupported = subprocess.run([arg for arg in common if arg != "--quiet"] +
+                                     ["--renderer=glyph", "--palette=digital"], stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE, env=test_environment, timeout=40)
+        assert unsupported.returncode != 0, "unsupported glyph palette must fail before rendering"
+        assert b"glyph mask" in (unsupported.stdout + unsupported.stderr).lower(), unsupported
     print("mirror glyph matching: baseline, printable glyph, and oversized fallback frames produced")

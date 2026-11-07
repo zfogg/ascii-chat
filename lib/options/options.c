@@ -82,6 +82,8 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/util/utf8.h>
+#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/palette.h>
 
 #ifdef _WIN32
 #include <io.h>
@@ -2383,6 +2385,14 @@ asciichat_error_t options_init(int argc, char **argv) {
   result = validate_custom_palette(&opts);
   if (result != ASCIICHAT_OK) {
     goto cleanup;
+  }
+  if (opts.renderer == ASCII_RENDERER_GLYPH && opts.palette_explicit) {
+    const palette_def_t *builtin = get_builtin_palette(opts.palette_type);
+    const char *palette = opts.palette_type == PALETTE_CUSTOM ? opts.palette_custom : builtin ? builtin->chars : NULL;
+    if (!ascii_glyph_palette_supported(palette)) {
+      result = SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains characters without glyph masks");
+      goto cleanup;
+    }
   }
   result = validate_encryption_key(&opts);
   if (result != ASCIICHAT_OK) {

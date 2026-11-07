@@ -654,6 +654,20 @@ Test(ascii_emission, temporal_halfblock_reduces_monochrome_flicker) {
 }
 
 #ifndef ASCII_EMISSION_STANDALONE
+Test(ascii_emission, capability_conversion_rejects_unsupported_explicit_glyph_palette) {
+  rgb_pixel_t pixel = {100, 100, 100};
+  image_t image = {.w = 1, .h = 1, .pixels = &pixel};
+  terminal_capabilities_t caps = {
+      .text_renderer = ASCII_RENDERER_GLYPH, .render_mode = RENDER_MODE_FOREGROUND, .palette_explicit = true};
+  char *result =
+      ascii_convert_with_buffers_stabilized(&image, 1, 1, &caps, false, true, "\xe2\x98\x83", false, NULL, NULL, NULL);
+  cr_assert_null(result, "unsupported glyph palettes must not fall back to luminance rendering");
+  asciichat_error_context_t context;
+  cr_assert(HAS_ERRNO(&context));
+  cr_assert_eq(context.code, ERROR_INVALID_PARAM);
+  CLEAR_ERRNO();
+}
+
 Test(ascii_emission, capability_conversion_stabilizes_all_render_modes) {
   rgb_pixel_t pixels[4];
   image_t image = {.w = 2, .h = 2, .pixels = pixels};
