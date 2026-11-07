@@ -59,11 +59,12 @@ New (H.264):
 - Browser: WebRTC already uses H.264
 
 **Bitrate vs Quality:**
-| Bitrate | Quality | CPU Load |
-|---------|---------|----------|
-| 1 Mbps | Fair (6-7/10) | Low |
-| 2 Mbps | Good (7.5-8/10) | Low-Medium |
-| 4 Mbps | Very Good (8.5-9/10) | Medium |
+
+| Bitrate | Quality              | CPU Load   |
+| ------- | -------------------- | ---------- |
+| 1 Mbps  | Fair (6-7/10)        | Low        |
+| 2 Mbps  | Good (7.5-8/10)      | Low-Medium |
+| 4 Mbps  | Very Good (8.5-9/10) | Medium     |
 
 ## Implementation Using FFmpeg
 

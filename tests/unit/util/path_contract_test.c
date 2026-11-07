@@ -40,7 +40,6 @@ static void teardown(void) {
   platform_rmdir_recursive(directory);
   CLEAR_ERRNO_ALL();
   log_destroy();
-  asciichat_pcre2_cleanup_all();
 }
 TestSuite(path_contract, .init = setup, .fini = teardown);
 

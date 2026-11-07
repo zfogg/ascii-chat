@@ -446,7 +446,9 @@ export function useMirrorRenderLoop({
         window as Window & {
           MediaStreamTrackProcessor?: new (options: {
             track: MediaStreamTrack;
-          }) => { readable: ReadableStream<VideoFrame> };
+          }) => {
+            readable: ReadableStream<VideoFrame>;
+          };
         }
       ).MediaStreamTrackProcessor;
       if (!track || !Processor || !canvasRef.current) return;

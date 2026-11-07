@@ -1,93 +1,220 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>pipeline_frame_t(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">pipeline_frame_t(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">pipeline_frame_t(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">pipeline_frame_t</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
-  Fields</a></h2>
-<br/>
-<p class="Pp"><b>uint8_t</b> * <b>pixels</b>
-  <br/>
-  int <b>w</b>
-  <br/>
-  int <b>h</b>
-  <br/>
-  <b>uint64_t</b> <b>captured_ns</b>
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Definition at line <b>32</b> of file <b>pipeline.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>uint64_t</b> pipeline_frame_t::captured_ns</h2>
-<p class="Pp">Definition at line <b>35</b> of file <b>pipeline.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_pipeline_frame_t::h"><a class="permalink" href="#int_pipeline_frame_t::h">int
-  pipeline_frame_t::h</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file <b>pipeline.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>uint8_t</b>* pipeline_frame_t::pixels</h2>
-<p class="Pp">Definition at line <b>33</b> of file <b>pipeline.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_pipeline_frame_t::w"><a class="permalink" href="#int_pipeline_frame_t::w">int
-  pipeline_frame_t::w</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file <b>pipeline.c</b>.</p>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>pipeline_frame_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">pipeline_frame_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">pipeline_frame_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">pipeline_frame_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>frame_slot_t</b> * <b>slot</b>
+            <br />
+            const <b>uint8_t</b> * <b>pixels</b>
+            <br />
+            int <b>w</b>
+            <br />
+            int <b>h</b>
+            <br />
+            <b>uint64_t</b> <b>source_epoch</b>
+            <br />
+            <b>uint64_t</b> <b>frame_serial</b>
+            <br />
+            gotel_context_t <b>telemetry_context</b>
+            <br />
+            <b>bool</b> <b>fresh</b>
+            <br />
+            <b>uint64_t</b> <b>captured_ns</b>
+            <br />
+            <b>uint64_t</b> <b>acquisition_started_ns</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>41</b> of file <b>pipeline.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> pipeline_frame_t::acquisition_started_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>49</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_run_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> pipeline_frame_t::captured_ns</h2>
+          <p class="Pp">
+            Definition at line <b>48</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_run_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> pipeline_frame_t::frame_serial</h2>
+          <p class="Pp">
+            Definition at line <b>45</b> of file <b>pipeline.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> pipeline_frame_t::fresh</h2>
+          <p class="Pp">
+            Definition at line <b>47</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_run_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_pipeline_frame_t::h">
+            <a class="permalink" href="#int_pipeline_frame_t::h"
+              >int pipeline_frame_t::h</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>44</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_run_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_">
+            <a class="permalink" href="#const_"
+              >const <b>uint8_t</b>* pipeline_frame_t::pixels</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>43</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_run_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>frame_slot_t</b>* pipeline_frame_t::slot</h2>
+          <p class="Pp">
+            Definition at line <b>42</b> of file <b>pipeline.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> pipeline_frame_t::source_epoch</h2>
+          <p class="Pp">
+            Definition at line <b>45</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_run_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="gotel_context_t_pipeline_frame_t::telemetry_context"
+          >
+            <a
+              class="permalink"
+              href="#gotel_context_t_pipeline_frame_t::telemetry_context"
+              >gotel_context_t pipeline_frame_t::telemetry_context</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_run_main()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_pipeline_frame_t::w">
+            <a class="permalink" href="#int_pipeline_frame_t::w"
+              >int pipeline_frame_t::w</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>44</b> of file <b>pipeline.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_pipeline_run_main()</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

@@ -1,95 +1,625 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>openpgp.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">openpgp.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">openpgp.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">openpgp.c - OpenPGP (RFC 4880) packet format parser
-    implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>openpgp_base64_decode</b> (const char
-    *base64, size_t base64_len, <b>uint8_t</b> **binary_out, size_t *binary_len)
-  <br/>
-  Decode PGP armored base64 data. <b>asciichat_error_t</b>
-    <b>openpgp_parse_packet_header</b> (const <b>uint8_t</b> *data, size_t
-    data_len, <b>openpgp_packet_header_t</b> *header)
-  <br/>
-  Parse OpenPGP packet header. <b>asciichat_error_t</b>
-    <b>openpgp_extract_ed25519_from_mpi</b> (const <b>uint8_t</b> *mpi, size_t
-    mpi_len, <b>uint8_t</b> ed25519_pk[32])
-  <br/>
-  Extract Ed25519 public key from MPI-encoded data. <b>asciichat_error_t</b>
-    <b>openpgp_parse_public_key_packet</b> (const <b>uint8_t</b> *packet_body,
-    size_t body_len, <b>openpgp_public_key_t</b> *pubkey)
-  <br/>
-  Parse OpenPGP Public Key Packet (tag 6). <b>asciichat_error_t</b>
-    <b>openpgp_parse_armored_pubkey</b> (const char *armored_text,
-    <b>uint8_t</b> ed25519_pk[32])
-  <br/>
-  Parse PGP armored key block and extract Ed25519 public key.
-    <b>asciichat_error_t</b> <b>openpgp_parse_secret_key_packet</b> (const
-    <b>uint8_t</b> *packet_body, size_t body_len, <b>openpgp_secret_key_t</b>
-    *seckey)
-  <br/>
-  Parse OpenPGP Secret Key Packet (tag 5). <b>asciichat_error_t</b>
-    <b>openpgp_parse_armored_seckey</b> (const char *armored_text,
-    <b>uint8_t</b> ed25519_pk[32], <b>uint8_t</b> ed25519_sk[32])
-  <br/>
-  Parse PGP armored secret key block and extract Ed25519 keypair.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">OpenPGP (RFC 4880) packet format parser implementation.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>openpgp.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>openpgp.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">openpgp.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">openpgp.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          openpgp.c - OpenPGP (RFC 4880) packet format parser implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>CRYPTO_GPG_OPENPGP_PASSPHRASE_BUFFER_SIZE</b> 512
+            <br />
+            #define <b>CRYPTO_GPG_OPENPGP_FPR_OUTPUT_BUFFER_SIZE</b> 4096
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>openpgp_base64_decode</b> (const char
+            *base64, size_t base64_len, <b>uint8_t</b> **binary_out, size_t
+            *binary_len)
+            <br />
+            Decode PGP armored base64 data. <b>asciichat_error_t</b>
+            <b>openpgp_parse_packet_header</b> (const <b>uint8_t</b> *data,
+            size_t data_len, <b>openpgp_packet_header_t</b> *header)
+            <br />
+            Parse OpenPGP packet header. <b>asciichat_error_t</b>
+            <b>openpgp_extract_ed25519_from_mpi</b> (const <b>uint8_t</b> *mpi,
+            size_t mpi_len,
+            <b>uint8_t</b> ed25519_pk[<b>ED25519_PUBLIC_KEY_SIZE</b>])
+            <br />
+            <b>asciichat_error_t</b>
+            <b>openpgp_parse_public_key_packet</b> (const
+            <b>uint8_t</b> *packet_body, size_t body_len,
+            <b>openpgp_public_key_t</b>
+            *pubkey)
+            <br />
+            Parse OpenPGP Public Key Packet (tag 6). <b>asciichat_error_t</b>
+            <b>openpgp_parse_binary_pubkey</b> (const <b>uint8_t</b> *data,
+            size_t data_len,
+            <b>uint8_t</b> ed25519_pk[<b>ED25519_PUBLIC_KEY_SIZE</b>])
+            <br />
+            <b>asciichat_error_t</b> <b>openpgp_parse_armored_pubkey</b> (const
+            char *armored_text,
+            <b>uint8_t</b> ed25519_pk[<b>ED25519_PUBLIC_KEY_SIZE</b>])
+            <br />
+            <b>asciichat_error_t</b>
+            <b>openpgp_parse_secret_key_packet</b> (const
+            <b>uint8_t</b> *packet_body, size_t body_len,
+            <b>openpgp_secret_key_t</b>
+            *seckey)
+            <br />
+            Parse OpenPGP Secret Key Packet (tag 5). <b>asciichat_error_t</b>
+            <b>openpgp_parse_binary_seckey</b> (const <b>uint8_t</b> *data,
+            size_t data_len,
+            <b>uint8_t</b> ed25519_pk[<b>ED25519_PUBLIC_KEY_SIZE</b>],
+            <b>uint8_t</b> ed25519_sk[<b>ED25519_SEED_SIZE</b>])
+            <br />
+            <b>asciichat_error_t</b> <b>openpgp_parse_armored_seckey</b> (const
+            char *armored_text,
+            <b>uint8_t</b> ed25519_pk[<b>ED25519_PUBLIC_KEY_SIZE</b>],
+            <b>uint8_t</b> ed25519_sk[<b>ED25519_SEED_SIZE</b>])
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          OpenPGP (RFC 4880) packet format parser implementation.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>openpgp.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_CRYPTO_GPG_OPENPGP_FPR_OUTPUT_BUFFER_SIZE___4096"
+          >
+            <a
+              class="permalink"
+              href="#_define_CRYPTO_GPG_OPENPGP_FPR_OUTPUT_BUFFER_SIZE___4096"
+              >#define CRYPTO_GPG_OPENPGP_FPR_OUTPUT_BUFFER_SIZE 4096</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>openpgp.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_CRYPTO_GPG_OPENPGP_PASSPHRASE_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_CRYPTO_GPG_OPENPGP_PASSPHRASE_BUFFER_SIZE___512"
+              >#define CRYPTO_GPG_OPENPGP_PASSPHRASE_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>openpgp.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> openpgp_extract_ed25519_from_mpi (const
+            <b>uint8_t</b> * mpi, size_t mpi_len,
+            <b>uint8_t</b> ed25519_pk[ED25519_PUBLIC_KEY_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>172</b> of file <b>openpgp.c</b>.
+          </p>
+          <pre>
+173                                                                                                 {
+174   if (!mpi || !ed25519_pk || mpi_len &lt; 35) {
+175     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for MPI extraction (need at least 35 bytes)&quot;);
+176   }
+177
+178   // MPI format:
+179   // - 2 bytes: bit count (big-endian)
+180   // - 1 byte: 0x40 prefix (Ed25519 marker)
+181   // - 32 bytes: Ed25519 public key
+182
+183   uint16_t bit_count = ((uint16_t)mpi[0] &lt;&lt; 8) | mpi[1];
+184   log_debug(&quot;MPI bit count: %u&quot;, bit_count);
+185
+186   // Ed25519 with 0x40 prefix is typically 263 bits (0x0107)
+187   if (bit_count &lt; 256 || bit_count &gt; 270) {
+188     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Unexpected MPI bit count for Ed25519: %u (expected ~263)&quot;, bit_count);
+189   }
+190
+191   // Check for 0x40 prefix byte
+192   if (mpi[2] != 0x40) {
+193     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Missing 0x40 prefix byte in Ed25519 MPI (found 0x%02x)&quot;, mpi[2]);
+194   }
+195
+196   // Extract 32-byte Ed25519 public key
+197   memcpy(ed25519_pk, mpi + 3, ED25519_PUBLIC_KEY_SIZE);
+198
+199   return ASCIICHAT_OK;
+200 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_CRYPTO_KEY</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>log_debug</b>, <b>openpgp_extract_ed25519_from_mpi()</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>openpgp_extract_ed25519_from_mpi()</b>, and
+            <b>openpgp_extract_ed25519_from_mpi()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> openpgp_parse_armored_pubkey (const char *
+            armored_text, <b>uint8_t</b> ed25519_pk[ED25519_PUBLIC_KEY_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>316</b> of file <b>openpgp.c</b>.
+          </p>
+          <pre>
+316                                                                                                                       {
+317   if (!armored_text || !ed25519_pk) {
+318     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for armored pubkey parsing&quot;);
+319   }
+320
+321   // Find the BEGIN marker
+322   const char *begin = strstr(armored_text, &quot;-----BEGIN PGP PUBLIC KEY BLOCK-----&quot;);
+323   if (!begin) {
+324     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Missing PGP PUBLIC KEY BLOCK BEGIN marker&quot;);
+325   }
+326
+327   // Skip to the end of the BEGIN line
+328   const char *base64_start = strchr(begin, '\n');
+329   if (!base64_start) {
+330     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Invalid PGP armored format: no newline after BEGIN marker&quot;);
+331   }
+332   base64_start++; // Skip the newline
+333
+334   // Find the END marker
+335   const char *end = strstr(base64_start, &quot;-----END PGP PUBLIC KEY BLOCK-----&quot;);
+336   if (!end) {
+337     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Missing PGP PUBLIC KEY BLOCK END marker&quot;);
+338   }
+339
+340   // Find the checksum line (starts with '=') and exclude it
+341   const char *base64_end = end;
+342   const char *checksum = base64_end;
+343   while (checksum &gt; base64_start &amp;&amp; *checksum != '=') {
+344     checksum--;
+345   }
+346   if (*checksum == '=') {
+347     // Move back to before the checksum line
+348     while (checksum &gt; base64_start &amp;&amp; (checksum[-1] == '\n' || checksum[-1] == '\r')) {
+349       checksum--;
+350     }
+351     base64_end = checksum;
+352   }
+353
+354   size_t base64_len = (size_t)(base64_end - base64_start);
+355
+356   log_debug(&quot;Extracting base64 data from PGP armor (%zu bytes)&quot;, base64_len);
+357
+358   // Decode base64 to binary OpenPGP packets
+359   uint8_t *binary_data;
+360   size_t binary_len;
+361   asciichat_error_t decode_result = openpgp_base64_decode(base64_start, base64_len, &amp;binary_data, &amp;binary_len);
+362   if (decode_result != ASCIICHAT_OK) {
+363     return decode_result;
+364   }
+365
+366   log_debug(&quot;Decoded %zu bytes of OpenPGP packet data&quot;, binary_len);
+367
+368   asciichat_error_t result = openpgp_parse_binary_pubkey(binary_data, binary_len, ed25519_pk);
+369   SAFE_FREE(binary_data);
+370   return result;
+371 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_CRYPTO_KEY</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>log_debug</b>, <b>openpgp_base64_decode()</b>,
+            <b>openpgp_parse_armored_pubkey()</b>,
+            <b>openpgp_parse_binary_pubkey()</b>, <b>SAFE_FREE</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_parse_gpg_public_key()</b>,
+            <b>openpgp_parse_armored_pubkey()</b>,
+            <b>openpgp_parse_armored_pubkey()</b>, and
+            <b>parse_gpg_key_binary()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> openpgp_parse_armored_seckey (const char *
+            armored_text, <b>uint8_t</b> ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
+            <b>uint8_t</b> ed25519_sk[ED25519_SEED_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>755</b> of file <b>openpgp.c</b>.
+          </p>
+          <pre>
+756                                                                                       {
+757   if (!armored_text || !ed25519_pk || !ed25519_sk) {
+758     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for armored seckey parsing&quot;);
+759   }
+760
+761   // Find the BEGIN marker (try both &quot;PRIVATE KEY&quot; and &quot;SECRET KEY&quot; formats)
+762   const char *begin = strstr(armored_text, &quot;-----BEGIN PGP PRIVATE KEY BLOCK-----&quot;);
+763   if (!begin) {
+764     begin = strstr(armored_text, &quot;-----BEGIN PGP SECRET KEY BLOCK-----&quot;);
+765   }
+766   if (!begin) {
+767     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Missing PGP PRIVATE/SECRET KEY BLOCK BEGIN marker&quot;);
+768   }
+769
+770   // Skip to the end of the BEGIN line
+771   const char *base64_start = strchr(begin, '\n');
+772   if (!base64_start) {
+773     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Invalid PGP armored format: no newline after BEGIN marker&quot;);
+774   }
+775   base64_start++; // Skip the newline
+776
+777   // Find the END marker (try both formats)
+778   const char *end = strstr(base64_start, &quot;-----END PGP PRIVATE KEY BLOCK-----&quot;);
+779   if (!end) {
+780     end = strstr(base64_start, &quot;-----END PGP SECRET KEY BLOCK-----&quot;);
+781   }
+782   if (!end) {
+783     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Missing PGP PRIVATE/SECRET KEY BLOCK END marker&quot;);
+784   }
+785
+786   // Find the checksum line (starts with '=') and exclude it
+787   const char *base64_end = end;
+788   const char *checksum = base64_end;
+789   while (checksum &gt; base64_start &amp;&amp; *checksum != '=') {
+790     checksum--;
+791   }
+792   if (*checksum == '=') {
+793     // Move back to before the checksum line
+794     while (checksum &gt; base64_start &amp;&amp; (checksum[-1] == '\n' || checksum[-1] == '\r')) {
+795       checksum--;
+796     }
+797     base64_end = checksum;
+798   }
+799
+800   size_t base64_len = (size_t)(base64_end - base64_start);
+801
+802   log_debug(&quot;Extracting base64 data from PGP secret key armor (%zu bytes)&quot;, base64_len);
+803
+804   // Decode base64 to binary OpenPGP packets
+805   uint8_t *binary_data;
+806   size_t binary_len;
+807   asciichat_error_t decode_result = openpgp_base64_decode(base64_start, base64_len, &amp;binary_data, &amp;binary_len);
+808   if (decode_result != ASCIICHAT_OK) {
+809     return decode_result;
+810   }
+811
+812   log_debug(&quot;Decoded %zu bytes of OpenPGP secret key packet data&quot;, binary_len);
+813
+814   // Parse OpenPGP packets to find the secret key packet (tag 5)
+815   size_t offset = 0;
+816   bool found_seckey = false;
+817
+818   while (offset &lt; binary_len) {
+819     openpgp_packet_header_t header;
+820     asciichat_error_t header_result = openpgp_parse_packet_header(binary_data + offset, binary_len - offset, &amp;header);
+821     if (header_result != ASCIICHAT_OK) {
+822       SAFE_FREE(binary_data);
+823       return header_result;
+824     }
+825
+826     log_debug(&quot;Packet at offset %zu: tag=%u, length=%zu&quot;, offset, header.tag, header.length);
+827
+828     // Check if this is a secret key packet (tag 5)
+829     if (header.tag == OPENPGP_TAG_SECRET_KEY) {
+830       openpgp_secret_key_t seckey;
+831       asciichat_error_t parse_result =
+832           openpgp_parse_secret_key_packet(binary_data + offset + header.header_len, header.length, &amp;seckey);
+833
+834       if (parse_result == ASCIICHAT_OK) {
+835         // Check if key is encrypted
+836         if (seckey.is_encrypted) {
+837 #ifdef EMSCRIPTEN_BUILD
+838           SAFE_FREE(binary_data);
+839           return SET_ERRNO(ERROR_NOT_SUPPORTED,
+840                            &quot;Encrypted OpenPGP private keys are not supported in the browser; use an unencrypted key&quot;);
+841 #else
+842           SAFE_FREE(binary_data);
+843           log_debug(&quot;Detected encrypted GPG key, attempting to decrypt with passphrase&quot;);
+844
+845           // Decrypt the key using gpg binary
+846           char *decrypted_text = NULL;
+847           asciichat_error_t decrypt_result = openpgp_decrypt_with_gpg(armored_text, &amp;decrypted_text);
+848           if (decrypt_result != ASCIICHAT_OK) {
+849             return decrypt_result;
+850           }
+851
+852           // Recursively parse the decrypted key
+853           asciichat_error_t recursive_result = openpgp_parse_armored_seckey(decrypted_text, ed25519_pk, ed25519_sk);
+854           SAFE_FREE(decrypted_text);
+855           return recursive_result;
+856 #endif
+857         }
+858
+859         // Unencrypted key - extract directly
+860         memcpy(ed25519_pk, seckey.pubkey, ED25519_PUBLIC_KEY_SIZE);
+861         memcpy(ed25519_sk, seckey.seckey, ED25519_SEED_SIZE);
+862         found_seckey = true;
+863         log_debug(&quot;Extracted Ed25519 keypair from OpenPGP armored secret key block&quot;);
+864         break;
+865       } else {
+866         // Not an Ed25519 key, try next packet
+867         log_debug(&quot;Skipping non-Ed25519 secret key packet&quot;);
+868       }
+869     }
+870
+871     // Move to next packet
+872     offset += header.header_len + header.length;
+873   }
+874
+875   SAFE_FREE(binary_data);
+876
+877   if (!found_seckey) {
+878     return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;No Ed25519 secret key found in PGP armored block&quot;);
+879   }
+880
+881   return ASCIICHAT_OK;
+882 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ED25519_SEED_SIZE</b>, <b>ERROR_CRYPTO_KEY</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_SUPPORTED</b>,
+            <b>openpgp_packet_header_t::header_len</b>,
+            <b>openpgp_secret_key_t::is_encrypted</b>,
+            <b>openpgp_packet_header_t::length</b>, <b>log_debug</b>,
+            <b>openpgp_base64_decode()</b>,
+            <b>openpgp_parse_armored_seckey()</b>,
+            <b>openpgp_parse_packet_header()</b>,
+            <b>openpgp_parse_secret_key_packet()</b>,
+            <b>OPENPGP_TAG_SECRET_KEY</b>, <b>openpgp_secret_key_t::pubkey</b>,
+            <b>SAFE_FREE</b>, <b>openpgp_secret_key_t::seckey</b>,
+            <b>SET_ERRNO</b>, and <b>openpgp_packet_header_t::tag</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_parse_gpg_private_key()</b>,
+            <b>openpgp_parse_armored_seckey()</b>,
+            <b>openpgp_parse_armored_seckey()</b>, and
+            <b>parse_private_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> openpgp_parse_binary_pubkey (const
+            <b>uint8_t</b> * data, size_t data_len,
+            <b>uint8_t</b> ed25519_pk[ED25519_PUBLIC_KEY_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>288</b> of file <b>openpgp.c</b>.
+          </p>
+          <pre>
+289                                                                                            {
+290   if (!data || data_len == 0 || !ed25519_pk) {
+291     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for binary OpenPGP public-key parsing&quot;);
+292   }
+293
+294   size_t offset = 0;
+295   while (offset &lt; data_len) {
+296     openpgp_packet_header_t header;
+297     asciichat_error_t result = openpgp_parse_packet_header(data + offset, data_len - offset, &amp;header);
+298     if (result != ASCIICHAT_OK)
+299       return result;
+300     if (header.header_len &gt; data_len - offset || header.length &gt; data_len - offset - header.header_len) {
+301       return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Truncated OpenPGP packet in public key&quot;);
+302     }
+303     if (header.tag == OPENPGP_TAG_PUBLIC_KEY) {
+304       openpgp_public_key_t pubkey;
+305       result = openpgp_parse_public_key_packet(data + offset + header.header_len, header.length, &amp;pubkey);
+306       if (result == ASCIICHAT_OK) {
+307         memcpy(ed25519_pk, pubkey.pubkey, ED25519_PUBLIC_KEY_SIZE);
+308         return ASCIICHAT_OK;
+309       }
+310     }
+311     offset += header.header_len + header.length;
+312   }
+313   return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;No Ed25519 public key found in OpenPGP data&quot;);
+314 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_CRYPTO_KEY</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>openpgp_packet_header_t::header_len</b>,
+            <b>openpgp_packet_header_t::length</b>,
+            <b>openpgp_parse_binary_pubkey()</b>,
+            <b>openpgp_parse_packet_header()</b>,
+            <b>openpgp_parse_public_key_packet()</b>,
+            <b>OPENPGP_TAG_PUBLIC_KEY</b>, <b>openpgp_public_key_t::pubkey</b>,
+            <b>SET_ERRNO</b>, and <b>openpgp_packet_header_t::tag</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_parse_gpg_public_key_binary()</b>,
+            <b>openpgp_parse_armored_pubkey()</b>,
+            <b>openpgp_parse_binary_pubkey()</b>,
+            <b>openpgp_parse_binary_pubkey()</b>, and
+            <b>parse_gpg_key_binary()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> openpgp_parse_binary_seckey (const
+            <b>uint8_t</b> * data, size_t data_len,
+            <b>uint8_t</b> ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
+            <b>uint8_t</b> ed25519_sk[ED25519_SEED_SIZE])
+          </h2>
+          <p class="Pp">
+            Definition at line <b>721</b> of file <b>openpgp.c</b>.
+          </p>
+          <pre>
+723                                                                                      {
+724   if (!data || data_len == 0 || !ed25519_pk || !ed25519_sk) {
+725     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for binary OpenPGP secret-key parsing&quot;);
+726   }
+727
+728   size_t offset = 0;
+729   while (offset &lt; data_len) {
+730     openpgp_packet_header_t header;
+731     asciichat_error_t result = openpgp_parse_packet_header(data + offset, data_len - offset, &amp;header);
+732     if (result != ASCIICHAT_OK)
+733       return result;
+734     if (header.header_len &gt; data_len - offset || header.length &gt; data_len - offset - header.header_len) {
+735       return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Truncated OpenPGP packet in secret key&quot;);
+736     }
+737     if (header.tag == OPENPGP_TAG_SECRET_KEY) {
+738       openpgp_secret_key_t seckey;
+739       result = openpgp_parse_secret_key_packet(data + offset + header.header_len, header.length, &amp;seckey);
+740       if (result == ASCIICHAT_OK) {
+741         if (seckey.is_encrypted) {
+742           return SET_ERRNO(ERROR_NOT_SUPPORTED,
+743                            &quot;Encrypted binary OpenPGP private keys are not supported; use an unencrypted key&quot;);
+744         }
+745         memcpy(ed25519_pk, seckey.pubkey, ED25519_PUBLIC_KEY_SIZE);
+746         memcpy(ed25519_sk, seckey.seckey, ED25519_SEED_SIZE);
+747         return ASCIICHAT_OK;
+748       }
+749     }
+750     offset += header.header_len + header.length;
+751   }
+752   return SET_ERRNO(ERROR_CRYPTO_KEY, &quot;No unencrypted Ed25519 secret key found in OpenPGP data&quot;);
+753 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ED25519_SEED_SIZE</b>, <b>ERROR_CRYPTO_KEY</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_SUPPORTED</b>,
+            <b>openpgp_packet_header_t::header_len</b>,
+            <b>openpgp_secret_key_t::is_encrypted</b>,
+            <b>openpgp_packet_header_t::length</b>,
+            <b>openpgp_parse_binary_seckey()</b>,
+            <b>openpgp_parse_packet_header()</b>,
+            <b>openpgp_parse_secret_key_packet()</b>,
+            <b>OPENPGP_TAG_SECRET_KEY</b>, <b>openpgp_secret_key_t::pubkey</b>,
+            <b>openpgp_secret_key_t::seckey</b>, <b>SET_ERRNO</b>, and
+            <b>openpgp_packet_header_t::tag</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_parse_gpg_private_key_binary()</b>,
+            <b>openpgp_parse_binary_seckey()</b>,
+            <b>openpgp_parse_binary_seckey()</b>, and
+            <b>parse_private_key()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

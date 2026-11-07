@@ -330,6 +330,16 @@ static void stats_media_end(void) {
 
 static size_t write_output_chunk(int fd, const void *data, size_t length) {
   uint64_t started_ns = g_stats_media ? time_get_ns() : 0;
+#ifndef NDEBUG
+  static _Thread_local bool test_delay_checked, test_delay;
+  if (!test_delay_checked) {
+    const char *value = SAFE_GETENV("ASCII_CHAT_TEST_SLOW_MEDIA_OUTPUT");
+    test_delay = value && strcmp(value, "1") == 0;
+    test_delay_checked = true;
+  }
+  if (g_stats_media && test_delay && length > 1024)
+    platform_sleep_ms(25);
+#endif
   // A presentation write must not split an image protocol packet emitted by
   // another thread. Non-owner logging must remain nonblocking here.
   if (g_owner)
@@ -344,6 +354,29 @@ static size_t write_output_chunk(int fd, const void *data, size_t length) {
     ++g_stats_chunks;
   }
   return written;
+}
+
+// Media frames contain complete newline-separated rows; clipped frames end
+// each row with EL. Splitting after a row keeps CSI and UTF-8 sequences intact.
+static size_t media_chunk_boundary(const char *data, size_t length) {
+  const char *end = data + length;
+  const char *last = NULL;
+  for (const char *p = data; p < end;) {
+    const char *newline = memchr(p, '\n', (size_t)(end - p));
+    if (!newline)
+      break;
+    last = newline + 1;
+    p = last;
+  }
+  for (const char *p = data; p < end;) {
+    const char *k = memchr(p, 'K', (size_t)(end - p));
+    if (!k)
+      break;
+    if (k - data >= 2 && k[-2] == '\033' && k[-1] == '[' && (!last || k + 1 > last))
+      last = k + 1;
+    p = k + 1;
+  }
+  return last ? (size_t)(last - data) : 0;
 }
 
 asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
@@ -365,6 +398,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   // together, even when a large UTF-8 frame requires several writes.
   bool synchronized = g_render_snapshot != NULL;
   bool started = !synchronized || write_output_chunk(fd, "\033[?2026h", 8) == 8;
+  uint64_t sync_started_ns = g_stats_media && synchronized ? time_get_ns() : 0;
   size_t written = 0;
   bool superseded = false;
   while (started && written < len) {
@@ -375,8 +409,14 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
       break;
     }
     size_t count = len - written;
-    if (g_stats_media && count > 65536) {
-      count = 65536;
+    bool row_boundary = false;
+    if (g_stats_media && count > 32768) {
+      count = 32768;
+      size_t boundary = media_chunk_boundary(data + written, count);
+      if (boundary) {
+        count = boundary;
+        row_boundary = true;
+      }
       while (count && ((unsigned char)data[written + count] & 0xc0) == 0x80)
         --count;
     }
@@ -384,6 +424,16 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     written += sent;
     if (sent != count)
       break;
+    if (synchronized && g_stats_media && row_boundary && written < len &&
+        time_get_ns() - sync_started_ns >= 40 * NS_PER_MS_INT) {
+      // Give the terminal a complete set of rows before its synchronized
+      // output watchdog can expose a partly written row.
+      if (write_output_chunk(fd, "\033[?2026l\033[?2026h", 16) != 16) {
+        started = false;
+        break;
+      }
+      sync_started_ns = time_get_ns();
+    }
   }
   // End the update even when input superseded the frame halfway through.
   static const char end_with_query[] = "\033[?2026l\033]11;?\033\\";
@@ -1636,8 +1686,12 @@ static void render_text(terminal_size_t size, const void *data) {
     for (int row = 1; row <= size.rows && cursor < end; ++row) {
       const char *newline = memchr(cursor, '\n', (size_t)(end - cursor));
       size_t length = (size_t)((newline ? newline : end) - cursor);
-      ui_controller_printf(text->fd, row == 1 && counter ? "\033[%d;1H" : "\033[%d;1H\033[2K", row);
+      ui_controller_printf(text->fd, "\033[%d;1H", row);
       ui_controller_write(text->fd, cursor, length);
+      // Keep the old row visible until its replacement has been written.
+      // The FPS counter owns the right edge of the first row.
+      if (row != 1 || !counter)
+        ui_controller_write(text->fd, "\033[K", 3);
       cursor += length + (newline ? 1 : 0);
     }
     if (g_render_volume)
@@ -1662,8 +1716,10 @@ static void render_text(terminal_size_t size, const void *data) {
       truncate_with_ellipsis(expanded ? expanded : "", clipped, text->len + UI_CLIPPED_TEXT_OVERHEAD,
                              size.cols - (reserved_counter ? 7 : 1));
       SAFE_FREE(expanded);
-      frame_buffer_printf(buffer, reserved_counter ? "\033[%d;1H" : "\033[%d;1H\033[2K", row);
+      frame_buffer_printf(buffer, "\033[%d;1H", row);
       frame_buffer_append(buffer, clipped, strlen(clipped));
+      if (!reserved_counter)
+        frame_buffer_append(buffer, "\033[K", 3);
       cursor += length + (newline ? 1 : 0);
     }
     if (g_render_volume)

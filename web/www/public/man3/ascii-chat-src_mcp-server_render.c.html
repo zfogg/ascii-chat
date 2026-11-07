@@ -1,0 +1,259 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>render.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">render.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">render.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">render.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>render_worker_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>MCP_RENDER_ENV_CAPACITY</b> 16
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>mcp_render_execute</b> (<b>mcp_render_request_t</b> *r,
+            <b>atomic_t</b> *cancelled, <b>mcp_render_result_t</b> *result)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_MCP_RENDER_ENV_CAPACITY___16">
+            <a class="permalink" href="#_define_MCP_RENDER_ENV_CAPACITY___16"
+              >#define MCP_RENDER_ENV_CAPACITY 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>src/mcp-server/render.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_render_execute()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_mcp_render_execute_(">
+            <a class="permalink" href="#void_mcp_render_execute_("
+              >void mcp_render_execute (<b>mcp_render_request_t</b> * r,
+              <b>atomic_t</b> * cancelled, <b>mcp_render_result_t</b> *
+              result)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>107</b> of file
+            <b>src/mcp-server/render.c</b>.
+          </p>
+          <pre>
+107                                                                                                    {
+108   memset(result, 0, sizeof(*result));
+109   render_worker_t w = {.cancelled = cancelled, .result = result, .started = time_get_ns(), .timeout = r-&gt;timeout_ms};
+110   result-&gt;text = SAFE_CALLOC(MCP_MAX_OUTPUT + 1, 1, char *);
+111   if (uv_loop_init(&amp;w.loop)) {
+112     SAFE_STRNCPY(result-&gt;error, &quot;Cannot initialize renderer event loop&quot;, sizeof(result-&gt;error));
+113     return;
+114   }
+115   uv_pipe_init(&amp;w.loop, &amp;w.output, 0);
+116   uv_pipe_init(&amp;w.loop, &amp;w.errors, 0);
+117   uv_timer_init(&amp;w.loop, &amp;w.timer);
+118   w.output.data = w.errors.data = w.timer.data = w.process.data = &amp;w;
+119   uv_stdio_container_t streams[3] = {0};
+120   streams[0].flags = UV_IGNORE;
+121   streams[1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+122   streams[1].data.stream = (uv_stream_t *)&amp;w.output;
+123   streams[2].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+124   streams[2].data.stream = (uv_stream_t *)&amp;w.errors;
+125   // Only runtime essentials are inherited; user config, ASCII_CHAT_* and credentials are excluded.
+126   const char *keys[] = {
+127       &quot;PATH&quot;, &quot;SystemRoot&quot;, &quot;WINDIR&quot;, &quot;TEMP&quot;, &quot;TMP&quot;, &quot;TMPDIR&quot;, &quot;LD_LIBRARY_PATH&quot;, &quot;DYLD_LIBRARY_PATH&quot;, &quot;TESTING&quot;, NULL};
+128   char *env[MCP_RENDER_ENV_CAPACITY] = {0};
+129   size_t ne = 0;
+130   for (size_t i = 0; keys[i]; ++i) {
+131     const char *v = platform_getenv(keys[i]);
+132     if (v) {
+133       size_t n = strlen(keys[i]) + strlen(v) + 2;
+134       env[ne] = SAFE_MALLOC(n, char *);
+135       SAFE_SNPRINTF(env[ne], n, &quot;%s=%s&quot;, keys[i], v);
+136       ++ne;
+137     }
+138   }
+139   env[ne++] = platform_strdup(&quot;ASCII_CHAT_MCP_WORKER=1&quot;);
+140   env[ne++] = platform_strdup(&quot;ASCII_CHAT_OTEL_ENABLED_TELEMETRY=none&quot;);
+141   if (r-&gt;capture_webcam)
+142     env[ne++] = platform_strdup(&quot;ASCII_CHAT_MCP_WEBCAM=1&quot;);
+143   uv_process_options_t opts = {
+144       .exit_cb = exited, .file = r-&gt;argv[0], .args = r-&gt;argv, .env = env, .stdio_count = 3, .stdio = streams};
+145   int rc = uv_spawn(&amp;w.loop, &amp;w.process, &amp;opts);
+146   for (size_t i = 0; i &lt; ne; ++i)
+147     SAFE_FREE(env[i]);
+148   if (rc) {
+149     SAFE_SNPRINTF(result-&gt;error, sizeof(result-&gt;error), &quot;Cannot start renderer: %s&quot;, uv_strerror(rc));
+150     uv_close((uv_handle_t *)&amp;w.output, NULL);
+151     uv_close((uv_handle_t *)&amp;w.errors, NULL);
+152     uv_close((uv_handle_t *)&amp;w.timer, NULL);
+153   } else {
+154     uv_read_start((uv_stream_t *)&amp;w.output, allocate, read_output);
+155     uv_read_start((uv_stream_t *)&amp;w.errors, allocate, read_output);
+156     uv_timer_start(&amp;w.timer, tick, 20, 20);
+157   }
+158   uv_run(&amp;w.loop, UV_RUN_DEFAULT);
+159   uv_loop_close(&amp;w.loop);
+160   result-&gt;elapsed_ms = (time_get_ns() - w.started) / 1000000;
+161   if (rc || w.failed)
+162     return;
+163   result-&gt;error[0] = '\0';
+164   if (!result-&gt;length &amp;&amp; !r-&gt;stage_file[0]) {
+165     SAFE_STRNCPY(result-&gt;error, &quot;Renderer returned no ASCII art&quot;, sizeof(result-&gt;error));
+166     return;
+167   }
+168   if (r-&gt;stage_file[0]) {
+169     uv_fs_t fs;
+170     int e = uv_fs_stat(NULL, &amp;fs, r-&gt;stage_file, NULL);
+171     bool valid = e == 0 &amp;&amp; fs.statbuf.st_size &gt; 0;
+172     uv_fs_req_cleanup(&amp;fs);
+173     if (!valid) {
+174       SAFE_STRNCPY(result-&gt;error, &quot;Renderer did not create an output file&quot;, sizeof(result-&gt;error));
+175       return;
+176     }
+177     // Hard-link publication is atomic and fails if any file/symlink already owns the destination.
+178     // Staging beside the destination keeps this on the same filesystem.
+179     e = uv_fs_link(NULL, &amp;fs, r-&gt;stage_file, r-&gt;output_path, NULL);
+180     uv_fs_req_cleanup(&amp;fs);
+181     if (e) {
+182       SAFE_SNPRINTF(result-&gt;error, sizeof(result-&gt;error), &quot;Cannot save without replacing an existing file: %s&quot;,
+183                     uv_strerror(e));
+184       return;
+185     }
+186     SAFE_STRNCPY(result-&gt;output_path, r-&gt;output_path, sizeof(result-&gt;output_path));
+187   }
+188 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mcp_render_request_t::argv</b>,
+            <b>mcp_render_request_t::capture_webcam</b>,
+            <b>mcp_render_result_t::elapsed_ms</b>,
+            <b>mcp_render_result_t::error</b>, <b>render_worker_t::errors</b>,
+            <b>render_worker_t::failed</b>, <b>mcp_render_result_t::length</b>,
+            <b>render_worker_t::loop</b>, <b>MCP_MAX_OUTPUT</b>,
+            <b>MCP_RENDER_ENV_CAPACITY</b>, <b>mcp_render_execute()</b>,
+            <b>render_worker_t::output</b>,
+            <b>mcp_render_request_t::output_path</b>,
+            <b>mcp_render_result_t::output_path</b>, <b>platform_getenv()</b>,
+            <b>platform_strdup()</b>, <b>render_worker_t::process</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+            <b>SAFE_SNPRINTF</b>, <b>SAFE_STRNCPY</b>,
+            <b>mcp_render_request_t::stage_file</b>,
+            <b>render_worker_t::started</b>, <b>mcp_render_result_t::text</b>,
+            <b>time_get_ns()</b>, <b>mcp_render_request_t::timeout_ms</b>, and
+            <b>render_worker_t::timer</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mcp_render_execute()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

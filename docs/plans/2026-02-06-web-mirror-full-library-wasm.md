@@ -298,7 +298,9 @@ int platform_read_keyboard(char *buffer, size_t len) {
 
 ```typescript
 // src/wasm/mirror.ts
-export async function initMirrorWasm(xtermInstance: Terminal): Promise<MirrorWasmModule> {
+export async function initMirrorWasm(
+  xtermInstance: Terminal,
+): Promise<MirrorWasmModule> {
   const module = await MirrorWasmModuleFactory();
 
   // Expose xterm.js instance to WASM via Module.xterm
@@ -918,7 +920,11 @@ export interface MirrorWasmModule extends EmscriptenModule {
   _mirror_get_color_filter(): number;
 
   // Frame conversion
-  _mirror_convert_frame(rgba_ptr: number, src_width: number, src_height: number): number;
+  _mirror_convert_frame(
+    rgba_ptr: number,
+    src_width: number,
+    src_height: number,
+  ): number;
   _mirror_free_string(ptr: number): void;
 
   // Memory management
@@ -936,7 +942,12 @@ export interface MirrorWasmModule extends EmscriptenModule {
 // src/wasm/mirror.ts
 import { Terminal } from "xterm";
 import MirrorWasmModuleFactory from "./dist/mirror.js";
-import { MirrorWasmModule, RenderMode, ColorMode, ColorFilter } from "./mirror-types";
+import {
+  MirrorWasmModule,
+  RenderMode,
+  ColorMode,
+  ColorFilter,
+} from "./mirror-types";
 
 export class MirrorWasm {
   private module: MirrorWasmModule | null = null;
@@ -1034,7 +1045,11 @@ export class MirrorWasm {
   }
 
   // Frame conversion
-  convertFrame(rgbaData: Uint8Array, srcWidth: number, srcHeight: number): string {
+  convertFrame(
+    rgbaData: Uint8Array,
+    srcWidth: number,
+    srcHeight: number,
+  ): string {
     this.checkInitialized();
 
     // Allocate WASM memory for RGBA data
@@ -1048,7 +1063,11 @@ export class MirrorWasm {
       this.module!.HEAPU8.set(rgbaData, dataPtr);
 
       // Call WASM conversion function
-      const resultPtr = this.module!._mirror_convert_frame(dataPtr, srcWidth, srcHeight);
+      const resultPtr = this.module!._mirror_convert_frame(
+        dataPtr,
+        srcWidth,
+        srcHeight,
+      );
 
       if (!resultPtr) {
         throw new Error("WASM convert_frame returned null");
@@ -1077,7 +1096,11 @@ export class MirrorWasm {
 // Singleton instance
 let wasmInstance: MirrorWasm | null = null;
 
-export async function initMirrorWasm(xterm: Terminal, width: number, height: number): Promise<MirrorWasm> {
+export async function initMirrorWasm(
+  xterm: Terminal,
+  width: number,
+  height: number,
+): Promise<MirrorWasm> {
   if (!wasmInstance) {
     wasmInstance = new MirrorWasm();
     await wasmInstance.init(xterm, width, height);

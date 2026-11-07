@@ -158,7 +158,9 @@ test("help owns presentation during live video and recovers after resize", async
   await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Stop", exact: true }),
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({
+    timeout: 15_000,
+  });
   const canvas = page.locator("canvas.ascii-canvas");
   await canvas.focus();
   await page.keyboard.press("?");
@@ -279,7 +281,9 @@ test("C application logs survive closed overlays and share exclusive presentatio
   await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Stop", exact: true }),
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({
+    timeout: 15_000,
+  });
   await canvas.focus();
   await page.keyboard.press("]");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");
@@ -321,7 +325,9 @@ test("connected web client shows its C network logs", async ({ page }) => {
   );
   await expect(
     page.getByRole("button", { name: "Disconnect", exact: true }),
-  ).toBeVisible({ timeout: 30000 });
+  ).toBeVisible({
+    timeout: 30000,
+  });
   const canvas = page.locator("canvas.ascii-canvas");
   await expect(canvas).toBeVisible();
   await page.evaluate(async (url) => {

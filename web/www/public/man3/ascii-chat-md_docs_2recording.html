@@ -1,0 +1,265 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>md_docs_2recording(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">md_docs_2recording(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">md_docs_2recording(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          md_docs_2recording - Recording session audio and ASCII video
+        </p>
+        <p class="Pp">
+          --render-file recording.mp4 records the session's ASCII video and its
+          audio mix in client, discovery, and mirror modes. Mirror is a solo
+          session: it records local audio without playing the microphone back
+          through the speakers.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Local capture and media playback follow --audio-capture-source:
+        </p>
+        <p class="Pp"></p>
+        <ul class="Bl-bullet">
+          <li>
+            auto: file/URL audio when available, otherwise the microphone.
+          </li>
+          <li>mic: the microphone.</li>
+          <li><b>Media</b><b>: file/URL audio.</b></li>
+          <li>both: microphone and file/URL audio mixed together.</li>
+        </ul>
+        <p class="Pp">
+          Network sessions also record received participant audio. Speaker
+          playback remains separate from recording, so recording does not
+          consume playback or outgoing audio buffers. Local file audio plays
+          through the speakers in mirror mode; in a call it is sent to other
+          participants and included in the recording.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          When --file or --url contains only audio, the selected webcam supplies
+          the video. The webcam is opened when capture starts, rather than
+          during metadata probing. The file retains its usual pause, seek, and
+          loop controls. Without a usable webcam, capture reports an error
+          identifying the selected camera.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">Examples:</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>
+ascii-chat mirror --render-file solo.mp4
+ascii-chat mirror --file music.wav --render-file music-with-webcam.mp4
+ascii-chat client localhost --file clip.mp4 --render-file call.mp4
+ascii-chat client localhost --file music.wav --audio-capture-source both --render-file call.mp4</pre>
+        <p class="Pp">
+          Video containers such as MP4 and WebM support audio. Still images and
+          GIF do not.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Use --render-font default, --render-font matrix, or an absolute
+          font-file path to select the font for pixel output. Existing relative
+          font files are accepted too. Explicit font-file failures stop
+          rendering with an error rather than silently substituting the bundled
+          default. Family-name aliases retain the platform's normal
+          font-resolution policy.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Apple HVF fonts (OpenType/TrueType containers with hvgl outlines)
+          require FreeType 2.15 or newer built with HVF enabled, plus macOS 15.4
+          or iOS 18.4 or newer at runtime. Apple builds report the FreeType
+          capability at configuration time; source builds use FreeType 2.15.
+          Older FreeType packages or SDKs still support ordinary fonts and
+          reject unsupported HVF input at runtime. The iOS dependency can be
+          cross-built with Xcode's Clang and a recent iOS SDK while retaining an
+          older deployment target; HVF remains unavailable on older OS versions.
+          Windows, Linux, and browser builds do not support Apple HVF fonts and
+          report unsupported font formats. Ordinary TrueType/OpenType fonts and
+          the bundled fonts remain available on all platforms.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Audio is mixed at 48 kHz mono and clipped after summing inputs.
+          Temporary missing samples become silence, and subsequent samples
+          resume normally. Live video uses elapsed session time across source
+          changes and pauses. Stdin conversion retains frame-count timing.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The recording regression tests include PCM mixing, microphone and file
+          worker paths, independent playback/transmission queues, audio-only
+          webcam selection, mixed encoded audio, encoder-tail flushing, and live
+          frame timing. A separate mirror and two-client test checks the file
+          tone in mirror output, both input tones in each call output, and A/V
+          synchronization:
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/recording --ascii-chat-binary build/bin/ascii-chat</pre>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Media_transition_behavior">
+          <a class="permalink" href="#Media_transition_behavior"
+            >Media transition behavior</a
+          >
+        </h1>
+        <p class="Pp">
+          All native client, discovery and mirror sessions use the shared
+          capture/display pipeline. Browser mirror, client and discovery share
+          useSessionRecording, LocalRecording and the AudioPipeline recording
+          bus. Committed source changes do not create a new recording or reset
+          its session clock.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Input / transition Native sessions Browser sessions MCP render_file
+          Webcam + microphone Elapsed-time video; selected capture audio plus
+          received audio Displayed ASCII canvas; enabled local inputs plus
+          received audio One bounded render invocation; no live source controls
+          Local file / URL Shared FFmpeg/resolver and playlist loader;
+          failed/cancelled replacement keeps prior source Media element capture
+          feeds the stable recording bus; failed audio tap replacement retains
+          the old tap until finalization Uses the native render path and reports
+          tool/render errors Audio-only file / URL Webcam supplies video; file
+          pause/seek still applies File loader currently requires a decodable
+          video track; audio-only file import remains unsupported Native
+          fallback requires a camera unless a waveform/FFT visualization is
+          selected Test pattern / waveform / FFT Elapsed session clock,
+          including switching to media with a different FPS Same displayed
+          canvas and enabled audio graph as other sources Only sources exposed
+          by the tool schema; no interactive switching Pause Retained video
+          continues recording without advancing capture freshness; media audio
+          is silent Canvas remains visible and recording clock runs; media
+          element pause silences its tap No interactive pause control Seek
+          Decoder position changes; recording timestamps remain monotonic
+          Retains the element tap and encoder; dynamic audio tracks reconnect to
+          the same bus Initial seek, where exposed, uses native options
+          Successful source change Loader commits video/audio together;
+          recording stays open Canvas dimensions stay fixed for export; audio
+          graph changes independently of the encoder Separate invocations
+          produce separate outputs Failure / cancellation Loader rollback
+          retains current source; teardown drains accepted recording frames and
+          finalizes encoder Failed capture/start releases owned resources;
+          disconnect invalidates pending starts and finalizes active recording;
+          unmount discards export Bounded invocation cleanup; no persistent
+          recording owner
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Paused native recordings emit the last raster until recording ends,
+          even if playback never resumes. Their frame freshness counter remains
+          unchanged. At normal file EOF, native file recording still finalizes
+          rather than extending the last frame indefinitely. Stdin retains its
+          frame-count conversion semantics. Browser pause/seek preserves the
+          stable destination audio track so changing file tracks does not end
+          the encoder. A repeated source notification for the same media element
+          does not recapture or stop its tracks.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Browser exports remain bounded to ten minutes / 128 MiB, with a
+          ten-second finalization watchdog. Encoder failure produces an error
+          rather than a partial download; a subsequent recording starts with
+          fresh failure state. Browser source controls and native capture policy
+          are distinct host adapters around their shared session APIs; MCP is a
+          bounded render tool, not a live session controller.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">Focused regression coverage:</p>
+        <p class="Pp"></p>
+        <ul class="Bl-bullet">
+          <li>
+            pytest tests/python/integration/recording --ascii-chat-binary BINARY
+            --recording-transitions-only: hardware-free paused-file
+            finalization, synthetic A/V duration and playlist source switching
+            with both tones retained in one recording.
+          </li>
+          <li>
+            tests/standalone/media/capture_open_test.c: retained paused
+            recording frames, seek while paused, unchanged freshness, and
+            existing load rollback/cancellation.
+          </li>
+          <li>
+            web/web/tests/network/audio-pipeline.test.ts: stable file tap
+            through pause, seek, dynamic audio track replacement and failed
+            replacement rollback.
+          </li>
+          <li>
+            web/web/tests/hooks/session-recording.test.tsx: disconnect/reconnect
+            during preparation cannot resurrect a stale recording start.
+          </li>
+          <li>
+            web/web/tests/recording/local-recording.test.ts: final chunks,
+            watchdog, cancellation, limits and recovery after encoder failure.
+          </li>
+        </ul>
+        <p class="Pp">
+          Hardware-specific camera availability, public URL extraction, and real
+          browser codec output require their existing platform/browser smoke
+          tests; synthetic unit fixtures do not establish those claims.
+        </p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

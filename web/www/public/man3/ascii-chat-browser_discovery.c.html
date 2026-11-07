@@ -1,0 +1,404 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>browser_discovery.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">browser_discovery.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">browser_discovery.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">browser_discovery.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void <b>browser_handoff_encode</b> (int
+            kind, const <b>uint8_t</b> *session, const <b>uint8_t</b> *id,
+            <b>uint32_t</b> generation, <b>uint32_t</b> sequence, int
+            capabilities, int nat_tier, int port, <b>uint8_t</b> *out)
+            <br />
+            <b>EM_JS</b> (void, handoff_snapshot,(int kind, const
+            <b>uint8_t</b> *id, <b>uint32_t</b> generation,
+            <b>uint32_t</b> sequence), { Module.handoffResult={kind, participant
+            :HEAPU8.slice(id, id+16), generation, sequence};})
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+            <b>browser_handoff_decode</b> (const <b>uint8_t</b> *data, size_t
+            length)
+            <br />
+            <b>EM_JS</b> (void, discovery_send,(<b>acds_protocol_t</b> *p, int
+            type, const void *data, size_t length), { Module.discoverySend(p,
+            type, HEAPU8.slice(data, data+length));})
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>acds_protocol_t</b> *
+            <b>browser_discovery_new</b> (void)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void
+            <b>browser_discovery_destroy</b> (<b>acds_protocol_t</b>
+            *p)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+            <b>browser_discovery_enter</b> (<b>acds_protocol_t</b> *p,
+            <b>bool</b>
+            create, const char *name, const char *password)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+            <b>browser_discovery_receive</b> (<b>acds_protocol_t</b> *p,
+            <b>uint32_t</b>
+            type, const void *data, size_t length)
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>asciichat_error_t</b>
+            <b>browser_discovery_leave</b> (<b>acds_protocol_t</b>
+            *p)
+            <br />
+            <b>EM_JS</b> (void, discovery_snapshot,(int state,
+            <b>bool</b> terminal, const char *error, const char *name, const
+            <b>uint8_t</b> *participant, const <b>uint8_t</b> *session, const
+            <b>uint8_t</b> *host, const char *user, const char *password), {
+            Module.discoveryResult={ state, terminal :!!terminal, error
+            :UTF8ToString(error), name :UTF8ToString(name), joined :{
+            participantId :HEAPU8.slice(participant, participant+16), sessionId
+            :HEAPU8.slice(session, session+16), hostId :HEAPU8.slice(host,
+            host+16), turnUsername :UTF8ToString(user), turnPassword
+            :UTF8ToString(password) } };})
+            <br />
+            <b>EMSCRIPTEN_KEEPALIVE</b> void
+            <b>browser_discovery_snapshot</b> (<b>acds_protocol_t</b>
+            *p)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void browser_discovery_destroy (<b
+              >acds_protocol_t</b
+            >
+            * p)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>44</b> of file <b>browser_discovery.c</b>.
+          </p>
+          <pre>
+44                                                                         {
+45   if (!p)
+46     return;
+47   acds_protocol_destroy(p);
+48   SAFE_FREE(p);
+49 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_protocol_destroy()</b>,
+            <b>browser_discovery_destroy()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>, and
+            <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_discovery_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b>
+            <b>asciichat_error_t</b> browser_discovery_enter (<b
+              >acds_protocol_t</b
+            >
+            * p, <b>bool</b> create, const char * name, const char * password)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>50</b> of file <b>browser_discovery.c</b>.
+          </p>
+          <pre>
+51                                                                                      {
+52   return acds_protocol_enter(p, create, name, password);
+53 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_protocol_enter()</b>,
+            <b>browser_discovery_enter()</b>, and <b>EMSCRIPTEN_KEEPALIVE</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_discovery_enter()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b>
+            <b>asciichat_error_t</b> browser_discovery_leave (<b
+              >acds_protocol_t</b
+            >
+            * p)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>58</b> of file <b>browser_discovery.c</b>.
+          </p>
+          <pre>
+58                                                                                    {
+59   return acds_protocol_leave(p);
+60 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_protocol_leave()</b>,
+            <b>browser_discovery_leave()</b>, and <b>EMSCRIPTEN_KEEPALIVE</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_discovery_leave()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> <b>acds_protocol_t</b> *
+            browser_discovery_new (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>38</b> of file <b>browser_discovery.c</b>.
+          </p>
+          <pre>
+38                                                                   {
+39   acds_protocol_t *p = SAFE_CALLOC(1, sizeof(*p), acds_protocol_t *);
+40   if (p)
+41     acds_protocol_init(p, browser_send, p);
+42   return p;
+43 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_protocol_init()</b>,
+            <b>browser_discovery_new()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>, and
+            <b>SAFE_CALLOC</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_discovery_new()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b>
+            <b>asciichat_error_t</b> browser_discovery_receive (<b
+              >acds_protocol_t</b
+            >
+            * p, <b>uint32_t</b> type, const void * data, size_t length)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>54</b> of file <b>browser_discovery.c</b>.
+          </p>
+          <pre>
+55                                                                                 {
+56   return acds_protocol_receive(p, (packet_type_t)type, data, length);
+57 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_protocol_receive()</b>,
+            <b>browser_discovery_receive()</b>, and <b>EMSCRIPTEN_KEEPALIVE</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_discovery_receive()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void browser_discovery_snapshot (<b
+              >acds_protocol_t</b
+            >
+            * p)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>79</b> of file <b>browser_discovery.c</b>.
+          </p>
+          <pre>
+79                                                                          {
+80   discovery_snapshot(p-&gt;state, p-&gt;terminal, p-&gt;error, p-&gt;name, p-&gt;joined.participant_id, p-&gt;joined.session_id,
+81                      p-&gt;joined.host_established ? p-&gt;joined.host_id : p-&gt;joined.initiator_id, p-&gt;joined.turn_username,
+82                      p-&gt;joined.turn_password);
+83 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>browser_discovery_snapshot()</b>,
+            <b>EMSCRIPTEN_KEEPALIVE</b>, <b>acds_protocol_t::error</b>,
+            <b>acds_protocol_t::joined</b>, <b>acds_protocol_t::name</b>,
+            <b>acds_protocol_t::state</b>, and <b>acds_protocol_t::terminal</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_discovery_snapshot()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b>
+            <b>asciichat_error_t</b> browser_handoff_decode (const
+            <b>uint8_t</b> * data, size_t length)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>browser_discovery.c</b>.
+          </p>
+          <pre>
+20                                                                                                   {
+21   consensus_handoff_message_t message;
+22   asciichat_error_t result = consensus_handoff_decode(data, length, &amp;message);
+23   if (result == ASCIICHAT_OK)
+24     handoff_snapshot(message.kind, message.participant, message.generation, message.sequence);
+25   return result;
+26 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>browser_handoff_decode()</b>,
+            <b>consensus_handoff_decode()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+            <b>consensus_handoff_message_t::generation</b>,
+            <b>consensus_handoff_message_t::kind</b>,
+            <b>consensus_handoff_message_t::participant</b>, and
+            <b>consensus_handoff_message_t::sequence</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_handoff_decode()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>EMSCRIPTEN_KEEPALIVE</b> void browser_handoff_encode (int kind,
+            const <b>uint8_t</b> * session, const <b>uint8_t</b> * id,
+            <b>uint32_t</b> generation, <b>uint32_t</b> sequence, int
+            capabilities, int nat_tier, int port, <b>uint8_t</b> * out)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>browser_discovery.c</b>.
+          </p>
+          <pre>
+7                                                                          {
+8   consensus_handoff_message_t message = {.kind = (uint8_t)kind,
+9                                          .generation = generation,
+10                                          .sequence = sequence,
+11                                          .capabilities = (uint8_t)capabilities,
+12                                          .nat_tier = (uint8_t)nat_tier,
+13                                          .port = (uint16_t)port};
+14   memcpy(message.session, session, SESSION_ID_SIZE);
+15   memcpy(message.participant, id, SESSION_ID_SIZE);
+16   consensus_handoff_encode(&amp;message, out);
+17 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>browser_handoff_encode()</b>,
+            <b>consensus_handoff_encode()</b>, <b>EMSCRIPTEN_KEEPALIVE</b>,
+            <b>consensus_handoff_message_t::participant</b>,
+            <b>consensus_handoff_message_t::session</b>, and
+            <b>SESSION_ID_SIZE</b>.
+          </p>
+          <p class="Pp">Referenced by <b>browser_handoff_encode()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="EM_JS_(void_,_discovery_send_,_(">
+            <a class="permalink" href="#EM_JS_(void_,_discovery_send_,_("
+              >EM_JS (void , discovery_send , (<b>acds_protocol_t</b> *p, int
+              type, const void *data, size_t length) , { Module.discoverySend(p,
+              type, HEAPU8.slice(data, data+length));} )</a
+            >
+          </h2>
+          <p class="Pp">References <b>EM_JS()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="EM_JS_(void_,_discovery_snapshot_,_(int_state,_">
+            <a
+              class="permalink"
+              href="#EM_JS_(void_,_discovery_snapshot_,_(int_state,_"
+              >EM_JS (void , discovery_snapshot , (int state,
+              <b>bool</b> terminal, const char *error, const char *name, const
+              <b>uint8_t</b> *participant, const <b>uint8_t</b> *session, const
+              <b>uint8_t</b> *host, const char *user, const char *password) , {
+              Module.discoveryResult={ state, terminal :!!terminal, error
+              :UTF8ToString(error), name :UTF8ToString(name), joined :{
+              participantId :HEAPU8.slice(participant, participant+16),
+              sessionId :HEAPU8.slice(session, session+16), hostId
+              :HEAPU8.slice(host, host+16), turnUsername :UTF8ToString(user),
+              turnPassword :UTF8ToString(password) } };} )</a
+            >
+          </h2>
+          <p class="Pp">References <b>EM_JS()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="EM_JS_(void_,_handoff_snapshot_,_(int_kind,_const_"
+          >
+            <a
+              class="permalink"
+              href="#EM_JS_(void_,_handoff_snapshot_,_(int_kind,_const_"
+              >EM_JS (void , handoff_snapshot , (int kind, const
+              <b>uint8_t</b> *id, <b>uint32_t</b> generation,
+              <b>uint32_t</b> sequence) , { Module.handoffResult={kind,
+              participant :HEAPU8.slice(id, id+16), generation, sequence};} )</a
+            >
+          </h2>
+          <p class="Pp">References <b>EM_JS()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

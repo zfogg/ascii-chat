@@ -4,13 +4,13 @@ Prompts use absolute monotonic deadlines. Typing, resizing, invalid input, and
 covered screens do not restart the timer. Expiration never accepts a default Yes
 or submits a partial password.
 
-| Prompt | Timeout | Expiration |
-| --- | ---: | --- |
-| Text, confirmation, overwrite, IP disclosure | 30 seconds | Decline/cancel |
-| Password or SSH/GPG passphrase | 60 seconds | Clear input and cancel authentication |
-| Host identity or discovery-key verification | 120 seconds | Reject trust |
-| mDNS server selection | 30 seconds | Cancel connection |
-| Update notification | 10 seconds | Continue normally |
+| Prompt                                       |     Timeout | Expiration                            |
+| -------------------------------------------- | ----------: | ------------------------------------- |
+| Text, confirmation, overwrite, IP disclosure |  30 seconds | Decline/cancel                        |
+| Password or SSH/GPG passphrase               |  60 seconds | Clear input and cancel authentication |
+| Host identity or discovery-key verification  | 120 seconds | Reject trust                          |
+| mDNS server selection                        |  30 seconds | Cancel connection                     |
+| Update notification                          |  10 seconds | Continue normally                     |
 
 These deadlines are fixed; no command-line or environment override is needed.
 

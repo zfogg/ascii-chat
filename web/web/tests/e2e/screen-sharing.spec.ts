@@ -336,7 +336,9 @@ test("Mirror renders display ASCII, cancels, replaces, ends and restores the mic
   await page.goto("/mirror?colorMode=truecolor");
   await expect(
     page.getByRole("button", { name: "Share screen", exact: true }),
-  ).toBeEnabled({ timeout: 20000 });
+  ).toBeEnabled({
+    timeout: 20000,
+  });
   await page
     .getByRole("button", { name: "Enable microphone", exact: true })
     .click();
@@ -478,7 +480,9 @@ test("Mirror screen sharing from idle returns to idle, and file sharing restores
   await page.goto("/mirror");
   await expect(
     page.getByRole("button", { name: "Share screen", exact: true }),
-  ).toBeEnabled({ timeout: 20000 });
+  ).toBeEnabled({
+    timeout: 20000,
+  });
   await page.getByRole("button", { name: "Share screen", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Stop sharing", exact: true }),
@@ -524,7 +528,9 @@ test("C resolves source orientation and transforms upload pixels once while pres
   await page.goto("/mirror");
   await expect(
     page.getByRole("button", { name: "Share screen", exact: true }),
-  ).toBeEnabled({ timeout: 20000 });
+  ).toBeEnabled({
+    timeout: 20000,
+  });
   const proof = await page.evaluate(async (url) => {
     const { getMirrorModule } = await import(url);
     const { runtimeOptions } = await import(
@@ -604,7 +610,9 @@ test("Mirror visualizes captured audio in waveform and FFT while its enabled spe
   await page.goto("/mirror?colorMode=truecolor");
   await expect(
     page.getByRole("button", { name: "Share screen", exact: true }),
-  ).toBeEnabled({ timeout: 20000 });
+  ).toBeEnabled({
+    timeout: 20000,
+  });
   await observeAudioVisualization(page);
   await page
     .getByRole("button", { name: "Enable speakers", exact: true })
@@ -810,7 +818,9 @@ for (const mode of ["client", "discovery"]) {
             () =>
               output.match(/Session created: ([a-z]+-[a-z]+-[a-z]+)/i)?.[1] ??
               "",
-            { timeout: 30000 },
+            {
+              timeout: 30000,
+            },
           )
           .not.toBe("");
         query.set(
@@ -832,7 +842,9 @@ for (const mode of ["client", "discovery"]) {
         .click();
       await expect(
         page.getByRole("button", { name: "Disconnect", exact: true }),
-      ).toBeVisible({ timeout: 45000 });
+      ).toBeVisible({
+        timeout: 45000,
+      });
       expect(clientInitLogs).toContain(
         "[Client WASM] _client_init_with_args returned: 0",
       );
@@ -893,7 +905,9 @@ for (const mode of ["client", "discovery"]) {
       await expect
         .poll(
           () => page.evaluate(() => window.__clientFrameMetrics?.received ?? 0),
-          { timeout: 20000 },
+          {
+            timeout: 20000,
+          },
         )
         .toBeGreaterThan(before + 3);
       await expect
@@ -920,7 +934,9 @@ for (const mode of ["client", "discovery"]) {
         .click();
       await expect(
         observer.getByRole("button", { name: "Disconnect", exact: true }),
-      ).toBeVisible({ timeout: 45000 });
+      ).toBeVisible({
+        timeout: 45000,
+      });
       await expect(
         observer.getByRole("button", { name: "Disable webcam", exact: true }),
       ).toBeVisible();

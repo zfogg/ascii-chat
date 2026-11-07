@@ -84,7 +84,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - uses: astral-sh/setup-uv@v6
       - name: Configure Windows linker environment
         if: runner.os == 'Windows'
@@ -100,7 +100,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - run: python -m pip install gcovr==8.6
       - run: python .github/scripts/test_generate_coverage.py
       - run: python .github/scripts/test_prepare_coverage_upload.py
@@ -145,7 +145,7 @@ jobs:
         id: unit-python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: "3.14"
 
       - uses: astral-sh/setup-uv@v6
 
@@ -394,7 +394,7 @@ jobs:
         id: integration-python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: "3.14"
 
       - uses: astral-sh/setup-uv@v6
 
@@ -725,10 +725,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - uses: actions/download-artifact@v4
         with:
-          pattern: '*test-results-*'
+          pattern: "*test-results-*"
           path: coverage-reports
       - name: Require all seven coverage reports
         id: coverage

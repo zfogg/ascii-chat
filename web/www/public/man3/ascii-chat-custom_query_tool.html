@@ -1,0 +1,238 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_query_tool(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_query_tool(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_query_tool(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">custom_query_tool - Query Tool (ascii-query-server)</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Query_Tool_(ascii-query-server)">
+          <a class="permalink" href="#Query_Tool_(ascii-query-server)"
+            >Query Tool (ascii-query-server)</a
+          >
+        </h1>
+        <p class="Pp">
+          Runtime variable inspection tool for ascii-chat debug builds.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Overview">
+            <a class="permalink" href="#Overview">Overview</a>
+          </h2>
+          <p class="Pp">
+            The query tool enables HTTP-based variable inspection using LLDB:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+&#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;           &#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;
+&#x2502;  ascii-chat (TARGET)    &#x2502;           &#x2502;  ascii-query-server     &#x2502;
+&#x2502;                         &#x2502;           &#x2502;  (CONTROLLER)           &#x2502;
+&#x2502;  Your application       &#x2502;&#x25C4;&#x2500;&#x2500;LLDB&#x2500;&#x2500;&#x2500;&#x25BA;&#x2502;  HTTP server :9999      &#x2502;
+&#x2502;  runs normally          &#x2502;           &#x2502;  Accepts curl requests  &#x2502;
+&#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;           &#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Quick_Start">
+            <a class="permalink" href="#Quick_Start">Quick Start</a>
+          </h2>
+          <pre>
+# Build with query support
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_BUILD_WITH_QUERY=ON
+cmake --build build
+# Start your application
+./build/bin/ascii-chat server &amp;
+# Attach query controller
+./.deps-cache/query-tool/ascii-query-server --attach $(pgrep ascii-chat) --port 9999
+# Query variables
+curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=client_count'
+# Interactive breakpoint mode
+curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=x&amp;break'
+curl 'localhost:9999/query?name=other_var'  # While stopped
+curl -X POST 'localhost:9999/continue'</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Command_Line_Options">
+            <a class="permalink" href="#Command_Line_Options"
+              >Command Line Options</a
+            >
+          </h2>
+          <pre>Usage: ascii-query-server [OPTIONS]
+Options:
+<br/>
+  --attach &lt;pid&gt;    Attach to process by PID (required)
+<br/>
+  --port &lt;port&gt;     HTTP server port (default: 9999)
+<br/>
+  --help            Show help</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="HTTP_Endpoints_Quick_Reference">
+            <a class="permalink" href="#HTTP_Endpoints_Quick_Reference"
+              >HTTP Endpoints Quick Reference</a
+            >
+          </h2>
+          <p class="Pp">
+            Endpoint Method Description / GET Status page /process GET Process
+            info (PID, state, threads) /threads GET List all threads /frames GET
+            Stack frames (when stopped) /query GET Query variable value /stop
+            POST Pause target /continue POST Resume target /step POST Single
+            step /breakpoints GET/POST/DELETE Manage breakpoints /detach POST
+            Detach from target
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Query_Parameters">
+            <a class="permalink" href="#Query_Parameters">Query Parameters</a>
+          </h2>
+          <p class="Pp">
+            Parameter Description file Source file path (required when running)
+            line Line number (required when running) name Variable name
+            (supports struct.member, ptr-&gt;field, arr[i]) break Stop at
+            breakpoint and stay stopped expand Expand struct members depth
+            Expansion depth (default: 3) timeout Breakpoint timeout in ms
+            (default: 5000) frame Stack frame index or function name
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Example_Session">
+            <a class="permalink" href="#Example_Session">Example Session</a>
+          </h2>
+          <pre>
+# Start target
+./build/bin/ascii-chat server &amp;
+# Attach controller
+./.deps-cache/query-tool/ascii-query-server --attach $(pgrep ascii-chat) --port 9999
+# Check process state
+curl localhost:9999/process
+# Interactive debugging
+curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=count&amp;break'
+curl 'localhost:9999/query?name=options.port'    # No file:line needed
+curl 'localhost:9999/query?name=client&amp;expand'   # Expand struct
+curl localhost:9999/frames                        # Show call stack
+curl -X POST localhost:9999/continue              # Resume
+# Set persistent breakpoint
+curl -X POST 'localhost:9999/breakpoints?file=src/server.c&amp;line=200'
+curl localhost:9999/breakpoints                   # List breakpoints
+# Cleanup
+curl -X POST localhost:9999/detach</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Files">
+            <a class="permalink" href="#Files">Files</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>main.cpp</b><b> - Controller entry point and CLI parsing</b>
+            </li>
+            <li>
+              <b>lldb_controller.h</b>/cpp<b>
+                - LLDB SB API wrapper (attach, breakpoints, variables)</b
+              >
+            </li>
+            <li>
+              <b>http_server.h</b>/cpp<b> - Single-threaded HTTP server</b>
+            </li>
+            <li>query.entitlements - macOS code signing entitlements</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Platform_Notes">
+            <a class="permalink" href="#Platform_Notes">Platform Notes</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              <b>macOS</b>: Requires code signing with get-task-allow
+              entitlement (done by CMake)
+            </li>
+            <li>
+              <b>Linux</b>: May need ptrace_scope=0 or --cap-add=SYS_PTRACE in
+              Docker
+            </li>
+            <li><b>Windows</b>: Uses CreateProcess for spawning</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="See_Also">
+            <a class="permalink" href="#See_Also">See Also</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>lib/tooling/query/query.h - Public C API for auto-spawn</li>
+            <li><b></b>docs/tooling/query.md<b></b> - User guide</li>
+            <li>
+              <b></b>docs/tooling/query-troubleshooting.md<b></b> - Common
+              issues
+            </li>
+            <li>
+              <b></b>docs/tooling/QUERY_TOOL_PLAN.md<b></b> - Implementation
+              plan
+            </li>
+          </ul>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

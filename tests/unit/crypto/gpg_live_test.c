@@ -36,7 +36,6 @@ static void teardown(void) {
     platform_unsetenv("GNUPGHOME");
   }
   log_destroy();
-  asciichat_pcre2_cleanup_all();
 }
 static void setup(void) {
   if (!platform_is_regular_file("/usr/bin/gpg"))
@@ -240,7 +239,6 @@ static void wire_cleanup(void) {
     socket_close(wire_peer);
   wire_client = wire_peer = INVALID_SOCKET_VALUE;
   log_destroy();
-  asciichat_pcre2_cleanup_all();
 }
 TestSuite(gpg_agent_wire, .init = wire_setup, .fini = wire_cleanup, .timeout = 5);
 Test(gpg_agent_wire, binary_nulls_and_percent_escapes_preserve_signature_bytes_and_bad_frames_are_rejected) {

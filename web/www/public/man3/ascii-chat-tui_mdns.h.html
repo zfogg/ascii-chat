@@ -1,0 +1,728 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>mdns.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">mdns.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">mdns.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          mdns.h - mDNS service discovery UI with terminal_screen rendering
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>ui_mdns_server_t</b>
+            <br />
+            Discovered server information from mDNS. struct
+            <b>ui_mdns_config_t</b>
+            <br />
+            Configuration for TUI discovery.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>TUI_MDNS_NAME_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>TUI_MDNS_SESSION_STRING_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>TUI_MDNS_ADDRESS_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>TUI_MDNS_IPV4_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>TUI_MDNS_IPV6_BUFFER_SIZE</b> 46
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>ui_mdns_log_init</b> (void)
+            <br />
+            Initialize log buffer for mDNS discovery UI. void
+            <b>ui_mdns_log_destroy</b>
+            (void)
+            <br />
+            Destroy mDNS discovery log buffer. void
+            <b>ui_mdns_log_clear</b> (void)
+            <br />
+            Clear mDNS discovery log buffer. void
+            <b>ui_mdns_log_append</b> (const char *message)
+            <br />
+            Append message to mDNS discovery log buffer.
+            <b>ui_mdns_server_t</b> * <b>ui_mdns_query</b> (const
+            <b>ui_mdns_config_t</b> *config, int *out_count)
+            <br />
+            Discover ascii-chat servers on the local network via mDNS. void
+            <b>ui_mdns_free_results</b> (<b>ui_mdns_server_t</b> *servers)
+            <br />
+            Free results from TUI discovery query. int
+            <b>ui_mdns_prompt_selection</b> (const
+            <b>ui_mdns_server_t</b> *servers, int count)
+            <br />
+            Interactive server selection. int <b>ui_mdns_select</b> (const
+            <b>ui_mdns_server_t</b> *servers, int count)
+            <br />
+            int <b>ui_mdns_select_until</b> (const
+            <b>ui_mdns_server_t</b> *servers, int count,
+            <b>uint64_t</b> deadline)
+            <br />
+            int <b>ui_mdns_select_live</b> (const
+            <b>ui_mdns_server_t</b> *servers, int count,
+            <b>uint64_t</b> deadline, <b>ui_mdns_server_t</b> *chosen)
+            <br />
+            const char * <b>ui_mdns_get_best_address</b> (const
+            <b>ui_mdns_server_t</b>
+            *server)
+            <br />
+            Get best address representation for a discovered server.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          mDNS service discovery UI with terminal_screen rendering
+        </p>
+        <p class="Pp">
+          Implements interactive mDNS-based discovery of ascii-chat servers on
+          the local network. Uses the shared terminal_screen infrastructure for
+          consistent UI rendering with other modules.
+        </p>
+        <p class="Pp">Definition in file <b>tui/mdns.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_MDNS_ADDRESS_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_TUI_MDNS_ADDRESS_BUFFER_SIZE___256"
+              >#define TUI_MDNS_ADDRESS_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>tui/mdns.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_MDNS_IPV4_BUFFER_SIZE___16">
+            <a class="permalink" href="#_define_TUI_MDNS_IPV4_BUFFER_SIZE___16"
+              >#define TUI_MDNS_IPV4_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>tui/mdns.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_MDNS_IPV6_BUFFER_SIZE___46">
+            <a class="permalink" href="#_define_TUI_MDNS_IPV6_BUFFER_SIZE___46"
+              >#define TUI_MDNS_IPV6_BUFFER_SIZE 46</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>16</b> of file <b>tui/mdns.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_MDNS_NAME_BUFFER_SIZE___256">
+            <a class="permalink" href="#_define_TUI_MDNS_NAME_BUFFER_SIZE___256"
+              >#define TUI_MDNS_NAME_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>12</b> of file <b>tui/mdns.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_TUI_MDNS_SESSION_STRING_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_TUI_MDNS_SESSION_STRING_BUFFER_SIZE___256"
+              >#define TUI_MDNS_SESSION_STRING_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>13</b> of file <b>tui/mdns.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_mdns_free_results_(">
+            <a class="permalink" href="#void_ui_mdns_free_results_("
+              >void ui_mdns_free_results (<b>ui_mdns_server_t</b> * servers)</a
+            >
+          </h2>
+          <p class="Pp">
+            Free results from TUI discovery query. Free results from mDNS
+            discovery.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Releases memory allocated by <b>ui_mdns_query()</b>.</p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>servers</i> Pointer to server array (safe to pass NULL)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Safe to call multiple times or with NULL pointer
+          </div>
+          <p class="Pp">Free results from TUI discovery query.</p>
+          <p class="Pp">
+            Definition at line <b>97</b> of file <b>tui/mdns.c</b>.
+          </p>
+          <pre>
+97                                                      {
+98   discovery_mdns_destroy(servers);
+99 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_mdns_destroy()</b>, and
+            <b>ui_mdns_free_results()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_ui_mdns_get_best_address_(const_">
+            <a
+              class="permalink"
+              href="#const_char_*_ui_mdns_get_best_address_(const_"
+              >const char * ui_mdns_get_best_address (const
+              <b>ui_mdns_server_t</b> * server)</a
+            >
+          </h2>
+          <p class="Pp">
+            Get best address representation for a discovered server. Get best
+            address for a server.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Returns the most suitable address representation (IPv4 &gt; IPv6
+            &gt; hostname) for connecting to a discovered server.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Selection Priority:</b></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>IPv4 address (most universal)</dd>
+            <dt>2.</dt>
+            <dd>IPv6 address</dd>
+            <dt>3.</dt>
+            <dd>
+              Advertised hostname (service labels are never connection
+              destinations)
+            </dd>
+          </dl>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>server</i> Discovered server</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to best address string (points to field in server struct)
+          </div>
+          <p class="Pp">
+            Get best address representation for a discovered server.
+          </p>
+          <p class="Pp">
+            Definition at line <b>431</b> of file <b>tui/mdns.c</b>.
+          </p>
+          <pre>
+431                                                                      {
+432   if (!server) {
+433     return &quot;&quot;;
+434   }
+435
+436   // The service instance name is a display label, not a resolvable hostname.
+437   if (server-&gt;ipv4[0] != '\0') {
+438     return server-&gt;ipv4;
+439   }
+440   if (server-&gt;ipv6[0] != '\0') {
+441     return server-&gt;ipv6;
+442   }
+443
+444   return server-&gt;address; // Fallback to address field
+445 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_mdns_server_t::address</b>,
+            <b>ui_mdns_server_t::ipv4</b>, <b>ui_mdns_server_t::ipv6</b>, and
+            <b>ui_mdns_get_best_address()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_mdns_log_append_(const_char_*_message)">
+            <a
+              class="permalink"
+              href="#void_ui_mdns_log_append_(const_char_*_message)"
+              >void ui_mdns_log_append (const char * message)</a
+            >
+          </h2>
+          <p class="Pp">
+            Append message to mDNS discovery log buffer. Delegates to the
+            logging system which automatically captures to session log buffer.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>message</i> Log message to append</div>
+          <p class="Pp">
+            Definition at line <b>66</b> of file <b>tui/mdns.c</b>.
+          </p>
+          <pre>
+66                                              {
+67   if (message) {
+68     log_info(&quot;%s&quot;, message);
+69   }
+70 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_info</b>, and <b>ui_mdns_log_append()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_mdns_log_append()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_mdns_log_clear_(void_)">
+            <a class="permalink" href="#void_ui_mdns_log_clear_(void_)"
+              >void ui_mdns_log_clear (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Clear mDNS discovery log buffer. Delegates to terminal_screen log
+            clear. Useful when starting fresh mDNS discovery screen.
+          </p>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>tui/mdns.c</b>.
+          </p>
+          <pre>
+62                              {
+63   terminal_screen_log_clear();
+64 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_screen_log_clear()</b>, and
+            <b>ui_mdns_log_clear()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_mdns_log_clear()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_mdns_log_destroy_(void_)">
+            <a class="permalink" href="#void_ui_mdns_log_destroy_(void_)"
+              >void ui_mdns_log_destroy (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Destroy mDNS discovery log buffer. Delegates to terminal_screen log
+            cleanup.
+          </p>
+          <p class="Pp">
+            Definition at line <b>57</b> of file <b>tui/mdns.c</b>.
+          </p>
+          <pre>
+57                                {
+58   log_clear_session_log_buffer();
+59   terminal_screen_log_destroy();
+60 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_clear_session_log_buffer()</b>,
+            <b>terminal_screen_log_destroy()</b>, and
+            <b>ui_mdns_log_destroy()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_mdns_log_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_mdns_log_init_(void_)">
+            <a class="permalink" href="#void_ui_mdns_log_init_(void_)"
+              >void ui_mdns_log_init (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Initialize log buffer for mDNS discovery UI. Delegates to
+            terminal_screen log initialization. Call once at startup before
+            rendering mDNS discovery screen.
+          </p>
+          <p class="Pp">
+            Definition at line <b>50</b> of file <b>tui/mdns.c</b>.
+          </p>
+          <pre>
+50                             {
+51   session_log_buffer_t *buf = terminal_screen_log_init();
+52   if (buf) {
+53     log_set_session_log_buffer(buf);
+54   }
+55 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_set_session_log_buffer()</b>,
+            <b>terminal_screen_log_init()</b>, and <b>ui_mdns_log_init()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_mdns_log_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_mdns_prompt_selection_(const_">
+            <a class="permalink" href="#int_ui_mdns_prompt_selection_(const_"
+              >int ui_mdns_prompt_selection (const <b>ui_mdns_server_t</b> *
+              servers, int count)</a
+            >
+          </h2>
+          <p class="Pp">
+            Interactive server selection. Interactive controller picker; Enter
+            selects the highlighted row, Esc/q cancels. Redirected input never
+            chooses a server implicitly. Returns -1 when a terminal is
+            unavailable.
+          </p>
+          <p class="Pp">
+            Definition at line <b>104</b> of file <b>tui/mdns.c</b>.
+          </p>
+          <pre>
+104                                                                          {
+105   if (terminal_can_prompt_user())
+106     return ui_mdns_select(servers, count);
+107   if (!servers || count &lt;= 0) {
+108     return -1;
+109   }
+110
+111   log_error(&quot;Cannot select a discovered server without an interactive terminal; specify a server address.&quot;);
+112   return -1;
+113 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_error</b>, <b>terminal_can_prompt_user()</b>,
+            <b>ui_mdns_prompt_selection()</b>, and <b>ui_mdns_select()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_mdns_prompt_selection()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ui_mdns_server_t</b> * ui_mdns_query (const
+            <b>ui_mdns_config_t</b> * config, int * out_count)
+          </h2>
+          <p class="Pp">
+            Discover ascii-chat servers on the local network via mDNS. TUI
+            wrapper around core mDNS discovery.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Performs an mDNS query for _ascii-chat._tcp services on the local
+            network. Collects responses and returns discovered servers to the
+            caller.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Behavior:</b></p>
+          <ul class="Bl-bullet">
+            <li>
+              Sends multicast mDNS query for _ascii-chat._tcp.local services
+            </li>
+            <li>Waits for responses for the specified timeout period</li>
+            <li>
+              Collects all discovered servers with their addresses and ports
+            </li>
+            <li>Returns array of discovered servers</li>
+          </ul>
+          <p class="Pp"><b>Memory Management:</b></p>
+          <ul class="Bl-bullet">
+            <li>
+              Caller is responsible for freeing the returned array with
+              <b>ui_mdns_free_results()</b>
+            </li>
+            <li>
+              Returned servers are valid until <b>ui_mdns_free_results()</b> is
+              called
+            </li>
+          </ul>
+          <p class="Pp"><b>Error Handling:</b></p>
+          <ul class="Bl-bullet">
+            <li>Returns NULL and sets errno on initialization failure</li>
+            <li>
+              Partial results returned if mDNS init fails but discovery was
+              attempted
+            </li>
+            <li>Network errors logged but don't prevent continuation</li>
+          </ul>
+          <p class="Pp"><b>Threading:</b></p>
+          <ul class="Bl-bullet">
+            <li>Blocking operation - waits for full timeout period</li>
+            <li>Safe to call from main thread</li>
+            <li>Does not spawn background threads</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config</i> Discovery configuration (NULL uses defaults)
+            <br />
+            <i>out_count</i> Output parameter: number of discovered servers
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Array of discovered servers, or NULL on error Must be freed with
+            <b>ui_mdns_free_results()</b>
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Timeout includes network round-trip time, so 2000ms allows ~1.5s of
+            actual waiting
+            <p class="Pp"></p>
+            <p class="Pp">
+              Returns empty array (non-NULL with count=0) if no servers found,
+              not NULL
+            </p>
+          </div>
+          <p class="Pp">Example:</p>
+          <p class="Pp"></p>
+          <pre>ui_mdns_config_t config = {.timeout_ms = 2000, .max_servers = 20};
+int count = 0;
+ui_mdns_server_t *servers = ui_mdns_query(&amp;config, &amp;count);
+if (servers &amp;&amp; count &gt; 0) {
+<br/>
+    for (int i = 0; i &lt; count; i++) {
+<br/>
+        printf(&quot;%d: %s (%s:%d)\n&quot;, i+1, servers[i].name, servers[i].address, servers[i].port);
+<br/>
+    }
+<br/>
+    // User selects server...
+<br/>
+    ui_mdns_free_results(servers);
+}
+</pre>
+          <p class="Pp">
+            Discover ascii-chat servers on the local network via mDNS.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Calls <b>discovery_mdns_query()</b> from <b>discovery.c</b> with
+            TUI-friendly configuration.
+          </p>
+          <p class="Pp">
+            Definition at line <b>77</b> of file <b>tui/mdns.c</b>.
+          </p>
+          <pre>
+77                                                                                 {
+78   if (!out_count) {
+79     SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_count pointer is NULL&quot;);
+80     return NULL;
+81   }
+82
+83   *out_count = 0;
+84
+85   // Apply defaults if needed
+86   int timeout_ms = (config &amp;&amp; config-&gt;timeout_ms &gt; 0) ? config-&gt;timeout_ms : 2000;
+87   int max_servers = (config &amp;&amp; config-&gt;max_servers &gt; 0) ? config-&gt;max_servers : 20;
+88   bool quiet = (config &amp;&amp; config-&gt;quiet);
+89
+90   // Call the core mDNS discovery function from discovery.c
+91   return discovery_mdns_query(timeout_ms, max_servers, quiet, out_count);
+92 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_mdns_query()</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ui_mdns_config_t::max_servers</b>,
+            <b>ui_mdns_config_t::quiet</b>, <b>SET_ERRNO</b>,
+            <b>ui_mdns_config_t::timeout_ms</b>, and <b>ui_mdns_query()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_mdns_select_(const_">
+            <a class="permalink" href="#int_ui_mdns_select_(const_"
+              >int ui_mdns_select (const <b>ui_mdns_server_t</b> * servers, int
+              count)</a
+            >
+          </h2>
+          <p class="Pp">
+            Shared controller list: arrows/j/k move, Enter selects, digits
+            choose by number, Esc/q cancels. Resizes retain the selection and
+            scroll it into view. Returns -1 without waiting when no interactive
+            terminal is available.
+          </p>
+          <p class="Pp">Definition at line <b>151</b> of file <b>misc.c</b>.</p>
+          <pre>
+151                                                                {
+152   (void)servers;
+153   (void)count;
+154   return -1;
+155 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_input_deadline()</b>, <b>ui_mdns_select()</b>, and
+            <b>ui_mdns_select_until()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_mdns_prompt_selection()</b>, and
+            <b>ui_mdns_select()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_mdns_select_live_(const_">
+            <a class="permalink" href="#int_ui_mdns_select_live_(const_"
+              >int ui_mdns_select_live (const <b>ui_mdns_server_t</b> * servers,
+              int count, <b>uint64_t</b> deadline, <b>ui_mdns_server_t</b> *
+              chosen)</a
+            >
+          </h2>
+          <p class="Pp">
+            Background LAN discovery while choosing; copies the selected
+            endpoint into chosen. Returns 0 on selection, -1 on cancellation.
+            Selection follows endpoint identity as the list changes; the worker
+            is stopped and joined before returning.
+          </p>
+          <p class="Pp">
+            Definition at line <b>414</b> of file <b>tui/mdns.c</b>.
+          </p>
+          <pre>
+414                                                                                                                  {
+415   if (!chosen || count &lt; 0 || count &gt; MDNS_LIVE_CAPACITY || (count &amp;&amp; !servers))
+416     return -1;
+417   mdns_refresh_t refresh = {0};
+418   refresh.count = count;
+419   if (count)
+420     memcpy(refresh.servers, servers, (size_t)count * sizeof(*servers));
+421   if (mutex_init(&amp;refresh.mutex, &quot;lan_results&quot;) != 0)
+422     return -1;
+423   int selected = select_mdns_until(servers, count, deadline, &amp;refresh, chosen);
+424   mutex_destroy(&amp;refresh.mutex);
+425   return selected &lt; 0 ? -1 : 0;
+426 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>mdns_refresh_t::count</b>, <b>MDNS_LIVE_CAPACITY</b>,
+            <b>mdns_refresh_t::mutex</b>, <b>mutex_destroy()</b>,
+            <b>mutex_init()</b>, <b>mdns_refresh_t::servers</b>, and
+            <b>ui_mdns_select_live()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_mdns_select_live()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_mdns_select_until_(const_">
+            <a class="permalink" href="#int_ui_mdns_select_until_(const_"
+              >int ui_mdns_select_until (const <b>ui_mdns_server_t</b> *
+              servers, int count, <b>uint64_t</b> deadline)</a
+            >
+          </h2>
+          <p class="Pp">
+            Select with a caller-owned absolute monotonic deadline, retained
+            across refreshes.
+          </p>
+          <p class="Pp">
+            Definition at line <b>410</b> of file <b>tui/mdns.c</b>.
+          </p>
+          <pre>
+410                                                                                         {
+411   return select_mdns_until(servers, count, deadline, NULL, NULL);
+412 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ui_mdns_select_until()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ui_mdns_select()</b>, and
+            <b>ui_mdns_select_until()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

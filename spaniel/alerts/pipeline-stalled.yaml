@@ -41,12 +41,12 @@ query: |
     name
 condition:
   kind: threshold
-  operator: '>='
+  operator: ">="
   threshold: 5
 group_by:
-- session_id
-- service_name
-- stage
+  - session_id
+  - service_name
+  - stage
 pending_for: 10s
 cooldown: 0s
 repeat_interval: 0s
@@ -55,6 +55,7 @@ enabled: true
 browser_enabled: true
 pushover_enabled: false
 annotations:
-  runbook: Capture is progressing but an expected display/encode stage has made no progress for at least five seconds, sustained for ten seconds. Gauges reset for
+  runbook:
+    Capture is progressing but an expected display/encode stage has made no progress for at least five seconds, sustained for ten seconds. Gauges reset for
     paused/stopped capture, hidden prompt/log screens, disabled encoding and shutdown. Check blocked terminal output, rendering and file encoding. Applies to the
     client-like local media pipeline.

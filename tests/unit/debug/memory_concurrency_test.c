@@ -45,11 +45,8 @@ Test(memory_concurrency, aligned_ownership_and_reallocation_are_reflected_in_liv
   char text[32768];
   size_t length = fread(text, 1, sizeof(text) - 1, report);
   text[length] = '\0';
-  const char *filename = strrchr(__FILE__, '/');
-  if (!filename)
-    filename = strrchr(__FILE__, '\\');
-  filename = filename ? filename + 1 : __FILE__;
-  cr_assert_not_null(strstr(text, filename));
+  const char *allocation_heading = "Allocation from tests/unit/debug/memory_concurrency_test.c:";
+  cr_assert_not_null(strstr(text, allocation_heading));
   cr_assert_not_null(strstr(text, "1 live 256 B total"));
   debug_free(aligned, __FILE__, __LINE__);
   aligned = NULL;
@@ -71,7 +68,7 @@ Test(memory_concurrency, aligned_ownership_and_reallocation_are_reflected_in_liv
   length = fread(text, 1, sizeof(text) - 1, report);
   text[length] = '\0';
   cr_assert_not_null(strstr(text, "=== Memory Report ==="));
-  cr_assert_null(strstr(text, filename));
+  cr_assert_null(strstr(text, allocation_heading));
   cr_assert_null(strstr(text, "realloc-report-fixture.c"));
 }
 #endif

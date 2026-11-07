@@ -439,11 +439,15 @@ test("Client connect=true starts on load and reload without a click", async ({
     );
     await expect(
       page.getByRole("button", { name: "Disconnect", exact: true }),
-    ).toBeVisible({ timeout: 20000 });
+    ).toBeVisible({
+      timeout: 20000,
+    });
     await page.reload();
     await expect(
       page.getByRole("button", { name: "Disconnect", exact: true }),
-    ).toBeVisible({ timeout: 20000 });
+    ).toBeVisible({
+      timeout: 20000,
+    });
   } finally {
     await server.stop();
   }

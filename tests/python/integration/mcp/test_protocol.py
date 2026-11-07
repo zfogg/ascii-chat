@@ -371,7 +371,7 @@ class Protocol(unittest.TestCase):
                 self.send_header("Accept-Ranges", "bytes")
                 if range_header: self.send_header("Content-Range", f"bytes {start}-{len(body) - 1}/{len(body)}")
                 self.send_header("Content-Length", str(len(body) - start)); self.end_headers(); self.wfile.write(body[start:])
-            def log_message(self, format, *args): pass
+            def log_message(self, format: str, *args: object) -> None: pass
         media = ThreadingHTTPServer(("127.0.0.1", 0), MediaHandler)
         threading.Thread(target=media.serve_forever, daemon=True).start()
         self.addCleanup(media.server_close); self.addCleanup(media.shutdown)
@@ -647,7 +647,7 @@ class Protocol(unittest.TestCase):
                 self.send_response(200); self.send_header("Content-Length", str(len(body)))
                 self.send_header("Content-Type", "image/x-portable-pixmap"); self.end_headers()
                 self.wfile.write(body)
-            def log_message(self, format, *args): pass
+            def log_message(self, format: str, *args: object) -> None: pass
         media = ThreadingHTTPServer(("127.0.0.1", 0), MediaHandler)
         thread = threading.Thread(target=media.serve_forever, daemon=True); thread.start()
         self.addCleanup(media.server_close); self.addCleanup(media.shutdown)

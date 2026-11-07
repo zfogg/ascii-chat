@@ -17,15 +17,15 @@ This exercises existing packet splitting and reassembly with asymmetric limits.
 All eight repeated WebRTC saturation/recovery cases passed:
 
 | Platform | Codec | Peak accounted queue KiB | Final delivered FPS | Final mean frame age ms | Recovery keyframes |
-|---|---|---:|---:|---:|---:|
-| Windows | raw | 118.5 | 56.50 | 3.58 | 0 |
-| Windows | h264 | 378.5 | 33.50 | 8.74 | 31 |
-| Linux | raw | 115.9 | 46.50 | 21.02 | 0 |
-| Linux | h264 | 377.2 | 56.50 | 3.57 | 18 |
-| Linux | h265 | 425.2 | 43.50 | 32.56 | 17 |
-| macOS | raw | 115.9 | 57.50 | 0.94 | 0 |
-| macOS | h264 | 374.1 | 57.00 | 1.70 | 22 |
-| macOS | h265 | 375.0 | 57.50 | 3.75 | 23 |
+| -------- | ----- | -----------------------: | ------------------: | ----------------------: | -----------------: |
+| Windows  | raw   |                    118.5 |               56.50 |                    3.58 |                  0 |
+| Windows  | h264  |                    378.5 |               33.50 |                    8.74 |                 31 |
+| Linux    | raw   |                    115.9 |               46.50 |                   21.02 |                  0 |
+| Linux    | h264  |                    377.2 |               56.50 |                    3.57 |                 18 |
+| Linux    | h265  |                    425.2 |               43.50 |                   32.56 |                 17 |
+| macOS    | raw   |                    115.9 |               57.50 |                    0.94 |                  0 |
+| macOS    | h264  |                    374.1 |               57.00 |                    1.70 |                 22 |
+| macOS    | h265  |                    375.0 |               57.50 |                    3.75 |                 23 |
 
 All three systems tested native source SHA256
 `c12291d035c64a81f52c20289efa8ebe6543bd2ba42dc423076aab6b0d712f8f`.

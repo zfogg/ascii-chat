@@ -35,10 +35,10 @@ query: |
     service_name
 condition:
   kind: threshold
-  operator: '>='
+  operator: ">="
   threshold: 0.8
 group_by:
-- service_name
+  - service_name
 pending_for: 1m0s
 cooldown: 10m0s
 repeat_interval: 1h0m0s
@@ -47,6 +47,7 @@ enabled: true
 browser_enabled: true
 pushover_enabled: false
 annotations:
-  runbook: Check collector latency and exporter drop counters. Reduce realtime trace sampling or log verbosity before increasing queue capacity. Stopped or silent
+  runbook:
+    Check collector latency and exporter drop counters. Reduce realtime trace sampling or log verbosity before increasing queue capacity. Stopped or silent
     processes age out after 90 seconds; no telemetry does not imply health.
   summary: A recently reporting process has exporter queue utilization at or above 80% for one minute.

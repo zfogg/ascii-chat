@@ -1,0 +1,173 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>image.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">image.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">image.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">image.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>kitty_image_write</b> (FILE *stream,
+            const <b>uint8_t</b> *rgba, int width, int height, int pitch)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> kitty_image_write (FILE * stream, const
+            <b>uint8_t</b> * rgba, int width, int height, int pitch)
+          </h2>
+          <p class="Pp">
+            Transmit packed RGBA pixels using Kitty's direct, chunked graphics
+            protocol. Padding at the end of each input row is excluded. The
+            stream remains caller-owned.
+          </p>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>media/kitty/image.c</b>.
+          </p>
+          <pre>
+14                                                                                                          {
+15   if (!stream || !rgba || width &lt;= 0 || height &lt;= 0 || width &gt; INT_MAX / 4 || pitch &lt; width * 4 ||
+16       (size_t)height &gt; SIZE_MAX / (size_t)pitch)
+17     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid Kitty image dimensions or pixels&quot;);
+18
+19   // 3072 raw bytes produce the protocol maximum of 4096 base64 bytes.
+20   static const char alphabet[] = &quot;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/&quot;;
+21   const size_t row_bytes = (size_t)width * 4;
+22   const size_t total = row_bytes * (size_t)height;
+23   size_t offset = 0;
+24   bool first = true;
+25   while (offset &lt; total) {
+26     char packet[MEDIA_KITTY_IMAGE_PACKET_BUFFER_SIZE];
+27     size_t count = total - offset;
+28     if (count &gt; KITTY_RAW_CHUNK_SIZE)
+29       count = KITTY_RAW_CHUNK_SIZE;
+30     bool more = offset + count &lt; total;
+31     int prefix = first ? snprintf(packet, sizeof(packet), &quot;\033_Ga=T,f=32,s=%d,v=%d,t=d,q=2,m=%d;&quot;, width, height, more)
+32                        : snprintf(packet, sizeof(packet), &quot;\033_Gm=%d;&quot;, more);
+33     size_t used = (size_t)prefix;
+34     for (size_t i = 0; i &lt; count; i += 3) {
+35       uint32_t triple = 0;
+36       size_t available = count - i &lt; 3 ? count - i : 3;
+37       for (size_t j = 0; j &lt; available; ++j) {
+38         size_t index = offset + i + j;
+39         triple |= (uint32_t)rgba[(index / row_bytes) * (size_t)pitch + index % row_bytes] &lt;&lt; (16 - 8 * j);
+40       }
+41       packet[used++] = alphabet[(triple &gt;&gt; 18) &amp; 63];
+42       packet[used++] = alphabet[(triple &gt;&gt; 12) &amp; 63];
+43       packet[used++] = available &gt; 1 ? alphabet[(triple &gt;&gt; 6) &amp; 63] : '=';
+44       packet[used++] = available &gt; 2 ? alphabet[triple &amp; 63] : '=';
+45     }
+46     packet[used++] = '\033';
+47     packet[used++] = '\\';
+48     ui_controller_packet_begin();
+49     asciichat_error_t err = stdout_writer_write(stream, packet, used);
+50     ui_controller_packet_end();
+51     if (err != ASCIICHAT_OK)
+52       return err;
+53     offset += count;
+54     first = false;
+55   }
+56   return ASCIICHAT_OK;
+57 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>kitty_image_write()</b>, <b>KITTY_RAW_CHUNK_SIZE</b>,
+            <b>MEDIA_KITTY_IMAGE_PACKET_BUFFER_SIZE</b>, <b>SET_ERRNO</b>,
+            <b>stdout_writer_write()</b>, <b>ui_controller_packet_begin()</b>,
+            and <b>ui_controller_packet_end()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>kitty_image_write()</b>, and
+            <b>render_file_destroy()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -4,8 +4,7 @@
  * @ingroup util
  *
  * Implements robust HTTP(S) URL validation using the production-grade
- * regex by Diego Perini (MIT License), compiled with PCRE2 and JIT
- * for high performance.
+ * regex by Diego Perini (MIT License), compiled with PCRE2.
  */
 
 #include "ascii-chat/common/error_codes.h"
@@ -98,26 +97,6 @@ static const char *URL_REGEX_PATTERN =
     "(?<path_query_fragment>[/?#]\\S*)?$";
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * PCRE2 REGEX VALIDATOR STATE
- *
- * Global singleton with lazy initialization via centralized PCRE2 module.
- * Compiled regex is read-only after initialization, safe for concurrent reads.
- * ═══════════════════════════════════════════════════════════════════════════ */
-
-static pcre2_singleton_t *g_url_regex = NULL;
-
-/**
- * Get compiled URL regex (lazy initialization)
- * Returns NULL if compilation failed
- */
-static pcre2_code *url_regex_get(void) {
-  if (g_url_regex == NULL) {
-    g_url_regex = asciichat_pcre2_singleton_compile(URL_REGEX_PATTERN, PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF);
-  }
-  return asciichat_pcre2_singleton_get_code(g_url_regex);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
  * PUBLIC API IMPLEMENTATION
  * ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -196,11 +175,6 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
   /* Clear output structure */
   memset(parts_out, 0, sizeof(*parts_out));
 
-  pcre2_code *regex = url_regex_get();
-  if (!regex) {
-    return SET_ERRNO(ERROR_CONFIG, "URL validator not initialized");
-  }
-
   /* Check if URL needs http:// prefix (bare hostname or IP) */
   char url_with_scheme[URL_BUFFER_SIZE];
   const char *url_to_match = url;
@@ -258,18 +232,29 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
     url_to_match = url_with_scheme;
   }
 
+  int compile_error;
+  PCRE2_SIZE error_offset;
+  pcre2_code *regex = pcre2_compile((PCRE2_SPTR)URL_REGEX_PATTERN, PCRE2_ZERO_TERMINATED,
+                                    PCRE2_CASELESS | PCRE2_UCP | PCRE2_UTF, &compile_error, &error_offset, NULL);
+  if (!regex) {
+    return SET_ERRNO(ERROR_CONFIG, "URL validator compilation failed at offset %zu (PCRE2 error %d)",
+                     (size_t)error_offset, compile_error);
+  }
+
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
+    pcre2_code_free(regex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create match data");
   }
 
-  /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+  /* Match using the interpreted pattern. */
   int rc = asciichat_pcre2_match(regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
                                  0,                                                        /* options */
                                  match_data, NULL);                                        /* mcontext */
 
   if (rc < 0) {
     pcre2_match_data_free(match_data);
+    pcre2_code_free(regex);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid URL format: %s", original_url);
   }
 
@@ -288,12 +273,14 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
     SAFE_FREE(port_str);
     if (parts_out->port <= 0 || parts_out->port > UINT16_MAX) {
       pcre2_match_data_free(match_data);
+      pcre2_code_free(regex);
       url_parts_destroy(parts_out);
       return SET_ERRNO(ERROR_INVALID_PARAM, "URL port must be in the range 1-65535");
     }
   }
 
   pcre2_match_data_free(match_data);
+  pcre2_code_free(regex);
 
   /* Verify we got required fields */
   if (!parts_out->scheme || !parts_out->host) {

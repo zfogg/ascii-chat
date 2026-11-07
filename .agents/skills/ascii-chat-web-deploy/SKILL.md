@@ -9,10 +9,10 @@ Use this skill when publishing or diagnosing the public ascii-chat websites.
 
 ## Release topology
 
-| Site | Vercel project | Root directory | Release branch |
-| --- | --- | --- | --- |
-| `ascii-chat.com` | `ascii-chat-www` | `web/www` | `deploy-web-www` |
-| `web.ascii-chat.com` | `ascii-chat-web` | `web/web` | `deploy-web-web` |
+| Site                       | Vercel project         | Root directory  | Release branch         |
+| -------------------------- | ---------------------- | --------------- | ---------------------- |
+| `ascii-chat.com`           | `ascii-chat-www`       | `web/www`       | `deploy-web-www`       |
+| `web.ascii-chat.com`       | `ascii-chat-web`       | `web/web`       | `deploy-web-web`       |
 | `discovery.ascii-chat.com` | `ascii-chat-discovery` | `web/discovery` | `deploy-web-discovery` |
 
 Each project is intentionally disconnected from Vercel's Git integration. Do not reconnect it or use ordinary Git pushes as deployments. The repository GitHub Actions workflows `.github/workflows/deploy-web-{www,web,discovery}.yml` use `pnpm` and the `VERCEL_TOKEN` GitHub secret to make the sole production deployment when its matching release branch is pushed.
@@ -55,11 +55,11 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
 - `web/www/api/session-strings.ts` is the canonical Vercel function: `https://www.ascii-chat.com/api/session-strings?count=<1-20>`. It uses the shared C-derived word lists and Web Crypto rejection sampling. Both the www and discovery pages use this endpoint in production; keep its discovery-origin CORS response and do not replace it with a downloaded native binary or cache its responses.
 - `web/discovery` endpoint configuration is shared by the page and its status functions. Set these Vercel Production environment variables when hosting it elsewhere; omit any of them to use the bundled official defaults:
 
-  | Variable | Format | Current default |
-  | --- | --- | --- |
-  | `DISCOVERY_WEBRTC_SERVERS` | Comma-separated `ws://` or `wss://` URLs; bare `host:port` defaults to `wss` except port 80, which defaults to `ws`. | `wss://discovery-service.ascii-chat.com:443` |
-  | `DISCOVERY_STUN_SERVERS` | Comma-separated `stun:host:port` URLs. Whitespace around commas is ignored; bare `host:port` remains accepted for compatibility. | `stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302` |
-  | `DISCOVERY_TURN_SERVERS` | Comma-separated `turn:host:port` URLs. Whitespace around commas is ignored; bare `host:port` remains accepted for compatibility. | `turn:turn.ascii-chat.com:3478` |
+  | Variable                   | Format                                                                                                                           | Current default                                              |
+  | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+  | `DISCOVERY_WEBRTC_SERVERS` | Comma-separated `ws://` or `wss://` URLs; bare `host:port` defaults to `wss` except port 80, which defaults to `ws`.             | `wss://discovery-service.ascii-chat.com:443`                 |
+  | `DISCOVERY_STUN_SERVERS`   | Comma-separated `stun:host:port` URLs. Whitespace around commas is ignored; bare `host:port` remains accepted for compatibility. | `stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302` |
+  | `DISCOVERY_TURN_SERVERS`   | Comma-separated `turn:host:port` URLs. Whitespace around commas is ignored; bare `host:port` remains accepted for compatibility. | `turn:turn.ascii-chat.com:3478`                              |
 
   STUN and TURN default to port `3478` over UDP when omitted. Use `stuns:host[:port]` or `turns:host[:port]` for TLS; status functions probe those endpoints over TLS and default omitted ports to `5349`. These non-secret values are exposed to the frontend at Vite build time, and Vercel functions use the same values at runtime. `DISCOVERY_STATUS_TURN_USERNAME` and `DISCOVERY_STATUS_TURN_PASSWORD` remain server-only credentials for authenticated TURN probes.
 
@@ -84,6 +84,7 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
   The parent build must contain `generated/data/fonts/default.c` and `matrix_resurrected.c`; reuse verified generated fonts or generate them with the repository font targets first. On the current Windows Emscripten SDK, `-DCMAKE_EXE_LINKER_FLAGS=-sMALLOC=emmalloc` avoids the bundled dlmalloc/Clang alias incompatibility. Use `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` only when the dependency cache is already populated.
 
   Confirm `CMAKE_BUILD_TYPE:STRING=Release` in the effective WASM `CMakeCache.txt` before publishing. Never publish Debug artifacts. CMake's incremental build determines which objects and generated glue actually need regeneration.
+
 - After the build succeeds, publish its outputs using `ASCII_CHAT_WASM_ARTIFACT_DIR=build/web vp exec node web/web/scripts/wasm-build.mjs` from the repository root (in PowerShell, set `$env:ASCII_CHAT_WASM_ARTIFACT_DIR = 'build/web'` first). This copies the completed outputs into the canonical artifact directory without invoking another build. Use this option only after verifying that both Release targets built successfully from the current sources. Re-run `--publish-only` afterward to verify the final source/artifact hashes.
 - Commit regenerated `mirror.js`, `mirror.wasm`, `client.js`, `client.wasm`, and `manifest.json` only in `web/web/src/wasm/dist/`. `web/web/public/wasm/` contains ignored runtime copies; do not force-add them. Record the Release configuration and build directory in the artifact commit message so subsequent deployments can establish provenance and skip unnecessary compilation.
 
@@ -92,4 +93,5 @@ Each project is intentionally disconnected from Vercel's Git integration. Do not
 ## Domains and DNS
 
 Cloudflare manages `ascii-chat.com` DNS. Before changing records, obtain explicit confirmation naming the target hostname and the records being replaced.
+
 - Never alter `discovery-service.ascii-chat.com`, `stun.ascii-chat.com`, or `turn.ascii-chat.com` while deploying the discovery website. Those are service endpoints, not the `discovery.ascii-chat.com` frontend.

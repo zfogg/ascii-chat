@@ -1,0 +1,213 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>md_docs_2test-patterns(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">md_docs_2test-patterns(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">md_docs_2test-patterns(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          md_docs_2test-patterns - Shared native and browser test patterns
+        </p>
+        <p class="Pp">
+          --test-pattern and --test-pattern 0 select the animated gradient and
+          translucent square. --test-pattern 1 selects rainbow stripes and a
+          wrapping white circle. Both also accept =0/=1. Omitting the flag
+          leaves normal source selection unchanged; 0 means the first animation,
+          not disabled. The option is available in mirror, client, and discovery
+          modes.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <pre>
+ascii-chat mirror --test-pattern
+ascii-chat mirror --test-pattern 1 --color-mode 256
+ascii-chat client localhost --test-pattern=0</pre>
+        <p class="Pp">
+          WEBCAM_DISABLED=1 remains a boolean enable switch; with default
+          configuration it enables pattern zero. Existing boolean [<b
+            >Webcam Module</b
+          >] <b>test_pattern</b> = true/false<b>
+            configuration remains supported; integer </b
+          >0<b> or </b>1<b>
+            enables the selected animation. CLI selection overrides
+            configuration/environment values.</b
+          >
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The browser maps ?test to pattern zero and ?test2 to pattern one.
+          ?test2&amp;testCadence explicitly enables the full-height Gray-code
+          diagnostic overlay; ordinary ?test2 now shows its stripes and circle.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Implementation">
+          <a class="permalink" href="#Implementation">Implementation</a>
+        </h1>
+        <p class="Pp">
+          <b>lib/video/anim/test_pattern.c</b
+          ><b> owns the RGB animations, a high-contrast pixel-lettered </b
+          >test<b>
+            label, and optional reusable RGBA output. Each media source/canvas
+            has an independent renderer and reusable image buffers. Its public
+            API takes elapsed milliseconds, making animation speed independent
+            of capture FPS and allowing deterministic comparisons. Native
+            sources use a monotonic clock. Geometry adapts below the former
+            Canvas minimum shape sizes so the minimum 20x10 terminal can still
+            show the shapes and colors.</b
+          >
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>src/web/common/test_pattern.c</b
+          ><b>
+            exposes this same implementation to both WASM modules. TypeScript
+            only copies/uploads the generated RGBA frame and manages source
+            lifetime. The mirror consumes the returned frame without reading the
+            canvas back.</b
+          >
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The existing terminal palette helpers are shared by the normal render
+          pipeline.
+          <b>rgb_to_256color</b
+          ><b>
+            now compares the nearest nonuniform xterm cube entry with the
+            nearest grayscale entry, including exact black and white. </b
+          ><b>get_256color_rgb</b
+          ><b>
+            supplies the inverse palette lookup; the existing 16-color helpers
+            supply the other direction. Palette expansion uses the standard
+            reference colors (the first 16 actual terminal colors may be
+            themed).</b
+          >
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Recorded_verification_(2026-10-09)">
+          <a class="permalink" href="#Recorded_verification_(2026-10-09)"
+            >Recorded verification (2026-10-09)</a
+          >
+        </h1>
+        <p class="Pp">
+          The C/WASM output was compared against the former Canvas
+          implementation before removing the JavaScript reference and dedicated
+          browser tests. The retained screenshots document that verification:
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          These earlier comparisons used bundled DejaVu Sans Mono labels. The
+          current renderer instead draws a larger lowercase test centered in the
+          image, using black integer-sized pixel strokes with no backing box.
+          The letters form negative space after ASCII conversion; labels are
+          omitted when the source is too small to fit them. Both native and
+          browser sources use the same label.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Both visible patterns sustained approximately 60 materially changing
+          ASCII frames per second for 10 seconds in a 1920x1080 browser
+          viewport. Application screenshots show the warmed-up counter: mirror
+          zero, mirror one.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Native source images: pattern zero, pattern one. Native CLI and
+          shared-library checks cover selectors/defaults, 30 snapshots, legacy
+          environment inputs, palette mapping, independent sources, resize, and
+          invalid input. The config loader was separately verified with
+          <b>true</b><b>, </b><b>false</b><b>, </b>0<b>, and </b>1<b>
+            from both initial enable states (eight cases); the native unit
+            regression calls the loader directly. The previous CLI check only
+            checked exit status and did not establish that the requested config
+            file was loaded. </b
+          >Recorded results<b>.</b>
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Native_verification">
+          <a class="permalink" href="#Native_verification"
+            >Native verification</a
+          >
+        </h1>
+        <pre>
+cmake --preset default -B build
+cmake --build build --target ascii-chat
+python tests/platform/probe_pattern.py --binary build/bin/ascii-chat.exe --library build/bin/asciichat.dll</pre>
+        <p class="Pp">
+          Criterion tests require a supported platform; Windows verification
+          uses the actual shared library. Native PNG encoder initialization
+          fails in this environment, so the native evidence images were captured
+          directly from the library.
+        </p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

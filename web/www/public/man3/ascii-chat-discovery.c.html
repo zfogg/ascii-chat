@@ -1,571 +1,780 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>discovery.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">discovery.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">discovery.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">discovery.c - Parallel mDNS and ACDS session discovery
-    implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>discovery_thread_state_t</b>
-  <br/>
-  Thread-safe result sharing between discovery threads. struct
-    <b>mdns_query_state_t</b>
-  <br/>
-  Internal state for collecting discovered services. struct
-    <b>mdns_thread_context_t</b>
-  <br/>
-  Context for mDNS discovery thread. struct <b>acds_thread_context_t</b>
-  <br/>
-  Context for ACDS discovery thread.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>pubkey_to_hex</b> (const <b>uint8_t</b> pubkey[32], char
-    hex_out[65])
-  <br/>
-  Convert Ed25519 public key to hex string. <b>asciichat_error_t</b>
-    <b>hex_to_pubkey</b> (const char *hex_str, <b>uint8_t</b> pubkey_out[32])
-  <br/>
-  Convert hex string to Ed25519 public key. <b>ui_mdns_server_t</b> *
-    <b>discovery_mdns_query</b> (int timeout_ms, int max_servers, <b>bool</b>
-    quiet, int *out_count)
-  <br/>
-  Public mDNS query function used by both parallel discovery and TUI wrapper.
-    void <b>discovery_mdns_destroy</b> (<b>ui_mdns_server_t</b> *servers)
-  <br/>
-  Free memory from mDNS discovery results. void
-    <b>discovery_config_init_defaults</b> (<b>discovery_config_t</b> *config)
-  <br/>
-  Initialize discovery config with defaults. <b>asciichat_error_t</b>
-    <b>discover_session_parallel</b> (const char *session_string, const
-    <b>discovery_config_t</b> *config, <b>discovery_result_t</b> *result)
-  <br/>
-  Look up session in parallel on mDNS and ACDS.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Parallel mDNS and ACDS session discovery implementation.</p>
-<p class="Pp">This module provides automated discovery of ascii-chat servers via
-    parallel mDNS (local LAN) and ACDS (internet) lookups.</p>
-<p class="Pp"></p>
-<p class="Pp">Architecture:</p>
-<ul class="Bl-bullet">
-  <li>mDNS discovery: <b>discovery_mdns_query()</b> - core implementation (this
-      module)</li>
-  <li>ACDS discovery: ACDS client implementation for centralized lookup</li>
-  <li>Parallel coordination: Concurrent threads with &quot;race to success&quot;
-      semantics</li>
-  <li>UI wrapper: lan_discovery.c calls <b>discovery_mdns_query()</b> for
-      interactive selection</li>
-</ul>
-<p class="Pp">Definition in file <b>discovery.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> discover_session_parallel (const char *
-  session_string, const <b>discovery_config_t</b> * config,
-  <b>discovery_result_t</b> * result)</h2>
-<p class="Pp">Look up session in parallel on mDNS and ACDS. Spawns two
-    concurrent threads to search both mDNS (local LAN) and ACDS (internet).
-    Returns immediately when either finds the session, cancelling the other
-    search.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Verification Logic:</b></p>
-<p class="Pp"></p>
-<p class="Pp">If config-&gt;expected_pubkey is set:</p>
-<ul class="Bl-bullet">
-  <li>mDNS result: Verify TXT record contains matching host_pubkey</li>
-  <li>ACDS result: Verify SESSION_LOOKUP response contains matching
-    host_pubkey</li>
-  <li>If both find result: Verify they have same pubkey (cross-check)</li>
-  <li>On mismatch: Return ERROR_CRYPTO_VERIFY_FAILED</li>
-</ul>
-<p class="Pp">If config-&gt;expected_pubkey is NULL but config-&gt;insecure_mode
-    is true:</p>
-<ul class="Bl-bullet">
-  <li>Skip all verification, accept first result found</li>
-  <li>WARNING: Vulnerable to MITM attacks!</li>
-</ul>
-<p class="Pp">If config-&gt;expected_pubkey is NULL and config-&gt;insecure_mode
-    is false:</p>
-<ul class="Bl-bullet">
-  <li>Search mDNS only (ACDS thread not started)</li>
-  <li>Use TOFU (Trust On First Use): accept first mDNS result found</li>
-</ul>
-<p class="Pp"><b>Thread Lifecycle:</b></p>
-<p class="Pp"></p>
-<ul class="Bl-bullet">
-  <li>Both threads start immediately</li>
-  <li>Whichever completes first signals success via condition variable</li>
-  <li>Other thread is joined (cleaned up)</li>
-  <li>Function returns with result</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>session_string</i> Session string to find (e.g.,
-  &quot;swift-river-mountain&quot;)
-<br/>
-<i></i><b>Config Module</b><i></i><b> Discovery configuration</b>
-<br/>
-<i>result</i> Discovery result (output)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This function BLOCKS until one discovery method succeeds
-  or both timeout
-<p class="Pp"></p>
-<p class="Pp">Not thread-safe for concurrent calls - use only one discovery at a
-    time</p>
-</div>
-<p class="Pp">Definition at line <b>518</b> of file <b>discovery.c</b>.</p>
-<pre>519                                                                         {
-520   if (!session_string || !config || !result) {
-521     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters to discover_session_parallel&quot;);
-522     return ERROR_INVALID_PARAM;
-523   }
-524 
-525   // Validate session string format
-526   if (!is_session_string(session_string)) {
-527     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid session string format&quot;);
-528     return ERROR_INVALID_PARAM;
-529   }
-530 
-531   memset(result, 0, sizeof(*result));
-532   log_info(&quot;Discovery: Looking up session '%s'&quot;, session_string);
-533 
-534   // Initialize thread state
-535   discovery_thread_state_t state;
-536   memset(&amp;state, 0, sizeof(state));
-537   state.result = result;
-538   mutex_init(&amp;state.lock, &quot;mdns_resolve&quot;);
-539   cond_init(&amp;state.signal, &quot;mdns_signal&quot;);
-540 
-541   // Determine which discovery methods to use
-542   bool use_mdns = true;
-543   bool use_acds = config-&gt;expected_pubkey != NULL || config-&gt;insecure_mode;
-544 
-545   if (!use_acds) {
-546     log_debug(&quot;Discovery: mDNS-only mode (no --server-key and no --acds-insecure)&quot;);
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>discovery.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">discovery.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">discovery.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          discovery.c - Parallel mDNS and ACDS session discovery implementation.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>discovery_thread_state_t</b>
+            <br />
+            Thread-safe result sharing between discovery threads. struct
+            <b>mdns_query_state_t</b>
+            <br />
+            Internal state for collecting discovered services. struct
+            <b>mdns_thread_context_t</b>
+            <br />
+            Context for mDNS discovery thread. struct
+            <b>acds_thread_context_t</b>
+            <br />
+            Context for ACDS discovery thread.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>pubkey_to_hex</b> (const <b>uint8_t</b> pubkey[32], char
+            hex_out[(32 *2+1)])
+            <br />
+            Convert Ed25519 public key to hex string. <b>asciichat_error_t</b>
+            <b>hex_to_pubkey</b> (const char *hex_str,
+            <b>uint8_t</b> pubkey_out[32])
+            <br />
+            Convert hex string to Ed25519 public key. <b>ui_mdns_server_t</b> *
+            <b>discovery_mdns_query</b> (int timeout_ms, int max_servers,
+            <b>bool</b>
+            quiet, int *out_count)
+            <br />
+            Public mDNS query function used by both parallel discovery and TUI
+            wrapper. void
+            <b>discovery_mdns_destroy</b> (<b>ui_mdns_server_t</b> *servers)
+            <br />
+            Free memory from mDNS discovery results. void
+            <b>discovery_config_init_defaults</b> (<b>discovery_config_t</b>
+            *config)
+            <br />
+            Initialize discovery config with defaults. <b>asciichat_error_t</b>
+            <b>discover_session_parallel</b> (const char *session_string, const
+            <b>discovery_config_t</b> *config,
+            <b>discovery_result_t</b> *result)
+            <br />
+            Look up session in parallel on mDNS and ACDS.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Parallel mDNS and ACDS session discovery implementation.
+        </p>
+        <p class="Pp">
+          This module provides automated discovery of ascii-chat servers via
+          parallel mDNS (local LAN) and ACDS (internet) lookups.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">Architecture:</p>
+        <ul class="Bl-bullet">
+          <li>
+            mDNS discovery: <b>discovery_mdns_query()</b> - core implementation
+            (this module)
+          </li>
+          <li>
+            ACDS discovery: ACDS client implementation for centralized lookup
+          </li>
+          <li>
+            Parallel coordination: Concurrent threads with &quot;race to
+            success&quot; semantics
+          </li>
+          <li>
+            UI wrapper: lan_discovery.c calls <b>discovery_mdns_query()</b> for
+            interactive selection
+          </li>
+        </ul>
+        <p class="Pp">Definition in file <b>discovery.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> discover_session_parallel (const char *
+            session_string, const <b>discovery_config_t</b> * config,
+            <b>discovery_result_t</b> * result)
+          </h2>
+          <p class="Pp">
+            Look up session in parallel on mDNS and ACDS. Spawns two concurrent
+            threads to search both mDNS (local LAN) and ACDS (internet). Returns
+            immediately when either finds the session, cancelling the other
+            search.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Verification Logic:</b></p>
+          <p class="Pp"></p>
+          <p class="Pp">If config-&gt;expected_pubkey is set:</p>
+          <ul class="Bl-bullet">
+            <li>
+              mDNS result: Verify TXT record contains matching host_pubkey
+            </li>
+            <li>
+              ACDS result: Verify SESSION_LOOKUP response contains matching
+              host_pubkey
+            </li>
+            <li>
+              If both find result: Verify they have same pubkey (cross-check)
+            </li>
+            <li>On mismatch: Return ERROR_CRYPTO_VERIFY_FAILED</li>
+          </ul>
+          <p class="Pp">
+            If config-&gt;expected_pubkey is NULL but config-&gt;insecure_mode
+            is true:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Skip all verification, accept first result found</li>
+            <li>WARNING: Vulnerable to MITM attacks!</li>
+          </ul>
+          <p class="Pp">
+            If config-&gt;expected_pubkey is NULL and config-&gt;insecure_mode
+            is false:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Search mDNS only (ACDS thread not started)</li>
+            <li>
+              Use TOFU (Trust On First Use): accept first mDNS result found
+            </li>
+          </ul>
+          <p class="Pp"><b>Thread Lifecycle:</b></p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Both threads start immediately</li>
+            <li>
+              Whichever completes first signals success via condition variable
+            </li>
+            <li>Other thread is joined (cleaned up)</li>
+            <li>Function returns with result</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>session_string</i> Session string to find (e.g.,
+            &quot;swift-river-mountain&quot;)
+            <br />
+            <i>config</i> Discovery configuration
+            <br />
+            <i>result</i> Discovery result (output)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This function BLOCKS until one discovery method succeeds or both
+            timeout
+            <p class="Pp"></p>
+            <p class="Pp">
+              Not thread-safe for concurrent calls - use only one discovery at a
+              time
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>536</b> of file <b>discovery.c</b>.
+          </p>
+          <pre>
+537                                                                         {
+538   if (!session_string || !config || !result) {
+539     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+540     return ERROR_INVALID_PARAM;
+541   }
+542
+543   // Validate session string format
+544   if (!is_session_string(session_string)) {
+545     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid session string format&quot;);
+546     return ERROR_INVALID_PARAM;
 547   }
-548 
-549   // Spawn mDNS thread
-550   asciichat_thread_t mdns_thread;
-551   thread_init(&amp;mdns_thread);
-552 
-553   if (use_mdns) {
-554     mdns_thread_context_t *mdns_ctx = SAFE_MALLOC(sizeof(*mdns_ctx), mdns_thread_context_t *);
-555     if (!mdns_ctx) {
-556       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate mDNS context&quot;);
-557       mutex_destroy(&amp;state.lock);
-558       cond_destroy(&amp;state.signal);
-559       return ERROR_MEMORY;
-560     }
-561 
-562     mdns_ctx-&gt;session_string = session_string;
-563     mdns_ctx-&gt;state = &amp;state;
-564     mdns_ctx-&gt;expected_pubkey = config-&gt;expected_pubkey;
-565 
-566     int thread_err = acthread_create(&amp;mdns_thread, &quot;mdns&quot;, mdns_thread_fn, mdns_ctx);
-567     if (thread_err != 0) {
-568       log_warn(&quot;Discovery: Failed to spawn mDNS thread&quot;);
-569       SAFE_FREE(mdns_ctx);
-570       use_mdns = false;
-571     }
-572   }
-573 
-574   // Spawn ACDS thread
-575   asciichat_thread_t acds_thread;
-576   thread_init(&amp;acds_thread);
-577 
-578   if (use_acds) {
-579     acds_thread_context_t *acds_ctx = SAFE_MALLOC(sizeof(*acds_ctx), acds_thread_context_t *);
-580     if (!acds_ctx) {
-581       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate ACDS context&quot;);
-582       if (use_mdns &amp;&amp; thread_is_initialized(&amp;mdns_thread)) {
-583         thread_join(&amp;mdns_thread, NULL);
-584       }
-585       mutex_destroy(&amp;state.lock);
-586       cond_destroy(&amp;state.signal);
-587       return ERROR_MEMORY;
-588     }
-589 
-590     acds_ctx-&gt;session_string = session_string;
-591     acds_ctx-&gt;state = &amp;state;
-592     acds_ctx-&gt;config = config;
-593 
-594     int thread_err = acthread_create(&amp;acds_thread, &quot;acds_client&quot;, acds_thread_fn, acds_ctx);
-595     if (thread_err != 0) {
-596       log_warn(&quot;Discovery: Failed to spawn ACDS thread&quot;);
-597       SAFE_FREE(acds_ctx);
-598       use_acds = false;
-599     }
-600   }
-601 
-602   // Wait for result (mDNS timeout 2s + ACDS timeout 5s max)
-603   uint32_t wait_timeout_ms = config-&gt;acds_timeout_ms + 1000;
-604   mutex_lock(&amp;state.lock);
-605   {
-606     uint32_t elapsed_ms = 0;
-607     while (!state.found &amp;&amp; elapsed_ms &lt; wait_timeout_ms) {
-608       // Check if both threads are done
-609       if (state.mdns_done &amp;&amp; state.acds_done) {
-610         break;
-611       }
-612 
-613       // Wait with timeout
-614       cond_timedwait(&amp;state.signal, &amp;state.lock, 500 * NS_PER_MS_INT);
-615       elapsed_ms += 500;
-616     }
-617   }
-618   mutex_unlock(&amp;state.lock);
-619 
-620   // Join threads
-621   if (use_mdns &amp;&amp; thread_is_initialized(&amp;mdns_thread)) {
-622     thread_join(&amp;mdns_thread, NULL);
-623   }
-624   if (use_acds &amp;&amp; thread_is_initialized(&amp;acds_thread)) {
-625     thread_join(&amp;acds_thread, NULL);
-626   }
-627 
-628   // Cleanup
-629   mutex_destroy(&amp;state.lock);
-630   cond_destroy(&amp;state.signal);
-631 
-632   // Check result
-633   if (!result-&gt;success) {
-634     SET_ERRNO(ERROR_NOT_FOUND, &quot;Session '%s' not found (mDNS/ACDS timeout)&quot;, session_string);
-635     return ERROR_NOT_FOUND;
-636   }
-637 
-638   log_info(&quot;Discovery: Session '%s' discovered via %s&quot;, session_string,
-639            result-&gt;source == DISCOVERY_SOURCE_MDNS ? &quot;mDNS&quot; : &quot;ACDS&quot;);
-640 
-641   return ASCIICHAT_OK;
-642 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_thread_state_t::acds_done</b>,
-    <b>discovery_config_t::acds_timeout_ms</b>, <b>ASCIICHAT_OK</b>,
-    <b>acthread_create</b>, <b>thread_init()</b>,
-    <b>thread_is_initialized()</b>, <b>thread_join</b>,
-    <b>cond_destroy()</b>, <b>cond_init()</b>, <b>cond_timedwait</b>,
-    <b>acds_thread_context_t::config</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_MEMORY</b>, <b>ERROR_NOT_FOUND</b>,
-    <b>discovery_config_t::expected_pubkey</b>,
-    <b>mdns_thread_context_t::expected_pubkey</b>,
-    <b>discovery_thread_state_t::found</b>,
-    <b>discovery_config_t::insecure_mode</b>, <b>is_session_string()</b>,
-    <b>discovery_thread_state_t::lock</b>, <b>log_debug</b>, <b>log_info</b>,
-    <b>log_warn</b>, <b>discovery_thread_state_t::mdns_done</b>,
-    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>mutex_lock</b>,
-    <b>mutex_unlock</b>, <b>NS_PER_MS_INT</b>,
-    <b>discovery_thread_state_t::result</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>acds_thread_context_t::session_string</b>,
-    <b>mdns_thread_context_t::session_string</b>, <b>SET_ERRNO</b>,
-    <b>discovery_thread_state_t::signal</b>, <b>discovery_result_t::source</b>,
-    <b>acds_thread_context_t::state</b>, <b>mdns_thread_context_t::state</b>,
-    and <b>discovery_result_t::success</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_discovery_config_init_defaults_("><a class="permalink" href="#void_discovery_config_init_defaults_(">void
-  discovery_config_init_defaults (<b>discovery_config_t</b> * config)</a></h2>
-<p class="Pp">Initialize discovery config with defaults. Sets sensible
-  defaults:</p>
-<ul class="Bl-bullet">
-  <li>ACDS server: localhost:27225 (debug), discovery.ascii-chat.com
-    (release)</li>
-  <li>Timeouts: mdns=2000ms, acds=5000ms</li>
-  <li>Verification: None (expected_pubkey=NULL)</li>
-  <li>Insecure mode: false</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i></i><b>Config Module</b><i></i><b> Configuration to
-  initialize</b></div>
-<p class="Pp">Definition at line <b>496</b> of file <b>discovery.c</b>.</p>
-<pre>496                                                                 {
-497   if (!config)
-498     return;
-499 
-500   memset(config, 0, sizeof(*config));
-501 
-502   // Check if debug or release build
-503 #ifdef NDEBUG
-504   // Release: use internet ACDS
-505   SAFE_STRNCPY(config-&gt;acds_server, &quot;discovery.ascii-chat.com&quot;, sizeof(config-&gt;acds_server) - 1);
-506 #else
-507   // Debug: use local ACDS
-508   SAFE_STRNCPY(config-&gt;acds_server, &quot;127.0.0.1&quot;, sizeof(config-&gt;acds_server) - 1);
-509 #endif
-510 
-511   config-&gt;acds_port = OPT_ACDS_PORT_INT_DEFAULT;
-512   config-&gt;mdns_timeout_ms = 2 * MS_PER_SEC_INT;
-513   config-&gt;acds_timeout_ms = 5 * MS_PER_SEC_INT;
-514   config-&gt;insecure_mode = false;
-515   config-&gt;expected_pubkey = NULL;
-516 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>discovery_config_t::acds_port</b>,
-    <b>discovery_config_t::acds_server</b>,
-    <b>discovery_config_t::acds_timeout_ms</b>,
-    <b>discovery_config_t::expected_pubkey</b>,
-    <b>discovery_config_t::insecure_mode</b>,
-    <b>discovery_config_t::mdns_timeout_ms</b>, <b>MS_PER_SEC_INT</b>,
-    <b>OPT_ACDS_PORT_INT_DEFAULT</b>, and <b>SAFE_STRNCPY</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_discovery_mdns_destroy_("><a class="permalink" href="#void_discovery_mdns_destroy_(">void
-  discovery_mdns_destroy (<b>ui_mdns_server_t</b> * servers)</a></h2>
-<p class="Pp">Free memory from mDNS discovery results.</p>
-<p class="Pp">Definition at line <b>267</b> of file <b>discovery.c</b>.</p>
-<pre>267                                                        {
-268   SAFE_FREE(servers);
-269 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>ui_mdns_free_results()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>ui_mdns_server_t</b> * discovery_mdns_query (int timeout_ms,
-  int max_servers, <b>bool</b> quiet, int * out_count)</h2>
-<p class="Pp">Public mDNS query function used by both parallel discovery and TUI
-    wrapper. Discover ascii-chat servers on local network via mDNS.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>timeout_ms</i> Query timeout in milliseconds
-<br/>
-<i>max_servers</i> Maximum servers to discover
-<br/>
-<i>quiet</i> If true, suppresses progress messages
-<br/>
-<i>out_count</i> Output: number of servers discovered</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Array of discovered servers, or NULL on error. Use
-  <b>discovery_mdns_destroy()</b> to free.</div>
-<p class="Pp">Definition at line <b>179</b> of file <b>discovery.c</b>.</p>
-<pre>179                                                                                                     {
-180   if (!out_count) {
-181     SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_count pointer is NULL&quot;);
-182     return NULL;
-183   }
-184 
-185   *out_count = 0;
-186 
-187   // Apply defaults
-188   if (timeout_ms &lt;= 0) {
-189     timeout_ms = 2 * MS_PER_SEC_INT;
-190   }
-191   if (max_servers &lt;= 0) {
-192     max_servers = 20;
-193   }
-194 
-195   // Allocate state for collecting servers
-196   mdns_query_state_t state;
-197   memset(&amp;state, 0, sizeof(state));
-198   state.capacity = max_servers;
-199   state.timeout_ms = timeout_ms;
-200   state.start_time_ms = (int64_t)time_ns_to_ms(time_get_ns());
-201 
-202   // Allocate server array
-203   state.servers = SAFE_MALLOC((size_t)state.capacity * sizeof(ui_mdns_server_t), ui_mdns_server_t *);
-204   if (!state.servers) {
-205     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate mDNS discovery server array&quot;);
-206     return NULL;
-207   }
-208   memset(state.servers, 0, state.capacity * sizeof(ui_mdns_server_t));
-209 
-210   if (!quiet) {
-211     log_info(&quot;mDNS: Searching for ascii-chat servers on local network (timeout: %dms)&quot;, state.timeout_ms);
-212     printf(&quot;&#x1F50D; Searching for ascii-chat servers on LAN...\n&quot;);
-213   }
-214 
-215   // Initialize mDNS
-216   asciichat_mdns_t *mdns = asciichat_mdns_init();
-217   if (!mdns) {
-218     log_warn(&quot;mDNS: Failed to initialize mDNS - discovery unavailable&quot;);
-219     SAFE_FREE(state.servers);
-220     return NULL;
+548
+549   memset(result, 0, sizeof(*result));
+550   log_info(&quot;Discovery: Looking up session '%s'&quot;, session_string);
+551
+552   // Initialize thread state
+553   discovery_thread_state_t state;
+554   memset(&amp;state, 0, sizeof(state));
+555   state.result = result;
+556   mutex_init(&amp;state.lock, &quot;mdns_resolve&quot;);
+557   cond_init(&amp;state.signal, &quot;mdns_signal&quot;);
+558
+559   // Determine which discovery methods to use
+560   bool use_mdns = true;
+561   bool use_acds = config-&gt;expected_pubkey != NULL || config-&gt;insecure_mode;
+562   if (config-&gt;insecure_mode &amp;&amp; !config-&gt;expected_pubkey)
+563     NOTICE(DANGER, &quot;DISCOVERY HOST VERIFICATION DISABLED&quot;,
+564            &quot;Insecure discovery is enabled without an expected host key.\n&quot;
+565            &quot;The discovered host identity cannot be verified; this is vulnerable to man-in-the-middle attacks.&quot;);
+566
+567   if (!use_acds) {
+568     log_debug(&quot;Discovery: mDNS-only mode (no --server-key and no --acds-insecure)&quot;);
+569   }
+570
+571   // Spawn mDNS thread
+572   asciichat_thread_t mdns_thread;
+573   thread_init(&amp;mdns_thread);
+574
+575   if (use_mdns) {
+576     mdns_thread_context_t *mdns_ctx = SAFE_MALLOC(sizeof(*mdns_ctx), mdns_thread_context_t *);
+577     if (!mdns_ctx) {
+578       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate mDNS context&quot;);
+579       mutex_destroy(&amp;state.lock);
+580       cond_destroy(&amp;state.signal);
+581       return ERROR_MEMORY;
+582     }
+583
+584     mdns_ctx-&gt;session_string = session_string;
+585     mdns_ctx-&gt;state = &amp;state;
+586     mdns_ctx-&gt;expected_pubkey = config-&gt;expected_pubkey;
+587
+588     int thread_err = acthread_create(&amp;mdns_thread, &quot;mdns&quot;, mdns_thread_fn, mdns_ctx);
+589     if (thread_err != 0) {
+590       log_warn(&quot;Discovery: Failed to spawn mDNS thread&quot;);
+591       SAFE_FREE(mdns_ctx);
+592       use_mdns = false;
+593     }
+594   }
+595
+596   // Spawn ACDS thread
+597   asciichat_thread_t acds_thread;
+598   thread_init(&amp;acds_thread);
+599
+600   if (use_acds) {
+601     acds_thread_context_t *acds_ctx = SAFE_MALLOC(sizeof(*acds_ctx), acds_thread_context_t *);
+602     if (!acds_ctx) {
+603       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate ACDS context&quot;);
+604       if (use_mdns &amp;&amp; thread_is_initialized(&amp;mdns_thread)) {
+605         thread_join(&amp;mdns_thread, NULL);
+606       }
+607       mutex_destroy(&amp;state.lock);
+608       cond_destroy(&amp;state.signal);
+609       return ERROR_MEMORY;
+610     }
+611
+612     acds_ctx-&gt;session_string = session_string;
+613     acds_ctx-&gt;state = &amp;state;
+614     acds_ctx-&gt;config = config;
+615
+616     int thread_err = acthread_create(&amp;acds_thread, &quot;acds_client&quot;, acds_thread_fn, acds_ctx);
+617     if (thread_err != 0) {
+618       log_warn(&quot;Discovery: Failed to spawn ACDS thread&quot;);
+619       SAFE_FREE(acds_ctx);
+620       use_acds = false;
+621     }
+622   }
+623
+624   // Wait for result (mDNS timeout 2s + ACDS timeout 5s max)
+625   uint32_t wait_timeout_ms = config-&gt;acds_timeout_ms + 1000;
+626   mutex_lock(&amp;state.lock);
+627   {
+628     uint32_t elapsed_ms = 0;
+629     while (!state.found &amp;&amp; elapsed_ms &lt; wait_timeout_ms) {
+630       // Check if both threads are done
+631       if (state.mdns_done &amp;&amp; state.acds_done) {
+632         break;
+633       }
+634
+635       // Wait with timeout
+636       cond_timedwait(&amp;state.signal, &amp;state.lock, 500 * NS_PER_MS_INT);
+637       elapsed_ms += 500;
+638     }
+639   }
+640   mutex_unlock(&amp;state.lock);
+641
+642   // Join threads
+643   if (use_mdns &amp;&amp; thread_is_initialized(&amp;mdns_thread)) {
+644     thread_join(&amp;mdns_thread, NULL);
+645   }
+646   if (use_acds &amp;&amp; thread_is_initialized(&amp;acds_thread)) {
+647     thread_join(&amp;acds_thread, NULL);
+648   }
+649
+650   // Cleanup
+651   mutex_destroy(&amp;state.lock);
+652   cond_destroy(&amp;state.signal);
+653
+654   // Check result
+655   if (!result-&gt;success) {
+656     SET_ERRNO(ERROR_NOT_FOUND, &quot;Session '%s' not found (mDNS/ACDS timeout)&quot;, session_string);
+657     return ERROR_NOT_FOUND;
+658   }
+659
+660   log_info(&quot;Discovery: Session '%s' discovered via %s&quot;, session_string,
+661            result-&gt;source == DISCOVERY_SOURCE_MDNS ? &quot;mDNS&quot; : &quot;ACDS&quot;);
+662
+663   return ASCIICHAT_OK;
+664 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_thread_state_t::acds_done</b>,
+            <b>discovery_config_t::acds_timeout_ms</b>, <b>acthread_create</b>,
+            <b>ASCIICHAT_OK</b>, <b>cond_destroy()</b>, <b>cond_init()</b>,
+            <b>cond_timedwait</b>, <b>acds_thread_context_t::config</b>,
+            <b>discover_session_parallel()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEMORY</b>, <b>ERROR_NOT_FOUND</b>,
+            <b>discovery_config_t::expected_pubkey</b>,
+            <b>mdns_thread_context_t::expected_pubkey</b>,
+            <b>discovery_thread_state_t::found</b>,
+            <b>discovery_config_t::insecure_mode</b>,
+            <b>is_session_string()</b>, <b>discovery_thread_state_t::lock</b>,
+            <b>log_debug</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>discovery_thread_state_t::mdns_done</b>, <b>mutex_destroy()</b>,
+            <b>mutex_init()</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>NOTICE</b>, <b>NS_PER_MS_INT</b>,
+            <b>discovery_thread_state_t::result</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>acds_thread_context_t::session_string</b>,
+            <b>mdns_thread_context_t::session_string</b>, <b>SET_ERRNO</b>,
+            <b>discovery_thread_state_t::signal</b>,
+            <b>discovery_result_t::source</b>,
+            <b>acds_thread_context_t::state</b>,
+            <b>mdns_thread_context_t::state</b>,
+            <b>discovery_result_t::success</b>, <b>thread_init()</b>,
+            <b>thread_is_initialized()</b>, and <b>thread_join</b>.
+          </p>
+          <p class="Pp">Referenced by <b>discover_session_parallel()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_discovery_config_init_defaults_(">
+            <a class="permalink" href="#void_discovery_config_init_defaults_("
+              >void discovery_config_init_defaults (<b>discovery_config_t</b> *
+              config)</a
+            >
+          </h2>
+          <p class="Pp">
+            Initialize discovery config with defaults. Sets sensible defaults:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              ACDS server: localhost:27225 (debug), discovery.ascii-chat.com
+              (release)
+            </li>
+            <li>Timeouts: mdns=2000ms, acds=5000ms</li>
+            <li>Verification: None (expected_pubkey=NULL)</li>
+            <li>Insecure mode: false</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>config</i> Configuration to initialize</div>
+          <p class="Pp">
+            Definition at line <b>514</b> of file <b>discovery.c</b>.
+          </p>
+          <pre>
+514                                                                 {
+515   if (!config)
+516     return;
+517
+518   memset(config, 0, sizeof(*config));
+519
+520   // Check if debug or release build
+521 #ifdef NDEBUG
+522   // Release: use internet ACDS
+523   SAFE_STRNCPY(config-&gt;acds_server, &quot;discovery.ascii-chat.com&quot;, sizeof(config-&gt;acds_server) - 1);
+524 #else
+525   // Debug: use local ACDS
+526   SAFE_STRNCPY(config-&gt;acds_server, &quot;127.0.0.1&quot;, sizeof(config-&gt;acds_server) - 1);
+527 #endif
+528
+529   config-&gt;acds_port = OPT_ACDS_PORT_INT_DEFAULT;
+530   config-&gt;mdns_timeout_ms = 2 * MS_PER_SEC_INT;
+531   config-&gt;acds_timeout_ms = 5 * MS_PER_SEC_INT;
+532   config-&gt;insecure_mode = false;
+533   config-&gt;expected_pubkey = NULL;
+534 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_config_t::acds_port</b>,
+            <b>discovery_config_t::acds_server</b>,
+            <b>discovery_config_t::acds_timeout_ms</b>,
+            <b>discovery_config_init_defaults()</b>,
+            <b>discovery_config_t::expected_pubkey</b>,
+            <b>discovery_config_t::insecure_mode</b>,
+            <b>discovery_config_t::mdns_timeout_ms</b>, <b>MS_PER_SEC_INT</b>,
+            <b>OPT_ACDS_PORT_INT_DEFAULT</b>, and <b>SAFE_STRNCPY</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_config_init_defaults()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_discovery_mdns_destroy_(">
+            <a class="permalink" href="#void_discovery_mdns_destroy_("
+              >void discovery_mdns_destroy (<b>ui_mdns_server_t</b> *
+              servers)</a
+            >
+          </h2>
+          <p class="Pp">Free memory from mDNS discovery results.</p>
+          <p class="Pp">
+            Definition at line <b>283</b> of file <b>discovery.c</b>.
+          </p>
+          <pre>
+283                                                        {
+284   SAFE_FREE(servers);
+285 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>discovery_mdns_destroy()</b>, and <b>SAFE_FREE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_mdns_destroy()</b>, and
+            <b>ui_mdns_free_results()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ui_mdns_server_t</b> * discovery_mdns_query (int timeout_ms, int
+            max_servers, <b>bool</b> quiet, int * out_count)
+          </h2>
+          <p class="Pp">
+            Public mDNS query function used by both parallel discovery and TUI
+            wrapper. Discover ascii-chat servers on local network via mDNS.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>timeout_ms</i> Query timeout in milliseconds
+            <br />
+            <i>max_servers</i> Maximum servers to discover
+            <br />
+            <i>quiet</i> If true, suppresses progress messages
+            <br />
+            <i>out_count</i> Output: number of servers discovered
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Array of discovered servers, or NULL on error. Use
+            <b>discovery_mdns_destroy()</b> to free.
+          </div>
+          <p class="Pp">
+            Public mDNS query function used by both parallel discovery and TUI
+            wrapper.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Queries for mDNS _ascii-chat._tcp services and returns discovered
+            servers. This is the core discovery function used by both:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Parallel discovery threads (discover_session_parallel)</li>
+            <li>TUI wrapper (lan_discovery_query)</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>timeout_ms</i> Query timeout in milliseconds (default: 2000)
+            <br />
+            <i>max_servers</i> Maximum servers to discover (default: 20)
+            <br />
+            <i>quiet</i> If true, suppresses progress messages
+            <br />
+            <i>out_count</i> Output: number of servers discovered
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Array of discovered servers, or NULL on error. Use
+            <b>discovery_mdns_destroy()</b> to free.
+          </div>
+          <p class="Pp">
+            Definition at line <b>187</b> of file <b>discovery.c</b>.
+          </p>
+          <pre>
+187                                                                                                     {
+188   if (!out_count) {
+189     SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_count pointer is NULL&quot;);
+190     return NULL;
+191   }
+192
+193   *out_count = 0;
+194
+195   // Apply defaults
+196   if (timeout_ms &lt;= 0) {
+197     timeout_ms = 2 * MS_PER_SEC_INT;
+198   }
+199   if (max_servers &lt;= 0) {
+200     max_servers = 20;
+201   }
+202
+203   // Allocate state for collecting servers
+204   mdns_query_state_t state;
+205   memset(&amp;state, 0, sizeof(state));
+206   state.capacity = max_servers;
+207   state.timeout_ms = timeout_ms;
+208   state.start_time_ms = (int64_t)time_ns_to_ms(time_get_ns());
+209
+210   // Allocate server array
+211   state.servers = SAFE_MALLOC((size_t)state.capacity * sizeof(ui_mdns_server_t), ui_mdns_server_t *);
+212   if (!state.servers) {
+213     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate mDNS discovery server array&quot;);
+214     return NULL;
+215   }
+216   memset(state.servers, 0, state.capacity * sizeof(ui_mdns_server_t));
+217
+218   if (!quiet) {
+219     log_info(&quot;mDNS: Searching for ascii-chat servers on local network (timeout: %dms)&quot;, state.timeout_ms);
+220     printf(&quot;&#x1F50D; Searching for ascii-chat servers on LAN...\n&quot;);
 221   }
-222 
-223   // Start mDNS query for _ascii-chat._tcp services
-224   asciichat_error_t query_result =
-225       asciichat_mdns_query(mdns, &quot;_ascii-chat._tcp.local&quot;, discovery_mdns_callback, &amp;state);
-226 
-227   if (query_result != ASCIICHAT_OK) {
-228     log_info(&quot;mDNS: Query failed - no servers found via service discovery&quot;);
-229     asciichat_mdns_destroy(mdns);
-230     SAFE_FREE(state.servers);
-231     return NULL;
-232   }
-233 
-234   // Poll for responses until timeout
-235   int64_t deadline = state.start_time_ms + state.timeout_ms;
-236   while (!state.query_complete &amp;&amp; (int64_t)time_ns_to_ms(time_get_ns()) &lt; deadline) {
-237     int poll_timeout = (int)(deadline - (int64_t)time_ns_to_ms(time_get_ns()));
-238     if (poll_timeout &lt; 0) {
-239       poll_timeout = 0;
-240     }
-241     if (poll_timeout &gt; 100) {
-242       poll_timeout = 100; // Check every 100ms
-243     }
-244     asciichat_mdns_update(mdns, poll_timeout);
+222
+223   // Discovery is retried in the live picker; failures remain in logs.
+224   asciichat_errno_scope_t query_scope = errno_scope_begin();
+225   bool previous_notifications = errno_notifications_suppress(true);
+226   // Initialize mDNS
+227   asciichat_mdns_t *mdns = asciichat_mdns_init();
+228   if (!mdns) {
+229     log_warn(&quot;mDNS: Failed to initialize mDNS - discovery unavailable&quot;);
+230     errno_notifications_suppress(previous_notifications);
+231     errno_scope_end(query_scope, ASCIICHAT_ERRNO_HANDLED);
+232     return state.servers;
+233   }
+234
+235   // Start mDNS query for _ascii-chat._tcp services
+236   asciichat_error_t query_result =
+237       asciichat_mdns_query(mdns, &quot;_ascii-chat._tcp.local&quot;, discovery_mdns_callback, &amp;state);
+238
+239   if (query_result != ASCIICHAT_OK) {
+240     log_info(&quot;mDNS: Query failed - no servers found via service discovery&quot;);
+241     asciichat_mdns_destroy(mdns);
+242     errno_notifications_suppress(previous_notifications);
+243     errno_scope_end(query_scope, ASCIICHAT_ERRNO_HANDLED);
+244     return state.servers;
 245   }
-246 
-247   // Cleanup mDNS
-248   asciichat_mdns_destroy(mdns);
-249 
-250   if (!quiet) {
-251     if (state.count &gt; 0) {
-252       printf(&quot;&#x2705; Found %d ascii-chat server%s on LAN\n&quot;, state.count, state.count == 1 ? &quot;&quot; : &quot;s&quot;);
-253       log_info(&quot;mDNS: Found %d server(s)&quot;, state.count);
-254     } else {
-255       printf(&quot;&#x274C; No ascii-chat servers found on LAN\n&quot;);
-256       log_info(&quot;mDNS: No servers found&quot;);
-257     }
-258   }
-259 
-260   *out_count = state.count;
-261   return state.servers;
-262 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_mdns_destroy()</b>,
-    <b>asciichat_mdns_init()</b>, <b>asciichat_mdns_query()</b>,
-    <b>asciichat_mdns_update()</b>, <b>ASCIICHAT_OK</b>,
-    <b>mdns_query_state_t::capacity</b>, <b>mdns_query_state_t::count</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>, <b>log_info</b>,
-    <b>log_warn</b>, <b>MS_PER_SEC_INT</b>,
-    <b>mdns_query_state_t::query_complete</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>mdns_query_state_t::servers</b>, <b>SET_ERRNO</b>,
-    <b>mdns_query_state_t::start_time_ms</b>, <b>time_get_ns()</b>, and
-    <b>mdns_query_state_t::timeout_ms</b>.</p>
-<p class="Pp">Referenced by <b>ui_mdns_query()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> hex_to_pubkey (const char * hex_str,
-  <b>uint8_t</b> pubkey_out[32])</h2>
-<p class="Pp">Convert hex string to Ed25519 public key. Converts 64-character
-    hex string to 32-byte binary pubkey.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>hex_str</i> Hex string (64 characters)
-<br/>
-<i>pubkey_out</i> Output binary pubkey (32 bytes)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_INVALID_PARAM if invalid
-  hex</div>
-<p class="Pp">Definition at line <b>58</b> of file <b>discovery.c</b>.</p>
-<pre>58                                                                              {
-59   if (!hex_str || !pubkey_out) {
-60     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid hex_str or pubkey_out pointer&quot;);
-61     return ERROR_INVALID_PARAM;
-62   }
-63 
-64   if (strlen(hex_str) != 64) {
-65     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Hex string must be exactly 64 characters&quot;);
-66     return ERROR_INVALID_PARAM;
-67   }
-68 
-69   for (int i = 0; i &lt; 32; i++) {
-70     char hex_byte[3];
-71     hex_byte[0] = hex_str[i * 2];
-72     hex_byte[1] = hex_str[i * 2 + 1];
-73     hex_byte[2] = '\0';
-74 
-75     if (!isxdigit(hex_byte[0]) || !isxdigit(hex_byte[1])) {
-76       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid hex character in string&quot;);
-77       return ERROR_INVALID_PARAM;
-78     }
-79 
-80     pubkey_out[i] = (uint8_t)strtol(hex_byte, NULL, 16);
-81   }
-82 
-83   return ASCIICHAT_OK;
-84 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>, and
-    <b>SET_ERRNO</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_pubkey_to_hex_(const_"><a class="permalink" href="#void_pubkey_to_hex_(const_">void
-  pubkey_to_hex (const <b>uint8_t</b> pubkey[32], char hex_out[65])</a></h2>
-<p class="Pp">Convert Ed25519 public key to hex string. Converts 32-byte binary
-    pubkey to lowercase hex (64 characters).</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>pubkey</i> Binary public key (32 bytes)
-<br/>
-<i>hex_out</i> Output hex string buffer (must be at least 65 bytes)</div>
-<p class="Pp">Definition at line <b>49</b> of file <b>discovery.c</b>.</p>
-<pre>49                                                                {
-50   if (!pubkey || !hex_out)
-51     return;
-52   for (int i = 0; i &lt; 32; i++) {
-53     safe_snprintf(hex_out + (i * 2), 3, &quot;%02x&quot;, pubkey[i]);
-54   }
-55   hex_out[64] = '\0';
-56 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>safe_snprintf()</b>.</p>
-<p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
-    <b>server_crypto_handshake()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+246
+247   // Poll for responses until timeout
+248   int64_t deadline = state.start_time_ms + state.timeout_ms;
+249   while (!state.query_complete &amp;&amp; (int64_t)time_ns_to_ms(time_get_ns()) &lt; deadline) {
+250     int poll_timeout = (int)(deadline - (int64_t)time_ns_to_ms(time_get_ns()));
+251     if (poll_timeout &lt; 0) {
+252       poll_timeout = 0;
+253     }
+254     if (poll_timeout &gt; 100) {
+255       poll_timeout = 100; // Check every 100ms
+256     }
+257     if (asciichat_mdns_update(mdns, poll_timeout) != ASCIICHAT_OK)
+258       break;
+259   }
+260
+261   // Cleanup mDNS
+262   asciichat_mdns_destroy(mdns);
+263   errno_notifications_suppress(previous_notifications);
+264   errno_scope_end(query_scope, ASCIICHAT_ERRNO_HANDLED);
+265
+266   if (!quiet) {
+267     if (state.count &gt; 0) {
+268       printf(&quot;&#x2705; Found %d ascii-chat server%s on LAN\n&quot;, state.count, state.count == 1 ? &quot;&quot; : &quot;s&quot;);
+269       log_info(&quot;mDNS: Found %d server(s)&quot;, state.count);
+270     } else {
+271       printf(&quot;&#x274C; No ascii-chat servers found on LAN\n&quot;);
+272       log_info(&quot;mDNS: No servers found&quot;);
+273     }
+274   }
+275
+276   *out_count = state.count;
+277   return state.servers;
+278 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_ERRNO_HANDLED</b>,
+            <b>asciichat_mdns_destroy()</b>, <b>asciichat_mdns_init()</b>,
+            <b>asciichat_mdns_query()</b>, <b>asciichat_mdns_update()</b>,
+            <b>ASCIICHAT_OK</b>, <b>mdns_query_state_t::capacity</b>,
+            <b>mdns_query_state_t::count</b>, <b>discovery_mdns_query()</b>,
+            <b>errno_notifications_suppress()</b>, <b>errno_scope_begin()</b>,
+            <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_MEMORY</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>MS_PER_SEC_INT</b>, <b>mdns_query_state_t::query_complete</b>,
+            <b>SAFE_MALLOC</b>, <b>mdns_query_state_t::servers</b>,
+            <b>SET_ERRNO</b>, <b>mdns_query_state_t::start_time_ms</b>,
+            <b>time_get_ns()</b>, and <b>mdns_query_state_t::timeout_ms</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>discovery_mdns_query()</b>, and
+            <b>ui_mdns_query()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> hex_to_pubkey (const char * hex_str,
+            <b>uint8_t</b> pubkey_out[32])
+          </h2>
+          <p class="Pp">
+            Convert hex string to Ed25519 public key. Converts 64-character hex
+            string to 32-byte binary pubkey.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>hex_str</i> Hex string (64 characters)
+            <br />
+            <i>pubkey_out</i> Output binary pubkey (32 bytes)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, ERROR_INVALID_PARAM if invalid hex
+          </div>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>discovery.c</b>.
+          </p>
+          <pre>
+62                                                                                                   {
+63   if (!hex_str || !pubkey_out) {
+64     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid hex_str or pubkey_out pointer&quot;);
+65     return ERROR_INVALID_PARAM;
+66   }
+67
+68   if (strlen(hex_str) != 64) {
+69     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Hex string must be exactly 64 characters&quot;);
+70     return ERROR_INVALID_PARAM;
+71   }
+72
+73   for (int i = 0; i &lt; 32; i++) {
+74     char hex_byte[3];
+75     hex_byte[0] = hex_str[i * 2];
+76     hex_byte[1] = hex_str[i * 2 + 1];
+77     hex_byte[2] = '\0';
+78
+79     if (!isxdigit(hex_byte[0]) || !isxdigit(hex_byte[1])) {
+80       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid hex character in string&quot;);
+81       return ERROR_INVALID_PARAM;
+82     }
+83
+84     pubkey_out[i] = (uint8_t)strtol(hex_byte, NULL, 16);
+85   }
+86
+87   return ASCIICHAT_OK;
+88 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>hex_to_pubkey()</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>hex_to_pubkey()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_pubkey_to_hex_(const_">
+            <a class="permalink" href="#void_pubkey_to_hex_(const_"
+              >void pubkey_to_hex (const <b>uint8_t</b> pubkey[32], char
+              hex_out[(32 *2+1)])</a
+            >
+          </h2>
+          <p class="Pp">
+            Convert Ed25519 public key to hex string. Converts 32-byte binary
+            pubkey to lowercase hex (64 characters).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>pubkey</i> Binary public key (32 bytes)
+            <br />
+            <i>hex_out</i> Output hex string buffer (must be at least 65 bytes)
+          </div>
+          <p class="Pp">
+            Definition at line <b>53</b> of file <b>discovery.c</b>.
+          </p>
+          <pre>
+53                                                                                                     {
+54   if (!pubkey || !hex_out)
+55     return;
+56   for (int i = 0; i &lt; 32; i++) {
+57     safe_snprintf(hex_out + (i * 2), 3, &quot;%02x&quot;, pubkey[i]);
+58   }
+59   hex_out[64] = '\0';
+60 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ED25519_PUBLIC_KEY_SIZE</b>,
+            <b>HEX_STRING_SIZE_32</b>, <b>pubkey_to_hex()</b>, and
+            <b>safe_snprintf()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>pubkey_to_hex()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

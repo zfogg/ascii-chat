@@ -322,6 +322,13 @@ image_t *webcam_read_async(webcam_context_t *ctx) {
   return webcam_read_context(ctx);
 }
 
+EM_JS(double, js_webcam_get_fps, (), {
+  const track = Module.webcamStream?.getVideoTracks()[0];
+  return track?.getSettings().frameRate || 0;
+});
+
+double webcam_get_fps(webcam_context_t *ctx) { return ctx ? js_webcam_get_fps() : 0.0; }
+
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   if (!ctx || !width || !height) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "ctx, width, and height must not be NULL");

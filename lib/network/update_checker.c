@@ -305,6 +305,10 @@ static asciichat_error_t load_optional_cache(update_check_result_t *result) {
   return error;
 }
 
+bool update_check_try_fresh_cache(update_check_result_t *result) {
+  return result && load_optional_cache(result) == ASCIICHAT_OK && update_check_is_cache_fresh(result);
+}
+
 asciichat_error_t update_check_perform(update_check_result_t *result) {
   if (!result) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL result pointer");
@@ -328,6 +332,12 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
     const char *test_slow = SAFE_GETENV("ASCII_CHAT_TEST_UPDATE_SLOW");
     if (test_slow && strcmp(test_slow, "1") == 0)
       platform_sleep_ms(1000);
+    const char *test_gate = SAFE_GETENV("ASCII_CHAT_TEST_UPDATE_GATE");
+    if (test_gate && test_gate[0]) {
+      uint64_t deadline = time_get_ns() + 30 * NS_PER_SEC_INT;
+      while (platform_access(test_gate, PLATFORM_ACCESS_EXISTS) != 0 && time_get_ns() < deadline)
+        platform_sleep_ms(10);
+    }
     SAFE_STRNCPY(result->release_url, "https://github.com/zfogg/ascii-chat/releases/latest",
                  sizeof(result->release_url));
     result->check_succeeded = true;

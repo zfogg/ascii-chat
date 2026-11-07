@@ -58,7 +58,12 @@ Set local `output_path` to an image/video filename. The existing render-file pip
   "arguments": {
     "visualization": "fft",
     "audio": { "type": "test" },
-    "options": { "snapshot": true, "snapshot-delay": 2, "render-font-size": 28, "color-mode": "truecolor" },
+    "options": {
+      "snapshot": true,
+      "snapshot-delay": 2,
+      "render-font-size": 28,
+      "color-mode": "truecolor"
+    },
     "output_path": "/home/me/fft.mp4"
   }
 }
@@ -114,9 +119,7 @@ To replace the shared HTTP entry in `.mcp.json` with a client-managed stdio serv
     "ascii_chat": {
       "type": "stdio",
       "command": "./build/bin/ascii-chat",
-      "args": [
-        "mcp-server", "--transport", "stdio"
-      ]
+      "args": ["mcp-server", "--transport", "stdio"]
     }
   }
 }

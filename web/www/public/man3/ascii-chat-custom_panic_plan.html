@@ -1,0 +1,600 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_panic_plan(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_panic_plan(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_panic_plan(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          custom_panic_plan - Full Panic Instrumentation Pipeline Plan
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Full_Panic_Instrumentation_Pipeline_Plan">
+          <a class="permalink" href="#Full_Panic_Instrumentation_Pipeline_Plan"
+            >Full Panic Instrumentation Pipeline Plan</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Goals">
+            <a class="permalink" href="#Goals">Goals</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>[x]</dt>
+            <dd>
+              Build a Clang libTooling executable that rewrites ascii-chat C
+              sources, inserting per-statement logging calls for the panic
+              instrumentation pipeline.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Provide a runtime logging helper that records PID/TID, file, line,
+              macro status, and source snippet via single write() calls with
+              env-configurable filters.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Wire the tool into CMake so we can compile both original and
+              panic-instrumented builds easily while guaranteeing the original
+              sources remain untouched.
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Steps">
+            <a class="permalink" href="#Steps">Steps</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Runtime_Logging_Library_(lib/tooling/)">
+            <a class="permalink" href="#Runtime_Logging_Library_(lib/tooling/)"
+              >Runtime Logging Library (lib/tooling/)</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>[x]</dt>
+            <dd>
+              Create lib/tooling/instrument_log.h and
+              lib/tooling/instrument_log.c implementing
+              <b>asciichat_instr_log_line()</b
+              ><b> using async-signal-safe </b>write()<b
+                >; include PID/TID, timestamp, macro flag, snippet.</b
+              >
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Add env-configurable filters (e.g., ASCII_PANIC_INCLUDE,
+              ASCII_PANIC_THREAD, ASCII_PANIC_OUTPUT_DIR) and per-thread file
+              support.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Expose initialization/teardown helpers for thread-local log files.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Register the new source files in the existing library target
+              definitions (via cmake/tooling/Panic.cmake).
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Panic_Instrumentation_Tool_(">
+            <a class="permalink" href="#Panic_Instrumentation_Tool_("
+              >Panic Instrumentation Tool (src/tooling/)</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>[x]</dt>
+            <dd>
+              Implement src/tooling/asciichat_instr_tool.cpp using Clang
+              libTooling + AST visitors to insert
+              <b>asciichat_instr_log_line()</b
+              ><b> before each executable </b>Stmt<b
+                >, capturing original source text via </b
+              >SourceManager<b>.</b>
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Enforce &#x201C;write-new-only&#x201D; safety: validate target
+              output directories, refuse to overwrite existing files, and abort
+              on any attempt to reuse an existing path.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Handle macros by tagging expansion sites; log metadata
+              distinguishing expansion use.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Add command-line options for selecting files/functions and for
+              skipping functions marked with ASCII_PANIC_SIGNAL_HANDLER (via
+              annotate attribute) macro.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Emit transformed sources to a dedicated output directory mirroring
+              the input tree.
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Build_System_Integration_(">
+            <a class="permalink" href="#Build_System_Integration_("
+              >Build System Integration (cmake/tooling/)</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>[x]</dt>
+            <dd>
+              Provide cmake/tooling/Targets.cmake that defines the libTooling
+              executable and ascii-debug-runtime, ensuring LLVM/Clang discovery
+              happens there.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Expose ascii_panic_prepare() / ascii_panic_finalize() helpers in
+              cmake/tooling/Panic.cmake, invoked from the root CMakeLists.txt.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Add cache option ASCIICHAT_BUILD_WITH_PANIC and integrate
+              cmake/tooling/run_panic_instrumentation.sh to generate
+              panic-instrumented sources safely into build/instrumented/.
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Developer_Documentation_&amp;_Usage">
+            <a class="permalink" href="#Developer_Documentation_&amp;_Usage"
+              >Developer Documentation &amp; Usage</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>[x]</dt>
+            <dd>
+              Document workflow in <b>docs/tooling-instrumentation.md</b
+              ><b>: configuration, environment filters, per-thread logs.</b>
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Highlight safety guarantees (no overwrites/deletions of
+              source/.git) and recommended manual checks before use.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Note limitations (performance overhead, sanitizers, signal-handler
+              opt-outs) and post-processing tips.
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Optional_Enhancements_(time_permitting)">
+            <a class="permalink" href="#Optional_Enhancements_(time_permitting)"
+              >Optional Enhancements (time permitting)</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>[x]</dt>
+            <dd>
+              Provide a small post-processing helper in src/tooling/ that
+              summarizes the last log per thread.
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              Add unit tests (Criterion) for the logging runtime to ensure env
+              filters behave correctly (skipped in macOS CI if needed).
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Part_Two_">
+            <a class="permalink" href="#Part_Two_"
+              >Part Two &#x2013; Expanded Ideas from NOTES.md</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Macro-Aware Logging Enhancements</b></dd>
+            <dt>[x]</dt>
+            <dd>
+              Instrument both macro invocation sites and the expanded
+              statements, tagging each log with macro_invocation /
+              macro_expansion markers.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Add CLI toggles (--log-macro-invocations, --log-macro-expansions)
+              to control noise levels.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Research SourceManager::getImmediateMacroCallerLoc() to improve
+              correlation between invocation and expansion logs.
+            </dd>
+            <dt>2.</dt>
+            <dd><b>Advanced Filtering &amp; Noise Control</b></dd>
+            <dt>[x]</dt>
+            <dd>
+              Extend runtime filters to support regular-expression
+              includes/excludes for files and functions.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Add rate limiting (e.g., ASCII_PANIC_RATE=10 to log every Nth
+              statement per thread).
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Support ASCII_PANIC_ONLY=server:* to scope logging to module
+              prefixes or glob patterns.
+            </dd>
+            <dt>3.</dt>
+            <dd><b>Signal-Safe Postmortem Tooling</b></dd>
+            <dt>[x]</dt>
+            <dd>
+              Create a small analyzer that parses per-thread log files and
+              reports the last executed statement per TID, highlighting
+              divergence between threads.
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              Hook into crash handlers (where safe) to emit the last statement
+              snapshot automatically.
+            </dd>
+            <dt>4.</dt>
+            <dd><b>SanitizerCoverage Mode (Alternate Path)</b></dd>
+            <dt>[x]</dt>
+            <dd>
+              Prototype the lightweight <b>__sanitizer_cov_trace_pc_guard</b
+              ><b>
+                variant to cross-check crash locations without source
+                rewriting.</b
+              >
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              Build a symbolizer helper that resolves PCs to file:line and
+              optionally prints the on-disk source snippet for parity with the
+              source-to-source path.
+            </dd>
+            <dt>5.</dt>
+            <dd><b>Signal Handler Opt-In/Out Support</b></dd>
+            <dt>[x]</dt>
+            <dd>
+              Implement optional annotation macros (e.g., #define
+              ASCII_PANIC_SIGNAL_HANDLER) that map to Clang attributes for
+              exclusion.
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Document guidelines for marking async-signal-safe sections to
+              avoid interference from inserted logging.
+            </dd>
+            <dt>6.</dt>
+            <dd><b>Documentation &amp; Examples</b></dd>
+            <dt>[x]</dt>
+            <dd>
+              Add <b>docs/tooling-instrumentation.md</b
+              ><b>
+                with configuration walk-throughs, env var reference, and example
+                workflows (e.g., &quot;instrument only client display
+                code&quot;).</b
+              >
+            </dd>
+            <dt>[x]</dt>
+            <dd>
+              Provide scripts/snippets for tailing logs, filtering by thread,
+              and mapping macros to expansions.
+            </dd>
+            <dt>7.</dt>
+            <dd><b>Future Ideas (Backlog)</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Explore dynamic instrumentation with rr/dynamorio for environments
+              where recompilation is not possible.
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Investigate coupling with AddressSanitizer/UBSan to capture
+              faulting addresses and correlate them with instrumented logs.
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Part_Three_">
+            <a class="permalink" href="#Part_Three_"
+              >Part Three &#x2013; Longer-Term Exploration</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Selective Instrumentation Dialing</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Build an interactive configuration (toml/yaml) to declare
+              instrumentation focus areas per build (e.g., instrument:
+              [&quot;src/client/&quot;, &quot;lib/network/&quot;]).
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Investigate incremental instrumentation builds that reuse previous
+              transformed source trees when only subsets of inputs change.
+            </dd>
+            <dt>2.</dt>
+            <dd><b>Inline Context Augmentation</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Enrich log lines with surrounding context (preceding/following
+              statements) and control-flow markers (enter/exit blocks).
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Optionally inject dynamic variable snapshots (opt-in, careful to
+              avoid side effects) for debugging complex state transitions.
+            </dd>
+            <dt>3.</dt>
+            <dd><b>Visualization Tooling</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Prototype a TUI or web UI that streams instrumented logs and
+              visually correlates them with source code (e.g., highlight the
+              last executed lines per thread).
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Integrate with existing log viewers or IDE plugins to jump to the
+              last executed locations automatically.
+            </dd>
+            <dt>4.</dt>
+            <dd><b>Symbolization &amp; Coverage Fusion</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Combine instrumented logs with sanitizer coverage data to provide
+              branch-level crash breadcrumbs.
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Use DWARF debug info to map instrumented statements to richer
+              context (class/function metadata) for better triaging.
+            </dd>
+            <dt>5.</dt>
+            <dd><b>Integration with CI/CD</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Add optional CI jobs that build the instrumented variant and run
+              targeted tests to catch silent regressions.
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Produce artifacts that include per-thread debug logs and
+              summarized &quot;last statement&quot; reports for easier download
+              from CI runs.
+            </dd>
+            <dt>6.</dt>
+            <dd><b>Cross-Platform Parity</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Extend tooling support for Windows (MSVC) builds by ensuring the
+              instrumentation rewriter handles .vcxproj compile commands or uses
+              clang-cl compatibility layers.
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Confirm instrumentation runtime works when ASCII_CHAT_USE_MIMALLOC
+              or MUSL builds are enabled, documenting any special steps.
+            </dd>
+            <dt>7.</dt>
+            <dd><b>Community / External Tooling</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Package the instrumentation tool as a standalone utility (future
+              repo) so other projects can reuse it with minimal integration.
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Provide example patches/scripts for popular build systems (meson,
+              bazel) to ease adoption beyond ascii-chat.
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Part_Four_">
+            <a class="permalink" href="#Part_Four_"
+              >Part Four &#x2013; Execution Roadmap (Next 2 Sprints)</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Finalize Documentation</b></dd>
+            <dt>[x]</dt>
+            <dd>
+              Complete <b>docs/tooling-instrumentation.md</b
+              ><b>
+                with end-to-end workflow, env var reference, and
+                troubleshooting.</b
+              >
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              Record a short asciinema or GIF walkthrough demonstrating
+              instrumentation on a simple crash.
+            </dd>
+            <dt>2.</dt>
+            <dd><b>Stabilize Build Integration</b></dd>
+            <dt>[ ]</dt>
+            <dd>
+              Add CI job that configures with -DASCIICHAT_BUILD_WITH_PANIC=ON to
+              validate the pipeline builds on macOS/Linux.
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              Create a convenience script (scripts/instrumented-build.sh) that
+              wraps preset configuration, emphasizing no overwrite guarantees.
+            </dd>
+            <dt>3.</dt>
+            <dd><b>Runtime Validation</b></dd>
+            <dt>[ ]</dt>
+            <dd>
+              Write deterministic unit tests covering filter combinations
+              (include/exclude, rate, thread selection) using mock log sinks.
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              Stress-test per-thread logging on a synthetic multi-thread
+              workload and document sustained throughput limits.
+            </dd>
+            <dt>4.</dt>
+            <dd><b>Developer Onboarding Materials</b></dd>
+            <dt>[ ]</dt>
+            <dd>
+              Publish a sample workflow showing how to diff instrumented vs.
+              non-instrumented timing to gauge overhead.
+            </dd>
+            <dt>[ ]</dt>
+            <dd>
+              Add FAQ entries addressing common integration questions (macros,
+              signal handlers, sanitizer interplay).
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Part_Five_">
+            <a class="permalink" href="#Part_Five_"
+              >Part Five &#x2013; Risks, Mitigations, and Success Metrics</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd><b>Risk: Excessive Overhead in Hot Paths</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <i>Mitigation:</i> Encourage scoped instrumentation via filters;
+              document rate limiting defaults and provide profiling guidance.
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <i>Metric:</i> Instrumented build should remain within 5&#x00D7;
+              runtime of baseline for targeted modules.
+            </dd>
+            <dt>2.</dt>
+            <dd><b>Risk: Log Volume Overwhelms Storage or Pipelines</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <i>Mitigation:</i> Default to per-thread rolling logs with size
+              caps; expose ASCII_PANIC_MAX_BYTES env var; integrate optional
+              gzip rotation.
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <i>Metric:</i> Demonstrate a 10-minute instrumented session stays
+              under 500&#x202F;MB with defaults.
+            </dd>
+            <dt>3.</dt>
+            <dd><b>Risk: Developer Misuse in Signal Handlers</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <i>Mitigation:</i> Enforce compiler warnings when
+              ASCII_PANIC_SIGNAL_HANDLER functions are instrumented; highlight
+              safe patterns in docs.
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <i>Metric:</i> Zero known incidents of instrumented signal
+              handlers in postmortems.
+            </dd>
+            <dt>4.</dt>
+            <dd>
+              <b>Risk: Divergence Between Original and Instrumented Trees</b>
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <i>Mitigation:</i> Add automated sanity checks comparing hashes of
+              non-instrumented files; gate merges on clean diffs.
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              <i>Metric:</i> CI guardrail that fails if non-instrumented sources
+              are mutated by the pipeline.
+            </dd>
+            <dt>5.</dt>
+            <dd><b>Success Criteria</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              First production bug localized primarily via instrumentation logs.
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Positive developer feedback captured in notes/IMPROVEMENTS.md (at
+              least two entries).
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Optional sanitizercov mode adopted for nightly fuzzing runs with
+              documented wins.
+            </dd>
+          </dl>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -1,833 +1,1080 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>config(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">config(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">config(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">config - Config Module</p>
-<p class="Pp">
-  <br/>
-   - The toml text file configuration file module.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
-<br/>
-<p class="Pp">file <b>config.c</b>
-  <br/>
-  &#x1F4CB; TOML configuration file parser with schema validation and CLI
-    override support file <b>config.h</b>
-  <br/>
-  TOML configuration file support for ascii-chat.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>config_load_and_apply</b>
-    (<b>asciichat_mode_t</b> detected_mode, const char *config_path, <b>bool</b>
-    strict, <b>options_t</b> *opts)
-  <br/>
-  Main function to load configuration from file and apply to global options.
-    <b>asciichat_error_t</b> <b>config_load_system_and_user</b>
-    (<b>asciichat_mode_t</b> detected_mode, <b>bool</b> strict, <b>options_t</b>
-    *opts)
-  <br/>
-  Load system config first, then user config (user config overrides system).
-    <b>asciichat_error_t</b> <b>config_create_default</b> (const char
-    *config_path)
-  <br/>
-  Create default configuration file with all default values.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">The toml text file configuration file module.</p>
-<p class="Pp">This module provides functionality for loading configuration from
-    TOML files (typically located at ~/.ascii-chat/config.toml). Configuration
-    values are applied to global options, but command-line arguments always take
-    precedence over config file values.</p>
-<p class="Pp"></p>
-<p class="Pp">The interface provides:</p>
-<ul class="Bl-bullet">
-  <li>TOML file parsing and validation</li>
-  <li>Automatic configuration loading from standard location</li>
-  <li>Non-fatal error handling (missing or malformed config files are
-    ignored)</li>
-  <li>Support for network, client, palette, crypto, and logging
-    configuration</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Configuration Priority: Command-line arguments override
-  config file values. Config file values override default values. The config
-  file is loaded before CLI argument parsing to ensure this precedence.
-<p class="Pp"></p>
-<p class="Pp">Configuration File Location: The config file is loaded from the
-    ascii-chat configuration directory:</p>
-<ul class="Bl-bullet">
-  <li>Unix: $XDG_CONFIG_HOME/ascii-chat/config.toml if set, otherwise
-      ~/.ascii-chat/config.toml</li>
-  <li>Windows: APPDATA%\ascii-chat\config.toml if set, otherwise
-      ~\.ascii-chat\config.toml</li>
-</ul>
-<p class="Pp">Error Handling: Config file parsing errors are non-fatal. If the
-    file is missing, malformed, or contains invalid values, warnings are printed
-    to stderr and the application continues with default values. Invalid
-    individual values are skipped with warnings, but valid values are still
-    applied.</p>
-<p class="Pp"></p>
-<p class="Pp">Validation: All configuration values are validated using the same
-    validation functions used by CLI argument parsing, ensuring consistency
-    between config file and CLI option handling.</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">Password Storage: While passwords can be stored in the
-  config file (via crypto.password), this is strongly discouraged for security
-  reasons. A warning is printed if a password is found in the config file. Use
-  CLI --password or environment variables instead.
-<p class="Pp"></p>
-<p class="Pp">File Permissions: Users should secure their config file to prevent
-    unauthorized access, especially if it contains sensitive information like
-    encryption keys or passwords.</p>
-</div>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">October 2025</div>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> config_create_default (const char *
-  config_path)</h2>
-<p class="Pp">#include
-  &lt;<b>include/ascii-chat/options/config.h</b>&gt;<b></b></p>
-<p class="Pp">Create default configuration file with all default values.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>config_path</i> Path to config file to create (NULL
-  uses default location)
-<br/>
-<i>opts</i> Options structure with values to write (use defaults for a
-  &quot;default&quot; config)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Creates a new configuration file at the specified path (or default
-    location if config_path is NULL) with all configuration options set to
-    values from opts.</p>
-<p class="Pp"></p>
-<p class="Pp">The created file includes:</p>
-<ul class="Bl-bullet">
-  <li>Version comment at the top (current ascii-chat version)</li>
-  <li>All supported configuration sections with default values</li>
-  <li>Comments explaining each option</li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">The function will create the directory structure if
-  needed.
-<p class="Pp"></p>
-<p class="Pp">If the file already exists, it will not be overwritten (returns
-    error).</p>
-</div>
-<p class="Pp">Definition at line <b>1245</b> of file <b>config.c</b>.</p>
-<pre>1245                                                                  {
-1246   char *config_path_expanded = NULL;
-1247 
-1248   defer(SAFE_FREE(config_path_expanded));
-1249 
-1250   // Create fresh options with all OPT_*_DEFAULT values
-1251   options_t defaults = options_t_new();
-1252 
-1253   // Allocate buffer for building config content (256KB should be plenty)
-1254   const size_t BUFFER_CAPACITY = 256 * 1024;
-1255   config_builder_t builder = {0};
-1256   builder.buffer = SAFE_MALLOC(BUFFER_CAPACITY, char *);
-1257   if (!builder.buffer) {
-1258     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate config buffer&quot;);
-1259   }
-1260   defer(SAFE_FREE(builder.buffer));
-1261   builder.capacity = BUFFER_CAPACITY;
-1262 
-1263   // Build version comment in buffer
-1264   if (!config_builder_append(&amp;builder, &quot;# ascii-chat configuration file\n&quot;)) {
-1265     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1266   }
-1267   if (!config_builder_append(&amp;builder, &quot;# Generated by ascii-chat v%d.%d.%d-%s\n&quot;, ASCII_CHAT_VERSION_MAJOR,
-1268                              ASCII_CHAT_VERSION_MINOR, ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION)) {
-1269     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1270   }
-1271   if (!config_builder_append(&amp;builder, &quot;#\n&quot;)) {
-1272     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1273   }
-1274   if (!config_builder_append(&amp;builder, &quot;# All options below are commented out because some configuration options\n&quot;)) {
-1275     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1276   }
-1277   if (!config_builder_append(&amp;builder, &quot;# conflict with each other (e.g., --file vs --url, --loop vs --url).\n&quot;)) {
-1278     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1279   }
-1280   if (!config_builder_append(&amp;builder, &quot;# Uncomment only the options you need and avoid conflicting combinations.\n&quot;)) {
-1281     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1282   }
-1283   if (!config_builder_append(&amp;builder, &quot;#\n&quot;)) {
-1284     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1285   }
-1286   if (!config_builder_append(&amp;builder,
-1287                              &quot;# If you upgrade ascii-chat and this version comment changes, you may need to\n&quot;)) {
-1288     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1289   }
-1290   if (!config_builder_append(&amp;builder, &quot;# delete and regenerate this file with: ascii-chat --config-create\n&quot;)) {
-1291     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1292   }
-1293   if (!config_builder_append(&amp;builder, &quot;#\n\n&quot;)) {
-1294     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1295   }
-1296 
-1297   // Get all options from schema
-1298   size_t metadata_count = 0;
-1299   const config_option_metadata_t *metadata = config_schema_get_all(&amp;metadata_count);
-1300 
-1301   // Build list of unique categories in order of first appearance
-1302   const char *categories[16] = {0}; // Max expected categories
-1303   size_t category_count = 0;
-1304 
-1305   for (size_t i = 0; i &lt; metadata_count &amp;&amp; category_count &lt; 16; i++) {
-1306     const char *category = metadata[i].category;
-1307     if (!category) {
-1308       continue;
-1309     }
-1310 
-1311     // Check if category already in list
-1312     bool found = false;
-1313     for (size_t j = 0; j &lt; category_count; j++) {
-1314       if (categories[j] &amp;&amp; strcmp(categories[j], category) == 0) {
-1315         found = true;
-1316         break;
-1317       }
-1318     }
-1319 
-1320     if (!found) {
-1321       categories[category_count++] = category;
-1322     }
-1323   }
-1324 
-1325   // Build each section dynamically from schema
-1326   for (size_t cat_idx = 0; cat_idx &lt; category_count; cat_idx++) {
-1327     const char *category = categories[cat_idx];
-1328     if (!category) {
-1329       continue;
-1330     }
-1331 
-1332     // Get all options for this category
-1333     size_t cat_option_count = 0;
-1334     const config_option_metadata_t **cat_options = config_schema_get_by_category(category, &amp;cat_option_count);
-1335 
-1336     if (!cat_options || cat_option_count == 0) {
-1337       continue;
-1338     }
-1339 
-1340     // Add section header
-1341     if (!config_builder_append(&amp;builder, &quot;[%s]\n&quot;, category)) {
-1342       return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1343     }
-1344 
-1345     // Track which options we've written (to avoid duplicates)
-1346     bool written_flags[64] = {0}; // Max options per category
-1347 
-1348     // Add each option in this category
-1349     for (size_t opt_idx = 0; opt_idx &lt; cat_option_count &amp;&amp; opt_idx &lt; 64; opt_idx++) {
-1350       const config_option_metadata_t *meta = cat_options[opt_idx];
-1351       if (!meta || !meta-&gt;toml_key) {
-1352         continue;
-1353       }
-1354 
-1355       // Skip if already written (duplicate)
-1356       if (written_flags[opt_idx]) {
-1357         continue;
-1358       }
-1359 
-1360       // Skip if this is a duplicate of another option (check by TOML key, not field_offset)
-1361       // Note: Multiple options can map to the same field (e.g., server_log_file, client_log_file)
-1362       bool is_duplicate = false;
-1363       for (size_t j = 0; j &lt; opt_idx; j++) {
-1364         if (cat_options[j] &amp;&amp; cat_options[j]-&gt;toml_key &amp;&amp; meta-&gt;toml_key &amp;&amp;
-1365             strcmp(cat_options[j]-&gt;toml_key, meta-&gt;toml_key) == 0) {
-1366           is_duplicate = true;
-1367           break;
-1368         }
-1369       }
-1370       if (is_duplicate) {
-1371         continue;
-1372       }
-1373 
-1374       // Get field pointer from default options (or mode-specific default if available)
-1375       const char *field_ptr = ((const char *)&amp;defaults) + meta-&gt;field_offset;
-1376 
-1377       // Buffer to hold mode-specific default value if needed
-1378       char mode_default_buffer[OPTIONS_BUFF_SIZE] = {0};
-1379       int mode_default_int = 0;
-1380 
-1381       // If this option has a mode_default_getter, use it to get the correct default
-1382       if (meta-&gt;mode_default_getter) {
-1383         asciichat_mode_t mode = extract_mode_from_bitmask(meta-&gt;mode_bitmask);
-1384         if (mode != MODE_INVALID) {
-1385           const void *default_value = meta-&gt;mode_default_getter(mode);
-1386           if (default_value) {
-1387             // Copy the default value to our buffer based on type
-1388             if (meta-&gt;type == OPTION_TYPE_STRING || meta-&gt;type == OPTION_TYPE_CALLBACK) {
-1389               const char *str_value = (const char *)default_value;
-1390               SAFE_STRNCPY(mode_default_buffer, str_value, sizeof(mode_default_buffer));
-1391               field_ptr = mode_default_buffer;
-1392             } else if (meta-&gt;type == OPTION_TYPE_INT) {
-1393               mode_default_int = *(const int *)default_value;
-1394               field_ptr = (const char *)&amp;mode_default_int;
-1395             }
-1396           }
-1397         }
-1398       }
-1399 
-1400       // Add description comment if available
-1401       if (meta-&gt;description &amp;&amp; strlen(meta-&gt;description) &gt; 0) {
-1402         if (!config_builder_append(&amp;builder, &quot;# %s\n&quot;, meta-&gt;description)) {
-1403           return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1404         }
-1405       }
-1406 
-1407       // Format and add the option value using handler (commented out to avoid conflicts)
-1408       if (g_type_handlers[meta-&gt;type].format_output) {
-1409         char formatted_value[BUFFER_SIZE_MEDIUM] = {0};
-1410         g_type_handlers[meta-&gt;type].format_output(field_ptr, meta-&gt;field_size, meta, formatted_value,
-1411                                                   sizeof(formatted_value));
-1412         const char *output_key = meta-&gt;toml_key;
-1413         size_t category_len = strlen(category);
-1414         if (strncmp(meta-&gt;toml_key, category, category_len) == 0 &amp;&amp; meta-&gt;toml_key[category_len] == '.') {
-1415           output_key = meta-&gt;toml_key + category_len + 1; // Strip &quot;&lt;category&gt;.&quot;
-1416         }
-1417 
-1418         if (config_key_should_be_commented(meta-&gt;toml_key)) {
-1419           if (!config_builder_append(&amp;builder, &quot;# %s = %s\n&quot;, output_key, formatted_value)) {
-1420             return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1421           }
-1422         } else {
-1423           if (!config_builder_append(&amp;builder, &quot;%s = %s\n&quot;, output_key, formatted_value)) {
-1424             return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1425           }
-1426         }
-1427       }
-1428 
-1429       // Add blank line after each option
-1430       if (!config_builder_append(&amp;builder, &quot;\n&quot;)) {
-1431         return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1432       }
-1433 
-1434       written_flags[opt_idx] = true;
-1435     }
-1436 
-1437     // Add blank line between sections (but not after the last section)
-1438     if (cat_idx &lt; category_count - 1) {
-1439       if (!config_builder_append(&amp;builder, &quot;\n&quot;)) {
-1440         return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
-1441       }
-1442     }
-1443   }
-1444 
-1445   // Now write the buffer to either stdout or a file
-1446   if (config_path &amp;&amp; strlen(config_path) &gt; 0) {
-1447     // User provided a filepath - write to that file with overwrite prompt
-1448 
-1449     // Expand and validate the path
-1450     config_path_expanded = expand_path(config_path);
-1451     if (!config_path_expanded) {
-1452       config_path_expanded = platform_strdup(config_path);
-1453     }
-1454 
-1455     if (!config_path_expanded) {
-1456       return SET_ERRNO(ERROR_CONFIG, &quot;Failed to resolve config file path&quot;);
-1457     }
-1458 
-1459     char *validated_config_path = NULL;
-1460     asciichat_error_t validate_result =
-1461         path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &amp;validated_config_path);
-1462     if (validate_result != ASCIICHAT_OK) {
-1463       SAFE_FREE(validated_config_path);
-1464       SAFE_FREE(config_path_expanded);
-1465       return validate_result;
-1466     }
-1467     // Free the old path before reassigning (defer will free the new one)
-1468     if (config_path_expanded != validated_config_path) {
-1469       SAFE_FREE(config_path_expanded);
-1470     }
-1471     config_path_expanded = validated_config_path;
-1472 
-1473     // Check if file already exists
-1474     struct stat st;
-1475     if (stat(config_path_expanded, &amp;st) == 0) {
-1476       // File exists - ask user if they want to overwrite
-1477       log_plain(&quot;Config file already exists: %s&quot;, config_path_expanded);
-1478 
-1479       bool overwrite = platform_prompt_yes_no(&quot;Overwrite&quot;, false); // Default to No
-1480       if (!overwrite) {
-1481         log_plain(&quot;Config file creation cancelled.&quot;);
-1482         return SET_ERRNO(ERROR_CONFIG, &quot;User cancelled overwrite&quot;);
-1483       }
-1484 
-1485       log_plain(&quot;Overwriting existing config file...&quot;);
-1486     }
-1487 
-1488     // Create directory if needed
-1489     char *dir_path = platform_strdup(config_path_expanded);
-1490     if (!dir_path) {
-1491       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate memory for directory path&quot;);
-1492     }
-1493     defer(SAFE_FREE(dir_path));
-1494 
-1495     // Find the last path separator
-1496     char *last_sep = strrchr(dir_path, PATH_DELIM);
-1497 
-1498     if (last_sep) {
-1499       *last_sep = '\0';
-1500       // Create directory recursively
-1501       asciichat_error_t mkdir_result = platform_mkdir_recursive(dir_path, DIR_PERM_PRIVATE);
-1502       if (mkdir_result != ASCIICHAT_OK) {
-1503         return mkdir_result;
-1504       }
-1505     }
-1506 
-1507     // Open file for writing
-1508     FILE *output_file = platform_fopen(&quot;file_stream&quot;, config_path_expanded, &quot;w&quot;);
-1509     if (!output_file) {
-1510       return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to open config file for writing: %s&quot;, config_path_expanded);
-1511     }
-1512     defer(SAFE_FCLOSE(output_file));
-1513 
-1514     // Write buffer to file
-1515     size_t written = fwrite(builder.buffer, 1, builder.size, output_file);
-1516     if (written != builder.size) {
-1517       return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to write config to file: %s&quot;, config_path_expanded);
-1518     }
-1519   } else {
-1520     // No filepath provided - write buffer to stdout with automatic retry on transient errors
-1521     (void)platform_write_all(STDOUT_FILENO, builder.buffer, builder.size);
-1522     // Flush C stdio buffer and terminal to ensure piped output is written immediately
-1523     (void)fflush(stdout);
-1524     (void)terminal_flush(STDOUT_FILENO);
-1525   }
-1526 
-1527   return ASCIICHAT_OK;
-1528 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCII_CHAT_GIT_VERSION</b>,
-    <b>ASCII_CHAT_VERSION_MAJOR</b>, <b>ASCII_CHAT_VERSION_MINOR</b>,
-    <b>ASCII_CHAT_VERSION_PATCH</b>, <b>ASCIICHAT_OK</b>,
-    <b>config_builder_t::buffer</b>, <b>BUFFER_SIZE_MEDIUM</b>,
-    <b>config_builder_t::capacity</b>,
-    <b>config_option_metadata_t::category</b>, <b>config_schema_get_all()</b>,
-    <b>config_schema_get_by_category()</b>, <b>defer</b>,
-    <b>config_option_metadata_t::description</b>, <b>DIR_PERM_PRIVATE</b>,
-    <b>ERROR_CONFIG</b>, <b>ERROR_MEMORY</b>, <b>expand_path()</b>,
-    <b>config_option_metadata_t::field_offset</b>,
-    <b>config_option_metadata_t::field_size</b>, <b>log_plain</b>,
-    <b>config_option_metadata_t::mode_bitmask</b>,
-    <b>config_option_metadata_t::mode_default_getter</b>, <b>MODE_INVALID</b>,
-    <b>OPTION_TYPE_CALLBACK</b>, <b>OPTION_TYPE_INT</b>,
-    <b>OPTION_TYPE_STRING</b>, <b>OPTIONS_BUFF_SIZE</b>, <b>options_t_new()</b>,
-    <b>PATH_DELIM</b>, <b>PATH_ROLE_CONFIG_FILE</b>,
-    <b>path_validate_user_path()</b>, <b>platform_fopen()</b>,
-    <b>platform_mkdir_recursive()</b>, <b>platform_prompt_yes_no()</b>,
-    <b>platform_strdup()</b>, <b>platform_write_all()</b>, <b>SAFE_FCLOSE</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
-    <b>SET_ERRNO_SYS</b>, <b>config_builder_t::size</b>,
-    <b>terminal_flush()</b>, <b>config_option_metadata_t::toml_key</b>, and
-    <b>config_option_metadata_t::type</b>.</p>
-<p class="Pp">Referenced by <b>action_create_config()</b>, and
-    <b>options_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> config_load_and_apply
-  (<b>asciichat_mode_t</b> detected_mode, const char * config_path, <b>bool</b>
-  strict, <b>options_t</b> * opts)</h2>
-<p class="Pp">#include &lt;<b>lib/options/config/config.c</b>&gt;<b></b></p>
-<p class="Pp">Main function to load configuration from file and apply to global
-    options. Load configuration from TOML file and apply to global options.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>is_client</i> <b>true</b><b> if loading client
-  configuration, </b><b>false</b><b> for server configuration</b>
-<br/>
-<i>config_path</i> Optional path to config file (NULL uses default location)
-<br/>
-<i>strict</i> If true, errors are fatal; if false, errors are non-fatal
-  warnings</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure (if
-  strict) or non-fatal (if !strict)</div>
-<p class="Pp">This is the main entry point for configuration loading. It:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Expands the config file path (default location or custom path)</dd>
-  <dt>2.</dt>
-  <dd>Checks if the file exists and is a regular file</dd>
-  <dt>3.</dt>
-  <dd>Parses the TOML file using tomlc17</dd>
-  <dt>4.</dt>
-  <dd>Applies configuration from each section (network, client, palette, crypto,
-      logging)</dd>
-  <dt>5.</dt>
-  <dd>Frees resources and returns</dd>
-</dl>
-<p class="Pp">Configuration file errors are non-fatal if strict is false:</p>
-<ul class="Bl-bullet">
-  <li>Missing file: Returns ASCIICHAT_OK (config file is optional)</li>
-  <li>Not a regular file: Warns and returns ASCIICHAT_OK</li>
-  <li>Parse errors: Warns and returns ASCIICHAT_OK</li>
-  <li>Invalid values: Individual values are skipped with warnings</li>
-</ul>
-<p class="Pp">If strict is true, any error causes immediate return with error
-    code.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This function should be called before
-  <b>options_init()</b><b> parses command-line arguments to ensure CLI arguments
-  can override config file values.</b>
-<p class="Pp"></p>
-<p class="Pp">Configuration warnings are printed to stderr because logging may
-    not be initialized yet when this function is called.</p>
-</div>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>is_client</i> <b>true</b><b> if loading client
-  configuration, </b><b>false</b><b> for server configuration</b>
-<br/>
-<i>config_path</i> Optional path to config file (NULL uses default location)
-<br/>
-<i>strict</i> If true, errors are fatal; if false, errors are non-fatal
-  warnings</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure (if
-  strict) or non-fatal (if !strict)</div>
-<p class="Pp">Loads configuration from the specified path (or default location
-    if config_path is NULL) and applies values to global options.</p>
-<p class="Pp"></p>
-<p class="Pp">Default config file location (when config_path is NULL):</p>
-<ul class="Bl-bullet">
-  <li>Unix: $XDG_CONFIG_HOME/ascii-chat/config.toml if set, otherwise
-      ~/.ascii-chat/config.toml</li>
-  <li>Windows: APPDATA%\ascii-chat\config.toml if set, otherwise
-      ~.ascii-chat\config.toml</li>
-</ul>
-<p class="Pp">Only applies configuration values that haven't already been set
-    (though in practice, CLI arguments will override config values anyway since
-    this is called before CLI parsing).</p>
-<p class="Pp"></p>
-<p class="Pp">Supported configuration sections:</p>
-<ul class="Bl-bullet">
-  <li>[<b>Network Module</b>]<b>: </b>port<b></b></li>
-  <li>[server]: bind_ipv4, bind_ipv6</li>
-  <li>[client]: address, width, height, webcam_index, flip_x, flip_y,
-      color_mode, render_mode, fps, stretch, quiet, snapshot_mode,
-      snapshot_delay, test_pattern, show_capabilities, force_utf8</li>
-  <li>[<b>Audio</b>]<b>: </b><b>enabled</b><b>, </b>device<b></b></li>
-  <li>[<b>Palette</b>]<b>: </b>type<b>, </b>chars<b></b></li>
-  <li>[<b>Crypto Module</b>]<b>: </b>encrypt_enabled<b>, </b>key<b>,
-      </b>password<b>, </b>keyfile<b>, </b>no_encrypt<b>, </b>server_key<b>
-      (client only), </b>client_keys<b> (server only)</b></li>
-  <li>[<b>Logging System</b>]<b> or root: </b><b>log_file</b><b></b></li>
-</ul>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">This function should be called before
-  <b>options_init()</b><b> parses command-line arguments, so that CLI arguments
-  can override config file values.</b>
-<p class="Pp"></p>
-<p class="Pp">If strict is false and the config file doesn't exist, is not a
-    regular file, or fails to parse, the function returns ASCIICHAT_OK
-    (non-fatal). Individual invalid values are skipped with warnings, but valid
-    values are still applied.</p>
-<p class="Pp"></p>
-<p class="Pp">If strict is true, any error (file not found, parse error, etc.)
-    causes the function to return an error code immediately.</p>
-</div>
-<p class="Pp"><b>Warning</b></p>
-<div class="Bd-indent">Configuration warnings are printed directly to stderr
-  because logging may not be initialized yet when this function is called.</div>
-<p class="Pp">Definition at line <b>1039</b> of file <b>config.c</b>.</p>
-<pre>1040                                                          {
-1041   // detected_mode is used in config_apply_schema for bitmask validation
-1042   char *config_path_expanded = NULL;
-1043   defer(SAFE_FREE(config_path_expanded));
-1044 
-1045   if (config_path) {
-1046     // Use custom path provided
-1047     config_path_expanded = expand_path(config_path);
-1048     if (!config_path_expanded) {
-1049       // If expansion fails, try using as-is (might already be absolute)
-1050       config_path_expanded = platform_strdup(config_path);
-1051     }
-1052   } else {
-1053     // Use default location with XDG support
-1054     char *config_dir = get_config_dir();
-1055     defer(SAFE_FREE(config_dir));
-1056     if (config_dir) {
-1057       size_t len = strlen(config_dir) + strlen(&quot;config.toml&quot;) + 1;
-1058       config_path_expanded = SAFE_MALLOC(len, char *);
-1059       if (config_path_expanded) {
-1060         safe_snprintf(config_path_expanded, len, &quot;%sconfig.toml&quot;, config_dir);
-1061       }
-1062     }
-1063 
-1064     // Fallback to ~/.ascii-chat/config.toml
-1065     if (!config_path_expanded) {
-1066       config_path_expanded = expand_path(&quot;~/.ascii-chat/config.toml&quot;);
-1067     }
-1068   }
-1069 
-1070   if (!config_path_expanded) {
-1071     if (strict) {
-1072       return SET_ERRNO(ERROR_CONFIG, &quot;Failed to resolve config file path&quot;);
-1073     }
-1074     return ASCIICHAT_OK;
-1075   }
-1076 
-1077   char *validated_config_path = NULL;
-1078   asciichat_error_t validate_result =
-1079       path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &amp;validated_config_path);
-1080   if (validate_result != ASCIICHAT_OK) {
-1081     SAFE_FREE(validated_config_path);
-1082     SAFE_FREE(config_path_expanded);
-1083     return validate_result;
-1084   }
-1085   // Free the old path before reassigning (defer will free the new one)
-1086   if (config_path_expanded != validated_config_path) {
-1087     SAFE_FREE(config_path_expanded);
-1088   }
-1089   config_path_expanded = validated_config_path;
-1090 
-1091   // Determine display path for error messages (before any early returns)
-1092   const char *display_path = config_path ? config_path : config_path_expanded;
-1093 
-1094   // Log that we're attempting to load config (before logging is initialized, use stderr)
-1095   // Only print if terminal output is enabled (suppress with --quiet)
-1096   if (config_path &amp;&amp; log_get_terminal_output()) {
-1097     log_debug(&quot;Loading configuration from: %s&quot;, display_path);
-1098   }
-1099 
-1100   // Check if config file exists
-1101   struct stat st;
-1102   if (stat(config_path_expanded, &amp;st) != 0) {
-1103     if (strict) {
-1104       return SET_ERRNO(ERROR_CONFIG, &quot;Config file does not exist: '%s'&quot;, display_path);
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>config(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">config(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">config(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">config - Config Module</p>
+        <p class="Pp">
+          <br />
+          - The toml text file configuration file module.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files">
+            <a class="permalink" href="#Files">Files</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            file <b>config.c</b>
+            <br />
+            &#x1F4CB; TOML configuration file parser with schema validation and
+            CLI override support file <b>config.h</b>
+            <br />
+            TOML configuration file support for ascii-chat.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>config_load_and_apply</b> (<b
+              >asciichat_mode_t</b
+            >
+            detected_mode, const char *config_path, <b>bool</b> strict,
+            <b>options_t</b> *opts)
+            <br />
+            Main function to load configuration from file and apply to global
+            options.
+            <b>asciichat_error_t</b> <b>config_load_system_and_user</b> (<b
+              >asciichat_mode_t</b
+            >
+            detected_mode, <b>bool</b> strict, <b>options_t</b>
+            *opts)
+            <br />
+            Load system config first, then user config (user config overrides
+            system).
+            <b>asciichat_error_t</b> <b>config_create_default</b> (const char
+            *config_path)
+            <br />
+            Create default configuration file with all default values.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">The toml text file configuration file module.</p>
+        <p class="Pp">
+          This module provides functionality for loading configuration from TOML
+          files (typically located at ~/.ascii-chat/config.toml). Configuration
+          values are applied to global options, but command-line arguments
+          always take precedence over config file values.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">The interface provides:</p>
+        <ul class="Bl-bullet">
+          <li>TOML file parsing and validation</li>
+          <li>Automatic configuration loading from standard location</li>
+          <li>
+            Non-fatal error handling (missing or malformed config files are
+            ignored)
+          </li>
+          <li>
+            Support for network, client, palette, crypto, and logging
+            configuration
+          </li>
+        </ul>
+        <p class="Pp"><b>Note</b></p>
+        <div class="Bd-indent">
+          Configuration Priority: Command-line arguments override config file
+          values. Config file values override default values. The config file is
+          loaded before CLI argument parsing to ensure this precedence.
+          <p class="Pp"></p>
+          <p class="Pp">
+            Configuration File Location: The config file is loaded from the
+            ascii-chat configuration directory:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Unix: $XDG_CONFIG_HOME/ascii-chat/config.toml if set, otherwise
+              ~/.ascii-chat/config.toml
+            </li>
+            <li>
+              Windows: APPDATA%\ascii-chat\config.toml if set, otherwise
+              ~\.ascii-chat\config.toml
+            </li>
+          </ul>
+          <p class="Pp">
+            Error Handling: Config file parsing errors are non-fatal. If the
+            file is missing, malformed, or contains invalid values, warnings are
+            printed to stderr and the application continues with default values.
+            Invalid individual values are skipped with warnings, but valid
+            values are still applied.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Validation: All configuration values are validated using the same
+            validation functions used by CLI argument parsing, ensuring
+            consistency between config file and CLI option handling.
+          </p>
+        </div>
+        <p class="Pp"><b>Warning</b></p>
+        <div class="Bd-indent">
+          Password Storage: While passwords can be stored in the config file
+          (via crypto.password), this is strongly discouraged for security
+          reasons. A warning is printed if a password is found in the config
+          file. Use CLI --password or environment variables instead.
+          <p class="Pp"></p>
+          <p class="Pp">
+            File Permissions: Users should secure their config file to prevent
+            unauthorized access, especially if it contains sensitive information
+            like encryption keys or passwords.
+          </p>
+        </div>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">October 2025</div>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> config_create_default (const char *
+            config_path)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/options/config.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Create default configuration file with all default values.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>config_path</i> Path to config file to create (NULL uses default
+            location)
+            <br />
+            <i>opts</i> Options structure with values to write (use defaults for
+            a &quot;default&quot; config)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">
+            Creates a new configuration file at the specified path (or default
+            location if config_path is NULL) with all configuration options set
+            to values from opts.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">The created file includes:</p>
+          <ul class="Bl-bullet">
+            <li>Version comment at the top (current ascii-chat version)</li>
+            <li>All supported configuration sections with default values</li>
+            <li>Comments explaining each option</li>
+          </ul>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            The function will create the directory structure if needed.
+            <p class="Pp"></p>
+            <p class="Pp">
+              If the file already exists, it will not be overwritten (returns
+              error).
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>1317</b> of file <b>config.c</b>.
+          </p>
+          <pre>
+1317                                                                  {
+1318   char *config_path_expanded = NULL;
+1319
+1320   defer(SAFE_FREE(config_path_expanded));
+1321
+1322   // Create fresh options with all OPT_*_DEFAULT values
+1323   options_t defaults = options_t_new();
+1324
+1325   // Allocate buffer for building config content (256KB should be plenty)
+1326   const size_t BUFFER_CAPACITY = 256 * 1024;
+1327   config_builder_t builder = {0};
+1328   builder.buffer = SAFE_MALLOC(BUFFER_CAPACITY, char *);
+1329   if (!builder.buffer) {
+1330     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate config buffer&quot;);
+1331   }
+1332   defer(SAFE_FREE(builder.buffer));
+1333   builder.capacity = BUFFER_CAPACITY;
+1334
+1335   // Build version comment in buffer
+1336   if (!config_builder_append(&amp;builder, &quot;# ascii-chat configuration file\n&quot;)) {
+1337     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1338   }
+1339   if (!config_builder_append(&amp;builder, &quot;# Generated by ascii-chat v%d.%d.%d-%s\n&quot;, ASCII_CHAT_VERSION_MAJOR,
+1340                              ASCII_CHAT_VERSION_MINOR, ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION)) {
+1341     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1342   }
+1343   if (!config_builder_append(&amp;builder, &quot;#\n&quot;)) {
+1344     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1345   }
+1346   if (!config_builder_append(&amp;builder, &quot;# All options below are commented out because some configuration options\n&quot;)) {
+1347     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1348   }
+1349   if (!config_builder_append(&amp;builder, &quot;# conflict with each other (e.g., --file vs --url, --loop vs --url).\n&quot;)) {
+1350     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1351   }
+1352   if (!config_builder_append(&amp;builder, &quot;# Uncomment only the options you need and avoid conflicting combinations.\n&quot;)) {
+1353     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1354   }
+1355   if (!config_builder_append(&amp;builder, &quot;#\n&quot;)) {
+1356     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1357   }
+1358   if (!config_builder_append(&amp;builder,
+1359                              &quot;# If you upgrade ascii-chat and this version comment changes, you may need to\n&quot;)) {
+1360     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1361   }
+1362   if (!config_builder_append(&amp;builder, &quot;# delete and regenerate this file with: ascii-chat --config-create\n&quot;)) {
+1363     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1364   }
+1365   if (!config_builder_append(&amp;builder, &quot;#\n\n&quot;)) {
+1366     return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1367   }
+1368
+1369   // Get all options from schema
+1370   size_t metadata_count = 0;
+1371   const config_option_metadata_t *metadata = config_schema_get_all(&amp;metadata_count);
+1372   {
+1373     const options_config_t *unified_config = options_preset_unified(NULL, NULL);
+1374     if (unified_config) {
+1375       (void)config_schema_build_from_configs(&amp;unified_config, 1);
+1376       options_config_destroy(unified_config);
+1377       metadata = config_schema_get_all(&amp;metadata_count);
+1378     }
+1379   }
+1380
+1381   // Build list of unique categories in order of first appearance
+1382   const char *categories[CONFIG_CATEGORY_CAPACITY] = {0}; // Max expected categories
+1383   size_t category_count = 0;
+1384
+1385   for (size_t i = 0; i &lt; metadata_count &amp;&amp; category_count &lt; CONFIG_CATEGORY_CAPACITY; i++) {
+1386     const char *category = metadata[i].category;
+1387     if (!category) {
+1388       continue;
+1389     }
+1390
+1391     // Check if category already in list
+1392     bool found = false;
+1393     for (size_t j = 0; j &lt; category_count; j++) {
+1394       if (categories[j] &amp;&amp; strcmp(categories[j], category) == 0) {
+1395         found = true;
+1396         break;
+1397       }
+1398     }
+1399
+1400     if (!found) {
+1401       categories[category_count++] = category;
+1402     }
+1403   }
+1404
+1405   // Build each section dynamically from schema
+1406   for (size_t cat_idx = 0; cat_idx &lt; category_count; cat_idx++) {
+1407     const char *category = categories[cat_idx];
+1408     if (!category) {
+1409       continue;
+1410     }
+1411
+1412     // Get all options for this category
+1413     size_t cat_option_count = 0;
+1414     const config_option_metadata_t **cat_options = config_schema_get_by_category(category, &amp;cat_option_count);
+1415
+1416     if (!cat_options || cat_option_count == 0) {
+1417       continue;
+1418     }
+1419
+1420     // Add section header
+1421     if (!config_builder_append(&amp;builder, &quot;[%s]\n&quot;, category)) {
+1422       return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1423     }
+1424
+1425     // Track which options we've written (to avoid duplicates)
+1426     bool written_flags[CONFIG_WRITTEN_FLAG_CAPACITY] = {0}; // Max options per category
+1427
+1428     // Add each option in this category
+1429     for (size_t opt_idx = 0; opt_idx &lt; cat_option_count &amp;&amp; opt_idx &lt; 64; opt_idx++) {
+1430       const config_option_metadata_t *meta = cat_options[opt_idx];
+1431       if (!meta || !meta-&gt;toml_key) {
+1432         continue;
+1433       }
+1434
+1435       // Skip if already written (duplicate)
+1436       if (written_flags[opt_idx]) {
+1437         continue;
+1438       }
+1439
+1440       // Skip if this is a duplicate of another option (check by TOML key, not field_offset)
+1441       // Note: Multiple options can map to the same field (e.g., server_log_file, client_log_file)
+1442       bool is_duplicate = false;
+1443       for (size_t j = 0; j &lt; opt_idx; j++) {
+1444         if (cat_options[j] &amp;&amp; cat_options[j]-&gt;toml_key &amp;&amp; meta-&gt;toml_key &amp;&amp;
+1445             strcmp(cat_options[j]-&gt;toml_key, meta-&gt;toml_key) == 0) {
+1446           is_duplicate = true;
+1447           break;
+1448         }
+1449       }
+1450       if (is_duplicate) {
+1451         continue;
+1452       }
+1453
+1454       // Get field pointer from default options (or mode-specific default if available)
+1455       const char *field_ptr = ((const char *)&amp;defaults) + meta-&gt;field_offset;
+1456
+1457       // Buffer to hold mode-specific default value if needed
+1458       char mode_default_buffer[OPTIONS_BUFF_SIZE] = {0};
+1459       int mode_default_int = 0;
+1460
+1461       // If this option has a mode_default_getter, use it to get the correct default
+1462       if (meta-&gt;mode_default_getter) {
+1463         asciichat_mode_t mode = extract_mode_from_bitmask(meta-&gt;mode_bitmask);
+1464         if (mode != MODE_INVALID) {
+1465           const void *default_value = meta-&gt;mode_default_getter(mode);
+1466           if (default_value) {
+1467             // Copy the default value to our buffer based on type
+1468             if (meta-&gt;type == OPTION_TYPE_STRING || meta-&gt;type == OPTION_TYPE_CALLBACK) {
+1469               const char *str_value = (const char *)default_value;
+1470               SAFE_STRNCPY(mode_default_buffer, str_value, sizeof(mode_default_buffer));
+1471               field_ptr = mode_default_buffer;
+1472             } else if (meta-&gt;type == OPTION_TYPE_INT) {
+1473               mode_default_int = *(const int *)default_value;
+1474               field_ptr = (const char *)&amp;mode_default_int;
+1475             }
+1476           }
+1477         }
+1478       }
+1479
+1480       // Add description comment if available
+1481       if (meta-&gt;description &amp;&amp; strlen(meta-&gt;description) &gt; 0) {
+1482         if (!config_builder_append(&amp;builder, &quot;# %s\n&quot;, meta-&gt;description)) {
+1483           return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1484         }
+1485       }
+1486
+1487       // Format and add the option value using handler (commented out to avoid conflicts)
+1488       if (g_type_handlers[meta-&gt;type].format_output) {
+1489         char formatted_value[BUFFER_SIZE_MEDIUM] = {0};
+1490         g_type_handlers[meta-&gt;type].format_output(field_ptr, meta-&gt;field_size, meta, formatted_value,
+1491                                                   sizeof(formatted_value));
+1492         const char *output_key = meta-&gt;toml_key;
+1493         size_t category_len = strlen(category);
+1494         if (strncmp(meta-&gt;toml_key, category, category_len) == 0 &amp;&amp; meta-&gt;toml_key[category_len] == '.') {
+1495           output_key = meta-&gt;toml_key + category_len + 1; // Strip &quot;&lt;category&gt;.&quot;
+1496         }
+1497
+1498         if (config_key_should_be_commented(meta-&gt;toml_key)) {
+1499           if (!config_builder_append(&amp;builder, &quot;# %s = %s\n&quot;, output_key, formatted_value)) {
+1500             return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1501           }
+1502         } else {
+1503           if (!config_builder_append(&amp;builder, &quot;%s = %s\n&quot;, output_key, formatted_value)) {
+1504             return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1505           }
+1506         }
+1507       }
+1508
+1509       // Add blank line after each option
+1510       if (!config_builder_append(&amp;builder, &quot;\n&quot;)) {
+1511         return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1512       }
+1513
+1514       written_flags[opt_idx] = true;
+1515     }
+1516
+1517     // Add blank line between sections (but not after the last section)
+1518     if (cat_idx &lt; category_count - 1) {
+1519       if (!config_builder_append(&amp;builder, &quot;\n&quot;)) {
+1520         return SET_ERRNO(ERROR_CONFIG, &quot;Config too large to fit in buffer&quot;);
+1521       }
+1522     }
+1523   }
+1524
+1525   // Now write the buffer to either stdout or a file
+1526   if (config_path &amp;&amp; strlen(config_path) &gt; 0) {
+1527     // User provided a filepath - write to that file with overwrite prompt
+1528
+1529     // Expand and validate the path
+1530     config_path_expanded = expand_path(config_path);
+1531     if (!config_path_expanded) {
+1532       config_path_expanded = platform_strdup(config_path);
+1533     }
+1534
+1535     if (!config_path_expanded) {
+1536       return SET_ERRNO(ERROR_CONFIG, &quot;Failed to resolve config file path&quot;);
+1537     }
+1538
+1539     char *validated_config_path = NULL;
+1540     asciichat_error_t validate_result =
+1541         path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &amp;validated_config_path);
+1542     if (validate_result != ASCIICHAT_OK) {
+1543       SAFE_FREE(validated_config_path);
+1544       SAFE_FREE(config_path_expanded);
+1545       return validate_result;
+1546     }
+1547     // Free the old path before reassigning (defer will free the new one)
+1548     if (config_path_expanded != validated_config_path) {
+1549       SAFE_FREE(config_path_expanded);
+1550     }
+1551     config_path_expanded = validated_config_path;
+1552
+1553     // Check if file already exists
+1554     struct stat st;
+1555     if (stat(config_path_expanded, &amp;st) == 0) {
+1556       // File exists - ask user if they want to overwrite
+1557       log_plain(&quot;Config file already exists: %s&quot;, config_path_expanded);
+1558
+1559       char question[OPTIONS_CONFIG_QUESTION_BUFFER_SIZE];
+1560       safe_snprintf(question, sizeof(question), &quot;File already exists: %s\n\nOverwrite&quot;, config_path_expanded);
+1561       bool overwrite =
+1562           ui_notice_confirm_kind(UI_PROMPT_CONFIG_OVERWRITE, UI_NOTICE_WARNING, question, 30); // Default to No
+1563       if (!overwrite) {
+1564         log_plain(&quot;Config file creation cancelled.&quot;);
+1565         return SET_ERRNO(ERROR_CONFIG, &quot;User cancelled overwrite&quot;);
+1566       }
+1567
+1568       log_plain(&quot;Overwriting existing config file...&quot;);
+1569     }
+1570
+1571     // Create directory if needed
+1572     char *dir_path = platform_strdup(config_path_expanded);
+1573     if (!dir_path) {
+1574       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate memory for directory path&quot;);
+1575     }
+1576     defer(SAFE_FREE(dir_path));
+1577
+1578     // Find the last path separator
+1579     char *last_sep = strrchr(dir_path, PATH_DELIM);
+1580
+1581     if (last_sep) {
+1582       *last_sep = '\0';
+1583       // Create directory recursively
+1584       asciichat_error_t mkdir_result = platform_mkdir_recursive(dir_path, DIR_PERM_PRIVATE);
+1585       if (mkdir_result != ASCIICHAT_OK) {
+1586         return mkdir_result;
+1587       }
+1588     }
+1589
+1590     // Open file for writing
+1591     FILE *output_file = platform_fopen(&quot;file_stream&quot;, config_path_expanded, &quot;w&quot;);
+1592     if (!output_file) {
+1593       return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to open config file for writing: %s&quot;, config_path_expanded);
+1594     }
+1595     defer(SAFE_FCLOSE(output_file));
+1596
+1597     // Write buffer to file
+1598     size_t written = fwrite(builder.buffer, 1, builder.size, output_file);
+1599     if (written != builder.size) {
+1600       asciichat_error_t error = SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to write config to file: %s&quot;, config_path_expanded);
+1601       SAFE_FCLOSE(output_file);
+1602       return error;
+1603     }
+1604     // Publish buffered bytes before returning, including builds without defer instrumentation.
+1605     int close_result = fclose(output_file);
+1606     output_file = NULL;
+1607     if (close_result != 0) {
+1608       return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to close config file: %s&quot;, config_path_expanded);
+1609     }
+1610   } else {
+1611     // No filepath provided - write buffer to stdout with automatic retry on transient errors
+1612     (void)platform_write_all(STDOUT_FILENO, builder.buffer, builder.size);
+1613     // Flush C stdio buffer and terminal to ensure piped output is written immediately
+1614     (void)fflush(stdout);
+1615     (void)terminal_flush(STDOUT_FILENO);
+1616   }
+1617
+1618   return ASCIICHAT_OK;
+1619 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_CHAT_GIT_VERSION</b>,
+            <b>ASCII_CHAT_VERSION_MAJOR</b>, <b>ASCII_CHAT_VERSION_MINOR</b>,
+            <b>ASCII_CHAT_VERSION_PATCH</b>, <b>ASCIICHAT_OK</b>,
+            <b>config_builder_t::buffer</b>, <b>BUFFER_SIZE_MEDIUM</b>,
+            <b>config_builder_t::capacity</b>,
+            <b>config_option_metadata_t::category</b>,
+            <b>CONFIG_CATEGORY_CAPACITY</b>, <b>config_create_default()</b>,
+            <b>config_schema_build_from_configs()</b>,
+            <b>config_schema_get_all()</b>,
+            <b>config_schema_get_by_category()</b>,
+            <b>CONFIG_WRITTEN_FLAG_CAPACITY</b>, <b>defer</b>,
+            <b>config_option_metadata_t::description</b>,
+            <b>DIR_PERM_PRIVATE</b>, <b>ERROR_CONFIG</b>, <b>ERROR_MEMORY</b>,
+            <b>expand_path()</b>, <b>config_option_metadata_t::field_offset</b>,
+            <b>config_option_metadata_t::field_size</b>, <b>log_plain</b>,
+            <b>config_option_metadata_t::mode_bitmask</b>,
+            <b>config_option_metadata_t::mode_default_getter</b>,
+            <b>MODE_INVALID</b>, <b>OPTION_TYPE_CALLBACK</b>,
+            <b>OPTION_TYPE_INT</b>, <b>OPTION_TYPE_STRING</b>,
+            <b>OPTIONS_BUFF_SIZE</b>, <b>options_config_destroy()</b>,
+            <b>OPTIONS_CONFIG_QUESTION_BUFFER_SIZE</b>,
+            <b>options_preset_unified()</b>, <b>options_t_new()</b>,
+            <b>PATH_DELIM</b>, <b>PATH_ROLE_CONFIG_FILE</b>,
+            <b>path_validate_user_path()</b>, <b>platform_fopen()</b>,
+            <b>platform_mkdir_recursive()</b>, <b>platform_strdup()</b>,
+            <b>platform_write_all()</b>, <b>SAFE_FCLOSE</b>, <b>SAFE_FREE</b>,
+            <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>, <b>SAFE_STRNCPY</b>,
+            <b>SET_ERRNO</b>, <b>SET_ERRNO_SYS</b>,
+            <b>config_builder_t::size</b>, <b>terminal_flush()</b>,
+            <b>config_option_metadata_t::toml_key</b>,
+            <b>config_option_metadata_t::type</b>,
+            <b>ui_notice_confirm_kind()</b>, <b>UI_NOTICE_WARNING</b>, and
+            <b>UI_PROMPT_CONFIG_OVERWRITE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>action_create_config()</b>, and
+            <b>config_create_default()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> config_load_and_apply (<b
+              >asciichat_mode_t</b
+            >
+            detected_mode, const char * config_path, <b>bool</b> strict,
+            <b>options_t</b> * opts)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>lib/options/config/config.c</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Main function to load configuration from file and apply to global
+            options. Load configuration from TOML file and apply to global
+            options.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>is_client</i> <b>true</b><b> if loading client configuration, </b
+            ><b>false</b><b> for server configuration</b>
+            <br />
+            <i>config_path</i> Optional path to config file (NULL uses default
+            location)
+            <br />
+            <i>strict</i> If true, errors are fatal; if false, errors are
+            non-fatal warnings
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure (if strict) or
+            non-fatal (if !strict)
+          </div>
+          <p class="Pp">
+            This is the main entry point for configuration loading. It:
+          </p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              Expands the config file path (default location or custom path)
+            </dd>
+            <dt>2.</dt>
+            <dd>Checks if the file exists and is a regular file</dd>
+            <dt>3.</dt>
+            <dd>Parses the TOML file using tomlc17</dd>
+            <dt>4.</dt>
+            <dd>
+              Applies configuration from each section (network, client, palette,
+              crypto, logging)
+            </dd>
+            <dt>5.</dt>
+            <dd>Frees resources and returns</dd>
+          </dl>
+          <p class="Pp">
+            Configuration file errors are non-fatal if strict is false:
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Missing file: Returns ASCIICHAT_OK (config file is optional)
+            </li>
+            <li>Not a regular file: Warns and returns ASCIICHAT_OK</li>
+            <li>Parse errors: Warns and returns ASCIICHAT_OK</li>
+            <li>Invalid values: Individual values are skipped with warnings</li>
+          </ul>
+          <p class="Pp">
+            If strict is true, any error causes immediate return with error
+            code.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This function should be called before <b>options_init()</b
+            ><b>
+              parses command-line arguments to ensure CLI arguments can override
+              config file values.</b
+            >
+            <p class="Pp"></p>
+            <p class="Pp">
+              Configuration warnings are printed to stderr because logging may
+              not be initialized yet when this function is called.
+            </p>
+          </div>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>is_client</i> <b>true</b><b> if loading client configuration, </b
+            ><b>false</b><b> for server configuration</b>
+            <br />
+            <i>config_path</i> Optional path to config file (NULL uses default
+            location)
+            <br />
+            <i>strict</i> If true, errors are fatal; if false, errors are
+            non-fatal warnings
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure (if strict) or
+            non-fatal (if !strict)
+          </div>
+          <p class="Pp">
+            Loads configuration from the specified path (or default location if
+            config_path is NULL) and applies values to global options.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Default config file location (when config_path is NULL):
+          </p>
+          <ul class="Bl-bullet">
+            <li>
+              Unix: $XDG_CONFIG_HOME/ascii-chat/config.toml if set, otherwise
+              ~/.ascii-chat/config.toml
+            </li>
+            <li>
+              Windows: APPDATA%\ascii-chat\config.toml if set, otherwise
+              ~.ascii-chat\config.toml
+            </li>
+          </ul>
+          <p class="Pp">
+            Only applies configuration values that haven't already been set
+            (though in practice, CLI arguments will override config values
+            anyway since this is called before CLI parsing).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Supported configuration sections:</p>
+          <ul class="Bl-bullet">
+            <li>[<b>Network Module</b>]<b>: </b>port<b></b></li>
+            <li>[server]: bind_ipv4, bind_ipv6</li>
+            <li>
+              [client]: address, width, height, webcam_index, flip_x, flip_y,
+              color_mode, render_mode, fps, stretch, quiet, snapshot_mode,
+              snapshot_delay, <b>test_pattern</b><b>, </b>show_capabilities<b
+                >, </b
+              >force_utf8<b></b>
+            </li>
+            <li>[<b>Audio</b>]<b>: </b>enabled<b>, </b>device<b></b></li>
+            <li>
+              [<b>Character Palettes</b>]<b>: </b>type<b>, </b>chars<b></b>
+            </li>
+            <li>
+              [<b>Crypto Module</b>]<b>: </b>encrypt_enabled<b>, </b>key<b>, </b
+              >password<b>, </b>keyfile<b>, </b>no_encrypt<b>, </b>server_key<b>
+                (client only), </b
+              >client_keys<b> (server only)</b>
+            </li>
+            <li>
+              [<b>Logging System</b>]<b> or root: </b><b>log_file</b><b></b>
+            </li>
+          </ul>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This function should be called before <b>options_init()</b
+            ><b>
+              parses command-line arguments, so that CLI arguments can override
+              config file values.</b
+            >
+            <p class="Pp"></p>
+            <p class="Pp">
+              If strict is false and the config file doesn't exist, is not a
+              regular file, or fails to parse, the function returns ASCIICHAT_OK
+              (non-fatal). Individual invalid values are skipped with warnings,
+              but valid values are still applied.
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              If strict is true, any error (file not found, parse error, etc.)
+              causes the function to return an error code immediately.
+            </p>
+          </div>
+          <p class="Pp"><b>Warning</b></p>
+          <div class="Bd-indent">
+            Configuration warnings are printed directly to stderr because
+            logging may not be initialized yet when this function is called.
+          </div>
+          <p class="Pp">
+            Definition at line <b>1093</b> of file <b>config.c</b>.
+          </p>
+          <pre>
+1094                                                          {
+1095   // detected_mode is used in config_apply_schema for bitmask validation
+1096   char *config_path_expanded = NULL;
+1097   defer(SAFE_FREE(config_path_expanded));
+1098
+1099   if (config_path) {
+1100     // Use custom path provided
+1101     config_path_expanded = expand_path(config_path);
+1102     if (!config_path_expanded) {
+1103       // If expansion fails, try using as-is (might already be absolute)
+1104       config_path_expanded = platform_strdup(config_path);
 1105     }
-1106     // File doesn't exist, that's OK - not required (non-strict mode)
-1107     return ASCIICHAT_OK;
-1108   }
-1109 
-1110   // Verify it's a regular file
-1111   if (!S_ISREG(st.st_mode)) {
-1112     if (strict) {
-1113       return SET_ERRNO(ERROR_CONFIG, &quot;Config file exists but is not a regular file: '%s'&quot;, display_path);
-1114     }
-1115     CONFIG_WARN(&quot;Config file exists but is not a regular file: '%s' (skipping)&quot;, display_path);
-1116     return ASCIICHAT_OK;
-1117   }
-1118 
-1119   // Parse TOML file
-1120   toml_result_t result = toml_parse_file_ex(config_path_expanded);
-1121   // Ensure TOML resources are freed at ALL function exit points (defer handles cleanup)
-1122   defer(toml_free(result));
-1123 
-1124   if (!result.ok) {
-1125     // result.errmsg is an array, so check its first character
-1126     const char *errmsg = (strlen(result.errmsg) &gt; 0) ? result.errmsg : &quot;Unknown parse error&quot;;
-1127 
-1128     if (strict) {
-1129       // For strict mode, return detailed error message directly
-1130       // Note: SET_ERRNO stores the message in context, but asciichat_error_string() only returns generic codes
-1131       // So we need to format the error message ourselves here
-1132       char error_buffer[BUFFER_SIZE_MEDIUM];
-1133       safe_snprintf(error_buffer, sizeof(error_buffer), &quot;Failed to parse config file '%s': %s&quot;, display_path, errmsg);
-1134       toml_free(result); // Explicit cleanup before return (defer transformation not applied)
-1135       return SET_ERRNO(ERROR_CONFIG, &quot;%s&quot;, error_buffer);
-1136     }
-1137     CONFIG_WARN(&quot;Failed to parse config file '%s': %s (skipping)&quot;, display_path, errmsg);
-1138     toml_free(result);   // Explicit cleanup before return (defer transformation not applied)
-1139     return ASCIICHAT_OK; // Non-fatal error
-1140   }
-1141 
-1142   // Apply configuration using schema-driven parser with bitmask validation
-1143   asciichat_error_t schema_result = config_apply_schema(result.toptab, detected_mode, opts, strict);
-1144 
-1145   if (schema_result != ASCIICHAT_OK &amp;&amp; strict) {
-1146     toml_free(result); // Explicit cleanup before return (defer transformation not applied)
-1147     return schema_result;
-1148   }
-1149   // In non-strict mode, continue even if some options failed validation
-1150 
-1151   CONFIG_DEBUG(&quot;Loaded configuration from %s&quot;, display_path);
-1152 
-1153   // Log successful config load (use stderr since logging may not be initialized yet)
-1154   // Only print if terminal output is enabled (suppress with --quiet)
-1155   if (log_get_terminal_output()) {
-1156     log_debug(&quot;Loaded configuration from: %s&quot;, display_path);
-1157   }
-1158 
-1159   // Update RCU system with modified options (for test compatibility)
-1160   // In real usage, options_state_set is called later after CLI parsing
-1161   asciichat_error_t rcu_result = options_state_set(opts);
-1162   if (rcu_result != ASCIICHAT_OK) {
-1163     // Non-fatal - RCU might not be initialized yet in some test scenarios
-1164     // But log as warning so tests can see if this is the issue
-1165     CONFIG_WARN(&quot;Failed to update RCU options state: %d (values may not be persisted)&quot;, rcu_result);
-1166   }
-1167 
-1168   toml_free(result); // Explicit cleanup before return (defer transformation not applied)
-1169   return ASCIICHAT_OK;
-1170 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>BUFFER_SIZE_MEDIUM</b>,
-    <b>CONFIG_DEBUG</b>, <b>CONFIG_WARN</b>, <b>defer</b>, <b>ERROR_CONFIG</b>,
-    <b>expand_path()</b>, <b>get_config_dir()</b>, <b>log_debug</b>,
-    <b>log_get_terminal_output()</b>, <b>options_state_set()</b>,
-    <b>PATH_ROLE_CONFIG_FILE</b>, <b>path_validate_user_path()</b>,
-    <b>platform_strdup()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
-<p class="Pp">Referenced by <b>config_load_system_and_user()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> config_load_system_and_user
-  (<b>asciichat_mode_t</b> detected_mode, <b>bool</b> strict, <b>options_t</b> *
-  opts)</h2>
-<p class="Pp">#include
-  &lt;<b>include/ascii-chat/options/config.h</b>&gt;<b></b></p>
-<p class="Pp">Load system config first, then user config (user config overrides
-    system).</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>detected_mode</i> The detected mode (client or server)
-<br/>
-<i>strict</i> If true, user config errors are fatal; system config is always
-  non-strict
-<br/>
-<i>opts</i> Options structure to write configuration to</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
-<p class="Pp">Loads configuration from two locations in order:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>System config: ${INSTALL_PREFIX}/etc/ascii-chat/config.toml (non-strict,
-      optional)</dd>
-  <dt>2.</dt>
-  <dd>User config: default location (strictness as specified)</dd>
-</dl>
-<p class="Pp">User config values override system config values. Both override
-    defaults. This function should be called before <b>options_init()</b> parses
-    command-line arguments.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">System config is always loaded non-strict (missing file
-  is not an error)
-<p class="Pp"></p>
-<p class="Pp">User config strictness follows the strict parameter</p>
-</div>
-<p class="Pp">Definition at line <b>1530</b> of file <b>config.c</b>.</p>
-<pre>1530                                                                                                             {
-1531   // Use platform abstraction to find all config.toml files across standard locations
-1532   config_file_list_t config_files = {0};
-1533   asciichat_error_t search_result = platform_find_config_file(&quot;config.toml&quot;, &amp;config_files);
-1534   defer(config_file_list_destroy(&amp;config_files));
-1535 
-1536   if (search_result != ASCIICHAT_OK) {
-1537     CONFIG_DEBUG(&quot;Failed to search for config files: %d&quot;, search_result);
-1538     config_file_list_destroy(&amp;config_files);
-1539     return search_result;
-1540   }
-1541 
-1542   // Cascade load: Load all found configs in reverse order (lowest priority first)
-1543   // This allows higher-priority configs to override lower-priority values.
-1544   // Example: System configs load first, then user configs override them.
-1545 
-1546   asciichat_error_t result = ASCIICHAT_OK;
-1547   for (size_t i = config_files.count; i &gt; 0; i--) {
-1548     const config_file_result_t *file = &amp;config_files.files[i - 1];
-1549 
-1550     // Determine strictness based on whether this is a system or user config
-1551     // System configs are non-strict (values can be missing, errors are non-fatal)
-1552     // User config is strict or non-strict based on parameter
-1553     bool is_user_config = !file-&gt;is_system_config;
-1554     bool file_strict = is_user_config ? strict : false;
-1555 
-1556     CONFIG_DEBUG(&quot;Loading config from %s (system=%s, strict=%s)&quot;, file-&gt;path, file-&gt;is_system_config ? &quot;yes&quot; : &quot;no&quot;,
-1557                  file_strict ? &quot;true&quot; : &quot;false&quot;);
-1558 
-1559     asciichat_error_t load_result = config_load_and_apply(detected_mode, file-&gt;path, file_strict, opts);
-1560 
-1561     if (load_result != ASCIICHAT_OK) {
-1562       if (file_strict) {
-1563         // Strict mode: errors are fatal
-1564         CONFIG_DEBUG(&quot;Strict config loading failed for %s&quot;, file-&gt;path);
-1565         result = load_result;
-1566       } else {
-1567         // Non-strict mode: errors are non-fatal, just log and continue
-1568         CONFIG_DEBUG(&quot;Non-strict config loading warning for %s: %d (continuing)&quot;, file-&gt;path, load_result);
-1569         CLEAR_ERRNO(); // Clear error context for next file
-1570       }
-1571     }
-1572   }
-1573 
-1574   config_file_list_destroy(&amp;config_files);
-1575   return result;
-1576 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>CLEAR_ERRNO</b>,
-    <b>CONFIG_DEBUG</b>, <b>config_file_list_destroy()</b>,
-    <b>config_load_and_apply()</b>, <b>config_file_list_t::count</b>,
-    <b>defer</b>, <b>config_file_list_t::files</b>,
-    <b>config_file_result_t::is_system_config</b>,
-    <b>config_file_result_t::path</b>, and
-  <b>platform_find_config_file()</b>.</p>
-<p class="Pp">Referenced by <b>options_init()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+1106   } else {
+1107     // Use default location with XDG support
+1108     char *config_dir = get_config_dir();
+1109     defer(SAFE_FREE(config_dir));
+1110     if (config_dir) {
+1111       size_t len = strlen(config_dir) + strlen(&quot;config.toml&quot;) + 1;
+1112       config_path_expanded = SAFE_MALLOC(len, char *);
+1113       if (config_path_expanded) {
+1114         safe_snprintf(config_path_expanded, len, &quot;%sconfig.toml&quot;, config_dir);
+1115       }
+1116     }
+1117
+1118     // Fallback to ~/.ascii-chat/config.toml
+1119     if (!config_path_expanded) {
+1120       config_path_expanded = expand_path(&quot;~/.ascii-chat/config.toml&quot;);
+1121     }
+1122   }
+1123
+1124   if (!config_path_expanded) {
+1125     if (strict) {
+1126       return SET_ERRNO(ERROR_CONFIG, &quot;Failed to resolve config file path&quot;);
+1127     }
+1128     return ASCIICHAT_OK;
+1129   }
+1130
+1131   char *validated_config_path = NULL;
+1132   // An optional default config is allowed not to exist. Check this before the
+1133   // whitelist validator, which quite correctly rejects paths whose parent
+1134   // directory has not been created yet but should not turn that normal case
+1135   // into a configuration error.
+1136   if (!strict &amp;&amp; platform_access(config_path_expanded, PLATFORM_ACCESS_EXISTS) != 0 &amp;&amp; errno == ENOENT) {
+1137     SAFE_FREE(config_path_expanded);
+1138     return ASCIICHAT_OK;
+1139   }
+1140   asciichat_error_t validate_result =
+1141       path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &amp;validated_config_path);
+1142   if (validate_result != ASCIICHAT_OK) {
+1143     SAFE_FREE(validated_config_path);
+1144     SAFE_FREE(config_path_expanded);
+1145     return validate_result;
+1146   }
+1147   // Free the old path before reassigning (defer will free the new one)
+1148   if (config_path_expanded != validated_config_path) {
+1149     SAFE_FREE(config_path_expanded);
+1150   }
+1151   config_path_expanded = validated_config_path;
+1152
+1153   // Determine display path for error messages (before any early returns)
+1154   const char *display_path = config_path ? config_path : config_path_expanded;
+1155
+1156   // Log that we're attempting to load config (before logging is initialized, use stderr)
+1157   // Only print if terminal output is enabled (suppress with --quiet)
+1158   if (config_path &amp;&amp; log_get_terminal_output()) {
+1159     log_debug(&quot;Loading configuration from: %s&quot;, display_path);
+1160   }
+1161
+1162   // Check if config file exists
+1163   struct stat st;
+1164   if (stat(config_path_expanded, &amp;st) != 0) {
+1165     if (strict) {
+1166       return SET_ERRNO(ERROR_CONFIG, &quot;Config file does not exist: '%s'&quot;, display_path);
+1167     }
+1168     // File doesn't exist, that's OK - not required (non-strict mode)
+1169     return ASCIICHAT_OK;
+1170   }
+1171
+1172   // Verify it's a regular file
+1173   if (!S_ISREG(st.st_mode)) {
+1174     if (strict) {
+1175       return SET_ERRNO(ERROR_CONFIG, &quot;Config file exists but is not a regular file: '%s'&quot;, display_path);
+1176     }
+1177     CONFIG_WARN(&quot;Config file exists but is not a regular file: '%s' (skipping)&quot;, display_path);
+1178     return ASCIICHAT_OK;
+1179   }
+1180
+1181   // Parse TOML file
+1182   toml_result_t result = toml_parse_file_ex(config_path_expanded);
+1183   // Ensure TOML resources are freed at ALL function exit points (defer handles cleanup)
+1184   defer(toml_free(result));
+1185
+1186   if (!result.ok) {
+1187     // result.errmsg is an array, so check its first character
+1188     const char *errmsg = (strlen(result.errmsg) &gt; 0) ? result.errmsg : &quot;Unknown parse error&quot;;
+1189
+1190     if (strict) {
+1191       // For strict mode, return detailed error message directly
+1192       // Note: SET_ERRNO stores the message in context, but asciichat_error_string() only returns generic codes
+1193       // So we need to format the error message ourselves here
+1194       char error_buffer[BUFFER_SIZE_MEDIUM];
+1195       safe_snprintf(error_buffer, sizeof(error_buffer), &quot;Failed to parse config file '%s': %s&quot;, display_path, errmsg);
+1196       toml_free(result); // Explicit cleanup before return (defer transformation not applied)
+1197       return SET_ERRNO(ERROR_CONFIG, &quot;%s&quot;, error_buffer);
+1198     }
+1199     CONFIG_WARN(&quot;Failed to parse config file '%s': %s (skipping)&quot;, display_path, errmsg);
+1200     toml_free(result);   // Explicit cleanup before return (defer transformation not applied)
+1201     return ASCIICHAT_OK; // Non-fatal error
+1202   }
+1203
+1204   // Apply configuration using schema-driven parser with bitmask validation
+1205   asciichat_errno_scope_t schema_scope = errno_scope_begin();
+1206   asciichat_error_t schema_result = config_apply_schema(result.toptab, detected_mode, opts, strict);
+1207
+1208   if (schema_result != ASCIICHAT_OK &amp;&amp; strict) {
+1209     toml_free(result); // Explicit cleanup before return (defer transformation not applied)
+1210     return schema_result;
+1211   }
+1212   if (strict &amp;&amp; schema_result == ASCIICHAT_OK)
+1213     ASSERT_NO_ERRNO_SINCE(schema_scope);
+1214   errno_scope_end(schema_scope, ASCIICHAT_ERRNO_DISMISSED);
+1215   // In non-strict mode, continue even if some options failed validation
+1216
+1217   CONFIG_DEBUG(&quot;Loaded configuration from %s&quot;, display_path);
+1218
+1219   // Log successful config load (use stderr since logging may not be initialized yet)
+1220   // Only print if terminal output is enabled (suppress with --quiet)
+1221   if (log_get_terminal_output()) {
+1222     log_debug(&quot;Loaded configuration from: %s&quot;, display_path);
+1223   }
+1224
+1225   // Update RCU system with modified options (for test compatibility)
+1226   // In real usage, options_state_set is called later after CLI parsing
+1227   asciichat_errno_scope_t rcu_scope = errno_scope_begin();
+1228   asciichat_error_t rcu_result = options_state_set(opts);
+1229   if (rcu_result != ASCIICHAT_OK) {
+1230     // Non-fatal - RCU might not be initialized yet in some test scenarios
+1231     // But log as warning so tests can see if this is the issue
+1232     CONFIG_WARN(&quot;Failed to update RCU options state: %d (values may not be persisted)&quot;, rcu_result);
+1233   } else {
+1234     ASSERT_NO_ERRNO_SINCE(rcu_scope);
+1235   }
+1236   errno_scope_end(rcu_scope, ASCIICHAT_ERRNO_DISMISSED);
+1237
+1238   toml_free(result); // Explicit cleanup before return (defer transformation not applied)
+1239   return ASCIICHAT_OK;
+1240 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_ERRNO_DISMISSED</b>, <b>ASCIICHAT_OK</b>,
+            <b>ASSERT_NO_ERRNO_SINCE</b>, <b>BUFFER_SIZE_MEDIUM</b>,
+            <b>CONFIG_DEBUG</b>, <b>config_load_and_apply()</b>,
+            <b>CONFIG_WARN</b>, <b>defer</b>, <b>errno</b>,
+            <b>errno_scope_begin()</b>, <b>errno_scope_end()</b>,
+            <b>ERROR_CONFIG</b>, <b>expand_path()</b>, <b>get_config_dir()</b>,
+            <b>log_debug</b>, <b>log_get_terminal_output()</b>,
+            <b>options_state_set()</b>, <b>PATH_ROLE_CONFIG_FILE</b>,
+            <b>path_validate_user_path()</b>, <b>platform_access()</b>,
+            <b>PLATFORM_ACCESS_EXISTS</b>, <b>platform_strdup()</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>, and
+            <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>config_load_and_apply()</b>, and
+            <b>config_load_system_and_user()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> config_load_system_and_user (<b
+              >asciichat_mode_t</b
+            >
+            detected_mode, <b>bool</b> strict, <b>options_t</b> * opts)
+          </h2>
+          <p class="Pp">
+            #include &lt;<b>include/ascii-chat/options/config.h</b>&gt;<b></b>
+          </p>
+          <p class="Pp">
+            Load system config first, then user config (user config overrides
+            system).
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>detected_mode</i> The detected mode (client or server)
+            <br />
+            <i>strict</i> If true, user config errors are fatal; system config
+            is always non-strict
+            <br />
+            <i>opts</i> Options structure to write configuration to
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code on failure
+          </div>
+          <p class="Pp">Loads configuration from two locations in order:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              System config: ${INSTALL_PREFIX}/etc/ascii-chat/config.toml
+              (non-strict, optional)
+            </dd>
+            <dt>2.</dt>
+            <dd>User config: default location (strictness as specified)</dd>
+          </dl>
+          <p class="Pp">
+            User config values override system config values. Both override
+            defaults. This function should be called before
+            <b>options_init()</b> parses command-line arguments.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            System config is always loaded non-strict (missing file is not an
+            error)
+            <p class="Pp"></p>
+            <p class="Pp">
+              User config strictness follows the strict parameter
+            </p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>1621</b> of file <b>config.c</b>.
+          </p>
+          <pre>
+1621                                                                                                             {
+1622   // Use platform abstraction to find all config.toml files across standard locations
+1623   config_file_list_t config_files = {0};
+1624   asciichat_error_t search_result = platform_find_config_file(&quot;config.toml&quot;, &amp;config_files);
+1625   defer(config_file_list_destroy(&amp;config_files));
+1626
+1627   if (search_result != ASCIICHAT_OK) {
+1628     CONFIG_DEBUG(&quot;Failed to search for config files: %d&quot;, search_result);
+1629     config_file_list_destroy(&amp;config_files);
+1630     return search_result;
+1631   }
+1632
+1633   // Cascade load: Load all found configs in reverse order (lowest priority first)
+1634   // This allows higher-priority configs to override lower-priority values.
+1635   // Example: System configs load first, then user configs override them.
+1636
+1637   asciichat_error_t result = ASCIICHAT_OK;
+1638   for (size_t i = config_files.count; i &gt; 0; i--) {
+1639     const config_file_result_t *file = &amp;config_files.files[i - 1];
+1640
+1641     // Determine strictness based on whether this is a system or user config
+1642     // System configs are non-strict (values can be missing, errors are non-fatal)
+1643     // User config is strict or non-strict based on parameter
+1644     bool is_user_config = !file-&gt;is_system_config;
+1645     bool file_strict = is_user_config ? strict : false;
+1646
+1647     CONFIG_DEBUG(&quot;Loading config from %s (system=%s, strict=%s)&quot;, file-&gt;path, file-&gt;is_system_config ? &quot;yes&quot; : &quot;no&quot;,
+1648                  file_strict ? OPT_VALUE_TRUE : OPT_VALUE_FALSE);
+1649
+1650     asciichat_errno_scope_t load_scope = errno_scope_begin();
+1651     asciichat_error_t load_result = config_load_and_apply(detected_mode, file-&gt;path, file_strict, opts);
+1652
+1653     if (load_result != ASCIICHAT_OK) {
+1654       if (file_strict) {
+1655         // Strict mode: errors are fatal
+1656         CONFIG_DEBUG(&quot;Strict config loading failed for %s&quot;, file-&gt;path);
+1657         result = load_result;
+1658       } else {
+1659         // Non-strict mode: errors are non-fatal, just log and continue
+1660         CONFIG_DEBUG(&quot;Non-strict config loading warning for %s: %d (continuing)&quot;, file-&gt;path, load_result);
+1661         errno_scope_end(load_scope, ASCIICHAT_ERRNO_DISMISSED);
+1662         ASSERT_NO_ERRNO_SINCE(load_scope);
+1663       }
+1664     } else {
+1665       ASSERT_NO_ERRNO_SINCE(load_scope);
+1666       errno_scope_end(load_scope, ASCIICHAT_ERRNO_HANDLED);
+1667     }
+1668   }
+1669
+1670   config_file_list_destroy(&amp;config_files);
+1671   return result;
+1672 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_ERRNO_DISMISSED</b>,
+            <b>ASCIICHAT_ERRNO_HANDLED</b>, <b>ASCIICHAT_OK</b>,
+            <b>ASSERT_NO_ERRNO_SINCE</b>, <b>CONFIG_DEBUG</b>,
+            <b>config_file_list_destroy()</b>, <b>config_load_and_apply()</b>,
+            <b>config_load_system_and_user()</b>,
+            <b>config_file_list_t::count</b>, <b>defer</b>,
+            <b>errno_scope_begin()</b>, <b>errno_scope_end()</b>,
+            <b>config_file_list_t::files</b>,
+            <b>config_file_result_t::is_system_config</b>,
+            <b>OPT_VALUE_FALSE</b>, <b>OPT_VALUE_TRUE</b>,
+            <b>config_file_result_t::path</b>, and
+            <b>platform_find_config_file()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>config_load_system_and_user()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

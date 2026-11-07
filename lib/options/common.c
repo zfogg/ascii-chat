@@ -230,15 +230,15 @@ bool validate_port_opt(const char *value_str, uint16_t *out_port) {
   return true;
 }
 
-// Validate FPS value (1-144) (internal option parsing helper)
+// Validate FPS value (0 for auto, otherwise 1-144).
 bool validate_fps_opt(const char *value_str, int *out_fps) {
   if (!value_str || !out_fps) {
     return false;
   }
 
   int fps_val = strtoint_safe(value_str);
-  if (fps_val == INT_MIN || fps_val < 1 || fps_val > 144) {
-    log_error("Invalid FPS value '%s'. FPS must be between 1 and 144.", value_str);
+  if (fps_val == INT_MIN || fps_val < 0 || fps_val > 144) {
+    log_error("Invalid FPS value '%s'. FPS must be between 0 and 144.", value_str);
     return false;
   }
 
