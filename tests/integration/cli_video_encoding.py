@@ -13,9 +13,7 @@ from ascii_chat_tests.cli import clean_environment
 from ascii_chat_tests.cli import cli_command
 
 import argparse
-import os
 from pathlib import Path
-import socket
 import subprocess
 import tempfile
 import time

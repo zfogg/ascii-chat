@@ -11,13 +11,13 @@ import argparse
 import json
 from pathlib import Path
 
-import matplotlib
+import matplotlib  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
 import numpy as np
-from scipy.io import wavfile
-from scipy.signal import spectrogram
+from scipy.io import wavfile  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
+from scipy.signal import spectrogram  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--input", required=True)

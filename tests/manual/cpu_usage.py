@@ -66,7 +66,7 @@ def launch(name, args, output='null', stdin='null'):
     p = subprocess.Popen(argv, cwd=ROOT, stdin=inp, stdout=dest, stderr=err, env=env,
                          creationflags=subprocess.CREATE_NO_WINDOW if WINDOWS else 0)
     err.close()
-    p.argv = argv
+    setattr(p, "argv", argv)
     return p
 
 def run(name, args, server=None, action=None, output='null', stdin='null', seconds=None):
@@ -96,7 +96,7 @@ def run(name, args, server=None, action=None, output='null', stdin='null', secon
             samples.append([round(100*(a-b), 2) for a,b in zip(now,last)])
             last = now
         elapsed = time.monotonic() - t
-        result = {'name': name, 'commands': [x.argv for x in processes],
+        result = {'name': name, 'commands': [getattr(x, "argv") for x in processes],
                   'cpu_pct': [round(100*(a-b)/elapsed,2) for a,b in zip(last,before)],
                   'samples': samples, 'exit_codes': [x.poll() for x in processes],
                   'pids': [x.pid for x in processes], 'seconds': elapsed,

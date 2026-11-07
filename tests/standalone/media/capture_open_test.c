@@ -1,5 +1,6 @@
 /** Real loader workers/decoders with controlled audio ownership and load failures. */
 #include "session/capture.h"
+#include "session/capture_pacing.h"
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/debug/named.h>
@@ -378,7 +379,20 @@ static void check_cancelled_prefetch(const char *path) {
   ffmpeg_decoder_destroy(decoder);
 }
 
+static void check_capture_pacing(void) {
+  const uint64_t interval = 100;
+  CHECK(capture_pacing_deadline(0, 1000, interval) == 1100);
+  CHECK(capture_pacing_deadline(1100, 1200, interval) == 1200);
+  // A read that finishes just after its deadline must not skip the next slot.
+  CHECK(capture_pacing_deadline(1100, 1201, interval) == 1200);
+  CHECK(capture_pacing_deadline(1200, 1250, interval) == 1300);
+  // A long stall skips missed slots without a burst of catch-up frames.
+  CHECK(capture_pacing_deadline(1300, 1760, interval) == 1700);
+  CHECK(capture_pacing_deadline(1700, 1760, interval) == 1800);
+}
+
 int main(int argc, char **argv) {
+  check_capture_pacing();
   CHECK(argc == 2);
   log_init(NULL, LOG_ERROR, false, false);
   CHECK(named_init() == ASCIICHAT_OK);

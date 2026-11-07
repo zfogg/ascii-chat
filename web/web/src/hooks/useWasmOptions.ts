@@ -60,6 +60,7 @@ export function applyMirrorWasmSettings(
     ),
     render_mode: settings.renderMode ?? 0,
     renderer: settings.renderer === "glyph" ? 1 : 0,
+    stabilize: settings.stabilize ?? false,
     palette_type: palettes[settings.palette],
     palette_custom: settings.paletteChars || DEFAULT_PALETTE_CHARS,
     palette_explicit:

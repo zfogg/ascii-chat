@@ -41,6 +41,7 @@ export interface BinarySettingsConfig {
   colorFilter: ColorFilter;
   palette: Palette;
   renderer?: "luminance" | "glyph";
+  stabilize?: boolean;
   paletteExplicit?: boolean;
   paletteChars?: string;
   matrixRain?: boolean;
@@ -377,6 +378,16 @@ export function BinarySettings({
               </div>
             </div>
           )}
+
+          <label className="flex items-center gap-2 text-sm text-terminal-fg">
+            <input
+              type="checkbox"
+              checked={config.stabilize ?? false}
+              disabled={disabled}
+              onChange={(e) => updateConfig({ stabilize: e.target.checked })}
+            />
+            Reduce flicker
+          </label>
 
           <Tooltip
             text={

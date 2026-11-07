@@ -61,7 +61,7 @@ mirror and two-client test checks the file tone in mirror output, both input ton
 in each call output, and A/V synchronization:
 
 ```sh
-python tests/integration/render_file_audio.py build/bin/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/recording --ascii-chat-binary build/bin/ascii-chat
 ```
 
 
@@ -99,7 +99,7 @@ session APIs; MCP is a bounded render tool, not a live session controller.
 
 Focused regression coverage:
 
-- `tests/integration/render_file_audio.py BINARY --transitions-only`: hardware-free
+- `pytest tests/python/integration/recording --ascii-chat-binary BINARY --recording-transitions-only`: hardware-free
   paused-file finalization, synthetic A/V duration and playlist source switching
   with both tones retained in one recording.
 - `tests/standalone/media/capture_open_test.c`: retained paused recording frames,

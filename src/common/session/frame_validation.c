@@ -129,8 +129,10 @@ static asciichat_error_t validate_contract(const char *text, size_t length, uint
     }
     if (c < 0x20 || c == 0x7f || ended_row || row >= height)
       return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid frame control or row count at byte %zu", i);
-    utf8proc_int32_t cp;
-    utf8proc_ssize_t bytes = utf8proc_iterate((const utf8proc_uint8_t *)text + i, (utf8proc_ssize_t)(length - i), &cp);
+    utf8proc_int32_t cp = c;
+    utf8proc_ssize_t bytes = 1;
+    if (c >= 0x80)
+      bytes = utf8proc_iterate((const utf8proc_uint8_t *)text + i, (utf8proc_ssize_t)(length - i), &cp);
     if (bytes <= 0 || (cp >= 0x80 && cp <= 0x9f))
       return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid frame UTF-8/control at byte %zu", i);
     if (settings && cp != ' ') {
@@ -161,7 +163,7 @@ static asciichat_error_t validate_contract(const char *text, size_t length, uint
       if (!allowed)
         return SET_ERRNO(ERROR_INVALID_FRAME, "Off-palette frame glyph U+%04x at byte %zu", (unsigned)cp, i);
     }
-    int cells = utf8proc_charwidth(cp);
+    int cells = cp < 128 ? 1 : utf8proc_charwidth(cp);
     if (cells < 0 || (cells == 0 && (!previous_width || ++marks > 32)))
       return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid frame combining sequence at byte %zu", i);
     if ((uint32_t)cells > width - col)

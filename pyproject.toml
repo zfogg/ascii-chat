@@ -15,13 +15,28 @@ dependencies = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests/python"]
-addopts = ["--strict-markers", "-n", "logical"]
+addopts = ["--strict-markers", "--import-mode=importlib", "-n", "logical"]
 markers = [
   "unit: fast isolated Python tests",
   "integration: tests exercising native executables",
   "cli: native command-line contracts",
   "network: loopback networking tests",
+  "native: native library checks requiring isolated interpreters",
   "media: media processing tests",
   "terminal: PTY and terminal behavior",
   "mcp: MCP protocol tests",
 ]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+# Some legacy probes initialize their test environment before imports and use
+# compact one-line statements; keep those conventions while checking errors.
+ignore = ["E402", "E701", "E702"]
+
+[tool.ty.environment]
+python-platform = "all"
+extra-paths = ["deps/ascii-chat-deps/gotel/c/testing/python", "deps/ascii-chat-deps/gotel/python/src"]
+
+[tool.ty.rules]
+# Optional platform and audio imports resolve only on hosts with those extras.
+unused-ignore-comment = "ignore"

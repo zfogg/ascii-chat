@@ -663,6 +663,7 @@ endif()
 # For OBJECT libs, link external deps
 target_link_libraries(ascii-chat-core PRIVATE
     ${SQLITE3_LIBRARIES}
+    ${UTF8PROC_LIBRARIES}
 )
 
 # PCRE2: Configure for core module (for session string format validation)

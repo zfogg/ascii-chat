@@ -457,6 +457,7 @@ static void *pipeline_encode_thread(void *arg) {
   log_debug("[PIPELINE_ENCODE] Starting encode thread");
 
   uint64_t frames_processed = 0;
+  uint64_t recording_epoch = UINT64_MAX;
   while (true) {
     // Drain queued frames before exiting, even when capture was interrupted.
     pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->encode_queue, 100 * NS_PER_MS_INT);
@@ -482,6 +483,11 @@ static void *pipeline_encode_thread(void *arg) {
     if (frames_processed == 0 || frames_processed % 30 == 0) {
       log_debug_every(US_PER_SEC_INT, "[PIPELINE_ENCODE] Processing frame %llu: %dx%d",
                       (unsigned long long)frames_processed, frame->w, frame->h);
+    }
+
+    if (recording_epoch != frame->source_epoch) {
+      session_display_reset_stabilizer(pipeline->display, true);
+      recording_epoch = frame->source_epoch;
     }
 
     // Encode frame (convert_to_ascii is called internally by encode_frame)
@@ -609,6 +615,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
   }
 
   log_debug("[PIPELINE_MAIN] Starting main thread loop");
+  uint64_t display_epoch = UINT64_MAX;
   if (keyboard_handler && !GET_OPTION(snapshot_mode)) {
     pipeline->keyboard_handler = keyboard_handler;
     pipeline->should_exit = should_exit;
@@ -664,6 +671,10 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
 
     if (!help_is_active) {
       // Convert to ASCII
+      if (display_epoch != frame->source_epoch) {
+        session_display_reset_stabilizer(pipeline->display, false);
+        display_epoch = frame->source_epoch;
+      }
       image_t tmp = {.w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels};
       uint64_t conversion_started_ns = time_get_ns();
       char *ascii = session_display_convert_to_ascii_reuse(pipeline->display, &tmp);
@@ -687,10 +698,11 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
           ascii_otel_pipeline_progress(1, 0);
           ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_LATENCY, (double)(published_ns - acquisition_started_ns) / 1e9);
           session_capture_complete_open(pipeline->capture, epoch);
-          log_debug("LIVE_FRAME: capture_to_publish_ms=%.2f fresh=%d read_ms=%.2f queue_ms=%.2f convert_ms=%.2f "
-                    "publish_ms=%.2f",
-                    (double)(published_ns - acquisition_started_ns) / NS_PER_MS_INT, fresh, read_ms, queue_ms,
-                    convert_ms, (double)(published_ns - converted_ns) / NS_PER_MS_INT);
+          log_debug_every(US_PER_SEC_INT,
+                          "LIVE_FRAME: capture_to_publish_ms=%.2f fresh=%d read_ms=%.2f queue_ms=%.2f convert_ms=%.2f "
+                          "publish_ms=%.2f",
+                          (double)(published_ns - acquisition_started_ns) / NS_PER_MS_INT, fresh, read_ms, queue_ms,
+                          convert_ms, (double)(published_ns - converted_ns) / NS_PER_MS_INT);
         }
         session_display_release_ascii(pipeline->display, ascii);
       } else {

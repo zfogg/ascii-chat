@@ -13,7 +13,6 @@ import functools
 import http.server
 import os
 from pathlib import Path
-import subprocess
 import tempfile
 import threading
 import time
@@ -119,7 +118,7 @@ def main():
                 term.write('"'+str(path)+'" ')
                 term.expect(lambda t:path.name in t,"Dropped path appears")
                 def cursor_after_quote(_):
-                    x,y = term.cursor if os.name == "nt" else (term.screen.cursor.x,term.screen.cursor.y)
+                    x,y = getattr(term, "cursor") if os.name == "nt" else (term.screen.cursor.x,term.screen.cursor.y)
                     line = term.screen.display[y]
                     return x > 0 and line[x-1] == '"' and '> "' in line and path.name in line
                 term.expect(cursor_after_quote, "Drop cursor follows the closing quote without a trailing space")

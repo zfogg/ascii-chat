@@ -16,7 +16,7 @@ Run commands from the repository root unless stated otherwise. Read `AGENTS.md`,
 | Criterion performance | Rendering/throughput regressions with correctness checks and controlled measurements | `tests/performance/` |
 | Criterion contracts | Explicitly linked white-box production contracts | `tests/contracts/` |
 | Python pytest | Python helper contracts and migrated native-process scenarios | `tests/python/` |
-| Python legacy harness | Executable-specific process, terminal, and media scenarios not yet migrated | `tests/integration/` and other test directories |
+| Python fixture driver | Support program launched by a pytest case or a Criterion wrapper | `tests/ascii_chat_tests/`, `tests/scripts/` |
 | Standalone C probes | Necessary separate process, native platform facility, dependency/build boundary, or Python-driven fixture | `tests/standalone/`, selected integration fixtures |
 
 The three primary Criterion categories are **unit, integration, performance**. Contract is an additional style/label; migrated suites retain unit/integration labels when assigned. Some contracts have only `criterion;contract`, so inspect discovery before claiming complete coverage. CTest labels describe scope, not language: `integration` also includes registered Python harnesses.
@@ -48,11 +48,15 @@ Use the locked uv project at `tests/ascii_chat_tests`. New Python tests go under
 `tests/python/` and must be import-safe: create processes, parse arguments, and
 mutate environment only in fixtures or test functions. Share non-pytest mechanics
 through `ascii_chat_tests`; use pytest fixtures for isolation and lifecycle.
+Run `uv run --project tests/ascii_chat_tests --frozen ruff check tests` and
+`uv run --project tests/ascii_chat_tests --frozen ty check tests` after Python
+changes. Both check the entire test tree. CTest also registers these as
+`python-ruff` and `python-ty`.
 Pass the built binary with `--ascii-chat-binary` (or `ASCII_CHAT_TEST_BINARY`).
 Pytest uses xdist on all logical cores by default. CTest coordinates separate
 pytest batches using `PROCESSORS` to avoid nested oversubscription; preserve
 explicit CTest serialization for existing tests that share exclusive resources.
-Do not point pytest at all of `tests/`: legacy harnesses are not yet import-safe.
+Keep pytest collection under `tests/python/`; helper programs and manual scripts are not collected.
 See [running-tests.md](references/running-tests.md) for direct and CTest commands.
 
 ## Write useful C and Criterion tests

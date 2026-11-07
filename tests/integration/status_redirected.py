@@ -14,7 +14,6 @@ from ascii_chat_tests.cli import cli_command
 
 import argparse
 from pathlib import Path
-import socket
 import subprocess
 import sys
 import tempfile

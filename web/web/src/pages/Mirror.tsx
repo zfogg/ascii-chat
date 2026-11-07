@@ -296,8 +296,9 @@ export function MirrorPage() {
       contentSettings,
       mediaSource,
       screenRevision: screenCapture.revision,
+      fileRevision: fileMedia.revision,
     }),
-    [contentSettings, mediaSource, screenCapture.revision],
+    [contentSettings, mediaSource, screenCapture.revision, fileMedia.revision],
   );
   const toggleMedia = useCallback(() => {
     if (!fileMedia.kind) {

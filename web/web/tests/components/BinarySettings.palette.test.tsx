@@ -137,6 +137,29 @@ test("glyph defaults to its 95-character palette and permits an explicit palette
   });
 });
 
+test.each([
+  AsciiChatMode.MIRROR,
+  AsciiChatMode.CLIENT,
+  AsciiChatMode.DISCOVERY,
+])("enables stabilization in each mode (%s)", (mode) => {
+  const onChange = vi.fn();
+  render(
+    <BinarySettings
+      config={DEFAULT_SETTINGS}
+      mode={mode}
+      onChange={onChange}
+    />,
+    {
+      wrapper: HeadingProvider,
+    },
+  );
+  fireEvent.click(screen.getByRole("checkbox", { name: "Reduce flicker" }));
+  expect(onChange).toHaveBeenCalledWith({
+    ...DEFAULT_SETTINGS,
+    stabilize: true,
+  });
+});
+
 test("choosing a preset cancels an uncommitted edit", () => {
   vi.useFakeTimers();
   const onChange = vi.fn();

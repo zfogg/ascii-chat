@@ -40,6 +40,11 @@ struct webcam_context_t {
   webcam_frame_clock_t clock;
   struct SwsContext *rgb_converter;
   int stride;
+  LONGLONG last_sample_timestamp;
+  unsigned short device_index;
+  uint64_t last_frame_log_ns;
+  uint64_t last_copy_log_ns;
+  uint64_t last_backlog_log_ns;
 };
 
 static HRESULT enumerate_devices_and_print(void) {
@@ -115,6 +120,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   // Initialize all fields
   cam->device = NULL;
+  cam->device_index = device_index;
   cam->reader = NULL;
   cam->width = 0;
   cam->height = 0;
@@ -123,6 +129,10 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   cam->cached_frame = NULL;
   cam->rgb_converter = NULL;
   cam->stride = 0;
+  cam->last_sample_timestamp = -1;
+  cam->last_frame_log_ns = 0;
+  cam->last_copy_log_ns = 0;
+  cam->last_backlog_log_ns = 0;
   cam->clock = (webcam_frame_clock_t){0};
 
   HRESULT hr;
@@ -533,9 +543,7 @@ read_latest:
   QueryPerformanceCounter(&end);
   double elapsed_ms = ((double)(end.QuadPart - start.QuadPart)) * 1000.0 / (double)freq.QuadPart;
 
-  char duration_str[TIME_DURATION_BUFFER_SIZE];
-  time_pretty((uint64_t)(elapsed_ms * 1e6), -1, duration_str, sizeof(duration_str));
-  log_debug_every(5 * NS_PER_SEC_INT, "ReadSample took %s (hr=0x%08x, flags=0x%08x, sample=%p)", duration_str, hr,
+  log_debug_every(5 * US_PER_SEC_INT, "ReadSample took %.2f ms (hr=0x%08x, flags=0x%08x, sample=%p)", elapsed_ms, hr,
                   flags, sample);
 
   // Check for stream tick or other non-data flags
@@ -593,9 +601,11 @@ read_latest:
     HRESULT flushed = IMFSourceReader_Flush(ctx->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM);
     if (SUCCEEDED(flushed))
       webcam_frame_clock_reset(&ctx->clock);
-    log_debug_every(US_PER_SEC_INT,
-                    "CAMERA_FRAME: backlog_ms=%.2f discarded=%u (drain budget exhausted, flush=0x%08lx)", backlog_ms,
-                    discarded, flushed);
+    if (!ctx->last_backlog_log_ns || wall_ns - ctx->last_backlog_log_ns >= NS_PER_SEC_INT) {
+      ctx->last_backlog_log_ns = wall_ns;
+      log_debug("CAMERA_FRAME: device=%u backlog_ms=%.2f discarded=%u (drain budget exhausted, flush=0x%08lx)",
+                ctx->device_index, backlog_ms, discarded, flushed);
+    }
     return NULL;
   }
   UINT64 device_time;
@@ -605,8 +615,16 @@ read_latest:
     if (system_time >= 0 && device_time <= (UINT64)system_time)
       device_age_ms = (double)((UINT64)system_time - device_time) / 10000.0;
   }
-  log_debug("CAMERA_FRAME: backlog_ms=%.2f read_ms=%.2f discarded=%u device_age_ms=%.2f", backlog_ms, elapsed_ms,
-            discarded, device_age_ms);
+  double device_interval_ms = ctx->last_sample_timestamp >= 0 && timestamp >= ctx->last_sample_timestamp
+                                  ? (double)(timestamp - ctx->last_sample_timestamp) / 10000.0
+                                  : -1;
+  ctx->last_sample_timestamp = timestamp;
+  if (!ctx->last_frame_log_ns || wall_ns - ctx->last_frame_log_ns >= NS_PER_SEC_INT) {
+    ctx->last_frame_log_ns = wall_ns;
+    log_debug("CAMERA_FRAME: device=%u backlog_ms=%.2f read_ms=%.2f discarded=%u device_age_ms=%.2f "
+              "accepted_sample_interval_ms=%.2f",
+              ctx->device_index, backlog_ms, elapsed_ms, discarded, device_age_ms, device_interval_ms);
+  }
 
   // Get the media buffer from the sample
   IMFMediaBuffer *buffer = NULL;
@@ -714,10 +732,14 @@ read_latest:
   IMFSample_Release(sample);
 
   uint64_t complete_ns = time_get_ns();
-  log_debug("CAMERA_COPY: request_ns=%llu sample_ns=%llu complete_ns=%llu read_ms=%.2f copy_ms=%.2f device_age_ms=%.2f",
-            (unsigned long long)request_ns, (unsigned long long)wall_ns, (unsigned long long)complete_ns,
-            (double)(wall_ns - request_ns) / NS_PER_MS_INT, (double)(complete_ns - wall_ns) / NS_PER_MS_INT,
-            device_age_ms);
+  if (!ctx->last_copy_log_ns || complete_ns - ctx->last_copy_log_ns >= NS_PER_SEC_INT) {
+    ctx->last_copy_log_ns = complete_ns;
+    log_debug("CAMERA_COPY: device=%u request_ns=%llu sample_ns=%llu complete_ns=%llu read_ms=%.2f copy_ms=%.2f "
+              "device_age_ms=%.2f",
+              ctx->device_index, (unsigned long long)request_ns, (unsigned long long)wall_ns,
+              (unsigned long long)complete_ns, (double)(wall_ns - request_ns) / NS_PER_MS_INT,
+              (double)(complete_ns - wall_ns) / NS_PER_MS_INT, device_age_ms);
+  }
   return img;
 }
 

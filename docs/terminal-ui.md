@@ -100,7 +100,7 @@ an atomic snapshot of the entire process.
 
 ## Verification
 
-`tests/integration/terminal_ui.py` drives the real executable in a resizable PTY
+`tests/python/integration/terminal_ui/test_ui.py` drives the real executable in a resizable PTY
 (ConPTY on Windows), interprets its output using pyte, and checks startup-small,
 resize recovery, a live WebSocket handshake while covered, ignored keyboard input,
 help restoration, paused playback, explicit dimensions, recording while covered,
@@ -108,9 +108,9 @@ interrupt shutdown, and redirected snapshots.
 It requires `pyte`, `pywinpty` on Windows or `pexpect` on POSIX, and `ffmpeg`.
 
 ```sh
-python tests/integration/terminal_ui.py --binary build/bin/ascii-chat --debug-sync
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/terminal_ui --ascii-chat-binary build/bin/ascii-chat --debug-sync
 cmake --build build --target test-sync-regressions
-python tests/integration/sync_regressions.py build/bin/test-sync-regressions
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/sync --sync-probe build/bin/test-sync-regressions
 ```
 
 The Criterion `ui_too_small` suite checks exact boundaries and the 1x1/unknown-size
@@ -292,8 +292,8 @@ with `SET_ERRNO`. `terminal_should_use_utf8()` resolves the explicit UTF-8 optio
 before capability detection. Widget colors go through `colored_string()`;
 `ui_text_color_prefix()` supports incremental formatting with the same policy.
 
-`tests/integration/tui_mode_shortcuts.py` covers help, logs, sync, stats and error
+`tests/python/integration/tui_modes/test_shortcuts.py` covers help, logs, sync, stats and error
 stacks in mirror and both server modes, with status screens enabled and disabled.
-`native_ui_screens.py` covers prompts, identity warnings, update buttons, LAN
+`tests/python/integration/native_ui/test_screens.py` covers prompts, identity warnings, update buttons, LAN
 selection, notices, recording progress and splash, including size recovery.
 Both can export terminal-cell screenshots and original ANSI streams.

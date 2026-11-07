@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 import subprocess
 import time
+from typing import Any
 from ascii_chat_tests.tmux import Pane
 from ascii_chat_tests.process import free_port as port
 
@@ -27,7 +28,7 @@ def main():
         key = root / name
         if not key.exists():
             subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", password, "-f", str(key)], check=True)
-    results = []
+    results: list[dict[str, Any]] = []
 
     def pane(name, flags):
         return Pane(name, cli_command(binary, "--log-file", str(root / name / "application.log"), "--log-level", "warn", *flags), root, 100, 45)

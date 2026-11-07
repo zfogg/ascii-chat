@@ -109,6 +109,10 @@ typedef struct session_display_ctx {
 
   /** @brief Digital rain effect context (NULL if disabled) */
   digital_rain_t *digital_rain;
+  ascii_stabilizer_t stabilizer;
+  ascii_stabilizer_t recording_stabilizer;
+  color_filter_t previous_stabilizer_filter;
+  bool stabilizer_filter_initialized;
   outbuf_t ascii_workspace;
   image_t *resize_workspace;
   image_t *flip_workspace;
@@ -447,6 +451,8 @@ void session_display_destroy(session_display_ctx_t *ctx) {
   image_destroy(ctx->filter_workspace);
   ctx->resize_workspace = ctx->flip_workspace = ctx->filter_workspace = NULL;
   SAFE_FREE(ctx->tty_frame_buffer);
+  ascii_stabilizer_reset(&ctx->stabilizer);
+  ascii_stabilizer_reset(&ctx->recording_stabilizer);
   SAFE_FREE(ctx->ascii_workspace.buf);
   ctx->initialized = false;
 
@@ -599,6 +605,12 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   bool flip_y_enabled = GET_OPTION(flip_y);
 
   color_filter_t color_filter = GET_OPTION(color_filter);
+  if (ctx->stabilizer_filter_initialized && ctx->previous_stabilizer_filter != color_filter) {
+    ascii_stabilizer_reset(&ctx->stabilizer);
+    ascii_stabilizer_reset(&ctx->recording_stabilizer);
+  }
+  ctx->previous_stabilizer_filter = color_filter;
+  ctx->stabilizer_filter_initialized = true;
 
   // Handle dynamic matrix rain effect toggle
   bool matrix_rain_enabled = GET_OPTION(matrix_rain);
@@ -626,6 +638,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   // Re-evaluate render_mode and color_level on every frame to pick up live changes
   caps_copy.render_mode = (render_mode_t)GET_OPTION(render_mode);
   caps_copy.text_renderer = GET_OPTION(renderer);
+  caps_copy.stabilize = GET_OPTION(stabilize);
   caps_copy.palette_explicit = GET_OPTION(palette_explicit);
   terminal_color_mode_t color_mode_opt = (terminal_color_mode_t)GET_OPTION(color_mode);
   if (color_mode_opt != TERM_COLOR_AUTO) {
@@ -725,10 +738,16 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   outbuf_t *output = reuse && !ctx->render_file && color_filter == COLOR_FILTER_NONE && !matrix_rain_enabled
                          ? &ctx->ascii_workspace
                          : NULL;
-  // Call the standard ASCII conversion using the filtered (or original) image
-  char *result =
-      ascii_convert_with_buffers(ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio, stretch,
-                                 ctx->palette_chars, false, ctx->render_file ? NULL : &ctx->resize_workspace, output);
+  // Recording and live display run on separate threads and own separate histories.
+  bool recording = ctx->render_file && !reuse;
+  ascii_stabilizer_t *history = recording ? &ctx->recording_stabilizer : &ctx->stabilizer;
+  if (recording && ctx->render_fps)
+    history->fixed_step_ns = NS_PER_SEC_INT / ctx->render_fps;
+  char *result = ascii_convert_with_buffers_stabilized(
+      ascii_input_image, width, height, &caps_copy, preserve_aspect_ratio, stretch, ctx->palette_chars, false,
+      ctx->render_file ? NULL : &ctx->resize_workspace, output, caps_copy.stabilize ? history : NULL);
+  if (!caps_copy.stabilize)
+    ascii_stabilizer_reset(history);
   uint64_t t_convert_end = time_get_ns();
 
   // Apply rainbow color filter to ANSI output by replacing RGB values
@@ -772,6 +791,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
     log_dev("DIGITAL_RAIN: Effect applied (%s)", rain_str);
   }
 
+  uint64_t validation_started_ns = time_get_ns();
   // Validate the completed local frame using the same policy as received text.
   // Wide palettes use the existing cell composer before the rectangular check.
   bool explicit_palette = caps_copy.palette_explicit;
@@ -800,6 +820,10 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
     }
   }
 
+  uint64_t validation_finished_ns = time_get_ns();
+  log_debug_every(US_PER_SEC_INT, "DISPLAY_STAGE: conversion_ms=%.2f validation_ms=%.2f",
+                  (double)(t_convert_end - t_convert_start) / NS_PER_MS_INT,
+                  (double)(validation_finished_ns - validation_started_ns) / NS_PER_MS_INT);
   uint64_t t_cleanup_start = time_get_ns();
   // Scratch images remain owned by the display until resize or teardown.
   if (ctx->render_file) {
@@ -886,6 +910,11 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 char *session_display_convert_to_ascii_reuse(session_display_ctx_t *ctx, const image_t *image) {
   ASCII_OTEL_SCOPE(SESSION_DISPLAY_CONVERT_TO_ASCII_REUSE);
   return convert_to_ascii(ctx, image, true);
+}
+
+void session_display_reset_stabilizer(session_display_ctx_t *ctx, bool recording) {
+  if (ctx)
+    ascii_stabilizer_reset(recording ? &ctx->recording_stabilizer : &ctx->stabilizer);
 }
 
 void session_display_release_ascii(session_display_ctx_t *ctx, char *ascii) {
@@ -1159,7 +1188,9 @@ asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const
   }
 
   // Convert image to ASCII
+  uint64_t conversion_started_ns = time_get_ns();
   char *ascii = session_display_convert_to_ascii(ctx, image);
+  uint64_t converted_ns = time_get_ns();
   if (!ascii) {
     log_warn("Failed to convert image to ASCII");
     return SET_ERRNO(ERROR_MEDIA_INIT, "Cannot convert recording frame to ASCII");
@@ -1176,6 +1207,11 @@ asciichat_error_t session_display_encode_frame(session_display_ctx_t *ctx, const
 
   uint64_t stats_record_start = time_get_ns();
   asciichat_error_t fe = render_file_write_frame(ctx->render_file, render_frame, captured_ns);
+  uint64_t recorded_ns = time_get_ns();
+  log_debug_every(US_PER_SEC_INT, "RECORD_FRAME: convert_ms=%.2f output_ms=%.2f total_ms=%.2f",
+                  (double)(converted_ns - conversion_started_ns) / NS_PER_MS_INT,
+                  (double)(recorded_ns - converted_ns) / NS_PER_MS_INT,
+                  (double)(recorded_ns - conversion_started_ns) / NS_PER_MS_INT);
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_RECORDING, time_get_ns() - stats_record_start);
   if (fe == ASCIICHAT_OK)
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_RECORDING_FRAMES, 1);

@@ -31,7 +31,7 @@ constraints and `getSettings()` alone do not measure echo removal. A WASM AEC3
 backend should only replace browser AEC if acoustic testing shows a need; running
 both cancellers on the same microphone is not the intended configuration.
 
-`tests/audio/test_processor.py` verifies the compiled PCM processor's callback
+`tests/audio/probe_processor.py` verifies the compiled PCM processor's callback
 size invariance, reset, in-place processing and media bypass, and can emit raw
 float32 native/WASM comparison fixtures with an optional output directory.
 
@@ -119,8 +119,8 @@ license applies in addition to this repository's source license.
 cmake --preset default -B build
 cmake --build build
 python -m pip install numpy scipy matplotlib sounddevice soundfile
-python tests/audio/test_spectral.py build/bin/asciichat.dll
-python tests/audio/test_spectral_integration.py build/bin/asciichat.dll
+python tests/audio/probe_spectral.py build/bin/asciichat.dll
+python tests/audio/probe_spectral_integration.py build/bin/asciichat.dll
 ```
 
 Pass the shared library path for your platform. The tests call the compiled C/C++
@@ -155,8 +155,8 @@ server mixing enabled. Explicit `--audio=true` avoids toggling the default on
 state off. To reproduce on a machine with the selected audio devices:
 
 ```sh
-python tests/audio/test_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-audio --speech build/audio-evidence/speaker-speech.wav
-python tests/audio/test_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-encrypted --speech build/audio-evidence/speaker-speech.wav --encrypted
+python tests/manual/probe_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-audio --speech build/audio-evidence/speaker-speech.wav
+python tests/manual/probe_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-encrypted --speech build/audio-evidence/speaker-speech.wav --encrypted
 python tests/audio/analyze_network_audio.py --input build/network-audio --output build/network-report
 ```
 
@@ -190,7 +190,7 @@ generated separately and is not proof that a peer received anything. Network
 verification must inspect the peer's received recording.
 
 ```sh
-python tests/audio/test_audio_pattern.py build/bin/asciichat.dll --wav test-audio.wav
+python tests/audio/probe_audio_pattern.py build/bin/asciichat.dll --wav test-audio.wav
 ```
 
 This checks sample bounds, each section's energy, sweep frequency, silence,

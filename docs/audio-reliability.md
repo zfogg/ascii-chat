@@ -28,10 +28,10 @@ device routing, stereo negotiation, and hardware-free regression coverage.
 Install NumPy for the Python interpreter, build the native shared library, then run:
 
 ```sh
-python tests/audio/test_opus_profiles.py PATH_TO_SHARED_LIBRARY
-python tests/audio/test_playout_recovery.py PATH_TO_SHARED_LIBRARY
-python tests/audio/test_spectral_integration.py PATH_TO_SHARED_LIBRARY
-python tests/audio/test_aec3_echo.py PATH_TO_SHARED_LIBRARY
+python tests/audio/probe_opus_profiles.py PATH_TO_SHARED_LIBRARY
+python tests/audio/probe_playout_recovery.py PATH_TO_SHARED_LIBRARY
+python tests/audio/probe_spectral_integration.py PATH_TO_SHARED_LIBRARY
+python tests/audio/probe_aec3_echo.py PATH_TO_SHARED_LIBRARY
 ```
 
 The library is `build/bin/asciichat.dll` on Windows,

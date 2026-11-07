@@ -1,3 +1,4 @@
+from ascii_chat_tests.patterns import require_match
 """Exercise bidirectional synthetic audio and mixed video in discovery."""
 import re
 import time
@@ -31,7 +32,7 @@ def test_discovery_audio(binary, tmp_path):
         host = Service(binary, directory, 'host', '--test-pattern', common + ['--port',str(hp)], env)
         services.append(host)
         host.wait_for('Session created:', timeout=25)
-        name = re.search(r'Session created: ([a-z]+-[a-z]+-[a-z]+)', host.text())[1]
+        name = require_match(r'Session created: ([a-z]+-[a-z]+-[a-z]+)', host.text())[1]
         print('Session',name, flush=True)
         client = Service(binary, directory, 'client', name, common + ['--test-pattern'], env)
         services.append(client)

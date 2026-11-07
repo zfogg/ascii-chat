@@ -32,7 +32,7 @@ def main():
     args = parser.parse_args()
     binary = str(args.binary.resolve())
     env = dict(os.environ, ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
-    flags = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
+    creationflags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
     with tempfile.TemporaryDirectory(prefix="ascii-chat-broken-output-") as directory:
         directory = Path(directory)
         processes = []
@@ -41,7 +41,7 @@ def main():
             process = subprocess.Popen(
                 cli_command(binary, "--log-level", "warn", "--log-file",
                  str(directory / (name + ".log"))) + arguments,
-                stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr, env=env, **flags)
+                stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr, env=env, creationflags=creationflags)
             processes.append(process)
             return process
 
