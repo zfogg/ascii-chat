@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < rounds + 5; ++i) {
       if (i == 5)
         begin = seconds();
-      char *out = variant ? ascii_render_glyph_match(&source, ASCII_COLOR_TRUE, ops)
+      char *out = variant ? ascii_render_glyph_match(&source, ASCII_COLOR_TRUE, ops, NULL)
                           : ascii_render(&baseline, "   ...',;:clodxkO0KXNWM", ASCII_COLOR_TRUE, false, false, ops);
       if (!out || !*out)
         return 3;

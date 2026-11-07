@@ -595,6 +595,7 @@ options_t options_t_new(void) {
   // ============================================================================
   opts.color_filter = OPT_COLOR_FILTER_DEFAULT;
   opts.render_mode = OPT_RENDER_MODE_DEFAULT;
+  opts.renderer = ASCII_RENDERER_LUMINANCE;
   opts.palette_type = OPT_PALETTE_TYPE_DEFAULT;
   // palette_custom is already zeroed by memset
   opts.palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT;

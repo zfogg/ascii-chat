@@ -293,11 +293,32 @@ void ascii_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool mor
  * The source is fitted at 8x8 samples per output cell, then averaged to 4x4.
  * Glyph coverage comes from DejaVu Sans Mono; real terminal fonts may differ. */
 #include "glyph_masks.h"
-char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const simd_cells_t *ops) {
+bool ascii_glyph_palette_supported(const char *palette) {
+  if (!palette || !*palette)
+    return false;
+  for (const unsigned char *p = (const unsigned char *)palette; *p; ++p)
+    if (*p < 32 || *p > 126)
+      return false;
+  return true;
+}
+
+char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const simd_cells_t *ops, const char *palette) {
   if (!image || !image->pixels || !ops || image->w <= 0 || image->h <= 0 || image->w % 8 || image->h % 8 ||
       mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid glyph matching input");
     return NULL;
+  }
+  bool allowed[95] = {false};
+  if (palette) {
+    if (!ascii_glyph_palette_supported(palette)) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette must contain printable ASCII characters");
+      return NULL;
+    }
+    for (const unsigned char *p = (const unsigned char *)palette; *p; ++p)
+      allowed[*p - 32] = true;
+  } else {
+    for (int i = 0; i < 95; ++i)
+      allowed[i] = true;
   }
   image_t cells = *image;
   cells.w /= 8;
@@ -327,9 +348,11 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
       for (int i = 0; i < 16; ++i)
         sample_mean += luminance[i];
       sample_mean /= 16;
-      int best = 0;
+      int best = -1;
       int64_t best_error = INT64_MAX;
       for (int g = 0; g < 95; ++g) {
+        if (!allowed[g])
+          continue;
         int mask_sum = 0;
         for (int i = 0; i < 16; ++i)
           mask_sum += glyph_masks[g][i];
@@ -340,7 +363,7 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
         int64_t error = (int64_t)16 * tone_error * tone_error;
         for (int i = 0; i < 16; ++i) {
           int delta = (luminance[i] - sample_mean) - ((int)glyph_masks[g][i] - mask_mean);
-          error += delta * delta;
+          error += (int64_t)delta * delta;
         }
         if (error < best_error) {
           best_error = error;

@@ -468,7 +468,7 @@ Test(ascii_emission, rejects_invalid_input) {
 Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   rgb_pixel_t pixels[16 * 8] = {{0}};
   image_t image = {.w = 16, .h = 8, .pixels = pixels};
-  char *black = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar);
+  char *black = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
   cr_assert_not_null(black);
   cr_assert_str_eq(black, "  ");
   SAFE_FREE(black);
@@ -479,21 +479,27 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
         pixels[y * 16 + x] = (rgb_pixel_t){255, 255, 255};
     }
   }
-  char *shapes = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar);
+  char *shapes = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
   cr_assert_not_null(shapes);
   cr_assert_eq(strlen(shapes), 2);
   cr_assert(shapes[0] != shapes[1], "perpendicular strokes should select different glyphs");
   SAFE_FREE(shapes);
+  char *restricted = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, "@#");
+  cr_assert_not_null(restricted);
+  cr_assert_eq(strlen(restricted), 2);
+  cr_assert(strspn(restricted, "@#") == 2, "glyphs must come from the requested palette");
+  SAFE_FREE(restricted);
+  cr_assert(!ascii_glyph_palette_supported("\xe2\x96\x88"));
 
   pixels[0] = (rgb_pixel_t){80, 110, 140};
-  char *color = ascii_render_glyph_match(&image, ASCII_COLOR_TRUE, &simd_cells_scalar);
+  char *color = ascii_render_glyph_match(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, NULL);
   cr_assert_not_null(color);
   terminal_cell_t cells[2] = {0};
   decode(color, cells, 2, 1, true);
   cr_assert_eq(cells[0].fg, 0x506e8c, "glyph matching must preserve the sampled foreground color");
   SAFE_FREE(color);
   image.w = 15;
-  cr_assert_null(ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar));
+  cr_assert_null(ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL));
 }
 
 #ifdef ASCII_EMISSION_STANDALONE

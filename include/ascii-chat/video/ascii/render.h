@@ -19,7 +19,8 @@ typedef enum { ASCII_COLOR_NONE, ASCII_COLOR_16, ASCII_COLOR_256, ASCII_COLOR_TR
 char *ascii_render(const image_t *image, const char *palette, ascii_color_t color, bool background, bool dither,
                    const simd_cells_t *ops);
 
-char *ascii_render_glyph_match(const image_t *image, ascii_color_t color, const simd_cells_t *ops);
+bool ascii_glyph_palette_supported(const char *palette);
+char *ascii_render_glyph_match(const image_t *image, ascii_color_t color, const simd_cells_t *ops, const char *palette);
 
 /** Two source rows per terminal row; the supplied backend processes both rows. */
 char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int stride_bytes, ascii_color_t color,

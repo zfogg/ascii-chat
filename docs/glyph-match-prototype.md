@@ -1,6 +1,6 @@
 # Experimental glyph matching
 
-`ascii-chat mirror --glyph-match` enables a prototype foreground renderer. It fits
+`ascii-chat mirror --renderer=glyph` enables a prototype foreground renderer. It fits
 an 8×8 pixel patch per terminal cell, averages that patch to 4×4, and compares
 its luminance and local structure with 95 printable ASCII glyph masks generated
 from DejaVu Sans Mono 2.37. The score balances normalized glyph density against
@@ -17,8 +17,8 @@ font masks carry the license in `lib/video/ascii/DEJAVU-LICENSE`.
 
 The atlas assumes DejaVu Sans Mono and a dark background. Other fonts, terminal
 color themes, and glyph rasterization can change the result. This prototype is
-mirror-only, uses printable ASCII instead of the selected palette, and falls
-back to the existing renderer in background and half-block modes. It has no
+mirror-only and supports printable ASCII palettes. It falls back to luminance
+for Unicode palettes and in background and half-block modes. It has no
 frame-to-frame stabilization and can flicker. The 8× sampling limits the
 viewport to 480×270 cells under the current image size limit; larger viewports
 fall back to the current renderer. It is a visual experiment, not a replacement
@@ -30,7 +30,7 @@ These are side-by-side captures from Windows x64 debug builds at 80×32 cells,
 truecolor, 8 fps. The emitted terminal frames were rasterized with Pillow and
 the same DejaVu font used for the atlas. The app-produced GIFs repeated their
 first image in this run, so they were not used for the comparisons. The left
-side uses the current renderer and the right side uses `--glyph-match`. The
+side uses the current renderer and the right side uses `--renderer=glyph`. The
 first three animations are roughly two seconds; their PNGs show frame 7. The
 website demo still shows frame 49. The two renderings of each test
 pattern were captured in separate runs and can differ slightly in animation
@@ -43,8 +43,9 @@ captured separately at 8 fps and combined by frame index, so small differences
 in capture timing remain. The generated media is kept outside the repository.
 
 The current renderer uses the standard 23-character ramp. The prototype searches
-95 printable glyphs and scores their local shapes; it does not use the selected
-palette. It now preserves the current renderer’s sampled foreground color.
+95 printable glyphs by default and scores their local shapes. An explicitly
+selected ASCII palette restricts the candidates; a Unicode palette currently
+uses luminance rendering. Both preserve the sampled foreground color.
 
 Matching sometimes introduces directional glyphs at shape boundaries, while
 flat bands gain conspicuous repeated characters. The examples do not establish an overall quality improvement; font, image content,
@@ -55,13 +56,13 @@ ffmpeg -f lavfi -i 'testsrc=duration=3:size=640x480:rate=8' -c:v mpeg4 -q:v 2 de
 ascii-chat mirror --test-pattern=0 --snapshot --snapshot-delay=2 --audio=false --fps=8 \
   --width=80 --height=32 --color-mode=truecolor --render-file=baseline.gif > pattern0-baseline.log 2>&1
 ascii-chat mirror --test-pattern=0 --snapshot --snapshot-delay=2 --audio=false --fps=8 \
-  --width=80 --height=32 --color-mode=truecolor --glyph-match --render-file=glyph.gif > pattern0-glyph.log 2>&1
+  --width=80 --height=32 --color-mode=truecolor --renderer=glyph --render-file=glyph.gif > pattern0-glyph.log 2>&1
 # Repeat with --test-pattern=1 and --file=demo.mp4, naming the logs
 # pattern1-{baseline,glyph}.log and testsrc-{baseline,glyph}.log.
 python scripts/render_glyph_comparisons.py CAPTURE_DIR OUTPUT_DIR DejaVuSansMono.ttf
 
 # Extract a 30-second action segment and capture it twice. Use the same options
-# for both sides except --glyph-match.
+# for both sides except --renderer=glyph.
 ffmpeg -ss 45 -i web/www/public/assets/demo-video-white-knuckles.webm -t 30 \
   -an -c:v libx264 -crf 18 demo-action.mp4
 ascii-chat --quiet --no-check-update mirror \
@@ -71,7 +72,7 @@ ascii-chat --quiet --no-check-update mirror \
 ascii-chat --quiet --no-check-update mirror \
   --file=demo-action.mp4 \
   --snapshot --snapshot-delay=30 --audio=false --fps=8 --width=80 --height=32 \
-  --color-mode=truecolor --glyph-match > glyph.log 2>&1
+  --color-mode=truecolor --renderer=glyph > glyph.log 2>&1
 python scripts/render_ansi_video.py baseline.log glyph.log website-demo.mp4 DejaVuSansMono.ttf
 ```
 
