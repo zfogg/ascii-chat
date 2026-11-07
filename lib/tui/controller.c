@@ -1110,7 +1110,7 @@ static void *presentation_main(void *unused) {
       if (!live) {
         if (shutdown_is_requested())
           ui_error_popup_preserve(atomic_load(&g_default_fd), unpack_size(atomic_load(&g_size)));
-        errno_notifications_enable(false);
+        errno_notifications_pause();
       }
       cond_broadcast(&g_render_done);
       mutex_unlock(&g_mutex);
@@ -1482,7 +1482,7 @@ static void remove_screen(ui_screen_t screen, int previous, screen_snapshot_t *e
   if (!live) {
     if (!g_render_snapshot && shutdown_is_requested())
       ui_error_popup_preserve(atomic_load(&g_default_fd), unpack_size(atomic_load(&g_size)));
-    errno_notifications_enable(false);
+    errno_notifications_pause();
   }
   mutex_unlock(&g_mutex);
   release_snapshot(retired);

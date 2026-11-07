@@ -13,7 +13,7 @@ import {
 afterEach(() => setNetworkErrorReporter(null));
 
 describe("browser error overlay", () => {
-  it("bounds queued errors and dismisses reports that cannot be queued", () => {
+  it("bounds queued errors while keeping the latest report", () => {
     const dropped = vi.fn();
     render(<ErrorOverlay />);
     act(() => {
@@ -22,7 +22,7 @@ describe("browser error overlay", () => {
           source: "JavaScript",
           title: `Error ${i}`,
           frames: [{ message: `Failure ${i}` }],
-          ...(i === 32 ? { dismiss: dropped } : {}),
+          ...(i === 31 ? { dismiss: dropped } : {}),
         });
     });
     expect(dropped).toHaveBeenCalledOnce();
@@ -30,6 +30,9 @@ describe("browser error overlay", () => {
     expect(screen.getByRole("button", { name: "Dismiss (32)" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Dismiss (32)" }));
     expect(screen.getByText("Error 1")).toBeTruthy();
+    for (let i = 0; i < 30; i++)
+      fireEvent.click(screen.getByRole("button", { name: /^Dismiss/ }));
+    expect(screen.getByText("Error 32")).toBeTruthy();
   });
   it("renders every C stack frame and copies its debug-only full path", () => {
     const dismiss = vi.fn();

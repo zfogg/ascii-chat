@@ -207,6 +207,21 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
   if (backend >= 3)
     cr_assert_str_eq(network_connection_peer(client), "localhost");
   wait_count(&f.opened, 1);
+  if (rtc && (reject || stall)) {
+    acip_transport_t *transport = network_connection_transport(client);
+    transport->receive_timeout_ns = 2 * NS_PER_SEC_INT;
+    packet_type_t type;
+    void *data = NULL, *allocation = NULL;
+    size_t length = 0;
+    cr_assert_eq(packet_receive_via_transport(transport, &type, &data, &length, &allocation), ASCIICHAT_OK);
+    cr_expect_eq(type, PACKET_TYPE_ERROR_MESSAGE);
+    asciichat_error_t code = ASCIICHAT_OK;
+    char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
+    cr_expect_eq(packet_parse_error_message(data, length, &code, message, sizeof(message), NULL), ASCIICHAT_OK);
+    cr_expect_eq(code, ERROR_INTERNAL);
+    cr_expect_null(strstr(message, "Injected partial startup failure"));
+    buffer_release(allocation);
+  }
   uint64_t partial_started = time_get_ns();
   if (!reject && !stall) {
     uint64_t payload = 42;
@@ -557,6 +572,12 @@ Test(network_connections, webrtc_echo) {
 Test(network_connections, webrtc_reject) {
   cr_assert_eq(webrtc_init(), ASCIICHAT_OK);
   scenario(2, true, false, 0, false);
+  webrtc_destroy();
+}
+
+Test(network_connections, webrtc_handshake_timeout_reports_error) {
+  cr_assert_eq(webrtc_init(), ASCIICHAT_OK);
+  scenario(2, false, true, 0, false);
   webrtc_destroy();
 }
 

@@ -72,10 +72,12 @@ export function ErrorOverlay({
     () =>
       subscribeBrowserErrors((report) => {
         if (reportsRef.current.length >= 32) {
-          report.dismiss?.();
-          return;
+          const displaced = reportsRef.current[reportsRef.current.length - 1];
+          reportsRef.current = [...reportsRef.current.slice(0, -1), report];
+          displaced?.dismiss?.();
+        } else {
+          reportsRef.current = [...reportsRef.current, report];
         }
-        reportsRef.current = [...reportsRef.current, report];
         setReports(reportsRef.current);
       }),
     [],

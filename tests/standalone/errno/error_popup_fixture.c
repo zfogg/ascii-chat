@@ -132,6 +132,13 @@ static int journal_contract(void) {
   CLEAR_ERRNO();
   CHECK(errno_notifications_snapshot(entries, ARRAY_SIZE(entries), &dropped) == 1);
   CHECK(entries[0].code == ERROR_AUDIO);
+  errno_notifications_pause();
+  SET_ERRNO(ERROR_GENERAL, "During screen transition");
+  CHECK(errno_notifications_snapshot(entries, ARRAY_SIZE(entries), &dropped) == 1);
+  CHECK(entries[0].code == ERROR_AUDIO);
+  errno_notifications_enable(true);
+  CHECK(errno_notifications_snapshot(entries, ARRAY_SIZE(entries), &dropped) == 1);
+  CHECK(entries[0].code == ERROR_AUDIO);
   errno_notifications_enable(false);
   CHECK(!errno_notifications_pending());
   SET_ERRNO(ERROR_GENERAL, "After TUI");

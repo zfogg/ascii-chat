@@ -1,6 +1,7 @@
 #include <ascii-chat/audio/processor.h>
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/time.h>
 #include <math.h>
 #include <string.h>
@@ -80,6 +81,9 @@ asciichat_error_t audio_processor_create(const audio_processor_config_t *c, audi
   if (p->config.channels == 0)
     p->config.channels = 1;
   if (p->config.channels == 2) {
+    if (c->spectral_enabled && (c->spectral.auto_gain || c->spectral.compressor || c->spectral.noise_gate))
+      log_warn_once("Stereo capture uses linked broadband dynamics; spectral AGC, multiband compression and spectral "
+                    "gating options are unavailable");
     // Stereo dynamics share one detector after the independent channel filters.
     p->config.spectral.auto_gain = false;
     p->config.spectral.compressor = false;

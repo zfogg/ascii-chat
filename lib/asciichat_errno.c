@@ -75,15 +75,26 @@ static asciichat_error_context_t g_notifications[ASCIICHAT_ERRNO_HISTORY_SIZE];
 static size_t g_notification_first, g_notification_count;
 static uint64_t g_notification_dropped;
 static bool g_notifications_enabled;
+static bool g_notifications_paused;
 static atomic_t g_notifications_pending = {0};
 
 void errno_notifications_enable(bool enabled) {
   registry_lock();
-  if (enabled != g_notifications_enabled) {
-    g_notifications_enabled = enabled;
+  if (!enabled || (!g_notifications_enabled && !g_notifications_paused)) {
     g_notification_first = g_notification_count = 0;
     g_notification_dropped = 0;
     atomic_store_bool_impl(&g_notifications_pending, false);
+  }
+  g_notifications_enabled = enabled;
+  g_notifications_paused = false;
+  registry_unlock();
+}
+
+void errno_notifications_pause(void) {
+  registry_lock();
+  if (g_notifications_enabled) {
+    g_notifications_enabled = false;
+    g_notifications_paused = true;
   }
   registry_unlock();
 }

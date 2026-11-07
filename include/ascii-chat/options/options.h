@@ -851,7 +851,6 @@ static const bool default_no_check_update_value = OPT_NO_CHECK_UPDATE_DEFAULT;
 static const bool default_log_format_console_only_value = OPT_LOG_FORMAT_CONSOLE_DEFAULT;
 
 static const double default_debug_errno_stacks_time_value = 0.0;
-static const bool default_debug_errno_stacks_time_explicit_value = false;
 static const double default_debug_sync_state_time_value = 0.0;
 static const bool default_debug_sync_state_time_explicit_value = false;
 static const double default_debug_backtrace_time_value = 0.0;
