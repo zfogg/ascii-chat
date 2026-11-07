@@ -782,9 +782,10 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
  */
 static void invalidate_changed_composite_owners(ascii_stabilizer_t *history, image_source_t *sources, int source_count,
                                                 int sources_with_video, int width, int height) {
-  if (!history->cells || history->width != (size_t)width || history->height != (size_t)height ||
-      sources_with_video <= 0)
+  if (!history->cells || history->width != (size_t)width || sources_with_video <= 0 ||
+      (history->height != (size_t)height && history->height != (size_t)height * 2))
     return;
+  size_t history_scale = history->height / (size_t)height;
   int cols = 1, rows = 1;
   if (sources_with_video > 1)
     calculate_optimal_grid_layout(sources, source_count, sources_with_video, width, height, &cols, &rows);
@@ -803,12 +804,12 @@ static void invalidate_changed_composite_owners(ascii_stabilizer_t *history, ima
   int cell_width = width / cols, cell_height = (height * 2) / rows;
   if (!cell_width || !cell_height)
     return;
-  for (int y = 0; y < height; ++y) {
+  for (size_t y = 0; y < history->height; ++y) {
     for (int x = 0; x < width; ++x) {
-      int col = x / cell_width, row = (y * 2) / cell_height;
+      int col = x / cell_width, row = (int)((y * 2 / history_scale) / (size_t)cell_height);
       int index = row * cols + col;
       uint64_t owner = col < cols && row < rows && index < count ? owners[index] : 0;
-      ascii_temporal_cell_t *cell = &history->cells[(size_t)y * (size_t)width + (size_t)x];
+      ascii_temporal_cell_t *cell = &history->cells[y * (size_t)width + (size_t)x];
       if (cell->source_owner != owner)
         cell->valid = false;
       cell->source_owner = owner;

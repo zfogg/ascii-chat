@@ -529,6 +529,164 @@ Test(ascii_emission, temporal_stabilization_reduces_threshold_flicker) {
   }
 }
 
+Test(ascii_emission, temporal_background_and_halfblock_modes) {
+  const ascii_color_t modes[] = {ASCII_COLOR_NONE, ASCII_COLOR_16, ASCII_COLOR_256, ASCII_COLOR_TRUE};
+  for (size_t b = 0; b < sizeof(backends) / sizeof(backends[0]); ++b) {
+    if ((platform_cpu_features() & backends[b].feature) != backends[b].feature)
+      continue;
+    const simd_cells_t *ops = backends[b].luma;
+    for (size_t m = 0; m < sizeof(modes) / sizeof(modes[0]); ++m) {
+      rgb_pixel_t pixel = {100, 100, 100};
+      image_t image = {.w = 1, .h = 1, .pixels = &pixel};
+      ascii_stabilizer_t state = {0};
+      cr_assert_eq(ascii_stabilizer_prepare(&state, 1, 1, 1), ASCIICHAT_OK);
+      state.elapsed_ns = 16666667;
+      char *baseline = ascii_render(&image, " .#@", modes[m], true, false, ops);
+      cr_assert_not_null(baseline);
+      ascii_stabilizer_t *prior = ascii_stabilizer_set_target(&state);
+      char *first = ascii_render(&image, " .#@", modes[m], true, false, ops);
+      cr_assert_not_null(first);
+      cr_assert_str_eq(first, baseline, "first background frame changed on %s", backends[b].name);
+      pixel = (rgb_pixel_t){104, 104, 104};
+      char *next = ascii_render(&image, " .#@", modes[m], true, false, ops);
+      cr_assert_not_null(next);
+      cr_assert(state.cells[0].color > 0x646464);
+      cr_assert_lt(state.cells[0].color, 0x686868);
+      if (modes[m] == ASCII_COLOR_TRUE) {
+        terminal_cell_t cell = {0};
+        decode(next, &cell, 1, 1, true);
+        cr_assert_eq(cell.bg, state.cells[0].color);
+      }
+      SAFE_FREE(baseline);
+      SAFE_FREE(first);
+      SAFE_FREE(next);
+      ascii_stabilizer_set_target(prior);
+      ascii_stabilizer_reset(&state);
+
+      uint8_t pixels[] = {100, 100, 100, 150, 150, 150, 200, 200, 200};
+      cr_assert_eq(ascii_stabilizer_prepare(&state, 1, 3, 2), ASCIICHAT_OK);
+      state.elapsed_ns = 16666667;
+      baseline = ascii_render_halfblocks(pixels, 1, 3, 3, modes[m], ops);
+      cr_assert_not_null(baseline);
+      prior = ascii_stabilizer_set_target(&state);
+      first = ascii_render_halfblocks(pixels, 1, 3, 3, modes[m], ops);
+      cr_assert_not_null(first);
+      cr_assert_str_eq(first, baseline, "first half-block frame changed on %s", backends[b].name);
+      for (size_t i = 0; i < sizeof(pixels); ++i)
+        pixels[i] += 4;
+      next = ascii_render_halfblocks(pixels, 1, 3, 3, modes[m], ops);
+      cr_assert_not_null(next);
+      cr_assert(state.cells[0].color > 0x646464);
+      cr_assert_lt(state.cells[0].color, 0x686868);
+      cr_assert(state.cells[1].color > 0x969696);
+      cr_assert_lt(state.cells[1].color, 0x9a9a9a);
+      cr_assert(state.cells[2].color > 0xc8c8c8);
+      cr_assert_lt(state.cells[2].color, 0xcccccc);
+      if (modes[m] == ASCII_COLOR_TRUE) {
+        terminal_cell_t cells[2] = {0};
+        decode(next, cells, 1, 2, true);
+        cr_assert_eq(cells[0].fg, state.cells[0].color);
+        cr_assert_eq(cells[0].bg, state.cells[1].color);
+        cr_assert_eq(cells[1].fg, state.cells[2].color);
+        cr_assert_eq(cells[1].bg, state.cells[2].color);
+      }
+      pixels[0] = pixels[1] = pixels[2] = 240;
+      char *motion = ascii_render_halfblocks(pixels, 1, 3, 3, modes[m], ops);
+      cr_assert_not_null(motion);
+      cr_assert_eq(state.cells[0].color, 0xf0f0f0, "motion must not be held back");
+      SAFE_FREE(baseline);
+      SAFE_FREE(first);
+      SAFE_FREE(next);
+      SAFE_FREE(motion);
+      ascii_stabilizer_set_target(prior);
+      ascii_stabilizer_reset(&state);
+    }
+  }
+}
+
+Test(ascii_emission, temporal_halfblock_reduces_monochrome_flicker) {
+  for (size_t b = 0; b < sizeof(backends) / sizeof(backends[0]); ++b) {
+    if ((platform_cpu_features() & backends[b].feature) != backends[b].feature)
+      continue;
+    uint8_t pixels[6];
+    char previous[8] = {0};
+    int boundary = -1;
+    for (int value = 0; value < 256; ++value) {
+      memset(pixels, value, sizeof(pixels));
+      char *output = ascii_render_halfblocks(pixels, 1, 2, 3, ASCII_COLOR_NONE, backends[b].luma);
+      cr_assert_not_null(output);
+      if (value && strcmp(output, previous) != 0) {
+        boundary = value;
+        SAFE_FREE(output);
+        break;
+      }
+      SAFE_STRNCPY(previous, output, sizeof(previous));
+      SAFE_FREE(output);
+    }
+    cr_assert(boundary > 0 && boundary < 255);
+    ascii_stabilizer_t state = {0};
+    cr_assert_eq(ascii_stabilizer_prepare(&state, 1, 2, 1), ASCIICHAT_OK);
+    state.elapsed_ns = 16666667;
+    ascii_stabilizer_t *prior = ascii_stabilizer_set_target(&state);
+    memset(pixels, boundary - 1, sizeof(pixels));
+    char *initial = ascii_render_halfblocks(pixels, 1, 2, 3, ASCII_COLOR_NONE, backends[b].luma);
+    cr_assert_not_null(initial);
+    for (int frame = 0; frame < 6; ++frame) {
+      memset(pixels, boundary - (frame % 2), sizeof(pixels));
+      char *next = ascii_render_halfblocks(pixels, 1, 2, 3, ASCII_COLOR_NONE, backends[b].luma);
+      cr_assert_not_null(next);
+      cr_assert_str_eq(next, initial, "monochrome half-block jitter on %s", backends[b].name);
+      SAFE_FREE(next);
+    }
+    SAFE_FREE(initial);
+    ascii_stabilizer_set_target(prior);
+    ascii_stabilizer_reset(&state);
+  }
+}
+
+#ifndef ASCII_EMISSION_STANDALONE
+Test(ascii_emission, capability_conversion_stabilizes_all_render_modes) {
+  rgb_pixel_t pixels[4];
+  image_t image = {.w = 2, .h = 2, .pixels = pixels};
+  terminal_capabilities_t caps = {.color_level = TERM_COLOR_TRUECOLOR};
+  ascii_stabilizer_t history = {.fixed_step_ns = 16666667};
+  const render_mode_t modes[] = {RENDER_MODE_FOREGROUND, RENDER_MODE_BACKGROUND, RENDER_MODE_HALF_BLOCK};
+  const ascii_renderer_t renderers[] = {ASCII_RENDERER_LUMINANCE, ASCII_RENDERER_GLYPH};
+  for (size_t r = 0; r < sizeof(renderers) / sizeof(renderers[0]); ++r) {
+    caps.text_renderer = renderers[r];
+    for (size_t m = 0; m < sizeof(modes) / sizeof(modes[0]); ++m) {
+      caps.render_mode = modes[m];
+      for (size_t i = 0; i < 4; ++i)
+        pixels[i] = (rgb_pixel_t){100, 100, 100};
+      char *baseline =
+          ascii_convert_with_buffers_stabilized(&image, 2, 2, &caps, false, true, " .#@", false, NULL, NULL, NULL);
+      char *first =
+          ascii_convert_with_buffers_stabilized(&image, 2, 2, &caps, false, true, " .#@", false, NULL, NULL, &history);
+      cr_assert_not_null(baseline);
+      cr_assert_not_null(first);
+      cr_assert_str_eq(first, baseline, "first frame must be unchanged for renderer %d and mode %d", renderers[r],
+                       modes[m]);
+      cr_assert_eq(history.width, 2);
+      cr_assert_eq(history.height, modes[m] == RENDER_MODE_HALF_BLOCK ? 4 : 2);
+      cr_assert(history.cells[0].valid);
+      for (size_t i = 0; i < 4; ++i)
+        pixels[i] = (rgb_pixel_t){104, 104, 104};
+      char *next =
+          ascii_convert_with_buffers_stabilized(&image, 2, 2, &caps, false, true, " .#@", false, NULL, NULL, &history);
+      cr_assert_not_null(next);
+      if (modes[m] != RENDER_MODE_FOREGROUND || renderers[r] == ASCII_RENDERER_LUMINANCE) {
+        cr_assert(history.cells[0].color > 0x646464);
+        cr_assert_lt(history.cells[0].color, 0x686868);
+      }
+      SAFE_FREE(baseline);
+      SAFE_FREE(first);
+      SAFE_FREE(next);
+    }
+  }
+  ascii_stabilizer_reset(&history);
+}
+#endif
+
 Test(ascii_emission, optimized_glyph_scoring_matches_reference) {
   rgb_pixel_t pixels[64];
   image_t image = {.w = 8, .h = 8, .pixels = pixels};
@@ -739,6 +897,8 @@ int main(int argc, char **argv) {
   ascii_emission_rejects_invalid_input();
   ascii_emission_temporal_history_tracks_motion_and_configuration();
   ascii_emission_temporal_stabilization_reduces_threshold_flicker();
+  ascii_emission_temporal_background_and_halfblock_modes();
+  ascii_emission_temporal_halfblock_reduces_monochrome_flicker();
   ascii_emission_optimized_glyph_scoring_matches_reference();
   ascii_emission_optimized_luminance_matches_generic_hysteresis();
   ascii_emission_temporal_first_frame_preserves_dithered_colors();

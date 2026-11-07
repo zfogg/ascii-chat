@@ -4,6 +4,9 @@
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define VIDEO_ASCII_RENDER_SEQUENCE_BUFFER_SIZE 16
+#define ASCII_TEMPORAL_MOTION_LIMIT 8
+#define ASCII_TEMPORAL_MAX_INTERVAL_NS 250000000ULL
+#define ASCII_TEMPORAL_COLOR_TIME_NS 50000000ULL
 
 #include <ascii-chat/otel.h>
 #include <ascii-chat/common.h>
@@ -52,6 +55,16 @@ asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t wid
   return ASCIICHAT_OK;
 }
 
+static uint32_t temporal_blend_color(uint32_t previous, uint32_t current, unsigned weight) {
+  uint32_t result = 0;
+  for (unsigned shift = 0; shift <= 16; shift += 8) {
+    unsigned old_channel = (previous >> shift) & 255;
+    unsigned new_channel = (current >> shift) & 255;
+    result |= (uint32_t)((old_channel * (256 - weight) + new_channel * weight + 128) / 256) << shift;
+  }
+  return result;
+}
+
 uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate,
                                  uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
                                  uint32_t *stabilized_color) {
@@ -63,19 +76,14 @@ uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samp
   }
   uint32_t result = candidate;
   uint32_t output_color = color;
-  if (cell->valid && motion <= 8 && elapsed_ns <= 250000000ULL) {
+  if (cell->valid && motion <= ASCII_TEMPORAL_MOTION_LIMIT && elapsed_ns <= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
     uint64_t margin = candidate_error / 8 + 128;
     if (previous_error != UINT64_MAX &&
         (previous_error <= candidate_error || previous_error - candidate_error <= margin))
       result = cell->glyph;
     // Weight depends on elapsed time, avoiding a different response at each FPS.
-    uint64_t weight = elapsed_ns * 256 / (elapsed_ns + 50000000ULL);
-    output_color = 0;
-    for (unsigned shift = 0; shift <= 16; shift += 8) {
-      unsigned previous = (cell->color >> shift) & 255;
-      unsigned current = (color >> shift) & 255;
-      output_color |= (uint32_t)((previous * (256 - weight) + current * weight + 128) / 256) << shift;
-    }
+    unsigned weight = (unsigned)(elapsed_ns * 256 / (elapsed_ns + ASCII_TEMPORAL_COLOR_TIME_NS));
+    output_color = temporal_blend_color(cell->color, color, weight);
   }
   memcpy(cell->samples, samples, sizeof(cell->samples));
   cell->glyph = result;
@@ -300,16 +308,16 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
 }
 void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows,
                           const simd_cells_t *ops) {
-  if (frame->stabilizer && !frame->temporal_preselected && !background) {
+  if (frame->stabilizer && !frame->temporal_preselected) {
     const uint64_t elapsed = frame->stabilizer->elapsed_ns;
-    const bool recent = elapsed <= 250000000ULL;
-    const unsigned weight = recent ? (unsigned)(elapsed * 256 / (elapsed + 50000000ULL)) : 256;
+    const bool recent = elapsed <= ASCII_TEMPORAL_MAX_INTERVAL_NS;
+    const unsigned weight = recent ? (unsigned)(elapsed * 256 / (elapsed + ASCII_TEMPORAL_COLOR_TIME_NS)) : 256;
     for (size_t x = 0; x < frame->width; ++x) {
       ascii_temporal_cell_t *cell = &frame->stabilizer->cells[frame->row * frame->width + x];
       uint8_t luma = frame->luma[x];
       uint32_t glyph = frame->glyph[x];
       uint32_t color = frame->packed[x];
-      if (cell->valid && recent && abs((int)luma - (int)cell->samples[0]) <= 8) {
+      if (cell->valid && recent && abs((int)luma - (int)cell->samples[0]) <= ASCII_TEMPORAL_MOTION_LIMIT) {
         if (cell->glyph != glyph) {
           // Only nearby brightness bins can win the hysteresis test. Searching
           // outward avoids scanning the entire 64-entry palette for every cell.
@@ -335,17 +343,15 @@ void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool backgro
               break;
           }
         }
-        color = 0;
-        for (unsigned shift = 0; shift <= 16; shift += 8) {
-          unsigned previous = (cell->color >> shift) & 255;
-          unsigned current = (frame->packed[x] >> shift) & 255;
-          color |= (uint32_t)((previous * (256 - weight) + current * weight + 128) / 256) << shift;
-        }
+        color = temporal_blend_color(cell->color, color, weight);
       }
       cell->samples[0] = luma;
       cell->glyph = frame->glyph[x] = glyph;
       cell->color = frame->packed[x] = color;
       cell->valid = true;
+      if (background)
+        frame->luma[x] =
+            (uint8_t)((77u * (color >> 16) + 150u * ((color >> 8) & 255) + 29u * (color & 255) + 128u) >> 8);
     }
     if (!frame->dithered && (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256))
       ops->quantize(frame->packed, frame->index, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
@@ -396,6 +402,10 @@ asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid half-block stride or size");
   prepare_output(frame, capacity, target);
   frame->width = (size_t)width;
+  frame->source_height = (size_t)height;
+  if (g_stabilizer_target && g_stabilizer_target->cells && g_stabilizer_target->width == (size_t)width &&
+      g_stabilizer_target->height == (size_t)height)
+    frame->stabilizer = g_stabilizer_target;
   frame->scratch = bytes <= sizeof(frame->inline_scratch) ? frame->inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
   frame->packed = frame->scratch;
   frame->index = frame->packed + width;
@@ -408,8 +418,35 @@ asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb
   return ASCIICHAT_OK;
 }
 void ascii_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool more_rows, const simd_cells_t *ops) {
+  if (frame->stabilizer) {
+    size_t top_row = frame->row * 2;
+    bool has_bottom = top_row + 1 < frame->source_height;
+    for (size_t x = 0; x < frame->width; ++x) {
+      uint32_t *pixels[] = {&frame->packed[x], &frame->index[x]};
+      for (size_t half = 0; half < (has_bottom ? 2u : 1u); ++half) {
+        uint32_t color = *pixels[half];
+        uint8_t luma = (uint8_t)((76u * (color >> 16) + 150u * ((color >> 8) & 255) + 29u * (color & 255)) >> 8);
+        uint8_t samples[16];
+        memset(samples, luma, sizeof(samples));
+        ascii_temporal_cell_t *cell = &frame->stabilizer->cells[(top_row + half) * frame->width + x];
+        ascii_stabilizer_choose(cell, samples, 0, 0, UINT64_MAX, color, frame->stabilizer->elapsed_ns, pixels[half]);
+      }
+      if (!has_bottom)
+        frame->index[x] = frame->packed[x];
+    }
+    if (mode == ASCII_COLOR_TRUE) {
+      memcpy(frame->fg, frame->packed, frame->width * sizeof(uint32_t));
+      memcpy(frame->bg, frame->index, frame->width * sizeof(uint32_t));
+    } else if (mode != ASCII_COLOR_NONE) {
+      ops->quantize(frame->packed, frame->fg, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
+      ops->quantize(frame->index, frame->bg, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
+    }
+    ops->halfblock(frame->packed, frame->index, frame->glyph, frame->fg, frame->bg, frame->width, (unsigned)mode,
+                   frame->table);
+  }
   emit_prepared_row(&frame->output, mode, ops, frame->glyph, frame->fg, frame->bg, frame->width);
   emit_row_end(&frame->output, mode != ASCII_COLOR_NONE, more_rows);
+  ++frame->row;
 }
 
 /* Compare a small spatial image patch against rasterized printable glyphs.

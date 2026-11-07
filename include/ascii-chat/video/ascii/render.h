@@ -59,7 +59,7 @@ char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int str
 typedef struct {
   outbuf_t output;
   outbuf_t *output_target;
-  size_t width;
+  size_t width, source_height;
   uint32_t table[64];
   uint32_t *scratch, *packed, *index, *glyph, *fg, *bg;
   uint8_t *luma;

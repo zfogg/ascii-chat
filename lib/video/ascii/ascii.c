@@ -420,7 +420,7 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
   // Use the capability-aware image printing function with client's palette
   // History belongs to this stream and is scoped to the current thread's conversion.
   ascii_stabilizer_t *active_stabilizer = NULL;
-  if (stabilizer && caps->render_mode == RENDER_MODE_FOREGROUND) {
+  if (stabilizer) {
     uint64_t configuration = 1469598103934665603ULL;
     const unsigned values[] = {(unsigned)caps->text_renderer,
                                (unsigned)caps->color_level,
@@ -442,7 +442,8 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
         configuration *= 1099511628211ULL;
       }
     }
-    if (ascii_stabilizer_prepare(stabilizer, (size_t)width, (size_t)height, configuration) == ASCIICHAT_OK) {
+    size_t history_height = (size_t)height * (caps->render_mode == RENDER_MODE_HALF_BLOCK ? 2u : 1u);
+    if (ascii_stabilizer_prepare(stabilizer, (size_t)width, history_height, configuration) == ASCIICHAT_OK) {
       uint64_t now = time_get_ns();
       stabilizer->elapsed_ns = stabilizer->fixed_step_ns
                                    ? stabilizer->fixed_step_ns
@@ -452,8 +453,6 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
       stabilizer->last_timestamp_ns = now;
       active_stabilizer = stabilizer;
     }
-  } else if (stabilizer) {
-    ascii_stabilizer_reset(stabilizer);
   }
   ascii_stabilizer_t *previous_stabilizer = ascii_stabilizer_set_target(active_stabilizer);
   outbuf_t *previous_output = ascii_render_set_output_target(output);

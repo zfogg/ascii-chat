@@ -19,7 +19,8 @@ font masks carry the license in `lib/video/ascii/DEJAVU-LICENSE`.
 The atlas assumes DejaVu Sans Mono and a dark background. Other fonts, terminal
 color themes, and glyph rasterization can change the result. The prototype
 supports printable ASCII palettes. It falls back to luminance
-for Unicode palettes and in background and half-block modes. Optional `--stabilize` reduces frame-to-frame flicker in foreground mode. The 8× sampling limits the
+for Unicode palettes and in background and half-block modes. Optional `--stabilize`
+reduces frame-to-frame flicker in foreground, background, and half-block modes. The 8× sampling limits the
 viewport to 480×270 cells under the current image size limit; larger viewports
 fall back to the current renderer. It is a visual experiment, not a replacement
 for the default renderer.
