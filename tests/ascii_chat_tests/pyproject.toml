@@ -21,6 +21,7 @@ dependencies = [
   "ruff>=0.14,<1",
   "ty>=0.0.99,<0.1",
   "pexpect==4.9.0",
+  "pyyaml>=6,<7",
 ]
 
 [project.optional-dependencies]

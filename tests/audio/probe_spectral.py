@@ -106,7 +106,9 @@ def test(lib):
         )
         start = time.perf_counter()
         p.process(signal, (480,))
-        results[str(size)]["all_effects_wall_seconds_per_audio_second"] = (
+        size_result = results[str(size)]
+        assert isinstance(size_result, dict)
+        size_result["all_effects_wall_seconds_per_audio_second"] = (
             time.perf_counter() - start
         )
         p.close()

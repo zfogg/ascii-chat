@@ -30,6 +30,7 @@ def maximum(requests, name):
     return max((struct.unpack('<d', point[4][0])[0] for point in points(requests, name)), default=0)
 def child_cpu(process=None):
     if os.name == 'nt':
+        assert process is not None
         import ctypes
         from ctypes import wintypes
         times = [wintypes.FILETIME() for _ in range(4)]

@@ -26,7 +26,7 @@ import urllib.error
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape
 
-sys.stdout.reconfigure(errors="backslashreplace")
+getattr(sys.stdout, "reconfigure")(errors="backslashreplace")
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--library-dir', default='build/bin')
 parser.add_argument('--control-url', required=True)

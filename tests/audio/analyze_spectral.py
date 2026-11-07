@@ -9,12 +9,12 @@ from pathlib import Path
 import json
 import argparse
 import numpy as np
-from scipy.io import wavfile
-from scipy.signal import resample_poly
-import matplotlib
+from scipy.io import wavfile  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
+from scipy.signal import resample_poly  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
+import matplotlib  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
 from ascii_chat_tests.audio_spectral import load, Processor
 
 parser = argparse.ArgumentParser()
