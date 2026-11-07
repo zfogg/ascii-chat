@@ -9,14 +9,15 @@ Run commands from the repository root unless stated otherwise. Read `AGENTS.md`,
 
 ## Select the evidence
 
-| Type | Use for | Location |
-| --- | --- | --- |
-| Criterion unit | Isolated API behavior, boundaries, ownership, validation/error paths | `tests/unit/` |
-| Criterion integration | Interacting subsystems, handshakes, network/session lifecycles | C files in `tests/integration/` |
-| Criterion performance | Rendering/throughput regressions with correctness checks and controlled measurements | `tests/performance/` |
-| Criterion contracts | Explicitly linked white-box production contracts | `tests/contracts/` |
-| Python integration | Real executables, CLI, subprocesses, media, terminal/ConPTY/tmux behavior | Python files in `tests/integration/` |
-| Standalone C probes | Necessary separate process, native platform facility, dependency/build boundary, or Python-driven fixture | `tests/standalone/`, selected integration fixtures |
+| Type                  | Use for                                                                                                   | Location                                           |
+| --------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Criterion unit        | Isolated API behavior, boundaries, ownership, validation/error paths                                      | `tests/unit/`                                      |
+| Criterion integration | Interacting subsystems, handshakes, network/session lifecycles                                            | C files in `tests/integration/`                    |
+| Criterion performance | Rendering/throughput regressions with correctness checks and controlled measurements                      | `tests/performance/`                               |
+| Criterion contracts   | Explicitly linked white-box production contracts                                                          | `tests/contracts/`                                 |
+| Python pytest         | Python helper contracts and migrated native-process scenarios                                             | `tests/python/`                                    |
+| Python fixture driver | Support program launched by a pytest case or a Criterion wrapper                                          | `tests/ascii_chat_tests/`, `tests/scripts/`        |
+| Standalone C probes   | Necessary separate process, native platform facility, dependency/build boundary, or Python-driven fixture | `tests/standalone/`, selected integration fixtures |
 
 The three primary Criterion categories are **unit, integration, performance**. Contract is an additional style/label; migrated suites retain unit/integration labels when assigned. Some contracts have only `criterion;contract`, so inspect discovery before claiming complete coverage. CTest labels describe scope, not language: `integration` also includes registered Python harnesses.
 
@@ -27,18 +28,36 @@ Prefer Criterion for new ordinary C regressions and extend existing suites. Stan
 Use Clang and Ninja. Preserve build/dependency caches and unrelated work; reconfigure rather than deleting `build/`. The default preset currently disables tests, so enable them explicitly:
 
 ```sh
+uv sync --project tests/ascii_chat_tests --frozen
 cmake --preset default -B build -DBUILD_TESTS=ON
 cmake --build build --target tests
 ctest --test-dir build -N
 ctest --test-dir build --print-labels
-ctest --test-dir build -L '^unit$' --no-tests=error --output-on-failure --parallel 1
-ctest --test-dir build -L '^integration$' --no-tests=error --output-on-failure
-ctest --test-dir build -L '^performance$' --no-tests=error --output-on-failure
+ctest --test-dir build -L '^unit$' --no-tests=error --output-on-failure --parallel
+ctest --test-dir build -L '^integration$' --no-tests=error --output-on-failure --parallel
+ctest --test-dir build -L '^performance$' --no-tests=error --output-on-failure --parallel
 ```
 
 Criterion works natively on **macOS, including Intel, and glibc Linux**. This supersedes older Intel-Mac Docker-only testing guidance. Windows and musl builds disable Criterion; from Windows use Linux Docker. Release/RelWithDebInfo disable it by default: add `-DASCIICHAT_FORCE_CRITERION_TESTS=ON` with `BUILD_TESTS=ON` on supported platforms. Verify discovery; zero selected tests is not a pass.
 
-Read [running-tests.md](references/running-tests.md) for focused Criterion commands, Windows Docker, Python harnesses, and standalone fixtures. Read [coverage-and-ci.md](references/coverage-and-ci.md) for XML generation, Codecov uploads, and CI diagnostics. Use [ascii-chat-cross-platform](../ascii-chat-cross-platform/SKILL.md) for SSH, source transfer, compiler setup, and persistent environments.
+Read [running-tests.md](references/running-tests.md) for focused Criterion commands, Windows Docker, Python harnesses, and standalone fixtures. Read [coverage-and-ci.md](references/coverage-and-ci.md) for XML generation, Codecov uploads, and CI diagnostics. Use [ascii-chat Cross Platform Development and/or Testing](../ascii-chat-cross-platform-development-and-or-testing/SKILL.md) for SSH, source transfer, compiler setup, and persistent environments.
+
+## Python tests
+
+Use the locked uv project at `tests/ascii_chat_tests`. New Python tests go under
+`tests/python/` and must be import-safe: create processes, parse arguments, and
+mutate environment only in fixtures or test functions. Share non-pytest mechanics
+through `ascii_chat_tests`; use pytest fixtures for isolation and lifecycle.
+Run `uv run --project tests/ascii_chat_tests --frozen ruff check tests` and
+`uv run --project tests/ascii_chat_tests --frozen ty check tests` after Python
+changes. Both check the entire test tree. CTest also registers these as
+`python-ruff` and `python-ty`.
+Pass the built binary with `--ascii-chat-binary` (or `ASCII_CHAT_TEST_BINARY`).
+Pytest uses xdist on all logical cores by default. CTest coordinates separate
+pytest batches using `PROCESSORS` to avoid nested oversubscription; preserve
+explicit CTest serialization for existing tests that share exclusive resources.
+Keep pytest collection under `tests/python/`; helper programs and manual scripts are not collected.
+See [running-tests.md](references/running-tests.md) for direct and CTest commands.
 
 ## Write useful C and Criterion tests
 

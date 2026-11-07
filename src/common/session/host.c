@@ -133,8 +133,15 @@ static void host_client_release_transport(session_host_client_t *client) {
  *
  * Contains server state, client list, and callback configuration.
  */
+typedef struct host_render_history {
+  uint32_t viewer_id, source_id;
+  ascii_stabilizer_t stabilizer;
+  struct host_render_history *next;
+} host_render_history_t;
+
 typedef struct session_host {
   acip_frame_workspace_t frame_workspace; // Protected by clients_mutex.
+  host_render_history_t *render_histories;
   /** @brief Port to listen on */
   int port;
 
@@ -204,6 +211,8 @@ typedef struct session_host {
   /** @brief Context is initialized */
   bool initialized;
 } session_host_t;
+
+static void host_forget_render_history(session_host_t *host, uint32_t client_id);
 
 /* ============================================================================
  * Session Host Lifecycle Functions
@@ -277,6 +286,13 @@ asciichat_error_t session_host_destroy(session_host_t *host) {
     session_audio_destroy(host->audio_ctx);
 #endif
     host->audio_ctx = NULL;
+  }
+
+  while (host->render_histories) {
+    host_render_history_t *history = host->render_histories;
+    host->render_histories = history->next;
+    ascii_stabilizer_reset(&history->stabilizer);
+    SAFE_FREE(history);
   }
 
   // Free client array and per-client resources
@@ -510,6 +526,7 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
     mutex_lock(&host->clients_mutex);
     for (int j = 0; j < host->max_clients; j++) {
       if (host->clients[j].client_id == client_id) {
+        host_forget_render_history(host, client_id);
         host->clients[j].video_active = false;
         host->clients[j].audio_active = false;
         break;
@@ -537,8 +554,51 @@ asciichat_error_t session_host_receive_packet(session_host_t *host, uint32_t cli
   return ASCIICHAT_OK;
 }
 
+static ascii_stabilizer_t *host_render_history(session_host_t *host, uint32_t viewer_id, uint32_t source_id) {
+  for (host_render_history_t *item = host->render_histories; item; item = item->next)
+    if (item->viewer_id == viewer_id && item->source_id == source_id)
+      return &item->stabilizer;
+  host_render_history_t *item = SAFE_CALLOC(1, sizeof(*item), host_render_history_t *);
+  if (!item)
+    return NULL;
+  item->viewer_id = viewer_id;
+  item->source_id = source_id;
+  item->next = host->render_histories;
+  host->render_histories = item;
+  return &item->stabilizer;
+}
+
+static void host_forget_render_history(session_host_t *host, uint32_t client_id) {
+  host_render_history_t **link = &host->render_histories;
+  while (*link) {
+    host_render_history_t *item = *link;
+    if (item->viewer_id == client_id || item->source_id == client_id) {
+      *link = item->next;
+      ascii_stabilizer_reset(&item->stabilizer);
+      SAFE_FREE(item);
+    } else {
+      link = &item->next;
+    }
+  }
+}
+
+static void host_forget_viewer_history(session_host_t *host, uint32_t viewer_id) {
+  host_render_history_t **link = &host->render_histories;
+  while (*link) {
+    host_render_history_t *item = *link;
+    if (item->viewer_id == viewer_id) {
+      *link = item->next;
+      ascii_stabilizer_reset(&item->stabilizer);
+      SAFE_FREE(item);
+    } else {
+      link = &item->next;
+    }
+  }
+}
+
 static char *host_create_video_grid(session_host_t *host, int count, int width, int height,
-                                    const terminal_capabilities_t *caps, const char *palette, size_t *size) {
+                                    const terminal_capabilities_t *caps, const char *palette, uint32_t viewer_id,
+                                    size_t *size) {
   int columns, rows;
   if (ascii_grid_layout(count, width, height, &columns, &rows) != ASCIICHAT_OK)
     return NULL;
@@ -556,8 +616,11 @@ static char *host_create_video_grid(session_host_t *host, int count, int width, 
     if (!host->clients[i].active || !host->clients[i].video_active || !host->clients[i].incoming_video)
       continue;
     uint64_t start = time_get_ns();
-    sources[index].frame_data = ascii_convert_with_capabilities(host->clients[i].incoming_video, cell_width,
-                                                                cell_height, caps, false, false, palette);
+    ascii_stabilizer_t *history =
+        caps->stabilize ? host_render_history(host, viewer_id, host->clients[i].client_id) : NULL;
+    sources[index].frame_data =
+        ascii_convert_with_buffers_stabilized(host->clients[i].incoming_video, cell_width, cell_height, caps, false,
+                                              false, palette, false, NULL, NULL, history);
     stats_duration_record(stats_runtime_scope(), STATS_DURATION_ASCII_CONVERT, time_get_ns() - start);
     stats_counter_add(stats_runtime_scope(),
                       sources[index].frame_data ? STATS_COUNTER_FRAMES_CONVERTED : STATS_COUNTER_FRAMES_DROPPED, 1);
@@ -584,6 +647,7 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
     ASCII_OTEL_SCOPE(SERVER_VIDEO);
     typedef struct {
       int width, height;
+      uint32_t viewer_id;
       terminal_capabilities_t caps;
       const char *palette;
       char *frame;
@@ -654,20 +718,28 @@ static void host_render_video(session_host_t *host, bool waiting_for_peer) {
           recipient->next_video_deadline = now;
         recipient->next_video_deadline += interval;
       }
+      uint32_t viewer_id = recipient ? recipient->client_id : 0;
+      if (!caps.stabilize)
+        host_forget_viewer_history(host, viewer_id);
       int cached = 0;
       while (cached < grid_count &&
-             (grids[cached].width != width || grids[cached].height != height ||
-              grids[cached].caps.render_mode != caps.render_mode ||
+             (grids[cached].caps.stabilize != caps.stabilize ||
+              (caps.stabilize && grids[cached].viewer_id != viewer_id) || grids[cached].width != width ||
+              grids[cached].height != height || grids[cached].caps.render_mode != caps.render_mode ||
+              grids[cached].caps.text_renderer != caps.text_renderer ||
+              grids[cached].caps.palette_explicit != caps.palette_explicit ||
               grids[cached].caps.color_level != caps.color_level ||
               grids[cached].caps.utf8_support != caps.utf8_support ||
               grids[cached].caps.color_filter != caps.color_filter || strcmp(grids[cached].palette, palette) != 0))
         ++cached;
       if (cached == grid_count) {
+        grids[cached].viewer_id = viewer_id;
         grids[cached].width = width;
         grids[cached].height = height;
         grids[cached].caps = caps;
         grids[cached].palette = palette;
-        grids[cached].frame = host_create_video_grid(host, count, width, height, &caps, palette, &grids[cached].size);
+        grids[cached].frame =
+            host_create_video_grid(host, count, width, height, &caps, palette, viewer_id, &grids[cached].size);
         ++grid_count;
       }
       host_grid_t *grid = &grids[cached];
@@ -1327,6 +1399,7 @@ asciichat_error_t session_host_remove_client(session_host_t *host, uint32_t clie
         host->clients[i].incoming_audio = NULL;
       }
 
+      host_forget_render_history(host, client_id);
       host->clients[i].active = false;
       host->client_count--;
       if (host->render_target.client_id == client_id)
@@ -1492,6 +1565,9 @@ static asciichat_error_t native_display_config(void *context, session_host_rende
     return SET_ERRNO(ERROR_INVALID_STATE, "Local terminal display is not initialized");
   config->caps = *caps;
   config->caps.render_mode = GET_OPTION(render_mode);
+  config->caps.text_renderer = GET_OPTION(renderer);
+  config->caps.stabilize = GET_OPTION(stabilize);
+  config->caps.palette_explicit = GET_OPTION(palette_explicit);
   config->caps.wants_background = config->caps.render_mode == RENDER_MODE_BACKGROUND;
   if (GET_OPTION(color_mode) != TERM_COLOR_AUTO)
     config->caps.color_level = GET_OPTION(color_mode);

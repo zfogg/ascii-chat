@@ -126,6 +126,13 @@ Test(builder_contract, environment_then_explicit_cli_and_already_set_values) {
   platform_setenv("ASCII_TEST_BUILDER_DOUBLE", "2.5");
   platform_setenv("ASCII_TEST_BUILDER_STRING", "from-env");
   sample_t sample = defaults();
+  sample.enabled = true;
+  sample.ratio = 7.0;
+  SAFE_STRNCPY(sample.label, "from-config", sizeof(sample.label));
+  platform_setenv("ASCII_TEST_BUILDER_BOOL", "false");
+  cr_assert_eq(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
+  cr_assert_not(sample.enabled);
+  platform_setenv("ASCII_TEST_BUILDER_BOOL", "yes");
   cr_assert_eq(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
   cr_assert(sample.enabled);
   cr_assert_eq(sample.count, 12);
@@ -145,6 +152,21 @@ Test(builder_contract, environment_then_explicit_cli_and_already_set_values) {
   cr_assert_eq(sample.count, 25);
   cr_assert_float_eq(sample.ratio, 4.5, 1e-9);
   cr_assert_str_eq(sample.label, "from-cli");
+  options_config_destroy(c);
+}
+
+Test(builder_contract, invalid_double_environment_preserves_value_and_returns_error) {
+  options_config_t *c = config();
+  const char *invalid[] = {"not-a-number", "2.5suffix", "1e9999", "nan"};
+  for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+    sample_t sample = defaults();
+    sample.ratio = 7.0;
+    platform_setenv("ASCII_TEST_BUILDER_DOUBLE", invalid[i]);
+    cr_assert_eq(options_config_set_defaults(c, &sample), ERROR_USAGE);
+    cr_assert_float_eq(sample.ratio, 7.0, 1e-9);
+    CLEAR_ERRNO_ALL();
+  }
+  platform_unsetenv("ASCII_TEST_BUILDER_DOUBLE");
   options_config_destroy(c);
 }
 

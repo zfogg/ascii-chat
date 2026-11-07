@@ -35,21 +35,21 @@ describe different metrics. Neither establishes current-master coverage.
 
 ## Policy in codecov.yml
 
-| Setting | Policy and reason |
-| --- | --- |
-| Default branch | `master`, matching the repository |
-| Upload completion | One upload after all seven native CI reports pass inventory validation; no carryforward |
-| Report age | 24 hours, allowing a slow full matrix without accepting arbitrarily old reports |
-| Notifications | Publish after that upload without waiting for unrelated statuses; report processing errors |
-| Overall project | Compare with the base, allowing at most one percentage point of regression |
-| Application project | At least 50% for `src/`, with zero threshold allowance |
-| Patch | At least 60%; security patches at least 70%, with zero allowance |
-| Branch filters | None: feature branches need checks and PR comments too |
-| Components | Current module paths, baseline-relative informational project checks |
-| Flags | Only `coverage` is a native coverage upload; per-job test analytics flags are independent |
-| Comments | One updated comment including components, even if base coverage is unavailable |
-| Ignored files | Build output, dependencies, test scaffolding, generated version and musl compatibility code |
-| Partials and annotations | Retain branch partials and source annotations |
+| Setting                  | Policy and reason                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------- |
+| Default branch           | `master`, matching the repository                                                           |
+| Upload completion        | One upload after all seven native CI reports pass inventory validation; no carryforward     |
+| Report age               | 24 hours, allowing a slow full matrix without accepting arbitrarily old reports             |
+| Notifications            | Publish after that upload without waiting for unrelated statuses; report processing errors  |
+| Overall project          | Compare with the base, allowing at most one percentage point of regression                  |
+| Application project      | At least 50% for `src/`, with zero threshold allowance                                      |
+| Patch                    | At least 60%; security patches at least 70%, with zero allowance                            |
+| Branch filters           | None: feature branches need checks and PR comments too                                      |
+| Components               | Current module paths, baseline-relative informational project checks                        |
+| Flags                    | Only `coverage` is a native coverage upload; per-job test analytics flags are independent   |
+| Comments                 | One updated comment including components, even if base coverage is unavailable              |
+| Ignored files            | Build output, dependencies, test scaffolding, generated version and musl compatibility code |
+| Partials and annotations | Retain branch partials and source annotations                                               |
 
 The previous configuration duplicated module gates as components, omitted newer
 session/MCP/media/UI modules, had obsolete branch and upload flag lists, and

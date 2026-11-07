@@ -109,6 +109,9 @@ describe("WebTransport client session", () => {
     expect(session.needsKeyframe(3002)).toBe(true);
     state.callbacks!.datagramDropped?.(3002, new Error("expired"));
     expect(session.getUploadFeedback().droppedFrames).toBe(1);
+    session.sendPacket(3001, new Uint8Array(64 * 1024));
+    expect(state.sends.at(-1)!.delivery).toBe("reliable");
+    expect(state.sends.at(-1)!.deadline).toBe(0);
     const incoming = new Uint8Array(23);
     new DataView(incoming.buffer).setUint16(8, 4000);
     incoming[22] = 5;

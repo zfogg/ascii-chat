@@ -93,7 +93,7 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-path-") as temp:
     profiles = [accepted / name for name in (".bashrc", ".bash_profile", ".zshrc")]
     before = {p: p.read_bytes() for p in profiles}
     for profile in profiles:
-        for shell in (bash, shutil.which("zsh")):
+        for shell in filter(None, (bash, shutil.which("zsh"))):
             # Re-sourcing any generated block must not duplicate PATH entries.
             result = subprocess.run(
                 [shell, "-c", '. "$1"; . "$1"; printf "%s" "$PATH"',

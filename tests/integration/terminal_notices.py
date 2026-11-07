@@ -21,7 +21,7 @@ import sys
 import tempfile
 import time
 
-from terminal_ui import Terminal, CaptureScreen, CaptureStream
+from ascii_chat_tests.terminal import Terminal, CaptureScreen, CaptureStream
 
 
 class Size(C.Structure):
@@ -82,7 +82,9 @@ def probe(library, kind, log):
                 buffer = native.frame_buffer_create(0, 0)
                 try:
                     native.ui_notice_render(buffer, b"COLOR", severity, 80, True, True)
-                    code = re.match(rb"\x1b\[1m(\x1b\[[0-9;]*m)", native.frame_buffer_get_content(buffer)).group(1)
+                    match = re.match(rb"\x1b\[1m(\x1b\[[0-9;]*m)", native.frame_buffer_get_content(buffer))
+                    assert match is not None
+                    code = match.group(1)
                     codes.append(code.decode())
                     logger_code = native.log_get_foreground_color() if role is None else native.log_level_color(role)
                     assert logger_code == code, (step, severity, logger_code, code)

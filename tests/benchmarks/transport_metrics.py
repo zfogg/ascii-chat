@@ -88,6 +88,7 @@ def main():
                         launch = [str(args.loader.resolve()), '--library-path', str(args.loader.resolve().parent), *launch]
                     process = subprocess.Popen(launch,
                                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
+                    assert process.stdout is not None
                     def stop_timeout(child=process):
                         child.kill()
                     timeout = threading.Timer(60, stop_timeout)

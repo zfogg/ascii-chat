@@ -1,0 +1,315 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>table.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">table.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">table.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">table.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>UI_TABLE_CLIPPED_BUFFER_SIZE</b> 8192
+            <br />
+            #define <b>UI_TABLE_LINE_BUFFER_SIZE</b> 8192
+            <br />
+            #define <b>UI_TABLE_CELL_CAPACITY</b> 32
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            size_t <b>ui_table_row</b> (char *out, size_t cap, const
+            <b>ui_table_column_t</b> *cols, const char *const *cells, size_t
+            count, int width, <b>bool</b> selectable, <b>bool</b> selected)
+            <br />
+            void <b>ui_table_render</b> (<b>frame_buffer_t</b> *out,
+            <b>ui_table_t</b> *t, int row, int col, int width, int height)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_TABLE_CELL_CAPACITY___32">
+            <a class="permalink" href="#_define_UI_TABLE_CELL_CAPACITY___32"
+              >#define UI_TABLE_CELL_CAPACITY 32</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>7</b> of file <b>table.c</b>.</p>
+          <p class="Pp">Referenced by <b>ui_table_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_TABLE_CLIPPED_BUFFER_SIZE___8192">
+            <a
+              class="permalink"
+              href="#_define_UI_TABLE_CLIPPED_BUFFER_SIZE___8192"
+              >#define UI_TABLE_CLIPPED_BUFFER_SIZE 8192</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>3</b> of file <b>table.c</b>.</p>
+          <p class="Pp">Referenced by <b>ui_table_row()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_UI_TABLE_LINE_BUFFER_SIZE___8192">
+            <a
+              class="permalink"
+              href="#_define_UI_TABLE_LINE_BUFFER_SIZE___8192"
+              >#define UI_TABLE_LINE_BUFFER_SIZE 8192</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>4</b> of file <b>table.c</b>.</p>
+          <p class="Pp">Referenced by <b>ui_table_render()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_table_render_(">
+            <a class="permalink" href="#void_ui_table_render_("
+              >void ui_table_render (<b>frame_buffer_t</b> * out,
+              <b>ui_table_t</b> * table, int row, int column, int width, int
+              height)</a
+            >
+          </h2>
+          <p class="Pp">
+            Rectangular table with a fixed header and independent page/scroll
+            state.
+          </p>
+          <p class="Pp">Definition at line <b>74</b> of file <b>table.c</b>.</p>
+          <pre>
+74                                                                                                   {
+75   if (!out || !t || !t-&gt;columns || !t-&gt;column_count || t-&gt;column_count &gt; 32 || !t-&gt;cells || width &lt; 2 || height &lt; 1 ||
+76       row &lt; 1 || col &lt; 1) {
+77     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid table output, data source or geometry&quot;);
+78     return;
+79   }
+80   char line[UI_TABLE_LINE_BUFFER_SIZE];
+81   if (t-&gt;header) {
+82     ui_table_row(line, sizeof(line), t-&gt;columns, NULL, t-&gt;column_count, width - 1, t-&gt;selectable, false);
+83     frame_buffer_printf(out, &quot;\033[%d;%dH%s%s%s&quot;, row++, col, ui_text_color_prefix(LOG_COLOR_DEBUG), line,
+84                         ui_text_color_prefix(LOG_COLOR_RESET));
+85     --height;
+86   }
+87   if (height &lt; 1)
+88     return;
+89   ui_viewport_range_t range = ui_viewport_update(&amp;t-&gt;viewport, t-&gt;row_count, (size_t)height);
+90   for (int i = 0; i &lt; height; ++i) {
+91     const char *cells[UI_TABLE_CELL_CAPACITY] = {0};
+92     if ((size_t)i &lt; range.count) {
+93       t-&gt;cells(range.first + (size_t)i, cells, t-&gt;column_count, t-&gt;data);
+94       ui_table_row(line, sizeof(line), t-&gt;columns, cells, t-&gt;column_count, width - 1, t-&gt;selectable,
+95                    range.first + (size_t)i == t-&gt;viewport.selected);
+96     } else
+97       snprintf(line, sizeof(line), &quot;%*s&quot;, width - 1, &quot;&quot;);
+98     bool selected = t-&gt;selectable &amp;&amp; (size_t)i &lt; range.count &amp;&amp; range.first + (size_t)i == t-&gt;viewport.selected;
+99     frame_buffer_printf(out, &quot;\033[%d;%dH%s%s%s&quot;, row + i, col, selected ? &quot;\033[7m&quot; : &quot;&quot;, line,
+100                         selected ? &quot;\033[27m&quot; : &quot;&quot;);
+101   }
+102   ui_scrollbar_render(out, row, col + width - 1, height, range.page_count, (size_t)height, t-&gt;viewport.first_visible);
+103 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_table_t::cells</b>,
+            <b>ui_table_t::column_count</b>, <b>ui_table_t::columns</b>,
+            <b>ui_viewport_range_t::count</b>, <b>ui_table_t::data</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ui_viewport_range_t::first</b>,
+            <b>ui_viewport_t::first_visible</b>, <b>frame_buffer_printf()</b>,
+            <b>ui_table_t::header</b>, <b>LOG_COLOR_DEBUG</b>,
+            <b>LOG_COLOR_RESET</b>, <b>ui_viewport_range_t::page_count</b>,
+            <b>ui_table_t::row_count</b>, <b>ui_table_t::selectable</b>,
+            <b>ui_viewport_t::selected</b>, <b>SET_ERRNO</b>,
+            <b>ui_scrollbar_render()</b>, <b>UI_TABLE_CELL_CAPACITY</b>,
+            <b>UI_TABLE_LINE_BUFFER_SIZE</b>, <b>ui_table_render()</b>,
+            <b>ui_table_row()</b>, <b>ui_text_color_prefix()</b>,
+            <b>ui_viewport_update()</b>, and <b>ui_table_t::viewport</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>tui_stats_render()</b>, and
+            <b>ui_table_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="size_t_ui_table_row_(char_*_out,_size_t_capacity,_const_"
+          >
+            <a
+              class="permalink"
+              href="#size_t_ui_table_row_(char_*_out,_size_t_capacity,_const_"
+              >size_t ui_table_row (char * out, size_t capacity, const
+              <b>ui_table_column_t</b> * columns, const char *const * cells,
+              size_t count, int width, <b>bool</b> selectable,
+              <b>bool</b> selected)</a
+            >
+          </h2>
+          <p class="Pp">
+            Format a complete row without allocation. Styled cells are clipped
+            by terminal columns, never by bytes. The caller owns data and
+            sorting.
+          </p>
+          <p class="Pp">Definition at line <b>17</b> of file <b>table.c</b>.</p>
+          <pre>
+18                                                                {
+19   if (!out || !cap) {
+20     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Table row requires output storage&quot;);
+21     return 0;
+22   }
+23   out[0] = '\0';
+24   if (!cols || !count || count &gt; 32 || width &lt;= 0) {
+25     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid table columns or width&quot;);
+26     return 0;
+27   }
+28   int64_t remaining = (int64_t)width - (selectable ? 1 : 0) - (int)(count - 1);
+29   size_t flexible = 0;
+30   for (size_t i = 0; i &lt; count; ++i) {
+31     if (cols[i].width &lt; 0) {
+32       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Table column width cannot be negative&quot;);
+33       return 0;
+34     }
+35     if (cols[i].width &gt; 0)
+36       remaining -= cols[i].width;
+37     else
+38       ++flexible;
+39   }
+40   size_t used = 0;
+41   int available = width;
+42   if (selectable &amp;&amp; cap &gt; 1) {
+43     out[used++] = selected ? '&gt;' : ' ';
+44     out[used] = '\0';
+45     --available;
+46   }
+47   for (size_t i = 0; i &lt; count &amp;&amp; available &gt; 0; ++i) {
+48     if (i &amp;&amp; used + 1 &lt; cap) {
+49       out[used++] = ' ';
+50       out[used] = '\0';
+51       --available;
+52     }
+53     int cell_width = cols[i].width &gt; 0 ? cols[i].width : flexible ? remaining / (int)flexible : 0;
+54     if (cell_width &lt; 0)
+55       cell_width = 0;
+56     if (!cols[i].width &amp;&amp; flexible) {
+57       remaining -= cell_width;
+58       --flexible;
+59     }
+60     if (cell_width &gt; available)
+61       cell_width = available;
+62     const char *text = cells ? cells[i] : cols[i].heading;
+63     char clipped[UI_TABLE_CLIPPED_BUFFER_SIZE];
+64     if (text &amp;&amp; cols[i].ellipsis &amp;&amp; display_width(text) &gt; cell_width) {
+65       truncate_with_ellipsis_mode(text, clipped, sizeof(clipped), cell_width, terminal_should_use_utf8());
+66       text = clipped;
+67     }
+68     used += ui_text_cell(out + used, cap - used, text, cell_width, cols[i].alignment);
+69     available -= cell_width;
+70   }
+71   return used;
+72 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>display_width()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ui_table_column_t::heading</b>, <b>SET_ERRNO</b>,
+            <b>terminal_should_use_utf8()</b>,
+            <b>truncate_with_ellipsis_mode()</b>,
+            <b>UI_TABLE_CLIPPED_BUFFER_SIZE</b>, <b>ui_table_row()</b>,
+            <b>ui_text_cell()</b>, and <b>ui_table_column_t::width</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_sync_render()</b>, <b>ui_table_render()</b>, and
+            <b>ui_table_row()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

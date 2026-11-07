@@ -40,6 +40,7 @@
 #include "nat.h"
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/crypto/keys.h>
@@ -114,7 +115,20 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
     id_result = acds_identity_default_path(identity_path, sizeof(identity_path));
   }
   if (id_result == ASCIICHAT_OK) {
-    id_result = acds_identity_load(identity_path, session->identity_pubkey, session->identity_seckey);
+    asciichat_errno_scope_t load_scope = {0};
+    bool suppressed = false;
+    if (!explicit_identity) {
+      load_scope = errno_scope_begin();
+      suppressed = errno_notifications_suppress(true);
+    }
+    if (!explicit_identity && platform_access(identity_path, PLATFORM_ACCESS_EXISTS) != 0)
+      id_result = ERROR_CONFIG;
+    else
+      id_result = acds_identity_load(identity_path, session->identity_pubkey, session->identity_seckey);
+    if (!explicit_identity) {
+      errno_notifications_suppress(suppressed);
+      errno_scope_end(load_scope, ASCIICHAT_ERRNO_HANDLED);
+    }
     if (id_result != ASCIICHAT_OK && !explicit_identity) {
       // File doesn't exist or is corrupted - generate new key
       log_info("Identity key not found, generating new key");
@@ -380,9 +394,14 @@ static void *nat_detection_thread_fn(void *arg) {
 
   discovery_session_t *session = (discovery_session_t *)arg;
 
-  const char *probe_host = OPT_ENDPOINT_STUN_FALLBACK;
-  if (strncmp(probe_host, "stun:", 5) == 0)
-    probe_host += 5;
+  stun_server_t probe = {0};
+  const char *probe_host = NULL;
+  if (!GET_OPTION(webrtc_skip_stun) &&
+      stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, &probe, 1) > 0) {
+    probe_host = probe.host;
+    if (strncmp(probe_host, "stun:", 5) == 0)
+      probe_host += 5;
+  }
 
   // Run blocking NAT detection in this thread (not main thread)
   nat_quality_t quality;
@@ -515,9 +534,9 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     // An empty address lets ACDS use the creator's observed source address.
     params.acds_expose_ip = GET_OPTION(discovery_expose_ip);
     params.server_port = (uint16_t)GET_OPTION(port);
-    if (GET_OPTION(quic_bind_address)[0])
+    if (GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
       params.quic_port = (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : GET_OPTION(port));
-    if (GET_OPTION(webtransport_bind_address)[0]) {
+    if ((GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])) {
       if (strlen(GET_OPTION(webtransport_public_url)) >= sizeof(params.webtransport_url)) {
         acds_protocol_destroy(&protocol);
         return SET_ERRNO(ERROR_USAGE, "WebTransport public URL exceeds the discovery endpoint limit");
@@ -1241,7 +1260,8 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
        session->cached_nat_quality.upnp_available))
     message.nat_tier = (uint8_t)nat_compute_tier(&session->cached_nat_quality);
   mutex_unlock(&session->nat_quality_mutex);
-  if (GET_OPTION(quic_bind_address)[0] && GET_OPTION(quic_tls_cert)[0] && GET_OPTION(quic_tls_key)[0])
+  if ((GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])) && GET_OPTION(quic_tls_cert)[0] &&
+      GET_OPTION(quic_tls_key)[0])
     message.capabilities |= 1; // A configured native listener can prepare a direct successor.
   memcpy(message.session, session->session_id, SESSION_ID_SIZE);
   memcpy(message.participant, session->participant_id, SESSION_ID_SIZE);
@@ -1795,9 +1815,10 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
   if (session->acds_transport) {
     uint8_t payload[sizeof(announcement) + ACDS_TRANSPORT_METADATA_MAX];
     size_t metadata_length = 0;
-    uint16_t quic_port =
-        GET_OPTION(quic_bind_address)[0] ? (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : host_port) : 0;
-    const char *url = GET_OPTION(webtransport_bind_address)[0] ? GET_OPTION(webtransport_public_url) : "";
+    uint16_t quic_port = (GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
+                             ? (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : host_port)
+                             : 0;
+    const char *url = (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]) ? GET_OPTION(webtransport_public_url) : "";
     asciichat_error_t sent = ASCIICHAT_OK;
     if (quic_port || *url)
       sent = acds_transport_metadata_encode(quic_port, url, payload + sizeof(announcement), ACDS_TRANSPORT_METADATA_MAX,

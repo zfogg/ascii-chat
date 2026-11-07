@@ -2,7 +2,7 @@
 
 This document records the stream framing being implemented for issue #247.
 The native server has an opt-in listener and native clients can select it with
-an explicit `quic://` address. A separate opt-in HTTP/3 listener serves
+an explicit `quic://` address. An opt-in HTTP/3 service on the same UDP listener serves
 browser WebTransport clients.
 
 The browser includes an incremental ACIP stream and ACQS preamble decoder,
@@ -125,12 +125,15 @@ join authenticates and receives video from the successor.
 ## HTTP/3 WebTransport listener
 
 Enable the browser listener with `--webtransport-bind-address 127.0.0.1`,
-`--webtransport-port PORT`, `--webtransport-origin https://example.com`,
+`--quic-port PORT`, `--webtransport-origin https://example.com`,
 `--quic-tls-cert CERT`, and `--quic-tls-key KEY`. The origin must exactly
 match the browser page origin, including its port. The CONNECT path defaults
 to `/acip` and can be set with `--webtransport-path`. Use a certificate trusted
-by the browser and matching the listener hostname. Native raw QUIC and HTTP/3
-use distinct UDP ports and ALPNs; both can run alongside TCP and WebSocket.
+by the browser and matching the listener hostname. Native raw QUIC and HTTP/3 share one UDP listener selected by `--quic-port`
+(or the main server port when zero). ALPN selects `acip/1` or `h3` per
+connection. TCP and UDP can use the same port number. If both bind-address
+options are supplied, they must name the same address. There is no separate
+WebTransport port flag.
 
 The nghttp3 CONNECT endpoint checks origin and path, advertises HTTP datagrams
 and WebTransport draft settings, and maps unidirectional WebTransport streams
@@ -471,6 +474,11 @@ expire one second after their first received fragment. A caller must invoke
 expiry even when no datagrams arrive. The current ACIP crypto codec limits a
 plaintext to 1 MiB; larger media will require an explicit design rather than
 assuming fragmentation removes that limit.
+
+The browser selects reliable visual delivery for packets larger than 64 KiB,
+before admission. This keeps large raw frames from requiring hundreds of lossy
+fragments within the media deadline. Smaller media packets can use datagrams;
+expired datagrams are never retried on a reliable stream.
 
 The sender selects a fragment size from the negotiated peer limit and current
 path payload size, leaving space for QUIC overhead. It discards the remainder

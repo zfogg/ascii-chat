@@ -10,6 +10,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.process import hidden_console_options
 
 
 import ctypes
@@ -66,11 +67,8 @@ if __name__ == "__main__":
         worker(Path(sys.argv[1]).resolve())
     else:
         dll = Path(sys.argv[1] if len(sys.argv) > 1 else "build/bin/asciichat.dll").resolve()
-        startup = subprocess.STARTUPINFO()
-        startup.dwFlags = subprocess.STARTF_USESHOWWINDOW
-        startup.wShowWindow = subprocess.SW_HIDE
         result = subprocess.run([sys.executable, __file__, str(dll), "--worker"],
-                                creationflags=subprocess.CREATE_NEW_CONSOLE, startupinfo=startup,
+                                **hidden_console_options(),
                                 capture_output=True, timeout=30)
         assert result.returncode == 0, (result.returncode, result.stdout, result.stderr)
         assert b"\x1b]0;" not in result.stdout, result.stdout

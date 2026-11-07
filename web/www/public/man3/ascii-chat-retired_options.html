@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>retired_options(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">retired_options(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">retired_options(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          retired_options - Deferred free list for old options structs.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>options_t</b> * <b>value</b>
+            <br />
+            struct <b>retired_options</b> * <b>next</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Deferred free list for old options structs.</p>
+        <p class="Pp">
+          We can't immediately free old structs because readers might still be
+          using them. Simple strategy: Keep old pointers in a list, free them at
+          shutdown.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Future improvements:</b></p>
+        <ul class="Bl-bullet">
+          <li>Hazard pointers: Track which structs readers are using</li>
+          <li>Epoch-based reclamation: Free after grace period</li>
+          <li>Reference counting: Free when no readers</li>
+        </ul>
+        <p class="Pp">
+          <b>Current approach:</b> Never free until shutdown (acceptable for
+          rare updates)
+        </p>
+        <p class="Pp">Definition at line <b>294</b> of file <b>rcu.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="struct_">
+            <a class="permalink" href="#struct_"
+              >struct <b>retired_options</b>* retired_options::next</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>296</b> of file <b>rcu.c</b>.</p>
+          <p class="Pp">Referenced by <b>options_state_set()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>options_t</b>* retired_options::value</h2>
+          <p class="Pp">Definition at line <b>295</b> of file <b>rcu.c</b>.</p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

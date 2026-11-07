@@ -998,43 +998,27 @@ jobs:
   notify:
     name: Send release notification
     if: always() && needs.create-release.result != 'skipped'
-    needs: [create-release, package-linux, package-macos, package-windows, publish-release]
-    runs-on: ubuntu-latest
+    needs:
+      [
+        create-release,
+        package-linux,
+        package-macos,
+        package-windows,
+        publish-release,
+      ]
+    uses: ./.github/workflows/notify.yml
+    secrets: inherit
+    with:
+      subject: "${{ needs.create-release.result == 'success' && needs.package-linux.result == 'success' && needs.package-macos.result == 'success' && needs.package-windows.result == 'success' && needs.publish-release.result == 'success' && '✅' || '❌' }} ascii-chat release ${{ needs.create-release.outputs.version || github.ref_name }} - ${{ needs.create-release.result == 'success' && needs.package-linux.result == 'success' && needs.package-macos.result == 'success' && needs.package-windows.result == 'success' && needs.publish-release.result == 'success' && 'SUCCESS' || 'FAILED' }}"
+      body: |
+        ascii-chat release ${{ needs.create-release.outputs.version || github.ref_name }}: ${{ needs.create-release.result == 'success' && needs.package-linux.result == 'success' && needs.package-macos.result == 'success' && needs.package-windows.result == 'success' && needs.publish-release.result == 'success' && 'SUCCESS' || 'FAILED' }}
 
-    steps:
-      - name: Determine overall result
-        id: result
-        run: |
-          if [[ "${{ needs.create-release.result }}" != "success" || \
-                "${{ needs.package-linux.result }}" != "success" || \
-                "${{ needs.package-macos.result }}" != "success" || \
-                "${{ needs.package-windows.result }}" != "success" || \
-                "${{ needs.publish-release.result }}" != "success" ]]; then
-            echo "status=FAILED" >> $GITHUB_OUTPUT
-            echo "emoji=❌" >> $GITHUB_OUTPUT
-          else
-            echo "status=SUCCESS" >> $GITHUB_OUTPUT
-            echo "emoji=✅" >> $GITHUB_OUTPUT
-          fi
+        Release: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.version || github.ref_name }}
+        Workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-      - name: Send email notification
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: ${{ secrets.SMTP_SERVER }}
-          server_port: ${{ secrets.SMTP_PORT }}
-          username: ${{ secrets.SMTP_FROM_EMAIL }}
-          password: ${{ secrets.SMTP_PASSWORD }}
-          subject: "${{ steps.result.outputs.emoji }} ascii-chat release ${{ needs.create-release.outputs.version }} - ${{ steps.result.outputs.status }}"
-          to: ${{ secrets.SMTP_TO_EMAIL }}
-          from: ${{ secrets.SMTP_FROM_EMAIL }}
-          body: |
-            ascii-chat release ${{ needs.create-release.outputs.version }}: ${{ steps.result.outputs.status }}
-
-            Release: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.version }}
-            Workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-            Job Results:
-              create-release: ${{ needs.create-release.result }}
-              package-linux:  ${{ needs.package-linux.result }}
-              package-macos:  ${{ needs.package-macos.result }}
-              package-windows: ${{ needs.package-windows.result }}
+        Job Results:
+          create-release: ${{ needs.create-release.result }}
+          package-linux:  ${{ needs.package-linux.result }}
+          package-macos:  ${{ needs.package-macos.result }}
+          package-windows: ${{ needs.package-windows.result }}
+          publish-release: ${{ needs.publish-release.result }}

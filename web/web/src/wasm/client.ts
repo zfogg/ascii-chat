@@ -8,9 +8,7 @@ import type {
 } from "@ascii-chat/shared/wasm";
 import { createWasmModule } from "@ascii-chat/shared/wasm";
 import {
-  forwardJavaScriptError,
   publishBrowserError,
-  reportJavaScriptError,
   type BrowserErrorFrame,
 } from "../errors/errorBus";
 
@@ -505,6 +503,7 @@ export function packetTypeName(type: number): string {
     [PacketType.ASCII_FRAME]: "ASCII_FRAME",
     [PacketType.IMAGE_FRAME]: "IMAGE_FRAME",
     [PacketType.IMAGE_FRAME_H265]: "IMAGE_FRAME_H265",
+    [PacketType.IMAGE_FRAME_H264]: "IMAGE_FRAME_H264",
     [PacketType.AUDIO_BATCH]: "AUDIO_BATCH",
     [PacketType.AUDIO_OPUS_BATCH]: "AUDIO_OPUS_BATCH",
     [PacketType.CLIENT_CAPABILITIES]: "CLIENT_CAPABILITIES",
@@ -718,16 +717,8 @@ function parseKeyInWorker(
       if (!pending) return;
       pendingKeyParserRequests.delete(event.data.id);
       if (event.data.error) {
-        if (event.data.frames?.length)
-          publishBrowserError({
-            source: "C/WASM",
-            title: event.data.error,
-            frames: event.data.frames,
-          });
-        const error = new Error(event.data.error);
-        if (event.data.frames?.length) forwardJavaScriptError(error);
-        else reportJavaScriptError(error);
-        pending.reject(error);
+        // Failed parser attempts are expected while trying multiple key formats.
+        pending.reject(new Error(event.data.error));
       } else if (event.data.bytes)
         pending.resolve(new Uint8Array(event.data.bytes));
       else pending.reject(new Error("SSH key parser returned no result"));

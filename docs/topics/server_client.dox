@@ -456,4 +456,3 @@
  * @see @ref topic_server_render "Render Threads"
  * @see <a href="../notes/CONCURRENCY.md">Concurrency Documentation</a>
  */
-

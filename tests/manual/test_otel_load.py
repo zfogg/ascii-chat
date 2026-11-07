@@ -9,6 +9,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 from pathlib import Path
 import argparse
@@ -29,6 +30,7 @@ def maximum(requests, name):
     return max((struct.unpack('<d', point[4][0])[0] for point in points(requests, name)), default=0)
 def child_cpu(process=None):
     if os.name == 'nt':
+        assert process is not None
         import ctypes
         from ctypes import wintypes
         times = [wintypes.FILETIME() for _ in range(4)]
@@ -54,7 +56,7 @@ def main():
     env = {k:v for k,v in os.environ.items() if not k.startswith(('OTEL_', 'ASCII_CHAT_OTEL_'))}
     media = ['mirror', '--test-pattern', '--audio=false', '--snapshot', '--snapshot-delay', str(args.seconds),
              '--width', '80', '--height', '24', '--splash-screen=false']
-    base = [binary, '--no-check-update']
+    base = cli_command(binary)
     report = {}
     def execute(name, flags, callback=None):
         cpu_start = 0 if os.name == 'nt' else child_cpu()

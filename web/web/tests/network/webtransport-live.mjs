@@ -94,7 +94,6 @@ async function freeUdp() {
   return port;
 }
 const udpPort = await freeUdp();
-const nativePort = await freeUdp();
 const blackhole = createSocket("udp4");
 let droppedUdpPackets = 0;
 blackhole.on("message", () => ++droppedUdpPackets);
@@ -138,10 +137,6 @@ const server = spawn(
     "--quic-bind-address",
     "127.0.0.1",
     "--quic-port",
-    String(nativePort),
-    "--webtransport-bind-address",
-    "127.0.0.1",
-    "--webtransport-port",
     String(udpPort),
     "--webtransport-origin",
     `https://127.0.0.1:${pagePort}`,
@@ -182,7 +177,7 @@ try {
         "--log-file",
         logFile,
         "client",
-        `quic://localhost:${nativePort}`,
+        `quic://localhost:${udpPort}`,
         "--quic-ca-file",
         cert,
         "--server-key",

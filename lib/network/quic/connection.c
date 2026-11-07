@@ -85,6 +85,7 @@ struct acip_quic_connection {
   asciichat_error_t callback_error;
   bool failed;
   bool tls_ready;
+  bool webtransport;
   bool packet_pending;
   bool packet_has_stream_data;
   acip_traffic_class_t packet_traffic_class;
@@ -517,7 +518,7 @@ static int receive_stream_data(ngtcp2_conn *conn, uint32_t flags, int64_t stream
   (void)stream_user_data;
   acip_quic_connection_t *connection = user_data;
   asciichat_error_t readiness = update_readiness(connection);
-  if (connection->tls->webtransport) {
+  if (connection->webtransport) {
     if ((flags & NGTCP2_STREAM_DATA_FLAG_0RTT) || ngtcp2_conn_is_local_stream2(conn, stream_id) ||
         readiness != ASCIICHAT_OK || !connection->tls_ready || !connection->http3) {
       connection->callback_error = readiness != ASCIICHAT_OK ? readiness : ERROR_NETWORK_PROTOCOL;
@@ -562,7 +563,7 @@ static int receive_datagram(ngtcp2_conn *conn, uint32_t flags, const uint8_t *da
   if ((flags & NGTCP2_DATAGRAM_FLAG_0RTT) || !connection->datagrams_enabled || !connection->security.crypto ||
       !connection->peer_ready_seen || !connection->emit)
     return 0;
-  if (connection->tls->webtransport) {
+  if (connection->webtransport) {
     int64_t session_id = -1;
     uint64_t quarter = 0;
     size_t prefix_length = 0;
@@ -709,7 +710,7 @@ static bool valid_address(const ngtcp2_addr *address) {
   if (!address || !address->addr)
     return false;
   size_t length = (size_t)address->addrlen;
-  if (length < sizeof(struct sockaddr) || length > sizeof(struct sockaddr_storage))
+  if (length < sizeof(address->addr->sa_family) || length > sizeof(struct sockaddr_storage))
     return false;
   if (address->addr->sa_family == AF_INET)
     return length >= sizeof(struct sockaddr_in);
@@ -856,9 +857,14 @@ static asciichat_error_t update_readiness(acip_quic_connection_t *connection) {
       connection->failed = true;
       return result;
     }
+    const unsigned char *protocol = NULL;
+    unsigned int protocol_length = 0;
+    SSL_get0_alpn_selected(connection->ssl, &protocol, &protocol_length);
+    connection->webtransport =
+        connection->tls->webtransport && protocol_length == 2 && protocol && !memcmp(protocol, "h3", sizeof("h3") - 1);
     connection->tls_ready = true;
   }
-  if (connection->tls_ready && connection->tls->webtransport && !connection->http3) {
+  if (connection->tls_ready && connection->webtransport && !connection->http3) {
     int64_t control, encoder, decoder;
     int rc = ngtcp2_conn_open_uni_stream(connection->conn, &control, NULL);
     if (!rc)
@@ -1017,7 +1023,7 @@ size_t acip_quic_connection_datagram_payload(const acip_quic_connection_t *conne
     frame = ACIP_QUIC_DATAGRAM_FRAME_LIMIT;
   if (frame > remote->max_datagram_frame_size - 9)
     frame = (size_t)(remote->max_datagram_frame_size - 9);
-  if (connection->tls->webtransport) {
+  if (connection->webtransport) {
     int64_t session_id = -1;
     uint8_t prefix[8];
     if (!connection->http3 || !acip_http3_server_accepted(connection->http3, &session_id))
@@ -1133,7 +1139,7 @@ static asciichat_error_t queue_wire_packet_internal(acip_quic_connection_t *conn
   uint8_t preamble[ACIP_QUIC_STREAM_PREAMBLE_SIZE + 16];
   size_t prefix_length = 0;
   if (!stream->initialized) {
-    if (connection->tls->webtransport) {
+    if (connection->webtransport) {
       int64_t session_id = -1;
       if (!acip_http3_server_accepted(connection->http3, &session_id))
         return SET_ERRNO(ERROR_INVALID_STATE, "WebTransport session is not established");
@@ -1263,6 +1269,8 @@ asciichat_error_t acip_quic_connection_receive(acip_quic_connection_t *connectio
 
 static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_path *path, ngtcp2_pkt_info *info,
                                   uint8_t *packet, size_t capacity, uint64_t now_ns) {
+  // HTTP/3 session control precedes application traffic; blocked streams yield
+  // so other flows and transport acknowledgements can still advance.
   connection->packet_has_stream_data = false;
   if (connection->http3) {
     int64_t stream_id = -1;
@@ -1293,6 +1301,8 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
       }
     }
   }
+  // Service control, audio, then visual data. Expired datagrams release their
+  // entire pending packet before another fragment can be submitted.
   for (size_t i = 0; i < ACIP_QUIC_FLOW_COUNT; ++i) {
     acip_traffic_class_t flow = (acip_traffic_class_t)i;
     while (connection->datagram_head[i] &&
@@ -1303,7 +1313,7 @@ static ngtcp2_ssize write_pending(acip_quic_connection_t *connection, ngtcp2_pat
     if (item) {
       uint8_t fragment[ACIP_QUIC_DATAGRAM_FRAME_LIMIT];
       size_t fragment_length = 0, prefix_length = 0;
-      if (connection->tls->webtransport) {
+      if (connection->webtransport) {
         int64_t session_id = -1;
         if (!acip_http3_server_accepted(connection->http3, &session_id))
           return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -1479,8 +1489,13 @@ asciichat_error_t acip_quic_connection_handle_expiry(acip_quic_connection_t *con
   return update_readiness(connection);
 }
 
+bool acip_quic_connection_accept_ready(const acip_quic_connection_t *connection) {
+  return connection && connection->tls_ready && !connection->failed &&
+         (!connection->webtransport || acip_quic_connection_webtransport_ready(connection));
+}
+
 bool acip_quic_connection_webtransport_ready(const acip_quic_connection_t *connection) {
-  return connection && connection->tls->webtransport && connection->http3 &&
+  return connection && connection->webtransport && connection->http3 &&
          acip_http3_server_accepted(connection->http3, NULL) && !connection->failed;
 }
 

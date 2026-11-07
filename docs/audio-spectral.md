@@ -31,7 +31,7 @@ constraints and `getSettings()` alone do not measure echo removal. A WASM AEC3
 backend should only replace browser AEC if acoustic testing shows a need; running
 both cancellers on the same microphone is not the intended configuration.
 
-`tests/audio/test_processor.py` verifies the compiled PCM processor's callback
+`tests/audio/probe_processor.py` verifies the compiled PCM processor's callback
 size invariance, reset, in-place processing and media bypass, and can emit raw
 float32 native/WASM comparison fixtures with an optional output directory.
 
@@ -45,23 +45,24 @@ ascii-chat client localhost --audio=true
 ascii-chat client localhost --spectral-audio=false
 ```
 
-Server mixing does not apply spectral processing by default, including when a
-discovery client hosts the call. `--audio-spectral-mixer=true` explicitly enables
-processing of the entire mixed output, including any media/test sources. This is
+Server mixing does not apply spectral processing by default. In server mode,
+`--audio-spectral-mixer=true` explicitly enables processing of the entire mixed
+output, including any media/test sources. Discovery hosts do not support this
+option. This is
 separate from `--spectral-audio`, which controls microphone capture only. Enabling
 both adds both processors' latency. Existing server configurations that used
 `--audio-spectral=true` for mix processing must switch to the new mixer flag.
 The microphone flag is now `--spectral-audio` (`ASCII_CHAT_SPECTRAL_AUDIO` in
 the environment).
 
-| Option | Effect |
-| --- | --- |
-| `--audio-fft-size 512/1024/2048` | Frequency resolution versus delay; default 1024 |
-| `--audio-spectral-gate=false` | Disable adaptive per-bin gating |
-| `--audio-multiband` | Four-band compression at 250, 2000, and 8000 Hz |
-| `--audio-adaptive-eq` | Slowly balance band energy, bounded to +/-3 dB |
-| `--audio-spectral-agc` | Spectral RMS gain control, bounded to 0.25–4x |
-| `--audio-pitch-correct` | Experimental monophonic correction to the nearest semitone (capture only) |
+| Option                           | Effect                                                                    |
+| -------------------------------- | ------------------------------------------------------------------------- |
+| `--audio-fft-size 512/1024/2048` | Frequency resolution versus delay; default 1024                           |
+| `--audio-spectral-gate=false`    | Disable adaptive per-bin gating                                           |
+| `--audio-multiband`              | Four-band compression at 250, 2000, and 8000 Hz                           |
+| `--audio-adaptive-eq`            | Slowly balance band energy, bounded to +/-3 dB                            |
+| `--audio-spectral-agc`           | Spectral RMS gain control, bounded to 0.25–4x                             |
+| `--audio-pitch-correct`          | Experimental monophonic correction to the nearest semitone (capture only) |
 
 The normal `ASCII_CHAT_...` environment variables and registry configuration apply.
 The FFT size is validated before audio startup. Effects are selected when creating
@@ -81,6 +82,11 @@ serialized because FFTW's planner is shared; processing uses no allocations or
 locks. Each processor has one owner thread. Each mixer recipient has its own
 history, and removing a recipient resets that history. Mixer access remains
 serialized to protect mutable DSP state.
+
+For stereo capture and stereo server mixes, spectral AGC, multiband compression,
+and spectral gating are disabled to avoid independent gains shifting the stereo
+image. Stereo capture instead retains its shared broadband dynamics; stereo mixer
+output retains the existing mixer dynamics. The spectral EQ remains available.
 
 The gate learns a startup noise estimate over approximately 250 ms, then adapts
 asymmetrically with attack/release smoothing and a default maximum reduction of
@@ -113,8 +119,8 @@ license applies in addition to this repository's source license.
 cmake --preset default -B build
 cmake --build build
 python -m pip install numpy scipy matplotlib sounddevice soundfile
-python tests/audio/test_spectral.py build/bin/asciichat.dll
-python tests/audio/test_spectral_integration.py build/bin/asciichat.dll
+python tests/audio/probe_spectral.py build/bin/asciichat.dll
+python tests/audio/probe_spectral_integration.py build/bin/asciichat.dll
 ```
 
 Pass the shared library path for your platform. The tests call the compiled C/C++
@@ -149,8 +155,8 @@ server mixing enabled. Explicit `--audio=true` avoids toggling the default on
 state off. To reproduce on a machine with the selected audio devices:
 
 ```sh
-python tests/audio/test_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-audio --speech build/audio-evidence/speaker-speech.wav
-python tests/audio/test_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-encrypted --speech build/audio-evidence/speaker-speech.wav --encrypted
+python tests/manual/probe_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-audio --speech build/audio-evidence/speaker-speech.wav
+python tests/manual/probe_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-encrypted --speech build/audio-evidence/speaker-speech.wav --encrypted
 python tests/audio/analyze_network_audio.py --input build/network-audio --output build/network-report
 ```
 
@@ -184,7 +190,7 @@ generated separately and is not proof that a peer received anything. Network
 verification must inspect the peer's received recording.
 
 ```sh
-python tests/audio/test_audio_pattern.py build/bin/asciichat.dll --wav test-audio.wav
+python tests/audio/probe_audio_pattern.py build/bin/asciichat.dll --wav test-audio.wav
 ```
 
 This checks sample bounds, each section's energy, sweep frequency, silence,

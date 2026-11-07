@@ -299,31 +299,70 @@ static void build_view(stats_view_t *view, stats_snapshot_t *snapshot, stats_rat
   mutex_unlock(&g_provider_mutex);
 }
 
+static void sample_hidden_peers(void) {
+  mutex_lock(&g_peers_mutex);
+  for (unsigned i = 0; i < STATS_PEER_CAPACITY; ++i) {
+    stats_peer_t *peer = g_peers[i];
+    if (!peer)
+      continue;
+    stats_snapshot_t snapshot;
+    stats_rates_t rates;
+    stats_scope_snapshot(peer->scope, &snapshot);
+    stats_sampler_update(peer->sampler, &snapshot, &rates);
+  }
+  mutex_unlock(&g_peers_mutex);
+}
+
+static bool summary_append(char *output, size_t capacity, size_t *used, const char *format, ...) {
+  if (*used >= capacity)
+    return false;
+  va_list args;
+  va_start(args, format);
+  int written = vsnprintf(output + *used, capacity - *used, format, args);
+  va_end(args);
+  if (written < 0)
+    return false;
+  if ((size_t)written >= capacity - *used) {
+    *used = capacity - 1;
+    return false;
+  }
+  *used += (size_t)written;
+  return true;
+}
+
 static void print_summary(const stats_snapshot_t *snapshot, const stats_rates_t *rates) {
   char output[STATS_RUNTIME_OUTPUT_BUFFER_SIZE];
-  int used = snprintf(output, sizeof(output), "stats mode=%s uptime_s=%.3f", g_mode,
-                      (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9);
+  size_t used = 0;
+  // Reserve the final byte for the newline, even if a field is truncated.
+  size_t capacity = sizeof(output) - 1;
+  if (!summary_append(output, capacity, &used, "stats mode=%s uptime_s=%.3f", g_mode,
+                      (double)(snapshot->sampled_ns - snapshot->started_ns) / 1e9))
+    goto done;
   for (int i = 0; i < STATS_COUNTER_COUNT; ++i)
-    if (snapshot->capabilities.counters[i])
-      used += snprintf(output + used, sizeof(output) - (size_t)used, " %s=%llu %s_per_s=%.3f",
-                       stats_counter_descriptor(i)->name, (unsigned long long)snapshot->counters[i],
-                       stats_counter_descriptor(i)->name, rates->counters_per_second[i]);
+    if (snapshot->capabilities.counters[i] &&
+        !summary_append(output, capacity, &used, " %s=%llu %s_per_s=%.3f", stats_counter_descriptor(i)->name,
+                        (unsigned long long)snapshot->counters[i], stats_counter_descriptor(i)->name,
+                        rates->counters_per_second[i]))
+      goto done;
   for (int i = 0; i < STATS_GAUGE_COUNT; ++i)
-    if (snapshot->capabilities.gauges[i])
-      used += snprintf(output + used, sizeof(output) - (size_t)used, " %s=%llu", stats_gauge_descriptor(i)->name,
-                       (unsigned long long)snapshot->gauges[i]);
+    if (snapshot->capabilities.gauges[i] &&
+        !summary_append(output, capacity, &used, " %s=%llu", stats_gauge_descriptor(i)->name,
+                        (unsigned long long)snapshot->gauges[i]))
+      goto done;
   for (int i = 0; i < STATS_DURATION_COUNT; ++i) {
     if (!snapshot->capabilities.durations[i])
       continue;
-    if (rates->duration_valid[i])
-      used += snprintf(output + used, sizeof(output) - (size_t)used, " %s_mean_ms=%.3f",
-                       stats_duration_descriptor(i)->name, rates->duration_mean_ns[i] / 1e6);
-    else
-      used += snprintf(output + used, sizeof(output) - (size_t)used, " %s_mean_ms=unavailable",
-                       stats_duration_descriptor(i)->name);
+    bool appended =
+        rates->duration_valid[i]
+            ? summary_append(output, capacity, &used, " %s_mean_ms=%.3f", stats_duration_descriptor(i)->name,
+                             rates->duration_mean_ns[i] / 1e6)
+            : summary_append(output, capacity, &used, " %s_mean_ms=unavailable", stats_duration_descriptor(i)->name);
+    if (!appended)
+      goto done;
   }
+done:
   output[used++] = '\n';
-  ui_controller_write(STDOUT_FILENO, output, (size_t)used);
+  ui_controller_write(STDOUT_FILENO, output, used);
 }
 
 static bool show_first_use_instructions(void) {
@@ -439,8 +478,13 @@ static void *stats_worker(void *unused) {
       stats_sampler_update(g_sampler, &snapshot, &rates);
       bool print_due = g_interval && now >= next_print;
       bool telemetry_due = ascii_otel_enabled() && now >= next_telemetry;
-      if (active || print_due || telemetry_due)
+      if (active || print_due || telemetry_due) {
         build_view(&view, &snapshot, &rates);
+        // Providers refresh gauges while building the view.
+        stats_scope_snapshot(g_scope, &snapshot);
+      } else {
+        sample_hidden_peers();
+      }
       if (telemetry_due)
         next_telemetry = now + NS_PER_SEC_INT;
       terminal_size_t size = ui_controller_size();

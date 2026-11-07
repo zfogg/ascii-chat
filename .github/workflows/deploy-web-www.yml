@@ -40,3 +40,18 @@ jobs:
           pnpm dlx vercel@latest deploy --prod --yes
           --scope joopal-hackers-projects
           --token "$VERCEL_TOKEN"
+
+  notify:
+    name: Send deployment notification
+    if: always() && needs.deploy.result != 'skipped'
+    needs: [deploy]
+    uses: ./.github/workflows/notify.yml
+    secrets: inherit
+    with:
+      subject: "${{ needs.deploy.result == 'success' && '✅' || '❌' }} ascii-chat.com deployment - ${{ needs.deploy.result == 'success' && 'SUCCESS' || 'FAILED' }}"
+      body: |
+        ascii-chat.com deployment: ${{ needs.deploy.result == 'success' && 'SUCCESS' || 'FAILED' }}
+
+        Site: https://ascii-chat.com/
+        Workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        Deployment job: ${{ needs.deploy.result }}

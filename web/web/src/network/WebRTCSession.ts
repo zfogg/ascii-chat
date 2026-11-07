@@ -120,6 +120,17 @@ export class WebRTCSession implements ClientSession {
     if (this.disconnectedTimer) clearTimeout(this.disconnectedTimer);
     this.disconnectedTimer = null;
     this.clearTimer();
+    this.installPeerErrorReporter();
+    this.setState(ConnectionState.CONNECTED);
+    this.options.onProgress?.(
+      `Connected over ${this.transportType === "webtransport" ? "QUIC (WebTransport, ACIP encrypted)" : "WebRTC (DTLS encrypted)"}`,
+    );
+    this.resolveConnect?.();
+    this.resolveConnect = null;
+    this.rejectConnect = null;
+  }
+
+  private installPeerErrorReporter(): void {
     setNetworkErrorReporter((report) => {
       if (this.state !== ConnectionState.CONNECTED) return;
       try {
@@ -128,13 +139,6 @@ export class WebRTCSession implements ClientSession {
         console.warn("[WebRTCSession] Could not report browser error:", error);
       }
     });
-    this.setState(ConnectionState.CONNECTED);
-    this.options.onProgress?.(
-      `Connected over ${this.transportType === "webtransport" ? "QUIC (WebTransport, ACIP encrypted)" : "WebRTC (DTLS encrypted)"}`,
-    );
-    this.resolveConnect?.();
-    this.resolveConnect = null;
-    this.rejectConnect = null;
   }
 
   constructor(
@@ -188,6 +192,12 @@ export class WebRTCSession implements ClientSession {
     void connected.catch(() => {});
     this.signaling.onStateChange((state) => {
       if (this.closed) return;
+      if (
+        state === ConnectionState.CONNECTED &&
+        this.state === ConnectionState.CONNECTED
+      ) {
+        this.installPeerErrorReporter();
+      }
       if (state === ConnectionState.CONNECTED && !this.lookedUp) {
         this.lookedUp = true;
         this.options.onProgress?.("Looking up session");

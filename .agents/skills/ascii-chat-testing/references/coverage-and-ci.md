@@ -4,13 +4,14 @@ Authority: `.github/workflows/test.yml`, `.github/actions/{generate-coverage,pub
 
 ## Generated files
 
-| Artifact | Producer | Meaning / consumer |
-| --- | --- | --- |
-| `<build>/Testing/criterion-xml/*.xml` | Criterion `--xml` supplied by CMake | Individual cases; GitHub checks and Codecov test analytics |
-| `<build>/Testing/ctest-results.xml` | CTest `--output-junit Testing/ctest-results.xml` | CTest-level executable/harness results; shard-completion evidence |
-| `*.gcno` / `*.gcda` in build tree | Clang instrumentation / execution | Compile metadata / execution counters |
-| `<build>/coverage.xml` | `generate-coverage.py` with gcovr and matching `llvm-cov gcov` | Cobertura line/branch data for Codecov coverage |
-| `coverage-reports/summary.json` | `prepare-coverage-upload.py` | Validated shard inventory and union of executed lines |
+| Artifact                              | Producer                                                       | Meaning / consumer                                                |
+| ------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `<build>/Testing/criterion-xml/*.xml` | Criterion `--xml` supplied by CMake                            | Individual cases; GitHub checks and Codecov test analytics        |
+| `<build>/Testing/ctest-results.xml`   | CTest `--output-junit Testing/ctest-results.xml`               | CTest-level executable/harness results; shard-completion evidence |
+| `<build>/Testing/python-*.xml`        | pytest `--junitxml` through CTest                              | Individual Python case results, including skips                   |
+| `*.gcno` / `*.gcda` in build tree     | Clang instrumentation / execution                              | Compile metadata / execution counters                             |
+| `<build>/coverage.xml`                | `generate-coverage.py` with gcovr and matching `llvm-cov gcov` | Cobertura line/branch data for Codecov coverage                   |
+| `coverage-reports/summary.json`       | `prepare-coverage-upload.py`                                   | Validated shard inventory and union of executed lines             |
 
 The requested “junity.xml” means JUnit XML; this pipeline has no canonical file named `junity.xml`. Test-result XML and Cobertura coverage XML serve different uploads and cannot substitute for one another.
 
@@ -22,12 +23,12 @@ Use a separate compatible build tree when changing instrumentation, libc or opti
 
 ```sh
 cmake --preset default -B build_coverage \
-  -DBUILD_TESTS=ON -DASCIICHAT_FORCE_CRITERION_TESTS=ON \
-  -DASCIICHAT_ENABLE_COVERAGE=ON -DUSE_MUSL=OFF
+  -DBUILD_TESTS=ON \
+  -DASCIICHAT_ENABLE_COVERAGE=ON
 cmake --build build_coverage --target ascii-chat tests
 ctest --test-dir build_coverage -L '^unit$' --no-tests=error \
-  --output-junit Testing/ctest-results.xml --output-on-failure --parallel 1
-python -m pip install gcovr==8.6
+  --output-junit Testing/ctest-results.xml --output-on-failure --parallel
+uv sync
 python .github/scripts/generate-coverage.py --build build_coverage --output build_coverage/coverage.xml
 python .github/scripts/criterion-to-junit.py build_coverage/Testing/criterion-xml build_coverage/Testing/junit
 ```
@@ -38,7 +39,7 @@ For a new measurement in a reused tree, remove only that tree's stale `.gcda` co
 
 The generator reads `CMakeCache.txt`, selects `llvm-cov` matching the configured Clang major version, requires paired `.gcda/.gcno`, and runs gcovr across the selected build tree. It filters `lib|src|include|tests`, excludes dependency directories, and rejects zero-execution reports and invalid/non-relative source paths. Do not use GCC gcov, fabricate coverage XML, tolerate corrupt counters, or upload an arbitrary individual `.gcov` file. This is gcov-style coverage, not a `.profraw`/`llvm-profdata` pipeline.
 
-Python is a valid native-test driver. A Python CTest harness that launches an instrumented executable, or loads an instrumented shared library, contributes its C/C++ counters when that process exits. All Python CTest registrations go through `asciichat_add_python_test()` in `tests/CMakeLists.txt`, which invokes `tests/scripts/run_python_test.py`. In coverage builds the wrapper removes inherited `GCOV_PREFIX` settings, exposes the build root through `ASCIICHAT_COVERAGE_BUILD` and `ASCIICHAT_COVERAGE_ROOT`, and reports how many native counters changed. It does not require a counter from pure-Python or build-probe tests. The `media-sessions` test additionally exercises normal CLI exit and the explicit flush used by early actions, then verifies that their counters changed in the build tree consumed by gcovr. `GCOV_PREFIX` is only for isolated assertions about counter emission; the report generator does not scan redirected counters.
+Python is a valid native-test driver. A Python CTest harness that launches an instrumented executable, or loads an instrumented shared library, contributes its C/C++ counters when that process exits. Legacy Python registrations use `asciichat_add_python_test()`; pytest batches use `asciichat_add_pytest()`. Both invoke `tests/scripts/run_python_test.py` in `tests/CMakeLists.txt`. In coverage builds the wrapper removes inherited `GCOV_PREFIX` settings, exposes the build root through `ASCIICHAT_COVERAGE_BUILD` and `ASCIICHAT_COVERAGE_ROOT`, and reports how many native counters changed. It does not require a counter from pure-Python or build-probe tests. The `media-sessions` test additionally exercises normal CLI exit and the explicit flush used by early actions, then verifies that their counters changed in the build tree consumed by gcovr. `GCOV_PREFIX` is only for isolated assertions about counter emission; the report generator does not scan redirected counters.
 
 ## CI generation and publication
 

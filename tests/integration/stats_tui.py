@@ -5,6 +5,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 
 import argparse
@@ -12,23 +13,20 @@ import json
 from pathlib import Path
 import re
 import shlex
-import socket
 import subprocess
+import sys
 import time
 import signal
 import os
 
-SOCKET = "stats273-acceptance"
+SOCKET: str = "stats273-acceptance"
 
 
 def tmux(*args):
     return subprocess.check_output(["tmux", "-L", SOCKET, *map(str, args)], text=True)
 
 
-def port():
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+from ascii_chat_tests.process import free_port as port
 
 
 def wait(check, timeout=25):
@@ -345,7 +343,7 @@ def main():
             return m[1] if m else None
 
         session_name = wait(session, 40)
-        participant = launch("participant", [session_name, *common])
+        launch("participant", [session_name, *common])
         wait(
             lambda: (root / "participant.log").exists()
             and "DataChannel opened"
@@ -427,10 +425,7 @@ def main():
         for mode in ("server", "discovery-service"):
             outfile = root / (mode + "-stdout.txt")
             with outfile.open("w") as output:
-                argv = [
-                    binary,
-                    "--no-check-update",
-                    "--log-file",
+                argv = cli_command(binary, "--log-file",
                     str(root / (mode + "-pipe.log")),
                     mode,
                     "127.0.0.1",
@@ -441,7 +436,7 @@ def main():
                     "--status-screen=false",
                     "--stats-interval",
                     "1",
-                ]
+                )
                 if mode == "discovery-service":
                     argv += ["--database", str(root / "pipe.db")]
                 env = os.environ.copy()
@@ -473,9 +468,13 @@ def main():
         print(json.dumps(results, indent=2))
     except Exception:
         for pane in panes:
-            pane.capture(pane.name + "-before-cleanup")
+            try:
+                pane.capture(pane.name + "-before-cleanup")
+            except (OSError, subprocess.CalledProcessError) as capture_error:
+                print(f"Failed to capture {pane.name}: {capture_error}", file=sys.stderr)
         raise
     finally:
+        original_error = sys.exc_info()[1]
         failures = []
         for pane in reversed(panes):
             try:
@@ -484,14 +483,17 @@ def main():
                 failures.append(str(e))
                 try:
                     pane.capture(pane.name + "-failure")
-                except subprocess.CalledProcessError as capture_error:
+                except (OSError, subprocess.CalledProcessError) as capture_error:
                     failures.append(str(capture_error))
         try:
             tmux("kill-server")
         except subprocess.CalledProcessError:
             pass
         if failures:
-            raise AssertionError("Cleanup failures: " + repr(failures))
+            if original_error is not None:
+                print("Cleanup failures: " + repr(failures), file=sys.stderr)
+            else:
+                raise AssertionError("Cleanup failures: " + repr(failures))
 
 
 if __name__ == "__main__":

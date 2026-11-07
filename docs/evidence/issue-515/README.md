@@ -12,8 +12,8 @@ The video itself is not redistributed here.
 Both images were captured by the Windows Clang debug binary, using the same
 640×360 scenario and a 100×32 terminal. Debug outlines are enabled in both.
 
-| Full frame | Face Follow |
-| --- | --- |
+| Full frame                           | Face Follow                       |
+| ------------------------------------ | --------------------------------- |
 | ![Full frame](native-full-frame.png) | ![Face Follow](native-follow.png) |
 
 ```powershell

@@ -352,7 +352,8 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
       (uint16_t)(g_client_session.discovered_port > 0 ? g_client_session.discovered_port : 27224),
       g_client_session.password, sizeof(g_client_session.password));
   if (connection_result != ASCIICHAT_OK) {
-    if (should_exit())
+    // Password prompt failures request shutdown but must retain their error.
+    if (should_exit() && connection_result != ERROR_CRYPTO_AUTH)
       return ERROR_NETWORK;
     LOG_ERRNO_IF_SET("Connection attempt failed");
     return connection_result;
@@ -373,13 +374,16 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
   bool snapshot_check_logged_once = false;
   uint64_t last_progress_log_ns = 0;
   uint64_t advertised_revision = OPTIONS_REVISION_ANY;
+  asciichat_error_t settings_error = ASCIICHAT_OK;
   while (!should_exit() && server_connection_is_active(connection)) {
     display_poll_keyboard(connection);
     terminal_size_t previous = connection->advertised_dimensions;
-    if (session_protocol_update_settings(&connection->advertised_dimensions, &advertised_revision, client_send_settings,
-                                         connection) == ASCIICHAT_OK &&
-        (previous.cols != connection->advertised_dimensions.cols ||
-         previous.rows != connection->advertised_dimensions.rows)) {
+    settings_error = session_protocol_update_settings(&connection->advertised_dimensions, &advertised_revision,
+                                                      client_send_settings, connection);
+    if (settings_error != ASCIICHAT_OK)
+      break;
+    if (previous.cols != connection->advertised_dimensions.cols ||
+        previous.rows != connection->advertised_dimensions.rows) {
       display_full_reset();
       log_set_terminal_output(false);
     }
@@ -462,10 +466,6 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
   // may close the connection while the snapshot shutdown is propagating, but
   // that is a successful snapshot rather than a reconnectable network error.
 
-  if (should_exit()) {
-    return ASCIICHAT_OK;
-  }
-
   // The receive worker publishes the rejection before marking the connection lost.
   asciichat_error_t remote_error = server_connection_get_remote_error(connection);
   if (remote_error != ASCIICHAT_OK) {
@@ -477,6 +477,10 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
     errno_notifications_suppress(previous);
     return result;
   }
+  if (settings_error != ASCIICHAT_OK)
+    return settings_error;
+  if (should_exit())
+    return ASCIICHAT_OK;
   return ERROR_NETWORK;
 }
 

@@ -6,16 +6,16 @@ logs, sensitive values, rate-limit units, and connection/authentication outcomes
 Vendored libraries, generated WASM binaries, and intentionally verbose test and
 instrumentation output are outside the production call-site changes.
 
-| Area | Findings and disposition |
-| --- | --- |
-| Server/client packet and render paths | Packet receipt, H.265 sends, frame hashes, buffer validation, and render timing were INFO or unsampled DEBUG. Sample repeated diagnostics; retain joins, leaves, stream changes, and failures. Correct string client IDs printed with integer formats. |
-| Audio | Normal callback startup/read activity was WARN and worker statistics were INFO. Use DEBUG, sample recurring codec failures, and preserve device selection, fallback, and initialization outcomes. |
-| Media/session rendering | Frame queue operations and FFmpeg sample diagnostics flooded INFO. Sample at DEBUG, bound drop warnings, and report failed ASCII conversion instead of silently skipping a frame. Correct recording-warning intervals from nanoseconds to microseconds. |
-| Crypto/authentication | Decryption failure serialized the full symmetric key; OpenPGP parsing printed private bytes; private-key format detection printed file contents. Remove all three disclosures. Replace per-packet nonce formatting with sampled size/counter metadata. Preserve handshake, authentication, and rekey events without sampling. |
-| TCP/WebSocket/WebRTC/ACDS | Preserve lifecycle and transport errors. Move service-loop, callback, signaling relay, and packet-dispatch traces to sampled DEBUG. Keep TCP connection success visible at INFO, matching WebSocket. Correct WebRTC diagnostic interval units. |
-| Discovery/database/NAT | Keep session joins/leaves, host updates, NAT selection, and fallback events. Demote database join-policy implementation details and discovery initialization checkpoints. |
-| Options/platform/video/utilities | Demote option parsing, DNS and POSIX keyboard setup checkpoints. Correct Linux/WASM webcam warning cadence. Keep validation errors, device failures, and platform fallback warnings. Existing utility errors and explicit debug/tooling output remain. |
-| Browser | Move commit SHA, renderer allocation/resize, and sampled mirror-frame diagnostics to `console.debug`. Preserve browser warnings and errors. |
+| Area                                  | Findings and disposition                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server/client packet and render paths | Packet receipt, H.265 sends, frame hashes, buffer validation, and render timing were INFO or unsampled DEBUG. Sample repeated diagnostics; retain joins, leaves, stream changes, and failures. Correct string client IDs printed with integer formats.                                                                        |
+| Audio                                 | Normal callback startup/read activity was WARN and worker statistics were INFO. Use DEBUG, sample recurring codec failures, and preserve device selection, fallback, and initialization outcomes.                                                                                                                             |
+| Media/session rendering               | Frame queue operations and FFmpeg sample diagnostics flooded INFO. Sample at DEBUG, bound drop warnings, and report failed ASCII conversion instead of silently skipping a frame. Correct recording-warning intervals from nanoseconds to microseconds.                                                                       |
+| Crypto/authentication                 | Decryption failure serialized the full symmetric key; OpenPGP parsing printed private bytes; private-key format detection printed file contents. Remove all three disclosures. Replace per-packet nonce formatting with sampled size/counter metadata. Preserve handshake, authentication, and rekey events without sampling. |
+| TCP/WebSocket/WebRTC/ACDS             | Preserve lifecycle and transport errors. Move service-loop, callback, signaling relay, and packet-dispatch traces to sampled DEBUG. Keep TCP connection success visible at INFO, matching WebSocket. Correct WebRTC diagnostic interval units.                                                                                |
+| Discovery/database/NAT                | Keep session joins/leaves, host updates, NAT selection, and fallback events. Demote database join-policy implementation details and discovery initialization checkpoints.                                                                                                                                                     |
+| Options/platform/video/utilities      | Demote option parsing, DNS and POSIX keyboard setup checkpoints. Correct Linux/WASM webcam warning cadence. Keep validation errors, device failures, and platform fallback warnings. Existing utility errors and explicit debug/tooling output remain.                                                                        |
+| Browser                               | Move commit SHA, renderer allocation/resize, and sampled mirror-frame diagnostics to `console.debug`. Preserve browser warnings and errors.                                                                                                                                                                                   |
 
 ## Removed and missing diagnostics
 
@@ -39,7 +39,7 @@ Build with the default Clang/Ninja preset, then:
 
 ```sh
 cmake --build build --target ascii-chat test-crypto-logging
-python tests/standalone/logging/run.py build/bin/test-crypto-logging
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/crypto --crypto-logging-probe build/bin/test-crypto-logging
 ```
 
 Use `.exe` on Windows. The standalone test uses the production crypto and logger,

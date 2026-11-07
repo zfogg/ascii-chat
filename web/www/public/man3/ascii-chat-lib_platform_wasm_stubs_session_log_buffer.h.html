@@ -1,189 +1,440 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>session_log_buffer.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">session_log_buffer.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">session_log_buffer.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">session_log_buffer.h - WASM stub for session log buffer.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>session_log_entry_t</b>
-  <br/>
-  Single log entry with sequence number for ordering.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>SESSION_LOG_BUFFER_SIZE</b> 8192
-  <br/>
-  #define <b>SESSION_LOG_LINE_MAX</b> 1024
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>session_log_buffer_t</b> * <b>session_log_buffer_create</b>
-    (void)
-  <br/>
-  void <b>session_log_buffer_destroy</b> (<b>session_log_buffer_t</b> *buf)
-  <br/>
-  void <b>session_log_buffer_clear</b> (<b>session_log_buffer_t</b> *buf)
-  <br/>
-  void <b>session_log_buffer_append</b> (<b>session_log_buffer_t</b> *buf, const
-    char *message)
-  <br/>
-  size_t <b>session_log_buffer_get_recent</b> (<b>session_log_buffer_t</b> *buf,
-    <b>session_log_entry_t</b> *out_entries, size_t max_count)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">WASM stub for session log buffer.</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file
-    <b>lib/platform/wasm/stubs/session_log_buffer.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_SESSION_LOG_BUFFER_SIZE___8192"><a class="permalink" href="#_define_SESSION_LOG_BUFFER_SIZE___8192">#define
-  SESSION_LOG_BUFFER_SIZE 8192</a></h2>
-<p class="Pp">Definition at line <b>14</b> of file
-    <b>lib/platform/wasm/stubs/session_log_buffer.h</b>.</p>
-<p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>,
-    <b>session_log_buffer_append()</b>, <b>session_log_buffer_clear()</b>,
-    <b>session_log_buffer_get_recent()</b>, and
-  <b>terminal_screen_render()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SESSION_LOG_LINE_MAX___1024"><a class="permalink" href="#_define_SESSION_LOG_LINE_MAX___1024">#define
-  SESSION_LOG_LINE_MAX 1024</a></h2>
-<p class="Pp">Definition at line <b>15</b> of file
-    <b>lib/platform/wasm/stubs/session_log_buffer.h</b>.</p>
-<p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>,
-    <b>session_log_buffer_append()</b>, and <b>terminal_screen_render()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_session_log_buffer_append_("><a class="permalink" href="#void_session_log_buffer_append_(">void
-  session_log_buffer_append (<b>session_log_buffer_t</b> * buf, const char *
-  message)</a></h2>
-<p class="Pp">Definition at line <b>93</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>93                                                                                {
-94   (void)buf;
-95   (void)message;
-96   // No-op - session log buffer not used in WASM
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>session_log_buffer.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">session_log_buffer.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">session_log_buffer.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          session_log_buffer.h - WASM stub for session log buffer.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>session_log_entry_t</b>
+            <br />
+            Single log entry with sequence number for ordering.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>SESSION_LOG_BUFFER_SIZE</b> 8192
+            <br />
+            #define <b>SESSION_LOG_LINE_MAX</b> 1024
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>session_log_buffer</b>
+            <b>session_log_buffer_t</b>
+            <br />
+            Opaque handle to log buffer instance.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>session_log_buffer_t</b> * <b>session_log_buffer_create</b>
+            (void)
+            <br />
+            void <b>session_log_buffer_destroy</b> (<b>session_log_buffer_t</b>
+            *buf)
+            <br />
+            void <b>session_log_buffer_clear</b> (<b>session_log_buffer_t</b>
+            *buf)
+            <br />
+            void <b>session_log_buffer_append</b> (<b>session_log_buffer_t</b>
+            *buf, const char *message)
+            <br />
+            size_t <b>session_log_buffer_get_recent</b> (<b
+              >session_log_buffer_t</b
+            >
+            *buf, <b>session_log_entry_t</b> *out_entries, size_t max_count)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">WASM stub for session log buffer.</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Definition in file
+          <b>lib/platform/wasm/stubs/session_log_buffer.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SESSION_LOG_BUFFER_SIZE___8192">
+            <a class="permalink" href="#_define_SESSION_LOG_BUFFER_SIZE___8192"
+              >#define SESSION_LOG_BUFFER_SIZE 8192</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>14</b> of file
+            <b>lib/platform/wasm/stubs/session_log_buffer.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_log_buffer_append()</b>,
+            <b>session_log_buffer_clear()</b>,
+            <b>session_log_buffer_get_recent()</b>, and
+            <b>terminal_screen_compose()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_SESSION_LOG_LINE_MAX___1024">
+            <a class="permalink" href="#_define_SESSION_LOG_LINE_MAX___1024"
+              >#define SESSION_LOG_LINE_MAX 1024</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file
+            <b>lib/platform/wasm/stubs/session_log_buffer.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_log_buffer_append()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_log_buffer_append_(">
+            <a class="permalink" href="#void_session_log_buffer_append_("
+              >void session_log_buffer_append (<b>session_log_buffer_t</b> *
+              buf, const char * message)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file <b>session_log_buffer.c</b>.
+          </p>
+          <pre>
+65                                                                                {
+66   if (!buf || !message) {
+67     // Fail silently - this is called FROM the logging system
+68     // Using SET_ERRNO here would cause infinite recursion
+69     return;
+70   }
+71
+72   mutex_lock(&amp;buf-&gt;mutex);
+73
+74   // Keep every line of multiline notices and split long lines at UTF-8 boundaries.
+75   // Hold the lock for the entire message so concurrent producers cannot interleave it.
+76   do {
+77     const char *newline = strchr(message, '\n');
+78     size_t length = newline ? (size_t)(newline - message) : strlen(message);
+79     if (length &gt;= SESSION_LOG_LINE_MAX) {
+80       length = SESSION_LOG_LINE_MAX - 1;
+81       while (length &amp;&amp; ((unsigned char)message[length] &amp; 0xc0) == 0x80)
+82         --length;
+83       if (!length)
+84         length = SESSION_LOG_LINE_MAX - 1; // Malformed UTF-8 must still make progress.
+85     }
+86     size_t pos = atomic_load_u64(&amp;buf-&gt;write_pos);
+87     memcpy(buf-&gt;entries[pos].message, message, length);
+88     buf-&gt;entries[pos].message[length] = '\0';
+89     buf-&gt;entries[pos].sequence = atomic_fetch_add_u64(&amp;buf-&gt;sequence, 1) + 1;
+90     atomic_store_u64(&amp;buf-&gt;write_pos, (pos + 1) % SESSION_LOG_BUFFER_SIZE);
+91     message += length;
+92     if (*message == '\n')
+93       ++message;
+94   } while (*message);
+95
+96   mutex_unlock(&amp;buf-&gt;mutex);
 97 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_log_buffer_clear_("><a class="permalink" href="#void_session_log_buffer_clear_(">void
-  session_log_buffer_clear (<b>session_log_buffer_t</b> * buf)</a></h2>
-<p class="Pp">Definition at line <b>88</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>88                                                          {
-89   (void)buf;
-90   // No-op - session log buffer not used in WASM
-91 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>session_log_buffer_t</b> * session_log_buffer_create (void
-  )</h2>
-<p class="Pp">Definition at line <b>79</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>79                                                       {
-80   return NULL;  // No-op - session log buffer not used in WASM
-81 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_session_log_buffer_destroy_("><a class="permalink" href="#void_session_log_buffer_destroy_(">void
-  session_log_buffer_destroy (<b>session_log_buffer_t</b> * buf)</a></h2>
-<p class="Pp">Definition at line <b>83</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>83                                                            {
-84   (void)buf;
-85   // No-op - session log buffer not used in WASM
-86 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="size_t_session_log_buffer_get_recent_("><a class="permalink" href="#size_t_session_log_buffer_get_recent_(">size_t
-  session_log_buffer_get_recent (<b>session_log_buffer_t</b> * buf,
-  <b>session_log_entry_t</b> * out_entries, size_t max_count)</a></h2>
-<p class="Pp">Definition at line <b>99</b> of file
-    <b>platform/wasm/stubs/log.c</b>.</p>
-<pre>101                                                         {
-102   (void)buf;
-103   (void)out_entries;
-104   (void)max_count;
-105   return 0; // No entries in WASM
-106 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_fetch_add_u64()</b>, <b>atomic_load_u64()</b>,
+            <b>atomic_store_u64()</b>, <b>session_log_buffer::entries</b>,
+            <b>session_log_entry_t::message</b>,
+            <b>session_log_buffer::mutex</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>session_log_buffer::sequence</b>,
+            <b>session_log_entry_t::sequence</b>,
+            <b>session_log_buffer_append()</b>, <b>SESSION_LOG_BUFFER_SIZE</b>,
+            <b>SESSION_LOG_LINE_MAX</b>, and
+            <b>session_log_buffer::write_pos</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_file_msg()</b>, <b>log_msg()</b>,
+            <b>log_plain_msg()</b>, <b>session_log_buffer_append()</b>, and
+            <b>ui_session_log()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_log_buffer_clear_(">
+            <a class="permalink" href="#void_session_log_buffer_clear_("
+              >void session_log_buffer_clear (<b>session_log_buffer_t</b> *
+              buf)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>45</b> of file <b>session_log_buffer.c</b>.
+          </p>
+          <pre>
+45                                                          {
+46   if (!buf) {
+47     return;
+48   }
+49
+50   mutex_lock(&amp;buf-&gt;mutex);
+51
+52   // Reset write position and sequence
+53   atomic_store_u64(&amp;buf-&gt;write_pos, 0);
+54   atomic_store_u64(&amp;buf-&gt;sequence, 0);
+55
+56   // Clear all entries
+57   for (size_t i = 0; i &lt; SESSION_LOG_BUFFER_SIZE; i++) {
+58     buf-&gt;entries[i].message[0] = '\0';
+59     buf-&gt;entries[i].sequence = 0;
+60   }
+61
+62   mutex_unlock(&amp;buf-&gt;mutex);
+63 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_u64()</b>,
+            <b>session_log_buffer::entries</b>,
+            <b>session_log_entry_t::message</b>,
+            <b>session_log_buffer::mutex</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>session_log_buffer::sequence</b>,
+            <b>session_log_entry_t::sequence</b>,
+            <b>session_log_buffer_clear()</b>, <b>SESSION_LOG_BUFFER_SIZE</b>,
+            and <b>session_log_buffer::write_pos</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_log_buffer_clear()</b>, and
+            <b>terminal_screen_log_clear()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_log_buffer_t</b> * session_log_buffer_create (void )
+          </h2>
+          <p class="Pp">
+            Definition at line <b>23</b> of file <b>session_log_buffer.c</b>.
+          </p>
+          <pre>
+23                                                       {
+24   session_log_buffer_t *buf = SAFE_CALLOC(1, sizeof(session_log_buffer_t), session_log_buffer_t *);
+25   if (!buf) {
+26     return NULL;
+27   }
+28
+29   atomic_store_u64(&amp;buf-&gt;write_pos, 0);
+30   atomic_store_u64(&amp;buf-&gt;sequence, 0);
+31   mutex_init(&amp;buf-&gt;mutex, &quot;log_buffer&quot;);
+32
+33   return buf;
+34 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_u64()</b>,
+            <b>session_log_buffer::mutex</b>, <b>mutex_init()</b>,
+            <b>SAFE_CALLOC</b>, <b>session_log_buffer::sequence</b>,
+            <b>session_log_buffer_create()</b>, and
+            <b>session_log_buffer::write_pos</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_init()</b>, <b>session_log_buffer_create()</b>,
+            <b>terminal_screen_log_init()</b>, and <b>ui_session_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_session_log_buffer_destroy_(">
+            <a class="permalink" href="#void_session_log_buffer_destroy_("
+              >void session_log_buffer_destroy (<b>session_log_buffer_t</b> *
+              buf)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>36</b> of file <b>session_log_buffer.c</b>.
+          </p>
+          <pre>
+36                                                            {
+37   if (!buf) {
+38     return;
+39   }
+40
+41   mutex_destroy(&amp;buf-&gt;mutex);
+42   SAFE_FREE(buf);
+43 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_log_buffer::mutex</b>, <b>mutex_destroy()</b>,
+            <b>SAFE_FREE</b>, and <b>session_log_buffer_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>log_system_destroy()</b>,
+            <b>session_log_buffer_destroy()</b>,
+            <b>terminal_screen_log_destroy()</b>, and
+            <b>ui_session_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_session_log_buffer_get_recent_(">
+            <a class="permalink" href="#size_t_session_log_buffer_get_recent_("
+              >size_t session_log_buffer_get_recent (<b>session_log_buffer_t</b>
+              * buf, <b>session_log_entry_t</b> * out_entries, size_t
+              max_count)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>99</b> of file <b>session_log_buffer.c</b>.
+          </p>
+          <pre>
+99                                                                                                                     {
+100   if (!buf || !out_entries || max_count == 0) {
+101     // Fail silently - called from display code that handles 0 gracefully
+102     // Using SET_ERRNO here could cause recursion if error logging is enabled
+103     return 0;
+104   }
+105
+106   mutex_lock(&amp;buf-&gt;mutex);
+107
+108   size_t write_pos = atomic_load_u64(&amp;buf-&gt;write_pos);
+109   uint64_t total_entries = atomic_load_u64(&amp;buf-&gt;sequence);
+110
+111   size_t entries_to_check = total_entries &lt; SESSION_LOG_BUFFER_SIZE ? (size_t)total_entries : SESSION_LOG_BUFFER_SIZE;
+112   if (entries_to_check &gt; max_count)
+113     entries_to_check = max_count;
+114   size_t start_pos = (write_pos + SESSION_LOG_BUFFER_SIZE - entries_to_check) % SESSION_LOG_BUFFER_SIZE;
+115
+116   size_t count = 0;
+117   for (size_t i = 0; i &lt; entries_to_check &amp;&amp; count &lt; max_count; i++) {
+118     size_t idx = (start_pos + i) % SESSION_LOG_BUFFER_SIZE;
+119     if (buf-&gt;entries[idx].sequence &gt; 0) {
+120       memcpy(&amp;out_entries[count], &amp;buf-&gt;entries[idx], sizeof(session_log_entry_t));
+121       count++;
+122     }
+123   }
+124
+125   mutex_unlock(&amp;buf-&gt;mutex);
+126   return count;
+127 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_u64()</b>,
+            <b>session_log_buffer::entries</b>,
+            <b>session_log_buffer::mutex</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>session_log_buffer::sequence</b>,
+            <b>session_log_entry_t::sequence</b>,
+            <b>session_log_buffer_get_recent()</b>,
+            <b>SESSION_LOG_BUFFER_SIZE</b>, and
+            <b>session_log_buffer::write_pos</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>session_log_buffer_get_recent()</b>, and
+            <b>terminal_screen_compose()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

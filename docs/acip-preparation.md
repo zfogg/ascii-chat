@@ -16,13 +16,13 @@ throughput is median preparation throughput, not network or presentation through
 
 Windows x64, Clang, CMake Dev build, October 18, 2026:
 
-| Path | Allocations before/after | Explicit copy bytes before/after | MiB/s before/after |
-| --- | --- | --- | --- |
-| Sync TCP contiguous | 1 / 1 | 22 / 44 | 637.04 / 617.27 |
-| Sync TCP vectors | 2 / 2 | 65,558 / 65,580 | 619.14 / 616.54 |
-| Async TCP contiguous | 2 / 1 | 65,536 / 22 | 632.68 / 631.33 |
-| Async TCP vectors | 2 / 2 | 65,536 / 65,558 | 568.24 / 619.89 |
-| WebSocket contiguous | 2 / 1 | 65,598 / 44 | 621.12 / 598.70 |
+| Path                 | Allocations before/after | Explicit copy bytes before/after | MiB/s before/after |
+| -------------------- | ------------------------ | -------------------------------- | ------------------ |
+| Sync TCP contiguous  | 1 / 1                    | 22 / 44                          | 637.04 / 617.27    |
+| Sync TCP vectors     | 2 / 2                    | 65,558 / 65,580                  | 619.14 / 616.54    |
+| Async TCP contiguous | 2 / 1                    | 65,536 / 22                      | 632.68 / 631.33    |
+| Async TCP vectors    | 2 / 2                    | 65,536 / 65,558                  | 568.24 / 619.89    |
+| WebSocket contiguous | 2 / 1                    | 65,598 / 44                      | 621.12 / 598.70    |
 
 The additional 22-byte header read centralizes policy inspection. Plaintext paths
 retain zero allocations and zero payload copies; the planner reads the header.
@@ -35,7 +35,7 @@ allocation/copy work on contiguous encrypted async TCP and WebSocket paths.
 - `test-acip-prepare`: borrowed plaintext vectors, handshake exceptions, identical
   contiguous/vector ciphertext, decryption, bounds, allocation/crypto failures,
   synchronous and asynchronous TCP, and continued delivery after local send rejection.
-- `python tests/integration/acip_prepare_websocket.py build/bin/test-acip-prepare`:
+- `uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/acip --acip-websocket-probe build/bin/test-acip-prepare`:
   real WebSocket binary-frame round trip using the shared envelope.
 - `test-webrtc-security`: real libdatachannel peers, 64 KiB round trips, nonce
   advancement, default/encrypted/password/identity/auth-only modes, and rejected

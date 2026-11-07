@@ -23,7 +23,6 @@ void process_decrypted_packet(client_info_t *, packet_type_t, void *, size_t);
 static server_context_t server;
 static unsigned starts, stops, sends;
 static asciichat_error_t send_result;
-static crypto_context_t *capture_crypto;
 static packet_type_t last_type;
 static uint8_t last_payload[4096];
 static size_t last_length;
@@ -50,13 +49,7 @@ static asciichat_error_t capture_send(acip_transport_t *transport, const void *d
   last_type = NET_TO_HOST_U16(header.type);
   last_length = length - sizeof(header);
   cr_assert_leq(last_length, sizeof(last_payload));
-  if (capture_crypto && last_type == PACKET_TYPE_CRYPTO_REKEY_COMPLETE) {
-    cr_assert_eq(crypto_encrypt(capture_crypto, (const uint8_t *)data + sizeof(header), last_length, last_payload,
-                                sizeof(last_payload), &last_length),
-                 CRYPTO_OK);
-  } else {
-    memcpy(last_payload, (const uint8_t *)data + sizeof(header), last_length);
-  }
+  memcpy(last_payload, (const uint8_t *)data + sizeof(header), last_length);
   ++sends;
   return send_result;
 }
@@ -606,9 +599,7 @@ Test(server_client, locally_initiated_rekey_requires_valid_response_and_commits_
   memcpy(old_key, local.crypto_ctx.shared_key, 32);
   cr_assert_eq(crypto_rekey_init(&local.crypto_ctx), CRYPTO_OK);
   cr_assert_eq(crypto_handshake_process_rekey_request(&peer, local.crypto_ctx.temp_public_key, 32), ASCIICHAT_OK);
-  capture_crypto = &local.crypto_ctx;
   dispatch(client, PACKET_TYPE_CRYPTO_REKEY_RESPONSE, peer.crypto_ctx.temp_public_key, 32);
-  capture_crypto = NULL;
   cr_assert_eq(last_type, PACKET_TYPE_CRYPTO_REKEY_COMPLETE);
   cr_assert_gt(last_length, 0);
   cr_assert_eq(crypto_handshake_process_rekey_complete(&peer, last_payload, last_length), ASCIICHAT_OK);

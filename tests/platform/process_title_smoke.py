@@ -213,6 +213,7 @@ int main(int argc, char **argv) {
                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                   text=True) as child:
                 try:
+                    assert child.stdout is not None and child.stderr is not None
                     ready = child.stdout.readline()
                     assert ready == "ready\n", (ready, child.stderr.read())
                     observed = subprocess.check_output(

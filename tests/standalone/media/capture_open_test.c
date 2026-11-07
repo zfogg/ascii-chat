@@ -1,5 +1,6 @@
 /** Real loader workers/decoders with controlled audio ownership and load failures. */
 #include "session/capture.h"
+#include "session/capture_pacing.h"
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/debug/named.h>
@@ -21,11 +22,11 @@ static audio_context_t audio;
 static bool audio_running, fail_audio_start;
 static unsigned starts, stops, destroyed;
 static media_source_t *test_open(media_source_type_t type, const char *path, bool (*cancel)(void *), void *data) {
-  if (!strcmp(path, "fail")) {
+  if (path && !strcmp(path, "fail")) {
     SET_ERRNO(ERROR_MEDIA_OPEN, "Injected load failure");
     return NULL;
   }
-  if (!strcmp(path, "cancel")) {
+  if (path && !strcmp(path, "cancel")) {
     while (!cancel(data))
       platform_sleep_ms(1);
     return NULL;
@@ -351,7 +352,47 @@ static void check_prefetch_notifications(const char *path) {
   CHECK(time_get_ns() - started < NS_PER_SEC_INT);
 }
 
+static bool cancel_prefetch_with_error(void *opaque) {
+  atomic_t *calls = opaque;
+  if (atomic_fetch_add_int(calls, 1) == 0)
+    SET_ERRNO(ERROR_MEDIA_DECODE, "Interrupted decoder read");
+  return true;
+}
+
+static void check_cancelled_prefetch(const char *path) {
+  ffmpeg_decoder_t *decoder = ffmpeg_decoder_create(path);
+  CHECK(decoder);
+  atomic_t calls = {0};
+  ffmpeg_decoder_set_exit_callback(decoder, cancel_prefetch_with_error, &calls);
+  errno_notifications_enable(true);
+  CHECK(ffmpeg_decoder_start_prefetch(decoder) == ASCIICHAT_OK);
+  uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
+  while (atomic_load_int(&calls) < 1 && time_get_ns() < deadline)
+    platform_sleep_ms(1);
+  CHECK(atomic_load_int(&calls) >= 1);
+  ffmpeg_decoder_stop_prefetch(decoder);
+  CHECK(!errno_notifications_pending());
+  image_t *frame = NULL;
+  asciichat_error_context_t failure = {0};
+  CHECK(ffmpeg_decoder_poll_video(decoder, &frame, &failure) != FFMPEG_FRAME_FAILED);
+  errno_notifications_enable(false);
+  ffmpeg_decoder_destroy(decoder);
+}
+
+static void check_capture_pacing(void) {
+  const uint64_t interval = 100;
+  CHECK(capture_pacing_deadline(0, 1000, interval) == 1100);
+  CHECK(capture_pacing_deadline(1100, 1200, interval) == 1200);
+  // A read that finishes just after its deadline must not skip the next slot.
+  CHECK(capture_pacing_deadline(1100, 1201, interval) == 1200);
+  CHECK(capture_pacing_deadline(1200, 1250, interval) == 1300);
+  // A long stall skips missed slots without a burst of catch-up frames.
+  CHECK(capture_pacing_deadline(1300, 1760, interval) == 1700);
+  CHECK(capture_pacing_deadline(1700, 1760, interval) == 1800);
+}
+
 int main(int argc, char **argv) {
+  check_capture_pacing();
   CHECK(argc == 2);
   log_init(NULL, LOG_ERROR, false, false);
   CHECK(named_init() == ASCIICHAT_OK);
@@ -443,6 +484,7 @@ int main(int argc, char **argv) {
   check_atomic_pause();
   check_paused_recording(argv[1]);
   check_prefetch_notifications(argv[1]);
+  check_cancelled_prefetch(argv[1]);
   check_audio_seek_serialization(argv[1]);
   options_state_destroy();
   return 0;

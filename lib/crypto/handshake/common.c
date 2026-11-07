@@ -484,15 +484,22 @@ asciichat_error_t crypto_handshake_rekey_complete(crypto_handshake_context_t *ct
   memcpy(old_shared_key, ctx->crypto_ctx.shared_key, CRYPTO_SHARED_KEY_SIZE);
   memcpy(ctx->crypto_ctx.shared_key, ctx->crypto_ctx.temp_shared_key, CRYPTO_SHARED_KEY_SIZE);
 
-  // Restore old key immediately after the transport send completes.
-  // The transport encrypts the packet using the active shared key, so we
-  // keep the temporary key installed only for the duration of this send.
-  asciichat_error_t send_result =
-      packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_REKEY_COMPLETE, plaintext, sizeof(plaintext), 0);
-
-  memcpy(ctx->crypto_ctx.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE);
+  // Handshake packet types bypass transport encryption. Seal the proof here
+  // with the pending key, then send it under its original REKEY_COMPLETE type.
+  uint8_t proof[CRYPTO_NONCE_SIZE + sizeof(plaintext) + CRYPTO_MAC_SIZE];
+  size_t proof_length = 0;
+  crypto_result_t proof_result =
+      crypto_encrypt(&ctx->crypto_ctx, plaintext, sizeof(plaintext), proof, sizeof(proof), &proof_length);
+  memcpy(ctx->crypto_ctx.shared_key, old_shared_key, sizeof(old_shared_key));
   sodium_memzero(old_shared_key, sizeof(old_shared_key));
 
+  if (proof_result != CRYPTO_OK) {
+    crypto_rekey_abort(&ctx->crypto_ctx);
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to seal REKEY_COMPLETE proof");
+  }
+  asciichat_error_t send_result =
+      packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_REKEY_COMPLETE, proof, proof_length, 0);
+  sodium_memzero(proof, sizeof(proof));
   if (send_result != ASCIICHAT_OK) {
     crypto_rekey_abort(&ctx->crypto_ctx);
     return SET_ERRNO(ERROR_NETWORK, "Failed to send REKEY_COMPLETE packet");

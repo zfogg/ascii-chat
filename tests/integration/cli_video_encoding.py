@@ -9,20 +9,21 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import cli_command
 
 import argparse
-import os
 from pathlib import Path
-import socket
 import subprocess
 import tempfile
 import time
 
 
+from ascii_chat_tests.process import free_port
+
+
 def unused_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return str(sock.getsockname()[1])
+    return str(free_port())
 
 
 def main():
@@ -32,12 +33,12 @@ def main():
     binary = str(args.binary.resolve())
     logs = Path(tempfile.mkdtemp(prefix="ascii-cli-video-"))
     print(f"Logs: {logs}", flush=True)
-    env = {k: v for k, v in os.environ.items() if not k.startswith("ASCII_CHAT_")}
+    env = clean_environment()
     env["ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK"] = "1"
 
     def command(name, options):
-        return [binary, "--no-check-update", "--log-file", str(logs / f"{name}.log"),
-                "--log-level", "debug", *options]
+        return cli_command(binary, "--log-file", str(logs / f"{name}.log"),
+                "--log-level", "debug", *options)
 
     for name, codec, width in [("default", None, 40), ("auto", "auto", 40),
                                 ("hevc", "hevc", 40), ("h264", "h264", 40),

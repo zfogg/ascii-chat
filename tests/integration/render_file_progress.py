@@ -10,6 +10,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import json
@@ -19,7 +21,7 @@ import subprocess
 import time
 from wcwidth import wcswidth
 
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 
 
 def run(*args, **kwargs):
@@ -44,10 +46,11 @@ def main():
     root.mkdir(parents=True, exist_ok=True)
     binary = str(args.binary.resolve())
     media = root / 'source.mp4'
-    run('ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=size=160x120:rate=30',
-        '-t', '3', '-c:v', 'mpeg4', str(media))
-    base = [binary, '--no-check-update', '--log-level', 'warn', '--log-file', str(root / 'app.log'),
-            'mirror', '--file', str(media), '--audio=false', '--splash-screen=false', '--fps', '30']
+    lavfi_fixture(['testsrc2=size=160x120:rate=30'], media,
+                  ffmpeg_options=['-y', '-v', 'error'], output_options=['-t', '3', '-c:v', 'mpeg4'],
+                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    base = cli_command(binary, '--log-level', 'warn', '--log-file', str(root / 'app.log'),
+            'mirror', '--file', str(media), '--audio=false', '--splash-screen=false', '--fps', '30')
     results = {}
     # Named output retains ASCII on redirected stdout. Progress must not leak into text output.
     named = root / 'redirected.mp4'
@@ -141,6 +144,7 @@ def main():
     process = subprocess.Popen(base + ['--snapshot', '--snapshot-delay', '2', '--width', '40', '--height', '12',
                                        '--render-file', '-'], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     try:
+        assert process.stdout is not None
         assert process.stdout.read(4096), 'No binary data before closing consumer'
         process.stdout.close()
         status = process.wait(timeout=30)

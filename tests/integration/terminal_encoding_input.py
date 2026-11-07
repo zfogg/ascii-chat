@@ -5,6 +5,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -14,7 +15,7 @@ import socket
 import threading
 import time
 
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 
 
 def save(term, directory, name):
@@ -44,7 +45,7 @@ def main():
     args = parser.parse_args()
     args.artifacts.mkdir(parents=True, exist_ok=True)
     binary = str(args.binary.resolve())
-    base = [binary, "--no-check-update", "--log-level", "debug"]
+    base = cli_command(binary, "--log-level", "debug")
 
     # Hold media opening so cancellation happens during startup, before any art.
     requested = threading.Event()
@@ -59,7 +60,7 @@ def main():
             except (ConnectionError, OSError):
                 pass
 
-        def log_message(self, *unused):
+        def log_message(self, format, *args):
             pass
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), SlowMedia)

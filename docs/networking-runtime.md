@@ -30,12 +30,12 @@ owner without repeating the peer's cryptographic negotiation.
 
 ## Application callbacks
 
-| Callback | Ownership contract |
-| --- | --- |
-| `open` | Allocate application state and attach it to the connection. A failure still enters teardown. |
-| `packet` | Borrow the decoded payload until return. Return a terminal protocol/application error to close. |
+| Callback  | Ownership contract                                                                                       |
+| --------- | -------------------------------------------------------------------------------------------------------- |
+| `open`    | Allocate application state and attach it to the connection. A failure still enters teardown.             |
+| `packet`  | Borrow the decoded payload until return. Return a terminal protocol/application error to close.          |
 | `closing` | Stop and join application producers before transport destruction. Must permit retry after a failed join. |
-| `closed` | Release application state after transport callbacks have drained. Called once. |
+| `closed`  | Release application state after transport callbacks have drained. Called once.                           |
 
 Hooks for one connection execute serially, outside backend event loops. A failed
 join retains the connection, transport, application state, and owning server so
@@ -66,7 +66,7 @@ interface. The signaling service's address does not select the ICE interface.
 For a call between two processes on the same machine, set this option to
 `127.0.0.1` on both peers to keep connectivity checks on loopback. This also
 avoids host firewall or local-network permissions affecting loopback tests.
-`tests/integration/discovery_webrtc.py` verifies both selected ICE candidates
+`tests/python/integration/discovery/test_discovery_webrtc.py` verifies both selected ICE candidates
 and received media; `--audio` additionally verifies stereo packet sizes, and
 `--ipv6` selects IPv6 loopback for ICE while signaling stays on IPv4.
 

@@ -14,31 +14,31 @@ must have mean frame age below 250 ms. CSV files retain queue bytes, queued
 frame age, receiver frame age and cumulative delivered frames throughout.
 
 | Platform | Transport | Codec | Peak accounted queue KiB | Final delivered FPS | Final mean frame age ms | Recovery keyframes |
-|---|---|---|---:|---:|---:|---:|
-| Windows | tcp | raw | 182.4 | 7.50 | 8.25 | 0 |
-| Windows | tcp | h264 | 454.7 | 44.50 | 22.53 | 29 |
-| Windows | websocket | raw | 177.6 | 39.50 | 17.93 | 0 |
-| Windows | websocket | h264 | 453.4 | 26.00 | 39.21 | 25 |
-| Windows | webrtc | raw | 127.3 | 54.00 | 5.18 | 0 |
-| Windows | webrtc | h264 | 375.4 | 49.00 | 8.51 | 40 |
-| Linux | tcp | raw | 207.4 | 59.00 | 3.58 | 0 |
-| Linux | tcp | h264 | 475.2 | 58.00 | 4.51 | 21 |
-| Linux | tcp | h265 | 499.7 | 54.00 | 7.81 | 20 |
-| Linux | websocket | raw | 200.4 | 57.50 | 4.36 | 0 |
-| Linux | websocket | h264 | 466.9 | 57.50 | 5.61 | 23 |
-| Linux | websocket | h265 | 470.4 | 59.00 | 7.77 | 24 |
-| Linux | webrtc | raw | 109.8 | 57.50 | 1.22 | 0 |
-| Linux | webrtc | h264 | 384.6 | 58.00 | 2.84 | 21 |
-| Linux | webrtc | h265 | 382.9 | 58.00 | 6.46 | 21 |
-| macOS | tcp | raw | 222.3 | 56.50 | 5.12 | 0 |
-| macOS | tcp | h264 | 497.0 | 57.50 | 5.92 | 20 |
-| macOS | tcp | h265 | 494.0 | 58.00 | 9.32 | 20 |
-| macOS | websocket | raw | 206.5 | 57.00 | 4.57 | 0 |
-| macOS | websocket | h264 | 493.5 | 57.00 | 5.82 | 20 |
-| macOS | websocket | h265 | 495.7 | 57.00 | 8.67 | 20 |
-| macOS | webrtc | raw | 110.3 | 57.50 | 1.09 | 0 |
-| macOS | webrtc | h264 | 378.9 | 56.50 | 1.71 | 25 |
-| macOS | webrtc | h265 | 378.9 | 56.50 | 6.02 | 25 |
+| -------- | --------- | ----- | -----------------------: | ------------------: | ----------------------: | -----------------: |
+| Windows  | tcp       | raw   |                    182.4 |                7.50 |                    8.25 |                  0 |
+| Windows  | tcp       | h264  |                    454.7 |               44.50 |                   22.53 |                 29 |
+| Windows  | websocket | raw   |                    177.6 |               39.50 |                   17.93 |                  0 |
+| Windows  | websocket | h264  |                    453.4 |               26.00 |                   39.21 |                 25 |
+| Windows  | webrtc    | raw   |                    127.3 |               54.00 |                    5.18 |                  0 |
+| Windows  | webrtc    | h264  |                    375.4 |               49.00 |                    8.51 |                 40 |
+| Linux    | tcp       | raw   |                    207.4 |               59.00 |                    3.58 |                  0 |
+| Linux    | tcp       | h264  |                    475.2 |               58.00 |                    4.51 |                 21 |
+| Linux    | tcp       | h265  |                    499.7 |               54.00 |                    7.81 |                 20 |
+| Linux    | websocket | raw   |                    200.4 |               57.50 |                    4.36 |                  0 |
+| Linux    | websocket | h264  |                    466.9 |               57.50 |                    5.61 |                 23 |
+| Linux    | websocket | h265  |                    470.4 |               59.00 |                    7.77 |                 24 |
+| Linux    | webrtc    | raw   |                    109.8 |               57.50 |                    1.22 |                  0 |
+| Linux    | webrtc    | h264  |                    384.6 |               58.00 |                    2.84 |                 21 |
+| Linux    | webrtc    | h265  |                    382.9 |               58.00 |                    6.46 |                 21 |
+| macOS    | tcp       | raw   |                    222.3 |               56.50 |                    5.12 |                  0 |
+| macOS    | tcp       | h264  |                    497.0 |               57.50 |                    5.92 |                 20 |
+| macOS    | tcp       | h265  |                    494.0 |               58.00 |                    9.32 |                 20 |
+| macOS    | websocket | raw   |                    206.5 |               57.00 |                    4.57 |                  0 |
+| macOS    | websocket | h264  |                    493.5 |               57.00 |                    5.82 |                 20 |
+| macOS    | websocket | h265  |                    495.7 |               57.00 |                    8.67 |                 20 |
+| macOS    | webrtc    | raw   |                    110.3 |               57.50 |                    1.09 |                  0 |
+| macOS    | webrtc    | h264  |                    378.9 |               56.50 |                    1.71 |                 25 |
+| macOS    | webrtc    | h265  |                    378.9 |               56.50 |                    6.02 |                 25 |
 
 Peak queues include the measured application/backend bytes and fixed socket/SCTP
 reservation. The hard accounted limit is 8192 KiB per connection. The CSV's
@@ -73,8 +73,8 @@ cmake --build build --target ascii-chat test-backpressure test-backpressure-live
 build/bin/test-backpressure
 build/bin/test-network-events
 build/bin/test-webrtc-security
-python tests/integration/transport_backpressure.py --binary build/bin/test-backpressure-live --output build/backpressure
-# Add --codecs raw,h264 on the Windows LGPL bundle.
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/backpressure --backpressure-probe build/bin/test-backpressure-live --backpressure-output build/backpressure
+# Add --backpressure-codecs raw,h264 on the Windows LGPL bundle.
 ```
 
 Additional validation: all 185 browser tests passed, with the final deadline

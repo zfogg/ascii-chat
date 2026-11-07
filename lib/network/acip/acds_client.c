@@ -270,7 +270,8 @@ asciichat_error_t acds_protocol_create(acds_protocol_t *p, const acds_session_cr
   p->state = ACDS_CREATING;
   size_t endpoint_length = strnlen(params->webtransport_url, sizeof(params->webtransport_url));
   if (endpoint_length == sizeof(params->webtransport_url) ||
-      (endpoint_length && (endpoint_length < 9 || strncmp(params->webtransport_url, "https://", 8)))) {
+      (endpoint_length &&
+       (endpoint_length < 9 || strncmp(params->webtransport_url, "https://", sizeof("https://") - 1)))) {
     sodium_memzero(&req, sizeof(req));
     return protocol_fail(p, ERROR_INVALID_PARAM, "Invalid public WebTransport endpoint", true);
   }
@@ -278,7 +279,7 @@ asciichat_error_t acds_protocol_create(acds_protocol_t *p, const acds_session_cr
     uint8_t payload[sizeof(req) + 10 + sizeof(params->webtransport_url)];
     memcpy(payload, &req, sizeof(req));
     uint8_t *extension = payload + sizeof(req);
-    memcpy(extension, "ACQT", 4);
+    memcpy(extension, "ACQT", sizeof("ACQT") - 1);
     extension[4] = 1;
     extension[5] = 0;
     extension[6] = (uint8_t)(params->quic_port >> 8);
@@ -405,12 +406,12 @@ asciichat_error_t acds_protocol_receive(acds_protocol_t *p, packet_type_t type, 
     if (length > sizeof(p->joined)) {
       const uint8_t *extension = (const uint8_t *)payload + sizeof(p->joined);
       size_t extra = length - sizeof(p->joined);
-      if (extra < 10 || memcmp(extension, "ACQT", 4) || extension[4] != 1 || extension[5])
+      if (extra < 10 || memcmp(extension, "ACQT", sizeof("ACQT") - 1) || extension[4] != 1 || extension[5])
         return protocol_fail(p, ERROR_NETWORK_PROTOCOL, "Invalid discovery transport extension", true);
       size_t url_length = ((size_t)extension[8] << 8) | extension[9];
       if (url_length >= sizeof(p->webtransport_url) || extra != 10 + url_length ||
-          (url_length &&
-           (url_length < 9 || memcmp(extension + 10, "https://", 8) || memchr(extension + 10, 0, url_length))))
+          (url_length && (url_length < 9 || memcmp(extension + 10, "https://", sizeof("https://") - 1) ||
+                          memchr(extension + 10, 0, url_length))))
         return protocol_fail(p, ERROR_NETWORK_PROTOCOL, "Invalid discovery WebTransport endpoint", true);
       p->quic_port = (uint16_t)((uint16_t)extension[6] << 8 | extension[7]);
       memcpy(p->webtransport_url, extension + 10, url_length);
@@ -506,11 +507,11 @@ asciichat_error_t acds_transport_metadata_encode(uint16_t port, const char *url,
   if (!url || !output || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing discovery transport output");
   *length = 0;
-  size_t size = strnlen(url, 512);
-  if (size >= 512 || capacity < 10 + size || (size && (size < 9 || strncmp(url, "https://", 8))))
+  size_t size = strnlen(url, (size_t)512);
+  if (size >= 512 || capacity < 10 + size || (size && (size < 9 || strncmp(url, "https://", sizeof("https://") - 1))))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery transport endpoint or capacity");
   uint8_t *bytes = output;
-  memcpy(bytes, "ACQT", 4);
+  memcpy(bytes, "ACQT", sizeof("ACQT") - 1);
   bytes[4] = 1;
   bytes[5] = 0;
   bytes[6] = (uint8_t)(port >> 8);
@@ -531,11 +532,11 @@ asciichat_error_t acds_transport_metadata_decode(const void *data, size_t length
   if (!length)
     return ASCIICHAT_OK;
   const uint8_t *bytes = data;
-  if (length < 10 || memcmp(bytes, "ACQT", 4) || bytes[4] != 1 || bytes[5])
+  if (length < 10 || memcmp(bytes, "ACQT", sizeof("ACQT") - 1) || bytes[4] != 1 || bytes[5])
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid discovery transport extension");
   size_t size = ((size_t)bytes[8] << 8) | bytes[9];
   if (size >= 512 || size >= capacity || length != 10 + size ||
-      (size && (size < 9 || memcmp(bytes + 10, "https://", 8) || memchr(bytes + 10, 0, size))))
+      (size && (size < 9 || memcmp(bytes + 10, "https://", sizeof("https://") - 1) || memchr(bytes + 10, 0, size))))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid discovery WebTransport endpoint");
   *port = (uint16_t)((uint16_t)bytes[6] << 8 | bytes[7]);
   memcpy(url, bytes + 10, size);

@@ -3,7 +3,8 @@
 #include <ascii-chat/video/ascii/output_buffer.h>
 
 /** SIMD stages operate on complete rows of host-order packed RGB and UTF-8 keys.
- * All callbacks read/write exactly count elements. Only short tails use scalar code.
+ * Row callbacks read/write exactly count elements. Glyph correlation reads 16 samples.
+ * Only short row tails use scalar code.
  */
 typedef struct {
   simd_luminance_fn luminance;
@@ -14,7 +15,15 @@ typedef struct {
                     size_t count, unsigned mode, const uint32_t keys[5]);
   size_t (*run)(const uint32_t *glyph, const uint32_t *fg, const uint32_t *bg, size_t count);
   void (*emit_mono)(outbuf_t *out, const uint32_t *glyph, size_t count);
+  // The 16 inputs are centered byte values in [-255, 255].
+  int (*glyph_shape_correlation)(const int16_t samples[16], const int16_t mask[16]);
 } simd_cells_t;
+
+int glyph_shape_correlation_scalar(const int16_t samples[16], const int16_t mask[16]);
+int glyph_shape_correlation_sse2(const int16_t samples[16], const int16_t mask[16]);
+int glyph_shape_correlation_avx2(const int16_t samples[16], const int16_t mask[16]);
+int glyph_shape_correlation_neon(const int16_t samples[16], const int16_t mask[16]);
+int glyph_shape_correlation_sve(const int16_t samples[16], const int16_t mask[16]);
 
 const simd_cells_t *simd_cells_backend(void);
 #define DECLARE_SIMD_CELLS(isa)                                                                                        \

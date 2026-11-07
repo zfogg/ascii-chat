@@ -140,14 +140,18 @@ static asciichat_error_t nat_parse_stun_response(const uint8_t *response, size_t
       break;
     }
 
-    // Look for MAPPED_ADDRESS (0x0001)
-    if (attr_type == 0x0001 && attr_len >= 8) {
+    // IPv4 STUN responses can carry MAPPED-ADDRESS or XOR-MAPPED-ADDRESS.
+    if ((attr_type == 0x0001 || attr_type == 0x0020) && attr_len >= 8) {
       // Format: reserved byte, family (1=IPv4, 2=IPv6), port (2 bytes), address
       uint8_t family = current[5];
       if (family == 1) { // IPv4
         uint16_t port = ((uint16_t)current[6] << 8) | current[7];
         uint32_t addr =
             ((uint32_t)current[8] << 24) | ((uint32_t)current[9] << 16) | ((uint32_t)current[10] << 8) | current[11];
+        if (attr_type == 0x0020) {
+          port ^= 0x2112;
+          addr ^= 0x2112a442;
+        }
 
         // Convert to dotted quad notation
         safe_snprintf(reflexive_addr, IP_ADDRESS_BUFFER_SIZE, "%u.%u.%u.%u", (addr >> 24) & 0xFF, (addr >> 16) & 0xFF,
@@ -162,7 +166,7 @@ static asciichat_error_t nat_parse_stun_response(const uint8_t *response, size_t
     current += 4 + padded_len;
   }
 
-  return SET_ERRNO(ERROR_FORMAT, "STUN response missing MAPPED_ADDRESS");
+  return SET_ERRNO(ERROR_FORMAT, "STUN response missing a supported mapped address");
 }
 
 /**
@@ -308,7 +312,13 @@ asciichat_error_t nat_detect_quality(nat_quality_t *quality, const char *stun_se
 
   // Probe STUN when configured.
   if (stun_server && stun_server[0]) {
+    // A failed probe is an expected fallback; retain diagnostics without
+    // publishing a fatal-looking notification for a successful detection.
+    asciichat_errno_scope_t probe_scope = errno_scope_begin();
+    bool notifications_were_suppressed = errno_notifications_suppress(true);
     asciichat_error_t stun_result = nat_stun_probe(quality, stun_server, local_port);
+    errno_notifications_suppress(notifications_were_suppressed);
+    errno_scope_end(probe_scope, stun_result == ASCIICHAT_OK ? ASCIICHAT_ERRNO_HANDLED : ASCIICHAT_ERRNO_DISMISSED);
     if (stun_result == ASCIICHAT_OK) {
       // Successfully got reflexive address via STUN
       quality->has_srflx_candidates = true;

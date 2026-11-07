@@ -26,6 +26,8 @@ static const char *const shared_options[] = {"width",
                                              "color-mode",
                                              "color-filter",
                                              "render-mode",
+                                             "renderer",
+                                             "stabilize",
                                              "palette",
                                              "palette-chars",
                                              "stretch",
@@ -425,7 +427,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
       double n = yyjson_get_num(v);
       if ((!strcmp(name, "width") && (n < e->metadata.numeric_range.min || n > 512)) ||
           (!strcmp(name, "height") && (n < e->metadata.numeric_range.min || n > 256)) ||
-          (!strcmp(name, "snapshot-delay") && (n < 0 || n > 30)) || (!strcmp(name, "fps") && (n < 1 || n > 144)))
+          (!strcmp(name, "snapshot-delay") && (n < 0 || n > 30)) || (!strcmp(name, "fps") && (n < 0 || n > 144)))
         return SET_ERRNO(ERROR_INVALID_PARAM, "Option %s is out of bounds", name);
       err = option(r, name, buf);
       if (err)

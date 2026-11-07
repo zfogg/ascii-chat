@@ -48,6 +48,7 @@ export interface DeviceSetupModalProps {
     loading: boolean;
     supportedEncodings: ("hevc" | "h264" | "raw")[];
     selectedEncoding: "hevc" | "h264" | "raw";
+    preference: VideoEncoding;
     bestEncoding: "hevc" | "h264" | "raw";
     selectEncoding: (encoding: VideoEncoding) => void;
     source?: string;
@@ -169,6 +170,10 @@ export function DeviceSetupModal({
   const setPreferences = onPreferencesChange ?? setLocalPreferences;
   const [level, setLevel] = useState(0);
   const [microphoneLayout, setMicrophoneLayout] = useState(getMicrophoneLayout);
+  const microphoneLayoutRef = useRef(microphoneLayout);
+  useEffect(() => {
+    microphoneLayoutRef.current = microphoneLayout;
+  }, [microphoneLayout]);
   const [testingMicrophone, setTestingMicrophone] = useState(false);
   const [testingSpeakers, setTestingSpeakers] = useState(false);
   const [audioReady, setAudioReady] = useState(false);
@@ -252,6 +257,7 @@ export function DeviceSetupModal({
     async (
       nextPreferences: typeof preferences,
       changedInput?: InputDeviceKey,
+      requestedLayout = microphoneLayoutRef.current,
     ) => {
       const inputKeys = changedInput ? [changedInput] : INPUT_DEVICE_KEYS;
       const generations = { ...previewGenerationRef.current };
@@ -348,9 +354,12 @@ export function DeviceSetupModal({
               ...current,
               [key]: selectedDeviceId,
             }));
-            const constraints = deviceId
-              ? { deviceId: { exact: deviceId } }
-              : true;
+            const constraints: MediaTrackConstraints = {
+              channelCount: {
+                ideal: requestedLayout.firstChannel + requestedLayout.channels,
+              },
+              ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+            };
             stream = isCamera
               ? await acquireCameraPreview(deviceId, owner.signal)
               : await acquireMediaStream(
@@ -388,17 +397,37 @@ export function DeviceSetupModal({
               if (audioContext) {
                 const source = audioContext.createMediaStreamSource(stream);
                 microphoneSourceRef.current = source;
-                const analyser = audioContext.createAnalyser();
-                analyser.fftSize = 512;
-                source.connect(analyser);
-                const samples = new Float32Array(analyser.fftSize);
+                const splitter = audioContext.createChannelSplitter(
+                  Math.max(
+                    2,
+                    requestedLayout.firstChannel + requestedLayout.channels,
+                  ),
+                );
+                source.connect(splitter);
+                const analysers = Array.from(
+                  { length: requestedLayout.channels },
+                  (_, index) => {
+                    const analyser = audioContext.createAnalyser();
+                    analyser.fftSize = 512;
+                    splitter.connect(
+                      analyser,
+                      requestedLayout.firstChannel + index,
+                    );
+                    return analyser;
+                  },
+                );
+                const samples = new Float32Array(512);
                 const readLevel = () => {
                   if (!isCurrent()) return;
                   if (audioContext.state === "running") {
-                    analyser.getFloatTimeDomainData(samples);
                     let sum = 0;
-                    for (const sample of samples) sum += sample * sample;
-                    const rms = Math.sqrt(sum / samples.length);
+                    for (const analyser of analysers) {
+                      analyser.getFloatTimeDomainData(samples);
+                      for (const sample of samples) sum += sample * sample;
+                    }
+                    const rms = Math.sqrt(
+                      sum / (samples.length * analysers.length),
+                    );
                     // Map -60 dBFS to silence and 0 dBFS to a full meter.
                     const decibels = 20 * Math.log10(Math.max(rms, 1e-8));
                     setLevel(Math.max(0, Math.min(1, (decibels + 60) / 60)));
@@ -487,6 +516,9 @@ export function DeviceSetupModal({
         setError(describeDeviceError(cause));
       }
       setEncodingDraft(null);
+      const savedLayout = getMicrophoneLayout();
+      microphoneLayoutRef.current = savedLayout;
+      setMicrophoneLayout(savedLayout);
       const preferences = readPreferences();
       setPreferences(preferences);
       if (
@@ -555,6 +587,12 @@ export function DeviceSetupModal({
     try {
       if (encodingDraft !== null) videoEncodings?.selectEncoding(encodingDraft);
       savePreferences(preferences);
+      const savedLayout = getMicrophoneLayout();
+      if (
+        savedLayout.channels !== microphoneLayout.channels ||
+        savedLayout.firstChannel !== microphoneLayout.firstChannel
+      )
+        saveMicrophoneLayout(microphoneLayout);
       onClose();
     } catch (cause) {
       setError(
@@ -756,7 +794,7 @@ export function DeviceSetupModal({
                   className="w-full rounded border border-gray-500 bg-gray-950 px-3 py-2 text-gray-100 focus:border-cyan-400 focus:outline-none"
                   aria-label="Video encoding"
                   disabled={videoEncodings.loading}
-                  value={encodingDraft ?? videoEncodings.selectedEncoding}
+                  value={encodingDraft ?? videoEncodings.preference}
                   onChange={(event) =>
                     setEncodingDraft(event.currentTarget.value as VideoEncoding)
                   }
@@ -861,8 +899,9 @@ export function DeviceSetupModal({
                         ? (2 as const)
                         : (1 as const),
                   };
+                  microphoneLayoutRef.current = next;
                   setMicrophoneLayout(next);
-                  saveMicrophoneLayout(next);
+                  void startPreview(preferences, "microphoneId", next);
                 }}
               >
                 <option value={1}>Mono speech</option>
@@ -888,8 +927,9 @@ export function DeviceSetupModal({
                   )
                     return;
                   const next = { ...microphoneLayout, firstChannel };
+                  microphoneLayoutRef.current = next;
                   setMicrophoneLayout(next);
-                  saveMicrophoneLayout(next);
+                  void startPreview(preferences, "microphoneId", next);
                 }}
               />
             </label>

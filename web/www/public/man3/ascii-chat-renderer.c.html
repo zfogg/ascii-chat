@@ -1,479 +1,672 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>renderer.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">renderer.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">renderer.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">renderer.c - render_file_* &#x2014; ties together font resolution,
-    platform renderer, FFmpeg encoder</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>render_file_ctx_s</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>render_file_create</b> (const char
-    *output_path, int cols, int rows, int fps, int theme,
-    <b>render_file_ctx_t</b> **out)
-  <br/>
-  void <b>render_file_set_audio_source</b> (<b>render_file_ctx_t</b> *ctx, void
-    *audio_media_source, void *audio_capture_rb)
-  <br/>
-  <b>asciichat_error_t</b> <b>render_file_write_frame</b>
-    (<b>render_file_ctx_t</b> *ctx, const char *ansi_frame, <b>uint64_t</b>
-    captured_ns)
-  <br/>
-  void <b>render_file_set_snapshot_actual_duration</b> (<b>render_file_ctx_t</b>
-    *ctx, double actual_duration_sec)
-  <br/>
-  <b>asciichat_error_t</b> <b>render_file_destroy</b> (<b>render_file_ctx_t</b>
-    *ctx)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">render_file_* &#x2014; ties together font resolution, platform
-    renderer, FFmpeg encoder</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>renderer.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> render_file_create (const char *
-  output_path, int cols, int rows, int fps, int theme, <b>render_file_ctx_t</b>
-  ** out)</h2>
-<p class="Pp">Definition at line <b>28</b> of file <b>renderer.c</b>.</p>
-<pre>29                                                               {
-30   log_info(&quot;[RENDER_FILE_CREATE] CALLED with output_path=%s, cols=%d, rows=%d, fps=%d, theme=%d, out=%p&quot;,
-31            output_path ? output_path : &quot;(null)&quot;, cols, rows, fps, theme, (void *)out);
-32   render_file_ctx_t *ctx = SAFE_CALLOC(1, sizeof(*ctx), render_file_ctx_t *);
-33 
-34   // Resolve font spec &#x2192; platform-appropriate file path, family name, or bundled data.
-35   char font_spec[512] = {0};
-36   bool font_is_path = false;
-37   const uint8_t *font_data = NULL;
-38   size_t font_data_size = 0;
-39   const char *raw_font = GET_OPTION(render_font);
-40 
-41   // Log the font option value from GET_OPTION (for WASM font debugging)
-42   log_info(&quot;[WASM_FONT_GETTER] GET_OPTION(render_font) returned: '%s' (empty=%d), GET_OPTION(matrix_rain)=%d&quot;,
-43            raw_font ? raw_font : &quot;(null)&quot;, (!raw_font || raw_font[0] == '\0') ? 1 : 0, GET_OPTION(matrix_rain));
-44 
-45   // Auto-select matrix font when --matrix flag is set, unless user explicitly overrides with --render-font
-46   log_debug(&quot;raw_font=%s, matrix_rain=%d&quot;, raw_font, GET_OPTION(matrix_rain));
-47   if ((!raw_font || raw_font[0] == '\0') &amp;&amp; GET_OPTION(matrix_rain)) {
-48     raw_font = &quot;matrix&quot;;
-49     log_debug(&quot;render_file_create: [MATRIX] Using matrix font (enabled by --matrix flag)&quot;);
-50   }
-51 
-52   asciichat_error_t fe =
-53       platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &amp;font_is_path, &amp;font_data, &amp;font_data_size);
-54   if (fe != ASCIICHAT_OK) {
-55     log_warn(&quot;renderer: font resolution failed for '%s' &#x2014; using system default&quot;,
-56              raw_font ? raw_font : &quot;(explicit system)&quot;);
-57   }
-58 
-59   log_debug(&quot;render_file_create: Font resolved: font_spec='%s', font_is_path=%d, font_data=%p (size=%zu)&quot;, font_spec,
-60             font_is_path, (void *)font_data, font_data_size);
-61 
-62   // Use reasonable default font size for render-file quality
-63   double font_size_pt = GET_OPTION(render_font_size);
-64 
-65   term_renderer_config_t tr_cfg = {
-66       .cols = cols,
-67       .rows = rows,
-68       .font_size_pt = font_size_pt,
-69       .theme = (term_renderer_theme_t)theme,
-70       .font_is_path = font_is_path,
-71       .font_data = font_data,
-72       .font_data_size = font_data_size,
-73   };
-74   SAFE_STRNCPY(tr_cfg.font_spec, font_spec, sizeof(tr_cfg.font_spec));
-75 
-76   asciichat_error_t err = term_renderer_create(&amp;tr_cfg, &amp;ctx-&gt;renderer);
-77   if (err != ASCIICHAT_OK) {
-78     log_error(&quot;render_file_create: term_renderer_create failed: %s&quot;, asciichat_error_string(err));
-79     SAFE_FREE(ctx);
-80     return err;
-81   }
-82   int actual_width_px = term_renderer_width_px(ctx-&gt;renderer);
-83   int actual_height_px = term_renderer_height_px(ctx-&gt;renderer);
-84   log_info(&quot;render_file_create: GRID DIMENSIONS: %ux%u cells -&gt; PIXEL DIMENSIONS: %dx%d px&quot;, cols, rows,
-85            actual_width_px, actual_height_px);
-86   log_debug(&quot;render_file_create: term_renderer created (%dx%d cells, %dx%d px)&quot;, cols, rows, actual_width_px,
-87             actual_height_px);
-88 
-89   err = ffmpeg_encoder_create(output_path, actual_width_px, actual_height_px, fps, &amp;ctx-&gt;encoder);
-90   if (err != ASCIICHAT_OK) {
-91     log_error(&quot;render_file_create: ffmpeg_encoder_create failed: %s&quot;, asciichat_error_string(err));
-92     term_renderer_destroy(ctx-&gt;renderer);
-93     SAFE_FREE(ctx);
-94     return err;
-95   }
-96   log_debug(&quot;render_file_create: ffmpeg_encoder created successfully&quot;);
-97 
-98   // Initialize audio fields
-99   ctx-&gt;audio_sample_rate = 48000; // Audio pipeline is 48kHz
-100   // Allocate large buffer for snapshot mode (5 seconds at 48kHz with ~14 FPS = 3,428 samples per frame)
-101   // Use 8192 to comfortably handle snapshot reads without excessive overhead
-102   ctx-&gt;audio_buf_size = 8192; // Temporary buffer for reading audio (in floats)
-103   ctx-&gt;audio_read_buf = SAFE_MALLOC(ctx-&gt;audio_buf_size * sizeof(float), float *);
-104   ctx-&gt;audio_media_source = NULL;
-105   ctx-&gt;audio_capture_rb = NULL;
-106 
-107   log_info(&quot;renderer: initialized encoder for %s&quot;, output_path);
-108 
-109   // Register render file context for debugging
-110   NAMED_REGISTER_CONTEXT(ctx, &quot;render_file_ctx&quot;, output_path, NULL);
-111 
-112   *out = ctx;
-113   return ASCIICHAT_OK;
-114 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>render_file_ctx_s::audio_buf_size</b>,
-    <b>render_file_ctx_s::audio_capture_rb</b>,
-    <b>render_file_ctx_s::audio_media_source</b>,
-    <b>render_file_ctx_s::audio_read_buf</b>,
-    <b>render_file_ctx_s::audio_sample_rate</b>,
-    <b>render_file_ctx_s::encoder</b>, <b>ffmpeg_encoder_create()</b>,
-    <b>term_renderer_config_t::font_spec</b>, <b>GET_OPTION</b>,
-    <b>log_debug</b>, <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>NAMED_REGISTER_CONTEXT</b>, <b>platform_font_resolve()</b>,
-    <b>render_file_ctx_s::renderer</b>, <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>,
-    <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>term_renderer_create()</b>,
-    <b>term_renderer_destroy()</b>, <b>term_renderer_height_px()</b>, and
-    <b>term_renderer_width_px()</b>.</p>
-<p class="Pp">Referenced by <b>session_display_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> render_file_destroy
-  (<b>render_file_ctx_t</b> * ctx)</h2>
-<p class="Pp">Definition at line <b>325</b> of file <b>renderer.c</b>.</p>
-<pre>325                                                               {
-326   if (!ctx)
-327     return ASCIICHAT_OK;
-328   asciichat_error_t err = ffmpeg_encoder_destroy(ctx-&gt;encoder);
-329   term_renderer_destroy(ctx-&gt;renderer);
-330   SAFE_FREE(ctx-&gt;audio_read_buf);
-331   SAFE_FREE(ctx);
-332   return err;
-333 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>render_file_ctx_s::audio_read_buf</b>, <b>render_file_ctx_s::encoder</b>,
-    <b>ffmpeg_encoder_destroy()</b>, <b>render_file_ctx_s::renderer</b>,
-    <b>SAFE_FREE</b>, and <b>term_renderer_destroy()</b>.</p>
-<p class="Pp">Referenced by <b>session_display_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_render_file_set_audio_source_("><a class="permalink" href="#void_render_file_set_audio_source_(">void
-  render_file_set_audio_source (<b>render_file_ctx_t</b> * ctx, void *
-  audio_media_source, void * audio_capture_rb)</a></h2>
-<p class="Pp">Definition at line <b>116</b> of file <b>renderer.c</b>.</p>
-<pre>116                                                                                                             {
-117   if (!ctx)
-118     return;
-119   ctx-&gt;audio_media_source = (media_source_t *)audio_media_source;
-120   ctx-&gt;audio_capture_rb = (audio_ring_buffer_t *)audio_capture_rb;
-121   log_debug(&quot;render_file_set_audio_source: media_source=%p, capture_rb=%p&quot;, audio_media_source, audio_capture_rb);
-122 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_ctx_s::audio_capture_rb</b>,
-    <b>render_file_ctx_s::audio_media_source</b>, and <b>log_debug</b>.</p>
-<p class="Pp">Referenced by <b>session_display_create()</b>, and
-    <b>session_display_set_render_audio_source()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_render_file_set_snapshot_actual_duration_("><a class="permalink" href="#void_render_file_set_snapshot_actual_duration_(">void
-  render_file_set_snapshot_actual_duration (<b>render_file_ctx_t</b> * ctx,
-  double actual_duration_sec)</a></h2>
-<p class="Pp">Definition at line <b>319</b> of file <b>renderer.c</b>.</p>
-<pre>319                                                                                                   {
-320   if (!ctx || !ctx-&gt;encoder)
-321     return;
-322   ffmpeg_encoder_set_snapshot_actual_duration(ctx-&gt;encoder, actual_duration_sec);
-323 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>render_file_ctx_s::encoder</b>, and
-    <b>ffmpeg_encoder_set_snapshot_actual_duration()</b>.</p>
-<p class="Pp">Referenced by
-    <b>session_display_set_snapshot_actual_duration()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> render_file_write_frame
-  (<b>render_file_ctx_t</b> * ctx, const char * ansi_frame, <b>uint64_t</b>
-  captured_ns)</h2>
-<p class="Pp">Definition at line <b>124</b> of file <b>renderer.c</b>.</p>
-<pre>124                                                                                                                 {
-125   // Write to debug file directly to bypass logging system
-126 #if !defined(NDEBUG) &amp;&amp; !defined(_WIN32)
-127   FILE *dbg = fopen(&quot;/tmp/render-debug.txt&quot;, &quot;a&quot;);
-128   if (dbg) {
-129     fprintf(dbg, &quot;[RENDER_WRITE_FRAME] Called with ctx=%p, frame_len=%zu, captured_ns=%llu\n&quot;, (void *)ctx,
-130             ansi_frame ? strlen(ansi_frame) : 0, (unsigned long long)captured_ns);
-131     fclose(dbg);
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>renderer.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">renderer.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">renderer.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          renderer.c - render_file_* &#x2014; ties together font resolution,
+          platform renderer, FFmpeg encoder
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>render_file_ctx_s</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>RENDER_AUTO_FONT_SIZE_PT</b> 12.0
+            <br />
+            #define <b>RENDER_AUTO_VIDEO_MAX_DIMENSION</b> 1280
+            <br />
+            #define <b>RENDER_AUTO_MIN_FONT_SIZE_PT</b> 3.0
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>render_file_create</b> (const char
+            *output_path, int cols, int rows, int fps, int theme,
+            <b>render_file_ctx_t</b> **out)
+            <br />
+            void <b>render_file_set_live_timing</b> (<b>render_file_ctx_t</b>
+            *ctx)
+            <br />
+            <b>asciichat_error_t</b> <b>render_file_write_frame</b> (<b
+              >render_file_ctx_t</b
+            >
+            *ctx, const char *frame, <b>uint64_t</b>
+            captured_ns)
+            <br />
+            void <b>render_file_begin_drain</b> (<b>render_file_ctx_t</b> *ctx,
+            <b>uint64_t</b> total, <b>bool</b> total_known)
+            <br />
+            void <b>render_file_set_snapshot_actual_duration</b> (<b
+              >render_file_ctx_t</b
+            >
+            *ctx, double actual_duration_sec)
+            <br />
+            <b>asciichat_error_t</b> <b>render_file_destroy</b> (<b
+              >render_file_ctx_t</b
+            >
+            *ctx)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          render_file_* &#x2014; ties together font resolution, platform
+          renderer, FFmpeg encoder
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>renderer.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_RENDER_AUTO_FONT_SIZE_PT___12">
+            <a class="permalink" href="#_define_RENDER_AUTO_FONT_SIZE_PT___12"
+              >#define RENDER_AUTO_FONT_SIZE_PT 12.0</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>22</b> of file <b>renderer.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>render_file_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_RENDER_AUTO_MIN_FONT_SIZE_PT___3">
+            <a
+              class="permalink"
+              href="#_define_RENDER_AUTO_MIN_FONT_SIZE_PT___3"
+              >#define RENDER_AUTO_MIN_FONT_SIZE_PT 3.0</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>renderer.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>render_file_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_RENDER_AUTO_VIDEO_MAX_DIMENSION___1280">
+            <a
+              class="permalink"
+              href="#_define_RENDER_AUTO_VIDEO_MAX_DIMENSION___1280"
+              >#define RENDER_AUTO_VIDEO_MAX_DIMENSION 1280</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>23</b> of file <b>renderer.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>render_file_create()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_render_file_begin_drain_(">
+            <a class="permalink" href="#void_render_file_begin_drain_("
+              >void render_file_begin_drain (<b>render_file_ctx_t</b> * ctx,
+              <b>uint64_t</b> total, <b>bool</b> total_known)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>345</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+345                                                                                        {
+346   if (ctx)
+347     render_progress_begin(ctx-&gt;progress, total, total_known);
+348 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>render_file_ctx_s::progress</b>,
+            <b>render_file_begin_drain()</b>, and
+            <b>render_progress_begin()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_begin_drain()</b>, and
+            <b>session_display_begin_drain()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> render_file_create (const char *
+            output_path, int cols, int rows, int fps, int theme,
+            <b>render_file_ctx_t</b> ** out)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+47                                                               {
+48   if (!output_path || !out || cols &lt;= 0 || rows &lt;= 0)
+49     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing render output, grid, or context&quot;);
+50   *out = NULL;
+51   log_info(&quot;output_path=%s, cols=%d, rows=%d, fps=%d, theme=%d, out=%p&quot;, output_path ? output_path : &quot;(null)&quot;, cols,
+52            rows, fps, theme, (void *)out);
+53   render_file_ctx_t *ctx = SAFE_CALLOC(1, sizeof(*ctx), render_file_ctx_t *);
+54   ctx-&gt;kitty_only = strcmp(output_path, &quot;--kitty&quot;) == 0;
+55   ctx-&gt;kitty = ctx-&gt;kitty_only || GET_OPTION(render_kitty);
+56   if (ctx-&gt;kitty &amp;&amp; !GET_OPTION(snapshot_mode)) {
+57     SAFE_FREE(ctx);
+58     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Kitty graphics output requires --snapshot&quot;);
+59   }
+60   if (ctx-&gt;kitty &amp;&amp; (strcmp(output_path, &quot;-&quot;) == 0 || strcmp(output_path, &quot;pipe:&quot;) == 0)) {
+61     SAFE_FREE(ctx);
+62     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Kitty graphics and binary media cannot share stdout&quot;);
+63   }
+64   const char *term = SAFE_GETENV(&quot;TERM&quot;);
+65   if (ctx-&gt;kitty &amp;&amp; terminal_is_stdout_tty() &amp;&amp;
+66       (!term || strcmp(term, &quot;dumb&quot;) == 0 || strcmp(term, &quot;linux&quot;) == 0 || strcmp(term, &quot;vt100&quot;) == 0)) {
+67     SAFE_FREE(ctx);
+68     return SET_ERRNO(ERROR_NOT_SUPPORTED,
+69                      &quot;Kitty graphics require a capable terminal; redirect stdout to export the protocol&quot;);
+70   }
+71
+72   // Resolve font spec &#x2192; platform-appropriate file path, family name, or bundled data.
+73   char font_spec[PLATFORM_MAX_PATH_LENGTH] = {0};
+74   bool font_is_path = false;
+75   const uint8_t *font_data = NULL;
+76   size_t font_data_size = 0;
+77   const char *raw_font = GET_OPTION(render_font);
+78
+79   // Log the font option value from GET_OPTION (for WASM font debugging)
+80   log_info(&quot;[WASM_FONT_GETTER] GET_OPTION(render_font) returned: '%s' (empty=%d), GET_OPTION(matrix_rain)=%d&quot;,
+81            raw_font ? raw_font : &quot;(null)&quot;, (!raw_font || raw_font[0] == '\0') ? 1 : 0, GET_OPTION(matrix_rain));
+82
+83   // Auto-select matrix font when --matrix flag is set, unless user explicitly overrides with --render-font
+84   log_debug(&quot;raw_font=%s, matrix_rain=%d&quot;, raw_font, GET_OPTION(matrix_rain));
+85   if ((!raw_font || raw_font[0] == '\0') &amp;&amp; GET_OPTION(matrix_rain)) {
+86     raw_font = &quot;matrix&quot;;
+87     log_debug(&quot;[MATRIX] Using matrix font (enabled by --matrix flag)&quot;);
+88   }
+89
+90   asciichat_error_t fe =
+91       platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &amp;font_is_path, &amp;font_data, &amp;font_data_size);
+92   if (fe != ASCIICHAT_OK) {
+93     if (raw_font &amp;&amp; raw_font[0]) {
+94       SAFE_FREE(ctx);
+95       return fe;
+96     }
+97     log_warn(&quot;font resolution failed for '%s' &#x2014; using bundled default&quot;, raw_font ? raw_font : &quot;(explicit system)&quot;);
+98     fe = platform_font_resolve(&quot;default&quot;, font_spec, sizeof(font_spec), &amp;font_is_path, &amp;font_data, &amp;font_data_size);
+99     if (fe != ASCIICHAT_OK) {
+100       SAFE_FREE(ctx);
+101       return fe;
+102     }
+103   }
+104
+105   log_debug(&quot;Font resolved: font_spec='%s', font_is_path=%d, font_data=%p (size=%zu)&quot;, font_spec, font_is_path,
+106             (void *)font_data, font_data_size);
+107
+108   // A zero size selects a compact default for video; explicit font sizes keep
+109   // their exact dimensions. Images and Kitty snapshots retain the 12 pt default.
+110   double font_size_pt = GET_OPTION(render_font_size);
+111   const char *extension = strrchr(output_path, '.');
+112   bool is_image =
+113       extension &amp;&amp; (!strcmp(extension, &quot;.png&quot;) || !strcmp(extension, &quot;.jpg&quot;) || !strcmp(extension, &quot;.jpeg&quot;));
+114   bool automatic_video_size = font_size_pt == 0.0 &amp;&amp; !is_image &amp;&amp; !ctx-&gt;kitty;
+115   if (font_size_pt == 0.0) {
+116     font_size_pt = RENDER_AUTO_FONT_SIZE_PT;
+117     if (automatic_video_size) {
+118       double width_scale = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / ((double)cols * 10.0);
+119       double height_scale = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / ((double)rows * 20.0);
+120       double scale = width_scale &lt; height_scale ? width_scale : height_scale;
+121       if (scale &lt; 1.0)
+122         font_size_pt *= scale;
+123       if (font_size_pt &lt; RENDER_AUTO_MIN_FONT_SIZE_PT)
+124         font_size_pt = RENDER_AUTO_MIN_FONT_SIZE_PT;
+125     }
+126   }
+127   term_renderer_theme_t resolved_theme = (term_renderer_theme_t)theme;
+128   if (resolved_theme == TERM_RENDERER_THEME_AUTO) {
+129     resolved_theme =
+130         colorscheme_current_background() == TERM_BACKGROUND_DARK ? TERM_RENDERER_THEME_DARK : TERM_RENDERER_THEME_LIGHT;
+131     log_debug(&quot;auto theme resolved to %s&quot;, resolved_theme == TERM_RENDERER_THEME_DARK ? &quot;dark&quot; : &quot;light&quot;);
 132   }
-133 #endif
-134   log_info(&quot;render_file_write_frame: CALLED - ctx=%p, captured_ns=%llu&quot;, (void *)ctx, (unsigned long long)captured_ns);
-135 
-136   if (!ctx) {
-137     log_warn(&quot;render_file_write_frame: ctx is NULL&quot;);
-138     return ASCIICHAT_OK;
-139   }
-140 
-141   if (!ansi_frame) {
-142     log_warn(&quot;render_file_write_frame: ansi_frame is NULL&quot;);
-143     return ASCIICHAT_OK;
-144   }
-145 
-146   size_t frame_len = strlen(ansi_frame);
-147   log_info(&quot;render_file_write_frame: processing frame (len=%zu)&quot;, frame_len);
-148   if (frame_len &gt; 0) {
-149     log_info(&quot;  first 100 chars: %.100s&quot;, ansi_frame);
+133
+134   term_renderer_config_t tr_cfg = {
+135       .cols = cols,
+136       .rows = rows,
+137       .font_size_pt = font_size_pt,
+138       .theme = resolved_theme,
+139       .font_is_path = font_is_path,
+140       .font_data = font_data,
+141       .font_data_size = font_data_size,
+142   };
+143   SAFE_STRNCPY(tr_cfg.font_spec, font_spec, sizeof(tr_cfg.font_spec));
+144
+145   asciichat_error_t err = term_renderer_create(&amp;tr_cfg, &amp;ctx-&gt;renderer);
+146   if (err != ASCIICHAT_OK) {
+147     log_error(&quot;term_renderer_create failed: %s&quot;, asciichat_error_format(NULL, err));
+148     SAFE_FREE(ctx);
+149     return err;
 150   }
-151 
-152   asciichat_error_t err = term_renderer_feed(ctx-&gt;renderer, ansi_frame, frame_len);
-153   if (err != ASCIICHAT_OK) {
-154     log_warn(&quot;render_file_write_frame: term_renderer_feed failed: %s&quot;, asciichat_error_string(err));
-155     return err;
-156   }
-157 
-158   const uint8_t *pixels = term_renderer_pixels(ctx-&gt;renderer);
-159   int pitch = term_renderer_pitch(ctx-&gt;renderer);
-160   int width_px = term_renderer_width_px(ctx-&gt;renderer);
-161   int height_px = term_renderer_height_px(ctx-&gt;renderer);
-162 
-163   log_info(&quot;render_file_write_frame: pixels=%p pitch=%d dims=%dx%d&quot;, (void *)pixels, pitch, width_px, height_px);
-164 
-165   // Check pixels in multiple locations to verify content
-166   if (pixels) {
-167     // The framebuffer is RGBA (4 bytes per pixel)
-168     // Check pixel at (0,0) - top left corner
-169     uint8_t sample_r = pixels[0], sample_g = pixels[1], sample_b = pixels[2], sample_a = pixels[3];
-170 
-171     // Check pixel at (500, 100) where we'll inject a test red stripe
-172     size_t test_offset = 100 * pitch + 500 * 4; // 4 bytes per pixel for RGBA
-173     uint8_t test_r = pixels[test_offset], test_g = pixels[test_offset + 1], test_b = pixels[test_offset + 2],
-174             test_a = pixels[test_offset + 3];
-175 
-176     // Check pixel at middle of screen
-177     size_t mid_offset = (height_px / 2) * pitch;
-178     uint8_t sample_r_mid = pixels[mid_offset], sample_g_mid = pixels[mid_offset + 1],
-179             sample_b_mid = pixels[mid_offset + 2], sample_a_mid = pixels[mid_offset + 3];
-180 
-181     log_info(&quot;  pixel[0,0]: RGBA(%u,%u,%u,%u), test_pos[500,100]: RGBA(%u,%u,%u,%u), pixel[0,%d]: RGBA(%u,%u,%u,%u)&quot;,
-182              sample_r, sample_g, sample_b, sample_a, test_r, test_g, test_b, test_a, height_px / 2, sample_r_mid,
-183              sample_g_mid, sample_b_mid, sample_a_mid);
-184   }
-185 
-186   // CRITICAL: Copy pixel buffer before encoding
-187   // term_renderer_pixels() returns a pointer to the renderer's internal buffer which gets
-188   // overwritten on the next frame. We must copy the data before passing to the encoder.
-189   uint8_t *pixels_copy = NULL;
-190   if (pixels) {
-191     size_t pixel_buffer_size = (size_t)pitch * (size_t)height_px;
-192     pixels_copy = SAFE_MALLOC(pixel_buffer_size, uint8_t *);
-193     memcpy(pixels_copy, pixels, pixel_buffer_size);
-194     log_info(&quot;render_file_write_frame: copied %zu bytes of pixel data (was at %p, now at %p)&quot;, pixel_buffer_size,
-195              (void *)pixels, (void *)pixels_copy);
+151   int actual_width_px = term_renderer_width_px(ctx-&gt;renderer);
+152   int actual_height_px = term_renderer_height_px(ctx-&gt;renderer);
+153   // Hinting and font metrics vary. Recalculate once if the initial estimate
+154   // exceeds the target, retaining the original renderer if a bitmap font
+155   // cannot be scaled down.
+156   if (automatic_video_size &amp;&amp;
+157       (actual_width_px &gt; RENDER_AUTO_VIDEO_MAX_DIMENSION || actual_height_px &gt; RENDER_AUTO_VIDEO_MAX_DIMENSION) &amp;&amp;
+158       font_size_pt &gt; RENDER_AUTO_MIN_FONT_SIZE_PT) {
+159     double width_scale = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / actual_width_px;
+160     double height_scale = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / actual_height_px;
+161     double scale = width_scale &lt; height_scale ? width_scale : height_scale;
+162     double smaller = font_size_pt * scale * 0.98;
+163     if (smaller &lt; RENDER_AUTO_MIN_FONT_SIZE_PT)
+164       smaller = RENDER_AUTO_MIN_FONT_SIZE_PT;
+165     tr_cfg.font_size_pt = smaller;
+166     terminal_renderer_t *candidate = NULL;
+167     err = term_renderer_create(&amp;tr_cfg, &amp;candidate);
+168     if (err == ASCIICHAT_OK) {
+169       int candidate_width = term_renderer_width_px(candidate);
+170       int candidate_height = term_renderer_height_px(candidate);
+171       if (candidate_width &lt;= actual_width_px &amp;&amp; candidate_height &lt;= actual_height_px &amp;&amp;
+172           (candidate_width &lt; actual_width_px || candidate_height &lt; actual_height_px)) {
+173         term_renderer_destroy(ctx-&gt;renderer);
+174         ctx-&gt;renderer = candidate;
+175         actual_width_px = candidate_width;
+176         actual_height_px = candidate_height;
+177       } else {
+178         term_renderer_destroy(candidate);
+179       }
+180     } else {
+181       term_renderer_destroy(ctx-&gt;renderer);
+182       SAFE_FREE(ctx);
+183       return err;
+184     }
+185   }
+186   log_info(&quot;GRID DIMENSIONS: %ux%u cells -&gt; PIXEL DIMENSIONS: %dx%d px&quot;, cols, rows, actual_width_px, actual_height_px);
+187   log_debug(&quot;term_renderer created (%dx%d cells, %dx%d px)&quot;, cols, rows, actual_width_px, actual_height_px);
+188
+189   if (ctx-&gt;kitty_only) {
+190     ctx-&gt;fps = fps;
+191     ctx-&gt;progress = render_progress_create(true, &quot;terminal&quot;);
+192     NAMED_REGISTER_CONTEXT(ctx, &quot;render_file_ctx&quot;, output_path, NULL);
+193     ui_controller_title_render(UI_TITLE_RENDERING);
+194     *out = ctx;
+195     return ASCIICHAT_OK;
 196   }
-197 
-198   err = ffmpeg_encoder_write_frame(ctx-&gt;encoder, pixels_copy, pitch, captured_ns);
-199   if (err != ASCIICHAT_OK) {
-200     log_warn(&quot;render_file_write_frame: ffmpeg_encoder_write_frame failed: %s&quot;, asciichat_error_string(err));
-201   }
-202 
-203   // Free the pixel copy (ffmpeg_encoder_write_frame reads and converts it immediately)
-204   SAFE_FREE(pixels_copy);
-205 
-206   // Write synchronized audio for this frame if available
-207   // In snapshot mode, track actual FPS and calculate samples_per_frame dynamically
-208   if (ctx &amp;&amp; ctx-&gt;audio_read_buf &amp;&amp; ctx-&gt;encoder) {
-209     // Detect if we're in snapshot mode
-210     bool snapshot_mode = GET_OPTION(snapshot_mode);
-211     double snapshot_delay = GET_OPTION(snapshot_delay);
-212 
-213     int samples_per_frame;
-214 
-215     // Track frame timing for dynamic FPS calculation in snapshot mode
-216     static uint64_t first_frame_ns = 0;
-217     static int log_once = 0;
-218 
-219     if (first_frame_ns == 0) {
-220       first_frame_ns = captured_ns;
-221     }
-222 
-223     if (snapshot_mode &amp;&amp; snapshot_delay &gt; 0) {
-224       // In snapshot mode, write samples based on actual elapsed wall-clock time
-225       // This will be overridden by the time-based calculation below
-226       samples_per_frame = (int)(ctx-&gt;audio_sample_rate / 60.0);
-227 
-228       // Ensure minimum to avoid rounding to 0
-229       if (samples_per_frame &lt; 100) {
-230         samples_per_frame = 100;
-231       }
-232 
-233     } else {
-234       // Normal/live mode: use 60 FPS baseline
-235       samples_per_frame = ctx-&gt;audio_sample_rate / 60;
-236       if (!log_once++) {
-237         log_info(&quot;[AUDIO_CALC] Normal mode: samples_per_frame=%d&quot;, samples_per_frame);
-238       }
-239     }
-240 
-241     if (samples_per_frame &gt; ctx-&gt;audio_buf_size) {
-242       samples_per_frame = ctx-&gt;audio_buf_size;
-243       if (!log_once++) {
-244         log_warn(&quot;[AUDIO_CALC] samples_per_frame clamped to buffer size %d&quot;, ctx-&gt;audio_buf_size);
-245       }
-246     }
-247     if (samples_per_frame &lt;= 0) {
-248       samples_per_frame = 800; // Fallback minimum
-249     }
-250 
-251     int samples_read = 0;
-252     static int audio_eof_reached = 0;
-253     static int total_audio_samples_written = 0;
-254 
-255     // In snapshot mode, write samples based on elapsed wall-clock time to match snapshot_delay exactly
-256     int actual_samples_per_frame = samples_per_frame;
-257     if (snapshot_mode &amp;&amp; snapshot_delay &gt; 0) {
-258       uint64_t elapsed_ns = captured_ns - first_frame_ns;
-259       double elapsed_sec = (double)elapsed_ns / 1e9;
-260       double target_fraction = elapsed_sec / snapshot_delay;
-261       target_fraction = (target_fraction &gt; 1.0) ? 1.0 : target_fraction; // Cap at 100%
-262 
-263       int total_target_samples = (int)(ctx-&gt;audio_sample_rate * snapshot_delay);
-264       int expected_samples_at_this_point = (int)(target_fraction * total_target_samples);
-265 
-266       // Calculate how many samples to write for THIS frame
-267       actual_samples_per_frame = expected_samples_at_this_point - total_audio_samples_written;
-268 
-269       // Never write more than the buffer allows
-270       if (actual_samples_per_frame &gt; ctx-&gt;audio_buf_size) {
-271         actual_samples_per_frame = ctx-&gt;audio_buf_size;
-272       }
-273       // Never write negative or zero (shouldn't happen, but safety check)
-274       if (actual_samples_per_frame &lt;= 0) {
-275         actual_samples_per_frame = 0;
-276       }
-277     }
-278 
-279     // Read from whichever audio source is available (prefer media source, fallback to capture)
-280     if (!audio_eof_reached &amp;&amp; ctx-&gt;audio_media_source) {
-281       // Read from media source (file/URL audio) - try to get samples
-282       samples_read = media_source_read_audio(ctx-&gt;audio_media_source, ctx-&gt;audio_read_buf, actual_samples_per_frame);
-283 
-284       if (samples_read &lt;= 0) {
-285         // EOF reached or error - no more audio samples available from source
-286         audio_eof_reached = 1;
-287         samples_read = 0;
-288       }
-289     } else if (!audio_eof_reached &amp;&amp; ctx-&gt;audio_capture_rb) {
-290       // Read from ring buffer (live mic capture)
-291       samples_read = audio_ring_buffer_read(ctx-&gt;audio_capture_rb, ctx-&gt;audio_read_buf, actual_samples_per_frame);
-292       if (samples_read &lt; 0) {
-293         samples_read = 0; // On error, write silence
-294         audio_eof_reached = 1;
-295       } else if (samples_read == 0) {
-296         audio_eof_reached = 1;
-297       }
-298       log_debug(&quot;render_file_write_frame: reading audio from capture_rb (samples_per_frame=%d, read=%d)&quot;,
-299                 actual_samples_per_frame, samples_read);
-300     }
-301 
-302     // Write audio: either from source or silence to fill remaining time
-303     if (samples_read &gt; 0) {
-304       // We got samples from the source - write them
-305       ffmpeg_encoder_write_audio(ctx-&gt;encoder, ctx-&gt;audio_read_buf, samples_read);
-306       total_audio_samples_written += samples_read;
-307     } else if (actual_samples_per_frame &gt; 0) {
-308       // No samples available (EOF reached or not available) - write silence to maintain sync
-309       // This ensures audio track duration matches video track duration
-310       memset(ctx-&gt;audio_read_buf, 0, actual_samples_per_frame * sizeof(float));
-311       ffmpeg_encoder_write_audio(ctx-&gt;encoder, ctx-&gt;audio_read_buf, actual_samples_per_frame);
-312       total_audio_samples_written += actual_samples_per_frame;
-313     }
-314   }
-315 
-316   return err;
-317 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>render_file_ctx_s::audio_buf_size</b>,
-    <b>render_file_ctx_s::audio_capture_rb</b>,
-    <b>render_file_ctx_s::audio_media_source</b>,
-    <b>render_file_ctx_s::audio_read_buf</b>, <b>audio_ring_buffer_read()</b>,
-    <b>render_file_ctx_s::audio_sample_rate</b>,
-    <b>render_file_ctx_s::encoder</b>, <b>ffmpeg_encoder_write_audio()</b>,
-    <b>ffmpeg_encoder_write_frame()</b>, <b>GET_OPTION</b>, <b>log_debug</b>,
-    <b>log_info</b>, <b>log_once</b>, <b>log_warn</b>,
-    <b>media_source_read_audio()</b>, <b>render_file_ctx_s::renderer</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>term_renderer_feed()</b>,
-    <b>term_renderer_height_px()</b>, <b>term_renderer_pitch()</b>,
-    <b>term_renderer_pixels()</b>, and <b>term_renderer_width_px()</b>.</p>
-<p class="Pp">Referenced by <b>session_display_encode_frame()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+197   int output_width_px = actual_width_px;
+198   int output_height_px = actual_height_px;
+199   if (automatic_video_size &amp;&amp;
+200       (output_width_px &gt; RENDER_AUTO_VIDEO_MAX_DIMENSION || output_height_px &gt; RENDER_AUTO_VIDEO_MAX_DIMENSION)) {
+201     double scale_x = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / output_width_px;
+202     double scale_y = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / output_height_px;
+203     double scale = scale_x &lt; scale_y ? scale_x : scale_y;
+204     output_width_px = ((int)(output_width_px * scale)) &amp; ~1;
+205     output_height_px = ((int)(output_height_px * scale)) &amp; ~1;
+206     if (output_width_px &lt; 2)
+207       output_width_px = 2;
+208     if (output_height_px &lt; 2)
+209       output_height_px = 2;
+210   }
+211   err = ffmpeg_encoder_create_scaled(output_path, actual_width_px, actual_height_px, output_width_px, output_height_px,
+212                                      fps, &amp;ctx-&gt;encoder);
+213   if (err != ASCIICHAT_OK) {
+214     log_error(&quot;ffmpeg_encoder_create failed: %s&quot;, asciichat_error_format(NULL, err));
+215     term_renderer_destroy(ctx-&gt;renderer);
+216     SAFE_FREE(ctx);
+217     return err;
+218   }
+219   log_debug(&quot;ffmpeg_encoder created successfully&quot;);
+220
+221   // Initialize audio fields
+222   ctx-&gt;audio_sample_rate = 48000; // Audio pipeline is 48kHz
+223   ctx-&gt;fps = fps;
+224   // Allocate large buffer for snapshot mode (5 seconds at 48kHz with ~14 FPS = 3,428 samples per frame)
+225   // Use 8192 to comfortably handle snapshot reads without excessive overhead
+226   ctx-&gt;audio_buf_size = 8192; // Temporary buffer for reading audio (in floats)
+227   ctx-&gt;audio_read_buf = SAFE_MALLOC(ctx-&gt;audio_buf_size * sizeof(float), float *);
+228
+229   err = audio_recording_create_channels(&amp;ctx-&gt;recording, 2);
+230   if (err != ASCIICHAT_OK) {
+231     ffmpeg_encoder_destroy(ctx-&gt;encoder);
+232     term_renderer_destroy(ctx-&gt;renderer);
+233     SAFE_FREE(ctx-&gt;audio_read_buf);
+234     SAFE_FREE(ctx);
+235     return err;
+236   }
+237   log_info(&quot;initialized encoder for %s&quot;, output_path);
+238
+239   // Register render file context for debugging
+240   NAMED_REGISTER_CONTEXT(ctx, &quot;render_file_ctx&quot;, output_path, NULL);
+241
+242   bool binary_stdout = strcmp(output_path, &quot;-&quot;) == 0 || strcmp(output_path, &quot;pipe:&quot;) == 0;
+243   ctx-&gt;progress = render_progress_create(!binary_stdout, output_path);
+244   ui_controller_title_render(UI_TITLE_RENDERING);
+245   *out = ctx;
+246   return ASCIICHAT_OK;
+247 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_error_format()</b>, <b>ASCIICHAT_OK</b>,
+            <b>render_file_ctx_s::audio_buf_size</b>,
+            <b>render_file_ctx_s::audio_read_buf</b>,
+            <b>audio_recording_create_channels()</b>,
+            <b>render_file_ctx_s::audio_sample_rate</b>,
+            <b>colorscheme_current_background()</b>,
+            <b>render_file_ctx_s::encoder</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NOT_SUPPORTED</b>, <b>ffmpeg_encoder_create_scaled()</b>,
+            <b>ffmpeg_encoder_destroy()</b>,
+            <b>term_renderer_config_t::font_size_pt</b>,
+            <b>term_renderer_config_t::font_spec</b>,
+            <b>render_file_ctx_s::fps</b>, <b>GET_OPTION</b>,
+            <b>render_file_ctx_s::kitty</b>,
+            <b>render_file_ctx_s::kitty_only</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>NAMED_REGISTER_CONTEXT</b>, <b>platform_font_resolve()</b>,
+            <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>render_file_ctx_s::progress</b>,
+            <b>render_file_ctx_s::recording</b>,
+            <b>RENDER_AUTO_FONT_SIZE_PT</b>,
+            <b>RENDER_AUTO_MIN_FONT_SIZE_PT</b>,
+            <b>RENDER_AUTO_VIDEO_MAX_DIMENSION</b>, <b>render_file_create()</b>,
+            <b>render_progress_create()</b>, <b>render_file_ctx_s::renderer</b>,
+            <b>SAFE_CALLOC</b>, <b>SAFE_FREE</b>, <b>SAFE_GETENV</b>,
+            <b>SAFE_MALLOC</b>, <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>,
+            <b>TERM_BACKGROUND_DARK</b>, <b>term_renderer_create()</b>,
+            <b>term_renderer_destroy()</b>, <b>term_renderer_height_px()</b>,
+            <b>TERM_RENDERER_THEME_AUTO</b>, <b>TERM_RENDERER_THEME_DARK</b>,
+            <b>TERM_RENDERER_THEME_LIGHT</b>, <b>term_renderer_width_px()</b>,
+            <b>terminal_is_stdout_tty()</b>,
+            <b>ui_controller_title_render()</b>, and <b>UI_TITLE_RENDERING</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_create()</b>,
+            <b>render_file_create()</b>, and
+            <b>session_display_init_render_file()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> render_file_destroy (<b
+              >render_file_ctx_t</b
+            >
+            * ctx)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>356</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+356                                                               {
+357   if (!ctx)
+358     return ASCIICHAT_OK;
+359   NAMED_UNREGISTER(ctx);
+360   ui_controller_title_render(ctx-&gt;error == ASCIICHAT_OK ? UI_TITLE_FINALIZING : UI_TITLE_FAILED);
+361   render_progress_finalize(ctx-&gt;progress);
+362   uint64_t target = ctx-&gt;audio_target;
+363   asciichat_error_t err = ASCIICHAT_OK;
+364   while (ctx-&gt;audio_samples_written &lt; target) {
+365     int count = (int)((target - ctx-&gt;audio_samples_written) &gt; (uint64_t)ctx-&gt;audio_buf_size
+366                           ? (uint64_t)ctx-&gt;audio_buf_size
+367                           : target - ctx-&gt;audio_samples_written);
+368     audio_recording_read(ctx-&gt;recording, ctx-&gt;audio_read_buf, count);
+369     err = ffmpeg_encoder_write_audio(ctx-&gt;encoder, ctx-&gt;audio_read_buf, count);
+370     if (err != ASCIICHAT_OK)
+371       break;
+372     ctx-&gt;audio_samples_written += count;
+373   }
+374   audio_recording_destroy(ctx-&gt;recording);
+375   asciichat_error_t close_err = ffmpeg_encoder_destroy(ctx-&gt;encoder);
+376   if (err == ASCIICHAT_OK)
+377     err = close_err;
+378   if (ctx-&gt;error != ASCIICHAT_OK)
+379     err = ctx-&gt;error;
+380   render_progress_destroy(ctx-&gt;progress);
+381   if (err == ASCIICHAT_OK &amp;&amp; ctx-&gt;kitty &amp;&amp; ctx-&gt;frames_written == 0)
+382     err = SET_ERRNO(ERROR_MEDIA_INIT, &quot;No snapshot was rendered for Kitty output&quot;);
+383   if (err == ASCIICHAT_OK &amp;&amp; ctx-&gt;kitty &amp;&amp; ctx-&gt;frames_written &gt; 0)
+384     err = kitty_image_write(stdout, term_renderer_pixels(ctx-&gt;renderer), term_renderer_width_px(ctx-&gt;renderer),
+385                             term_renderer_height_px(ctx-&gt;renderer), term_renderer_pitch(ctx-&gt;renderer));
+386   ui_controller_title_render(err == ASCIICHAT_OK ? UI_TITLE_IDLE : UI_TITLE_FAILED);
+387   term_renderer_destroy(ctx-&gt;renderer);
+388   SAFE_FREE(ctx-&gt;audio_read_buf);
+389   SAFE_FREE(ctx);
+390   return err;
+391 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>,
+            <b>render_file_ctx_s::audio_buf_size</b>,
+            <b>render_file_ctx_s::audio_read_buf</b>,
+            <b>audio_recording_destroy()</b>, <b>audio_recording_read()</b>,
+            <b>render_file_ctx_s::audio_samples_written</b>,
+            <b>render_file_ctx_s::audio_target</b>,
+            <b>render_file_ctx_s::encoder</b>, <b>render_file_ctx_s::error</b>,
+            <b>ERROR_MEDIA_INIT</b>, <b>ffmpeg_encoder_destroy()</b>,
+            <b>ffmpeg_encoder_write_audio()</b>,
+            <b>render_file_ctx_s::frames_written</b>,
+            <b>render_file_ctx_s::kitty</b>, <b>kitty_image_write()</b>,
+            <b>NAMED_UNREGISTER</b>, <b>render_file_ctx_s::progress</b>,
+            <b>render_file_ctx_s::recording</b>, <b>render_file_destroy()</b>,
+            <b>render_progress_destroy()</b>, <b>render_progress_finalize()</b>,
+            <b>render_file_ctx_s::renderer</b>, <b>SAFE_FREE</b>,
+            <b>SET_ERRNO</b>, <b>term_renderer_destroy()</b>,
+            <b>term_renderer_height_px()</b>, <b>term_renderer_pitch()</b>,
+            <b>term_renderer_pixels()</b>, <b>term_renderer_width_px()</b>,
+            <b>ui_controller_title_render()</b>, <b>UI_TITLE_FAILED</b>,
+            <b>UI_TITLE_FINALIZING</b>, and <b>UI_TITLE_IDLE</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_destroy()</b>,
+            <b>render_file_destroy()</b>, and
+            <b>session_display_finish_render_file()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_render_file_set_live_timing_(">
+            <a class="permalink" href="#void_render_file_set_live_timing_("
+              >void render_file_set_live_timing (<b>render_file_ctx_t</b> *
+              ctx)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>249</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+249                                                          {
+250   if (ctx) {
+251     ctx-&gt;live_timing = true;
+252     if (ctx-&gt;encoder)
+253       ffmpeg_encoder_set_live_timing(ctx-&gt;encoder);
+254   }
+255 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>render_file_ctx_s::encoder</b>,
+            <b>ffmpeg_encoder_set_live_timing()</b>,
+            <b>render_file_ctx_s::live_timing</b>, and
+            <b>render_file_set_live_timing()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_set_live_timing()</b>,
+            <b>session_display_render_frame()</b>, and
+            <b>session_display_set_render_live_timing()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_render_file_set_snapshot_actual_duration_(">
+            <a
+              class="permalink"
+              href="#void_render_file_set_snapshot_actual_duration_("
+              >void render_file_set_snapshot_actual_duration (<b
+                >render_file_ctx_t</b
+              >
+              * ctx, double actual_duration_sec)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>350</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+350                                                                                                   {
+351   if (!ctx || !ctx-&gt;encoder)
+352     return;
+353   ffmpeg_encoder_set_snapshot_actual_duration(ctx-&gt;encoder, actual_duration_sec);
+354 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>render_file_ctx_s::encoder</b>,
+            <b>ffmpeg_encoder_set_snapshot_actual_duration()</b>, and
+            <b>render_file_set_snapshot_actual_duration()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_set_snapshot_actual_duration()</b>,
+            <b>render_file_set_snapshot_actual_duration()</b>, and
+            <b>session_display_set_snapshot_actual_duration()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> render_file_write_frame (<b
+              >render_file_ctx_t</b
+            >
+            * ctx, const char * frame, <b>uint64_t</b> captured_ns)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>331</b> of file <b>renderer.c</b>.
+          </p>
+          <pre>
+331                                                                                                            {
+332   if (!ctx || !frame)
+333     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing render context or frame&quot;);
+334   if (ctx-&gt;error != ASCIICHAT_OK)
+335     return ctx-&gt;error;
+336   asciichat_error_t err = render_file_write_frame_internal(ctx, frame, captured_ns);
+337   if (err != ASCIICHAT_OK)
+338     ui_controller_title_render(UI_TITLE_FAILED);
+339   render_progress_frame(ctx-&gt;progress, frame, err == ASCIICHAT_OK);
+340   if (err != ASCIICHAT_OK)
+341     ctx-&gt;error = err;
+342   return err;
+343 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>render_file_ctx_s::error</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>render_file_ctx_s::progress</b>,
+            <b>render_file_write_frame()</b>, <b>render_progress_frame()</b>,
+            <b>SET_ERRNO</b>, <b>ui_controller_title_render()</b>, and
+            <b>UI_TITLE_FAILED</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>render_file_write_frame()</b>,
+            <b>render_file_write_frame()</b>,
+            <b>session_display_encode_frame()</b>, and
+            <b>session_display_render_frame()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

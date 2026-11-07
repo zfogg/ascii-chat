@@ -38,15 +38,15 @@
  * @brief Single filter pattern with all its settings
  */
 typedef struct {
-  const char *original;         ///< Original pattern string (for display)
-  char *parsed_pattern;         ///< Parsed pattern (without delimiters/flags)
-  pcre2_singleton_t *singleton; ///< PCRE2 singleton (NULL if fixed string)
-  bool is_fixed_string;         ///< True for fixed string matching (no regex)
-  bool case_insensitive;        ///< Case-insensitive matching (i flag)
-  bool invert;                  ///< Invert match (I flag)
-  bool global_flag;             ///< Highlight all matches (g flag)
-  int context_before;           ///< Lines before match (B flag)
-  int context_after;            ///< Lines after match (A flag)
+  const char *original;  ///< Original pattern string (for display)
+  char *parsed_pattern;  ///< Parsed pattern (without delimiters/flags)
+  pcre2_code *compiled;  ///< Compiled pattern (NULL if fixed string)
+  bool is_fixed_string;  ///< True for fixed string matching (no regex)
+  bool case_insensitive; ///< Case-insensitive matching (i flag)
+  bool invert;           ///< Invert match (I flag)
+  bool global_flag;      ///< Highlight all matches (g flag)
+  int context_before;    ///< Lines before match (B flag)
+  int context_after;     ///< Lines after match (A flag)
 } grep_pattern_t;
 
 /**
@@ -199,8 +199,8 @@ static pcre2_match_data *get_thread_match_data(void) {
   if (!data) {
     // Find any regex pattern to create match data from
     for (int i = 0; i < g_filter_state.pattern_count; i++) {
-      if (g_filter_state.patterns[i].singleton) {
-        pcre2_code *code = asciichat_pcre2_singleton_get_code(g_filter_state.patterns[i].singleton);
+      if (g_filter_state.patterns[i].compiled) {
+        pcre2_code *code = g_filter_state.patterns[i].compiled;
         if (code) {
           data = pcre2_match_data_create_from_pattern(code, NULL);
           if (data) {
@@ -463,14 +463,15 @@ asciichat_error_t grep_init(const char *pattern) {
 
   // Compile regex (skip for fixed strings)
   if (!parsed.is_fixed_string) {
-    new_pat->singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
-    if (!new_pat->singleton) {
+    new_pat->compiled = asciichat_pcre2_compile(parsed.pattern, parsed.pcre2_options);
+    if (!new_pat->compiled) {
+      SAFE_FREE(original_copy);
       SAFE_FREE(new_pat->parsed_pattern);
       return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to compile regex pattern");
     }
 
     // Validate compilation
-    pcre2_code *code = asciichat_pcre2_singleton_get_code(new_pat->singleton);
+    pcre2_code *code = new_pat->compiled;
     if (!code) {
       SAFE_FREE(new_pat->parsed_pattern);
       return SET_ERRNO(ERROR_INVALID_PARAM, "Regex compilation failed");
@@ -572,16 +573,16 @@ bool grep_should_output(const char *log_line, size_t *match_start, size_t *match
       }
     } else {
       // Regex matching
-      if (!match_data || !pat->singleton) {
+      if (!match_data || !pat->compiled) {
         continue;
       }
 
-      pcre2_code *code = asciichat_pcre2_singleton_get_code(pat->singleton);
+      pcre2_code *code = pat->compiled;
       if (!code) {
         continue;
       }
 
-      int rc = pcre2_jit_match(code, (PCRE2_SPTR)log_line, line_len, 0, 0, match_data, NULL);
+      int rc = asciichat_pcre2_match(code, (PCRE2_SPTR)log_line, line_len, 0, 0, match_data, NULL);
       if (rc >= 0) {
         this_match = true;
         if (!matched_pattern) {
@@ -706,19 +707,14 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
       SAFE_STRNCPY(fixed_string_pattern, global_pat->parsed_pattern, sizeof(fixed_string_pattern));
       is_fixed_string_pattern = true;
       case_insensitive_fixed = global_pat->case_insensitive;
-    } else if (global_pat && global_pat->singleton) {
-      code = asciichat_pcre2_singleton_get_code(global_pat->singleton);
+    } else if (global_pat && global_pat->compiled) {
+      code = global_pat->compiled;
       match_data = get_thread_match_data();
     } else if (is_log_search) {
       // Interactive grep global highlighting - get pattern from grep state
-      void *grep_singleton_void = log_search_get_pattern_singleton();
-      if (grep_singleton_void) {
-        pcre2_singleton_t *grep_singleton = (pcre2_singleton_t *)grep_singleton_void;
-        code = asciichat_pcre2_singleton_get_code(grep_singleton);
-        // Create match data for this pattern
-        if (code) {
-          match_data = pcre2_match_data_create_from_pattern(code, NULL);
-        }
+      code = (pcre2_code *)log_search_copy_pattern();
+      if (code) {
+        match_data = pcre2_match_data_create_from_pattern(code, NULL);
       } else {
         // No regex pattern - check if it's a fixed string pattern in interactive grep
         int pattern_len = log_search_get_input_len();
@@ -733,10 +729,12 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
       }
     }
 
-    if (!code && !is_fixed_string_pattern) {
+    if ((!code || !match_data) && !is_fixed_string_pattern) {
       if (match_data && is_log_search) {
         pcre2_match_data_free(match_data); // Free if we created it
       }
+      if (is_log_search && !global_pat && code)
+        pcre2_code_free(code);
       return colored_text; // Fall back to no highlighting
     }
 
@@ -810,7 +808,7 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
 
     // Find all matches in plain text and highlight in colored text (regex matching)
     while (plain_offset < plain_len) {
-      int rc = pcre2_jit_match(code, (PCRE2_SPTR)plain_text, plain_len, plain_offset, 0, match_data, NULL);
+      int rc = asciichat_pcre2_match(code, (PCRE2_SPTR)plain_text, plain_len, plain_offset, 0, match_data, NULL);
       if (rc < 0) {
         break; // No more matches
       }
@@ -906,6 +904,8 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
     if (is_log_search && match_data && !global_pat) {
       pcre2_match_data_free(match_data);
     }
+    if (is_log_search && !global_pat && code)
+      pcre2_code_free(code);
 
     return highlight_buffer;
   }
@@ -1007,11 +1007,23 @@ void grep_destroy(void) {
     char *original_to_free = (char *)pat->original;
     SAFE_FREE(original_to_free);
     SAFE_FREE(pat->parsed_pattern);
-    // Singletons are auto-cleaned by asciichat_pcre2_cleanup_all()
-    pat->singleton = NULL;
+    if (pat->compiled)
+      pcre2_code_free(pat->compiled);
+    pat->compiled = NULL;
   }
   SAFE_FREE(g_filter_state.patterns);
   g_filter_state.patterns = NULL; // Make idempotent
+  for (int i = 0; i < g_filter_state.saved_pattern_count; i++) {
+    grep_pattern_t *saved = &g_filter_state.saved_patterns[i];
+    char *original = (char *)saved->original;
+    SAFE_FREE(original);
+    SAFE_FREE(saved->parsed_pattern);
+    if (saved->compiled)
+      pcre2_code_free(saved->compiled);
+  }
+  SAFE_FREE(g_filter_state.saved_patterns);
+  g_filter_state.saved_pattern_count = 0;
+  g_filter_state.saved_pattern_capacity = 0;
 
   // Free context buffer
   if (g_filter_state.line_buffer) {
@@ -1037,109 +1049,78 @@ void grep_destroy(void) {
  * Save/Restore Functions for Interactive Grep
  * ========================================================================== */
 
+static void grep_free_pattern(grep_pattern_t *pattern) {
+  char *original = (char *)pattern->original;
+  SAFE_FREE(original);
+  SAFE_FREE(pattern->parsed_pattern);
+  if (pattern->compiled)
+    pcre2_code_free(pattern->compiled);
+  memset(pattern, 0, sizeof(*pattern));
+}
+
+static asciichat_error_t grep_copy_patterns(const grep_pattern_t *src, int count, grep_pattern_t **out) {
+  *out = NULL;
+  if (!count)
+    return ASCIICHAT_OK;
+  grep_pattern_t *copy = SAFE_CALLOC((size_t)count, sizeof(*copy), grep_pattern_t *);
+  if (!copy)
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate filter patterns");
+  for (int i = 0; i < count; i++) {
+    copy[i] = src[i];
+    copy[i].original = NULL;
+    copy[i].parsed_pattern = NULL;
+    copy[i].compiled = NULL;
+    char *original = NULL;
+    SAFE_STRDUP(original, src[i].original);
+    copy[i].original = original;
+    SAFE_STRDUP(copy[i].parsed_pattern, src[i].parsed_pattern);
+    if (src[i].compiled)
+      copy[i].compiled = pcre2_code_copy(src[i].compiled);
+    if (!copy[i].original || !copy[i].parsed_pattern || (src[i].compiled && !copy[i].compiled)) {
+      for (int j = 0; j <= i; j++)
+        grep_free_pattern(&copy[j]);
+      SAFE_FREE(copy);
+      return SET_ERRNO(ERROR_MEMORY, "Failed to copy filter pattern");
+    }
+  }
+  *out = copy;
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t grep_save_patterns(void) {
-  // Free previous saved patterns if any
-  if (g_filter_state.saved_patterns) {
-    for (int i = 0; i < g_filter_state.saved_pattern_count; i++) {
-      SAFE_FREE(g_filter_state.saved_patterns[i].parsed_pattern);
-    }
-    SAFE_FREE(g_filter_state.saved_patterns);
-  }
-
-  // Allocate saved pattern array
-  if (g_filter_state.pattern_count > 0) {
-    g_filter_state.saved_patterns =
-        SAFE_MALLOC(g_filter_state.pattern_count * sizeof(grep_pattern_t), grep_pattern_t *);
-    if (!g_filter_state.saved_patterns) {
-      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate saved pattern array");
-    }
-
-    // Deep copy all patterns
-    for (int i = 0; i < g_filter_state.pattern_count; i++) {
-      grep_pattern_t *src = &g_filter_state.patterns[i];
-      grep_pattern_t *dst = &g_filter_state.saved_patterns[i];
-
-      // Copy pattern structure
-      *dst = *src;
-
-      // Deep copy parsed_pattern string
-      dst->parsed_pattern = SAFE_MALLOC(strlen(src->parsed_pattern) + 1, char *);
-      if (!dst->parsed_pattern) {
-        // Clean up partial save
-        for (int j = 0; j < i; j++) {
-          SAFE_FREE(g_filter_state.saved_patterns[j].parsed_pattern);
-        }
-        SAFE_FREE(g_filter_state.saved_patterns);
-        g_filter_state.saved_patterns = NULL;
-        return SET_ERRNO(ERROR_MEMORY, "Failed to save pattern string");
-      }
-      memcpy(dst->parsed_pattern, src->parsed_pattern, strlen(src->parsed_pattern) + 1);
-
-      // Singleton pointers are shared (reference counted)
-      dst->singleton = src->singleton;
-    }
-  }
-
+  grep_pattern_t *copy = NULL;
+  asciichat_error_t result = grep_copy_patterns(g_filter_state.patterns, g_filter_state.pattern_count, &copy);
+  if (result != ASCIICHAT_OK)
+    return result;
+  for (int i = 0; i < g_filter_state.saved_pattern_count; i++)
+    grep_free_pattern(&g_filter_state.saved_patterns[i]);
+  SAFE_FREE(g_filter_state.saved_patterns);
+  g_filter_state.saved_patterns = copy;
   g_filter_state.saved_pattern_count = g_filter_state.pattern_count;
   g_filter_state.saved_pattern_capacity = g_filter_state.pattern_count;
   g_filter_state.saved_enabled = g_filter_state.enabled;
-
   return ASCIICHAT_OK;
 }
 
 asciichat_error_t grep_restore_patterns(void) {
-  // Clear current patterns (but don't free the array)
-  for (int i = 0; i < g_filter_state.pattern_count; i++) {
-    SAFE_FREE(g_filter_state.patterns[i].parsed_pattern);
-    g_filter_state.patterns[i].singleton = NULL;
-  }
-
-  // Ensure we have capacity for saved patterns
-  if (g_filter_state.saved_pattern_count > g_filter_state.pattern_capacity) {
-    grep_pattern_t *new_patterns = SAFE_REALLOC(
-        g_filter_state.patterns, g_filter_state.saved_pattern_count * sizeof(grep_pattern_t), grep_pattern_t *);
-    if (!new_patterns) {
-      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate pattern array for restore");
-    }
-    g_filter_state.patterns = new_patterns;
-    g_filter_state.pattern_capacity = g_filter_state.saved_pattern_count;
-  }
-
-  // Restore patterns
-  if (g_filter_state.saved_patterns) {
-    for (int i = 0; i < g_filter_state.saved_pattern_count; i++) {
-      grep_pattern_t *src = &g_filter_state.saved_patterns[i];
-      grep_pattern_t *dst = &g_filter_state.patterns[i];
-
-      // Copy pattern structure
-      *dst = *src;
-
-      // Deep copy parsed_pattern string
-      dst->parsed_pattern = SAFE_MALLOC(strlen(src->parsed_pattern) + 1, char *);
-      if (!dst->parsed_pattern) {
-        // Clean up partial restore
-        for (int j = 0; j < i; j++) {
-          SAFE_FREE(g_filter_state.patterns[j].parsed_pattern);
-        }
-        g_filter_state.pattern_count = 0;
-        return SET_ERRNO(ERROR_MEMORY, "Failed to restore pattern string");
-      }
-      memcpy(dst->parsed_pattern, src->parsed_pattern, strlen(src->parsed_pattern) + 1);
-
-      // Singleton pointers are shared (reference counted)
-      dst->singleton = src->singleton;
-    }
-  }
-
+  grep_pattern_t *copy = NULL;
+  asciichat_error_t result =
+      grep_copy_patterns(g_filter_state.saved_patterns, g_filter_state.saved_pattern_count, &copy);
+  if (result != ASCIICHAT_OK)
+    return result;
+  for (int i = 0; i < g_filter_state.pattern_count; i++)
+    grep_free_pattern(&g_filter_state.patterns[i]);
+  SAFE_FREE(g_filter_state.patterns);
+  g_filter_state.patterns = copy;
   g_filter_state.pattern_count = g_filter_state.saved_pattern_count;
+  g_filter_state.pattern_capacity = g_filter_state.saved_pattern_count;
   g_filter_state.enabled = g_filter_state.saved_enabled;
-
   return ASCIICHAT_OK;
 }
 
 void grep_clear_patterns(void) {
-  // Don't free patterns, just set count to 0
-  // This allows quick restore without reallocation
+  for (int i = 0; i < g_filter_state.pattern_count; i++)
+    grep_free_pattern(&g_filter_state.patterns[i]);
   g_filter_state.pattern_count = 0;
   g_filter_state.enabled = false;
 }

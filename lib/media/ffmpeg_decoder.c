@@ -327,14 +327,9 @@ static int ffmpeg_interrupt_callback(void *opaque) {
  */
 
 static void ffmpeg_otel_result(int result, bool streaming) {
-#ifdef ASCIICHAT_WITH_OTEL
   // EOF, buffering and application cancellation are expected control flow.
   if (result < 0 && result != AVERROR_EXIT && !(streaming && (result == AVERROR_EOF || result == AVERROR(EAGAIN))))
     gotel_current_error("ffmpeg.error", "FFmpeg operation failed");
-#else
-  (void)result;
-  (void)streaming;
-#endif
 }
 
 static int traced_format_open(AVFormatContext **format, const char *path, const AVInputFormat *input,
@@ -428,6 +423,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     uint64_t read_start_ns = time_get_ns();
     bool frame_decoded = false;
     bool reached_eof = false;
+    bool packet_rejected = false;
     asciichat_errno_scope_t decode_scope = errno_checkpoint();
 
     // Release prefetch mutex but hold read_frame_mutex to prevent concurrent traced_packet_read() calls from audio
@@ -439,6 +435,9 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       mutex_lock(&decoder->prefetch_mutex);
       continue;
     }
+    // Interrupted reads are expected. Publish a failure only after deciding
+    // whether this attempt was cancelled or superseded by a seek.
+    bool notifications_suppressed = errno_notifications_suppress(true);
 
     ASCII_OTEL_SCOPE(FFMPEG_VIDEO_DECODE);
     ASCII_OTEL_ATTR_STRING("media.codec", avcodec_get_name(decoder->video_codec_ctx->codec_id));
@@ -492,7 +491,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
           if (ret == AVERROR(EAGAIN))
             continue;
           if (ret < 0) {
-            SET_ERRNO(ERROR_MEDIA_DECODE, "Video decoder rejected packet: %d", ret);
+            packet_rejected = true;
             break;
           }
 
@@ -644,6 +643,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     // Mutex now held - update prefetch state
     bool obsolete = generation != decoder->seek_generation;
     bool interrupted = decoder->prefetch_should_stop || decoder->seeking_in_progress || obsolete || cancelled;
+    errno_notifications_suppress(notifications_suppressed);
     if (interrupted)
       errno_scope_end(decode_scope, ASCIICHAT_ERRNO_HANDLED);
     if (obsolete) {
@@ -652,7 +652,10 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     }
     if (!frame_decoded && !reached_eof && !interrupted) {
       if (!errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
-        SET_ERRNO(ERROR_MEDIA_DECODE, "Background video decoding failed (FFmpeg result %d)", decode_result);
+        if (packet_rejected)
+          SET_ERRNO(ERROR_MEDIA_DECODE, "Video decoder rejected packet: %d", decode_result);
+        else
+          SET_ERRNO(ERROR_MEDIA_DECODE, "Background video decoding failed (FFmpeg result %d)", decode_result);
         if (!errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
           decoder->prefetch_failure.code = ERROR_MEDIA_DECODE;
           SAFE_STRNCPY(decoder->prefetch_failure.context_message, "Background video decoding failed",
@@ -760,6 +763,12 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
 }
 
 ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*cancel)(void *), void *data) {
+  return ffmpeg_decoder_create_with_request_options(path, cancel, data, NULL, NULL, NULL);
+}
+
+ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, bool (*cancel)(void *), void *data,
+                                                             const char *headers, const char *cookies,
+                                                             const char *proxy) {
   ASCII_OTEL_SCOPE(FFMPEG_DECODER_CREATE_INTERRUPTIBLE);
   if (!path) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Path is NULL");
@@ -802,13 +811,20 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
     // Configure FFmpeg options for HTTP streaming performance
     AVDictionary *options = NULL;
 
-    // Local paths must not create URL errors or diagnostic notifications.
-    // Resolve a failed explicit-URL probe without dismissing older errors.
+    // FFmpeg accepts HTTP authorities that the application URL validator rejects.
+    // Classify the protocol rather than validating the host for timeout settings.
+    bool is_http = path && (platform_strncasecmp(path, "http://", sizeof("http://") - 1) == 0 ||
+                            platform_strncasecmp(path, "https://", sizeof("https://") - 1) == 0);
     asciichat_errno_scope_t url_scope = errno_scope_begin();
-    bool is_url = path && strstr(path, "://") && url_is_valid(path);
+    bool is_url = is_http || (path && strstr(path, "://") && url_is_valid(path));
     errno_scope_end(url_scope, ASCIICHAT_ERRNO_DISMISSED);
-    // For HTTP/HTTPS streams: enable fast probing and reconnection.
     if (is_url) {
+      if (headers && *headers)
+        av_dict_set(&options, "headers", headers, 0);
+      if (cookies && *cookies)
+        av_dict_set(&options, "cookies", cookies, 0);
+      if (proxy)
+        av_dict_set(&options, "http_proxy", proxy, 0);
       // Limit probing to 32KB for faster format detection
       av_dict_set(&options, "probesize", "32768", 0);
       // Analyze for 100ms max to determine streams quickly

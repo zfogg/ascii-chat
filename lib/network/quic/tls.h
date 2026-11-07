@@ -14,6 +14,7 @@ typedef struct {
   /* Set before creating connections; defaults to disabled. */
   bool enable_datagrams;
   bool webtransport;
+  bool accept_native;
   char webtransport_origin[512];
   char webtransport_path[512];
 } acip_quic_tls_t;

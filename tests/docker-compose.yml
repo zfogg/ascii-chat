@@ -43,7 +43,7 @@ services:
     # Use build_docker directory (build is for native OS)
     command: >
       sh -c "cmake --preset docker &&
-             cmake --build build_docker --target tests &&
+             cmake --build build_docker --target all tests-criterion-build &&
              ctest --test-dir build_docker --output-on-failure --parallel 0"
 
     # Optional: Override command for interactive shell
@@ -98,7 +98,7 @@ services:
 
     command: >
       sh -c "cmake --preset docker &&
-             cmake --build build_docker --target tests &&
+             cmake --build build_docker --target all tests-criterion-build &&
              ctest --test-dir build_docker --output-on-failure --parallel 0"
 
     environment:

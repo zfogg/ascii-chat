@@ -201,7 +201,7 @@ for (const { browserQuic, automaticHost } of [
     ];
     let secureVite: ViteDevServer | undefined;
     let pageOrigin = "http://localhost:3000";
-    const wt = await port();
+    const wt = tcp;
     if (browserQuic) {
       secureVite = await createVite({
         server: {
@@ -317,8 +317,6 @@ for (const { browserQuic, automaticHost } of [
           ? [
               "--webtransport-bind-address",
               "127.0.0.1",
-              "--webtransport-port",
-              String(wt),
               "--webtransport-origin",
               pageOrigin,
               "--webtransport-public-url",
@@ -508,6 +506,7 @@ for (const { browserQuic, automaticHost } of [
         ),
       ).toBe(true);
     } finally {
+      writeFileSync(info.outputPath("browser.log"), browserLog.join("\n"));
       await info.attach("browser.log", {
         body: Buffer.from(browserLog.join("\n")),
         contentType: "text/plain",

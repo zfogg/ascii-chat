@@ -129,6 +129,26 @@ Test(options, explicit_flip_values_survive_mode_parsing) {
   cr_assert_eq(opts->flip_y, true);
 }
 
+Test(options, test_pattern_defaults_to_unflipped) {
+  char *argv[] = {"program", "mirror", "--test-pattern", NULL};
+  optind = 1;
+  cr_assert_eq(options_init(3, argv), ASCIICHAT_OK);
+  const options_t *opts = options_get();
+  cr_assert(opts->test_pattern);
+  cr_assert_not(opts->flip_x);
+  cr_assert_not(opts->flip_x_explicit);
+}
+
+Test(options, test_pattern_respects_explicit_flip) {
+  char *argv[] = {"program", "mirror", "--test-pattern", "--flip-x=true", NULL};
+  optind = 1;
+  cr_assert_eq(options_init(4, argv), ASCIICHAT_OK);
+  const options_t *opts = options_get();
+  cr_assert(opts->test_pattern);
+  cr_assert(opts->flip_x);
+  cr_assert(opts->flip_x_explicit);
+}
+
 Test(options, default_values) {
   options_backup_t backup;
   save_options(&backup);

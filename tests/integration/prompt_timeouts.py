@@ -105,7 +105,7 @@ def main():
     if args.probe:
         probe(args.library.resolve(), args.probe, args.log)
         return
-    from terminal_ui import Terminal
+    from ascii_chat_tests.terminal import Terminal
     if args.binary:
         binary = str(args.binary.resolve())
         with tempfile.TemporaryDirectory(prefix="prompt-actions-") as directory:

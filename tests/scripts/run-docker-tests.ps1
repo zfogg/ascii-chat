@@ -260,7 +260,7 @@ if ($Interactive) {
     Write-Host "Starting interactive shell in test container..." -ForegroundColor Cyan
 } else {
     # Build test command using ctest
-    $TestCommand = "ctest --test-dir build_docker --output-on-failure --parallel 0"
+    $TestCommand = "ctest --test-dir build_docker --output-on-failure --parallel"
 
     # Use PowerShell's built-in -Verbose parameter (from [CmdletBinding()])
     # $VerbosePreference is set to 'Continue' when -Verbose is used
@@ -307,16 +307,16 @@ rm -rf build_docker
 echo 'Configuring CMake using docker preset (Debug with BUILD_TESTS=ON)...'
 cmake --preset docker -B build_docker
 echo 'Building test executables...'
-cmake --build build_docker --target tests
+cmake --build build_docker --target all tests-criterion-build
 "@
     } else {
         $BuildCommand = @"
-if [ ! -d build_docker ]; then
+if [ ! -f build_docker/CMakeCache.txt ] || [ ! -f build_docker/build.ninja ]; then
     echo 'First time setup - configuring CMake using docker preset (Debug with BUILD_TESTS=ON)...'
     cmake --preset docker -B build_docker
 fi
 echo 'Building test executables...'
-cmake --build build_docker --target tests
+cmake --build build_docker --target all tests-criterion-build
 "@
     }
 

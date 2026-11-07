@@ -6,6 +6,7 @@ import _environment  # noqa: F401
 
 from pathlib import Path
 import re
+import io
 from contextlib import closing
 import socket
 import sqlite3
@@ -13,11 +14,12 @@ import time
 import subprocess
 import sys
 import tempfile
-from server_lifecycle import Service, free_port
+from ascii_chat_tests.process import Service, free_port
 
 
 def main():
-    sys.stdout.reconfigure(encoding="utf-8")
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8")
     binary, fixture = (Path(p).resolve() for p in sys.argv[1:3])
     with tempfile.TemporaryDirectory(prefix="ascii-quic-handoff-") as temporary:
         directory = Path(temporary)
@@ -66,7 +68,9 @@ def main():
                             "--quic-tls-cert", str(cert), "--quic-tls-key", str(key)], environment)
             services.append(host)
             host.wait_for("Session created:", timeout=30)
-            name = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())[1]
+            match = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())
+            assert match, host.text()[-8000:]
+            name = match[1]
             route = ["--test-pattern", "--discovery-quic", "--quic-ca-file", str(cert),
                      "--server-key", str(trusted_keys)]
             successor = Service(binary, directory, "successor", name, common + route +

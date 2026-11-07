@@ -8,16 +8,15 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import json
-import os
 from pathlib import Path
 import subprocess
 import threading
-import time
 import numpy as np
-import pyaudiowpatch as pa
+pa = __import__("pyaudiowpatch")
 from windows_console import WindowsConsole
 
 
@@ -48,10 +47,10 @@ def main():
         rate, channels = metadata["rate"], metadata["channels"]
         output = np.load(args.artifacts / "loopback.npy")
     else:
-        term = WindowsConsole([str(args.binary.resolve()), "--no-check-update", "--log-level", "info",
+        term = WindowsConsole(cli_command(str(args.binary.resolve()), "--log-level", "info",
                                "--log-file", str((args.artifacts / "application.log").resolve()), "mirror",
                                "--test-pattern", "--volume", "0.6",
-                               "--fps", "60", "--splash-screen=false"], rows=30, cols=100)
+                               "--fps", "60", "--splash-screen=false"), rows=30, cols=100)
         chunks = []
         try:
             term.expect(lambda text: text.count("oo") > 15, "Initial source", timeout=90)

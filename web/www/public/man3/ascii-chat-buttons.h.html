@@ -1,0 +1,247 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>buttons.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">buttons.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">buttons.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">buttons.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>ui_button_t</b>
+            <br />
+            struct <b>ui_buttons_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>ui_buttons_key</b> (<b>ui_buttons_t</b> *state, const
+            <b>ui_button_t</b> *buttons, size_t count,
+            <b>keyboard_key_t</b> key)
+            <br />
+            void <b>ui_buttons_render</b> (<b>frame_buffer_t</b> *out, int row,
+            int left, int width, const <b>ui_button_t</b> *buttons, size_t
+            count, size_t selected)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_buttons_key_(">
+            <a class="permalink" href="#int_ui_buttons_key_("
+              >int ui_buttons_key (<b>ui_buttons_t</b> * state, const
+              <b>ui_button_t</b> * buttons, size_t count,
+              <b>keyboard_key_t</b> key)</a
+            >
+          </h2>
+          <p class="Pp">
+            Returns the activated index or -1. Disabled buttons cannot activate.
+          </p>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>buttons.c</b>.
+          </p>
+          <pre>
+8                                                                                         {
+9   if (!s || !b || !n) {
+10     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Button state and entries are required&quot;);
+11     return -1;
+12   }
+13   if (s-&gt;selected &gt;= n)
+14     s-&gt;selected = 0;
+15   if (key == KEY_LEFT || key == KEY_UP)
+16     s-&gt;selected = s-&gt;selected ? s-&gt;selected - 1 : n - 1;
+17   else if (key == KEY_RIGHT || key == KEY_DOWN || key == '\t')
+18     s-&gt;selected = (s-&gt;selected + 1) % n;
+19   else {
+20     for (size_t i = 0; i &lt; n; ++i)
+21       if (!b[i].disabled &amp;&amp; b[i].shortcut &amp;&amp; key == b[i].shortcut)
+22         return (int)i;
+23     if ((key == '\r' || key == '\n' || key == ' ') &amp;&amp; !b[s-&gt;selected].disabled)
+24       return (int)s-&gt;selected;
+25   }
+26   return -1;
+27 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_button_t::disabled</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>KEY_DOWN</b>, <b>KEY_LEFT</b>, <b>KEY_RIGHT</b>, <b>KEY_UP</b>,
+            <b>ui_buttons_t::selected</b>, <b>SET_ERRNO</b>, and
+            <b>ui_buttons_key()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_buttons_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_buttons_render_(">
+            <a class="permalink" href="#void_ui_buttons_render_("
+              >void ui_buttons_render (<b>frame_buffer_t</b> * out, int row, int
+              left, int width, const <b>ui_button_t</b> * buttons, size_t count,
+              size_t selected)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>29</b> of file <b>buttons.c</b>.
+          </p>
+          <pre>
+30                                         {
+31   if (!out || !b || row &lt; 1 || left &lt; 1 || width &lt; 1) {
+32     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid buttons output or geometry&quot;);
+33     return;
+34   }
+35   int total = n ? (int)(n - 1) * 3 : 0;
+36   for (size_t i = 0; i &lt; n; ++i)
+37     total += display_width(b[i].label);
+38   bool stacked = total &gt; width;
+39   int col = left + (width - total) / 2;
+40   for (size_t i = 0; i &lt; n; ++i) {
+41     int length = display_width(b[i].label);
+42     int x = stacked ? left + (width - length) / 2 : col;
+43     bool selected_button = i == selected;
+44     bool colors = !GET_OPTION(strip_ansi) &amp;&amp; GET_OPTION(color_mode) != TERM_COLOR_NONE &amp;&amp;
+45                   terminal_should_color_output(frame_buffer_get_screen_output_fd());
+46     if (selected_button &amp;&amp; colors) {
+47       terminal_color_mode_t mode = GET_OPTION(color_mode);
+48       if (mode == TERM_COLOR_AUTO)
+49         mode = (terminal_color_mode_t)log_get_color_mode();
+50       if (mode == TERM_COLOR_NONE)
+51         mode = TERM_COLOR_16;
+52       colorscheme_palette_t palette;
+53       colorscheme_current_palette(&amp;palette, mode);
+54       uint8_t grey = colorscheme_highlight_background();
+55       frame_buffer_printf(out, &quot;\033[%d;%dH\033[0m%s&quot;, row + (stacked ? (int)i : 0), x, palette.foreground);
+56       if (b[i].color &gt; LOG_COLOR_DEV &amp;&amp; b[i].color &lt; LOG_COLOR_RESET)
+57         frame_buffer_printf(out, &quot;%s&quot;, palette.background_codes[b[i].color]);
+58       else if (mode &gt;= TERM_COLOR_TRUECOLOR)
+59         frame_buffer_printf(out, &quot;\033[48;2;%u;%u;%um&quot;, grey, grey, grey);
+60       else if (mode &gt;= TERM_COLOR_256)
+61         frame_buffer_printf(out, &quot;\033[48;5;%um&quot;, 232 + (unsigned)grey * 23 / 255);
+62       else
+63         frame_buffer_printf(out, &quot;\033[%dm&quot;, palette.background == TERM_BACKGROUND_DARK ? 100 : 47);
+64       frame_buffer_printf(out, &quot;%s\033[0m&quot;, b[i].label);
+65     } else {
+66       const char *label = colored_string(b[i].disabled ? LOG_COLOR_GREY
+67                                          : b[i].color  ? b[i].color
+68                                                        : LOG_COLOR_FATAL,
+69                                          b[i].label);
+70       frame_buffer_printf(out, &quot;\033[%d;%dH%s%s\033[0m&quot;, row + (stacked ? (int)i : 0), x,
+71                           selected_button ? &quot;\033[7m&quot; : &quot;&quot;, label);
+72     }
+73     col += length + 3;
+74   }
+75 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colorscheme_palette_t::background</b>,
+            <b>colorscheme_palette_t::background_codes</b>,
+            <b>ui_button_t::color</b>, <b>colored_string()</b>,
+            <b>colorscheme_current_palette()</b>,
+            <b>colorscheme_highlight_background()</b>, <b>display_width()</b>,
+            <b>ERROR_INVALID_PARAM</b>,
+            <b>colorscheme_palette_t::foreground</b>,
+            <b>frame_buffer_get_screen_output_fd()</b>,
+            <b>frame_buffer_printf()</b>, <b>GET_OPTION</b>,
+            <b>LOG_COLOR_DEV</b>, <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_GREY</b>,
+            <b>LOG_COLOR_RESET</b>, <b>log_get_color_mode()</b>,
+            <b>SET_ERRNO</b>, <b>TERM_BACKGROUND_DARK</b>, <b>TERM_COLOR_16</b>,
+            <b>TERM_COLOR_256</b>, <b>TERM_COLOR_AUTO</b>,
+            <b>TERM_COLOR_NONE</b>, <b>TERM_COLOR_TRUECOLOR</b>,
+            <b>terminal_should_color_output()</b>, and
+            <b>ui_buttons_render()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_buttons_render()</b>, and
+            <b>ui_error_popup_render()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

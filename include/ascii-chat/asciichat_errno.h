@@ -159,12 +159,17 @@ asciichat_errno_snapshot_t errno_snapshot(uint64_t thread_id, asciichat_error_co
 /** Copy registered thread IDs. Returns the total count so truncation is visible. */
 size_t errno_threads_snapshot(uint64_t *out, size_t capacity);
 size_t errno_history_snapshot(asciichat_errno_history_t *out, size_t capacity);
+/** Count distinct unacknowledged pending frames and visible notifications, copying the newest.
+ * The count and value come from the same synchronized registry snapshot. */
+size_t errno_title_snapshot(asciichat_error_context_t *latest);
 /** Independent, bounded UI notifications. Acknowledgment never changes pending stacks.
  * Enabling starts a fresh terminal session; repeated enable calls preserve the batch.
  * Snapshots are oldest-first. Dismiss only through the last displayed ID so concurrent
  * arrivals remain visible. No callbacks, allocation, or symbolization run on producers.
  */
 void errno_notifications_enable(bool enabled);
+/** Stop collecting new notifications while retaining those already queued. */
+void errno_notifications_pause(void);
 bool errno_notifications_pending(void);
 size_t errno_notifications_snapshot(asciichat_error_context_t *out, size_t capacity, uint64_t *dropped);
 void errno_notifications_dismiss(uint64_t through_id);

@@ -1480,9 +1480,9 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
     SAFE_STRNCPY(params->server_address, bind_addr, sizeof(params->server_address));
   }
   params->server_port = port;
-  if (GET_OPTION(quic_bind_address)[0])
+  if (GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
     params->quic_port = (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : port);
-  if (GET_OPTION(webtransport_bind_address)[0])
+  if ((GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
     SAFE_STRNCPY(params->webtransport_url, GET_OPTION(webtransport_public_url), sizeof(params->webtransport_url));
   if (params->session_type == SESSION_TYPE_DIRECT_TCP) {
     if (nat_upnp_get_endpoint(upnp_ctx, params->server_address, sizeof(params->server_address), &params->server_port) !=
@@ -1729,7 +1729,7 @@ static void server_register_discovery(server_discovery_startup_t *startup, int p
     return;
   }
   acds_session_create_params_t create_params = {0};
-  if (GET_OPTION(webtransport_bind_address)[0] &&
+  if ((GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]) &&
       strlen(GET_OPTION(webtransport_public_url)) >= sizeof(create_params.webtransport_url)) {
     log_error("WebTransport public URL exceeds the discovery endpoint limit");
     return;

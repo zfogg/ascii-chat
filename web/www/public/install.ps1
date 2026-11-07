@@ -65,6 +65,30 @@
         if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) { throw 'Release is missing bin/ascii-chat.exe.' }
         & $binary --version
         if ($LASTEXITCODE -ne 0) { throw "Release executable failed: $LASTEXITCODE" }
+        $ytRelease = Invoke-RestMethod 'https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest' -TimeoutSec 60
+        $ytName = if ($arch -eq 'arm64') { 'yt-dlp_arm64.exe' } else { 'yt-dlp.exe' }
+        $ytAsset = @($ytRelease.assets | Where-Object name -eq $ytName)
+        if ($ytAsset.Count -ne 1 -or $ytAsset[0].digest -notmatch '^sha256:([a-fA-F0-9]{64})$') { throw 'yt-dlp release asset or checksum missing.' }
+        $ytHash = $Matches[1]
+        $ytBinary = Join-Path $payload 'bin\yt-dlp.exe'
+        Invoke-WebRequest -UseBasicParsing $ytAsset[0].browser_download_url -OutFile $ytBinary -TimeoutSec 300
+        if ((Get-FileHash $ytBinary -Algorithm SHA256).Hash -ne $ytHash) { throw 'yt-dlp checksum mismatch.' }
+        & $ytBinary --version
+        if ($LASTEXITCODE -ne 0) { throw "yt-dlp executable failed: $LASTEXITCODE" }
+        $denoRelease = Invoke-RestMethod 'https://api.github.com/repos/denoland/deno/releases/latest' -TimeoutSec 60
+        $denoArch = if ($arch -eq 'arm64') { 'aarch64' } else { 'x86_64' }
+        $denoName = "deno-$denoArch-pc-windows-msvc.zip"
+        $denoAsset = @($denoRelease.assets | Where-Object name -eq $denoName)
+        if ($denoAsset.Count -ne 1 -or $denoAsset[0].digest -notmatch '^sha256:([a-fA-F0-9]{64})$') { throw 'Deno release asset or checksum missing.' }
+        $denoHash = $Matches[1]
+        $denoZip = Join-Path $work 'deno.zip'
+        Invoke-WebRequest -UseBasicParsing $denoAsset[0].browser_download_url -OutFile $denoZip -TimeoutSec 300
+        if ((Get-FileHash $denoZip -Algorithm SHA256).Hash -ne $denoHash) { throw 'Deno checksum mismatch.' }
+        Expand-Archive -LiteralPath $denoZip -DestinationPath "$work\deno"
+        $denoBinary = Join-Path $payload 'bin\deno.exe'
+        Move-Item -LiteralPath "$work\deno\deno.exe" -Destination $denoBinary
+        & $denoBinary --version
+        if ($LASTEXITCODE -ne 0) { throw "Deno executable failed: $LASTEXITCODE" }
         Set-Content -LiteralPath "$payload\.ascii-chat-installer" -Value $tag
         if (Test-Path -LiteralPath $destination) { Move-Item -LiteralPath $destination -Destination $previous }
         $replaced = $true

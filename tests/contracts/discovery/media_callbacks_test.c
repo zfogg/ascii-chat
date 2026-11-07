@@ -1,4 +1,5 @@
 #include <criterion/criterion.h>
+#include <ascii-chat/util/time.h>
 #include "../../../src/discovery/session.h"
 #include "session/client_like.h"
 #include <ascii-chat/audio/client_pipeline.h>
@@ -83,6 +84,11 @@ static void media_stop(discovery_session_t *s) {
   ++stops;
   discovery_session_stop(s);
 }
+static uint64_t media_clock_ns(void) {
+  static uint64_t now;
+  return now += 100;
+}
+#define time_get_ns media_clock_ns
 #define session_capture_read_frame media_read_frame
 #define session_audio_create media_audio_create
 #define session_audio_start_capture media_audio_start
@@ -97,6 +103,7 @@ static void media_stop(discovery_session_t *s) {
 #define discovery_session_create media_create
 #define discovery_session_stop media_stop
 #include "../../../src/discovery/main.c"
+#undef time_get_ns
 #undef session_capture_read_frame
 #undef session_audio_create
 #undef session_audio_start_capture

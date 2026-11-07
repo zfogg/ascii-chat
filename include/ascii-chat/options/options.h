@@ -468,7 +468,7 @@ typedef enum {
 #define OPT_STRETCH_DEFAULT false
 
 /** @brief Default FPS (frames per second) */
-#define OPT_FPS_DEFAULT 60
+#define OPT_FPS_DEFAULT 0
 
 /** @brief Default snapshot mode flag (false = continuous) */
 #define OPT_SNAPSHOT_MODE_DEFAULT false
@@ -767,7 +767,7 @@ typedef enum {
 #define OPT_RENDER_FILE_DEFAULT ""
 #define OPT_RENDER_THEME_DEFAULT 0 // 0=dark, 1=light, 2=auto
 #define OPT_RENDER_FONT_DEFAULT ""
-#define OPT_RENDER_FONT_SIZE_DEFAULT 12.0
+#define OPT_RENDER_FONT_SIZE_DEFAULT 0.0
 
 // ============================================================================
 // Static Default Value Variables
@@ -851,7 +851,6 @@ static const bool default_no_check_update_value = OPT_NO_CHECK_UPDATE_DEFAULT;
 static const bool default_log_format_console_only_value = OPT_LOG_FORMAT_CONSOLE_DEFAULT;
 
 static const double default_debug_errno_stacks_time_value = 0.0;
-static const bool default_debug_errno_stacks_time_explicit_value = false;
 static const double default_debug_sync_state_time_value = 0.0;
 static const bool default_debug_sync_state_time_explicit_value = false;
 static const double default_debug_backtrace_time_value = 0.0;
@@ -957,6 +956,8 @@ typedef enum {
  * All options from the scattered extern globals are now in a single struct.
  * This struct is immutable once published via RCU - modifications create a new copy.
  */
+typedef enum { ASCII_RENDERER_LUMINANCE = 0, ASCII_RENDERER_GLYPH = 1 } ascii_renderer_t;
+
 typedef struct options_state {
   // ============================================================================
   // Mode Detection (auto-detected during options_init)
@@ -995,7 +996,6 @@ typedef struct options_state {
   char webtransport_bind_address[OPTIONS_BUFF_SIZE];  ///< Browser HTTP/3 listener address.
   char webtransport_origin[OPTIONS_BUFF_SIZE];        ///< Allowed browser origin.
   char webtransport_path[OPTIONS_BUFF_SIZE];          ///< HTTP/3 CONNECT path.
-  int webtransport_port;                              ///< Browser HTTP/3 UDP port.
   char quic_bind_address[OPTIONS_BUFF_SIZE];          ///< Concrete local QUIC listener address; empty disables QUIC.
   char quic_tls_cert[OPTIONS_BUFF_SIZE];              ///< Native QUIC TLS certificate.
   char quic_tls_key[OPTIONS_BUFF_SIZE];               ///< Native QUIC TLS private key.
@@ -1081,7 +1081,7 @@ typedef struct options_state {
   bool show_capabilities;                                        ///< Show terminal capabilities and exit
   int force_utf8;                                                ///< UTF-8 support setting (auto/true/false)
   int stats_interval;      ///< Periodic plain statistics on stdout; zero disables.
-  int fps;                 ///< Target framerate (1-144, default: 60)
+  int fps;                 ///< Target framerate (0 = auto, 1-144)
   bool fps_explicitly_set; ///< True if FPS was explicitly configured by the user
   bool face_follow;        ///< Automatically frame and follow the selected face
   bool face_follow_debug;  ///< Developer diagnostic face outline
@@ -1119,6 +1119,8 @@ typedef struct options_state {
   // ============================================================================
   // Image Options
   // ============================================================================
+  bool stabilize;                                    ///< Reduce frame-to-frame character flicker
+  ascii_renderer_t renderer;                         ///< Character selection algorithm
   bool stretch;                                      ///< Allow aspect ratio distortion
   char video_codec[OPTIONS_VIDEO_CODEC_BUFFER_SIZE]; ///< Video codec (auto, hevc, h264, raw) - default: auto
 
@@ -1210,6 +1212,7 @@ typedef struct options_state {
   palette_type_t palette_type;                             ///< Selected palette type
   char palette_custom[OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE]; ///< Custom palette characters
   bool palette_custom_set;                                 ///< True if custom palette was set
+  bool palette_explicit;                                   ///< Palette explicitly selected
 
   // ============================================================================
   // Splash Screen Options
@@ -1241,7 +1244,7 @@ typedef struct options_state {
 #endif
   int render_theme;                    ///< 0=dark 1=light 2=auto
   char render_font[OPTIONS_BUFF_SIZE]; ///< Font family name or .ttf path (empty = platform default)
-  double render_font_size;             ///< Font size in points (default 12.0, supports e.g. 10.5)
+  double render_font_size;             ///< Font size in points (0 selects an automatic size)
 
   // Note: Luminance weights (weight_red, weight_green, weight_blue) and
   // lookup tables (RED[], GREEN[], BLUE[], GRAY[]) are kept as globals

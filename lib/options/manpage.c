@@ -52,17 +52,16 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
     return NULL;
   }
 
-  if ((mode_bitmask & OPTION_MODE_BINARY) && !(mode_bitmask & 0x1F)) {
-    return "global";
-  }
-
   option_mode_bitmask_t user_modes_mask = (1 << MODE_SERVER) | (1 << MODE_CLIENT) | (1 << MODE_MIRROR) |
                                           (1 << MODE_DISCOVERY_SERVICE) | (1 << MODE_DISCOVERY) |
                                           (1 << MODE_MCP_SERVER);
+  if ((mode_bitmask & OPTION_MODE_BINARY) && !(mode_bitmask & user_modes_mask)) {
+    return "global";
+  }
   if ((mode_bitmask & user_modes_mask) == user_modes_mask) {
     // If all user modes are set, check if binary-level is also set
     if (mode_bitmask & OPTION_MODE_BINARY) {
-      return "global, client, server, mirror, discovery-service";
+      return "global, client, server, mirror, discovery-service, mcp-server";
     }
     return "all modes";
   }
@@ -91,6 +90,10 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
   }
   if (mode_bitmask & (1 << MODE_DISCOVERY_SERVICE)) {
     pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sdiscovery-service", pos > 0 ? ", " : "");
+  }
+
+  if (mode_bitmask & (1 << MODE_MCP_SERVER)) {
+    pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "%smcp-server", pos > 0 ? ", " : "");
   }
 
   return pos > 0 ? mode_str : NULL;

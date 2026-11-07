@@ -1,0 +1,1721 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>otel.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">otel.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">otel.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">otel.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>ascii_otel_scope</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>ASCII_OTEL_OPERATION</b>(id, name, realtime)
+            <br />
+            #define <b>ASCII_OTEL_METRIC</b>(id, name, type, unit)
+            <br />
+            #define <b>ASCII_OTEL_ATTR_STRING</b>(key, value)
+            <br />
+            #define <b>ASCII_OTEL_ATTR_INT</b>(key, value)
+            <br />
+            #define <b>ASCII_OTEL_PACKET</b>(type, size, action, transport)
+            <br />
+            #define <b>ASCII_OTEL_SCOPE_PARENT</b>(id, parent)
+            <br />
+            #define <b>ASCII_OTEL_SCOPE</b>(id)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>ascii_otel_scope</b> <b>ascii_otel_scope_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>ascii_otel_operation_t</b> {
+            <b>ASCII_OTEL_OPERATION_COUNT</b> }
+            <br />
+            enum <b>ascii_otel_metric_t</b> { <b>ASCII_OTEL_METRIC_COUNT</b> }
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>ascii_otel_init</b> (const char *mode,
+            int argc, char **argv)
+            <br />
+            void <b>ascii_otel_shutdown</b> (void)
+            <br />
+            <b>bool</b> <b>ascii_otel_enabled</b> (void)
+            <br />
+            const char * <b>ascii_otel_current_operation</b> (void)
+            <br />
+            void <b>ascii_otel_metric</b> (<b>ascii_otel_metric_t</b> metric,
+            double value)
+            <br />
+            void <b>ascii_otel_stats_attach</b> (<b>stats_scope_t</b> *scope)
+            <br />
+            <b>ascii_otel_metric_t</b> <b>ascii_otel_stats_metric</b> (<b
+              >stats_record_kind_t</b
+            >
+            kind, unsigned id)
+            <br />
+            void <b>ascii_otel_ui_usage</b> (const char *screen, const char
+            *event, <b>uint64_t</b> duration_ns)
+            <br />
+            void <b>ascii_otel_call_session_used</b> (const char
+            *session_string)
+            <br />
+            void <b>ascii_otel_packet</b> (<b>ascii_otel_scope_t</b> *scope,
+            <b>uint16_t</b> type, size_t payload_size, const char *action, int
+            transport)
+            <br />
+            void <b>ascii_otel_exit</b> (int code)
+            <br />
+            void <b>ascii_otel_frame_rejected</b> (const char *validator, const
+            char *reason, size_t bytes, <b>uint32_t</b> width,
+            <b>uint32_t</b> height, <b>asciichat_error_t</b> code)
+            <br />
+            gotel_context_t <b>ascii_otel_context</b> (void)
+            <br />
+            void <b>ascii_otel_scope_int</b> (<b>ascii_otel_scope_t</b> *scope,
+            const char *key, int64_t value)
+            <br />
+            void <b>ascii_otel_scope_string</b> (<b>ascii_otel_scope_t</b>
+            *scope, const char *key, const char *value)
+            <br />
+            void <b>ascii_otel_scope_parent</b> (<b>ascii_otel_scope_t</b>
+            *scope, <b>ascii_otel_operation_t</b> operation, const
+            gotel_context_t *parent)
+            <br />
+            void <b>ascii_otel_scope_begin</b> (<b>ascii_otel_scope_t</b>
+            *scope, <b>ascii_otel_operation_t</b> operation)
+            <br />
+            void <b>ascii_otel_scope_end</b> (<b>ascii_otel_scope_t</b> *scope)
+            <br />
+            void <b>ascii_otel_log</b> (int level, const char *file, int line,
+            const char *function, const char *format, va_list args)
+            <br />
+            void <b>ascii_otel_error</b> (const char *message)
+            <br />
+            void <b>ascii_otel_error_code</b> (<b>asciichat_error_t</b> code,
+            const char *message)
+            <br />
+            <b>ascii_otel_operation_t</b>
+            <b>ascii_otel_failure_operation</b> (<b>asciichat_error_t</b>
+            code, const char *origin)
+            <br />
+            double <b>ascii_otel_pipeline_age</b> (<b>uint64_t</b> now,
+            <b>uint64_t</b> capture, <b>uint64_t</b> progress,
+            <b>bool</b> expected)
+            <br />
+            void <b>ascii_otel_pipeline_progress</b> (unsigned stage, unsigned
+            expected)
+            <br />
+            void <b>ascii_otel_http</b> (<b>ascii_otel_scope_t</b> *scope, const
+            char *hostname, const char *path)
+            <br />
+            void <b>ascii_otel_http_status</b> (<b>ascii_otel_scope_t</b>
+            *scope, int status)
+            <br />
+            void <b>ascii_otel_sqlite</b> (sqlite3 *db, const gotel_query_t
+            *queries, size_t count)
+            <br />
+            int <b>ascii_otel_sqlite_prepare</b> (sqlite3 *db, const char *sql,
+            sqlite3_stmt **statement)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ASCII_OTEL_ATTR_INT(_key,__value)">
+            <a
+              class="permalink"
+              href="#_define_ASCII_OTEL_ATTR_INT(_key,__value)"
+              >#define ASCII_OTEL_ATTR_INT( key, value)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>ascii_otel_scope_int(&amp;otel_scope, key, value)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>62</b> of file <b>otel.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_on_host_announcement()</b>,
+            <b>acds_send_current_host()</b>, <b>acip_outbound_submitv()</b>,
+            <b>ascii_otel_frame_rejected()</b>, <b>ascii_otel_ui_usage()</b>,
+            <b>compress_data()</b>, <b>compress_workspace()</b>,
+            <b>crypto_decrypt()</b>, <b>crypto_encrypt()</b>,
+            <b>decompress_data()</b>, <b>decompress_data_exact()</b>,
+            <b>h265_decode()</b>, <b>h265_encode()</b>,
+            <b>h265_encoder_flush()</b>, <b>mcp_error()</b>,
+            <b>nat_upnp_open_protocol()</b>, <b>network_connection_open()</b>,
+            <b>opus_codec_create_decoder_channels()</b>,
+            <b>opus_codec_create_encoder_channels()</b>,
+            <b>opus_codec_decode()</b>, <b>opus_codec_encode()</b>,
+            <b>opus_codec_set_dtx()</b>, <b>rate_limiter_check()</b>, and
+            <b>video_encoder_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ASCII_OTEL_ATTR_STRING(_key,__value)">
+            <a
+              class="permalink"
+              href="#_define_ASCII_OTEL_ATTR_STRING(_key,__value)"
+              >#define ASCII_OTEL_ATTR_STRING( key, value)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>ascii_otel_scope_string(&amp;otel_scope, key, value)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>61</b> of file <b>otel.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_on_host_announcement()</b>,
+            <b>acds_send_current_host()</b>, <b>acip_outbound_submitv()</b>,
+            <b>ascii_otel_call_session_used()</b>,
+            <b>ascii_otel_frame_rejected()</b>, <b>ascii_otel_ui_usage()</b>,
+            <b>compress_data()</b>, <b>compress_workspace()</b>,
+            <b>crypto_decrypt()</b>, <b>crypto_encrypt()</b>,
+            <b>crypto_handshake_process_rekey_complete()</b>,
+            <b>crypto_handshake_process_rekey_request()</b>,
+            <b>crypto_handshake_process_rekey_response()</b>,
+            <b>crypto_handshake_rekey_complete()</b>,
+            <b>crypto_handshake_rekey_request()</b>,
+            <b>crypto_handshake_rekey_response()</b>, <b>decompress_data()</b>,
+            <b>decompress_data_exact()</b>, <b>h265_decode()</b>,
+            <b>h265_encode()</b>, <b>h265_encoder_flush()</b>,
+            <b>mcp_dispatch()</b>, <b>nat_upnp_open_protocol()</b>,
+            <b>network_connection_open()</b>, <b>opus_codec_decode()</b>,
+            <b>opus_codec_encode()</b>, <b>rate_limiter_check()</b>,
+            <b>video_encoder_create()</b>, <b>yt_dlp_extract_with_options()</b>,
+            and <b>yt_dlp_is_available()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ASCII_OTEL_METRIC(_id,__name,__type,__unit)"
+          >
+            <a
+              class="permalink"
+              href="#_define_ASCII_OTEL_METRIC(_id,__name,__type,__unit)"
+              >#define ASCII_OTEL_METRIC( id, name, type, unit)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>ASCII_OTEL_METRIC_##id,</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>13</b> of file <b>otel.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ASCII_OTEL_OPERATION(_id,__name,__realtime)"
+          >
+            <a
+              class="permalink"
+              href="#_define_ASCII_OTEL_OPERATION(_id,__name,__realtime)"
+              >#define ASCII_OTEL_OPERATION( id, name, realtime)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>ASCII_OTEL_##id,</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>7</b> of file <b>otel.h</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_ASCII_OTEL_PACKET(_type,__size,__action,__transport)"
+          >
+            <a
+              class="permalink"
+              href="#_define_ASCII_OTEL_PACKET(_type,__size,__action,__transport)"
+              >#define ASCII_OTEL_PACKET( type, size, action, transport)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>
+ascii_otel_packet(&amp;otel_scope, type, size, action, transport)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>63</b> of file <b>otel.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>packet_receive_via_transport()</b>, and
+            <b>packet_send_via_transportv()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ASCII_OTEL_SCOPE(_id)">
+            <a class="permalink" href="#_define_ASCII_OTEL_SCOPE(_id)"
+              >#define ASCII_OTEL_SCOPE( id)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>
+ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};                                  \
+ascii_otel_scope_begin(&amp;otel_scope, ASCII_OTEL_##id)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>67</b> of file <b>otel.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acds_on_host_announcement()</b>,
+            <b>acds_send_current_host()</b>, <b>acds_server_init()</b>,
+            <b>acds_server_shutdown()</b>,
+            <b>acip_client_receive_and_dispatch()</b>,
+            <b>acip_outbound_create()</b>, <b>acip_outbound_destroy()</b>,
+            <b>acip_outbound_submitv()</b>,
+            <b>acip_send_ascii_frame_contract()</b>,
+            <b>acip_send_audio_batch()</b>, <b>acip_send_audio_opus()</b>,
+            <b>acip_send_audio_opus_batch()</b>, <b>acip_send_error()</b>,
+            <b>acip_send_image_frame()</b>, <b>acip_send_image_frame_h265()</b>,
+            <b>acip_send_ping()</b>, <b>acip_send_server_state()</b>,
+            <b>acip_send_stream_start()</b>, <b>acip_send_stream_stop()</b>,
+            <b>acip_server_receive_and_dispatch()</b>,
+            <b>ascii_frame_init()</b>, <b>ascii_half_frame_init()</b>,
+            <b>audio_destroy()</b>, <b>audio_init()</b>,
+            <b>audio_start_duplex()</b>, <b>audio_stop_duplex()</b>,
+            <b>client_audio_render_thread()</b>,
+            <b>client_connection_start()</b>,
+            <b>client_video_render_thread()</b>, <b>compress_data()</b>,
+            <b>compress_workspace()</b>, <b>crypto_decrypt()</b>,
+            <b>crypto_encrypt()</b>,
+            <b>crypto_handshake_client_auth_response()</b>,
+            <b>crypto_handshake_client_complete()</b>,
+            <b>crypto_handshake_client_key_exchange()</b>,
+            <b>crypto_handshake_process_rekey_complete()</b>,
+            <b>crypto_handshake_process_rekey_request()</b>,
+            <b>crypto_handshake_process_rekey_response()</b>,
+            <b>crypto_handshake_rekey_complete()</b>,
+            <b>crypto_handshake_rekey_request()</b>,
+            <b>crypto_handshake_rekey_response()</b>,
+            <b>crypto_handshake_server_auth_challenge()</b>,
+            <b>crypto_handshake_server_complete()</b>,
+            <b>crypto_handshake_server_start()</b>, <b>database_close()</b>,
+            <b>database_init()</b>, <b>database_session_add_key()</b>,
+            <b>database_session_cleanup_expired()</b>,
+            <b>database_session_clear_host()</b>,
+            <b>database_session_get_keys()</b>,
+            <b>database_session_is_migration_ready()</b>,
+            <b>database_session_join()</b>, <b>database_session_leave()</b>,
+            <b>database_session_lookup()</b>,
+            <b>database_session_revoke_key()</b>,
+            <b>database_session_start_migration()</b>,
+            <b>database_session_update_host()</b>,
+            <b>database_session_verify_key()</b>,
+            <b>database_stats_session_count()</b>,
+            <b>database_stats_snapshot()</b>,
+            <b>database_stats_unique_clients()</b>, <b>decompress_data()</b>,
+            <b>decompress_data_exact()</b>, <b>discovery_session_destroy()</b>,
+            <b>discovery_session_stop()</b>, <b>dns_test_connectivity()</b>,
+            <b>ffmpeg_decoder_create_stdin()</b>,
+            <b>ffmpeg_decoder_create_with_request_options()</b>,
+            <b>ffmpeg_decoder_destroy()</b>, <b>ffmpeg_decoder_poll_video()</b>,
+            <b>ffmpeg_decoder_read_audio_samples()</b>,
+            <b>ffmpeg_decoder_read_video_frame()</b>,
+            <b>ffmpeg_decoder_seek_to_timestamp()</b>, <b>h265_decode()</b>,
+            <b>h265_decoder_create()</b>, <b>h265_encode()</b>,
+            <b>h265_encoder_create()</b>, <b>h265_encoder_flush()</b>,
+            <b>https_get()</b>, <b>mcp_dispatch()</b>, <b>mcp_error()</b>,
+            <b>media_source_create_interruptible()</b>,
+            <b>media_source_destroy()</b>, <b>media_source_read_audio()</b>,
+            <b>media_source_read_video()</b>, <b>media_source_rewind()</b>,
+            <b>media_source_seek()</b>, <b>media_source_start_video()</b>,
+            <b>mixer_add_source()</b>, <b>mixer_create_channels()</b>,
+            <b>mixer_process()</b>, <b>mixer_process_excluding_source()</b>,
+            <b>mixer_remove_source()</b>, <b>nat_upnp_close()</b>,
+            <b>nat_upnp_open_protocol()</b>, <b>nat_upnp_refresh()</b>,
+            <b>network_connection_open()</b>,
+            <b>opus_codec_create_decoder_channels()</b>,
+            <b>opus_codec_create_encoder_channels()</b>,
+            <b>opus_codec_decode()</b>, <b>opus_codec_encode()</b>,
+            <b>opus_codec_set_bitrate()</b>, <b>opus_codec_set_dtx()</b>,
+            <b>packet_receive_via_transport()</b>,
+            <b>packet_send_via_transportv()</b>, <b>parallel_connect()</b>,
+            <b>rate_limiter_check()</b>, <b>rate_limiter_prune()</b>,
+            <b>server_connection_init()</b>, <b>server_connection_lost()</b>,
+            <b>server_connection_shutdown()</b>,
+            <b>session_capture_create()</b>, <b>session_capture_destroy()</b>,
+            <b>session_capture_open_media()</b>,
+            <b>session_capture_open_playlist()</b>,
+            <b>session_capture_process_for_transmission_into()</b>,
+            <b>session_capture_read_audio()</b>,
+            <b>session_capture_read_frame()</b>,
+            <b>session_capture_skip_media()</b>,
+            <b>session_client_like_run()</b>,
+            <b>session_display_convert_to_ascii_reuse()</b>,
+            <b>session_display_create()</b>,
+            <b>session_display_encode_frame()</b>,
+            <b>session_display_write_ascii_frame()</b>,
+            <b>session_display_write_audio()</b>,
+            <b>session_display_write_raw()</b>,
+            <b>session_host_render_audio()</b>, <b>session_render_loop()</b>,
+            <b>video_encoder_create()</b>, <b>yt_dlp_extract_with_options()</b>,
+            and <b>yt_dlp_is_available()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_ASCII_OTEL_SCOPE_PARENT(_id,__parent)">
+            <a
+              class="permalink"
+              href="#_define_ASCII_OTEL_SCOPE_PARENT(_id,__parent)"
+              >#define ASCII_OTEL_SCOPE_PARENT( id, parent)</a
+            >
+          </h2>
+          <p class="Pp"><b>Value:</b></p>
+          <pre>
+ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};                                  \
+ascii_otel_scope_parent(&amp;otel_scope, ASCII_OTEL_##id, parent)</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Definition at line <b>64</b> of file <b>otel.h</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_call_session_used()</b>,
+            <b>ascii_otel_ui_usage()</b>, and
+            <b>session_pipeline_run_main()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>ascii_otel_scope</b>
+              <b>ascii_otel_scope_t</b></a
+            >
+          </h2>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">enum <b>ascii_otel_metric_t</b></h2>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="ASCII_OTEL_METRIC_COUNT">
+              <a class="permalink" href="#ASCII_OTEL_METRIC_COUNT"
+                ><b><i>ASCII_OTEL_METRIC_COUNT </i></b></a
+              >
+            </dt>
+            <dd></dd>
+          </dl>
+          <p class="Pp">Definition at line <b>12</b> of file <b>otel.h</b>.</p>
+          <pre>
+12              {
+13 #define ASCII_OTEL_METRIC(id, name, type, unit) ASCII_OTEL_METRIC_##id,
+14 #include &lt;ascii-chat/otel_metrics.def&gt;
+15 #undef ASCII_OTEL_METRIC
+16   ASCII_OTEL_METRIC_COUNT
+17 } ascii_otel_metric_t;</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">enum <b>ascii_otel_operation_t</b></h2>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="ASCII_OTEL_OPERATION_COUNT">
+              <a class="permalink" href="#ASCII_OTEL_OPERATION_COUNT"
+                ><b><i>ASCII_OTEL_OPERATION_COUNT </i></b></a
+              >
+            </dt>
+            <dd></dd>
+          </dl>
+          <p class="Pp">Definition at line <b>6</b> of file <b>otel.h</b>.</p>
+          <pre>
+6              {
+7 #define ASCII_OTEL_OPERATION(id, name, realtime) ASCII_OTEL_##id,
+8 #include &lt;ascii-chat/otel_operations.def&gt;
+9 #undef ASCII_OTEL_OPERATION
+10   ASCII_OTEL_OPERATION_COUNT
+11 } ascii_otel_operation_t;</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_ascii_otel_call_session_used_(const_char_*_session_string)"
+          >
+            <a
+              class="permalink"
+              href="#void_ascii_otel_call_session_used_(const_char_*_session_string)"
+              >void ascii_otel_call_session_used (const char *
+              session_string)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>442</b> of file <b>otel.c</b>.</p>
+          <pre>
+442                                                               {
+443   if (!session_string || !session_string[0])
+444     return;
+445   // Call usage must not inherit a realtime packet's sampling decision.
+446   gotel_context_t root = {0};
+447   ASCII_OTEL_SCOPE_PARENT(CALL_SESSION_USED, &amp;root);
+448   ASCII_OTEL_ATTR_STRING(&quot;ascii-chat.session.string&quot;, session_string);
+449 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_ATTR_STRING</b>,
+            <b>ascii_otel_call_session_used()</b>, and
+            <b>ASCII_OTEL_SCOPE_PARENT</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ascii_otel_call_session_used()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="gotel_context_t_ascii_otel_context_(void_)">
+            <a
+              class="permalink"
+              href="#gotel_context_t_ascii_otel_context_(void_)"
+              >gotel_context_t ascii_otel_context (void )</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>722</b> of file <b>otel.c</b>.</p>
+          <pre>
+722                                          {
+723   return gotel_current_context();
+724 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ascii_otel_context()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_submitv()</b>,
+            <b>ascii_otel_context()</b>, <b>ascii_otel_error_code()</b>,
+            <b>ascii_otel_frame_rejected()</b>, and <b>mcp_dispatch()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_ascii_otel_current_operation_(void_)">
+            <a
+              class="permalink"
+              href="#const_char_*_ascii_otel_current_operation_(void_)"
+              >const char * ascii_otel_current_operation (void )</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>157</b> of file <b>otel.c</b>.</p>
+          <pre>
+157                                                {
+158   return current_scope &amp;&amp; current_scope-&gt;scope.operation &lt; ASCII_OTEL_OPERATION_COUNT
+159              ? operations[current_scope-&gt;scope.operation].name
+160              : &quot;&quot;;
+161 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_current_operation()</b>, and
+            <b>ASCII_OTEL_OPERATION_COUNT</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_current_operation()</b>, and
+            <b>ascii_otel_error_code()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> ascii_otel_enabled (void )</h2>
+          <p class="Pp">Definition at line <b>162</b> of file <b>otel.c</b>.</p>
+          <pre>
+162                               {
+163   return atomic_load_explicit(&amp;host, memory_order_acquire) != NULL;
+164 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ascii_otel_enabled()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_enabled()</b>,
+            <b>ascii_otel_error_code()</b>, and
+            <b>ascii_otel_pipeline_progress()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_error_(const_char_*_message)">
+            <a
+              class="permalink"
+              href="#void_ascii_otel_error_(const_char_*_message)"
+              >void ascii_otel_error (const char * message)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>801</b> of file <b>otel.c</b>.</p>
+          <pre>
+801                                            {
+802   char redacted[OTEL_BODY_BUFFER_SIZE];
+803   int written = safe_snprintf(redacted, sizeof(redacted), &quot;%s&quot;, message ? message : &quot;&quot;);
+804   if (written &lt; 0)
+805     return;
+806   url_redact_diagnostic(redacted, (size_t)written &gt;= sizeof(redacted));
+807   gotel_current_error(&quot;ascii_chat.error&quot;, redacted);
+808 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_error()</b>, <b>OTEL_BODY_BUFFER_SIZE</b>,
+            <b>safe_snprintf()</b>, and <b>url_redact_diagnostic()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_error()</b>, and <b>mcp_error()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_error_code_(">
+            <a class="permalink" href="#void_ascii_otel_error_code_("
+              >void ascii_otel_error_code (<b>asciichat_error_t</b> code, const
+              char * message)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>773</b> of file <b>otel.c</b>.</p>
+          <pre>
+773                                                                         {
+774   if (code == ASCIICHAT_OK || code == ERROR_SIGNAL_INTERRUPT || code == ERROR_NETWORK_INCOMPLETE)
+775     return;
+776   char redacted[OTEL_BODY_BUFFER_SIZE];
+777   int written = safe_snprintf(redacted, sizeof(redacted), &quot;%s&quot;, message ? message : &quot;&quot;);
+778   if (written &lt; 0)
+779     return;
+780   url_redact_diagnostic(redacted, (size_t)written &gt;= sizeof(redacted));
+781   gotel_current_error(&quot;ascii_chat.error&quot;, redacted);
+782   if (!ascii_otel_enabled())
+783     return;
+784   const char *origin = ascii_otel_current_operation();
+785   ascii_otel_operation_t operation = ascii_otel_failure_operation(code, origin);
+786   if (operation == ASCII_OTEL_OPERATION_COUNT)
+787     return;
+788   const char *category = operation == ASCII_OTEL_FAILURE_CRYPTO     ? &quot;crypto&quot;
+789                          : operation == ASCII_OTEL_FAILURE_PROTOCOL ? &quot;protocol&quot;
+790                                                                     : &quot;discovery&quot;;
+791   gotel_context_t parent = ascii_otel_context();
+792   ascii_otel_scope_t report __attribute__((cleanup(ascii_otel_scope_end))) = {0};
+793   if (!scope_retained(&amp;report, operation, &amp;parent))
+794     return;
+795   gotel_attr_string(&amp;report.scope, &quot;ascii_chat.failure.category&quot;, category);
+796   gotel_attr_string(&amp;report.scope, &quot;ascii_chat.failure.operation&quot;, origin);
+797   gotel_attr_int(&amp;report.scope, &quot;asciichat_errno.code&quot;, code);
+798   gotel_attr_string(&amp;report.scope, &quot;asciichat_errno.code_message&quot;, asciichat_error_string(code));
+799   gotel_error(&amp;report.scope, category, redacted);
+800 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_context()</b>,
+            <b>ascii_otel_current_operation()</b>, <b>ascii_otel_enabled()</b>,
+            <b>ascii_otel_error_code()</b>,
+            <b>ascii_otel_failure_operation()</b>,
+            <b>ASCII_OTEL_OPERATION_COUNT</b>, <b>ascii_otel_scope_end()</b>,
+            <b>ASCIICHAT_OK</b>, <b>ERROR_NETWORK_INCOMPLETE</b>,
+            <b>ERROR_SIGNAL_INTERRUPT</b>, <b>OTEL_BODY_BUFFER_SIZE</b>,
+            <b>safe_snprintf()</b>, and <b>url_redact_diagnostic()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ascii_otel_error_code()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_exit_(int_code)">
+            <a class="permalink" href="#void_ascii_otel_exit_(int_code)"
+              >void ascii_otel_exit (int code)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>733</b> of file <b>otel.c</b>.</p>
+          <pre>
+733                                {
+734   gotel_attr_int(&amp;command_scope, &quot;process.exit.code&quot;, code);
+735   if (code)
+736     gotel_error(&amp;command_scope, &quot;ascii_chat.exit&quot;, &quot;Command failed&quot;);
+737   else {
+738     command_scope.failed = false;
+739     if (command_scope.span)
+740       (void)otel_status(otlp_span_set_status(command_scope.span, OTLP_STATUS_CODE_UNSET, &quot;&quot;), &quot;otlp_span_set_status&quot;);
+741   }
+742 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ascii_otel_exit()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_exit()</b>, and <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ascii_otel_operation_t</b> ascii_otel_failure_operation (<b
+              >asciichat_error_t</b
+            >
+            code, const char * origin)
+          </h2>
+          <p class="Pp">Definition at line <b>760</b> of file <b>otel.c</b>.</p>
+          <pre>
+760                                                                                                 {
+761   if (code == ASCIICHAT_OK || code == ERROR_SIGNAL_INTERRUPT || code == ERROR_NETWORK_INCOMPLETE)
+762     return ASCII_OTEL_OPERATION_COUNT;
+763   if ((code &gt;= ERROR_CRYPTO &amp;&amp; code &lt;= ERROR_CRYPTO_VERIFICATION) || code == ERROR_CRYPTO_INIT ||
+764       code == ERROR_INVALID_PASSWORD || code == ERROR_INVALID_SIGNATURE)
+765     return ASCII_OTEL_FAILURE_CRYPTO;
+766   if (code == ERROR_NETWORK_PROTOCOL || code == ERROR_NETWORK_SIZE || code == ERROR_UNKNOWN_PACKET)
+767     return ASCII_OTEL_FAILURE_PROTOCOL;
+768   if ((code &gt;= ERROR_SESSION_NOT_FOUND &amp;&amp; code &lt;= ERROR_SESSION_FULL) || code == ERROR_ACDS_STRING_TAKEN ||
+769       code == ERROR_ACDS_STRING_INVALID || (origin &amp;&amp; !strncmp(origin, &quot;ascii-chat.discovery.&quot;, 21)))
+770     return ASCII_OTEL_FAILURE_DISCOVERY;
+771   return ASCII_OTEL_OPERATION_COUNT;
+772 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_failure_operation()</b>,
+            <b>ASCII_OTEL_OPERATION_COUNT</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_ACDS_STRING_INVALID</b>, <b>ERROR_ACDS_STRING_TAKEN</b>,
+            <b>ERROR_CRYPTO</b>, <b>ERROR_CRYPTO_INIT</b>,
+            <b>ERROR_CRYPTO_VERIFICATION</b>, <b>ERROR_INVALID_PASSWORD</b>,
+            <b>ERROR_INVALID_SIGNATURE</b>, <b>ERROR_NETWORK_INCOMPLETE</b>,
+            <b>ERROR_NETWORK_PROTOCOL</b>, <b>ERROR_NETWORK_SIZE</b>,
+            <b>ERROR_SESSION_FULL</b>, <b>ERROR_SESSION_NOT_FOUND</b>,
+            <b>ERROR_SIGNAL_INTERRUPT</b>, and <b>ERROR_UNKNOWN_PACKET</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_error_code()</b>, and
+            <b>ascii_otel_failure_operation()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_ascii_otel_frame_rejected_(const_char_*_validator,_const_char_*_reason,_size_t_bytes,_"
+          >
+            <a
+              class="permalink"
+              href="#void_ascii_otel_frame_rejected_(const_char_*_validator,_const_char_*_reason,_size_t_bytes,_"
+              >void ascii_otel_frame_rejected (const char * validator, const
+              char * reason, size_t bytes, <b>uint32_t</b> width,
+              <b>uint32_t</b> height, <b>asciichat_error_t</b> code)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>743</b> of file <b>otel.c</b>.</p>
+          <pre>
+744                                                        {
+745   ascii_otel_metric(ASCII_OTEL_METRIC_FRAME_VALIDATION_REJECTED, 1);
+746   gotel_context_t parent = ascii_otel_context();
+747   ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};
+748   if (!scope_retained(&amp;otel_scope, ASCII_OTEL_FRAME_VALIDATION_REJECTED, &amp;parent))
+749     return;
+750   ASCII_OTEL_ATTR_STRING(&quot;frame.validation.validator&quot;, validator);
+751   ASCII_OTEL_ATTR_STRING(&quot;frame.validation.reason&quot;, reason);
+752   ASCII_OTEL_ATTR_INT(&quot;frame.size_bytes&quot;, (int64_t)bytes);
+753   ASCII_OTEL_ATTR_INT(&quot;frame.width&quot;, width);
+754   ASCII_OTEL_ATTR_INT(&quot;frame.height&quot;, height);
+755   ASCII_OTEL_ATTR_INT(&quot;asciichat_errno.code&quot;, code);
+756   ASCII_OTEL_ATTR_STRING(&quot;asciichat_errno.code_message&quot;, asciichat_error_string(code));
+757   if (otel_scope.retained)
+758     gotel_error(&amp;otel_scope.scope, &quot;ascii_chat.invalid_frame&quot;, reason);
+759 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_ATTR_INT</b>,
+            <b>ASCII_OTEL_ATTR_STRING</b>, <b>ascii_otel_context()</b>,
+            <b>ascii_otel_frame_rejected()</b>, <b>ascii_otel_metric()</b>, and
+            <b>ascii_otel_scope_end()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_frame_rejected()</b>, and
+            <b>session_frame_validate_contract()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_http_(">
+            <a class="permalink" href="#void_ascii_otel_http_("
+              >void ascii_otel_http (<b>ascii_otel_scope_t</b> * scope, const
+              char * hostname, const char * path)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>809</b> of file <b>otel.c</b>.</p>
+          <pre>
+809                                                                                     {
+810   if (!s-&gt;retained || !hostname || !path)
+811     return;
+812   gotel_error(&amp;s-&gt;scope, &quot;http.transport&quot;, &quot;HTTP operation did not complete&quot;);
+813   char url[OTEL_URL_BUFFER_SIZE], name[OTEL_NAME_EXTENDED_BUFFER_SIZE];
+814   int n = safe_snprintf(url, sizeof(url), &quot;https://%s%s&quot;, hostname, path);
+815   if (n &gt;= 0 &amp;&amp; (size_t)n &lt; sizeof(url) &amp;&amp;
+816       otel_status(gotel_http_name(name, sizeof(name), &quot;ascii-chat&quot;, false, &quot;GET&quot;, url), &quot;Name HTTP telemetry span&quot;) ==
+817           ASCIICHAT_OK) {
+818     if (s-&gt;scope.span)
+819       (void)otel_status(otlp_span_set_name(s-&gt;scope.span, name), &quot;otlp_span_set_name&quot;);
+820     gotel_http_attributes(&amp;s-&gt;scope, &quot;GET&quot;, 0);
+821     gotel_attr_string(&amp;s-&gt;scope, &quot;server.address&quot;, hostname);
+822     gotel_attr_string(&amp;s-&gt;scope, &quot;url.scheme&quot;, &quot;https&quot;);
+823   }
+824 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_http()</b>, <b>ASCIICHAT_OK</b>,
+            <b>OTEL_NAME_EXTENDED_BUFFER_SIZE</b>, <b>OTEL_URL_BUFFER_SIZE</b>,
+            <b>ascii_otel_scope::retained</b>, <b>safe_snprintf()</b>, and
+            <b>ascii_otel_scope::scope</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_http()</b>, and <b>https_get()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_http_status_(">
+            <a class="permalink" href="#void_ascii_otel_http_status_("
+              >void ascii_otel_http_status (<b>ascii_otel_scope_t</b> * scope,
+              int status)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>825</b> of file <b>otel.c</b>.</p>
+          <pre>
+825                                                                {
+826   if (s-&gt;retained) {
+827     if (status &gt; 0 &amp;&amp; status &lt; 400) {
+828       s-&gt;scope.failed = false;
+829       if (s-&gt;scope.span) {
+830         (void)otel_status(otlp_span_set_status(s-&gt;scope.span, OTLP_STATUS_CODE_UNSET, &quot;&quot;), &quot;otlp_span_set_status&quot;);
+831         gotel_attr_string(&amp;s-&gt;scope, &quot;error.type&quot;, &quot;&quot;);
+832       }
+833     }
+834     gotel_http_attributes(&amp;s-&gt;scope, &quot;GET&quot;, status);
+835   }
+836 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_http_status()</b>,
+            <b>ascii_otel_scope::retained</b>, and
+            <b>ascii_otel_scope::scope</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_http_status()</b>, and
+            <b>https_get()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> ascii_otel_init (const char * mode, int
+            argc, char ** argv)
+          </h2>
+          <p class="Pp">Definition at line <b>554</b> of file <b>otel.c</b>.</p>
+          <pre>
+554                                                                            {
+555   // Test mode is a hard export prohibition, including explicit endpoints and CLI overrides.
+556   if (is_test_environment())
+557     return ASCIICHAT_OK;
+558   const options_t *o = options_get();
+559   const char *endpoint = o-&gt;otel_endpoint;
+560   bool endpoint_cli = false, timeout_cli = false;
+561   for (int i = 1; i &lt; argc; ++i) {
+562     endpoint_cli |= !strcmp(argv[i], &quot;--otel-endpoint&quot;) || !strncmp(argv[i], &quot;--otel-endpoint=&quot;, 16);
+563     timeout_cli |= !strcmp(argv[i], &quot;--otel-timeout&quot;) || !strncmp(argv[i], &quot;--otel-timeout=&quot;, 15);
+564   }
+565   unsigned signals;
+566   asciichat_error_t parsed = otel_status(gotel_parse_signals(o-&gt;otel_enabled_telemetry, &amp;signals),
+567                                          &quot;Parse otel-enabled-telemetry (traces,logs,metrics or none)&quot;);
+568   if (parsed != ASCIICHAT_OK)
+569     return parsed;
+570   if (!isfinite(o-&gt;otel_realtime_sample_rate) || o-&gt;otel_realtime_sample_rate &lt; 0 || o-&gt;otel_realtime_sample_rate &gt; 1 ||
+571       o-&gt;otel_queue_capacity &lt; 2 || (o-&gt;otel_queue_capacity &amp; (o-&gt;otel_queue_capacity - 1)) || o-&gt;otel_timeout &lt; 1 ||
+572       o-&gt;otel_metrics_interval &lt; 1 || o-&gt;otel_realtime_max_per_second &lt; 1)
+573     return SET_ERRNO(ERROR_CONFIG, &quot;Invalid telemetry sampling, queue capacity, or interval&quot;);
+574   const char *log_names[] = {&quot;dev&quot;, &quot;debug&quot;, &quot;info&quot;, &quot;warn&quot;, &quot;error&quot;, &quot;fatal&quot;};
+575   const int log_levels[] = {LOG_DEV, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL};
+576   minimum_log_level = -1;
+577   for (size_t i = 0; i &lt; sizeof(log_levels) / sizeof(log_levels[0]); ++i)
+578     if (strcmp(o-&gt;otel_log_level, log_names[i]) == 0)
+579       minimum_log_level = log_levels[i];
+580   if (minimum_log_level &lt; 0)
+581     return SET_ERRNO(ERROR_CONFIG, &quot;Invalid otel-log-level&quot;);
+582   if (!signals)
+583     return ASCIICHAT_OK;
+584   gotel_options_t config = {0};
+585   config.application_name = &quot;ascii-chat&quot;;
+586   config.disable_span_name_prefix = true;
+587   char service_name[OPTIONS_BUFF_SIZE];
+588   int n = safe_snprintf(service_name, sizeof(service_name), &quot;ascii-chat-%s&quot;, mode);
+589   if (n &lt; 0 || (size_t)n &gt;= sizeof(service_name))
+590     return SET_ERRNO(ERROR_CONFIG, &quot;Telemetry service name too long&quot;);
+591   config.exporter.service_name = service_name;
+592   // The exporter observes its batch interval during final flush as well.
+593   // Keep it short enough to deliver all signals within the shutdown budget.
+594   config.exporter.batch_ms = 25;
+595   config.exporter.queue_capacity = (size_t)o-&gt;otel_queue_capacity;
+596   config.exporter.connect_timeout_ms = (uint32_t)o-&gt;otel_timeout;
+597   config.exporter.read_timeout_ms = (uint32_t)o-&gt;otel_timeout;
+598   config.exporter.flush_timeout_ms = (uint32_t)o-&gt;otel_timeout;
+599   otlp_resource_attr_t resources[] = {
+600       {.key = &quot;ascii_chat.mode&quot;, .value = {.type = OTLP_VALUE_STRING, .v = {.string_val = mode}}},
+601       {.key = &quot;service.version&quot;, .value = {.type = OTLP_VALUE_STRING, .v = {.string_val = ASCII_CHAT_VERSION_FULL}}},
+602   };
+603   config.exporter.resource_attributes = resources;
+604   config.exporter.n_resource_attributes = sizeof(resources) / sizeof(resources[0]);
+605   config.signals = signals;
+606   config.realtime_sample_rate = o-&gt;otel_realtime_sample_rate;
+607   config.realtime_max_per_second = (uint32_t)o-&gt;otel_realtime_max_per_second;
+608   config.metrics_interval_ms = (uint32_t)o-&gt;otel_metrics_interval;
+609   config.monotonic_ns = time_get_ns;
+610   config.realtime_ns = telemetry_realtime_ns;
+611   config.operations = operations;
+612   config.operation_count = ASCII_OTEL_OPERATION_COUNT;
+613   config.exporter_event = exporter_event;
+614   config.metrics = metrics;
+615   config.metric_count = ASCII_OTEL_METRIC_COUNT;
+616 #ifndef NDEBUG
+617   config.watchdog.snapshot = watchdog_snapshot;
+618   config.watchdog.decorate = watchdog_decorate;
+619   config.watchdog.operation = ASCII_OTEL_THREAD_DEADLOCK;
+620   config.watchdog.metric = ASCII_OTEL_METRIC_DEADLOCK_THREADS;
+621 #endif
+622   gotel_command_args_t command_args = {0};
+623   // Addresses are positional in native client/server modes, with optional ports.
+624   char address_port[OPTIONS_BUFF_SIZE + 32], address6_port[OPTIONS_BUFF_SIZE + 32];
+625   char address_brackets[OPTIONS_BUFF_SIZE + 32], address6_brackets[OPTIONS_BUFF_SIZE + 32];
+626   char address_brackets_port[OPTIONS_BUFF_SIZE + 32], address6_brackets_port[OPTIONS_BUFF_SIZE + 32];
+627   SAFE_SNPRINTF(address_port, sizeof(address_port), &quot;%s:%d&quot;, o-&gt;address, o-&gt;port);
+628   SAFE_SNPRINTF(address6_port, sizeof(address6_port), &quot;%s:%d&quot;, o-&gt;address6, o-&gt;port);
+629   SAFE_SNPRINTF(address_brackets, sizeof(address_brackets), &quot;[%s]&quot;, o-&gt;address);
+630   SAFE_SNPRINTF(address6_brackets, sizeof(address6_brackets), &quot;[%s]&quot;, o-&gt;address6);
+631   SAFE_SNPRINTF(address_brackets_port, sizeof(address_brackets_port), &quot;[%s]:%d&quot;, o-&gt;address, o-&gt;port);
+632   SAFE_SNPRINTF(address6_brackets_port, sizeof(address6_brackets_port), &quot;[%s]:%d&quot;, o-&gt;address6, o-&gt;port);
+633   const char *sensitive_values[] = {o-&gt;address,       o-&gt;address6,       address_port,          address6_port,
+634                                     address_brackets, address6_brackets, address_brackets_port, address6_brackets_port};
+635   gotel_command_policy_t argument_policy = {
+636 #ifdef NDEBUG
+637       .mode = GOTEL_COMMAND_REDACT_SELECTED,
+638 #else
+639       .mode = GOTEL_COMMAND_REDACT_NONE,
+640 #endif
+641       .rules = command_argument_rules,
+642       .sensitive_values = sensitive_values,
+643       .sensitive_value_count = sizeof(sensitive_values) / sizeof(sensitive_values[0]),
+644       .rule_count = sizeof(command_argument_rules) / sizeof(command_argument_rules[0]),
+645   };
+646   asciichat_error_t arguments_status =
+647       otel_status(gotel_command_args_init_policy(&amp;command_args, &quot;ascii-chat&quot;, mode, argc, (const char *const *)argv,
+648                                                  &amp;argument_policy),
+649                   &quot;Sanitize telemetry command arguments&quot;);
+650   if (arguments_status != ASCIICHAT_OK)
+651     return arguments_status;
+652   config.argc = command_args.argc;
+653   config.argv = command_args.argv;
+654   gotel_env_storage_t env;
+655   asciichat_error_t env_status =
+656       otel_status(gotel_options_apply_env(&amp;config, &amp;env, OPT_OTEL_ENDPOINT_DEFAULT), &quot;Configure OTEL environment&quot;);
+657   if (env_status == ASCIICHAT_OK &amp;&amp;
+658       (endpoint_cli || SAFE_GETENV(&quot;ASCII_CHAT_OTEL_ENDPOINT&quot;) || strcmp(endpoint, OPT_OTEL_ENDPOINT_DEFAULT)))
+659     env_status = otel_status(gotel_options_set_endpoint(&amp;config, &amp;env, endpoint), &quot;Configure telemetry endpoint&quot;);
+660   if (timeout_cli || SAFE_GETENV(&quot;ASCII_CHAT_OTEL_TIMEOUT&quot;)) {
+661     config.exporter.connect_timeout_ms = (uint32_t)o-&gt;otel_timeout;
+662     config.exporter.read_timeout_ms = (uint32_t)o-&gt;otel_timeout;
+663     config.exporter.flush_timeout_ms = (uint32_t)o-&gt;otel_timeout;
+664   }
+665   if (*o-&gt;otel_ca_file)
+666     config.tls_ca_file = o-&gt;otel_ca_file;
+667   if (env_status != ASCIICHAT_OK || !config.signals || !config.exporter.endpoint) {
+668     gotel_command_args_destroy(&amp;command_args);
+669     return env_status;
+670   }
+671   gotel_host_t *h = NULL;
+672   asciichat_error_t created = otel_status(gotel_create(&amp;config, &amp;h), &quot;Initialize telemetry exporter&quot;);
+673   if (created != ASCIICHAT_OK) {
+674     gotel_command_args_destroy(&amp;command_args);
+675     return created;
+676   }
+677   gotel_set_logger(h, exporter_diagnostic, NULL);
+678   shutdown_timeout_ns = (uint64_t)o-&gt;otel_timeout * NS_PER_MS_INT;
+679   atomic_store(&amp;stopping, false);
+680   atomic_store(&amp;exporter_queue_capacity, config.exporter.queue_capacity);
+681   atomic_store(&amp;worker_done, false);
+682   if (acthread_create(&amp;worker, &quot;otel_export&quot;, export_worker, h) != 0) {
+683     gotel_destroy(h);
+684     gotel_command_args_destroy(&amp;command_args);
+685     return SET_ERRNO(ERROR_THREAD, &quot;Cannot start telemetry exporter&quot;);
+686   }
+687   worker_started = true;
+688   (void)atexit(ascii_otel_shutdown);
+689   atomic_store_explicit(&amp;host, h, memory_order_release);
+690   gotel_begin(h, &amp;command_scope, ASCII_OTEL_CLI, NULL);
+691   (void)otel_status(gotel_command_args_set_span(&amp;command_scope, &amp;command_args), &quot;Attach telemetry command arguments&quot;);
+692   gotel_command_args_destroy(&amp;command_args);
+693
+694   log_info(&quot;Telemetry enabled: %s (%s)&quot;, config.exporter.endpoint, o-&gt;otel_enabled_telemetry);
+695   return ASCIICHAT_OK;
+696 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>, <b>options_state::address</b>,
+            <b>options_state::address6</b>, <b>ASCII_CHAT_VERSION_FULL</b>,
+            <b>ascii_otel_init()</b>, <b>ASCII_OTEL_METRIC_COUNT</b>,
+            <b>ASCII_OTEL_OPERATION_COUNT</b>, <b>ascii_otel_shutdown()</b>,
+            <b>ASCIICHAT_OK</b>, <b>ERROR_CONFIG</b>, <b>ERROR_THREAD</b>,
+            <b>LOG_DEBUG</b>, <b>LOG_DEV</b>, <b>LOG_ERROR</b>,
+            <b>LOG_FATAL</b>, <b>LOG_INFO</b>, <b>log_info</b>, <b>LOG_WARN</b>,
+            <b>NS_PER_MS_INT</b>, <b>OPT_OTEL_ENDPOINT_DEFAULT</b>,
+            <b>OPTIONS_BUFF_SIZE</b>, <b>options_get()</b>,
+            <b>options_state::otel_ca_file</b>,
+            <b>options_state::otel_enabled_telemetry</b>,
+            <b>options_state::otel_endpoint</b>,
+            <b>options_state::otel_log_level</b>,
+            <b>options_state::otel_metrics_interval</b>,
+            <b>options_state::otel_queue_capacity</b>,
+            <b>options_state::otel_realtime_max_per_second</b>,
+            <b>options_state::otel_realtime_sample_rate</b>,
+            <b>options_state::otel_timeout</b>, <b>options_state::port</b>,
+            <b>SAFE_GETENV</b>, <b>SAFE_SNPRINTF</b>, <b>safe_snprintf()</b>,
+            <b>SET_ERRNO</b>, and <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_init()</b>, and <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_ascii_otel_log_(int_level,_const_char_*_file,_int_line,_const_char_*_function,_const_char_*_format,_va_list_args)"
+          >
+            <a
+              class="permalink"
+              href="#void_ascii_otel_log_(int_level,_const_char_*_file,_int_line,_const_char_*_function,_const_char_*_format,_va_list_args)"
+              >void ascii_otel_log (int level, const char * file, int line,
+              const char * function, const char * format, va_list args)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>697</b> of file <b>otel.c</b>.</p>
+          <pre>
+697                                                                                                                    {
+698   (void)file;
+699   (void)line;
+700   (void)function;
+701   if (in_log || level &lt; minimum_log_level || !atomic_load_explicit(&amp;host, memory_order_acquire))
+702     return;
+703   in_log = true;
+704   gotel_host_t *h = retain();
+705   if (h) {
+706     char body[OTEL_BODY_BUFFER_SIZE];
+707     int n = safe_vsnprintf(body, sizeof(body), format, args);
+708     if (n &gt;= 0) {
+709       url_redact_diagnostic(body, (size_t)n &gt;= sizeof(body));
+710       otlp_severity_t severity = level &gt;= LOG_FATAL   ? OTLP_SEVERITY_FATAL
+711                                  : level &gt;= LOG_ERROR ? OTLP_SEVERITY_ERROR
+712                                  : level &gt;= LOG_WARN  ? OTLP_SEVERITY_WARN
+713                                  : level &gt;= LOG_INFO  ? OTLP_SEVERITY_INFO
+714                                  : level &gt;= LOG_DEBUG ? OTLP_SEVERITY_DEBUG
+715                                                       : OTLP_SEVERITY_TRACE;
+716       gotel_log(h, severity, body, file, line, function);
+717     }
+718     release();
+719   }
+720   in_log = false;
+721 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_log()</b>, <b>LOG_DEBUG</b>,
+            <b>LOG_ERROR</b>, <b>LOG_FATAL</b>, <b>LOG_INFO</b>,
+            <b>LOG_WARN</b>, <b>OTEL_BODY_BUFFER_SIZE</b>,
+            <b>safe_vsnprintf()</b>, and <b>url_redact_diagnostic()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_log()</b>, and <b>log_msg()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_metric_(">
+            <a class="permalink" href="#void_ascii_otel_metric_("
+              >void ascii_otel_metric (<b>ascii_otel_metric_t</b> metric, double
+              value)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>165</b> of file <b>otel.c</b>.</p>
+          <pre>
+165                                                                  {
+166   gotel_host_t *h = retain();
+167   if (h) {
+168     (void)otel_status(gotel_metric_record(h, metric, value), &quot;gotel_metric_record&quot;);
+169     release();
+170   }
+171 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ascii_otel_metric()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>acip_outbound_submitv()</b>,
+            <b>ascii_otel_frame_rejected()</b>, <b>ascii_otel_metric()</b>,
+            <b>ascii_otel_pipeline_progress()</b>, <b>crypto_decrypt()</b>,
+            <b>crypto_encrypt()</b>, <b>database_init()</b>,
+            <b>database_session_add_key()</b>,
+            <b>database_session_clear_host()</b>,
+            <b>database_session_join()</b>, <b>database_session_leave()</b>,
+            <b>database_session_lookup()</b>,
+            <b>database_session_revoke_key()</b>,
+            <b>database_session_start_migration()</b>,
+            <b>database_session_update_host()</b>,
+            <b>database_stats_session_count()</b>,
+            <b>database_stats_unique_clients()</b>,
+            <b>discovery_session_apply_handoff()</b>, <b>h265_decode()</b>,
+            <b>h265_encode()</b>, <b>h265_encoder_flush()</b>,
+            <b>mixer_process()</b>, <b>mixer_process_excluding_source()</b>,
+            <b>nat_upnp_open_protocol()</b>, <b>network_connection_open()</b>,
+            <b>opus_codec_decode()</b>, <b>opus_codec_encode()</b>,
+            <b>server_connection_lost()</b>,
+            <b>session_frame_validate_contract()</b>,
+            <b>session_pipeline_run_main()</b>, <b>stats_runtime_packet()</b>,
+            and <b>yt_dlp_extract_with_options()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_packet_(">
+            <a class="permalink" href="#void_ascii_otel_packet_("
+              >void ascii_otel_packet (<b>ascii_otel_scope_t</b> * scope,
+              <b>uint16_t</b> type, size_t payload_size, const char * action,
+              int transport)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>450</b> of file <b>otel.c</b>.</p>
+          <pre>
+451                                       {
+452   if (!scope-&gt;retained || !scope-&gt;scope.span)
+453     return;
+454   const char *packet = acip_packet_type_name(type);
+455   char name[OTEL_NAME_BUFFER_SIZE], version[OTEL_VERSION_BUFFER_SIZE];
+456   safe_snprintf(name, sizeof(name), &quot;%s.%s&quot;, operations[scope-&gt;scope.operation].name, packet);
+457   safe_snprintf(version, sizeof(version), &quot;%d.%d.%d&quot;, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR,
+458                 PROTOCOL_VERSION_PATCH);
+459   (void)otel_status(otlp_span_set_name(scope-&gt;scope.span, name), &quot;otlp_span_set_name&quot;);
+460   gotel_attr_string(&amp;scope-&gt;scope, &quot;network.protocol.name&quot;, &quot;acip&quot;);
+461   gotel_attr_string(&amp;scope-&gt;scope, &quot;network.protocol.version&quot;, version);
+462   gotel_attr_string(&amp;scope-&gt;scope, &quot;network.packet.name&quot;, packet);
+463   gotel_attr_int(&amp;scope-&gt;scope, &quot;network.packet.type&quot;, type);
+464   gotel_attr_int(&amp;scope-&gt;scope, &quot;network.packet.size&quot;, (int64_t)payload_size);
+465   gotel_attr_string(&amp;scope-&gt;scope, &quot;network.packet.operation&quot;, action);
+466   const char *carrier = transport == ACIP_TRANSPORT_TCP         ? &quot;tcp&quot;
+467                         : transport == ACIP_TRANSPORT_WEBSOCKET ? &quot;websocket&quot;
+468                         : transport == ACIP_TRANSPORT_WEBRTC    ? &quot;webrtc&quot;
+469                                                                 : &quot;unknown&quot;;
+470   gotel_attr_string(&amp;scope-&gt;scope, &quot;acip.transport&quot;, carrier);
+471 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_packet_type_name()</b>,
+            <b>ACIP_TRANSPORT_TCP</b>, <b>ACIP_TRANSPORT_WEBRTC</b>,
+            <b>ACIP_TRANSPORT_WEBSOCKET</b>, <b>ascii_otel_packet()</b>,
+            <b>OTEL_NAME_BUFFER_SIZE</b>, <b>OTEL_VERSION_BUFFER_SIZE</b>,
+            <b>PROTOCOL_VERSION_MAJOR</b>, <b>PROTOCOL_VERSION_MINOR</b>,
+            <b>PROTOCOL_VERSION_PATCH</b>, <b>ascii_otel_scope::retained</b>,
+            <b>safe_snprintf()</b>, and <b>ascii_otel_scope::scope</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ascii_otel_packet()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="double_ascii_otel_pipeline_age_(">
+            <a class="permalink" href="#double_ascii_otel_pipeline_age_("
+              >double ascii_otel_pipeline_age (<b>uint64_t</b> now,
+              <b>uint64_t</b> capture, <b>uint64_t</b> progress,
+              <b>bool</b> expected)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>300</b> of file <b>otel.c</b>.</p>
+          <pre>
+300                                                                                                  {
+301   return expected &amp;&amp; capture &amp;&amp; progress &amp;&amp; now &gt;= capture &amp;&amp; now &gt;= progress &amp;&amp; now - capture &lt; 2 * NS_PER_SEC_INT
+302              ? (double)(now - progress) / 1e9
+303              : 0;
+304 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_pipeline_age()</b>, and
+            <b>NS_PER_SEC_INT</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ascii_otel_pipeline_age()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_ascii_otel_pipeline_progress_(unsigned_stage,_unsigned_expected)"
+          >
+            <a
+              class="permalink"
+              href="#void_ascii_otel_pipeline_progress_(unsigned_stage,_unsigned_expected)"
+              >void ascii_otel_pipeline_progress (unsigned stage, unsigned
+              expected)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>274</b> of file <b>otel.c</b>.</p>
+          <pre>
+274                                                                      {
+275   if (!ascii_otel_enabled())
+276     return;
+277   uint64_t now = time_get_ns();
+278   if (stage == 0) {
+279     if (!atomic_load(&amp;pipeline_capture_ns)) {
+280       atomic_store(&amp;pipeline_display_ns, now);
+281       atomic_store(&amp;pipeline_encode_ns, now);
+282     }
+283     if (!(expected &amp; 1))
+284       atomic_store(&amp;pipeline_display_ns, now);
+285     if (!(expected &amp; 2))
+286       atomic_store(&amp;pipeline_encode_ns, now);
+287     atomic_store(&amp;pipeline_expected, expected);
+288     atomic_store(&amp;pipeline_capture_ns, now);
+289   } else if (stage == 1)
+290     atomic_store(&amp;pipeline_display_ns, now);
+291   else if (stage == 2)
+292     atomic_store(&amp;pipeline_encode_ns, now);
+293   else {
+294     atomic_store(&amp;pipeline_expected, 0);
+295     atomic_store(&amp;pipeline_capture_ns, 0);
+296     ascii_otel_metric(ASCII_OTEL_METRIC_PIPELINE_DISPLAY_STALL, 0);
+297     ascii_otel_metric(ASCII_OTEL_METRIC_PIPELINE_ENCODE_STALL, 0);
+298   }
+299 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_enabled()</b>, <b>ascii_otel_metric()</b>,
+            <b>ascii_otel_pipeline_progress()</b>, and <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_pipeline_progress()</b>,
+            <b>session_pipeline_destroy()</b>, and
+            <b>session_pipeline_run_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_scope_begin_(">
+            <a class="permalink" href="#void_ascii_otel_scope_begin_("
+              >void ascii_otel_scope_begin (<b>ascii_otel_scope_t</b> * scope,
+              <b>ascii_otel_operation_t</b> operation)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>386</b> of file <b>otel.c</b>.</p>
+          <pre>
+386                                                                               {
+387   ascii_otel_scope_parent(s, op, NULL);
+388 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_scope_begin()</b>, and
+            <b>ascii_otel_scope_parent()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ascii_otel_scope_begin()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_scope_end_(">
+            <a class="permalink" href="#void_ascii_otel_scope_end_("
+              >void ascii_otel_scope_end (<b>ascii_otel_scope_t</b> * scope)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>424</b> of file <b>otel.c</b>.</p>
+          <pre>
+424                                                  {
+425   if (!s || !s-&gt;retained)
+426     return;
+427   gotel_end(&amp;s-&gt;scope);
+428   if (current_scope == s)
+429     current_scope = s-&gt;previous;
+430   s-&gt;retained = false;
+431   release();
+432 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_scope_end()</b>,
+            <b>ascii_otel_scope::previous</b>,
+            <b>ascii_otel_scope::retained</b>, and
+            <b>ascii_otel_scope::scope</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_error_code()</b>,
+            <b>ascii_otel_frame_rejected()</b>, and
+            <b>ascii_otel_scope_end()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_scope_int_(">
+            <a class="permalink" href="#void_ascii_otel_scope_int_("
+              >void ascii_otel_scope_int (<b>ascii_otel_scope_t</b> * scope,
+              const char * key, int64_t value)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>725</b> of file <b>otel.c</b>.</p>
+          <pre>
+725                                                                                  {
+726   if (s-&gt;retained)
+727     gotel_attr_int(&amp;s-&gt;scope, key, value);
+728 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_scope_int()</b>,
+            <b>ascii_otel_scope::retained</b>, and
+            <b>ascii_otel_scope::scope</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_scope_int()</b>, and
+            <b>session_pipeline_run_main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_scope_parent_(">
+            <a class="permalink" href="#void_ascii_otel_scope_parent_("
+              >void ascii_otel_scope_parent (<b>ascii_otel_scope_t</b> * scope,
+              <b>ascii_otel_operation_t</b> operation, const gotel_context_t *
+              parent)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>389</b> of file <b>otel.c</b>.</p>
+          <pre>
+389                                                                                                               {
+390   gotel_host_t *h = retain();
+391   s-&gt;retained = h != NULL;
+392   if (h) {
+393     gotel_context_t context = gotel_current_context();
+394     bool lifetime_parent = current_scope &amp;&amp; (current_scope-&gt;scope.operation == ASCII_OTEL_SESSION_CLIENT_LIKE_RUN ||
+395                                              current_scope-&gt;scope.operation == ASCII_OTEL_SESSION_ATTEMPT);
+396     // Lifetime spans finish only at shutdown. Completed operations must remain
+397     // inspectable while a server is running, including after abrupt termination.
+398     if (!parent &amp;&amp; context.valid) {
+399       gotel_parent_mode_t mode =
+400           lifetime_parent || memcmp(context.span_id, command_scope.context.span_id, sizeof(context.span_id)) == 0
+401               ? GOTEL_PARENT_INDEPENDENT
+402               : GOTEL_PARENT_BOUNDED;
+403       context = gotel_operation_parent(context, mode);
+404       parent = &amp;context;
+405     }
+406     gotel_begin(h, &amp;s-&gt;scope, (size_t)op, parent);
+407     s-&gt;previous = current_scope;
+408     current_scope = s;
+409   }
+410 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_scope_parent()</b>,
+            <b>ascii_otel_scope::previous</b>,
+            <b>ascii_otel_scope::retained</b>, and
+            <b>ascii_otel_scope::scope</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_scope_begin()</b>, and
+            <b>ascii_otel_scope_parent()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_scope_string_(">
+            <a class="permalink" href="#void_ascii_otel_scope_string_("
+              >void ascii_otel_scope_string (<b>ascii_otel_scope_t</b> * scope,
+              const char * key, const char * value)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>729</b> of file <b>otel.c</b>.</p>
+          <pre>
+729                                                                                         {
+730   if (s-&gt;retained)
+731     gotel_attr_string(&amp;s-&gt;scope, key, value);
+732 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_scope_string()</b>,
+            <b>ascii_otel_scope::retained</b>, and
+            <b>ascii_otel_scope::scope</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ascii_otel_scope_string()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_shutdown_(void_)">
+            <a class="permalink" href="#void_ascii_otel_shutdown_(void_)"
+              >void ascii_otel_shutdown (void )</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>472</b> of file <b>otel.c</b>.</p>
+          <pre>
+472                                {
+473   gotel_host_t *h = atomic_exchange_explicit(&amp;host, NULL, memory_order_seq_cst);
+474   if (!h)
+475     return;
+476   gotel_end(&amp;command_scope);
+477   uint64_t started = time_get_ns();
+478   // Leave time for the rest of process teardown, even if the collector stalls.
+479   uint64_t budget_ns = shutdown_timeout_ns &lt; 400 * NS_PER_MS_INT ? shutdown_timeout_ns : 400 * NS_PER_MS_INT;
+480   while (atomic_load_explicit(&amp;readers, memory_order_seq_cst) &amp;&amp; time_get_ns() - started &lt; budget_ns)
+481     platform_sleep_ms(1);
+482   bool producers_active = atomic_load_explicit(&amp;readers, memory_order_seq_cst) != 0;
+483   atomic_store_explicit(&amp;stopping, true, memory_order_release);
+484   if (worker_started) {
+485     while (!atomic_load_explicit(&amp;worker_done, memory_order_acquire) &amp;&amp; time_get_ns() - started &lt; budget_ns)
+486       platform_sleep_ms(1);
+487     bool done = atomic_load_explicit(&amp;worker_done, memory_order_acquire);
+488     uint64_t elapsed_ns = time_get_ns() - started;
+489     int joined = -1;
+490     if (done &amp;&amp; elapsed_ns &lt; budget_ns) {
+491 #if !defined(__linux__) &amp;&amp; !defined(_WIN32)
+492       // The POSIX timed join implementation blocks on these platforms. The worker has
+493       // finished using the exporter, so detach its remaining wrapper cleanup.
+494       joined = thread_detach(&amp;worker);
+495 #else
+496       joined = thread_join_timeout(&amp;worker, NULL, budget_ns - elapsed_ns);
+497 #endif
+498     }
+499     if (joined != 0) {
+500       log_warn(&quot;Telemetry worker did not stop within its deadline; exporter retained until process exit&quot;);
+501       return;
+502     }
+503     worker_started = false;
+504   }
+505   asciichat_error_t result = drain_result;
+506   otlp_exporter_stats_t stats = {0};
+507   (void)otel_status(gotel_stats(h, &amp;stats), &quot;gotel_stats&quot;);
+508   // exit() can bypass scope cleanup in a producer. Do not free its host while
+509   // it remains borrowed; the process will reclaim it after atexit handlers.
+510   if (!producers_active)
+511     gotel_destroy(h);
+512   else
+513     log_warn(&quot;Telemetry producer still active during process shutdown; exporter retained&quot;);
+514   if (result != ASCIICHAT_OK)
+515     log_warn(&quot;Telemetry flush deadline reached; pending records discarded&quot;);
+516   log_debug(&quot;Telemetry exporter stopped: spans=%llu/%llu logs=%llu/%llu metrics=%llu/%llu network_errors=%llu &quot;
+517             &quot;http_4xx=%llu dropped=%llu rejected=%llu&quot;,
+518             (unsigned long long)stats.sent, (unsigned long long)stats.emitted, (unsigned long long)stats.sent_logs,
+519             (unsigned long long)stats.emitted_logs, (unsigned long long)stats.sent_metrics,
+520             (unsigned long long)stats.emitted_metrics, (unsigned long long)stats.network_err,
+521             (unsigned long long)stats.http_4xx, (unsigned long long)(stats.dropped_full + stats.dropped_err),
+522             (unsigned long long)stats.rejected_spans);
+523 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_shutdown()</b>, <b>ASCIICHAT_OK</b>,
+            <b>log_debug</b>, <b>log_warn</b>, <b>NS_PER_MS_INT</b>,
+            <b>platform_sleep_ms()</b>, <b>thread_detach</b>,
+            <b>thread_join_timeout()</b>, and <b>time_get_ns()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_init()</b>,
+            <b>ascii_otel_shutdown()</b>, and <b>main()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_ascii_otel_sqlite_(sqlite3_*_db,_const_gotel_query_t_*_queries,_size_t_count)"
+          >
+            <a
+              class="permalink"
+              href="#void_ascii_otel_sqlite_(sqlite3_*_db,_const_gotel_query_t_*_queries,_size_t_count)"
+              >void ascii_otel_sqlite (sqlite3 * db, const gotel_query_t *
+              queries, size_t count)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>841</b> of file <b>otel.c</b>.</p>
+          <pre>
+841                                                                                 {
+842   gotel_host_t *h = retain();
+843   if (!h)
+844     return;
+845   gotel_sqlite_t *a = NULL;
+846   sequel_analysis_options_t analysis = {.format = true};
+847   gotel_sqlite_options_t options = {.analysis = &amp;analysis};
+848   if (otel_status(gotel_sqlite_attach_with_options(h, db, &quot;ascii-chat.storage&quot;, queries, count, &amp;options, &amp;a),
+849                   &quot;Attach SQLite telemetry&quot;) != ASCIICHAT_OK)
+850     log_warn(&quot;Could not attach SQLite telemetry&quot;);
+851   release();
+852 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_sqlite()</b>, <b>ASCIICHAT_OK</b>, and
+            <b>log_warn</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_sqlite()</b>, and
+            <b>database_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="int_ascii_otel_sqlite_prepare_(sqlite3_*_db,_const_char_*_sql,_sqlite3_stmt_**_statement)"
+          >
+            <a
+              class="permalink"
+              href="#int_ascii_otel_sqlite_prepare_(sqlite3_*_db,_const_char_*_sql,_sqlite3_stmt_**_statement)"
+              >int ascii_otel_sqlite_prepare (sqlite3 * db, const char * sql,
+              sqlite3_stmt ** statement)</a
+            >
+          </h2>
+          <p class="Pp">
+            Prepare NUL-terminated SQL using the attached Gotel policy and
+            SQLite result codes. Unattached databases use ordinary SQLite
+            preparation.
+          </p>
+          <p class="Pp">Definition at line <b>837</b> of file <b>otel.c</b>.</p>
+          <pre>
+837                                                                                       {
+838   return gotel_sqlite_prepare_db(db, sql, statement);
+839 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ascii_otel_sqlite_prepare()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_sqlite_prepare()</b>,
+            <b>database_init()</b>, <b>database_session_add_key()</b>,
+            <b>database_session_cleanup_expired()</b>,
+            <b>database_session_clear_host()</b>,
+            <b>database_session_find_by_id()</b>,
+            <b>database_session_find_by_string()</b>,
+            <b>database_session_get_keys()</b>,
+            <b>database_session_is_migration_ready()</b>,
+            <b>database_session_leave()</b>, <b>database_session_lookup()</b>,
+            <b>database_session_revoke_key()</b>,
+            <b>database_session_start_migration()</b>,
+            <b>database_session_update_host()</b>,
+            <b>database_session_verify_key()</b>,
+            <b>database_stats_session_count()</b>,
+            <b>database_stats_snapshot()</b>, and
+            <b>database_stats_unique_clients()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ascii_otel_stats_attach_(">
+            <a class="permalink" href="#void_ascii_otel_stats_attach_("
+              >void ascii_otel_stats_attach (<b>stats_scope_t</b> * scope)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>222</b> of file <b>otel.c</b>.</p>
+          <pre>
+222                                                    {
+223   stats_scope_set_observer(scope, stats_metric_record, NULL);
+224 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ascii_otel_stats_attach()</b>, and
+            <b>stats_scope_set_observer()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_stats_attach()</b>, and
+            <b>stats_runtime_start()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ascii_otel_metric_t</b> ascii_otel_stats_metric (<b
+              >stats_record_kind_t</b
+            >
+            kind, unsigned id)
+          </h2>
+          <p class="Pp">Definition at line <b>185</b> of file <b>otel.c</b>.</p>
+          <pre>
+185                                                                                    {
+186   if (!((kind == STATS_RECORD_COUNTER &amp;&amp; id &lt; STATS_COUNTER_COUNT) ||
+187         (kind == STATS_RECORD_GAUGE &amp;&amp; id &lt; STATS_GAUGE_COUNT) ||
+188         (kind == STATS_RECORD_DURATION &amp;&amp; id &lt; STATS_DURATION_COUNT)))
+189     return ASCII_OTEL_METRIC_COUNT;
+190   ascii_otel_metric_t metric;
+191   switch (((unsigned)kind &lt;&lt; 16) | id) {
+192 #define ASCII_STATS_COUNTER(id, metric_id, name, unit)                                                                 \
+193   case (STATS_RECORD_COUNTER &lt;&lt; 16) | STATS_COUNTER_##id:                                                              \
+194     metric = ASCII_OTEL_METRIC_##metric_id;                                                                            \
+195     break;
+196 #define ASCII_STATS_GAUGE(id, metric_id, name, unit)                                                                   \
+197   case (STATS_RECORD_GAUGE &lt;&lt; 16) | STATS_GAUGE_##id:                                                                  \
+198     metric = ASCII_OTEL_METRIC_##metric_id;                                                                            \
+199     break;
+200 #define ASCII_STATS_DURATION(id, metric_id, name, unit)                                                                \
+201   case (STATS_RECORD_DURATION &lt;&lt; 16) | STATS_DURATION_##id:                                                            \
+202     metric = ASCII_OTEL_METRIC_##metric_id;                                                                            \
+203     break;
+204 #include &lt;ascii-chat/stats/telemetry.def&gt;
+205 #undef ASCII_STATS_COUNTER
+206 #undef ASCII_STATS_GAUGE
+207 #undef ASCII_STATS_DURATION
+208   default:
+209     return ASCII_OTEL_METRIC_COUNT;
+210   }
+211   return metric;
+212 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_METRIC_COUNT</b>,
+            <b>ascii_otel_stats_metric()</b>, <b>STATS_COUNTER_COUNT</b>,
+            <b>STATS_DURATION_COUNT</b>, <b>STATS_GAUGE_COUNT</b>,
+            <b>STATS_RECORD_COUNTER</b>, <b>STATS_RECORD_DURATION</b>, and
+            <b>STATS_RECORD_GAUGE</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ascii_otel_stats_metric()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_ascii_otel_ui_usage_(const_char_*_screen,_const_char_*_event,_"
+          >
+            <a
+              class="permalink"
+              href="#void_ascii_otel_ui_usage_(const_char_*_screen,_const_char_*_event,_"
+              >void ascii_otel_ui_usage (const char * screen, const char *
+              event, <b>uint64_t</b> duration_ns)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>433</b> of file <b>otel.c</b>.</p>
+          <pre>
+433                                                                                       {
+434   // UI transitions must not inherit realtime media sampling decisions.
+435   gotel_context_t root = {0};
+436   ASCII_OTEL_SCOPE_PARENT(UI_USAGE, &amp;root);
+437   ASCII_OTEL_ATTR_STRING(&quot;ascii_chat.ui.screen&quot;, screen);
+438   ASCII_OTEL_ATTR_STRING(&quot;ascii_chat.ui.event&quot;, event);
+439   ASCII_OTEL_ATTR_INT(&quot;ascii_chat.ui.duration_ns&quot;, (int64_t)duration_ns);
+440 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCII_OTEL_ATTR_INT</b>,
+            <b>ASCII_OTEL_ATTR_STRING</b>, <b>ASCII_OTEL_SCOPE_PARENT</b>, and
+            <b>ascii_otel_ui_usage()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ascii_otel_ui_usage()</b>,
+            <b>keyboard_help_toggle_terminal()</b>,
+            <b>log_search_enter_mode()</b>,
+            <b>terminal_screen_logs_handle_key()</b>,
+            <b>ui_error_popup_key()</b>, <b>ui_input_media_take()</b>,
+            <b>ui_input_read_key()</b>, <b>update_banner_set_result()</b>, and
+            <b>update_banner_toggle_overlay()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

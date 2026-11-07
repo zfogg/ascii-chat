@@ -10,52 +10,28 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.patterns import require_match
+from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import json
 import os
 from pathlib import Path
 import re
-import subprocess
 import tempfile
 import time
 
-from terminal_ui import Terminal, load_terminal_font
-from server_lifecycle import Service, free_port, server_options
+from ascii_chat_tests.terminal import Terminal
+from ascii_chat_tests.process import Service, free_port, server_options
 
 
-def capture(term, root, name):
-    root.mkdir(parents=True, exist_ok=True)
-    (root / f"{name}.txt").write_text("\n".join(term.screen.display), encoding="utf-8")
-    (root / f"{name}.ansi").write_text("".join(term.raw), encoding="utf-8")
-    from PIL import Image, ImageDraw, ImageFont
-    font = load_terminal_font(16)
-    symbol_paths = ("C:/Windows/Fonts/seguisym.ttf",
-                    "/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf")
-    symbol_font = next((ImageFont.truetype(path, 16) for path in symbol_paths if Path(path).exists()), font)
-    cw, ch = round(font.getlength("M")), 21
-    image = Image.new("RGB", (term.screen.columns * cw + 24, term.screen.lines * ch + 24), "#0d141a")
-    draw = ImageDraw.Draw(image)
-    palette = {"default": "#dedbd0", "black": "#000000", "red": "#e85d6f", "green": "#90e070",
-               "brown": "#f0cc91", "blue": "#65ace1", "magenta": "#c8a0d8", "cyan": "#65ace1",
-               "white": "#dedbd0"}
-    def color(value):
-        return palette.get(value, "#" + value if len(value) == 6 else "#dedbd0")
-    for y in range(term.screen.lines):
-        for x in range(term.screen.columns):
-            cell = term.screen.buffer[y][x]
-            fg, bg = color(cell.fg), "#0d141a" if cell.bg == "default" else color(cell.bg)
-            if cell.reverse:
-                fg, bg = bg, fg
-            if bg != "#0d141a":
-                draw.rectangle((12+x*cw, 12+y*ch, 12+(x+1)*cw, 12+(y+1)*ch), fill=bg)
-            draw.text((12+x*cw, 12+y*ch), cell.data,
-                      font=symbol_font if "❌" in cell.data else font, fill=fg)
-    image.save(root / f"{name}.png")
+from ascii_chat_tests.terminal import capture_sync as capture
 
 
 def selected(text):
-    return tuple(map(int, re.search(r"item (\d+)/(\d+)", text).groups()))
+    return tuple(map(int, require_match(r"item (\d+)/(\d+)", text).groups()))
 
 
 def check_colors(term, text):
@@ -64,7 +40,7 @@ def check_colors(term, text):
     text = expect_sync(term, lambda t: True, "Incomplete sync frame before palette checks")
     # Default log palette: blue rules, red zeroes, purple values, orange
     # filename, and yellow key names. Check the captured terminal cells.
-    first_number = re.search(r"\d+ objects", text.splitlines()[0]).start()
+    first_number = require_match(r"\d+ objects", text.splitlines()[0]).start()
     zero = text.splitlines()[1].index("0 mutexes")
     assert term.screen.buffer[0][first_number].fg == "c8a0d8"
     assert term.screen.buffer[1][zero].fg == "e85d6f"
@@ -141,7 +117,7 @@ def inspect(term, artifacts, name, required):
                        f"{name}: no inventory after resize")
     # Let the rate sampler leave startup/resize activity behind.
     text = term.pump(3)
-    pages = int(re.search(r"page 1/(\d+)", text).group(1))
+    pages = int(require_match(r"page 1/(\d+)", text).group(1))
     inventory = []
     for page in range(1, pages + 1):
         text = expect_sync(term, lambda t: f"page {page}/{pages}" in t, "Missing live inventory page")
@@ -267,10 +243,8 @@ def main():
         for suffix in ["ascii-chat", "AppData/Roaming/ascii-chat", ".config/ascii-chat"]:
             (root / suffix).mkdir(parents=True, exist_ok=True)
         media = root / "video.mkv"
-        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x120:rate=15",
-                        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "4",
-                        "-c:v", "libx264", "-c:a", "pcm_s16le", str(media)], check=True)
-        env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
+        lavfi_fixture(["testsrc2=size=160x120:rate=15", "sine=frequency=440:sample_rate=48000"], str(media), ffmpeg_options=["-v", "error"], output_options=["-t", "4", "-c:v", "libx264", "-c:a", "pcm_s16le"])
+        env = clean_environment()
         env.update(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root), XDG_CONFIG_HOME=str(root),
                    ASCII_CHAT_QUESTION_PROMPT_RESPONSE="y;y;y", ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
         old = os.environ.copy()
@@ -283,14 +257,14 @@ def main():
             # the first resumed 250 ms rate sample is replaced. Source FPS and
             # audio processing are unchanged by these output dimensions.
             width, height = (60, 15) if name == "mirror" else (100, 30)
-            term = Terminal([str(binary), "--no-check-update", "--log-file", str(root / f"{name}.log"),
+            term = Terminal(cli_command(str(binary), "--log-file", str(root / f"{name}.log"),
                              "--log-level", "debug", "--grep", "CLIENT.AUDIO.RECV", "--grep", "FRAME_PRESENT",
                              "--grep", "FRAME_WRITE_TTY", "--grep", "KEYBOARD.INPUT", "--grep", "Discovery",
                              "--grep", "ERROR", "--grep", "WARN",
                              *argv, "--file", str(media), "--loop", "--audio=true",
                              "--audio-source", "media", "--splash-screen=false", *colors,
                              "--fps", "15", "--width", str(width), "--height", str(height),
-                             *extra], rows=30, cols=160)
+                             *extra), rows=30, cols=160)
             terminals.append(term)
             return term
         try:
@@ -339,7 +313,7 @@ def main():
                             "Session created|state=changing|Server accepting connections|ERROR|WARN"], env)
             services.append(host)
             host.wait_for("Session created:")
-            session = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())[1]
+            session = require_match(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())[1]
             client = terminal("client", ["client", f"127.0.0.1:{tcp}", "--password", "sync-test-password"])
             wait_video(client, "client")
             # Join while the discovered session is fresh, before spending time

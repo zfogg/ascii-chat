@@ -48,6 +48,8 @@ uint64_t acip_quic_connection_expiry(const acip_quic_connection_t *connection);
 asciichat_error_t acip_quic_connection_handle_expiry(acip_quic_connection_t *connection, uint64_t now_ns);
 bool acip_quic_connection_tls_ready(const acip_quic_connection_t *connection);
 /* A WebTransport listener is admitted only after its CONNECT is authorized. */
+/** Shared listeners wait for TLS ALPN and, for h3, an accepted CONNECT. */
+bool acip_quic_connection_accept_ready(const acip_quic_connection_t *connection);
 bool acip_quic_connection_webtransport_ready(const acip_quic_connection_t *connection);
 asciichat_error_t acip_quic_connection_peer_address(const acip_quic_connection_t *connection,
                                                     struct sockaddr_storage *address, socklen_t *length);

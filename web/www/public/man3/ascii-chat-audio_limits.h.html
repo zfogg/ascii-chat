@@ -1,0 +1,379 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>limits.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">limits.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">limits.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">limits.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>AUDIO_SAMPLE_RATE</b> 48000
+            <br />
+            #define <b>AUDIO_CHANNELS</b> 2
+            <br />
+            #define <b>AUDIO_DEVICE_MAX_CHANNELS</b> 64
+            <br />
+            #define <b>AUDIO_CAPTURE_FRAME_MS</b> 10
+            <br />
+            #define <b>AUDIO_FRAMES_PER_BUFFER</b> (<b>AUDIO_SAMPLE_RATE</b> *
+            <b>AUDIO_CAPTURE_FRAME_MS</b> / 1000)
+            <br />
+            #define <b>AUDIO_BUFFER_SIZE</b> (<b>AUDIO_FRAMES_PER_BUFFER</b> *
+            <b>AUDIO_CHANNELS</b>)
+            <br />
+            #define <b>CLIENT_AUDIO_PIPELINE_FRAME_MS</b> 20
+            <br />
+            #define <b>OPUS_FRAME_SAMPLES</b> (<b>AUDIO_SAMPLE_RATE</b> *
+            <b>CLIENT_AUDIO_PIPELINE_FRAME_MS</b> / 1000)
+            <br />
+            #define <b>CLIENT_AUDIO_PIPELINE_ECHO_REF_SIZE</b> (<b
+              >AUDIO_SAMPLE_RATE</b
+            >
+            / 2)
+            <br />
+            #define <b>CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET</b> 4000
+            <br />
+            #define <b>AUDIO_OPUS_SESSION_PACKET_CAPACITY</b> 1000
+            <br />
+            #define <b>AUDIO_OPUS_SERVER_PACKET_CAPACITY</b> 1024
+            <br />
+            #define <b>AUDIO_OPUS_MAX_DECODE_MS</b> 120
+            <br />
+            #define <b>AUDIO_OPUS_MAX_DECODE_SAMPLES</b> (<b
+              >AUDIO_SAMPLE_RATE</b
+            >
+            * <b>AUDIO_OPUS_MAX_DECODE_MS</b> / 1000)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_BUFFER_SIZE___(">
+            <a class="permalink" href="#_define_AUDIO_BUFFER_SIZE___("
+              >#define AUDIO_BUFFER_SIZE (<b>AUDIO_FRAMES_PER_BUFFER</b> *
+              <b>AUDIO_CHANNELS</b>)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>11</b> of file <b>audio/limits.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_audio_create()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_CAPTURE_FRAME_MS___10">
+            <a class="permalink" href="#_define_AUDIO_CAPTURE_FRAME_MS___10"
+              >#define AUDIO_CAPTURE_FRAME_MS 10</a
+            >
+          </h2>
+          <p class="Pp">Capture uses 10-ms blocks for WebRTC AEC3.</p>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>audio/limits.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_CHANNELS___2">
+            <a class="permalink" href="#_define_AUDIO_CHANNELS___2"
+              >#define AUDIO_CHANNELS 2</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>audio/limits.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_client_init()</b>,
+            <b>audio_connection_init()</b>, <b>audio_init()</b>,
+            <b>audio_process_received_samples()</b>,
+            <b>audio_start_duplex()</b>, <b>client_audio_pipeline_capture()</b>,
+            <b>client_audio_pipeline_config_for_source()</b>,
+            <b>client_audio_pipeline_create()</b>,
+            <b>client_audio_pipeline_default_config()</b>,
+            <b>client_audio_render_thread()</b>,
+            <b>handle_audio_batch_packet()</b>,
+            <b>handle_audio_opus_batch_packet()</b>,
+            <b>handle_audio_opus_packet()</b>, <b>handle_audio_packet()</b>,
+            <b>handle_stream_start_packet()</b>,
+            <b>opus_codec_create_decoder()</b>,
+            <b>opus_codec_create_encoder()</b>,
+            <b>session_audio_add_source()</b>, <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>,
+            <b>session_host_inject_audio()</b>,
+            <b>session_host_receive_packet()</b>, and
+            <b>session_host_render_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_DEVICE_MAX_CHANNELS___64">
+            <a class="permalink" href="#_define_AUDIO_DEVICE_MAX_CHANNELS___64"
+              >#define AUDIO_DEVICE_MAX_CHANNELS 64</a
+            >
+          </h2>
+          <p class="Pp">Maximum channels exposed by a native audio device.</p>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>audio/limits.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_route_capture()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_FRAMES_PER_BUFFER___(">
+            <a class="permalink" href="#_define_AUDIO_FRAMES_PER_BUFFER___("
+              >#define AUDIO_FRAMES_PER_BUFFER (<b>AUDIO_SAMPLE_RATE</b> *
+              <b>AUDIO_CAPTURE_FRAME_MS</b> / 1000)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>10</b> of file <b>audio/limits.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_start_duplex()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_OPUS_MAX_DECODE_MS___120">
+            <a class="permalink" href="#_define_AUDIO_OPUS_MAX_DECODE_MS___120"
+              >#define AUDIO_OPUS_MAX_DECODE_MS 120</a
+            >
+          </h2>
+          <p class="Pp">
+            Decoder storage permits packets representing up to 120 ms per
+            channel at the configured rate.
+          </p>
+          <p class="Pp">
+            Definition at line <b>23</b> of file <b>audio/limits.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_OPUS_MAX_DECODE_SAMPLES___(">
+            <a
+              class="permalink"
+              href="#_define_AUDIO_OPUS_MAX_DECODE_SAMPLES___("
+              >#define AUDIO_OPUS_MAX_DECODE_SAMPLES (<b>AUDIO_SAMPLE_RATE</b> *
+              <b>AUDIO_OPUS_MAX_DECODE_MS</b> / 1000)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>24</b> of file <b>audio/limits.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_process_received_samples()</b>,
+            <b>client_audio_pipeline_capture()</b>,
+            <b>handle_audio_opus_batch_packet()</b>, and
+            <b>handle_audio_opus_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_OPUS_SERVER_PACKET_CAPACITY___1024">
+            <a
+              class="permalink"
+              href="#_define_AUDIO_OPUS_SERVER_PACKET_CAPACITY___1024"
+              >#define AUDIO_OPUS_SERVER_PACKET_CAPACITY 1024</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>21</b> of file <b>audio/limits.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>client_audio_render_thread()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_OPUS_SESSION_PACKET_CAPACITY___1000">
+            <a
+              class="permalink"
+              href="#_define_AUDIO_OPUS_SESSION_PACKET_CAPACITY___1000"
+              >#define AUDIO_OPUS_SESSION_PACKET_CAPACITY 1000</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>20</b> of file <b>audio/limits.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_host_render_audio()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_AUDIO_SAMPLE_RATE___48000">
+            <a class="permalink" href="#_define_AUDIO_SAMPLE_RATE___48000"
+              >#define AUDIO_SAMPLE_RATE 48000</a
+            >
+          </h2>
+          <p class="Pp">
+            Audio rate and channel configuration shared by capture, mixing, and
+            codecs.
+          </p>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>audio/limits.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_send_audio_batch()</b>,
+            <b>acip_send_audio_opus()</b>, <b>audio_client_init()</b>,
+            <b>audio_process_received_samples()</b>,
+            <b>audio_ring_buffer_read()</b>, <b>audio_start_duplex()</b>,
+            <b>client_audio_pipeline_default_config()</b>,
+            <b>client_audio_render_thread()</b>,
+            <b>handle_audio_batch_packet()</b>,
+            <b>handle_stream_start_packet()</b>,
+            <b>session_host_receive_packet()</b>,
+            <b>session_host_render_audio()</b>, and
+            <b>session_participant_start_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CLIENT_AUDIO_PIPELINE_ECHO_REF_SIZE___(">
+            <a
+              class="permalink"
+              href="#_define_CLIENT_AUDIO_PIPELINE_ECHO_REF_SIZE___("
+              >#define CLIENT_AUDIO_PIPELINE_ECHO_REF_SIZE (<b
+                >AUDIO_SAMPLE_RATE</b
+              >
+              / 2)</a
+            >
+          </h2>
+          <p class="Pp">
+            Echo-reference storage holds half a second at the configured rate.
+          </p>
+          <p class="Pp">
+            Definition at line <b>17</b> of file <b>audio/limits.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CLIENT_AUDIO_PIPELINE_FRAME_MS___20">
+            <a
+              class="permalink"
+              href="#_define_CLIENT_AUDIO_PIPELINE_FRAME_MS___20"
+              >#define CLIENT_AUDIO_PIPELINE_FRAME_MS 20</a
+            >
+          </h2>
+          <p class="Pp">
+            Opus capture and mixing use 20-ms frames; sample counts below are
+            per channel.
+          </p>
+          <p class="Pp">
+            Definition at line <b>14</b> of file <b>audio/limits.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_send_audio_opus()</b>,
+            <b>client_audio_pipeline_default_config()</b>,
+            <b>client_audio_render_thread()</b>, and
+            <b>session_host_render_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET___4000"
+          >
+            <a
+              class="permalink"
+              href="#_define_CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET___4000"
+              >#define CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET 4000</a
+            >
+          </h2>
+          <p class="Pp">
+            Existing encoder byte budgets; these are not codec-wide packet
+            maxima.
+          </p>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>audio/limits.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_OPUS_FRAME_SAMPLES___(">
+            <a class="permalink" href="#_define_OPUS_FRAME_SAMPLES___("
+              >#define OPUS_FRAME_SAMPLES (<b>AUDIO_SAMPLE_RATE</b> *
+              <b>CLIENT_AUDIO_PIPELINE_FRAME_MS</b> / 1000)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>15</b> of file <b>audio/limits.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_send_audio_batch()</b>, <b>audio_init()</b>,
+            <b>audio_ring_buffer_read()</b>,
+            <b>audio_ring_buffer_set_jitter_target()</b>,
+            <b>client_audio_render_thread()</b>,
+            <b>session_host_add_client()</b>,
+            <b>session_host_add_memory_participant()</b>,
+            <b>session_host_receive_packet()</b>, and
+            <b>session_host_render_audio()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

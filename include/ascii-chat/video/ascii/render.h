@@ -16,8 +16,40 @@
  * ISA entry points select their vector stages; callers must check CPU support.
  */
 typedef enum { ASCII_COLOR_NONE, ASCII_COLOR_16, ASCII_COLOR_256, ASCII_COLOR_TRUE } ascii_color_t;
+
+/** A renderer-owned history; one instance must not be shared by independent streams. */
+typedef struct {
+  uint8_t samples[16];
+  uint32_t glyph;
+  uint32_t color;
+  uint64_t source_owner;
+  bool valid;
+} ascii_temporal_cell_t;
+
+typedef struct {
+  ascii_temporal_cell_t *cells;
+  size_t width, height;
+  uint64_t configuration;
+  uint64_t elapsed_ns;
+  uint64_t last_timestamp_ns;
+  uint64_t fixed_step_ns;
+} ascii_stabilizer_t;
+
+/** Prepare history for a viewport and rendering contract, resetting it on change. */
+asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height,
+                                           uint64_t configuration);
+void ascii_stabilizer_reset(ascii_stabilizer_t *state);
+/** Select history for the current thread until the previous target is restored. */
+ascii_stabilizer_t *ascii_stabilizer_set_target(ascii_stabilizer_t *state);
+/** Choose a glyph using current and previous candidate errors and patch motion. */
+uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate,
+                                 uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
+                                 uint32_t *stabilized_color);
 char *ascii_render(const image_t *image, const char *palette, ascii_color_t color, bool background, bool dither,
                    const simd_cells_t *ops);
+
+bool ascii_glyph_palette_supported(const char *palette);
+char *ascii_render_glyph_match(const image_t *image, ascii_color_t color, const simd_cells_t *ops, const char *palette);
 
 /** Two source rows per terminal row; the supplied backend processes both rows. */
 char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int stride_bytes, ascii_color_t color,
@@ -27,10 +59,14 @@ char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int str
 typedef struct {
   outbuf_t output;
   outbuf_t *output_target;
-  size_t width;
+  size_t width, source_height;
   uint32_t table[64];
   uint32_t *scratch, *packed, *index, *glyph, *fg, *bg;
   uint8_t *luma;
+  ascii_stabilizer_t *stabilizer;
+  size_t row;
+  bool temporal_preselected;
+  bool dithered;
   // A terminal row normally fits on the stack; unusually wide images retain
   // the heap fallback. Each invocation owns its scratch, including reentry.
   _Alignas(64) uint32_t inline_scratch[ASCII_INLINE_SCRATCH_COLUMNS * ASCII_SCRATCH_PLANES];

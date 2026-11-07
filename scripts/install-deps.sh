@@ -66,10 +66,15 @@ if [[ "$PLATFORM" == "macos" ]]; then
   # Install packages - completely ignore all errors since many are already installed
   # GitHub runners have pre-installed packages with version conflicts that can't be resolved
   brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
-    ninja mimalloc zstd libsodium portaudio opus fftw criterion doxygen sqlite3 \
+    ninja python mimalloc zstd libsodium portaudio opus fftw criterion doxygen sqlite3 \
     miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets libuv icu4c openssl@3 yyjson \
-    libvterm freetype fontconfig expat \
+    libvterm freetype fontconfig expat pcre2 \
     >/dev/null 2>&1 || true
+
+  # uv is required by the Python test runner; do not ignore its installation failure.
+  if ! command -v uv &>/dev/null; then
+    brew install uv
+  fi
 
   echo "Homebrew packages: installation attempt completed"
 
@@ -138,11 +143,11 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     # Install non-LLVM dependencies first
     apt-get install -y \
       pkg-config make autoconf automake libtool ccache gperf \
-      cmake ninja-build \
+      cmake ninja-build python3 \
       musl-tools musl-dev \
       nasm \
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libfftw3-dev libsystemd-dev \
-      libcriterion-dev libffi-dev libsqlite3-dev \
+      libcriterion-dev libffi-dev libsqlite3-dev libpcre2-dev \
       libssl-dev \
       libminiupnpc-dev \
       libprotobuf-c-dev \
@@ -305,7 +310,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       pkg-config make autoconf automake libtool \
       clang llvm lld \
       libcxx-devel libcxxabi-devel \
-      cmake ninja-build \
+      cmake ninja-build python3 \
       musl-devel musl-gcc musl-libc-static \
       nasm \
       libx264-devel libx265-devel \
@@ -373,6 +378,19 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     exit 1
   fi
 
+  if ! command -v uv &>/dev/null; then
+    if [ "$(id -u)" -eq 0 ]; then
+      uv_install_dir=/usr/local/bin
+    else
+      uv_install_dir="${HOME}/.local/bin"
+    fi
+    echo "Installing uv to ${uv_install_dir}..."
+    curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="${uv_install_dir}" sh
+    export PATH="${uv_install_dir}:${PATH}"
+    echo "Ensure ${uv_install_dir} is on PATH in future shells."
+  fi
+  command -v uv >/dev/null || { echo >&2 "ERROR: uv installation failed"; exit 1; }
+
   echo ""
   echo "Dependencies installed successfully!"
   echo "You can now run: cmake --build --preset debug"
@@ -382,4 +400,16 @@ elif [[ "$PLATFORM" == "windows" ]]; then
   echo "On Windows, please use the PowerShell script instead:"
   echo "  ./scripts/install-deps.ps1"
   exit 1
+fi
+
+# Vite+ supplies Oxfmt and the Node.js toolchain used by formatting targets.
+if ! command -v vp >/dev/null 2>&1; then
+  curl -fsSL https://vite.plus | bash
+  export PATH="$HOME/.vite-plus/bin:$PATH"
+fi
+if command -v vp >/dev/null 2>&1; then
+  (cd "$(dirname "$0")/.." && vp install --ignore-scripts)
+  (cd "$(dirname "$0")/../web" && vp install --ignore-scripts)
+else
+  echo >&2 "Vite+ installed; open a new shell and run vp install in the repository and web directories."
 fi

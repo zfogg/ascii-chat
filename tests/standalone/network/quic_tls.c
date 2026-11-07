@@ -1427,7 +1427,8 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
   CHECK(socket_init() == ASCIICHAT_OK);
   struct sockaddr_in loopback = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   acip_quic_config_t server_config = {
-      .certificate_file = certificate, .private_key_file = private_key, .enable_datagrams = true};
+      .certificate_file = certificate, .private_key_file = private_key, .enable_datagrams = true,
+      .webtransport_origin = "https://example.test", .webtransport_path = "/acip", .accept_native = true};
   acip_quic_config_t client_config = {.ca_file = certificate, .enable_datagrams = true};
   acip_quic_endpoint_t *server = NULL, *client = NULL;
   CHECK(acip_quic_endpoint_open((struct sockaddr *)&loopback, sizeof(loopback), true, &server_config, &server) ==

@@ -1,0 +1,880 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>client_connection(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">client_connection(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">client_connection(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">client_connection</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;src/client/connection_internal.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>network_connection_t</b> * <b>network</b>
+            <br />
+            <b>acip_transport_t</b> * <b>transport</b>
+            <br />
+            <b>session_capture_ctx_t</b> * <b>capture_context</b>
+            <br />
+            <b>session_display_ctx_t</b> * <b>display_context</b>
+            <br />
+            <b>audio_context_t</b> * <b>audio_context</b>
+            <br />
+            <b>atomic_t</b> <b>display_first_frame</b>
+            <br />
+            int <b>audio_receive_count</b>
+            <br />
+            <b>fps_t</b> <b>frame_fps_tracker</b>
+            <br />
+            <b>bool</b> <b>frame_fps_tracker_initialized</b>
+            <br />
+            <b>uint32_t</b> <b>frame_last_width</b>
+            <br />
+            <b>uint32_t</b> <b>frame_last_height</b>
+            <br />
+            <b>uint64_t</b> <b>frame_first_frame_time_ns</b>
+            <br />
+            <b>bool</b> <b>frame_first_frame_recorded</b>
+            <br />
+            int <b>frame_snapshot_frame_count</b>
+            <br />
+            <b>uint64_t</b> <b>frame_last_debug_log_ns</b>
+            <br />
+            <b>bool</b> <b>frame_first_frame_rendered</b>
+            <br />
+            <b>bool</b> <b>send_mutex_initialized</b>
+            <br />
+            <b>session_connection_t</b> <b>lifecycle</b>
+            <br />
+            <b>bool</b> <b>audio_queue_mutex_initialized</b>
+            <br />
+            <b>bool</b> <b>audio_queue_cond_initialized</b>
+            <br />
+            <b>atomic_t</b> <b>stop_requested</b>
+            <br />
+            <b>atomic_t</b> <b>connection_active</b>
+            <br />
+            <b>atomic_t</b> <b>remote_error</b>
+            <br />
+            <b>atomic_t</b> <b>telemetry_ping_ns</b>
+            <br />
+            <b>atomic_t</b> <b>connection_lost</b>
+            <br />
+            <b>uint32_t</b> <b>my_client_id</b>
+            <br />
+            char <b>server_ip</b> [<b>HOSTNAME_BUFFER_SIZE</b>]
+            <br />
+            int <b>server_port</b>
+            <br />
+            <b>mutex_t</b> <b>send_mutex</b>
+            <br />
+            <b>crypto_handshake_context_t</b> * <b>crypto_ctx</b>
+            <br />
+            <b>h265_encoder_t</b> *volatile <b>video_encoder</b>
+            <br />
+            <b>buffer_workspace_t</b> <b>encoded_video_workspace</b>
+            <br />
+            <b>buffer_workspace_t</b> <b>decoded_ascii_workspace</b>
+            <br />
+            <b>atomic_t</b> <b>data_thread_exited</b>
+            <br />
+            <b>atomic_t</b> <b>frames_rendered</b>
+            <br />
+            <b>atomic_t</b> <b>snapshot_first_frame_time_ns</b>
+            <br />
+            <b>session_protocol_t</b> <b>protocol</b>
+            <br />
+            <b>terminal_size_t</b> <b>advertised_dimensions</b>
+            <br />
+            <b>bool</b> <b>capture_thread_created</b>
+            <br />
+            <b>atomic_t</b> <b>capture_thread_exited</b>
+            <br />
+            <b>bool</b> <b>audio_capture_thread_created</b>
+            <br />
+            <b>atomic_t</b> <b>audio_capture_thread_exited</b>
+            <br />
+            <b>audio_send_packet_t</b> <b>audio_send_queue</b> [32]
+            <br />
+            int <b>audio_send_queue_head</b>
+            <br />
+            int <b>audio_send_queue_tail</b>
+            <br />
+            <b>mutex_t</b> <b>audio_send_queue_mutex</b>
+            <br />
+            <b>cond_t</b> <b>audio_send_queue_cond</b>
+            <br />
+            <b>lifecycle_t</b> <b>audio_send_queue_lc</b>
+            <br />
+            <b>bool</b> <b>audio_sender_thread_created</b>
+            <br />
+            <b>bool</b> <b>audio_send_direct</b>
+            <br />
+            <b>atomic_t</b> <b>audio_sender_should_exit</b>
+            <br />
+            <b>atomic_t</b> <b>audio_sender_exited</b>
+            <br />
+            <b>bool</b> <b>ping_thread_created</b>
+            <br />
+            <b>atomic_t</b> <b>ping_thread_exited</b>
+            <br />
+            <b>uint8_t</b> <b>crypto_mode</b>
+            <br />
+            <b>thread_pool_t</b> * <b>client_worker_pool</b>
+            <br />
+            <b>client_audio_pipeline_t</b> * <b>audio_pipeline</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>41</b> of file <b>connection_internal.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>terminal_size_t</b> client_connection::advertised_dimensions
+          </h2>
+          <p class="Pp">
+            Definition at line <b>80</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>threaded_send_terminal_size_with_auto_detect()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> client_connection::audio_capture_thread_created
+          </h2>
+          <p class="Pp">
+            Definition at line <b>83</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_start_thread()</b>, and
+            <b>audio_stop_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> client_connection::audio_capture_thread_exited
+          </h2>
+          <p class="Pp">
+            Definition at line <b>84</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_start_thread()</b>,
+            <b>audio_stop_thread()</b>, and <b>audio_thread_exited()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>audio_context_t</b>* client_connection::audio_context
+          </h2>
+          <p class="Pp">
+            Definition at line <b>47</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_connection_init()</b>,
+            <b>audio_process_received_samples()</b>,
+            <b>audio_start_thread()</b>, <b>audio_stop_thread()</b>, and
+            <b>client_protocol_start()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>client_audio_pipeline_t</b>* client_connection::audio_pipeline
+          </h2>
+          <p class="Pp">
+            Definition at line <b>99</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_connection_init()</b>,
+            <b>audio_decode_opus()</b>, and <b>audio_get_pipeline()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> client_connection::audio_queue_cond_initialized
+          </h2>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_sender_finalize()</b>, and
+            <b>audio_sender_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> client_connection::audio_queue_mutex_initialized
+          </h2>
+          <p class="Pp">
+            Definition at line <b>61</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_sender_finalize()</b>, and
+            <b>audio_sender_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_client_connection::audio_receive_count">
+            <a
+              class="permalink"
+              href="#int_client_connection::audio_receive_count"
+              >int client_connection::audio_receive_count</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>49</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_process_received_samples()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> client_connection::audio_send_direct</h2>
+          <p class="Pp">
+            Definition at line <b>92</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_sender_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>audio_send_packet_t</b> client_connection::audio_send_queue[32]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>85</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>cond_t</b> client_connection::audio_send_queue_cond
+          </h2>
+          <p class="Pp">
+            Definition at line <b>89</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_sender_cleanup()</b>,
+            <b>audio_sender_finalize()</b>, <b>audio_sender_init()</b>, and
+            <b>audio_stop_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_client_connection::audio_send_queue_head">
+            <a
+              class="permalink"
+              href="#int_client_connection::audio_send_queue_head"
+              >int client_connection::audio_send_queue_head</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>86</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>lifecycle_t</b> client_connection::audio_send_queue_lc
+          </h2>
+          <p class="Pp">
+            Definition at line <b>90</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_sender_cleanup()</b>,
+            <b>audio_sender_finalize()</b>, <b>audio_sender_init()</b>, and
+            <b>audio_stop_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>mutex_t</b> client_connection::audio_send_queue_mutex
+          </h2>
+          <p class="Pp">
+            Definition at line <b>88</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_sender_cleanup()</b>,
+            <b>audio_sender_finalize()</b>, <b>audio_sender_init()</b>, and
+            <b>audio_stop_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_client_connection::audio_send_queue_tail">
+            <a
+              class="permalink"
+              href="#int_client_connection::audio_send_queue_tail"
+              >int client_connection::audio_send_queue_tail</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>87</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> client_connection::audio_sender_exited
+          </h2>
+          <p class="Pp">
+            Definition at line <b>94</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_sender_init()</b>, and
+            <b>audio_stop_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> client_connection::audio_sender_should_exit
+          </h2>
+          <p class="Pp">
+            Definition at line <b>93</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_sender_cleanup()</b>, and
+            <b>audio_stop_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> client_connection::audio_sender_thread_created
+          </h2>
+          <p class="Pp">
+            Definition at line <b>91</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_sender_cleanup()</b>, and
+            <b>audio_sender_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_capture_ctx_t</b>* client_connection::capture_context
+          </h2>
+          <p class="Pp">
+            Definition at line <b>45</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_connection_init()</b>,
+            <b>capture_start_thread()</b>, <b>client_protocol_start()</b>, and
+            <b>display_poll_keyboard()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> client_connection::capture_thread_created
+          </h2>
+          <p class="Pp">
+            Definition at line <b>81</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>capture_start_thread()</b>, and
+            <b>capture_stop_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> client_connection::capture_thread_exited
+          </h2>
+          <p class="Pp">
+            Definition at line <b>82</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>capture_start_thread()</b>,
+            <b>capture_stop_thread()</b>, and <b>capture_thread_exited()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>thread_pool_t</b>* client_connection::client_worker_pool
+          </h2>
+          <p class="Pp">
+            Definition at line <b>98</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_sender_init()</b>,
+            <b>audio_start_thread()</b>, <b>capture_start_thread()</b>,
+            <b>client_connection_create()</b>,
+            <b>client_connection_destroy()</b>, <b>client_protocol_start()</b>,
+            and <b>keepalive_start_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> client_connection::connection_active
+          </h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>server_connection_init()</b>,
+            <b>server_connection_is_active()</b>,
+            <b>server_connection_lost()</b>,
+            <b>server_connection_set_transport()</b>,
+            <b>server_connection_shutdown()</b>,
+            <b>threaded_send_audio_batch_packet()</b>,
+            <b>threaded_send_audio_opus()</b>,
+            <b>threaded_send_audio_opus_batch()</b>,
+            <b>threaded_send_client_join_packet()</b>, and
+            <b>threaded_send_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> client_connection::connection_lost</h2>
+          <p class="Pp">
+            Definition at line <b>67</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>server_connection_init()</b>,
+            <b>server_connection_is_lost()</b>, <b>server_connection_lost()</b>,
+            <b>server_connection_set_transport()</b>, and
+            <b>server_connection_shutdown()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>crypto_handshake_context_t</b>* client_connection::crypto_ctx
+          </h2>
+          <p class="Pp">
+            Definition at line <b>72</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_start()</b>,
+            <b>client_crypto_init()</b>, <b>crypto_client_initiate_rekey()</b>,
+            <b>crypto_client_process_rekey_request()</b>,
+            <b>crypto_client_process_rekey_response()</b>,
+            <b>crypto_client_send_rekey_complete()</b>,
+            <b>crypto_client_send_rekey_response()</b>, and
+            <b>crypto_client_should_rekey()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b> client_connection::crypto_mode</h2>
+          <p class="Pp">
+            Definition at line <b>97</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_create()</b>, and
+            <b>client_crypto_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> client_connection::data_thread_exited
+          </h2>
+          <p class="Pp">
+            Definition at line <b>76</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_protocol_connection_lost()</b>, and
+            <b>client_protocol_start()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>buffer_workspace_t</b> client_connection::decoded_ascii_workspace
+          </h2>
+          <p class="Pp">
+            Definition at line <b>75</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>client_protocol_start()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_display_ctx_t</b>* client_connection::display_context
+          </h2>
+          <p class="Pp">
+            Definition at line <b>46</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>display_poll_keyboard()</b>, and
+            <b>display_render_frame()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> client_connection::display_first_frame
+          </h2>
+          <p class="Pp">
+            Definition at line <b>48</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>display_disable_logging_for_first_frame()</b>, and
+            <b>display_reset_for_new_connection()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>buffer_workspace_t</b> client_connection::encoded_video_workspace
+          </h2>
+          <p class="Pp">
+            Definition at line <b>74</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>threaded_send_image_frame_encoded()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> client_connection::frame_first_frame_recorded
+          </h2>
+          <p class="Pp">
+            Definition at line <b>55</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> client_connection::frame_first_frame_rendered
+          </h2>
+          <p class="Pp">
+            Definition at line <b>58</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> client_connection::frame_first_frame_time_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>54</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>fps_t</b> client_connection::frame_fps_tracker</h2>
+          <p class="Pp">
+            Definition at line <b>50</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> client_connection::frame_fps_tracker_initialized
+          </h2>
+          <p class="Pp">
+            Definition at line <b>51</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> client_connection::frame_last_debug_log_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>57</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint32_t</b> client_connection::frame_last_height
+          </h2>
+          <p class="Pp">
+            Definition at line <b>53</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint32_t</b> client_connection::frame_last_width
+          </h2>
+          <p class="Pp">
+            Definition at line <b>52</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_client_connection::frame_snapshot_frame_count">
+            <a
+              class="permalink"
+              href="#int_client_connection::frame_snapshot_frame_count"
+              >int client_connection::frame_snapshot_frame_count</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>56</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> client_connection::frames_rendered</h2>
+          <p class="Pp">
+            Definition at line <b>77</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_connection_t</b> client_connection::lifecycle
+          </h2>
+          <p class="Pp">
+            Definition at line <b>60</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_create()</b>,
+            <b>client_connection_request_stop()</b>,
+            <b>client_connection_start()</b>, and
+            <b>client_connection_stop()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint32_t</b> client_connection::my_client_id</h2>
+          <p class="Pp">
+            Definition at line <b>68</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>server_connection_get_client_id()</b>, and
+            <b>server_connection_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>network_connection_t</b>* client_connection::network
+          </h2>
+          <p class="Pp">
+            Definition at line <b>42</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_start()</b>, and
+            <b>client_crypto_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> client_connection::ping_thread_created</h2>
+          <p class="Pp">
+            Definition at line <b>95</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>keepalive_start_thread()</b>, and
+            <b>keepalive_stop_thread()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> client_connection::ping_thread_exited
+          </h2>
+          <p class="Pp">
+            Definition at line <b>96</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>keepalive_start_thread()</b>,
+            <b>keepalive_stop_thread()</b>, and
+            <b>keepalive_thread_exited()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>session_protocol_t</b> client_connection::protocol
+          </h2>
+          <p class="Pp">
+            Definition at line <b>79</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>client_protocol_start()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> client_connection::remote_error</h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>server_connection_get_remote_error()</b>, and
+            <b>server_connection_set_remote_error()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>mutex_t</b> client_connection::send_mutex</h2>
+          <p class="Pp">
+            Definition at line <b>71</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_destroy()</b>,
+            <b>server_connection_init()</b>,
+            <b>threaded_send_audio_batch_packet()</b>,
+            <b>threaded_send_audio_opus()</b>,
+            <b>threaded_send_audio_opus_batch()</b>,
+            <b>threaded_send_client_join_packet()</b>,
+            <b>threaded_send_image_frame()</b>,
+            <b>threaded_send_image_frame_encoded()</b>, and
+            <b>threaded_send_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> client_connection::send_mutex_initialized
+          </h2>
+          <p class="Pp">
+            Definition at line <b>59</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_destroy()</b>, and
+            <b>server_connection_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_client_connection::server_ip_">
+            <a class="permalink" href="#char_client_connection::server_ip_"
+              >char client_connection::server_ip[<b>HOSTNAME_BUFFER_SIZE</b>]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>69</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>server_connection_get_ip()</b>, and
+            <b>server_connection_set_ip()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_client_connection::server_port">
+            <a class="permalink" href="#int_client_connection::server_port"
+              >int client_connection::server_port</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>70</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>server_connection_get_port()</b>, and
+            <b>server_connection_set_port()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> client_connection::snapshot_first_frame_time_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>78</b> of file <b>connection_internal.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>atomic_t</b> client_connection::stop_requested</h2>
+          <p class="Pp">
+            Definition at line <b>63</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>client_connection_start()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>atomic_t</b> client_connection::telemetry_ping_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>66</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>server_connection_pong_received()</b>, and
+            <b>threaded_send_ping_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b>* client_connection::transport
+          </h2>
+          <p class="Pp">
+            Definition at line <b>43</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_sender_init()</b>,
+            <b>client_connection_start()</b>,
+            <b>server_connection_get_transport()</b>,
+            <b>server_connection_init()</b>,
+            <b>server_connection_is_active()</b>,
+            <b>server_connection_set_transport()</b>,
+            <b>server_connection_shutdown()</b>,
+            <b>threaded_send_audio_batch_packet()</b>,
+            <b>threaded_send_audio_opus()</b>,
+            <b>threaded_send_audio_opus_batch()</b>,
+            <b>threaded_send_client_join_packet()</b>, and
+            <b>threaded_send_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>h265_encoder_t</b>* volatile client_connection::video_encoder
+          </h2>
+          <p class="Pp">
+            Definition at line <b>73</b> of file <b>connection_internal.h</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>threaded_send_image_frame_encoded()</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

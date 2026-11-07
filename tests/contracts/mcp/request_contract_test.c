@@ -256,7 +256,7 @@ Test(mcp_requests, output_staging_does_not_create_or_replace_the_published_desti
 static yyjson_mut_doc *dispatch_text(mcp_server_t *server, const char *json, void *connection) {
   yyjson_doc *doc = read_json(json);
   bool pending = true;
-  yyjson_mut_doc *response = mcp_dispatch(server, doc, connection, &pending);
+  yyjson_mut_doc *response = mcp_dispatch(server, doc, connection, NULL, &pending);
   cr_assert_not(pending);
   yyjson_doc_free(doc);
   return response;
@@ -272,7 +272,8 @@ static void expect_rpc_error(mcp_server_t *server, const char *json, int code) {
 }
 
 Test(mcp_requests, protocol_envelopes_reject_invalid_types_and_worker_start_failure_releases_job) {
-  mcp_server_t server = {.policy = {.max_jobs = 1}};
+  mcp_job_t jobs[1] = {0};
+  mcp_server_t server = {.policy = {.max_jobs = 1}, .jobs = jobs};
   expect_rpc_error(&server, "[]", -32600);
   expect_rpc_error(&server, "{\"jsonrpc\":\"1.0\",\"method\":\"ping\",\"id\":1}", -32600);
   expect_rpc_error(&server, "{\"jsonrpc\":\"2.0\",\"method\":1,\"id\":1}", -32600);

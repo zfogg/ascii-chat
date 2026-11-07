@@ -68,6 +68,7 @@ typedef struct mem_block {
   uint64_t tid;                                           // Allocating thread ID (for site lookup)
   char thread_name[DEBUG_MEMORY_THREAD_NAME_BUFFER_SIZE]; // Thread name from named registry
   bool is_aligned;
+  backtrace_t backtrace;
   struct mem_block *next;
 } mem_block_t;
 
@@ -415,6 +416,8 @@ void *debug_malloc(size_t size, const char *file, int line) {
 
     mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
     if (block) {
+      memset(&block->backtrace, 0, sizeof(block->backtrace));
+      backtrace_capture(&block->backtrace);
       block->ptr = ptr;
       block->size = size;
       block->is_aligned = false;
@@ -482,6 +485,8 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
 
     mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
     if (block) {
+      memset(&block->backtrace, 0, sizeof(block->backtrace));
+      backtrace_capture(&block->backtrace);
       block->ptr = ptr;
       block->size = size;
       block->is_aligned = true;
@@ -641,6 +646,8 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
 
     mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
     if (block) {
+      memset(&block->backtrace, 0, sizeof(block->backtrace));
+      backtrace_capture(&block->backtrace);
       block->ptr = ptr;
       block->size = total;
       block->is_aligned = false;
@@ -830,6 +837,8 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
       }
 
       // Update block with new metadata
+      memset(&curr->backtrace, 0, sizeof(curr->backtrace));
+      backtrace_capture(&curr->backtrace);
       curr->ptr = new_ptr;
       const char *normalized_file = extract_project_relative_path(file);
       SAFE_STRNCPY(curr->file, normalized_file, sizeof(curr->file) - 1);
@@ -854,6 +863,8 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
       // Block not found - create new tracking entry
       mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
       if (block) {
+        memset(&block->backtrace, 0, sizeof(block->backtrace));
+        backtrace_capture(&block->backtrace);
         block->ptr = new_ptr;
         block->size = size;
         block->is_aligned = false;
@@ -1167,6 +1178,18 @@ void debug_memory_report(void) {
       APPEND_REPORT("\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:"));
     }
 
+    // Bound the snapshot to keep reports usable when many allocations remain live.
+#define TRACE_SNAPSHOT_LIMIT 256
+    typedef struct {
+      backtrace_t backtrace;
+      size_t size;
+      char file[BUFFER_SIZE_SMALL];
+      int line;
+    } trace_snapshot_t;
+    trace_snapshot_t *trace_snapshot = malloc(TRACE_SNAPSHOT_LIMIT * sizeof(*trace_snapshot));
+    size_t trace_count = 0;
+    bool traces_truncated = trace_snapshot == NULL;
+
     if (g_site_cache && unfreed_count > 0) {
       if (ensure_mutex_initialized()) {
         if (!acquire_mutex_with_polling(&g_mem.mutex, 100)) {
@@ -1248,13 +1271,18 @@ void debug_memory_report(void) {
                         colored_string(LOG_COLOR_FATAL, line_str), colored_thread_name,
                         colored_string(size_color, count_str), colored_string(size_color, pretty_bytes));
 
-          // Don't synchronously symbolize backtraces during memory report - symbolization is slow
-          // and can cause hangs during shutdown. Instead, backtraces will be symbolized asynchronously
-          // by the debug sync thread. Just print whatever symbols are available.
-          if (site->backtrace.symbols != NULL && site->backtrace.count > 0) {
-            APPEND_REPORT("    Backtrace (%d frames):\n", site->backtrace.count);
-            for (int i = 0; i < site->backtrace.count; i++) {
-              APPEND_REPORT("      [%d] %s\n", i, site->backtrace.symbols[i]);
+          // Copy live traces while locked; symbolization may allocate and must run unlocked.
+          for (mem_block_t *block = g_mem.head; block; block = block->next) {
+            if (block->line == line && block->tid == tid && strcmp(block->file, file) == 0) {
+              if (trace_snapshot && trace_count < TRACE_SNAPSHOT_LIMIT) {
+                trace_snapshot[trace_count].backtrace = block->backtrace;
+                trace_snapshot[trace_count].size = block->size;
+                safe_snprintf(trace_snapshot[trace_count].file, sizeof(trace_snapshot[trace_count].file), "%s", file);
+                trace_snapshot[trace_count].line = line;
+                trace_count++;
+              } else {
+                traces_truncated = true;
+              }
             }
           }
         }
@@ -1268,6 +1296,29 @@ void debug_memory_report(void) {
     }
 
   skip_allocations_list:
+    // Do not hold the allocation mutex while resolving symbols: platform symbolizers
+    // can allocate or acquire other locks. The copied addresses remain valid.
+    for (size_t trace_index = 0; trace_index < trace_count; trace_index++) {
+      trace_snapshot_t *trace = &trace_snapshot[trace_index];
+      APPEND_REPORT("\n  Allocation from %s:%d (%zu bytes):\n", trace->file, trace->line, trace->size);
+      bool was_in_debug_memory = g_in_debug_memory;
+      g_in_debug_memory = true;
+      backtrace_symbolize(&trace->backtrace);
+      for (int i = 0; i < trace->backtrace.count; i++) {
+        if (trace->backtrace.symbols && trace->backtrace.symbols[i]) {
+          APPEND_REPORT("    [%d] %s\n", i, trace->backtrace.symbols[i]);
+        } else {
+          APPEND_REPORT("    [%d] %p\n", i, trace->backtrace.ptrs[i]);
+        }
+      }
+      backtrace_t_free(&trace->backtrace);
+      g_in_debug_memory = was_in_debug_memory;
+    }
+    if (traces_truncated && unfreed_count > 0) {
+      APPEND_REPORT("  (allocation traces truncated or unavailable)\n");
+    }
+    free(trace_snapshot);
+#undef TRACE_SNAPSHOT_LIMIT
 
     // SKIP cleanup site cache at shutdown
     // We used to clean up the hash table here, but HASH_DEL inside HASH_ITER causes

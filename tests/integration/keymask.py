@@ -10,6 +10,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.process import free_port
+from ascii_chat_tests.cli import cli_command
 
 
 import argparse
@@ -18,7 +20,6 @@ import ctypes as C
 import hashlib
 import os
 from pathlib import Path
-import socket
 import struct
 import subprocess
 import sys
@@ -38,7 +39,7 @@ def load(library, directory):
     # Keep the DLL search handle alive for the duration of the tests.
     handle = os.add_dll_directory(str(library.parent)) if os.name == "nt" else None
     native = C.CDLL(str(library))
-    native._directory_handle = handle
+    setattr(native, "_directory_handle", handle)
     native.asciichat_shared_init.argtypes = [C.c_char_p, C.c_bool, C.c_bool]
     assert native.asciichat_shared_init(str(directory / "keymask.log").encode(), True, True) == 0
     args = [b"keymask-test", b"--no-check-update", b"--log-file", str(directory / "keymask.log").encode(),
@@ -207,7 +208,7 @@ def probe(args, directory):
 
 
 def check_terminal(args):
-    from terminal_ui import Terminal
+    from ascii_chat_tests.terminal import Terminal
     command = [sys.executable, str(Path(__file__).resolve()), "--library", str(args.library)]
     result = subprocess.run(command + ["--probe", "format"], capture_output=True, text=True, encoding="utf-8", timeout=30)
     assert result.returncode == 0, result.stderr
@@ -248,16 +249,11 @@ def check_live(binary, directory):
         subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True, timeout=15)
     raw_server = base64.b64decode(server_key.with_suffix(".pub").read_text().split()[1])[-32:]
     raw_client = base64.b64decode(client_key.with_suffix(".pub").read_text().split()[1])[-32:]
-    with socket.socket() as reservation:
-        reservation.bind(("127.0.0.1", 0))
-        port = reservation.getsockname()[1]
-    with socket.socket() as reservation:
-        reservation.bind(("127.0.0.1", 0))
-        websocket_port = reservation.getsockname()[1]
+    port, websocket_port = free_port(), free_port()
     config = directory / ("AppData/Roaming/ascii-chat" if os.name == "nt" else "ascii-chat")
     config.mkdir(parents=True, exist_ok=True)
     (config / "known_hosts").write_text(f"127.0.0.1:{port} ssh-ed25519 {raw_server.hex()} fixture\n")
-    common = [str(binary), "--no-check-update", "--log-level=error"]
+    common = cli_command(str(binary), "--log-level=error")
     server_log = directory / "server.log"
     server_output = directory / "server-output.txt"
     with server_output.open("w", encoding="utf-8") as output:

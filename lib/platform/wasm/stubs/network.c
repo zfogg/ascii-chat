@@ -29,14 +29,6 @@ asciichat_error_t platform_pclose(FILE **stream_ptr) {
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "not supported in WASM");
 }
 
-int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size) {
-  (void)executable;
-  (void)argv;
-  (void)output_buffer;
-  (void)output_size;
-  return -1; // No subprocess support in WASM
-}
-
 typedef struct app_callbacks_t app_callbacks_t;
 app_callbacks_t *app_callbacks_get(void) {
   return NULL;

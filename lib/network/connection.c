@@ -410,6 +410,8 @@ static void *connection_receive(void *arg) {
   if (c->server)
     open_scope = errno_scope_begin();
   asciichat_error_t result = connection_open(c);
+  if (result != ASCIICHAT_OK && c->server)
+    connection_notify_error(c, result);
   if (c->server)
     errno_scope_end(open_scope, ASCIICHAT_ERRNO_HANDLED);
   c->transport->receive_timeout_ns = 100 * NS_PER_MS_INT;
@@ -417,6 +419,8 @@ static void *connection_receive(void *arg) {
          (!c->server || !atomic_load_bool(&c->server->stopping)) && network_connection_state(c) < NETWORK_CLOSING) {
     if (connection_deadline(c) == 1) {
       result = ERROR_NETWORK_TIMEOUT;
+      if (c->server)
+        connection_notify_error(c, result);
       break;
     }
     void *data = NULL, *allocation = NULL;

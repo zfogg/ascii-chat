@@ -39,7 +39,9 @@ for (const mode of ["mirror", "client", "discovery"]) {
           video.evaluate(
             (element) => (element as HTMLVideoElement).currentTime,
           ),
-        { timeout: 90_000 },
+        {
+          timeout: 90_000,
+        },
       )
       .toBeGreaterThan(0.1);
     await expect

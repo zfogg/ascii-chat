@@ -1,0 +1,253 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>mutex_wait_snapshot_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">mutex_wait_snapshot_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">mutex_wait_snapshot_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">mutex_wait_snapshot_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">#include &lt;include/ascii-chat/debug/mutex.h&gt;</p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            uintptr_t <b>mutex_key</b>
+            <br />
+            uintptr_t <b>thread_key</b>
+            <br />
+            <b>uint64_t</b> <b>since_ns</b>
+            <br />
+            <b>bool</b> <b>cycle</b>
+            <br />
+            char <b>span_name</b> [224]
+            <br />
+            int <b>error_code</b>
+            <br />
+            char <b>error_message</b> [1024]
+            <br />
+            <b>uint8_t</b> <b>trace_id</b> [16]
+            <br />
+            <b>uint8_t</b> <b>span_id</b> [8]
+            <br />
+            <b>uint8_t</b> <b>parent_span_id</b> [8]
+            <br />
+            <b>uint64_t</b> <b>span_start_unix_ns</b>
+            <br />
+            <b>bool</b> <b>context_valid</b>
+            <br />
+            <b>bool</b> <b>context_sampled</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Nonblocking diagnostic summary; no logging or application locks.
+        </p>
+        <p class="Pp">
+          Definition at line <b>107</b> of file <b>debug/mutex.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> mutex_wait_snapshot_t::context_sampled</h2>
+          <p class="Pp">
+            Definition at line <b>118</b> of file <b>debug/mutex.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> mutex_wait_snapshot_t::context_valid</h2>
+          <p class="Pp">
+            Definition at line <b>118</b> of file <b>debug/mutex.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> mutex_wait_snapshot_t::cycle</h2>
+          <p class="Pp">
+            Definition at line <b>111</b> of file <b>debug/mutex.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mutex_stack_try_snapshot()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_mutex_wait_snapshot_t::error_code">
+            <a class="permalink" href="#int_mutex_wait_snapshot_t::error_code"
+              >int mutex_wait_snapshot_t::error_code</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>113</b> of file <b>debug/mutex.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_mutex_wait_snapshot_t::error_message_1024_">
+            <a
+              class="permalink"
+              href="#char_mutex_wait_snapshot_t::error_message_1024_"
+              >char mutex_wait_snapshot_t::error_message[1024]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>114</b> of file <b>debug/mutex.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="uintptr_t_mutex_wait_snapshot_t::mutex_key">
+            <a
+              class="permalink"
+              href="#uintptr_t_mutex_wait_snapshot_t::mutex_key"
+              >uintptr_t mutex_wait_snapshot_t::mutex_key</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>108</b> of file <b>debug/mutex.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mutex_stack_try_snapshot()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint8_t</b> mutex_wait_snapshot_t::parent_span_id[8]
+          </h2>
+          <p class="Pp">
+            Definition at line <b>116</b> of file <b>debug/mutex.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint64_t</b> mutex_wait_snapshot_t::since_ns</h2>
+          <p class="Pp">
+            Definition at line <b>110</b> of file <b>debug/mutex.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mutex_stack_try_snapshot()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b> mutex_wait_snapshot_t::span_id[8]</h2>
+          <p class="Pp">
+            Definition at line <b>115</b> of file <b>debug/mutex.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_mutex_wait_snapshot_t::span_name_224_">
+            <a
+              class="permalink"
+              href="#char_mutex_wait_snapshot_t::span_name_224_"
+              >char mutex_wait_snapshot_t::span_name[224]</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>112</b> of file <b>debug/mutex.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> mutex_wait_snapshot_t::span_start_unix_ns
+          </h2>
+          <p class="Pp">
+            Definition at line <b>117</b> of file <b>debug/mutex.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="uintptr_t_mutex_wait_snapshot_t::thread_key">
+            <a
+              class="permalink"
+              href="#uintptr_t_mutex_wait_snapshot_t::thread_key"
+              >uintptr_t mutex_wait_snapshot_t::thread_key</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>109</b> of file <b>debug/mutex.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>mutex_stack_try_snapshot()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>uint8_t</b> mutex_wait_snapshot_t::trace_id[16]</h2>
+          <p class="Pp">
+            Definition at line <b>115</b> of file <b>debug/mutex.h</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

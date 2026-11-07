@@ -160,16 +160,17 @@ asciichat_error_t acip_http3_server_create(const char *origin, const char *path,
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing HTTP/3 server output");
   *out = NULL;
-  if (!origin || !path || strnlen(origin, H3_MAX_ORIGIN) >= H3_MAX_ORIGIN ||
-      strnlen(path, H3_MAX_PATH) >= H3_MAX_PATH || strncmp(origin, "https://", 8) || path[0] != '/' || control < 0 ||
-      encoder < 0 || decoder < 0 || control == encoder || control == decoder || encoder == decoder ||
-      (control & 3) != 3 || (encoder & 3) != 3 || (decoder & 3) != 3)
+  if (!origin || !path || strnlen(origin, sizeof(((acip_http3_server_t *)0)->origin)) >= H3_MAX_ORIGIN ||
+      strnlen(path, sizeof(((acip_http3_server_t *)0)->path)) >= H3_MAX_PATH ||
+      strncmp(origin, "https://", sizeof("https://") - 1) || path[0] != '/' || control < 0 || encoder < 0 ||
+      decoder < 0 || control == encoder || control == decoder || encoder == decoder || (control & 3) != 3 ||
+      (encoder & 3) != 3 || (decoder & 3) != 3)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/3 WebTransport configuration");
   acip_http3_server_t *server = SAFE_CALLOC(1, sizeof(*server), acip_http3_server_t *);
   if (!server)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP/3 server");
-  memcpy(server->origin, origin, strlen(origin) + 1);
-  memcpy(server->path, path, strlen(path) + 1);
+  memcpy(server->origin, origin, strlen(origin) + (size_t)1);
+  memcpy(server->path, path, strlen(path) + (size_t)1);
   server->control = control;
   server->request = -1;
   make_settings(server);

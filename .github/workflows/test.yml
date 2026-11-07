@@ -84,11 +84,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
       - name: Configure Windows linker environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
-      - run: python tests/standalone/upnp/run.py
+      - run: uv sync --project tests/ascii_chat_tests --frozen
+      - run: uv run --project tests/ascii_chat_tests --frozen pytest -n 0 tests/python/standalone/test_upnp.py
 
   coverage-tools:
     needs: preflight
@@ -98,7 +100,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - run: python -m pip install gcovr==8.6
       - run: python .github/scripts/test_generate_coverage.py
       - run: python .github/scripts/test_prepare_coverage_upload.py
@@ -144,10 +146,12 @@ jobs:
         id: unit-python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: "3.14"
+
+      - uses: astral-sh/setup-uv@v6
 
       - name: Install Python test dependencies
-        run: python -m pip install -r tests/requirements-terminal.txt
+        run: uv sync --project tests/ascii_chat_tests --frozen --python "${{ steps.unit-python.outputs.python-path }}"
 
       - name: Cache build, dependencies, and ccache
         id: cache-build
@@ -194,7 +198,7 @@ jobs:
           echo "Building with CMake build type: ${BUILD_TYPE}"
           cmake_args=(
             -DBUILD_TESTS=ON
-            -DPython3_EXECUTABLE="${{ steps.unit-python.outputs.python-path }}"
+            -DPython3_EXECUTABLE="${{ github.workspace }}/tests/ascii_chat_tests/.venv/bin/python"
             -DUSE_MUSL=OFF
             -DASCIICHAT_FORCE_CRITERION_TESTS=ON
             -DASCIICHAT_ENABLE_ANALYZERS=OFF
@@ -297,10 +301,8 @@ jobs:
 
           # Run unit tests (filtered by label)
           set -o pipefail
-          # Several unit binaries mutate process-global options and logging
-          # state. Run them serially so one test process cannot perturb
-          # another on the same CI worker.
-          ctest --test-dir build --label-regex "^unit$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 1 | tee unit-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}-${{ matrix.build_type }}.log
+          # CTest schedules isolated test processes across available cores.
+          ctest --test-dir build --label-regex "^unit$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee unit-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}-${{ matrix.build_type }}.log
 
           echo "Unit tests completed successfully"
 
@@ -365,6 +367,7 @@ jobs:
             unit-tests-*.log
             build/coverage.xml
             build/Testing/ctest-results.xml
+            build/Testing/python-*.xml
             build/Testing/criterion-xml/*.xml
           retention-days: 7
 
@@ -376,6 +379,10 @@ jobs:
       fail-fast: false
       matrix:
         os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
+        instrumentation: [coverage]
+        include:
+          - os: ubuntu-latest
+            instrumentation: sanitizers
 
     steps:
       - name: Checkout code
@@ -396,7 +403,7 @@ jobs:
         id: cache-build
         uses: ./.github/actions/cache-build
         with:
-          cache-version: v7
+          cache-version: v7-${{ matrix.instrumentation }}
 
       - name: Clean test executables and libraries only
         run: |
@@ -416,15 +423,16 @@ jobs:
         id: integration-python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: "3.14"
+
+      - uses: astral-sh/setup-uv@v6
 
       - name: Install terminal test dependencies
-        run: python -m pip install -r tests/requirements-terminal.txt
+        run: uv sync --project tests/ascii_chat_tests --frozen --python "${{ steps.integration-python.outputs.python-path }}"
 
-      - name: Configure integration tests with coverage
+      - name: Configure integration tests
         run: |
-          echo "Configuring integration tests with coverage build..."
-          # Use CMake build system with coverage
+          echo "Configuring integration tests with ${{ matrix.instrumentation }}..."
           # Use Homebrew LLVM on macOS for better standards support
           # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
           if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}" = "macos" ]; then
@@ -447,9 +455,9 @@ jobs:
           cmake --fresh -B build --preset github --debug-output \
             -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DPython3_EXECUTABLE="${{ steps.integration-python.outputs.python-path }}" \
-            -DASCIICHAT_ENABLE_COVERAGE=ON \
-            -DASCIICHAT_ENABLE_SANITIZERS=OFF \
+            -DPython3_EXECUTABLE="${{ github.workspace }}/tests/ascii_chat_tests/.venv/bin/python" \
+            -DASCIICHAT_ENABLE_COVERAGE=${{ matrix.instrumentation == 'coverage' && 'ON' || 'OFF' }} \
+            -DASCIICHAT_ENABLE_SANITIZERS=${{ matrix.instrumentation == 'sanitizers' && 'ON' || 'OFF' }} \
             -DBUILD_TESTS=ON \
             -DASCIICHAT_FORCE_CRITERION_TESTS=ON \
             -DUSE_MUSL=OFF \
@@ -503,7 +511,8 @@ jobs:
 
           # Run integration tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
-          ctest --test-dir build --label-regex "^integration$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 0 | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          # Keep Python WebRTC smoke tests available locally without running them in CI.
+          ctest --test-dir build --label-regex "^integration$" --exclude-regex '^(discovery-webrtc|python-discovery-webrtc|discovery-stereo-audio|discovery-audio)$' --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Integration tests completed successfully"
 
@@ -512,7 +521,7 @@ jobs:
         run: pactl --server="$PULSE_SERVER" exit
 
       - name: Generate coverage report
-        if: always()
+        if: always() && matrix.instrumentation == 'coverage'
         uses: ./.github/actions/generate-coverage
         with:
           os-type: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
@@ -537,7 +546,7 @@ jobs:
 
       - name: Publish Test Results and Coverage
         uses: ./.github/actions/publish-test-results
-        if: always()
+        if: always() && matrix.instrumentation == 'coverage'
         with:
           test-type: integration
           os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
@@ -550,11 +559,12 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: integration-test-results-${{ runner.os }}
+          name: integration-test-results-${{ runner.os }}${{ matrix.instrumentation == 'sanitizers' && '-sanitizers' || '' }}
           path: |
             integration-tests-*.log
             build/coverage.xml
             build/Testing/ctest-results.xml
+            build/Testing/python-*.xml
             build/Testing/criterion-xml/*.xml
             build/backpressure/
             build/Testing/mdns-terminal/
@@ -589,6 +599,8 @@ jobs:
         with:
           os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: astral-sh/setup-uv@v6
 
       - name: Cache build, dependencies, and ccache
         id: cache-build
@@ -681,7 +693,7 @@ jobs:
           # Run performance tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
           set -o pipefail
-          ctest --test-dir build --label-regex "^performance$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 0 | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          ctest --test-dir build --label-regex "^performance$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Performance tests completed successfully"
 
@@ -729,6 +741,7 @@ jobs:
             performance-tests-*.log
             build/coverage.xml
             build/Testing/ctest-results.xml
+            build/Testing/python-*.xml
             build/Testing/criterion-xml/*.xml
           retention-days: 7
 
@@ -741,10 +754,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - uses: actions/download-artifact@v4
         with:
-          pattern: '*test-results-*'
+          pattern: "*test-results-*"
           path: coverage-reports
       - name: Require all seven coverage reports
         id: coverage

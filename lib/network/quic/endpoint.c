@@ -137,7 +137,8 @@ asciichat_error_t acip_quic_endpoint_open(const struct sockaddr *address, sockle
   bool webtransport = config->webtransport_origin || config->webtransport_path;
   if (webtransport &&
       (!listener || !config->enable_datagrams || !config->webtransport_origin || !config->webtransport_path ||
-       strncmp(config->webtransport_origin, "https://", 8) != 0 || config->webtransport_path[0] != '/' ||
+       strncmp(config->webtransport_origin, "https://", sizeof("https://") - 1) != 0 ||
+       config->webtransport_path[0] != '/' ||
        strnlen(config->webtransport_origin, sizeof(endpoint->tls->webtransport_origin)) >=
            sizeof(endpoint->tls->webtransport_origin) ||
        strnlen(config->webtransport_path, sizeof(endpoint->tls->webtransport_path)) >=
@@ -154,9 +155,17 @@ asciichat_error_t acip_quic_endpoint_open(const struct sockaddr *address, sockle
   if (result == ASCIICHAT_OK) {
     endpoint->tls->enable_datagrams = config->enable_datagrams;
     endpoint->tls->webtransport = webtransport;
+    endpoint->tls->accept_native = webtransport && config->accept_native;
+    if (endpoint->tls->accept_native) {
+      static const unsigned char protocols[] = {2, 'h', '3', 6, 'a', 'c', 'i', 'p', '/', '1'};
+      memcpy(endpoint->tls->alpn, protocols, sizeof(protocols));
+      endpoint->tls->alpn_length = sizeof(protocols);
+    }
     if (webtransport) {
-      memcpy(endpoint->tls->webtransport_origin, config->webtransport_origin, strlen(config->webtransport_origin) + 1);
-      memcpy(endpoint->tls->webtransport_path, config->webtransport_path, strlen(config->webtransport_path) + 1);
+      memcpy(endpoint->tls->webtransport_origin, config->webtransport_origin,
+             strlen(config->webtransport_origin) + (size_t)1);
+      memcpy(endpoint->tls->webtransport_path, config->webtransport_path,
+             strlen(config->webtransport_path) + (size_t)1);
     }
     endpoint->prefer_audio_datagrams = config->prefer_audio_datagrams;
     endpoint->prefer_visual_datagrams = config->prefer_visual_datagrams;
@@ -224,7 +233,7 @@ asciichat_error_t acip_quic_accept(acip_quic_endpoint_t *endpoint, acip_transpor
   mutex_lock(&endpoint->lane);
   endpoint_transport_t *item = endpoint->transports;
   while (item &&
-         (item->claimed || (endpoint->tls->webtransport && !acip_quic_connection_webtransport_ready(item->connection))))
+         (item->claimed || (endpoint->tls->webtransport && !acip_quic_connection_accept_ready(item->connection))))
     item = item->next;
   asciichat_error_t result = ASCIICHAT_OK;
   if (item) {

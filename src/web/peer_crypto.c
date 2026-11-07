@@ -213,6 +213,24 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_receive(browser_peer_crypto_t
     return packet_send_via_transport(&peer->transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO,
                                      peer->security.handshake.expected_server_key_bytes, ED25519_PUBLIC_KEY_SIZE, 0);
   }
+  // Legacy WebRTC rotates its application key on the authenticated peer context.
+  // QUIC uses its separate per-flow epoch protocol after this initial handshake.
+  if (!peer->quic_handshake) {
+    crypto_handshake_context_t *ctx = &peer->security.handshake;
+    asciichat_error_t result;
+    switch (type) {
+    case PACKET_TYPE_CRYPTO_REKEY_REQUEST:
+      result = crypto_handshake_process_rekey_request(ctx, payload, payload_length);
+      return result == ASCIICHAT_OK ? crypto_handshake_rekey_response(ctx, &peer->transport) : result;
+    case PACKET_TYPE_CRYPTO_REKEY_RESPONSE:
+      result = crypto_handshake_process_rekey_response(ctx, payload, payload_length);
+      return result == ASCIICHAT_OK ? crypto_handshake_rekey_complete(ctx, &peer->transport) : result;
+    case PACKET_TYPE_CRYPTO_REKEY_COMPLETE:
+      return crypto_handshake_process_rekey_complete(ctx, payload, payload_length);
+    default:
+      break;
+    }
+  }
   bool encrypt = ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode);
   if (packet_is_handshake_type(type) || (encrypt != (type == PACKET_TYPE_ENCRYPTED)))
     return SET_ERRNO(ERROR_CRYPTO, "Peer packet does not match negotiated security");

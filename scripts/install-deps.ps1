@@ -172,6 +172,7 @@ $RequiredPackages = @(
     "miniupnpc",       # UPnP client library for automatic router port forwarding
     "abseil",          # C++ utility library (used by WebRTC AEC3)
     "icu",            # Unicode IDNA hostname normalization
+    "pcre2",          # Regular expressions
     "libuv",          # Native event-driven TCP I/O
     "libwebsockets",   # WebSocket transport library for browser clients
     "ffmpeg",          # Media file/URL streaming library
@@ -272,4 +273,25 @@ if ($AllInstalled) {
 } else {
     Write-Host "Some dependencies failed to install!" -ForegroundColor Red
     exit 1
+}
+
+# Install the Vite+ toolchain used by the repository formatters.
+if (-not (Get-Command vp -ErrorAction SilentlyContinue)) {
+    Invoke-RestMethod https://vite.plus/ps1 | Invoke-Expression
+    $env:Path = "$env:USERPROFILE\.vite-plus\bin;$env:Path"
+}
+if (Get-Command vp -ErrorAction SilentlyContinue) {
+    $RepoRoot = Split-Path $PSScriptRoot -Parent
+    Push-Location $RepoRoot
+    try {
+        & vp install --ignore-scripts
+        if ($LASTEXITCODE -ne 0) { throw 'Root Vite+ install failed' }
+        Push-Location web
+        try {
+            & vp install --ignore-scripts
+            if ($LASTEXITCODE -ne 0) { throw 'Web Vite+ install failed' }
+        } finally { Pop-Location }
+    } finally { Pop-Location }
+} else {
+    Write-Warning 'Open a new shell and run vp install in the repository and web directories.'
 }

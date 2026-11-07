@@ -367,9 +367,9 @@ static void render_errno_stacks(terminal_size_t size, const void *unused) {
     safe_snprintf(outcomes, sizeof(outcomes), "%s%u%s/%s%u%s/%s%u%s", purple, resolved, reset, purple, dismissed, reset,
                   purple, handled, reset);
     safe_snprintf(code, sizeof(code), "%s%d%s", purple, row->context.code, reset);
-    const ui_table_column_t table_columns[] = {{"Ago", 10, UI_ALIGN_LEFT},
-                                               {"R/D/H", 8, UI_ALIGN_LEFT},
-                                               {"Code", 5, UI_ALIGN_LEFT},
+    const ui_table_column_t table_columns[] = {{"Ago", 10, UI_ALIGN_LEFT, false},
+                                               {"R/D/H", 8, UI_ALIGN_LEFT, false},
+                                               {"Code", 5, UI_ALIGN_LEFT, false},
                                                {"Thread", thread_width, UI_ALIGN_LEFT, true},
                                                {"Standard message", message_width, UI_ALIGN_LEFT, true},
                                                {"User message", user_width, UI_ALIGN_LEFT, true}};

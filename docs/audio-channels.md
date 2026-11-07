@@ -61,14 +61,14 @@ PortAudio boundary while running the production callbacks and worker, including
 stereo-only microphones, mono speakers, and four-channel interface routing.
 Browser worklet tests generate independent microphone and media inputs.
 
-`tests/integration/audio_channels.py` generates different tones in each channel
+`tests/python/integration/stereo/test_audio_channels.py` generates different tones in each channel
 and checks a real client/server call, including the received stereo WAV. Pass
 `--artifacts-dir DIRECTORY` to retain its logs and audio. The Chromium proof at
 `web/web/tests/wasm/stereo-audio.mjs` runs the real worklet, worker, C/WASM DSP,
 and Opus codec with generated microphone and media tracks. Run it against a
 local Vite server after rebuilding the WASM artifacts.
 
-`tests/audio/test_aec3_echo.py LIBRARY --stereo` checks independent playback
+`tests/audio/probe_aec3_echo.py LIBRARY --stereo` checks independent playback
 channels, delayed synthetic echoes, and near-end speech while echo is present.
 The default invocation retains the mono regression.
 

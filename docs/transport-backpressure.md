@@ -78,8 +78,8 @@ Build `ascii-chat`, `test-backpressure`, `test-backpressure-live`, `test-network
 
 ```
 build/bin/test-backpressure
-python tests/integration/transport_backpressure.py \
-  --binary build/bin/test-backpressure-live --output build/backpressure
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/backpressure \
+  --backpressure-probe build/bin/test-backpressure-live --backpressure-output build/backpressure
 ```
 
 The live test opens real TCP, libwebsockets and libdatachannel connections. TCP and
@@ -103,6 +103,6 @@ control delivery, and codec recovery. Decoder delivery is measured here; termina
 presentation is separately covered by `network_fps_windows.py`.
 
 The Windows LGPL FFmpeg bundle may lack a working HEVC encoder. Use
-`--codecs raw,h264` there and run the full raw/H.264/H.265 matrix with a software
+`--backpressure-codecs raw,h264` there and run the full raw/H.264/H.265 matrix with a software
 HEVC-enabled FFmpeg build on Linux/macOS. An unavailable codec is a failed scenario
 in the runner, never silently counted as a pass.

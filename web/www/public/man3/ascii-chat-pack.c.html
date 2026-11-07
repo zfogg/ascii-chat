@@ -1,0 +1,238 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>pack.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">pack.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">pack.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">pack.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>simd_pack_SIMD_CELL_ISA</b> (const <b>uint8_t</b> *rgb,
+            <b>uint32_t</b> *out, size_t count)
+            <br />
+            void <b>simd_halfblock_SIMD_CELL_ISA</b> (const
+            <b>uint32_t</b> *top, const <b>uint32_t</b> *bottom,
+            <b>uint32_t</b> *glyph, <b>uint32_t</b> *fg, <b>uint32_t</b> *bg,
+            size_t count, unsigned mode, const <b>uint32_t</b>
+            keys[5])
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_halfblock_SIMD_CELL_ISA_(const_">
+            <a
+              class="permalink"
+              href="#void_simd_halfblock_SIMD_CELL_ISA_(const_"
+              >void simd_halfblock_SIMD_CELL_ISA (const <b>uint32_t</b> * top,
+              const <b>uint32_t</b> * bottom, <b>uint32_t</b> * glyph,
+              <b>uint32_t</b> * fg, <b>uint32_t</b> * bg, size_t count, unsigned
+              mode, const <b>uint32_t</b> keys[5])</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>62</b> of file <b>pack.c</b>.</p>
+          <pre>
+63                                                                               {
+64   size_t i = 0;
+65   for (; HAS_BLOCK; i += LANES) {
+66     BEGIN_BLOCK;
+67     (void)active;
+68     vec_t t = LOAD(top + i), b = LOAD(bottom + i), key = SET((int32_t)keys[4]);
+69 #if defined(SIMD_CELL_SVE)
+70     svbool_t transparent;
+71 #else
+72     vec_t transparent;
+73 #endif
+74     if (mode == 0) {
+75       vec_t yt = SHR(
+76           ADD(ADD(MUL(SHR(t, 16), SET(76)), MUL(AND(SHR(t, 8), SET(255)), SET(150))), MUL(AND(t, SET(255)), SET(29))),
+77           8);
+78       vec_t yb = SHR(
+79           ADD(ADD(MUL(SHR(b, 16), SET(76)), MUL(AND(SHR(b, 8), SET(255)), SET(150))), MUL(AND(b, SET(255)), SET(29))),
+80           8);
+81       transparent = BOTH(LT(yt, SET(16)), LT(yb, SET(16)));
+82       vec_t shade = SHR(yt, 6);
+83       key = SET((int32_t)keys[0]);
+84       for (int k = 1; k &lt; 4; ++k)
+85         key = SELECT(EQ(shade, SET(k)), SET((int32_t)keys[k]), key);
+86       STORE(fg + i, SET(-1));
+87       STORE(bg + i, SET(-1));
+88     } else {
+89       transparent = BOTH(EQ(t, SET(0)), EQ(b, SET(0)));
+90       STORE(fg + i, SELECT(transparent, SET(-1), LOAD(fg + i)));
+91       STORE(bg + i, SELECT(transparent, SET(-1), LOAD(bg + i)));
+92     }
+93     STORE(glyph + i, SELECT(transparent, SET(' '), key));
+94   }
+95   if (i &lt; count)
+96     simd_halfblock_scalar(top + i, bottom + i, glyph + i, fg + i, bg + i, count - i, mode, keys);
+97 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ADD</b>, <b>AND</b>, <b>BEGIN_BLOCK</b>, <b>BOTH</b>,
+            <b>EQ</b>, <b>FN</b>, <b>HAS_BLOCK</b>, <b>LANES</b>, <b>LOAD</b>,
+            <b>LT</b>, <b>MUL</b>, <b>SELECT</b>, <b>SET</b>, <b>SHR</b>,
+            <b>simd_halfblock_scalar()</b>, and <b>STORE</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_simd_pack_SIMD_CELL_ISA_(const_">
+            <a class="permalink" href="#void_simd_pack_SIMD_CELL_ISA_(const_"
+              >void simd_pack_SIMD_CELL_ISA (const <b>uint8_t</b> * rgb,
+              <b>uint32_t</b> * out, size_t count)</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>3</b> of file <b>pack.c</b>.</p>
+          <pre>
+3                                                                      {
+4   size_t i = 0;
+5 #if defined(SIMD_CELL_NEON)
+6   // Retain the original NEON half-block renderer's interleaved RGB vector loads.
+7   for (; count - i &gt;= 16; i += 16) {
+8     uint8x16x3_t pixel = vld3q_u8(rgb + 3 * i);
+9     uint8x16x4_t packed = {{pixel.val[2], pixel.val[1], pixel.val[0], vdupq_n_u8(0)}};
+10     vst4q_u8((uint8_t *)(out + i), packed);
+11   }
+12 #elif defined(SIMD_CELL_SVE)
+13   for (; i &lt; count; i += svcntw()) {
+14     size_t active = count - i &lt; svcntw() ? count - i : svcntw();
+15     svbool_t bytes = svwhilelt_b8((uint64_t)0, (uint64_t)active);
+16     svbool_t pg = svwhilelt_b32((uint64_t)i, (uint64_t)count);
+17     svuint8x3_t pixel = svld3_u8(bytes, rgb + 3 * i);
+18     svuint32_t r = svunpklo_u32(svunpklo_u16(svget3_u8(pixel, 0)));
+19     svuint32_t g = svunpklo_u32(svunpklo_u16(svget3_u8(pixel, 1)));
+20     svuint32_t b = svunpklo_u32(svunpklo_u16(svget3_u8(pixel, 2)));
+21     svuint32_t packed = svorr_u32_x(pg, svlsl_n_u32_x(pg, r, 16), svorr_u32_x(pg, svlsl_n_u32_x(pg, g, 8), b));
+22     svst1_u32(pg, out + i, packed);
+23   }
+24 #elif defined(SIMD_CELL_AVX2) || defined(SIMD_CELL_SSSE3)
+25 #if defined(SIMD_CELL_AVX2)
+26   const size_t pixels = 8;
+27 #else
+28   const size_t pixels = 4;
+29 #endif
+30   const __m128i shuffle = _mm_setr_epi8(2, 1, 0, -128, 5, 4, 3, -128, 8, 7, 6, -128, 11, 10, 9, -128);
+31   for (; count - i &gt;= pixels; i += pixels) {
+32     uint8_t low[16] = {0};
+33     memcpy(low, rgb + 3 * i, 12);
+34     __m128i first = _mm_loadu_si128((const __m128i *)low);
+35 #if defined(SIMD_CELL_AVX2)
+36     uint8_t high[16] = {0};
+37     memcpy(high, rgb + 3 * i + 12, 12);
+38     __m256i both = _mm256_inserti128_si256(_mm256_castsi128_si256(first), _mm_loadu_si128((const __m128i *)high), 1);
+39     __m256i mask = _mm256_broadcastsi128_si256(shuffle);
+40     _mm256_storeu_si256((__m256i *)(out + i), _mm256_shuffle_epi8(both, mask));
+41 #else
+42     _mm_storeu_si128((__m128i *)(out + i), _mm_shuffle_epi8(first, shuffle));
+43 #endif
+44   }
+45 #else
+46   for (; count - i &gt;= 4; i += 4) {
+47     // SSE2 retains its deinterleave stage, then packs four RGB cells together.
+48     int32_t r[4], g[4], b[4];
+49     for (unsigned j = 0; j &lt; 4; ++j) {
+50       r[j] = rgb[3 * (i + j)];
+51       g[j] = rgb[3 * (i + j) + 1];
+52       b[j] = rgb[3 * (i + j) + 2];
+53     }
+54     vec_t packed = OR(SHL(LOAD(r), 16), OR(SHL(LOAD(g), 8), LOAD(b)));
+55     STORE(out + i, packed);
+56   }
+57 #endif
+58   if (i &lt; count)
+59     simd_pack_scalar(rgb + 3 * i, out + i, count - i);
+60 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>FN</b>, <b>LOAD</b>, <b>OR</b>, <b>SHL</b>,
+            <b>simd_pack_scalar()</b>, and <b>STORE</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

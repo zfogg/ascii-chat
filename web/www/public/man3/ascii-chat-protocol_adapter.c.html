@@ -1,0 +1,296 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>protocol_adapter.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">protocol_adapter.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">protocol_adapter.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">protocol_adapter.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>client_protocol_start</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <b>bool</b> <b>client_protocol_connection_lost</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> client_protocol_connection_lost (<b
+              >client_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>474</b> of file <b>protocol_adapter.c</b>.
+          </p>
+          <pre>
+474                                                                       {
+475   return atomic_load_bool(&amp;connection-&gt;data_thread_exited) || server_connection_is_lost(connection);
+476 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>,
+            <b>client_protocol_connection_lost()</b>,
+            <b>client_connection::data_thread_exited</b>, and
+            <b>server_connection_is_lost()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_protocol_connection_lost()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> client_protocol_start (<b
+              >client_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>358</b> of file <b>protocol_adapter.c</b>.
+          </p>
+          <pre>
+358                                                                          {
+359   log_warn(&quot;[FRAME_RECV_INIT] &#x1F7E2; PROTOCOL_START: Starting client protocol initialization&quot;);
+360
+361   // The server can send Opus audio as soon as streaming starts. Initialize the
+362   // decoder before either transport's receive worker can dispatch those packets.
+363   asciichat_error_t audio_result = audio_connection_init(connection);
+364   if (audio_result != ASCIICHAT_OK)
+365     return audio_result;
+366   if (client_connection_checkpoint(&quot;audio-pipeline&quot;) != ASCIICHAT_OK)
+367     return SET_ERRNO(ERROR_THREAD, &quot;Could not start client protocol workers&quot;);
+368
+369   acip_client_callbacks_t control = g_acip_client_callbacks;
+370   control.app_ctx = connection;
+371   session_protocol_init(&amp;connection-&gt;protocol, server_connection_get_transport(connection),
+372                         (session_protocol_media_t){.terminal_output = true,
+373                                                    .on_frame = client_present_frame,
+374                                                    .on_samples = client_play_samples,
+375                                                    .decode_opus = client_decode_opus,
+376                                                    .on_audio_packet = client_track_audio,
+377                                                    .context = connection,
+378                                                    .frame_workspace = &amp;connection-&gt;decoded_ascii_workspace},
+379                         control);
+380
+381   // Reset display state for new connection
+382   display_reset_for_new_connection(connection);
+383
+384   // Send CLIENT_CAPABILITIES packet (after crypto is ready for both TCP and WS)
+385   // Server expects this as the first packet after crypto handshake
+386   log_debug(&quot;[FRAME_RECV_INIT] Sending CLIENT_CAPABILITIES (terminal size)&quot;);
+387   asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect(
+388       connection, (int)terminal_get_effective_width(), (int)terminal_get_effective_height());
+389   if (cap_result != ASCIICHAT_OK) {
+390     log_error(&quot;[FRAME_RECV_INIT] Failed to send terminal size capabilities&quot;);
+391     return client_startup_peer_error(connection, cap_result);
+392   }
+393
+394   // Send STREAM_START packet with combined stream types
+395   uint32_t stream_types = STREAM_TYPE_VIDEO; // Always have video
+396   if (GET_OPTION(audio_enabled)) {
+397     stream_types |= STREAM_TYPE_AUDIO; // Add audio if enabled
+398   }
+399   log_debug(&quot;[FRAME_RECV_INIT] Sending STREAM_START: types=0x%x (video%s)&quot;, stream_types,
+400             (stream_types &amp; STREAM_TYPE_AUDIO) ? &quot;+audio&quot; : &quot;&quot;);
+401   asciichat_error_t stream_result = threaded_send_stream_start_packet(connection, stream_types);
+402   if (stream_result != ASCIICHAT_OK) {
+403     log_error(&quot;[FRAME_RECV_INIT] Failed to send stream start&quot;);
+404     return client_startup_peer_error(connection, stream_result);
+405   }
+406
+407   // Every transport has completed security negotiation before protocol startup.
+408   atomic_store_bool(&amp;connection-&gt;data_thread_exited, false);
+409   if (thread_pool_spawn(connection-&gt;client_worker_pool, data_reception_thread_func, connection, 1, &quot;data_reception&quot;) !=
+410       ASCIICHAT_OK) {
+411     log_error(&quot;[FRAME_RECV_INIT] Failed to start data reception thread&quot;);
+412     LOG_ERRNO_IF_SET(&quot;Data reception thread creation failed&quot;);
+413     return SET_ERRNO(ERROR_THREAD, &quot;Could not start client protocol workers&quot;);
+414   }
+415
+416   if (client_connection_checkpoint(&quot;receive&quot;) != ASCIICHAT_OK)
+417     return SET_ERRNO(ERROR_THREAD, &quot;Could not start client protocol workers&quot;);
+418
+419   // Start webcam capture thread
+420   log_debug(&quot;Starting webcam capture thread...&quot;);
+421   if (capture_start_thread(connection) != 0) {
+422     log_error(&quot;Failed to start webcam capture thread&quot;);
+423     return SET_ERRNO(ERROR_THREAD, &quot;Could not start client protocol workers&quot;);
+424   }
+425   log_debug(&quot;Webcam capture thread started successfully&quot;);
+426   if (client_connection_checkpoint(&quot;capture&quot;) != ASCIICHAT_OK)
+427     return SET_ERRNO(ERROR_THREAD, &quot;Could not start client protocol workers&quot;);
+428
+429   // Start local media audio only after the connection succeeds. Starting the
+430   // worker during client initialization would consume file audio while dialing.
+431   audio_context_t *audio_context = connection-&gt;audio_context;
+432   if (audio_context &amp;&amp; audio_context-&gt;initialized) {
+433     session_capture_set_audio_context(connection-&gt;capture_context, audio_context);
+434     audio_context-&gt;capture_media_source = session_capture_get_media_source(connection-&gt;capture_context);
+435     if (audio_start_duplex(audio_context) != ASCIICHAT_OK) {
+436       log_error(&quot;Failed to start full-duplex audio&quot;);
+437       return SET_ERRNO(ERROR_THREAD, &quot;Could not start client protocol workers&quot;);
+438     }
+439   }
+440
+441   if (client_connection_checkpoint(&quot;audio-duplex&quot;) != ASCIICHAT_OK)
+442     return SET_ERRNO(ERROR_THREAD, &quot;Could not start client protocol workers&quot;);
+443
+444   // Initialize audio sender thread BEFORE starting audio capture
+445   // This ensures sender is ready when capture thread starts queueing packets
+446   // Must happen after connection succeeds to prevent deadlock if connection fails
+447   if (audio_sender_init(connection) != ASCIICHAT_OK)
+448     return SET_ERRNO(ERROR_THREAD, &quot;Could not start client protocol workers&quot;);
+449
+450   // Start audio capture thread if audio is enabled
+451   log_debug(&quot;Starting audio capture thread...&quot;);
+452   if (audio_start_thread(connection) != 0) {
+453     log_error(&quot;Failed to start audio capture thread&quot;);
+454     return SET_ERRNO(ERROR_THREAD, &quot;Could not start client protocol workers&quot;);
+455   }
+456   log_debug(&quot;Audio capture thread started successfully (or skipped if audio disabled)&quot;);
+457
+458   if (client_connection_checkpoint(&quot;audio-capture&quot;) != ASCIICHAT_OK)
+459     return SET_ERRNO(ERROR_THREAD, &quot;Could not start client protocol workers&quot;);
+460
+461   // Start keepalive/ping thread to prevent server timeout
+462   log_debug(&quot;Starting keepalive/ping thread...&quot;);
+463   if (keepalive_start_thread(connection) != 0) {
+464     log_error(&quot;Failed to start keepalive/ping thread&quot;);
+465     return SET_ERRNO(ERROR_THREAD, &quot;Could not start client protocol workers&quot;);
+466   }
+467   log_debug(&quot;Keepalive/ping thread started successfully&quot;);
+468
+469   if (client_connection_checkpoint(&quot;keepalive&quot;) != ASCIICHAT_OK)
+470     return SET_ERRNO(ERROR_THREAD, &quot;Could not start client protocol workers&quot;);
+471   return ASCIICHAT_OK;
+472 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_client_callbacks_t::app_ctx</b>,
+            <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
+            <b>audio_connection_init()</b>,
+            <b>client_connection::audio_context</b>, <b>audio_sender_init()</b>,
+            <b>audio_start_duplex()</b>, <b>audio_start_thread()</b>,
+            <b>client_connection::capture_context</b>,
+            <b>audio_context_t::capture_media_source</b>,
+            <b>capture_start_thread()</b>,
+            <b>client_connection_checkpoint()</b>,
+            <b>client_protocol_start()</b>,
+            <b>client_connection::client_worker_pool</b>,
+            <b>client_connection::data_thread_exited</b>,
+            <b>client_connection::decoded_ascii_workspace</b>,
+            <b>display_reset_for_new_connection()</b>, <b>ERROR_THREAD</b>,
+            <b>GET_OPTION</b>, <b>audio_context_t::initialized</b>,
+            <b>keepalive_start_thread()</b>, <b>log_debug</b>,
+            <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>, <b>log_warn</b>,
+            <b>client_connection::protocol</b>,
+            <b>server_connection_get_transport()</b>,
+            <b>session_capture_get_media_source()</b>,
+            <b>session_capture_set_audio_context()</b>,
+            <b>session_protocol_init()</b>, <b>SET_ERRNO</b>,
+            <b>STREAM_TYPE_AUDIO</b>, <b>STREAM_TYPE_VIDEO</b>,
+            <b>terminal_get_effective_height()</b>,
+            <b>terminal_get_effective_width()</b>, <b>thread_pool_spawn()</b>,
+            <b>threaded_send_stream_start_packet()</b>, and
+            <b>threaded_send_terminal_size_with_auto_detect()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>client_connection_start()</b>, and
+            <b>client_protocol_start()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

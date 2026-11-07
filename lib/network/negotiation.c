@@ -351,7 +351,7 @@ static asciichat_error_t client_negotiate(acip_transport_t *transport, crypto_ha
     uint8_t requested[MAX_CLIENTS][ED25519_PUBLIC_KEY_SIZE];
     size_t requested_count = NET_TO_HOST_U16(version.feature_flags) & PROTOCOL_FEATURE_IDENTITY_SET ? count : 1;
     for (size_t i = 0; i < requested_count; ++i)
-      memcpy(requested[i], keys[i].key, ED25519_PUBLIC_KEY_SIZE);
+      memcpy(requested[i], keys[i].key, sizeof(requested[i]));
     result = packet_send_via_transport(transport, PACKET_TYPE_CRYPTO_CLIENT_HELLO, requested,
                                        requested_count * ED25519_PUBLIC_KEY_SIZE, 0);
     if (result != ASCIICHAT_OK)

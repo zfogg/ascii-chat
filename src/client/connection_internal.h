@@ -31,9 +31,7 @@ typedef struct {
   size_t size;
   uint16_t frame_sizes[MAX_BATCH_FRAMES];
   int frame_count;
-#ifdef ASCIICHAT_WITH_OTEL
   gotel_context_t telemetry_context;
-#endif
 } audio_send_packet_t;
 
 /** Ring buffer queue for async audio packets */
@@ -100,3 +98,12 @@ struct client_connection {
   thread_pool_t *client_worker_pool;
   client_audio_pipeline_t *audio_pipeline;
 };
+
+// Zero means no outstanding ping; the clock itself may return zero at startup.
+static inline void client_connection_mark_ping_sent(client_connection_t *connection, uint64_t timestamp_ns) {
+  uint64_t empty = 0;
+  if (!timestamp_ns)
+    timestamp_ns = 1;
+  if (!atomic_cas_u64(&connection->telemetry_ping_ns, &empty, timestamp_ns))
+    atomic_store_u64(&connection->telemetry_ping_ns, UINT64_MAX);
+}

@@ -144,6 +144,10 @@ export class WebTransportClientSession implements ClientSession {
                   (type >= 3000 && type <= 3003);
                 const datagram =
                   media &&
+                  // Large raw frames need too many lossy fragments to complete
+                  // within the media deadline. Select the visual stream before
+                  // admission so an expired datagram is never retransmitted.
+                  wire.length <= 64 * 1024 &&
                   this.options.preferDatagrams !== false &&
                   channel.supportsDatagrams();
                 channel.send(

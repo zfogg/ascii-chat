@@ -58,7 +58,7 @@ asciichat_error_t acip_quic_datagram_fragment(acip_traffic_class_t flow, uint64_
   if (capacity < ACIP_QUIC_DATAGRAM_HEADER_SIZE + part)
     return SET_ERRNO(ERROR_BUFFER_FULL, "QUIC datagram output buffer is too small");
   uint8_t *wire = out;
-  memcpy(wire, "ACQD", 4);
+  memcpy(wire, "ACQD", sizeof("ACQD") - 1);
   wire[4] = 1;
   wire[5] = (uint8_t)flow;
   wire[6] = wire[7] = 0;
@@ -115,9 +115,9 @@ asciichat_error_t acip_quic_datagram_read(acip_quic_datagram_reader_t *reader, c
   uint64_t id = get64(wire + 8);
   uint32_t total = get32(wire + 16);
   uint16_t unit = get16(wire + 20), index = get16(wire + 22), count = get16(wire + 24);
-  if (memcmp(wire, "ACQD", 4) || wire[4] != 1 || !media_flow(flow) || wire[6] || wire[7] || wire[26] || wire[27] ||
-      !id || !total || total > MAX_WIRE_PACKET || !unit || !count || count > ACIP_QUIC_DATAGRAM_MAX_FRAGMENTS ||
-      count != ((size_t)total + unit - 1) / unit || index >= count)
+  if (memcmp(wire, "ACQD", sizeof("ACQD") - 1) || wire[4] != 1 || !media_flow(flow) || wire[6] || wire[7] || wire[26] ||
+      wire[27] || !id || !total || total > MAX_WIRE_PACKET || !unit || !count ||
+      count > ACIP_QUIC_DATAGRAM_MAX_FRAGMENTS || count != ((size_t)total + unit - 1) / unit || index >= count)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid QUIC datagram envelope");
   size_t offset = (size_t)index * unit;
   size_t part = total - offset < unit ? total - offset : unit;

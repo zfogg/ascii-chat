@@ -530,6 +530,30 @@ set_source_files_properties(
 #       video needs simd for SIMD functions). This is resolved at link time
 #       since both libraries are linked together in executables.
 # -----------------------------------------------------------------------------
+# Keep per-pixel rendering and frame validation responsive in Debug builds.
+# Debug information and sanitizer instrumentation remain enabled.
+set_property(SOURCE
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/render.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/output_buffer.c"
+    "${CMAKE_SOURCE_DIR}/src/common/session/frame_validation.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/ascii.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/rgba/image.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/simd/cells.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/sse2/luminance.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/sse2/color.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/ssse3/color.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/avx2/luminance.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/avx2/color.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/neon/luminance.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/neon/color.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/sve/luminance.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/sve/color.c"
+    APPEND PROPERTY
+    COMPILE_OPTIONS "$<$<CONFIG:Debug>:-O2;-finline-functions>")
+# The core module's Debug precompiled header uses -O0 and cannot be reused by
+# this optimized source with Clang.
+set_source_files_properties("${CMAKE_SOURCE_DIR}/src/common/session/frame_validation.c"
+    PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 create_ascii_chat_module(ascii-chat-simd "${SIMD_SRCS}")
 
 # Note: SIMD and Video have circular dependency (simd benchmarks use video, video uses simd).
@@ -664,6 +688,7 @@ endif()
 # For OBJECT libs, link external deps
 target_link_libraries(ascii-chat-core PRIVATE
     ${SQLITE3_LIBRARIES}
+    ${UTF8PROC_LIBRARIES}
 )
 
 # PCRE2: Configure for core module (for session string format validation)
@@ -722,11 +747,14 @@ endif()
 
 # Add yyjson include directory
 target_include_directories(ascii-chat-core PRIVATE ${YYJSON_INCLUDE_DIRS})
+target_include_directories(ascii-chat-video PRIVATE ${YYJSON_INCLUDE_DIRS})
+target_link_libraries(ascii-chat-video PRIVATE ${YYJSON_LIBRARIES})
 
 # Link yyjson library
 if(USE_MUSL)
     if(DEFINED YYJSON_BUILD_TARGET)
         add_dependencies(ascii-chat-core ${YYJSON_BUILD_TARGET})
+        add_dependencies(ascii-chat-video ${YYJSON_BUILD_TARGET})
     endif()
 endif()
 
@@ -1009,6 +1037,13 @@ add_library(ascii-chat-shared SHARED
     # Generate the .def file using a custom command
     # Windows: Auto-generate .def file for symbol export
     if(WIN32)
+        if(CMAKE_NM)
+            set(_export_nm "${CMAKE_NM}")
+        elseif(ASCIICHAT_LLVM_NM_EXECUTABLE)
+            set(_export_nm "${ASCIICHAT_LLVM_NM_EXECUTABLE}")
+        else()
+            message(FATAL_ERROR "llvm-nm is required to generate Windows DLL exports")
+        endif()
         # Convert list to string for passing to script
         string(REPLACE ";" "," MODULE_TARGETS_STR "${MODULE_TARGETS}")
 
@@ -1023,7 +1058,7 @@ add_library(ascii-chat-shared SHARED
         add_custom_command(
             OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
             COMMAND ${CMAKE_COMMAND}
-                -DNM_TOOL=${CMAKE_NM}
+                -DNM_TOOL=${_export_nm}
                 -DOBJECT_LIST_FILE=${_export_object_manifest}
                 -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
                 -DLIBRARY_NAME=asciichat
@@ -1215,6 +1250,7 @@ add_library(ascii-chat-shared SHARED
     target_link_libraries(ascii-chat-shared PRIVATE
         ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
         ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
+        shell32  # CommandLineToArgvW
         crypt32  # For Windows crypto certificate functions (matches ascii-chat-platform)
         Winmm    # For timeBeginPeriod/timeEndPeriod
         ${CORE_LIBS}
@@ -1849,10 +1885,8 @@ if(TARGET ascii-chat-shared)
 endif()
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_LIBRARIES})
 
-if(TARGET gotel)
-    target_link_libraries(ascii-chat-core PRIVATE gotel::gotel)
-    if(TARGET ascii-chat-shared)
-        target_link_libraries(ascii-chat-shared PRIVATE gotel::gotel)
-    endif()
-    target_link_libraries(ascii-chat-static-lib-deps INTERFACE gotel::gotel)
+target_link_libraries(ascii-chat-core PRIVATE gotel::gotel)
+if(TARGET ascii-chat-shared)
+    target_link_libraries(ascii-chat-shared PRIVATE gotel::gotel)
 endif()
+target_link_libraries(ascii-chat-static-lib-deps INTERFACE gotel::gotel)

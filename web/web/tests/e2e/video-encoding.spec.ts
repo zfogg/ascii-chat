@@ -72,7 +72,7 @@ test.beforeAll(async () => {
   const appData = path.join(root, "appdata");
   mkdirSync(appData);
   serverPort = getRandomPort();
-  acdsPort = getRandomPort();
+  acdsPort = getRandomPort([serverPort - 1, serverPort, serverPort + 1]);
   acds = new NativeProcess(
     [
       "discovery-service",
@@ -118,7 +118,9 @@ test.beforeAll(async () => {
     .poll(
       () =>
         server.logs().match(/Session created: ([a-z]+-[a-z]+-[a-z]+)/i)?.[1],
-      { timeout: 30_000 },
+      {
+        timeout: 30_000,
+      },
     )
     .toBeTruthy();
   session = server
@@ -213,7 +215,9 @@ async function connect(page: Page, mode: string, encoding: string) {
   }
   await expect(
     page.getByRole("button", { name: "Disconnect", exact: true }),
-  ).toBeVisible({ timeout: 40_000 });
+  ).toBeVisible({
+    timeout: 40_000,
+  });
 }
 async function probe(page: Page) {
   return page.evaluate(() => ({
@@ -363,7 +367,9 @@ for (const mode of ["client", "discovery"]) {
     await connect(page, mode, "hevc");
     await expect(page.getByRole("alert")).toContainText(
       "HEVC encoding is unsupported",
-      { timeout: 20_000 },
+      {
+        timeout: 20_000,
+      },
     );
     await expect(page.getByRole("alert")).toContainText("?encoding=raw");
     await page.waitForTimeout(1500);

@@ -1,419 +1,839 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>mdns.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">mdns.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">mdns.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">mdns.h</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>asciichat_mdns_service_t</b>
-  <br/>
-  Service information for advertisement. struct
-    <b>asciichat_mdns_discovery_t</b>
-  <br/>
-  Discovered service information.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct asciichat_mdns_t <b>asciichat_mdns_t</b>
-  <br/>
-  opaque mDNS context handle typedef void(*
-    <b>asciichat_mdns_discovery_callback_fn</b>) (const
-    <b>asciichat_mdns_discovery_t</b> *service, void *user_data)
-  <br/>
-  Callback for discovered services.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_mdns_t</b> * <b>asciichat_mdns_init</b> (void)
-  <br/>
-  Initialize mDNS context. void <b>asciichat_mdns_destroy</b>
-    (<b>asciichat_mdns_t</b> *mdns)
-  <br/>
-  Shutdown mDNS context and cleanup. <b>asciichat_error_t</b>
-    <b>asciichat_mdns_advertise</b> (<b>asciichat_mdns_t</b> *mdns, const
-    <b>asciichat_mdns_service_t</b> *service)
-  <br/>
-  Advertise a service on the local network. <b>asciichat_error_t</b>
-    <b>asciichat_mdns_unadvertise</b> (<b>asciichat_mdns_t</b> *mdns, const char
-    *service_name)
-  <br/>
-  Stop advertising a service. <b>asciichat_error_t</b>
-    <b>asciichat_mdns_query</b> (<b>asciichat_mdns_t</b> *mdns, const char
-    *service_type, <b>asciichat_mdns_discovery_callback_fn</b> callback, void
-    *user_data)
-  <br/>
-  Query for services on the local network. <b>asciichat_error_t</b>
-    <b>asciichat_mdns_update</b> (<b>asciichat_mdns_t</b> *mdns, int timeout_ms)
-  <br/>
-  Process pending mDNS events (must be called regularly). int
-    <b>asciichat_mdns_get_socket</b> (<b>asciichat_mdns_t</b> *mdns)
-  <br/>
-  Get the socket file descriptor for integration with select/poll.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="typedef_void(*_asciichat_mdns_discovery_callback_fn)_(const_"><a class="permalink" href="#typedef_void(*_asciichat_mdns_discovery_callback_fn)_(const_">typedef
-  void(* asciichat_mdns_discovery_callback_fn) (const
-  <b>asciichat_mdns_discovery_t</b> *service, void *user_data)</a></h2>
-<p class="Pp">Callback for discovered services.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>service</i> Discovered service information
-<br/>
-<i>user_data</i> User pointer passed to query</div>
-<p class="Pp">Definition at line <b>107</b> of file
-  <b>network/mdns/mdns.h</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="typedef_struct_asciichat_mdns_t_asciichat_mdns_t"><a class="permalink" href="#typedef_struct_asciichat_mdns_t_asciichat_mdns_t">typedef
-  struct asciichat_mdns_t asciichat_mdns_t</a></h2>
-<p class="Pp">opaque mDNS context handle</p>
-<p class="Pp">Definition at line <b>59</b> of file
-  <b>network/mdns/mdns.h</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> asciichat_mdns_advertise
-  (<b>asciichat_mdns_t</b> * mdns, const <b>asciichat_mdns_service_t</b> *
-  service)</h2>
-<p class="Pp">Advertise a service on the local network.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>mdns</i> mDNS context
-<br/>
-<i>service</i> Service to advertise</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">The service structure should remain valid until
-  unadvertised</div>
-<p class="Pp">Definition at line <b>85</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<pre>85                                                                                                             {
-86   if (!mdns || !service) {
-87     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;mDNS context or service is NULL&quot;);
-88   }
-89 
-90   if (!service-&gt;name || !service-&gt;type || !service-&gt;host) {
-91     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Service name, type, or host is NULL&quot;);
-92   }
-93 
-94   log_debug(&quot;Advertising mDNS service: %s (%s:%d)&quot;, service-&gt;name, service-&gt;host, service-&gt;port);
-95 
-96   /* TODO: Implement actual advertisement using mdns library
-97    * This will involve creating service records and sending announcements
-98    * The mdns library provides mdns_announce_* functions for this
-99    */
-100   return ASCIICHAT_OK;
-101 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>asciichat_mdns_service_t::host</b>, <b>log_debug</b>,
-    <b>asciichat_mdns_service_t::name</b>,
-    <b>asciichat_mdns_service_t::port</b>, <b>SET_ERRNO</b>, and
-    <b>asciichat_mdns_service_t::type</b>.</p>
-<p class="Pp">Referenced by <b>session_server_like_mdns_advertise()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_asciichat_mdns_destroy_("><a class="permalink" href="#void_asciichat_mdns_destroy_(">void
-  asciichat_mdns_destroy (<b>asciichat_mdns_t</b> * mdns)</a></h2>
-<p class="Pp">Shutdown mDNS context and cleanup.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>mdns</i> Context to cleanup</div>
-<p class="Pp">Definition at line <b>71</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<pre>71                                                     {
-72   if (!mdns) {
-73     return;
-74   }
-75 
-76   if (mdns-&gt;socket_fd &gt;= 0) {
-77     mdns_socket_close(mdns-&gt;socket_fd);
-78   }
-79 
-80   SAFE_FREE(mdns-&gt;buffer);
-81   SAFE_FREE(mdns);
-82   log_debug(&quot;mDNS context shutdown&quot;);
-83 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_mdns_t::buffer</b>, <b>log_debug</b>,
-    <b>SAFE_FREE</b>, and <b>asciichat_mdns_t::socket_fd</b>.</p>
-<p class="Pp">Referenced by <b>discovery_mdns_query()</b>, and
-    <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int_asciichat_mdns_get_socket_("><a class="permalink" href="#int_asciichat_mdns_get_socket_(">int
-  asciichat_mdns_get_socket (<b>asciichat_mdns_t</b> * mdns)</a></h2>
-<p class="Pp">Get the socket file descriptor for integration with
-  select/poll.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>mdns</i> mDNS context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Socket descriptor, or -1 on error</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Useful for integrating mDNS into existing event
-  loops</div>
-<p class="Pp">Definition at line <b>289</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<pre>289                                                       {
-290   if (!mdns) {
-291     return -1;
-292   }
-293   return mdns-&gt;socket_fd;
-294 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_mdns_t::socket_fd</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_mdns_t</b> * asciichat_mdns_init (void )</h2>
-<p class="Pp">Initialize mDNS context.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Opaque mDNS context, or NULL on error</div>
-<p class="Pp">Definition at line <b>36</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<pre>36                                             {
-37   asciichat_mdns_t *mdns = SAFE_MALLOC(sizeof(asciichat_mdns_t), asciichat_mdns_t *);
-38   if (!mdns) {
-39     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate mDNS context&quot;);
-40     return NULL;
-41   }
-42 
-43   memset(mdns, 0, sizeof(asciichat_mdns_t));
-44 
-45   /* Allocate I/O buffer for mDNS packets */
-46   mdns-&gt;buffer = SAFE_MALLOC(MDNS_BUFFER_SIZE, uint8_t *);
-47   if (!mdns-&gt;buffer) {
-48     SAFE_FREE(mdns);
-49     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate mDNS buffer&quot;);
-50     return NULL;
-51   }
-52   mdns-&gt;buffer_capacity = MDNS_BUFFER_SIZE;
-53 
-54   /* Open IPv4 mDNS socket */
-55   mdns-&gt;socket_fd = mdns_socket_open_ipv4(NULL);
-56   if (mdns-&gt;socket_fd &lt; 0) {
-57     SAFE_FREE(mdns-&gt;buffer);
-58     SAFE_FREE(mdns);
-59     SET_ERRNO(ERROR_NETWORK_BIND, &quot;Failed to open mDNS socket&quot;);
-60     return NULL;
-61   }
-62 
-63   log_dev(&quot;mDNS context initialized (socket: %d, buffer: %zu bytes)&quot;, mdns-&gt;socket_fd, mdns-&gt;buffer_capacity);
-64 
-65   // Register mDNS context for debugging
-66   NAMED_REGISTER_CONTEXT(mdns, &quot;asciichat_mdns&quot;, &quot;mdns_context&quot;, NULL);
-67 
-68   return mdns;
-69 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>asciichat_mdns_t::buffer</b>,
-    <b>asciichat_mdns_t::buffer_capacity</b>, <b>ERROR_MEMORY</b>,
-    <b>ERROR_NETWORK_BIND</b>, <b>log_dev</b>, <b>MDNS_BUFFER_SIZE</b>,
-    <b>NAMED_REGISTER_CONTEXT</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SET_ERRNO</b>, and <b>asciichat_mdns_t::socket_fd</b>.</p>
-<p class="Pp">Referenced by <b>discovery_mdns_query()</b>, and
-    <b>session_server_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> asciichat_mdns_query
-  (<b>asciichat_mdns_t</b> * mdns, const char * service_type,
-  <b>asciichat_mdns_discovery_callback_fn</b> callback, void * user_data)</h2>
-<p class="Pp">Query for services on the local network.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>mdns</i> mDNS context
-<br/>
-<i>service_type</i> Service type to query (e.g.,
-  &quot;_ascii-chat._tcp.local&quot;)
-<br/>
-<i>callback</i> Function to call for each discovered service
-<br/>
-<i>user_data</i> User pointer passed to callback</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>229</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<pre>230                                                                                                        {
-231   if (!mdns || !service_type || !callback) {
-232     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid mDNS query parameters&quot;);
-233   }
-234 
-235   /* Validate service type is non-empty and has minimum length
-236    * Prevents underflow bug in mdns library when processing empty strings
-237    */
-238   size_t service_type_len = strlen(service_type);
-239   if (service_type_len == 0) {
-240     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Service type cannot be empty&quot;);
-241   }
-242 
-243   mdns-&gt;callback = callback;
-244   mdns-&gt;callback_data = user_data;
-245 
-246   log_info(&quot;Starting mDNS query for: %s&quot;, service_type);
-247 
-248   /* Send PTR query for service type (one-shot query)
-249    * PTR query discovers all instances of a service type
-250    * mdns_query_send returns the query ID for response filtering
-251    */
-252   int query_id = mdns_query_send(mdns-&gt;socket_fd, MDNS_RECORDTYPE_PTR, service_type, service_type_len, mdns-&gt;buffer,
-253                                  mdns-&gt;buffer_capacity, 0);
-254 
-255   if (query_id &lt; 0) {
-256     return SET_ERRNO(ERROR_NETWORK, &quot;mDNS query send failed for %s (query_id=%d)&quot;, service_type, query_id);
-257   }
-258 
-259   mdns-&gt;query_id = (uint16_t)query_id;
-260   log_debug(&quot;mDNS query sent for service type: %s (query_id: %d)&quot;, service_type, query_id);
-261 
-262   return ASCIICHAT_OK;
-263 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_mdns_t::buffer</b>,
-    <b>asciichat_mdns_t::buffer_capacity</b>, <b>asciichat_mdns_t::callback</b>,
-    <b>asciichat_mdns_t::callback_data</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK</b>, <b>log_debug</b>, <b>log_info</b>,
-    <b>asciichat_mdns_t::query_id</b>, <b>SET_ERRNO</b>, and
-    <b>asciichat_mdns_t::socket_fd</b>.</p>
-<p class="Pp">Referenced by <b>discovery_mdns_query()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> asciichat_mdns_unadvertise
-  (<b>asciichat_mdns_t</b> * mdns, const char * service_name)</h2>
-<p class="Pp">Stop advertising a service.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>mdns</i> mDNS context
-<br/>
-<i>service_name</i> Service instance name to unadvertise</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>103</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<pre>103                                                                                                {
-104   if (!mdns || !service_name) {
-105     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;mDNS context or service name is NULL&quot;);
-106   }
-107 
-108   log_info(&quot;Stopped advertising service: %s&quot;, service_name);
-109 
-110   /* TODO: Implement actual unadvertisement
-111    * This will involve sending goodbye records with TTL=0
-112    */
-113   return ASCIICHAT_OK;
-114 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>log_info</b>, and <b>SET_ERRNO</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> asciichat_mdns_update
-  (<b>asciichat_mdns_t</b> * mdns, int timeout_ms)</h2>
-<p class="Pp">Process pending mDNS events (must be called regularly). This
-    should be called from the main event loop to:</p>
-<ul class="Bl-bullet">
-  <li>Send advertisement packets</li>
-  <li>Receive and parse query responses</li>
-  <li>Invoke discovery callbacks</li>
-</ul>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>mdns</i> mDNS context
-<br/>
-<i>timeout_ms</i> Maximum time to block (0 = non-blocking)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success, error code otherwise</div>
-<p class="Pp">Definition at line <b>265</b> of file
-  <b>network/mdns/mdns.c</b>.</p>
-<pre>265                                                                                 {
-266   if (!mdns) {
-267     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;mDNS context is NULL&quot;);
-268   }
-269 
-270   /* Process incoming mDNS packets (responses from previous queries)
-271    * mdns_query_recv processes all records received since last call
-272    * The callback function (mdns_record_callback) is invoked for each record
-273    */
-274   int num_records =
-275       mdns_query_recv(mdns-&gt;socket_fd, mdns-&gt;buffer, mdns-&gt;buffer_capacity, mdns_record_callback, mdns, mdns-&gt;query_id);
-276 
-277   if (num_records &lt; 0) {
-278     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive mDNS query responses&quot;);
-279   }
-280 
-281   if (num_records &gt; 0) {
-282     log_debug(&quot;Processed %d mDNS records&quot;, num_records);
-283   }
-284 
-285   (void)timeout_ms;
-286   return ASCIICHAT_OK;
-287 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>, <b>asciichat_mdns_t::buffer</b>,
-    <b>asciichat_mdns_t::buffer_capacity</b>, <b>ERROR_INVALID_PARAM</b>,
-    <b>ERROR_NETWORK</b>, <b>log_debug</b>, <b>asciichat_mdns_t::query_id</b>,
-    <b>SET_ERRNO</b>, and <b>asciichat_mdns_t::socket_fd</b>.</p>
-<p class="Pp">Referenced by <b>discovery_mdns_query()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>mdns.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">mdns.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">mdns.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">mdns.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>asciichat_mdns_service_t</b>
+            <br />
+            Service information for advertisement. struct
+            <b>asciichat_mdns_discovery_t</b>
+            <br />
+            Discovered service information.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>NETWORK_MDNS_NAME_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>NETWORK_MDNS_TYPE_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>NETWORK_MDNS_IPV4_BUFFER_SIZE</b> 16
+            <br />
+            #define <b>NETWORK_MDNS_IPV6_BUFFER_SIZE</b> 46
+            <br />
+            #define <b>NETWORK_MDNS_TXT_BUFFER_SIZE</b> 512
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct asciichat_mdns_t <b>asciichat_mdns_t</b>
+            <br />
+            opaque mDNS context handle typedef void(*)
+            <b>asciichat_mdns_discovery_callback_fn</b>(const
+            <b>asciichat_mdns_discovery_t</b> *service, void *user_data)
+            <br />
+            Callback for discovered services.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_mdns_t</b> * <b>asciichat_mdns_init</b> (void)
+            <br />
+            Initialize mDNS context. void <b>asciichat_mdns_destroy</b> (<b
+              >asciichat_mdns_t</b
+            >
+            *mdns)
+            <br />
+            Shutdown mDNS context and cleanup. <b>asciichat_error_t</b>
+            <b>asciichat_mdns_advertise</b> (<b>asciichat_mdns_t</b> *mdns,
+            const <b>asciichat_mdns_service_t</b> *service)
+            <br />
+            Advertise a service on the local network. <b>asciichat_error_t</b>
+            <b>asciichat_mdns_unadvertise</b> (<b>asciichat_mdns_t</b> *mdns,
+            const char *service_name)
+            <br />
+            Stop advertising a service. <b>asciichat_error_t</b>
+            <b>asciichat_mdns_query</b> (<b>asciichat_mdns_t</b> *mdns, const
+            char *service_type,
+            <b>asciichat_mdns_discovery_callback_fn</b> callback, void
+            *user_data)
+            <br />
+            Query for services on the local network. <b>asciichat_error_t</b>
+            <b>asciichat_mdns_update</b> (<b>asciichat_mdns_t</b> *mdns, int
+            timeout_ms)
+            <br />
+            Process pending mDNS events (must be called regularly). int
+            <b>asciichat_mdns_get_socket</b> (<b>asciichat_mdns_t</b> *mdns)
+            <br />
+            Get the socket file descriptor for integration with select/poll.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_NETWORK_MDNS_IPV4_BUFFER_SIZE___16">
+            <a
+              class="permalink"
+              href="#_define_NETWORK_MDNS_IPV4_BUFFER_SIZE___16"
+              >#define NETWORK_MDNS_IPV4_BUFFER_SIZE 16</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>network/mdns/mdns.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_NETWORK_MDNS_IPV6_BUFFER_SIZE___46">
+            <a
+              class="permalink"
+              href="#_define_NETWORK_MDNS_IPV6_BUFFER_SIZE___46"
+              >#define NETWORK_MDNS_IPV6_BUFFER_SIZE 46</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>7</b> of file <b>network/mdns/mdns.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_NETWORK_MDNS_NAME_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_NETWORK_MDNS_NAME_BUFFER_SIZE___256"
+              >#define NETWORK_MDNS_NAME_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>network/mdns/mdns.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_NETWORK_MDNS_TXT_BUFFER_SIZE___512">
+            <a
+              class="permalink"
+              href="#_define_NETWORK_MDNS_TXT_BUFFER_SIZE___512"
+              >#define NETWORK_MDNS_TXT_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>network/mdns/mdns.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_NETWORK_MDNS_TYPE_BUFFER_SIZE___256">
+            <a
+              class="permalink"
+              href="#_define_NETWORK_MDNS_TYPE_BUFFER_SIZE___256"
+              >#define NETWORK_MDNS_TYPE_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file <b>network/mdns/mdns.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="typedef_void(*)_asciichat_mdns_discovery_callback_fn(const_"
+          >
+            <a
+              class="permalink"
+              href="#typedef_void(*)_asciichat_mdns_discovery_callback_fn(const_"
+              >typedef void(*) asciichat_mdns_discovery_callback_fn(const
+              <b>asciichat_mdns_discovery_t</b> *service, void *user_data)</a
+            >
+          </h2>
+          <p class="Pp">Callback for discovered services.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>service</i> Discovered service information
+            <br />
+            <i>user_data</i> User pointer passed to query
+          </div>
+          <p class="Pp">
+            Definition at line <b>116</b> of file <b>network/mdns/mdns.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_asciichat_mdns_t_asciichat_mdns_t">
+            <a
+              class="permalink"
+              href="#typedef_struct_asciichat_mdns_t_asciichat_mdns_t"
+              >typedef struct asciichat_mdns_t asciichat_mdns_t</a
+            >
+          </h2>
+          <p class="Pp">opaque mDNS context handle</p>
+          <p class="Pp">
+            Definition at line <b>68</b> of file <b>network/mdns/mdns.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> asciichat_mdns_advertise (<b
+              >asciichat_mdns_t</b
+            >
+            * mdns, const <b>asciichat_mdns_service_t</b> * service)
+          </h2>
+          <p class="Pp">Advertise a service on the local network.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>mdns</i> mDNS context
+            <br />
+            <i>service</i> Service to advertise
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Copies service records; caller storage may be released after return.
+            One service is owned per context. Re-advertising replaces it after
+            joining its worker.
+          </div>
+          <p class="Pp">
+            Definition at line <b>308</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <pre>
+308                                                                                                             {
+309   if (!mdns || !service) {
+310     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;mDNS context or service is NULL&quot;);
+311   }
+312
+313   if (!service-&gt;name || !service-&gt;type || !service-&gt;host) {
+314     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Service name, type, or host is NULL&quot;);
+315   }
+316
+317   log_debug(&quot;Advertising mDNS service: %s (%s:%d)&quot;, service-&gt;name, service-&gt;host, service-&gt;port);
+318
+319   if (!service-&gt;port || !service-&gt;name[0] || !service-&gt;type[0] || !service-&gt;host[0] || service-&gt;txt_count &gt; 16 ||
+320       (service-&gt;txt_count &amp;&amp; !service-&gt;txt_records))
+321     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid mDNS service records&quot;);
+322   if (strlen(service-&gt;name) &gt; 55 || strlen(service-&gt;type) &gt; 180 || strlen(service-&gt;host) &gt; 240)
+323     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;mDNS service name is too long&quot;);
+324   for (size_t i = 0; i &lt; service-&gt;txt_count; ++i)
+325     if (!service-&gt;txt_records[i] || strlen(service-&gt;txt_records[i]) &gt;= sizeof(mdns-&gt;txt[i]))
+326       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;mDNS TXT record is missing or too long&quot;);
+327   mdns_stop_advertising(mdns);
+328 #ifdef __APPLE__
+329   TXTRecordRef txt_record;
+330   TXTRecordCreate(&amp;txt_record, 0, NULL);
+331   char regtype[NETWORK_MDNS_REGTYPE_BUFFER_SIZE];
+332   SAFE_STRNCPY(regtype, service-&gt;type, sizeof(regtype));
+333   char *local_suffix = strstr(regtype, &quot;.local&quot;);
+334   if (local_suffix)
+335     *local_suffix = '\0';
+336   size_t regtype_length = strlen(regtype);
+337   if (regtype_length &amp;&amp; regtype[regtype_length - 1] == '.')
+338     regtype[regtype_length - 1] = '\0';
+339   for (size_t i = 0; i &lt; service-&gt;txt_count; ++i) {
+340     const char *separator = strchr(service-&gt;txt_records[i], '=');
+341     size_t key_length = separator ? (size_t)(separator - service-&gt;txt_records[i]) : strlen(service-&gt;txt_records[i]);
+342     if (!key_length || key_length &gt;= 256) {
+343       TXTRecordDeallocate(&amp;txt_record);
+344       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid mDNS TXT record key&quot;);
+345     }
+346     char key[NETWORK_MDNS_KEY_BUFFER_SIZE];
+347     safe_snprintf(key, sizeof(key), &quot;%.*s&quot;, (int)key_length, service-&gt;txt_records[i]);
+348     const void *value = separator ? separator + 1 : NULL;
+349     size_t value_length = separator ? strlen(separator + 1) : 0;
+350     if (value_length &gt; UINT8_MAX ||
+351         TXTRecordSetValue(&amp;txt_record, key, (uint8_t)value_length, value) != kDNSServiceErr_NoError) {
+352       TXTRecordDeallocate(&amp;txt_record);
+353       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid mDNS TXT record value&quot;);
+354     }
+355   }
+356   char instance_name[NETWORK_MDNS_INSTANCE_NAME_BUFFER_SIZE];
+357   safe_snprintf(instance_name, sizeof(instance_name), &quot;%s-%u&quot;, service-&gt;name, service-&gt;port);
+358   DNSServiceErrorType error = DNSServiceRegister(
+359       &amp;mdns-&gt;dns_service_ref, 0, kDNSServiceInterfaceIndexAny, instance_name, regtype, NULL, NULL, htons(service-&gt;port),
+360       TXTRecordGetLength(&amp;txt_record), TXTRecordGetBytesPtr(&amp;txt_record), NULL, NULL);
+361   TXTRecordDeallocate(&amp;txt_record);
+362   if (error != kDNSServiceErr_NoError)
+363     return SET_ERRNO(ERROR_NETWORK, &quot;Cannot register mDNS service with Bonjour (error %d)&quot;, error);
+364   mdns-&gt;advertising = true;
+365   return ASCIICHAT_OK;
+366 #else
+367   mdns_socket_close(mdns-&gt;socket_fd);
+368   struct sockaddr_in listen_address = {.sin_family = AF_INET, .sin_port = htons(MDNS_PORT)};
+369   mdns-&gt;socket_fd = mdns_socket_open_ipv4(&amp;listen_address);
+370   if (mdns-&gt;socket_fd &lt; 0)
+371     return SET_ERRNO(ERROR_NETWORK_BIND, &quot;Cannot listen for mDNS service queries&quot;);
+372   safe_snprintf(mdns-&gt;service_type, sizeof(mdns-&gt;service_type), &quot;%s%s&quot;, service-&gt;type,
+373                 strstr(service-&gt;type, &quot;.local&quot;) ? (service-&gt;type[strlen(service-&gt;type) - 1] == '.' ? &quot;&quot; : &quot;.&quot;)
+374                                                 : &quot;.local.&quot;);
+375   safe_snprintf(mdns-&gt;instance, sizeof(mdns-&gt;instance), &quot;%s-%u.%s&quot;, service-&gt;name, service-&gt;port, mdns-&gt;service_type);
+376   safe_snprintf(mdns-&gt;host, sizeof(mdns-&gt;host), &quot;%s%s&quot;, service-&gt;host,
+377                 strstr(service-&gt;host, &quot;.local&quot;) ? (service-&gt;host[strlen(service-&gt;host) - 1] == '.' ? &quot;&quot; : &quot;.&quot;)
+378                                                 : &quot;.local.&quot;);
+379   mdns_string_t type = {mdns-&gt;service_type, strlen(mdns-&gt;service_type)};
+380   mdns_string_t instance = {mdns-&gt;instance, strlen(mdns-&gt;instance)};
+381   mdns-&gt;ptr = (mdns_record_t){.name = type, .type = MDNS_RECORDTYPE_PTR, .data.ptr.name = instance};
+382   mdns-&gt;additional[0] = (mdns_record_t){.name = instance,
+383                                         .type = MDNS_RECORDTYPE_SRV,
+384                                         .data.srv = {.name = {mdns-&gt;host, strlen(mdns-&gt;host)}, .port = service-&gt;port}};
+385   mdns-&gt;additional_count = 1;
+386   asciichat_errno_scope_t route_scope = errno_checkpoint();
+387   socket_t route = socket_create(&quot;mdns_route&quot;, AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+388   if (route != INVALID_SOCKET_VALUE) {
+389     struct sockaddr_in multicast = {
+390         .sin_family = AF_INET, .sin_port = htons(MDNS_PORT), .sin_addr.s_addr = htonl(0xe00000fb)};
+391     struct sockaddr_in local = {0};
+392     socklen_t length = sizeof(local);
+393     if (socket_connect(route, (struct sockaddr *)&amp;multicast, sizeof(multicast)) == 0 &amp;&amp;
+394         socket_getsockname(route, (struct sockaddr *)&amp;local, &amp;length) == 0)
+395       mdns-&gt;additional[mdns-&gt;additional_count++] =
+396           (mdns_record_t){.name = {mdns-&gt;host, strlen(mdns-&gt;host)}, .type = MDNS_RECORDTYPE_A, .data.a.addr = local};
+397     socket_close(route);
+398   }
+399   errno_scope_end(route_scope, ASCIICHAT_ERRNO_DISMISSED);
+400   for (size_t i = 0; i &lt; service-&gt;txt_count; ++i) {
+401     SAFE_STRNCPY(mdns-&gt;txt[i], service-&gt;txt_records[i], sizeof(mdns-&gt;txt[i]));
+402     char *value = strchr(mdns-&gt;txt[i], '=');
+403     if (value)
+404       *value++ = '\0';
+405     mdns-&gt;additional[mdns-&gt;additional_count++] = (mdns_record_t){
+406         .name = instance,
+407         .type = MDNS_RECORDTYPE_TXT,
+408         .data.txt = {.key = {mdns-&gt;txt[i], strlen(mdns-&gt;txt[i])}, .value = {value, value ? strlen(value) : 0}}};
+409   }
+410   if (mdns_announce_multicast(mdns-&gt;socket_fd, mdns-&gt;buffer, mdns-&gt;buffer_capacity, mdns-&gt;ptr, NULL, 0,
+411                               mdns-&gt;additional, mdns-&gt;additional_count) &lt; 0)
+412     return SET_ERRNO(ERROR_NETWORK, &quot;Cannot announce mDNS service&quot;);
+413   atomic_store(&amp;mdns-&gt;stop_advertising, false);
+414   if (acthread_create(&amp;mdns-&gt;advertiser, &quot;mdns_advertiser&quot;, mdns_advertiser, mdns) != 0)
+415     return SET_ERRNO(ERROR_THREAD, &quot;Cannot start mDNS advertiser&quot;);
+416   mdns-&gt;advertising = true;
+417   return ASCIICHAT_OK;
+418 #endif
+419 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acthread_create</b>,
+            <b>asciichat_mdns_t::additional</b>,
+            <b>asciichat_mdns_t::additional_count</b>,
+            <b>asciichat_mdns_t::advertiser</b>,
+            <b>asciichat_mdns_t::advertising</b>,
+            <b>ASCIICHAT_ERRNO_DISMISSED</b>, <b>asciichat_mdns_advertise()</b>,
+            <b>ASCIICHAT_OK</b>, <b>asciichat_mdns_t::buffer</b>,
+            <b>asciichat_mdns_t::buffer_capacity</b>, <b>errno_checkpoint()</b>,
+            <b>errno_scope_end()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_BIND</b>,
+            <b>ERROR_THREAD</b>, <b>asciichat_mdns_service_t::host</b>,
+            <b>asciichat_mdns_t::host</b>, <b>asciichat_mdns_t::instance</b>,
+            <b>INVALID_SOCKET_VALUE</b>, <b>log_debug</b>,
+            <b>asciichat_mdns_service_t::name</b>,
+            <b>NETWORK_MDNS_INSTANCE_NAME_BUFFER_SIZE</b>,
+            <b>NETWORK_MDNS_KEY_BUFFER_SIZE</b>,
+            <b>NETWORK_MDNS_REGTYPE_BUFFER_SIZE</b>,
+            <b>asciichat_mdns_service_t::port</b>, <b>asciichat_mdns_t::ptr</b>,
+            <b>safe_snprintf()</b>, <b>SAFE_STRNCPY</b>,
+            <b>asciichat_mdns_t::service_type</b>, <b>SET_ERRNO</b>,
+            <b>socket_close()</b>, <b>socket_connect()</b>,
+            <b>socket_create()</b>, <b>asciichat_mdns_t::socket_fd</b>,
+            <b>socket_getsockname()</b>,
+            <b>asciichat_mdns_t::stop_advertising</b>,
+            <b>asciichat_mdns_t::txt</b>,
+            <b>asciichat_mdns_service_t::txt_count</b>,
+            <b>asciichat_mdns_service_t::txt_records</b>, and
+            <b>asciichat_mdns_service_t::type</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_mdns_advertise()</b>, and
+            <b>session_server_like_mdns_advertise()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_asciichat_mdns_destroy_(">
+            <a class="permalink" href="#void_asciichat_mdns_destroy_("
+              >void asciichat_mdns_destroy (<b>asciichat_mdns_t</b> * mdns)</a
+            >
+          </h2>
+          <p class="Pp">Shutdown mDNS context and cleanup.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>mdns</i> Context to cleanup</div>
+          <p class="Pp">
+            Definition at line <b>290</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <pre>
+290                                                     {
+291   if (!mdns) {
+292     return;
+293   }
+294
+295   mdns_stop_advertising(mdns);
+296 #ifdef __APPLE__
+297   bonjour_query_close(mdns);
+298 #endif
+299   if (mdns-&gt;socket_fd &gt;= 0) {
+300     mdns_socket_close(mdns-&gt;socket_fd);
+301   }
+302
+303   SAFE_FREE(mdns-&gt;buffer);
+304   SAFE_FREE(mdns);
+305   log_debug(&quot;mDNS context shutdown&quot;);
+306 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_mdns_destroy()</b>,
+            <b>asciichat_mdns_t::buffer</b>, <b>log_debug</b>, <b>SAFE_FREE</b>,
+            and <b>asciichat_mdns_t::socket_fd</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_mdns_destroy()</b>,
+            <b>discovery_mdns_query()</b>, and <b>session_server_like_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_asciichat_mdns_get_socket_(">
+            <a class="permalink" href="#int_asciichat_mdns_get_socket_("
+              >int asciichat_mdns_get_socket (<b>asciichat_mdns_t</b> * mdns)</a
+            >
+          </h2>
+          <p class="Pp">
+            Get the socket file descriptor for integration with select/poll.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>mdns</i> mDNS context</div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Socket descriptor, or -1 on error</div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Useful for integrating mDNS into existing event loops
+          </div>
+          <p class="Pp">
+            Definition at line <b>664</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <pre>
+664                                                       {
+665   if (!mdns) {
+666     return -1;
+667   }
+668 #ifdef __APPLE__
+669   if (mdns-&gt;browser)
+670     return DNSServiceRefSockFD(mdns-&gt;browser);
+671 #endif
+672   return mdns-&gt;socket_fd;
+673 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_mdns_get_socket()</b>, and
+            <b>asciichat_mdns_t::socket_fd</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_get_socket()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_mdns_t</b> * asciichat_mdns_init (void )
+          </h2>
+          <p class="Pp">Initialize mDNS context.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Opaque mDNS context, or NULL on error</div>
+          <p class="Pp">
+            Definition at line <b>203</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <pre>
+203                                             {
+204   asciichat_mdns_t *mdns = SAFE_MALLOC(sizeof(asciichat_mdns_t), asciichat_mdns_t *);
+205   if (!mdns) {
+206     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate mDNS context&quot;);
+207     return NULL;
+208   }
+209
+210   memset(mdns, 0, sizeof(asciichat_mdns_t));
+211
+212   /* Allocate I/O buffer for mDNS packets */
+213   mdns-&gt;buffer = SAFE_MALLOC(MDNS_BUFFER_SIZE, uint8_t *);
+214   if (!mdns-&gt;buffer) {
+215     SAFE_FREE(mdns);
+216     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate mDNS buffer&quot;);
+217     return NULL;
+218   }
+219   mdns-&gt;buffer_capacity = MDNS_BUFFER_SIZE;
+220
+221   /* Open IPv4 mDNS socket */
+222   mdns-&gt;socket_fd = mdns_socket_open_ipv4(NULL);
+223   if (mdns-&gt;socket_fd &lt; 0) {
+224     SAFE_FREE(mdns-&gt;buffer);
+225     SAFE_FREE(mdns);
+226     SET_ERRNO(ERROR_NETWORK_BIND, &quot;Failed to open mDNS socket&quot;);
+227     return NULL;
+228   }
+229
+230   log_dev(&quot;mDNS context initialized (socket: %d, buffer: %zu bytes)&quot;, mdns-&gt;socket_fd, mdns-&gt;buffer_capacity);
+231
+232   // Register mDNS context for debugging
+233   NAMED_REGISTER_CONTEXT(mdns, &quot;asciichat_mdns&quot;, &quot;mdns_context&quot;, NULL);
+234
+235   return mdns;
+236 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_mdns_init()</b>,
+            <b>asciichat_mdns_t::buffer</b>,
+            <b>asciichat_mdns_t::buffer_capacity</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_NETWORK_BIND</b>, <b>log_dev</b>, <b>MDNS_BUFFER_SIZE</b>,
+            <b>NAMED_REGISTER_CONTEXT</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+            <b>SET_ERRNO</b>, and <b>asciichat_mdns_t::socket_fd</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_mdns_init()</b>,
+            <b>discovery_mdns_query()</b>, and <b>session_server_like_run()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> asciichat_mdns_query (<b
+              >asciichat_mdns_t</b
+            >
+            * mdns, const char * service_type,
+            <b>asciichat_mdns_discovery_callback_fn</b> callback, void *
+            user_data)
+          </h2>
+          <p class="Pp">Query for services on the local network.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>mdns</i> mDNS context
+            <br />
+            <i>service_type</i> Service type to query (e.g.,
+            &quot;_ascii-chat._tcp.local&quot;)
+            <br />
+            <i>callback</i> Function to call for each discovered service
+            <br />
+            <i>user_data</i> User pointer passed to callback
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>565</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <pre>
+566                                                                                                        {
+567   if (!mdns || !service_type || !callback) {
+568     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid mDNS query parameters&quot;);
+569   }
+570   if (mdns-&gt;advertising)
+571     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Use a separate mDNS context for discovery while advertising&quot;);
+572
+573   /* Validate service type is non-empty and has minimum length
+574    * Prevents underflow bug in mdns library when processing empty strings
+575    */
+576   size_t service_type_len = strlen(service_type);
+577   if (service_type_len == 0 || service_type_len &gt; 253) {
+578     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Service type cannot be empty&quot;);
+579   }
+580
+581   safe_snprintf(mdns-&gt;query_service, sizeof(mdns-&gt;query_service), &quot;%s%s&quot;, service_type,
+582                 service_type[service_type_len - 1] == '.' ? &quot;&quot; : &quot;.&quot;);
+583   mdns-&gt;callback = callback;
+584   mdns-&gt;callback_data = user_data;
+585   mdns-&gt;discovered_count = 0;
+586
+587 #ifdef __APPLE__
+588   bonjour_query_close(mdns);
+589   char regtype[NETWORK_MDNS_REGTYPE_BUFFER_SIZE];
+590   SAFE_STRNCPY(regtype, service_type, sizeof(regtype));
+591   char *domain = strstr(regtype, &quot;.local&quot;);
+592   if (domain)
+593     *domain = '\0';
+594   size_t length = strlen(regtype);
+595   if (length &amp;&amp; regtype[length - 1] == '.')
+596     regtype[length - 1] = '\0';
+597   DNSServiceErrorType error =
+598       DNSServiceBrowse(&amp;mdns-&gt;browser, 0, kDNSServiceInterfaceIndexAny, regtype, &quot;local.&quot;, bonjour_browsed, mdns);
+599   if (error != kDNSServiceErr_NoError)
+600     return SET_ERRNO(ERROR_NETWORK, &quot;Cannot browse mDNS services with Bonjour (error %d)&quot;, error);
+601   return ASCIICHAT_OK;
+602 #else
+603   // Use the standard mDNS port so responders multicast their answers. Some
+604   // system mDNS responders do not return QU answers to an ephemeral source
+605   // port, and multicast answers are also visible across all active adapters.
+606   mdns_socket_close(mdns-&gt;socket_fd);
+607   struct sockaddr_in listen_address = {.sin_family = AF_INET, .sin_port = htons(MDNS_PORT)};
+608   mdns-&gt;socket_fd = mdns_socket_open_ipv4(&amp;listen_address);
+609   if (mdns-&gt;socket_fd &lt; 0)
+610     return SET_ERRNO(ERROR_NETWORK_BIND, &quot;Cannot listen for mDNS query responses&quot;);
+611
+612   log_info(&quot;Starting mDNS query for: %s&quot;, service_type);
+613
+614   /* Send PTR query for service type (one-shot query)
+615    * PTR query discovers all instances of a service type
+616    * mdns_query_send returns the query ID for response filtering
+617    */
+618   int query_id = mdns_send_query_all_interfaces(mdns, service_type, service_type_len);
+619
+620   if (query_id &lt; 0) {
+621     return SET_ERRNO(ERROR_NETWORK, &quot;mDNS query send failed for %s (query_id=%d)&quot;, service_type, query_id);
+622   }
+623
+624   mdns-&gt;query_id = (uint16_t)query_id;
+625   log_debug(&quot;mDNS query sent for service type: %s (query_id: %d)&quot;, service_type, query_id);
+626
+627   return ASCIICHAT_OK;
+628 #endif
+629 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_mdns_t::advertising</b>,
+            <b>asciichat_mdns_query()</b>, <b>ASCIICHAT_OK</b>,
+            <b>asciichat_mdns_t::callback</b>,
+            <b>asciichat_mdns_t::callback_data</b>,
+            <b>asciichat_mdns_t::discovered_count</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>,
+            <b>ERROR_NETWORK</b>, <b>ERROR_NETWORK_BIND</b>, <b>log_debug</b>,
+            <b>log_info</b>, <b>NETWORK_MDNS_REGTYPE_BUFFER_SIZE</b>,
+            <b>asciichat_mdns_t::query_id</b>,
+            <b>asciichat_mdns_t::query_service</b>, <b>safe_snprintf()</b>,
+            <b>SAFE_STRNCPY</b>, <b>SET_ERRNO</b>, and
+            <b>asciichat_mdns_t::socket_fd</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_mdns_query()</b>, and
+            <b>discovery_mdns_query()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> asciichat_mdns_unadvertise (<b
+              >asciichat_mdns_t</b
+            >
+            * mdns, const char * service_name)
+          </h2>
+          <p class="Pp">Stop advertising a service.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>mdns</i> mDNS context
+            <br />
+            <i>service_name</i> Service instance name to unadvertise
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>421</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <pre>
+421                                                                                                {
+422   if (!mdns || !service_name) {
+423     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;mDNS context or service name is NULL&quot;);
+424   }
+425
+426   log_info(&quot;Stopped advertising service: %s&quot;, service_name);
+427
+428   mdns_stop_advertising(mdns);
+429
+430   return ASCIICHAT_OK;
+431 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_mdns_unadvertise()</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>log_info</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>asciichat_mdns_unadvertise()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> asciichat_mdns_update (<b
+              >asciichat_mdns_t</b
+            >
+            * mdns, int timeout_ms)
+          </h2>
+          <p class="Pp">
+            Process pending mDNS events (must be called regularly). This should
+            be called from the main event loop to:
+          </p>
+          <ul class="Bl-bullet">
+            <li>Send advertisement packets</li>
+            <li>Receive and parse query responses</li>
+            <li>Invoke discovery callbacks</li>
+          </ul>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>mdns</i> mDNS context
+            <br />
+            <i>timeout_ms</i> Maximum time to block (0 = non-blocking)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            ASCIICHAT_OK on success, error code otherwise
+          </div>
+          <p class="Pp">
+            Definition at line <b>631</b> of file <b>network/mdns/mdns.c</b>.
+          </p>
+          <pre>
+631                                                                                 {
+632   if (!mdns) {
+633     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;mDNS context is NULL&quot;);
+634   }
+635   if (mdns-&gt;advertising)
+636     return ASCIICHAT_OK;
+637
+638 #ifdef __APPLE__
+639   return bonjour_update(mdns, timeout_ms);
+640 #else
+641   /* Process incoming mDNS packets (responses from previous queries)
+642    * mdns_query_recv processes all records received since last call
+643    * The callback function (mdns_record_callback) is invoked for each record
+644    */
+645   struct pollfd fd = {.fd = mdns-&gt;socket_fd, .events = POLLIN};
+646   if (socket_poll(&amp;fd, 1, (int64_t)timeout_ms * NS_PER_MS_INT) &lt;= 0)
+647     return ASCIICHAT_OK;
+648   int num_records =
+649       mdns_query_recv(mdns-&gt;socket_fd, mdns-&gt;buffer, mdns-&gt;buffer_capacity, mdns_record_callback, mdns, mdns-&gt;query_id);
+650
+651   if (num_records &lt; 0) {
+652     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive mDNS query responses&quot;);
+653   }
+654
+655   if (num_records &gt; 0) {
+656     log_debug(&quot;Processed %d mDNS records&quot;, num_records);
+657   }
+658
+659   (void)timeout_ms;
+660   return ASCIICHAT_OK;
+661 #endif
+662 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>asciichat_mdns_t::advertising</b>,
+            <b>asciichat_mdns_update()</b>, <b>ASCIICHAT_OK</b>,
+            <b>asciichat_mdns_t::buffer</b>,
+            <b>asciichat_mdns_t::buffer_capacity</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NETWORK</b>, <b>log_debug</b>,
+            <b>NS_PER_MS_INT</b>, <b>asciichat_mdns_t::query_id</b>,
+            <b>SET_ERRNO</b>, <b>asciichat_mdns_t::socket_fd</b>, and
+            <b>socket_poll()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>asciichat_mdns_update()</b>, and
+            <b>discovery_mdns_query()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

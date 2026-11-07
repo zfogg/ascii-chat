@@ -264,15 +264,15 @@ cmake --build build --target test-errno-stacks
 ctest --test-dir build -R "^errno-stacks$" --output-on-failure
 cmake --build build --target test-error-popup-fixture
 ctest --test-dir build -R "^error-popup-smoke$" --no-tests=error --output-on-failure
-python tests/standalone/errno/smoke.py build/bin/ascii-chat --debug-sync
+python tests/python/integration/errno_smoke/test_smoke.py build/bin/ascii-chat --debug-sync
 # Linux: verify SIGUSR1 prints both reports on stdout from separate workers
-python tests/standalone/errno/signal_stdout.py build/bin/ascii-chat --errno-probe build/bin/test-errno-stacks
+python tests/python/integration/errno_signal/test_signal.py build/bin/ascii-chat --errno-probe build/bin/test-errno-stacks
 @endcode
 
 Generate a real unsupported-audio fixture with FFmpeg and exercise codec fallback:
 @code
 python tests/standalone/errno/codec_fixture.py build/optional-codec.mkv
-python tests/standalone/errno/smoke.py build/bin/ascii-chat --codec-fixture build/optional-codec.mkv
+python tests/python/integration/errno_smoke/test_smoke.py build/bin/ascii-chat --codec-fixture build/optional-codec.mkv
 @endcode
 
 The native suite exercises root/top search, single evaluation, system/WSA

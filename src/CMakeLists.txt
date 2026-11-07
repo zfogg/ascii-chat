@@ -65,6 +65,9 @@ endif()
 
 if(BUILD_EXECUTABLES)
 add_executable(ascii-chat ${APP_SRCS})
+if(WIN32)
+    target_link_libraries(ascii-chat PRIVATE shell32)
+endif()
 target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LIBUV_TARGET} ${YYJSON_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
 target_include_directories(ascii-chat PRIVATE ${YYJSON_INCLUDE_DIRS})
 

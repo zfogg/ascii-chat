@@ -31,6 +31,12 @@ static media_source_t *transaction_source_create(media_source_type_t type, const
     return media_source_create(MEDIA_SOURCE_TEST, NULL);
   return media_source_create(type, path);
 }
+static media_source_t *transaction_source_create_interruptible(media_source_type_t type, const char *path,
+                                                               bool (*cancel)(void *), void *data) {
+  (void)cancel;
+  (void)data;
+  return transaction_source_create(type, path);
+}
 static void transaction_source_destroy(media_source_t *source) {
   if (source)
     ++source_destroys;
@@ -79,6 +85,7 @@ static int transaction_thread_join(asciichat_thread_t *thread, void **result) {
   return 0;
 }
 #define media_source_create transaction_source_create
+#define media_source_create_interruptible transaction_source_create_interruptible
 #define media_source_destroy transaction_source_destroy
 #define media_source_start_video transaction_video_start
 #define media_source_has_audio transaction_has_audio
@@ -89,6 +96,7 @@ static int transaction_thread_join(asciichat_thread_t *thread, void **result) {
 #define thread_join transaction_thread_join
 #include "../../../src/common/session/capture.c"
 #undef media_source_create
+#undef media_source_create_interruptible
 #undef media_source_destroy
 #undef media_source_start_video
 #undef media_source_has_audio

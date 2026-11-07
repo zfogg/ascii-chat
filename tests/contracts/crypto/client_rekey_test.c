@@ -148,8 +148,9 @@ Test(client_rekey, initiator_transmits_ephemeral_key_and_commits_only_after_conf
   cr_assert_arr_eq(local.crypto_ctx.temp_shared_key, peer.crypto_ctx.temp_shared_key, 32);
   cr_assert_eq(crypto_client_send_rekey_complete(&connection), ASCIICHAT_OK);
   cr_assert_eq(sent_type, PACKET_TYPE_CRYPTO_REKEY_COMPLETE);
-  cr_assert_arr_eq(key_at_send, peer.crypto_ctx.temp_shared_key, 32);
-  cr_assert_arr_eq(local.crypto_ctx.shared_key, peer.crypto_ctx.temp_shared_key, 32);
+  cr_assert_arr_eq(key_at_send, old, 32);
+  cr_assert_eq(crypto_handshake_process_rekey_complete(&peer, sent_payload, sent_length), ASCIICHAT_OK);
+  cr_assert_arr_eq(local.crypto_ctx.shared_key, peer.crypto_ctx.shared_key, 32);
   cr_assert_neq(memcmp(local.crypto_ctx.shared_key, old, 32), 0);
   cr_assert_not(local.crypto_ctx.rekey_in_progress);
   cr_assert_eq(local.crypto_ctx.rekey_count, 1);

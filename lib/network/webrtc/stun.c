@@ -15,25 +15,19 @@
 /**
  * @brief PCRE2 regex validator for STUN server list parsing
  *
- * Uses centralized PCRE2 singleton for thread-safe compilation
- * with JIT compilation for 5-10x performance improvement.
+ * Compiles the pattern for each server list.
  */
 
 // Pattern: Match comma-separated entries (trimmed)
 // Matches: optional whitespace, capture non-comma chars (trimmed), optional whitespace, then comma or end
 static const char *STUN_ENTRY_PATTERN = "\\s*([^,]+?)\\s*(?=,|$)";
 
-static pcre2_singleton_t *g_stun_entry_regex = NULL;
-
 /**
- * Get compiled STUN entry regex (lazy initialization)
+ * Get compiled STUN entry regex (owned by the caller)
  * Returns NULL if compilation failed
  */
 static pcre2_code *stun_entry_regex_get(void) {
-  if (g_stun_entry_regex == NULL) {
-    g_stun_entry_regex = asciichat_pcre2_singleton_compile(STUN_ENTRY_PATTERN, PCRE2_MULTILINE);
-  }
-  return asciichat_pcre2_singleton_get_code(g_stun_entry_regex);
+  return asciichat_pcre2_compile(STUN_ENTRY_PATTERN, PCRE2_MULTILINE);
 }
 
 /**
@@ -65,7 +59,7 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
     return 0;
   }
 
-  // Get compiled regex (lazy initialization)
+  // Get compiled regex (owned by the caller)
   pcre2_code *regex = stun_entry_regex_get();
 
   // If regex not available, fall back to manual parsing
@@ -117,6 +111,7 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
   int count = 0;
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
+    pcre2_code_free(regex);
     log_warn("Failed to allocate PCRE2 match data");
     return -1;
   }
@@ -125,7 +120,8 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
   int rc;
 
   while (count < max_count) {
-    rc = pcre2_jit_match(regex, (PCRE2_SPTR8)servers_to_parse, strlen(servers_to_parse), offset, 0, match_data, NULL);
+    rc = asciichat_pcre2_match(regex, (PCRE2_SPTR8)servers_to_parse, strlen(servers_to_parse), offset, 0, match_data,
+                               NULL);
 
     if (rc < 0) {
       // No more matches (PCRE2_ERROR_NOMATCH or other error)
@@ -143,6 +139,7 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
     if (len >= STUN_URL_BUFFER_SIZE) {
       log_warn("STUN server URL too long (max %d): %.*s", STUN_URL_BUFFER_SIZE - 1, (int)len, server_url);
       pcre2_match_data_free(match_data);
+      pcre2_code_free(regex);
       return -1;
     }
 
@@ -164,5 +161,6 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
   }
 
   pcre2_match_data_free(match_data);
+  pcre2_code_free(regex);
   return count;
 }

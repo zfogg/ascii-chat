@@ -6,17 +6,19 @@ import _environment  # noqa: F401
 
 from pathlib import Path
 import re
+import io
 import os
 import time
 import socket
 import subprocess
 import sys
 import tempfile
-from server_lifecycle import Service, free_port, server_options
+from ascii_chat_tests.process import Service, free_port, server_options
 
 
 def main():
-    sys.stdout.reconfigure(encoding="utf-8")
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8")
     binary, fixture = map(lambda p: Path(p).resolve(), sys.argv[1:3])
     with tempfile.TemporaryDirectory(prefix="ascii-discovery-quic-") as temporary:
         directory = Path(temporary)
@@ -53,7 +55,9 @@ def main():
                             "--key", str(host_key), "--quic-bind-address", "127.0.0.1", "--quic-port", str(quic_port),
                             "--quic-tls-cert", str(cert), "--quic-tls-key", str(key)], environment)
             host.wait_for("Session created:")
-            session = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())[1]
+            match = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())
+            assert match, host.text()[-8000:]
+            session = match[1]
             for index in range(2):
                 client = Service(binary, directory, f"client-{index}", session,
                                  discovery + ["--discovery-quic", "--quic-ca-file", str(cert),
@@ -116,7 +120,9 @@ def main():
                            ["--discovery", "--webrtc", "--discovery-expose-ip", "--password", "route-test-password",
                             "--key", str(host_key)], environment)
             host.wait_for("Session created:")
-            session = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())[1]
+            match = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())
+            assert match, host.text()[-8000:]
+            session = match[1]
             client = Service(binary, directory, "fallback-client", session,
                              discovery + ["--discovery-quic", "--quic-ca-file", str(cert),
                                           "--quic-fallback-port", str(fallback_port),

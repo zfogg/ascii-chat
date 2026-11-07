@@ -24,9 +24,7 @@ typedef struct outbound_packet {
   acip_send_options_t options;
   bool video, encoded, keyframe, audio, wait, done;
   asciichat_error_t result;
-#ifdef ASCIICHAT_WITH_OTEL
   gotel_context_t telemetry_context;
-#endif
 } outbound_packet_t;
 
 typedef struct {
@@ -254,6 +252,7 @@ static void *outbound_worker(void *arg) {
       errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
       break;
     }
+    // Include backend-owned bytes before reserving room for audio and control.
     size_t backend = backend_bytes(out);
     // Keep scheduling decisions in the plaintext queue. Even tiny reliable
     // packets must not accumulate behind video in a backend's opaque FIFO.
@@ -448,9 +447,7 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
   acip_outbound_t *out = transport->outbound;
   mutex_lock(&out->mutex);
   info.created = time_get_ns();
-#ifdef ASCIICHAT_WITH_OTEL
   info.telemetry_context = ascii_otel_context();
-#endif
   if (out->stopping || out->failed) {
     asciichat_error_t code = out->failed ? out->failure_code : ERROR_NETWORK;
     asciichat_error_context_t cause = out->failure;
@@ -458,6 +455,8 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
     mutex_unlock(&out->mutex);
     return cause.code == code ? import_failure(&cause, &detail) : SET_ERRNO(code, "Outbound connection closed");
   }
+  // Admission first retires stale plaintext and restores codec recovery state;
+  // dependent predictive frames stay rejected until a fresh keyframe arrives.
   expire_video(out, info.created);
   expire_datagrams(out, info.created);
   outbound_stream_t *stream = info.encoded ? stream_state(out, info.type, info.stream) : NULL;
@@ -471,6 +470,7 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
   }
   if (info.video && !info.encoded)
     discard_stream(out, &info);
+  // Include backend-owned bytes before reserving room for audio and control.
   size_t backend = backend_bytes(out);
   size_t reserved = info.video   ? ACIP_OUTBOUND_CONTROL_RESERVE + ACIP_OUTBOUND_AUDIO_RESERVE
                     : info.audio ? ACIP_OUTBOUND_CONTROL_RESERVE
@@ -494,6 +494,7 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
     mutex_unlock(&out->mutex);
     return ASCIICHAT_OK;
   }
+  // Reuse storage only when ownership and synchronous-wait semantics match.
   outbound_packet_t **cached = &out->recycled;
   while (*cached && ((*cached)->wait != info.wait || buffer_capacity((*cached)->data) < size))
     cached = &(*cached)->next;

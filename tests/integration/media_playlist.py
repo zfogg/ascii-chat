@@ -5,17 +5,18 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import functools
 import http.server
 import os
 from pathlib import Path
-import subprocess
 import tempfile
 import threading
 import time
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 if os.name == "nt":
     from windows_console import WindowsConsole as Terminal
 
@@ -83,10 +84,7 @@ def main():
         for index,path in enumerate(files):
             r="random(1)*255" if index==0 else "0"
             b="random(1)*255" if index==1 else "0"
-            subprocess.run(["ffmpeg","-v","error","-y","-f","lavfi","-i",
-                            f"nullsrc=s=120x90:r=20,geq=r='{r}':g=0:b='{b}'",
-                            "-t","3","-c:v","libx264","-pix_fmt","yuv420p","-movflags","+faststart",str(path)],
-                           check=True,timeout=30)
+            lavfi_fixture([f"nullsrc=s=120x90:r=20,geq=r='{r}':g=0:b='{b}'"], str(path), ffmpeg_options=["-v", "error", "-y"], output_options=["-t", "3", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart"], timeout=30)
         class Handler(http.server.SimpleHTTPRequestHandler):
             def do_GET(self):
                 time.sleep(0.6)
@@ -97,9 +95,9 @@ def main():
         server=http.server.ThreadingHTTPServer(("127.0.0.1",0),functools.partial(Handler,directory=str(root)))
         threading.Thread(target=server.serve_forever,daemon=True).start()
         url=f"http://127.0.0.1:{server.server_port}/second%20blue.mp4"
-        argv=[str(args.binary.resolve()),"--no-check-update","--log-level","info","--log-file",
+        argv=cli_command(str(args.binary.resolve()), "--log-level","info","--log-file",
               str((args.artifacts/"interactive.log").resolve()),"mirror","--audio=false","--fps","20",
-              "--color-mode","truecolor","--splash-screen=false"]
+              "--color-mode","truecolor","--splash-screen=false")
         term=Terminal(argv+["--test-pattern"],rows=40,cols=140)
         try:
             term.expect(lambda t:t.count("oo")>15,"Initial test pattern",timeout=90)
@@ -120,7 +118,7 @@ def main():
                 term.write('"'+str(path)+'" ')
                 term.expect(lambda t:path.name in t,"Dropped path appears")
                 def cursor_after_quote(_):
-                    x,y = term.cursor if os.name == "nt" else (term.screen.cursor.x,term.screen.cursor.y)
+                    x,y = getattr(term, "cursor") if os.name == "nt" else (term.screen.cursor.x,term.screen.cursor.y)
                     line = term.screen.display[y]
                     return x > 0 and line[x-1] == '"' and '> "' in line and path.name in line
                 term.expect(cursor_after_quote, "Drop cursor follows the closing quote without a trailing space")

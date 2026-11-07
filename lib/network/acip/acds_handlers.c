@@ -213,12 +213,12 @@ static asciichat_error_t handle_acds_session_create(const void *payload, size_t 
   const uint8_t *extension = (const uint8_t *)payload + base_length;
   size_t extension_length = payload_len - base_length;
   if (extension_length) {
-    if (extension_length < 10 || memcmp(extension, "ACQT", 4) || extension[4] != 1 || extension[5])
+    if (extension_length < 10 || memcmp(extension, "ACQT", sizeof("ACQT") - 1) || extension[4] != 1 || extension[5])
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery transport extension");
     size_t url_length = ((size_t)extension[8] << 8) | extension[9];
     if (url_length >= 512 || extension_length != 10 + url_length ||
-        (url_length &&
-         (url_length < 9 || memcmp(extension + 10, "https://", 8) || memchr(extension + 10, 0, url_length))))
+        (url_length && (url_length < 9 || memcmp(extension + 10, "https://", sizeof("https://") - 1) ||
+                        memchr(extension + 10, 0, url_length))))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid discovery WebTransport endpoint");
   }
   callbacks->on_session_create(req, transport, client_ip, extension, extension_length, callbacks->app_ctx);

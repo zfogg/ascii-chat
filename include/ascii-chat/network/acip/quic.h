@@ -2,8 +2,9 @@
 
 #include <ascii-chat/network/acip/transport.h>
 
-/** Native raw ACIP-over-QUIC endpoint. This is separate from HTTP/3
- * WebTransport and requires the platform socket subsystem to be initialized. */
+/** QUIC endpoint for native ACIP and optional HTTP/3 WebTransport. A listener
+ * can negotiate both wire protocols by ALPN on one UDP socket. Requires the
+ * platform socket subsystem to be initialized. */
 typedef struct acip_quic_endpoint acip_quic_endpoint_t;
 
 typedef struct {
@@ -14,6 +15,7 @@ typedef struct {
   const char *webtransport_origin; /**< Exact HTTPS origin; enables the server HTTP/3 listener. */
   const char *webtransport_path;   /**< CONNECT path, required for WebTransport. */
   bool enable_datagrams;
+  bool accept_native;           /**< Also accept acip/1 on a server WebTransport listener. */
   bool prefer_visual_datagrams; /**< Prefer negotiated visual datagrams. */
   bool prefer_audio_datagrams;  /**< Send audio as datagrams when negotiated; otherwise use reliable streams. */
 } acip_quic_config_t;

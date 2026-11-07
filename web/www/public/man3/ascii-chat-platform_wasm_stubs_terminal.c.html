@@ -1,194 +1,303 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>terminal.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">terminal.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">terminal.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">terminal.c - Terminal function stubs for WASM (functions not
-    needed for mirror mode).</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>asciichat_error_t</b> <b>terminal_get_size</b>
-    (<b>terminal_size_t</b> *size)
-  <br/>
-  Get terminal size. <b>asciichat_error_t</b> <b>terminal_cursor_hide</b> (void)
-  <br/>
-  Hide terminal cursor. <b>asciichat_error_t</b> <b>terminal_cursor_show</b>
-    (void)
-  <br/>
-  Show terminal cursor. unsigned short int <b>terminal_get_effective_width</b>
-    (void)
-  <br/>
-  Get effective terminal width with fallback priority. unsigned short int
-    <b>terminal_get_effective_height</b> (void)
-  <br/>
-  Get effective terminal height with fallback priority. <b>asciichat_error_t</b>
-    <b>terminal_fd_reader_create</b> (int fd, int frame_height,
-    <b>terminal_fd_reader_t</b> **out)
-  <br/>
-  Create a terminal FD reader from a file descriptor. void
-    <b>terminal_fd_reader_destroy</b> (<b>terminal_fd_reader_t</b> *reader)
-  <br/>
-  Destroy terminal FD reader. <b>asciichat_error_t</b>
-    <b>terminal_fd_reader_next</b> (<b>terminal_fd_reader_t</b> *reader, char
-    **out_frame)
-  <br/>
-  Read next frame from file descriptor.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Terminal function stubs for WASM (functions not needed for mirror
-    mode).</p>
-<p class="Pp">Terminal control and cursor movement functions are implemented in
-    <b>wasm/terminal.c</b> via ANSI escape sequences. This file contains only
-    the stubs that return errors or no-ops for operations not supported in the
-    browser environment.</p>
-<p class="Pp">Definition in file <b>platform/wasm/stubs/terminal.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> terminal_fd_reader_create (int fd, int
-  frame_height, <b>terminal_fd_reader_t</b> ** out)</h2>
-<p class="Pp">Create a terminal FD reader from a file descriptor.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>fd</i> File descriptor to read from (e.g.,
-  STDIN_FILENO, open file)
-<br/>
-<i>frame_height</i> Number of lines per frame (required - used for frame
-  boundaries)
-<br/>
-<i>out</i> Pointer to store reader context</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success</div>
-<p class="Pp">Width is auto-detected from the first frame's line length.</p>
-<p class="Pp">Definition at line <b>52</b> of file
-    <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>52                                                                                                   {
-53   (void)fd;
-54   (void)frame_height;
-55   if (out) *out = NULL;
-56   return ASCIICHAT_OK;  // Stub - no stdin available in WASM
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>terminal.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">terminal.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">terminal.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          terminal.c - Terminal function stubs for WASM (functions not needed
+          for mirror mode).
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>terminal_get_size</b> (<b
+              >terminal_size_t</b
+            >
+            *size)
+            <br />
+            Get terminal size. <b>asciichat_error_t</b>
+            <b>terminal_cursor_hide</b> (void)
+            <br />
+            Hide terminal cursor. <b>asciichat_error_t</b>
+            <b>terminal_cursor_show</b>
+            (void)
+            <br />
+            Show terminal cursor. unsigned short int
+            <b>terminal_get_effective_width</b>
+            (void)
+            <br />
+            Get effective terminal width with fallback priority. unsigned short
+            int
+            <b>terminal_get_effective_height</b> (void)
+            <br />
+            Get effective terminal height with fallback priority.
+            <b>asciichat_error_t</b> <b>terminal_fd_reader_create</b> (int fd,
+            int frame_height, <b>terminal_fd_reader_t</b> **out)
+            <br />
+            Create a terminal FD reader from a file descriptor. void
+            <b>terminal_fd_reader_destroy</b> (<b>terminal_fd_reader_t</b>
+            *reader)
+            <br />
+            Destroy terminal FD reader. <b>asciichat_error_t</b>
+            <b>terminal_fd_reader_next</b> (<b>terminal_fd_reader_t</b>
+            *reader, char **out_frame)
+            <br />
+            Read next frame from file descriptor.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Terminal function stubs for WASM (functions not needed for mirror
+          mode).
+        </p>
+        <p class="Pp">
+          Terminal control and cursor movement functions are implemented in
+          <b>wasm/terminal.c</b> via ANSI escape sequences. This file contains
+          only the stubs that return errors or no-ops for operations not
+          supported in the browser environment.
+        </p>
+        <p class="Pp">
+          Definition in file <b>platform/wasm/stubs/terminal.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> terminal_fd_reader_create (int fd, int
+            frame_height, <b>terminal_fd_reader_t</b> ** out)
+          </h2>
+          <p class="Pp">Create a terminal FD reader from a file descriptor.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>fd</i> File descriptor to read from (e.g., STDIN_FILENO, open
+            file)
+            <br />
+            <i>frame_height</i> Number of lines per frame (required - used for
+            frame boundaries)
+            <br />
+            <i>out</i> Pointer to store reader context
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">ASCIICHAT_OK on success</div>
+          <p class="Pp">
+            Width is auto-detected from the first frame's line length.
+          </p>
+          <p class="Pp">
+            Definition at line <b>51</b> of file
+            <b>platform/wasm/stubs/terminal.c</b>.
+          </p>
+          <pre>
+51                                                                                                   {
+52   (void)fd;
+53   (void)frame_height;
+54   if (out)
+55     *out = NULL;
+56   return ASCIICHAT_OK; // Stub - no stdin available in WASM
 57 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
-<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_terminal_fd_reader_destroy_("><a class="permalink" href="#void_terminal_fd_reader_destroy_(">void
-  terminal_fd_reader_destroy (<b>terminal_fd_reader_t</b> * reader)</a></h2>
-<p class="Pp">Destroy terminal FD reader.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>reader</i> Reader context to destroy</div>
-<p class="Pp">Definition at line <b>59</b> of file
-    <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>59                                                               {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
+          <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_terminal_fd_reader_destroy_(">
+            <a class="permalink" href="#void_terminal_fd_reader_destroy_("
+              >void terminal_fd_reader_destroy (<b>terminal_fd_reader_t</b> *
+              reader)</a
+            >
+          </h2>
+          <p class="Pp">Destroy terminal FD reader.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent"><i>reader</i> Reader context to destroy</div>
+          <p class="Pp">
+            Definition at line <b>59</b> of file
+            <b>platform/wasm/stubs/terminal.c</b>.
+          </p>
+          <pre>
+59                                                               {
 60   (void)reader;
 61   // No-op
 62 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss"><b>asciichat_error_t</b> terminal_fd_reader_next
-  (<b>terminal_fd_reader_t</b> * reader, char ** out_frame)</h2>
-<p class="Pp">Read next frame from file descriptor. Reads frame_height lines
-    from the FD and returns them as a single frame string. Returns NULL in
-    out_frame when EOF is reached.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>reader</i> Reader context
-<br/>
-<i>out_frame</i> Pointer to store frame data (NULL when EOF, must free with
-  SAFE_FREE)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">ASCIICHAT_OK on success (including EOF)</div>
-<p class="Pp">Definition at line <b>64</b> of file
-    <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>64                                                                                           {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> terminal_fd_reader_next (<b
+              >terminal_fd_reader_t</b
+            >
+            * reader, char ** out_frame)
+          </h2>
+          <p class="Pp">
+            Read next frame from file descriptor. Reads frame_height lines from
+            the FD and returns them as a single frame string. Returns NULL in
+            out_frame when EOF is reached.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>reader</i> Reader context
+            <br />
+            <i>out_frame</i> Pointer to store frame data (NULL when EOF, must
+            free with SAFE_FREE)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">ASCIICHAT_OK on success (including EOF)</div>
+          <p class="Pp">
+            Definition at line <b>64</b> of file
+            <b>platform/wasm/stubs/terminal.c</b>.
+          </p>
+          <pre>
+64                                                                                           {
 65   (void)reader;
-66   if (out_frame) *out_frame = NULL;  // Signal EOF immediately
-67   return ASCIICHAT_OK;
-68 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_short_int_terminal_get_effective_height_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_height_(void_)">unsigned
-  short int terminal_get_effective_height (void )</a></h2>
-<p class="Pp">Get effective terminal height with fallback priority.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Terminal height in characters with priority: option
-  &#x2192; detected &#x2192; default</div>
-<p class="Pp">Returns the effective terminal height to use, checking in priority
-    order:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Option value</b>: If --height was set to a non-zero value, return
-    it</dd>
-  <dt>2.</dt>
-  <dd><b>Detected size</b>: Try to detect actual terminal height via
-      <b>terminal_get_size()</b><b></b></dd>
-  <dt>3.</dt>
-  <dd><b>Default</b>: Return <b>OPT_HEIGHT_DEFAULT</b><b> (70) as final
-      fallback</b></dd>
-</dl>
-<p class="Pp">This function simplifies the common pattern of &quot;use option if
-    set, else detect,else use default&quot; that appears throughout the codebase
-    for terminal dimension handling.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Safe to call from any thread (uses lock-free option
-  access)
-<p class="Pp"></p>
-<p class="Pp">Detection may fail on non-TTY output (piped/redirected), falls
-    back gracefully</p>
-<p class="Pp"></p>
-<p class="Pp">Height option defaults to 0, so non-zero means it was explicitly
-    set</p>
-</div>
-<p class="Pp"><b>Usage Example:</b></p>
-<p class="Pp"></p>
-<pre>// Old pattern (scattered throughout code):
+66   if (out_frame)
+67     *out_frame = NULL; // Signal EOF immediately
+68   return ASCIICHAT_OK;
+69 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>ASCIICHAT_OK</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="unsigned_short_int_terminal_get_effective_height_(void_)"
+          >
+            <a
+              class="permalink"
+              href="#unsigned_short_int_terminal_get_effective_height_(void_)"
+              >unsigned short int terminal_get_effective_height (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Get effective terminal height with fallback priority.
+          </p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Terminal height in characters with priority: option &#x2192;
+            detected &#x2192; default
+          </div>
+          <p class="Pp">
+            Returns the effective terminal height to use, checking in priority
+            order:
+          </p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Option value</b>: If --height was set to a non-zero value,
+              return it
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Detected size</b>: Try to detect actual terminal height via
+              <b>terminal_get_size()</b><b></b>
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>Default</b>: Return <b>OPT_HEIGHT_DEFAULT</b
+              ><b> (70) as final fallback</b>
+            </dd>
+          </dl>
+          <p class="Pp">
+            This function simplifies the common pattern of &quot;use option if
+            set, else detect,else use default&quot; that appears throughout the
+            codebase for terminal dimension handling.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Safe to call from any thread (uses lock-free option access)
+            <p class="Pp"></p>
+            <p class="Pp">
+              Detection may fail on non-TTY output (piped/redirected), falls
+              back gracefully
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Height option defaults to 0, so non-zero means it was explicitly
+              set
+            </p>
+          </div>
+          <p class="Pp"><b>Usage Example:</b></p>
+          <p class="Pp"></p>
+          <pre>// Old pattern (scattered throughout code):
 unsigned short int height = GET_OPTION(height);
 if (height == 0) {
 <br/>
@@ -207,18 +316,21 @@ if (height == 0) {
 // New pattern (unified):
 unsigned short int height = terminal_get_effective_height();
 </pre>
-<p class="Pp">Returns height in priority order:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Option height if set to non-zero value</dd>
-  <dt>2.</dt>
-  <dd>Detected terminal height</dd>
-  <dt>3.</dt>
-  <dd>OPT_HEIGHT_DEFAULT fallback</dd>
-</dl>
-<p class="Pp">Definition at line <b>39</b> of file
-    <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>39                                                        {
+          <p class="Pp">Returns height in priority order:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Option height if set to non-zero value</dd>
+            <dt>2.</dt>
+            <dd>Detected terminal height</dd>
+            <dt>3.</dt>
+            <dd>OPT_HEIGHT_DEFAULT fallback</dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>39</b> of file
+            <b>platform/wasm/stubs/terminal.c</b>.
+          </p>
+          <pre>
+39                                                        {
 40   int height = GET_OPTION(height);
 41   if (height &gt; 0) {
 42     return (unsigned short int)height;
@@ -226,47 +338,73 @@ unsigned short int height = terminal_get_effective_height();
 44   // For WASM, use default since terminal detection is stubbed
 45   return OPT_HEIGHT_DEFAULT;
 46 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>GET_OPTION</b>, and <b>OPT_HEIGHT_DEFAULT</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="unsigned_short_int_terminal_get_effective_width_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_width_(void_)">unsigned
-  short int terminal_get_effective_width (void )</a></h2>
-<p class="Pp">Get effective terminal width with fallback priority.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Terminal width in characters with priority: option
-  &#x2192; detected &#x2192; default</div>
-<p class="Pp">Returns the effective terminal width to use, checking in priority
-    order:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd><b>Option value</b>: If --width was set to a non-zero value, return
-    it</dd>
-  <dt>2.</dt>
-  <dd><b>Detected size</b>: Try to detect actual terminal width via
-      <b>terminal_get_size()</b><b></b></dd>
-  <dt>3.</dt>
-  <dd><b>Default</b>: Return <b>OPT_WIDTH_DEFAULT</b><b> (110) as final
-      fallback</b></dd>
-</dl>
-<p class="Pp">This function simplifies the common pattern of &quot;use option if
-    set, else detect,else use default&quot; that appears throughout the codebase
-    for terminal dimension handling.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Safe to call from any thread (uses lock-free option
-  access)
-<p class="Pp"></p>
-<p class="Pp">Detection may fail on non-TTY output (piped/redirected), falls
-    back gracefully</p>
-<p class="Pp"></p>
-<p class="Pp">Width option defaults to 0, so non-zero means it was explicitly
-    set</p>
-</div>
-<p class="Pp"><b>Usage Example:</b></p>
-<p class="Pp"></p>
-<pre>// Old pattern (scattered throughout code):
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>GET_OPTION</b>, and <b>OPT_HEIGHT_DEFAULT</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="unsigned_short_int_terminal_get_effective_width_(void_)"
+          >
+            <a
+              class="permalink"
+              href="#unsigned_short_int_terminal_get_effective_width_(void_)"
+              >unsigned short int terminal_get_effective_width (void )</a
+            >
+          </h2>
+          <p class="Pp">Get effective terminal width with fallback priority.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Terminal width in characters with priority: option &#x2192; detected
+            &#x2192; default
+          </div>
+          <p class="Pp">
+            Returns the effective terminal width to use, checking in priority
+            order:
+          </p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Option value</b>: If --width was set to a non-zero value,
+              return it
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Detected size</b>: Try to detect actual terminal width via
+              <b>terminal_get_size()</b><b></b>
+            </dd>
+            <dt>3.</dt>
+            <dd>
+              <b>Default</b>: Return <b>OPT_WIDTH_DEFAULT</b
+              ><b> (110) as final fallback</b>
+            </dd>
+          </dl>
+          <p class="Pp">
+            This function simplifies the common pattern of &quot;use option if
+            set, else detect,else use default&quot; that appears throughout the
+            codebase for terminal dimension handling.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Safe to call from any thread (uses lock-free option access)
+            <p class="Pp"></p>
+            <p class="Pp">
+              Detection may fail on non-TTY output (piped/redirected), falls
+              back gracefully
+            </p>
+            <p class="Pp"></p>
+            <p class="Pp">
+              Width option defaults to 0, so non-zero means it was explicitly
+              set
+            </p>
+          </div>
+          <p class="Pp"><b>Usage Example:</b></p>
+          <p class="Pp"></p>
+          <pre>// Old pattern (scattered throughout code):
 unsigned short int width = GET_OPTION(width);
 if (width == 0) {
 <br/>
@@ -285,18 +423,21 @@ if (width == 0) {
 // New pattern (unified):
 unsigned short int width = terminal_get_effective_width();
 </pre>
-<p class="Pp">Returns width in priority order:</p>
-<dl class="Bl-tag">
-  <dt>1.</dt>
-  <dd>Option width if set to non-zero value</dd>
-  <dt>2.</dt>
-  <dd>Detected terminal width</dd>
-  <dt>3.</dt>
-  <dd>OPT_WIDTH_DEFAULT fallback</dd>
-</dl>
-<p class="Pp">Definition at line <b>29</b> of file
-    <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>29                                                       {
+          <p class="Pp">Returns width in priority order:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Option width if set to non-zero value</dd>
+            <dt>2.</dt>
+            <dd>Detected terminal width</dd>
+            <dt>3.</dt>
+            <dd>OPT_WIDTH_DEFAULT fallback</dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>29</b> of file
+            <b>platform/wasm/stubs/terminal.c</b>.
+          </p>
+          <pre>
+29                                                       {
 30   int width = GET_OPTION(width);
 31   if (width &gt; 0) {
 32     return (unsigned short int)width;
@@ -304,21 +445,25 @@ unsigned short int width = terminal_get_effective_width();
 34   // For WASM, use default since terminal detection is stubbed
 35   return OPT_WIDTH_DEFAULT;
 36 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>GET_OPTION</b>, and <b>OPT_WIDTH_DEFAULT</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>GET_OPTION</b>, and <b>OPT_WIDTH_DEFAULT</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.11.25</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

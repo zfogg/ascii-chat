@@ -35,7 +35,7 @@ static asciichat_error_t create_context(bool server, const char *alpn, acip_quic
   *out = NULL;
   if (!alpn)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC TLS context or ALPN");
-  size_t length = strnlen(alpn, 256);
+  size_t length = strnlen(alpn, sizeof(((acip_quic_tls_t *)0)->alpn));
   if (!length || length > 255)
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC ALPN must contain 1 to 255 bytes");
 
@@ -164,7 +164,16 @@ asciichat_error_t acip_quic_tls_verify_ready(acip_quic_tls_t *tls, SSL *ssl) {
   const unsigned char *selected = NULL;
   unsigned int length = 0;
   SSL_get0_alpn_selected(ssl, &selected, &length);
-  if (length != tls->alpn_length - 1 || !selected || memcmp(selected, tls->alpn + 1, length) != 0)
+  bool negotiated = false;
+  for (size_t offset = 0; offset < tls->alpn_length;) {
+    size_t protocol_length = tls->alpn[offset++];
+    if (protocol_length > tls->alpn_length - offset)
+      break;
+    if (selected && protocol_length == (size_t)length && !memcmp(selected, tls->alpn + offset, protocol_length))
+      negotiated = true;
+    offset += protocol_length;
+  }
+  if (!negotiated)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "QUIC TLS ALPN was not negotiated");
   if (!tls->server) {
     X509_VERIFY_PARAM *verify = SSL_get0_param(ssl);

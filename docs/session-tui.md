@@ -87,8 +87,8 @@ it cannot safely acquire a history mutex. Search uses PCRE2's portable matching
 entry point, including when JIT is unavailable in WASM. Decoded search-edit keys
 use the same C line editor on Windows, POSIX, and in the browser.
 
-`tests/integration/terminal_logs.py` exercises mirror and TCP client modes through
-real terminals and captures their cell grids. `tests/ui/test_log_history.py`
+`tests/python/integration/terminal_logs/test_logs.py` exercises mirror and TCP client modes through
+real terminals and captures their cell grids. `tests/python/native/test_isolated_shared.py`
 checks retained C log routes with console output disabled. The browser suite also
 checks real C logs, search, overlay exclusivity, resize, and connected-client logs;
 set `SESSION_UI_SERVER_URL` to a local server's WebSocket URL for its network case.

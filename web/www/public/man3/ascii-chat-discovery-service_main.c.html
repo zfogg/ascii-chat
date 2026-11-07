@@ -1,129 +1,228 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>main.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">main.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">main.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">main.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">int <b>acds_main</b> (void)
-  <br/>
-  ACDS (discovery-service mode) entry point.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="int_acds_main_(void_)"><a class="permalink" href="#int_acds_main_(void_)">int
-  acds_main (void )</a></h2>
-<p class="Pp">ACDS (discovery-service mode) entry point. Expects options already
-    parsed and shared initialization complete. Called by main.c mode dispatcher
-    after <b>options_init()</b> and <b>asciichat_shared_init()</b>.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Exit code (0 = success, non-zero = error)</div>
-<p class="Pp">Definition at line <b>279</b> of file
-    <b>discovery-service/main.c</b>.</p>
-<pre>279                     {
-280   session_server_like_config_t config = {
-281       // Required callbacks
-282       .init_fn = acds_init_fn,
-283       .init_user_data = NULL,
-284       .interrupt_fn = acds_interrupt_fn,
-285 
-286       // Cleanup
-287       .cleanup_fn = acds_cleanup_fn,
-288       .cleanup_user_data = NULL,
-289 
-290       // No status screen for ACDS (for now)
-291       .status_fn = NULL,
-292       .status_user_data = NULL,
-293 
-294       // TCP handler
-295       .tcp_handler = acds_client_handler,
-296       .tcp_user_data = &amp;g_server,
-297 
-298       // WebSocket
-299       .websocket =
-300           {
-301               .enabled = true,
-302               .handler = acds_websocket_client_handler,
-303               .user_data = &amp;g_server,
-304           },
-305 
-306       // mDNS
-307       .mdns =
-308           {
-309               .enabled = true,
-310               .service_name = &quot;ascii-chat-Discovery-Service&quot;,
-311               .service_type = &quot;_ascii-chat-discovery-service._tcp&quot;,
-312           },
-313 
-314       // UPnP
-315       .upnp =
-316           {
-317               .enabled = true,
-318               .description = &quot;ascii-chat ACDS&quot;,
-319           },
-320 
-321       // System
-322       .raise_fd_limit = true,
-323       .fd_limit_target = 65536,
-324   };
-325 
-326   return session_server_like_run(&amp;config);
-327 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acds_client_handler()</b>,
-    <b>acds_websocket_client_handler()</b>, and
-    <b>session_server_like_run()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>main.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">main.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">main.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">main.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>DISCOVERY_SERVICE_MAIN_MSG_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>DISCOVERY_STATS_ROW_CAPACITY</b> 64
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>acds_main</b> (void)
+            <br />
+            ACDS (discovery-service mode) entry point.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_DISCOVERY_SERVICE_MAIN_MSG_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_DISCOVERY_SERVICE_MAIN_MSG_BUFFER_SIZE___256"
+              >#define DISCOVERY_SERVICE_MAIN_MSG_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>3</b> of file <b>discovery-service/main.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_DISCOVERY_STATS_ROW_CAPACITY___64">
+            <a
+              class="permalink"
+              href="#_define_DISCOVERY_STATS_ROW_CAPACITY___64"
+              >#define DISCOVERY_STATS_ROW_CAPACITY 64</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file <b>discovery-service/main.c</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_acds_main_(void_)">
+            <a class="permalink" href="#int_acds_main_(void_)"
+              >int acds_main (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            ACDS (discovery-service mode) entry point. Expects options already
+            parsed and shared initialization complete. Called by main.c mode
+            dispatcher after
+            <b>options_init()</b> and <b>asciichat_shared_init()</b>.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Exit code (0 = success, non-zero = error)</div>
+          <p class="Pp">
+            Definition at line <b>322</b> of file
+            <b>discovery-service/main.c</b>.
+          </p>
+          <pre>
+322                     {
+323   session_server_like_config_t config = {
+324       // Required callbacks
+325       .init_fn = acds_init_fn,
+326       .init_user_data = NULL,
+327       .interrupt_fn = acds_interrupt_fn,
+328
+329       // Cleanup
+330       .cleanup_fn = acds_cleanup_fn,
+331       .cleanup_user_data = NULL,
+332
+333       .status_fn = acds_status_fn,
+334       .status_user_data = NULL,
+335
+336       .connections = acds_network_callbacks,
+337       .connection_user_data = &amp;g_server,
+338       .websocket_enabled = true,
+339       .max_payload = CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES + 1024,
+340       .partial_timeout_ms = 5000,
+341       .idle_timeout_ms = 60000,
+342
+343       // mDNS
+344       .mdns =
+345           {
+346               .enabled = true,
+347               .service_name = &quot;ascii-chat-Discovery-Service&quot;,
+348               .service_type = &quot;_ascii-chat-discovery-service._tcp&quot;,
+349           },
+350
+351       // UPnP
+352       .upnp =
+353           {
+354               .enabled = true,
+355               .description = &quot;ascii-chat ACDS&quot;,
+356           },
+357
+358       // System
+359       .raise_fd_limit = true,
+360       .fd_limit_target = 65536,
+361   };
+362
+363   // Native Windows console events reach signal_exit(), not the CRT signal handler.
+364   // Route them through the owner so the listener stops and its mapping is removed.
+365   set_interrupt_callback(session_server_like_request_shutdown);
+366   asciichat_error_t result = session_server_like_run(&amp;config);
+367   set_interrupt_callback(NULL);
+368   return result;
+369 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acds_main()</b>, <b>acds_network_callbacks</b>,
+            <b>CONSENSUS_HANDOFF_HEADER</b>,
+            <b>CONSENSUS_HANDOFF_PROBE_BYTES</b>,
+            <b>session_server_like_request_shutdown()</b>,
+            <b>session_server_like_run()</b>, and
+            <b>set_interrupt_callback()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>acds_main()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

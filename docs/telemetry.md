@@ -64,7 +64,7 @@ those variables to enable export in tests.
 
 Collector-based OTEL smoke scripts now report skip code 77. In-process gotel
 transport tests still validate spans, metrics, sampling and failures without
-network I/O. `test_otel_disabled.py` runs real native media with explicit collector
+network I/O. `tests/python/integration/telemetry/test_disabled.py` runs real native media with explicit collector
 and signal overrides and asserts zero received requests. Historical exported-load
 measurements below describe earlier manual runs; they are not test permissions.
 
@@ -91,7 +91,7 @@ After configuring the native build, run the checker in its pinned Python
 environment:
 
 ```sh
-uv run --no-project --with-requirements tests/requirements-telemetry.txt python tests/scripts/check_query_names.py --build-dir build
+uv run --project tests/ascii_chat_tests --extra telemetry python tests/scripts/check_query_names.py --build-dir build
 ```
 
 Install the matching Spaniel verifier at its immutable source revision and make
@@ -129,9 +129,8 @@ fixtures, sends no OTLP, switches to an empty session, checks all panels/rules,
 and restores the original session in a finally block:
 
 ```sh
-python tests/integration/test_spaniel_alert_pack.py
+python tests/manual/probe_spaniel_alert_pack.py
 ```
-
 
 Debug and Dev builds export traces, logs, and metrics to the local Compose
 collector at `http://127.0.0.1:24318` by default. Release builds require an endpoint.
@@ -227,8 +226,9 @@ capacity must be a power of two. Use `--otel-enabled-telemetry=none` to override
 an inherited endpoint without sending anything.
 
 `OTEL_EXPORTER_OTLP_ENDPOINT` is a fallback base URL. Standard otlp-c exporter
-headers and per-signal endpoint environment settings are also accepted. The
-base URL accepts HTTP or HTTPS and must not contain credentials, query or fragment.
+headers and per-signal endpoint environment settings are also accepted. A base
+endpoint must be configured to enable export; per-signal endpoints alone do not
+start telemetry. The base URL accepts HTTP or HTTPS and must not contain credentials, query or fragment.
 HTTPS uses the existing OpenSSL dependency, enables TLS 1.3 with TLS 1.2 as the
 minimum, and verifies certificates and DNS/IP identities. System roots are used
 by default, including native Windows/macOS anchors. `--otel-ca-file` (also
@@ -259,7 +259,8 @@ The exporter batches protobuf requests; it does not call the application's HTTP
 client, so export requests cannot recursively generate HTTP spans.
 
 Normal shutdown disables new producers, ends the CLI span, waits for retained
-scopes, joins the worker, and flushes within the configured deadline. An exit
+scopes, and flushes within the smaller of the configured timeout and 400 ms.
+Pending telemetry can be lost if the collector does not respond in that time. An exit
 that bypasses scope cleanup retains a still-borrowed host until process exit
 rather than freeing memory in use. Exporter diagnostics go only to local debug
 logs; the OTLP sink suppresses them to prevent recursion. Collector failure does
@@ -392,7 +393,7 @@ attributes. Loader and commit spans are independent control-operation roots:
 the loader crosses a thread boundary, and commit must not inherit a discarded
 frame's sampling decision.
 
-`tests/integration/test_otel.py BINARY` runs a synthetic mirror snapshot against
+`tests/manual/disabled_otel_export.py BINARY` runs a synthetic mirror snapshot against
 a loopback OTLP receiver, verifies each signal mask, sampling and metric
 independence, CLI/config/environment precedence, invalid configuration, and a
 bounded collector outage, encrypted client/server delivery and named ACDS SQL. With `BUILD_TESTS=ON` it is registered as CTest
@@ -415,7 +416,7 @@ unhealthy; successful delivery produces a recovery message. These health message
 do not enter the export queue. Snapshot/rendering can suppress terminal logs;
 use `--log-file` to retain them. The socket integration checks abrupt disconnects,
 stalled HTTP headers, and stalled response bodies while synthetic frames continue
-rendering, including shutdown with the default five-second exporter timeout.
+rendering, including shutdown with the default exporter timeout.
 The worker also owns the final flush, keeping synchronous DNS resolution off the
 exit thread; the shutdown join deadline retains a stuck exporter until process exit.
 
@@ -425,7 +426,6 @@ For focused Linux testing after configuring the Docker preset:
 cmake --build build_docker --target test_unit_otel_otel ascii-chat
 ctest --test-dir build_docker -R 'test_unit_otel_otel|otel-export' --no-tests=error --output-on-failure
 ```
-
 
 ### Compression and video codecs
 
@@ -482,7 +482,6 @@ renders with three render spans, and (in the audio/video run) 1,381 client audio
 captures with 14 spans, 955 server audio renders with six spans, and 467 Opus
 decodes with four spans. Metrics continue counting work omitted from traces.
 
-
 ### Spaniel alerts and deadlock watchdog
 
 Compose mounts `deploy/otel/alerts` read-only and passes `--alerts-dir /alerts`.
@@ -537,7 +536,6 @@ from Needs attention without deleting its telemetry. Repeated query evaluations,
 replay, and container restarts do not rearm the same trace ID. A different trace
 ID creates a fresh instance immediately. Other alerts retain condition semantics:
 acknowledgement suppresses repeats until recovery and the next breach.
-
 
 ### Invalid rendered ASCII frames
 

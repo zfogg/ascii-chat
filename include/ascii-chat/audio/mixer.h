@@ -332,8 +332,9 @@ typedef struct {
   /** @brief Sample rate in Hz (e.g., 44100) */
   int sample_rate;
   unsigned channels;
+  /** Per-source filter state; mono uses the left slot. */
+  struct spectral_processor *spectral_left[MIXER_MAX_SOURCES + 1];
   struct spectral_processor *spectral_right[MIXER_MAX_SOURCES + 1];
-  struct spectral_processor *spectral[MIXER_MAX_SOURCES + 1];
 
   /** @brief Array of pointers to client audio ring buffers */
   audio_ring_buffer_t **source_buffers;

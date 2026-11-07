@@ -1,0 +1,508 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_query_troubleshooting(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_query_troubleshooting(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_query_troubleshooting(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          custom_query_troubleshooting - Query Tool Troubleshooting
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Query_Tool_Troubleshooting">
+          <a class="permalink" href="#Query_Tool_Troubleshooting"
+            >Query Tool Troubleshooting</a
+          >
+        </h1>
+        <p class="Pp">
+          This guide covers common issues and solutions when using the query
+          tool.
+        </p>
+        <p class="Pp"></p>
+        <section class="Ss">
+          <h2 class="Ss" id="Connection_Issues">
+            <a class="permalink" href="#Connection_Issues">Connection Issues</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Connection_refused__when_curling_">
+            <a class="permalink" href="#Connection_refused__when_curling_">
+              Connection refused&quot; when curling&quot;</a
+            >
+          </h2>
+          <p class="Pp">
+            <b>Symptom</b>: curl: (7) Failed to connect to localhost port 9999
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Causes &amp; Solutions</b>:</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Controller not running</b>
+              <p class="Pp"></p>
+            </dd>
+          </dl>
+          <p class="Pp"></p>
+          <pre>
+# Check if controller is running
+pgrep -f ascii-query-server
+# Start it
+./build/bin/ascii-query-server --attach $(pgrep ascii-chat) --port 9999</pre>
+          <dl class="Bl-tag">
+            <dt>2.</dt>
+            <dd>
+              <b>Wrong port</b>
+              <p class="Pp"></p>
+            </dd>
+          </dl>
+          <p class="Pp"></p>
+          <pre>
+# Check which port controller is using
+lsof -i -P | grep ascii-query</pre>
+          <dl class="Bl-tag">
+            <dt>3.</dt>
+            <dd>
+              <b>Controller crashed</b> - Check for error output, may need to
+              rebuild
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Attachment_Issues">
+            <a class="permalink" href="#Attachment_Issues">Attachment Issues</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Failed_to_attach_to_process__">
+            <a class="permalink" href="#Failed_to_attach_to_process__">
+              Failed to attach to process&quot;&quot;</a
+            >
+          </h2>
+          <p class="Pp"><b>macOS - Code signing required</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+# Check current signature
+codesign -dvvv ./build/bin/ascii-query-server
+# If unsigned or wrong entitlements, rebuild:
+cmake --build build --target ascii-query-server</pre>
+          <p class="Pp">
+            The build system should automatically sign with get-task-allow
+            entitlement. If not:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre># Manual signing (use your identity)
+codesign -s &quot;Your Developer ID&quot; \
+<br/>
+    --entitlements src/tooling/query/query.entitlements \
+<br/>
+    ./build/bin/ascii-query-server</pre>
+          <p class="Pp"><b>Linux - ptrace restrictions</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+# Check current setting
+cat /proc/sys/kernel/yama/ptrace_scope
+# If 1 (restricted), either:
+# Option 1: Run as root
+sudo ./build/bin/ascii-query-server --attach &lt;pid&gt; --port 9999
+# Option 2: Temporarily allow (requires root)
+echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+# Option 3: Use PR_SET_PTRACER in target (if you control it)
+prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);</pre>
+          <p class="Pp"><b>Docker</b>:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+# Run container with ptrace capability
+docker run --cap-add=SYS_PTRACE ...</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Process_is_already_being_debugged__">
+            <a class="permalink" href="#Process_is_already_being_debugged__">
+              Process is already being debugged&quot;&quot;</a
+            >
+          </h2>
+          <p class="Pp">Only one debugger can attach at a time. Check for:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+# Other LLDB instances
+pgrep lldb
+# Other query controllers
+pgrep ascii-query
+# Kill if needed
+pkill -f ascii-query-server</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Query_Issues">
+            <a class="permalink" href="#Query_Issues">Query Issues</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Variable_not_found_in_current_scope__">
+            <a class="permalink" href="#Variable_not_found_in_current_scope__">
+              Variable not found in current scope&quot;&quot;</a
+            >
+          </h2>
+          <p class="Pp"><b>Causes</b>:</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Variable optimized out</b> - Rebuild with -O0:
+              <p class="Pp"></p>
+            </dd>
+          </dl>
+          <p class="Pp"></p>
+          <pre>cmake -B build -DCMAKE_BUILD_TYPE=Debug</pre>
+          <dl class="Bl-tag">
+            <dt>2.</dt>
+            <dd>
+              <b>Wrong file/line</b> - The line must be where variable is in
+              scope:
+              <p class="Pp"></p>
+            </dd>
+          </dl>
+          <p class="Pp"></p>
+          <pre>void foo() {
+<br/>
+    int x = 10;  // Query x here (line 2)
+<br/>
+    // ...
+}  // x not in scope after this</pre>
+          <dl class="Bl-tag">
+            <dt>3.</dt>
+            <dd><b>Typo in variable name</b> - Check spelling and case</dd>
+            <dt>4.</dt>
+            <dd>
+              <b>Static/local variable</b> - Must query at exact scope location
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="No_debug_info_for_file:line__">
+            <a class="permalink" href="#No_debug_info_for_file:line__">
+              No debug info for file:line&quot;&quot;</a
+            >
+          </h2>
+          <p class="Pp"><b>Causes</b>:</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Release build</b> - Rebuild with debug symbols:
+              <p class="Pp"></p>
+            </dd>
+          </dl>
+          <p class="Pp"></p>
+          <pre>
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build</pre>
+          <dl class="Bl-tag">
+            <dt>2.</dt>
+            <dd><b>Third-party library</b> - Some code may lack debug info</dd>
+            <dt>3.</dt>
+            <dd><b>Inline function</b> - May not have distinct line info</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Timeout_waiting_for_breakpoint__">
+            <a class="permalink" href="#Timeout_waiting_for_breakpoint__">
+              Timeout waiting for breakpoint&quot;&quot;</a
+            >
+          </h2>
+          <p class="Pp"><b>Causes</b>:</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Code path not executed</b> - The line may never be reached
+              during your test
+            </dd>
+            <dt>2.</dt>
+            <dd>
+              <b>Wrong file path</b> - Use full absolute path:
+              <p class="Pp"></p>
+            </dd>
+          </dl>
+          <p class="Pp"></p>
+          <pre>
+curl 'localhost:9999/query?file=/full/path/to/src/server.c&amp;line=100&amp;name=x&amp;break'</pre>
+          <dl class="Bl-tag">
+            <dt>3.</dt>
+            <dd>
+              <b>Breakpoint in loop that exits</b> - Line was hit but exited
+              before timeout
+            </dd>
+          </dl>
+          <p class="Pp"><b>Solutions</b>:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Increase timeout: &amp;timeout=30000 (30 seconds)</li>
+            <li>Verify the code path is being executed</li>
+            <li>Use /breakpoints to check if breakpoint was set</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Performance_Issues">
+            <a class="permalink" href="#Performance_Issues"
+              >Performance Issues</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Queries_are_slow">
+            <a class="permalink" href="#Queries_are_slow">Queries are slow</a>
+          </h2>
+          <p class="Pp"><b>Normal causes</b>:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Breakpoint mode is inherently slower (waits for execution)</li>
+            <li>Large struct expansion generates many sub-queries</li>
+            <li>First query after attach may be slower</li>
+          </ul>
+          <p class="Pp"><b>Solutions</b>:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Use immediate mode for quick checks</li>
+            <li>Limit expansion depth: &amp;depth=1</li>
+            <li>Keep controller running between queries</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Target_runs_slowly_when_controller_attached">
+            <a
+              class="permalink"
+              href="#Target_runs_slowly_when_controller_attached"
+              >Target runs slowly when controller attached</a
+            >
+          </h2>
+          <p class="Pp">
+            LLDB attachment has some overhead. This is expected but should be
+            minimal.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">If severely impacted:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Detach when not actively querying</li>
+            <li>Avoid setting many breakpoints</li>
+            <li>Check if other debuggers are attached</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Build_Issues">
+            <a class="permalink" href="#Build_Issues">Build Issues</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="LLDB_not_found__during_CMake_">
+            <a class="permalink" href="#LLDB_not_found__during_CMake_">
+              LLDB not found&quot; during CMake&quot;</a
+            >
+          </h2>
+          <pre>
+# macOS - Install Xcode command line tools
+xcode-select --install
+# Linux - Install LLDB development package
+sudo apt install lldb liblldb-dev  # Ubuntu/Debian
+sudo dnf install lldb-devel        # Fedora</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Query_tool_not_built">
+            <a class="permalink" href="#Query_tool_not_built"
+              >Query tool not built</a
+            >
+          </h2>
+          <p class="Pp">Ensure you enable the option:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_BUILD_WITH_QUERY=ON
+cmake --build build</pre>
+          <p class="Pp">Check that LLDB was found:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+-- Found LLDB library: /path/to/liblldb.dylib
+-- Building query tool</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Platform-Specific_Issues">
+            <a class="permalink" href="#Platform-Specific_Issues"
+              >Platform-Specific Issues</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="macOS:_Debugger_was_denied_access__">
+            <a class="permalink" href="#macOS:_Debugger_was_denied_access__"
+              >macOS: Debugger was denied access&quot;&quot;</a
+            >
+          </h2>
+          <p class="Pp">
+            System Integrity Protection may block debugging. Either:
+          </p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Sign the binary with proper entitlements (preferred)</dd>
+            <dt>2.</dt>
+            <dd>Disable SIP (not recommended for production machines)</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Linux:_Operation_not_permitted__">
+            <a class="permalink" href="#Linux:_Operation_not_permitted__"
+              >Linux: Operation not permitted&quot;&quot;</a
+            >
+          </h2>
+          <p class="Pp">See ptrace restrictions above. Also check:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+# SELinux may block
+getenforce
+# If Enforcing, try:
+sudo setenforce 0</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Windows:_Access_denied__">
+            <a class="permalink" href="#Windows:_Access_denied__"
+              >Windows: Access denied&quot;&quot;</a
+            >
+          </h2>
+          <p class="Pp">
+            Run as Administrator, or ensure target was started by same user.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Getting_Help">
+            <a class="permalink" href="#Getting_Help">Getting Help</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enable_debug_logging">
+            <a class="permalink" href="#Enable_debug_logging"
+              >Enable debug logging</a
+            >
+          </h2>
+          <pre>
+export LOG_LEVEL=0  # DEBUG level
+./build/bin/ascii-query-server --attach &lt;pid&gt; --port 9999</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Check_controller_health">
+            <a class="permalink" href="#Check_controller_health"
+              >Check controller health</a
+            >
+          </h2>
+          <pre>
+curl localhost:9999/
+curl localhost:9999/process</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Collect_diagnostic_info">
+            <a class="permalink" href="#Collect_diagnostic_info"
+              >Collect diagnostic info</a
+            >
+          </h2>
+          <pre>
+# Controller version/state
+curl localhost:9999/
+# Target process info
+curl localhost:9999/process
+# Thread state
+curl localhost:9999/threads
+# Stack frames (if stopped)
+curl localhost:9999/frames</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Still_stuck?">
+            <a class="permalink" href="#Still_stuck?">Still stuck?</a>
+          </h2>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Check <b>QUERY_TOOL_PLAN.md</b> for implementation details</dd>
+            <dt>2.</dt>
+            <dd>Search existing issues on GitHub</dd>
+            <dt>3.</dt>
+            <dd>File a new issue with:</dd>
+            <dt>&#x2022;</dt>
+            <dd>Platform (macOS version, Linux distro, Windows version)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Error messages</dd>
+            <dt>&#x2022;</dt>
+            <dd>Steps to reproduce</dd>
+            <dt>&#x2022;</dt>
+            <dd>Debug log output</dd>
+          </dl>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

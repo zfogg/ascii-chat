@@ -37,7 +37,9 @@ test("joins native discovery over encrypted WS and opens WebRTC", async ({
   await page.getByRole("button", { name: "Join session", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Disconnect", exact: true }),
-  ).toBeVisible({ timeout: 40000 });
+  ).toBeVisible({
+    timeout: 40000,
+  });
   const renderedFrames = () =>
     page.evaluate(() => window.__clientFrameMetrics?.rendered ?? 0);
   await expect.poll(renderedFrames, { timeout: 15000 }).toBeGreaterThan(3);

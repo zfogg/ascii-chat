@@ -1,0 +1,1876 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>session.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">session.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">session.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">session.h</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>ui_discovery_view_t</b>
+            <br />
+            struct <b>ui_splash_view_t</b>
+            <br />
+            struct <b>ui_session_view_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>TUI_SESSION_SESSION_STRING_BUFFER_SIZE</b> 256
+            <br />
+            #define <b>TUI_SESSION_UPDATE_NOTIFICATION_BUFFER_SIZE</b> 1024
+            <br />
+            #define <b>TUI_SESSION_CONNECTION_TARGET_BUFFER_SIZE</b> 512
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>ui_session</b> <b>ui_session_t</b>
+            <br />
+            typedef void(*) <b>ui_session_draw_fn</b>(<b>frame_buffer_t</b>
+            *output, <b>terminal_size_t</b> size, const
+            <b>animation_sample_t</b> *animation, void *context)
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Enumerations">
+            <a class="permalink" href="#Enumerations">Enumerations</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            enum <b>ui_session_action_t</b> { <b>UI_ACTION_NONE</b>,
+            <b>UI_ACTION_SETTINGS</b>, <b>UI_ACTION_HELP</b>,
+            <b>UI_ACTION_CLOSE</b>, <b>UI_ACTION_SEEK_BACK</b>,
+            <b>UI_ACTION_SEEK_FORWARD</b>, <b>UI_ACTION_PAUSE</b>,
+            <b>UI_ACTION_VOLUME</b>, <b>UI_ACTION_DEBUG</b>,
+            <b>UI_ACTION_LOGS</b>, <b>UI_ACTION_TOGGLE_MEDIA</b> }
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>ui_session_splash_render</b> (<b>frame_buffer_t</b> *buf,
+            <b>terminal_size_t</b> size, void *view)
+            <br />
+            char * <b>ui_session_help_render</b> (<b>terminal_size_t</b> size,
+            <b>bool</b> has_media, <b>bool</b> browser,
+            <b>terminal_size_t</b> *minimum)
+            <br />
+            void <b>ui_session_help_free</b> (char *text)
+            <br />
+            char * <b>ui_session_context_help_render</b> (<b>terminal_size_t</b>
+            size, <b>ui_screen_t</b> screen, <b>terminal_size_t</b> *minimum)
+            <br />
+            <b>ui_session_action_t</b> <b>ui_session_key</b> (<b
+              >keyboard_key_t</b
+            >
+            key, double *saved_volume)
+            <br />
+            <b>terminal_size_t</b> <b>ui_session_size</b> (const
+            <b>ui_session_t</b>
+            *session)
+            <br />
+            int <b>ui_session_select_screen</b> (<b>uint32_t</b>
+            visible_screens)
+            <br />
+            const char * <b>ui_session_render</b> (<b>ui_session_t</b> *session,
+            const <b>ui_session_view_t</b> *view, <b>uint64_t</b> now_ns)
+            <br />
+            <b>bool</b> <b>ui_session_is_covered</b> (const
+            <b>ui_session_t</b> *session)
+            <br />
+            size_t <b>ui_session_frame_length</b> (const
+            <b>ui_session_t</b> *session)
+            <br />
+            <b>uint64_t</b> <b>ui_session_next_frame_ns</b> (const
+            <b>ui_session_t</b>
+            *session)
+            <br />
+            <b>ui_session_t</b> * <b>ui_session_create</b> (void)
+            <br />
+            void <b>ui_session_destroy</b> (<b>ui_session_t</b> *session)
+            <br />
+            void <b>ui_session_resize</b> (<b>ui_session_t</b> *session, int
+            cols, int rows)
+            <br />
+            void <b>ui_session_loading</b> (<b>ui_session_t</b> *session,
+            <b>bool</b>
+            loading, const char *message)
+            <br />
+            void <b>ui_session_log</b> (<b>ui_session_t</b> *session, const char
+            *message)
+            <br />
+            <b>asciichat_error_t</b> <b>ui_session_media</b> (<b
+              >ui_session_t</b
+            >
+            *session, const char *data, size_t length)
+            <br />
+            <b>ui_session_action_t</b> <b>ui_session_input</b> (<b
+              >ui_session_t</b
+            >
+            *session, <b>keyboard_key_t</b> key)
+            <br />
+            const char * <b>ui_session_tick</b> (<b>ui_session_t</b> *session,
+            <b>uint64_t</b> now_ns)
+            <br />
+            void <b>ui_session_clear</b> (<b>ui_session_t</b> *session)
+            <br />
+            void <b>ui_session_redraw</b> (<b>ui_session_t</b> *session)
+            <br />
+            void <b>ui_session_logs_render</b> (<b>frame_buffer_t</b> *output,
+            <b>terminal_size_t</b> size, <b>ui_session_t</b> *session)
+            <br />
+            <b>bool</b> <b>ui_session_logs_key</b> (<b>keyboard_key_t</b> key)
+            <br />
+            void <b>ui_session_capture_logs</b> (<b>ui_session_t</b> *session)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_CONNECTION_TARGET_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_CONNECTION_TARGET_BUFFER_SIZE___512"
+              >#define TUI_SESSION_CONNECTION_TARGET_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>6</b> of file
+            <b>include/ascii-chat/tui/session.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_SESSION_STRING_BUFFER_SIZE___256"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_SESSION_STRING_BUFFER_SIZE___256"
+              >#define TUI_SESSION_SESSION_STRING_BUFFER_SIZE 256</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>4</b> of file
+            <b>include/ascii-chat/tui/session.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_TUI_SESSION_UPDATE_NOTIFICATION_BUFFER_SIZE___1024"
+          >
+            <a
+              class="permalink"
+              href="#_define_TUI_SESSION_UPDATE_NOTIFICATION_BUFFER_SIZE___1024"
+              >#define TUI_SESSION_UPDATE_NOTIFICATION_BUFFER_SIZE 1024</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>5</b> of file
+            <b>include/ascii-chat/tui/session.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Typedef_Documentation">
+          <a class="permalink" href="#Typedef_Documentation"
+            >Typedef Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_void(*)_ui_session_draw_fn(">
+            <a class="permalink" href="#typedef_void(*)_ui_session_draw_fn("
+              >typedef void(*) ui_session_draw_fn(<b>frame_buffer_t</b> *output,
+              <b>terminal_size_t</b> size, const
+              <b>animation_sample_t</b> *animation, void *context)</a
+            >
+          </h2>
+          <p class="Pp">
+            A borrowed view, valid for the duration of
+            <b>ui_session_render()</b>. Hosts retain snapshots and serialize
+            access to a session; callbacks must not recurse into its renderer.
+            The runtime owns selection policy, transitions and animation.
+          </p>
+          <p class="Pp">
+            Definition at line <b>58</b> of file
+            <b>include/ascii-chat/tui/session.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="typedef_struct_">
+            <a class="permalink" href="#typedef_struct_"
+              >typedef struct <b>ui_session</b> <b>ui_session_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>52</b> of file
+            <b>include/ascii-chat/tui/session.h</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Enumeration_Type_Documentation">
+          <a class="permalink" href="#Enumeration_Type_Documentation"
+            >Enumeration Type Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="enum_">
+            <a class="permalink" href="#enum_"
+              >enum <b>ui_session_action_t</b></a
+            >
+          </h2>
+          <p class="Pp">
+            <b>Enumerator</b>
+            <br />
+          </p>
+          <dl class="Bl-tag">
+            <dt id="UI_ACTION_NONE">
+              <a class="permalink" href="#UI_ACTION_NONE"
+                ><b><i>UI_ACTION_NONE </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="UI_ACTION_SETTINGS">
+              <a class="permalink" href="#UI_ACTION_SETTINGS"
+                ><b><i>UI_ACTION_SETTINGS </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="UI_ACTION_HELP">
+              <a class="permalink" href="#UI_ACTION_HELP"
+                ><b><i>UI_ACTION_HELP </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="UI_ACTION_CLOSE">
+              <a class="permalink" href="#UI_ACTION_CLOSE"
+                ><b><i>UI_ACTION_CLOSE </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="UI_ACTION_SEEK_BACK">
+              <a class="permalink" href="#UI_ACTION_SEEK_BACK"
+                ><b><i>UI_ACTION_SEEK_BACK </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="UI_ACTION_SEEK_FORWARD">
+              <a class="permalink" href="#UI_ACTION_SEEK_FORWARD"
+                ><b><i>UI_ACTION_SEEK_FORWARD </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="UI_ACTION_PAUSE">
+              <a class="permalink" href="#UI_ACTION_PAUSE"
+                ><b><i>UI_ACTION_PAUSE </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="UI_ACTION_VOLUME">
+              <a class="permalink" href="#UI_ACTION_VOLUME"
+                ><b><i>UI_ACTION_VOLUME </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="UI_ACTION_DEBUG">
+              <a class="permalink" href="#UI_ACTION_DEBUG"
+                ><b><i>UI_ACTION_DEBUG </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="UI_ACTION_LOGS">
+              <a class="permalink" href="#UI_ACTION_LOGS"
+                ><b><i>UI_ACTION_LOGS </i></b></a
+              >
+            </dt>
+            <dd></dd>
+            <dt id="UI_ACTION_TOGGLE_MEDIA">
+              <a class="permalink" href="#UI_ACTION_TOGGLE_MEDIA"
+                ><b><i>UI_ACTION_TOGGLE_MEDIA </i></b></a
+              >
+            </dt>
+            <dd></dd>
+          </dl>
+          <p class="Pp">
+            Definition at line <b>35</b> of file
+            <b>include/ascii-chat/tui/session.h</b>.
+          </p>
+          <pre>
+35              {
+36   UI_ACTION_NONE,
+37   UI_ACTION_SETTINGS,
+38   UI_ACTION_HELP,
+39   UI_ACTION_CLOSE,
+40   UI_ACTION_SEEK_BACK,
+41   UI_ACTION_SEEK_FORWARD,
+42   UI_ACTION_PAUSE,
+43   UI_ACTION_VOLUME,
+44   UI_ACTION_DEBUG,
+45   UI_ACTION_LOGS,
+46   UI_ACTION_TOGGLE_MEDIA
+47 } ui_session_action_t;</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_capture_logs_(">
+            <a class="permalink" href="#void_ui_session_capture_logs_("
+              >void ui_session_capture_logs (<b>ui_session_t</b> * session)</a
+            >
+          </h2>
+          <p class="Pp">
+            Attach this instance to the module's existing C logger. Detaches on
+            destruction.
+          </p>
+          <p class="Pp">
+            Definition at line <b>370</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+370                                               {
+371   if (s)
+372     log_set_session_log_buffer(s-&gt;logs);
+373 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>log_set_session_log_buffer()</b>,
+            <b>ui_session::logs</b>, and <b>ui_session_capture_logs()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_capture_logs()</b>, and
+            <b>wasm_ui_capture_logs()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_clear_(">
+            <a class="permalink" href="#void_ui_session_clear_("
+              >void ui_session_clear (<b>ui_session_t</b> * session)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>352</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+352                                        {
+353   if (s) {
+354     frame_buffer_reset(s-&gt;media);
+355     s-&gt;help = false;
+356     s-&gt;show_logs = false;
+357     s-&gt;dirty = true;
+358   }
+359 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::dirty</b>, <b>frame_buffer_reset()</b>,
+            <b>ui_session::help</b>, <b>ui_session::media</b>,
+            <b>ui_session::show_logs</b>, and <b>ui_session_clear()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_clear()</b>, and <b>wasm_ui_clear()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_ui_session_context_help_render_(">
+            <a class="permalink" href="#char_*_ui_session_context_help_render_("
+              >char * ui_session_context_help_render (<b>terminal_size_t</b>
+              size, <b>ui_screen_t</b> screen, <b>terminal_size_t</b> *
+              minimum)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>250</b> of file <b>session_help.c</b>.
+          </p>
+          <pre>
+250                                                                                                          {
+251   if (!minimum) {
+252     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Help minimum geometry output is required&quot;);
+253     return NULL;
+254   }
+255   static const ui_help_entry_t sync[] = {{&quot;0 / Esc&quot;, &quot;Close sync viewer&quot;},
+256                                          {&quot;Up / Down&quot;, &quot;Select primitive&quot;},
+257                                          {&quot;Left / Right&quot;, &quot;Previous/next page&quot;},
+258                                          {&quot;Home / End&quot;, &quot;First/last primitive&quot;},
+259                                          {&quot;=&quot;, &quot;Running app statistics&quot;},
+260                                          {&quot;]&quot;, &quot;Log viewer&quot;},
+261                                          {&quot;?&quot;, &quot;Close this help&quot;}};
+262   static const ui_help_entry_t stats[] = {{&quot;= / Esc&quot;, &quot;Close statistics&quot;},
+263                                           {&quot;Tab / Left / Right&quot;, &quot;Switch data page&quot;},
+264                                           {&quot;Up / Down&quot;, &quot;Select and scroll rows&quot;},
+265                                           {&quot;Home / End&quot;, &quot;First/last row&quot;},
+266                                           {&quot;0&quot;, &quot;Sync primitives&quot;},
+267                                           {&quot;]&quot;, &quot;Log viewer&quot;},
+268                                           {&quot;?&quot;, &quot;Close this help&quot;}};
+269   static const ui_help_entry_t errors[] = {
+270       {&quot;` / Esc&quot;, &quot;Close error stacks&quot;}, {&quot;Tab&quot;, &quot;Current/history page&quot;}, {&quot;Up / Down&quot;, &quot;Select and scroll errors&quot;},
+271       {&quot;s&quot;, &quot;Change sort order&quot;},        {&quot;x&quot;, &quot;Clear selected error&quot;},   {&quot;=&quot;, &quot;Running app statistics&quot;},
+272       {&quot;0&quot;, &quot;Sync primitives&quot;},          {&quot;?&quot;, &quot;Close this help&quot;}};
+273   static const ui_help_entry_t update[] = {{&quot;F12 / Esc&quot;, &quot;Close update checker&quot;},
+274                                            {&quot;Left / Right / Tab&quot;, &quot;Select button&quot;},
+275                                            {&quot;Enter&quot;, &quot;Activate selected button&quot;},
+276                                            {&quot;O&quot;, &quot;Open release page&quot;},
+277                                            {&quot;R&quot;, &quot;Check again&quot;},
+278                                            {&quot;?&quot;, &quot;Close this help&quot;}};
+279   static const ui_help_entry_t lan[] = {{&quot;Up / Down / j / k&quot;, &quot;Select LAN server&quot;},
+280                                         {&quot;0-9&quot;, &quot;Enter server number&quot;},
+281                                         {&quot;Enter&quot;, &quot;Connect to selected server&quot;},
+282                                         {&quot;Esc&quot;, &quot;Cancel LAN selection&quot;},
+283                                         {&quot;=&quot;, &quot;Running app statistics&quot;},
+284                                         {&quot;0&quot;, &quot;Sync primitives&quot;},
+285                                         {&quot;?&quot;, &quot;Close this help&quot;}};
+286   static const ui_help_entry_t media[] = {
+287       {&quot;Enter&quot;, &quot;Play the entered paths or URLs&quot;},  {&quot;Esc / Ctrl-O&quot;, &quot;Cancel media input&quot;},
+288       {&quot;Left / Right&quot;, &quot;Move the text cursor&quot;},     {&quot;Home / End&quot;, &quot;Beginning/end of input&quot;},
+289       {&quot;Backspace / Delete&quot;, &quot;Delete a character&quot;}, {&quot;?&quot;, &quot;Help when the input is empty&quot;}};
+290   const ui_help_entry_t *entries = NULL;
+291   size_t count = 0;
+292   const char *title = NULL;
+293   switch (screen) {
+294   case UI_SCREEN_ERROR: {
+295     static const ui_help_entry_t popup[] = {{&quot;Left / Right&quot;, &quot;Previous / next error&quot;},
+296                                             {&quot;Home / End&quot;, &quot;First / last error&quot;},
+297                                             {&quot;Up / Down&quot;, &quot;Scroll error details&quot;},
+298                                             {&quot;PgUp / PgDn&quot;, &quot;Scroll a page&quot;},
+299                                             {&quot;Enter / Esc&quot;, &quot;Dismiss all errors&quot;},
+300                                             {&quot;q&quot;, &quot;Dismiss all errors&quot;},
+301                                             {&quot;?&quot;, &quot;Close this help&quot;}};
+302     entries = popup;
+303     count = sizeof(popup) / sizeof(*popup);
+304     title = &quot;Error Popup Keyboard Shortcuts&quot;;
+305     break;
+306   }
+307   case UI_SCREEN_SYNC:
+308     entries = sync;
+309     count = sizeof(sync) / sizeof(*sync);
+310     title = &quot;Sync Viewer Keyboard Shortcuts&quot;;
+311     break;
+312   case UI_SCREEN_STATS:
+313     entries = stats;
+314     count = sizeof(stats) / sizeof(*stats);
+315     title = &quot;Statistics Keyboard Shortcuts&quot;;
+316     break;
+317   case UI_SCREEN_ERRNO:
+318     entries = errors;
+319     count = sizeof(errors) / sizeof(*errors);
+320     title = &quot;Error Stacks Keyboard Shortcuts&quot;;
+321     break;
+322   case UI_SCREEN_PROMPT:
+323     entries = media;
+324     count = sizeof(media) / sizeof(*media);
+325     title = &quot;Media Input Keyboard Shortcuts&quot;;
+326     break;
+327   case UI_SCREEN_MDNS:
+328     entries = lan;
+329     count = sizeof(lan) / sizeof(*lan);
+330     title = &quot;LAN Selection Keyboard Shortcuts&quot;;
+331     break;
+332   case UI_SCREEN_UPDATE:
+333     entries = update;
+334     count = sizeof(update) / sizeof(*update);
+335     title = &quot;Update Checker Keyboard Shortcuts&quot;;
+336     break;
+337   default:
+338     return ui_session_help_render(size, GET_OPTION(media_file)[0] || GET_OPTION(media_url)[0], false, minimum);
+339   }
+340   char footer[TUI_SESSION_HELP_FOOTER_BUFFER_SIZE];
+341   snprintf(footer, sizeof(footer), &quot;Press %s to close&quot;, colored_string(LOG_COLOR_WARN, &quot;?&quot;));
+342   ui_help_menu_t menu = {.title = title, .entries = entries, .count = count, .footer = footer, .top_margin = 0};
+343   *minimum = ui_help_menu_measure(&amp;menu);
+344   frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);
+345   if (!buffer)
+346     return NULL;
+347   ui_help_menu_render(buffer, size, &amp;menu);
+348   size_t length = frame_buffer_get_length(buffer);
+349   char *result = SAFE_MALLOC(length + 1, char *);
+350   memcpy(result, frame_buffer_get_content(buffer), length);
+351   result[length] = '\0';
+352   frame_buffer_destroy(buffer);
+353   return result;
+354 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colored_string()</b>, <b>terminal_size_t::cols</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>frame_buffer_create()</b>,
+            <b>frame_buffer_destroy()</b>, <b>frame_buffer_get_content()</b>,
+            <b>frame_buffer_get_length()</b>, <b>GET_OPTION</b>,
+            <b>LOG_COLOR_WARN</b>, <b>terminal_size_t::rows</b>,
+            <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
+            <b>TUI_SESSION_HELP_FOOTER_BUFFER_SIZE</b>,
+            <b>ui_help_menu_measure()</b>, <b>ui_help_menu_render()</b>,
+            <b>UI_SCREEN_ERRNO</b>, <b>UI_SCREEN_ERROR</b>,
+            <b>UI_SCREEN_MDNS</b>, <b>UI_SCREEN_PROMPT</b>,
+            <b>UI_SCREEN_STATS</b>, <b>UI_SCREEN_SYNC</b>,
+            <b>UI_SCREEN_UPDATE</b>, <b>ui_session_context_help_render()</b>,
+            and <b>ui_session_help_render()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>keyboard_help_toggle_terminal()</b>, and
+            <b>ui_session_context_help_render()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>ui_session_t</b> * ui_session_create (void )</h2>
+          <p class="Pp">
+            Definition at line <b>41</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+41                                       {
+42   ui_session_t *s = SAFE_CALLOC(1, sizeof(*s), ui_session_t *);
+43   if (!s)
+44     return NULL;
+45   s-&gt;frame = frame_buffer_create(24, 80);
+46   s-&gt;media = frame_buffer_create(24, 80);
+47   s-&gt;logs = log_get_history_buffer();
+48   s-&gt;owns_logs = !s-&gt;logs;
+49   if (s-&gt;owns_logs)
+50     s-&gt;logs = session_log_buffer_create();
+51   if (!s-&gt;frame || !s-&gt;media || !s-&gt;logs) {
+52     ui_session_destroy(s);
+53     return NULL;
+54   }
+55   s-&gt;started = time(NULL);
+56   log_search_init();
+57   s-&gt;size = (terminal_size_t){.cols = 80, .rows = 24};
+58   s-&gt;active = -1;
+59   s-&gt;saved_volume = 1;
+60   s-&gt;dirty = true;
+61   s-&gt;splash.use_colors = true;
+62   animation_init(&amp;s-&gt;animation, &quot;session_splash&quot;,
+63                  (animation_config_t){
+64                      .type = ANIMATION_SPLASH_RAINBOW, .fps = 60, .speed = 1, .hidden_policy = ANIMATION_HIDDEN_PAUSE});
+65   return s;
+66 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::active</b>, <b>ui_session::animation</b>,
+            <b>animation_init()</b>, <b>ui_session::dirty</b>,
+            <b>ui_session::frame</b>, <b>frame_buffer_create()</b>,
+            <b>log_get_history_buffer()</b>, <b>log_search_init()</b>,
+            <b>ui_session::logs</b>, <b>ui_session::media</b>,
+            <b>ui_session::owns_logs</b>, <b>SAFE_CALLOC</b>,
+            <b>ui_session::saved_volume</b>, <b>session_log_buffer_create()</b>,
+            <b>ui_session::size</b>, <b>ui_session::splash</b>,
+            <b>ui_session::started</b>, <b>ui_session_create()</b>,
+            <b>ui_session_destroy()</b>, and
+            <b>ui_splash_view_t::use_colors</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_create()</b>, and
+            <b>wasm_ui_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_destroy_(">
+            <a class="permalink" href="#void_ui_session_destroy_("
+              >void ui_session_destroy (<b>ui_session_t</b> * session)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>68</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+68                                          {
+69   if (!s)
+70     return;
+71   if (log_get_session_log_buffer() == s-&gt;logs)
+72     log_clear_session_log_buffer();
+73   animation_destroy(&amp;s-&gt;animation);
+74   frame_buffer_destroy(s-&gt;frame);
+75   frame_buffer_destroy(s-&gt;media);
+76   if (s-&gt;owns_logs)
+77     session_log_buffer_destroy(s-&gt;logs);
+78   SAFE_FREE(s);
+79 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::animation</b>, <b>animation_destroy()</b>,
+            <b>ui_session::frame</b>, <b>frame_buffer_destroy()</b>,
+            <b>log_clear_session_log_buffer()</b>,
+            <b>log_get_session_log_buffer()</b>, <b>ui_session::logs</b>,
+            <b>ui_session::media</b>, <b>ui_session::owns_logs</b>,
+            <b>SAFE_FREE</b>, <b>session_log_buffer_destroy()</b>, and
+            <b>ui_session_destroy()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_shutdown()</b>,
+            <b>ui_session_create()</b>, <b>ui_session_destroy()</b>, and
+            <b>wasm_ui_destroy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_ui_session_frame_length_(const_">
+            <a class="permalink" href="#size_t_ui_session_frame_length_(const_"
+              >size_t ui_session_frame_length (const <b>ui_session_t</b> *
+              session)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>158</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+158                                                       {
+159   size_t length = s ? frame_buffer_get_length(s-&gt;frame) : 0;
+160   return length ? length - 1 : 0;
+161 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::frame</b>,
+            <b>frame_buffer_get_length()</b>, and
+            <b>ui_session_frame_length()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_frame_length()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_help_free_(char_*_text)">
+            <a class="permalink" href="#void_ui_session_help_free_(char_*_text)"
+              >void ui_session_help_free (char * text)</a
+            >
+          </h2>
+          <p class="Pp">
+            Release rendered help with the same allocator that created it.
+          </p>
+          <p class="Pp">
+            Definition at line <b>33</b> of file <b>session_help.c</b>.
+          </p>
+          <pre>
+33                                       {
+34   SAFE_FREE(text);
+35 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>SAFE_FREE</b>, and <b>ui_session_help_free()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_help_free()</b>, and
+            <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_*_ui_session_help_render_(">
+            <a class="permalink" href="#char_*_ui_session_help_render_("
+              >char * ui_session_help_render (<b>terminal_size_t</b> size,
+              <b>bool</b> has_media, <b>bool</b> browser,
+              <b>terminal_size_t</b> * minimum)</a
+            >
+          </h2>
+          <p class="Pp">Returns owned ANSI text, released with SAFE_FREE.</p>
+          <p class="Pp">
+            Definition at line <b>124</b> of file <b>session_help.c</b>.
+          </p>
+          <pre>
+124                                                                                                            {
+125   if (!minimum) {
+126     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Help minimum geometry output is required&quot;);
+127     return NULL;
+128   }
+129   const char *navigation[] = {
+130       &quot;Navigation &amp; Control:&quot;,
+131       &quot;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&quot;,
+132       &quot;?      Toggle this help screen TUI&quot;,
+133       &quot;Esc    Close overlay / Quit app&quot;,
+134       browser ? NULL : &quot;v      Open from clipboard&quot;,
+135       browser ? NULL : &quot;Paste  Queue dropped/pasted media&quot;,
+136       browser ? NULL : &quot;&lt; / &gt;  Previous/next media (restart)&quot;,
+137       has_media ? &quot;Space  Play/Pause (files only)&quot; : NULL,
+138       has_media ? &quot;[      Toggle Media Playback&quot; : NULL,
+139       has_media ? (terminal_should_use_utf8() ? &quot;&#x2190; / &#x2192;  Seek backward/forward 30s&quot;
+140                                               : &quot;Left / Right  Seek backward/forward 30s&quot;)
+141                 : NULL,
+142       &quot;m / M  Mute/Unmute audio&quot;,
+143       terminal_should_use_utf8() ? &quot;&#x2191; / &#x2193;  Volume up/down (10%)&quot; : &quot;Up / Down  Volume up/down (10%)&quot;,
+144       &quot;c / C  Cycle color mode&quot;,
+145       &quot;f / F  Cycle color filter&quot;,
+146       &quot;x / X  Flip webcam horizontally&quot;,
+147       &quot;y / Y  Flip webcam vertically&quot;,
+148       &quot;w / W  Toggle Face Follow&quot;,
+149       &quot;r / R  Cycle render mode&quot;,
+150       &quot;-      FPS counter&quot;,
+151 #if defined(ASCIICHAT_DIAGNOSTIC_UI)
+152       browser ? NULL : &quot;`      Error stacks diagnostic TUI&quot;,
+153 #endif
+154       browser ? NULL : &quot;o      TUI to open media from path or url&quot;,
+155       &quot;]      Live log viewer/searcher TUI&quot;,
+156       &quot;F12    Version update checker TUI&quot;,
+157       browser ? NULL : &quot;=      Running app statistics TUI&quot;,
+158 #ifndef NDEBUG
+159       browser ? NULL : &quot;0      C code sync primitives TUI&quot;,
+160 #endif
+161   };
+162   char settings[TUI_SESSION_HELP_SETTINGS_COUNT][SESSION_HELP_SETTING_BUFFER_SIZE] = {&quot;Current Settings:&quot;, &quot;&quot;};
+163   char volume_bar[TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE];
+164   format_volume_bar(GET_OPTION(speakers_volume), volume_bar, sizeof(volume_bar));
+165   snprintf(settings[2], sizeof(settings[2]), &quot;Audio  : %s&quot;, status_indicator(GET_OPTION(audio_enabled)));
+166   snprintf(settings[3], sizeof(settings[3]), &quot;Volume : %s&quot;, volume_bar);
+167   snprintf(settings[4], sizeof(settings[4]), &quot;Color  : %s&quot;, color_mode_to_string(GET_OPTION(color_mode)));
+168   snprintf(settings[5], sizeof(settings[5]), &quot;Filter : %s&quot;, color_filter_to_string(GET_OPTION(color_filter)));
+169   snprintf(settings[6], sizeof(settings[6]), &quot;Render : %s&quot;, render_mode_to_string(GET_OPTION(render_mode)));
+170   snprintf(settings[7], sizeof(settings[7]), &quot;Flip   : rows=%s cols=%s&quot;, status_indicator(GET_OPTION(flip_y)),
+171            status_indicator(GET_OPTION(flip_x)));
+172   snprintf(settings[8], sizeof(settings[8]), &quot;Face Follow : %s&quot;, status_indicator(GET_OPTION(face_follow)));
+173   int settings_count = 9;
+174   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;Animations (number key toggle):&quot;);
+175   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;-------------------------------&quot;);
+176   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;(1) Matrix \&quot;Digital Rain\&quot; : %s&quot;,
+177            status_indicator(GET_OPTION(matrix_rain)));
+178   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;(2) Audio Waveform : %s&quot;,
+179            status_indicator(GET_OPTION(waveform)));
+180   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;(3) Audio Frequencies (FFT) : %s&quot;,
+181            status_indicator(GET_OPTION(fft)));
+182   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;(z) Zalgo intensity : %d&quot;, GET_OPTION(zalgo));
+183   snprintf(settings[settings_count++], sizeof(settings[0]), &quot;(-) FPS Counter : %s&quot;,
+184            status_indicator(GET_OPTION(fps_counter)));
+185   bool server = !browser &amp;&amp; (GET_OPTION(detected_mode) == MODE_SERVER || GET_OPTION(detected_mode) == MODE_MCP_SERVER);
+186   bool discovery = !browser &amp;&amp; GET_OPTION(detected_mode) == MODE_DISCOVERY_SERVICE;
+187   ui_help_entry_t entries[SESSION_HELP_ENTRY_CAPACITY];
+188   char key_storage[TUI_SESSION_HELP_KEY_STORAGE_COUNT][SESSION_HELP_KEY_BUFFER_SIZE];
+189   size_t count = 0;
+190   for (size_t i = 0; i &lt; sizeof(navigation) / sizeof(navigation[0]); ++i) {
+191     const char *line = navigation[i];
+192     if (!line || i == 1)
+193       continue;
+194     if (line[0] == '?' || line[0] == ']' || line[0] == '=' || line[0] == '0' || line[0] == '`' || line[0] == 'o' ||
+195         !strncmp(line, &quot;F12&quot;, 3))
+196       continue;
+197     if ((server || discovery) &amp;&amp; i &gt; 1 &amp;&amp; line[0] != '?' &amp;&amp; strncmp(line, &quot;Esc&quot;, 3) &amp;&amp; line[0] != ']' &amp;&amp;
+198         line[0] != '=' &amp;&amp; line[0] != '0' &amp;&amp; line[0] != '`' &amp;&amp; strncmp(line, &quot;F12&quot;, 3))
+199       continue;
+200     const char *end = strstr(line, &quot;  &quot;);
+201     if (end) {
+202       size_t length = (size_t)(end - line);
+203       if (length &gt;= sizeof(key_storage[0]))
+204         length = sizeof(key_storage[0]) - 1;
+205       memcpy(key_storage[count], line, length);
+206       key_storage[count][length] = '\0';
+207       while (*end == ' ')
+208         ++end;
+209       entries[count] = (ui_help_entry_t){.keys = key_storage[count], .description = end};
+210     } else
+211       entries[count] = (ui_help_entry_t){.description = line};
+212     ++count;
+213   }
+214   count += tui_shortcut_help(entries + count, 40 - count, server || discovery, browser);
+215   if (server || discovery) {
+216     settings_count = 4;
+217     snprintf(settings[0], sizeof(settings[0]), &quot;%s&quot;, discovery ? &quot;Discovery service:&quot; : &quot;Server:&quot;);
+218     snprintf(settings[1], sizeof(settings[1]), &quot;Port : %d&quot;, GET_OPTION(port));
+219     snprintf(settings[2], sizeof(settings[2]), &quot;Status screen : %s&quot;, status_indicator(GET_OPTION(status_screen)));
+220     snprintf(settings[3], sizeof(settings[3]), &quot;Log level : %d&quot;, GET_OPTION(log_level));
+221   }
+222   const char *settings_text[TUI_SESSION_HELP_SETTINGS_COUNT];
+223   for (int i = 0; i &lt; settings_count; ++i)
+224     settings_text[i] = settings[i];
+225   char footer[TUI_SESSION_HELP_FOOTER_BUFFER_SIZE];
+226   snprintf(footer, sizeof(footer), &quot;Press %s to close&quot;, colored_string(LOG_COLOR_WARN, &quot;?&quot;));
+227   ui_help_menu_t menu = {.title = discovery ? &quot;ascii-chat Discovery Service Keyboard Shortcuts&quot;
+228                                   : server  ? &quot;ascii-chat Server Keyboard Shortcuts&quot;
+229                                             : &quot;ascii-chat Keyboard Shortcuts&quot;,
+230                          .entries = entries,
+231                          .count = count,
+232                          .settings = settings_text,
+233                          .settings_count = (size_t)settings_count,
+234                          .footer = footer,
+235                          // Browser sessions draw a four-row animated logo above the popup.
+236                          .top_margin = browser ? 6 : 0};
+237   *minimum = ui_help_menu_measure(&amp;menu);
+238   frame_buffer_t *output = frame_buffer_create(size.rows, size.cols);
+239   if (!output)
+240     return NULL;
+241   ui_help_menu_render(output, size, &amp;menu);
+242   size_t length = frame_buffer_get_length(output);
+243   char *result = SAFE_MALLOC(length + 1, char *);
+244   memcpy(result, frame_buffer_get_content(output), length);
+245   result[length] = '\0';
+246   frame_buffer_destroy(output);
+247   return result;
+248 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>color_mode_to_string()</b>, <b>colored_string()</b>,
+            <b>terminal_size_t::cols</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>frame_buffer_create()</b>, <b>frame_buffer_destroy()</b>,
+            <b>frame_buffer_get_content()</b>, <b>frame_buffer_get_length()</b>,
+            <b>GET_OPTION</b>, <b>LOG_COLOR_WARN</b>,
+            <b>MODE_DISCOVERY_SERVICE</b>, <b>MODE_MCP_SERVER</b>,
+            <b>MODE_SERVER</b>, <b>render_mode_to_string()</b>,
+            <b>terminal_size_t::rows</b>, <b>SAFE_MALLOC</b>,
+            <b>SESSION_HELP_ENTRY_CAPACITY</b>,
+            <b>SESSION_HELP_KEY_BUFFER_SIZE</b>,
+            <b>SESSION_HELP_SETTING_BUFFER_SIZE</b>, <b>SET_ERRNO</b>,
+            <b>terminal_should_use_utf8()</b>,
+            <b>TUI_SESSION_HELP_FOOTER_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_HELP_KEY_STORAGE_COUNT</b>,
+            <b>TUI_SESSION_HELP_SETTINGS_COUNT</b>,
+            <b>TUI_SESSION_HELP_VOLUME_BAR_BUFFER_SIZE</b>,
+            <b>tui_shortcut_help()</b>, <b>ui_help_menu_measure()</b>,
+            <b>ui_help_menu_render()</b>, and <b>ui_session_help_render()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_context_help_render()</b>,
+            <b>ui_session_help_render()</b>, and <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ui_session_action_t</b> ui_session_input (<b>ui_session_t</b> *
+            session, <b>keyboard_key_t</b> key)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>122</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+122                                                                           {
+123   if (!s)
+124     return UI_ACTION_NONE;
+125   if (s-&gt;show_logs &amp;&amp; ui_session_logs_key(key)) {
+126     s-&gt;dirty = true;
+127     return UI_ACTION_LOGS;
+128   }
+129   ui_session_action_t action = ui_session_key(key, &amp;s-&gt;saved_volume);
+130   if (action == UI_ACTION_HELP) {
+131     s-&gt;help = !s-&gt;help;
+132     s-&gt;show_logs = false;
+133   } else if (action == UI_ACTION_LOGS) {
+134     s-&gt;show_logs = !s-&gt;show_logs;
+135     s-&gt;help = false;
+136   } else if (action == UI_ACTION_CLOSE &amp;&amp; s-&gt;show_logs) {
+137     s-&gt;show_logs = false;
+138     action = UI_ACTION_LOGS;
+139   } else if (action == UI_ACTION_CLOSE &amp;&amp; s-&gt;help) {
+140     s-&gt;help = false;
+141     action = UI_ACTION_HELP;
+142   }
+143   s-&gt;dirty |= action != UI_ACTION_NONE;
+144   return action;
+145 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::dirty</b>, <b>ui_session::help</b>,
+            <b>ui_session::saved_volume</b>, <b>ui_session::show_logs</b>,
+            <b>UI_ACTION_CLOSE</b>, <b>UI_ACTION_HELP</b>,
+            <b>UI_ACTION_LOGS</b>, <b>UI_ACTION_NONE</b>,
+            <b>ui_session_input()</b>, <b>ui_session_key()</b>, and
+            <b>ui_session_logs_key()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_input()</b>, and <b>wasm_ui_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ui_session_is_covered (const <b>ui_session_t</b> *
+            session)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>154</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+154                                                   {
+155   return s &amp;&amp; s-&gt;covered;
+156 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::covered</b>, and
+            <b>ui_session_is_covered()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_is_covered()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ui_session_action_t</b> ui_session_key (<b>keyboard_key_t</b>
+            key, double * saved_volume)
+          </h2>
+          <p class="Pp">
+            Mutates shared options for settings keys; returns an action for the
+            host.
+          </p>
+          <p class="Pp">
+            Definition at line <b>105</b> of file <b>session_input.c</b>.
+          </p>
+          <pre>
+105                                                                              {
+106   switch ((int)key) {
+107   case KEY_QUESTION:
+108     return UI_ACTION_HELP;
+109   case '[':
+110     return UI_ACTION_TOGGLE_MEDIA;
+111   case ']':
+112     return UI_ACTION_LOGS;
+113   case KEY_ESCAPE:
+114     return UI_ACTION_CLOSE;
+115   case KEY_LEFT:
+116     return UI_ACTION_SEEK_BACK;
+117   case KEY_RIGHT:
+118     return UI_ACTION_SEEK_FORWARD;
+119   case KEY_SPACE:
+120     return UI_ACTION_PAUSE;
+121   case KEY_BACKTICK:
+122     return UI_ACTION_DEBUG;
+123   // ===== VOLUME CONTROLS =====
+124   case KEY_DOWN: { // Decrease volume 10%
+125     double current_volume = GET_OPTION(speakers_volume);
+126     double new_volume = clamp_volume(current_volume - 0.1);
+127     options_adjust(&quot;speakers_volume&quot;, key == KEY_DOWN ? -0.1 : 0.1);
+128
+129     double verify_volume = GET_OPTION(speakers_volume);
+130     log_info(&quot;Volume DOWN: %.0f%% &#x2192; %.0f%% (verified: %.0f%%)&quot;, current_volume * 100.0, new_volume * 100.0,
+131              verify_volume * 100.0);
+132     return UI_ACTION_VOLUME;
+133   }
+134
+135   case KEY_UP: { // Increase volume 10%
+136     double current_volume = GET_OPTION(speakers_volume);
+137     double new_volume = clamp_volume(current_volume + 0.1);
+138     options_adjust(&quot;speakers_volume&quot;, key == KEY_DOWN ? -0.1 : 0.1);
+139
+140     double verify_volume = GET_OPTION(speakers_volume);
+141     log_info(&quot;Volume UP: %.0f%% &#x2192; %.0f%% (verified: %.0f%%)&quot;, current_volume * 100.0, new_volume * 100.0,
+142              verify_volume * 100.0);
+143     return UI_ACTION_SETTINGS;
+144   }
+145
+146   // ===== COLOR MODE CONTROL =====
+147   case KEY_C:
+148   case 'C': {
+149     int current_mode = (int)GET_OPTION(color_mode);
+150     int next_mode = next_color_mode(current_mode);
+151     options_cycle(&quot;color_mode&quot;, 4);
+152
+153     const char *mode_names[] = {&quot;Mono&quot;, &quot;16-color&quot;, &quot;256-color&quot;, &quot;Truecolor&quot;};
+154     if (next_mode &gt;= 0 &amp;&amp; next_mode &lt;= 3) {
+155       log_info(&quot;Color mode: %s&quot;, mode_names[next_mode]);
+156     }
+157     return UI_ACTION_SETTINGS;
+158   }
+159
+160   // ===== MUTE CONTROL =====
+161   case KEY_M:
+162   case 'M': {
+163     if (toggle_mute(saved_volume) != ASCIICHAT_OK)
+164       log_warn(&quot;Could not toggle mute&quot;);
+165
+166     return UI_ACTION_SETTINGS;
+167   }
+168
+169   // ===== RENDER MODE CONTROL =====
+170   case KEY_R:
+171   case 'R': {
+172     int current_mode = (int)GET_OPTION(render_mode);
+173     int next_mode = next_render_mode(current_mode);
+174     options_cycle(&quot;render_mode&quot;, 3);
+175
+176     const char *mode_names[] = {&quot;Foreground&quot;, &quot;Background&quot;, &quot;Half-block&quot;};
+177     if (next_mode &gt;= 0 &amp;&amp; next_mode &lt;= 2) {
+178       log_info(&quot;Render mode: %s&quot;, mode_names[next_mode]);
+179     }
+180     return UI_ACTION_SETTINGS;
+181   }
+182
+183   // ===== COLOR FILTER CONTROL =====
+184   case KEY_F:
+185   case 'F': {
+186     int current_filter = (int)GET_OPTION(color_filter);
+187     int next_filter = next_color_filter(current_filter);
+188     options_cycle(&quot;color_filter&quot;, 13);
+189
+190     if (next_filter &gt;= 0 &amp;&amp; next_filter &lt; (int)COLOR_FILTER_COUNT) {
+191       log_info(&quot;Color filter: %s&quot;, COLOR_FILTER_NAMES[next_filter]);
+192     }
+193     return UI_ACTION_SETTINGS;
+194   }
+195
+196   // ===== HORIZONTAL FLIP CONTROL =====
+197   case 'X':
+198   case 'x': {
+199     log_info(&quot;&#x2713; X KEY PRESSED - handling horizontal flip&quot;);
+200     bool current_flip_x = (bool)GET_OPTION(flip_x);
+201     options_toggle(&quot;flip_x&quot;);
+202     log_info(&quot;Horizontal flip: %s (was: %s)&quot;, !current_flip_x ? &quot;enabled&quot; : &quot;disabled&quot;,
+203              current_flip_x ? &quot;enabled&quot; : &quot;disabled&quot;);
+204     return UI_ACTION_SETTINGS;
+205   }
+206
+207   // ===== VERTICAL FLIP CONTROL =====
+208   case 'Y':
+209   case 'y': {
+210     bool current_flip_y = (bool)GET_OPTION(flip_y);
+211     options_toggle(&quot;flip_y&quot;);
+212     log_info(&quot;Vertical flip: %s&quot;, !current_flip_y ? &quot;enabled&quot; : &quot;disabled&quot;);
+213     return UI_ACTION_SETTINGS;
+214   }
+215
+216   // ===== MATRIX RAIN EFFECT CONTROL =====
+217   case KEY_1: {
+218     bool current_matrix = (bool)GET_OPTION(matrix_rain);
+219     if (options_toggle(&quot;matrix_rain&quot;) != ASCIICHAT_OK)
+220       return UI_ACTION_SETTINGS;
+221     log_info(&quot;Matrix rain effect: %s&quot;, !current_matrix ? &quot;enabled&quot; : &quot;disabled&quot;);
+222     return UI_ACTION_SETTINGS;
+223   }
+224
+225   case KEY_2: {
+226     if (!GET_OPTION(audio_enabled)) {
+227       log_info(&quot;Audio waveform requires audio to be enabled&quot;);
+228       return UI_ACTION_SETTINGS;
+229     }
+230     bool enabled = !GET_OPTION(waveform);
+231     if (options_toggle(&quot;waveform&quot;) != ASCIICHAT_OK)
+232       return UI_ACTION_SETTINGS;
+233     log_info(&quot;Audio waveform: %s&quot;, enabled ? &quot;enabled&quot; : &quot;disabled&quot;);
+234     return UI_ACTION_SETTINGS;
+235   }
+236
+237   case KEY_3: {
+238     if (!GET_OPTION(audio_enabled)) {
+239       log_info(&quot;Audio frequency display requires audio to be enabled&quot;);
+240       return UI_ACTION_SETTINGS;
+241     }
+242     bool enabled = !GET_OPTION(fft);
+243     if (options_toggle(&quot;fft&quot;) != ASCIICHAT_OK)
+244       return UI_ACTION_SETTINGS;
+245     log_info(&quot;Audio frequency display: %s&quot;, enabled ? &quot;enabled&quot; : &quot;disabled&quot;);
+246     return UI_ACTION_SETTINGS;
+247   }
+248
+249   case 'w':
+250   case 'W': {
+251     if (options_toggle(&quot;face_follow&quot;) == ASCIICHAT_OK)
+252       log_info(&quot;Face follow: %s&quot;, GET_OPTION(face_follow) ? &quot;enabled&quot; : &quot;disabled&quot;);
+253     return UI_ACTION_SETTINGS;
+254   }
+255
+256   case 'z':
+257   case 'Z': {
+258     if (options_set_int(&quot;zalgo&quot;, GET_OPTION(zalgo) ? 0 : 8) == ASCIICHAT_OK)
+259       log_info(&quot;Zalgo intensity: %d&quot;, GET_OPTION(zalgo));
+260     return UI_ACTION_SETTINGS;
+261   }
+262
+263   // ===== FPS COUNTER TOGGLE =====
+264   case KEY_MINUS: {
+265     bool current = (bool)GET_OPTION(fps_counter);
+266     options_toggle(&quot;fps_counter&quot;);
+267     log_info(&quot;FPS counter: %s&quot;, !current ? &quot;enabled&quot; : &quot;disabled&quot;);
+268     return UI_ACTION_SETTINGS;
+269   }
+270
+271   default:
+272     return UI_ACTION_NONE;
+273   }
+274 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>bool</b>,
+            <b>COLOR_FILTER_COUNT</b>, <b>GET_OPTION</b>, <b>KEY_1</b>,
+            <b>KEY_2</b>, <b>KEY_3</b>, <b>KEY_BACKTICK</b>, <b>KEY_C</b>,
+            <b>KEY_DOWN</b>, <b>KEY_ESCAPE</b>, <b>KEY_F</b>, <b>KEY_LEFT</b>,
+            <b>KEY_M</b>, <b>KEY_MINUS</b>, <b>KEY_QUESTION</b>, <b>KEY_R</b>,
+            <b>KEY_RIGHT</b>, <b>KEY_SPACE</b>, <b>KEY_UP</b>, <b>log_info</b>,
+            <b>log_warn</b>, <b>options_adjust()</b>, <b>options_cycle()</b>,
+            <b>options_set_int()</b>, <b>options_toggle()</b>,
+            <b>UI_ACTION_CLOSE</b>, <b>UI_ACTION_DEBUG</b>,
+            <b>UI_ACTION_HELP</b>, <b>UI_ACTION_LOGS</b>, <b>UI_ACTION_NONE</b>,
+            <b>UI_ACTION_PAUSE</b>, <b>UI_ACTION_SEEK_BACK</b>,
+            <b>UI_ACTION_SEEK_FORWARD</b>, <b>UI_ACTION_SETTINGS</b>,
+            <b>UI_ACTION_TOGGLE_MEDIA</b>, <b>UI_ACTION_VOLUME</b>, and
+            <b>ui_session_key()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_input()</b>, and
+            <b>ui_session_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_loading_(">
+            <a class="permalink" href="#void_ui_session_loading_("
+              >void ui_session_loading (<b>ui_session_t</b> * session,
+              <b>bool</b> loading, const char * message)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>92</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+92                                                                             {
+93   if (!s)
+94     return;
+95   if (loading != s-&gt;loading) {
+96     s-&gt;loading = loading;
+97     animation_reset(&amp;s-&gt;animation);
+98     s-&gt;dirty = true;
+99   }
+100   if (message &amp;&amp; strcmp(message, s-&gt;splash.connection_target)) {
+101     SAFE_STRNCPY(s-&gt;splash.connection_target, message, sizeof(s-&gt;splash.connection_target));
+102     s-&gt;dirty = true;
+103   }
+104 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::animation</b>, <b>animation_reset()</b>,
+            <b>ui_splash_view_t::connection_target</b>,
+            <b>ui_session::dirty</b>, <b>ui_session::loading</b>,
+            <b>SAFE_STRNCPY</b>, <b>ui_session::splash</b>, and
+            <b>ui_session_loading()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_loading()</b>, and
+            <b>wasm_ui_loading()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_log_(">
+            <a class="permalink" href="#void_ui_session_log_("
+              >void ui_session_log (<b>ui_session_t</b> * session, const char *
+              message)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>106</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+106                                                           {
+107   if (s &amp;&amp; message) {
+108     session_log_buffer_append(s-&gt;logs, message);
+109     s-&gt;dirty = true;
+110   }
+111 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::dirty</b>, <b>ui_session::logs</b>,
+            <b>session_log_buffer_append()</b>, and <b>ui_session_log()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_log()</b>, and <b>wasm_ui_log()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> ui_session_logs_key (<b>keyboard_key_t</b> key)
+          </h2>
+          <p class="Pp">
+            Existing server log-search controls; true when consumed.
+          </p>
+          <p class="Pp">
+            Definition at line <b>256</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+256                                              {
+257   if (key == KEY_ESCAPE &amp;&amp; log_search_is_active()) {
+258     log_search_exit_mode(false);
+259     return true;
+260   }
+261   if (log_search_should_handle(key)) {
+262     log_search_handle_key(key);
+263     return true;
+264   }
+265   if (terminal_screen_logs_handle_key(key))
+266     return true;
+267   // Client-like log screens own these keys while the renderer is hidden.
+268   // Search and log navigation take precedence over rendering shortcuts.
+269   switch ((int)key) {
+270   case 'c':
+271   case 'C':
+272   case 'r':
+273   case 'R':
+274   case 'f':
+275   case 'F':
+276   case 'x':
+277   case 'X':
+278   case 'y':
+279   case 'Y':
+280   case '1':
+281   case '2':
+282   case '3':
+283   case 'w':
+284   case 'W':
+285   case 'z':
+286   case 'Z':
+287   case '-':
+288     return true;
+289   default:
+290     break;
+291   }
+292   return false;
+293 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>KEY_ESCAPE</b>, <b>log_search_exit_mode()</b>,
+            <b>log_search_handle_key()</b>, <b>log_search_is_active()</b>,
+            <b>log_search_should_handle()</b>,
+            <b>terminal_screen_logs_handle_key()</b>, and
+            <b>ui_session_logs_key()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_input()</b>, and
+            <b>ui_session_logs_key()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_logs_render_(">
+            <a class="permalink" href="#void_ui_session_logs_render_("
+              >void ui_session_logs_render (<b>frame_buffer_t</b> * output,
+              <b>terminal_size_t</b> size, <b>ui_session_t</b> * session)</a
+            >
+          </h2>
+          <p class="Pp">
+            Shared live log view, used by the native adapter and browser
+            compositor.
+          </p>
+          <p class="Pp">
+            Definition at line <b>236</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+236                                                                                            {
+237   const char *mode = GET_OPTION(detected_mode) == MODE_MCP_SERVER ? &quot;MCP Server&quot;
+238                      : GET_OPTION(detected_mode) == MODE_MIRROR   ? &quot;Mirror&quot;
+239                                                                   : &quot;Client&quot;;
+240   char detail[TUI_SESSION_DETAIL_BUFFER_SIZE];
+241   size_t offset = terminal_screen_logs_offset();
+242   char offset_text[TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE];
+243   snprintf(offset_text, sizeof(offset_text), &quot;%zu&quot;, offset);
+244   const char *escape_key = colored_string(LOG_COLOR_WARN, &quot;Esc&quot;);
+245   const char *search_key = colored_string(LOG_COLOR_WARN, &quot;/&quot;);
+246   const char *help_key = colored_string(LOG_COLOR_WARN, &quot;?&quot;);
+247   const char *colored_offset = colored_string(LOG_COLOR_FATAL, offset_text);
+248   snprintf(detail, sizeof(detail), &quot;%s: close | %s: search logs | %s: keyboard controls | %s rows from tail&quot;,
+249            escape_key, search_key, help_key, colored_offset);
+250   ui_status_t status = {.mode_name = mode, .start_time = s-&gt;started, .detail = detail};
+251   terminal_screen_config_t config = {
+252       .fixed_header_lines = 4, .render_header = ui_status_render_header, .user_data = &amp;status, .show_logs = true};
+253   terminal_screen_compose(output, size, &amp;config, s-&gt;logs);
+254 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>colored_string()</b>, <b>GET_OPTION</b>,
+            <b>LOG_COLOR_FATAL</b>, <b>LOG_COLOR_WARN</b>,
+            <b>ui_session::logs</b>, <b>MODE_MCP_SERVER</b>, <b>MODE_MIRROR</b>,
+            <b>ui_session::started</b>, <b>terminal_screen_compose()</b>,
+            <b>terminal_screen_logs_offset()</b>,
+            <b>TUI_SESSION_DETAIL_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_OFFSET_TEXT_BUFFER_SIZE</b>,
+            <b>ui_session_logs_render()</b>, and
+            <b>ui_status_render_header()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_logs_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> ui_session_media (<b>ui_session_t</b> *
+            session, const char * data, size_t length)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>113</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+113                                                                                      {
+114   if (!s || !data || length &gt; UI_CONTROLLER_MAX_FRAME_BYTES)
+115     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid session media frame&quot;);
+116   frame_buffer_reset(s-&gt;media);
+117   frame_buffer_append(s-&gt;media, data, length);
+118   s-&gt;dirty = true;
+119   return ASCIICHAT_OK;
+120 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ui_session::dirty</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>frame_buffer_append()</b>,
+            <b>frame_buffer_reset()</b>, <b>ui_session::media</b>,
+            <b>SET_ERRNO</b>, <b>UI_CONTROLLER_MAX_FRAME_BYTES</b>, and
+            <b>ui_session_media()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_media()</b>, and <b>wasm_ui_media()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint64_t</b> ui_session_next_frame_ns (const
+            <b>ui_session_t</b> * session)
+          </h2>
+          <p class="Pp">
+            Next visible animation deadline, or UINT64_MAX while animation is
+            paused/hidden.
+          </p>
+          <p class="Pp">
+            Definition at line <b>163</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+163                                                          {
+164   return s &amp;&amp; s-&gt;animation.started ? s-&gt;splash.animation.next_frame_ns : UINT64_MAX;
+165 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::animation</b>,
+            <b>ui_splash_view_t::animation</b>,
+            <b>animation_sample_t::next_frame_ns</b>, <b>ui_session::splash</b>,
+            <b>animation_t::started</b>, and <b>ui_session_next_frame_ns()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_next_frame_ns()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_redraw_(">
+            <a class="permalink" href="#void_ui_session_redraw_("
+              >void ui_session_redraw (<b>ui_session_t</b> * session)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>365</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+365                                         {
+366   if (s)
+367     s-&gt;dirty = true;
+368 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::dirty</b>, and <b>ui_session_redraw()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_redraw()</b>,
+            <b>ui_session_redraw()</b>, and <b>wasm_ui_redraw()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_ui_session_render_(">
+            <a class="permalink" href="#const_char_*_ui_session_render_("
+              >const char * ui_session_render (<b>ui_session_t</b> * session,
+              const <b>ui_session_view_t</b> * view, <b>uint64_t</b> now_ns)</a
+            >
+          </h2>
+          <p class="Pp">
+            Present a host view through the same compositor used by
+            <b>ui_session_tick()</b>. A screen of -1 hides presentation. NULL
+            means no redraw is required.
+          </p>
+          <p class="Pp">
+            Definition at line <b>167</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+167                                                                                                {
+168   if (!s || !view)
+169     return NULL;
+170   bool changed = s-&gt;active != view-&gt;screen;
+171   s-&gt;active = view-&gt;screen;
+172   bool covered = view-&gt;screen &gt;= 0 &amp;&amp; ui_too_small(s-&gt;size, view-&gt;minimum);
+173   bool transition = changed || covered != s-&gt;covered || s-&gt;size.cols != s-&gt;presented_size.cols ||
+174                     s-&gt;size.rows != s-&gt;presented_size.rows || view-&gt;minimum.cols != s-&gt;minimum.cols ||
+175                     view-&gt;minimum.rows != s-&gt;minimum.rows;
+176   s-&gt;covered = covered;
+177   bool visible =
+178       (view-&gt;screen == UI_SCREEN_SPLASH || view-&gt;screen == UI_SCREEN_HELP || view-&gt;screen == UI_SCREEN_MDNS) &amp;&amp;
+179       !covered;
+180   if (visible != s-&gt;animation.visible) {
+181     // Account for the elapsed interval under the old visibility before changing
+182     // it, so resuming after an idle modal does not advance a paused animation.
+183     if (animation_update(&amp;s-&gt;animation, now_ns, &amp;s-&gt;splash.animation) != ASCIICHAT_OK)
+184       return NULL;
+185     animation_set_visible(&amp;s-&gt;animation, visible);
+186   }
+187   if (animation_update(&amp;s-&gt;animation, now_ns, &amp;s-&gt;splash.animation) != ASCIICHAT_OK)
+188     return NULL;
+189   if (view-&gt;screen &lt; 0 || !view-&gt;draw)
+190     return NULL;
+191   bool animated = visible &amp;&amp; s-&gt;splash.animation.changed;
+192   bool refresh = view-&gt;refresh_ns &amp;&amp; now_ns - s-&gt;last_render_ns &gt;= view-&gt;refresh_ns;
+193   if (covered ? !(transition || s-&gt;dirty) : !(transition || s-&gt;dirty || view-&gt;dirty || animated || refresh))
+194     return NULL;
+195   s-&gt;dirty = false;
+196   s-&gt;presented_size = s-&gt;size;
+197   s-&gt;minimum = view-&gt;minimum;
+198   s-&gt;last_render_ns = now_ns;
+199   frame_buffer_reset(s-&gt;frame);
+200   if (transition || view-&gt;clear) {
+201     frame_buffer_append(s-&gt;frame, &quot;\033[0m&quot;, 4);
+202     frame_buffer_clear_screen(s-&gt;frame);
+203   }
+204   if (covered)
+205     ui_too_small_render(s-&gt;frame, s-&gt;size, view-&gt;minimum);
+206   else {
+207     if (view-&gt;screen == UI_SCREEN_HELP) {
+208       int top = (s-&gt;size.rows - view-&gt;minimum.rows) / 2;
+209       terminal_color_mode_t mode = GET_OPTION(color_mode);
+210       bool colors = mode != TERM_COLOR_NONE &amp;&amp; GET_OPTION(color) != COLOR_SETTING_FALSE &amp;&amp; !GET_OPTION(strip_ansi) &amp;&amp;
+211                     (mode != TERM_COLOR_AUTO || detect_terminal_capabilities().color_level != TERM_COLOR_NONE);
+212       frame_buffer_printf(s-&gt;frame, &quot;\033[%d;1H&quot;, top + 2);
+213       invitation_render_logo(s-&gt;frame, s-&gt;size.cols, (int)(s-&gt;splash.animation.seconds * 60), colors, false);
+214     }
+215     view-&gt;draw(s-&gt;frame, s-&gt;size, &amp;s-&gt;splash.animation, view-&gt;context);
+216   }
+217   frame_buffer_append(s-&gt;frame, &quot;\0&quot;, 1);
+218   return frame_buffer_get_content(s-&gt;frame);
+219 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::active</b>, <b>ui_session::animation</b>,
+            <b>ui_splash_view_t::animation</b>, <b>animation_set_visible()</b>,
+            <b>animation_update()</b>, <b>ASCIICHAT_OK</b>,
+            <b>animation_sample_t::changed</b>, <b>ui_session_view_t::clear</b>,
+            <b>terminal_capabilities_t::color_level</b>,
+            <b>COLOR_SETTING_FALSE</b>, <b>terminal_size_t::cols</b>,
+            <b>ui_session_view_t::context</b>, <b>ui_session::covered</b>,
+            <b>detect_terminal_capabilities()</b>, <b>ui_session::dirty</b>,
+            <b>ui_session_view_t::dirty</b>, <b>ui_session_view_t::draw</b>,
+            <b>ui_session::frame</b>, <b>frame_buffer_append()</b>,
+            <b>frame_buffer_clear_screen()</b>,
+            <b>frame_buffer_get_content()</b>, <b>frame_buffer_printf()</b>,
+            <b>frame_buffer_reset()</b>, <b>GET_OPTION</b>,
+            <b>invitation_render_logo()</b>, <b>ui_session::last_render_ns</b>,
+            <b>ui_session::minimum</b>, <b>ui_session_view_t::minimum</b>,
+            <b>ui_session::presented_size</b>,
+            <b>ui_session_view_t::refresh_ns</b>, <b>terminal_size_t::rows</b>,
+            <b>ui_session_view_t::screen</b>,
+            <b>animation_sample_t::seconds</b>, <b>ui_session::size</b>,
+            <b>ui_session::splash</b>, <b>TERM_COLOR_AUTO</b>,
+            <b>TERM_COLOR_NONE</b>, <b>UI_SCREEN_HELP</b>,
+            <b>UI_SCREEN_MDNS</b>, <b>UI_SCREEN_SPLASH</b>,
+            <b>ui_session_render()</b>, <b>ui_too_small()</b>,
+            <b>ui_too_small_render()</b>, and <b>animation_t::visible</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_render()</b>, and
+            <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_resize_(">
+            <a class="permalink" href="#void_ui_session_resize_("
+              >void ui_session_resize (<b>ui_session_t</b> * session, int cols,
+              int rows)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>81</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+81                                                             {
+82   if (!s || cols &lt; 1 || rows &lt; 1 || cols &gt; 4096 || rows &gt; 4096) {
+83     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid TUI session or terminal dimensions&quot;);
+84     return;
+85   }
+86   if (cols != s-&gt;size.cols || rows != s-&gt;size.rows) {
+87     s-&gt;size = (terminal_size_t){.cols = cols, .rows = rows};
+88     s-&gt;dirty = true;
+89   }
+90 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>terminal_size_t::cols</b>, <b>ui_session::dirty</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>terminal_size_t::rows</b>,
+            <b>SET_ERRNO</b>, <b>ui_session::size</b>, and
+            <b>ui_session_resize()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_resize()</b>, and
+            <b>wasm_ui_resize()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_ui_session_select_screen_(">
+            <a class="permalink" href="#int_ui_session_select_screen_("
+              >int ui_session_select_screen (<b>uint32_t</b> visible_screens)</a
+            >
+          </h2>
+          <p class="Pp">
+            Highest visible screen from the common priority order, or -1.
+          </p>
+          <p class="Pp">
+            Definition at line <b>147</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+147                                                        {
+148   for (int screen = UI_SCREEN_COUNT - 1; screen &gt;= 0; --screen)
+149     if (visible_screens &amp; (1u &lt;&lt; screen))
+150       return screen;
+151   return -1;
+152 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>UI_SCREEN_COUNT</b>, and
+            <b>ui_session_select_screen()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_select_screen()</b>, and
+            <b>ui_session_tick()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>terminal_size_t</b> ui_session_size (const <b>ui_session_t</b> *
+            session)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>361</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+361                                                        {
+362   return s ? s-&gt;size : (terminal_size_t){.cols = 80, .rows = 24};
+363 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::size</b>, and <b>ui_session_size()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_controller_size()</b>, and
+            <b>ui_session_size()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_ui_session_splash_render_(">
+            <a class="permalink" href="#void_ui_session_splash_render_("
+              >void ui_session_splash_render (<b>frame_buffer_t</b> * buf,
+              <b>terminal_size_t</b> size, void * view)</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>19</b> of file <b>session_splash.c</b>.
+          </p>
+          <pre>
+19                                                                                                {
+20   const ui_splash_view_t *ctx = (const ui_splash_view_t *)user_data;
+21   if (!ctx) {
+22     return;
+23   }
+24   bool unicode = terminal_should_use_utf8();
+25
+26   if (ctx-&gt;discovery.enabled) {
+27     invitation_render(buf, term_size, ctx-&gt;discovery.session_string, ctx-&gt;discovery.joining,
+28                       (int)(ctx-&gt;animation.seconds * 60), ctx-&gt;use_colors);
+29     return;
+30   }
+31
+32   char tagline_with_version[TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE];
+33   snprintf(tagline_with_version, sizeof(tagline_with_version), &quot;Video chat in your terminal + %s&quot;,
+34            ASCII_CHAT_VERSION_STRING);
+35   const char *tagline = tagline_with_version;
+36   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, ctx-&gt;use_colors);
+37   invitation_render_logo(buf, term_size.cols - 1, (int)(ctx-&gt;animation.seconds * 60), ctx-&gt;use_colors, false);
+38
+39   // Line 6: Tagline (centered, truncated if too long)
+40   char plain_tagline[TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE];
+41   int tagline_len = (int)strlen(tagline);
+42   int tagline_pad = (term_size.cols - tagline_len) / 2;
+43   if (tagline_pad &lt; 0) {
+44     tagline_pad = 0;
+45   }
+46
+47   int tpos = 0;
+48   for (int j = 0; j &lt; tagline_pad &amp;&amp; tpos &lt; (int)sizeof(plain_tagline) - 1; j++) {
+49     plain_tagline[tpos++] = ' ';
+50   }
+51   snprintf(plain_tagline + tpos, sizeof(plain_tagline) - tpos, &quot;%s&quot;, tagline);
+52
+53   // Check visible width and truncate if needed
+54   int tagline_visible_width = display_width(plain_tagline);
+55   if (tagline_visible_width &lt; 0) {
+56     tagline_visible_width = (int)strlen(plain_tagline);
+57   }
+58   if (term_size.cols &gt; 0 &amp;&amp; tagline_visible_width &gt;= term_size.cols) {
+59     plain_tagline[term_size.cols - 1] = '\0';
+60   }
+61
+62   frame_buffer_printf(buf, &quot;%s\n&quot;, plain_tagline);
+63
+64   // Line 7: Update notification (if available)
+65   if (ctx-&gt;update_notification[0] != '\0') {
+66     char plain_update[TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE];
+67     int update_len = (int)strlen(ctx-&gt;update_notification);
+68     int update_pad = (term_size.cols - update_len) / 2;
+69     if (update_pad &lt; 0) {
+70       update_pad = 0;
+71     }
+72
+73     int upos = 0;
+74     for (int j = 0; j &lt; update_pad &amp;&amp; upos &lt; (int)sizeof(plain_update) - 1; j++) {
+75       plain_update[upos++] = ' ';
+76     }
+77     snprintf(plain_update + upos, sizeof(plain_update) - upos, &quot;%s&quot;, ctx-&gt;update_notification);
+78
+79     // Check visible width and truncate if needed
+80     int update_visible_width = display_width(plain_update);
+81     if (update_visible_width &lt; 0) {
+82       update_visible_width = (int)strlen(plain_update);
+83     }
+84     if (term_size.cols &gt; 0 &amp;&amp; update_visible_width &gt;= term_size.cols) {
+85       plain_update[term_size.cols - 1] = '\0';
+86     }
+87
+88     // Print in yellow/warning color
+89     frame_buffer_printf(buf, &quot;%s\n&quot;, colored_string(LOG_COLOR_WARN, plain_update));
+90   }
+91
+92   // Line 8 (or 7 if no update): Connection target (centered, truncated if too long)
+93   const char *connection_target = ctx-&gt;connection_target;
+94
+95   char plain_connection[TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE];
+96   int connection_len = (int)strlen(connection_target);
+97   int connection_pad = (term_size.cols - connection_len) / 2;
+98   if (connection_pad &lt; 0) {
+99     connection_pad = 0;
+100   }
+101
+102   int cpos = 0;
+103   for (int j = 0; j &lt; connection_pad &amp;&amp; cpos &lt; (int)sizeof(plain_connection) - 1; j++) {
+104     plain_connection[cpos++] = ' ';
+105   }
+106   snprintf(plain_connection + cpos, sizeof(plain_connection) - cpos, &quot;%s&quot;, connection_target);
+107
+108   // Check visible width and truncate if needed
+109   int connection_visible_width = display_width(plain_connection);
+110   if (connection_visible_width &lt; 0) {
+111     connection_visible_width = (int)strlen(plain_connection);
+112   }
+113   if (term_size.cols &gt; 0 &amp;&amp; connection_visible_width &gt;= term_size.cols) {
+114     plain_connection[term_size.cols - 1] = '\0';
+115   }
+116
+117   frame_buffer_printf(buf, &quot;%s\n&quot;, plain_connection);
+118
+119   if (update_banner_is_checking()) {
+120     static const char spin[] = &quot;|/-\\&quot;;
+121     const char *text = &quot;Checking for updates...&quot;;
+122     int pad = term_size.cols - (int)strlen(text) - 3;
+123     if (pad &lt; 0)
+124       pad = 0;
+125     frame_buffer_printf(buf, &quot;%*s%c %s\n&quot;, pad, &quot;&quot;, spin[((int)(ctx-&gt;animation.seconds * 8)) % 4], text);
+126   }
+127
+128   // Bottom border
+129   frame_buffer_render_divider(buf, term_size.cols - 1, unicode, ctx-&gt;use_colors);
+130 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_splash_view_t::animation</b>,
+            <b>ASCII_CHAT_VERSION_STRING</b>, <b>colored_string()</b>,
+            <b>terminal_size_t::cols</b>,
+            <b>ui_splash_view_t::connection_target</b>,
+            <b>ui_splash_view_t::discovery</b>, <b>display_width()</b>,
+            <b>ui_discovery_view_t::enabled</b>, <b>frame_buffer_printf()</b>,
+            <b>frame_buffer_render_divider()</b>, <b>invitation_render()</b>,
+            <b>invitation_render_logo()</b>,
+            <b>ui_discovery_view_t::joining</b>, <b>LOG_COLOR_WARN</b>,
+            <b>animation_sample_t::seconds</b>,
+            <b>ui_discovery_view_t::session_string</b>,
+            <b>terminal_should_use_utf8()</b>,
+            <b>TUI_SESSION_SPLASH_PLAIN_CONNECTION_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_SPLASH_PLAIN_TAGLINE_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_SPLASH_PLAIN_UPDATE_BUFFER_SIZE</b>,
+            <b>TUI_SESSION_SPLASH_TAGLINE_WITH_VERSION_BUFFER_SIZE</b>,
+            <b>ui_session_splash_render()</b>,
+            <b>update_banner_is_checking()</b>,
+            <b>ui_splash_view_t::update_notification</b>, and
+            <b>ui_splash_view_t::use_colors</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_session_splash_render()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char_*_ui_session_tick_(">
+            <a class="permalink" href="#const_char_*_ui_session_tick_("
+              >const char * ui_session_tick (<b>ui_session_t</b> * session,
+              <b>uint64_t</b> now_ns)</a
+            >
+          </h2>
+          <p class="Pp">
+            No sleeps or I/O. Returned frame remains valid until the next call.
+            NULL means unchanged.
+          </p>
+          <p class="Pp">
+            Definition at line <b>314</b> of file <b>lib/tui/session.c</b>.
+          </p>
+          <pre>
+314                                                               {
+315   if (!s)
+316     return NULL;
+317   if (!s-&gt;dirty &amp;&amp; !s-&gt;show_logs &amp;&amp; !s-&gt;help &amp;&amp; !s-&gt;loading &amp;&amp; s-&gt;active == UI_SCREEN_MEDIA)
+318     return NULL;
+319   uint32_t visible = 1u &lt;&lt; UI_SCREEN_MEDIA;
+320   if (s-&gt;loading)
+321     visible |= 1u &lt;&lt; UI_SCREEN_SPLASH;
+322   if (s-&gt;show_logs)
+323     visible |= 1u &lt;&lt; UI_SCREEN_LOGS;
+324   if (s-&gt;help)
+325     visible |= 1u &lt;&lt; UI_SCREEN_HELP;
+326   ui_session_view_t view = {
+327       .screen = ui_session_select_screen(visible), .minimum = {1, 1}, .clear = !s-&gt;help, .context = s};
+328   char *help = NULL;
+329   if (view.screen == UI_SCREEN_HELP) {
+330     help = ui_session_help_render(s-&gt;size, true, true, &amp;view.minimum);
+331     if (!help)
+332       return NULL;
+333     view.draw = draw_help;
+334     view.context = help;
+335   } else if (view.screen == UI_SCREEN_LOGS) {
+336     view.minimum = (terminal_size_t){.cols = 40, .rows = 6};
+337     view.refresh_ns = 100000000;
+338     view.draw = draw_logs;
+339   } else if (view.screen == UI_SCREEN_SPLASH) {
+340     view.minimum = (terminal_size_t){.cols = 52, .rows = 10};
+341     view.draw = draw_splash;
+342   } else {
+343     view.draw = draw_media;
+344     if (s-&gt;dirty &amp;&amp; frame_buffer_get_length(s-&gt;media))
+345       s-&gt;presentation_times[s-&gt;presentation_index++ % 120] = now_ns;
+346   }
+347   const char *frame = ui_session_render(s, &amp;view, now_ns);
+348   ui_session_help_free(help);
+349   return frame;
+350 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ui_session::active</b>,
+            <b>ui_session_view_t::context</b>, <b>ui_session::dirty</b>,
+            <b>ui_session_view_t::draw</b>, <b>frame_buffer_get_length()</b>,
+            <b>ui_session::help</b>, <b>ui_session::loading</b>,
+            <b>ui_session::media</b>, <b>ui_session_view_t::minimum</b>,
+            <b>ui_session::presentation_index</b>,
+            <b>ui_session::presentation_times</b>,
+            <b>ui_session_view_t::refresh_ns</b>,
+            <b>ui_session_view_t::screen</b>, <b>ui_session::show_logs</b>,
+            <b>ui_session::size</b>, <b>UI_SCREEN_HELP</b>,
+            <b>UI_SCREEN_LOGS</b>, <b>UI_SCREEN_MEDIA</b>,
+            <b>UI_SCREEN_SPLASH</b>, <b>ui_session_help_free()</b>,
+            <b>ui_session_help_render()</b>, <b>ui_session_render()</b>,
+            <b>ui_session_select_screen()</b>, and <b>ui_session_tick()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ui_session_tick()</b>, and <b>wasm_ui_tick()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

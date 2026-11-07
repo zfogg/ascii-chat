@@ -51,7 +51,7 @@ asciichat_error_t connection_endpoint_resolve(const char *input, uint16_t defaul
   url_parts_t parts = {0};
   asciichat_error_t result;
 
-  if (strncasecmp(input, "quic://", 7) == 0) {
+  if (strncasecmp(input, "quic://", sizeof("quic://") - 1) == 0) {
     char rewritten[URL_BUFFER_SIZE];
     if (strlen(input) - 1 >= sizeof(rewritten))
       return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC endpoint is too long");

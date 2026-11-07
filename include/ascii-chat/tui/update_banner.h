@@ -77,6 +77,9 @@ void update_banner_start_check(void);
  */
 void update_banner_wait_for_check(void);
 
+/** Cancel an in-flight background startup check before joining its worker. */
+void update_banner_cancel_check(void);
+
 /** Toggle the retained update overlay. This is safe from every mode's shared input path. */
 void update_banner_toggle_overlay(void);
 /** Consumes F12 and overlay-local keys before mode-specific shortcut handling. */

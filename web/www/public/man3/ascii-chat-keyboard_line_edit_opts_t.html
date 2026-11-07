@@ -1,0 +1,253 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>keyboard_line_edit_opts_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">keyboard_line_edit_opts_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">keyboard_line_edit_opts_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          keyboard_line_edit_opts_t - Options for interactive line editing.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <p class="Pp">
+          #include &lt;include/ascii-chat/platform/keyboard.h&gt;
+        </p>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            char * <b>buffer</b>
+            <br />
+            Input buffer (modified in-place). size_t <b>max_len</b>
+            <br />
+            Maximum buffer size (including null terminator). size_t * <b>len</b>
+            <br />
+            Current length in bytes (in/out parameter). size_t * <b>cursor</b>
+            <br />
+            Cursor position in bytes (in/out parameter). <b>bool</b> <b>echo</b>
+            <br />
+            Echo characters to terminal. char <b>mask_char</b>
+            <br />
+            Mask character (0 for no masking, '*' for passwords). const char *
+            <b>prefix</b>
+            <br />
+            Prefix to display (e.g.,
+            <i>/&quot;</i>for<i>grep),</i>NULL<i>for</i>none.<i></i>
+            <b>bool</b>(*) <b>validator</b> (const char *)
+            <br />
+            Optional validator callback (for live feedback).
+            <b>keyboard_key_t</b>
+            <b>key</b>
+            <br />
+            Required pre-read key; KEY_NONE means no input.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Options for interactive line editing.</p>
+        <p class="Pp">
+          Configuration structure for <b>keyboard_read_line_interactive()</b>.
+          Provides control over echo behavior, masking, prefix display, and
+          validation.
+        </p>
+        <p class="Pp">
+          Definition at line <b>201</b> of file <b>keyboard.h</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="char*_keyboard_line_edit_opts_t::buffer">
+            <a class="permalink" href="#char*_keyboard_line_edit_opts_t::buffer"
+              >char* keyboard_line_edit_opts_t::buffer</a
+            >
+          </h2>
+          <p class="Pp">Input buffer (modified in-place).</p>
+          <p class="Pp">
+            Definition at line <b>202</b> of file <b>keyboard.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>keyboard_apply_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t*_keyboard_line_edit_opts_t::cursor">
+            <a
+              class="permalink"
+              href="#size_t*_keyboard_line_edit_opts_t::cursor"
+              >size_t* keyboard_line_edit_opts_t::cursor</a
+            >
+          </h2>
+          <p class="Pp">Cursor position in bytes (in/out parameter).</p>
+          <p class="Pp">
+            Definition at line <b>205</b> of file <b>keyboard.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>keyboard_apply_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> keyboard_line_edit_opts_t::echo</h2>
+          <p class="Pp">Echo characters to terminal.</p>
+          <p class="Pp">
+            Definition at line <b>206</b> of file <b>keyboard.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>keyboard_key_t</b> keyboard_line_edit_opts_t::key
+          </h2>
+          <p class="Pp">Required pre-read key; KEY_NONE means no input.</p>
+          <p class="Pp">
+            Definition at line <b>210</b> of file <b>keyboard.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>keyboard_apply_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t*_keyboard_line_edit_opts_t::len">
+            <a class="permalink" href="#size_t*_keyboard_line_edit_opts_t::len"
+              >size_t* keyboard_line_edit_opts_t::len</a
+            >
+          </h2>
+          <p class="Pp">Current length in bytes (in/out parameter).</p>
+          <p class="Pp">
+            Definition at line <b>204</b> of file <b>keyboard.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>keyboard_apply_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="char_keyboard_line_edit_opts_t::mask_char">
+            <a
+              class="permalink"
+              href="#char_keyboard_line_edit_opts_t::mask_char"
+              >char keyboard_line_edit_opts_t::mask_char</a
+            >
+          </h2>
+          <p class="Pp">
+            Mask character (0 for no masking, '*' for passwords).
+          </p>
+          <p class="Pp">
+            Definition at line <b>207</b> of file <b>keyboard.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="size_t_keyboard_line_edit_opts_t::max_len">
+            <a
+              class="permalink"
+              href="#size_t_keyboard_line_edit_opts_t::max_len"
+              >size_t keyboard_line_edit_opts_t::max_len</a
+            >
+          </h2>
+          <p class="Pp">Maximum buffer size (including null terminator).</p>
+          <p class="Pp">
+            Definition at line <b>203</b> of file <b>keyboard.h</b>.
+          </p>
+          <p class="Pp">Referenced by <b>keyboard_apply_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="const_char*_keyboard_line_edit_opts_t::prefix">
+            <a
+              class="permalink"
+              href="#const_char*_keyboard_line_edit_opts_t::prefix"
+              >const char* keyboard_line_edit_opts_t::prefix</a
+            >
+          </h2>
+          <p class="Pp">
+            Prefix to display (e.g., &quot;/&quot; for grep), NULL for none.
+          </p>
+          <p class="Pp">
+            Definition at line <b>208</b> of file <b>keyboard.h</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b>(*) keyboard_line_edit_opts_t::validator(const char *)
+          </h2>
+          <p class="Pp">Optional validator callback (for live feedback).</p>
+          <p class="Pp">
+            Definition at line <b>209</b> of file <b>keyboard.h</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>
