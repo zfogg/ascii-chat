@@ -6,7 +6,10 @@
 #include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/options/rcu.h>
+#include "session/capture.h"
 #include <string.h>
+
+bool extractor_cpp_linkage_probe(void);
 
 static bool cancel_after_polling(void *data) {
   int *count = data;
@@ -23,6 +26,23 @@ int main(int argc, char **argv) {
   if (options_state_set(&options) != ASCIICHAT_OK)
     return 3;
   if (argc == 3) {
+    if (strcmp(argv[2], "--expect-cpp-linkage") == 0) {
+      bool linked = extractor_cpp_linkage_probe();
+      options_state_destroy();
+      return linked ? 0 : 8;
+    }
+    if (strcmp(argv[2], "--expect-capture-cancel") == 0) {
+      int polls = 0;
+      session_capture_config_t config = {.type = MEDIA_SOURCE_FILE,
+                                         .path = argv[1],
+                                         .should_exit_callback = cancel_after_polling,
+                                         .callback_data = &polls};
+      session_capture_ctx_t *capture = session_capture_create(&config);
+      if (capture)
+        session_capture_destroy(capture);
+      options_state_destroy();
+      return !capture && polls > 20 ? 0 : 9;
+    }
     if (strcmp(argv[2], "--expect-cancel") == 0) {
       char video[MEDIA_STREAM_URL_SIZE], audio[MEDIA_STREAM_URL_SIZE];
       int polls = 0;

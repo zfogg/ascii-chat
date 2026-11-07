@@ -77,6 +77,8 @@ struct session_capture_ctx {
   mutex_t source_mutex, load_mutex;
   session_capture_audio_update_fn audio_update;
   void *audio_update_data;
+  session_capture_should_exit_fn should_exit_callback;
+  void *callback_data;
   bool media_locks_ready;
   _Atomic bool loader_created, loader_done;
   asciichat_thread_t loader;
@@ -342,6 +344,8 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   // Store configuration
   ctx->target_fps = config->target_fps > 0 ? config->target_fps : 60;
   ctx->resize_for_network = config->resize_for_network;
+  ctx->should_exit_callback = config->should_exit_callback;
+  ctx->callback_data = config->callback_data;
 
   // Store audio configuration
   ctx->audio_enabled = config->enable_audio;
@@ -388,9 +392,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
 
   // Set up exit callback on media source for graceful shutdown during I/O
   // This allows Ctrl+C to abort blocking FFmpeg calls like YouTube HTTP requests
-  if (config->should_exit_callback && ctx->source) {
-    media_source_set_exit_callback(ctx->source, config->should_exit_callback, config->callback_data);
-  }
+  media_source_set_exit_callback(ctx->source, playback_cancelled, ctx);
 
   // Detect if media source has audio
   if (ctx->audio_enabled && ctx->source) {
@@ -518,12 +520,12 @@ void session_capture_destroy(session_capture_ctx_t *ctx) {
 
 static bool load_cancelled(void *data) {
   session_capture_ctx_t *ctx = data;
-  return shutdown_is_requested() || atomic_load_bool(&ctx->load_cancel);
+  return playback_cancelled(ctx) || atomic_load_bool(&ctx->load_cancel);
 }
 
 static bool playback_cancelled(void *data) {
-  (void)data;
-  return shutdown_is_requested();
+  session_capture_ctx_t *ctx = data;
+  return shutdown_is_requested() || (ctx && ctx->should_exit_callback && ctx->should_exit_callback(ctx->callback_data));
 }
 
 static void *load_media_worker(void *data) {

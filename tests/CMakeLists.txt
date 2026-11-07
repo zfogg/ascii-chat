@@ -2141,9 +2141,9 @@ if(BUILD_TESTS AND TARGET ascii-chat)
     add_executable(test-yt-dlp-fixture standalone/media/fake_yt_dlp.c)
     set_target_properties(test-yt-dlp-fixture PROPERTIES OUTPUT_NAME yt-dlp
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/test-fixtures")
-    add_executable(test-extractor-audio standalone/media/extractor_audio_probe.c)
+    add_executable(test-extractor-audio standalone/media/extractor_audio_probe.c standalone/media/extractor_cpp_probe.cpp)
     target_link_libraries(test-extractor-audio PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
-    target_include_directories(test-extractor-audio PRIVATE ${CMAKE_BINARY_DIR}/generated)
+    target_include_directories(test-extractor-audio PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated)
     apply_sanitizers_to_target(test-extractor-audio)
     set_target_properties(test-extractor-audio PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")

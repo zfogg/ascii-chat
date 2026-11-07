@@ -21,11 +21,11 @@ static audio_context_t audio;
 static bool audio_running, fail_audio_start;
 static unsigned starts, stops, destroyed;
 static media_source_t *test_open(media_source_type_t type, const char *path, bool (*cancel)(void *), void *data) {
-  if (!strcmp(path, "fail")) {
+  if (path && !strcmp(path, "fail")) {
     SET_ERRNO(ERROR_MEDIA_OPEN, "Injected load failure");
     return NULL;
   }
-  if (!strcmp(path, "cancel")) {
+  if (path && !strcmp(path, "cancel")) {
     while (!cancel(data))
       platform_sleep_ms(1);
     return NULL;

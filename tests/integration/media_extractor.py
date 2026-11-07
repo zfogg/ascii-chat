@@ -171,6 +171,19 @@ class MediaExtractor(unittest.TestCase):
                                 env=env, cwd=self.root, capture_output=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
 
+    def test_capture_initialization_honors_configured_cancellation(self):
+        """A caller's exit callback interrupts initial media extraction."""
+        env = dict(self.env, FAKE_YTDLP_MODE="hang")
+        result = subprocess.run([AUDIO_PROBE, self.base + "/watch", "--expect-capture-cancel"],
+                                env=env, cwd=self.root, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
+
+    def test_extractor_api_links_from_cpp(self):
+        """The public extractor declaration links to the C implementation from C++."""
+        result = subprocess.run([AUDIO_PROBE, self.base + "/watch", "--expect-cpp-linkage"],
+                                env=self.env, cwd=self.root, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
+
     def test_separate_audio_produces_samples(self):
         """Decode audio from a separate extracted stream."""
         env = dict(self.env, FAKE_YTDLP_MODE="split")

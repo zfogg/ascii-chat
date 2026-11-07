@@ -20,15 +20,15 @@ typedef struct {
   char proxy[YT_DLP_PROXY_CAPACITY];
 } yt_dlp_request_options_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dlp_options, char *output_url,
                                               size_t output_size, char *audio_url, size_t audio_size,
                                               yt_dlp_request_options_t *video_options,
                                               yt_dlp_request_options_t *audio_options, bool (*cancel)(void *),
                                               void *data);
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * @brief Extract stream URL using yt-dlp with optional parameters
