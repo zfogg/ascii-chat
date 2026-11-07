@@ -441,11 +441,13 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   yyjson_val *format_value = mcp_get(a, "output_format"), *output_value = mcp_get(a, "output_path");
   const char *output_name = yyjson_is_str(output_value) ? yyjson_get_str(output_value) : "";
   const char *output_ext = strrchr(output_name, '.');
-  bool gif_auto = ((yyjson_is_str(format_value) && !strcmp(yyjson_get_str(format_value), "gif")) ||
-                   (output_ext && !strcmp(output_ext, ".gif"))) &&
-                  (tool == MCP_URL || tool == MCP_FILE) &&
-                  (mcp_get(a, "url") || mcp_get(a, "path") || mcp_get(a, "data_base64")) &&
-                  !mcp_get(opts, "snapshot") && !mcp_get(opts, "snapshot-delay");
+  bool gif_requested = yyjson_is_str(format_value) && !strcmp(yyjson_get_str(format_value), "gif");
+  bool gif_path = output_ext && !strcmp(output_ext, ".gif");
+  bool gif_output = gif_requested || gif_path;
+  bool media_tool = tool == MCP_URL || tool == MCP_FILE;
+  bool media_source = mcp_get(a, "url") || mcp_get(a, "path") || mcp_get(a, "data_base64");
+  bool snapshot_requested = mcp_get(opts, "snapshot") || mcp_get(opts, "snapshot-delay");
+  bool gif_auto = gif_output && media_tool && media_source && !snapshot_requested;
   arg(r, exe);
   arg(r, "--log-level=error");
   arg(r, "--no-check-update");
