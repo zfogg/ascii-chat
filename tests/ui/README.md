@@ -12,7 +12,7 @@ cover the adjacent session/Run lines, centering, compact terminals, long-string
 wrapping, creating/joining states, animation, and terminal bounds:
 
 ```sh
-python tests/ui/test_invitation.py build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/native/test_ui_probes.py --shared-library build/bin/asciichat.dll -k invitation
 ```
 
 On Linux/macOS, pass the built `libasciichat.so` or `libasciichat.dylib` instead.
@@ -22,7 +22,7 @@ The Windows integration test uses ConPTY and a local discovery service. Install
 `pywinpty` and `pyte` in a test virtual environment, then run:
 
 ```powershell
-python tests/ui/test_discovery_terminal.py build/bin/ascii-chat.exe
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/ui_discovery --ascii-chat-binary build/bin/ascii-chat.exe --run-manual-discovery -k terminal
 ```
 
 It verifies the rendered waiting screen with a local camera test pattern,
@@ -33,13 +33,13 @@ exercises the host transport directly; it does not test ACDS TCP host negotiatio
 
 The test chooses ephemeral local ports, creates its database under the build
 directory, and cleans up the processes it starts. Terminal transcripts, screen
-text, and logs are saved in `build/invitation-terminal-test/`. The ordinary
+text, and logs are saved in the pytest temporary directory. The ordinary
 application discovery identity/configuration behavior still applies.
 
 Splash lifecycle regressions can also be checked against the shared library:
 
 ```powershell
-python tests/ui/test_splash_lifecycle.py build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/native/test_ui_probes.py --shared-library build/bin/asciichat.dll -k splash
 ```
 
 This checks that a zero-delay snapshot skips the minimum splash duration and
@@ -51,7 +51,7 @@ a timeout. These checks pass on Windows and Linux with AddressSanitizer.
 On Linux with tmux installed, run the native call test (also suitable for Docker):
 
 ```sh
-python tests/ui/test_discovery_tmux.py build/bin/ascii-chat build/tmux-validation
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/ui_discovery --ascii-chat-binary build/bin/ascii-chat --run-manual-discovery -k tmux
 ```
 
 It runs a local ACDS and two default-mode discovery peers in private 80x24 tmux

@@ -39,7 +39,7 @@ Build with the default Clang/Ninja preset, then:
 
 ```sh
 cmake --build build --target ascii-chat test-crypto-logging
-python tests/standalone/logging/run.py build/bin/test-crypto-logging
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/crypto --crypto-logging-probe build/bin/test-crypto-logging
 ```
 
 Use `.exe` on Windows. The standalone test uses the production crypto and logger,
