@@ -156,24 +156,13 @@ static char *extract_http_body(const char *response, size_t response_len) {
   return body;
 }
 
-/**
- * Check if HTTP response indicates success (200 OK)
- */
-static asciichat_error_t check_http_status(const char *response) {
-  // Look for "HTTP/1.x 200 OK"
-  if (strlen(response) < 12 || strncmp(response, "HTTP/1.", sizeof("HTTP/1.") - 1) != 0 || response[8] != ' ' ||
-      response[9] < '0' || response[9] > '9' || response[10] < '0' || response[10] > '9' || response[11] < '0' ||
-      response[11] > '9' || (response[12] != ' ' && response[12] != '\r')) {
-    return SET_ERRNO(ERROR_NETWORK, "Invalid HTTP response: %s", response);
-  }
-
-  // Skip to status code
-  const char *status = response + 9;
-  if (strncmp(status, "200", 3) != 0) {
-    return SET_ERRNO(ERROR_NETWORK, "HTTP request failed: %.50s", response);
-  }
-
-  return ASCIICHAT_OK;
+// Return the status code, or -1 for a malformed status line.
+static int parse_http_status(const char *response, size_t length) {
+  if (length < 13 || strncmp(response, "HTTP/1.", sizeof("HTTP/1.") - 1) != 0 || response[7] == '\0' ||
+      response[8] != ' ' || response[9] < '0' || response[9] > '9' || response[10] < '0' || response[10] > '9' ||
+      response[11] < '0' || response[11] > '9' || (response[12] != ' ' && response[12] != '\r'))
+    return -1;
+  return (response[9] - '0') * 100 + (response[10] - '0') * 10 + response[11] - '0';
 }
 
 // ============================================================================
@@ -186,6 +175,7 @@ static asciichat_error_t check_http_status(const char *response) {
 char *https_get(const char *hostname, const char *path) {
   ASCII_OTEL_SCOPE(HTTP);
   ascii_otel_http(&otel_scope, hostname, path);
+  char *body = NULL;
   if (!hostname || !path) {
     log_error("Invalid arguments");
     return NULL;
@@ -367,39 +357,31 @@ char *https_get(const char *hostname, const char *path) {
   socket_close(sock);
 
   // Parse HTTP response
-  if (response_len >= 12 && strncmp(response_buf, "HTTP/1.", sizeof("HTTP/1.") - 1) == 0 && response_buf[8] == ' ' &&
-      response_buf[9] >= '0' && response_buf[9] <= '9' && response_buf[10] >= '0' && response_buf[10] <= '9' &&
-      response_buf[11] >= '0' && response_buf[11] <= '9' && otel_scope.retained) {
-    int code = (response_buf[9] - '0') * 100 + (response_buf[10] - '0') * 10 + response_buf[11] - '0';
+  int code = parse_http_status(response_buf, response_len);
+  if (code >= 0 && otel_scope.retained)
     gotel_http_attributes(&otel_scope.scope, "GET", code);
-  }
-  asciichat_error_t status = check_http_status(response_buf);
-  if (status != ASCIICHAT_OK) {
+  if (code != 200) {
+    if (code < 0)
+      SET_ERRNO(ERROR_NETWORK, "Invalid HTTP response: %s", response_buf);
+    else
+      SET_ERRNO(ERROR_NETWORK, "HTTP request failed: %.50s", response_buf);
     SAFE_FREE(response_buf);
     SAFE_FREE(iobuf);
     goto cleanup_anchors;
   }
 
-  char *body = extract_http_body(response_buf, response_len);
+  body = extract_http_body(response_buf, response_len);
   if (body)
     ascii_otel_http_status(&otel_scope, 200);
   SAFE_FREE(response_buf);
   SAFE_FREE(iobuf);
-
-  // Cleanup trust anchors
-  for (size_t i = 0; i < anchors.ptr; i++) {
-    free_ta_contents(&anchors.buf[i]);
-  }
-  SAFE_FREE(anchors.buf);
-
-  return body;
 
 cleanup_anchors:
   for (size_t i = 0; i < anchors.ptr; i++) {
     free_ta_contents(&anchors.buf[i]);
   }
   SAFE_FREE(anchors.buf);
-  return NULL;
+  return body;
 }
 
 // NOTE: fetch_github_ssh_keys, fetch_gitlab_ssh_keys, fetch_github_gpg_keys,
