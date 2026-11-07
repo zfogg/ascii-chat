@@ -528,11 +528,41 @@ typedef struct {
 // weighted by glyph coverage, so a small feature is not colored by its corner.
 static uint32_t glyph_foreground(const glyph_candidate_t *glyph, const int16_t samples[3][16], const int sums[3]) {
   unsigned channels[3], peak = 0;
+  int order[16];
+  int luminance[16];
+  for (int i = 0; i < 16; ++i) {
+    luminance[i] = (77 * samples[0][i] + 150 * samples[1][i] + 29 * samples[2][i]) >> 8;
+    int j = i;
+    while (j > 0 && luminance[order[j - 1]] > luminance[i]) {
+      order[j] = order[j - 1];
+      --j;
+    }
+    order[j] = i;
+  }
+  int median = order[8];
+  int weighted_luma = 0;
+  for (int i = 0; i < 16; ++i)
+    weighted_luma += luminance[i] * glyph->mask[i];
+  if (glyph->sum) {
+    int covered = 0;
+    for (int i = 0; i < 16; ++i) {
+      covered += glyph->mask[order[i]];
+      if (covered * 2 >= glyph->sum) {
+        median = order[i];
+        break;
+      }
+    }
+  }
   for (int c = 0; c < 3; ++c) {
     int weighted = 0;
     for (int i = 0; i < 16; ++i)
       weighted += samples[c][i] * glyph->mask[i];
-    channels[c] = glyph->sum ? (unsigned)((weighted + glyph->sum / 2) / glyph->sum) : (unsigned)((sums[c] + 8) / 16);
+    unsigned average =
+        glyph->sum ? (unsigned)((weighted + glyph->sum / 2) / glyph->sum) : (unsigned)((sums[c] + 8) / 16);
+    // Blend with a covered median pixel to reduce isolated outliers without
+    // creating colors by independently taking a median of each channel.
+    bool representative = !glyph->sum || luminance[median] * glyph->sum * 2 >= weighted_luma;
+    channels[c] = representative ? (average + (unsigned)samples[c][median] + 1) / 2 : average;
     if (channels[c] > peak)
       peak = channels[c];
   }

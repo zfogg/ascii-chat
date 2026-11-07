@@ -955,7 +955,18 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   decode(color, cells, 2, 1, true);
   int red_ink = (cells[0].fg >> 16) & 255;
   int blue_ink = cells[0].fg & 255;
-  cr_assert(red_ink >= 128 && blue_ink - red_ink <= 4, "glyph color must reflect the entire cell, not its first pixel");
+  cr_assert(red_ink >= 128 && blue_ink - red_ink <= 8, "glyph color must reflect the entire cell, not its first pixel");
+  SAFE_FREE(color);
+
+  for (int i = 0; i < 16 * 8; ++i)
+    pixels[i] = (rgb_pixel_t){100, 100, 100};
+  pixels[0] = (rgb_pixel_t){0, 255, 0};
+  color = ascii_render_glyph_match(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x88");
+  cr_assert_not_null(color);
+  decode(color, cells, 2, 1, true);
+  int green_ink = (cells[0].fg >> 8) & 255;
+  red_ink = (cells[0].fg >> 16) & 255;
+  cr_assert(green_ink - red_ink <= 5, "one noisy pixel must not dominate the glyph color");
   SAFE_FREE(color);
 
   rgb_pixel_t split_pixels[64];
