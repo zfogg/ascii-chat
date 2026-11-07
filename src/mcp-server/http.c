@@ -65,7 +65,7 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     if (!h)
       return -1;
     clear_session(h);
-    if (s->policy.restricted && !strncmp((const char *)in, "/downloads/", 11)) {
+    if (s->policy.restricted && !strncmp((const char *)in, "/downloads/", sizeof("/downloads/") - 1)) {
       if (lws_hdr_total_length(wsi, WSI_TOKEN_GET_URI) <= 0)
         return respond(wsi, h, 405, NULL);
       const char *name = (const char *)in + 11;
@@ -118,7 +118,7 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
       return respond(wsi, h, 405, NULL);
     char type[MCP_SERVER_HTTP_TYPE_BUFFER_SIZE];
     lws_hdr_copy(wsi, type, sizeof(type), WSI_TOKEN_HTTP_CONTENT_TYPE);
-    if (strncmp(type, "application/json", 16))
+    if (strncmp(type, "application/json", sizeof("application/json") - 1))
       return respond(wsi, h, 415, NULL);
     char accept[MCP_SERVER_HTTP_ACCEPT_BUFFER_SIZE];
     lws_hdr_copy(wsi, accept, sizeof(accept), WSI_TOKEN_HTTP_ACCEPT);

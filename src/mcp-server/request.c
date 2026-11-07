@@ -354,8 +354,9 @@ static asciichat_error_t source_url(const mcp_policy_t *p, yyjson_val *v, mcp_re
   if (!yyjson_is_str(v) || !*yyjson_get_str(v) || yyjson_get_len(v) > 4000)
     return SET_ERRNO(ERROR_INVALID_PARAM, "url must be a nonempty string");
   const char *url = yyjson_get_str(v);
-  if (strncmp(url, "https://", 8) && strncmp(url, "http://", 7) &&
-      (p->restricted || (strncmp(url, "rtsp://", 7) && strncmp(url, "rtmp://", 7))))
+  if (strncmp(url, "https://", sizeof("https://") - 1) && strncmp(url, "http://", sizeof("http://") - 1) &&
+      (p->restricted ||
+       (strncmp(url, "rtsp://", sizeof("rtsp://") - 1) && strncmp(url, "rtmp://", sizeof("rtmp://") - 1))))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported URL scheme");
   return option(r, "url", url);
 }

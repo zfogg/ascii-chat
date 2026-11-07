@@ -34,9 +34,9 @@ int mcp_server_main(void) {
                              .downloads_url_prefix = GET_OPTION(mcp_downloads_url_prefix)};
   if (s->policy.restricted && s->policy.hosted && s->policy.downloads_url_prefix && *s->policy.downloads_url_prefix) {
     const char *prefix = s->policy.downloads_url_prefix;
-    const char *authority = !strncmp(prefix, "https://", 8)  ? prefix + 8
-                            : !strncmp(prefix, "http://", 7) ? prefix + 7
-                                                             : NULL;
+    const char *authority = !strncmp(prefix, "https://", sizeof("https://") - 1) ? prefix + 8
+                            : !strncmp(prefix, "http://", sizeof("http://") - 1) ? prefix + 7
+                                                                                 : NULL;
     if (!authority || !*authority || *authority == '/' || strpbrk(prefix, " \t\r\n?#")) {
       SAFE_FREE(s);
       return SET_ERRNO(ERROR_CONFIG, "--downloads-url-prefix must be an HTTP(S) URL without query or fragment");
