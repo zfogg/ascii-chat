@@ -271,8 +271,10 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
                                           stdin=subprocess.PIPE, stdout=advertiser_output, stderr=subprocess.STDOUT,
                                           text=True, env=os.environ.copy())
             deadline = time.monotonic() + 30
-            while "READY" not in advertiser_log.read_text(errors="replace"):
-                assert advertiser.poll() is None and time.monotonic() < deadline, "Could not start mDNS advertisements"
+            while "READY" not in (advertiser_text := advertiser_log.read_text(errors="replace")):
+                returncode = advertiser.poll()
+                assert returncode is None and time.monotonic() < deadline, (
+                    f"Could not start mDNS advertisements: rc={returncode}\n{advertiser_text[-3000:]}")
                 time.sleep(.05)
             boundary = client("boundary")
             boundary.expect(lambda text: "LAN servers" in text and " [12]" in text,
