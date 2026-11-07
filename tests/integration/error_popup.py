@@ -12,41 +12,7 @@ import re
 import subprocess
 import tempfile
 import time
-from terminal_ui import Terminal
-
-
-def capture(term, directory, name):
-    directory.mkdir(parents=True, exist_ok=True)
-    (directory / f"{name}.txt").write_text("\n".join(term.screen.display), encoding="utf-8")
-    (directory / f"{name}.ansi").write_text("".join(term.raw), encoding="utf-8")
-    from PIL import Image, ImageDraw, ImageFont
-    fonts = [Path("C:/Windows/Fonts/consola.ttf"), Path("/System/Library/Fonts/Menlo.ttc"),
-             Path("/usr/share/fonts/TTF/DejaVuSansMono.ttf"),
-             Path("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf")]
-    font_path = next((p for p in fonts if p.exists()), None)
-    if font_path is None:
-        raise RuntimeError("Install a monospace font to capture terminal screenshots")
-    font = ImageFont.truetype(str(font_path), 16)
-    cell_width = max(1, round(font.getlength("M")))
-    line_height = 21
-    image = Image.new("RGB", (term.screen.columns * cell_width + 24, term.screen.lines * line_height + 24), "#10151c")
-    draw = ImageDraw.Draw(image)
-    palette = {"black": "#10151c", "red": "#cd3131", "green": "#0dbc79",
-               "yellow": "#e5e510", "blue": "#2472c8", "magenta": "#bc3fbc", "cyan": "#11a8cd", "white": "#e5e5e5"}
-
-    def color(value, fallback):
-        return palette.get(value, f"#{value}" if isinstance(value, str) and len(value) == 6 else fallback)
-
-    for row, text in enumerate(term.screen.display):
-        for col, character in enumerate(text):
-            cell = term.screen.buffer[row][col]
-            fg, bg = color(cell.fg, "#e1e8ed"), color(cell.bg, "#10151c")
-            if cell.reverse:
-                fg, bg = bg, fg
-            x, y = 12 + col * cell_width, 12 + row * line_height
-            draw.rectangle((x, y, x + cell_width - 1, y + line_height - 1), fill=bg)
-            draw.text((x, y), character, font=font, fill=fg)
-    image.save(directory / f"{name}.png")
+from ascii_chat_tests.terminal import Terminal, capture
 
 
 class Fixture:
@@ -165,16 +131,17 @@ def navigation(args):
         assert shortcut_color not in ("default", color_of(f.term, "? Help", 2))
         if args.diagnostics:
             assert color_of(f.term, "produce_errors") == shortcut_color
+            # Internal frame counts vary by platform. Check a displayed frame
+            # at the fixture error site and its function/source-line colors.
+            frame = next(((row, re.search(r"\[\d+\].*?([\w:]+)\(\).*?error_popup_fixture\.c:(\d+)", line))
+                          for row, line in enumerate(f.term.screen.display)
+                          if re.search(r"\[\d+\].*?([\w:]+)\(\).*?error_popup_fixture\.c:(\d+)", line)), None)
+            assert frame, "Backtrace did not identify the fixture error site"
+            row, match = frame
+            assert f.term.screen.buffer[row][match.start(1)].fg == shortcut_color
+            assert f.term.screen.buffer[row][match.start(2)].fg == thread_color
             if sys.platform == "win32":
                 assert color_of(f.term, "[asciichat.dll]", 1) == "default"
-                frame = next(line for line in f.term.screen.display if "[0]" in line)
-                function = re.search(r"\] ([^ ()]+)\(\)", frame)
-                assert function, frame
-                assert color_of(f.term, function.group(1) + "()") == shortcut_color
-                assert color_of(f.term, "error_popup_fixture.c:", len("error_popup_fixture.c:")) == thread_color
-            else:
-                assert color_of(f.term, "backtrace_capture") == shortcut_color
-                assert color_of(f.term, "backtrace.c:", len("backtrace.c:")) == thread_color
             assert name_color != shortcut_color
         f.absent("Left / Right")
         f.absent("Esc / q / Enter")

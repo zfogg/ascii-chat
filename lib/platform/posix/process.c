@@ -22,6 +22,13 @@
 #ifdef __APPLE__
 #include <mach/mach.h>
 #endif
+
+asciichat_error_t process_utf8_arguments(int *argc, char ***argv) {
+  (void)argc;
+  (void)argv;
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t platform_process_stats(platform_process_stats_t *out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing process stats output");

@@ -17,7 +17,7 @@ import re
 import statistics
 import tempfile
 import time
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 if os.name == "nt":
     from windows_console import WindowsConsole as Terminal
 

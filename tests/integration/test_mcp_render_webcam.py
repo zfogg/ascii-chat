@@ -10,6 +10,7 @@ from pathlib import Path as _PolicyPath
 import sys as _policy_sys
 _policy_sys.path.insert(0, str(_PolicyPath(__file__).resolve().parents[1]))
 import _environment  # noqa: F401,E402
+from ascii_chat_tests.jsonrpc import JsonRpcProcess
 
 import argparse
 import hashlib
@@ -39,51 +40,18 @@ class Rpc:
     def __init__(self, binary, evidence):
         self.evidence = evidence
         self.messages = []
-        self.sequence = 0
-        self.lines = queue.Queue()
-        self.stderr = (evidence / "server.stderr.txt").open("w", encoding="utf-8")
-        self.process = subprocess.Popen([str(binary), "mcp-server"], stdin=subprocess.PIPE,
-                                        stdout=subprocess.PIPE, stderr=self.stderr,
-                                        text=True, encoding="utf-8", cwd=ROOT)
-        def reader():
-            for line in self.process.stdout:
-                self.lines.put(line)
-            self.lines.put(None)
-        self.reader = threading.Thread(target=reader, daemon=True)
-        self.reader.start()
+        self.rpc = JsonRpcProcess([str(binary), "mcp-server"], evidence / "server.stderr.txt", cwd=ROOT)
 
     def send(self, method, params, notification=False):
-        self.sequence += 1
-        message = {"jsonrpc": "2.0", "method": method, "params": params}
-        if not notification:
-            message["id"] = self.sequence
-        self.messages.append({"sent": message})
-        self.process.stdin.write(json.dumps(message) + "\n")
-        self.process.stdin.flush()
-        if notification:
-            return None
-        while True:
-            line = self.lines.get(timeout=90)
-            if line is None:
-                raise AssertionError("MCP exited before replying; inspect server.stderr.txt")
-            response = json.loads(line)
-            self.messages.append({"received": response})
-            if response.get("id") == message["id"]:
-                return response
+        def record(direction, message):
+            self.messages.append({"sent" if direction == "request" else "received": message})
+        return self.rpc.request(method, params, notification=notification, on_message=record)
 
     def call(self, arguments):
         return self.send("tools/call", {"name": "render_webcam", "arguments": arguments})
 
     def close(self):
-        self.process.stdin.close()
-        try:
-            self.process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            self.process.kill()
-            self.process.wait(timeout=10)
-        self.reader.join(timeout=2)
-        self.process.stdout.close()
-        self.stderr.close()
+        self.rpc.close()
         (self.evidence / "protocol.json").write_text(json.dumps(self.messages, indent=2), encoding="utf-8")
 
 

@@ -33,7 +33,8 @@ RUN pacman -Sy --noconfirm git
 # - Add --noconfirm for non-interactive pacman installs
 # - Remove sudo (running as root in Docker)
 COPY scripts/install-deps.sh /tmp/install-deps.sh
-RUN chmod +x /tmp/install-deps.sh && \
+RUN sed -i 's/\r$//' /tmp/install-deps.sh && \
+    chmod +x /tmp/install-deps.sh && \
     sed -i 's/git submodule update --recursive --init --depth 1/true/' /tmp/install-deps.sh && \
     sed -i 's/pacman -S --needed/pacman -S --noconfirm --needed/' /tmp/install-deps.sh && \
     /tmp/install-deps.sh
@@ -52,6 +53,9 @@ RUN pacman -S --noconfirm --needed \
   ttf-dejavu \
   && pacman -Scc --noconfirm \
   && rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/*
+
+# uv manages the locked Python test environment in the build tree.
+COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /usr/local/bin/uv
 
 # Set working directory
 WORKDIR /app

@@ -9,7 +9,7 @@ import _environment  # noqa: F401
 import argparse
 from pathlib import Path
 import tempfile
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 from sync_tui_modes import capture
 
 CASES = [

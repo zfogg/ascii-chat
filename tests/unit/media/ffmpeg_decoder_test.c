@@ -18,6 +18,7 @@ static int fixture_fd = -1;
 static ffmpeg_decoder_t *decoder;
 
 static void cleanup(void) {
+  errno_notifications_enable(false);
   ffmpeg_decoder_destroy(decoder);
   decoder = NULL;
   if (fixture_fd >= 0) {
@@ -86,6 +87,7 @@ Test(ffmpeg_decoder, cancelled_prefetch_is_not_a_decode_failure, .timeout = 10) 
   static atomic_t callbacks;
   atomic_store_int(&callbacks, 0);
   ffmpeg_decoder_set_exit_callback(decoder, cancel_video_read, &callbacks);
+  errno_notifications_enable(true);
   cr_assert_eq(ffmpeg_decoder_start_prefetch(decoder), ASCIICHAT_OK);
   uint64_t deadline = platform_get_monotonic_time_us() + 5000000;
   image_t *frame = NULL;
@@ -99,6 +101,7 @@ Test(ffmpeg_decoder, cancelled_prefetch_is_not_a_decode_failure, .timeout = 10) 
   // publishing its result. Stop joins it before inspecting the final state.
   cr_assert_geq(atomic_load_int(&callbacks), 2);
   ffmpeg_decoder_stop_prefetch(decoder);
+  cr_assert_not(errno_notifications_pending(), "Cancellation must not leave an error popup");
   cr_assert_neq(ffmpeg_decoder_poll_video(decoder, &frame, &failure), FFMPEG_FRAME_FAILED, "%s",
                 failure.context_message);
   asciichat_errno_history_t history[32];

@@ -10,6 +10,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import os
@@ -22,11 +23,11 @@ import tempfile
 import time
 
 try:
-    from terminal_ui import Terminal, load_terminal_font
+    from ascii_chat_tests.terminal import Terminal, load_terminal_font
 except ImportError as error:
     print(f"SKIP: terminal prerequisites unavailable: {error}")
     raise SystemExit(77)
-from server_lifecycle import Service
+from ascii_chat_tests.process import Service
 
 
 def service_port_pairs(count):
@@ -105,8 +106,8 @@ def main():
             return service
 
         def client(name, destination=None, utf8="true", color="true", scan=True):
-            command = [str(binary), "--no-check-update", "--log-file", str(root / f"{name}.log"),
-                "--log-level", "debug", "--color", color, "--utf8", utf8, "client"]
+            command = cli_command(str(binary), "--log-file", str(root / f"{name}.log"),
+                "--log-level", "debug", "--color", color, "--utf8", utf8, "client")
             if destination:
                 command.append(destination)
             if scan:

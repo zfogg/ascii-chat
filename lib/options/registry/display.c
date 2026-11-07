@@ -35,6 +35,34 @@ static bool parse_zalgo(const char *arg, void *dest, char **error_msg) {
   return true;
 }
 
+static const char *renderer_values[] = {"luminance", "glyph", NULL};
+static const int renderer_integers[] = {ASCII_RENDERER_LUMINANCE, ASCII_RENDERER_GLYPH};
+static const char *renderer_descriptions[] = {"Map brightness to the selected palette",
+                                              "Experimental glyph shape matching", NULL};
+static const ascii_renderer_t default_renderer = ASCII_RENDERER_LUMINANCE;
+
+static bool parse_explicit_palette(const char *arg, void *dest, char **error_msg) {
+  if (!parse_palette_type(arg, dest, error_msg))
+    return false;
+  options_t *opts = (options_t *)((char *)dest - offsetof(options_t, palette_type));
+  opts->palette_explicit = true;
+  return true;
+}
+
+static bool parse_ascii_renderer(const char *arg, void *dest, char **error_msg) {
+  if (arg && dest && strcmp(arg, "luminance") == 0) {
+    *(ascii_renderer_t *)dest = ASCII_RENDERER_LUMINANCE;
+    return true;
+  }
+  if (arg && dest && strcmp(arg, "glyph") == 0) {
+    *(ascii_renderer_t *)dest = ASCII_RENDERER_GLYPH;
+    return true;
+  }
+  if (error_msg)
+    *error_msg = platform_strdup("--renderer requires luminance or glyph");
+  return false;
+}
+
 // ============================================================================
 // DISPLAY CATEGORY - Display layout options
 // ============================================================================
@@ -148,7 +176,7 @@ const registry_entry_t g_display_entries[] = {
      false,
      "ASCII_CHAT_PALETTE",
      NULL,
-     parse_palette_type,
+     parse_explicit_palette,
      false,
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
@@ -177,6 +205,22 @@ const registry_entry_t g_display_entries[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {0},
      NULL},
+    {.long_name = "renderer",
+     .type = OPTION_TYPE_CALLBACK,
+     .offset = offsetof(options_t, renderer),
+     .default_value = &default_renderer,
+     .default_value_size = sizeof(ascii_renderer_t),
+     .help_text = "Character selection: luminance (default) or experimental glyph matching. Glyph supports printable "
+                  "ASCII palettes; Unicode palettes use luminance.",
+     .group = "DISPLAY",
+     .arg_placeholder = "luminance|glyph",
+     .env_var_name = "ASCII_CHAT_RENDERER",
+     .parse_fn = parse_ascii_renderer,
+     .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     .metadata = {.enum_values = renderer_values,
+                  .enum_descriptions = renderer_descriptions,
+                  .enum_integer_values = renderer_integers,
+                  .input_type = OPTION_INPUT_ENUM}},
     {"stretch",
      '\0',
      OPTION_TYPE_BOOL,

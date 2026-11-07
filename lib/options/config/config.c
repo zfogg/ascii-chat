@@ -648,6 +648,11 @@ static void format_int(const char *field_ptr, size_t field_size, const config_op
     return;
   }
 
+  if (meta && meta->field_offset == offsetof(options_t, renderer)) {
+    SAFE_SNPRINTF(buf, bufsize, "\"%s\"", int_value == ASCII_RENDERER_GLYPH ? "glyph" : "luminance");
+    return;
+  }
+
   if (meta && meta->field_offset == offsetof(options_t, render_mode)) {
     const char *name = OPT_RENDER_MODE_FOREGROUND;
     if (int_value == RENDER_MODE_BACKGROUND) {
@@ -875,6 +880,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
           SAFE_STRNCPY(opts->palette_custom, chars_str, sizeof(opts->palette_custom));
           opts->palette_custom[sizeof(opts->palette_custom) - 1] = '\0';
           opts->palette_custom_set = true;
+          opts->palette_explicit = true;
           opts->palette_type = PALETTE_CUSTOM;
           option_set_flags[i] = true;
         } else {

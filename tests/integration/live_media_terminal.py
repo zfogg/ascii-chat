@@ -9,6 +9,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
 
 import argparse
 import contextlib
@@ -23,7 +24,7 @@ import tempfile
 import threading
 import time
 
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 
 if os.name == "nt":
     from windows_console import WindowsConsole as Terminal
@@ -114,11 +115,7 @@ def main():
             red_expression = "random(1)*255" if color == "red" else "0"
             blue_expression = "random(1)*255" if color == "blue" else "0"
             video = f"nullsrc=s=160x120:r=30,geq=r='{red_expression}':g=0:b='{blue_expression}'"
-            subprocess.run([
-                "ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", video,
-                "-f", "lavfi", "-i", f"sine=frequency={frequency}:sample_rate=48000", "-t", "10",
-                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "+faststart", str(path),
-            ], check=True, timeout=30)
+            lavfi_fixture([video, f"sine=frequency={frequency}:sample_rate=48000"], str(path), ffmpeg_options=["-v", "error", "-y"], output_options=["-t", "10", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "+faststart"], timeout=30)
         damaged = root / "damaged.mp4"
         damaged_bytes = bytearray(red.read_bytes())
         payload = damaged_bytes.index(b"mdat") + 4

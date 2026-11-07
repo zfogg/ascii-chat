@@ -6,23 +6,24 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import hashlib
 import json
 from pathlib import Path
 import time
-from tmux_rendering import Pane
+from ascii_chat_tests.tmux import Pane
 
 ap = argparse.ArgumentParser(description=__doc__)
 ap.add_argument("--binary", type=Path, required=True)
 ap.add_argument("--artifacts", type=Path, required=True)
 args = ap.parse_args()
 root = args.artifacts.resolve()
-p = Pane("halfblock-animation", [str(args.binary.resolve()), "--no-check-update", "--log-level", "warn",
+p = Pane("halfblock-animation", cli_command(str(args.binary.resolve()), "--log-level", "warn",
     "--log-file", str(root / "halfblock-animation" / "application.log"), "mirror", "--file", str(root / "media.mp4"),
     "--loop", "--audio=false", "--splash-screen=false", "--fps", "10", "--render-mode", "half-block",
-    "--color-mode", "truecolor"], root, 80, 30)
+    "--color-mode", "truecolor"), root, 80, 30)
 frames = []
 try:
     p.expect(lambda s: "▀" in s, "initial")

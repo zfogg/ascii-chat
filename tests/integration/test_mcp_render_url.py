@@ -7,6 +7,9 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _environment  # noqa: F401,E402
+from ascii_chat_tests.jsonrpc import JsonRpcProcess
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import time
@@ -22,47 +25,15 @@ import threading
 
 class Rpc:
     def __init__(self, binary, evidence):
-        self.log = (evidence / "server.stderr.txt").open("wb")
-        self.process = subprocess.Popen([str(binary), "mcp-server"], stdin=subprocess.PIPE,
-                                        stdout=subprocess.PIPE, stderr=self.log)
-        self.responses = queue.Queue()
         self.transcript = []
-        self.counter = 0
-        threading.Thread(target=self.read, daemon=True).start()
-
-    def read(self):
-        for line in self.process.stdout:
-            self.responses.put(line)
-        self.responses.put(None)
+        self.rpc = JsonRpcProcess([str(binary), "mcp-server"], evidence / "server.stderr.txt")
 
     def request(self, method, params=None, notification=False):
-        self.counter += 1
-        request = {"jsonrpc": "2.0", "method": method}
-        if not notification:
-            request["id"] = self.counter
-        if params is not None:
-            request["params"] = params
-        self.transcript.append({"request": request})
-        self.process.stdin.write((json.dumps(request) + "\n").encode())
-        self.process.stdin.flush()
-        if notification:
-            return None
-        while True:
-            line = self.responses.get(timeout=90)
-            assert line is not None, "MCP process exited before replying"
-            response = json.loads(line)
-            self.transcript.append({"response": response})
-            if response.get("id") == request["id"]:
-                return response
+        return self.rpc.request(method, params, notification=notification,
+                                on_message=lambda direction, message: self.transcript.append({direction: message}))
 
     def close(self, evidence):
-        self.process.stdin.close()
-        try:
-            self.process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            self.process.kill()
-            self.process.wait()
-        self.log.close()
+        self.rpc.close()
         (evidence / "protocol.json").write_text(json.dumps(self.transcript, indent=2), encoding="utf-8")
 
 
@@ -83,9 +54,7 @@ def main():
     evidence = args.output.resolve() / f"run-{time.time_ns()}"
     evidence.mkdir(parents=True, exist_ok=True)
     fixture = evidence / "pattern.png"
-    subprocess.run([ffmpeg, "-y", "-v", "error", "-f", "lavfi", "-i",
-                    "testsrc=size=160x120:rate=1", "-frames:v", "1", str(fixture)],
-                   check=True, timeout=30)
+    lavfi_fixture(["testsrc=size=160x120:rate=1"], str(fixture), ffmpeg_options=["-y", "-v", "error"], output_options=["-frames:v", "1"], timeout=30)
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(evidence))
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -105,9 +74,9 @@ def main():
         text = "\n".join(block["text"] for block in blocks if block.get("type") == "text")
         assert text.strip(), response
         (evidence / "mcp.txt").write_text(text, encoding="utf-8")
-        command = [str(binary), "--no-check-update", "mirror", "--url", url, "--snapshot",
+        command = cli_command(str(binary), "mirror", "--url", url, "--snapshot",
                    "--snapshot-delay", "0", "--width", "40", "--height", "16",
-                   "--color-mode", "none", "--strip-ansi=true", "--audio=false", "--splash-screen=false"]
+                   "--color-mode", "none", "--strip-ansi=true", "--audio=false", "--splash-screen=false")
         (evidence / "cli-command.json").write_text(json.dumps(command, indent=2), encoding="utf-8")
         cli = subprocess.run(command, capture_output=True, timeout=90)
         (evidence / "cli.stdout.txt").write_bytes(cli.stdout)

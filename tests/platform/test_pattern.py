@@ -8,6 +8,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import clean_environment, run_cli
 
 import argparse
 import ctypes as c
@@ -87,12 +88,11 @@ def library_checks(path, output):
 
 
 def cli_checks(binary):
-    env=os.environ.copy()
-    for key in list(env):
-        if key.startswith("ASCII_CHAT_") or key == "WEBCAM_DISABLED": env.pop(key)
+    env=clean_environment()
+    env.pop("WEBCAM_DISABLED", None)
     def run(args,extra_env=None):
         with tempfile.TemporaryDirectory() as logs:
-            return subprocess.run([str(binary),"--no-check-update","--log-file",str(Path(logs)/"run.log"),*args],env={**env,**(extra_env or {})},stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=30)
+            return run_cli(binary,"--log-file",str(Path(logs)/"run.log"),*args,env={**env,**(extra_env or {})},stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=30)
     common=["--snapshot","--snapshot-delay","0","--audio=false","--splash-screen=false"]
     cases=0
     for selector in [[],["0"],["1"],["=0"],["=1"]]:

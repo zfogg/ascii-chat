@@ -74,6 +74,8 @@ static PLATFORM_THREAD_LOCAL bool g_suppress_notifications;
 static asciichat_error_context_t g_notifications[ASCIICHAT_ERRNO_HISTORY_SIZE];
 static size_t g_notification_first, g_notification_count;
 static uint64_t g_notification_dropped;
+// Dismissed errors remain in their owning stacks but no longer affect the title.
+static uint64_t g_title_dismissed_through;
 static bool g_notifications_enabled;
 static bool g_notifications_paused;
 static atomic_t g_notifications_pending = {0};
@@ -122,6 +124,8 @@ size_t errno_notifications_snapshot(asciichat_error_context_t *out, size_t capac
 
 void errno_notifications_dismiss(uint64_t through_id) {
   registry_lock();
+  if (through_id > g_title_dismissed_through)
+    g_title_dismissed_through = through_id;
   while (g_notification_count && g_notifications[g_notification_first].error_id <= through_id) {
     memset(&g_notifications[g_notification_first], 0, sizeof(g_notifications[0]));
     g_notification_first = (g_notification_first + 1) % ASCIICHAT_ERRNO_HISTORY_SIZE;
@@ -187,6 +191,45 @@ static error_thread_t *find_thread(uint64_t id) {
     if (thread->id == id)
       return thread;
   return NULL;
+}
+
+size_t errno_title_snapshot(asciichat_error_context_t *latest) {
+  asciichat_error_context_t newest = {0};
+  registry_lock();
+  size_t count = 0;
+  for (size_t i = 0; i < ASCIICHAT_ERRNO_MAX_THREADS; ++i) {
+    error_thread_t *thread = &g_threads[i];
+    for (int frame = thread->depth ? thread->top : NO_FRAME; frame != NO_FRAME; frame = g_frames[frame].next) {
+      const asciichat_error_context_t *entry = &g_frames[frame].context;
+      if (entry->error_id <= g_title_dismissed_through)
+        continue;
+      ++count;
+      if (entry->error_id > newest.error_id)
+        newest = *entry;
+    }
+  }
+  for (size_t i = 0; i < g_notification_count; ++i) {
+    const asciichat_error_context_t *entry =
+        &g_notifications[(g_notification_first + i) % ASCIICHAT_ERRNO_HISTORY_SIZE];
+    error_thread_t *thread = find_thread(entry->thread_id);
+    bool pending = false;
+    if (thread && thread->generation == entry->generation) {
+      for (int frame = thread->top; frame != NO_FRAME; frame = g_frames[frame].next) {
+        if (g_frames[frame].context.error_id == entry->error_id) {
+          pending = true;
+          break;
+        }
+      }
+    }
+    if (!pending)
+      ++count;
+    if (entry->error_id > newest.error_id)
+      newest = *entry;
+  }
+  if (latest)
+    *latest = newest;
+  registry_unlock();
+  return count;
 }
 
 static void initialize_locked(void) {

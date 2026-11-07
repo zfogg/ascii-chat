@@ -5,13 +5,14 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import os
 from pathlib import Path
 import tempfile
 
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 
 
 def main():
@@ -27,8 +28,8 @@ def main():
         os.environ.update(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root), XDG_CONFIG_HOME=str(root))
         term = None
         try:
-            term = Terminal([str(args.binary.resolve()), '--no-check-update', '--log-file', str(root / 'app.log'),
-                             'mirror', '--test-pattern', '1', '--audio=false', '--splash-screen=false', '--fps', '10'],
+            term = Terminal(cli_command(str(args.binary.resolve()), '--log-file', str(root / 'app.log'),
+                             'mirror', '--test-pattern', '1', '--audio=false', '--splash-screen=false', '--fps', '10'),
                             rows=40, cols=140)
             term.pump(2)
 

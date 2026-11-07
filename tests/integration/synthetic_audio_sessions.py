@@ -4,6 +4,9 @@ import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents
                                if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import start_cli
+from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import os
@@ -17,10 +20,7 @@ import time
 import unittest
 
 
-def free_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+from ascii_chat_tests.process import free_port
 
 
 class SyntheticAudioSessions(unittest.TestCase):
@@ -28,7 +28,7 @@ class SyntheticAudioSessions(unittest.TestCase):
         for codec in ("raw", "h264", "hevc"):
             with self.subTest(codec=codec), tempfile.TemporaryDirectory(prefix="ascii-synthetic-session-") as directory:
                 root = Path(directory)
-                env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
+                env = clean_environment()
                 env.update(HOME=str(root), XDG_CONFIG_HOME=str(root), TERM="xterm-256color",
                            ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none")
                 port = free_port()
@@ -42,9 +42,8 @@ class SyntheticAudioSessions(unittest.TestCase):
                     stdout = open(root / f"{name}.stdout", "wb")
                     stderr = open(root / f"{name}.stderr", "wb")
                     streams.extend((stdout, stderr))
-                    process = subprocess.Popen(
-                        [BINARY, "--no-check-update", "--log-level", "debug", "--log-file", str(root / f"{name}.log"),
-                         *arguments], env=env, stdout=stdout, stderr=stderr)
+                    process = start_cli(BINARY, "--log-level", "debug", "--log-file", str(root / f"{name}.log"),
+                         *arguments, env=env, stdout=stdout, stderr=stderr)
                     processes.append(process)
                     return process
 

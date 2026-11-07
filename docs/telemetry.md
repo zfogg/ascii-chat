@@ -64,7 +64,7 @@ those variables to enable export in tests.
 
 Collector-based OTEL smoke scripts now report skip code 77. In-process gotel
 transport tests still validate spans, metrics, sampling and failures without
-network I/O. `test_otel_disabled.py` runs real native media with explicit collector
+network I/O. `tests/python/integration/telemetry/test_disabled.py` runs real native media with explicit collector
 and signal overrides and asserts zero received requests. Historical exported-load
 measurements below describe earlier manual runs; they are not test permissions.
 
@@ -91,7 +91,7 @@ After configuring the native build, run the checker in its pinned Python
 environment:
 
 ```sh
-uv run --no-project --with-requirements tests/requirements-telemetry.txt python tests/scripts/check_query_names.py --build-dir build
+uv run --project tests/ascii_chat_tests --extra telemetry python tests/scripts/check_query_names.py --build-dir build
 ```
 
 Install the matching Spaniel verifier at its immutable source revision and make

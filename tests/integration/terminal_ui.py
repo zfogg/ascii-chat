@@ -11,6 +11,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 
 import argparse
@@ -29,81 +31,14 @@ import time
 prerequisites = ["pyte"] + ([] if os.name == "nt" else ["pexpect"])
 missing = [name for name in prerequisites if importlib.util.find_spec(name) is None]
 if missing:
-    print("SKIP: terminal tests need " + ", ".join(missing) + "; install tests/requirements-terminal.txt")
+    print("SKIP: terminal tests need " + ", ".join(missing) + "; run uv sync --project tests/ascii_chat_tests")
     raise SystemExit(77)
 
 import pyte
 
 
-def load_terminal_font(size):
-    """Use an installed monospace font on each native test platform."""
-    from PIL import ImageFont
-    candidates = ("C:/Windows/Fonts/consola.ttf", "/System/Library/Fonts/Menlo.ttc",
-                  "/usr/share/fonts/TTF/DejaVuSansMono.ttf",
-                  "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", "DejaVuSansMono.ttf")
-    for candidate in candidates:
-        try:
-            return ImageFont.truetype(candidate, size)
-        except OSError:
-            continue
-    raise RuntimeError("Install a monospace font to capture terminal screenshots")
-
-
-class CaptureScreen(pyte.Screen):
-    """Handle REP, used by the renderer and ConPTY to compress repeated cells."""
-
-    def reset(self):
-        self.last_character = ""
-        super().reset()
-
-    def draw(self, data):
-        super().draw(data)
-        if data:
-            self.last_character = data[-1]
-
-    def set_mode(self, *modes, **kwargs):
-        if kwargs.get("private") and 2026 in modes:
-            self.synchronized = True
-        super().set_mode(*modes, **kwargs)
-
-    def reset_mode(self, *modes, **kwargs):
-        super().reset_mode(*modes, **kwargs)
-        if kwargs.get("private") and 2026 in modes:
-            self.synchronized = False
-
-    def repeat_character(self, count=1):
-        if self.last_character:
-            self.draw(self.last_character * (count or 1))
-
-
-class CaptureStream(pyte.Stream):
-    csi = dict(pyte.Stream.csi, b="repeat_character")
-    events = pyte.Stream.events | {"repeat_character"}
-
-    def feed(self, data):
-        # Publish synchronized output as a single update, even when ConPTY splits
-        # its start/end markers across reads. Plain output remains immediate.
-        start, end = "\x1b[?2026h", "\x1b[?2026l"
-        self.pending_frame = getattr(self, "pending_frame", "") + data
-        while self.pending_frame:
-            first = self.pending_frame.find(start)
-            if first < 0:
-                tail = next((n for n in range(len(start) - 1, 0, -1)
-                             if self.pending_frame.endswith(start[:n])), 0)
-                ready = self.pending_frame[:-tail] if tail else self.pending_frame
-                self.pending_frame = self.pending_frame[-tail:] if tail else ""
-                if ready:
-                    super().feed(ready)
-                return
-            if first:
-                super().feed(self.pending_frame[:first])
-                self.pending_frame = self.pending_frame[first:]
-            last = self.pending_frame.find(end, len(start))
-            if last < 0:
-                return
-            last += len(end)
-            super().feed(self.pending_frame[:last])
-            self.pending_frame = self.pending_frame[last:]
+from ascii_chat_tests.terminal import CaptureScreen, CaptureStream, Terminal, load_terminal_font
+from ascii_chat_tests.process import free_port
 
 
 def check_capture_emulator():
@@ -119,126 +54,6 @@ def check_capture_emulator():
     stream.feed("\x1b[?2026l")
     assert screen.display[0].startswith("ZAAAA"), screen.display[0]
 
-
-
-class Terminal:
-    def __init__(self, argv, rows=12, cols=19, terminal_replies=False, code_page=65001, environment=None):
-        self.terminal_replies = terminal_replies
-        self.background_reply = "\x1b]11;rgb:0000/0000/0000\x1b\\"
-        self.query_tail = ""
-        self.screen = CaptureScreen(cols, rows)
-        self.stream = CaptureStream(self.screen)
-        self.output = queue.Queue()
-        self.raw = []
-        child_environment = os.environ.copy()
-        child_environment.update(environment or {})
-        if os.name == "nt":
-            from winpty import PtyProcess
-
-            # Match a UTF-8 terminal, including its console code page.
-            command = f"chcp {code_page}>nul & " + subprocess.list2cmdline(argv)
-            self.process = PtyProcess.spawn(
-                ["cmd.exe", "/d", "/c", command], dimensions=(rows, cols), env=child_environment
-            )
-        else:
-            import pexpect
-
-            self.process = pexpect.spawn(
-                argv[0], argv[1:], dimensions=(rows, cols), encoding="utf-8", env=child_environment
-            )
-        self.reader = threading.Thread(target=self._read, daemon=True)
-        self.reader.start()
-
-    def _read(self):
-        try:
-            while True:
-                if os.name == "nt":
-                    data = self.process.read(65536)
-                else:
-                    data = self.process.read_nonblocking(65536, timeout=None)
-                self.output.put(data)
-        except (EOFError, OSError):
-            pass
-        except Exception as exc:
-            if type(exc).__name__ != "EOF":
-                self.output.put(str(exc))
-
-    def pump(self, seconds=0.2):
-        deadline = time.monotonic() + seconds
-        while time.monotonic() < deadline:
-            try:
-                chunk = self.output.get(timeout=0.02)
-                self.raw.append(chunk)
-                self.stream.feed(chunk)
-                if self.terminal_replies:
-                    queries = self.query_tail + chunk
-                    query = "\x1b]11;?\x1b\\"
-                    for _ in range(queries.count(query)):
-                        try:
-                            self.write(self.background_reply)
-                        except (EOFError, OSError):
-                            # A queued query can outlive the exiting PTY child.
-                            pass
-                    self.query_tail = queries[-(len(query) - 1):]
-            except queue.Empty:
-                pass
-        return "\n".join(self.screen.display)
-
-    def expect(self, predicate, description, timeout=15):
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            text = self.pump()
-            if predicate(text):
-                return text
-        raise AssertionError(f"{description}\nRendered terminal:\n{text}")
-
-    def resize(self, rows, cols):
-        self.process.setwinsize(rows, cols)
-        self.screen.resize(rows, cols)
-
-    def write(self, text):
-        if os.name == "nt":
-            self.process.write(text)
-        else:
-            self.process.send(text)
-
-    def interrupt(self):
-        self.write("\x03")
-        deadline = time.monotonic() + 10
-        while time.monotonic() < deadline and self.process.isalive():
-            # The reader continues draining the PTY. Retain output without
-            # parsing queued frames while measuring the process exit deadline.
-            try:
-                self.raw.append(self.output.get(timeout=0.05))
-            except queue.Empty:
-                pass
-        if self.process.isalive():
-            diagnostics = ""
-            if os.name != "nt":
-                import termios
-                attributes = termios.tcgetattr(self.process.child_fd)
-                diagnostics = (f"; terminal ISIG={bool(attributes[3] & termios.ISIG)}"
-                               f", VINTR={attributes[6][termios.VINTR]!r}")
-            raise AssertionError(f"UI shutdown did not join its worker{diagnostics}\n"
-                                 + "".join(self.raw)[-4000:])
-
-    def close(self):
-        if os.name == "nt" and self.process.isalive():
-            try:
-                subprocess.run(["taskkill", "/PID", str(self.process.pid), "/T", "/F"],
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                               timeout=5, check=False)
-            except subprocess.TimeoutExpired:
-                pass
-        if os.name != "nt":
-            self.process.terminate(force=True)
-        self.reader.join(timeout=.2 if os.name == "nt" else 2)
-
-
-def free_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
 
 
 def check_update_centering(term, title):
@@ -313,12 +128,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix="ascii-ui-") as directory:
         root = Path(directory)
         media = root / "test.mp4"
-        subprocess.run(
-            ["ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
-             "testsrc2=size=160x120:rate=10", "-t", "12", "-c:v", "libx264",
-             "-pix_fmt", "yuv420p", str(media)], check=True
-        )
-        base = [binary, "--no-check-update", "--log-file", str(root / "application.log"), "--log-level", "info"]
+        lavfi_fixture(["testsrc2=size=160x120:rate=10"], str(media), ffmpeg_options=["-hide_banner", "-loglevel", "error"], output_options=["-t", "12", "-c:v", "libx264", "-pix_fmt", "yuv420p"])
+        base = cli_command(binary, "--log-file", str(root / "application.log"), "--log-level", "info")
         sessions = []
         sockets = []
 

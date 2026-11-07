@@ -40,6 +40,8 @@ export interface BinarySettingsConfig {
   colorMode: ColorMode;
   colorFilter: ColorFilter;
   palette: Palette;
+  renderer?: "luminance" | "glyph";
+  paletteExplicit?: boolean;
   paletteChars?: string;
   matrixRain?: boolean;
   zalgo?: number;
@@ -99,6 +101,8 @@ export function BinarySettings({
 }: BinarySettingsProps) {
   const dimensionsId = useId();
   const paletteInputId = useId();
+  const paletteSelectId = useId();
+  const rendererSelectId = useId();
   const configRef = useRef(config);
   const paletteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [paletteDraft, setPaletteDraft] = useState(
@@ -151,6 +155,7 @@ export function BinarySettings({
         onChange({
           ...configRef.current,
           palette: "custom",
+          paletteExplicit: true,
           paletteChars: value,
         });
       } else {
@@ -467,6 +472,31 @@ export function BinarySettings({
             </div>
           </Tooltip>
 
+          <Tooltip text="Choose luminance mapping or experimental glyph-shape matching. Unicode palettes use luminance.">
+            <div className="flex-1 min-w-[200px]">
+              <label
+                htmlFor={rendererSelectId}
+                className="block text-xs font-medium text-terminal-8 mb-1"
+              >
+                Text Art Render Algorithm
+              </label>
+              <select
+                id={rendererSelectId}
+                value={config.renderer ?? "luminance"}
+                onChange={(e) =>
+                  updateConfig({
+                    renderer: e.target.value as "luminance" | "glyph",
+                  })
+                }
+                disabled={disabled}
+                className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
+              >
+                <option value="luminance">Luminance</option>
+                <option value="glyph">Glyph matching</option>
+              </select>
+            </div>
+          </Tooltip>
+
           <Tooltip
             text={
               disabled
@@ -475,25 +505,45 @@ export function BinarySettings({
             }
           >
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-medium text-terminal-8 mb-1">
+              <label
+                htmlFor={paletteSelectId}
+                className="block text-xs font-medium text-terminal-8 mb-1"
+              >
                 Palette
               </label>
               <select
-                aria-label="Palette"
-                value={config.palette}
+                id={paletteSelectId}
+                value={
+                  config.renderer === "glyph" &&
+                  !config.paletteExplicit &&
+                  config.palette === "standard"
+                    ? "glyph-default"
+                    : config.palette
+                }
                 onChange={(e) => {
                   if (paletteTimerRef.current !== null) {
                     clearTimeout(paletteTimerRef.current);
                     paletteTimerRef.current = null;
-                    setPaletteDraft(
-                      config.paletteChars ?? DEFAULT_PALETTE_CHARS,
-                    );
+                    setPaletteDraft(config.paletteChars ?? DEFAULT_PALETTE_CHARS);
                   }
-                  updateConfig({ palette: e.target.value as Palette });
+                  e.target.value === "glyph-default"
+                    ? updateConfig({
+                        palette: "standard",
+                        paletteExplicit: false,
+                      })
+                    : updateConfig({
+                        palette: e.target.value as Palette,
+                        paletteExplicit: true,
+                      });
                 }}
                 disabled={disabled}
                 className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
               >
+                {config.renderer === "glyph" && (
+                  <option value="glyph-default">
+                    Glyph default (95 ASCII)
+                  </option>
+                )}
                 <option value="standard">Standard</option>
                 <option value="blocks">Blocks</option>
                 <option value="digital">Digital</option>

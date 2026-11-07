@@ -9,13 +9,15 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 from pathlib import Path
 import subprocess
 import shutil
 import tempfile
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 
 
 def video_visible(term, text):
@@ -40,15 +42,15 @@ def main():
         media = root / 'signal.mp4'
         ffmpeg = shutil.which('ffmpeg')
         assert ffmpeg, 'ffmpeg is required to generate test media'
-        subprocess.run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i',
-                        'testsrc2=size=160x120:rate=15', '-f', 'lavfi', '-i',
-                        'aevalsrc=0.5*sin(2*PI*(220+180*t)*t)*(0.6+0.4*sin(2*PI*2*t)):s=48000',
-                        '-t', '12', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', str(media)], check=True, timeout=60)
+        lavfi_fixture(['testsrc2=size=160x120:rate=15',
+                       'aevalsrc=0.5*sin(2*PI*(220+180*t)*t)*(0.6+0.4*sin(2*PI*2*t)):s=48000'],
+                      media, ffmpeg=ffmpeg, ffmpeg_options=['-hide_banner', '-loglevel', 'error'],
+                      output_options=['-t', '12', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac'], timeout=60)
         # Rejected hotkeys must preserve both the video and an active Matrix effect.
-        disabled = Terminal([binary, '--no-check-update', '--log-file',
+        disabled = Terminal(cli_command(binary, '--log-file',
                              str(root/'audio-disabled.log'), 'mirror', '--file', str(media),
                              '--loop', '--audio=false', '--splash-screen=false',
-                             '--color-mode', 'truecolor'], rows=45, cols=100)
+                             '--color-mode', 'truecolor'), rows=45, cols=100)
         try:
             disabled.pump(5)
             disabled.write('?')
@@ -69,10 +71,10 @@ def main():
             print('PASS audio-disabled keys preserve visualization and Matrix settings')
         finally:
             disabled.close()
-        term = Terminal([binary, '--no-check-update', '--log-file',
+        term = Terminal(cli_command(binary, '--log-file',
                          str(root/'audio-keys-runtime.log'), 'mirror', '--file', str(media),
                          '--loop', '--audio-source', 'media', '--volume', '0', '--splash-screen=false',
-                         '--color-mode', 'truecolor'], rows=45, cols=100)
+                         '--color-mode', 'truecolor'), rows=45, cols=100)
         try:
             term.pump(5)
             term.expect(lambda s: video_visible(term, s), 'Initial video frame missing')

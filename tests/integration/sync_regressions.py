@@ -24,10 +24,10 @@ prerequisites = ["pyte"] + ([] if os.name == "nt" else ["pexpect"])
 missing = [name for name in prerequisites if importlib.util.find_spec(name) is None]
 if missing:
     print("SKIP: sync terminal tests need " + ", ".join(missing) +
-          "; install tests/requirements-terminal.txt")
+          "; run uv sync --project tests/ascii_chat_tests")
     raise SystemExit(77)
 
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 
 
 def main():

@@ -21,7 +21,7 @@ import sys
 import tempfile
 import time
 
-from terminal_ui import Terminal, CaptureScreen, CaptureStream
+from ascii_chat_tests.terminal import Terminal, CaptureScreen, CaptureStream
 
 
 class Size(C.Structure):

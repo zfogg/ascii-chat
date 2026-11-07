@@ -5,6 +5,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import run_cli
+from ascii_chat_tests.cli import cli_command
 
 from pathlib import Path
 import os
@@ -49,7 +51,7 @@ def main():
                         config = root/'config.toml'
                         config.write_text('[otel]\nca_file = ' + repr(str(cert).replace('\\', '/')) + '\n')
                         flags += ['--config', str(config)]
-                    result = subprocess.run([binary, '--no-check-update', *flags, *media], env=settings,
+                    result = run_cli(binary, *flags, *media, env=settings,
                         stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=15)
                     assert result.returncode == 0, result.stderr[-4000:]
                     paths = {path for path, _ in collector.records}
@@ -58,12 +60,12 @@ def main():
                     assert service_names(collector.records) == {'ascii-chat-mirror'}
                 collector.clear()
                 # Runtime certificate rejection must send no plaintext application data.
-                subprocess.run([binary, '--no-check-update', '--otel-endpoint', collector.url,
-                    '--otel-timeout', '150', *media], env=env, stdout=subprocess.DEVNULL,
+                run_cli(binary, '--otel-endpoint', collector.url,
+                    '--otel-timeout', '150', *media, env=env, stdout=subprocess.DEVNULL,
                     stderr=subprocess.PIPE, timeout=10)
                 assert not collector.attempts
-                result = subprocess.run([binary, '--no-check-update', '--otel-endpoint', collector.url,
-                    '--otel-ca-file', str(root/'missing.pem'), *media], env=env,
+                result = run_cli(binary, '--otel-endpoint', collector.url,
+                    '--otel-ca-file', str(root/'missing.pem'), *media, env=env,
                     stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=10)
                 assert result.returncode != 0 and not collector.attempts
                 print(version.name, 'ascii-chat CLI/environment/TOML export and certificate rejection passed')

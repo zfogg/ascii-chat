@@ -5,6 +5,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 
 import argparse
@@ -26,10 +27,7 @@ def tmux(*args):
     return subprocess.check_output(["tmux", "-L", SOCKET, *map(str, args)], text=True)
 
 
-def port():
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+from ascii_chat_tests.process import free_port as port
 
 
 def wait(check, timeout=25):
@@ -428,10 +426,7 @@ def main():
         for mode in ("server", "discovery-service"):
             outfile = root / (mode + "-stdout.txt")
             with outfile.open("w") as output:
-                argv = [
-                    binary,
-                    "--no-check-update",
-                    "--log-file",
+                argv = cli_command(binary, "--log-file",
                     str(root / (mode + "-pipe.log")),
                     mode,
                     "127.0.0.1",
@@ -442,7 +437,7 @@ def main():
                     "--status-screen=false",
                     "--stats-interval",
                     "1",
-                ]
+                )
                 if mode == "discovery-service":
                     argv += ["--database", str(root / "pipe.db")]
                 env = os.environ.copy()

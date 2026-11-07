@@ -4,6 +4,12 @@
 Requires the same pyte + pywinpty/pexpect dependencies as terminal_ui.py.
 Run: python tests/integration/terminal_titles.py --binary build/bin/ascii-chat.exe
 """
+import sys as _test_sys
+from pathlib import Path as _TestPath
+_test_sys.path.insert(0, str(_TestPath(__file__).resolve().parents[1]))
+import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
+
 import argparse
 import os
 from pathlib import Path
@@ -12,33 +18,9 @@ import socket
 import subprocess
 import time
 
-from terminal_ui import Terminal, free_port
-from kitty_output import reconstruct
-
-OSC_TITLE = re.compile(r"\x1b\](?:0|2);([^\x07\x1b]*)(?:\x07|\x1b\\)")
-
-
-class TitleTerminal(Terminal):
-    def __init__(self, *args, **kwargs):
-        self.titles = []
-        self.title_count = 0
-        super().__init__(*args, **kwargs)
-
-    def pump(self, seconds=0.1):
-        text = super().pump(seconds)
-        titles = OSC_TITLE.findall("".join(self.raw))
-        self.titles.extend((time.monotonic(), title) for title in titles[self.title_count:])
-        self.title_count = len(titles)
-        return text
-
-    def expect_title(self, expected, timeout=12):
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            self.pump()
-            if self.titles and self.titles[-1][1] == expected:
-                return self.titles[-1][0]
-        raise AssertionError(f"Expected {expected!r}; observed {self.titles!r}")
-
+from ascii_chat_tests.terminal import TitleTerminal
+from ascii_chat_tests.process import free_port
+from ascii_chat_tests.media import reconstruct
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -55,9 +37,9 @@ def main():
         return term
 
     def mirror(unicode=True):
-        return [binary, '--no-check-update', 'mirror', '--test-pattern', '--audio=false',
+        return cli_command(binary, 'mirror', '--test-pattern', '--audio=false',
                 '--splash-screen=false', '--width', '80', '--height', '24', '--fps', '15',
-                '--utf8', 'true' if unicode else 'false']
+                '--utf8', 'true' if unicode else 'false')
 
     def title_pattern(term, pattern, description, timeout=15):
         term.expect(lambda _: bool(term.titles and re.fullmatch(pattern, term.titles[-1][1])),
@@ -120,13 +102,14 @@ def main():
             term.close()
 
         port = free_port()
-        server = terminal('server', [binary, '--no-check-update', 'server', '--port', str(port),
+        server = terminal('server', cli_command(binary, 'server', '--port', str(port),
                            '--status-screen=false', '--websocket-port', str(free_port()),
-                           '--no-encrypt', '--no-auth', '--utf8', 'true'])
+                           '--no-encrypt', '--no-auth', '--utf8', 'true'))
         server.expect(lambda _: 'Server accepting connections' in ''.join(server.raw), 'Server did not become ready', timeout=25)
         server.expect_title('🔠 ascii-chat • server')
-        client = terminal('client-large-viewport', [binary, '--no-check-update', 'client', f'127.0.0.1:{port}',
-                          '--test-pattern', '--audio=false', '--splash-screen=false', '--no-encrypt', '--no-auth', '--utf8', 'true'])
+        client = terminal('client-large-viewport', cli_command(binary, 'client', f'127.0.0.1:{port}',
+                          '--test-pattern', '--audio=false', '--splash-screen=false', '--no-encrypt', '--no-auth',
+                          '--video-codec', 'raw', '--utf8', 'true'))
         client.expect(lambda text: any(len(row.rstrip()) > 80 and row.isascii() and re.search(r'(.)\1{7}', row)
                                       for row in text.splitlines()),
                       'Splash-disabled client did not render a frame wider than 80 columns', timeout=25)
@@ -141,8 +124,8 @@ def main():
             listener.bind(('127.0.0.1', 0))
             listener.listen(1)
             listener.settimeout(15)
-            pending = terminal('client-connection-status', [binary, '--no-check-update', 'client',
-                               f'127.0.0.1:{listener.getsockname()[1]}', '--test-pattern', '--audio=false', '--splash-screen=true', '--utf8', 'true'])
+            pending = terminal('client-connection-status', cli_command(binary, 'client',
+                               f'127.0.0.1:{listener.getsockname()[1]}', '--test-pattern', '--audio=false', '--splash-screen=true', '--utf8', 'true'))
             peer, _ = listener.accept()
             status = '[⠋⠙⠴⠦]' + re.escape('  ascii-chat • client • connecting...')
             try:
@@ -152,22 +135,20 @@ def main():
                 pending.write('?')
                 title_pattern(pending, status + re.escape(' • log viewer • help'), 'Connecting status lost under help')
                 peer.close()
-                retry = '[⠋⠙⠴⠦]' + re.escape('  ascii-chat • client • reconnecting...')
-                title_pattern(pending, retry + re.escape(' • log viewer • help'), 'Reconnecting status lost under help', timeout=20)
+                pending.expect_title('‼️ ascii-chat • ERROR code=40 - Network error', timeout=20)
             finally:
                 peer.close()
                 pending.interrupt()
                 pending.close()
-        print('PASS connecting/reconnecting spinner remains before log viewer and help breadcrumbs')
+        print('PASS connecting spinner under views and network error priority during reconnect')
 
         with socket.socket() as listener:
             listener.bind(('127.0.0.1', 0))
             listener.listen(1)
             listener.settimeout(15)
-            discovery = terminal('discovery-status', [binary, '--no-check-update',
-                                 '--discovery-service', '127.0.0.1',
+            discovery = terminal('discovery-status', cli_command(binary, '--discovery-service', '127.0.0.1',
                                  '--discovery-service-port', str(listener.getsockname()[1]),
-                                 '--test-pattern', '--audio=false', '--splash-screen=true', '--utf8', 'true'])
+                                 '--test-pattern', '--audio=false', '--splash-screen=true', '--utf8', 'true'))
             peer, _ = listener.accept()
             try:
                 connecting = '[⠋⠙⠴⠦]' + re.escape('  ascii-chat • discovery • connecting...')

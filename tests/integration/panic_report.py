@@ -3,6 +3,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import clean_environment
 import argparse
 import os
 from pathlib import Path
@@ -23,7 +24,7 @@ class PanicReport(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.log = self.root / "trace.log"
-        self.env = {k: v for k, v in os.environ.items() if not k.startswith("ASCII_CHAT_") and k not in ("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR", "TMPDIR", "TEMP", "TMP")}
+        self.env = clean_environment()
 
     def run_report(self, *args, expected=0, env=None):
         result = subprocess.run([BINARY, *map(str, args)], env=self.env if env is None else env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)

@@ -430,9 +430,9 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
   char full_path[MAX_PATH];
 
   // Priority 0: %APPDATA%\ascii-chat (user config)
-  char appdata[MAX_PATH];
-  if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, appdata))) {
-    int ret = snprintf(full_path, sizeof(full_path), "%s\\ascii-chat\\%s", appdata, filename);
+  char *config_dir = platform_get_config_dir();
+  if (config_dir) {
+    int ret = snprintf(full_path, sizeof(full_path), "%s%s", config_dir, filename);
     if (ret >= 0 && (size_t)ret < sizeof(full_path)) {
       if (platform_is_regular_file(full_path)) {
         config_file_result_t *result = &list_out->files[list_out->count];
@@ -446,6 +446,8 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
       }
     }
   }
+
+  SAFE_FREE(config_dir);
 
   // Priority 1: %LOCALAPPDATA%\ascii-chat
   char localappdata[MAX_PATH];
@@ -528,6 +530,16 @@ const char *platform_get_home_dir(void) {
 
 char *platform_get_config_dir(void) {
   char appdata[MAX_PATH];
+  const char *config_home = platform_getenv("APPDATA");
+  if (config_home && config_home[0] != '\0') {
+    size_t len = strlen(config_home) + strlen("\\ascii-chat\\") + 1;
+    char *dir = SAFE_MALLOC(len, char *);
+    if (!dir) {
+      return NULL;
+    }
+    safe_snprintf(dir, len, "%s\\ascii-chat\\", config_home);
+    return dir;
+  }
   if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, appdata))) {
     size_t len = strlen(appdata) + strlen("\\ascii-chat\\") + 1;
     char *dir = SAFE_MALLOC(len, char *);

@@ -595,6 +595,7 @@ options_t options_t_new(void) {
   // ============================================================================
   opts.color_filter = OPT_COLOR_FILTER_DEFAULT;
   opts.render_mode = OPT_RENDER_MODE_DEFAULT;
+  opts.renderer = ASCII_RENDERER_LUMINANCE;
   opts.palette_type = OPT_PALETTE_TYPE_DEFAULT;
   // palette_custom is already zeroed by memset
   opts.palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT;
@@ -2440,5 +2441,5 @@ cleanup:
 
 void options_resolve_flip_x(options_t *opts) {
   if (!opts->flip_x_explicit)
-    opts->flip_x = !opts->media_input && !opts->waveform && !opts->fft;
+    opts->flip_x = !opts->media_input && !opts->test_pattern && !opts->waveform && !opts->fft;
 }

@@ -9,6 +9,9 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import start_cli
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 
 import functools
@@ -61,9 +64,10 @@ def main():
         root = Path(directory)
         # The HTTP fixture serves sequential bytes; faststart avoids requiring range requests.
         for frequency in (440, 880):
-            run("ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=64x48:rate=10",
-                "-f", "lavfi", "-i", f"sine=frequency={frequency}:sample_rate=48000", "-t", "30",
-                "-c:v", "mpeg4", "-c:a", "aac", "-movflags", "+faststart", str(root / f"{frequency}.mp4"))
+            lavfi_fixture(['testsrc2=size=64x48:rate=10', f'sine=frequency={frequency}:sample_rate=48000'],
+                          root / f'{frequency}.mp4', ffmpeg_options=['-v', 'error'],
+                          output_options=['-t', '30', '-c:v', 'mpeg4', '-c:a', 'aac', '-movflags', '+faststart'],
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         run("ffmpeg", "-v", "error", "-i", str(root / "440.mp4"), "-t", "1",
             "-c", "copy", str(root / "short440.mp4"))
         with socket.socket() as reservation:
@@ -79,7 +83,7 @@ def main():
         def launch(name, *args):
             handle = open(root / f"{name}.stderr", "wb")
             handles.append(handle)
-            process = subprocess.Popen([binary, "--no-check-update", "--log-level", "info", "--log-file", str(root / f"{name}.log"), *args],
+            process = start_cli(binary, "--log-level", "info", "--log-file", str(root / f"{name}.log"), *args,
                                        env=env, stdout=subprocess.DEVNULL, stderr=handle)
             processes.append(process)
             return process

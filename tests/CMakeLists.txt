@@ -45,6 +45,27 @@ if(BUILD_TESTS)
             ${Python3_EXECUTABLE} ${script} ${ARGN})
     endfunction()
 
+    # Pytest suites use a build-local uv environment so native and Docker builds
+    # never replace one another's virtual environment. CTest reserves all cores
+    # for each xdist batch rather than oversubscribing concurrent batches.
+    find_program(ASCIICHAT_UV_EXECUTABLE uv REQUIRED)
+    function(asciichat_add_pytest name suite)
+        set(_coverage_args)
+        if(ASCIICHAT_ENABLE_COVERAGE)
+            list(APPEND _coverage_args --coverage-build --coverage-root ${CMAKE_BINARY_DIR})
+        endif()
+        add_test(NAME ${name} COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_SOURCE_DIR}/tests/scripts/run_python_test.py ${_coverage_args} --
+            ${CMAKE_COMMAND} -E env "UV_PROJECT_ENVIRONMENT=${CMAKE_BINARY_DIR}/python-test-venv"
+            ${ASCIICHAT_UV_EXECUTABLE} run --project ${CMAKE_SOURCE_DIR}/tests/ascii_chat_tests
+            --frozen --python ${Python3_EXECUTABLE} -m pytest
+            ${CMAKE_SOURCE_DIR}/tests/python/${suite}
+            --junitxml=${CMAKE_BINARY_DIR}/Testing/${name}.xml ${ARGN})
+        set_tests_properties(${name} PROPERTIES PROCESSORS ${CPU_CORES} TIMEOUT 300)
+    endfunction()
+    asciichat_add_pytest(python-unit unit)
+    set_tests_properties(python-unit PROPERTIES LABELS "unit;python")
+
     # These dependency-isolated build matrices compile selected production
     # sources directly. The shared wrapper retains their profiles under the
     # active build tree when coverage is enabled.
@@ -79,13 +100,13 @@ if(IS_COVERAGE_BUILD OR ASCIICHAT_SANITIZER_COMPILE_FLAGS MATCHES "fsanitize=")
     set(CRITERION_TIMEOUT 60)      # Criterion's internal timeout per test case
     set(CTEST_TEST_TIMEOUT 120)    # CTest's overall timeout per test executable
     set(CRITERION_JOBS 1)          # Disable internal parallelism for coverage accuracy
-    set(CTEST_PARALLEL_JOBS 2)     # Limit parallel tests to prevent resource exhaustion during coverage
+    set(CTEST_PARALLEL_JOBS "${CPU_CORES}")
 else()
     set(CRITERION_TIMEOUT 25)      # Default timeout
     set(CTEST_TEST_TIMEOUT 30)     # Tests must complete in 30 seconds or less
-    # Use all CPU cores minus 1 to prevent system saturation
-    math(EXPR CRITERION_JOBS "${CPU_CORES} - 1")
-    set(CTEST_PARALLEL_JOBS "${CPU_CORES} - 1")
+    # CTest distributes executables across cores; do not multiply Criterion workers.
+    set(CRITERION_JOBS 1)
+    set(CTEST_PARALLEL_JOBS "${CPU_CORES}")
 endif()
 
 # XML output directory for Criterion test results
@@ -709,7 +730,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     endif()
 
     # Custom targets for different test modes (matches Makefile)
-    # Use CTEST_PARALLEL_JOBS which is limited to prevent resource exhaustion
+    # CTest distributes test executables over all detected cores.
     add_custom_target(test_debug
         DEPENDS tests-criterion-build
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CTEST_PARALLEL_JOBS}
@@ -1088,9 +1109,16 @@ if(TARGET ascii-chat-static)
         endif()
         asciichat_add_python_test(error-popup-smoke
             ${CMAKE_SOURCE_DIR}/tests/integration/error_popup.py ${error_popup_args})
+        asciichat_add_python_test(error-title-smoke
+            ${CMAKE_SOURCE_DIR}/tests/integration/error_titles.py --binary $<TARGET_FILE:test-error-popup-fixture>)
+        set_tests_properties(error-title-smoke PROPERTIES LABELS "integration;terminal" TIMEOUT 180
+            RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
         set_tests_properties(error-popup-smoke PROPERTIES LABELS "integration;tui" TIMEOUT 240
             RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
         if(WIN32)
+            set_property(TEST error-title-smoke PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
             set_property(TEST error-popup-smoke PROPERTY ENVIRONMENT_MODIFICATION
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
@@ -1183,8 +1211,13 @@ if(BUILD_TESTS)
         set_tests_properties(websocket-dependency-probes PROPERTIES LABELS "unit;build" TIMEOUT 60)
     endif()
     add_executable(test-client-like-lifecycle integration/client_like_lifecycle.c)
-    # A separate native process tests first-call races in Windows critical sections too.
-    add_executable(test-splash-init standalone/tui/splash_init.c)
+    # Windows retains the standalone race probe because Criterion is unavailable.
+    if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+        add_executable(test-splash-init contracts/tui/splash_init_test.c)
+        asciichat_configure_contract(test-splash-init)
+    else()
+        add_executable(test-splash-init standalone/tui/splash_init.c)
+    endif()
     if(TARGET ascii-chat-shared)
         target_link_libraries(test-splash-init PRIVATE ascii-chat-shared ${MIMALLOC_LIBRARIES})
     else()
@@ -1195,9 +1228,14 @@ if(BUILD_TESTS)
     apply_sanitizers_to_target(test-splash-init)
     set_target_properties(test-splash-init PROPERTIES
         LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    add_test(NAME splash-init COMMAND $<TARGET_FILE:test-splash-init>)
-    set_tests_properties(splash-init PROPERTIES LABELS "integration;thread" TIMEOUT 30
-        ENVIRONMENT "TESTING=1;ASCII_CHAT_OTEL_ENABLED_TELEMETRY=none")
+    if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+        asciichat_add_contract_test(splash-init test-splash-init)
+        set_tests_properties(splash-init PROPERTIES LABELS "criterion;contract;integration;thread")
+    else()
+        add_test(NAME splash-init COMMAND $<TARGET_FILE:test-splash-init>)
+        set_tests_properties(splash-init PROPERTIES LABELS "integration;thread" TIMEOUT 30
+            ENVIRONMENT "TESTING=1;ASCII_CHAT_OTEL_ENABLED_TELEMETRY=none")
+    endif()
     if(TARGET ascii-chat-shared)
         target_link_libraries(test-client-like-lifecycle PRIVATE ascii-chat-shared ${MIMALLOC_LIBRARIES})
     else()
@@ -1217,11 +1255,8 @@ if(BUILD_TESTS)
             add_dependencies(${test_build_target} test-client-like-lifecycle test-splash-init)
         endif()
     endforeach()
-    asciichat_add_python_test(client-like-lifecycle
-            ${CMAKE_CURRENT_SOURCE_DIR}/integration/client_like_lifecycle.py
-            $<TARGET_FILE:test-client-like-lifecycle>)
-    set_tests_properties(client-like-lifecycle PROPERTIES
-        LABELS "integration" TIMEOUT 120)
+    asciichat_add_pytest(python-lifecycle integration/lifecycle --lifecycle-probe=$<TARGET_FILE:test-client-like-lifecycle>)
+    set_tests_properties(python-lifecycle PROPERTIES LABELS "integration;python")
     asciichat_add_python_test(mdns-terminal
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/mdns_terminal.py
             --binary $<TARGET_FILE:ascii-chat> --artifacts ${CMAKE_BINARY_DIR}/Testing/mdns-terminal)
@@ -1271,37 +1306,20 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
-    asciichat_add_python_test(render-font-formats
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/render_font_formats.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(render-font-formats PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
-    asciichat_add_python_test(discovery-direct-tcp
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/discovery_direct_tcp.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(discovery-direct-tcp PROPERTIES LABELS "integration" TIMEOUT 90)
-    asciichat_add_python_test(discovery-audio
-        ${CMAKE_SOURCE_DIR}/tests/integration/discovery_audio.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(discovery-audio PROPERTIES LABELS "integration" TIMEOUT 120 RUN_SERIAL TRUE)
+    asciichat_add_pytest(python-media integration/media --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-media PROPERTIES LABELS "integration;python;media")
+    asciichat_add_pytest(python-discovery integration/discovery --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-discovery PROPERTIES LABELS "integration;python;network" RUN_SERIAL TRUE)
     foreach(test_build_target tests tests-criterion-build tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} ascii-chat)
         endif()
     endforeach()
-    asciichat_add_python_test(server-lifecycle
-            ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_lifecycle.py
-            $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(server-lifecycle PROPERTIES LABELS "integration" TIMEOUT 180)
-    asciichat_add_python_test(identity-sessions
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/identity_sessions.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(identity-sessions PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    asciichat_add_pytest(python-network integration/network --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-network PROPERTIES LABELS "integration;python;network")
     asciichat_add_python_test(render-file-audio
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/render_file_audio.py $<TARGET_FILE:ascii-chat>)
     set_tests_properties(render-file-audio PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
-endif()
-
-if(BUILD_TESTS AND TARGET ascii-chat)
-    asciichat_add_python_test(server-client-lifecycle
-            ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_client_lifecycle.py
-            $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(server-client-lifecycle PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
 endif()
 
 # Production transport tests run natively on Windows, macOS, and Linux without Criterion.
@@ -1426,13 +1444,6 @@ if(TARGET ascii-chat-static)
         endif()
         # Contract cases are registered by the Criterion targets below.
     endif()
-endif()
-
-if(BUILD_TESTS AND TARGET ascii-chat)
-    asciichat_add_python_test(manpage-generation
-            ${CMAKE_CURRENT_SOURCE_DIR}/integration/manpage_generation.py
-            $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(manpage-generation PROPERTIES LABELS "integration" TIMEOUT 120)
 endif()
 
 if(TARGET ascii-chat-static AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
@@ -1939,10 +1950,8 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND TARGET ascii-chat-static)
             add_dependencies(${test_build_target} test-terminal-pty)
         endif()
     endforeach()
-    asciichat_add_python_test(tui-modal-lifecycle
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/tui_modal_lifecycle.py --binary $<TARGET_FILE:test-terminal-pty>)
-    set_tests_properties(tui-modal-lifecycle PROPERTIES LABELS "integration;tui;terminal" TIMEOUT 120
-        SKIP_RETURN_CODE 77)
+    asciichat_add_pytest(python-terminal integration/terminal --terminal-probe=$<TARGET_FILE:test-terminal-pty>)
+    set_tests_properties(python-terminal PROPERTIES LABELS "integration;python;tui;terminal")
     if(UNIX)
         add_test(NAME terminal-pty COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/terminal_pty.py $<TARGET_FILE:test-terminal-pty>)
@@ -2057,9 +2066,8 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN)
     target_include_directories(test-media-capture-open PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated)
     apply_sanitizers_to_target(test-media-capture-open)
     set_target_properties(test-media-capture-open PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    asciichat_add_python_test(media-capture-open
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/media_capture_open.py $<TARGET_FILE:test-media-capture-open>)
-    set_tests_properties(media-capture-open PROPERTIES LABELS "integration" TIMEOUT 90 SKIP_RETURN_CODE 77)
+    asciichat_add_pytest(python-capture integration/capture --media-capture-probe=$<TARGET_FILE:test-media-capture-open>)
+    set_tests_properties(python-capture PROPERTIES LABELS "integration;python;media")
     if(TARGET tests)
         add_dependencies(tests test-media-capture-open)
     endif()
@@ -2128,6 +2136,42 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND AND TARGET ascii-chat-static)
     endforeach()
 endif()
 
+if(BUILD_TESTS AND TARGET ascii-chat)
+    # The Criterion client-transport contract covers this on supported Unix platforms.
+    # Keep the standalone variant on Windows, where Criterion is unavailable.
+    if(NOT BUILD_CRITERION_TESTS OR NOT CRITERION_FOUND)
+    add_executable(test-client-ping-sentinel standalone/network/client_ping_test.c)
+    target_link_libraries(test-client-ping-sentinel PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-client-ping-sentinel PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-client-ping-sentinel)
+    set_target_properties(test-client-ping-sentinel PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    add_test(NAME client-ping-sentinel COMMAND test-client-ping-sentinel)
+    set_tests_properties(client-ping-sentinel PROPERTIES LABELS "unit;network" TIMEOUT 30)
+    endif()
+    add_executable(test-yt-dlp-fixture standalone/media/fake_yt_dlp.c)
+    set_target_properties(test-yt-dlp-fixture PROPERTIES OUTPUT_NAME yt-dlp
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/test-fixtures")
+    add_executable(test-extractor-audio standalone/media/extractor_audio_probe.c)
+    target_link_libraries(test-extractor-audio PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    target_include_directories(test-extractor-audio PRIVATE ${CMAKE_BINARY_DIR}/generated)
+    apply_sanitizers_to_target(test-extractor-audio)
+    set_target_properties(test-extractor-audio PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_python_test(media-extractor
+        ${CMAKE_SOURCE_DIR}/tests/integration/media_extractor.py
+        --binary $<TARGET_FILE:ascii-chat> --fixture $<TARGET_FILE:test-yt-dlp-fixture>
+        --audio-probe $<TARGET_FILE:test-extractor-audio>)
+    set_tests_properties(media-extractor PROPERTIES LABELS "integration;media" TIMEOUT 180 RUN_SERIAL TRUE)
+    if(TARGET tests)
+        add_dependencies(tests ascii-chat test-yt-dlp-fixture test-extractor-audio)
+        if(TARGET test-client-ping-sentinel)
+            add_dependencies(tests test-client-ping-sentinel)
+        endif()
+    endif()
+endif()
+
 if(BUILD_TESTS AND UNIX AND NOT APPLE AND TARGET ascii-chat)
     asciichat_add_python_test(media-sessions
         ${CMAKE_SOURCE_DIR}/tests/integration/media_sessions.py --binary $<TARGET_FILE:ascii-chat>)
@@ -2183,13 +2227,16 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
-    asciichat_add_python_test(options-init
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/options_init.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(options-init PROPERTIES LABELS "unit" TIMEOUT 180)
+    asciichat_add_pytest(python-cli integration/cli --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-cli PROPERTIES LABELS "integration;python;cli")
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat-shared)
     set(shared_api_tests options-metadata)
+    asciichat_add_python_test(audio-test-pattern-native
+        ${CMAKE_CURRENT_SOURCE_DIR}/audio/test_audio_pattern_native.py $<TARGET_FILE:ascii-chat-shared>)
+    set_tests_properties(audio-test-pattern-native PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
+    list(APPEND shared_api_tests audio-test-pattern-native)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         asciichat_add_python_test(symbolizer-offline
             ${CMAKE_CURRENT_SOURCE_DIR}/integration/symbolizer_offline.py
@@ -2254,6 +2301,13 @@ if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE STREQUAL "Debug")
         --output ${CMAKE_BINARY_DIR}/title-smoke)
     set_tests_properties(terminal-titles PROPERTIES LABELS "integration;terminal" TIMEOUT 180
         RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    if(ASCIICHAT_TEST_FFMPEG)
+        asciichat_add_python_test(url-title-smoke
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/url_title.py --binary $<TARGET_FILE:ascii-chat>
+            --ffmpeg ${ASCIICHAT_TEST_FFMPEG})
+        set_tests_properties(url-title-smoke PROPERTIES LABELS "integration;terminal;media" TIMEOUT 120
+            RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    endif()
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32 AND ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TEST_FFPROBE)
@@ -2311,8 +2365,19 @@ if(BUILD_TESTS AND TARGET gotel)
     target_include_directories(test-otel-contract PRIVATE ${CMAKE_BINARY_DIR}/generated)
     apply_sanitizers_to_target(test-otel-contract)
     set_target_properties(test-otel-contract PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    add_test(NAME otel-contract COMMAND test-otel-contract)
-    set_tests_properties(otel-contract PROPERTIES LABELS "integration;otel;contract" TIMEOUT 60)
+    if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+        add_executable(test-otel-adapter-contract contracts/otel/adapter_test.c)
+        asciichat_configure_contract(test-otel-adapter-contract)
+        target_link_libraries(test-otel-adapter-contract PRIVATE ascii-chat-static-lib-with-deps gotel::testing ${MIMALLOC_LIBRARIES})
+        target_include_directories(test-otel-adapter-contract PRIVATE ${CMAKE_BINARY_DIR}/generated)
+        apply_sanitizers_to_target(test-otel-adapter-contract)
+        set_target_properties(test-otel-adapter-contract PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        asciichat_add_contract_test(otel-contract test-otel-adapter-contract)
+        set_property(TEST otel-contract APPEND PROPERTY LABELS integration otel)
+    else()
+        add_test(NAME otel-contract COMMAND test-otel-contract)
+        set_tests_properties(otel-contract PROPERTIES LABELS "integration;otel;contract" TIMEOUT 60)
+    endif()
     asciichat_add_python_test(otel-trace-contract
         ${CMAKE_SOURCE_DIR}/tests/integration/test_otel_contract.py $<TARGET_FILE:test-otel-contract>)
     set_tests_properties(otel-trace-contract PROPERTIES LABELS "integration;otel;contract"
@@ -2340,9 +2405,8 @@ if(BUILD_TESTS AND TARGET gotel)
 endif()
 
 if(BUILD_TESTS AND TARGET gotel)
-    asciichat_add_python_test(otel-disabled
-        ${CMAKE_SOURCE_DIR}/tests/integration/test_otel_disabled.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(otel-disabled PROPERTIES LABELS "integration;otel" TIMEOUT 90)
+    asciichat_add_pytest(python-telemetry integration/telemetry --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-telemetry PROPERTIES LABELS "integration;python;otel")
 endif()
 
 # Every registered test and native child runs with the canonical no-export policy.
@@ -2389,9 +2453,8 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
-    asciichat_add_python_test(mcp-protocol
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_mcp_protocol.py --binary $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(mcp-protocol PROPERTIES LABELS "integration;mcp" TIMEOUT 180 RUN_SERIAL TRUE)
+    asciichat_add_pytest(python-mcp integration/mcp --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-mcp PROPERTIES LABELS "integration;python;mcp")
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev|RelWithDebInfo)$")
@@ -2399,12 +2462,6 @@ if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev|R
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_mcp_tui.py --binary $<TARGET_FILE:ascii-chat>
         --artifacts ${CMAKE_BINARY_DIR}/Testing/mcp-tui)
     set_tests_properties(mcp-tui PROPERTIES LABELS "integration;mcp;tui" TIMEOUT 90 RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
-endif()
-
-if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
-    asciichat_add_python_test(cli-logging-contract
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/cli_logging_contract.py $<TARGET_FILE:ascii-chat>)
-    set_tests_properties(cli-logging-contract PROPERTIES LABELS "integration" TIMEOUT 120)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-panic-report AND NOT EMSCRIPTEN)

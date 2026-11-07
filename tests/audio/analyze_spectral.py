@@ -14,7 +14,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from test_spectral import load, Processor
+from ascii_chat_tests.audio_spectral import load, Processor
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--library", required=True)

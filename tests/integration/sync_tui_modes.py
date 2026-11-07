@@ -10,6 +10,9 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import json
@@ -20,8 +23,8 @@ import subprocess
 import tempfile
 import time
 
-from terminal_ui import Terminal, load_terminal_font
-from server_lifecycle import Service, free_port, server_options
+from ascii_chat_tests.terminal import Terminal, load_terminal_font
+from ascii_chat_tests.process import Service, free_port, server_options
 
 
 def capture(term, root, name):
@@ -267,10 +270,8 @@ def main():
         for suffix in ["ascii-chat", "AppData/Roaming/ascii-chat", ".config/ascii-chat"]:
             (root / suffix).mkdir(parents=True, exist_ok=True)
         media = root / "video.mkv"
-        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x120:rate=15",
-                        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "4",
-                        "-c:v", "libx264", "-c:a", "pcm_s16le", str(media)], check=True)
-        env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
+        lavfi_fixture(["testsrc2=size=160x120:rate=15", "sine=frequency=440:sample_rate=48000"], str(media), ffmpeg_options=["-v", "error"], output_options=["-t", "4", "-c:v", "libx264", "-c:a", "pcm_s16le"])
+        env = clean_environment()
         env.update(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root), XDG_CONFIG_HOME=str(root),
                    ASCII_CHAT_QUESTION_PROMPT_RESPONSE="y;y;y", ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
         old = os.environ.copy()
@@ -283,14 +284,14 @@ def main():
             # the first resumed 250 ms rate sample is replaced. Source FPS and
             # audio processing are unchanged by these output dimensions.
             width, height = (60, 15) if name == "mirror" else (100, 30)
-            term = Terminal([str(binary), "--no-check-update", "--log-file", str(root / f"{name}.log"),
+            term = Terminal(cli_command(str(binary), "--log-file", str(root / f"{name}.log"),
                              "--log-level", "debug", "--grep", "CLIENT.AUDIO.RECV", "--grep", "FRAME_PRESENT",
                              "--grep", "FRAME_WRITE_TTY", "--grep", "KEYBOARD.INPUT", "--grep", "Discovery",
                              "--grep", "ERROR", "--grep", "WARN",
                              *argv, "--file", str(media), "--loop", "--audio=true",
                              "--audio-source", "media", "--splash-screen=false", *colors,
                              "--fps", "15", "--width", str(width), "--height", str(height),
-                             *extra], rows=30, cols=160)
+                             *extra), rows=30, cols=160)
             terminals.append(term)
             return term
         try:

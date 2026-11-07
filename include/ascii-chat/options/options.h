@@ -956,6 +956,8 @@ typedef enum {
  * All options from the scattered extern globals are now in a single struct.
  * This struct is immutable once published via RCU - modifications create a new copy.
  */
+typedef enum { ASCII_RENDERER_LUMINANCE = 0, ASCII_RENDERER_GLYPH = 1 } ascii_renderer_t;
+
 typedef struct options_state {
   // ============================================================================
   // Mode Detection (auto-detected during options_init)
@@ -1104,6 +1106,7 @@ typedef struct options_state {
   // ============================================================================
   // Image Options
   // ============================================================================
+  ascii_renderer_t renderer;                         ///< Character selection algorithm
   bool stretch;                                      ///< Allow aspect ratio distortion
   char video_codec[OPTIONS_VIDEO_CODEC_BUFFER_SIZE]; ///< Video codec (auto, hevc, h264, raw) - default: auto
 
@@ -1195,6 +1198,7 @@ typedef struct options_state {
   palette_type_t palette_type;                             ///< Selected palette type
   char palette_custom[OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE]; ///< Custom palette characters
   bool palette_custom_set;                                 ///< True if custom palette was set
+  bool palette_explicit;                                   ///< Palette explicitly selected
 
   // ============================================================================
   // Splash Screen Options

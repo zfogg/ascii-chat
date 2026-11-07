@@ -15,8 +15,43 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <windows.h>
+#include <shellapi.h>
 #include <psapi.h>
 #include <tlhelp32.h>
+// Windows passes a UTF-16 command line, while the narrow CRT argv uses the
+// system code page. Keep UTF-8 arguments alive for the lifetime of the app.
+static char windows_arg_data[131072];
+static char *windows_args[32768];
+
+asciichat_error_t process_utf8_arguments(int *argc, char ***argv) {
+  int count = 0;
+  wchar_t **wide_args = CommandLineToArgvW(GetCommandLineW(), &count);
+  if (!wide_args || count < 1 || count >= 32768) {
+    if (wide_args)
+      LocalFree(wide_args);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Could not convert Windows command line to UTF-8");
+  }
+  size_t used = 0;
+  for (int i = 0; i < count; i++) {
+    int length = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, wide_args[i], -1, NULL, 0, NULL, NULL);
+    if (length <= 0 || (size_t)length > sizeof(windows_arg_data) - used) {
+      LocalFree(wide_args);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Could not convert Windows command line to UTF-8");
+    }
+    windows_args[i] = windows_arg_data + used;
+    if (!WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, wide_args[i], -1, windows_args[i], length, NULL, NULL)) {
+      LocalFree(wide_args);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Could not convert Windows command line to UTF-8");
+    }
+    used += (size_t)length;
+  }
+  LocalFree(wide_args);
+  windows_args[count] = NULL;
+  *argc = count;
+  *argv = windows_args;
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t platform_process_stats(platform_process_stats_t *out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing process stats output");

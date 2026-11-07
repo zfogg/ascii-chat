@@ -8,6 +8,9 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import ppm_image
+from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import fcntl
@@ -36,10 +39,7 @@ except ImportError:
     tomllib = None
 
 
-def free_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+from ascii_chat_tests.process import free_port
 
 
 class MediaSessions(unittest.TestCase):
@@ -49,10 +49,10 @@ class MediaSessions(unittest.TestCase):
         cls.root = Path(cls.directory.name)
         cls.image = cls.root / "pattern.ppm"
         # Three vertical intensity bands give observable rendering structure.
-        cls.image.write_bytes(b"P6\n96 48\n255\n" + bytes(
+        cls.image.write_bytes(ppm_image(96, 48, bytes(
             channel for _y in range(48) for x in range(96)
-            for channel in ((0, 0, 0) if x < 32 else (128, 128, 128) if x < 64 else (255, 255, 255))))
-        cls.env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
+            for channel in ((0, 0, 0) if x < 32 else (128, 128, 128) if x < 64 else (255, 255, 255)))))
+        cls.env = clean_environment()
         cls.env.update(HOME=str(cls.root), XDG_CONFIG_HOME=str(cls.root), TERM="xterm-256color",
                        ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none", ASCII_CHAT_DISABLE_FIRST_USE="1")
 
@@ -61,7 +61,7 @@ class MediaSessions(unittest.TestCase):
         cls.directory.cleanup()
 
     def command(self, *args):
-        return [BINARY, "--no-check-update", "--log-file", str(self.root / "session.log"), *args]
+        return cli_command(BINARY, "--log-file", str(self.root / "session.log"), *args)
 
     @staticmethod
     def coverage_profiles(pattern):

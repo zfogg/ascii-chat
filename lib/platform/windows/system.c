@@ -1541,44 +1541,53 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
     return -1;
   }
 
-  // Build command line from argv array
-  // Windows CreateProcess needs a single command line string.
-  // Arguments with spaces need quoting.
-  size_t cmd_len = 0;
-  for (int i = 0; argv[i] != NULL; i++) {
-    cmd_len += strlen(argv[i]) + 3; // +3 for quotes and space
+  // Quote every argument using the Windows CRT backslash/quote rules. This
+  // passes shell metacharacters and empty arguments directly to CreateProcess.
+  size_t cmd_len = 1;
+  for (size_t i = 0; argv[i]; ++i) {
+    size_t len = strlen(argv[i]);
+    if (cmd_len > SIZE_MAX - 3 || len > (SIZE_MAX - cmd_len - 3) / 2) {
+      log_error("Subprocess command line is too long");
+      return -1;
+    }
+    cmd_len += 2 * len + 3;
   }
-
-  if (cmd_len == 0) {
+  if (!argv[0]) {
     log_error("Empty command line");
     return -1;
   }
-
-  char *command_line = SAFE_MALLOC(cmd_len + 1, char *);
-  if (!command_line) {
+  char *command_line = SAFE_MALLOC(cmd_len, char *);
+  if (!command_line)
     return -1;
-  }
 
-  // Build command line with quoting for arguments containing spaces
   size_t pos = 0;
-  for (int i = 0; argv[i] != NULL; i++) {
-    if (i > 0) {
+  for (size_t i = 0; argv[i]; ++i) {
+    if (i)
       command_line[pos++] = ' ';
+    command_line[pos++] = '"';
+    const char *arg = argv[i];
+    while (*arg) {
+      size_t slashes = 0;
+      while (*arg == '\\') {
+        ++slashes;
+        ++arg;
+      }
+      if (*arg == '"' || !*arg) {
+        for (size_t j = 0; j < slashes * 2; ++j)
+          command_line[pos++] = '\\';
+        if (*arg == '"') {
+          command_line[pos++] = '\\';
+          command_line[pos++] = *arg++;
+        }
+      } else {
+        for (size_t j = 0; j < slashes; ++j)
+          command_line[pos++] = '\\';
+        command_line[pos++] = *arg++;
+      }
     }
-    bool needs_quotes = (strchr(argv[i], ' ') != NULL || strchr(argv[i], '\t') != NULL);
-    int result;
-    if (needs_quotes) {
-      result = SAFE_SNPRINTF(command_line + pos, cmd_len + 1 - pos, "\"%s\"", argv[i]);
-    } else {
-      result = SAFE_SNPRINTF(command_line + pos, cmd_len + 1 - pos, "%s", argv[i]);
-    }
-    if (result < 0) {
-      log_error("Failed to build command line");
-      SAFE_FREE(command_line);
-      return -1;
-    }
-    pos += (size_t)result;
+    command_line[pos++] = '"';
   }
+  command_line[pos] = '\0';
 
   // Set up pipes for output capture if requested
   HANDLE stdout_read = NULL;

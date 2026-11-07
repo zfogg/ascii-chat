@@ -188,6 +188,7 @@ static const options_t g_default_options = (options_t){
     .webcam_index = OPT_WEBCAM_INDEX_DEFAULT,
     .test_pattern = OPT_TEST_PATTERN_DEFAULT,
     .no_audio_mixer = OPT_NO_AUDIO_MIXER_DEFAULT,
+    .renderer = ASCII_RENDERER_LUMINANCE,
     .stretch = OPT_STRETCH_DEFAULT,
     .flip_x = OPT_FLIP_X_DEFAULT,
     .flip_y = OPT_FLIP_Y_DEFAULT,
@@ -562,6 +563,8 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(audio_enabled, OPTIONS_VALUE_BOOL, "audio-enabled"),
     FIELD(audio_analysis_enabled, OPTIONS_VALUE_BOOL, "audio-analysis-enabled"),
     FIELD(audio_no_playback, OPTIONS_VALUE_BOOL, "audio-no-playback"),
+    FIELD(renderer, OPTIONS_VALUE_INT, "renderer"),
+    FIELD(palette_explicit, OPTIONS_VALUE_BOOL, "palette-explicit"),
     FIELD(stretch, OPTIONS_VALUE_BOOL, "stretch"),
     FIELD(snapshot_mode, OPTIONS_VALUE_BOOL, "snapshot-mode"),
     FIELD(strip_ansi, OPTIONS_VALUE_BOOL, "strip-ansi"),
@@ -639,8 +642,9 @@ bool options_remote_render_field(const char *name) {
   const runtime_field_t *field = find_field(name);
   if (!field)
     return false;
-  const char *allowed[] = {"width",        "height",         "fps",        "color_mode", "color_filter", "render_mode",
-                           "palette_type", "palette_custom", "matrix_rain"};
+  const char *allowed[] = {
+      "width",          "height",           "fps",      "color_mode", "color_filter", "render_mode", "palette_type",
+      "palette_custom", "palette_explicit", "renderer", "matrix_rain"};
   for (size_t i = 0; i < sizeof(allowed) / sizeof(*allowed); ++i)
     if (!strcmp(field->name, allowed[i]))
       return true;
@@ -698,6 +702,8 @@ static asciichat_error_t edit_candidate(options_t *candidate, const options_edit
     } else if (edit->operation != OPTIONS_ASSIGN)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid integer operation");
     memcpy(ptr, &value, sizeof(value));
+    if (!strcmp(field->name, "palette_type"))
+      candidate->palette_explicit = true;
     break;
   }
   case OPTIONS_VALUE_BOOL: {
@@ -747,8 +753,10 @@ static asciichat_error_t edit_candidate(options_t *candidate, const options_edit
       return SET_ERRNO(ERROR_INVALID_PARAM, "Overlong string option '%s'", field->name);
     memset(ptr, 0, field->size);
     memcpy(ptr, edit->value.string, length);
-    if (!strcmp(field->name, "palette_custom"))
+    if (!strcmp(field->name, "palette_custom")) {
       candidate->palette_custom_set = ptr[0] != 0;
+      candidate->palette_explicit = ptr[0] != 0;
+    }
     break;
   }
   }

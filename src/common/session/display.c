@@ -37,6 +37,7 @@
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/ascii.h>
+#include <ascii-chat/video/ascii/render.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/rle.h>
 #include <ascii-chat/util/string.h>
@@ -624,6 +625,8 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
 
   // Re-evaluate render_mode and color_level on every frame to pick up live changes
   caps_copy.render_mode = (render_mode_t)GET_OPTION(render_mode);
+  caps_copy.text_renderer = GET_OPTION(renderer);
+  caps_copy.palette_explicit = GET_OPTION(palette_explicit);
   terminal_color_mode_t color_mode_opt = (terminal_color_mode_t)GET_OPTION(color_mode);
   if (color_mode_opt != TERM_COLOR_AUTO) {
     caps_copy.color_level = color_mode_opt;
@@ -771,7 +774,12 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
 
   // Validate the completed local frame using the same policy as received text.
   // Wide palettes use the existing cell composer before the rectangular check.
-  if (result && (size_t)utf8_display_width(ctx->palette_chars) != utf8_char_count(ctx->palette_chars)) {
+  bool explicit_palette = caps_copy.palette_explicit;
+  bool glyph_match = caps_copy.text_renderer == ASCII_RENDERER_GLYPH &&
+                     caps_copy.render_mode == RENDER_MODE_FOREGROUND && width > 0 && height > 0 &&
+                     width <= IMAGE_MAX_WIDTH / 8 && height <= IMAGE_MAX_HEIGHT / 8 &&
+                     (!explicit_palette || ascii_glyph_palette_supported(ctx->palette_chars));
+  if (result && !glyph_match && (size_t)utf8_display_width(ctx->palette_chars) != utf8_char_count(ctx->palette_chars)) {
     ascii_frame_source_t source = {.frame_data = result, .frame_size = strlen(result)};
     size_t normalized_size;
     char *rectangular = ascii_create_grid(&source, 1, width, height, &normalized_size);
@@ -780,7 +788,11 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   }
   if (result) {
     acip_render_settings_t rendering = {.caps = caps_copy};
-    SAFE_STRNCPY(rendering.palette, ctx->palette_chars, sizeof(rendering.palette));
+    const char *contract_palette =
+        glyph_match && !explicit_palette
+            ? " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+            : ctx->palette_chars;
+    SAFE_STRNCPY(rendering.palette, contract_palette, sizeof(rendering.palette));
     uint32_t effects = ctx->digital_rain ? FRAME_RENDER_CONTRACT_RAIN : 0;
     if (session_frame_validate_contract(result, strlen(result), width, height, &rendering, effects) != ASCIICHAT_OK) {
       session_display_release_ascii(ctx, result);

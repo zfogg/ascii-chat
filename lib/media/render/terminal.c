@@ -728,7 +728,6 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
 
   int glyph_rendered_count = 0;
   int occupied_cell_count = 0;
-  int glyph_missing_count = 0;
   // ANSI 16/256 colors are indexed.  Converting them through libvterm for
   // every cell is especially expensive in the single-threaded WASM renderer.
   // A terminal palette has at most 256 entries and is stable for a frame.
@@ -849,8 +848,37 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
                        fg, fb, br, bg, bb);
             glyph_rendered_count++;
           }
+        } else if (cell.chars[0] >= 0x2800 && cell.chars[0] <= 0x28ff) {
+          // The bundled font lacks Braille. Draw its eight-dot pattern in the
+          // cell when the selected font cannot supply the requested glyph.
+          static const unsigned dot_bits[4][2] = {{0, 3}, {1, 4}, {2, 5}, {6, 7}};
+          unsigned pattern = cell.chars[0] - 0x2800;
+          int dot_w = r->cell_w / 4 > 0 ? r->cell_w / 4 : 1;
+          int dot_h = r->cell_h / 8 > 0 ? r->cell_h / 8 : 1;
+          for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 2; col++) {
+              if (!(pattern & (1U << dot_bits[row][col])))
+                continue;
+              int left = px + (2 * col + 1) * r->cell_w / 4 - dot_w / 2;
+              int top = py + (2 * row + 1) * r->cell_h / 8 - dot_h / 2;
+              for (int dy = 0; dy < dot_h; dy++) {
+                for (int dx = 0; dx < dot_w; dx++) {
+                  int x = left + dx, y = top + dy;
+                  if (x < px || x >= px + r->cell_w || y < py || y >= py + r->cell_h || x < 0 || x >= r->width_px ||
+                      y < 0 || y >= r->height_px)
+                    continue;
+                  uint8_t *pixel = r->framebuffer + y * r->pitch + x * 4;
+                  pixel[0] = fr;
+                  pixel[1] = fg;
+                  pixel[2] = fb;
+                  pixel[3] = 255;
+                }
+              }
+            }
+          }
+          glyph_rendered_count++;
         } else {
-          glyph_missing_count++;
+          return SET_ERRNO(ERROR_NOT_SUPPORTED, "Font cannot render Unicode character U+%04X", cell.chars[0]);
         }
       }
       if (contained) {
@@ -870,8 +898,8 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
     }
   }
   render_zalgo(r, offset_x, offset_y);
-  log_debug_every(5 * US_PER_SEC_INT, "Rendered %d glyphs from %d occupied cells (%d missing) out of %d cells",
-                  glyph_rendered_count, occupied_cell_count, glyph_missing_count, r->rows * r->cols);
+  log_debug_every(5 * US_PER_SEC_INT, "Rendered %d glyphs from %d occupied cells out of %d cells", glyph_rendered_count,
+                  occupied_cell_count, r->rows * r->cols);
 
   return ASCIICHAT_OK;
 }

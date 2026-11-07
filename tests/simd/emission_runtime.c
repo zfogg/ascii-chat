@@ -48,3 +48,8 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
 void named_unregister(uintptr_t key) {
   (void)key;
 }
+
+const char *asciichat_error_format(const char *message, asciichat_error_t code) {
+  (void)code;
+  return message ? message : "renderer test error";
+}

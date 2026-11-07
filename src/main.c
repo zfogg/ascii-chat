@@ -491,6 +491,10 @@ static void on_exit_show_cursor(void) {
  * ============================================================================ */
 
 int main(int argc, char *argv[]) {
+  if (process_utf8_arguments(&argc, &argv) != ASCIICHAT_OK) {
+    fprintf(stderr, "Failed to convert command-line arguments to UTF-8\n");
+    return 1;
+  }
   // Set global argc/argv for early argv inspection (e.g., in terminal.c)
   g_argc = argc;
   g_argv = argv;

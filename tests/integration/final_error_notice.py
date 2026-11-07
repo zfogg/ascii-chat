@@ -9,11 +9,13 @@ import time
 
 sys.path.insert(0, str(next(p for p in Path(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 if os.name == "nt" and importlib.util.find_spec("winpty") is None:
     raise SystemExit(77)
 
-from terminal_ui import Terminal, free_port
+from ascii_chat_tests.terminal import Terminal
+from ascii_chat_tests.process import free_port
 
 
 def main():
@@ -29,8 +31,8 @@ def main():
 
 def check(binary, options, unicode, color, diagnostics):
     port = free_port()
-    term = Terminal([str(binary.resolve()), "--no-check-update", *options, "--discovery-service", "127.0.0.1",
-                     "--discovery-service-port", str(port), "--test-pattern", "--audio=false"],
+    term = Terminal(cli_command(str(binary.resolve()), *options, "--discovery-service", "127.0.0.1",
+                     "--discovery-service-port", str(port), "--test-pattern", "--audio=false"),
                     rows=35, cols=120, environment={"ASCII_CHAT_DISABLE_FIRST_USE": "1", "TERM": "xterm-256color",
                                                     "LANG": "C.UTF-8"})
     try:

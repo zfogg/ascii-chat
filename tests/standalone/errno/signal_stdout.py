@@ -5,6 +5,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import start_cli
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import os
@@ -19,10 +21,11 @@ import tempfile
 import time
 
 
+from ascii_chat_tests.process import free_port as allocate_port
+
+
 def free_port():
-    with socket.socket() as sock:
-        sock.bind(('127.0.0.1', 0))
-        return str(sock.getsockname()[1])
+    return str(allocate_port())
 
 
 def main():
@@ -36,9 +39,9 @@ def main():
     env = dict(os.environ, TERM='xterm-256color')
     env.pop('CLAUDECODE', None)
     with (artifacts / 'stderr.log').open('wb') as stderr:
-        proc = subprocess.Popen([str(args.binary.resolve()), '--no-check-update', '--log-level', 'debug',
+        proc = start_cli(str(args.binary.resolve()), '--log-level', 'debug',
                                  'server', '127.0.0.1', '--port', free_port(), '--websocket-port', free_port(),
-                                 '--status-screen=false'], stdin=slave, stdout=slave, stderr=stderr, env=env)
+                                 '--status-screen=false', stdin=slave, stdout=slave, stderr=stderr, env=env)
         os.close(slave)
         def wait_for(predicate):
             deadline = time.monotonic() + 15

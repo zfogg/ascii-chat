@@ -17,7 +17,7 @@ ctest --test-dir build -L '^contract$' --no-tests=error --output-on-failure
 
 CTest normally supplies `TESTING`, `CRITERION_TEST`, and `BUILD_DIR`; retain them for direct binary runs. Prefer CTest when wrappers, environment, deadlines or serialization matter. CMake supplies `--xml=<build>/Testing/criterion-xml/NAME.xml` for registered Criterion runs; direct invocations need an explicit `--xml=PATH` to retain equivalent reports.
 
-CTest parallelizes executables; Criterion parallelizes cases within each executable. Avoid multiplying both blindly. Current ordinary defaults are 25-second Criterion / 30-second CTest deadlines, with suite overrides; coverage uses one Criterion worker and longer deadlines. Many integration/contracts use `RUN_SERIAL` for shared ports/resources. Inspect effective commands before changing timeouts or serialization.
+CTest uses all available cores across executables; Criterion uses one worker per executable to avoid multiplying pools. Pytest batches reserve the detected core count and use xdist logical cores. Many legacy integration/contracts use `RUN_SERIAL` for shared resources. Inspect effective commands and fixture isolation before changing serialization.
 
 ## Windows Docker
 
@@ -48,17 +48,39 @@ Compose adds `SYS_PTRACE` and disables LeakSanitizer detection through its envir
 
 ## Python integration and standalone fixtures
 
-Many Python files are executable-specific harnesses, not pytest suites. Inspect docstrings, imports, argument parsing and CMake registration. Do not assume every script accepts `--binary`, or that unittest discovery exercises the actual binary.
+The locked uv project provides pytest and pytest-xdist. `tests/python/` is the
+only default collection tree; its modules must not start processes or parse CLI
+arguments at import time. Fixtures in `tests/python/conftest.py` provide the
+native binary, isolated environment, managed services, and PTY/ConPTY terminals. Pass `--terminal-probe` to exercise the native terminal fixture in direct pytest runs. CTest registers `python-unit`,
+`python-cli`, `python-media`, `python-network`, `python-discovery`, `python-mcp`, `python-terminal`, `python-telemetry`, `python-lifecycle`, and `python-capture`; each emits
+`build/Testing/python-*.xml` and reserves all cores while xdist runs.
+
+```sh
+uv sync --project tests/ascii_chat_tests --frozen
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/unit
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python --ascii-chat-binary build/bin/ascii-chat --terminal-probe build/bin/test-terminal-pty --lifecycle-probe build/bin/test-client-like-lifecycle --media-capture-probe build/bin/test-media-capture-open
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/cli/test_options.py --ascii-chat-binary build/bin/ascii-chat -k seek -n 0
+ctest --test-dir build -R '^python-(unit|cli|media|network|discovery|mcp|terminal|telemetry|lifecycle|capture)$' --no-tests=error --output-on-failure --parallel
+```
+
+Use the platform executable suffix on Windows. pytest defaults to `-n logical`;
+`-n 0` is useful to debug one case. Exit code 5 means no cases were collected,
+not a pass. `--parallel` without a number uses the available cores; `--parallel 0`
+is unbounded in current CTest and can oversubscribe the host. Resource-sensitive
+legacy CTest cases retain their explicit serialization. Add pytest coverage
+incrementally; many remaining harnesses are executable scripts with import-time
+work. Do not collect the entire legacy tree or run a migrated case twice.
+
 
 ```sh
 cmake --build build --target ascii-chat
-python tests/integration/server_lifecycle.py build/bin/ascii-chat
-python tests/integration/server_client_lifecycle.py build/bin/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network --ascii-chat-binary build/bin/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network/test_server_client_lifecycle.py --ascii-chat-binary build/bin/ascii-chat
 python tests/integration/terminal_ui.py --binary build/bin/ascii-chat
 python tests/integration/network_terminal_backpressure.py \
   --binary build/bin/ascii-chat --output build/backpressure
 # Harness unit tests are separate from exercising real processes:
-python -m unittest discover -s tests/integration -p 'test_network_terminal_backpressure.py'
+uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/unit/test_receive_timing.py
 ```
 
 On Windows pass the actual native `.exe` path; host Python cannot run a Linux Docker executable. `terminal_ui.py` requires pyte, ffmpeg, and pywinpty on Windows / pexpect on POSIX. tmux probes require tmux and a POSIX terminal. `os.fork`/PTY probes do not prove native Windows behavior; inspect `windows_console.py`, `terminal_resize_windows.py`, and other native harnesses for that surface. Audio scripts under `tests/audio/` have separate dependencies and may require hardware; inspect prerequisites individually.

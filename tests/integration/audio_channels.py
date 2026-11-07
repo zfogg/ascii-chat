@@ -4,6 +4,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
 
 import argparse
 import contextlib
@@ -17,7 +18,7 @@ import subprocess
 import tempfile
 import time
 
-from server_lifecycle import Service, free_port, server_options
+from ascii_chat_tests.process import Service, free_port, server_options
 
 
 def tone_amplitude(samples, channel, frequency):
@@ -41,11 +42,7 @@ def main():
     with contextlib.nullcontext(args.artifacts_dir) if args.artifacts_dir else tempfile.TemporaryDirectory(prefix="ascii-stereo-call-") as temporary:
         root = Path(temporary)
         media = root / "stereo.mkv"
-        subprocess.run([
-            "ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=64x48:rate=10",
-            "-f", "lavfi", "-i", "aevalsrc=0.2*sin(2*PI*440*t)|0.2*sin(2*PI*880*t):s=48000",
-            "-t", "12", "-c:v", "ffv1", "-c:a", "pcm_f32le", str(media),
-        ], check=True, timeout=30)
+        lavfi_fixture(["testsrc2=size=64x48:rate=10", "aevalsrc=0.2*sin(2*PI*440*t)|0.2*sin(2*PI*880*t):s=48000"], str(media), ffmpeg_options=["-y", "-v", "error"], output_options=["-t", "12", "-c:v", "ffv1", "-c:a", "pcm_f32le"], timeout=30)
         port, websocket = free_port(), free_port()
         while websocket == port:
             websocket = free_port()
