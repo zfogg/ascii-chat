@@ -50,7 +50,7 @@ After the isolation checks pass, set `MCP_SITE=mcp.ascii-chat.com`, `MCP_BIND_AD
 python smoke.py --url https://mcp.ascii-chat.com --animated
 ```
 
-The smoke test requests a generated pattern, retrieves its temporary PNG, checks the public URL and proxy body limit, and confirms local/metadata URL requests fail. With `--animated`, it also generates a video locally with FFmpeg, uploads it, and checks that the downloaded GIF has distinct frames; this option requires `ffmpeg` and `ffprobe` on the test machine. It does not prove every egress route is blocked; test redirect and nested-playlist cases and your actual protected public addresses separately. Monitor capacity, rejected requests, certificate renewal, and download expiry. CI and CodeQL must pass on the exact deployed revision.
+The smoke test requests a generated pattern, retrieves its temporary PNG, checks the public URL and proxy body limit, and confirms local/metadata URL requests fail. With `--animated`, it also generates a video locally with FFmpeg, uploads it, and checks that the downloaded GIF has distinct frames; this option requires `ffmpeg` on the test machine. It does not prove every egress route is blocked; test redirect and nested-playlist cases and your actual protected public addresses separately. Monitor capacity, rejected requests, certificate renewal, and download expiry. CI and CodeQL must pass on the exact deployed revision.
 
 For rollback, choose a previously verified image digest in `.env`, then run `docker compose --env-file .env up -d --build`; preserve the Caddy volumes. Do not use `down -v` for routine updates.
 
