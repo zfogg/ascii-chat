@@ -925,8 +925,16 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     option_parsed_value_t parsed = {0};
     asciichat_error_t parse_result = ASCIICHAT_OK;
 
-    // Handle CALLBACK types using their custom parse function
-    if (meta->type == OPTION_TYPE_CALLBACK) {
+    // MCP bind strings have a CLI parser that also validates address families.
+    // Keep their string schema, but apply that parser to TOML values as well.
+    bool mcp_bind =
+        detected_mode == MODE_MCP_SERVER && meta->type == OPTION_TYPE_STRING && meta->parse_fn &&
+        (meta->field_offset == offsetof(options_t, address) || meta->field_offset == offsetof(options_t, address6));
+    if (meta->type == OPTION_TYPE_CALLBACK || mcp_bind) {
+      // Unified generated configs use "localhost"; the bind parser accepts
+      // numeric addresses, so preserve that loopback default for MCP.
+      if (mcp_bind && meta->field_offset == offsetof(options_t, address) && !strcmp(value_str, "localhost"))
+        SAFE_STRNCPY(value_str, "127.0.0.1", BUFFER_SIZE_MEDIUM);
       if (meta->parse_fn) {
         // Use custom parse function for callbacks (e.g., port parsing)
         void *field_ptr = (char *)opts + meta->field_offset;

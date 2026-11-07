@@ -84,6 +84,19 @@ class Protocol(unittest.TestCase):
                                            capture_output=True, text=True, timeout=10)
         self.assertNotEqual(invalid_transport.returncode, 0)
 
+    def test_configured_bind_addresses_are_validated(self):
+        config = self.directory / "bind.toml"
+        for key, address, valid in (("address", "127.0.0.1", True), ("address6", "::1", True),
+                                    ("address", "not-an-ip.invalid", False), ("address6", "not-an-ip.invalid", False)):
+            config.write_text(f"[network]\n{key} = '{address}'\n")
+            result = subprocess.run([str(BINARY), "--config", str(config), "mcp-server"], input=b"", capture_output=True, timeout=15)
+            self.assertEqual(result.returncode == 0, valid, (key, address, result.stderr.decode(errors="replace")))
+        generated = self.directory / "generated.toml"
+        created = subprocess.run([str(BINARY), "--config-create", str(generated)], capture_output=True, timeout=15)
+        self.assertEqual(created.returncode, 0)
+        result = subprocess.run([str(BINARY), "--config", str(generated), "mcp-server"], input=b"", capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+
     def test_cancel_ping_and_diagnostic_stream(self):
         c = self.client(("--sync-state", "0.2"))
         c.send("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
