@@ -158,7 +158,7 @@ void render_progress_frame(render_progress_t *progress, const char *frame, bool 
     return;
   }
   progress->last_preview_ns = now;
-  size_t length = strnlen(frame, PREVIEW_MAX_BYTES + 1);
+  size_t length = strnlen(frame, (size_t)PREVIEW_MAX_BYTES + 1u);
   // Oversized frames still encode normally; omit their terminal preview.
   if (length > PREVIEW_MAX_BYTES)
     length = 0;
