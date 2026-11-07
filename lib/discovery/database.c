@@ -1532,8 +1532,14 @@ asciichat_error_t database_session_update_host_with_transport(sqlite3 *db, const
                                                               size_t length) {
   if (!db || !session || !host || (!metadata && length) || (length && (length < 10 || length > 521)))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid host transport update");
-  if (sqlite3_exec(db, "SAVEPOINT host_transport_refresh", NULL, NULL, NULL) != SQLITE_OK)
+  // Savepoints belong to the shared connection, so exclude other client
+  // threads until this entire refresh has committed or rolled back.
+  sqlite3_mutex *mutex = sqlite3_db_mutex(db);
+  sqlite3_mutex_enter(mutex);
+  if (sqlite3_exec(db, "SAVEPOINT host_transport_refresh", NULL, NULL, NULL) != SQLITE_OK) {
+    sqlite3_mutex_leave(mutex);
     return SET_ERRNO(ERROR_CONFIG, "Cannot begin host transport update");
+  }
   asciichat_error_t result = database_session_update_host(db, session, host, address, port, type);
   if (result == ASCIICHAT_OK && length)
     result = database_session_transport_set(db, session, metadata, length);
@@ -1556,5 +1562,6 @@ asciichat_error_t database_session_update_host_with_transport(sqlite3 *db, const
     sqlite3_exec(db, "ROLLBACK TO host_transport_refresh", NULL, NULL, NULL);
     sqlite3_exec(db, "RELEASE host_transport_refresh", NULL, NULL, NULL);
   }
+  sqlite3_mutex_leave(mutex);
   return result;
 }

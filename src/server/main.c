@@ -2034,6 +2034,8 @@ static void server_stop_discovery(void) {
 }
 
 static void server_cleanup_fn(void *user_data) {
+  // Initialization can fail before the run loop signals shutdown.
+  atomic_store_bool(&g_should_exit, true);
   stats_runtime_set_provider(NULL, NULL);
   (void)user_data;
 
