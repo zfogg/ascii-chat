@@ -13,6 +13,24 @@ import {
 afterEach(() => setNetworkErrorReporter(null));
 
 describe("browser error overlay", () => {
+  it("bounds queued errors and dismisses reports that cannot be queued", () => {
+    const dropped = vi.fn();
+    render(<ErrorOverlay />);
+    act(() => {
+      for (let i = 0; i < 33; i++)
+        publishBrowserError({
+          source: "JavaScript",
+          title: `Error ${i}`,
+          frames: [{ message: `Failure ${i}` }],
+          ...(i === 32 ? { dismiss: dropped } : {}),
+        });
+    });
+    expect(dropped).toHaveBeenCalledOnce();
+    expect(screen.getByText("Error 0")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Dismiss (32)" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss (32)" }));
+    expect(screen.getByText("Error 1")).toBeTruthy();
+  });
   it("renders every C stack frame and copies its debug-only full path", () => {
     const dismiss = vi.fn();
     const writeText = vi.fn().mockResolvedValue(undefined);
