@@ -225,11 +225,19 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
     yyjson_mut_obj_add_str(d, info, "name", "ascii-chat");
     yyjson_mut_obj_add_str(d, info, "version", ASCII_CHAT_VERSION_FULL);
     yyjson_mut_obj_add_val(d, result, "serverInfo", info);
-    yyjson_mut_obj_add_str(
-        d, result, "instructions",
-        "Render media as ASCII art. Uploaded bytes must be base64 encoded by the client. snapshot-delay measures "
-        "capture duration after the first rendered frame; use seek for media timestamps. output_path saves ASCII art "
-        "as an image/video and never replaces an existing file.");
+    const char *instructions =
+        s->policy.restricted && s->policy.hosted
+            ? "Render uploaded bytes or HTTP(S) media URLs as ASCII art. The hosted server cannot access your webcam "
+              "or "
+              "local filesystem. Rendered files are returned as temporary download links with UTC expiration "
+              "timestamps; "
+              "links expire after 30 minutes. Use output_format to select the file format, snapshot-delay to set clip "
+              "duration, and options.audio=true to include source audio."
+            : "Render media as ASCII art. Uploaded bytes must be base64 encoded by the client. snapshot-delay measures "
+              "capture duration after the first rendered frame; use seek for media timestamps. output_path saves ASCII "
+              "art "
+              "as an image/video and never replaces an existing file.";
+    yyjson_mut_obj_add_str(d, result, "instructions", instructions);
     return d;
   }
   if (!strcmp(name, "ping"))

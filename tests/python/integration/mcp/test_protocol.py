@@ -10,8 +10,13 @@ import os
 from pathlib import Path
 import queue
 import socket
+import shutil
 import subprocess
+import sys
 import tempfile
+from datetime import datetime, timezone
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlparse
 import threading
 import time
 import unittest
@@ -174,10 +179,95 @@ class Protocol(unittest.TestCase):
     def test_http_local_devices_and_paths(self):
         self.http_profile(False)
 
+    def test_hosted_uses_xdg_data_directory_by_default(self):
+        if sys.platform == "win32":
+            self.skipTest("XDG data directories are a Unix convention")
+        port = free_port()
+        data_home = self.directory / "xdg"
+        env = {**os.environ, "XDG_DATA_HOME": str(data_home)}
+        log = open(self.directory / "xdg-http.log", "wb"); self.addCleanup(log.close)
+        process = subprocess.Popen([str(self.binary), "mcp-server", "--transport", "http", "--server",
+                                    "--address", "127.0.0.1", "--port", str(port), "--status-screen=false"],
+                                   stdout=log, stderr=log, env=env)
+        def stop():
+            process.terminate()
+            try: process.wait(timeout=10)
+            except subprocess.TimeoutExpired: process.kill(); process.wait()
+        self.addCleanup(stop)
+        for _ in range(100):
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=.1): break
+            except OSError:
+                self.assertIsNone(process.poll(), "HTTP server exited"); time.sleep(.05)
+        else: self.fail("HTTP server did not bind")
+        self.assertTrue((data_home / "ascii-chat" / "downloads").is_dir())
+
+    def test_hosted_url_video_with_audio(self):
+        ffmpeg, ffprobe = shutil.which("ffmpeg"), shutil.which("ffprobe")
+        if not ffmpeg or not ffprobe:
+            self.skipTest("ffmpeg and ffprobe are required to generate and inspect the clip")
+        source = self.directory / "source.mp4"
+        subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
+                        "testsrc=size=80x64:rate=10", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000",
+                        "-t", "3", "-c:v", "mpeg4", "-c:a", "aac", "-movflags", "+faststart", "-y", str(source)],
+                       check=True, timeout=30)
+        class MediaHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = source.read_bytes()
+                range_header = self.headers.get("Range")
+                start = int(range_header.split("=", 1)[1].split("-", 1)[0] or 0) if range_header else 0
+                self.send_response(206 if range_header else 200)
+                self.send_header("Content-Type", "video/mp4")
+                self.send_header("Accept-Ranges", "bytes")
+                if range_header: self.send_header("Content-Range", f"bytes {start}-{len(body) - 1}/{len(body)}")
+                self.send_header("Content-Length", str(len(body) - start)); self.end_headers(); self.wfile.write(body[start:])
+            def log_message(self, *args): pass
+        media = ThreadingHTTPServer(("127.0.0.1", 0), MediaHandler)
+        threading.Thread(target=media.serve_forever, daemon=True).start()
+        self.addCleanup(media.server_close); self.addCleanup(media.shutdown)
+        port = free_port()
+        log = open(self.directory / "video-http.log", "wb"); self.addCleanup(log.close)
+        process = subprocess.Popen([str(self.binary), "mcp-server", "--transport", "http", "--server",
+                                    "--downloads-dir", str(self.directory / "clips"), "--address", "127.0.0.1",
+                                    "--port", str(port), "--status-screen=false"], stdout=log, stderr=log)
+        def stop():
+            process.terminate()
+            try: process.wait(timeout=10)
+            except subprocess.TimeoutExpired: process.kill(); process.wait()
+        self.addCleanup(stop)
+        for _ in range(100):
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=.1): break
+            except OSError:
+                self.assertIsNone(process.poll(), "HTTP server exited"); time.sleep(.05)
+        else: self.fail("HTTP server did not bind")
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=70)
+        body = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "render_url",
+                "arguments": {"url": f"http://127.0.0.1:{media.server_port}/source.mp4", "output_format": "mp4",
+                              "options": {"width": 40, "height": 16, "snapshot-delay": 1.5,
+                                          "fps": 10, "audio": True}}}}
+        conn.request("POST", "/mcp", json.dumps(body), {"Content-Type": "application/json",
+                     "Accept": "application/json, text/event-stream"})
+        response = conn.getresponse(); result = json.loads(response.read()); conn.close()
+        self.assertEqual(response.status, 200); self.assertFalse(result["result"]["isError"], result)
+        link = result["result"]["structuredContent"]["download_url"]
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=20)
+        conn.request("GET", urlparse(link).path)
+        response = conn.getresponse(); clip = response.read(); conn.close()
+        self.assertEqual(response.status, 200)
+        output = self.directory / "rendered.mp4"; output.write_bytes(clip)
+        probe = subprocess.run([ffprobe, "-v", "error", "-show_entries", "stream=codec_type", "-of", "json", str(output)],
+                               check=True, capture_output=True, text=True, timeout=20)
+        kinds = {stream["codec_type"] for stream in json.loads(probe.stdout)["streams"]}
+        self.assertEqual(kinds, {"video", "audio"})
+
     def http_profile(self, restricted):
         port = free_port()
         log = open(self.directory / "http.log", "wb"); self.addCleanup(log.close)
-        p = subprocess.Popen([str(self.binary), "mcp-server", "--transport", "http", *(["--server"] if restricted else []), "--address", "127.0.0.1",
+        downloads = self.directory / "downloads"
+        prefix = f"http://127.0.0.1:{port}/downloads"
+        hosted_options = ["--server", "--downloads-dir", str(downloads), "--downloads-url-prefix", prefix] if restricted else []
+        p = subprocess.Popen([str(self.binary), "mcp-server", "--transport", "http", *hosted_options, "--address", "127.0.0.1",
                               "--port", str(port), "--http-origin", "https://tools.example.test", "--status-screen=false"], stdout=log, stderr=log)
         def stop():
             p.terminate()
@@ -227,6 +317,10 @@ class Protocol(unittest.TestCase):
                 self.assertTrue(any(char in output for char in palette[1:]), output)
             return
         self.assertEqual(set(tools), {"render_file", "render_url", "render_visualization"})
+        self.assertIn("output_format", tools["render_url"]["inputSchema"]["properties"])
+        self.assertIn("expires_at", tools["render_url"]["outputSchema"]["properties"])
+        _, init = request({"jsonrpc": "2.0", "id": 19, "method": "initialize", "params": {}})
+        self.assertIn("expire after 30 minutes", init["result"]["instructions"])
         for tool, arguments in (("device_list", {}), ("render_webcam", {}), ("render_visualization", {"visualization": "fft", "audio": {"type": "microphone"}})):
             _, denied = request({"jsonrpc": "2.0", "id": 20, "method": "tools/call", "params": {"name": tool, "arguments": arguments}})
             self.assertTrue("error" in denied or denied.get("result", {}).get("isError"), denied)
@@ -241,5 +335,51 @@ class Protocol(unittest.TestCase):
             self.assertTrue(result["result"]["isError"])
         _, result = request({"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {
             "name": "render_file", "arguments": {"options": {"test-pattern": True, "width": 40, "height": 16}}}})
-        self.assertFalse(result["result"]["isError"])
-        self.assertGreater(len(result["result"]["structuredContent"]["ascii"]), 100)
+        self.assertFalse(result["result"]["isError"], result)
+        data = result["result"]["structuredContent"]
+        link = data["download_url"]
+        self.assertTrue(link.startswith(prefix + "/"), link)
+        expires = datetime.fromisoformat(data["expires_at"].replace("Z", "+00:00"))
+        self.assertTrue(1790 <= (expires - datetime.now(timezone.utc)).total_seconds() <= 1801)
+        self.assertEqual(data["saved_files"], [link])
+        self.assertIn(data["expires_at"], result["result"]["content"][0]["text"])
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+        conn.request("GET", urlparse(link).path)
+        response = conn.getresponse(); payload = response.read()
+        self.assertEqual(response.status, 200)
+        self.assertTrue(payload.startswith(b"\x89PNG\r\n\x1a\n"))
+        conn.close()
+        stored = downloads / urlparse(link).path.rsplit("/", 1)[-1]
+        self.assertTrue(stored.is_file())
+        stored.unlink()
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+        conn.request("GET", urlparse(link).path)
+        response = conn.getresponse(); response.read()
+        self.assertEqual(response.status, 404)
+        conn.close()
+        expired = downloads / ("1000000000-" + "a" * 32 + ".png")
+        expired.write_bytes(b"expired")
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+        conn.request("GET", "/downloads/" + expired.name)
+        response = conn.getresponse(); response.read()
+        self.assertEqual(response.status, 404)
+        conn.close()
+        self.assertFalse(expired.exists())
+
+        # A URL provided by the caller is consumed by the renderer, without granting
+        # the hosted MCP process access to caller-selected local paths.
+        class MediaHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = b"P6\n2 2\n255\n" + bytes([255, 0, 0] * 4)
+                self.send_response(200); self.send_header("Content-Length", str(len(body)))
+                self.send_header("Content-Type", "image/x-portable-pixmap"); self.end_headers()
+                self.wfile.write(body)
+            def log_message(self, *args): pass
+        media = ThreadingHTTPServer(("127.0.0.1", 0), MediaHandler)
+        thread = threading.Thread(target=media.serve_forever, daemon=True); thread.start()
+        self.addCleanup(media.server_close); self.addCleanup(media.shutdown)
+        _, rendered = request({"jsonrpc": "2.0", "id": 55, "method": "tools/call", "params": {
+            "name": "render_url", "arguments": {"url": f"http://127.0.0.1:{media.server_port}/upload.ppm",
+                                                    "options": {"width": 40, "height": 16}}}})
+        self.assertFalse(rendered["result"]["isError"], rendered)
+        self.assertIn("download_url", rendered["result"]["structuredContent"])

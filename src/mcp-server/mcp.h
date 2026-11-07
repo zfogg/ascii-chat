@@ -35,6 +35,8 @@ typedef struct {
   unsigned max_jobs;
   const char *origin;
   int port;
+  char downloads_dir[PLATFORM_MAX_PATH_LENGTH];
+  const char *downloads_url_prefix;
 } mcp_policy_t;
 
 typedef struct {
@@ -97,3 +99,6 @@ void mcp_stdio_send(mcp_server_t *server, yyjson_mut_doc *response);
 asciichat_error_t mcp_stdio_run(mcp_server_t *server);
 asciichat_error_t mcp_http_run(mcp_server_t *server);
 void mcp_http_wake(mcp_server_t *server);
+bool mcp_download_name(const char *name, int64_t *expires);
+void mcp_download_prune(const char *directory, int64_t now);
+asciichat_error_t mcp_download_finalize(const mcp_policy_t *policy, yyjson_mut_doc *doc, int64_t now);

@@ -19,6 +19,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <time.h>
 
 // Exposure is explicit; types, descriptions, enums and CLI parsers remain in the registry.
 static const char *const shared_options[] = {"width",
@@ -142,6 +143,13 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
     yyjson_mut_obj_add_str(d, tool, "description", descs[i]);
     yyjson_mut_obj_add_val(d, props, "options", options_schema(d, p));
     property(d, s, "timeout_ms", "integer", "Maximum job time, 1000–60000 ms; default 45000.");
+    if (p->restricted && p->hosted) {
+      property(
+          d, s, "output_format", "string",
+          "Output format: png, jpg, gif, mp4, webm or mkv. Defaults to png for a snapshot or mp4 for a timed clip.");
+      const char *formats[] = {"png", "jpg", "gif", "mp4", "webm", "mkv", NULL};
+      enum_strings(d, yyjson_mut_obj_get(props, "output_format"), formats);
+    }
     if (!p->restricted)
       property(d, s, "output_path", "string",
                "Save rendered ASCII art as an image/video, selected by extension. Existing files are never replaced.");
@@ -194,6 +202,10 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
     yyjson_mut_val *out = object_schema(d);
     property(d, out, "ascii", "string", "Rendered text; saved media may have no terminal text.");
     property(d, out, "elapsed_ms", "integer", "Worker wall-clock duration.");
+    if (p->restricted && p->hosted) {
+      property(d, out, "download_url", "string", "Temporary URL for the rendered file.");
+      property(d, out, "expires_at", "string", "UTC expiration timestamp in RFC 3339 format.");
+    }
     yyjson_mut_val *saved = yyjson_mut_obj(d), *items = yyjson_mut_obj(d);
     yyjson_mut_obj_add_str(d, saved, "type", "array");
     yyjson_mut_obj_add_str(d, items, "type", "string");
@@ -367,9 +379,9 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
   memset(r, 0, sizeof(*r));
   r->timeout_ms = 45000;
   r->argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **);
-  static const char *const fields[] = {"path",         "data_base64",   "mime_type", "url",         "video_device",
-                                       "audio",        "visualization", "options",   "output_path", "timeout_ms",
-                                       "audio_device", "volume",        NULL};
+  static const char *const fields[] = {"path",         "data_base64",   "mime_type",     "url",         "video_device",
+                                       "audio",        "visualization", "options",       "output_path", "timeout_ms",
+                                       "audio_device", "volume",        "output_format", NULL};
   asciichat_error_t err = check_fields(a, fields);
   if (err)
     return err;
@@ -550,6 +562,28 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
     option(r, "audio", "true");
   if (tool != MCP_WEBCAM && tool != MCP_VISUALIZATION && !test_audio)
     option(r, "audio-capture-source", "media");
+  yyjson_val *format = mcp_get(a, "output_format");
+  if (format && (!p->restricted || !p->hosted))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "output_format is available only in HTTP server mode");
+  if (p->restricted && p->hosted) {
+    const char *ext = format && yyjson_is_str(format)                       ? yyjson_get_str(format)
+                      : yyjson_get_num(mcp_get(opts, "snapshot-delay")) > 0 ? "mp4"
+                                                                            : "png";
+    static const char *const formats[] = {"png", "jpg", "gif", "mp4", "webm", "mkv", NULL};
+    if ((format && !yyjson_is_str(format)) || !in_names(ext, formats))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported output_format");
+    unsigned char random[16];
+    char token[33], path[PLATFORM_MAX_PATH_LENGTH];
+    randombytes_buf(random, sizeof(random));
+    sodium_bin2hex(token, sizeof(token), random, sizeof(random));
+    int path_len =
+        safe_snprintf(path, sizeof(path), "%s/%lld-%s.%s", p->downloads_dir, (long long)time(NULL) + 1800, token, ext);
+    if (path_len < 0 || (size_t)path_len >= sizeof(path))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Download path is too long");
+    err = stage_output(path, r);
+    if (err)
+      return err;
+  }
   yyjson_val *output = mcp_get(a, "output_path");
   if (output) {
     if (!yyjson_is_str(output))
