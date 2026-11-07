@@ -441,7 +441,7 @@ static asciichat_error_t set_formatted(asciichat_error_t code, const char *file,
   backtrace_capture(&context.backtrace);
 #endif
   push_context(&context);
-#ifdef ASCIICHAT_WITH_OTEL
+#ifndef __EMSCRIPTEN__
   ascii_otel_error_code(code, context.context_message);
 #endif
   if (!g_suppress_logging) {

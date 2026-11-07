@@ -207,9 +207,7 @@ static int audio_queue_packet(client_connection_t *connection, const uint8_t *op
   memcpy(packet->data, opus_data, opus_size);
   packet->size = opus_size;
   packet->frame_count = frame_count;
-#ifdef ASCIICHAT_WITH_OTEL
   packet->telemetry_context = ascii_otel_context();
-#endif
   for (int i = 0; i < frame_count && i < MAX_BATCH_FRAMES; i++) {
     packet->frame_sizes[i] = frame_sizes[i];
   }

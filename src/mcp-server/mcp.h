@@ -64,9 +64,7 @@ typedef struct mcp_job {
   yyjson_mut_doc *response;
   mcp_render_request_t request;
   mcp_tool_t tool;
-#ifdef ASCIICHAT_WITH_OTEL
   gotel_context_t telemetry_parent;
-#endif
   asciichat_thread_t thread;
   atomic_t cancelled;
   atomic_t done;

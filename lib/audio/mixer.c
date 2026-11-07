@@ -65,7 +65,7 @@ static void mixer_distribute_samples(mixer_t *mixer) {
 
 static void mixer_spectral_process(mixer_t *mixer, int slot, float *samples, size_t count) {
   if (mixer->channels == 1) {
-    (void)spectral_process(mixer->spectral[slot], samples, samples, count);
+    (void)spectral_process(mixer->spectral_left[slot], samples, samples, count);
     return;
   }
   for (size_t base = 0; base < count;) {
@@ -79,7 +79,7 @@ static void mixer_spectral_process(mixer_t *mixer, int slot, float *samples, siz
       left[i] = samples[base + i * 2];
       right[i] = samples[base + i * 2 + 1];
     }
-    (void)spectral_process(mixer->spectral[slot], left, left, frames);
+    (void)spectral_process(mixer->spectral_left[slot], left, left, frames);
     (void)spectral_process(mixer->spectral_right[slot], right, right, frames);
     for (size_t i = 0; i < frames; i++) {
       samples[base + i * 2] = left[i];
@@ -225,7 +225,7 @@ mixer_t *mixer_create_channels(int max_sources, int sample_rate, unsigned channe
     return NULL;
   }
 
-  memset(mixer->spectral, 0, sizeof(mixer->spectral));
+  memset(mixer->spectral_left, 0, sizeof(mixer->spectral_left));
   memset(mixer->spectral_right, 0, sizeof(mixer->spectral_right));
   mixer->num_sources = 0;
   mixer->max_sources = max_sources;
@@ -346,7 +346,7 @@ mixer_t *mixer_create_channels(int max_sources, int sample_rate, unsigned channe
       config.noise_gate = false;
     }
     for (int i = 0; i <= max_sources; ++i) {
-      if (spectral_create(&config, &mixer->spectral[i]) != ASCIICHAT_OK ||
+      if (spectral_create(&config, &mixer->spectral_left[i]) != ASCIICHAT_OK ||
           (channels == 2 && spectral_create(&config, &mixer->spectral_right[i]) != ASCIICHAT_OK)) {
         mixer_destroy(mixer);
         return NULL;
@@ -369,7 +369,7 @@ void mixer_destroy(mixer_t *mixer) {
 
   NAMED_UNREGISTER(mixer);
   for (int i = 0; i <= mixer->max_sources; ++i) {
-    spectral_destroy(mixer->spectral[i]);
+    spectral_destroy(mixer->spectral_left[i]);
     spectral_destroy(mixer->spectral_right[i]);
   }
 
@@ -470,7 +470,7 @@ void mixer_remove_source(mixer_t *mixer, const char *client_id) {
         if (j != i)
           SAFE_FREE(mixer->listener_buffers[j][i]);
       }
-      spectral_reset(mixer->spectral[i]);
+      spectral_reset(mixer->spectral_left[i]);
       spectral_reset(mixer->spectral_right[i]);
       mixer->source_buffers[i] = NULL;
       // Free the allocated client_id string
@@ -542,7 +542,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     }
   }
 
-  if (active_count == 0 && !mixer->spectral[mixer->max_sources]) {
+  if (active_count == 0 && !mixer->spectral_left[mixer->max_sources]) {
     rwlock_wrunlock(&mixer->source_lock);
     return 0;
   }
@@ -668,7 +668,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_CLIP, (double)clipped);
   }
 
-  if (mixer->spectral[mixer->max_sources])
+  if (mixer->spectral_left[mixer->max_sources])
     mixer_spectral_process(mixer, mixer->max_sources, output, (size_t)num_samples);
   rwlock_wrunlock(&mixer->source_lock);
   return num_samples;
@@ -712,7 +712,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
   // Fast check: any sources to mix?
   int spectral_slot = valid_exclude ? exclude_index : mixer->max_sources;
-  if (!any_active && !mixer->spectral[spectral_slot]) {
+  if (!any_active && !mixer->spectral_left[spectral_slot]) {
     rwlock_wrunlock(&mixer->source_lock);
 #ifndef NDEBUG
     STOP_TIMER("mixer_total");
@@ -892,7 +892,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_CLIP, (double)clipped);
   }
 
-  if (mixer->spectral[spectral_slot])
+  if (mixer->spectral_left[spectral_slot])
     mixer_spectral_process(mixer, spectral_slot, output, (size_t)num_samples);
   rwlock_wrunlock(&mixer->source_lock);
 

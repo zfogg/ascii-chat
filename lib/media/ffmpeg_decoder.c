@@ -327,14 +327,9 @@ static int ffmpeg_interrupt_callback(void *opaque) {
  */
 
 static void ffmpeg_otel_result(int result, bool streaming) {
-#ifdef ASCIICHAT_WITH_OTEL
   // EOF, buffering and application cancellation are expected control flow.
   if (result < 0 && result != AVERROR_EXIT && !(streaming && (result == AVERROR_EOF || result == AVERROR(EAGAIN))))
     gotel_current_error("ffmpeg.error", "FFmpeg operation failed");
-#else
-  (void)result;
-  (void)streaming;
-#endif
 }
 
 static int traced_format_open(AVFormatContext **format, const char *path, const AVInputFormat *input,

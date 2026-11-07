@@ -163,7 +163,7 @@ if(NOT EMSCRIPTEN)
                      ${CMAKE_BINARY_DIR}/gotel)
     include(${CMAKE_SOURCE_DIR}/cmake/deps/OtelExporter.cmake)
     set(BUILD_SHARED_LIBS ${_asciichat_parent_shared_libs})
-    add_compile_definitions(ASCIICHAT_WITH_OTEL=1 GOTEL_WITH_SQLITE=1)
+    add_compile_definitions(GOTEL_WITH_SQLITE=1)
     include_directories($<TARGET_PROPERTY:gotel,INTERFACE_INCLUDE_DIRECTORIES>
                         $<TARGET_PROPERTY:otlp_c,INTERFACE_INCLUDE_DIRECTORIES>)
 endif()

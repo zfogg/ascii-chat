@@ -1124,15 +1124,11 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
   int ret;
   {
     ASCII_OTEL_SCOPE(DNS_RESOLVE);
-#ifdef ASCIICHAT_WITH_OTEL
     if (otel_scope.retained)
       gotel_attr_string(&otel_scope.scope, "dns.question.name", hostname);
-#endif
     ret = getaddrinfo(hostname, NULL, &hints, &result);
-#ifdef ASCIICHAT_WITH_OTEL
     if (ret && otel_scope.retained)
       gotel_error(&otel_scope.scope, "dns.error", "DNS lookup failed");
-#endif
   }
   if (ret != 0) {
     WSACleanup();

@@ -689,10 +689,8 @@ static asciichat_error_t client_like_run_session_attempts(const session_client_l
       if (result != ASCIICHAT_OK && result != ERROR_SIGNAL_INTERRUPT &&
           config->kind != SESSION_CLIENT_LIKE_KIND_MIRROR && !APP_CALLBACK_BOOL(should_exit))
         ascii_otel_metric(ASCII_OTEL_METRIC_CONNECTION_FAILURE, 1);
-#ifdef ASCIICHAT_WITH_OTEL
       if (result != ASCIICHAT_OK && result != ERROR_SIGNAL_INTERRUPT)
         ascii_otel_error("Session attempt failed");
-#endif
     }
 
     // Exit immediately if run_fn succeeded

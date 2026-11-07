@@ -23,9 +23,7 @@ typedef struct outbound_packet {
   uint32_t stream;
   bool video, encoded, keyframe, audio, wait, done;
   asciichat_error_t result;
-#ifdef ASCIICHAT_WITH_OTEL
   gotel_context_t telemetry_context;
-#endif
 } outbound_packet_t;
 
 typedef struct {
@@ -390,9 +388,7 @@ asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socke
   acip_outbound_t *out = transport->outbound;
   mutex_lock(&out->mutex);
   info.created = time_get_ns();
-#ifdef ASCIICHAT_WITH_OTEL
   info.telemetry_context = ascii_otel_context();
-#endif
   if (out->stopping || out->failed) {
     asciichat_error_t code = out->failed ? out->failure_code : ERROR_NETWORK;
     asciichat_error_context_t cause = out->failure;

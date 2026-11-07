@@ -39,7 +39,6 @@
 
 // PortAudio callbacks publish bounded, lock-free telemetry samples. The audio
 // worker exports them so the telemetry backend never runs on a device callback.
-#ifdef ASCIICHAT_WITH_OTEL
 #define AUDIO_RT_METRIC_SLOTS 1024
 _Static_assert(ATOMIC_INT_LOCK_FREE == 2 && ATOMIC_POINTER_LOCK_FREE == 2,
                "Audio telemetry requires lock-free unsigned and pointer atomics");
@@ -88,10 +87,6 @@ static void audio_metrics_flush(void) {
   if (dropped)
     log_warn("Dropped %u audio telemetry samples while the queue was full", dropped);
 }
-#else
-#define audio_metric(metric, value) ((void)(metric), (void)(value))
-#define audio_metrics_flush() ((void)0)
-#endif
 
 #ifdef _WIN32
 #include <malloc.h> // For _alloca on Windows
@@ -603,9 +598,7 @@ static void audio_monitor_test(audio_context_t *ctx, float *output, size_t count
 // of audio_start_duplex instead promotes the video/render or capture owner and
 // can starve both keyboard input and the actual audio device callbacks.
 static void audio_callback_prepare(void) {
-#ifdef ASCIICHAT_WITH_OTEL
   g_audio_callback_thread = true;
-#endif
   static _Thread_local bool prepared;
   if (!prepared) {
     prepared = true;

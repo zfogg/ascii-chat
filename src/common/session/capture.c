@@ -560,10 +560,8 @@ static void *load_media_worker(void *data) {
     }
   }
   ASCII_OTEL_ATTR_STRING("media.transition.outcome", source ? "ready" : load_cancelled(ctx) ? "cancelled" : "failed");
-#ifdef ASCIICHAT_WITH_OTEL
   if (!source && !load_cancelled(ctx))
     ascii_otel_error("Media transition could not prepare source");
-#endif
   asciichat_error_context_t failure;
   char error[SESSION_CAPTURE_ERROR_BUFFER_SIZE] = "Could not open media";
   if (!source && errno_peek_since(scope, &failure))

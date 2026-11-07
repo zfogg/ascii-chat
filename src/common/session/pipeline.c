@@ -43,9 +43,7 @@ typedef struct {
   const uint8_t *pixels; // Immutable owning reference shared by display and encoding
   int w, h;
   uint64_t source_epoch, frame_serial;
-#ifdef ASCIICHAT_WITH_OTEL
   gotel_context_t telemetry_context;
-#endif
   bool fresh;
   uint64_t captured_ns; // wall-clock timestamp
   uint64_t acquisition_started_ns;
@@ -348,9 +346,7 @@ static void *pipeline_capture_thread(void *arg) {
       continue;
     }
     frame->acquisition_started_ns = acquisition_started_ns;
-#ifdef ASCIICHAT_WITH_OTEL
     frame->telemetry_context = ascii_otel_context();
-#endif
 
     frame->source_epoch = session_capture_source_epoch(pipeline->capture);
     frame->frame_serial = session_capture_frame_serial(pipeline->capture);
@@ -652,9 +648,7 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     ascii_otel_metric(ASCII_OTEL_METRIC_DISPLAY_WAIT, queue_age);
     ascii_otel_metric(ASCII_OTEL_METRIC_QUEUE_OLDEST, queue_age);
     ASCII_OTEL_SCOPE_PARENT(PIPELINE_DISPLAY, &frame->telemetry_context);
-#ifdef ASCIICHAT_WITH_OTEL
     ascii_otel_scope_int(&otel_scope, "ascii_chat.queue.wait_ns", (int64_t)(time_get_ns() - frame->captured_ns));
-#endif
     // Validate frame structure exists before accessing fields
     if (!frame_is_valid(frame)) {
       ascii_otel_metric(ASCII_OTEL_METRIC_DROP_INVALID, 1);

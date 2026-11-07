@@ -19,9 +19,7 @@ yyjson_mut_doc *mcp_error(yyjson_val *id, int code, const char *message) {
   ASCII_OTEL_SCOPE(MCP_PROTOCOL_ERROR);
   ASCII_OTEL_ATTR_INT("rpc.jsonrpc.error_code", code);
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_REJECTED, 1);
-#ifdef ASCIICHAT_WITH_OTEL
   ascii_otel_error("MCP protocol request rejected");
-#endif
   yyjson_mut_doc *d = envelope(id);
   yyjson_mut_val *e = yyjson_mut_obj(d);
   yyjson_mut_obj_add_int(d, e, "code", code);
@@ -291,9 +289,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
   j->message = yyjson_read(copy, len, 0);
   free(copy);
   j->tool = (mcp_tool_t)kind;
-#ifdef ASCIICHAT_WITH_OTEL
   j->telemetry_parent = ascii_otel_context();
-#endif
   j->server = s;
   j->connection = connection;
   if (session_id)

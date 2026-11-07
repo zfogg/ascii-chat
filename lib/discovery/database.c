@@ -198,9 +198,7 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to open database: %s", err);
   }
 
-#ifdef ASCIICHAT_WITH_OTEL
   ascii_otel_sqlite(*db, database_queries, sizeof(database_queries) / sizeof(database_queries[0]));
-#endif
   // Enable Write-Ahead Logging for concurrent reads
   char *err_msg = NULL;
   rc = sqlite3_exec(*db, database_queries[QUERY_EnableWAL].sql, NULL, NULL, &err_msg);

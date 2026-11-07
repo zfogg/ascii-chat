@@ -12,7 +12,6 @@
 #define OTEL_WAIT_SNAPSHOT_CAPACITY 256
 
 #include <ascii-chat/otel.h>
-#ifdef ASCIICHAT_WITH_OTEL
 #include <ascii-chat/common.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/network/acip/messages.h>
@@ -827,4 +826,3 @@ void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count) 
     log_warn("Could not attach SQLite telemetry");
   release();
 }
-#endif

@@ -185,9 +185,7 @@ static asciichat_error_t check_http_status(const char *response) {
 
 char *https_get(const char *hostname, const char *path) {
   ASCII_OTEL_SCOPE(HTTP);
-#ifdef ASCIICHAT_WITH_OTEL
   ascii_otel_http(&otel_scope, hostname, path);
-#endif
   if (!hostname || !path) {
     log_error("Invalid arguments");
     return NULL;
@@ -231,15 +229,11 @@ char *https_get(const char *hostname, const char *path) {
   int dns_result;
   {
     ASCII_OTEL_SCOPE(DNS_RESOLVE);
-#ifdef ASCIICHAT_WITH_OTEL
     if (otel_scope.retained)
       gotel_attr_string(&otel_scope.scope, "dns.question.name", hostname);
-#endif
     dns_result = getaddrinfo(hostname, "443", &hints, &result);
-#ifdef ASCIICHAT_WITH_OTEL
     if (dns_result && otel_scope.retained)
       gotel_error(&otel_scope.scope, "dns.error", "DNS lookup failed");
-#endif
   }
   if (dns_result != 0) {
     log_error("Failed to resolve hostname: %s", hostname);
@@ -373,14 +367,12 @@ char *https_get(const char *hostname, const char *path) {
   socket_close(sock);
 
   // Parse HTTP response
-#ifdef ASCIICHAT_WITH_OTEL
   if (response_len >= 12 && strncmp(response_buf, "HTTP/1.", 7) == 0 && response_buf[8] == ' ' &&
       response_buf[9] >= '0' && response_buf[9] <= '9' && response_buf[10] >= '0' && response_buf[10] <= '9' &&
       response_buf[11] >= '0' && response_buf[11] <= '9' && otel_scope.retained) {
     int code = (response_buf[9] - '0') * 100 + (response_buf[10] - '0') * 10 + response_buf[11] - '0';
     gotel_http_attributes(&otel_scope.scope, "GET", code);
   }
-#endif
   asciichat_error_t status = check_http_status(response_buf);
   if (status != ASCIICHAT_OK) {
     SAFE_FREE(response_buf);
@@ -389,10 +381,8 @@ char *https_get(const char *hostname, const char *path) {
   }
 
   char *body = extract_http_body(response_buf, response_len);
-#ifdef ASCIICHAT_WITH_OTEL
   if (body)
     ascii_otel_http_status(&otel_scope, 200);
-#endif
   SAFE_FREE(response_buf);
   SAFE_FREE(iobuf);
 
