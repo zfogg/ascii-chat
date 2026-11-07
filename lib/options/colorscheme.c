@@ -904,7 +904,7 @@ static terminal_background_t current_background(void) {
     if (keyboard) {
       // Rendering and logging must never wait for an unsupported terminal.
       // Its normal input pump decodes the reply and publishes the new RGB.
-      (void)platform_write_all(STDERR_FILENO, "\033]11;?\033\\", 8);
+      (void)keyboard_request_background();
     }
 #else
     atomic_store(&g_live_background, detect_terminal_background());

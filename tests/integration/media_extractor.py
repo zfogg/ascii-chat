@@ -303,6 +303,32 @@ class MediaExtractor(unittest.TestCase):
             code, stdout, stderr = terminal.wait(timeout=10)
             self.assertEqual(code, 0, (stdout, stderr[-4000:]))
 
+    @unittest.skipIf(os.name == "nt", "POSIX terminal job control")
+    def test_background_color_query_does_not_reach_foreground_extractor(self):
+        import time
+
+        extractor_pid = self.root / "extractor.pid"
+        marker = self.root / "query-attempted"
+        env = dict(self.env, FAKE_YTDLP_MODE="interactive", FAKE_YTDLP_EXPECT_TERMINAL="1",
+                   FAKE_YTDLP_EXTRACTOR_PID=str(extractor_pid), FAKE_YTDLP_QUERY_ATTEMPTED=str(marker),
+                   TERM_BACKGROUND="")
+        terminal = Terminal([AUDIO_PROBE, self.base + "/watch", self.base + "/video.ppm"],
+                            rows=24, cols=100, terminal_replies=True, environment=env)
+        try:
+            terminal.expect(lambda text: "fixture prompt:" in text, "Extractor prompt was not visible", timeout=20)
+            previous_output = len("".join(terminal.raw))
+            deadline = time.monotonic() + 10
+            while not marker.exists() and time.monotonic() < deadline:
+                terminal.pump(0.1)
+            self.assertTrue(marker.exists(), "Background query was not attempted")
+            terminal.pump(0.2)
+            self.assertNotIn("\x1b]11;?\x1b\\", "".join(terminal.raw)[previous_output:])
+            terminal.write("yes\r")
+            terminal.expect(lambda _text: not terminal.process.isalive(), "Extractor did not exit", timeout=20)
+            self.assertEqual(terminal.process.exitstatus, 0, "".join(terminal.raw)[-4000:])
+        finally:
+            terminal.close()
+
     def test_capture_initialization_honors_configured_cancellation(self):
         """A caller's exit callback interrupts initial media extraction."""
         env = dict(self.env, FAKE_YTDLP_MODE="hang")

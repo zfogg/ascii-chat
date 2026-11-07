@@ -13,12 +13,27 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/options/colorscheme.h>
 
 static _Atomic bool stop_keyboard_poll;
 static void *poll_keyboard(void *unused) {
   (void)unused;
+  const char *extractor_pid = getenv("FAKE_YTDLP_EXTRACTOR_PID");
+  const char *query_attempted = getenv("FAKE_YTDLP_QUERY_ATTEMPTED");
+  bool checked_background = false;
   while (!atomic_load(&stop_keyboard_poll)) {
     (void)keyboard_input_available();
+    if (!checked_background && extractor_pid && query_attempted && access(extractor_pid, F_OK) == 0) {
+      usleep(350000);
+      (void)keyboard_request_background();
+      uint8_t r, g, b;
+      (void)keyboard_query_background(&r, &g, &b);
+      (void)colorscheme_current_background();
+      FILE *marker = fopen(query_attempted, "w");
+      if (marker)
+        fclose(marker);
+      checked_background = true;
+    }
     usleep(1000);
   }
   return NULL;
@@ -46,6 +61,10 @@ int main(int argc, char **argv) {
   options_t options = options_t_new();
   if (options_state_set(&options) != ASCIICHAT_OK)
     return 3;
+#ifndef _WIN32
+  if (getenv("FAKE_YTDLP_QUERY_ATTEMPTED") && keyboard_init() != ASCIICHAT_OK)
+    return 12;
+#endif
   if (argc == 3) {
     if (strcmp(argv[2], "--expect-cpp-linkage") == 0) {
       bool linked = extractor_cpp_linkage_probe();
@@ -109,6 +128,8 @@ int main(int argc, char **argv) {
       atomic_store(&stop_keyboard_poll, true);
       pthread_join(keyboard_thread, NULL);
     }
+    if (getenv("FAKE_YTDLP_QUERY_ATTEMPTED"))
+      keyboard_destroy();
 #endif
     options_state_destroy();
 #ifndef _WIN32

@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/platform/keyboard.h>
+#include "terminal.h"
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
@@ -218,9 +219,25 @@ static bool send_background_query(void) {
   return platform_write_all(STDERR_FILENO, "\033]11;?\033\\", 8) == 8;
 }
 
+bool keyboard_request_background(void) {
+  if (!keyboard_is_initialized())
+    return false;
+  int fd = g_tty_fd >= 0 ? g_tty_fd : STDIN_FILENO;
+  terminal_input_lock();
+  bool result = isatty(fd) && tcgetpgrp(fd) == getpgrp() && send_background_query();
+  terminal_input_unlock();
+  return result;
+}
+
 bool keyboard_query_background(uint8_t *r, uint8_t *g, uint8_t *b) {
-  return keyboard_is_initialized() &&
-         keyboard_stream_query_background(keyboard_raw_read, send_background_query, r, g, b);
+  if (!keyboard_is_initialized())
+    return false;
+  int fd = g_tty_fd >= 0 ? g_tty_fd : STDIN_FILENO;
+  terminal_input_lock();
+  bool foreground = isatty(fd) && tcgetpgrp(fd) == getpgrp();
+  bool result = foreground && keyboard_stream_query_background(keyboard_raw_read, send_background_query, r, g, b);
+  terminal_input_unlock();
+  return result;
 }
 
 bool keyboard_input_available(void) {
