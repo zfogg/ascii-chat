@@ -894,7 +894,7 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   cr_assert_not_null(color);
   terminal_cell_t cells[2] = {0};
   decode(color, cells, 2, 1, true);
-  cr_assert_eq(cells[0].fg, 0x506e8c, "glyph matching must preserve the sampled foreground color");
+  cr_assert_eq(cells[0].fg, 0x414142, "glyph color must reflect the entire cell, not its first pixel");
   SAFE_FREE(color);
 
   rgb_pixel_t colored_pixels[16 * 16];

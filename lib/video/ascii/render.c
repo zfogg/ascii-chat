@@ -512,6 +512,7 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
     for (int x = 0; x < cells.w; ++x) {
       int luminance[16];
       int sample_mean = 0;
+      unsigned color_sum[3] = {0, 0, 0};
       for (int sy = 0; sy < 4; ++sy) {
         const rgb_pixel_t *top = image->pixels + (size_t)(y * 8 + sy * 2) * (size_t)image->w + (size_t)(x * 8);
         const rgb_pixel_t *bottom = top + image->w;
@@ -522,6 +523,9 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
           int red = (a.r + b.r + c.r + d.r) / 4;
           int green = (a.g + b.g + c.g + d.g) / 4;
           int blue = (a.b + b.b + c.b + d.b) / 4;
+          color_sum[0] += (unsigned)(a.r + b.r + c.r + d.r);
+          color_sum[1] += (unsigned)(a.g + b.g + c.g + d.g);
+          color_sum[2] += (unsigned)(a.b + b.b + c.b + d.b);
           luminance[i] = (77 * red + 150 * green + 29 * blue) >> 8;
           sample_mean += luminance[i];
         }
@@ -559,10 +563,10 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
           best = g;
         }
       }
-      // Use the same top-left sample as the existing nearest-neighbor renderer.
-      // Solving for glyph coverage here can clip all three color channels to white.
-      rgb_pixel_t color = image->pixels[(size_t)(y * 8) * (size_t)image->w + (size_t)(x * 8)];
-      uint32_t rgb = ((uint32_t)color.r << 16) | ((uint32_t)color.g << 8) | color.b;
+      // Average the cell rather than sampling one corner, which can change
+      // abruptly when a small feature moves across the cell boundary.
+      uint32_t rgb = ((color_sum[0] + 32) / 64 << 16) | ((color_sum[1] + 32) / 64 << 8) |
+                     ((color_sum[2] + 32) / 64);
       uint32_t selected = (uint32_t)(best + 32);
       if (previous) {
         uint8_t patch[16];
