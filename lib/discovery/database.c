@@ -180,22 +180,6 @@ static void load_session_participants(sqlite3 *db, session_entry_t *session) {
 // Database Lifecycle
 // ============================================================================
 
-static void database_telemetry_population(sqlite3 *db) {
-  ASCII_OTEL_SCOPE(DATABASE_POPULATION);
-  if (!ascii_otel_enabled())
-    return;
-  sqlite3_stmt *statement = NULL;
-  if (ascii_otel_sqlite_prepare(db, database_queries[QUERY_GetPopulation].sql, &statement) != SQLITE_OK)
-    return;
-  sqlite3_bind_int64(statement, 1, (sqlite3_int64)database_get_current_time_ms());
-  if (sqlite3_step(statement) == SQLITE_ROW) {
-    stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_SESSIONS_ACTIVE, (uint64_t)sqlite3_column_int64(statement, 0));
-    stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_PARTICIPANTS_ACTIVE,
-                    (uint64_t)sqlite3_column_int64(statement, 1));
-  }
-  sqlite3_finalize(statement);
-}
-
 asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
   ASCII_OTEL_SCOPE(DATABASE_INIT);
   if (!db_path || !db) {
@@ -290,7 +274,6 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to migrate session keys");
   }
 
-  database_telemetry_population(*db);
   log_info("Database initialized successfully (SQLite as single source of truth)");
   return ASCIICHAT_OK;
 }
@@ -407,7 +390,6 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
   log_info("Session created: %s (session_id=%02x%02x%02x%02x..., max_participants=%d, has_password=%d)", session_string,
            session_id[0], session_id[1], session_id[2], session_id[3], max_participants, req->has_password ? 1 : 0);
 
-  database_telemetry_population(db);
   return ASCIICHAT_OK;
 }
 
@@ -769,7 +751,6 @@ static void database_session_join_response(sqlite3 *db, session_entry_t *session
   ascii_otel_call_session_used(session_string);
 
   session_entry_destroy(session);
-  database_telemetry_population(db);
 }
 asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *req, const acds_config_t *config,
                                         acip_session_joined_t *resp) {
@@ -984,7 +965,6 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[S
     return SET_ERRNO(ERROR_CONFIG, "Failed to commit transaction");
   }
 
-  database_telemetry_population(db);
   return ASCIICHAT_OK;
 }
 
@@ -1080,7 +1060,6 @@ void database_session_cleanup_expired(sqlite3 *db) {
       log_info("Cleaned up %d inactive sessions (>3 hours)", deleted);
     }
   }
-  database_telemetry_population(db);
 }
 
 asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE],
