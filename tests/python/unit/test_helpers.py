@@ -8,7 +8,6 @@ import wave
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ascii_chat_tests.cli import clean_environment, cli_command, run_cli, start_cli
 from ascii_chat_tests.media import lavfi_fixture, ppm_image, write_pcm_wav
 from ascii_chat_tests.jsonrpc import JsonRpcProcess

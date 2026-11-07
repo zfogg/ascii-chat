@@ -260,7 +260,7 @@ if ($Interactive) {
     Write-Host "Starting interactive shell in test container..." -ForegroundColor Cyan
 } else {
     # Build test command using ctest
-    $TestCommand = "ctest --test-dir build_docker --output-on-failure --parallel 0"
+    $TestCommand = "ctest --test-dir build_docker --output-on-failure --parallel"
 
     # Use PowerShell's built-in -Verbose parameter (from [CmdletBinding()])
     # $VerbosePreference is set to 'Continue' when -Verbose is used

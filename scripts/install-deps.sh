@@ -71,6 +71,11 @@ if [[ "$PLATFORM" == "macos" ]]; then
     libvterm freetype fontconfig expat \
     >/dev/null 2>&1 || true
 
+  # uv is required by the Python test runner; do not ignore its installation failure.
+  if ! command -v uv &>/dev/null; then
+    brew install uv
+  fi
+
   echo "Homebrew packages: installation attempt completed"
 
   echo ""
@@ -372,6 +377,19 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo >&2 "  - yt-dlp (for YouTube URL support)"
     exit 1
   fi
+
+  if ! command -v uv &>/dev/null; then
+    if [ "$(id -u)" -eq 0 ]; then
+      uv_install_dir=/usr/local/bin
+    else
+      uv_install_dir="${HOME}/.local/bin"
+    fi
+    echo "Installing uv to ${uv_install_dir}..."
+    curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="${uv_install_dir}" sh
+    export PATH="${uv_install_dir}:${PATH}"
+    echo "Ensure ${uv_install_dir} is on PATH in future shells."
+  fi
+  command -v uv >/dev/null || { echo >&2 "ERROR: uv installation failed"; exit 1; }
 
   echo ""
   echo "Dependencies installed successfully!"

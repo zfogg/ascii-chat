@@ -270,10 +270,8 @@ jobs:
 
           # Run unit tests (filtered by label)
           set -o pipefail
-          # Several unit binaries mutate process-global options and logging
-          # state. Run them serially so one test process cannot perturb
-          # another on the same CI worker.
-          ctest --test-dir build --label-regex "^unit$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 1 | tee unit-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}-${{ matrix.build_type }}.log
+          # CTest schedules isolated test processes across available cores.
+          ctest --test-dir build --label-regex "^unit$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee unit-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}-${{ matrix.build_type }}.log
 
           echo "Unit tests completed successfully"
 
@@ -338,6 +336,7 @@ jobs:
             unit-tests-*.log
             build/coverage.xml
             build/Testing/ctest-results.xml
+            build/Testing/python-*.xml
             build/Testing/criterion-xml/*.xml
           retention-days: 7
 
@@ -479,7 +478,7 @@ jobs:
           # Run integration tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
           # Keep Python WebRTC smoke tests available locally without running them in CI.
-          ctest --test-dir build --label-regex "^integration$" --exclude-regex '^(discovery-webrtc|discovery-stereo-audio|discovery-audio)$' --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 0 | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          ctest --test-dir build --label-regex "^integration$" --exclude-regex '^(discovery-webrtc|discovery-stereo-audio|discovery-audio)$' --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Integration tests completed successfully"
 
@@ -531,6 +530,7 @@ jobs:
             integration-tests-*.log
             build/coverage.xml
             build/Testing/ctest-results.xml
+            build/Testing/python-*.xml
             build/Testing/criterion-xml/*.xml
             build/backpressure/
             build/Testing/mdns-terminal/
@@ -565,6 +565,8 @@ jobs:
         with:
           os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: astral-sh/setup-uv@v6
 
       - name: Cache build, dependencies, and ccache
         id: cache-build
@@ -657,7 +659,7 @@ jobs:
           # Run performance tests via ctest preset
           # Criterion generates detailed XML in build/Testing/criterion-xml/
           set -o pipefail
-          ctest --test-dir build --label-regex "^performance$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel 0 | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          ctest --test-dir build --label-regex "^performance$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Performance tests completed successfully"
 
@@ -705,6 +707,7 @@ jobs:
             performance-tests-*.log
             build/coverage.xml
             build/Testing/ctest-results.xml
+            build/Testing/python-*.xml
             build/Testing/criterion-xml/*.xml
           retention-days: 7
 

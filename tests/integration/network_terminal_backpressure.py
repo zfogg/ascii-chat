@@ -30,22 +30,7 @@ import time
 from ascii_chat_tests.process import free_port as unused_port
 
 
-def receive_times(text):
-    """Read actual ASCII receive callbacks, independently of lag warnings."""
-    return [
-        (int(hours) * 3600 + int(minutes) * 60 + float(seconds)) * 1000
-        for hours, minutes, seconds in re.findall(
-            r"\[(\d{2}):(\d{2}):(\d{2}\.\d+)\][^\n]*CALLING_DISPLAY_RENDER:", text
-        )
-    ]
-
-
-def receive_intervals(previous, samples):
-    """Require observable reception and handle a measurement crossing midnight."""
-    assert previous, "No pre-stall receive samples; client DEBUG frame logs are required"
-    assert len(samples) >= 2, "No sustained receive samples during the measurement"
-    times = [previous[-1], *samples]
-    return [(current - before) % 86400000 for before, current in zip(times, times[1:])]
+from ascii_chat_tests.timing import receive_intervals, receive_times
 
 
 def main():

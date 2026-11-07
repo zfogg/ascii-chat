@@ -1,8 +1,4 @@
 """Exercise MCP framing, cancellation, diagnostics, HTTP profiles and safe publication."""
-from pathlib import Path as _PolicyPath
-import sys as _policy_sys
-_policy_sys.path.insert(0, str(_PolicyPath(__file__).resolve().parents[1]))
-import _environment  # noqa: F401,E402
 from ascii_chat_tests.jsonrpc import JsonRpcProcess
 from ascii_chat_tests.process import free_port
 
@@ -19,6 +15,9 @@ import tempfile
 import threading
 import time
 import unittest
+import pytest
+
+pytestmark = [pytest.mark.integration, pytest.mark.mcp]
 
 class Client:
     def __init__(self, binary, directory, extra=(), mode_extra=()):
@@ -37,11 +36,20 @@ class Client:
         self.rpc.close()
 
 class Protocol(unittest.TestCase):
+    @pytest.fixture(autouse=True)
+    def configure_binary(self, binary, test_environment, monkeypatch):
+        self.binary = binary
+        for key in list(os.environ):
+            if key.startswith("ASCII_CHAT_") and key not in test_environment:
+                monkeypatch.delenv(key)
+        for key, value in test_environment.items():
+            monkeypatch.setenv(key, value)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="ascii-mcp-protocol-")
         self.directory = Path(self.tmp.name); self.addCleanup(self.tmp.cleanup)
     def client(self, extra=(), mode_extra=()):
-        c = Client(BINARY, self.directory, extra, mode_extra); self.addCleanup(c.close); return c
+        c = Client(self.binary, self.directory, extra, mode_extra); self.addCleanup(c.close); return c
     def test_unicode_custom_palette(self):
         c = self.client()
         for ident, renderer in enumerate(("luminance", "glyph"), 1):
@@ -75,19 +83,19 @@ class Protocol(unittest.TestCase):
         self.assertEqual(c.receive()["id"], 2)
 
     def test_mode_help_and_http_options(self):
-        top = subprocess.run([str(BINARY), "--help"], capture_output=True, text=True, timeout=10)
+        top = subprocess.run([str(self.binary), "--help"], capture_output=True, text=True, timeout=10)
         self.assertEqual(top.returncode, 0)
         self.assertIn("mcp-server", top.stdout)
-        mode = subprocess.run([str(BINARY), "mcp-server", "--help"], capture_output=True, text=True, timeout=10)
+        mode = subprocess.run([str(self.binary), "mcp-server", "--help"], capture_output=True, text=True, timeout=10)
         self.assertEqual(mode.returncode, 0)
         for flag in ("--transport", "--server", "--http-origin", "--http-tls-cert", "--http-tls-key", "--http-tls-key-password", "--port", "--address", "--stats-interval"):
             self.assertIn(flag, mode.stdout)
         self.assertNotIn("--websocket-tls-cert", mode.stdout)
-        missing_key = subprocess.run([str(BINARY), "mcp-server", "--transport", "http", "--http-tls-cert", "missing.pem"],
+        missing_key = subprocess.run([str(self.binary), "mcp-server", "--transport", "http", "--http-tls-cert", "missing.pem"],
                                      capture_output=True, text=True, timeout=10)
         self.assertNotEqual(missing_key.returncode, 0)
         self.assertIn("--http-tls-key", missing_key.stdout + missing_key.stderr)
-        invalid_transport = subprocess.run([str(BINARY), "mcp-server", "--transport", "udp"],
+        invalid_transport = subprocess.run([str(self.binary), "mcp-server", "--transport", "udp"],
                                            capture_output=True, text=True, timeout=10)
         self.assertNotEqual(invalid_transport.returncode, 0)
 
@@ -169,7 +177,7 @@ class Protocol(unittest.TestCase):
     def http_profile(self, restricted):
         port = free_port()
         log = open(self.directory / "http.log", "wb"); self.addCleanup(log.close)
-        p = subprocess.Popen([str(BINARY), "mcp-server", "--transport", "http", *(["--server"] if restricted else []), "--address", "127.0.0.1",
+        p = subprocess.Popen([str(self.binary), "mcp-server", "--transport", "http", *(["--server"] if restricted else []), "--address", "127.0.0.1",
                               "--port", str(port), "--http-origin", "https://tools.example.test", "--status-screen=false"], stdout=log, stderr=log)
         def stop():
             p.terminate()
@@ -228,15 +236,10 @@ class Protocol(unittest.TestCase):
         self.assertNotIn("path", tools["render_file"]["inputSchema"]["properties"])
         self.assertEqual(request(None, method="GET")[0], 405)
         self.assertEqual(request({"jsonrpc": "2.0", "id": 2, "method": "ping"}, "https://evil.example")[0], 403)
-        for i, args in enumerate(({"path": str(BINARY)}, {"options": {"test-pattern": True}, "output_path": str(self.directory / "bad.png")}), 3):
+        for i, args in enumerate(({"path": str(self.binary)}, {"options": {"test-pattern": True}, "output_path": str(self.directory / "bad.png")}), 3):
             _, result = request({"jsonrpc": "2.0", "id": i, "method": "tools/call", "params": {"name": "render_file", "arguments": args}})
             self.assertTrue(result["result"]["isError"])
         _, result = request({"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {
             "name": "render_file", "arguments": {"options": {"test-pattern": True, "width": 40, "height": 16}}}})
         self.assertFalse(result["result"]["isError"])
         self.assertGreater(len(result["result"]["structuredContent"]["ascii"]), 100)
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(); parser.add_argument("--binary", type=Path, required=True)
-    args, rest = parser.parse_known_args(); BINARY = args.binary.resolve()
-    unittest.main(argv=[__file__, *rest], verbosity=2)
