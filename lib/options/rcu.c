@@ -188,6 +188,7 @@ static const options_t g_default_options = (options_t){
     .webcam_index = OPT_WEBCAM_INDEX_DEFAULT,
     .test_pattern = OPT_TEST_PATTERN_DEFAULT,
     .no_audio_mixer = OPT_NO_AUDIO_MIXER_DEFAULT,
+    .stabilize = false,
     .renderer = ASCII_RENDERER_LUMINANCE,
     .stretch = OPT_STRETCH_DEFAULT,
     .flip_x = OPT_FLIP_X_DEFAULT,
@@ -563,6 +564,7 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(audio_enabled, OPTIONS_VALUE_BOOL, "audio-enabled"),
     FIELD(audio_analysis_enabled, OPTIONS_VALUE_BOOL, "audio-analysis-enabled"),
     FIELD(audio_no_playback, OPTIONS_VALUE_BOOL, "audio-no-playback"),
+    FIELD(stabilize, OPTIONS_VALUE_BOOL, "stabilize"),
     FIELD(renderer, OPTIONS_VALUE_INT, "renderer"),
     FIELD(palette_explicit, OPTIONS_VALUE_BOOL, "palette-explicit"),
     FIELD(stretch, OPTIONS_VALUE_BOOL, "stretch"),
@@ -644,7 +646,7 @@ bool options_remote_render_field(const char *name) {
     return false;
   const char *allowed[] = {
       "width",          "height",           "fps",      "color_mode", "color_filter", "render_mode", "palette_type",
-      "palette_custom", "palette_explicit", "renderer", "matrix_rain"};
+      "palette_custom", "palette_explicit", "renderer", "stabilize",  "matrix_rain"};
   for (size_t i = 0; i < sizeof(allowed) / sizeof(*allowed); ++i)
     if (!strcmp(field->name, allowed[i]))
       return true;

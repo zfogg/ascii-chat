@@ -50,6 +50,22 @@ class Protocol(unittest.TestCase):
         self.directory = Path(self.tmp.name); self.addCleanup(self.tmp.cleanup)
     def client(self, extra=(), mode_extra=()):
         c = Client(self.binary, self.directory, extra, mode_extra); self.addCleanup(c.close); return c
+    def test_stabilization_option_for_both_renderers(self):
+        c = self.client()
+        c.send("tools/list", {}, 1)
+        tools = {tool["name"]: tool for tool in c.receive()["result"]["tools"]}
+        options = tools["render_file"]["inputSchema"]["properties"]["options"]["properties"]
+        self.assertIn("stabilize", options)
+        for ident, renderer in enumerate(("luminance", "glyph"), 2):
+            c.send("tools/call", {"name": "render_file", "arguments": {"options": {
+                "test-pattern": True, "snapshot": True, "snapshot-delay": 0,
+                "width": 20, "height": 10, "color-mode": "none",
+                "renderer": renderer, "stabilize": True,
+            }}}, ident)
+            response = c.receive()
+            self.assertFalse(response["result"]["isError"], response)
+            self.assertTrue(response["result"]["structuredContent"]["ascii"])
+
     def test_unicode_custom_palette(self):
         c = self.client()
         for ident, renderer in enumerate(("luminance", "glyph"), 1):

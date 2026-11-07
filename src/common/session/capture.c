@@ -27,6 +27,7 @@
  */
 
 #include "session/capture.h"
+#include "session/capture_pacing.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/media/source.h>
@@ -1060,21 +1061,9 @@ void session_capture_sleep_for_fps(session_capture_ctx_t *ctx) {
   }
 
   uint64_t now_ns = time_get_ns();
-  if (ctx->next_frame_deadline_ns == 0) {
-    ctx->next_frame_deadline_ns = now_ns + frame_interval_ns;
-  } else {
-    ctx->next_frame_deadline_ns += frame_interval_ns;
-  }
-
-  if (now_ns >= ctx->next_frame_deadline_ns) {
-    // Skip missed slots instead of adding another full frame interval to the
-    // work time or attempting a catch-up burst.
-    uint64_t missed_intervals = (now_ns - ctx->next_frame_deadline_ns) / frame_interval_ns + 1;
-    ctx->next_frame_deadline_ns += missed_intervals * frame_interval_ns;
-    return;
-  }
-
-  platform_sleep_ns(ctx->next_frame_deadline_ns - now_ns);
+  ctx->next_frame_deadline_ns = capture_pacing_deadline(ctx->next_frame_deadline_ns, now_ns, frame_interval_ns);
+  if (ctx->next_frame_deadline_ns > now_ns)
+    platform_sleep_ns(ctx->next_frame_deadline_ns - now_ns);
 }
 
 bool session_capture_at_end(session_capture_ctx_t *ctx) {
