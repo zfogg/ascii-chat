@@ -144,6 +144,7 @@ def main():
     process = subprocess.Popen(base + ['--snapshot', '--snapshot-delay', '2', '--width', '40', '--height', '12',
                                        '--render-file', '-'], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     try:
+        assert process.stdout is not None
         assert process.stdout.read(4096), 'No binary data before closing consumer'
         process.stdout.close()
         status = process.wait(timeout=30)

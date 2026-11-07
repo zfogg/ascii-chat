@@ -56,7 +56,7 @@ def main():
                     started = time.monotonic()
                     term.write("o")
                     while True:
-                        text = term.read_text() if os.name == "nt" else term.pump(0.005)
+                        text = getattr(term, "read_text")() if os.name == "nt" else term.pump(0.005)
                         if "Open media:" in text:
                             break
                         assert time.monotonic() - started < 5, "Open media prompt stalled"

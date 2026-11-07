@@ -3,7 +3,7 @@ import shlex
 import subprocess
 import time
 
-SOCKET = "ascii390"
+SOCKET: str = "ascii390"
 
 
 def tmux(*args):

@@ -60,7 +60,7 @@ def main():
             except (ConnectionError, OSError):
                 pass
 
-        def log_message(self, *unused):
+        def log_message(self, format, *args):
             pass
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), SlowMedia)

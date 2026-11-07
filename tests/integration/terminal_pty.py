@@ -31,7 +31,7 @@ def main():
             child = pexpect.spawn("/bin/sh", ["-c", 'exec "$1" "$2" 2>"$3"',
                                           "ascii-terminal-probe", binary, mode, stderr_path],
                                   env=env, dimensions=(37, 91), timeout=5)
-            child.probe_stderr = stderr_path
+            setattr(child, "probe_stderr", stderr_path)
             return child
         return pexpect.spawn(binary, [mode], env=env, dimensions=(37, 91), timeout=5)
 

@@ -44,7 +44,7 @@ def main():
             def visible_text():
                 if os.name == "nt":
                     time.sleep(0.005)
-                    return term.read_text()
+                    return getattr(term, "read_text")()
                 return term.pump(0.005)
             while "Open media:" not in visible_text():
                 assert time.monotonic() - start <= 5, "Open prompt did not appear within five seconds"

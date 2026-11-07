@@ -102,7 +102,7 @@ class Terminal:
         child_environment = os.environ.copy()
         child_environment.update(environment or {})
         if os.name == "nt":
-            from winpty import PtyProcess
+            from winpty import PtyProcess  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
 
             # Match a UTF-8 terminal, including its console code page.
             command = f"chcp {code_page}>nul & " + subprocess.list2cmdline(argv)

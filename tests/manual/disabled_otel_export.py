@@ -17,6 +17,7 @@ import tempfile
 import socket
 import struct
 import socketserver
+from typing import cast
 import threading
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] /
@@ -41,18 +42,22 @@ def interrupted_collector_smoke(binary, env):
                     if line.lower().startswith(b'content-length:'):
                         length = int(line.split(b':', 1)[1])
                 self.rfile.read(length)
-                self.server.received.set()
-                if self.server.mode == 'close':
+                server = cast(Server, self.server)
+                server.received.set()
+                if server.mode == 'close':
                     return
-                partial = (b'HTTP/1.1 200 OK\r\nContent-Length: ' if self.server.mode == 'headers'
+                partial = (b'HTTP/1.1 200 OK\r\nContent-Length: ' if server.mode == 'headers'
                            else b'HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nx')
                 self.wfile.write(partial)
                 self.wfile.flush()
-                self.server.stop.wait(12)
+                server.stop.wait(12)
             except (OSError, ValueError):
                 pass
 
     class Server(socketserver.ThreadingTCPServer):
+        mode: str
+        stop: threading.Event
+        received: threading.Event
         daemon_threads = True
         block_on_close = False
 
@@ -206,7 +211,7 @@ def database_smoke(binary, receiver, env):
             process.wait(timeout=5)
 
 def discovery_trace_smoke(binary, receiver):
-    import discovery_webrtc
+    discovery_webrtc = __import__("discovery_webrtc")
 
     receiver.clear()
     original_service = discovery_webrtc.Service
@@ -219,7 +224,7 @@ def discovery_trace_smoke(binary, receiver):
                                ASCII_CHAT_OTEL_REALTIME_MAX_PER_SECOND='10000')
             super().__init__(executable, directory, name, mode, options, environment)
 
-    discovery_webrtc.Service = InstrumentedService
+    setattr(discovery_webrtc, "Service", InstrumentedService)
     try:
         with tempfile.TemporaryDirectory(prefix='otel-discovery-chains-') as temp:
             discovery_webrtc.exercise(Path(binary), Path(temp))
@@ -231,7 +236,7 @@ def discovery_trace_smoke(binary, receiver):
         for tick in (span for span in spans if span[5] == [b'ascii-chat.discovery.handoff.tick']):
             assert any(span[1] == tick[1] and span[2] != tick[2] for span in spans), 'empty handoff trace'
     finally:
-        discovery_webrtc.Service = original_service
+        setattr(discovery_webrtc, "Service", original_service)
 
 
 def main():

@@ -9,8 +9,8 @@ from pathlib import Path
 import time
 import json
 import argparse
-import sounddevice as sd
-import soundfile as sf
+import sounddevice as sd  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
+import soundfile as sf  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
 import numpy as np
 from ascii_chat_tests.audio_spectral import load, Processor
 

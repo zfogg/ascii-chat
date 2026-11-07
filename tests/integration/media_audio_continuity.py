@@ -16,7 +16,7 @@ from pathlib import Path
 import subprocess
 import threading
 import numpy as np
-import pyaudiowpatch as pa
+pa = __import__("pyaudiowpatch")
 from windows_console import WindowsConsole
 
 

@@ -22,7 +22,7 @@ import statistics
 import subprocess
 import threading
 import time
-from winpty import PtyProcess
+from winpty import PtyProcess  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
 
 
 def set_high_priority(pid):

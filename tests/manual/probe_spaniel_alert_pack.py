@@ -6,6 +6,7 @@ import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import json
 from pathlib import Path
+import urllib.error
 import urllib.request
 import yaml
 

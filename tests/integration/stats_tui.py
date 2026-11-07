@@ -18,7 +18,7 @@ import time
 import signal
 import os
 
-SOCKET = "stats273-acceptance"
+SOCKET: str = "stats273-acceptance"
 
 
 def tmux(*args):

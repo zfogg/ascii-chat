@@ -178,7 +178,7 @@ def main():
             if not args.verify_audio:
                 return
             import numpy as np
-            import pyaudiowpatch as pa
+            pa = __import__("pyaudiowpatch")
             with pa.PyAudio() as audio:
                 device = audio.get_default_wasapi_loopback()
                 rate, channels = int(device["defaultSampleRate"]), int(device["maxInputChannels"])

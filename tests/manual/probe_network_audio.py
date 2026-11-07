@@ -25,8 +25,8 @@ def main():
     parser.add_argument("--speaker", type=int, default=27)
     parser.add_argument("--encrypted", action="store_true")
     args = parser.parse_args()
-    import sounddevice as sd
-    import soundfile as sf
+    import sounddevice as sd  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
+    import soundfile as sf  # ty: ignore[import-not-found]  # Optional platform or audio dependency.
     import numpy as np
 
     binary = str(Path(args.binary).resolve())
