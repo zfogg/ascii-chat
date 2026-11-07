@@ -115,7 +115,7 @@ const registry_entry_t g_logging_entries[] = {
      false,
      false,
      OPTION_MODE_BINARY,
-     {.numeric_range = {0, 1, 0.001}, .input_type = OPTION_INPUT_NUMERIC},
+     {.numeric_range = {0, 1, 0}, .input_type = OPTION_INPUT_NUMERIC},
      NULL},
     {"otel-realtime-max-per-second",
      '\0',

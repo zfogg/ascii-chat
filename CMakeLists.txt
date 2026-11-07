@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.30)
+if(POLICY CMP0174)
+    cmake_policy(SET CMP0174 NEW)
+endif()
 
 # =============================================================================
 # Git Submodule Initialization (must come FIRST, before any dependencies are accessed)
