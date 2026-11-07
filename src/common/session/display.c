@@ -952,8 +952,14 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
   if (visualization_frame)
     ascii = visualization_frame;
 
-  // Calculate frame length
-  size_t frame_len = strnlen(ascii, 1024 * 1024); // Max 1MB frame
+  // Leave room for cursor controls when passing the frame to the presenter.
+  const size_t max_frame_len = UI_CONTROLLER_MAX_FRAME_BYTES - 7;
+  size_t frame_len = strnlen(ascii, max_frame_len);
+  if (frame_len == max_frame_len) {
+    SET_ERRNO(ERROR_BUFFER_FULL, "ASCII frame exceeds the presenter limit");
+    SAFE_FREE(visualization_frame);
+    return;
+  }
   if (frame_len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "ASCII data is empty");
     SAFE_FREE(visualization_frame);
@@ -976,7 +982,13 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     rain_result = digital_rain_apply(ctx->digital_rain, (char *)ascii, delta_time);
     if (rain_result) {
       display_frame = rain_result;
-      frame_len = strnlen(rain_result, 1024 * 1024);
+      frame_len = strnlen(rain_result, max_frame_len);
+      if (frame_len == max_frame_len) {
+        SET_ERRNO(ERROR_BUFFER_FULL, "Digital rain frame exceeds the presenter limit");
+        SAFE_FREE(rain_result);
+        SAFE_FREE(visualization_frame);
+        return;
+      }
 
       uint64_t t_rain_end = time_get_ns();
       char rain_str[TIME_DURATION_BUFFER_SIZE];
