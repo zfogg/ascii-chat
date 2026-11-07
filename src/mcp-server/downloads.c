@@ -4,6 +4,20 @@
 #include <stdlib.h>
 #include <time.h>
 
+const char *const mcp_output_formats[] = {"png", "jpg",  "jpeg", "bmp", "webp", "gif", "mp4", "mov",
+                                          "mkv", "webm", "avi",  "flv", "ogv",  "ogg", "3gp", NULL};
+
+const char *mcp_output_mime(const char *extension) {
+  static const char *const mime[] = {"image/png",        "image/jpeg", "image/jpeg",      "image/bmp",
+                                     "image/webp",       "image/gif",  "video/mp4",       "video/quicktime",
+                                     "video/x-matroska", "video/webm", "video/x-msvideo", "video/x-flv",
+                                     "video/ogg",        "video/ogg",  "video/3gpp"};
+  for (size_t i = 0; mcp_output_formats[i]; ++i)
+    if (!strcmp(extension, mcp_output_formats[i]))
+      return mime[i];
+  return NULL;
+}
+
 // Filenames are generated internally; strict parsing also prevents path traversal.
 bool mcp_download_name(const char *name, int64_t *expires) {
   if (!name || strlen(name) < 47)
@@ -21,12 +35,7 @@ bool mcp_download_name(const char *name, int64_t *expires) {
       ++p;
   if (*p++ != '.')
     return false;
-  static const char *const extensions[] = {"png", "jpg", "gif", "mp4", "webm", "mkv", NULL};
-  bool found = false;
-  for (int i = 0; extensions[i]; ++i)
-    if (!strcmp(p, extensions[i]))
-      found = true;
-  if (!found)
+  if (!mcp_output_mime(p))
     return false;
   char number[16];
   size_t n = (size_t)(digits_end - name);

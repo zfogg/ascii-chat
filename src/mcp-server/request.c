@@ -15,6 +15,7 @@
 #include <ascii-chat/options/registry/core.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <sodium.h>
+#include <libavcodec/avcodec.h>
 #include <uv.h>
 #include <string.h>
 #include <stdlib.h>
@@ -96,6 +97,32 @@ static void enum_strings(yyjson_mut_doc *d, yyjson_mut_val *v, const char *const
     yyjson_mut_arr_add_str(d, a, values[i]);
   yyjson_mut_obj_add_val(d, v, "enum", a);
 }
+static bool output_format_available(const char *format) {
+  const char *codec = NULL;
+  if (!strcmp(format, "png"))
+    codec = "png";
+  else if (!strcmp(format, "jpg") || !strcmp(format, "jpeg"))
+    codec = "mjpeg";
+  else if (!strcmp(format, "bmp"))
+    codec = "bmp";
+  else if (!strcmp(format, "webp"))
+    codec = "libwebp";
+  else if (!strcmp(format, "gif"))
+    codec = "gif";
+  else if (!strcmp(format, "avi"))
+    codec = "mpeg4";
+  else if (!strcmp(format, "ogv") || !strcmp(format, "ogg"))
+    codec = "libtheora";
+  else if (!strcmp(format, "webm"))
+    return avcodec_find_encoder_by_name("libvpx-vp9") || avcodec_find_encoder_by_name("libvpx") ||
+           avcodec_find_encoder_by_name("vp9") || avcodec_find_encoder_by_name("libvpx-vp8") ||
+           avcodec_find_encoder_by_name("vp8");
+  else
+    return avcodec_find_encoder_by_name("libx264") || avcodec_find_encoder_by_name("libopenh264") ||
+           avcodec_find_encoder_by_name("h264_mf") || avcodec_find_encoder(AV_CODEC_ID_H264);
+  return avcodec_find_encoder_by_name(codec) != NULL;
+}
+
 static yyjson_mut_val *options_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
   yyjson_mut_val *s = object_schema(d), *props = yyjson_mut_obj_get(s, "properties");
   registry_init_size();
@@ -146,10 +173,13 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
     property(d, s, "timeout_ms", "integer", "Maximum job time, 1000–60000 ms; default 45000.");
     if (p->restricted && p->hosted) {
       property(d, s, "output_format", "string",
-               "Output format: png, jpg, gif, mp4, webm or mkv. Defaults to png for a single frame or mp4 for a timed "
-               "or continuous render.");
-      const char *formats[] = {"png", "jpg", "gif", "mp4", "webm", "mkv", NULL};
-      enum_strings(d, yyjson_mut_obj_get(props, "output_format"), formats);
+               "Output format: png, jpg, jpeg, bmp, webp, gif, mp4, mov, mkv, webm, avi, flv, ogv, ogg or 3gp. "
+               "Defaults to png for a single frame or mp4 for a timed or continuous render.");
+      yyjson_mut_val *available = yyjson_mut_arr(d);
+      for (size_t i = 0; mcp_output_formats[i]; ++i)
+        if (output_format_available(mcp_output_formats[i]))
+          yyjson_mut_arr_add_str(d, available, mcp_output_formats[i]);
+      yyjson_mut_obj_add_val(d, yyjson_mut_obj_get(props, "output_format"), "enum", available);
     }
     if (!p->restricted)
       property(d, s, "output_path", "string",
@@ -353,9 +383,7 @@ static asciichat_error_t stage_output(const char *path, mcp_render_request_t *r)
   } else
     SAFE_STRNCPY(parent, ".", sizeof(parent));
   const char *ext = strrchr(filename, '.');
-  static const char *const extensions[] = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp",
-                                           ".mp4", ".mkv", ".webm", ".mov", ".avi", NULL};
-  if (!ext || !in_names(ext, extensions))
+  if (!ext || !mcp_output_mime(ext + 1) || !output_format_available(ext + 1))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported output extension");
   rc = uv_fs_realpath(NULL, &fs, parent, NULL);
   if (rc < 0) {
@@ -571,8 +599,7 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
         format && yyjson_is_str(format) ? yyjson_get_str(format)
         : (yyjson_is_false(mcp_get(opts, "snapshot")) || yyjson_get_num(mcp_get(opts, "snapshot-delay")) > 0) ? "mp4"
                                                                                                               : "png";
-    static const char *const formats[] = {"png", "jpg", "gif", "mp4", "webm", "mkv", NULL};
-    if ((format && !yyjson_is_str(format)) || !in_names(ext, formats))
+    if ((format && !yyjson_is_str(format)) || !mcp_output_mime(ext) || !output_format_available(ext))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported output_format");
     unsigned char random[16];
     char token[33], path[PLATFORM_MAX_PATH_LENGTH];

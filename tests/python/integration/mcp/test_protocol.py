@@ -459,6 +459,10 @@ class Protocol(unittest.TestCase):
         self.assertEqual(set(tools), {"render_file", "render_url", "render_visualization"})
         self.assertIn("output_format", tools["render_url"]["inputSchema"]["properties"])
         self.assertIn("expires_at", tools["render_url"]["outputSchema"]["properties"])
+        formats = tools["render_file"]["inputSchema"]["properties"]["output_format"]["enum"]
+        self.assertTrue({"png", "jpg", "jpeg", "bmp"} <= set(formats))
+        self.assertTrue(set(formats) <= {"png", "jpg", "jpeg", "bmp", "webp", "gif", "mp4", "mov", "mkv",
+                                         "webm", "avi", "flv", "ogv", "ogg", "3gp"})
         _, init = request({"jsonrpc": "2.0", "id": 19, "method": "initialize", "params": {}})
         self.assertIn("expire after 30 minutes", init["result"]["instructions"])
         for tool, arguments in (("device_list", {}), ("render_webcam", {}), ("render_visualization", {"visualization": "fft", "audio": {"type": "microphone"}})):
@@ -489,6 +493,31 @@ class Protocol(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertTrue(payload.startswith(b"\x89PNG\r\n\x1a\n"))
         conn.close()
+        # Exercise newly exposed formats through encoding, publication and HTTP delivery.
+        signatures = {"jpeg": ("image/jpeg", b"\xff\xd8"), "bmp": ("image/bmp", b"BM"),
+                      "webp": ("image/webp", b"RIFF"), "mov": ("video/quicktime", None),
+                      "avi": ("video/x-msvideo", b"RIFF"), "flv": ("video/x-flv", b"FLV"),
+                      "ogv": ("video/ogg", b"OggS"), "ogg": ("video/ogg", b"OggS"),
+                      "3gp": ("video/3gpp", None)}
+        for index, (extension, (mime, signature)) in enumerate(signatures.items(), 100):
+            if extension not in formats:
+                continue
+            _, rendered = request({"jsonrpc": "2.0", "id": index, "method": "tools/call", "params": {
+                "name": "render_file", "arguments": {"output_format": extension,
+                    "options": {"test-pattern": True, "width": 20, "height": 10}}}})
+            self.assertFalse(rendered["result"]["isError"], (extension, rendered))
+            format_url = rendered["result"]["structuredContent"]["download_url"]
+            self.assertTrue(format_url.endswith("." + extension), format_url)
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+            conn.request("GET", urlparse(format_url).path)
+            response = conn.getresponse(); contents = response.read()
+            self.assertEqual(response.status, 200, extension)
+            self.assertEqual(response.getheader("Content-Type"), mime, extension)
+            self.assertTrue(contents, extension)
+            if signature: self.assertTrue(contents.startswith(signature), extension)
+            if extension == "webp": self.assertEqual(contents[8:12], b"WEBP")
+            if extension in ("mov", "3gp"): self.assertEqual(contents[4:8], b"ftyp")
+            conn.close()
         stored = downloads / urlparse(link).path.rsplit("/", 1)[-1]
         self.assertTrue(stored.is_file())
         stored.unlink()

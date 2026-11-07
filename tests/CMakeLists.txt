@@ -1690,7 +1690,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
     add_executable(test-mcp-requests contracts/mcp/request_contract_test.c)
     asciichat_configure_contract(test-mcp-requests)
-    target_link_libraries(test-mcp-requests PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES}
+    target_link_libraries(test-mcp-requests PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES}
         ${YYJSON_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
     target_include_directories(test-mcp-requests PRIVATE ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include}

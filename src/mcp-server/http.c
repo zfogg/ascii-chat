@@ -105,12 +105,7 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
         return respond(wsi, h, 404, NULL);
       }
       const char *ext = strrchr(name, '.');
-      h->mime = !strcmp(ext, ".png")    ? "image/png"
-                : !strcmp(ext, ".jpg")  ? "image/jpeg"
-                : !strcmp(ext, ".gif")  ? "image/gif"
-                : !strcmp(ext, ".mp4")  ? "video/mp4"
-                : !strcmp(ext, ".webm") ? "video/webm"
-                                        : "video/x-matroska";
+      h->mime = mcp_output_mime(ext + 1);
       h->status = 200;
       lws_callback_on_writable(wsi);
       return 0;

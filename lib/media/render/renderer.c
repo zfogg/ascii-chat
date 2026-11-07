@@ -110,7 +110,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   double font_size_pt = GET_OPTION(render_font_size);
   const char *extension = strrchr(output_path, '.');
   bool is_image =
-      extension && (!strcmp(extension, ".png") || !strcmp(extension, ".jpg") || !strcmp(extension, ".jpeg"));
+      extension && (!strcmp(extension, ".png") || !strcmp(extension, ".jpg") || !strcmp(extension, ".jpeg") ||
+                    !strcmp(extension, ".bmp") || !strcmp(extension, ".webp"));
   bool automatic_video_size = font_size_pt == 0.0 && !is_image && !ctx->kitty;
   if (font_size_pt == 0.0) {
     font_size_pt = RENDER_AUTO_FONT_SIZE_PT;

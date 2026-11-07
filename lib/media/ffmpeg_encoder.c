@@ -123,13 +123,13 @@ static void get_audio_codec_from_extension(const char *path, const char **audio_
   } else if (strcmp(ext, "ogv") == 0 || strcmp(ext, "ogg") == 0) {
     *has_audio = 1;
     *audio_codec = "libvorbis";
-    *sample_fmt = AV_SAMPLE_FMT_FLT;
+    *sample_fmt = AV_SAMPLE_FMT_FLTP;
   } else if (strcmp(ext, "3gp") == 0) {
     *has_audio = 1;
     *audio_codec = "aac";
     *sample_fmt = AV_SAMPLE_FMT_FLTP;
   } else if (strcmp(ext, "gif") == 0 || strcmp(ext, "png") == 0 || strcmp(ext, "jpg") == 0 ||
-             strcmp(ext, "jpeg") == 0) {
+             strcmp(ext, "jpeg") == 0 || strcmp(ext, "bmp") == 0 || strcmp(ext, "webp") == 0) {
     *has_audio = 0;
     *audio_codec = NULL;
     *sample_fmt = AV_SAMPLE_FMT_NONE;
@@ -160,7 +160,7 @@ static void get_codec_from_extension(const char *path, const char **codec, const
   // NOLINTNEXTLINE(bugprone-branch-clone) - Each format requires distinct codec setup
   if (strcmp(ext, "mp4") == 0 || strcmp(ext, "mov") == 0) {
     *codec = "libx264";
-    *format = "mp4";
+    *format = strcmp(ext, "mov") == 0 ? "mov" : "mp4";
     *pix_fmt = AV_PIX_FMT_YUV420P;
   } // NOLINTNEXTLINE(bugprone-branch-clone)
   else if (strcmp(ext, "mkv") == 0) {
@@ -202,6 +202,11 @@ static void get_codec_from_extension(const char *path, const char **codec, const
     *format = "image2";
     *is_image = 1;
     *pix_fmt = AV_PIX_FMT_RGB24; // PNG uses RGB24
+  } else if (strcmp(ext, "bmp") == 0 || strcmp(ext, "webp") == 0) {
+    *codec = strcmp(ext, "bmp") == 0 ? "bmp" : "libwebp";
+    *format = "image2";
+    *is_image = 1;
+    *pix_fmt = strcmp(ext, "bmp") == 0 ? AV_PIX_FMT_BGR24 : AV_PIX_FMT_YUV420P;
   } else if (strcmp(ext, "jpg") == 0 || strcmp(ext, "jpeg") == 0) {
     *codec = "mjpeg";
     *format = "image2";
