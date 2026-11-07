@@ -59,8 +59,11 @@ export function applyMirrorWasmSettings(
       visualization ? "none" : settings.colorFilter,
     ),
     render_mode: settings.renderMode ?? 0,
+    renderer: settings.renderer === "glyph" ? 1 : 0,
     palette_type: palettes[settings.palette],
     palette_custom: settings.paletteChars || DEFAULT_PALETTE_CHARS,
+    palette_explicit:
+      (settings.paletteExplicit ?? false) || settings.palette !== "standard",
     matrix_rain: enabled && animation === "matrix",
     waveform: enabled && animation === "waveform",
     fft: enabled && animation === "fft",

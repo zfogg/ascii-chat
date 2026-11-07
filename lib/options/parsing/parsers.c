@@ -968,6 +968,7 @@ bool parse_palette_chars(const char *arg, void *dest, char **error_msg) {
   // dest points to options_t.palette_custom, so we can get options_t* using offset arithmetic
   options_t *opts = (options_t *)((char *)dest - offsetof(options_t, palette_custom));
   opts->palette_type = PALETTE_CUSTOM;
+  opts->palette_explicit = true;
 
   return true;
 }

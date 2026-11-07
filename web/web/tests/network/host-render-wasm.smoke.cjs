@@ -43,7 +43,9 @@ const path = require("node:path");
     );
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({
+    executablePath: process.env.CHROME_PATH,
+  });
   try {
     const page = await browser.newPage();
     page.on("pageerror", (error) => console.error("browser error:", error));
@@ -94,6 +96,77 @@ const path = require("node:path");
         m._wasm_options_revision() !== revision
       )
         throw new Error("font selection changed engine preferences");
+      // The bundled font omits Braille; all eight positions must still render.
+      const brailleConfig = m._malloc(m._wasm_renderer_config_size());
+      const brailleOut = m._malloc(4);
+      if (
+        m._wasm_renderer_config_write(
+          brailleConfig,
+          1,
+          1,
+          24,
+          0,
+          normalFont,
+          m._get_font_default_size(1),
+          0,
+        ) ||
+        m._term_renderer_create(brailleConfig, brailleOut)
+      )
+        throw new Error("Braille terminal creation failed");
+      const brailleRenderer = new DataView(
+        m.HEAPU8.buffer,
+        brailleOut,
+        4,
+      ).getUint32(0, true);
+      const pixelsFor = (text) => {
+        const bytes = new TextEncoder().encode("\x1b[H" + text);
+        const input = m._malloc(bytes.length);
+        m.HEAPU8.set(bytes, input);
+        const error = m._term_renderer_feed(
+          brailleRenderer,
+          input,
+          bytes.length,
+        );
+        m._free(input);
+        if (error) throw new Error("Braille terminal feed failed");
+        const size =
+          m._term_renderer_pitch(brailleRenderer) *
+          m._term_renderer_height_px(brailleRenderer);
+        const pixels = m._term_renderer_pixels(brailleRenderer);
+        return Array.from(m.HEAPU8.subarray(pixels, pixels + size));
+      };
+      try {
+        const blank = pixelsFor(" ");
+        const brailleBlank = pixelsFor("⠀");
+        const patterns = ["⠁", "⠂", "⠄", "⡀", "⠈", "⠐", "⠠", "⢀", "⣿"].map(
+          pixelsFor,
+        );
+        const same = (a, b) => a.every((value, i) => value === b[i]);
+        if (!same(blank, brailleBlank))
+          throw new Error("Blank Braille pattern was not blank");
+        if (
+          patterns.some((pixels) => same(blank, pixels)) ||
+          patterns.some((pixels, i) =>
+            patterns.some((other, j) => i !== j && same(pixels, other)),
+          )
+        )
+          throw new Error("Braille dot patterns did not render distinctly");
+        for (let i = 0; i < 2; i++) {
+          let failed = false;
+          try {
+            pixelsFor("\u0378");
+          } catch {
+            failed = true;
+          }
+          if (!failed)
+            throw new Error("Missing font glyph did not report an error");
+        }
+        pixelsFor("A");
+      } finally {
+        m._term_renderer_destroy(brailleRenderer);
+        m._free(brailleConfig);
+        m._free(brailleOut);
+      }
       if (m._browser_host_create()) throw new Error("host create failed");
       const ids = [m._browser_host_add_client(), m._browser_host_add_client()];
       if (m._browser_host_set_local_client(ids[0]))
@@ -257,19 +330,25 @@ const path = require("node:path");
       };
       let rendered = false;
       const paint = (text) => {
-        const config = m._malloc(544),
+        const config = m._malloc(m._wasm_renderer_config_size()),
           out = m._malloc(4),
           bytes = new TextEncoder().encode(text),
           input = m._malloc(bytes.length);
         let renderer = 0;
         try {
-          m.HEAPU8.fill(0, config, config + 544);
-          const view = new DataView(m.HEAPU8.buffer, config, 544);
-          view.setInt32(0, 40, true);
-          view.setInt32(4, 12, true);
-          view.setFloat64(8, 12, true);
-          view.setInt32(536, m._get_font_default_ptr(0), true);
-          view.setInt32(540, m._get_font_default_size(0), true);
+          if (
+            m._wasm_renderer_config_write(
+              config,
+              40,
+              12,
+              12,
+              0,
+              m._get_font_default_ptr(0),
+              m._get_font_default_size(0),
+              0,
+            )
+          )
+            throw new Error("C terminal configuration failed");
           if (m._term_renderer_create(config, out))
             throw new Error("C terminal create failed");
           renderer = new DataView(m.HEAPU8.buffer, out, 4).getUint32(0, true);
@@ -340,6 +419,32 @@ const path = require("node:path");
       await new Promise((resolve) => setTimeout(resolve, 20));
       if (m._browser_host_render()) throw new Error("updated render failed");
       const updated = output.splice(0);
+      patch(ids[0], {
+        renderer: 1,
+        palette_custom: "@#",
+        palette_explicit: true,
+      });
+      patch(ids[1], {
+        renderer: 0,
+        color_mode: 0,
+        palette_custom: "Y",
+        palette_explicit: true,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      if (m._browser_host_render())
+        throw new Error("per-viewer renderer failed");
+      const distinct = output.splice(0);
+      const glyphFrame = distinct.find((frame) => frame.id === ids[0]);
+      const luminanceFrame = distinct.find((frame) => frame.id === ids[1]);
+      const characters = (frame) =>
+        frame.text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "");
+      if (
+        !glyphFrame ||
+        !luminanceFrame ||
+        /[^@#\s]/u.test(characters(glyphFrame)) ||
+        /[^Y\s]/u.test(characters(luminanceFrame))
+      )
+        throw new Error("Per-viewer renderer palettes were not respected");
       patch(ids[1], { color_mode: 0, render_mode: 2 });
       await new Promise((resolve) => setTimeout(resolve, 20));
       if (m._browser_host_render())

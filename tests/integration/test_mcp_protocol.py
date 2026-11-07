@@ -50,6 +50,21 @@ class Protocol(unittest.TestCase):
         self.directory = Path(self.tmp.name); self.addCleanup(self.tmp.cleanup)
     def client(self, extra=(), mode_extra=()):
         c = Client(BINARY, self.directory, extra, mode_extra); self.addCleanup(c.close); return c
+    def test_unicode_custom_palette(self):
+        c = self.client()
+        for ident, renderer in enumerate(("luminance", "glyph"), 1):
+            palette = " ░▒▓█"
+            c.send("tools/call", {"name": "render_file", "arguments": {"options": {
+                "test-pattern": True, "snapshot": True, "snapshot-delay": 0,
+                "width": 20, "height": 10, "color-mode": "none", "strip-ansi": True,
+                "utf8": "true", "renderer": renderer, "palette-chars": palette,
+            }}}, ident)
+            result = c.receive()["result"]
+            self.assertFalse(result["isError"], result)
+            rendered = result["structuredContent"]["ascii"]
+            self.assertTrue(set(rendered.rstrip("\n")) <= set(palette + "\n"), rendered)
+            self.assertTrue(any(char in rendered for char in palette[1:]), rendered)
+
     def test_stats_interval_preserves_stdio_protocol(self):
         c = self.client(mode_extra=("--stats-interval", "1"))
         c.send("tools/call", {"name": "render_file", "arguments": {
@@ -198,6 +213,18 @@ class Protocol(unittest.TestCase):
                     "test-pattern": True, "width": 40, "height": 16}}}})
             self.assertFalse(rendered["result"]["isError"], rendered)
             self.assertGreater(len(rendered["result"]["structuredContent"]["ascii"]), 100)
+            for ident, renderer in enumerate(("luminance", "glyph"), 10):
+                palette = " ░▒▓█"
+                _, rendered = request({"jsonrpc": "2.0", "id": ident, "method": "tools/call", "params": {
+                    "name": "render_file", "arguments": {"options": {
+                        "test-pattern": True, "snapshot": True, "snapshot-delay": 0,
+                        "width": 20, "height": 10, "color-mode": "none", "strip-ansi": True,
+                        "utf8": "true", "renderer": renderer, "palette-chars": palette,
+                    }}}})
+                self.assertFalse(rendered["result"]["isError"], rendered)
+                output = rendered["result"]["structuredContent"]["ascii"]
+                self.assertTrue(set(output.rstrip("\n")) <= set(palette + "\n"), output)
+                self.assertTrue(any(char in output for char in palette[1:]), output)
             return
         self.assertEqual(set(tools), {"render_file", "render_url", "render_visualization"})
         for tool, arguments in (("device_list", {}), ("render_webcam", {}), ("render_visualization", {"visualization": "fft", "audio": {"type": "microphone"}})):

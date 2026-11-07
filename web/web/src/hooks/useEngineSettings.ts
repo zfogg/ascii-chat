@@ -107,8 +107,12 @@ export function useEngineSettings(
     )
       next.colorFilter = filters[numeric("color_filter")] ?? "none";
     if (changed("render_mode")) next.renderMode = numeric("render_mode");
+    if (changed("renderer"))
+      next.renderer = numeric("renderer") === 1 ? "glyph" : "luminance";
     if (changed("palette_type"))
       next.palette = palettes[numeric("palette_type")] ?? "standard";
+    if (changed("palette_explicit"))
+      next.paletteExplicit = !!values["palette_explicit"];
     if (changed("palette_custom"))
       next.paletteChars = String(values["palette_custom"]);
     if (changed("flip_x")) next.flipX = !!values["flip_x"];
@@ -152,8 +156,10 @@ export function renderPreferences(cols: number, rows: number): RuntimeValues {
     color_mode: values["color_mode"] === -1 ? 3 : values["color_mode"]!,
     color_filter: values["color_filter"]!,
     render_mode: values["render_mode"]!,
+    renderer: values["renderer"]!,
     palette_type: values["palette_type"]!,
     palette_custom: values["palette_custom"]!,
+    palette_explicit: values["palette_explicit"]!,
     matrix_rain: values["matrix_rain"]!,
   };
 }

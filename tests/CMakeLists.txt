@@ -1271,6 +1271,9 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
+    asciichat_add_python_test(glyph-match-mirror
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/glyph_match.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(glyph-match-mirror PROPERTIES LABELS "integration" TIMEOUT 100)
     asciichat_add_python_test(render-font-formats
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/render_font_formats.py $<TARGET_FILE:ascii-chat>)
     set_tests_properties(render-font-formats PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)

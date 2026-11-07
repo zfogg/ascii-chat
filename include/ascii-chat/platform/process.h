@@ -52,6 +52,9 @@ typedef int pid_t;
 extern "C" {
 #endif
 
+/** Normalize process arguments to UTF-8 where necessary. */
+ASCIICHAT_API asciichat_error_t process_utf8_arguments(int *argc, char ***argv);
+
 /**
  * @brief Get the current process ID
  * @return Process ID of the calling process
