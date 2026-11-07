@@ -144,8 +144,13 @@ ascii_chat_install() (
   [ "$(sha256 "$work/gum.tar.gz")" = "$gum_hash" ] || fail 'Gum checksum mismatch.'
   mkdir "$work/gum"
   tar -xzf "$work/gum.tar.gz" -C "$work/gum"
-  gum=$(find "$work/gum" -type f -name gum -print)
-  [ -f "$gum" ] || fail 'Gum archive did not contain its executable.'
+  gum=
+  for candidate in "$work/gum/gum" "$work/gum"/*/gum; do
+    [ -f "$candidate" ] || continue
+    [ -z "$gum" ] || fail 'Gum archive contained multiple executables.'
+    gum=$candidate
+  done
+  [ -n "$gum" ] || fail 'Gum archive did not contain its executable.'
   "$gum" style --border rounded --padding '1 2' --border-foreground 86 'ascii-chat' "Install for $os / $arch"
 
   tag=${ASCII_CHAT_VERSION:-}
@@ -163,12 +168,183 @@ ascii_chat_install() (
   tar -xzf "$work/release.tar.gz" -C "$work/new"
   [ -x "$work/new/bin/ascii-chat" ] || fail 'Release archive is missing bin/ascii-chat.'
   "$work/new/bin/ascii-chat" --version
+  # Exclude links from an older managed installation while selecting native tools.
+  native_path=
+  old_ifs=$IFS
+  IFS=:
+  for path_entry in $PATH; do
+    [ "$path_entry" = "$prefix/bin" ] && continue
+    [ "$path_entry" = "$target/bin" ] && continue
+    if [ -z "$native_path" ]; then native_path=$path_entry; else native_path="$native_path:$path_entry"; fi
+  done
+  IFS=$old_ifs
+  libc=glibc
+  if [ "$os" = Linux ] && { [ -e /etc/alpine-release ] || ldd --version 2>&1 | grep -qi musl; }; then libc=musl; fi
+  native_yt=0
+  native_deno=0
+  legacy_deno=0
+  manager=
+  if [ "$os" = Linux ] && command -v apk >/dev/null 2>&1; then manager=apk
+  elif command -v brew >/dev/null 2>&1 && [ "$(id -u)" != 0 ]; then manager=brew
+  elif [ "$os" = Linux ] && command -v apt-get >/dev/null 2>&1; then manager=apt
+  elif [ "$os" = Linux ] && command -v dnf >/dev/null 2>&1; then manager=dnf
+  elif [ "$os" = Linux ] && command -v yum >/dev/null 2>&1; then manager=yum
+  elif [ "$os" = Linux ] && command -v zypper >/dev/null 2>&1; then manager=zypper
+  elif [ "$os" = Linux ] && command -v pacman >/dev/null 2>&1; then manager=pacman
+  fi
+  install_native() {
+    case "$manager" in
+      brew) brew install "$1" ;;
+      apk|apt|dnf|yum|zypper|pacman)
+        if [ "$(id -u)" = 0 ]; then run_package_command() { "$@"; }
+        elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then run_package_command() { sudo -n "$@"; }
+        else return 1; fi
+        case "$manager" in
+          apk) run_package_command apk add "$1" ;;
+          apt) run_package_command apt-get install -y --no-install-recommends "$1" ;;
+          dnf) run_package_command dnf install -y --setopt=install_weak_deps=False "$1" ;;
+          yum) run_package_command yum install -y --setopt=install_weak_deps=False "$1" ;;
+          zypper) run_package_command zypper --non-interactive install "$1" ;;
+          pacman) run_package_command pacman -S --needed --noconfirm "$1" ;;
+        esac ;;
+      *) return 1 ;;
+    esac
+  }
+  deno_usable() {
+    local output name version major minor remainder
+    output=$("$1" --version 2>/dev/null) || return 1
+    read -r name version remainder <<< "$output"
+    [ "$name" = deno ] || return 1
+    major=${version%%.*}
+    version=${version#*.}
+    minor=${version%%.*}
+    case "$major:$minor" in *[!0-9:]*|:*|*:) return 1 ;; esac
+    [ "$major" -gt 2 ] || { [ "$major" -eq 2 ] && [ "$minor" -ge 3 ]; }
+  }
+  find_native_tool() {
+    local IFS=: search_dir candidate
+    for search_dir in $PATH; do
+      candidate="${search_dir:-.}/$1"
+      [ -x "$candidate" ] || continue
+      if [ -L "$candidate" ] && [ "$(readlink "$candidate")" = "$target/bin/$1" ]; then continue; fi
+      printf '%s\n' "$candidate"
+      return 0
+    done
+    return 1
+  }
+  # Try native packages first, then verify their actual runtime capabilities.
+  if [ -n "$manager" ]; then
+    printf 'Trying native %s package for yt-dlp.\n' "$manager"
+    install_native yt-dlp || true
+    candidate_deno=$(find_native_tool deno || true)
+    if [ -z "$candidate_deno" ] || ! deno_usable "$candidate_deno"; then
+      install_native deno || true
+    fi
+  fi
+  native_yt_cmd=$(find_native_tool yt-dlp || true)
+  native_deno_cmd=$(find_native_tool deno || true)
+  if [ -n "$native_deno_cmd" ] && deno_usable "$native_deno_cmd"; then native_deno=1; fi
+  if [ "$native_deno" != 1 ]; then
+    if [ "$libc" = musl ]; then fail 'A native Deno is required on musl; install the deno package and rerun.'; fi
+    command -v unzip >/dev/null || fail 'Required command missing: unzip (needed to install Deno).'
+    case "$os/$arch" in
+      Linux/amd64) deno_asset=deno-x86_64-unknown-linux-gnu.zip ;;
+      Linux/arm64) deno_asset=deno-aarch64-unknown-linux-gnu.zip ;;
+      macOS/amd64) deno_asset=deno-x86_64-apple-darwin.zip ;;
+      macOS/arm64) deno_asset=deno-aarch64-apple-darwin.zip ;;
+    esac
+    deno_release=$(curl -fsSL --retry 3 --connect-timeout 20 --max-time 60 --proto '=https' --proto-redir '=https' -o /dev/null -w '%{url_effective}' https://github.com/denoland/deno/releases/latest)
+    deno_tag=${deno_release##*/}
+    case "$deno_tag" in ''|*[!a-zA-Z0-9._-]*) fail 'Invalid Deno release tag.' ;; esac
+    deno_base="https://github.com/denoland/deno/releases/download/$deno_tag"
+    download "$deno_base/$deno_asset" "$work/deno.zip"
+    download "$deno_base/$deno_asset.sha256sum" "$work/deno.sha256sum"
+    read -r deno_hash remainder < "$work/deno.sha256sum" || fail 'Deno checksum missing.'
+    [ -n "$deno_hash" ] && [ "$(sha256 "$work/deno.zip")" = "$deno_hash" ] || fail 'Deno checksum mismatch.'
+    unzip -q "$work/deno.zip" -d "$work/deno"
+    [ -f "$work/deno/deno" ] || fail 'Deno archive is missing its executable.'
+    mv "$work/deno/deno" "$work/new/bin/deno"
+    chmod +x "$work/new/bin/deno"
+    if ! deno_usable "$work/new/bin/deno"; then
+      [ "$os" = Linux ] || fail 'Deno 2.3 or newer could not run on this system.'
+      # Deno 2.3.3 is the last upstream release before Linux builds began
+      # requiring glibc 2.27; yt-dlp currently supports Deno 2.3 and newer.
+      case "$arch" in
+        amd64) legacy_deno_hash=cb573ef18e06b6f17db31b7a410143abfebe0c8d1faa99cb934a7c1351c75701 ;;
+        arm64) legacy_deno_hash=5d9dc69fbf324afe62f2c03c1241ae4629fecdb6032a1ded8a907ce480077f61 ;;
+      esac
+      printf 'Current Deno cannot run; trying Deno 2.3.3 for older Linux systems.\n' >&2
+      download "https://github.com/denoland/deno/releases/download/v2.3.3/$deno_asset" "$work/deno-legacy.zip"
+      [ "$(sha256 "$work/deno-legacy.zip")" = "$legacy_deno_hash" ] || fail 'Deno 2.3.3 checksum mismatch.'
+      unzip -qo "$work/deno-legacy.zip" -d "$work/deno"
+      mv -f "$work/deno/deno" "$work/new/bin/deno"
+      chmod +x "$work/new/bin/deno"
+      deno_usable "$work/new/bin/deno" || fail 'Neither current Deno nor Deno 2.3.3 could run on this system.'
+      legacy_deno=1
+    fi
+  fi
+  if [ -n "$native_yt_cmd" ]; then
+    probe_path="$work/new/bin:$native_path"
+    if [ "$native_deno" = 1 ]; then probe_path="$(dirname "$native_deno_cmd"):$probe_path"; fi
+    yt_probe=$(PATH="$probe_path" "$native_yt_cmd" --ignore-config --verbose --simulate invalid: 2>&1 || true)
+    case "$yt_probe" in
+      *yt_dlp_ejs*'JS runtimes: deno'*|*yt_dlp_ejs*'JS runtimes: '*deno*) native_yt=1 ;;
+    esac
+  fi
+  if [ "$native_yt" = 1 ]; then
+    printf 'Using package-managed yt-dlp.\n'
+  else
+    printf 'Installing upstream yt-dlp.\n'
+    # Install a verified upstream standalone yt-dlp alongside the release.
+    case "$os/$arch" in
+      Linux/amd64) if [ "$libc" = musl ]; then yt_asset=yt-dlp_musllinux; else yt_asset=yt-dlp_linux; fi ;;
+      Linux/arm64) if [ "$libc" = musl ]; then yt_asset=yt-dlp_musllinux_aarch64; else yt_asset=yt-dlp_linux_aarch64; fi ;;
+      macOS/*) yt_asset=yt-dlp_macos ;;
+    esac
+    yt_release=$(curl -fsSL --retry 3 --connect-timeout 20 --max-time 60 --proto '=https' --proto-redir '=https' -o /dev/null -w '%{url_effective}' https://github.com/yt-dlp/yt-dlp/releases/latest)
+    yt_tag=${yt_release##*/}
+    case "$yt_tag" in ''|*[!a-zA-Z0-9._-]*) fail 'Invalid yt-dlp release tag.' ;; esac
+    yt_base="https://github.com/yt-dlp/yt-dlp/releases/download/$yt_tag"
+    download "$yt_base/SHA2-256SUMS" "$work/yt-sums"
+    download "$yt_base/$yt_asset" "$work/new/bin/yt-dlp"
+    yt_hash=
+    while read -r hash name; do
+      name=${name#\*}
+      if [ "$name" = "$yt_asset" ]; then yt_hash=$hash; break; fi
+    done < "$work/yt-sums"
+    [ -n "$yt_hash" ] && [ "$(sha256 "$work/new/bin/yt-dlp")" = "$yt_hash" ] || fail 'yt-dlp checksum mismatch.'
+    chmod +x "$work/new/bin/yt-dlp"
+    "$work/new/bin/yt-dlp" --version >/dev/null 2>&1 || fail 'The downloaded yt-dlp could not run on this system.'
+  fi
+  if [ "$legacy_deno" = 1 ]; then
+    if [ "$native_yt" = 1 ]; then yt_verify=$native_yt_cmd; else yt_verify="$work/new/bin/yt-dlp"; fi
+    yt_probe=$(PATH="$work/new/bin:$native_path" "$yt_verify" --ignore-config --verbose --simulate invalid: 2>&1 || true)
+    case "$yt_probe" in
+      *yt_dlp_ejs*'JS runtimes: deno'*|*yt_dlp_ejs*'JS runtimes: '*deno*) ;;
+      *) fail 'The installed yt-dlp does not support Deno 2.3.3; install a compatible native runtime.' ;;
+    esac
+    printf 'Installed older Deno 2.3.3 for compatibility. Update it when your system supports a newer release.\n' >&2
+  fi
   printf '%s\n' "$tag" > "$work/new/.ascii-chat-installer"
   if [ -d "$target" ]; then mv "$target" "$work/previous"; fi
   replaced=1
   mv "$work/new" "$target"
   ln -sfn "$target/bin/ascii-chat" "$link"
   committed=1
+  # Remove only links created by an earlier run of this installer.
+  for tool_name in yt-dlp deno; do
+    tool_link="$prefix/bin/$tool_name"
+    if [ -L "$tool_link" ] && [ "$(readlink "$tool_link")" = "$target/bin/$tool_name" ]; then
+      rm -f "$tool_link"
+    fi
+    if [ -x "$target/bin/$tool_name" ]; then
+      if [ ! -e "$tool_link" ] && [ ! -L "$tool_link" ]; then
+        ln -s "$target/bin/$tool_name" "$tool_link"
+      else
+        printf 'Existing %s retained; ensure the intended command is on PATH.\n' "$tool_link"
+      fi
+    fi
+  done
   "$gum" style --foreground 86 "Installed $tag → $link" 'Ready to chat: ascii-chat'
   ascii_chat_configure_path "$prefix/bin"
   printf '\nBinary: %s\n' "$link"

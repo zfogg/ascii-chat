@@ -306,8 +306,10 @@ void server_connection_shutdown(client_connection_t *connection) {
  */
 void server_connection_pong_received(client_connection_t *connection) {
   uint64_t sent = atomic_load_u64(&connection->telemetry_ping_ns);
-  if (sent && sent != UINT64_MAX && atomic_cas_u64(&connection->telemetry_ping_ns, &sent, 0))
-    stats_duration_record(stats_runtime_scope(), STATS_DURATION_RTT, time_get_ns() - sent);
+  if (sent && sent != UINT64_MAX && atomic_cas_u64(&connection->telemetry_ping_ns, &sent, 0)) {
+    uint64_t now = time_get_ns();
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_RTT, now >= sent ? now - sent : 0);
+  }
 }
 void server_connection_lost(client_connection_t *connection) {
   ASCII_OTEL_SCOPE(CONNECTION_LOST);
@@ -673,9 +675,7 @@ asciichat_error_t threaded_send_ping_packet(client_connection_t *connection) {
   // Use threaded_send_packet which handles encryption, mutex locking, and connection state
   // Without a probe ID, overlapping pings make subsequent pongs ambiguous.
   // Keep sending normally, but suppress RTT samples for this connection.
-  uint64_t empty = 0;
-  if (!atomic_cas_u64(&connection->telemetry_ping_ns, &empty, time_get_ns()))
-    atomic_store_u64(&connection->telemetry_ping_ns, UINT64_MAX);
+  client_connection_mark_ping_sent(connection, time_get_ns());
   asciichat_error_t result = threaded_send_packet(connection, PACKET_TYPE_PING, NULL, 0);
   if (result != ASCIICHAT_OK)
     atomic_store_u64(&connection->telemetry_ping_ns, UINT64_MAX);

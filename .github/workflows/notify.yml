@@ -1,0 +1,41 @@
+name: Send notification
+
+on:
+  workflow_call:
+    inputs:
+      subject:
+        description: Notification subject
+        required: true
+        type: string
+      body:
+        description: Notification body
+        required: true
+        type: string
+    secrets:
+      SMTP_SERVER:
+        required: true
+      SMTP_PORT:
+        required: true
+      SMTP_FROM_EMAIL:
+        required: true
+      SMTP_PASSWORD:
+        required: true
+      SMTP_TO_EMAIL:
+        required: true
+
+jobs:
+  send:
+    name: Send notification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send email notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_FROM_EMAIL }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: ${{ inputs.subject }}
+          to: ${{ secrets.SMTP_TO_EMAIL }}
+          from: ${{ secrets.SMTP_FROM_EMAIL }}
+          body: ${{ inputs.body }}

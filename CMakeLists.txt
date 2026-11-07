@@ -498,7 +498,7 @@ endif()
 
 # Explicit local telemetry probe; never built or run by the test suite.
 if(TARGET gotel)
-    add_executable(ascii-chat-sql-diagnostics-probe EXCLUDE_FROM_ALL deploy/otel/probe.c)
+    add_executable(ascii-chat-sql-diagnostics-probe EXCLUDE_FROM_ALL spaniel/probe.c)
     target_link_libraries(ascii-chat-sql-diagnostics-probe PRIVATE
         ascii-chat-static ${MIMALLOC_LIBRARIES} ${SQLITE3_LIBRARIES})
     target_include_directories(ascii-chat-sql-diagnostics-probe PRIVATE ${CMAKE_BINARY_DIR}/generated)

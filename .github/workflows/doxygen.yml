@@ -65,7 +65,9 @@ jobs:
 
       - name: Configure CMake build
         run: |
-          cmake --preset release -B build_release -DUSE_MUSL=OFF
+          # The docs job uses system libraries and publishes no CLI binaries.
+          # Static-link enforcement remains enabled in the CLI release workflow.
+          cmake --preset release -B build_release -DUSE_MUSL=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
 
       - name: Save configure cache
         if: always()
@@ -122,3 +124,19 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  notify:
+    name: Send documentation deployment notification
+    if: always() && needs.build-docs.result != 'skipped'
+    needs: [build-docs, deploy]
+    uses: ./.github/workflows/notify.yml
+    secrets: inherit
+    with:
+      subject: "${{ needs.build-docs.result == 'success' && needs.deploy.result == 'success' && '✅' || '❌' }} ascii-chat documentation deployment - ${{ needs.build-docs.result == 'success' && needs.deploy.result == 'success' && 'SUCCESS' || 'FAILED' }}"
+      body: |
+        ascii-chat documentation deployment: ${{ needs.build-docs.result == 'success' && needs.deploy.result == 'success' && 'SUCCESS' || 'FAILED' }}
+
+        Site: https://zfogg.github.io/ascii-chat/
+        Workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        Build job: ${{ needs.build-docs.result }}
+        Deployment job: ${{ needs.deploy.result }}
