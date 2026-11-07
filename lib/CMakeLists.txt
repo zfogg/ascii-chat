@@ -721,11 +721,14 @@ endif()
 
 # Add yyjson include directory
 target_include_directories(ascii-chat-core PRIVATE ${YYJSON_INCLUDE_DIRS})
+target_include_directories(ascii-chat-video PRIVATE ${YYJSON_INCLUDE_DIRS})
+target_link_libraries(ascii-chat-video PRIVATE ${YYJSON_LIBRARIES})
 
 # Link yyjson library
 if(USE_MUSL)
     if(DEFINED YYJSON_BUILD_TARGET)
         add_dependencies(ascii-chat-core ${YYJSON_BUILD_TARGET})
+        add_dependencies(ascii-chat-video ${YYJSON_BUILD_TARGET})
     endif()
 endif()
 

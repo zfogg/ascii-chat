@@ -26,7 +26,7 @@ static void teardown(void) {
   }
   if (directory[0]) {
     const char *args[] = {"gpgconf", "--homedir", directory, "--kill", "gpg-agent", NULL};
-    (void)platform_execute_subprocess("gpgconf", args, NULL, 0);
+    (void)platform_execute_subprocess("gpgconf", args, NULL, 0, NULL, NULL);
     platform_rmdir_recursive(directory);
   }
   if (old_home) {
@@ -50,10 +50,10 @@ static void setup(void) {
   const char *create[] = {"gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "",
                           "--quick-generate-key", "Coverage Fixture <coverage@example.invalid>",
                           "ed25519", "sign,auth", "0", NULL};
-  cr_assert_eq(platform_execute_subprocess("gpg", create, NULL, 0), 0);
+  cr_assert_eq(platform_execute_subprocess("gpg", create, NULL, 0, NULL, NULL), 0);
   const char *list[] = {"gpg", "--batch", "--with-colons", "--list-keys", NULL};
   char output[4096];
-  cr_assert_eq(platform_execute_subprocess("gpg", list, output, sizeof(output)), 0);
+  cr_assert_eq(platform_execute_subprocess("gpg", list, output, sizeof(output), NULL, NULL), 0);
   char *line = strstr(output, "fpr:");
   cr_assert_not_null(line);
   for (unsigned field = 0; field < 9; ++field) {
@@ -90,7 +90,7 @@ Test(gpg_live, packet_signatures_verify_and_reject_altered_messages_signatures_a
 Test(gpg_live, exported_public_key_matches_independent_gpg_ssh_export) {
   const char *args[] = {"gpg", "--export-ssh-key", fingerprint, NULL};
   char output[2048];
-  cr_assert_eq(platform_execute_subprocess("gpg", args, output, sizeof(output)), 0);
+  cr_assert_eq(platform_execute_subprocess("gpg", args, output, sizeof(output), NULL, NULL), 0);
   cr_assert_eq(strncmp(output, "ssh-ed25519 ", 12), 0);
   char *end = strchr(output + 12, ' ');
   cr_assert_not_null(end);
@@ -129,14 +129,14 @@ Test(gpg_live, invalid_arguments_are_rejected_before_running_gpg) {
 Test(gpg_live, real_armored_keys_parse_to_the_same_public_key_and_a_usable_ed25519_seed) {
   char armor[8192];
   const char *pubargs[] = {"gpg", "--batch", "--armor", "--export", fingerprint, NULL};
-  cr_assert_eq(platform_execute_subprocess("gpg", pubargs, armor, sizeof(armor)), 0);
+  cr_assert_eq(platform_execute_subprocess("gpg", pubargs, armor, sizeof(armor), NULL, NULL), 0);
   uint8_t exported[32], parsed[32], secret_public[32], seed[32];
   cr_assert_eq(gpg_get_public_key(fingerprint, exported, NULL), 0);
   cr_assert_eq(openpgp_parse_armored_pubkey(armor, parsed), ASCIICHAT_OK);
   cr_assert_arr_eq(parsed, exported, 32);
   const char *secargs[] = {"gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "",
                            "--armor", "--export-secret-keys", fingerprint, NULL};
-  cr_assert_eq(platform_execute_subprocess("gpg", secargs, armor, sizeof(armor)), 0);
+  cr_assert_eq(platform_execute_subprocess("gpg", secargs, armor, sizeof(armor), NULL, NULL), 0);
   cr_assert_eq(openpgp_parse_armored_seckey(armor, secret_public, seed), ASCIICHAT_OK);
   cr_assert_arr_eq(secret_public, exported, 32);
   uint8_t sodium_public[32], sodium_secret[64], signature[64];
@@ -305,7 +305,7 @@ Test(gpg_live, public_key_export_falls_back_to_packet_parsing_when_the_isolated_
   char grip[41];
   cr_assert_eq(gpg_get_public_key(fingerprint, expected, grip), 0);
   const char *stop[] = {"gpgconf", "--homedir", directory, "--kill", "gpg-agent", NULL};
-  cr_assert_eq(platform_execute_subprocess("gpgconf", stop, NULL, 0), 0);
+  cr_assert_eq(platform_execute_subprocess("gpgconf", stop, NULL, 0, NULL, NULL), 0);
   for (unsigned attempt = 0; attempt < 100 && gpg_agent_is_available(); ++attempt)
     platform_sleep_us(10000);
   cr_assert_not(gpg_agent_is_available());

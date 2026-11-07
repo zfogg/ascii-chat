@@ -35,11 +35,20 @@ class MediaExtractor(unittest.TestCase):
             audio.setframerate(48000)
             audio.writeframes(b"\x00\x10" * 48000)
         self.requests = []
+        self.request_headers = []
+        self.require_auth = False
         requests = self.requests
+        request_headers = self.request_headers
+        fixture = self
         class Handler(http.server.SimpleHTTPRequestHandler):
             def do_GET(self):
                 """Record each media request before serving it."""
                 requests.append(self.path)
+                request_headers.append(dict(self.headers))
+                if fixture.require_auth and (self.headers.get("X-Test") != "fixture" or
+                                             "session=fixture" not in self.headers.get("Cookie", "")):
+                    self.send_error(403)
+                    return
                 super().do_GET()
             def log_message(self, *_args):
                 """Keep the test output quiet."""
@@ -54,7 +63,8 @@ class MediaExtractor(unittest.TestCase):
         self.env.update(PATH=str(self.tools) + os.pathsep + os.environ.get("PATH", ""),
                         ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none", ASCII_CHAT_DISABLE_FIRST_USE="1",
                         FAKE_YTDLP_TRACE=str(self.trace), FAKE_YTDLP_VIDEO=self.base + "/video.ppm",
-                        FAKE_YTDLP_AUDIO=self.base + "/audio.wav")
+                        FAKE_YTDLP_AUDIO=self.base + "/audio.wav",
+                        FAKE_YTDLP_COOKIE="session=fixture; Domain=127.0.0.1; Path=/")
 
     def tearDown(self):
         """Stop the HTTP fixture and remove its temporary files."""
@@ -91,7 +101,7 @@ class MediaExtractor(unittest.TestCase):
     def test_combined_stream_is_used_for_both_decoders(self):
         """Use the combined URL without requesting separate audio."""
         result = self.run_mirror("combined")
-        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
+        self.assertEqual(result.returncode, 0, (self.request_headers, result.stderr.decode(errors="replace")[-4000:]))
         self.assertIn("/video.ppm", self.requests)
         self.assertNotIn("/audio.wav", self.requests)
         self.assertGreater(len(result.stdout), 20, repr(result.stdout))
@@ -120,6 +130,16 @@ class MediaExtractor(unittest.TestCase):
         self.assertIn("/audio.wav", self.requests)
         self.assertGreater(len(result.stdout), 20, repr(result.stdout))
 
+    def test_stream_requests_include_extracted_headers_and_cookies(self):
+        """Both decoders authenticate their media requests using extractor metadata."""
+        self.require_auth = True
+        result = self.run_mirror("split")
+        self.assertEqual(result.returncode, 0, (self.request_headers, result.stderr.decode(errors="replace")[-4000:]))
+        self.assertIn("/video.ppm", self.requests)
+        self.assertIn("/audio.wav", self.requests)
+        self.assertTrue(all(h.get("X-Test") == "fixture" and "session=fixture" in h.get("Cookie", "")
+                            for h in self.request_headers))
+
     def test_extracted_rtmp_stream_is_returned(self):
         """Accept RTMP streams supplied by the extractor."""
         stream = "rtmp://stream.example.test/live/example"
@@ -143,6 +163,13 @@ class MediaExtractor(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn("/audio.wav", self.requests)
         self.assertNotIn("/video.ppm", self.requests)
+
+    def test_cancel_terminates_stalled_extractor(self):
+        """Cancellation terminates and reaps an unresponsive extractor."""
+        env = dict(self.env, FAKE_YTDLP_MODE="hang")
+        result = subprocess.run([AUDIO_PROBE, self.base + "/watch", "--expect-cancel"],
+                                env=env, cwd=self.root, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace")[-4000:])
 
     def test_separate_audio_produces_samples(self):
         """Decode audio from a separate extracted stream."""

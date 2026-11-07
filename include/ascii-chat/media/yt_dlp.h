@@ -13,6 +13,19 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+enum { YT_DLP_HEADERS_CAPACITY = 8192, YT_DLP_COOKIES_CAPACITY = 8192, YT_DLP_PROXY_CAPACITY = 2048 };
+typedef struct {
+  char headers[YT_DLP_HEADERS_CAPACITY];
+  char cookies[YT_DLP_COOKIES_CAPACITY];
+  char proxy[YT_DLP_PROXY_CAPACITY];
+} yt_dlp_request_options_t;
+
+asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dlp_options, char *output_url,
+                                               size_t output_size, char *audio_url, size_t audio_size,
+                                               yt_dlp_request_options_t *video_options,
+                                               yt_dlp_request_options_t *audio_options,
+                                               bool (*cancel)(void *), void *data);
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,6 +55,9 @@ extern "C" {
  */
 asciichat_error_t yt_dlp_extract_stream_urls(const char *url, const char *yt_dlp_options, char *output_url,
                                              size_t output_size, char *audio_url, size_t audio_size);
+asciichat_error_t yt_dlp_extract_stream_urls_interruptible(const char *url, const char *yt_dlp_options,
+                                                            char *output_url, size_t output_size, char *audio_url,
+                                                            size_t audio_size, bool (*cancel)(void *), void *data);
 
 /** Extract the first playable stream URL. Prefer the two-output API for audio. */
 asciichat_error_t yt_dlp_extract_stream_url(const char *url, const char *yt_dlp_options, char *output_url,

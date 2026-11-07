@@ -29,6 +29,7 @@
 #include <ascii-chat/platform/backtrace.h>
 #include <ascii-chat/options/options.h> // For options_get()
 #include <unistd.h>
+#include <poll.h>
 #include <fcntl.h>
 #include <string.h>
 #include <strings.h>
@@ -1132,7 +1133,8 @@ asciichat_error_t platform_restore_timer_resolution(void) {
 /**
  * Execute a subprocess using fork+exec (POSIX implementation)
  */
-int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size) {
+int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer,
+                                             size_t output_size, bool (*cancel)(void *), void *data) {
   if (!executable || !argv || !argv[0]) {
     log_error("Invalid subprocess parameters");
     return -1;
@@ -1159,6 +1161,8 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
     return -1;
   }
   if (pid == 0) {
+    if (cancel && setpgid(0, 0) != 0)
+      _exit(126);
     if (capture) {
       close(output_pipe[0]);
       if (output_pipe[1] == STDOUT_FILENO) {
@@ -1174,38 +1178,67 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
     execvp(executable, (char *const *)argv);
     _exit(127);
   }
+  if (cancel)
+    (void)setpgid(pid, pid);
   bool capture_failed = false;
-  if (capture) {
-    close(output_pipe[1]);
-    size_t position = 0;
-    char chunk[PLATFORM_POSIX_SYSTEM_CHUNK_BUFFER_SIZE];
-    for (;;) {
-      ssize_t count = read(output_pipe[0], chunk, sizeof(chunk));
-      if (count < 0 && errno == EINTR)
-        continue;
-      if (count <= 0) {
-        if (count < 0)
-          capture_failed = true;
-        break;
-      }
-      size_t available = output_size - 1 - position;
-      size_t copied = (size_t)count < available ? (size_t)count : available;
-      memcpy(output_buffer + position, chunk, copied);
-      position += copied;
-      if ((size_t)count > available)
-        capture_failed = true;
-      // Drain excess output so a full pipe cannot deadlock the child during wait.
-    }
-    output_buffer[position] = '\0';
-    close(output_pipe[0]);
-  }
+  size_t position = 0;
   int status = 0;
-  pid_t waited;
-  do {
-    waited = waitpid(pid, &status, 0);
-  } while (waited < 0 && errno == EINTR);
-  if (waited < 0 || capture_failed)
-    return -1;
-  return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+  bool exited = false;
+  bool pipe_open = capture;
+  if (capture)
+    close(output_pipe[1]);
+  while (!exited || pipe_open) {
+    if (cancel && cancel(data)) {
+      kill(-pid, SIGKILL);
+      if (!exited) {
+        kill(pid, SIGKILL);
+        while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
+      }
+      if (pipe_open)
+        close(output_pipe[0]);
+      if (capture)
+        output_buffer[position] = '\0';
+      return -1;
+    }
+    if (pipe_open) {
+      struct pollfd fd = {.fd = output_pipe[0], .events = POLLIN | POLLHUP};
+      int ready = poll(&fd, 1, 50);
+      if (ready < 0 && errno != EINTR) {
+        capture_failed = true;
+        close(output_pipe[0]);
+        pipe_open = false;
+      } else if (ready > 0) {
+        char chunk[PLATFORM_POSIX_SYSTEM_CHUNK_BUFFER_SIZE];
+        ssize_t count = read(output_pipe[0], chunk, sizeof(chunk));
+        if (count > 0) {
+          size_t available = output_size - 1 - position;
+          size_t copied = (size_t)count < available ? (size_t)count : available;
+          memcpy(output_buffer + position, chunk, copied);
+          position += copied;
+          if ((size_t)count > available)
+            capture_failed = true;
+        } else if (count == 0 || errno != EINTR) {
+          if (count < 0)
+            capture_failed = true;
+          close(output_pipe[0]);
+          pipe_open = false;
+        }
+      }
+    } else if (!exited) {
+      poll(NULL, 0, 50);
+    }
+    if (!exited) {
+      pid_t waited = waitpid(pid, &status, WNOHANG);
+      if (waited == pid)
+        exited = true;
+      else if (waited < 0 && errno != EINTR) {
+        exited = true;
+        capture_failed = true;
+      }
+    }
+  }
+  if (capture)
+    output_buffer[position] = '\0';
+  return !capture_failed && WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
 #endif // !_WIN32

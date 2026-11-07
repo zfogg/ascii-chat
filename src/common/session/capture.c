@@ -50,6 +50,8 @@
 #include <ascii-chat/tui/notice.h>
 #include <ascii-chat/common/shutdown.h>
 
+static bool playback_cancelled(void *data);
+
 /* ============================================================================
  * Session Capture Constants
  * ============================================================================ */
@@ -350,7 +352,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
 
   // Create media source from config type and path
   asciichat_errno_scope_t create_scope = errno_checkpoint();
-  ctx->source = media_source_create(config->type, config->path);
+  ctx->source = media_source_create_interruptible(config->type, config->path, playback_cancelled, ctx);
 
   if (!ctx->source) {
     // Preserve existing error if set, otherwise set generic error
