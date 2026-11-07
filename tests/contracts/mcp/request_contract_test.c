@@ -106,7 +106,7 @@ Test(mcp_requests, malformed_arguments_and_incompatible_sources_are_rejected_and
       {MCP_FILE, "{\"options\":[]}"},
       {MCP_FILE, "{\"options\":{\"test-pattern\":true,\"width\":513}}"},
       {MCP_FILE, "{\"options\":{\"test-pattern\":true,\"height\":257}}"},
-      {MCP_FILE, "{\"options\":{\"test-pattern\":true,\"fps\":0}}"},
+      {MCP_FILE, "{\"options\":{\"test-pattern\":true,\"fps\":-1}}"},
       {MCP_FILE, "{\"options\":{\"test-pattern\":true,\"fps\":145}}"},
       {MCP_FILE, "{\"options\":{\"test-pattern\":true,\"snapshot-delay\":31}}"},
       {MCP_FILE, "{\"options\":{\"test-pattern\":true,\"snapshot-delay\":-1}}"},
