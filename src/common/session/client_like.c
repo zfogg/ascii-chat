@@ -590,6 +590,22 @@ static asciichat_error_t client_like_create_local_capture(client_like_state_t *s
   return ASCIICHAT_OK;
 }
 
+static uint64_t client_like_restore_video_after_audio_failure(uint64_t revision) {
+  const options_edit_t edits[] = {
+      {.name = "waveform", .type = OPTIONS_VALUE_BOOL, .value.boolean = false},
+      {.name = "fft", .type = OPTIONS_VALUE_BOOL, .value.boolean = false},
+  };
+  const options_patch_t patch = {
+      .edits = edits, .count = 2, .expected_revision = revision, .origin = OPTIONS_ORIGIN_LOCAL};
+  options_patch_result_t result = {0};
+  asciichat_errno_scope_t scope = errno_scope_begin();
+  asciichat_error_t error = options_apply_patch(&patch, &result);
+  errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
+  if (error == ASCIICHAT_OK && result.changed)
+    log_warn("Audio is unavailable; returning to video instead of audio visualization");
+  return error == ASCIICHAT_OK ? result.revision : revision;
+}
+
 static void *client_like_update_mirror_audio(media_source_t *source, void *data) {
   client_like_state_t *state = data;
   bool file_audio = media_source_has_audio(source);
@@ -614,7 +630,7 @@ static void *client_like_update_mirror_audio(media_source_t *source, void *data)
     if (audio_init(state->audio_ctx) != ASCIICHAT_OK) {
       LOG_ERRNO_IF_SET("Cannot initialize mirror audio");
       SAFE_FREE(state->audio_ctx);
-      state->audio_failed_revision = revision + 1;
+      state->audio_failed_revision = client_like_restore_video_after_audio_failure(revision) + 1;
       return NULL;
     }
   }
@@ -627,7 +643,7 @@ static void *client_like_update_mirror_audio(media_source_t *source, void *data)
     LOG_ERRNO_IF_SET("Cannot start mirror audio");
     media_source_set_audio_context(source, NULL);
     // Keep the initialized context alive for input-thread borrowers and retries.
-    state->audio_failed_revision = revision + 1;
+    state->audio_failed_revision = client_like_restore_video_after_audio_failure(revision) + 1;
     state->audio_available = false;
     return state->audio_ctx;
   }

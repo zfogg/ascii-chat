@@ -3,6 +3,8 @@
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/util/time.h>
 #include <math.h>
 #include <string.h>
 
@@ -13,6 +15,28 @@ static void enable_visualization(void) {
   cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
 }
 TestSuite(audio_visualization, .init = enable_visualization);
+
+Test(audio_visualization, fft_refreshes_on_a_bounded_cadence) {
+  float samples[48000] = {0};
+  audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MIC, samples, 48000);
+  char *quiet = audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, false, 0, false, false);
+  cr_assert_not_null(quiet);
+  uint64_t quiet_finished = time_get_ns();
+  for (size_t i = 0; i < 48000; ++i)
+    samples[i] = (float)sin(2 * 3.141592653589793 * i / 48.0);
+  audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MIC, samples, 48000);
+  char *cached = audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, false, 0, false, false);
+  cr_assert_not_null(cached);
+  if (time_get_ns() - quiet_finished < 50 * NS_PER_MS_INT)
+    cr_expect_str_eq(quiet, cached);
+  platform_sleep_ms(150);
+  char *updated = audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, false, 0, false, false);
+  cr_assert_not_null(updated);
+  cr_expect_str_neq(quiet, updated);
+  SAFE_FREE(quiet);
+  SAFE_FREE(cached);
+  SAFE_FREE(updated);
+}
 
 Test(audio_visualization, clips_invalid_samples_and_mixes_sources_without_aliasing) {
   float microphone[] = {NAN, INFINITY, -INFINITY, 2.0f, -2.0f, 0.25f};

@@ -24,6 +24,7 @@ static inline yyjson_val *mcp_get(yyjson_val *obj, const char *name) {
 #define MCP_MAX_INPUT (24u * 1024u * 1024u)
 #define MCP_MAX_OUTPUT (8u * 1024u * 1024u)
 #define MCP_MAX_JOBS 4
+#define MCP_SESSION_ID_LENGTH 32
 
 typedef enum { MCP_FILE, MCP_URL, MCP_WEBCAM, MCP_VISUALIZATION } mcp_tool_t;
 typedef struct {
@@ -71,6 +72,7 @@ typedef struct mcp_job {
   atomic_t done;
   bool started;
   void *connection;
+  char session_id[MCP_SESSION_ID_LENGTH + 1];
 } mcp_job_t;
 
 typedef struct mcp_server {
@@ -90,7 +92,8 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *policy, mcp_tool_t tool,
                                     mcp_render_request_t *out);
 void mcp_request_destroy(mcp_render_request_t *request);
 void mcp_render_execute(mcp_render_request_t *request, atomic_t *cancelled, mcp_render_result_t *result);
-yyjson_mut_doc *mcp_dispatch(mcp_server_t *server, yyjson_doc *message, void *connection, bool *pending);
+yyjson_mut_doc *mcp_dispatch(mcp_server_t *server, yyjson_doc *message, void *connection, const char *session_id,
+                             bool *pending);
 yyjson_mut_doc *mcp_error(yyjson_val *id, int code, const char *message);
 void mcp_jobs_reap(mcp_server_t *server, bool all);
 void mcp_stdio_send(mcp_server_t *server, yyjson_mut_doc *response);

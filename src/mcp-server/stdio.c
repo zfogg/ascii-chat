@@ -50,7 +50,7 @@ asciichat_error_t mcp_stdio_run(mcp_server_t *s) {
     yyjson_doc *doc = overflow ? NULL : yyjson_read(line, n, YYJSON_READ_NOFLAG);
     bool pending = false;
     yyjson_mut_doc *response =
-        doc ? mcp_dispatch(s, doc, NULL, &pending)
+        doc ? mcp_dispatch(s, doc, NULL, NULL, &pending)
             : mcp_error(NULL, overflow ? -32600 : -32700, overflow ? "Request exceeds 24 MiB" : "Parse error");
     if (response) {
       mcp_stdio_send(s, response);

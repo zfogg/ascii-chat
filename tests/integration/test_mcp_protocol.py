@@ -175,13 +175,15 @@ class Protocol(unittest.TestCase):
             except OSError:
                 self.assertIsNone(p.poll(), "HTTP server exited"); time.sleep(.05)
         else: self.fail("HTTP server did not bind requested port")
-        def request(body, origin=None, method="POST"):
+        def request(body, origin=None, method="POST", session=None, include_headers=False):
             headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
             if origin: headers["Origin"] = origin
+            if session: headers["Mcp-Session-Id"] = session
             conn = http.client.HTTPConnection("127.0.0.1", port, timeout=70)
             conn.request(method, "/mcp", json.dumps(body) if body else None, headers)
-            response = conn.getresponse(); status = response.status; data = response.read(); conn.close()
-            return status, json.loads(data) if data else None
+            response = conn.getresponse(); status = response.status; session_id = response.getheader("Mcp-Session-Id"); data = response.read(); conn.close()
+            result = (status, json.loads(data) if data else None)
+            return (*result, session_id) if include_headers else result
         status, response = request({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
         self.assertEqual(status, 200)
         tools = {tool["name"]: tool for tool in response["result"]["tools"]}
@@ -198,6 +200,30 @@ class Protocol(unittest.TestCase):
                     "test-pattern": True, "width": 40, "height": 16}}}})
             self.assertFalse(rendered["result"]["isError"], rendered)
             self.assertGreater(len(rendered["result"]["structuredContent"]["ascii"]), 100)
+            initialize = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+                "protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}}}
+            _, _, first_session = request(initialize, include_headers=True)
+            _, _, second_session = request(initialize, include_headers=True)
+            self.assertRegex(first_session, r"^[0-9a-f]{32}$")
+            self.assertNotEqual(first_session, second_session)
+            render = {"jsonrpc": "2.0", "id": 99, "method": "tools/call", "params": {
+                "name": "render_file", "arguments": {"options": {"test-pattern": True, "snapshot-delay": 8}}}}
+            replies = {}
+            baseline = (self.directory / "http.log").read_text(errors="replace").count("MCP render started")
+            workers = [threading.Thread(target=lambda key, token: replies.update({key: request(render, session=token)}),
+                                        args=(key, token)) for key, token in (("first", first_session), ("second", second_session))]
+            for worker in workers: worker.start()
+            deadline = time.monotonic() + 10
+            while (self.directory / "http.log").read_text(errors="replace").count("MCP render started") < baseline + 2:
+                if time.monotonic() >= deadline: self.fail("Both HTTP renders did not start")
+                time.sleep(.05)
+            cancelled = {"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": 99}}
+            self.assertEqual(request(cancelled, session=first_session)[0], 202)
+            for worker in workers: worker.join(timeout=20)
+            self.assertTrue(all(not worker.is_alive() for worker in workers))
+            self.assertTrue(replies["first"][1]["result"]["isError"])
+            self.assertIn("cancel", replies["first"][1]["result"]["content"][0]["text"].lower())
+            self.assertFalse(replies["second"][1]["result"]["isError"])
             return
         self.assertEqual(set(tools), {"render_file", "render_url", "render_visualization"})
         for tool, arguments in (("device_list", {}), ("render_webcam", {}), ("render_visualization", {"visualization": "fft", "audio": {"type": "microphone"}})):

@@ -175,7 +175,8 @@ static bool same_id(yyjson_val *a, yyjson_val *b) {
            !strcmp(yyjson_get_str(a), yyjson_get_str(b))) ||
           (yyjson_is_int(a) && yyjson_is_int(b) && yyjson_get_sint(a) == yyjson_get_sint(b)));
 }
-yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connection, bool *pending) {
+yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connection, const char *session_id,
+                             bool *pending) {
   ASCII_OTEL_SCOPE(MCP_REQUEST);
   ASCII_OTEL_ATTR_STRING("rpc.system", "jsonrpc");
   ASCII_OTEL_ATTR_STRING("mcp.transport", s->policy.hosted ? "http" : "stdio");
@@ -204,7 +205,9 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
     if (!strcmp(name, "notifications/cancelled")) {
       yyjson_val *cancel = mcp_get(params, "requestId");
       for (int i = 0; i < MCP_MAX_JOBS; ++i)
-        if (s->jobs[i].started && (!s->policy.hosted || s->jobs[i].connection == connection) &&
+        if (s->jobs[i].started &&
+            (!s->policy.hosted || (session_id && *session_id && !strcmp(s->jobs[i].session_id, session_id)) ||
+             ((!session_id || !*session_id) && s->jobs[i].connection == connection)) &&
             same_id(cancel, mcp_get(yyjson_doc_get_root(s->jobs[i].message), "id")))
           atomic_store_bool(&s->jobs[i].cancelled, true);
     }
@@ -293,6 +296,8 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
 #endif
   j->server = s;
   j->connection = connection;
+  if (session_id)
+    SAFE_STRNCPY(j->session_id, session_id, sizeof(j->session_id));
   j->started = true;
   if (acthread_create(&j->thread, "mcp-render", run_job, j)) {
     mcp_request_destroy(&j->request);
