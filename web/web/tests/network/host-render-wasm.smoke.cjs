@@ -138,7 +138,7 @@ const path = require("node:path");
       try {
         const blank = pixelsFor(" ");
         const brailleBlank = pixelsFor("⠀");
-        const patterns = ["⠁", "⠈", "⢀", "⣿"].map(pixelsFor);
+        const patterns = ["⠁", "⠂", "⠄", "⡀", "⠈", "⠐", "⠠", "⢀", "⣿"].map(pixelsFor);
         const same = (a, b) => a.every((value, i) => value === b[i]);
         if (!same(blank, brailleBlank))
           throw new Error("Blank Braille pattern was not blank");
