@@ -1,7 +1,8 @@
 # Release and deployment notifications
 
-`.github/workflows/notify.yml` sends the notifications for CLI releases, the
-three Vercel websites, the GitHub Pages documentation, and container publication.
+`.github/workflows/notify.yml` sends the notifications for CLI releases and the
+three Vercel websites. Documentation deployments and container builds do not
+send notifications.
 Each caller supplies the subject, body, and job results; the shared workflow
 uses the existing SMTP secrets and `dawidd6/action-send-mail` action.
 
