@@ -2,7 +2,7 @@
 
 The discovery WebRTC integration tests normally use the host's network interfaces. On machines where UDP packets sent to the machine's own LAN address are filtered, ICE negotiation can time out even though loopback UDP works.
 
-For local testing in that environment, use the dedicated test build:
+For local testing on macOS or Linux in that environment, use the dedicated test build:
 
 ```sh
 cmake --preset webrtc-local-tests
