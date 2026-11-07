@@ -2,6 +2,18 @@
 #include <ascii-chat/video/ascii/simd/dispatch.h>
 #include <string.h>
 #include <immintrin.h>
+#include <ascii-chat/video/ascii/simd/cells.h>
+
+int glyph_shape_correlation_sse2(const int16_t samples[16], const int16_t mask[16]) {
+  __m128i a0 = _mm_loadu_si128((const __m128i *)(const void *)samples);
+  __m128i a1 = _mm_loadu_si128((const __m128i *)(const void *)(samples + 8));
+  __m128i b0 = _mm_loadu_si128((const __m128i *)(const void *)mask);
+  __m128i b1 = _mm_loadu_si128((const __m128i *)(const void *)(mask + 8));
+  __m128i sums = _mm_add_epi32(_mm_madd_epi16(a0, b0), _mm_madd_epi16(a1, b1));
+  int32_t lanes[4];
+  _mm_storeu_si128((__m128i *)(void *)lanes, sums);
+  return lanes[0] + lanes[1] + lanes[2] + lanes[3];
+}
 void simd_luminance_sse2(const uint8_t *rgb, uint8_t *out, size_t width) {
   const rgb_pixel_t *row = (const rgb_pixel_t *)rgb;
   size_t x = 0;

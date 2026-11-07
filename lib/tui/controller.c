@@ -1606,6 +1606,24 @@ static void render_text(terminal_size_t size, const void *data) {
     }
     return;
   }
+  // If only the height exceeds the terminal, every visible row already fits.
+  // Preserve its SGR and REP sequences instead of expanding and clipping it.
+  bool counter = GET_OPTION(fps_counter) && size.cols >= 7;
+  if (text->dimensions.cols > 0 && text->dimensions.cols < size.cols &&
+      (!counter || text->dimensions.cols <= size.cols - 7)) {
+    const char *cursor = text->text;
+    const char *end = cursor + text->len;
+    for (int row = 1; row <= size.rows && cursor < end; ++row) {
+      const char *newline = memchr(cursor, '\n', (size_t)(end - cursor));
+      size_t length = (size_t)((newline ? newline : end) - cursor);
+      ui_controller_printf(text->fd, row == 1 && counter ? "\033[%d;1H" : "\033[%d;1H\033[2K", row);
+      ui_controller_write(text->fd, cursor, length);
+      cursor += length + (newline ? 1 : 0);
+    }
+    if (g_render_volume)
+      append_volume(g_capture, size);
+    return;
+  }
   // A paused frame can outlive its original dimensions. Clip its rows instead
   // of letting old-sized content wrap and scroll after a terminal resize.
   frame_buffer_t *buffer = frame_buffer_create(size.rows, size.cols);

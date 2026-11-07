@@ -478,6 +478,15 @@ Test(ascii_emission, temporal_history_tracks_motion_and_configuration) {
   cr_assert_eq(color, 0xc9c9c9);
   cr_assert_eq(ascii_stabilizer_prepare(&state, 2, 1, 2), ASCIICHAT_OK);
   cr_assert(!state.cells[0].valid);
+  memset(samples, 0, sizeof(samples));
+  ascii_stabilizer_choose(&state.cells[0], samples, 'A', 100, UINT64_MAX, 0, 16000000, &color);
+  samples[0] = 143;
+  cr_assert_eq(ascii_stabilizer_choose(&state.cells[0], samples, 'B', 100, 101, 0, 16000000, &color), 'A');
+  memset(&state.cells[0], 0, sizeof(state.cells[0]));
+  samples[0] = 0;
+  ascii_stabilizer_choose(&state.cells[0], samples, 'A', 100, UINT64_MAX, 0, 16000000, &color);
+  samples[0] = 144;
+  cr_assert_eq(ascii_stabilizer_choose(&state.cells[0], samples, 'B', 100, 101, 0, 16000000, &color), 'B');
   ascii_stabilizer_reset(&state);
   ascii_stabilizer_reset(&other);
 }
@@ -809,6 +818,11 @@ Test(ascii_emission, rejects_invalid_input) {
 }
 
 Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
+#if SIMD_SUPPORT_SVE
+  if (simd_backend()->required_features == CPU_FEATURE_SVE)
+    cr_assert(simd_cells_backend()->glyph_shape_correlation == glyph_shape_correlation_sve,
+              "SVE dispatch must select SVE glyph correlation");
+#endif
   rgb_pixel_t pixels[16 * 8] = {{0}};
   image_t image = {.w = 16, .h = 8, .pixels = pixels};
   char *black = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
@@ -827,6 +841,43 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   cr_assert_eq(strlen(shapes), 2);
   cr_assert(shapes[0] != shapes[1], "perpendicular strokes should select different glyphs");
   SAFE_FREE(shapes);
+  // Compare the selected glyphs across all CPU backends on varied patches.
+  rgb_pixel_t varied_pixels[128 * 64];
+  for (int i = 0; i < 128 * 64; ++i)
+    varied_pixels[i] = (rgb_pixel_t){(uint8_t)(i * 73), (uint8_t)(i * 37), (uint8_t)(i * 19)};
+  image_t varied_image = {.w = 128, .h = 64, .pixels = varied_pixels};
+  char *scalar_glyphs = ascii_render_glyph_match(&varied_image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
+  cr_assert_not_null(scalar_glyphs);
+  terminal_cell_t expected_glyphs[16 * 8] = {0};
+  decode(scalar_glyphs, expected_glyphs, 16, 8, false);
+  simd_cells_t fallback = simd_cells_scalar;
+  fallback.glyph_shape_correlation = NULL;
+  char *fallback_glyphs = ascii_render_glyph_match(&varied_image, ASCII_COLOR_NONE, &fallback, NULL);
+  cr_assert_not_null(fallback_glyphs);
+  cr_assert_str_eq(fallback_glyphs, scalar_glyphs);
+  SAFE_FREE(fallback_glyphs);
+  for (size_t b = 0; b < sizeof(backends) / sizeof(backends[0]); ++b) {
+    if ((platform_cpu_features() & backends[b].feature) != backends[b].feature)
+      continue;
+    for (int seed = 0; seed < 256; ++seed) {
+      int16_t samples[16], mask[16];
+      for (int i = 0; i < 16; ++i) {
+        samples[i] = (int16_t)(((seed * 73 + i * 127) % 511) - 255);
+        mask[i] = (int16_t)(((seed * 137 + i * 61) % 511) - 255);
+      }
+      cr_assert_eq(backends[b].luma->glyph_shape_correlation(samples, mask),
+                   glyph_shape_correlation_scalar(samples, mask), "glyph dot product differs for backend %s",
+                   backends[b].name);
+    }
+    char *output = ascii_render_glyph_match(&varied_image, ASCII_COLOR_NONE, backends[b].luma, NULL);
+    cr_assert_not_null(output);
+    terminal_cell_t actual_glyphs[16 * 8] = {0};
+    decode(output, actual_glyphs, 16, 8, false);
+    for (size_t i = 0; i < 16 * 8; ++i)
+      cr_assert_str_eq(actual_glyphs[i].glyph, expected_glyphs[i].glyph, "backend %s", backends[b].name);
+    SAFE_FREE(output);
+  }
+  SAFE_FREE(scalar_glyphs);
   char *restricted = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, "@#");
   cr_assert_not_null(restricted);
   cr_assert_eq(strlen(restricted), 2);

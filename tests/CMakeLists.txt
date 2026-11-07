@@ -1301,6 +1301,8 @@ endif()
 if(BUILD_TESTS AND TARGET ascii-chat)
     asciichat_add_pytest(python-media integration/media --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-media PROPERTIES LABELS "integration;python;media")
+    asciichat_add_pytest(python-glyph-performance performance/glyph -n 0 --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-glyph-performance PROPERTIES LABELS "performance;python;media" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-discovery integration/discovery --ascii-chat-binary=$<TARGET_FILE:ascii-chat>
         --ignore=${CMAKE_SOURCE_DIR}/tests/python/integration/discovery/test_discovery_webrtc.py)
     set_tests_properties(python-discovery PROPERTIES LABELS "integration;python;network" RUN_SERIAL TRUE)

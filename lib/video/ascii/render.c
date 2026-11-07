@@ -453,6 +453,7 @@ void ascii_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool mor
  * The source is fitted at 8x8 samples per output cell, then averaged to 4x4.
  * Glyph coverage comes from DejaVu Sans Mono; real terminal fonts may differ. */
 #include "glyph_masks.h"
+
 bool ascii_glyph_palette_supported(const char *palette) {
   if (!palette || !*palette)
     return false;
@@ -469,6 +470,8 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
     return NULL;
   }
   bool allowed[95] = {false};
+  int (*shape_correlation)(const int16_t[16], const int16_t[16]) =
+      ops->glyph_shape_correlation ? ops->glyph_shape_correlation : glyph_shape_correlation_scalar;
   if (palette) {
     if (!ascii_glyph_palette_supported(palette)) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette must contain printable ASCII characters");
@@ -507,25 +510,22 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
   frame.temporal_preselected = true;
   for (int y = 0; y < cells.h; ++y) {
     for (int x = 0; x < cells.w; ++x) {
-      int samples[16][3] = {{0}};
       int luminance[16];
-      for (int sy = 0; sy < 8; ++sy) {
-        for (int sx = 0; sx < 8; ++sx) {
-          rgb_pixel_t p = image->pixels[(size_t)(y * 8 + sy) * (size_t)image->w + (size_t)(x * 8 + sx)];
-          int i = (sy / 2) * 4 + sx / 2;
-          samples[i][0] += p.r;
-          samples[i][1] += p.g;
-          samples[i][2] += p.b;
+      int sample_mean = 0;
+      for (int sy = 0; sy < 4; ++sy) {
+        const rgb_pixel_t *top = image->pixels + (size_t)(y * 8 + sy * 2) * (size_t)image->w + (size_t)(x * 8);
+        const rgb_pixel_t *bottom = top + image->w;
+        for (int sx = 0; sx < 4; ++sx) {
+          const rgb_pixel_t a = top[sx * 2], b = top[sx * 2 + 1];
+          const rgb_pixel_t c = bottom[sx * 2], d = bottom[sx * 2 + 1];
+          int i = sy * 4 + sx;
+          int red = (a.r + b.r + c.r + d.r) / 4;
+          int green = (a.g + b.g + c.g + d.g) / 4;
+          int blue = (a.b + b.b + c.b + d.b) / 4;
+          luminance[i] = (77 * red + 150 * green + 29 * blue) >> 8;
+          sample_mean += luminance[i];
         }
       }
-      for (int i = 0; i < 16; ++i) {
-        for (int c = 0; c < 3; ++c)
-          samples[i][c] /= 4;
-        luminance[i] = (77 * samples[i][0] + 150 * samples[i][1] + 29 * samples[i][2]) >> 8;
-      }
-      int sample_mean = 0;
-      for (int i = 0; i < 16; ++i)
-        sample_mean += luminance[i];
       sample_mean /= 16;
       int16_t centered_samples[16];
       int sample_energy = 0;
@@ -550,9 +550,7 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
         // The previous glyph still needs a score for temporal hysteresis.
         if (!is_previous && tone_cost > best_error)
           continue;
-        int dot = 0;
-        for (int i = 0; i < 16; ++i)
-          dot += centered_samples[i] * centered_masks[g][i];
+        int dot = shape_correlation(centered_samples, centered_masks[g]);
         int64_t error = tone_cost + sample_energy + glyph_energy[g] - 2 * dot;
         if (is_previous)
           previous_error = (uint64_t)error;
