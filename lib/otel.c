@@ -115,6 +115,7 @@ static const gotel_metric_t metrics[] = {
 static _Atomic(gotel_host_t *) host;
 static atomic_uint readers;
 static atomic_bool stopping;
+static atomic_bool worker_done;
 static asciichat_thread_t worker;
 static bool worker_started;
 static asciichat_error_t drain_result;
@@ -378,6 +379,7 @@ static void *export_worker(void *arg) {
   }
   // Keep final connection setup (including synchronous DNS) off the exit thread.
   drain_result = otel_status(gotel_drain(h), "Drain telemetry exporter");
+  atomic_store_explicit(&worker_done, true, memory_order_release);
   return NULL;
 }
 void ascii_otel_scope_begin(ascii_otel_scope_t *s, ascii_otel_operation_t op) {
@@ -472,12 +474,16 @@ void ascii_otel_shutdown(void) {
     return;
   gotel_end(&command_scope);
   uint64_t started = time_get_ns();
-  while (atomic_load_explicit(&readers, memory_order_seq_cst) && time_get_ns() - started < shutdown_timeout_ns)
+  // Leave time for the rest of process teardown, even if the collector stalls.
+  uint64_t budget_ns = shutdown_timeout_ns < 400 * NS_PER_MS_INT ? shutdown_timeout_ns : 400 * NS_PER_MS_INT;
+  while (atomic_load_explicit(&readers, memory_order_seq_cst) && time_get_ns() - started < budget_ns)
     platform_sleep_ms(1);
   bool producers_active = atomic_load_explicit(&readers, memory_order_seq_cst) != 0;
   atomic_store_explicit(&stopping, true, memory_order_release);
   if (worker_started) {
-    if (thread_join_timeout(&worker, NULL, shutdown_timeout_ns) != 0) {
+    while (!atomic_load_explicit(&worker_done, memory_order_acquire) && time_get_ns() - started < budget_ns)
+      platform_sleep_ms(1);
+    if (!atomic_load_explicit(&worker_done, memory_order_acquire) || thread_join(&worker, NULL) != 0) {
       log_warn("Telemetry worker did not stop within its deadline; exporter retained until process exit");
       return;
     }
@@ -570,7 +576,9 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   if (n < 0 || (size_t)n >= sizeof(service_name))
     return SET_ERRNO(ERROR_CONFIG, "Telemetry service name too long");
   config.exporter.service_name = service_name;
-  config.exporter.batch_ms = 250;
+  // The exporter observes its batch interval during final flush as well.
+  // Keep it short enough to deliver all signals within the shutdown budget.
+  config.exporter.batch_ms = 25;
   config.exporter.queue_capacity = (size_t)o->otel_queue_capacity;
   config.exporter.connect_timeout_ms = (uint32_t)o->otel_timeout;
   config.exporter.read_timeout_ms = (uint32_t)o->otel_timeout;
@@ -656,6 +664,7 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   gotel_set_logger(h, exporter_diagnostic, NULL);
   shutdown_timeout_ns = (uint64_t)o->otel_timeout * NS_PER_MS_INT;
   atomic_store(&stopping, false);
+  atomic_store(&worker_done, false);
   if (acthread_create(&worker, "otel_export", export_worker, h) != 0) {
     gotel_destroy(h);
     gotel_command_args_destroy(&command_args);
