@@ -8,12 +8,12 @@
  *   cmake --build build --target ascii-chat test-yt-dlp-fixture test-extractor-audio
  *   ctest --test-dir build -R "^media-extractor$" --output-on-failure
  *   uv run --project tests/ascii_chat_tests python tests/integration/media_extractor.py `
- *     --binary build/bin/ascii-chat.exe --fixture build/test-fixtures/yt-dlp.exe `
+ *     --binary build/bin/ascii-chat.exe --fixture build/test-fixtures/fake-yt-dlp.exe `
  *     --audio-probe build/bin/test-extractor-audio.exe MediaExtractor.test_combined_stream_is_used_for_both_decoders
  *
  * Run the fixture directly in PowerShell to inspect its combined-stream JSON:
  *   $env:FAKE_YTDLP_VIDEO = 'http://127.0.0.1/video.mp4'
- *   .\build\test-fixtures\yt-dlp.exe --print json https://example.com/watch
+ *   .\build\test-fixtures\fake-yt-dlp.exe --print json https://example.com/watch
  *   Remove-Item Env:FAKE_YTDLP_VIDEO
  *
  * Set FAKE_YTDLP_MODE=split and FAKE_YTDLP_AUDIO to a second URL to emit
