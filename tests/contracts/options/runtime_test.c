@@ -65,6 +65,12 @@ static void test_flip_defaults(void) {
 static void test_transactions(void) {
   cr_assert_eq(options_set_int("renderer", ASCII_RENDERER_GLYPH), ASCIICHAT_OK);
   cr_assert(GET_OPTION(renderer) == ASCII_RENDERER_GLYPH);
+  uint64_t palette_revision = options_revision();
+  palette_type_t previous_palette = GET_OPTION(palette_type);
+  cr_assert_neq(options_set_int("palette_type", PALETTE_DIGITAL), ASCIICHAT_OK);
+  cr_assert_eq(GET_OPTION(palette_type), previous_palette);
+  cr_assert_eq(options_revision(), palette_revision);
+  CLEAR_ERRNO();
   cr_assert_eq(options_set_int("renderer", ASCII_RENDERER_LUMINANCE), ASCIICHAT_OK);
   cr_assert_eq(GET_OPTION(renderer), ASCII_RENDERER_LUMINANCE);
   uint64_t renderer_revision = options_revision();
