@@ -465,6 +465,37 @@ Test(ascii_emission, rejects_invalid_input) {
   cr_assert_null(ascii_render(&image, "@", ASCII_COLOR_TRUE, false, false, NULL));
 }
 
+Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
+  rgb_pixel_t pixels[16 * 8] = {{0}};
+  image_t image = {.w = 16, .h = 8, .pixels = pixels};
+  char *black = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar);
+  cr_assert_not_null(black);
+  cr_assert_str_eq(black, "  ");
+  SAFE_FREE(black);
+
+  for (int y = 0; y < 8; ++y) {
+    for (int x = 0; x < 16; ++x) {
+      if ((x < 8 && x >= 3 && x <= 4) || (x >= 8 && y >= 3 && y <= 4))
+        pixels[y * 16 + x] = (rgb_pixel_t){255, 255, 255};
+    }
+  }
+  char *shapes = ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar);
+  cr_assert_not_null(shapes);
+  cr_assert_eq(strlen(shapes), 2);
+  cr_assert(shapes[0] != shapes[1], "perpendicular strokes should select different glyphs");
+  SAFE_FREE(shapes);
+
+  pixels[0] = (rgb_pixel_t){80, 110, 140};
+  char *color = ascii_render_glyph_match(&image, ASCII_COLOR_TRUE, &simd_cells_scalar);
+  cr_assert_not_null(color);
+  terminal_cell_t cells[2] = {0};
+  decode(color, cells, 2, 1, true);
+  cr_assert_eq(cells[0].fg, 0x506e8c, "glyph matching must preserve the sampled foreground color");
+  SAFE_FREE(color);
+  image.w = 15;
+  cr_assert_null(ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar));
+}
+
 #ifdef ASCII_EMISSION_STANDALONE
 int main(int argc, char **argv) {
 #if defined(__aarch64__)
@@ -489,6 +520,7 @@ int main(int argc, char **argv) {
   ascii_emission_sgr_encoders_and_compatibility();
   ascii_emission_rejects_invalid_input();
   ascii_emission_capability_dispatch_preserves_background();
+  ascii_emission_glyph_matching_uses_shape_and_rejects_invalid_sizes();
   simd_caches_destroy_all();
   return 0;
 }

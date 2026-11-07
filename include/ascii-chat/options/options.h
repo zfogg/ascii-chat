@@ -1105,6 +1105,7 @@ typedef struct options_state {
   // ============================================================================
   // Image Options
   // ============================================================================
+  bool glyph_match;                                  ///< Match image structure to glyph shapes
   bool stretch;                                      ///< Allow aspect ratio distortion
   char video_codec[OPTIONS_VIDEO_CODEC_BUFFER_SIZE]; ///< Video codec (auto, hevc, h264, raw) - default: auto
 

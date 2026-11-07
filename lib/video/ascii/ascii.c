@@ -93,7 +93,7 @@ static void image_resize_cover(const image_t *source, image_t *dest, ssize_t vie
 static void image_resize_contain(const image_t *source, image_t *dest, ssize_t columns, ssize_t rows) {
   ssize_t fitted_columns, fitted_rows;
   aspect_ratio(source->w, source->h, columns, rows, false, &fitted_columns, &fitted_rows);
-  int width = (int)fitted_columns;
+  int width = (int)(fitted_columns * dest->w / columns);
   int height = (int)(fitted_rows * dest->h / rows);
   int left = (dest->w - width) / 2;
   int top = (dest->h - height) / 2;
@@ -290,6 +290,15 @@ char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const s
 
   // Both contain and cover produce a complete viewport, including any black bars.
 
+  // Preserve an 8x8 sample grid for each glyph in the experimental renderer.
+  bool glyph_match = GET_OPTION(glyph_match) && caps->render_mode == RENDER_MODE_FOREGROUND && resized_width > 0 &&
+                     resized_height > 0 && resized_width <= IMAGE_MAX_WIDTH / 8 &&
+                     resized_height <= IMAGE_MAX_HEIGHT / 8;
+  if (glyph_match) {
+    resized_width *= 8;
+    resized_height *= 8;
+  }
+
   // Half-block mode doubles height for 2x vertical resolution (AFTER aspect ratio)
   if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
     resized_height = resized_height * 2;
@@ -398,7 +407,12 @@ char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const s
 
   // Use the capability-aware image printing function with client's palette
   outbuf_t *previous_output = ascii_render_set_output_target(output);
-  char *ascii = image_print_with_capabilities(resized, caps, palette_chars);
+  ascii_color_t glyph_color = caps->color_level == TERM_COLOR_TRUECOLOR ? ASCII_COLOR_TRUE
+                              : caps->color_level == TERM_COLOR_256     ? ASCII_COLOR_256
+                              : caps->color_level == TERM_COLOR_16      ? ASCII_COLOR_16
+                                                                        : ASCII_COLOR_NONE;
+  char *ascii = glyph_match ? ascii_render_glyph_match(resized, glyph_color, simd_cells_backend())
+                            : image_print_with_capabilities(resized, caps, palette_chars);
   ascii_render_set_output_target(previous_output);
 
   uint64_t prof_print_end_ns = time_get_ns();

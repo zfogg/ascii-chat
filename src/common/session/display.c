@@ -769,7 +769,9 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
 
   // Validate the completed local frame using the same policy as received text.
   // Wide palettes use the existing cell composer before the rectangular check.
-  if (result && (size_t)utf8_display_width(ctx->palette_chars) != utf8_char_count(ctx->palette_chars)) {
+  bool glyph_match = GET_OPTION(glyph_match) && caps_copy.render_mode == RENDER_MODE_FOREGROUND && width > 0 &&
+                     height > 0 && width <= IMAGE_MAX_WIDTH / 8 && height <= IMAGE_MAX_HEIGHT / 8;
+  if (result && !glyph_match && (size_t)utf8_display_width(ctx->palette_chars) != utf8_char_count(ctx->palette_chars)) {
     ascii_frame_source_t source = {.frame_data = result, .frame_size = strlen(result)};
     size_t normalized_size;
     char *rectangular = ascii_create_grid(&source, 1, width, height, &normalized_size);
@@ -778,7 +780,11 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   }
   if (result) {
     acip_render_settings_t rendering = {.caps = caps_copy};
-    SAFE_STRNCPY(rendering.palette, ctx->palette_chars, sizeof(rendering.palette));
+    const char *contract_palette =
+        glyph_match
+            ? " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+            : ctx->palette_chars;
+    SAFE_STRNCPY(rendering.palette, contract_palette, sizeof(rendering.palette));
     uint32_t effects = ctx->digital_rain ? FRAME_RENDER_CONTRACT_RAIN : 0;
     if (session_frame_validate_contract(result, strlen(result), width, height, &rendering, effects) != ASCIICHAT_OK) {
       session_display_release_ascii(ctx, result);

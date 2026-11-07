@@ -63,6 +63,10 @@ static void test_flip_defaults(void) {
 }
 
 static void test_transactions(void) {
+  cr_assert_eq(options_set_bool("glyph-match", true), ASCIICHAT_OK);
+  cr_assert(GET_OPTION(glyph_match));
+  cr_assert_eq(options_set_bool("glyph_match", false), ASCIICHAT_OK);
+  cr_assert_not(GET_OPTION(glyph_match));
   cr_assert_eq(options_set_int("color_mode", TERM_COLOR_AUTO), ASCIICHAT_OK);
   cr_assert_eq(options_set_int("width", 80), ASCIICHAT_OK);
   const options_t *borrowed = options_get();
