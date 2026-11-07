@@ -930,6 +930,20 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   cr_assert_str_eq(block_cells[1].glyph, "\xe2\x96\x84");
   SAFE_FREE(blocks);
 
+  // Equal-luminance colors still have a visible boundary whose orientation
+  // should influence the selected glyph.
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 16; ++x) {
+      bool red = x < 8 ? y < 4 : x < 12;
+      pixels[y * 16 + x] = red ? (rgb_pixel_t){150, 0, 0} : (rgb_pixel_t){0, 77, 0};
+    }
+  char *chromatic = ascii_render_glyph_match(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x80\xe2\x96\x8c");
+  cr_assert_not_null(chromatic);
+  decode(chromatic, block_cells, 2, 1, true);
+  cr_assert_str_eq(block_cells[0].glyph, "\xe2\x96\x80");
+  cr_assert_str_eq(block_cells[1].glyph, "\xe2\x96\x8c");
+  SAFE_FREE(chromatic);
+
   memset(pixels, 0, sizeof(pixels));
   for (int y = 0; y < 8; ++y)
     for (int x = 3; x <= 4; ++x)

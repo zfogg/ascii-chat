@@ -644,6 +644,15 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
         centered_samples[i] = (int16_t)centered;
         sample_energy += centered * centered;
       }
+      // Compare chromatic structure as well as luminance: red and green can
+      // have the same brightness while forming a visible edge.
+      int16_t chroma[2][16];
+      int chroma_energy = 0;
+      for (int i = 0; i < 16; ++i) {
+        chroma[0][i] = (int16_t)((samples[0][i] - samples[1][i]) - (sums[0] - sums[1]) / 16);
+        chroma[1][i] = (int16_t)((samples[2][i] - samples[1][i]) - (sums[2] - sums[1]) / 16);
+        chroma_energy += chroma[0][i] * chroma[0][i] + chroma[1][i] * chroma[1][i];
+      }
       size_t best = 0, previous_index = 0;
       uint64_t best_error = UINT64_MAX;
       uint64_t previous_error = UINT64_MAX;
@@ -657,6 +666,16 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
           continue;
         int dot = shape_correlation(centered_samples, glyphs[c].centered);
         uint64_t error = (uint64_t)(tone_error + sample_energy + glyphs[c].energy - 2 * dot);
+        if (mode != ASCII_COLOR_NONE && chroma_energy && glyphs[c].energy) {
+          int64_t red_dot = shape_correlation(chroma[0], glyphs[c].centered);
+          int64_t blue_dot = shape_correlation(chroma[1], glyphs[c].centered);
+          int64_t explained = (red_dot * red_dot + blue_dot * blue_dot) / glyphs[c].energy;
+          int64_t residual = chroma_energy - explained;
+          if (residual > 0)
+            error += (uint64_t)residual / 8;
+        } else if (mode != ASCII_COLOR_NONE) {
+          error += (uint64_t)chroma_energy / 8;
+        }
         if (is_previous) {
           previous_error = error;
           previous_index = c;
