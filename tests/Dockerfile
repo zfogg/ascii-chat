@@ -61,4 +61,4 @@ COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /usr/local/bin/uv
 WORKDIR /app
 
 # Default command builds and runs tests with ctest
-CMD ["sh", "-c", "cmake --preset docker && cmake --build build_docker --target tests && ctest --test-dir build_docker --output-on-failure --parallel"]
+CMD ["sh", "-c", "cmake --preset docker && cmake --build build_docker --target all tests-criterion-build && ctest --test-dir build_docker --output-on-failure --parallel 0"]

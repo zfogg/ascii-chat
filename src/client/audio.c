@@ -207,9 +207,7 @@ static int audio_queue_packet(client_connection_t *connection, const uint8_t *op
   memcpy(packet->data, opus_data, opus_size);
   packet->size = opus_size;
   packet->frame_count = frame_count;
-#ifdef ASCIICHAT_WITH_OTEL
   packet->telemetry_context = ascii_otel_context();
-#endif
   for (int i = 0; i < frame_count && i < MAX_BATCH_FRAMES; i++) {
     packet->frame_sizes[i] = frame_sizes[i];
   }
@@ -258,10 +256,10 @@ static void *audio_sender_thread_func(void *arg) {
 
     // Dequeue packet
     audio_send_packet_t packet = connection->audio_send_queue[connection->audio_send_queue_tail];
-    ASCII_OTEL_SCOPE_PARENT(CLIENT_AUDIO_SEND, &packet.telemetry_context);
     connection->audio_send_queue_tail = (connection->audio_send_queue_tail + 1) % AUDIO_SEND_QUEUE_SIZE;
 
     mutex_unlock(&connection->audio_send_queue_mutex);
+    ASCII_OTEL_SCOPE_PARENT(CLIENT_AUDIO_SEND, &packet.telemetry_context);
 
     // Send packet (may block on network I/O - that's OK, we're not in capture thread)
     asciichat_errno_scope_t send_scope = errno_scope_begin();
@@ -458,7 +456,7 @@ void audio_process_received_samples(client_connection_t *connection, const float
   // Log latency after writing to playback buffer
   if (connection->audio_context->playback_buffer) {
     size_t buffer_samples = audio_ring_buffer_available_read(connection->audio_context->playback_buffer);
-    float buffer_latency_ms = (float)buffer_samples / 48.0f;
+    float buffer_latency_ms = (float)buffer_samples * 1000.0f / (AUDIO_SAMPLE_RATE * AUDIO_CHANNELS);
     log_dev_every(500 * US_PER_MS_INT, "LATENCY: Client playback buffer after recv: %.1fms (%zu samples)",
                   buffer_latency_ms, buffer_samples);
   }

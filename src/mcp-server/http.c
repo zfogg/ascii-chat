@@ -14,6 +14,7 @@
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/network/nat/upnp.h>
 #include <libwebsockets.h>
+#include <sodium.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
@@ -22,6 +23,8 @@ typedef struct {
   char *body, *response;
   size_t length, response_size, sent;
   bool pending;
+  bool issue_session;
+  char session_id[MCP_SESSION_ID_LENGTH + 1];
   unsigned status;
 } http_session_t;
 static void clear_session(http_session_t *session) {
@@ -71,6 +74,15 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     int vn = lws_hdr_custom_copy(wsi, version, sizeof(version), "mcp-protocol-version:", 21);
     if (vn > 0 && strcmp(version, "2025-11-25") && strcmp(version, "2025-06-18") && strcmp(version, "2025-03-26"))
       return respond(wsi, h, 400, NULL);
+    int session_length = lws_hdr_custom_copy(wsi, h->session_id, sizeof(h->session_id), "mcp-session-id:", 15);
+    if (session_length > 0) {
+      if (session_length != MCP_SESSION_ID_LENGTH)
+        return respond(wsi, h, 400, NULL);
+      for (int i = 0; i < session_length; ++i)
+        if (!((h->session_id[i] >= '0' && h->session_id[i] <= '9') ||
+              (h->session_id[i] >= 'a' && h->session_id[i] <= 'f')))
+          return respond(wsi, h, 400, NULL);
+    }
     h->body = SAFE_MALLOC(MCP_MAX_INPUT + 1, char *);
     return 0;
   }
@@ -89,8 +101,16 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     SAFE_FREE(h->body);
     if (!doc)
       return respond(wsi, h, 400, mcp_error(NULL, -32700, "Parse error"));
+    yyjson_val *root = yyjson_doc_get_root(doc);
+    yyjson_val *method = mcp_get(root, "method");
+    if (yyjson_is_str(method) && yyjson_equals_str(method, "initialize") && mcp_get(root, "id")) {
+      unsigned char random[16];
+      randombytes_buf(random, sizeof(random));
+      sodium_bin2hex(h->session_id, sizeof(h->session_id), random, sizeof(random));
+      h->issue_session = true;
+    }
     bool pending = false;
-    yyjson_mut_doc *response = mcp_dispatch(s, doc, wsi, &pending);
+    yyjson_mut_doc *response = mcp_dispatch(s, doc, wsi, h->session_id, &pending);
     yyjson_doc_free(doc);
     h->pending = pending;
     if (pending) {
@@ -100,13 +120,13 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     return respond(wsi, h, response ? 200 : 202, response);
   }
   case LWS_CALLBACK_EVENT_WAIT_CANCELLED:
-    for (int i = 0; i < MCP_MAX_JOBS; ++i)
+    for (unsigned i = 0; i < s->policy.max_jobs; ++i)
       if (s->jobs[i].started && s->jobs[i].connection && atomic_load_bool(&s->jobs[i].done))
         lws_callback_on_writable(s->jobs[i].connection);
     return 0;
   case LWS_CALLBACK_HTTP_WRITEABLE: {
     if (h->pending) {
-      for (int i = 0; i < MCP_MAX_JOBS; ++i) {
+      for (unsigned i = 0; i < s->policy.max_jobs; ++i) {
         mcp_job_t *j = &s->jobs[i];
         if (j->started && j->connection == wsi && atomic_load_bool(&j->done)) {
           h->pending = false;
@@ -129,6 +149,9 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
       stats_counter_add(stats_runtime_scope(), STATS_COUNTER_MCP_HTTP_RESPONSES, 1);
       unsigned char buffer[LWS_PRE + 1024], *p = buffer + LWS_PRE, *end = buffer + sizeof(buffer);
       if (lws_add_http_common_headers(wsi, h->status, "application/json", (lws_filepos_t)h->response_size, &p, end) ||
+          (h->issue_session && lws_add_http_header_by_name(
+                                   wsi, (const unsigned char *)"mcp-session-id:", (const unsigned char *)h->session_id,
+                                   MCP_SESSION_ID_LENGTH, &p, end)) ||
           lws_finalize_write_http_header(wsi, buffer + LWS_PRE, &p, end))
         return -1;
       if (!h->response_size) {
@@ -154,7 +177,7 @@ static int callback(struct lws *wsi, enum lws_callback_reasons reason, void *use
     return 0;
   }
   case LWS_CALLBACK_CLOSED_HTTP:
-    for (int i = 0; i < MCP_MAX_JOBS; ++i)
+    for (unsigned i = 0; i < s->policy.max_jobs; ++i)
       if (s->jobs[i].started && s->jobs[i].connection == wsi) {
         s->jobs[i].connection = NULL;
         atomic_store_bool(&s->jobs[i].cancelled, true);
@@ -248,7 +271,7 @@ asciichat_error_t mcp_http_run(mcp_server_t *s) {
     }
     if (ui) {
       status.connected_count = 0;
-      for (int i = 0; i < MCP_MAX_JOBS; ++i)
+      for (unsigned i = 0; i < s->policy.max_jobs; ++i)
         if (s->jobs[i].started && !atomic_load_bool(&s->jobs[i].done))
           ++status.connected_count;
       if (!ui_status_display_interactive(&status))
@@ -256,7 +279,7 @@ asciichat_error_t mcp_http_run(mcp_server_t *s) {
     }
   }
   lws_sul_cancel(&pulse.timer);
-  for (int i = 0; i < MCP_MAX_JOBS; ++i)
+  for (unsigned i = 0; i < s->policy.max_jobs; ++i)
     if (s->jobs[i].started)
       atomic_store_bool(&s->jobs[i].cancelled, true);
   mcp_jobs_reap(s, true);

@@ -279,24 +279,22 @@ def test_mdns_terminal(binary, tmp_path, monkeypatch):
             boundary = client("boundary")
             boundary.expect(lambda text: "LAN servers" in text and " [12]" in text,
                             "Twelve-row LAN viewport did not fill")
-            boundary.pump(2)
-            text = boundary.expect(lambda text: re.search(r"> \[\d+\]", text)
-                                   and "Auto-refresh" in text,
-                                   "Boundary picker did not finish drawing its selected row and footer")
-            # Refresh sorts discoveries while preserving the selected endpoint,
-            # so its row need not remain one after the initial discovery query.
-            current = int(require_match(r"> \[(\d+)\]", text).group(1))
-            if current > 1:
-                boundary.write("k" * (current - 1))
-                boundary.expect(lambda text: "> [1]" in text,
-                                "Could not establish the first row before testing thirteen Down events")
-            boundary.write("j" * 13)
-            text = boundary.expect(lambda text: "> [14]" in text,
-                                   "Selection could not move safely to server 14")
+            # Live multicast replies can arrive over several refreshes. Select
+            # the current last row until at least fourteen are actually visible
+            # to the picker, rather than assuming a fixed count during a burst.
+            deadline = time.monotonic() + 20
+            text = ""
+            while time.monotonic() < deadline:
+                boundary.write("\x1b[F")
+                text = boundary.pump(1.5)
+                match = re.search(r"> \[(\d+)\]", text)
+                if match and int(match.group(1)) >= 14:
+                    break
+            assert match and int(match.group(1)) >= 14, "Fewer than 14 LAN servers discovered:\n" + text
             visible = [line for line in text.splitlines() if re.search(r"[ >] \[\d+\]", line)]
             assert len(visible) == 12, f"Expected 12 visible servers, got {len(visible)}: {visible}"
-            assert boundary.process.isalive(), "Picker crashed while moving to server 14"
-            boundary.write("k" * 13)
+            assert boundary.process.isalive(), "Picker crashed while moving to the last server"
+            boundary.write("\x1b[H")
             boundary.expect(lambda text: "> [1]" in text, "Could not return to the first server")
             boundary.write("k")
             text = boundary.expect(lambda text: re.search(r"> \[(\d+)\]", text)

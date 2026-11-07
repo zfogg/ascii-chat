@@ -15,7 +15,7 @@ typedef enum {
 #undef ASCII_OTEL_METRIC
   ASCII_OTEL_METRIC_COUNT
 } ascii_otel_metric_t;
-#ifdef ASCIICHAT_WITH_OTEL
+#ifndef __EMSCRIPTEN__
 #include <gotel/gotel.h>
 typedef struct ascii_otel_scope {
   gotel_scope_t scope;

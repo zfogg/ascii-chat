@@ -83,7 +83,7 @@ self.onmessage = async ({
           scratch >> 2,
           (scratch >> 2) + input.length,
         );
-        for (let i = 0; i < samples.length; i++)
+        for (let i = 0; i < samples.length; ++i)
           samples[i] = Math.max(-1, Math.min(1, samples[i]! + frame.media[i]!));
         for (let i = 0; i < pcm.length; ++i) {
           const sample =

@@ -1,13 +1,14 @@
 #include <ascii-chat/audio/processor.h>
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/util/time.h>
 #include <math.h>
 #include <string.h>
 
 struct audio_processor {
   audio_processor_config_t config;
-  spectral_processor_t *spectral;
+  spectral_processor_t *spectral_left;
   spectral_processor_t *spectral_right;
   compressor_t compressor;
   noise_gate_t gate;
@@ -45,7 +46,7 @@ audio_processor_config_t audio_processor_default_config(int sample_rate) {
 void audio_processor_reset(audio_processor_t *p) {
   if (!p)
     return;
-  spectral_reset(p->spectral);
+  spectral_reset(p->spectral_left);
   spectral_reset(p->spectral_right);
   const audio_processor_config_t *c = &p->config;
   compressor_init(&p->compressor, (float)c->sample_rate);
@@ -80,6 +81,9 @@ asciichat_error_t audio_processor_create(const audio_processor_config_t *c, audi
   if (p->config.channels == 0)
     p->config.channels = 1;
   if (p->config.channels == 2) {
+    if (c->spectral_enabled && (c->spectral.auto_gain || c->spectral.compressor || c->spectral.noise_gate))
+      log_warn_once("Stereo capture uses linked broadband dynamics; spectral AGC, multiband compression and spectral "
+                    "gating options are unavailable");
     // Stereo dynamics share one detector after the independent channel filters.
     p->config.spectral.auto_gain = false;
     p->config.spectral.compressor = false;
@@ -89,7 +93,7 @@ asciichat_error_t audio_processor_create(const audio_processor_config_t *c, audi
   p->gain_attack = 1 - powf(0.75f, 100.0f / c->sample_rate);
   p->gain_release = 1 - powf(0.95f, 100.0f / c->sample_rate);
   if (c->spectral_enabled) {
-    asciichat_error_t result = spectral_create(&p->config.spectral, &p->spectral);
+    asciichat_error_t result = spectral_create(&p->config.spectral, &p->spectral_left);
     if (result != ASCIICHAT_OK) {
       SAFE_FREE(p);
       return result;
@@ -97,7 +101,7 @@ asciichat_error_t audio_processor_create(const audio_processor_config_t *c, audi
     if (p->config.channels == 2) {
       result = spectral_create(&p->config.spectral, &p->spectral_right);
       if (result != ASCIICHAT_OK) {
-        spectral_destroy(p->spectral);
+        spectral_destroy(p->spectral_left);
         SAFE_FREE(p);
         return result;
       }
@@ -131,8 +135,8 @@ asciichat_error_t audio_processor_process(audio_processor_t *p, const float *inp
         left[i] = input[base + i * 2];
         right[i] = input[base + i * 2 + 1];
       }
-      if (p->spectral) {
-        asciichat_error_t result = spectral_process(p->spectral, left, left, frames);
+      if (p->spectral_left) {
+        asciichat_error_t result = spectral_process(p->spectral_left, left, left, frames);
         if (result == ASCIICHAT_OK)
           result = spectral_process(p->spectral_right, right, right, frames);
         if (result != ASCIICHAT_OK)
@@ -177,8 +181,8 @@ asciichat_error_t audio_processor_process(audio_processor_t *p, const float *inp
     }
     return ASCIICHAT_OK;
   }
-  if (p->spectral) {
-    asciichat_error_t result = spectral_process(p->spectral, input, output, count);
+  if (p->spectral_left) {
+    asciichat_error_t result = spectral_process(p->spectral_left, input, output, count);
     if (result != ASCIICHAT_OK)
       return result;
   } else if (input != output) {
@@ -189,7 +193,7 @@ asciichat_error_t audio_processor_process(audio_processor_t *p, const float *inp
   const size_t level_frame = (size_t)c->sample_rate / 100;
   for (size_t i = 0; i < count; ++i) {
     float sample = isfinite(output[i]) ? output[i] : 0;
-    if (c->flags.agc && !(p->spectral && c->spectral.auto_gain)) {
+    if (c->flags.agc && !(p->spectral_left && c->spectral.auto_gain)) {
       p->energy += (double)sample * sample;
       if (++p->level_samples == level_frame) {
         float rms = (float)sqrt(p->energy / level_frame);
@@ -208,7 +212,7 @@ asciichat_error_t audio_processor_process(audio_processor_t *p, const float *inp
       sample = lowpass_filter_process_sample(&p->lowpass, sample);
     if (c->flags.noise_gate)
       sample = noise_gate_process_sample(&p->gate, sample, fabsf(sample));
-    if (c->flags.compressor && !(p->spectral && c->spectral.compressor)) {
+    if (c->flags.compressor && !(p->spectral_left && c->spectral.compressor)) {
       sample *= compressor_process_sample(&p->compressor, sample);
       sample = soft_clip(sample, 0.7f, 3);
     }
@@ -220,8 +224,8 @@ asciichat_error_t audio_processor_process(audio_processor_t *p, const float *inp
 void audio_processor_destroy(audio_processor_t *p) {
   if (!p)
     return;
-  spectral_destroy(p->spectral);
+  spectral_destroy(p->spectral_left);
   spectral_destroy(p->spectral_right);
-  p->spectral = NULL;
+  p->spectral_left = NULL;
   SAFE_FREE(p);
 }

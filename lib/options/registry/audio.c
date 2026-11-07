@@ -125,7 +125,7 @@ const registry_entry_t g_audio_entries[] = {
      NULL,
      false,
      false,
-     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
+     OPTION_MODE_SERVER,
      {0},
      NULL},
     {"audio-spectral-gate",

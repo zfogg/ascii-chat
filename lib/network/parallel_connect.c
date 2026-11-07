@@ -204,15 +204,11 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
   int gai_result;
   {
     ASCII_OTEL_SCOPE(DNS_RESOLVE);
-#ifdef ASCIICHAT_WITH_OTEL
     if (otel_scope.retained)
       gotel_attr_string(&otel_scope.scope, "dns.question.name", config->hostname);
-#endif
     gai_result = getaddrinfo(ascii_hostname, port_str, &hints, &result);
-#ifdef ASCIICHAT_WITH_OTEL
     if (gai_result && otel_scope.retained)
       gotel_error(&otel_scope.scope, "dns.error", "DNS lookup failed");
-#endif
   }
   if (gai_result != 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to resolve %s: %s", config->hostname, gai_strerror(gai_result));

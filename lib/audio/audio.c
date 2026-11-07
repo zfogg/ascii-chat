@@ -35,6 +35,58 @@
 #include <string.h>
 #include <math.h>
 #include <ascii-chat/atomic.h>
+#include <stdatomic.h>
+
+// PortAudio callbacks publish bounded, lock-free telemetry samples. The audio
+// worker exports them so the telemetry backend never runs on a device callback.
+#define AUDIO_RT_METRIC_SLOTS 1024
+_Static_assert(ATOMIC_INT_LOCK_FREE == 2 && ATOMIC_POINTER_LOCK_FREE == 2,
+               "Audio telemetry requires lock-free unsigned and pointer atomics");
+typedef struct {
+  _Atomic unsigned state; // 0 free, 1 owned, 2 ready
+  ascii_otel_metric_t metric;
+  double value;
+} audio_rt_metric_t;
+static audio_rt_metric_t g_audio_rt_metrics[AUDIO_RT_METRIC_SLOTS];
+static _Atomic unsigned g_audio_rt_next;
+static _Atomic unsigned g_audio_rt_dropped;
+static _Thread_local bool g_audio_callback_thread;
+
+static void audio_metric(ascii_otel_metric_t metric, double value) {
+  if (!g_audio_callback_thread) {
+    ascii_otel_metric(metric, value);
+    return;
+  }
+  if (!ascii_otel_enabled())
+    return;
+  unsigned index = atomic_fetch_add_explicit(&g_audio_rt_next, 1, memory_order_relaxed) % AUDIO_RT_METRIC_SLOTS;
+  audio_rt_metric_t *slot = &g_audio_rt_metrics[index];
+  unsigned free_slot = 0;
+  if (!atomic_compare_exchange_strong_explicit(&slot->state, &free_slot, 1, memory_order_acquire,
+                                               memory_order_relaxed)) {
+    atomic_fetch_add_explicit(&g_audio_rt_dropped, 1, memory_order_relaxed);
+    return;
+  }
+  slot->metric = metric;
+  slot->value = value;
+  atomic_store_explicit(&slot->state, 2, memory_order_release);
+}
+
+static void audio_metrics_flush(void) {
+  for (size_t i = 0; i < AUDIO_RT_METRIC_SLOTS; ++i) {
+    audio_rt_metric_t *slot = &g_audio_rt_metrics[i];
+    unsigned ready = 2;
+    if (!atomic_compare_exchange_strong_explicit(&slot->state, &ready, 1, memory_order_acquire, memory_order_relaxed))
+      continue;
+    ascii_otel_metric_t metric = slot->metric;
+    double value = slot->value;
+    atomic_store_explicit(&slot->state, 0, memory_order_release);
+    ascii_otel_metric(metric, value);
+  }
+  unsigned dropped = atomic_exchange_explicit(&g_audio_rt_dropped, 0, memory_order_relaxed);
+  if (dropped)
+    log_warn("Dropped %u audio telemetry samples while the queue was full", dropped);
+}
 
 #ifdef _WIN32
 #include <malloc.h> // For _alloca on Windows
@@ -204,6 +256,7 @@ static void *audio_worker_thread(void *arg) {
   // Only this worker uses the wait guard; condition waits release it while sleeping.
   mutex_lock(&ctx->audio_processing_wait_guard);
   while (true) {
+    audio_metrics_flush();
     loop_count++;
     uint64_t loop_start_ns = time_get_ns();
 
@@ -545,6 +598,7 @@ static void audio_monitor_test(audio_context_t *ctx, float *output, size_t count
 // of audio_start_duplex instead promotes the video/render or capture owner and
 // can starve both keyboard input and the actual audio device callbacks.
 static void audio_callback_prepare(void) {
+  g_audio_callback_thread = true;
   static _Thread_local bool prepared;
   if (!prepared) {
     prepared = true;
@@ -994,7 +1048,7 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
 
       if (samples > target_writes) {
         int dropped = samples - target_writes;
-        ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_DROPPED, dropped);
+        audio_metric(ASCII_OTEL_METRIC_AUDIO_DROPPED, dropped);
         log_warn_every(LOG_RATE_FAST,
                        "Audio capture buffer high water mark exceeded (%d > %d): dropping %d incoming samples",
                        buffer_level, (AUDIO_JITTER_HIGH_WATER_MARK * (int)rb->channels), dropped);
@@ -1008,8 +1062,8 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   if (samples > available) {
     // This should rarely happen after the high water mark logic above
     int samples_dropped = samples - available;
-    ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_DROPPED, samples_dropped);
-    ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_OVERRUN, 1);
+    audio_metric(ASCII_OTEL_METRIC_AUDIO_DROPPED, samples_dropped);
+    audio_metric(ASCII_OTEL_METRIC_AUDIO_OVERRUN, 1);
     samples_to_write = available;
     log_warn_every(LOG_RATE_FAST, "Audio buffer overflow: dropping %d of %d incoming samples (buffer_used=%d/%d)",
                    samples_dropped, samples, AUDIO_RING_BUFFER_SIZE - available, AUDIO_RING_BUFFER_SIZE);
@@ -1111,13 +1165,13 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   log_dev_every(5 * US_PER_SEC_INT, "Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available,
                 AUDIO_RING_BUFFER_SIZE, (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
 
-  ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_FILL, (double)available);
+  audio_metric(ASCII_OTEL_METRIC_AUDIO_FILL, (double)available);
   if (rb->jitter_buffer_enabled)
-    ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_JITTER,
-                      (double)rb->jitter_target_samples / (AUDIO_SAMPLE_RATE * rb->channels));
+    audio_metric(ASCII_OTEL_METRIC_AUDIO_JITTER,
+                 (double)rb->jitter_target_samples / (AUDIO_SAMPLE_RATE * rb->channels));
   bool underrun = rb->jitter_buffer_enabled && available < samples;
   if (underrun) {
-    ascii_otel_metric(ASCII_OTEL_METRIC_AUDIO_UNDERRUN, 1);
+    audio_metric(ASCII_OTEL_METRIC_AUDIO_UNDERRUN, 1);
     atomic_fetch_add_u64(&rb->underrun_count, 1);
     // One bounded refill after a real shortage avoids alternating tiny fragments
     // and silence when packets resume. Low occupancy alone is not an underrun.
@@ -1138,8 +1192,8 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   }
 
   size_t to_read = (samples > available) ? available : samples;
-  ascii_otel_metric(rb->jitter_buffer_enabled ? ASCII_OTEL_METRIC_AUDIO_PLAYBACK : ASCII_OTEL_METRIC_AUDIO_CAPTURE,
-                    (double)to_read);
+  audio_metric(rb->jitter_buffer_enabled ? ASCII_OTEL_METRIC_AUDIO_PLAYBACK : ASCII_OTEL_METRIC_AUDIO_CAPTURE,
+               (double)to_read);
   size_t consumed = to_read;
   if (rb->jitter_buffer_enabled && !underrun && samples > 1 && available > samples) {
     // Slowly reconcile independent device clocks. Bound interpolation to one
@@ -2059,6 +2113,7 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
   ctx->separate_streams = false;
   mutex_unlock(&ctx->state_mutex);
 
+  audio_metrics_flush();
   log_debug("Audio stopped");
   return ASCIICHAT_OK;
 }

@@ -103,6 +103,8 @@ static uint64_t g_render_started;
 static uint64_t g_render_completed;
 static asciichat_thread_t g_thread;
 static atomic_t g_presentation_stop_requested = {0};
+static _Atomic bool g_sync_finishing;
+static _Atomic bool g_sync_rendering;
 static _Thread_local bool g_owner;
 static _Thread_local int g_render_fd = -1;
 static _Thread_local screen_snapshot_t *g_render_snapshot;
@@ -488,6 +490,10 @@ static void release_screen(screen_t *screen, bool flush_notices) {
 }
 
 void ui_controller_finish(int fd, const char *data, size_t len) {
+  atomic_store(&g_sync_finishing, true);
+  if (!g_owner)
+    while (atomic_load(&g_sync_rendering))
+      platform_sleep_ms(1);
   errno_notifications_enable(false);
   screen_t retired[UI_SCREEN_COUNT] = {0};
   bool locked = lifecycle_is_initialized(&g_lifecycle);
@@ -833,6 +839,12 @@ static void *presentation_main(void *unused) {
     if (ui_sync_is_visible() && ui_controller_current_screen() >= 0 &&
         (ui_controller_current_screen() <= UI_SCREEN_SYNC || ui_controller_current_screen() == UI_SCREEN_ERROR) &&
         !shutdown_is_requested()) {
+      atomic_store(&g_sync_rendering, true);
+      if (atomic_load(&g_sync_finishing)) {
+        atomic_store(&g_sync_rendering, false);
+        platform_sleep_ms(1);
+        continue;
+      }
       if (!was_sync) {
         const ui_session_view_t hidden = {.screen = -1};
         ui_session_render(g_session, &hidden, time_get_ns());
@@ -862,6 +874,7 @@ static void *presentation_main(void *unused) {
         atomic_store(&g_size, pack_size(size));
       }
       g_render_fd = -1;
+      atomic_store(&g_sync_rendering, false);
       was_sync = true;
       platform_sleep_ns(50 * NS_PER_MS_INT);
       continue;
@@ -1112,7 +1125,7 @@ static void *presentation_main(void *unused) {
       if (!live) {
         if (shutdown_is_requested())
           ui_error_popup_preserve(atomic_load(&g_default_fd), unpack_size(atomic_load(&g_size)));
-        errno_notifications_enable(false);
+        errno_notifications_pause();
       }
       cond_broadcast(&g_render_done);
       mutex_unlock(&g_mutex);
@@ -1152,6 +1165,8 @@ static asciichat_error_t controller_start(void) {
   ui_output_set_writer(ui_controller_write);
   if (lifecycle_init_once(&g_lifecycle)) {
     atomic_store_bool(&g_presentation_stop_requested, false);
+    atomic_store(&g_sync_finishing, false);
+    atomic_store(&g_sync_rendering, false);
     atomic_store_bool(&g_blocked, false);
     g_active = -1;
     g_redraw = false;
@@ -1286,7 +1301,8 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   // New modal slots inherit the live terminal instead of process stdio, which
   // an audio/decoder worker can temporarily redirect through LOG_IO.
   if (!live && !retained_terminal && lifecycle_is_initialized(&g_lifecycle) &&
-      (screen == UI_SCREEN_PROMPT || screen == UI_SCREEN_RENDER_PROGRESS || screen == UI_SCREEN_NOTICE)) {
+      (screen == UI_SCREEN_PROMPT || screen == UI_SCREEN_RENDER_PROGRESS || screen == UI_SCREEN_NOTICE ||
+       screen == UI_SCREEN_HELP)) {
     screen_terminal_t *inherited = NULL;
     mutex_lock(&g_mutex);
     int active = selected_screen_locked();
@@ -1379,6 +1395,12 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     copy->terminal->fd = retained_fd;
   }
   int output_fd = copy->terminal->fd;
+  err = ui_sync_start(output_fd);
+  if (err != ASCIICHAT_OK) {
+    mutex_unlock(&g_mutex);
+    release_snapshot(copy);
+    return err;
+  }
   if (queue_notice) {
     size_t pending = 1;
     screen_t *tail = slot;
@@ -1417,15 +1439,13 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
   uint64_t published_ns = time_get_ns();
   release_snapshot(retired);
   uint64_t retired_ns = time_get_ns();
-  asciichat_error_t sync_result = ui_sync_start(output_fd);
   uint64_t finished_ns = time_get_ns();
   if (screen == UI_SCREEN_MEDIA && finished_ns - entered_ns > 50 * NS_PER_MS_INT)
     log_debug_every(
-        US_PER_SEC_INT, "UI_SUBMIT_STAGE: build_ms=%.2f lock_ms=%.2f publish_ms=%.2f retire_ms=%.2f sync_ms=%.2f",
+        US_PER_SEC_INT, "UI_SUBMIT_STAGE: build_ms=%.2f lock_ms=%.2f publish_ms=%.2f retire_ms=%.2f",
         (double)(prepared_ns - entered_ns) / NS_PER_MS_INT, (double)(locked_ns - prepared_ns) / NS_PER_MS_INT,
-        (double)(published_ns - locked_ns) / NS_PER_MS_INT, (double)(retired_ns - published_ns) / NS_PER_MS_INT,
-        (double)(finished_ns - retired_ns) / NS_PER_MS_INT);
-  return sync_result;
+        (double)(published_ns - locked_ns) / NS_PER_MS_INT, (double)(retired_ns - published_ns) / NS_PER_MS_INT);
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t ui_controller_submit(ui_screen_t screen, int fd, terminal_size_t minimum, ui_render_fn render,
@@ -1478,7 +1498,7 @@ static void remove_screen(ui_screen_t screen, int previous, screen_snapshot_t *e
   if (!live) {
     if (!g_render_snapshot && shutdown_is_requested())
       ui_error_popup_preserve(atomic_load(&g_default_fd), unpack_size(atomic_load(&g_size)));
-    errno_notifications_enable(false);
+    errno_notifications_pause();
   }
   mutex_unlock(&g_mutex);
   release_snapshot(retired);

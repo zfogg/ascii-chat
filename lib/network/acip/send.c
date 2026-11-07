@@ -123,7 +123,7 @@ asciichat_error_t packet_send_via_transportv(acip_transport_t *transport, packet
   memcpy(slices + 1, payload, count * sizeof(*payload));
   asciichat_error_t result = acip_transport_sendv(transport, slices, count + 1);
   stats_runtime_packet(transport->stats_peer, type, len, true, result == ASCIICHAT_OK);
-#ifdef ASCIICHAT_WITH_OTEL
+#ifndef __EMSCRIPTEN__
   ASCII_OTEL_PACKET(type, len, "send", acip_transport_get_type(transport));
 #endif
   return result;
@@ -190,7 +190,7 @@ asciichat_error_t packet_receive_via_transport(acip_transport_t *transport, pack
     *payload = (uint8_t *)recv_buffer + sizeof(packet_header_t);
   }
   *payload_len = plen;
-#ifdef ASCIICHAT_WITH_OTEL
+#ifndef __EMSCRIPTEN__
   ASCII_OTEL_PACKET(*type, plen, "receive", acip_transport_get_type(transport));
 #endif
   stats_runtime_packet(transport->stats_peer, *type, plen, false, true);

@@ -25,6 +25,42 @@ static lifecycle_t g_icu_idna_data_lc = LIFECYCLE_INIT;
 #include <stdlib.h>
 #include <stdio.h>
 
+static bool diagnostic_url_end(char c) {
+  return !c || (unsigned char)c <= 32 || c == '"' || c == '\'' || c == '<' || c == '>';
+}
+
+void url_redact_diagnostic(char *text, bool truncated) {
+  if (!text)
+    return;
+  char *search = text;
+  while ((search = strstr(search, "://"))) {
+    char *authority = search + 3;
+    char *end = authority;
+    char *at = NULL;
+    while (!diagnostic_url_end(*end) && *end != '/' && *end != '?' && *end != '#') {
+      if (*end == '@')
+        at = end;
+      ++end;
+    }
+    // A truncated authority may end before its '@'; do not export a partial
+    // userinfo value when the caller's diagnostic buffer was cut short.
+    if (at)
+      memset(authority, '*', (size_t)(at - authority));
+    else if (truncated && !*end)
+      memset(authority, '*', (size_t)(end - authority));
+    char *url_end = end;
+    char *query = NULL;
+    while (!diagnostic_url_end(*url_end)) {
+      if (!query && (*url_end == '?' || *url_end == '#'))
+        query = url_end;
+      ++url_end;
+    }
+    if (query)
+      memset(query + 1, '*', (size_t)(url_end - query - 1));
+    search = url_end;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * PRODUCTION-GRADE URL REGEX (Diego Perini, MIT License, extended for WebSocket)
  *

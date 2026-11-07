@@ -297,6 +297,9 @@ static bool parse_log_line(const char *line, log_record_t *record) {
   }
 
   size_t len = strlen(line);
+  while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
+    len--;
+  }
   record->raw_line = duplicate_segment(line, len);
   return record->raw_line != NULL;
 }

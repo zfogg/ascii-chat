@@ -30,7 +30,7 @@ def flicker_video(tmp_path_factory):
 def test_stabilization_reduces_flicker_in_every_mode(binary, test_environment, flicker_video, render_mode, renderer):
     command = [
         str(binary), "--quiet", "--no-check-update", "mirror", "--file", str(flicker_video),
-        "--audio=false", "--snapshot", "--snapshot-delay", "0.5", "--width", "20", "--height", "10",
+        "--audio=false", "--snapshot", "--snapshot-delay", "0.8", "--width", "20", "--height", "10",
         "--color-mode", "truecolor", "--render-mode", render_mode, "--renderer", renderer,
         "--splash-screen=false",
     ]

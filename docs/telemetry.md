@@ -227,8 +227,9 @@ capacity must be a power of two. Use `--otel-enabled-telemetry=none` to override
 an inherited endpoint without sending anything.
 
 `OTEL_EXPORTER_OTLP_ENDPOINT` is a fallback base URL. Standard otlp-c exporter
-headers and per-signal endpoint environment settings are also accepted. The
-base URL accepts HTTP or HTTPS and must not contain credentials, query or fragment.
+headers and per-signal endpoint environment settings are also accepted. A base
+endpoint must be configured to enable export; per-signal endpoints alone do not
+start telemetry. The base URL accepts HTTP or HTTPS and must not contain credentials, query or fragment.
 HTTPS uses the existing OpenSSL dependency, enables TLS 1.3 with TLS 1.2 as the
 minimum, and verifies certificates and DNS/IP identities. System roots are used
 by default, including native Windows/macOS anchors. `--otel-ca-file` (also

@@ -225,12 +225,6 @@ DATABASE_QUERY(SchemaIdxParticipantsSession,
 DATABASE_QUERY(SchemaIdxRateEvents,
                "CREATE INDEX IF NOT EXISTS idx_rate_events ON rate_events(ip_address, event_type, timestamp);")
 
-DATABASE_QUERY(GetPopulation, "SELECT\n"
-                              "  COUNT(*),\n"
-                              "  COALESCE(SUM(current_participants), 0)\n"
-                              "FROM sessions\n"
-                              "WHERE\n"
-                              "  expires_at > ?")
 
 /* Session-key policy and migration operations. */
 DATABASE_QUERY(SchemaKeyPolicy,

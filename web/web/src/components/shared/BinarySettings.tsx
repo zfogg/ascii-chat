@@ -117,6 +117,13 @@ export function BinarySettings({
       setPaletteDraft(config.paletteChars ?? DEFAULT_PALETTE_CHARS);
     }
   }, [config.paletteChars]);
+  useEffect(() => {
+    if (disabled && paletteTimerRef.current !== null) {
+      clearTimeout(paletteTimerRef.current);
+      paletteTimerRef.current = null;
+      setPaletteDraft(configRef.current.paletteChars ?? DEFAULT_PALETTE_CHARS);
+    }
+  }, [disabled]);
   useEffect(
     () => () => {
       if (paletteTimerRef.current !== null) {
@@ -152,6 +159,10 @@ export function BinarySettings({
           paletteExplicit: true,
           paletteChars: value,
         });
+      } else {
+        setPaletteDraft(
+          configRef.current.paletteChars ?? DEFAULT_PALETTE_CHARS,
+        );
       }
     }, PALETTE_INPUT_DEBOUNCE_MS);
   };
@@ -520,17 +531,26 @@ export function BinarySettings({
                     ? "glyph-default"
                     : config.palette
                 }
-                onChange={(e) =>
-                  e.target.value === "glyph-default"
-                    ? updateConfig({
-                        palette: "standard",
-                        paletteExplicit: false,
-                      })
-                    : updateConfig({
-                        palette: e.target.value as Palette,
-                        paletteExplicit: true,
-                      })
-                }
+                onChange={(e) => {
+                  if (paletteTimerRef.current !== null) {
+                    clearTimeout(paletteTimerRef.current);
+                    paletteTimerRef.current = null;
+                    setPaletteDraft(
+                      config.paletteChars ?? DEFAULT_PALETTE_CHARS,
+                    );
+                  }
+                  if (e.target.value === "glyph-default") {
+                    updateConfig({
+                      palette: "standard",
+                      paletteExplicit: false,
+                    });
+                  } else {
+                    updateConfig({
+                      palette: e.target.value as Palette,
+                      paletteExplicit: true,
+                    });
+                  }
+                }}
                 disabled={disabled}
                 className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4"
               >

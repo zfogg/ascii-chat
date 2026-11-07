@@ -760,6 +760,14 @@ Test(host_render, native_display_backend_renders_borrowed_source_and_can_be_deta
   fflush(output);
   long first = ftell(output);
   cr_assert_gt(first, 0);
+  char *captured = SAFE_MALLOC((size_t)first + 1, char *);
+  cr_assert_not_null(captured);
+  rewind(output);
+  cr_assert_eq(fread(captured, 1, (size_t)first, output), (size_t)first);
+  captured[first] = '\0';
+  check_palette(captured, "X");
+  SAFE_FREE(captured);
+  cr_assert_eq(fseek(output, 0, SEEK_END), 0);
   cr_assert_eq(session_host_set_display(host, NULL), ASCIICHAT_OK);
   cr_assert_eq(render_tick(host), ASCIICHAT_OK);
   fflush(output);

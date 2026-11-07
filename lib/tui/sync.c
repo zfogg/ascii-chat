@@ -295,8 +295,8 @@ static void *sync_collect_main(void *unused) {
 }
 
 asciichat_error_t ui_sync_start(int fd) {
-  if (atomic_flag_test_and_set(&g_sync_starting))
-    return ASCIICHAT_OK;
+  while (atomic_flag_test_and_set(&g_sync_starting))
+    platform_sleep_ms(1);
   asciichat_error_t result = ASCIICHAT_OK;
   if (!g_sync_started && platform_isatty(fd) && platform_isatty(STDIN_FILENO)) {
     g_sync_fd = platform_dup(fd);
@@ -650,14 +650,11 @@ void ui_sync_render(terminal_size_t size) {
                sync_color(LOG_COLOR_RESET));
       snprintf(unlocks, sizeof(unlocks), "%s%6.1f%s", sync_rate_color(r->unlock_rate), r->unlock_rate,
                sync_color(LOG_COLOR_RESET));
-      const ui_table_column_t columns[] = {{"Type", 8, UI_ALIGN_LEFT, false},
-                                           {"Name", name_width, UI_ALIGN_LEFT, false},
-                                           {"State/value", 13, UI_ALIGN_LEFT, false},
-                                           {"Total Actions", 13, UI_ALIGN_RIGHT, false},
-                                           {"L/s", 6, UI_ALIGN_RIGHT, false},
-                                           {"U/s", 6, UI_ALIGN_RIGHT, false},
-                                           {"Change/s", 7, UI_ALIGN_RIGHT, false},
-                                           {"Total Wait", 12, UI_ALIGN_RIGHT, false}};
+      const ui_table_column_t columns[] = {
+          {"Type", 8, UI_ALIGN_LEFT, false},         {"Name", name_width, UI_ALIGN_LEFT, false},
+          {"State/value", 13, UI_ALIGN_LEFT, false}, {"Total Actions", 13, UI_ALIGN_RIGHT, false},
+          {"L/s", 6, UI_ALIGN_RIGHT, false},         {"U/s", 6, UI_ALIGN_RIGHT, false},
+          {"Change/s", 7, UI_ALIGN_RIGHT, false},    {"Total Wait", 12, UI_ALIGN_RIGHT, false}};
       const char *cells[] = {r->type, name, padded_state, actions, locks, unlocks, changes, colored_wait};
       ui_table_row(line, sizeof(line), columns, cells, 8, name_width + 83, true, (int)i == selected);
       sync_write_line(line, size.cols, true, measure);

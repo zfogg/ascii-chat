@@ -1,4 +1,5 @@
 """PTY and ConPTY screen capture helpers."""
+import codecs
 import os
 from pathlib import Path
 import queue
@@ -117,18 +118,28 @@ class Terminal:
         self.reader.start()
 
     def _read(self):
+        decoder = codecs.getincrementaldecoder("utf-8")("replace")
         try:
             while True:
                 if os.name == "nt":
                     data = self.process.read(65536)
                 else:
-                    data = self.process.read_nonblocking(65536, timeout=None)
-                self.output.put(data)
+                    chunk = os.read(self.process.child_fd, 65536)
+                    if not chunk:
+                        break
+                    data = decoder.decode(chunk)
+                if data:
+                    self.output.put(data)
         except (EOFError, OSError):
             pass
         except Exception as exc:
             if type(exc).__name__ != "EOF":
                 self.output.put(str(exc))
+        finally:
+            if os.name != "nt":
+                remaining = decoder.decode(b"", final=True)
+                if remaining:
+                    self.output.put(remaining)
 
     def pump(self, seconds=0.2):
         deadline = time.monotonic() + seconds
