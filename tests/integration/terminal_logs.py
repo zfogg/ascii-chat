@@ -5,6 +5,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import os
@@ -13,7 +15,8 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from terminal_ui import Terminal, free_port, load_terminal_font
+from ascii_chat_tests.terminal import Terminal, load_terminal_font
+from ascii_chat_tests.process import free_port
 
 
 def capture(term, path):
@@ -141,11 +144,10 @@ def main():
     with tempfile.TemporaryDirectory(prefix="ascii-logs-") as directory:
         root = Path(directory)
         media = root / "test.mp4"
-        subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
-                        "testsrc2=size=160x120:rate=10", "-t", "3", "-c:v", "libx264", str(media)], check=True)
+        lavfi_fixture(["testsrc2=size=160x120:rate=10"], str(media), ffmpeg_options=["-hide_banner", "-loglevel", "error"], output_options=["-t", "3", "-c:v", "libx264"])
         common = ["--file", str(media), "--loop", "--splash-screen=false", "--audio=false", "--color-mode",
                   "truecolor", "--utf8=true"]
-        base = [binary, "--no-check-update", "--log-level", "info"]
+        base = cli_command(binary, "--log-level", "info")
         if args.search_regression_only:
             mirror = Terminal(base + ["--log-file", str(root / "mirror.log"), "mirror"] + common, rows=40, cols=140)
             try:

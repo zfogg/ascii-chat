@@ -5,6 +5,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import start_cli
+from ascii_chat_tests.cli import cli_command
 
 import os
 from pathlib import Path
@@ -68,8 +70,8 @@ def interrupted_collector_smoke(binary, env):
                 # The stalled body also exercises the production timeout default.
                 timeout_flags = [] if mode == 'body' else ['--otel-timeout', '100']
                 duration = '6' if mode == 'body' else '3'
-                result = subprocess.run([binary, '--no-check-update', '--log-file', str(log), '--otel-endpoint',
-                    f'http://127.0.0.1:{receiver.server_address[1]}'] + timeout_flags + [
+                result = subprocess.run(cli_command(binary, '--log-file', str(log), '--otel-endpoint',
+                    f'http://127.0.0.1:{receiver.server_address[1]}') + timeout_flags + [
                     'mirror', '--test-pattern', '--audio=false', '--snapshot', '--snapshot-delay', duration,
                     '--width', '40', '--height', '12', '--splash-screen=false'],
                     env=env, capture_output=True, timeout=24)
@@ -89,17 +91,14 @@ def interrupted_collector_smoke(binary, env):
                 thread.join(timeout=3)
 
 
-def free_port():
-    with socket.socket() as sock:
-        sock.bind(('127.0.0.1', 0))
-        return sock.getsockname()[1]
+from ascii_chat_tests.process import free_port
 
 def network_smoke(binary, receiver, env):
     receiver.clear()
     port = free_port()
-    base = [binary, '--no-check-update', '--otel-endpoint',
+    base = cli_command(binary, '--otel-endpoint',
             f'http://127.0.0.1:{receiver.server_port}', '--otel-realtime-sample-rate', '1',
-            '--otel-realtime-max-per-second', '1000', '--otel-metrics-interval', '50']
+            '--otel-realtime-max-per-second', '1000', '--otel-metrics-interval', '50')
     # Local ephemeral-DH fixture bypasses TOFU file mutation; encryption remains enabled.
     fixture_env = dict(env, ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK='1')
     server = subprocess.Popen(base + ['server', '127.0.0.1', '--port', str(port), '--status-screen=false', '--websocket-port', str(free_port())],
@@ -167,10 +166,10 @@ def network_smoke(binary, receiver, env):
 def database_smoke(binary, receiver, env):
     receiver.clear()
     with tempfile.TemporaryDirectory() as temp:
-        process = subprocess.Popen([binary, '--no-check-update', '--otel-endpoint',
+        process = start_cli(binary, '--otel-endpoint',
             f'http://127.0.0.1:{receiver.server_port}', '--otel-metrics-interval', '50', 'discovery-service', '127.0.0.1',
             '--port', str(free_port()), '--websocket-port', str(free_port()), '--database', str(Path(temp) / 'discovery.db'),
-            '--status-screen=false'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            '--status-screen=false', env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
             def exported(requests):
                 assert process.poll() is None, 'discovery-service exited before exporting SQL'
@@ -242,7 +241,7 @@ def main():
 
     binary = str(Path(sys.argv[1]).resolve())
     server = Collector()
-    base = [binary, '--no-check-update']
+    base = cli_command(binary)
     media = ['mirror', '--test-pattern', '--audio=false', '--snapshot',
              '--snapshot-delay', '0', '--width', '40', '--height', '12', '--splash-screen=false']
     env = {k: v for k, v in os.environ.items() if not k.startswith(('OTEL_', 'ASCII_CHAT_OTEL_'))}

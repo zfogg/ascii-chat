@@ -6,7 +6,7 @@ import _environment  # noqa: F401
 
 import argparse
 import time
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 
 
 def main():

@@ -145,8 +145,10 @@ jobs:
         with:
           python-version: '3.14'
 
+      - uses: astral-sh/setup-uv@v6
+
       - name: Install Python test dependencies
-        run: python -m pip install -r tests/requirements-terminal.txt
+        run: uv sync --project tests/ascii_chat_tests --extra terminal --frozen --python "${{ steps.unit-python.outputs.python-path }}"
 
       - name: Cache build, dependencies, and ccache
         id: cache-build
@@ -193,7 +195,7 @@ jobs:
           echo "Building with CMake build type: ${BUILD_TYPE}"
           cmake_args=(
             -DBUILD_TESTS=ON
-            -DPython3_EXECUTABLE="${{ steps.unit-python.outputs.python-path }}"
+            -DPython3_EXECUTABLE="${{ github.workspace }}/tests/ascii_chat_tests/.venv/bin/python"
             -DUSE_MUSL=OFF
             -DASCIICHAT_FORCE_CRITERION_TESTS=ON
             -DASCIICHAT_ENABLE_ANALYZERS=OFF
@@ -389,8 +391,10 @@ jobs:
         with:
           python-version: '3.14'
 
+      - uses: astral-sh/setup-uv@v6
+
       - name: Install terminal test dependencies
-        run: python -m pip install -r tests/requirements-terminal.txt
+        run: uv sync --project tests/ascii_chat_tests --extra terminal --frozen --python "${{ steps.integration-python.outputs.python-path }}"
 
       - name: Configure integration tests with coverage
         run: |
@@ -418,7 +422,7 @@ jobs:
           cmake --fresh -B build --preset github --debug-output \
             -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DPython3_EXECUTABLE="${{ steps.integration-python.outputs.python-path }}" \
+            -DPython3_EXECUTABLE="${{ github.workspace }}/tests/ascii_chat_tests/.venv/bin/python" \
             -DASCIICHAT_ENABLE_COVERAGE=ON \
             -DASCIICHAT_ENABLE_SANITIZERS=OFF \
             -DBUILD_TESTS=ON \

@@ -9,6 +9,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import functools
@@ -19,7 +21,7 @@ import subprocess
 import tempfile
 import threading
 import time
-from terminal_ui import Terminal
+from ascii_chat_tests.terminal import Terminal
 
 
 def main():
@@ -31,9 +33,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="mirror-lazy-audio-") as directory:
         root = Path(directory)
         media = root / "tone.mp4"
-        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x120:rate=33",
-                        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "5",
-                        "-c:v", "libx264", "-c:a", "aac", "-movflags", "+faststart", str(media)], check=True, timeout=30)
+        lavfi_fixture(["testsrc2=size=160x120:rate=33", "sine=frequency=440:sample_rate=48000"], str(media), ffmpeg_options=["-v", "error"], output_options=["-t", "5", "-c:v", "libx264", "-c:a", "aac", "-movflags", "+faststart"], timeout=30)
         handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(root))
         server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
         threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -56,10 +56,10 @@ def main():
         try:
             for flag in ("--fft", "--waveform"):
                 log = args.artifacts / f"startup-{flag[2:]}.log"
-                term = Terminal([str(args.binary.resolve()), "--no-check-update", "--log-file", str(log.resolve()),
+                term = Terminal(cli_command(str(args.binary.resolve()), "--log-file", str(log.resolve()),
                                  "--log-level", "info", "mirror", flag, "--test-audio", "--no-audio-playback",
                                  "--webcam-index", "10", "--fps", "33",
-                                 "--splash-screen=false"], rows=45, cols=140)
+                                 "--splash-screen=false"), rows=45, cols=140)
                 try:
                     await_log(lambda text: "Mirror audio started on demand" in text,
                               f"{flag} did not start audio at startup")
@@ -75,9 +75,9 @@ def main():
             physical = True
             for kind, path in (("file", str(media)), ("url", f"http://127.0.0.1:{server.server_port}/tone.mp4")):
                 log = args.artifacts / f"{kind}.log"
-                term = Terminal([str(args.binary.resolve()), "--no-check-update", "--log-file", str(log.resolve()),
+                term = Terminal(cli_command(str(args.binary.resolve()), "--log-file", str(log.resolve()),
                                  "--log-level", "info", "mirror", "--test-pattern", "--fps", "33",
-                                 "--splash-screen=false", "--color-mode", "truecolor"], rows=35, cols=140)
+                                 "--splash-screen=false", "--color-mode", "truecolor"), rows=35, cols=140)
                 try:
                     term.expect(lambda text: len(text.strip()) > 400, "Mirror video missing", timeout=30)
                     term.pump(.5)

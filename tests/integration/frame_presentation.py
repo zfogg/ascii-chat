@@ -5,13 +5,14 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 from pathlib import Path
 import re
 import time
 
-from terminal_ui import CaptureScreen, CaptureStream, Terminal
+from ascii_chat_tests.terminal import CaptureScreen, CaptureStream, Terminal
 
 
 def main():
@@ -24,10 +25,10 @@ def main():
     parser.add_argument("--cols", type=int, default=286)
     args = parser.parse_args()
     args.artifacts.mkdir(parents=True, exist_ok=True)
-    term = Terminal([str(args.binary.resolve()), "--no-check-update", "--log-level", "warn",
+    term = Terminal(cli_command(str(args.binary.resolve()), "--log-level", "warn",
                      "--log-file", str((args.artifacts / "application.log").resolve()), "mirror",
                      "--test-pattern", "--audio=false", "--fps", "60", "--fps-counter",
-                     "--splash-screen=false", "--color-mode", "truecolor", "--render-mode", args.render_mode],
+                     "--splash-screen=false", "--color-mode", "truecolor", "--render-mode", args.render_mode),
                     rows=args.rows, cols=args.cols, terminal_replies=True)
     total = 0
     try:

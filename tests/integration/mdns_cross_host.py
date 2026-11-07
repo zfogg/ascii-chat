@@ -6,6 +6,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 
 import argparse
@@ -19,7 +20,7 @@ import time
 
 try:
     from mdns_terminal import capture
-    from terminal_ui import Terminal
+    from ascii_chat_tests.terminal import Terminal
 except ImportError as error:
     print(f"SKIP: terminal prerequisites unavailable: {error}")
     raise SystemExit(77)
@@ -101,11 +102,10 @@ def main():
             os.environ.update(TERM="xterm-256color", ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK="1")
             for attempt in range(3):
                 local_log.write_text("", encoding="utf-8")
-                terminal = Terminal([
-                    str(binary), "--no-check-update", "--log-file", str(local_log), "--log-level", "debug",
+                terminal = Terminal(cli_command(str(binary), "--log-file", str(local_log), "--log-level", "debug",
                     "client", "--scan", "--test-pattern", "--audio=false", "--video-codec", "raw", "--fps", "5",
                     "--splash-screen=true", "--reconnect-attempts", "0",
-                ], rows=24, cols=110)
+                ), rows=24, cols=110)
                 try:
                     picker = terminal.expect(
                         lambda text: "LAN servers" in text and args.server_address in text and str(tcp_port) in text,

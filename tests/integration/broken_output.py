@@ -10,6 +10,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 
 import argparse
@@ -22,10 +23,7 @@ import threading
 import time
 
 
-def unused_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+from ascii_chat_tests.process import free_port as unused_port
 
 
 def main():
@@ -41,8 +39,8 @@ def main():
 
         def launch(name, arguments, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL):
             process = subprocess.Popen(
-                [binary, "--no-check-update", "--log-level", "warn", "--log-file",
-                 str(directory / (name + ".log"))] + arguments,
+                cli_command(binary, "--log-level", "warn", "--log-file",
+                 str(directory / (name + ".log"))) + arguments,
                 stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr, env=env, **flags)
             processes.append(process)
             return process

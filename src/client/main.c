@@ -352,7 +352,8 @@ static asciichat_error_t client_run_attempt(session_capture_ctx_t *capture, sess
       (uint16_t)(g_client_session.discovered_port > 0 ? g_client_session.discovered_port : 27224),
       g_client_session.password, sizeof(g_client_session.password));
   if (connection_result != ASCIICHAT_OK) {
-    if (should_exit())
+    // Password prompt failures request shutdown but must retain their error.
+    if (should_exit() && connection_result != ERROR_CRYPTO_AUTH)
       return ERROR_NETWORK;
     LOG_ERRNO_IF_SET("Connection attempt failed");
     return connection_result;

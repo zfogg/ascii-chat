@@ -17,6 +17,7 @@ static void teardown(void) {
     socket_close(remote);
   remote = INVALID_SOCKET_VALUE;
   options_state_destroy();
+  errno_notifications_enable(false);
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
@@ -107,13 +108,24 @@ static void *stun_reply(void *data) {
     reply[31] = 30;
   if (response->mode == 3)
     reply[33] = 2;
+  if (response->mode == 4) {
+    reply[29] = 0x20;
+    reply[34] ^= 0x21;
+    reply[35] ^= 0x12;
+    reply[36] ^= 0x21;
+    reply[37] ^= 0x12;
+    reply[38] ^= 0xa4;
+    reply[39] ^= 0x42;
+  }
   cr_assert_worker(socket_sendto(remote, reply, length, 0, (struct sockaddr *)&peer, size) == (ssize_t)length);
   return NULL;
 }
 
 Test(nat_quality, real_stun_probe_records_only_supported_observations_and_recovers_from_bad_replies) {
   cr_assert_eq(nat_detect_quality(NULL, NULL, 0), ERROR_INVALID_PARAM);
-  for (unsigned mode = 0; mode < 4; ++mode) {
+  CLEAR_ERRNO_ALL();
+  errno_notifications_enable(true);
+  for (unsigned mode = 0; mode < 5; ++mode) {
     remote = socket_create("nat-stun-peer", AF_INET, SOCK_DGRAM, 0);
     struct sockaddr_in address = bind_loopback(remote);
     char endpoint[64];
@@ -123,12 +135,14 @@ Test(nat_quality, real_stun_probe_records_only_supported_observations_and_recove
     cr_assert_eq(acthread_create(&thread, "nat-stun-reply", stun_reply, &response), 0);
     nat_quality_t quality;
     cr_assert_eq(nat_detect_quality(&quality, endpoint, 0), ASCIICHAT_OK);
+    cr_assert_not(errno_notifications_pending(), "Recovered STUN failure must not notify the UI");
+    cr_assert_not(HAS_ERRNO(NULL), "Recovered STUN failure must not remain pending");
     cr_assert_eq(thread_join(&thread, NULL), 0);
     cr_assert(quality.detection_complete && quality.has_host_candidates);
     cr_assert_not(quality.has_public_ip || quality.upnp_available);
     cr_assert_eq(quality.nat_type, ACIP_NAT_TYPE_SYMMETRIC);
-    cr_assert_eq(quality.has_srflx_candidates, mode == 0);
-    if (mode == 0) {
+    cr_assert_eq(quality.has_srflx_candidates, mode == 0 || mode == 4);
+    if (mode == 0 || mode == 4) {
       cr_assert_str_eq(quality.public_address, "203.0.113.9");
       cr_assert_eq(quality.public_port, 40000);
     } else {

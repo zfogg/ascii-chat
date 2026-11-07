@@ -6,6 +6,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import json
@@ -13,13 +14,10 @@ from pathlib import Path
 import socket
 import subprocess
 import time
-from tmux_rendering import Pane
+from ascii_chat_tests.tmux import Pane
 
 
-def port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+from ascii_chat_tests.process import free_port as port
 
 
 def main():
@@ -37,7 +35,7 @@ def main():
             return
         pane = None
         try:
-            base = [binary, "--no-check-update", "--log-file", str(root / name / "application.log"), "--log-level", "warn"]
+            base = cli_command(binary, "--log-file", str(root / name / "application.log"), "--log-level", "warn")
             pane = Pane(name, base + flags, root, 100, rows)
             check(pane)
             results.append(dict(case=name, status="pass"))

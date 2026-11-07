@@ -13,7 +13,7 @@ import sys
 import tempfile
 import time
 from crypto_policy import running
-from server_lifecycle import free_port, server_options
+from ascii_chat_tests.process import free_port, server_options
 
 binary = Path(sys.argv[1]).resolve()
 directory = Path(tempfile.mkdtemp(prefix="ascii-webrtc-cli-"))

@@ -4,6 +4,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import ppm_image
 
 from pathlib import Path
 import os
@@ -19,7 +20,7 @@ with tempfile.TemporaryDirectory() as temp:
     for y in range(120):
         for x in range(160):
             pixels.extend((x * 255 // 159, y * 255 // 119, 255 if x > y else 0))
-    image.write_bytes(b"P6\n160 120\n255\n" + pixels)
+    image.write_bytes(ppm_image(160, 120, pixels))
     common = [binary, "--quiet", "--no-check-update", "mirror", "--file=" + str(image),
               "--snapshot", "--snapshot-delay=0", "--audio=false", "--width=30", "--height=12",
               "--color-mode=none"]

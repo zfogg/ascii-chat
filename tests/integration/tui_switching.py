@@ -9,6 +9,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.media import lavfi_fixture
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import itertools
@@ -17,7 +19,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-from terminal_ui import CaptureScreen, Terminal
+from ascii_chat_tests.terminal import CaptureScreen, Terminal
 
 
 MARKER = "Q"
@@ -68,8 +70,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="ascii-tui-switch-") as directory:
         root = Path(directory)
         media = root / "video.mkv"
-        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i",
-                        "testsrc2=size=160x120:rate=30", "-t", "2", "-c:v", "libx264", str(media)], check=True)
+        lavfi_fixture(["testsrc2=size=160x120:rate=30"], str(media), ffmpeg_options=["-v", "error"], output_options=["-t", "2", "-c:v", "libx264"])
         previous = os.environ.copy()
         for key in list(os.environ):
             if key.startswith("ASCII_CHAT_"):
@@ -79,10 +80,10 @@ def main():
         os.environ.update(HOME=str(root), USERPROFILE=str(root), APPDATA=str(root), XDG_CONFIG_HOME=str(root))
         term = None
         try:
-            term = Terminal([binary, "--no-check-update", "--log-file", str(root / "application.log"),
+            term = Terminal(cli_command(binary, "--log-file", str(root / "application.log"),
                              "mirror", "--file", str(media), "--loop", "--audio=false",
                              "--splash-screen=false", "--palette", "custom", "--palette-chars", MARKER * 2,
-                             "--color-mode", "none", "--utf8", "true", "--fps", "30"], rows=55, cols=180, terminal_replies=True)
+                             "--color-mode", "none", "--utf8", "true", "--fps", "30"), rows=55, cols=180, terminal_replies=True)
             term.screen.media_leaks = []
             labels = {"0": "Sync primitives |", "?": "Keyboard Shortcuts", "]": "/: search logs", "o": "Open media:"}
 

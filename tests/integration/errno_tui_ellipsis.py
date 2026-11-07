@@ -14,7 +14,7 @@ import tempfile
 import time
 
 try:
-    from terminal_ui import Terminal
+    from ascii_chat_tests.terminal import Terminal
 except ImportError as error:
     print(f"SKIP: terminal prerequisites unavailable: {error}")
     raise SystemExit(77)

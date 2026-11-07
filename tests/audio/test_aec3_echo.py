@@ -14,13 +14,13 @@ from pathlib import Path
 import sys
 import tempfile
 import numpy as np
-from test_spectral import load
+from ascii_chat_tests.audio_spectral import load
 
 lib = load(Path(sys.argv[1]).resolve())
 channels = 2 if "--stereo" in sys.argv[2:] else 1
 
 
-from pipeline_ctypes import Config, Flags
+from ascii_chat_tests.pipeline_ctypes import Config, Flags
 
 lib.asciichat_shared_init.argtypes = [c.c_char_p, c.c_bool, c.c_bool]
 lib.options_init.argtypes = [c.c_int, c.POINTER(c.c_char_p)]

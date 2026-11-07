@@ -9,6 +9,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import cli_command
 
 import argparse
 import os
@@ -16,7 +17,8 @@ from pathlib import Path
 import tempfile
 import time
 
-from terminal_ui import Terminal, free_port
+from ascii_chat_tests.terminal import Terminal
+from ascii_chat_tests.process import free_port
 from sync_tui_modes import capture
 
 
@@ -38,7 +40,7 @@ def main():
             for status in ([False] if mode == "mirror" else [False, True]):
                 name = mode + ("-status" if status else "-stdout")
                 log = root / f"{name}.log"
-                command = [str(args.binary.resolve()), "--no-check-update", "--color=true", "--color-mode", "truecolor", "--utf8=true", "--log-file", str(log), mode]
+                command = cli_command(str(args.binary.resolve()), "--color=true", "--color-mode", "truecolor", "--utf8=true", "--log-file", str(log), mode)
                 if mode == "mirror":
                     command += ["--test-pattern", "1", "--fps", "10", "--audio=false", "--splash-screen=false"]
                 else:

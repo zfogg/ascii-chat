@@ -12,7 +12,7 @@ import json
 import shlex
 from pathlib import Path
 import time
-from tmux_rendering import Pane, tmux
+from ascii_chat_tests.tmux import Pane, tmux
 
 
 CASES = [

@@ -5,6 +5,9 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import run_cli
+from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import cli_command
 
 import os
 from pathlib import Path
@@ -14,7 +17,7 @@ import sys
 import tempfile
 import time
 
-from server_lifecycle import check_client, free_port, running, server_options
+from ascii_chat_tests.process import check_client, free_port, running, server_options
 
 
 def wait_new_log(service, message, previous, timeout=15):
@@ -29,13 +32,12 @@ def wait_new_log(service, message, previous, timeout=15):
 
 
 def reject_client(binary, directory, destination, name):
-    env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
+    env = clean_environment()
     env.update(CLAUDECODE="1", HOME=str(directory), USERPROFILE=str(directory),
                APPDATA=str(directory), XDG_CONFIG_HOME=str(directory))
-    result = subprocess.run(
-        [str(binary), "--no-check-update", "--log-file", str(directory / (name + ".log")), "client", destination,
+    result = run_cli(str(binary), "--log-file", str(directory / (name + ".log")), "client", destination,
          "--test-pattern", "--audio=false", "--snapshot", "--snapshot-delay", "0",
-         "--splash-screen=false", "--reconnect-attempts", "0"],
+         "--splash-screen=false", "--reconnect-attempts", "0",
         cwd=directory, env=env, capture_output=True, timeout=20,
     )
     if result.returncode == 0:

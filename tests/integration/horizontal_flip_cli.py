@@ -5,6 +5,9 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import run_cli
+from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import cli_command
 
 import os
 from pathlib import Path
@@ -16,16 +19,15 @@ binary = Path(sys.argv[1]).resolve()
 with tempfile.TemporaryDirectory(prefix="ascii-horizontal-flip-") as temporary:
     directory = Path(temporary)
     image = Path(__file__).resolve().parents[2] / "web/web/tests/fixtures/media/still.png"
-    env = {k: v for k, v in os.environ.items() if not k.startswith("ASCII_CHAT_")}
+    env = clean_environment()
     env.update(CLAUDECODE="1", XDG_CONFIG_HOME=str(directory), APPDATA=str(directory))
     def snapshot(*flags, extra_env=None, webcam=False):
-        result = subprocess.run([
-            str(binary), "--no-check-update", "--log-level", "error",
+        result = run_cli(str(binary), "--log-level", "error",
             "mirror",
             *(["--test-pattern"] if webcam else ["--file", str(image)]), "--audio=false", "--snapshot", "--snapshot-delay", "0",
             "--width", "32", "--height", "12", "--color-mode", "none", "--strip-ansi",
             "--splash-screen=false", "--render-mode", "foreground", "--palette", "standard", *flags,
-        ], cwd=directory, env={**env, **(extra_env or {})}, capture_output=True, timeout=30)
+          cwd=directory, env={**env, **(extra_env or {})}, capture_output=True, timeout=30)
         assert result.returncode == 0, result.stderr.decode("utf-8", errors="replace")
         assert len(result.stdout) > 100
         return result.stdout

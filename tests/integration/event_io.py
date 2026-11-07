@@ -5,6 +5,9 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import run_cli
+from ascii_chat_tests.cli import clean_environment
+from ascii_chat_tests.cli import cli_command
 
 from pathlib import Path
 import base64
@@ -15,33 +18,26 @@ import subprocess
 import sys
 import tempfile
 
-from server_lifecycle import check_client, free_port, running, server_options
+from ascii_chat_tests.protocol import crc32c
+from ascii_chat_tests.process import check_client, free_port, running, server_options
 
 
 def reject_client(binary, directory, destination, name, extra):
-    env = {key: value for key, value in os.environ.items() if not key.startswith("ASCII_CHAT_")}
+    env = clean_environment()
     env.update(CLAUDECODE="1", HOME=str(directory), USERPROFILE=str(directory),
                APPDATA=str(directory), XDG_CONFIG_HOME=str(directory))
     log = directory / (name + ".log")
-    result = subprocess.run(
-        [str(binary), "--no-check-update", "--log-file", str(log), "client", destination,
+    result = run_cli(str(binary), "--log-file", str(log), "client", destination,
          "--test-pattern", "--audio=false", "--snapshot", "--snapshot-delay", "0",
-         "--width", "40", "--height", "12", "--splash-screen=false", "--reconnect-attempts", "0", *extra],
+         "--width", "40", "--height", "12", "--splash-screen=false", "--reconnect-attempts", "0", *extra,
         cwd=directory, env=env, capture_output=True, timeout=20,
     )
     text = log.read_text(encoding="utf-8", errors="replace")
-    assert result.returncode != 0 and not result.stdout.strip(), f"{name}: rejected peer rendered output"
+    assert result.returncode != 0 and not result.stdout.strip(), (
+        f"{name}: exit={result.returncode}, stdout={result.stdout[-3000:]!r}, "
+        f"stderr={result.stderr[-3000:]!r}")
     assert "CLIENT_CONNECTION_RUNNING" not in text, f"{name}: rejected peer became active"
     assert "CLIENT_CONNECTION_RELEASED" in text, f"{name}: failed startup retained its owner"
-
-
-def crc32c(data):
-    crc = 0xffffffff
-    for byte in data:
-        crc ^= byte
-        for _ in range(8):
-            crc = (crc >> 1) ^ (0x82f63b78 if crc & 1 else 0)
-    return crc ^ 0xffffffff
 
 
 def send_packet(peer, kind, payload):

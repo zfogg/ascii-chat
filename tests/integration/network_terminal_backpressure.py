@@ -10,6 +10,8 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import start_cli
+from ascii_chat_tests.cli import cli_command
 
 
 import argparse
@@ -25,10 +27,7 @@ import subprocess
 import time
 
 
-def unused_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+from ascii_chat_tests.process import free_port as unused_port
 
 
 def receive_times(text):
@@ -74,10 +73,9 @@ def main():
         # This bypass is confined to the loopback fixture created by this test.
         env["ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK"] = "1"
         server_output = (output / "server.out").open("wb")
-        server = subprocess.Popen(
-            [binary, "--no-check-update", "--log-level", "warn", "server",
+        server = start_cli(binary, "--log-level", "warn", "server",
              "127.0.0.1", "--port", str(tcp), "--websocket-port", str(ws),
-             "--status-screen=false"],
+             "--status-screen=false",
             env=env, stdin=subprocess.DEVNULL, stdout=server_output,
             stderr=server_output,
         )
@@ -93,13 +91,12 @@ def main():
 
     log = output / "client.log"
     log.unlink(missing_ok=True)
-    command = [
-        binary, "--no-check-update", "--log-file", str(log), "--log-level",
+    command = cli_command(binary, "--log-file", str(log), "--log-level",
         "debug", "client", address,
         "--test-pattern", "--video-codec", "raw", "--fps", "60", "--width",
         "80", "--height", "25", "--color-mode", "truecolor", "--audio=false",
         "--splash-screen=false",
-    ]
+    )
     if args.server_key:
         command += ["--server-key", str(args.server_key.resolve())]
     pid, descriptor = pty.fork()

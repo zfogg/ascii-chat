@@ -3,6 +3,8 @@ from pathlib import Path as _PolicyPath
 import sys as _policy_sys
 _policy_sys.path.insert(0, str(_PolicyPath(__file__).resolve().parents[1]))
 import _environment  # noqa: F401,E402
+from ascii_chat_tests.jsonrpc import JsonRpcProcess
+from ascii_chat_tests.process import free_port
 
 import argparse
 import hashlib
@@ -20,29 +22,19 @@ import unittest
 
 class Client:
     def __init__(self, binary, directory, extra=(), mode_extra=()):
-        self.err = open(directory / "stderr.log", "wb")
-        self.p = subprocess.Popen([str(binary), *extra, "mcp-server", *mode_extra],
-                                  stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.err)
-        self.responses = queue.Queue()
-        def read():
-            for line in self.p.stdout:
-                try: self.responses.put(json.loads(line))
-                except ValueError: self.responses.put(AssertionError(f"Non-JSON stdout: {line!r}"))
-        self.reader = threading.Thread(target=read, daemon=True); self.reader.start()
+        self.rpc = JsonRpcProcess([str(binary), *extra, "mcp-server", *mode_extra], directory / "stderr.log")
+
     def send(self, method, params=None, ident=None):
         obj = {"jsonrpc": "2.0", "method": method}
         if params is not None: obj["params"] = params
         if ident is not None: obj["id"] = ident
-        self.p.stdin.write((json.dumps(obj) + "\n").encode()); self.p.stdin.flush()
+        self.rpc.send_message(obj)
+
     def receive(self, timeout=70):
-        obj = self.responses.get(timeout=timeout)
-        if isinstance(obj, Exception): raise obj
-        return obj
+        return self.rpc.receive(timeout)
+
     def close(self):
-        self.p.stdin.close()
-        try: self.p.wait(timeout=10)
-        except subprocess.TimeoutExpired: self.p.kill(); self.p.wait()
-        self.reader.join(timeout=2); self.p.stdout.close(); self.err.close()
+        self.rpc.close()
 
 class Protocol(unittest.TestCase):
     def setUp(self):
@@ -175,7 +167,7 @@ class Protocol(unittest.TestCase):
         self.http_profile(False)
 
     def http_profile(self, restricted):
-        with socket.socket() as sock: sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]
+        port = free_port()
         log = open(self.directory / "http.log", "wb"); self.addCleanup(log.close)
         p = subprocess.Popen([str(BINARY), "mcp-server", "--transport", "http", *(["--server"] if restricted else []), "--address", "127.0.0.1",
                               "--port", str(port), "--http-origin", "https://tools.example.test", "--status-screen=false"], stdout=log, stderr=log)

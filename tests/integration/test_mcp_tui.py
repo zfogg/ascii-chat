@@ -1,12 +1,17 @@
 """Exercise MCP HTTP status, log viewer and diagnostics through PTY/ConPTY."""
+import sys as _test_sys
+from pathlib import Path as _TestPath
+_test_sys.path.insert(0, str(_TestPath(__file__).resolve().parents[1]))
+import _environment  # noqa: F401
+
 import argparse
 import json
 import re
 from pathlib import Path
 import socket
 import urllib.request
-from terminal_ui import Terminal
-from error_popup import capture
+from ascii_chat_tests.terminal import Terminal, capture
+from ascii_chat_tests.process import free_port
 
 
 def main():
@@ -15,9 +20,7 @@ def main():
     parser.add_argument("--artifacts", type=Path, required=True)
     args = parser.parse_args()
     args.artifacts.mkdir(parents=True, exist_ok=True)
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        port = sock.getsockname()[1]
+    port = free_port()
     term = Terminal([str(args.binary.resolve()), "mcp-server", "--transport", "http",
                      "--port", str(port), "--status-screen"], rows=40, cols=130,
                     environment={"TERM": "xterm-256color"})

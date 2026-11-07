@@ -10,6 +10,7 @@ from pathlib import Path as _TestPath
 import sys as _test_sys
 _test_sys.path.insert(0, str(next(p for p in _TestPath(__file__).resolve().parents if (p / "tests" / "_environment.py").is_file()) / "tests"))
 import _environment  # noqa: F401
+from ascii_chat_tests.cli import clean_environment
 
 
 import os
@@ -21,8 +22,7 @@ import tempfile
 
 def main():
     binary = Path(sys.argv[1]).resolve()
-    env = {key: value for key, value in os.environ.items()
-           if not key.startswith("ASCII_CHAT_")}
+    env = clean_environment()
     env.update(CLAUDECODE="1", NO_COLOR="1")
     count = 0
     with tempfile.TemporaryDirectory(prefix="ascii-chat-options-") as directory:
