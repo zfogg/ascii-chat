@@ -6,7 +6,7 @@ The PR includes fixes for live findings; other entries were checked against the 
 
 Hosted MCP URL rendering is **not** an SSRF sandbox. Its existing [deployment guidance](mcp.md) requires external egress controls for private, loopback, link-local and metadata networks, including redirects and nested media requests. Operators must enforce those controls; the application does not do so.
 
-The Windows error-popup screenshot smoke test failed because the captured backtrace did not contain the expected symbol; its error-journal contract passed. The mirror lazy-audio integration rerun also failed while looking for a debug-memory row. These failures are not counted as passing validation.
+The Windows mirror lazy-audio integration passes after waiting for the resized sync inventory to render. The error-popup screenshot smoke test and error-journal contract also pass with a platform-appropriate backtrace assertion.
 
 ## Fixed in this PR (89)
 
@@ -259,5 +259,5 @@ The Windows error-popup screenshot smoke test failed because the captured backtr
 
 - [#448 regex fallback](https://github.com/zfogg/ascii-chat/pull/448#pullrequestreview-5409092425): the fallback probe now runs on all platforms using the explicit JIT-disable setting.
 - [#459 discovery callback](https://github.com/zfogg/ascii-chat/pull/459#pullrequestreview-5470865421): current code copies the error fields under the mutex.
-- [#473 video restoration](https://github.com/zfogg/ascii-chat/pull/473#pullrequestreview-5477698500): the integration predicate now requires a dense, multicolored video frame. A separate real Windows video capture satisfied the predicate; the full script failed earlier in its disabled-audio setup.
+- [#473 video restoration](https://github.com/zfogg/ascii-chat/pull/473#pullrequestreview-5477698500): the integration predicate now requires a dense, multicolored video frame. The full Windows integration script passes with a terminal tall enough for the help screen.
 - [#474 decoded-frame copy](https://github.com/zfogg/ascii-chat/pull/474#pullrequestreview-5477993598): retained the padded, aligned FFmpeg conversion buffer and compact row copy. Direct writes would need separately validated slot capacity and FFmpeg alignment across frame widths.

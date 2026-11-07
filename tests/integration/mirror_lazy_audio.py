@@ -84,7 +84,8 @@ def main():
                     term.write("0")
                     term.expect(lambda text: "Sync primitives" in text, "Initial sync screen")
                     term.resize(144, 140)
-                    inventory = term.pump(1)
+                    inventory = term.expect(lambda text: "debug_memory." in text,
+                                            "Resized sync inventory did not finish rendering")
                     assert "audio_processing" not in inventory, inventory
                     assert not any(row.lstrip("> ").startswith("mutex") and "display." in row
                                    for row in inventory.splitlines()), inventory

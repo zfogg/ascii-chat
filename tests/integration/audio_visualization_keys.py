@@ -48,7 +48,7 @@ def main():
         disabled = Terminal([binary, '--no-check-update', '--log-file',
                              str(root/'audio-disabled.log'), 'mirror', '--file', str(media),
                              '--loop', '--audio=false', '--splash-screen=false',
-                             '--color-mode', 'truecolor'], rows=24, cols=100)
+                             '--color-mode', 'truecolor'], rows=45, cols=100)
         try:
             disabled.pump(5)
             disabled.write('?')
@@ -72,7 +72,7 @@ def main():
         term = Terminal([binary, '--no-check-update', '--log-file',
                          str(root/'audio-keys-runtime.log'), 'mirror', '--file', str(media),
                          '--loop', '--audio-source', 'media', '--volume', '0', '--splash-screen=false',
-                         '--color-mode', 'truecolor'], rows=24, cols=100)
+                         '--color-mode', 'truecolor'], rows=45, cols=100)
         try:
             term.pump(5)
             term.expect(lambda s: video_visible(term, s), 'Initial video frame missing')
@@ -87,7 +87,7 @@ def main():
                 text = term.expect(lambda s: 'Terminal too small' in s, 'Help rejects undersized terminal')
                 assert 'Navigation & Control:' not in text, text
                 assert 'Current Settings:' not in text, text
-                term.resize(24, 100)
+                term.resize(45, 100)
                 term.expect(lambda s: 'Navigation & Control:' in s and 'Current Settings:' in s
                             and 'Terminal too small' not in s, 'Help recovers after resize')
             print('PASS narrow/short help fallback and resize recovery')
