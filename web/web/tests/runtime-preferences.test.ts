@@ -80,7 +80,9 @@ describe("browser preference transactions", () => {
     try {
       const hook = renderHook(
         ({ settings }) => useEngineSettings(true, settings, vi.fn(), apply),
-        { initialProps: { settings: DEFAULT_SETTINGS } },
+        {
+          initialProps: { settings: DEFAULT_SETTINGS },
+        },
       );
       expect(log).toHaveBeenCalledExactlyOnceWith(
         "Failed to apply renderer settings:",
@@ -218,6 +220,20 @@ describe("browser preference transactions", () => {
       flipXExplicit: true,
     });
     expect(c.patches).toHaveLength(count);
+  });
+  it("submits renderer and palette selection to the engine", () => {
+    const c = createEngine();
+    applyMirrorWasmSettings({
+      ...DEFAULT_SETTINGS,
+      renderer: "glyph",
+      palette: "minimal",
+      paletteExplicit: true,
+    });
+    expect(c.patches[0]).toMatchObject({
+      renderer: 1,
+      palette_type: 4,
+      palette_explicit: true,
+    });
   });
   it("switches animation and palette settings in a single transaction", () => {
     const c = createEngine();

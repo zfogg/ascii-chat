@@ -13,6 +13,8 @@ void acip_render_settings_options(const acip_render_settings_t *state, options_t
   values->color_mode = (terminal_color_mode_t)state->caps.color_level;
   values->color_filter = state->caps.color_filter;
   values->render_mode = state->caps.render_mode;
+  values->renderer = state->caps.text_renderer;
+  values->palette_explicit = state->caps.palette_explicit;
   values->palette_type = state->caps.palette_type ? state->caps.palette_type : PALETTE_STANDARD;
   SAFE_STRNCPY(values->palette_custom, state->caps.palette_custom, sizeof(values->palette_custom));
   values->palette_custom_set = values->palette_custom[0] != 0;
@@ -39,6 +41,8 @@ asciichat_error_t acip_render_settings_prepare(acip_render_settings_t *candidate
                                                                      : 2;
   next.caps.color_filter = values->color_filter;
   next.caps.render_mode = values->render_mode;
+  next.caps.text_renderer = values->renderer;
+  next.caps.palette_explicit = values->palette_explicit;
   next.caps.wants_background = values->render_mode == RENDER_MODE_BACKGROUND;
   next.caps.palette_type = values->palette_type;
   SAFE_STRNCPY(next.caps.palette_custom, values->palette_custom, sizeof(next.caps.palette_custom));
@@ -49,6 +53,12 @@ asciichat_error_t acip_render_settings_prepare(acip_render_settings_t *candidate
   if (initialize_client_palette(next.caps.palette_type, values->palette_custom, next.palette, &next.palette_length,
                                 next.luminance))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rendering palette");
+  if (values->renderer == ASCII_RENDERER_GLYPH && !values->palette_explicit) {
+    SAFE_STRNCPY(next.palette,
+                 " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~",
+                 sizeof(next.palette));
+    next.palette_length = strlen(next.palette);
+  }
   next.revision = candidate->revision + 1;
   *candidate = next;
   return ASCIICHAT_OK;

@@ -288,3 +288,99 @@ void ascii_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool mor
   emit_prepared_row(&frame->output, mode, ops, frame->glyph, frame->fg, frame->bg, frame->width);
   emit_row_end(&frame->output, mode != ASCII_COLOR_NONE, more_rows);
 }
+
+/* Compare a small spatial image patch against rasterized printable glyphs.
+ * The source is fitted at 8x8 samples per output cell, then averaged to 4x4.
+ * Glyph coverage comes from DejaVu Sans Mono; real terminal fonts may differ. */
+#include "glyph_masks.h"
+bool ascii_glyph_palette_supported(const char *palette) {
+  if (!palette || !*palette)
+    return false;
+  for (const unsigned char *p = (const unsigned char *)palette; *p; ++p)
+    if (*p < 32 || *p > 126)
+      return false;
+  return true;
+}
+
+char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const simd_cells_t *ops, const char *palette) {
+  if (!image || !image->pixels || !ops || image->w <= 0 || image->h <= 0 || image->w % 8 || image->h % 8 ||
+      mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid glyph matching input");
+    return NULL;
+  }
+  bool allowed[95] = {false};
+  if (palette) {
+    if (!ascii_glyph_palette_supported(palette)) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette must contain printable ASCII characters");
+      return NULL;
+    }
+    for (const unsigned char *p = (const unsigned char *)palette; *p; ++p)
+      allowed[*p - 32] = true;
+  } else {
+    for (int i = 0; i < 95; ++i)
+      allowed[i] = true;
+  }
+  image_t cells = *image;
+  cells.w /= 8;
+  cells.h /= 8;
+  ascii_frame_t frame;
+  if (ascii_frame_init(&frame, &cells, " .") != ASCIICHAT_OK)
+    return NULL;
+  for (int y = 0; y < cells.h; ++y) {
+    for (int x = 0; x < cells.w; ++x) {
+      int samples[16][3] = {{0}};
+      int luminance[16];
+      for (int sy = 0; sy < 8; ++sy) {
+        for (int sx = 0; sx < 8; ++sx) {
+          rgb_pixel_t p = image->pixels[(size_t)(y * 8 + sy) * (size_t)image->w + (size_t)(x * 8 + sx)];
+          int i = (sy / 2) * 4 + sx / 2;
+          samples[i][0] += p.r;
+          samples[i][1] += p.g;
+          samples[i][2] += p.b;
+        }
+      }
+      for (int i = 0; i < 16; ++i) {
+        for (int c = 0; c < 3; ++c)
+          samples[i][c] /= 4;
+        luminance[i] = (77 * samples[i][0] + 150 * samples[i][1] + 29 * samples[i][2]) >> 8;
+      }
+      int sample_mean = 0;
+      for (int i = 0; i < 16; ++i)
+        sample_mean += luminance[i];
+      sample_mean /= 16;
+      int best = -1;
+      int64_t best_error = INT64_MAX;
+      for (int g = 0; g < 95; ++g) {
+        if (!allowed[g])
+          continue;
+        int mask_sum = 0;
+        for (int i = 0; i < 16; ++i)
+          mask_sum += glyph_masks[g][i];
+        int mask_mean = mask_sum / 16;
+        // Normalize the darkest and lightest available glyphs across the tone range.
+        // The second term compares local deviations, so edges influence the choice.
+        int tone_error = sample_mean - mask_sum * 255 / GLYPH_MASK_MAX_SUM;
+        int64_t error = (int64_t)16 * tone_error * tone_error;
+        for (int i = 0; i < 16; ++i) {
+          int delta = (luminance[i] - sample_mean) - ((int)glyph_masks[g][i] - mask_mean);
+          error += (int64_t)delta * delta;
+        }
+        if (error < best_error) {
+          best_error = error;
+          best = g;
+        }
+      }
+      // Use the same top-left sample as the existing nearest-neighbor renderer.
+      // Solving for glyph coverage here can clip all three color channels to white.
+      rgb_pixel_t color = image->pixels[(size_t)(y * 8) * (size_t)image->w + (size_t)(x * 8)];
+      uint32_t rgb = ((uint32_t)color.r << 16) | ((uint32_t)color.g << 8) | color.b;
+      frame.glyph[x] = (uint32_t)(best + 32);
+      frame.packed[x] = rgb;
+      frame.luma[x] = (uint8_t)((77 * ((rgb >> 16) & 255) + 150 * ((rgb >> 8) & 255) + 29 * (rgb & 255)) >> 8);
+    }
+    if (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256)
+      ops->quantize(frame.packed, frame.index, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
+    ascii_frame_emit_row(&frame, mode, false, y + 1 < cells.h, ops);
+  }
+  return ascii_frame_finish(&frame);
+}

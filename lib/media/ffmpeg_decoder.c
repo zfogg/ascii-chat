@@ -428,6 +428,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     uint64_t read_start_ns = time_get_ns();
     bool frame_decoded = false;
     bool reached_eof = false;
+    bool packet_rejected = false;
     asciichat_errno_scope_t decode_scope = errno_checkpoint();
 
     // Release prefetch mutex but hold read_frame_mutex to prevent concurrent traced_packet_read() calls from audio
@@ -439,6 +440,9 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       mutex_lock(&decoder->prefetch_mutex);
       continue;
     }
+    // Interrupted reads are expected. Publish a failure only after deciding
+    // whether this attempt was cancelled or superseded by a seek.
+    bool notifications_suppressed = errno_notifications_suppress(true);
 
     ASCII_OTEL_SCOPE(FFMPEG_VIDEO_DECODE);
     ASCII_OTEL_ATTR_STRING("media.codec", avcodec_get_name(decoder->video_codec_ctx->codec_id));
@@ -492,7 +496,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
           if (ret == AVERROR(EAGAIN))
             continue;
           if (ret < 0) {
-            SET_ERRNO(ERROR_MEDIA_DECODE, "Video decoder rejected packet: %d", ret);
+            packet_rejected = true;
             break;
           }
 
@@ -644,6 +648,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     // Mutex now held - update prefetch state
     bool obsolete = generation != decoder->seek_generation;
     bool interrupted = decoder->prefetch_should_stop || decoder->seeking_in_progress || obsolete || cancelled;
+    errno_notifications_suppress(notifications_suppressed);
     if (interrupted)
       errno_scope_end(decode_scope, ASCIICHAT_ERRNO_HANDLED);
     if (obsolete) {
@@ -652,7 +657,10 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     }
     if (!frame_decoded && !reached_eof && !interrupted) {
       if (!errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
-        SET_ERRNO(ERROR_MEDIA_DECODE, "Background video decoding failed (FFmpeg result %d)", decode_result);
+        if (packet_rejected)
+          SET_ERRNO(ERROR_MEDIA_DECODE, "Video decoder rejected packet: %d", decode_result);
+        else
+          SET_ERRNO(ERROR_MEDIA_DECODE, "Background video decoding failed (FFmpeg result %d)", decode_result);
         if (!errno_peek_since(decode_scope, &decoder->prefetch_failure)) {
           decoder->prefetch_failure.code = ERROR_MEDIA_DECODE;
           SAFE_STRNCPY(decoder->prefetch_failure.context_message, "Background video decoding failed",

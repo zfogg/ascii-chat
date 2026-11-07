@@ -19,9 +19,11 @@
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/url.h>
+#ifndef __EMSCRIPTEN__
 #include <libavformat/avformat.h>
 #include <yyjson.h>
 #include <libavformat/avio.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -234,11 +236,15 @@ static bool yt_dlp_is_stream_url(const char *line) {
       return false;
     if (i < 2)
       return url_is_valid(line);
+#ifndef __EMSCRIPTEN__
     // RTSP is a demuxer rather than an AVIO protocol.
     if (strcmp(prefixes[i], "rtsp://") == 0 || strcmp(prefixes[i], "rtsps://") == 0)
       return av_find_input_format("rtsp") != NULL;
     const char *protocol = avio_find_protocol_name(line);
     return protocol && strcmp(protocol, "file") != 0;
+#else
+    return false;
+#endif
   }
   return false;
 }

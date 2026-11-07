@@ -8,6 +8,10 @@ entries and restores PATH afterward. Both suites use disposable directories.
 
 ```bash
 bash tests/installers/smoke.sh web/www/public/install.sh
+# In an Alpine container with bash, curl, tar, CA certificates, and Deno:
+bash tests/installers/alpine-fallback.sh web/www/public/install.sh
+# In an Amazon Linux 2 container with curl, tar, gzip, and unzip:
+bash tests/installers/amazon-linux-legacy.sh web/www/public/install.sh
 ```
 
 ```powershell
@@ -47,6 +51,17 @@ release. Set `ASCII_CHAT_VERSION=0.12.17` to select a specific version. Bare
   Machine PATH respectively, plus the current session. If PATH changes, open a
   new Windows terminal to load it in other sessions.
   `ASCII_CHAT_INSTALL_DIR` overrides the installation directory.
+- Bash tries native packages through apk, Homebrew, apt, dnf, yum, zypper, or pacman when
+  available. Linux package installation requires root or passwordless sudo.
+  It checks that yt-dlp sees both EJS scripts and Deno, and otherwise uses the
+  standalone yt-dlp release. Missing Deno falls back to the upstream executable
+  on glibc Linux and macOS; musl requires a native Deno package. If the current
+  Linux build cannot run, the installer tries checksum-pinned Deno 2.3.3 and
+  verifies that yt-dlp recognizes it. Upstream
+  downloads are checked against their SHA-256 digests. Managed binaries get
+  symlinks in `PREFIX/bin` when those paths are free; existing files are preserved.
+  Downloading Deno also requires `unzip`.
+  Windows installs the upstream standalone yt-dlp and Deno in the managed directory.
 - The whole archive is retained, including bundled documentation and examples.
   Config files in the user's home are untouched. An ownership marker protects
   unrelated installations from replacement. Existing package-manager installs
@@ -66,7 +81,7 @@ release. Set `ASCII_CHAT_VERSION=0.12.17` to select a specific version. Bare
   failure. Close the process holding the file and remove that directory.
 
 To remove an installation made by these scripts, remove its managed directory
-and the Bash symlink or Windows PATH entry. Do not use the archive's package
+and the Bash symlinks or Windows PATH entry. Do not use the archive's package
 uninstaller: its layout assumes a conventional package installation.
 
 ## PATH prompt regression tests

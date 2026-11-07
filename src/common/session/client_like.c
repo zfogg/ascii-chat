@@ -361,6 +361,7 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
             state->media_file_val ? state->media_file_val : "(null)");
 
   if (state->media_url_val && strlen(state->media_url_val) > 0) {
+    ui_controller_title_activity(UI_TITLE_LOADING_URL);
     client_like_configure_url_capture(state);
   } else if (state->media_file_val && strlen(state->media_file_val) > 0) {
     client_like_configure_file_capture(state);

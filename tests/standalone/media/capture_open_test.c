@@ -351,6 +351,33 @@ static void check_prefetch_notifications(const char *path) {
   CHECK(time_get_ns() - started < NS_PER_SEC_INT);
 }
 
+static bool cancel_prefetch_with_error(void *opaque) {
+  atomic_t *calls = opaque;
+  if (atomic_fetch_add_int(calls, 1) == 0)
+    SET_ERRNO(ERROR_MEDIA_DECODE, "Interrupted decoder read");
+  return true;
+}
+
+static void check_cancelled_prefetch(const char *path) {
+  ffmpeg_decoder_t *decoder = ffmpeg_decoder_create(path);
+  CHECK(decoder);
+  atomic_t calls = {0};
+  ffmpeg_decoder_set_exit_callback(decoder, cancel_prefetch_with_error, &calls);
+  errno_notifications_enable(true);
+  CHECK(ffmpeg_decoder_start_prefetch(decoder) == ASCIICHAT_OK);
+  uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
+  while (atomic_load_int(&calls) < 1 && time_get_ns() < deadline)
+    platform_sleep_ms(1);
+  CHECK(atomic_load_int(&calls) >= 1);
+  ffmpeg_decoder_stop_prefetch(decoder);
+  CHECK(!errno_notifications_pending());
+  image_t *frame = NULL;
+  asciichat_error_context_t failure = {0};
+  CHECK(ffmpeg_decoder_poll_video(decoder, &frame, &failure) != FFMPEG_FRAME_FAILED);
+  errno_notifications_enable(false);
+  ffmpeg_decoder_destroy(decoder);
+}
+
 int main(int argc, char **argv) {
   CHECK(argc == 2);
   log_init(NULL, LOG_ERROR, false, false);
@@ -443,6 +470,7 @@ int main(int argc, char **argv) {
   check_atomic_pause();
   check_paused_recording(argv[1]);
   check_prefetch_notifications(argv[1]);
+  check_cancelled_prefetch(argv[1]);
   check_audio_seek_serialization(argv[1]);
   options_state_destroy();
   return 0;

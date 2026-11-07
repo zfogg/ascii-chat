@@ -1088,9 +1088,16 @@ if(TARGET ascii-chat-static)
         endif()
         asciichat_add_python_test(error-popup-smoke
             ${CMAKE_SOURCE_DIR}/tests/integration/error_popup.py ${error_popup_args})
+        asciichat_add_python_test(error-title-smoke
+            ${CMAKE_SOURCE_DIR}/tests/integration/error_titles.py --binary $<TARGET_FILE:test-error-popup-fixture>)
+        set_tests_properties(error-title-smoke PROPERTIES LABELS "integration;terminal" TIMEOUT 180
+            RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
         set_tests_properties(error-popup-smoke PROPERTIES LABELS "integration;tui" TIMEOUT 240
             RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
         if(WIN32)
+            set_property(TEST error-title-smoke PROPERTY ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+                "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
             set_property(TEST error-popup-smoke PROPERTY ENVIRONMENT_MODIFICATION
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
@@ -1271,6 +1278,9 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
+    asciichat_add_python_test(glyph-match-mirror
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/glyph_match.py $<TARGET_FILE:ascii-chat>)
+    set_tests_properties(glyph-match-mirror PROPERTIES LABELS "integration" TIMEOUT 100)
     asciichat_add_python_test(render-font-formats
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/render_font_formats.py $<TARGET_FILE:ascii-chat>)
     set_tests_properties(render-font-formats PROPERTIES LABELS "integration" TIMEOUT 180 RUN_SERIAL TRUE)
@@ -2283,6 +2293,13 @@ if(BUILD_TESTS AND TARGET ascii-chat AND CMAKE_BUILD_TYPE STREQUAL "Debug")
         --output ${CMAKE_BINARY_DIR}/title-smoke)
     set_tests_properties(terminal-titles PROPERTIES LABELS "integration;terminal" TIMEOUT 180
         RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    if(ASCIICHAT_TEST_FFMPEG)
+        asciichat_add_python_test(url-title-smoke
+            ${CMAKE_CURRENT_SOURCE_DIR}/integration/url_title.py --binary $<TARGET_FILE:ascii-chat>
+            --ffmpeg ${ASCIICHAT_TEST_FFMPEG})
+        set_tests_properties(url-title-smoke PROPERTIES LABELS "integration;terminal;media" TIMEOUT 120
+            RUN_SERIAL TRUE SKIP_RETURN_CODE 77)
+    endif()
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT WIN32 AND ASCIICHAT_TEST_FFMPEG AND ASCIICHAT_TEST_FFPROBE)

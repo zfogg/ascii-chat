@@ -65,7 +65,9 @@ jobs:
 
       - name: Configure CMake build
         run: |
-          cmake --preset release -B build_release -DUSE_MUSL=OFF
+          # The docs job uses system libraries and publishes no CLI binaries.
+          # Static-link enforcement remains enabled in the CLI release workflow.
+          cmake --preset release -B build_release -DUSE_MUSL=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
 
       - name: Save configure cache
         if: always()

@@ -10,8 +10,8 @@ async function initialize(
   const module = await createWasmModule<TerminalRendererModule>(clientLikeKind);
   const initializeOptions =
     clientLikeKind === "mirror"
-      ? module._mirror_init_with_args
-      : module._client_init_with_args;
+      ? module._mirror_init_with_args?.bind(module)
+      : module._client_init_with_args?.bind(module);
   if (!initializeOptions)
     throw new Error(`Missing ${clientLikeKind} raster worker initializer`);
   const size = module.lengthBytesUTF8(clientLikeKind) + 1;
