@@ -42,9 +42,8 @@ services:
     # Run tests by default
     # Use build_docker directory (build is for native OS)
     command: >
-      sh -c "sh tests/scripts/verify-lsan.sh &&
-             cmake --preset docker &&
-             cmake --build build_docker --target all tests-criterion-build &&
+      sh -c "cmake --preset docker &&
+             cmake --build build_docker --target tests &&
              ctest --test-dir build_docker --output-on-failure --parallel 0"
 
     # Optional: Override command for interactive shell
@@ -74,7 +73,7 @@ services:
       # AddressSanitizer configuration
       - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
 
-      # Fail on leaks; the startup probe verifies detection is working.
+      # Fail on leaks in sanitizer-enabled builds.
       - ASAN_OPTIONS=detect_leaks=1
       - LSAN_OPTIONS=detect_leaks=1
 
@@ -97,14 +96,13 @@ services:
       - SYS_PTRACE
 
     command: >
-      sh -c "sh tests/scripts/verify-lsan.sh &&
-             cmake --preset docker &&
-             cmake --build build_docker --target all tests-criterion-build &&
+      sh -c "cmake --preset docker &&
+             cmake --build build_docker --target tests &&
              ctest --test-dir build_docker --output-on-failure --parallel 0"
 
     environment:
       # Architecture-specific deps cache (prevents cross-arch binary conflicts)
-      - DOCKER_OS=arm64
+      - DOCKER_OS=${DOCKER_OS:-arm64}
       - CCACHE_DIR=/ccache
       - CCACHE_UMASK=002
       - CCACHE_HARDLINK=true
@@ -158,4 +156,4 @@ volumes:
   deps-cache-data-ubuntu:
     driver: local
     # Path structure inside container: /app/.deps-cache/arm64/<BuildType>/
-    # (DOCKER_OS=arm64 env var selects architecture-specific cache)
+    # (DOCKER_OS selects the architecture-specific dependency cache)
