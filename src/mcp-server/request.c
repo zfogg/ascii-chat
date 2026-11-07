@@ -146,7 +146,7 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
     if (p->restricted && p->hosted) {
       property(
           d, s, "output_format", "string",
-          "Output format: png, jpg, gif, mp4, webm or mkv. Defaults to png for a snapshot or mp4 for a timed clip.");
+          "Output format: png, jpg, gif, mp4, webm or mkv. Defaults to png for a single frame or mp4 for a timed or continuous render.");
       const char *formats[] = {"png", "jpg", "gif", "mp4", "webm", "mkv", NULL};
       enum_strings(d, yyjson_mut_obj_get(props, "output_format"), formats);
     }
@@ -567,7 +567,8 @@ asciichat_error_t mcp_request_parse(const mcp_policy_t *p, mcp_tool_t tool, yyjs
     return SET_ERRNO(ERROR_INVALID_PARAM, "output_format is available only in HTTP server mode");
   if (p->restricted && p->hosted) {
     const char *ext = format && yyjson_is_str(format)                       ? yyjson_get_str(format)
-                      : yyjson_get_num(mcp_get(opts, "snapshot-delay")) > 0 ? "mp4"
+                      : (yyjson_is_false(mcp_get(opts, "snapshot")) ||
+                         yyjson_get_num(mcp_get(opts, "snapshot-delay")) > 0) ? "mp4"
                                                                             : "png";
     static const char *const formats[] = {"png", "jpg", "gif", "mp4", "webm", "mkv", NULL};
     if ((format && !yyjson_is_str(format)) || !in_names(ext, formats))

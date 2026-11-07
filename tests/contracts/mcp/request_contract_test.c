@@ -391,3 +391,23 @@ Test(mcp_requests, hosted_profile_accepts_url_and_stages_requested_media_format)
   yyjson_doc_free(doc);
   cr_assert_eq(platform_rmdir_recursive(directory), ASCIICHAT_OK);
 }
+
+Test(mcp_requests, hosted_default_format_tracks_snapshot_mode) {
+  char directory[PLATFORM_MAX_PATH_LENGTH];
+  cr_assert_eq(platform_mkdtemp(directory, sizeof(directory), "mcp-format-contract"), ASCIICHAT_OK);
+  mcp_policy_t policy = {.hosted = true, .restricted = true};
+  SAFE_STRNCPY(policy.downloads_dir, directory, sizeof(policy.downloads_dir));
+  const char *inputs[] = {"{\"options\":{\"test-pattern\":true}}",
+                          "{\"options\":{\"test-pattern\":true,\"snapshot\":false}}",
+                          "{\"options\":{\"test-pattern\":true,\"snapshot-delay\":2}}"};
+  const char *extensions[] = {".png", ".mp4", ".mp4"};
+  for (size_t i = 0; i < 3; ++i) {
+    yyjson_doc *doc = read_json(inputs[i]);
+    mcp_render_request_t request;
+    cr_assert_eq(mcp_request_parse(&policy, MCP_FILE, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK);
+    cr_assert_not_null(strstr(request.stage_file, extensions[i]));
+    mcp_request_destroy(&request);
+    yyjson_doc_free(doc);
+  }
+  cr_assert_eq(platform_rmdir_recursive(directory), ASCIICHAT_OK);
+}

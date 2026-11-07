@@ -87,6 +87,13 @@ class Protocol(unittest.TestCase):
         c.send("ping", {}, 2)
         self.assertEqual(c.receive()["id"], 2)
 
+    def test_restricted_stdio_does_not_initialize_downloads(self):
+        invalid = self.directory / "missing" / "parent" / "downloads"
+        invalid.parent.parent.write_text("not a directory")
+        c = self.client(mode_extra=("--server", "--downloads-dir", str(invalid)))
+        c.send("ping", {}, 1)
+        self.assertEqual(c.receive()["id"], 1)
+
     def test_mode_help_and_http_options(self):
         top = subprocess.run([str(self.binary), "--help"], capture_output=True, text=True, timeout=10)
         self.assertEqual(top.returncode, 0)
@@ -266,7 +273,7 @@ class Protocol(unittest.TestCase):
         log = open(self.directory / "http.log", "wb"); self.addCleanup(log.close)
         downloads = self.directory / "downloads"
         prefix = f"http://127.0.0.1:{port}/downloads"
-        hosted_options = ["--server", "--downloads-dir", str(downloads), "--downloads-url-prefix", prefix] if restricted else []
+        hosted_options = ["--server", "--downloads-dir", os.path.relpath(downloads), "--downloads-url-prefix", prefix] if restricted else []
         p = subprocess.Popen([str(self.binary), "mcp-server", "--transport", "http", *hosted_options, "--address", "127.0.0.1",
                               "--port", str(port), "--http-origin", "https://tools.example.test", "--status-screen=false"], stdout=log, stderr=log)
         def stop():
