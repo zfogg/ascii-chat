@@ -453,6 +453,78 @@ Test(ascii_emission, capability_dispatch_preserves_background) {
   }
 }
 
+Test(ascii_emission, temporal_history_tracks_motion_and_configuration) {
+  ascii_stabilizer_t state = {0}, other = {0};
+  uint8_t samples[16];
+  memset(samples, 100, sizeof(samples));
+  cr_assert_eq(ascii_stabilizer_prepare(&state, 2, 1, 1), ASCIICHAT_OK);
+  cr_assert_eq(ascii_stabilizer_prepare(&other, 2, 1, 1), ASCIICHAT_OK);
+  uint32_t color;
+  cr_assert_eq(ascii_stabilizer_choose(&state.cells[0], samples, 'A', 100, UINT64_MAX, 0x646464, 16000000, &color),
+               'A');
+  cr_assert_eq(color, 0x646464);
+  memset(samples, 101, sizeof(samples));
+  cr_assert_eq(ascii_stabilizer_choose(&state.cells[0], samples, 'B', 100, 120, 0x686868, 16000000, &color), 'A');
+  cr_assert(color > 0x646464 && color < 0x686868);
+  cr_assert_eq(ascii_stabilizer_choose(&other.cells[0], samples, 'B', 100, UINT64_MAX, 0x686868, 16000000, &color),
+               'B');
+  cr_assert_eq(ascii_stabilizer_choose(&state.cells[0], samples, 'B', 100, 10000, 0x686868, 16000000, &color), 'B');
+  memset(samples, 200, sizeof(samples));
+  cr_assert_eq(ascii_stabilizer_choose(&state.cells[0], samples, 'C', 100, 101, 0xc8c8c8, 16000000, &color), 'C');
+  cr_assert_eq(color, 0xc8c8c8);
+  cr_assert_eq(ascii_stabilizer_prepare(&state, 2, 1, 2), ASCIICHAT_OK);
+  cr_assert(!state.cells[0].valid);
+  ascii_stabilizer_reset(&state);
+  ascii_stabilizer_reset(&other);
+}
+
+Test(ascii_emission, temporal_stabilization_reduces_threshold_flicker) {
+  for (int glyph = 0; glyph < 2; ++glyph) {
+    rgb_pixel_t pixels[64];
+    image_t image = {.w = glyph ? 8 : 1, .h = glyph ? 8 : 1, .pixels = pixels};
+    const char *palette = " .#@";
+    int boundary = -1;
+    char previous = 0;
+    for (int value = 0; value < 256; ++value) {
+      for (int i = 0; i < image.w * image.h; ++i)
+        pixels[i] = (rgb_pixel_t){value, value, value};
+      char *output = glyph ? ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette)
+                           : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
+      cr_assert_not_null(output);
+      if (value && output[0] != previous) {
+        boundary = value;
+        SAFE_FREE(output);
+        break;
+      }
+      previous = output[0];
+      SAFE_FREE(output);
+    }
+    cr_assert(boundary > 0 && boundary < 255, "fixture must cross a glyph boundary");
+    ascii_stabilizer_t state = {0};
+    cr_assert_eq(ascii_stabilizer_prepare(&state, 1, 1, 1), ASCIICHAT_OK);
+    state.elapsed_ns = 16666667;
+    ascii_stabilizer_t *prior = ascii_stabilizer_set_target(&state);
+    for (int i = 0; i < image.w * image.h; ++i)
+      pixels[i] = (rgb_pixel_t){boundary - 1, boundary - 1, boundary - 1};
+    char *initial = glyph ? ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette)
+                          : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
+    cr_assert_not_null(initial);
+    for (int frame = 0; frame < 6; ++frame) {
+      int value = boundary - (frame % 2);
+      for (int i = 0; i < image.w * image.h; ++i)
+        pixels[i] = (rgb_pixel_t){value, value, value};
+      char *output = glyph ? ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette)
+                           : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
+      cr_assert_not_null(output);
+      cr_assert_eq(output[0], initial[0], "stationary threshold jitter should not switch glyphs");
+      SAFE_FREE(output);
+    }
+    ascii_stabilizer_set_target(prior);
+    SAFE_FREE(initial);
+    ascii_stabilizer_reset(&state);
+  }
+}
+
 Test(ascii_emission, rejects_invalid_input) {
   rgb_pixel_t pixel = {0};
   image_t image = {.pixels = &pixel, .w = -1, .h = 1};
@@ -552,6 +624,8 @@ int main(int argc, char **argv) {
   ascii_emission_halfblock_odd_height_padding_and_colors();
   ascii_emission_sgr_encoders_and_compatibility();
   ascii_emission_rejects_invalid_input();
+  ascii_emission_temporal_history_tracks_motion_and_configuration();
+  ascii_emission_temporal_stabilization_reduces_threshold_flicker();
   ascii_emission_capability_dispatch_preserves_background();
   ascii_emission_glyph_matching_uses_shape_and_rejects_invalid_sizes();
   simd_caches_destroy_all();

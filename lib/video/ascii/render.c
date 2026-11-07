@@ -17,6 +17,71 @@
 #include <ascii-chat/video/ascii/simd/cells.h>
 
 static _Thread_local outbuf_t *g_output_target;
+static _Thread_local ascii_stabilizer_t *g_stabilizer_target;
+
+ascii_stabilizer_t *ascii_stabilizer_set_target(ascii_stabilizer_t *state) {
+  ascii_stabilizer_t *previous = g_stabilizer_target;
+  g_stabilizer_target = state;
+  return previous;
+}
+
+void ascii_stabilizer_reset(ascii_stabilizer_t *state) {
+  if (!state)
+    return;
+  SAFE_FREE(state->cells);
+  memset(state, 0, sizeof(*state));
+}
+
+asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height,
+                                           uint64_t configuration) {
+  if (!state || !width || !height || width > SIZE_MAX / height ||
+      width * height > SIZE_MAX / sizeof(ascii_temporal_cell_t))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid stabilization viewport");
+  if (state->cells && state->width == width && state->height == height && state->configuration == configuration)
+    return ASCIICHAT_OK;
+  ascii_temporal_cell_t *cells = SAFE_CALLOC(width * height, sizeof(*cells), ascii_temporal_cell_t *);
+  if (!cells)
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate stabilization history");
+  SAFE_FREE(state->cells);
+  state->cells = cells;
+  state->width = width;
+  state->height = height;
+  state->configuration = configuration;
+  return ASCIICHAT_OK;
+}
+
+uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate,
+                                 uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
+                                 uint32_t *stabilized_color) {
+  unsigned motion = 0;
+  if (cell->valid) {
+    for (size_t i = 0; i < 16; ++i)
+      motion += (unsigned)abs((int)samples[i] - (int)cell->samples[i]);
+    motion /= 16;
+  }
+  uint32_t result = candidate;
+  uint32_t output_color = color;
+  if (cell->valid && motion <= 8 && elapsed_ns <= 250000000ULL) {
+    uint64_t margin = candidate_error / 8 + 128;
+    if (previous_error <= candidate_error || previous_error - candidate_error <= margin)
+      result = cell->glyph;
+    // Weight depends on elapsed time, avoiding a different response at each FPS.
+    uint64_t weight = elapsed_ns * 256 / (elapsed_ns + 50000000ULL);
+    output_color = 0;
+    for (unsigned shift = 0; shift <= 16; shift += 8) {
+      unsigned previous = (cell->color >> shift) & 255;
+      unsigned current = (color >> shift) & 255;
+      output_color |= (uint32_t)((previous * (256 - weight) + current * weight + 128) / 256) << shift;
+    }
+  }
+  memcpy(cell->samples, samples, sizeof(cell->samples));
+  cell->glyph = result;
+  cell->color = output_color;
+  cell->valid = true;
+  if (stabilized_color)
+    *stabilized_color = output_color;
+  return result;
+}
 
 outbuf_t *ascii_render_set_output_target(outbuf_t *target) {
   outbuf_t *previous = g_output_target;
@@ -215,6 +280,9 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
     return ERROR_INVALID_PARAM;
   prepare_output(frame, capacity, target);
   frame->width = (size_t)image->w;
+  if (g_stabilizer_target && g_stabilizer_target->cells && g_stabilizer_target->width == (size_t)image->w &&
+      g_stabilizer_target->height == (size_t)image->h)
+    frame->stabilizer = g_stabilizer_target;
   for (size_t i = 0; i < 64; ++i)
     memcpy(frame->table + i, cache->cache64[i].utf8_bytes, cache->cache64[i].byte_len);
   frame->scratch = bytes <= sizeof(frame->inline_scratch) ? frame->inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
@@ -228,6 +296,26 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
 }
 void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows,
                           const simd_cells_t *ops) {
+  if (frame->stabilizer && !frame->temporal_preselected && !background) {
+    for (size_t x = 0; x < frame->width; ++x) {
+      ascii_temporal_cell_t *cell = &frame->stabilizer->cells[frame->row * frame->width + x];
+      uint8_t samples[16];
+      memset(samples, frame->luma[x], sizeof(samples));
+      uint64_t best_error = UINT64_MAX, previous_error = UINT64_MAX;
+      for (size_t i = 0; i < 64; ++i) {
+        int delta = (int)frame->luma[x] - ((int)i * 4 + 2);
+        uint64_t error = (uint64_t)(delta * delta);
+        if (frame->table[i] == frame->glyph[x] && error < best_error)
+          best_error = error;
+        if (cell->valid && frame->table[i] == cell->glyph && error < previous_error)
+          previous_error = error;
+      }
+      frame->glyph[x] = ascii_stabilizer_choose(cell, samples, frame->glyph[x], best_error, previous_error,
+                                                frame->packed[x], frame->stabilizer->elapsed_ns, &frame->packed[x]);
+    }
+    if (mode == ASCII_COLOR_16 || mode == ASCII_COLOR_256)
+      ops->quantize(frame->packed, frame->index, frame->width, mode == ASCII_COLOR_16 ? 16 : 256);
+  }
   for (size_t x = 0; x < frame->width; ++x) {
     frame->fg[x] = frame->bg[x] = UINT32_MAX;
     if (mode == ASCII_COLOR_NONE)
@@ -244,6 +332,7 @@ void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool backgro
   }
   emit_prepared_row(&frame->output, mode, ops, frame->glyph, frame->fg, frame->bg, frame->width);
   emit_row_end(&frame->output, mode != ASCII_COLOR_NONE, more_rows);
+  ++frame->row;
 }
 char *ascii_frame_finish(ascii_frame_t *frame) {
   if (frame->scratch != frame->inline_scratch)
@@ -326,6 +415,7 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
   ascii_frame_t frame;
   if (ascii_frame_init(&frame, &cells, " .") != ASCIICHAT_OK)
     return NULL;
+  frame.temporal_preselected = true;
   for (int y = 0; y < cells.h; ++y) {
     for (int x = 0; x < cells.w; ++x) {
       int samples[16][3] = {{0}};
@@ -350,6 +440,8 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
       sample_mean /= 16;
       int best = -1;
       int64_t best_error = INT64_MAX;
+      uint64_t previous_error = UINT64_MAX;
+      ascii_temporal_cell_t *previous = frame.stabilizer ? &frame.stabilizer->cells[(size_t)y * frame.width + x] : NULL;
       for (int g = 0; g < 95; ++g) {
         if (!allowed[g])
           continue;
@@ -365,6 +457,8 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
           int delta = (luminance[i] - sample_mean) - ((int)glyph_masks[g][i] - mask_mean);
           error += (int64_t)delta * delta;
         }
+        if (previous && previous->valid && previous->glyph == (uint32_t)(g + 32))
+          previous_error = (uint64_t)error;
         if (error < best_error) {
           best_error = error;
           best = g;
@@ -374,7 +468,15 @@ char *ascii_render_glyph_match(const image_t *image, ascii_color_t mode, const s
       // Solving for glyph coverage here can clip all three color channels to white.
       rgb_pixel_t color = image->pixels[(size_t)(y * 8) * (size_t)image->w + (size_t)(x * 8)];
       uint32_t rgb = ((uint32_t)color.r << 16) | ((uint32_t)color.g << 8) | color.b;
-      frame.glyph[x] = (uint32_t)(best + 32);
+      uint32_t selected = (uint32_t)(best + 32);
+      if (previous) {
+        uint8_t patch[16];
+        for (int i = 0; i < 16; ++i)
+          patch[i] = (uint8_t)luminance[i];
+        selected = ascii_stabilizer_choose(previous, patch, selected, (uint64_t)best_error, previous_error, rgb,
+                                           frame.stabilizer->elapsed_ns, &rgb);
+      }
+      frame.glyph[x] = selected;
       frame.packed[x] = rgb;
       frame.luma[x] = (uint8_t)((77 * ((rgb >> 16) & 255) + 150 * ((rgb >> 8) & 255) + 29 * (rgb & 255)) >> 8);
     }
