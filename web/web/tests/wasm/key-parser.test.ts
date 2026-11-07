@@ -1,5 +1,9 @@
 import { afterEach, expect, it, vi } from "vite-plus/test";
-import { validateSshPrivateKey } from "../../src/wasm/client";
+import {
+  PacketType,
+  packetTypeName,
+  validateSshPrivateKey,
+} from "../../src/wasm/client";
 
 it("does not publish errors for expected key format probes", async () => {
   const reports = vi.fn();
@@ -32,3 +36,7 @@ it("does not publish errors for expected key format probes", async () => {
 });
 
 afterEach(() => vi.unstubAllGlobals());
+
+it("names H.264 packets", () => {
+  expect(packetTypeName(PacketType.IMAGE_FRAME_H264)).toBe("IMAGE_FRAME_H264");
+});

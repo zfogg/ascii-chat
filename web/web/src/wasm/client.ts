@@ -450,6 +450,7 @@ export function packetTypeName(type: number): string {
     [PacketType.ASCII_FRAME]: "ASCII_FRAME",
     [PacketType.IMAGE_FRAME]: "IMAGE_FRAME",
     [PacketType.IMAGE_FRAME_H265]: "IMAGE_FRAME_H265",
+    [PacketType.IMAGE_FRAME_H264]: "IMAGE_FRAME_H264",
     [PacketType.AUDIO_BATCH]: "AUDIO_BATCH",
     [PacketType.AUDIO_OPUS_BATCH]: "AUDIO_OPUS_BATCH",
     [PacketType.CLIENT_CAPABILITIES]: "CLIENT_CAPABILITIES",

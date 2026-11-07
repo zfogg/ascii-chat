@@ -944,9 +944,13 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     }
   }
 
+  // Binary video owns stdout in every terminal mode.
+  const char *output = GET_OPTION(render_file);
+  bool binary_stdout = ctx->render_file && (strcmp(output, "-") == 0 || strcmp(output, "pipe:") == 0 ||
+                                            strcmp(output, "--kitty") == 0 || GET_OPTION(render_kitty));
   char *zalgo_frame = NULL;
   int zalgo_level = GET_OPTION(zalgo);
-  if (zalgo_level > 0) {
+  if (zalgo_level > 0 && !binary_stdout) {
     asciichat_error_t err =
         zalgo_apply(display_frame, frame_len, zalgo_level, UI_CONTROLLER_MAX_FRAME_BYTES - 7, &zalgo_frame);
     if (err == ASCIICHAT_OK) {
@@ -981,10 +985,6 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     splash_wait_for_animation();
   }
 
-  // Binary video owns stdout in every terminal mode.
-  const char *output = GET_OPTION(render_file);
-  bool binary_stdout = ctx->render_file && (strcmp(output, "-") == 0 || strcmp(output, "pipe:") == 0 ||
-                                            strcmp(output, "--kitty") == 0 || GET_OPTION(render_kitty));
   if (binary_stdout) {
     if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
       g_snapshot_first_frame_rendered = true;

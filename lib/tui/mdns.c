@@ -127,6 +127,7 @@ int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count) {
  */
 typedef struct {
   int count;
+  bool live;
   ui_selectable_list_t list;
   char input[TUI_MDNS_INPUT_BUFFER_SIZE];
   ui_mdns_server_t servers[];
@@ -190,9 +191,9 @@ static void mdns_divider(frame_buffer_t *buffer, int columns, int width, bool un
   frame_buffer_printf(buffer, "\r");
 }
 
-static void mdns_footer(frame_buffer_t *buffer, int columns, const char *input, bool colors) {
+static void mdns_footer(frame_buffer_t *buffer, int columns, const char *input, bool colors, bool live) {
   const char *parts[] = {"Arrows", "/",           "j",   "/", "k", ": move | ",
-                         "Enter",  ": select | ", "Esc", "/", "q", ": cancel | Auto-refresh | 30s",
+                         "Enter",  ": select | ", "Esc", "/", "q", live ? ": cancel | Auto-refresh" : ": cancel",
                          input};
   bool keys[] = {true, false, true, false, true, false, true, false, true, false, true, false, false};
   int length = 0;
@@ -277,7 +278,7 @@ static void render_mdns_selection(terminal_size_t size, const void *data) {
     ui_scrollbar_render(buffer, top + logo_height + (show_title ? 2 : 1), size.cols, available, (size_t)snapshot->count,
                         (size_t)available, (size_t)first);
   mdns_divider(buffer, size.cols - 1, panel_width, unicode, colors);
-  mdns_footer(buffer, size.cols, snapshot->input, colors);
+  mdns_footer(buffer, size.cols, snapshot->input, colors, snapshot->live);
   frame_buffer_flush(buffer);
   frame_buffer_destroy(buffer);
 }
@@ -301,6 +302,7 @@ static int select_mdns_until(const ui_mdns_server_t *servers, int count, uint64_
   if (!snapshot)
     return -1;
   snapshot->count = count;
+  snapshot->live = refresh != NULL;
   if (count > 0)
     memcpy(snapshot->servers, servers, (size_t)count * sizeof(*servers));
   bool logging = log_get_terminal_output();
