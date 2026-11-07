@@ -254,6 +254,28 @@ class MediaExtractor(unittest.TestCase):
         finally:
             term.close()
 
+    @pytest.mark.terminal
+    def test_split_stream_startup_does_not_print_sanitizer_diagnostics(self):
+        """Split-format metadata must not write diagnostics over the splash."""
+        url = "https://www.youtube.com/watch?v=M1b0Ka2gAak"
+        for mode in ("split", "split-missing"):
+            with self.subTest(mode=mode):
+                env = dict(self.env, FAKE_YTDLP_MODE=mode)
+                term = Terminal(cli_command(self.binary, "mirror", url, "--audio=false", "--palette", "custom",
+                                            "--palette-chars", "QQ", "--color-mode", "none"),
+                                rows=24, cols=100, terminal_replies=True, environment=env)
+                try:
+                    term.expect(lambda text: "Using network media source" in text,
+                                "Startup screen did not appear", timeout=30)
+                    term.expect(lambda text: "QQQQQQQQ" in text, "Media frame did not appear", timeout=45)
+                    output = "".join(term.raw)
+                    if "runtime error:" in output:
+                        index = output.index("runtime error:")
+                        self.fail(f"Sanitizer output interrupted the startup screen: {output[index:index + 500]!r}")
+                    self.assertIn(url, self.trace.read_text())
+                finally:
+                    term.close()
+
     def test_combined_stream_is_used_for_both_decoders(self):
         """Use the combined URL without requesting separate audio."""
         result = self.run_mirror("combined")

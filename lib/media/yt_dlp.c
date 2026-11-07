@@ -277,12 +277,24 @@ static char *yt_dlp_next_cookie_attribute(char **cursor) {
   return start;
 }
 
+// yyjson's indexed object lookup uses an unsigned countdown on a missing key.
+// Iteration avoids that wraparound while retaining the same missing-key behavior.
+static yyjson_val *yt_dlp_object_get(yyjson_val *object, const char *name) {
+  yyjson_obj_iter iter = yyjson_obj_iter_with(object);
+  yyjson_val *key;
+  while ((key = yyjson_obj_iter_next(&iter))) {
+    if (yyjson_equals_str(key, name))
+      return yyjson_obj_iter_get_val(key);
+  }
+  return NULL;
+}
+
 // FFmpeg expects CRLF-terminated request headers and newline-separated cookies.
 static bool yt_dlp_parse_request(yyjson_val *format, yyjson_val *root, const char *stream,
                                  yt_dlp_request_options_t *request) {
-  yyjson_val *headers = yyjson_obj_get(format, "http_headers");
+  yyjson_val *headers = yt_dlp_object_get(format, "http_headers");
   if (!yyjson_is_obj(headers))
-    headers = yyjson_obj_get(root, "http_headers");
+    headers = yt_dlp_object_get(root, "http_headers");
   size_t index, max, used = 0;
   yyjson_val *key, *value;
   if (yyjson_is_obj(headers)) {
@@ -297,9 +309,9 @@ static bool yt_dlp_parse_request(yyjson_val *format, yyjson_val *root, const cha
       used += (size_t)n;
     }
   }
-  yyjson_val *cookie_value = yyjson_obj_get(format, "cookies");
+  yyjson_val *cookie_value = yt_dlp_object_get(format, "cookies");
   if (!yyjson_is_str(cookie_value))
-    cookie_value = yyjson_obj_get(root, "cookies");
+    cookie_value = yt_dlp_object_get(root, "cookies");
   const char *cookies = yyjson_get_str(cookie_value);
   if (cookies && *cookies) {
     const size_t cookie_length = strlen(cookies);
@@ -472,8 +484,8 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
   size_t count = 0;
   yyjson_doc *doc = yyjson_read(output, strlen(output), 0);
   yyjson_val *root = doc ? yyjson_doc_get_root(doc) : NULL;
-  yyjson_val *base = root ? yyjson_obj_get(root, "base") : NULL;
-  yyjson_val *formats = root ? yyjson_obj_get(root, "formats") : NULL;
+  yyjson_val *base = yt_dlp_object_get(root, "base");
+  yyjson_val *formats = yt_dlp_object_get(root, "formats");
   if (!yyjson_is_arr(formats))
     formats = NULL;
   size_t total = yyjson_is_arr(formats) ? yyjson_arr_size(formats) : 1;
@@ -482,9 +494,12 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
       yyjson_doc_free(doc);
     return SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned invalid stream metadata");
   }
+  // Walk the array once; indexed lookup in yyjson uses an unsigned countdown
+  // that trips integer sanitizers on non-flat format objects.
+  yyjson_arr_iter format_iter = yyjson_arr_iter_with(formats);
   for (size_t i = 0; i < total; ++i) {
-    yyjson_val *format = formats ? yyjson_arr_get(formats, i) : base;
-    yyjson_val *stream_value = yyjson_obj_get(format, "url");
+    yyjson_val *format = formats ? yyjson_arr_iter_next(&format_iter) : base;
+    yyjson_val *stream_value = yt_dlp_object_get(format, "url");
     const char *stream = yyjson_get_str(stream_value);
     char *dest = i == 0 ? output_url : audio_url;
     size_t capacity = i == 0 ? output_size : audio_size;

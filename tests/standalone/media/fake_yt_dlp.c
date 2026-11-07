@@ -151,7 +151,13 @@ int main(int argc, char **argv) {
   const char *audio = getenv("FAKE_YTDLP_AUDIO");
   if (!video)
     return 3;
-  if (mode && strcmp(mode, "reversed") == 0 && audio) {
+  if (mode && strcmp(mode, "split-missing") == 0 && audio) {
+    fputs("{\"base\":{},\"formats\":[{\"url\":", stdout);
+    json_string(video);
+    fputs("},{\"url\":", stdout);
+    json_string(audio);
+    puts("}]}");
+  } else if (mode && strcmp(mode, "reversed") == 0 && audio) {
     fputs("{\"base\":{},\"formats\":[", stdout);
     json_format(audio);
     putchar(',');
