@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "./browser-fixture";
 import { fileURLToPath } from "node:url";
+import { stripVTControlCharacters } from "node:util";
 
 const moduleUrl = `/@fs/${fileURLToPath(
   new URL("../../../packages/shared/src/wasm/mirror.ts", import.meta.url),
@@ -59,7 +60,9 @@ async function observe(page: Page) {
 }
 
 async function lastFrame(page: Page) {
-  return page.evaluate(() => window.__sessionUiFrames?.at(-1) ?? "");
+  return stripVTControlCharacters(
+    await page.evaluate(() => window.__sessionUiFrames?.at(-1) ?? ""),
+  );
 }
 
 test.use({ viewport: { width: 1440, height: 1000 } });
