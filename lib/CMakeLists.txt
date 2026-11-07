@@ -679,6 +679,9 @@ endif()
 # Module 8: Core Infrastructure (depends on: util, platform)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-core "${CORE_SRCS}")
+if(NOT EMSCRIPTEN)
+    target_link_libraries(ascii-chat-core PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+endif()
 
 if(LIBWEBSOCKETS_BUILD_TARGET)
     add_dependencies(ascii-chat-core ${LIBWEBSOCKETS_BUILD_TARGET})
