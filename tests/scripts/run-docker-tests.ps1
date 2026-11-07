@@ -320,7 +320,7 @@ cmake --build build_docker --target all tests-criterion-build
 "@
     }
 
-    $FullCommand = "$BuildCommand && $TestCommand"
+    $FullCommand = "sh tests/scripts/verify-lsan.sh && $BuildCommand && $TestCommand"
     $DockerFlags = "-t"
 
     Write-Host "Running tests in Docker container..." -ForegroundColor Cyan
@@ -359,12 +359,15 @@ if ($Interactive) {
     docker run `
         $DockerFlags `
         --rm `
+        --cap-add SYS_PTRACE `
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
         -v "${DepsCacheVolume}:/app/.deps-cache" `
         -e CCACHE_DIR=/ccache `
         -e TESTING=1 `
+        -e ASAN_OPTIONS=detect_leaks=1 `
+        -e LSAN_OPTIONS=detect_leaks=1 `
         -w /app `
         $ImageName `
         bash -c "$FullCommand"

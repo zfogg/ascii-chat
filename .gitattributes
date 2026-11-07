@@ -3,3 +3,5 @@
 
 # Preserve upstream diff context, including whitespace, in the vendored ICU port.
 vcpkg-overlay/icu/*.patch -whitespace
+
+tests/scripts/verify-lsan.sh text eol=lf
