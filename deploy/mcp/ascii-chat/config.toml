@@ -1,0 +1,14 @@
+# MCP listener and restricted hosted capabilities.
+[mcp]
+server = true
+transport = "http"
+downloads_dir = "/downloads"
+downloads_url_prefix = "https://mcp.ascii-chat.com/downloads"
+
+[network]
+address = "0.0.0.0"
+port = 27228
+max_clients = 4
+
+[general]
+status_screen = false

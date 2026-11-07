@@ -1,0 +1,9 @@
+services:
+  mcp:
+    image: ascii-chat-mcp:dev
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+    pull_policy: build
+    environment:
+      ASCII_CHAT_DOWNLOADS_URL_PREFIX: ${MCP_PUBLIC_URL:-http://localhost:8080}/downloads

@@ -1,0 +1,55 @@
+#!/bin/sh
+set -eu
+
+blocked_ranges="0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16
+172.16.0.0/12 192.0.0.0/24 192.0.2.0/24 192.88.99.0/24 192.168.0.0/16
+198.18.0.0/15 198.51.100.0/24 203.0.113.0/24 224.0.0.0/4 240.0.0.0/4"
+set -f
+if [ "${1:-}" = check ] || [ "${1:-}" = probe ]; then
+  [ "$(iptables -S OUTPUT | head -n 1)" = "-P OUTPUT DROP" ]
+  [ "$(iptables -S INPUT | head -n 1)" = "-P INPUT DROP" ]
+  iptables -C OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+  iptables -C OUTPUT -p udp -m conntrack --ctorigdst 127.0.0.11 --ctorigdstport 53 -j ACCEPT
+  for net in $blocked_ranges ${MCP_BLOCKED_PUBLIC_IPS:-}; do
+    iptables -C OUTPUT -d "$net" -j REJECT
+  done
+  iptables -C OUTPUT -j ACCEPT
+  [ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6)" = 1 ]
+  if [ "${1:-}" = probe ]; then
+    nslookup example.com >/dev/null
+    for address in 127.0.0.1 10.1.2.3 169.254.169.254 172.30.253.1 192.168.1.1 ${MCP_BLOCKED_PUBLIC_IPS:-}; do
+      # CIDR ranges are verified as rules above; nc probes individual addresses only.
+      case "$address" in */*) continue ;; esac
+      if nc -z -w 2 "$address" 80 >/dev/null 2>&1; then
+        echo "Unexpected connection to $address" >&2
+        exit 1
+      fi
+    done
+    wget -q --spider -T 10 http://example.com
+    echo "Firewall rules, DNS, private probes and public HTTP passed"
+  fi
+  exit 0
+fi
+
+# The guard owns this network namespace; start closed before adding allowances.
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT DROP
+iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -A INPUT -i lo -p udp -m conntrack --ctorigdst 127.0.0.11 --ctorigdstport 53 -j ACCEPT
+iptables -A INPUT -i lo -p tcp -m conntrack --ctorigdst 127.0.0.11 --ctorigdstport 53 -j ACCEPT
+iptables -A INPUT -p tcp --dport 27228 -j ACCEPT
+iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+# Docker's embedded DNS only; private addresses returned by DNS are blocked below.
+iptables -A OUTPUT -p udp -m conntrack --ctorigdst 127.0.0.11 --ctorigdstport 53 -j ACCEPT
+iptables -A OUTPUT -p tcp -m conntrack --ctorigdst 127.0.0.11 --ctorigdstport 53 -j ACCEPT
+for net in $blocked_ranges; do
+  iptables -A OUTPUT -d "$net" -j REJECT
+done
+# Include all public addresses belonging to this host or protected infrastructure.
+for address in ${MCP_BLOCKED_PUBLIC_IPS:-}; do
+  case "$address" in *[!0-9./]*|"") echo "Invalid IPv4 address or CIDR: $address" >&2; exit 1 ;; esac
+  iptables -A OUTPUT -d "$address" -j REJECT
+done
+iptables -A OUTPUT -j ACCEPT
+exec sleep infinity
