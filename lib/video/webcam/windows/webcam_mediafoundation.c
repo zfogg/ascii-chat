@@ -130,6 +130,9 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   cam->rgb_converter = NULL;
   cam->stride = 0;
   cam->last_sample_timestamp = -1;
+  cam->last_frame_log_ns = 0;
+  cam->last_copy_log_ns = 0;
+  cam->last_backlog_log_ns = 0;
   cam->clock = (webcam_frame_clock_t){0};
 
   HRESULT hr;
