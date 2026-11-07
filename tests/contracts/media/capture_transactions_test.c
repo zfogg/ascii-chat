@@ -10,6 +10,25 @@ static char requested_path[PLATFORM_MAX_PATH_LENGTH];
 static bool fail_source, source_sets_error, fail_video, fail_camera, camera_available, has_audio;
 static int stop_failure_at, start_failure_at, stop_calls, start_calls;
 static unsigned source_destroys, loader_starts, join_failures;
+static unsigned mutex_calls, mutex_failure_at, seek_calls;
+static bool fail_context_allocation, fail_tracker_allocation, fail_loader_start;
+static asciichat_error_t seek_result;
+static void *transaction_malloc(size_t size) {
+  return fail_tracker_allocation ? NULL : SAFE_MALLOC(size, void *);
+}
+static void *transaction_calloc(size_t count, size_t size) {
+  return fail_context_allocation ? NULL : SAFE_CALLOC(count, size, void *);
+}
+static int transaction_mutex(mutex_t *mutex, const char *name) {
+  ++mutex_calls;
+  return mutex_calls == mutex_failure_at ? ERROR_THREAD : mutex_init(mutex, name);
+}
+static asciichat_error_t transaction_seek(media_source_t *source, double position) {
+  cr_assert_not_null(source);
+  cr_assert_float_eq(position, 0.5, 1e-6);
+  ++seek_calls;
+  return seek_result;
+}
 static media_source_t *camera_source;
 static void *(*loader_worker)(void *);
 static void *loader_arg;
@@ -65,6 +84,8 @@ static int transaction_thread_create(asciichat_thread_t *thread, const char *nam
   (void)thread;
   (void)name;
   ++loader_starts;
+  if (fail_loader_start)
+    return -1;
   loader_worker = worker;
   loader_arg = arg;
   return 0;
@@ -87,7 +108,19 @@ static int transaction_thread_join(asciichat_thread_t *thread, void **result) {
 #define audio_start_duplex transaction_audio_start
 #define acthread_create transaction_thread_create
 #define thread_join transaction_thread_join
+#define mutex_init transaction_mutex
+#define media_source_seek transaction_seek
+#pragma push_macro("SAFE_MALLOC")
+#pragma push_macro("SAFE_CALLOC")
+#undef SAFE_MALLOC
+#undef SAFE_CALLOC
+#define SAFE_MALLOC(size, type) ((type)transaction_malloc(size))
+#define SAFE_CALLOC(count, size, type) ((type)transaction_calloc(count, size))
 #include "../../../src/common/session/capture.c"
+#pragma pop_macro("SAFE_CALLOC")
+#pragma pop_macro("SAFE_MALLOC")
+#undef mutex_init
+#undef media_source_seek
 #undef media_source_create
 #undef media_source_destroy
 #undef media_source_start_video
@@ -350,4 +383,77 @@ Test(capture_transactions, file_audio_selection_and_bounded_reads_use_the_select
     cr_assert_float_eq(samples[i], 0.25f, 1e-6);
   cr_assert_eq(session_capture_read_audio(current, NULL, 32), 0);
   cr_assert_eq(session_capture_read_audio(current, samples, 0), 0);
+}
+
+Test(capture_transactions, partial_lock_and_tracker_failures_release_resources_and_allow_fresh_initialization) {
+  session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = first_path};
+  fail_context_allocation = true;
+  cr_assert_null(session_capture_create(&config));
+  cr_assert_eq(mutex_calls, 0);
+  fail_context_allocation = false;
+  for (unsigned stage = 1; stage <= 2; ++stage) {
+    mutex_calls = 0;
+    mutex_failure_at = stage;
+    cr_assert_null(session_capture_create(&config));
+    cr_assert_eq(mutex_calls, stage);
+    cr_assert_eq(source_destroys, 0);
+  }
+  mutex_failure_at = 0;
+  fail_tracker_allocation = true;
+  cr_assert_null(session_capture_create(&config));
+  cr_assert_eq(source_destroys, 1);
+  fail_tracker_allocation = false;
+  current = session_capture_create(&config);
+  cr_assert_not_null(current);
+  cr_assert(session_capture_is_valid(current));
+}
+
+Test(capture_transactions, initial_seek_is_best_effort_and_success_resets_frame_timing) {
+  session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = first_path, .initial_seek_timestamp = 0.5};
+  seek_result = ERROR_MEDIA_SEEK;
+  current = session_capture_create(&config);
+  cr_assert_not_null(current);
+  cr_assert_eq(seek_calls, 1);
+  session_capture_destroy(current);
+  current = NULL;
+  CLEAR_ERRNO_ALL();
+  seek_result = ASCIICHAT_OK;
+  current = session_capture_create(&config);
+  cr_assert_not_null(current);
+  cr_assert_eq(seek_calls, 2);
+  cr_assert_eq(current->frame_count, 0);
+  cr_assert_gt(current->start_time_ns, 0);
+}
+
+Test(capture_transactions, failed_loader_start_leaves_current_media_usable_and_later_open_can_retry) {
+  open_first();
+  media_source_t *previous = current->source;
+  uint64_t epoch = session_capture_source_epoch(current);
+  fail_loader_start = true;
+  cr_assert_eq(session_capture_open_media(current, second_path), ERROR_THREAD);
+  cr_assert_eq(current->source, previous);
+  cr_assert_not(current->loader_created);
+  cr_assert_eq(session_capture_source_epoch(current), epoch);
+  fail_loader_start = false;
+  CLEAR_ERRNO_ALL();
+  pending_replacement();
+  capture_commit_media(current);
+  cr_assert_neq(current->source, previous);
+  cr_assert_eq(session_capture_source_epoch(current), epoch + 1);
+}
+
+Test(capture_transactions, failed_loader_join_retains_capture_for_a_later_cleanup_attempt) {
+  open_first();
+  pending_replacement();
+  unsigned before = source_destroys;
+  join_failures = 1;
+  session_capture_destroy(current);
+  cr_assert_eq(source_destroys, before);
+  cr_assert(current->loader_created);
+  cr_assert_not_null(current->source);
+  cr_assert_not_null(current->loaded_source);
+  cr_assert(atomic_load_bool(&current->load_cancel));
+  session_capture_destroy(current);
+  current = NULL;
+  cr_assert_eq(source_destroys, before + 2);
 }

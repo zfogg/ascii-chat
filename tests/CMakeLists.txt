@@ -1618,6 +1618,21 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(signaling test-signaling)
     set_property(TEST signaling APPEND PROPERTY LABELS unit)
 
+    add_executable(test-client-owner contracts/network/client_owner_test.c
+        ${CMAKE_SOURCE_DIR}/src/client/server.c ${CMAKE_SOURCE_DIR}/src/client/keepalive.c
+        ${CMAKE_SOURCE_DIR}/src/client/crypto.c ${CMAKE_SOURCE_DIR}/src/client/display.c
+        ${CMAKE_SOURCE_DIR}/src/client/capture.c ${CMAKE_SOURCE_DIR}/src/client/audio.c
+        ${CMAKE_SOURCE_DIR}/src/client/protocol_adapter.c ${CMAKE_SOURCE_DIR}/src/client/connection.c)
+    asciichat_configure_contract(test-client-owner)
+    target_link_libraries(test-client-owner PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+    target_include_directories(test-client-owner PRIVATE ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${FFMPEG_INCLUDE_DIRS})
+    apply_sanitizers_to_target(test-client-owner)
+    set_target_properties(test-client-owner PROPERTIES LINKER_LANGUAGE CXX
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    asciichat_add_contract_test(client-owner test-client-owner)
+    set_property(TEST client-owner APPEND PROPERTY LABELS unit)
+
     add_executable(test-client-rekey contracts/crypto/client_rekey_test.c)
     asciichat_configure_contract(test-client-rekey)
     target_link_libraries(test-client-rekey PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
