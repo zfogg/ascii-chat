@@ -13,7 +13,8 @@ def test_render_file_sizing(binary, tmp_path, test_environment):
         pytest.skip("ffprobe unavailable")
     dimensions = {}
     cases = [("auto.mp4", 200, 100, None), ("explicit.mp4", 200, 100, "12"),
-             ("snapshot.png", 200, 100, None), ("small.mp4", 80, 24, None)]
+             ("snapshot.png", 200, 100, None), ("small.mp4", 80, 24, None),
+             ("large.mp4", 1000, 500, None)]
     for name, width, height, font_size in cases:
         output = tmp_path / name
         command = [str(binary), "--quiet", "--no-check-update", "mirror", "--test-pattern=0",
@@ -31,6 +32,7 @@ def test_render_file_sizing(binary, tmp_path, test_environment):
     auto = dimensions["auto.mp4"]
     explicit = dimensions["explicit.mp4"]
     assert all(0 < size <= 1280 for size in auto)
+    assert all(0 < size <= 1280 for size in dimensions["large.mp4"])
     assert all(a < b for a, b in zip(auto, explicit))
     assert dimensions["snapshot.png"] == explicit
     small = dimensions["small.mp4"]

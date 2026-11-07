@@ -437,6 +437,7 @@ export function useMirrorRenderLoop({
     const captureCameraTrack = () => {
       const track = cameraStream?.getVideoTracks()[0];
       if (track === cameraTrack) return;
+      resetMirrorStabilizer();
       cameraTrack = track;
       void trackReader?.cancel().catch(() => {});
       trackReader = null;

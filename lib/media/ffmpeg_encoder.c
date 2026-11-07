@@ -51,6 +51,8 @@ struct ffmpeg_encoder_s {
   AVPacket *pkt;
   int width_px;
   int height_px;
+  int source_width;
+  int source_height;
   bool live_timing;
   int64_t last_video_pts;
   int frame_count;
@@ -576,7 +578,8 @@ static asciichat_error_t encoder_init_video_frames(ffmpeg_encoder_t *enc) {
     if ((int64_t)width_px * height_px >= 1000000 && conversion_threads > 1) {
       struct SwsContext *context = sws_alloc_context();
       if (context) {
-        int configured = av_opt_set_int(context, "srcw", width_px, 0) | av_opt_set_int(context, "srch", height_px, 0) |
+        int configured = av_opt_set_int(context, "srcw", enc->source_width, 0) |
+                         av_opt_set_int(context, "srch", enc->source_height, 0) |
                          av_opt_set_int(context, "dstw", width_px, 0) | av_opt_set_int(context, "dsth", height_px, 0) |
                          av_opt_set_int(context, "src_format", AV_PIX_FMT_RGBA, 0) |
                          av_opt_set_int(context, "dst_format", enc->target_pix_fmt, 0) |
@@ -589,8 +592,8 @@ static asciichat_error_t encoder_init_video_frames(ffmpeg_encoder_t *enc) {
       }
     }
     if (!enc->sws_ctx)
-      enc->sws_ctx = sws_getContext(width_px, height_px, AV_PIX_FMT_RGBA, width_px, height_px, enc->target_pix_fmt,
-                                    SWS_BICUBIC, NULL, NULL, NULL);
+      enc->sws_ctx = sws_getContext(enc->source_width, enc->source_height, AV_PIX_FMT_RGBA, width_px, height_px,
+                                    enc->target_pix_fmt, SWS_BICUBIC, NULL, NULL, NULL);
   });
   if (!enc->sws_ctx) {
     av_frame_free(&enc->frame);
@@ -720,9 +723,14 @@ static void encoder_set_snapshot_frame_duration(ffmpeg_encoder_t *enc) {
 
 asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, int height_px, int fps,
                                         ffmpeg_encoder_t **out) {
+  return ffmpeg_encoder_create_scaled(output_path, width_px, height_px, width_px, height_px, fps, out);
+}
+
+asciichat_error_t ffmpeg_encoder_create_scaled(const char *output_path, int source_width, int source_height,
+                                               int width_px, int height_px, int fps, ffmpeg_encoder_t **out) {
   log_info("output=%s, %dx%d @ %dfps", output_path, width_px, height_px, fps);
 
-  if (!output_path || !out || width_px <= 0 || height_px <= 0)
+  if (!output_path || !out || source_width <= 0 || source_height <= 0 || width_px <= 0 || height_px <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "invalid parameters");
   if (strcmp(output_path, "pipe:") == 0)
     output_path = "-";
@@ -740,6 +748,8 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   ffmpeg_encoder_t *enc = SAFE_CALLOC(1, sizeof(*enc), ffmpeg_encoder_t *);
   enc->width_px = width_px;
   enc->height_px = height_px;
+  enc->source_width = source_width;
+  enc->source_height = source_height;
 
   encoder_init_snapshot_timing(enc, fps);
 
@@ -822,7 +832,7 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
 
   // Convert RGBA to target format
   uint64_t conversion_started_ns = time_get_ns();
-  sws_scale(enc->sws_ctx, (const uint8_t *const *)data, linesize, 0, enc->height_px, enc->frame_encoded->data,
+  sws_scale(enc->sws_ctx, (const uint8_t *const *)data, linesize, 0, enc->source_height, enc->frame_encoded->data,
             enc->frame_encoded->linesize);
   uint64_t converted_ns = time_get_ns();
 

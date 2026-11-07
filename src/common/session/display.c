@@ -110,6 +110,8 @@ typedef struct session_display_ctx {
   digital_rain_t *digital_rain;
   ascii_stabilizer_t stabilizer;
   ascii_stabilizer_t recording_stabilizer;
+  color_filter_t previous_stabilizer_filter;
+  bool stabilizer_filter_initialized;
   outbuf_t ascii_workspace;
   image_t *resize_workspace;
   image_t *flip_workspace;
@@ -602,6 +604,12 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   bool flip_y_enabled = GET_OPTION(flip_y);
 
   color_filter_t color_filter = GET_OPTION(color_filter);
+  if (ctx->stabilizer_filter_initialized && ctx->previous_stabilizer_filter != color_filter) {
+    ascii_stabilizer_reset(&ctx->stabilizer);
+    ascii_stabilizer_reset(&ctx->recording_stabilizer);
+  }
+  ctx->previous_stabilizer_filter = color_filter;
+  ctx->stabilizer_filter_initialized = true;
 
   // Handle dynamic matrix rain effect toggle
   bool matrix_rain_enabled = GET_OPTION(matrix_rain);

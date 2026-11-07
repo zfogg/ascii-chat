@@ -1,5 +1,6 @@
 /** Real loader workers/decoders with controlled audio ownership and load failures. */
 #include "session/capture.h"
+#include "session/capture_pacing.h"
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/debug/named.h>

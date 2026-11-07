@@ -41,6 +41,10 @@ struct webcam_context_t {
   struct SwsContext *rgb_converter;
   int stride;
   LONGLONG last_sample_timestamp;
+  unsigned short device_index;
+  uint64_t last_frame_log_ns;
+  uint64_t last_copy_log_ns;
+  uint64_t last_backlog_log_ns;
 };
 
 static HRESULT enumerate_devices_and_print(void) {
@@ -116,6 +120,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   // Initialize all fields
   cam->device = NULL;
+  cam->device_index = device_index;
   cam->reader = NULL;
   cam->width = 0;
   cam->height = 0;
@@ -593,9 +598,11 @@ read_latest:
     HRESULT flushed = IMFSourceReader_Flush(ctx->reader, (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM);
     if (SUCCEEDED(flushed))
       webcam_frame_clock_reset(&ctx->clock);
-    log_debug_every(US_PER_SEC_INT,
-                    "CAMERA_FRAME: backlog_ms=%.2f discarded=%u (drain budget exhausted, flush=0x%08lx)", backlog_ms,
-                    discarded, flushed);
+    if (!ctx->last_backlog_log_ns || wall_ns - ctx->last_backlog_log_ns >= NS_PER_SEC_INT) {
+      ctx->last_backlog_log_ns = wall_ns;
+      log_debug("CAMERA_FRAME: device=%u backlog_ms=%.2f discarded=%u (drain budget exhausted, flush=0x%08lx)",
+                ctx->device_index, backlog_ms, discarded, flushed);
+    }
     return NULL;
   }
   UINT64 device_time;
@@ -609,9 +616,12 @@ read_latest:
                                   ? (double)(timestamp - ctx->last_sample_timestamp) / 10000.0
                                   : -1;
   ctx->last_sample_timestamp = timestamp;
-  log_debug_every(US_PER_SEC_INT,
-                  "CAMERA_FRAME: backlog_ms=%.2f read_ms=%.2f discarded=%u device_age_ms=%.2f sample_interval_ms=%.2f",
-                  backlog_ms, elapsed_ms, discarded, device_age_ms, device_interval_ms);
+  if (!ctx->last_frame_log_ns || wall_ns - ctx->last_frame_log_ns >= NS_PER_SEC_INT) {
+    ctx->last_frame_log_ns = wall_ns;
+    log_debug("CAMERA_FRAME: device=%u backlog_ms=%.2f read_ms=%.2f discarded=%u device_age_ms=%.2f "
+              "accepted_sample_interval_ms=%.2f",
+              ctx->device_index, backlog_ms, elapsed_ms, discarded, device_age_ms, device_interval_ms);
+  }
 
   // Get the media buffer from the sample
   IMFMediaBuffer *buffer = NULL;
@@ -719,11 +729,14 @@ read_latest:
   IMFSample_Release(sample);
 
   uint64_t complete_ns = time_get_ns();
-  log_debug_every(
-      US_PER_SEC_INT,
-      "CAMERA_COPY: request_ns=%llu sample_ns=%llu complete_ns=%llu read_ms=%.2f copy_ms=%.2f device_age_ms=%.2f",
-      (unsigned long long)request_ns, (unsigned long long)wall_ns, (unsigned long long)complete_ns,
-      (double)(wall_ns - request_ns) / NS_PER_MS_INT, (double)(complete_ns - wall_ns) / NS_PER_MS_INT, device_age_ms);
+  if (!ctx->last_copy_log_ns || complete_ns - ctx->last_copy_log_ns >= NS_PER_SEC_INT) {
+    ctx->last_copy_log_ns = complete_ns;
+    log_debug("CAMERA_COPY: device=%u request_ns=%llu sample_ns=%llu complete_ns=%llu read_ms=%.2f copy_ms=%.2f "
+              "device_age_ms=%.2f",
+              ctx->device_index, (unsigned long long)request_ns, (unsigned long long)wall_ns,
+              (unsigned long long)complete_ns, (double)(wall_ns - request_ns) / NS_PER_MS_INT,
+              (double)(complete_ns - wall_ns) / NS_PER_MS_INT, device_age_ms);
+  }
   return img;
 }
 

@@ -425,6 +425,7 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
     const unsigned values[] = {(unsigned)caps->text_renderer,
                                (unsigned)caps->color_level,
                                (unsigned)caps->render_mode,
+                               (unsigned)caps->color_filter,
                                (unsigned)explicit_palette,
                                (unsigned)use_aspect_ratio,
                                (unsigned)stretch,

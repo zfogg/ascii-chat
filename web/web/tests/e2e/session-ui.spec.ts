@@ -254,6 +254,7 @@ test("C application logs survive closed overlays and share exclusive presentatio
   expect(await lastFrame(page)).not.toContain("OPTIONS_CONFIG_DESTROY");
   await page.screenshot({ path: "artifacts/session-logs-search-web.png" });
   await page.keyboard.press("Escape");
+  await expect.poll(() => lastFrame(page)).not.toContain("/Volume DOWN");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");
   await page.screenshot({ path: "artifacts/session-logs-web.png" });
   await page.keyboard.press("?");

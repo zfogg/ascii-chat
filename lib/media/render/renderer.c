@@ -191,7 +191,22 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     *out = ctx;
     return ASCIICHAT_OK;
   }
-  err = ffmpeg_encoder_create(output_path, actual_width_px, actual_height_px, fps, &ctx->encoder);
+  int output_width_px = actual_width_px;
+  int output_height_px = actual_height_px;
+  if (automatic_video_size &&
+      (output_width_px > RENDER_AUTO_VIDEO_MAX_DIMENSION || output_height_px > RENDER_AUTO_VIDEO_MAX_DIMENSION)) {
+    double scale_x = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / output_width_px;
+    double scale_y = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / output_height_px;
+    double scale = scale_x < scale_y ? scale_x : scale_y;
+    output_width_px = ((int)(output_width_px * scale)) & ~1;
+    output_height_px = ((int)(output_height_px * scale)) & ~1;
+    if (output_width_px < 2)
+      output_width_px = 2;
+    if (output_height_px < 2)
+      output_height_px = 2;
+  }
+  err = ffmpeg_encoder_create_scaled(output_path, actual_width_px, actual_height_px, output_width_px, output_height_px,
+                                     fps, &ctx->encoder);
   if (err != ASCIICHAT_OK) {
     log_error("ffmpeg_encoder_create failed: %s", asciichat_error_format(NULL, err));
     term_renderer_destroy(ctx->renderer);

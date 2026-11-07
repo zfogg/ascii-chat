@@ -22,6 +22,7 @@ typedef struct {
   uint8_t samples[16];
   uint32_t glyph;
   uint32_t color;
+  uint64_t source_owner;
   bool valid;
 } ascii_temporal_cell_t;
 

@@ -780,8 +780,45 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
  * @return Allocated ASCII frame string (caller must free) or NULL on error
  * @ingroup server_stream
  */
+static void invalidate_changed_composite_owners(ascii_stabilizer_t *history, image_source_t *sources, int source_count,
+                                                int sources_with_video, int width, int height) {
+  if (!history->cells || history->width != (size_t)width || history->height != (size_t)height ||
+      sources_with_video <= 0)
+    return;
+  int cols = 1, rows = 1;
+  if (sources_with_video > 1)
+    calculate_optimal_grid_layout(sources, source_count, sources_with_video, width, height, &cols, &rows);
+  uint64_t owners[9] = {0};
+  int count = 0;
+  for (int i = 0; i < source_count && count < 9; ++i) {
+    if (!sources[i].has_video || !sources[i].image)
+      continue;
+    uint64_t hash = 1469598103934665603ULL;
+    for (const unsigned char *p = (const unsigned char *)sources[i].client_id; *p; ++p) {
+      hash ^= *p;
+      hash *= 1099511628211ULL;
+    }
+    owners[count++] = hash ? hash : 1;
+  }
+  int cell_width = width / cols, cell_height = (height * 2) / rows;
+  if (!cell_width || !cell_height)
+    return;
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      int col = x / cell_width, row = (y * 2) / cell_height;
+      int index = row * cols + col;
+      uint64_t owner = col < cols && row < rows && index < count ? owners[index] : 0;
+      ascii_temporal_cell_t *cell = &history->cells[(size_t)y * (size_t)width + (size_t)x];
+      if (cell->source_owner != owner)
+        cell->valid = false;
+      cell->source_owner = owner;
+    }
+  }
+}
+
 static char *convert_composite_to_ascii(image_t *composite, const char *target_client_id, unsigned short width,
-                                        unsigned short height, acip_render_settings_t *out_rendering) {
+                                        unsigned short height, acip_render_settings_t *out_rendering,
+                                        image_source_t *sources, int source_count, int sources_with_video) {
   // LOCK OPTIMIZATION: Don't call find_client_by_id() - it would acquire rwlock unnecessarily
   // Instead, the render thread already has snapshot of client state, so we just need palette data
   // which is stable after initialization
@@ -817,6 +854,9 @@ static char *convert_composite_to_ascii(image_t *composite, const char *target_c
   terminal_capabilities_t caps_snapshot = rendering.caps;
   width = rendering.width;
   height = rendering.height;
+  if (caps_snapshot.stabilize)
+    invalidate_changed_composite_owners(&render_client->render_stabilizer, sources, source_count, sources_with_video,
+                                        width, height);
   uint64_t convert_start_ns = time_get_ns();
   char *ascii_frame = ascii_convert_with_buffers_stabilized(
       composite, width, height, &caps_snapshot, true, false, rendering.palette, false, NULL, NULL,
@@ -1085,7 +1125,8 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   // Convert composite to ASCII using client capabilities
   // Pass terminal dimensions so the frame can be padded to full width
   START_TIMER("ascii_convert");
-  char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height, out_rendering);
+  char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height, out_rendering, sources,
+                                                 source_count, sources_with_video);
   STOP_TIMER_AND_LOG(dev, 500000, "ascii_convert", "ASCII conversion (composite to ASCII)");
 
   if (ascii_frame) {
