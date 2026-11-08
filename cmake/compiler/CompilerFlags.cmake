@@ -114,29 +114,25 @@ function(configure_base_compiler_flags)
     # Base warning flags for Clang/GCC compilers
     # -Wall: Enable common warnings
     # -Wextra: Enable extra warnings
-    target_compile_options(asciichat-project-options INTERFACE -Wall -Wextra)
+    target_compile_options(asciichat-project-options INTERFACE
+        $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-Wall;-Wextra>
+    )
 
     # Essential safety warnings (always enabled)
     # Keep it simple - just the important stuff that catches real bugs
     target_compile_options(asciichat-project-options INTERFACE
-        -Wformat=2                # Extra format string security checks
-        -Wwrite-strings           # Warn when string literals could be written to
-        -Wnull-dereference        # Warn about potential null pointer dereferences
-        -Wformat-security         # Warn about potential format string vulnerabilities
+        $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-Wformat=2;-Wwrite-strings;-Wnull-dereference;-Wformat-security>
     )
 
     # Clang-specific warnings
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         target_compile_options(asciichat-project-options INTERFACE
-            -Wconditional-uninitialized  # Warn about potentially uninitialized variables
-            -Widiomatic-parentheses   # Warn about confusing precedence without parentheses
+            $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-Wconditional-uninitialized;-Widiomatic-parentheses>
         )
 
         # Disable noisy Clang warnings
         target_compile_options(asciichat-project-options INTERFACE
-            -Wno-comma                                       # Too noisy with comma operator in macros/third-party
-            -Wno-format-nonliteral                           # False positives in variadic format functions
-            -Wno-incompatible-pointer-types-discards-qualifiers  # Pragmatic const handling
+            $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-Wno-comma;-Wno-format-nonliteral;-Wno-incompatible-pointer-types-discards-qualifiers>
         )
     endif()
 
@@ -153,7 +149,9 @@ function(configure_base_compiler_flags)
     # Enable frame pointers for better backtraces (required for musl + libexecinfo)
     # Frame pointers help with stack traces and debugging, but disable in Release for performance
     if(ASCIICHAT_SUPPORTS_NO_OMIT_FRAME_POINTER AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-        target_compile_options(asciichat-project-options INTERFACE -fno-omit-frame-pointer)
+        target_compile_options(asciichat-project-options INTERFACE
+            $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fno-omit-frame-pointer>
+        )
         message(STATUS "${BoldGreen}Frame pointers${ColorReset} enabled for backtraces")
     endif()
 endfunction()
@@ -173,7 +171,9 @@ function(configure_lld_linker)
                 ERROR_QUIET
             )
             if(LLD_CHECK_RESULT EQUAL 0)
-                target_link_options(asciichat-project-options INTERFACE -fuse-ld=lld)
+                target_link_options(asciichat-project-options INTERFACE
+                    $<$<NOT:$<LINK_LANGUAGE:Swift>>:-fuse-ld=lld>
+                )
                 if(PLATFORM_LINUX)
                     target_link_options(asciichat-project-options INTERFACE "LINKER:--allow-multiple-definition")
                 endif()
@@ -232,24 +232,26 @@ endfunction()
 #   BUILD_TYPE - "Debug", "Dev", or "Sanitize"
 function(configure_debug_build_flags BUILD_TYPE)
     # Enhanced debug info with macro definitions
-    target_compile_options(asciichat-project-options INTERFACE -g3 -O0 -DDEBUG)
+    target_compile_options(asciichat-project-options INTERFACE
+        $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-g3;-O0;-DDEBUG>
+    )
 
     # Better debugging experience
     target_compile_options(asciichat-project-options INTERFACE
-        -fno-inline                           # Disable inlining for easier stepping
-        -fno-eliminate-unused-debug-types     # Keep all debug types
+        $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fno-inline;-fno-eliminate-unused-debug-types>
     )
 
     # Clang-specific debug enhancements
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         target_compile_options(asciichat-project-options INTERFACE
-            -fstandalone-debug                # Full debug info even for headers
-            -gcolumn-info                     # Include column information
+            $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fstandalone-debug;-gcolumn-info>
         )
     endif()
 
     # Stack protection in debug builds (helps catch buffer overflows early)
-    target_compile_options(asciichat-project-options INTERFACE -fstack-protector-strong)
+    target_compile_options(asciichat-project-options INTERFACE
+        $<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fstack-protector-strong>
+    )
 
     # LLD linker setup moved to configure_lld_linker() — called for all build types
 

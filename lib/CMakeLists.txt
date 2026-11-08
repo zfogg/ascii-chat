@@ -1635,7 +1635,7 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
 add_library(ascii-chat-static-lib-deps INTERFACE)
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${UTF8PROC_LIBRARIES} asciichat-icu)
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT PLATFORM_IOS)
     target_link_libraries(ascii-chat-static-lib-deps INTERFACE asciichat-quic)
 endif()
 
@@ -1708,21 +1708,33 @@ if(WIN32)
         crypt32
     )
 elseif(APPLE)
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
-        ${FOUNDATION_FRAMEWORK}
-        "-framework CoreFoundation"
+    if(PLATFORM_IOS)
+        target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
+            ${FOUNDATION_FRAMEWORK}
+            "-framework CoreFoundation"
+            ${AVFOUNDATION_FRAMEWORK}
+            ${COREMEDIA_FRAMEWORK}
+            ${COREVIDEO_FRAMEWORK}
+            ${AUDIOTOOLBOX_FRAMEWORK}
+            ${ASCIICHAT_STATIC_LIBCXX_LIBS}
+        )
+    else()
+        target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
+            ${FOUNDATION_FRAMEWORK}
+            "-framework CoreFoundation"
             ${ASCIICHAT_CLIPBOARD_FRAMEWORK}
-        ${AVFOUNDATION_FRAMEWORK}
-        ${COREMEDIA_FRAMEWORK}
-        ${COREVIDEO_FRAMEWORK}
-        ${COREAUDIO_FRAMEWORK}
-        ${AUDIOUNIT_FRAMEWORK}
-        ${AUDIOTOOLBOX_FRAMEWORK}
-        ${CORESERVICES_FRAMEWORK}
-        "-framework IOKit"
-        "-framework SystemConfiguration"
-        ${ASCIICHAT_STATIC_LIBCXX_LIBS}
-    )
+            ${AVFOUNDATION_FRAMEWORK}
+            ${COREMEDIA_FRAMEWORK}
+            ${COREVIDEO_FRAMEWORK}
+            ${COREAUDIO_FRAMEWORK}
+            ${AUDIOUNIT_FRAMEWORK}
+            ${AUDIOTOOLBOX_FRAMEWORK}
+            ${CORESERVICES_FRAMEWORK}
+            "-framework IOKit"
+            "-framework SystemConfiguration"
+            ${ASCIICHAT_STATIC_LIBCXX_LIBS}
+        )
+    endif()
 else()
     # Linux
     target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE

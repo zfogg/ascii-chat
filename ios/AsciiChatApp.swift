@@ -10,6 +10,18 @@ private func asciichat_ios_test_frame(
     _ height: UnsafeMutablePointer<Int>
 ) -> Int32
 
+@_silgen_name("asciichat_ios_camera_start")
+private func asciichat_ios_camera_start(_ deviceIndex: UInt16) -> Int32
+
+@_silgen_name("asciichat_ios_camera_read_ascii")
+private func asciichat_ios_camera_read_ascii(
+    _ output: UnsafeMutablePointer<CChar>,
+    _ capacity: Int,
+    _ columns: Int,
+    _ rows: Int,
+    _ length: UnsafeMutablePointer<Int>
+) -> Int32
+
 private struct TestFrameView: View {
     private let image: CGImage?
 
@@ -63,11 +75,42 @@ private struct TestFrameView: View {
     }
 }
 
+private struct CameraAsciiView: View {
+    private let text: String
+
+    init() {
+        let columns = 64
+        let rows = 32
+        var output = Array(repeating: CChar(0), count: rows * (columns + 1) + 1)
+        var length = 0
+        guard asciichat_ios_camera_start(0) != 0 else {
+            text = "Camera unavailable"
+            return
+        }
+        let emitted = output.withUnsafeMutableBufferPointer { buffer in
+            asciichat_ios_camera_read_ascii(buffer.baseAddress!, buffer.count, columns, rows, &length)
+        }
+        guard emitted != 0 else {
+            text = "Waiting for camera frame"
+            return
+        }
+        text = String(decoding: output.prefix(length).map { UInt8(bitPattern: $0) }, as: UTF8.self)
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 8, design: .monospaced))
+            .lineLimit(nil)
+            .padding()
+    }
+}
+
 struct ContentView: View {
     var body: some View {
         VStack {
             Text("ascii-chat iOS prototype")
             TestFrameView()
+            CameraAsciiView()
         }
     }
 }
