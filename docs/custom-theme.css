@@ -23,13 +23,15 @@ html {
    * project logo/name. The sidebar-only theme's 31px header height otherwise
    * lets the search row paint over the project row. */
   #top {
-    height: 110px !important;
-    margin-bottom: -110px !important;
+    height: 118px !important;
+    margin-bottom: -118px !important;
     display: block !important;
   }
 
   #titlearea {
-    padding-top: 45px;
+    padding-top: 53px;
+    padding-left: calc(var(--spacing-large) + 4px);
+    padding-right: calc(var(--spacing-large) + 4px);
   }
 
   #MSearchBox {
