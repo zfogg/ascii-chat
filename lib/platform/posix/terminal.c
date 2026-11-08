@@ -333,6 +333,10 @@ void terminal_enable_ansi(void) {
  * which waits until all output has been transmitted.
  */
 asciichat_error_t terminal_flush(int fd) {
+#ifdef PLATFORM_IOS
+  (void)fd;
+  return ASCIICHAT_OK;
+#else
   // Drain output without discarding bytes queued concurrently by presentation.
   // TCOFLUSH would drop a frame written between tcdrain() and tcflush().
   if (tcdrain(fd) == 0) {
@@ -348,6 +352,7 @@ asciichat_error_t terminal_flush(int fd) {
     }
   }
   return ASCIICHAT_OK;
+#endif
 }
 
 /**
