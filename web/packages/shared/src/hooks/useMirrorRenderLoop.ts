@@ -78,7 +78,7 @@ export function useMirrorRenderLoop({
 }: UseMirrorRenderLoopParams) {
   const testPattern = useTestPattern();
   useLayoutEffect(() => {
-    resetRenderStabilizer();
+    cleanupRenderSession();
   }, [mediaRevision]);
   // A media element may be connected to only one Web Audio source. Retain its
   // graph across resize, render-mode changes and media/webcam toggles.

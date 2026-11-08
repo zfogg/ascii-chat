@@ -105,8 +105,10 @@ export async function selectAudioVisualization(
     .filter({ has: page.locator('option[value="waveform"]') });
   const settings = page.getByRole("button", { name: "Settings", exact: true });
   await settings.click();
-  if (!(await selection.isVisible()))
-    await page.getByRole("button", { name: "Animation", exact: true }).click();
+  const animation = page.getByRole("button", { name: /^(🟢 )?Animation$/ });
+  await expect(animation).toBeVisible();
+  if (!(await selection.count())) await animation.click();
+  await expect(selection).toBeVisible();
   const previousRenders = await page.evaluate(
     () => window.audioProof?.renders ?? 0,
   );

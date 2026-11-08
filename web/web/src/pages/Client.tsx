@@ -63,14 +63,14 @@ import {
   adoptMirrorWasmModule,
   getMirrorModule,
   resetAdoptedMirrorWasmModule,
-  resetRenderStabilizer,
+  cleanupRenderSession,
   convertFrameToAscii,
   renderAudioVisualization,
   submitAudioVisualizationSamples,
 } from "@ascii-chat/shared/wasm";
 import type { MirrorModule } from "@ascii-chat/shared/wasm";
 import {
-  AsciiRenderer,
+  AsciiCanvas,
   BinarySettings,
   AsciiChatWebHead,
   PageLayout,
@@ -678,7 +678,7 @@ export function ClientPage({
   const { stop: stopFile, setSuspended: suspendFile } = fileMedia;
   const fileSelected = !!fileMedia.fileName;
   useLayoutEffect(() => {
-    resetRenderStabilizer();
+    cleanupRenderSession();
   }, [
     rendererReady,
     fileSelected,
@@ -832,6 +832,7 @@ export function ClientPage({
     }
 
     if (connectionState === ConnectionState.DISCONNECTED) {
+      cleanupRenderSession();
       stopWebcam();
       closeAudio();
     } else if (connectionState === ConnectionState.ERROR) {
@@ -1698,7 +1699,7 @@ export function ClientPage({
         }
         renderer={
           rendererRequested ? (
-            <AsciiRenderer
+            <AsciiCanvas
               clientLikeKind="client"
               ref={rendererRef}
               workerRendering

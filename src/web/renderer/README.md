@@ -105,8 +105,8 @@ from an isolated local HTTP server and render a test pattern through WASM to a
 canvas for 120 animation frames, in addition to mode and visualization checks.
 `CHROME_PATH` can select a locally installed Chromium executable.
 
-The package includes the project MIT license and third-party notices in
-`licenses/`.
+The project license is available in the repository. Third-party dependencies
+are subject to their respective upstream licenses.
 
 For bundlers that relocate dependencies, explicitly copy both generated assets
 and pass their URLs (for example, with Vite's `?url` asset imports):

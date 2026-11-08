@@ -1,11 +1,7 @@
-#include "common/font.h"
 #include "client.h"
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE 256
-
-/* Existing buffer budgets in bytes, including NUL for text storage. */
-#define BROWSER_PACKET_JSON_BUFFER_SIZE 1024
 
 #include "buffer_sizes.h"
 #include "security.h"
@@ -100,18 +96,7 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/terminal/ansi.h>
-#include <ascii-chat/font.h>
 
-/* Browser terminal rendering reads the embedded font directly from WASM memory. */
-const unsigned char *get_font_default_ptr(int selection) {
-  bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
-  return matrix ? g_font_matrix_resurrected : g_font_default;
-}
-
-unsigned int get_font_default_size(int selection) {
-  bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
-  return (unsigned int)(matrix ? g_font_matrix_resurrected_size : g_font_default_size);
-}
 #include <ascii-chat/common.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/util/format.h>
@@ -127,6 +112,9 @@ unsigned int get_font_default_size(int selection) {
  * WASM transport that forwards complete ACIP packets to JavaScript
  */
 static asciichat_error_t browser_transport_send(acip_transport_t *transport, const void *data, size_t len) {
+
+  if (!transport || !data || !len)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser transport packet");
 
   // Forward complete packet (header + payload) to JavaScript WebSocket bridge
   js_send_raw_packet((const uint8_t *)data, len);
@@ -515,34 +503,12 @@ int client_set_server_address(const char *server_host, int server_port) {
   return 0;
 }
 
-/**
- * Get client public key as hex string
- * @return Allocated hex string (caller must free with client_free_string), or NULL on error
- */
-char *client_get_public_key_hex(void) {
+const uint8_t *client_public_key_bytes(void) {
   if (g_crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_DISABLED) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Client handshake is not initialized");
     return NULL;
   }
-
-  // Get public key from handshake context
-  const uint8_t *pubkey = g_crypto_handshake_ctx.crypto_ctx.public_key;
-  if (!pubkey) {
-    return NULL;
-  }
-
-  // Allocate buffer for hex string (32 bytes = 64 hex chars + null terminator)
-  char *hex_buffer = SAFE_MALLOC(HEX_STRING_SIZE_32, char *);
-  if (!hex_buffer) {
-    return NULL;
-  }
-
-  // Convert public key to hex
-  for (int i = 0; i < 32; i++) {
-    snprintf(hex_buffer + (i * 2), 3, "%02x", pubkey[i]);
-  }
-  hex_buffer[64] = '\0';
-
-  return hex_buffer;
+  return g_crypto_handshake_ctx.crypto_ctx.public_key;
 }
 
 /**
@@ -848,61 +814,6 @@ int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint
 }
 
 /**
- * Parse a raw packet and return JSON metadata
- * @param raw_packet Raw packet bytes including header
- * @param packet_len Length of raw packet
- * @return Allocated JSON string with packet metadata (caller must free), or NULL on error
- */
-char *client_parse_packet(const uint8_t *raw_packet, size_t packet_len) {
-  if (!raw_packet || packet_len < sizeof(packet_header_t)) {
-    return NULL;
-  }
-
-  packet_header_t wire_header;
-  if (packet_validate(raw_packet, packet_len, 0, &wire_header) != ASCIICHAT_OK)
-    return NULL;
-  uint16_t type = NET_TO_HOST_U16(wire_header.type);
-  uint32_t length = NET_TO_HOST_U32(wire_header.length);
-  uint32_t client_id = NET_TO_HOST_U32(wire_header.client_id);
-  uint32_t crc32 = NET_TO_HOST_U32(wire_header.crc32);
-
-  // Build JSON response with packet metadata
-  char *json = SAFE_MALLOC(BROWSER_PACKET_JSON_BUFFER_SIZE, char *);
-  if (!json) {
-    return NULL;
-  }
-
-  snprintf(json, BROWSER_PACKET_JSON_BUFFER_SIZE, "{\"type\":%u,\"length\":%u,\"client_id\":%u,\"crc32\":%u}", type,
-           length, client_id, crc32);
-
-  return json;
-}
-
-/**
- * Serialize a packet structure to raw bytes
- * @param packet_type Type of packet
- * @param payload Packet payload data
- * @param payload_len Length of payload
- * @param client_id Client ID to include in header
- * @param output Output buffer (allocated by caller)
- * @param out_len Output parameter for total packet length
- * @return 0 on success, -1 on error
- */
-int client_serialize_packet(uint16_t packet_type, const uint8_t *payload, size_t payload_len, uint32_t client_id,
-                            uint8_t *output, size_t *out_len) {
-  if (!output || !out_len) {
-    return -1;
-  }
-
-  if (payload_len > SIZE_MAX - sizeof(packet_header_t))
-    return -1;
-  return packet_encode(packet_type, payload, payload_len, client_id, output, sizeof(packet_header_t) + payload_len,
-                       out_len) == ASCIICHAT_OK
-             ? 0
-             : -1;
-}
-
-/**
  * Process a video frame and prepare it for sending
  * @param rgba_data RGBA pixel data from canvas
  * @param width Frame width
@@ -933,14 +844,6 @@ int client_send_video_frame(const uint8_t *rgba_data, int width, int height) {
  */
 int client_get_connection_state(void) {
   return (int)g_connection_state;
-}
-
-// ============================================================================
-// Memory Management
-// ============================================================================
-
-void client_free_string(char *ptr) {
-  SAFE_FREE(ptr);
 }
 
 // ============================================================================

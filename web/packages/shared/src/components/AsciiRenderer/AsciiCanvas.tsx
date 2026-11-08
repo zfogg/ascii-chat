@@ -1,5 +1,5 @@
 /**
- * AsciiRenderer - WASM-based terminal video rendering component
+ * AsciiCanvas - WASM-based terminal video rendering component
  *
  * Architecture:
  * This component is a thin orchestrator for two specialized hooks that handle rendering initialization
@@ -49,8 +49,8 @@ import type { AsciiRendererHandle, AsciiRendererProps } from "./types";
 import { useInitAsciiRenderer } from "./useInitAsciiRenderer";
 import { useAsciiRendererHandle } from "./useAsciiRendererHandle";
 
-const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
-  function AsciiRenderer(
+const AsciiCanvas = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
+  function AsciiCanvas(
     {
       clientLikeKind,
       workerRendering = false,
@@ -187,4 +187,4 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
   },
 );
 
-export { AsciiRenderer };
+export { AsciiCanvas };

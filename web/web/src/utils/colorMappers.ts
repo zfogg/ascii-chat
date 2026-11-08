@@ -9,11 +9,11 @@ import type { ColorMode, ColorFilter } from "../components";
  */
 export function mapColorModeToWasm(mode: ColorMode): WasmColorMode {
   const mapping: Record<ColorMode, WasmColorMode> = {
-    auto: WasmColorMode.AUTO,
-    none: WasmColorMode.NONE,
-    "16": WasmColorMode.COLOR_16,
-    "256": WasmColorMode.COLOR_256,
-    truecolor: WasmColorMode.TRUECOLOR,
+    auto: WasmColorMode.Auto,
+    none: WasmColorMode.None,
+    "16": WasmColorMode.Ansi16,
+    "256": WasmColorMode.Ansi256,
+    truecolor: WasmColorMode.Truecolor,
   };
   return mapping[mode];
 }
@@ -23,19 +23,19 @@ export function mapColorModeToWasm(mode: ColorMode): WasmColorMode {
  */
 export function mapColorFilterToWasm(filter: ColorFilter): WasmColorFilter {
   const mapping: Record<ColorFilter, WasmColorFilter> = {
-    none: WasmColorFilter.NONE,
-    black: WasmColorFilter.BLACK,
-    white: WasmColorFilter.WHITE,
-    green: WasmColorFilter.GREEN,
-    magenta: WasmColorFilter.MAGENTA,
-    fuchsia: WasmColorFilter.FUCHSIA,
-    orange: WasmColorFilter.ORANGE,
-    teal: WasmColorFilter.TEAL,
-    cyan: WasmColorFilter.CYAN,
-    pink: WasmColorFilter.PINK,
-    red: WasmColorFilter.RED,
-    yellow: WasmColorFilter.YELLOW,
-    rainbow: WasmColorFilter.RAINBOW,
+    none: WasmColorFilter.None,
+    black: WasmColorFilter.Black,
+    white: WasmColorFilter.White,
+    green: WasmColorFilter.Green,
+    magenta: WasmColorFilter.Magenta,
+    fuchsia: WasmColorFilter.Fuchsia,
+    orange: WasmColorFilter.Orange,
+    teal: WasmColorFilter.Teal,
+    cyan: WasmColorFilter.Cyan,
+    pink: WasmColorFilter.Pink,
+    red: WasmColorFilter.Red,
+    yellow: WasmColorFilter.Yellow,
+    rainbow: WasmColorFilter.Rainbow,
   };
   return mapping[filter];
 }

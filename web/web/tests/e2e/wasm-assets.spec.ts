@@ -37,6 +37,7 @@ test("binding failures record actionable C errors", async ({ page }) => {
         snapshot(() => m.faceDetect(new Uint8ClampedArray(1), 1, 1, 0)),
         snapshot(() => m.sendClientFrame(new Uint8Array(1), 1, 1)),
         snapshot(() => m.handleHandshake(99, new Uint8Array())),
+        snapshot(() => m.parsePacketJson(new Uint8Array())),
         snapshot(() => m.parseKey(99, false, new Uint8Array())),
         snapshot(() =>
           m.handoffEncode(
@@ -58,11 +59,45 @@ test("binding failures record actionable C errors", async ({ page }) => {
       frame.delete();
     }
   });
-  expect(errors).toHaveLength(9);
+  expect(errors).toHaveLength(10);
   for (const error of errors) {
     expect(error?.code).toBe(86);
     expect(error?.message).toBeTruthy();
   }
+});
+
+test("face tracking and client public keys use the native bindings", async ({
+  page,
+}) => {
+  await page.goto("/client");
+  const result = await page.evaluate(async () => {
+    const moduleUrl = "/src/wasm/client.ts";
+    const { initClientWasm, getClientWasmModule } = await import(
+      /* @vite-ignore */ moduleUrl
+    );
+    await initClientWasm();
+    const module = getClientWasmModule();
+    module.faceReset();
+    const faceStatus = module.faceDetect(
+      new Uint8ClampedArray(16 * 16 * 4),
+      16,
+      16,
+      1,
+    );
+    const face = Array.from(module.faceTick(1, true));
+    const keyStatus = module.client_generate_keypair();
+    const key = module.clientPublicKey();
+    module.parseKey(99, false, new Uint8Array());
+    module.parseKey(3, true, new Uint8Array());
+    const parseError = module.keyParserError();
+    return { faceStatus, face, keyStatus, key, parseError };
+  });
+  expect(result.faceStatus).toBe(0);
+  expect(result.face).toHaveLength(11);
+  expect(result.face[9]).toBe(0);
+  expect(result.keyStatus).toBe(0);
+  expect(result.key).toMatch(/^[0-9a-f]{64}$/);
+  expect(result.parseError).toContain("Cannot parse browser key");
 });
 
 test("Embind owns audio buffers and encrypted peer sessions", async ({

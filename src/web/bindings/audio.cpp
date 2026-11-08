@@ -1,6 +1,6 @@
 #include <emscripten/bind.h>
 extern "C" {
-#include "../audio.h"
+#include <ascii-chat/audio/processor.h>
 #include "../client.h"
 }
 
@@ -20,8 +20,14 @@ static audio_processor_t *create_processor(int sample_rate, bool bypass, unsigne
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser audio processor configuration");
     return nullptr;
   }
-  return channels == 1 ? browser_audio_processor_create(sample_rate, bypass)
-                       : browser_audio_processor_create_stereo(sample_rate, bypass);
+  audio_processor_config_t config = audio_processor_default_config(sample_rate);
+  config.channels = channels;
+  if (bypass) {
+    config.spectral_enabled = false;
+    config.flags = {};
+  }
+  audio_processor_t *processor = nullptr;
+  return audio_processor_create(&config, &processor) == ASCIICHAT_OK ? processor : nullptr;
 }
 
 static int init_client(const std::string &args) {
@@ -40,7 +46,7 @@ public:
         scratch_(processor_ ? frame_samples : 0) {}
   ~AudioProcessorBinding() {
     if (processor_)
-      browser_audio_processor_destroy(processor_);
+      audio_processor_destroy(processor_);
   }
 
   AudioProcessorBinding(const AudioProcessorBinding &) = delete;
@@ -57,7 +63,7 @@ public:
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio processor buffer size: %zu", count);
     emscripten::val view = emscripten::val(emscripten::typed_memory_view(count, scratch_.data()));
     view.call<void>("set", input);
-    int result = browser_audio_processor_process(processor_, scratch_.data(), count);
+    int result = audio_processor_process(processor_, scratch_.data(), scratch_.data(), count);
     if (result == 0) {
       // Processing may grow memory, so do not retain the previous JS view.
       emscripten::val result_view = emscripten::val(emscripten::typed_memory_view(count, scratch_.data()));

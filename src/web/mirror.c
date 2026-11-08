@@ -343,27 +343,3 @@ char *mirror_render_audio_visualization(unsigned int width, unsigned int height,
 void mirror_free_string(char *ptr) {
   SAFE_FREE(ptr);
 }
-
-#ifndef BUILD_WASM_CLIENT
-// Embedded font data (defined in generated/data/fonts/default.c and matrix.c)
-extern const unsigned char g_font_default[];
-extern const size_t g_font_default_size;
-extern const unsigned char g_font_matrix_resurrected[];
-extern const size_t g_font_matrix_resurrected_size;
-
-/**
- * Get the pointer to the embedded default font data
- * @return Pointer to font data
- */
-const unsigned char *get_font_default_ptr(int selection) {
-  bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
-  return matrix ? g_font_matrix_resurrected : g_font_default;
-}
-
-/** Selection 0 follows settings, 1 selects the default font, 2 selects Matrix. */
-unsigned int get_font_default_size(int selection) {
-  bool matrix = selection == 0 ? GET_OPTION(matrix_rain) : selection == 2;
-  return (unsigned int)(matrix ? g_font_matrix_resurrected_size : g_font_default_size);
-}
-
-#endif

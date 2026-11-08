@@ -354,6 +354,8 @@ export interface OpusCodecBinding extends ClassHandle {
   decode(_0: OpusBytes, _1: number): NullablePcmSamples;
 }
 
+type ClientSettingsResult = { code: number; json: string | null };
+
 type PeerBytes = Uint8Array;
 
 type NullablePeerBytes = Uint8Array | null;
@@ -439,8 +441,6 @@ export interface HostPacketBinding extends ClassHandle {
   receive(_0: number, _1: number, _2: ProtocolBytes): number;
 }
 
-type ClientSettingsResult = { code: number; json: string | null };
-
 type OptionsPatch = Record<string, number | string | boolean>;
 
 type OptionsSnapshot = {
@@ -472,6 +472,9 @@ interface EmbindModule {
     new (): SessionUiBinding;
     new (_0: boolean): SessionUiBinding;
   };
+  initMirror(_0: EmbindString): number;
+  sessionRenderCleanup(): void;
+  mirror_cleanup(): void;
   TerminalRendererBinding: {
     new (
       _0: number,
@@ -536,6 +539,7 @@ interface EmbindModule {
   AVStateBinding: {
     new (): AVStateBinding;
   };
+  receiveSettings(_0: ClientBytes): ClientSettingsResult;
   handleHandshake(_0: number, _1: ClientBytes): number;
   receiveHandshake(_0: boolean, _1: number, _2: ClientBytes): number;
   cryptPacket(_0: boolean, _1: ClientBytes): ClientPacketResult;
@@ -574,17 +578,13 @@ interface EmbindModule {
   HostPacketBinding: {
     new (): HostPacketBinding;
   };
-  receiveSettings(_0: ClientBytes): ClientSettingsResult;
   browser_options_revision(): number;
+  clientSettings(): string | undefined;
   clientPublicKey(): string | undefined;
   parsePacketJson(_0: ClientBytes): string | undefined;
-  clientSettings(): string | undefined;
   patchOptions(_0: OptionsPatch, _1: number): number;
   readOptions(): OptionsSnapshot;
   optionHelp(_0: number, _1: EmbindString): string | undefined;
-  initMirror(_0: EmbindString): number;
-  sessionRenderCleanup(): void;
-  mirror_cleanup(): void;
   sessionRenderResetStabilizer(): void;
   browser_capture_transform_required(): number;
   MirrorFrameBinding: {

@@ -89,6 +89,8 @@ it.each([false, true])(
       setupDoneRef: { current: true },
       rendererPtrRef: {
         current: {
+          valid: () => true,
+          error: () => 0,
           setZalgo: vi.fn(() => 0),
           feed,
           width: () => 10,

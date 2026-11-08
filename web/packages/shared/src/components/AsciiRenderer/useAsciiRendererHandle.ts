@@ -1,3 +1,4 @@
+import { AsciiRenderer } from "../../../../../../src/web/renderer/src/index";
 import { useLayoutEffect } from "react";
 import { RasterWorker } from "./RasterWorker";
 import { browserKeyCode } from "./keyboard";
@@ -226,17 +227,6 @@ export function useAsciiRendererHandle({
         const canvas = canvasRef.current;
         if (!renderer || !canvas)
           throw new Error("[AsciiRenderer] Renderer or canvas is unavailable");
-        const effectResult = renderer.setZalgo(
-          Number.isInteger(zalgo) && zalgo >= 1 && zalgo <= 10 ? zalgo : 0,
-        );
-        if (effectResult !== 0)
-          throw new Error("[AsciiRenderer] Cannot initialize Zalgo renderer");
-        const renderResult = renderer.feed(ansiString);
-        if (renderResult !== 0)
-          throw new Error(
-            `[AsciiRenderer] Frame rendering failed (error ${renderResult}); the font may not support a character`,
-          );
-
         const w = canvas.width,
           h = canvas.height;
         if (
@@ -253,8 +243,12 @@ export function useAsciiRendererHandle({
           imageData = new ImageData(w, h);
           imageDataRef.current = imageData;
         }
-        if (!renderer.copyPixels(imageData.data))
-          throw new Error("[AsciiRenderer] Cannot copy framebuffer");
+        AsciiRenderer.rasterize(
+          renderer,
+          ansiString,
+          Number.isInteger(zalgo) && zalgo >= 1 && zalgo <= 10 ? zalgo : 0,
+          imageData.data,
+        );
         lastFrameChangedRef.current = ansiString !== lastContentRef.current;
         lastContentRef.current = ansiString;
         const ctx = canvas.getContext("2d");

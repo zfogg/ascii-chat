@@ -1,6 +1,6 @@
 #include <emscripten/bind.h>
 extern "C" {
-#include "../common/test_pattern.h"
+#include <ascii-chat/video/anim/test_pattern.h>
 #include <ascii-chat/asciichat_errno.h>
 }
 
@@ -11,10 +11,13 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(PatternPixels);
 
 class TestPatternBinding {
 public:
-  TestPatternBinding(int width, int height) : pattern_(browser_test_pattern_create(width, height)) {}
+  TestPatternBinding(int width, int height) {
+    if (test_pattern_create(width, height, &pattern_) != ASCIICHAT_OK)
+      pattern_ = nullptr;
+  }
   ~TestPatternBinding() {
     if (pattern_)
-      browser_test_pattern_destroy(pattern_);
+      test_pattern_destroy(pattern_);
   }
   TestPatternBinding(const TestPatternBinding &) = delete;
   TestPatternBinding &operator=(const TestPatternBinding &) = delete;
@@ -31,7 +34,10 @@ public:
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid test pattern image: %dx%d", width, height);
       return false;
     }
-    const uint8_t *pixels = browser_test_pattern_render_rgba(pattern_, width, height, index, time, cadence);
+    if (test_pattern_resize(pattern_, width, height) != ASCIICHAT_OK ||
+        test_pattern_render(pattern_, index, time, cadence) != ASCIICHAT_OK)
+      return false;
+    const uint8_t *pixels = test_pattern_rgba(pattern_);
     if (!pixels)
       return false;
     output.call<void>("set", emscripten::val(emscripten::typed_memory_view(output["length"].as<size_t>(), pixels)));
@@ -39,7 +45,7 @@ public:
   }
 
 private:
-  test_pattern_t *pattern_;
+  test_pattern_t *pattern_ = nullptr;
 };
 
 EMSCRIPTEN_BINDINGS(ascii_chat_test_pattern) {

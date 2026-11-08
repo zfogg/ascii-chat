@@ -23,6 +23,8 @@ static KeyParseResult parse_key(int kind, bool binary, KeyInput input) {
   }
   uint8_t output[64] = {0};
   int code = -1;
+  if (kind >= 0 && kind <= 3)
+    CLEAR_ERRNO_ALL();
   switch (kind) {
   case 0:
     code = client_parse_ssh_private_key(reinterpret_cast<const char *>(bytes.data()), output);

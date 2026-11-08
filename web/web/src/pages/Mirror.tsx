@@ -21,7 +21,7 @@ import {
 } from "@ascii-chat/shared/wasm";
 import { SITES } from "@ascii-chat/shared/utils";
 import { BinarySettings } from "../components/shared/BinarySettings";
-import { AsciiRenderer } from "@ascii-chat/shared/components/AsciiRenderer";
+import { AsciiCanvas } from "@ascii-chat/shared/components/AsciiRenderer";
 import { PageLayout } from "../components/PageLayout";
 import { ModeHeader } from "../components/ModeHeader";
 import { AsciiChatWebHead } from "../components/AsciiChatWebHead";
@@ -627,7 +627,7 @@ export function MirrorPage() {
         }
         renderer={(() => {
           return (
-            <AsciiRenderer
+            <AsciiCanvas
               clientLikeKind="mirror"
               ref={rendererRef}
               contentFit={contentFit}

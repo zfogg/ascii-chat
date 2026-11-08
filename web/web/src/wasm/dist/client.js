@@ -6619,8 +6619,8 @@ async function ClientModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    3031792: () => Module.getRandomValue(),
-    3031828: () => {
+    3032192: () => Module.getRandomValue(),
+    3032228: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -6667,13 +6667,6 @@ async function ClientModule(moduleArg = {}) {
     );
     const packetCopy = new Uint8Array(packetArray);
     Module.sendPacketCallback(packetCopy);
-  }
-  function browser_host_send(client, data, length) {
-    if (Module.hostPacketCallback)
-      Module.hostPacketCallback(
-        client,
-        (growMemViews(), HEAPU8).slice(data, data + length),
-      );
   }
   function handoff_snapshot(kind, id, generation, sequence) {
     Module.handoffResult = {
@@ -6728,14 +6721,21 @@ async function ClientModule(moduleArg = {}) {
       },
     };
   }
+  function browser_host_send(client, data, length) {
+    if (Module.hostPacketCallback)
+      Module.hostPacketCallback(
+        client,
+        (growMemViews(), HEAPU8).slice(data, data + length),
+      );
+  }
   var ___getTypeName = makeInvalidEarlyAccess("___getTypeName");
   var __embind_initialize_bindings = makeInvalidEarlyAccess(
     "__embind_initialize_bindings",
   );
-  var _malloc = makeInvalidEarlyAccess("_malloc");
   var _free = makeInvalidEarlyAccess("_free");
   var _pthread_self = makeInvalidEarlyAccess("_pthread_self");
   var _strerror = makeInvalidEarlyAccess("_strerror");
+  var _malloc = makeInvalidEarlyAccess("_malloc");
   var _fflush = makeInvalidEarlyAccess("_fflush");
   var _htons = makeInvalidEarlyAccess("_htons");
   var _ntohs = makeInvalidEarlyAccess("_ntohs");
@@ -6801,10 +6801,6 @@ async function ClientModule(moduleArg = {}) {
       "missing Wasm export: _embind_initialize_bindings",
     );
     assert(
-      typeof wasmExports["malloc"] != "undefined",
-      "missing Wasm export: malloc",
-    );
-    assert(
       typeof wasmExports["free"] != "undefined",
       "missing Wasm export: free",
     );
@@ -6815,6 +6811,10 @@ async function ClientModule(moduleArg = {}) {
     assert(
       typeof wasmExports["strerror"] != "undefined",
       "missing Wasm export: strerror",
+    );
+    assert(
+      typeof wasmExports["malloc"] != "undefined",
+      "missing Wasm export: malloc",
     );
     assert(
       typeof wasmExports["fflush"] != "undefined",
@@ -6910,10 +6910,10 @@ async function ClientModule(moduleArg = {}) {
       "_embind_initialize_bindings",
       0,
     );
-    _malloc = createExportWrapper("malloc", 1);
     _free = createExportWrapper("free", 1);
     _pthread_self = createExportWrapper("pthread_self", 0);
     _strerror = createExportWrapper("strerror", 1);
+    _malloc = createExportWrapper("malloc", 1);
     _fflush = createExportWrapper("fflush", 1);
     _htons = createExportWrapper("htons", 1);
     _ntohs = createExportWrapper("ntohs", 1);

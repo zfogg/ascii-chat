@@ -28,7 +28,12 @@ export type {
   EmscriptenModuleFactory,
   MirrorModule,
 } from "./mirror";
-export { paletteTypes, paletteName } from "./common/options";
+export {
+  paletteTypes,
+  paletteName,
+  defaultPalettes,
+  TextRenderer,
+} from "../../../../../src/web/common/options";
 export type { SessionUiEvent } from "../components/AsciiRenderer/types";
 export type {
   AudioProcessorBinding,

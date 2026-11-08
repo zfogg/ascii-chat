@@ -11,8 +11,7 @@
   },
   "files": [
     "dist",
-    "README.md",
-    "licenses"
+    "README.md"
   ],
   "exports": {
     ".": {

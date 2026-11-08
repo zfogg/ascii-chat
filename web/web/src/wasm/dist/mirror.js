@@ -5612,10 +5612,17 @@ async function MirrorModule(moduleArg = {}) {
   var __emval_invoke = (caller, handle, methodName, destructorsRef, args) =>
     emval_methodCallers[caller](handle, methodName, destructorsRef, args);
   var __emval_new_cstring = (v) => Emval.toHandle(getStringOrSymbol(v));
+  var __emval_new_object = () => Emval.toHandle({});
   var __emval_run_destructors = (handle) => {
     var destructors = Emval.toValue(handle);
     runDestructors(destructors);
     __emval_decref(handle);
+  };
+  var __emval_set_property = (handle, key, value) => {
+    handle = Emval.toValue(handle);
+    key = Emval.toValue(key);
+    value = Emval.toValue(value);
+    handle[key] = value;
   };
   var __emval_typeof = (handle) => {
     handle = Emval.toValue(handle);
@@ -6611,8 +6618,8 @@ async function MirrorModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    2853552: () => Module.getRandomValue(),
-    2853588: () => {
+    2853632: () => Module.getRandomValue(),
+    2853668: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -6649,10 +6656,10 @@ async function MirrorModule(moduleArg = {}) {
   var __embind_initialize_bindings = makeInvalidEarlyAccess(
     "__embind_initialize_bindings",
   );
-  var _malloc = makeInvalidEarlyAccess("_malloc");
   var _free = makeInvalidEarlyAccess("_free");
   var _pthread_self = makeInvalidEarlyAccess("_pthread_self");
   var _strerror = makeInvalidEarlyAccess("_strerror");
+  var _malloc = makeInvalidEarlyAccess("_malloc");
   var _fflush = makeInvalidEarlyAccess("_fflush");
   var __emscripten_tls_init = makeInvalidEarlyAccess("__emscripten_tls_init");
   var _emscripten_builtin_memalign = makeInvalidEarlyAccess(
@@ -6716,10 +6723,6 @@ async function MirrorModule(moduleArg = {}) {
       "missing Wasm export: _embind_initialize_bindings",
     );
     assert(
-      typeof wasmExports["malloc"] != "undefined",
-      "missing Wasm export: malloc",
-    );
-    assert(
       typeof wasmExports["free"] != "undefined",
       "missing Wasm export: free",
     );
@@ -6730,6 +6733,10 @@ async function MirrorModule(moduleArg = {}) {
     assert(
       typeof wasmExports["strerror"] != "undefined",
       "missing Wasm export: strerror",
+    );
+    assert(
+      typeof wasmExports["malloc"] != "undefined",
+      "missing Wasm export: malloc",
     );
     assert(
       typeof wasmExports["fflush"] != "undefined",
@@ -6817,10 +6824,10 @@ async function MirrorModule(moduleArg = {}) {
       "_embind_initialize_bindings",
       0,
     );
-    _malloc = createExportWrapper("malloc", 1);
     _free = createExportWrapper("free", 1);
     _pthread_self = createExportWrapper("pthread_self", 0);
     _strerror = createExportWrapper("strerror", 1);
+    _malloc = createExportWrapper("malloc", 1);
     _fflush = createExportWrapper("fflush", 1);
     __emscripten_tls_init = createExportWrapper("_emscripten_tls_init", 0);
     _emscripten_builtin_memalign = createExportWrapper(
@@ -6914,7 +6921,9 @@ async function MirrorModule(moduleArg = {}) {
       _emval_incref: __emval_incref,
       _emval_invoke: __emval_invoke,
       _emval_new_cstring: __emval_new_cstring,
+      _emval_new_object: __emval_new_object,
       _emval_run_destructors: __emval_run_destructors,
+      _emval_set_property: __emval_set_property,
       _emval_typeof: __emval_typeof,
       _localtime_js: __localtime_js,
       _mmap_js: __mmap_js,

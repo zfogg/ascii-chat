@@ -321,10 +321,8 @@ set(LIB_SRC_COMMON
     # Video/image handling (needed by webcam and ffmpeg backends)
     ${LIB_ROOT}/video/rgba/image.c
     ${LIB_ROOT}/video/anim/test_pattern.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/test_pattern.c
 
     # Shared session UI; scheduling and media side effects belong to the browser host.
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/ui.c
     ${LIB_ROOT}/tui/session.c
     ${LIB_ROOT}/tui/session_status.c
     ${LIB_ROOT}/tui/terminal_screen.c
@@ -394,7 +392,7 @@ set(LIB_SRC_CLIENT_NETWORK
 
 # Common WASM abstraction layer (shared between mirror and client)
 set(COMMON_WEB_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/options.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/font.c
     ${CMAKE_CURRENT_SOURCE_DIR}/common/capture.c
     ${CMAKE_CURRENT_SOURCE_DIR}/common/init.c
 )
@@ -461,7 +459,6 @@ target_include_directories(wasm-common PRIVATE
 apply_sanitizers_to_target(wasm-common)
 
 set(WEB_SRC_FACE_FOLLOW
-    ${CMAKE_CURRENT_SOURCE_DIR}/face_follow.c
     ${LIB_ROOT}/video/face_follow.c
 )
 include(${_cmake_dir}/deps/FaceDetection.cmake)
@@ -470,6 +467,7 @@ include(${_cmake_dir}/deps/FaceDetection.cmake)
 add_executable(mirror-web
     ${WEB_SRC_MIRROR}
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/session_ui.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/mirror_session.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/terminal_renderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/face.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/test_pattern.cpp
@@ -483,7 +481,6 @@ ascii_chat_add_face_detector(mirror-web)
 target_compile_definitions(mirror-web PRIVATE
     __EMSCRIPTEN__
     EMSCRIPTEN_BUILD=1
-    BUILD_WASM_MIRROR=1
 )
 
 # Enable Emscripten's pthread support and SIMD for video processing
@@ -512,7 +509,6 @@ set(WEB_SRC_CLIENT
     ${LIB_ROOT}/audio/visualization.c
     ${LIB_ROOT}/video/anim/waveform.c
     ${LIB_ROOT}/video/anim/fft.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/audio.c
     ${LIB_ROOT}/audio/processor.c
     ${LIB_ROOT}/audio/format.c
     ${LIB_ROOT}/audio/effects.c
@@ -520,7 +516,6 @@ set(WEB_SRC_CLIENT
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/peer_crypto.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/session_host.c
     ${CMAKE_CURRENT_SOURCE_DIR}/discovery.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/host.c
     ${LIB_ROOT}/network/acip/server.c
@@ -538,10 +533,12 @@ set(WEB_SRC_CLIENT
 add_executable(client-web
     ${WEB_SRC_CLIENT}
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/session_ui.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/mirror_session.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/terminal_renderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/face.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/test_pattern.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/audio.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/client_opts.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/peer_crypto.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/networking.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/key_parser.cpp
@@ -561,7 +558,6 @@ ascii_chat_add_face_detector(client-web)
 target_compile_definitions(client-web PRIVATE
     __EMSCRIPTEN__
     EMSCRIPTEN_BUILD=1
-    BUILD_WASM_CLIENT=1
 )
 
 # Enable Emscripten's pthread support and FreeType, add library search paths
@@ -611,7 +607,7 @@ add_custom_command(TARGET client-web POST_BUILD
 
 target_link_options(mirror-web PRIVATE
     -lembind
-    --emit-tsd mirror-bindings.d.ts
+    --emit-tsd "${CMAKE_CURRENT_BINARY_DIR}/mirror-bindings.d.ts"
     -sMODULARIZE=1
     -sEXPORT_ES6=1
     "-sEXPORT_NAME=MirrorModule"
@@ -635,7 +631,7 @@ target_link_options(mirror-web PRIVATE
 
 target_link_options(client-web PRIVATE
     -lembind
-    --emit-tsd client-bindings.d.ts
+    --emit-tsd "${CMAKE_CURRENT_BINARY_DIR}/client-bindings.d.ts"
     -sMODULARIZE=1
     -sEXPORT_ES6=1
     "-sEXPORT_NAME=ClientModule"
@@ -709,7 +705,7 @@ add_executable(renderer-web
     ${LIB_SRC_MIRROR_ONLY}
     $<TARGET_OBJECTS:wasm-common>
 )
-target_compile_definitions(renderer-web PRIVATE __EMSCRIPTEN__ EMSCRIPTEN_BUILD=1 BUILD_WASM_MIRROR=1 BUILD_WASM_RENDERER=1)
+target_compile_definitions(renderer-web PRIVATE __EMSCRIPTEN__ EMSCRIPTEN_BUILD=1)
 target_compile_options(renderer-web PRIVATE -pthread -msimd128 -sUSE_FREETYPE=1)
 target_link_libraries(renderer-web PRIVATE asciichat-icu ${UTF8PROC_LIBRARIES} ${LIBSODIUM_LIBRARIES} ${PCRE2_LIBRARIES} ${VTERM_LDFLAGS})
 target_link_options(renderer-web PRIVATE

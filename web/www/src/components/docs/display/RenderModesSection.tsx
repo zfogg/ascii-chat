@@ -9,19 +9,19 @@ const RENDER_MODE_OPTIONS: DemoOption[] = [
     id: "foreground",
     label: "Foreground",
     description: "--render-mode foreground",
-    settings: { renderMode: RenderMode.FOREGROUND },
+    settings: { renderMode: RenderMode.Foreground },
   },
   {
     id: "background",
     label: "Background",
     description: "--render-mode background",
-    settings: { renderMode: RenderMode.BACKGROUND },
+    settings: { renderMode: RenderMode.Background },
   },
   {
     id: "halfblock",
     label: "Half-block",
     description: "--render-mode half-block",
-    settings: { renderMode: RenderMode.HALF_BLOCK },
+    settings: { renderMode: RenderMode.HalfBlock },
   },
 ];
 

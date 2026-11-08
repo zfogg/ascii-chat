@@ -1,6 +1,6 @@
 #include <emscripten/bind.h>
 extern "C" {
-#include "../common/ui.h"
+#include "../common/font.h"
 #include <ascii-chat/media/render/renderer.h>
 }
 
@@ -12,8 +12,18 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(RasterPixels);
 
 class TerminalRendererBinding {
 public:
-  TerminalRendererBinding(int cols, int rows, double font_size, bool matrix, int selection)
-      : result_(browser_renderer_create(cols, rows, font_size, matrix, selection, &renderer_)) {}
+  TerminalRendererBinding(int cols, int rows, double font_size, bool matrix, int selection) {
+    term_renderer_config_t config{};
+    config.cols = cols;
+    config.rows = rows;
+    config.font_size_pt = font_size;
+    config.theme = static_cast<term_renderer_theme_t>(0);
+    config.font_data = get_font_default_ptr(selection);
+    config.font_data_size = get_font_default_size(selection);
+    if (matrix)
+      SAFE_STRNCPY(config.font_spec, "Matrix", sizeof(config.font_spec));
+    result_ = term_renderer_create(&config, &renderer_);
+  }
   ~TerminalRendererBinding() {
     if (renderer_)
       term_renderer_destroy(renderer_);

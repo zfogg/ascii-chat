@@ -1,7 +1,5 @@
-import type {
-  MainModule,
-  MirrorFrameBinding,
-} from "./generated/mirror-bindings";
+import type { MainModule } from "./generated/mirror-bindings";
+import { AsciiRenderer } from "../../../../../src/web/renderer/src/index";
 import { resetRuntimeOptions, runtimeOptions } from "./common/runtimeOptions";
 // Shared TypeScript wrapper for Mirror WASM module
 // Provides type-safe interface to libasciichat mirror mode
@@ -11,9 +9,8 @@ import {
   RenderMode,
   ColorMode,
   ColorFilter,
-  paletteName,
   type Palette,
-} from "./common/options";
+} from "../../../../../src/web/common/options";
 export type MirrorModule = MainModule & {
   HEAPU8: Uint8Array;
   canvas?: HTMLCanvasElement;
@@ -29,11 +26,11 @@ export type EmscriptenModuleFactory = (
 ) => Promise<MirrorModule>;
 
 let wasmModule: MirrorModule | null = null;
-let frameBinding: MirrorFrameBinding | null = null;
+let renderer: AsciiRenderer | null = null;
 
 function releaseFrameBinding(): void {
-  frameBinding?.delete();
-  frameBinding = null;
+  renderer?.dispose();
+  renderer = null;
 }
 
 /**
@@ -196,8 +193,8 @@ export function convertFrameToAscii(
   // Growing the WASM heap can invalidate a view supplied by a caller.
   const input =
     rgbaData.buffer === wasmModule.HEAPU8.buffer ? rgbaData.slice() : rgbaData;
-  frameBinding ??= new wasmModule.MirrorFrameBinding();
-  const frame = frameBinding.convert(
+  renderer ??= AsciiRenderer.fromModule(wasmModule);
+  const frame = renderer.render(
     input,
     srcWidth,
     srcHeight,
@@ -222,89 +219,17 @@ export function transformCaptureRgba(
     throw new Error("Capture input must be JavaScript-owned");
   if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height))
     throw new Error("Invalid capture dimensions");
-  frameBinding ??= new wasmModule.MirrorFrameBinding();
-  if (frameBinding.transform(rgba, width, height))
-    throw new Error("Invalid capture dimensions");
+  renderer ??= AsciiRenderer.fromModule(wasmModule);
+  renderer.transform(rgba, width, height);
 }
 
 export type AudioVisualizationSource = "microphone" | "media";
 export type AudioVisualizationMode = "waveform" | "fft";
 
-const AUDIO_PALETTES: Record<Palette, string> = {
-  standard: "   ...',;:clodxkO0KXNWM",
-  blocks: "   ░░▒▒▓▓██",
-  digital: "   -=≡≣▰▱◼",
-  minimal: "   .-+*#",
-  cool: "   ▁▂▃▄▅▆▇█",
-  custom: "",
-};
-
-// ANSI truecolor cells are delimited by literal ESC control characters.
-// oxlint-disable-next-line no-control-regex
-const TRUECOLOR_CELL = /\x1b\[38;2;(\d+);(\d+);(\d+)m([^\x1b\n])\x1b\[0m/g;
-
-function paletteCharacter(
-  red: number,
-  green: number,
-  blue: number,
-  characters: string[],
-): string {
-  const luminance = (red * 0.2126 + green * 0.7152 + blue * 0.0722) / 255;
-  return (
-    characters[
-      Math.min(
-        characters.length - 1,
-        Math.round(luminance * (characters.length - 1)),
-      )
-    ] ?? " "
-  );
-}
-
-function ansi16Color(red: number, green: number, blue: number): number {
-  const bright = Math.max(red, green, blue) > 191 ? 60 : 0;
-  const bits =
-    (red > 127 ? 1 : 0) | (green > 127 ? 2 : 0) | (blue > 127 ? 4 : 0);
-  return 30 + bits + bright;
-}
-
-function ansi256Color(red: number, green: number, blue: number): number {
-  const component = (value: number) => Math.round((value / 255) * 5);
-  return 16 + 36 * component(red) + 6 * component(green) + component(blue);
-}
-
-/** Apply browser color-mode and palette settings to one generated audio frame. */
 export function formatAudioVisualizationFrame(frame: string): string {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  const values = runtimeOptions(wasmModule).getSnapshot().values;
-  const colorMode = Number(values["color_mode"]);
-  const palette = paletteName(Number(values["palette_type"]));
-  const chars =
-    palette === "custom"
-      ? String(values["palette_custom"] ?? "")
-      : AUDIO_PALETTES[palette];
-  const characters = Array.from(chars || AUDIO_PALETTES.standard);
-  return frame.replace(
-    TRUECOLOR_CELL,
-    (_match, redText, greenText, blueText) => {
-      const red = Number(redText);
-      const green = Number(greenText);
-      const blue = Number(blueText);
-      const character = paletteCharacter(red, green, blue, characters);
-
-      if (colorMode === ColorMode.NONE) return character;
-      if (colorMode === ColorMode.COLOR_16) {
-        return `\x1b[${ansi16Color(red, green, blue)}m${character}\x1b[0m`;
-      }
-      if (colorMode === ColorMode.COLOR_256) {
-        return `\x1b[38;5;${ansi256Color(red, green, blue)}m${character}\x1b[0m`;
-      }
-      return `\x1b[38;2;${red};${green};${blue}m${character}\x1b[0m`;
-    },
-  );
-}
-
-function audioVisualizationSourceId(source: AudioVisualizationSource): number {
-  return source === "microphone" ? 0 : 1;
+  renderer ??= AsciiRenderer.fromModule(wasmModule);
+  return renderer.formatAudioFrame(frame);
 }
 
 /**
@@ -318,8 +243,8 @@ export function submitAudioVisualizationSamples(
   if (!wasmModule) throw new Error("WASM module not initialized");
   const input =
     samples.buffer === wasmModule.HEAPU8.buffer ? samples.slice() : samples;
-  frameBinding ??= new wasmModule.MirrorFrameBinding();
-  frameBinding.submitAudio(input, audioVisualizationSourceId(source));
+  renderer ??= AsciiRenderer.fromModule(wasmModule);
+  renderer.submitAudio(input, source);
 }
 
 /** @deprecated Use submitAudioVisualizationSamples. */
@@ -338,13 +263,9 @@ export function renderAudioVisualization(
       fft: mode === "fft",
     });
   }
-  frameBinding ??= new wasmModule.MirrorFrameBinding();
-  const frame = frameBinding.renderAudio(
-    width,
-    height,
-    audioVisualizationSourceId(source),
-  );
-  return frame === undefined ? "" : formatAudioVisualizationFrame(frame);
+  renderer ??= AsciiRenderer.fromModule(wasmModule);
+  const frame = renderer.renderAudio(width, height, source);
+  return frame;
 }
 
 export interface AudioVisualizationFrameOptions {

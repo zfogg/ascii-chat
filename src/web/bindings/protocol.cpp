@@ -3,6 +3,9 @@
 extern "C" {
 #include "../client.h"
 #include <ascii-chat/network/errors.h>
+#include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/endian.h>
 }
 #include <sodium.h>
 #include <cstdint>
@@ -12,14 +15,19 @@ extern "C" {
 
 static std::optional<std::string> parse_packet(ClientBytes packet) {
   auto input = binding_copy_input(packet);
-  char *json = client_parse_packet(input.data(), input.size());
-  if (!json) {
-    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot parse client packet");
+  if (input.size() < sizeof(packet_header_t)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Client packet is shorter than its header");
     return std::nullopt;
   }
-  std::string result(json);
-  client_free_string(json);
-  return result;
+  packet_header_t header;
+  if (packet_validate(input.data(), input.size(), 0, &header) != ASCIICHAT_OK)
+    return std::nullopt;
+  emscripten::val result = emscripten::val::object();
+  result.set("type", NET_TO_HOST_U16(header.type));
+  result.set("length", NET_TO_HOST_U32(header.length));
+  result.set("client_id", NET_TO_HOST_U32(header.client_id));
+  result.set("crc32", NET_TO_HOST_U32(header.crc32));
+  return emscripten::val::global("JSON").call<std::string>("stringify", result);
 }
 static ClientPacketResult serialize_packet(unsigned type, ClientBytes payload, unsigned client_id) {
   if (type > UINT16_MAX) {
@@ -29,8 +37,8 @@ static ClientPacketResult serialize_packet(unsigned type, ClientBytes payload, u
   auto input = binding_copy_input(payload);
   std::vector<uint8_t> output(input.size() + 256);
   size_t length = 0;
-  const int code = client_serialize_packet(static_cast<uint16_t>(type), input.empty() ? nullptr : input.data(),
-                                           input.size(), client_id, output.data(), &length);
+  const int code = packet_encode(static_cast<packet_type_t>(type), input.empty() ? nullptr : input.data(), input.size(),
+                                 client_id, output.data(), output.size(), &length);
   if (code)
     SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot serialize client packet");
   return packet_result(code, output.data(), code == 0 ? length : 0);

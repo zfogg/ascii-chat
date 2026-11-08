@@ -1,6 +1,7 @@
 import type { BinarySettingsConfig } from "../components";
+import { defaultPalettes } from "@ascii-chat/shared/wasm";
 
-export const DEFAULT_PALETTE_CHARS = "   ...',;:clodxkO0KXNWM";
+export const DEFAULT_PALETTE_CHARS = defaultPalettes.standard;
 
 export const PALETTE_INPUT_DEBOUNCE_MS = 750;
 

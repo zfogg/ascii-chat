@@ -1,14 +1,11 @@
 #include <emscripten/bind.h>
-#ifdef BUILD_WASM_CLIENT
-#include "../bindings/client_bytes.h"
-extern "C" {
-#include "../client.h"
-}
-#endif
 #include <optional>
 #include <string>
 extern "C" {
-#include "options.h"
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/options/runtime.h>
+#include <ascii-chat/common.h>
 }
 
 EMSCRIPTEN_DECLARE_VAL_TYPE(OptionsPatch);
@@ -23,52 +20,38 @@ static int patch_options(OptionsPatch patch, double expected_revision) {
   if (json.isUndefined())
     return SET_ERRNO(ERROR_INVALID_PARAM, "Options patch cannot be serialized");
   std::string text = json.as<std::string>();
-  return browser_options_patch(text.c_str(), expected_revision);
+  return options_apply_json(text.c_str(), text.size(),
+                            expected_revision < 0 ? OPTIONS_REVISION_ANY : static_cast<uint64_t>(expected_revision),
+                            OPTIONS_ORIGIN_LOCAL, nullptr);
 }
 static OptionsSnapshot read_options() {
-  char *json = browser_options_values();
-  if (!json) {
+  options_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot), options_snapshot_t *);
+  if (options_read_snapshot(snapshot) != ASCIICHAT_OK) {
+    SAFE_FREE(snapshot);
     SET_ERRNO(ERROR_INVALID_STATE, "Cannot read browser options");
     return OptionsSnapshot(emscripten::val::null());
   }
+  char *json = options_values_json(&snapshot->values, false);
+  double revision = static_cast<double>(snapshot->revision);
+  SAFE_FREE(snapshot);
+  if (!json) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Cannot serialize browser options");
+    return OptionsSnapshot(emscripten::val::null());
+  }
   std::string text(json);
-  browser_options_release(json);
-  return OptionsSnapshot(emscripten::val::global("JSON").call<emscripten::val>("parse", text));
+  SAFE_FREE(json);
+  emscripten::val result = emscripten::val::object();
+  result.set("revision", revision);
+  result.set("values", emscripten::val::global("JSON").call<emscripten::val>("parse", text));
+  return OptionsSnapshot(result);
 }
 static std::optional<std::string> option_help(int mode, const std::string &name) {
-  const char *text = get_help_text(mode, name.c_str());
+  const char *text = name.empty() ? nullptr : options_get_help_text(static_cast<asciichat_mode_t>(mode), name.c_str());
   return text ? std::optional<std::string>(text) : std::nullopt;
 }
 
-#ifdef BUILD_WASM_CLIENT
-static ClientSettingsResult receive_settings(ClientBytes payload) {
-  auto input = binding_copy_input(payload);
-  const int code = client_settings_receive(input.data(), input.size());
-  char *json = code == 0 ? client_settings_values() : nullptr;
-  emscripten::val result = emscripten::val::object();
-  result.set("code", code);
-  result.set("json", json ? emscripten::val(std::string(json)) : emscripten::val::null());
-  if (json)
-    browser_options_release(json);
-  return ClientSettingsResult(result);
-}
-static std::optional<std::string> client_settings() {
-  char *json = client_settings_values();
-  if (!json)
-    return std::nullopt;
-  std::string result(json);
-  browser_options_release(json);
-  return result;
-}
-#endif
-
 EMSCRIPTEN_BINDINGS(ascii_chat_options) {
-#ifdef BUILD_WASM_CLIENT
-  emscripten::register_type<ClientSettingsResult>("ClientSettingsResult", "{ code: number; json: string | null }");
-  emscripten::function("clientSettings", &client_settings);
-  emscripten::function("receiveSettings", &receive_settings);
-#endif
-  emscripten::function("browser_options_revision", &browser_options_revision);
+  emscripten::function("browser_options_revision", +[]() { return static_cast<double>(options_revision()); });
   emscripten::register_optional<std::string>();
   emscripten::register_type<OptionsPatch>("OptionsPatch", "Record<string, number | string | boolean>");
   emscripten::register_type<OptionsSnapshot>(

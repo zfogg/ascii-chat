@@ -1,3 +1,4 @@
+import { AsciiRenderer } from "../../../../../../src/web/renderer/src/index";
 import type { TerminalRendererModule } from "../../wasm/terminalRenderer";
 import type { TerminalRendererBinding } from "../../wasm/generated/mirror-bindings";
 import type { RasterWorkerRequest } from "./RasterWorker";
@@ -50,14 +51,9 @@ self.onmessage = (event: MessageEvent<RasterWorkerRequest>) => {
         signature = nextSignature;
       }
       if (!renderer) throw new Error("Raster worker renderer is unavailable");
-      if (renderer.setZalgo(zalgo))
-        throw new Error("Cannot set raster worker effect");
-      if (renderer.feed(text)) throw new Error("Raster worker rejected frame");
       const width = renderer.width();
       const height = renderer.height();
-      const pixels = new Uint8ClampedArray(width * height * 4);
-      if (!renderer.copyPixels(pixels))
-        throw new Error("Cannot copy raster worker pixels");
+      const pixels = AsciiRenderer.rasterize(renderer, text, zalgo);
       previousText = text;
       (
         self.postMessage as (message: unknown, transfer: Transferable[]) => void

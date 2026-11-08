@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
 
 test("standalone package renders modes, visualizations and canvas at 60 fps", async ({
   page,
@@ -203,4 +204,88 @@ test("object options patches commit atomically and respect revisions", async ({
   expect(result.stale).not.toBe(0);
   expect(result.afterStale).toEqual(result.afterCommit);
   expect(result.badInput).not.toBe(0);
+});
+
+test("shared rendering constants match the native definitions", async ({
+  page,
+}) => {
+  const terminal = readFileSync(
+    new URL(
+      "../../../../include/ascii-chat/platform/terminal.h",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const palette = readFileSync(
+    new URL(
+      "../../../../include/ascii-chat/video/ascii/palette.h",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const options = readFileSync(
+    new URL(
+      "../../../../include/ascii-chat/options/options.h",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  await page.goto("/");
+  const values = await page.evaluate(async () => {
+    const url = "/renderer/src/index.js";
+    const {
+      ColorMode,
+      RenderMode,
+      ColorFilter,
+      TextRenderer,
+      defaultPalettes,
+    } = await import(url);
+    return {
+      ColorMode,
+      RenderMode,
+      ColorFilter,
+      TextRenderer,
+      defaultPalettes,
+    };
+  });
+  const nativeNumber = (source: string, name: string) => {
+    const match = source.match(new RegExp("\\b" + name + "\\s*=\\s*(-?\\d+)"));
+    if (!match) throw new Error("Missing native constant " + name);
+    return Number(match[1]);
+  };
+  for (const [key, name] of Object.entries({
+    Auto: "AUTO",
+    None: "NONE",
+    Ansi16: "16",
+    Ansi256: "256",
+    Truecolor: "TRUECOLOR",
+  }))
+    expect(values.ColorMode[key]).toBe(
+      nativeNumber(terminal, "TERM_COLOR_" + name),
+    );
+  for (const [key, name] of Object.entries({
+    Foreground: "FOREGROUND",
+    Background: "BACKGROUND",
+    HalfBlock: "HALF_BLOCK",
+  }))
+    expect(values.RenderMode[key]).toBe(
+      nativeNumber(terminal, "RENDER_MODE_" + name),
+    );
+  for (const [key, value] of Object.entries(values.ColorFilter))
+    expect(value).toBe(
+      nativeNumber(terminal, "COLOR_FILTER_" + key.toUpperCase()),
+    );
+  for (const [key, value] of Object.entries(values.TextRenderer))
+    expect(value).toBe(
+      nativeNumber(options, "ASCII_RENDERER_" + key.toUpperCase()),
+    );
+  for (const [key, value] of Object.entries(values.defaultPalettes)) {
+    const match = palette.match(
+      new RegExp(
+        "#define PALETTE_CHARS_" + key.toUpperCase() + '\\s+"([^"]*)"',
+      ),
+    );
+    if (!match) throw new Error("Missing native palette " + key);
+    expect(value).toBe(match[1]);
+  }
 });

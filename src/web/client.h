@@ -20,7 +20,7 @@ int client_opus_decode(const uint8_t *opus_data, int opus_bytes, int16_t *pcm_da
 void client_opus_encoder_cleanup(void);
 void client_opus_decoder_cleanup(void);
 int client_set_server_address(const char *server_host, int server_port);
-char *client_get_public_key_hex(void);
+const uint8_t *client_public_key_bytes(void);
 int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len);
 int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len);
 int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len);
@@ -31,10 +31,6 @@ int client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_
                           size_t *out_len);
 int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size,
                           size_t *out_len);
-char *client_parse_packet(const uint8_t *raw_packet, size_t packet_len);
-int client_serialize_packet(uint16_t packet_type, const uint8_t *payload, size_t payload_len, uint32_t client_id,
-                            uint8_t *output, size_t *out_len);
-void client_free_string(char *ptr);
 asciichat_error_t client_settings_receive(const void *payload, size_t length);
 char *client_settings_values(void);
 asciichat_error_t client_validate_frame(const char *text, size_t length, uint32_t width, uint32_t height,

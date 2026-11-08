@@ -33,7 +33,7 @@ import {
 } from "@ascii-chat/shared/hooks";
 import {
   Heading,
-  AsciiRenderer,
+  AsciiCanvas,
   type AsciiRendererHandle,
 } from "@ascii-chat/shared/components";
 import { MediaSourceType, type MediaSource } from "@ascii-chat/shared/utils";
@@ -78,9 +78,9 @@ function applyDemoOption(
   const fft = settings.fft ?? false;
   const waveform = !fft && (settings.waveform ?? false);
   activeDemoOptions().applyPatch({
-    color_mode: settings.colorMode ?? ColorMode.TRUECOLOR,
-    color_filter: settings.colorFilter ?? ColorFilter.NONE,
-    render_mode: settings.renderMode ?? RenderMode.FOREGROUND,
+    color_mode: settings.colorMode ?? ColorMode.Truecolor,
+    color_filter: settings.colorFilter ?? ColorFilter.None,
+    render_mode: settings.renderMode ?? RenderMode.Foreground,
     palette_type:
       settings.paletteChars !== undefined
         ? paletteTypes.custom
@@ -855,7 +855,7 @@ export default function MirrorDemoWidget({
         }
       >
         <div className="demo-widget-inner">
-          <AsciiRenderer
+          <AsciiCanvas
             clientLikeKind="mirror"
             ref={rendererRef}
             contentFit={contentFit}

@@ -5,9 +5,8 @@
 #include <string>
 #include <vector>
 extern "C" {
-#include "../common/options.h"
+#include <ascii-chat/asciichat_errno.h>
 #include "../common/capture.h"
-#include "../common/ui.h"
 #include "../mirror.h"
 }
 
@@ -89,20 +88,7 @@ private:
   std::vector<float> audio_;
 };
 
-#ifndef BUILD_WASM_RENDERER
-static int init_mirror(const std::string &args) {
-  int result = mirror_init_with_args(args.c_str());
-  if (result)
-    SET_ERRNO(ERROR_INIT, "Browser mirror initialization failed");
-  return result;
-}
-#endif
 EMSCRIPTEN_BINDINGS(ascii_chat_frame) {
-#ifndef BUILD_WASM_RENDERER
-  emscripten::function("initMirror", &init_mirror);
-  emscripten::function("sessionRenderCleanup", &session_render_cleanup);
-  emscripten::function("mirror_cleanup", &mirror_cleanup);
-#endif
   emscripten::function("sessionRenderResetStabilizer", &session_render_reset_stabilizer);
   emscripten::function("browser_capture_transform_required", &browser_capture_transform_required);
   emscripten::register_type<RgbaBytes>("RgbaBytes", "Uint8Array | Uint8ClampedArray");

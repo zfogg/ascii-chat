@@ -1,3 +1,45 @@
+/** Values match the native terminal and ASCII renderer enums. */
+export const ColorMode = {
+  Auto: -1,
+  None: 0,
+  Ansi16: 1,
+  Ansi256: 2,
+  Truecolor: 3,
+} as const;
+export type ColorMode = (typeof ColorMode)[keyof typeof ColorMode];
+export const RenderMode = {
+  Foreground: 0,
+  Background: 1,
+  HalfBlock: 2,
+} as const;
+export type RenderMode = (typeof RenderMode)[keyof typeof RenderMode];
+export const ColorFilter = {
+  None: 0,
+  Black: 1,
+  White: 2,
+  Green: 3,
+  Magenta: 4,
+  Fuchsia: 5,
+  Orange: 6,
+  Teal: 7,
+  Cyan: 8,
+  Pink: 9,
+  Red: 10,
+  Yellow: 11,
+  Rainbow: 12,
+} as const;
+export type ColorFilter = (typeof ColorFilter)[keyof typeof ColorFilter];
+export const TextRenderer = { Luminance: 0, Glyph: 1 } as const;
+export type TextRenderer = (typeof TextRenderer)[keyof typeof TextRenderer];
+/** Built-in luminance palettes, ordered from dark to bright, matching palette.h. */
+export const defaultPalettes = {
+  standard: "   ...',;:clodxkO0KXNWM",
+  blocks: "   ░░▒▒▓▓██",
+  digital: "   -=≡≣▰▱◼",
+  minimal: "   .-+*#",
+  cool: "   ▁▂▃▄▅▆▇█",
+} as const;
+
 /** Values accepted by the native options registry. */
 export type OptionValue = number | string | boolean;
 export type OptionValues = Readonly<Record<string, OptionValue>>;

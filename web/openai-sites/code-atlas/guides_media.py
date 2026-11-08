@@ -31,7 +31,7 @@ G('capture','Capture & send video','Inside a call','CLI + browser','How does my 
  C('deliver','Deliver to a media host','The host must decode the image before it contributes to anyone’s shared grid.',
  P('src/client/server.c','threaded_send_image_frame_encoded','Send native image packets','Send helpers package encoded image data through the active transport; raw upload uses a related path.'),
  P('src/server/protocol.c','handle_image_frame_h265_packet','Decode on a native server','The protocol validates encoded image payloads and routes them to per-client decoder state.','src/session/h265/server.c'),
- P(N+'BrowserVideoDecoder.ts','BrowserVideoDecoder','Decode on a browser host','WebCodecs produces RGBA frames for shared C hosting. The browser adapter then feeds C host state rather than composing a separate TypeScript grid.',N+'BrowserHostSession.ts','src/web/session_host.c'))],['mirror','shared-grid','media']),
+ P(N+'BrowserVideoDecoder.ts','BrowserVideoDecoder','Decode on a browser host','WebCodecs produces RGBA frames for shared C hosting. The browser adapter then feeds C host state rather than composing a separate TypeScript grid.',N+'BrowserHostSession.ts','src/web/bindings/session_host.cpp'))],['mirror','shared-grid','media']),
 G('shared-grid','Receive & render the call','Inside a call','CLI + browser','How do several callers become the picture I see?',
  'Follow participant frames, host composition, client-specific ASCII output, packet decode, and final presentation.',
  'Locate grid layout, dimensions, palettes, compression, and the last terminal/canvas boundary.',

@@ -16,7 +16,7 @@ The browser maps `?test` to pattern zero and `?test2` to pattern one. `?test2&te
 
 `lib/video/anim/test_pattern.c` owns the RGB animations, a high-contrast pixel-lettered `test` label, and optional reusable RGBA output. Each media source/canvas has an independent renderer and reusable image buffers. Its public API takes elapsed milliseconds, making animation speed independent of capture FPS and allowing deterministic comparisons. Native sources use a monotonic clock. Geometry adapts below the former Canvas minimum shape sizes so the minimum 20x10 terminal can still show the shapes and colors.
 
-`src/web/common/test_pattern.c` exposes this same implementation to both WASM modules. TypeScript only copies/uploads the generated RGBA frame and manages source lifetime. The mirror consumes the returned frame without reading the canvas back.
+`src/web/bindings/test_pattern.cpp` binds this same implementation to the WASM modules. TypeScript only copies/uploads the generated RGBA frame and manages source lifetime. The mirror consumes the returned frame without reading the canvas back.
 
 The existing terminal palette helpers are shared by the normal render pipeline. `rgb_to_256color` now compares the nearest nonuniform xterm cube entry with the nearest grayscale entry, including exact black and white. `get_256color_rgb` supplies the inverse palette lookup; the existing 16-color helpers supply the other direction. Palette expansion uses the standard reference colors (the first 16 actual terminal colors may be themed).
 

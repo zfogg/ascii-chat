@@ -7,6 +7,7 @@ extern "C" {
 #include "networking.h"
 #include "byte_arrays.h"
 #include <sodium.h>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -89,14 +90,14 @@ static int set_server_address(const std::string &host, int port) {
   return result;
 }
 static std::optional<std::string> client_public_key() {
-  char *key = client_get_public_key_hex();
+  const uint8_t *key = client_public_key_bytes();
   if (!key) {
     SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot get client public key");
     return std::nullopt;
   }
-  std::string result(key);
-  client_free_string(key);
-  return result;
+  std::array<char, 65> hex{};
+  sodium_bin2hex(hex.data(), hex.size(), key, 32);
+  return std::string(hex.data());
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_network) {

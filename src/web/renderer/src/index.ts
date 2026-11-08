@@ -1,43 +1,28 @@
 import {
   Options,
+  ColorMode,
+  paletteName,
+  defaultPalettes,
   type OptionsBindings,
   type OptionValues,
 } from "../../common/options.js";
-export { Options } from "../../common/options.js";
+export {
+  Options,
+  ColorMode,
+  RenderMode,
+  ColorFilter,
+  TextRenderer,
+  defaultPalettes,
+  paletteTypes,
+  paletteName,
+} from "../../common/options.js";
 export type {
   OptionValue,
   OptionValues,
   OptionsSnapshot,
+  Palette,
 } from "../../common/options.js";
 
-export const ColorMode = {
-  Auto: -1,
-  None: 0,
-  Ansi16: 1,
-  Ansi256: 2,
-  Truecolor: 3,
-} as const;
-export const RenderMode = {
-  Foreground: 0,
-  Background: 1,
-  HalfBlock: 2,
-} as const;
-export const ColorFilter = {
-  None: 0,
-  Black: 1,
-  White: 2,
-  Green: 3,
-  Magenta: 4,
-  Fuchsia: 5,
-  Orange: 6,
-  Teal: 7,
-  Cyan: 8,
-  Pink: 9,
-  Red: 10,
-  Yellow: 11,
-  Rainbow: 12,
-} as const;
-export const TextRenderer = { Luminance: 0, Glyph: 1 } as const;
 /** Rendering keys supported by the shared native options registry. */
 export type RendererOptions = OptionValues &
   Partial<{
@@ -64,6 +49,7 @@ interface FrameBinding {
     height: number,
     contain: boolean,
   ): string | undefined;
+  transform(pixels: Uint8Array | Uint8ClampedArray, width: number, height: number): number;
   submitAudio(samples: Float32Array, source: number): void;
   renderAudio(
     width: number,
@@ -99,8 +85,8 @@ interface SessionBinding {
   error(): number;
   delete(): void;
 }
-interface Module extends OptionsBindings {
-  RendererSessionBinding: new () => SessionBinding;
+export interface RendererModule extends OptionsBindings {
+  RendererSessionBinding?: new () => SessionBinding;
   sessionRenderResetStabilizer(): void;
   MirrorFrameBinding: new () => FrameBinding;
   TerminalRendererBinding: new (
@@ -119,6 +105,69 @@ export interface RendererInit {
 }
 const sourceId = (source: AudioSource) => (source === "microphone" ? 0 : 1);
 
+// ANSI truecolor cells are delimited by literal ESC control characters.
+// oxlint-disable-next-line no-control-regex
+const TRUECOLOR_CELL = /\x1b\[38;2;(\d+);(\d+);(\d+)m([^\x1b\n])\x1b\[0m/g;
+
+function paletteCharacter(
+  red: number,
+  green: number,
+  blue: number,
+  characters: string[],
+): string {
+  const luminance = (red * 0.2126 + green * 0.7152 + blue * 0.0722) / 255;
+  return (
+    characters[
+      Math.min(
+        characters.length - 1,
+        Math.round(luminance * (characters.length - 1)),
+      )
+    ] ?? " "
+  );
+}
+
+function ansi16Color(red: number, green: number, blue: number): number {
+  const bright = Math.max(red, green, blue) > 191 ? 60 : 0;
+  const bits =
+    (red > 127 ? 1 : 0) | (green > 127 ? 2 : 0) | (blue > 127 ? 4 : 0);
+  return 30 + bits + bright;
+}
+
+function ansi256Color(red: number, green: number, blue: number): number {
+  const component = (value: number) => Math.round((value / 255) * 5);
+  return 16 + 36 * component(red) + 6 * component(green) + component(blue);
+}
+
+/** Apply browser color-mode and palette settings to one generated audio frame. */
+function formatAudioFrame(frame: string, values: OptionValues): string {
+  const colorMode = Number(values["color_mode"]);
+  const palette = paletteName(Number(values["palette_type"]));
+  const chars =
+    palette === "custom"
+      ? String(values["palette_custom"] ?? "")
+      : defaultPalettes[palette];
+  const characters = Array.from(chars || defaultPalettes.standard);
+  return frame.replace(
+    TRUECOLOR_CELL,
+    (_match, redText, greenText, blueText) => {
+      const red = Number(redText);
+      const green = Number(greenText);
+      const blue = Number(blueText);
+      const character = paletteCharacter(red, green, blue, characters);
+
+      if (colorMode === ColorMode.None) return character;
+      if (colorMode === ColorMode.Ansi16) {
+        return `\x1b[${ansi16Color(red, green, blue)}m${character}\x1b[0m`;
+      }
+      if (colorMode === ColorMode.Ansi256) {
+        return `\x1b[38;5;${ansi256Color(red, green, blue)}m${character}\x1b[0m`;
+      }
+      return `\x1b[38;2;${red};${green};${blue}m${character}\x1b[0m`;
+    },
+  );
+}
+
+
 /** Each instance creates an independent WASM module and owns all its state. */
 export class AsciiRenderer {
   readonly options: Options;
@@ -130,8 +179,8 @@ export class AsciiRenderer {
   private pattern: PatternBinding | undefined;
   private patternKey = "";
   private constructor(
-    private readonly module: Module,
-    private readonly session: SessionBinding,
+    private readonly module: RendererModule,
+    private readonly session?: SessionBinding,
   ) {
     this.options = new Options(module);
     this.frame = new module.MirrorFrameBinding();
@@ -142,11 +191,12 @@ export class AsciiRenderer {
       moduleUrl?.toString() ?? new URL("./renderer.js", import.meta.url).href;
     const factory = (await import(/* @vite-ignore */ path)).default as (
       init: RendererInit & { getRandomValue: () => number },
-    ) => Promise<Module>;
+    ) => Promise<RendererModule>;
     const module = await factory({
       ...runtime,
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0]!,
     });
+    if (!module.RendererSessionBinding) throw new Error("WASM module has no renderer session");
     const session = new module.RendererSessionBinding();
     if (!session.valid()) {
       const code = session.error();
@@ -159,6 +209,10 @@ export class AsciiRenderer {
       session.delete();
       throw error;
     }
+  }
+  /** Use an already initialized client or mirror module without taking ownership of its session. */
+  static fromModule(module: RendererModule): AsciiRenderer {
+    return new AsciiRenderer(module);
   }
   configure(values: RendererOptions): void {
     this.options.patch(values);
@@ -174,6 +228,10 @@ export class AsciiRenderer {
     if (text === undefined) throw new Error("ASCII frame conversion failed");
     return text;
   }
+  transform(pixels: Uint8Array | Uint8ClampedArray, width: number, height: number): void {
+    this.check();
+    if (this.frame.transform(pixels, width, height)) throw new Error("Capture transform failed");
+  }
   submitAudio(samples: Float32Array, source: AudioSource = "media"): void {
     this.check();
     this.frame.submitAudio(samples, sourceId(source));
@@ -186,7 +244,11 @@ export class AsciiRenderer {
     this.check();
     const text = this.frame.renderAudio(width, height, sourceId(source));
     if (text === undefined) throw new Error("Audio visualization failed");
-    return text;
+    return this.formatAudioFrame(text);
+  }
+  formatAudioFrame(frame: string): string {
+    this.check();
+    return formatAudioFrame(frame, this.options.read().values);
   }
   reset(): void {
     this.check();
@@ -202,7 +264,7 @@ export class AsciiRenderer {
   ): void {
     this.check();
     const values = this.options.read().values;
-    const matrix = values.matrix_rain === true;
+    const matrix = values["matrix_rain"] === true;
     const key = `${columns}:${rows}:${fontSize}:${matrix}`;
     if (this.rasterKey !== key || !this.raster) {
       this.raster?.delete();
@@ -217,24 +279,24 @@ export class AsciiRenderer {
       this.rasterPixels = undefined;
     }
     const raster = this.raster;
-    if (
-      !raster.valid() ||
-      raster.setZalgo(Number(values.zalgo ?? 0)) !== 0 ||
-      raster.feed("\x1b[H" + text) !== 0
-    )
-      throw new Error(`Rasterization failed (${raster.error()})`);
-    const width = raster.width(),
-      height = raster.height();
-    const pixels = (this.rasterPixels ??= new Uint8ClampedArray(
-      width * height * 4,
-    ));
-    if (!raster.copyPixels(pixels))
-      throw new Error("Cannot copy raster pixels");
+    const width = raster.width(), height = raster.height();
+    const pixels = (this.rasterPixels ??= new Uint8ClampedArray(width * height * 4));
+    AsciiRenderer.rasterize(raster, "\x1b[H" + text, Number(values["zalgo"] ?? 0), pixels);
     if (canvas.width !== width) canvas.width = width;
     if (canvas.height !== height) canvas.height = height;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Canvas 2D context unavailable");
     context.putImageData(new ImageData(pixels, width, height), 0, 0);
+  }
+
+  /** Rasterize an ANSI frame with an existing native terminal renderer. */
+  static rasterize(raster: RasterBinding, text: string, zalgo = 0,
+                   pixels = new Uint8ClampedArray(raster.width() * raster.height() * 4)): Uint8ClampedArray<ArrayBuffer> {
+    if (!raster.valid() || raster.setZalgo(zalgo) !== 0 || raster.feed(text) !== 0)
+      throw new Error(`Rasterization failed (${raster.error()})`);
+    if (pixels.length !== raster.width() * raster.height() * 4 || !raster.copyPixels(pixels))
+      throw new Error("Cannot copy raster pixels");
+    return pixels;
   }
 
   /** Produce the project's animated RGBA test pattern. */
@@ -266,7 +328,7 @@ export class AsciiRenderer {
       this.pattern?.delete();
       this.raster?.delete();
       this.frame.delete();
-      this.session.delete();
+      this.session?.delete();
       this.disposed = true;
     }
   }
