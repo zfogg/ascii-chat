@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out master
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -29,11 +29,6 @@ jobs:
           sudo bash llvm.sh
           sudo apt-get update
           sudo apt-get install --yes cmake ninja-build clang-format
-
-      - name: Install project dependencies
-        uses: ./.github/actions/install-deps
-        with:
-          os: ubuntu
 
       - name: Configure CMake
         run: cmake --preset release -B build_release -DUSE_MUSL=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF -DASCIICHAT_FORMAT_ONLY=ON

@@ -85,11 +85,12 @@ include(${CMAKE_SOURCE_DIR}/cmake/ProjectConstants.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/Options.cmake)
 
-# Formatting only needs the source tree and clang-format; avoid initializing or
-# restoring the native dependency submodules for this lightweight target.
-if(NOT ASCIICHAT_FORMAT_ONLY)
-    include(${CMAKE_SOURCE_DIR}/cmake/init/SubmoduleCheck.cmake)
+if(ASCIICHAT_FORMAT_ONLY)
+    include(${CMAKE_SOURCE_DIR}/cmake/tools/CustomTargets.cmake)
+    return()
 endif()
+
+include(${CMAKE_SOURCE_DIR}/cmake/init/SubmoduleCheck.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/install/Version.cmake)
 version_detect()          # Sets PROJECT_VERSION_FROM_GIT and PROJECT_VERSION_DATE
