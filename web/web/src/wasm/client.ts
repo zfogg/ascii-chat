@@ -1,18 +1,13 @@
 // TypeScript wrapper for Client WASM module
 // Provides type-safe interface to libasciichat client mode
 
-import type { Palette } from "../components";
+import type { DiscoverySnapshot, HandoffAction } from "../network/acdsProtocol";
 import type {
-  RuntimeOptionsModule,
   RuntimeValues,
   ClientWasmBindings,
-  ClientScalarBindings,
   PeerCryptoBinding,
 } from "@ascii-chat/shared/wasm";
-import {
-  createWasmModule,
-  createOptionAccessor,
-} from "@ascii-chat/shared/wasm";
+import { createWasmModule } from "@ascii-chat/shared/wasm";
 import {
   publishBrowserError,
   type BrowserErrorFrame,
@@ -48,17 +43,14 @@ export async function readCryptoKeyFile(file: File): Promise<string> {
   return `${BINARY_OPENPGP_KEY_PREFIX}${btoa(binary)}`;
 }
 
-// Type for WASM exports exposed to window.asciiChatWasm
-interface AsciiChatWasmExports {
-  _wasmModule?: ClientModule;
-  getHelpText?(mode: number, optionName: string): string | undefined;
-}
-
-interface ClientModule
-  extends RuntimeOptionsModule, ClientWasmBindings, ClientScalarBindings {
+type ClientModule = ClientWasmBindings & {
   HEAPU8: Uint8Array;
   sendPacketCallback?: (rawPacket: Uint8Array) => void;
-}
+  hostPacketCallback?: (id: number, bytes: Uint8Array) => void;
+  discoverySend?: (handle: number, type: number, payload: Uint8Array) => void;
+  discoveryResult?: DiscoverySnapshot;
+  handoffResult?: HandoffAction;
+};
 /** Publish the complete pending C error stack and throw at the JS boundary. */
 export function throwWasmError(result: number, fallback: string): never {
   const module = wasmModule;
@@ -112,30 +104,6 @@ export enum ConnectionState {
   HANDSHAKE = 2,
   CONNECTED = 3,
   ERROR = 4,
-}
-
-export enum ColorMode {
-  AUTO = -1,
-  NONE = 0,
-  COLOR_16 = 1,
-  COLOR_256 = 2,
-  TRUECOLOR = 3,
-}
-
-export enum ColorFilter {
-  NONE = 0,
-  BLACK = 1,
-  WHITE = 2,
-  GREEN = 3,
-  MAGENTA = 4,
-  FUCHSIA = 5,
-  ORANGE = 6,
-  TEAL = 7,
-  CYAN = 8,
-  PINK = 9,
-  RED = 10,
-  YELLOW = 11,
-  RAINBOW = 12,
 }
 
 export enum PacketType {
@@ -438,14 +406,6 @@ async function loadWasmModule(): Promise<void> {
     throw new Error("Failed to load WASM module");
   }
 
-  // Expose WASM module to window for help text access
-  const globalWindow = globalThis as typeof globalThis & {
-    asciiChatWasm: AsciiChatWasmExports;
-  };
-  globalWindow.asciiChatWasm = {
-    _wasmModule: wasmModule,
-    getHelpText: wasmModule.optionHelp.bind(wasmModule),
-  };
   console.log("[WASM] Module loaded and help text available");
 }
 
@@ -737,75 +697,6 @@ export function getConnectionState(): ConnectionState {
     throw new Error("WASM module not initialized");
   }
   return wasmModule.client_get_connection_state();
-}
-
-/** Access the client's shared atomic runtime options. */
-function clientOptions() {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return createOptionAccessor(wasmModule);
-}
-export function setColorMode(value: ColorMode): void {
-  clientOptions().setInt("color_mode", value);
-}
-export function getColorMode(): ColorMode {
-  return clientOptions().getInt("color_mode");
-}
-export function setColorFilter(value: ColorFilter): void {
-  clientOptions().setInt("color_filter", value);
-}
-export function getColorFilter(): ColorFilter {
-  return clientOptions().getInt("color_filter");
-}
-export function setPalette(value: Palette): void {
-  clientOptions().setString("palette", value);
-}
-export function getPalette(): string {
-  const names: Palette[] = [
-    "standard",
-    "standard",
-    "blocks",
-    "digital",
-    "minimal",
-    "cool",
-    "custom",
-  ];
-  return names[clientOptions().getInt("palette")] ?? "standard";
-}
-export function setPaletteChars(value: string): void {
-  clientOptions().setString("palette_chars", value);
-}
-export function getPaletteChars(): string {
-  return clientOptions().getString("palette_chars");
-}
-export function setMatrixRain(value: boolean): void {
-  clientOptions().setBool("matrix_rain", value);
-}
-export function getMatrixRain(): boolean {
-  return clientOptions().getBool("matrix_rain");
-}
-export function setFlipX(value: boolean): void {
-  clientOptions().setBool("flip_x", value);
-}
-export function getFlipX(): boolean {
-  return clientOptions().getBool("flip_x");
-}
-export function setTargetFps(value: number): void {
-  clientOptions().setInt("fps", value);
-}
-export function getTargetFps(): number {
-  return clientOptions().getInt("fps");
-}
-export function setWidth(value: number): void {
-  clientOptions().setInt("width", value);
-}
-export function getWidth(): number {
-  return clientOptions().getInt("width");
-}
-export function setHeight(value: number): void {
-  clientOptions().setInt("height", value);
-}
-export function getHeight(): number {
-  return clientOptions().getInt("height");
 }
 
 /**

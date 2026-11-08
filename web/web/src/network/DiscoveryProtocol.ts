@@ -1,28 +1,16 @@
 import { getClientModule } from "../wasm/client";
 import type { DiscoveryBinding } from "@ascii-chat/shared/wasm";
-import { SessionRejectedError, type JoinedSession } from "./acdsProtocol";
-
-interface Snapshot {
-  state: number;
-  terminal: boolean;
-  error: string;
-  name: string;
-  joined: JoinedSession;
-}
-type Module = NonNullable<ReturnType<typeof getClientModule>> & {
-  discoverySend?: (handle: number, type: number, payload: Uint8Array) => void;
-  discoveryResult?: Snapshot;
-};
+import { SessionRejectedError, type DiscoverySnapshot } from "./acdsProtocol";
 
 /** Ownership and memory adapter for the shared C discovery state machine. */
 export class DiscoveryProtocol {
-  private module: Module;
+  private module: NonNullable<ReturnType<typeof getClientModule>>;
   private binding: DiscoveryBinding | null;
   private outgoing: Array<[number, Uint8Array]> = [];
-  private forward: NonNullable<Module["discoverySend"]>;
+  private forward: NonNullable<typeof this.module.discoverySend>;
 
   constructor(private send: (type: number, payload: Uint8Array) => void) {
-    const module = getClientModule() as Module | null;
+    const module = getClientModule();
     if (!module) throw new Error("WASM is not initialized");
     this.module = module;
     const binding = new module.DiscoveryBinding();
@@ -37,7 +25,7 @@ export class DiscoveryProtocol {
     };
     module.discoverySend = this.forward;
   }
-  private finish(result: number): Snapshot {
+  private finish(result: number): DiscoverySnapshot {
     this.getBinding().snapshot();
     const snapshot = this.module.discoveryResult!;
     if (result) {
@@ -53,7 +41,7 @@ export class DiscoveryProtocol {
       this.send(type, payload);
     return snapshot;
   }
-  enter(create: boolean, name: string, password: string): Snapshot {
+  enter(create: boolean, name: string, password: string): DiscoverySnapshot {
     const secret = new TextEncoder().encode(password);
     try {
       return this.finish(this.getBinding().enter(create, name, secret));
@@ -61,7 +49,7 @@ export class DiscoveryProtocol {
       secret.fill(0);
     }
   }
-  receive(type: number, payload: Uint8Array): Snapshot {
+  receive(type: number, payload: Uint8Array): DiscoverySnapshot {
     return this.finish(this.getBinding().receive(type, payload));
   }
   private getBinding(): DiscoveryBinding {

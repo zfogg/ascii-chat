@@ -6,15 +6,6 @@ const state = vi.hoisted(() => ({ module: null as unknown }));
 vi.mock("../../../packages/shared/src/wasm/mirror", () => ({
   getMirrorModule: () => state.module,
 }));
-vi.mock("../../../packages/shared/src/wasm", () => ({
-  getColorFilter: () => 0,
-  getColorMode: () => 0,
-  getFlipX: () => false,
-  getFlipY: () => false,
-  getMatrixRain: () => false,
-  getPalette: () => "standard",
-  getTargetFps: () => 30,
-}));
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
@@ -77,7 +68,6 @@ it("does not publish a stale debounced grid after resize recovery", () => {
     useInitAsciiRenderer({
       canvasRef,
       wasmModuleReady: true,
-      initializeOptions: false,
     }),
   );
   const update = vi.fn();

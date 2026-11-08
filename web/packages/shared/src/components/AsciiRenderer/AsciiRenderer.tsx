@@ -67,7 +67,6 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
       showFps = true,
       connectionState,
       wasmModuleReady,
-      initializeOptions = true,
       matrixMode = false,
       zalgo = 0,
       columns = 0,
@@ -88,7 +87,6 @@ const AsciiRenderer = forwardRef<AsciiRendererHandle, AsciiRendererProps>(
     } = useInitAsciiRenderer({
       canvasRef: canvasRef as RefObject<HTMLCanvasElement | null>,
       wasmModuleReady,
-      initializeOptions,
       matrixMode,
       columns,
       rows,

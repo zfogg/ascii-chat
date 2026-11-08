@@ -1,19 +1,6 @@
 import { useLayoutEffect } from "react";
 import { type RefObject, useCallback, useEffect, useRef } from "react";
 import { getMirrorModule, type MirrorModule } from "../../wasm/mirror";
-import {
-  getColorFilter,
-  getColorMode,
-  getFlipX,
-  getFlipY,
-  getMatrixRain,
-  getPalette,
-  getTargetFps,
-} from "../../wasm";
-import {
-  wasmColorModeToString,
-  wasmColorFilterToString,
-} from "../../utils/colorMappers";
 
 import { browserRasterFontSize } from "./rasterConfig";
 import type { TerminalRendererBinding } from "../../wasm/generated/mirror-bindings";
@@ -33,7 +20,6 @@ interface UseInitAsciiRendererReturn {
 interface UseInitAsciiRendererParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   wasmModuleReady: boolean | undefined;
-  initializeOptions?: boolean;
   matrixMode?: boolean;
   columns?: number;
   rows?: number;
@@ -42,7 +28,6 @@ interface UseInitAsciiRendererParams {
 export function useInitAsciiRenderer({
   canvasRef,
   wasmModuleReady,
-  initializeOptions = true,
   matrixMode = false,
   columns = 0,
   rows = 0,
@@ -67,54 +52,6 @@ export function useInitAsciiRenderer({
   const cellMetricsRef = useRef(
     new Map<string, { width: number; height: number }>(),
   );
-
-  // Rebuild and apply args with current settings from WASM state
-  const reinitializeWithCurrentSettings = useCallback(() => {
-    if (!moduleRef.current) {
-      console.warn(
-        "[reinitializeWithCurrentSettings] moduleRef.current is null, skipping reinitialization",
-      );
-      return;
-    }
-
-    try {
-      // Get current rendering settings that affect the renderer appearance
-      const matrixRain = getMatrixRain();
-      const colorMode = getColorMode();
-      const colorFilter = getColorFilter();
-      const palette = getPalette();
-      const flipX = getFlipX();
-      const flipY = getFlipY();
-      const targetFps = getTargetFps();
-
-      // Reconstruct args string with rendering settings
-      const args = ["mirror"];
-      if (matrixRain) {
-        args.push("--matrix");
-      }
-      args.push(`--color-mode`, wasmColorModeToString(colorMode));
-      args.push(`--color-filter`, wasmColorFilterToString(colorFilter));
-      args.push(`--palette`, palette);
-      if (flipX) args.push("--flip-x");
-      if (flipY) args.push("--flip-y");
-      args.push(`--fps`, String(targetFps));
-
-      const argsStr = args.join(" ");
-      console.debug(
-        "[reinitializeWithCurrentSettings] Calling mirror_init_with_args with:",
-        argsStr,
-      );
-
-      const initResult = moduleRef.current.initMirror(argsStr);
-      if (initResult !== 0)
-        throw new Error(`Failed to reinitialize mirror C code: ${initResult}`);
-    } catch (err) {
-      console.error(
-        "[reinitializeWithCurrentSettings] Error reapplying settings:",
-        err,
-      );
-    }
-  }, []);
 
   // Load WASM module when ready
   useEffect(() => {
@@ -321,7 +258,7 @@ export function useInitAsciiRenderer({
               // Retry with a capped grid size to avoid cascading allocation
               const recoveryWidth = Math.min(newWidth, 1280);
               const recoveryHeight = Math.min(cappedHeight, 2000); // Use same max as createConfigStruct
-              const recoveryIsMatrixMode = getMatrixRain();
+              const recoveryIsMatrixMode = currentMatrixModeRef.current;
               const recoveryPixelsPerRow = recoveryIsMatrixMode ? 32 : 20;
               const recoveryCols = Math.max(1, Math.floor(recoveryWidth / 10));
               const recoveryRows = Math.max(
@@ -429,11 +366,6 @@ export function useInitAsciiRenderer({
 
       moduleRef.current.canvas = canvas;
 
-      // A shared client WASM instance already has initialized options. Running
-      // mirror_init_with_args on it would initialize the same C option state a
-      // second time and switch the active mode underneath the client.
-      if (initializeOptions) reinitializeWithCurrentSettings();
-
       const container = canvas.parentElement;
       const containerRect = container?.getBoundingClientRect();
       const containerWidth = Math.round(containerRect?.width ?? 1200);
@@ -473,8 +405,6 @@ export function useInitAsciiRenderer({
       callRendererCreate,
       getRendererDimensions,
       setupResizeObserver,
-      reinitializeWithCurrentSettings,
-      initializeOptions,
       matrixMode,
     ],
   );

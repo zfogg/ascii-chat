@@ -661,9 +661,6 @@ export function MirrorPage() {
               error={error}
               showFps
               wasmModuleReady={!!wasmModule}
-              // initMirrorWasm already initialized the C options; initializing
-              // them again here can abort the WASM allocator during page load.
-              initializeOptions={false}
               matrixMode={!fileActive && (settings.matrixRain ?? false)}
             />
           );

@@ -8,10 +8,10 @@ the declarations from both builds and records their hashes alongside the WASM
 artifacts. Rebuild and publish both modules together after changing a binding.
 
 Browser code should prefer the shared TypeScript facades and generated binding
-types. `SessionUi`, `MirrorFrameBinding`, `TerminalRendererBinding`,
+types. `SessionUiBinding`, `MirrorFrameBinding`, `TerminalRendererBinding`,
 `AudioProcessorBinding`, `OpusCodecBinding`, and `PeerCryptoBinding` own their
 C resources. An Embind object must be deleted once after its last use; facades
-such as `SessionUi.destroy()` and `PeerCryptoSession.close()` make repeated
+such as the renderer lifecycle and `PeerCryptoSession.close()` make repeated
 cleanup safe. The C options and mirror initialization functions remain
 module-local, so they must be initialized before creating objects that use
 them. An object belongs to the WASM module and worker that created it; do not
@@ -41,7 +41,7 @@ its temporary SSH-key file. JavaScript strings and copies owned by browser APIs
 cannot be reliably wiped. C error snapshots are copied into JavaScript values
 before reporting them.
 
-Embind is the browser-facing API, including options and host control. Options use `patchOptions({ width: 80, height: 40 }, revision)` for one validated atomic update and `readOptions()` for an owned snapshot object. Pass `-1` to accept any revision; stale revisions and invalid fields reject the entire patch. The TypeScript options facade supplies the default revision and returns the committed snapshot. The
+Embind is the browser-facing API, including options and host control. The browser renderer owns its `SessionUiBinding` directly and deletes it when the renderer is released; browser key conversion stays with the renderer. Options use `patchOptions({ width: 80, height: 40 }, revision)` for one validated atomic update and `readOptions()` for an owned snapshot object. Pass `-1` to accept any revision; stale revisions and invalid fields reject the entire patch. The TypeScript options facade supplies the default revision and returns the committed snapshot. The
 C functions used by adapters are declared in the corresponding web headers,
 which their implementations include as well. Emscripten's filesystem remains
 available for temporary key files; the current heap view is used only to detect

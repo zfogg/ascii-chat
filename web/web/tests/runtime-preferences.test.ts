@@ -16,7 +16,6 @@ vi.mock("@ascii-chat/shared/wasm", async (original) => ({
   ...(await original<typeof import("@ascii-chat/shared/wasm")>()),
   getMirrorModule: () => engine.module,
   isWasmReady: () => true,
-  isOptionsInitialized: () => true,
 }));
 import {
   applyMirrorWasmSettings,

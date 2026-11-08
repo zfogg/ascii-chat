@@ -11,7 +11,16 @@ export interface OptionsBindings {
   readOptions(): OptionsSnapshot | null;
   patchOptions(values: OptionValues, expectedRevision: number): number;
 }
-const palettes = [
+export const paletteTypes = {
+  standard: 1,
+  blocks: 2,
+  digital: 3,
+  minimal: 4,
+  cool: 5,
+  custom: 6,
+} as const;
+export type Palette = keyof typeof paletteTypes;
+const paletteNames: readonly Palette[] = [
   "standard",
   "standard",
   "blocks",
@@ -19,7 +28,10 @@ const palettes = [
   "minimal",
   "cool",
   "custom",
-] as const;
+];
+export function paletteName(type: number): Palette {
+  return paletteNames[type] ?? "standard";
+}
 /** Applies a validated patch to the native options state atomically. */
 export class Options {
   constructor(private readonly bindings: OptionsBindings) {}
@@ -37,8 +49,9 @@ export class Options {
     return this.read();
   }
   palette(name: string, characters?: string): void {
-    const type = palettes.lastIndexOf(name as (typeof palettes)[number]);
-    if (type < 0) throw new Error(`Invalid palette: ${name}`);
+    if (!Object.hasOwn(paletteTypes, name))
+      throw new Error(`Invalid palette: ${name}`);
+    const type = paletteTypes[name as Palette];
     this.patch(
       characters === undefined
         ? { palette_type: type }

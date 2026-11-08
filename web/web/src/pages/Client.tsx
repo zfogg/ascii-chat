@@ -1727,7 +1727,6 @@ export function ClientPage({
               columns={settings.width}
               rows={settings.height}
               onDimensionsChange={handleDimensionsChange}
-              initializeOptions={false}
               onFpsChange={setFps}
               error={discoveryMode ? rendererError : error || rendererError}
               showFps

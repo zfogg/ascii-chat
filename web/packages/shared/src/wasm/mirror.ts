@@ -1,4 +1,3 @@
-import type { SessionUiModule } from "./sessionUi";
 import type {
   MainModule,
   MirrorFrameBinding,
@@ -8,38 +7,17 @@ import { resetRuntimeOptions, runtimeOptions } from "./common/runtimeOptions";
 // Provides type-safe interface to libasciichat mirror mode
 // Decoupled from Emscripten factory location — callers provide the factory.
 
-import { createOptionAccessor, type WasmModule } from "./common/optionsWrapper";
 import {
-  initializeOptions,
-  cleanupOptions,
-  getColorMode,
-  getPalette,
-  getPaletteChars,
   RenderMode,
   ColorMode,
   ColorFilter,
+  paletteName,
   type Palette,
 } from "./common/options";
-
-// Type for WASM exports exposed to window.asciiChatWasm
-interface AsciiChatWasmExports {
-  _wasmModule?: MirrorModule;
-  getHelpText?(mode: number, optionName: string): string | undefined;
-}
-
-export interface MirrorModule
-  extends
-    WasmModule,
-    SessionUiModule,
-    Pick<
-      MainModule,
-      | "browser_capture_transform_required"
-      | "mirror_cleanup"
-      | "sessionRenderResetStabilizer"
-      | "sessionRenderCleanup"
-    > {
+export type MirrorModule = MainModule & {
+  HEAPU8: Uint8Array;
   canvas?: HTMLCanvasElement;
-}
+};
 
 // Re-export enums and types from shared options module
 export { RenderMode, ColorMode, ColorFilter };
@@ -69,7 +47,6 @@ export function adoptMirrorWasmModule(module: MirrorModule): void {
     resetRuntimeOptions(module);
   }
   wasmModule = module;
-  initializeOptions(createOptionAccessor(module));
 }
 
 /** Clear a client module reference before its owning client runtime is cleaned up. */
@@ -78,7 +55,6 @@ export function resetAdoptedMirrorWasmModule(): void {
   wasmModule?.sessionRenderCleanup();
   if (wasmModule) resetRuntimeOptions(wasmModule);
   wasmModule = null;
-  cleanupOptions();
 }
 
 /**
@@ -142,20 +118,7 @@ export async function initMirrorWasm(
       throw new Error(`Failed to initialize mirror C code: ${initResult}`);
     }
 
-    // Initialize shared options module with option accessor
-    // This allows React components to call setColorMode, setPalette, etc.
-    const optionsAccessor = createOptionAccessor(wasmModule);
     resetRuntimeOptions(wasmModule);
-    initializeOptions(optionsAccessor);
-
-    // Expose WASM module to window for JavaScript access (e.g., tooltips)
-    const globalWindow = globalThis as typeof globalThis & {
-      asciiChatWasm: AsciiChatWasmExports;
-    };
-    globalWindow.asciiChatWasm = {
-      getHelpText: wasmModule.optionHelp.bind(wasmModule),
-      _wasmModule: wasmModule,
-    };
   } catch (err) {
     console.error("[WASM] Failed to initialize options:", err);
     throw err;
@@ -171,7 +134,6 @@ export function cleanupMirrorWasm(): void {
     wasmModule.mirror_cleanup();
     resetRuntimeOptions(wasmModule);
     wasmModule = null;
-    cleanupOptions();
   }
 }
 
@@ -281,12 +243,12 @@ const AUDIO_PALETTES: Record<Palette, string> = {
 // oxlint-disable-next-line no-control-regex
 const TRUECOLOR_CELL = /\x1b\[38;2;(\d+);(\d+);(\d+)m([^\x1b\n])\x1b\[0m/g;
 
-function paletteCharacter(red: number, green: number, blue: number): string {
-  const palette =
-    getPalette() === "custom"
-      ? getPaletteChars()
-      : AUDIO_PALETTES[getPalette()];
-  const characters = Array.from(palette || AUDIO_PALETTES.standard);
+function paletteCharacter(
+  red: number,
+  green: number,
+  blue: number,
+  characters: string[],
+): string {
   const luminance = (red * 0.2126 + green * 0.7152 + blue * 0.0722) / 255;
   return (
     characters[
@@ -312,14 +274,22 @@ function ansi256Color(red: number, green: number, blue: number): number {
 
 /** Apply browser color-mode and palette settings to one generated audio frame. */
 export function formatAudioVisualizationFrame(frame: string): string {
-  const colorMode = getColorMode();
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  const values = runtimeOptions(wasmModule).getSnapshot().values;
+  const colorMode = Number(values["color_mode"]);
+  const palette = paletteName(Number(values["palette_type"]));
+  const chars =
+    palette === "custom"
+      ? String(values["palette_custom"] ?? "")
+      : AUDIO_PALETTES[palette];
+  const characters = Array.from(chars || AUDIO_PALETTES.standard);
   return frame.replace(
     TRUECOLOR_CELL,
     (_match, redText, greenText, blueText) => {
       const red = Number(redText);
       const green = Number(greenText);
       const blue = Number(blueText);
-      const character = paletteCharacter(red, green, blue);
+      const character = paletteCharacter(red, green, blue, characters);
 
       if (colorMode === ColorMode.NONE) return character;
       if (colorMode === ColorMode.COLOR_16) {

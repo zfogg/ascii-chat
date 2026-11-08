@@ -17,7 +17,7 @@ Native keyboard input has four boundaries:
 
 Text and control keys use their Unicode code points directly. Special keys start
 at `0x110000`, above the Unicode range, so no text tagging is needed. The
-browser SessionUi adapter uses the same representation, including supplementary
+browser renderer uses the same representation, including supplementary
 characters. Bracketed POSIX paste payloads remain bytes until whole-paste validation.
 Malformed and truncated typed sequences cannot mutate a field; new starters or
 special keys discard incomplete text. Buffer exhaustion rejects a whole inserted

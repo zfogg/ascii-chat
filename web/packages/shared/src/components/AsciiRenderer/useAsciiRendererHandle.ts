@@ -1,7 +1,8 @@
 import { useLayoutEffect } from "react";
 import { RasterWorker } from "./RasterWorker";
-import { SessionUi } from "../../wasm/sessionUi";
-import type { SessionUiEvent } from "../../wasm/sessionUi";
+import { browserKeyCode } from "./keyboard";
+import type { SessionUiEvent } from "./types";
+import type { SessionUiBinding } from "../../wasm/generated/mirror-bindings";
 import type { KeyboardEvent } from "react";
 import {
   type ForwardedRef,
@@ -115,7 +116,8 @@ export function useAsciiRendererHandle({
     [onDimensionsChange],
   );
 
-  const uiRef = useRef<SessionUi | null>(null);
+  const uiRef = useRef<SessionUiBinding | null>(null);
+  const uiModuleRef = useRef<MirrorModule | null>(null);
   const uiRendererRef = useRef<TerminalRendererBinding | null>(null);
   const uiProps = useRef({ uiLoading, uiMessage, onUiAction });
   useLayoutEffect(() => {
@@ -124,9 +126,17 @@ export function useAsciiRendererHandle({
   const ensureUi = useCallback(() => {
     const module = moduleRef.current;
     if (!module || !setupDoneRef.current) return null;
-    if (uiRef.current?.module !== module) {
-      uiRef.current?.destroy();
-      uiRef.current = new SessionUi(module);
+    if (uiModuleRef.current !== module || !uiRef.current) {
+      uiRef.current?.delete();
+      uiRef.current = null;
+      uiModuleRef.current = null;
+      const binding = new module.SessionUiBinding();
+      if (!binding.valid()) {
+        binding.delete();
+        throw new Error("Cannot create session UI");
+      }
+      uiRef.current = binding;
+      uiModuleRef.current = module;
     }
     const ui = uiRef.current;
     if (uiRendererRef.current !== rendererPtrRef.current) {
@@ -293,7 +303,7 @@ export function useAsciiRendererHandle({
           lastMessage = uiProps.current.uiMessage;
         }
         const frame = ui.tick(performance.now());
-        if (frame !== null && !paintFrame(frame)) ui.redraw();
+        if (frame !== undefined && !paintFrame(frame)) ui.redraw();
       }
       id = requestAnimationFrame(tick);
     };
@@ -302,8 +312,9 @@ export function useAsciiRendererHandle({
   }, [ensureUi, paintFrame, resizeTimeoutRef]);
   useEffect(
     () => () => {
-      uiRef.current?.destroy();
+      uiRef.current?.delete();
       uiRef.current = null;
+      uiModuleRef.current = null;
     },
     [],
   );
@@ -313,16 +324,17 @@ export function useAsciiRendererHandle({
       if (event.altKey || event.ctrlKey || event.metaKey) return;
       const ui = ensureUi();
       if (!ui) return;
-      const action = ui.key(event.key, event.shiftKey);
+      const code = browserKeyCode(event.key, event.shiftKey);
+      const action = code ? ui.key(code) : 0;
       if (action) {
         event.preventDefault();
         uiProps.current.onUiAction?.({
           action,
           key: event.key,
-          module: ui.module,
+          module: moduleRef.current!,
         });
         const frame = ui.tick(performance.now());
-        if (frame !== null && !paintFrame(frame)) ui.redraw();
+        if (frame !== undefined && !paintFrame(frame)) ui.redraw();
       }
     },
     [ensureUi, paintFrame],
@@ -349,10 +361,11 @@ export function useAsciiRendererHandle({
         const ui = ensureUi();
         if (!ui) return false;
         try {
-          ui.media(ansiString);
+          if (ui.media(ansiString) !== 0)
+            throw new Error("Session UI rejected media frame");
           // Keep the newest frame while help/loading owns presentation.
           const frame = ui.tick(performance.now());
-          if (frame === null) return true;
+          if (frame === undefined) return true;
           const painted = paintFrame(frame);
           if (!painted) ui.redraw();
           return painted;
@@ -375,7 +388,7 @@ export function useAsciiRendererHandle({
         if (!ui) return;
         ui.clear();
         const frame = ui.tick(performance.now());
-        if (frame !== null && !paintFrame(frame)) ui.redraw();
+        if (frame !== undefined && !paintFrame(frame)) ui.redraw();
       },
 
       recreateRenderer() {

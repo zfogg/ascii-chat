@@ -154,12 +154,22 @@ test("demo playback ignores terminal shortcuts and never requests the splash", a
   await page.getByRole("button", { name: "Pause", exact: true }).click();
   const fitted = await page.evaluate(async (url) => {
     const m = await import(url);
-    const options = await import(url.replace("mirror.ts", "common/options.ts"));
-    options.setDimensions(80, 40);
-    options.setRenderMode(2);
-    options.setColorMode(3);
-    options.setFlipX(false);
-    options.setFlipY(false);
+    const module = m.getMirrorModule();
+    if (
+      !module ||
+      module.patchOptions(
+        {
+          width: 80,
+          height: 40,
+          render_mode: 2,
+          color_mode: 3,
+          flip_x: false,
+          flip_y: false,
+        },
+        -1,
+      )
+    )
+      throw new Error("Cannot update demo options");
     const rgba = new Uint8Array(8 * 4 * 4);
     for (let y = 0; y < 4; y++)
       for (let x = 0; x < 8; x++) {

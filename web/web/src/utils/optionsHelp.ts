@@ -5,19 +5,8 @@
  * help text for CLI options based on mode.
  */
 
-// Import the WASM module (adjust path based on your build setup)
-// This assumes the C code is compiled to WASM and available as a module
-
-interface AsciiChatWasm {
-  getHelpText?(mode: number, optionName: string): string | undefined;
-  _wasmModule?: unknown;
-}
-
-declare global {
-  interface Window {
-    asciiChatWasm?: AsciiChatWasm;
-  }
-}
+import { getMirrorModule } from "@ascii-chat/shared/wasm";
+import { getClientWasmModule } from "../wasm/client";
 
 /**
  * ASCII-chat mode constants (must match C definitions)
@@ -42,12 +31,13 @@ export function getHelpText(
   optionName: string,
 ): string | null {
   try {
-    if (!window.asciiChatWasm?.getHelpText) {
+    const module = getMirrorModule() ?? getClientWasmModule();
+    if (!module) {
       console.warn("WASM module not loaded, help text unavailable");
       return null;
     }
 
-    return window.asciiChatWasm.getHelpText(mode, optionName) || null;
+    return module.optionHelp(mode, optionName) || null;
   } catch (error) {
     console.error(`Failed to get help text for ${optionName}:`, error);
     return null;

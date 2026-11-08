@@ -487,10 +487,16 @@ for (const [mode, url] of [
         )
         .toBe(true);
     } else {
-      await page.waitForFunction(
-        () =>
-          !!(window as unknown as { asciiChatWasm?: unknown }).asciiChatWasm,
-      );
+      await expect
+        .poll(() =>
+          page.evaluate(async () => {
+            const url = "/src/wasm/client.ts";
+            return !!(
+              await import(/* @vite-ignore */ url)
+            ).getClientWasmModule();
+          }),
+        )
+        .toBe(true);
     }
     expect(assets).toContain(`/wasm/${version}/${mode}.js`);
     expect(assets).toContain(`/wasm/${version}/${mode}.wasm`);

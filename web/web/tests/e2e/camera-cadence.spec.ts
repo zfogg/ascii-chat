@@ -1,7 +1,14 @@
+import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
 import { ServerFixture, waitForPort } from "./server-fixture";
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
+
+const mirrorModuleUrl = `/@fs/${fileURLToPath(
+  new URL("../../../packages/shared/src/wasm/mirror.ts", import.meta.url),
+)
+  .replaceAll("\\", "/")
+  .replace(/^\/+/, "")}`;
 
 // Supply real VideoFrames through getUserMedia. The built-in ?test source bypasses
 // camera scheduling and cannot detect a camera callback gate that halves 60 FPS.
@@ -544,14 +551,9 @@ test("a 33 FPS camera aligns C FPS, conversion and presentation with actual capt
   await expect
     .poll(() =>
       page.evaluate(
-        () =>
-          (
-            window as unknown as {
-              asciiChatWasm: {
-                _wasmModule: { readOptions(): { values: { fps: number } } };
-              };
-            }
-          ).asciiChatWasm._wasmModule.readOptions().values.fps,
+        async (url) =>
+          (await import(url)).getMirrorModule()?.readOptions()?.values.fps,
+        mirrorModuleUrl,
       ),
     )
     .toBe(33);

@@ -101,7 +101,7 @@ for v in views:
  for related in v['related']:assert any(x['id']==related for x in views)
 
 summary={
-'web/packages/shared/src/components/AsciiRenderer/useAsciiRendererHandle.ts':'Connects the React renderer handle and browser input to a C UI session via the TypeScript SessionUi wrapper.',
+'web/packages/shared/src/components/AsciiRenderer/useAsciiRendererHandle.ts':'Owns the Embind UI session and connects React rendering and browser input to C.',
 'src/main.c':'Executable entry point: process initialization, options, and mode dispatch.',
 'src/common/session/client_like.c':'Shared lifecycle for native mirror, client, and discovery: initialize display/capture/audio, run session attempts, then clean up.',
 'src/common/session/capture.c':'Shared native capture context and media-source integration.',
@@ -112,7 +112,7 @@ summary={
 'src/web/session_host.c':'Adapts browser transport callbacks to the shared C session host.',
 'src/web/common/ui.c':'Thin Emscripten exports forwarding resize, keys, media, and tick events to lib/tui/session.c.',
 'lib/tui/session.c':'Nonblocking C UI state and rendering driven by host ticks and input.',
-'web/packages/shared/src/wasm/sessionUi.ts':'Owns one C UI instance; marshals strings and input into WASM and reads generated output.',
+'src/web/bindings/session_ui.cpp':'Binds owned C UI sessions, string inputs, and rendered frame output to JavaScript.',
 'web/web/src/pages/Mirror.tsx':'Composes browser media sources, WASM initialization, settings, the frame loop, and AsciiRenderer.',
 'web/packages/shared/src/hooks/useMirrorRenderLoop.ts':'Schedules browser frame conversion and forwards output to the renderer.',
 'web/web/src/network/ClientConnection.ts':'Browser connection state and transport integration with the C/WASM client.',

@@ -3,20 +3,11 @@ import { buildImageFramePayload } from "./packetBuilders";
 import { BrowserVideoDecoder } from "./BrowserVideoDecoder";
 import type { HostPacketBinding } from "@ascii-chat/shared/wasm";
 
-type HostModule = NonNullable<ReturnType<typeof getClientModule>> & {
-  browser_host_create(): number;
-  browser_host_add_client(): number;
-  browser_host_set_local_client(id: number): number;
-  browser_host_remove_client(id: number): void;
-  browser_host_render(): number;
-  browser_host_render_audio(): number;
-  hostPacketCallback?: (id: number, bytes: Uint8Array) => void;
-};
 const post = self.postMessage as unknown as (
   message: unknown,
   transfer?: Transferable[],
 ) => void;
-let module: HostModule;
+let module: NonNullable<ReturnType<typeof getClientModule>>;
 let hostInput: HostPacketBinding;
 const clients = new Map<number, number>();
 const decoders = new Map<number, BrowserVideoDecoder>();
@@ -154,7 +145,9 @@ self.onmessage = (event) => {
       const message = event.data;
       if (message.kind === "init") {
         await initClientWasm();
-        module = getClientModule() as HostModule;
+        const clientModule = getClientModule();
+        if (!clientModule) throw new Error("Client WASM module is unavailable");
+        module = clientModule;
         if (module.browser_host_create())
           throw new Error("Could not initialize C host worker.");
         hostInput = new module.HostPacketBinding();

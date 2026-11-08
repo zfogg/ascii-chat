@@ -4,18 +4,6 @@ import { getClientModule } from "../wasm/client";
 import type { JoinedSession } from "./acdsProtocol";
 
 export const HANDOFF_PACKET = 6090;
-type Action = {
-  kind: number;
-  participant: Uint8Array;
-  generation: number;
-  sequence: number;
-};
-type Module = ReturnType<typeof getClientModule> & {
-  browser_host_create(): number;
-  browser_host_destroy(): void;
-  handoffResult: Action;
-};
-
 /** Scheduling adapter. The C protocol owns wire validation; ACDS runs the shared C selector. */
 export class HandoffProtocol {
   private timer: ReturnType<typeof setInterval>;
@@ -37,7 +25,8 @@ export class HandoffProtocol {
     generation: number,
     sequence: number,
   ): Uint8Array {
-    const module = getClientModule() as Module;
+    const module = getClientModule();
+    if (!module) throw new Error("Client WASM module is unavailable");
     const frame = module.handoffEncode(
       kind,
       this.joined.sessionId,
@@ -72,9 +61,11 @@ export class HandoffProtocol {
       !this.joined.sessionId.every((value, i) => value === bytes[4 + i])
     )
       return true;
-    const module = getClientModule() as Module;
+    const module = getClientModule();
+    if (!module) throw new Error("Client WASM module is unavailable");
     if (module.handoffDecode(bytes)) throw new Error("Invalid handoff frame");
-    const action: Action = module.handoffResult;
+    const action = module.handoffResult;
+    if (!action) throw new Error("Missing handoff result");
     if (action.generation < this.generation) return true;
     this.generation = action.generation;
     if (
@@ -117,7 +108,7 @@ export class HandoffProtocol {
   }
   private releasePreparedHost(): void {
     if (this.prepared) {
-      (getClientModule() as Module | null)?.browser_host_destroy();
+      getClientModule()?.browser_host_destroy();
       this.prepared = false;
     }
   }
