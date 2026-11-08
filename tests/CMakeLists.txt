@@ -72,6 +72,10 @@ if(BUILD_TESTS)
     endfunction()
     asciichat_add_pytest(python-cmake cmake)
     set_tests_properties(python-cmake PROPERTIES LABELS "unit;python;build")
+    if(TARGET ascii-defer-native)
+        set_tests_properties(python-cmake PROPERTIES
+            ENVIRONMENT "ASCIICHAT_DEFER_TEST_BINARY=$<TARGET_FILE:ascii-defer-native>")
+    endif()
     asciichat_add_pytest(python-unit unit)
     set_tests_properties(python-unit PROPERTIES LABELS "unit;python")
 

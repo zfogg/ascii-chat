@@ -40,13 +40,18 @@
  * declaration. These restrictions make unsupported
  * control flow a build error rather than silently losing cleanup.
  *
- * CMake uses the Python transformer and LLVM 19 or newer libclang to write generated
+ * CMake builds and uses the C++ transformer by default. It writes generated
  * sources below `build/defer_transformed/`; original source files are unchanged.
- * Set `ASCIICHAT_LIBCLANG_PATH` to the LLVM 19 or newer libclang shared library if CMake cannot
- * find it beside the compiler. The LLVM 23 Python bindings are vendored under
- * `src/tooling/defer/vendor/` and use the libclang C API with LLVM 19 or newer.
- * A compilation database is required; use the single-config Ninja or Unix
- * Makefiles generator.
+ * The native tool uses LLVM support and libclang development libraries and does
+ * not require Python. Set `ASCIICHAT_LLVM_DEV_ROOT` when the development files
+ * cannot be found automatically. A cross build builds a separate host tool;
+ * `ASCIICHAT_DEFER_NATIVE_BINARY` can instead point to a prebuilt host tool.
+ *
+ * Set `ASCIICHAT_DEFER_BACKEND=PYTHON` to select the retained Python backend.
+ * It requires Python 3.10 or newer and LLVM 19 or newer libclang; set
+ * `ASCIICHAT_LIBCLANG_PATH` if its shared library cannot be found. Both backends
+ * require a compilation database and a single-config Ninja or Unix Makefiles
+ * generator. Their generated C and fail-closed behavior are checked together.
  * Directly compiling an untransformed source containing defer fails rather than
  * turning cleanup into a no-op. Panic instrumentation cannot currently be used
  * with defer transformation.

@@ -614,7 +614,11 @@ def main() -> int:
         args.output = args.output.resolve()
         if args.depfile:
             args.depfile = args.depfile.resolve()
-        if args.output == args.source:
+        if args.output == args.source or (
+            args.source.exists()
+            and args.output.exists()
+            and os.path.samefile(args.source, args.output)
+        ):
             raise TransformError("output must not overwrite the input source")
         if args.compilation_database:
             clang_args = compilation_arguments(

@@ -58,6 +58,24 @@ def compiler_environment() -> dict[str, str]:
     return env
 
 
+@pytest.fixture(params=["python", "native"])
+def transform_environment(
+    compiler_environment: dict[str, str], request: pytest.FixtureRequest
+) -> dict[str, str]:
+    env = compiler_environment.copy()
+    if request.param == "native":
+        if not env.get("ASCIICHAT_DEFER_TEST_BINARY"):
+            pytest.skip("native defer binary was not supplied")
+    else:
+        env.pop("ASCIICHAT_DEFER_TEST_BINARY", None)
+    return env
+
+
+def tool_command(env: dict[str, str]) -> list[str]:
+    binary = env.get("ASCIICHAT_DEFER_TEST_BINARY")
+    return [binary] if binary else [sys.executable, str(TOOL)]
+
+
 def transform(
     tmp_path: Path, env: dict[str, str], source: str
 ) -> subprocess.CompletedProcess[str]:
@@ -67,8 +85,7 @@ def transform(
     )
     return subprocess.run(
         [
-            sys.executable,
-            str(TOOL),
+            *tool_command(env),
             str(original),
             str(tmp_path / "output.c"),
             "--",
@@ -82,11 +99,11 @@ def transform(
 
 
 def test_block_scope_and_control_flow(
-    tmp_path: Path, compiler_environment: dict[str, str]
+    tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
     result = transform(
         tmp_path,
-        compiler_environment,
+        transform_environment,
         r"""
 static int trace[20], count;
 static void record(int n) { trace[count++] = n; }
@@ -159,10 +176,10 @@ int main(void) {
 )
 def test_unsupported_control_flow_fails_closed(
     tmp_path: Path,
-    compiler_environment: dict[str, str],
+    transform_environment: dict[str, str],
     source: str,
 ) -> None:
-    result = transform(tmp_path, compiler_environment, source)
+    result = transform(tmp_path, transform_environment, source)
     assert result.returncode != 0
     assert not (tmp_path / "output.c").exists()
     assert "defer-tool:" in result.stderr
@@ -194,12 +211,14 @@ def test_untransformed_defer_fails_compilation(
     assert "defer() requires" in result.stderr
 
 
+@pytest.mark.parametrize("backend", ["NATIVE", "NATIVE_CROSS", "PYTHON"])
 def test_cmake_discovers_defer_and_tracks_headers(
-    tmp_path: Path, compiler_environment: dict[str, str]
+    tmp_path: Path, compiler_environment: dict[str, str], backend: str
 ) -> None:
     cmake = shutil.which("cmake")
     ninja = shutil.which("ninja")
-    if cmake is None or ninja is None or CLANG is None:
+    clangxx = shutil.which("clang++")
+    if cmake is None or ninja is None or CLANG is None or clangxx is None:
         pytest.skip("CMake, Ninja, and Clang are required")
     project = tmp_path / "project"
     source_dir = project / "src"
@@ -210,6 +229,11 @@ def test_cmake_discovers_defer_and_tracks_headers(
     shutil.copy2(TOOL.parent / "scan.py", tool_dir / "scan.py")
     shutil.copy2(TOOL.parent / "plan.py", tool_dir / "plan.py")
     shutil.copytree(TOOL.parent / "vendor" / "clang", tool_dir / "vendor" / "clang")
+    if backend != "PYTHON":
+        shutil.copytree(TOOL.parent / "native", tool_dir / "native")
+        dependencies = project / "cmake" / "deps"
+        dependencies.mkdir(parents=True)
+        shutil.copy2(ROOT / "cmake" / "deps" / "LLVMDevelopment.cmake", dependencies)
     second = source_dir / "second.c"
     second.write_text(
         '#include "ascii-chat/tooling/defer/defer.h"\n'
@@ -226,13 +250,13 @@ def test_cmake_discovers_defer_and_tracks_headers(
     module = (ROOT / "cmake" / "tooling" / "Defer.cmake").as_posix()
     (project / "CMakeLists.txt").write_text(
         "cmake_minimum_required(VERSION 3.30)\n"
-        "project(defer_test C)\n"
+        "project(defer_test C CXX)\n"
         "set(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n"
         'add_custom_command(OUTPUT "${CMAKE_BINARY_DIR}/ready.h" '
         'COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_SOURCE_DIR}/ready.in" "${CMAKE_BINARY_DIR}/ready.h" '
         'DEPENDS "${CMAKE_SOURCE_DIR}/ready.in")\n'
         'add_custom_target(generate_version DEPENDS "${CMAKE_BINARY_DIR}/ready.h")\n'
-        f'set(ASCIICHAT_PYTHON3_EXECUTABLE "{Path(sys.executable).as_posix()}")\n'
+        f'set(ASCIICHAT_PYTHON3_EXECUTABLE "{Path(sys.executable).as_posix() if backend == "PYTHON" else "python-must-not-run"}")\n'
         f'include("{module}")\n'
         "add_subdirectory(src)\n"
         "ascii_defer_prepare()\n",
@@ -255,7 +279,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
         assert result.returncode == 0, result.stdout + result.stderr
         return result.stdout
 
-    run(
+    configure = [
         cmake,
         "-S",
         str(project),
@@ -264,8 +288,27 @@ def test_cmake_discovers_defer_and_tracks_headers(
         "-G",
         "Ninja",
         f"-DCMAKE_C_COMPILER={CLANG}",
+        f"-DCMAKE_CXX_COMPILER={clangxx}",
+        f"-DASCIICHAT_DEFER_BACKEND={'PYTHON' if backend == 'PYTHON' else 'NATIVE'}",
         f"-DASCIICHAT_LIBCLANG_PATH={compiler_environment['LIBCLANG_LIBRARY_FILE']}",
-    )
+    ]
+    if backend == "NATIVE_CROSS":
+        system = {"win32": "Windows", "darwin": "Darwin"}.get(sys.platform, "Linux")
+        configure.append(f"-DCMAKE_SYSTEM_NAME={system}")
+    run(*configure)
+    if backend != "PYTHON":
+        native = (
+            build
+            / "defer-host"
+            / (
+                "ascii-defer-native.exe"
+                if sys.platform == "win32"
+                else "ascii-defer-native"
+            )
+        )
+        assert not native.exists(), (
+            "the native tool must be built during the build, not configuration"
+        )
     run(cmake, "--build", str(build))
     main.write_text(
         '#include "ascii-chat/tooling/defer/defer.h"\n#include "value.h"\n#include "ready.h"\n'
@@ -322,17 +365,34 @@ def test_cmake_discovers_defer_and_tracks_headers(
     assert "Transforming defer source batch" not in run(cmake, "--build", str(build))
 
 
+@pytest.mark.parametrize("alias_kind", ["same", "hardlink", "symlink"])
 def test_source_cannot_be_overwritten(
-    tmp_path: Path, compiler_environment: dict[str, str]
+    tmp_path: Path, transform_environment: dict[str, str], alias_kind: str
 ) -> None:
     source = tmp_path / "original.c"
     original = "#define defer(...) do {} while (0)\nvoid f(void) { defer((void)0); }\n"
     source.write_text(original, encoding="utf-8")
+    output = source
+    if alias_kind != "same":
+        output = tmp_path / "alias.c"
+        try:
+            if alias_kind == "hardlink":
+                os.link(source, output)
+            else:
+                output.symlink_to(source)
+        except OSError as error:
+            pytest.skip(f"{alias_kind} unavailable: {error}")
     result = subprocess.run(
-        [sys.executable, str(TOOL), str(source), str(source), "--", "-std=c17"],
+        [
+            *tool_command(transform_environment),
+            str(source),
+            str(output),
+            "--",
+            "-std=c17",
+        ],
         capture_output=True,
         text=True,
-        env=compiler_environment,
+        env=transform_environment,
         check=False,
     )
     assert result.returncode != 0
@@ -340,7 +400,7 @@ def test_source_cannot_be_overwritten(
 
 
 def test_preserves_source_file_and_line_macros(
-    tmp_path: Path, compiler_environment: dict[str, str]
+    tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
     original_path = (tmp_path / "input.c").as_posix()
     source = f'''static int in_cleanup, after_defer;
@@ -361,7 +421,7 @@ int main(void) {{
     return !(in_cleanup == 6 && after_defer == 9 && equal(file_name, "{original_path}"));
 }}
 '''
-    result = transform(tmp_path, compiler_environment, source)
+    result = transform(tmp_path, transform_environment, source)
     assert result.returncode == 0, result.stderr
     executable = tmp_path / ("lines.exe" if sys.platform == "win32" else "lines")
     compiled = subprocess.run(
@@ -376,7 +436,7 @@ int main(void) {{
 
 
 def test_utf8_bom_is_preserved(
-    tmp_path: Path, compiler_environment: dict[str, str]
+    tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
     source = tmp_path / "bom.c"
     source.write_bytes(
@@ -384,10 +444,16 @@ def test_utf8_bom_is_preserved(
     )
     output = tmp_path / "generated.c"
     result = subprocess.run(
-        [sys.executable, str(TOOL), str(source), str(output), "--", "-std=c17"],
+        [
+            *tool_command(transform_environment),
+            str(source),
+            str(output),
+            "--",
+            "-std=c17",
+        ],
         capture_output=True,
         text=True,
-        env=compiler_environment,
+        env=transform_environment,
         check=False,
     )
     assert result.returncode == 0, result.stderr
@@ -402,7 +468,7 @@ def test_utf8_bom_is_preserved(
 
 
 def test_return_conversion_happens_before_cleanup(
-    tmp_path: Path, compiler_environment: dict[str, str]
+    tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
     source = """
 #pragma STDC FENV_ACCESS ON
@@ -415,7 +481,7 @@ int main(void) {
     return result != 1.0f;
 }
 """
-    result = transform(tmp_path, compiler_environment, source)
+    result = transform(tmp_path, transform_environment, source)
     assert result.returncode == 0, result.stderr
     executable = tmp_path / ("round.exe" if sys.platform == "win32" else "round")
     command = [
@@ -435,7 +501,7 @@ int main(void) {
 
 
 def test_struct_and_function_pointer_return_types(
-    tmp_path: Path, compiler_environment: dict[str, str]
+    tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
     source = """
 static int cleaned;
@@ -458,7 +524,7 @@ int main(void) {
     return !(item.value == 4 && callback(4) == 5 && cleaned == 2);
 }
 """
-    result = transform(tmp_path, compiler_environment, source)
+    result = transform(tmp_path, transform_environment, source)
     assert result.returncode == 0, result.stderr
     executable = tmp_path / ("types.exe" if sys.platform == "win32" else "types")
     compiled = subprocess.run(
@@ -473,7 +539,7 @@ int main(void) {
 
 
 def test_compilation_database_separator_keeps_parser_flags_active(
-    tmp_path: Path, compiler_environment: dict[str, str]
+    tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
     original = tmp_path / "original.c"
     generated = tmp_path / "generated.c"
@@ -503,8 +569,7 @@ def test_compilation_database_separator_keeps_parser_flags_active(
     driver.mkdir()
     result = subprocess.run(
         [
-            sys.executable,
-            str(TOOL),
+            *tool_command(transform_environment),
             "--compilation-database",
             str(tmp_path),
             "--depfile",
@@ -514,7 +579,7 @@ def test_compilation_database_separator_keeps_parser_flags_active(
         ],
         capture_output=True,
         text=True,
-        env=compiler_environment,
+        env=transform_environment,
         cwd=driver,
         check=False,
     )
@@ -524,11 +589,11 @@ def test_compilation_database_separator_keeps_parser_flags_active(
 
 
 def test_multiline_return_preserves_expression_line(
-    tmp_path: Path, compiler_environment: dict[str, str]
+    tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
     result = transform(
         tmp_path,
-        compiler_environment,
+        transform_environment,
         "int f(void) { defer((void)0); return\n__LINE__; }\n"
         "int main(void) { return f() != 3; }\n",
     )
@@ -653,9 +718,9 @@ int main(void) {
     ],
 )
 def test_varied_c_programs(
-    tmp_path: Path, compiler_environment: dict[str, str], source: str
+    tmp_path: Path, transform_environment: dict[str, str], source: str
 ) -> None:
-    result = transform(tmp_path, compiler_environment, source)
+    result = transform(tmp_path, transform_environment, source)
     assert result.returncode == 0, result.stderr
     executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
     compiled = subprocess.run(
