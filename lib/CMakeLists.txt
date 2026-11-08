@@ -194,7 +194,8 @@ list(APPEND CORE_SRCS
 )
 
 if(PLATFORM_IOS)
-    list(APPEND CORE_SRCS ${CMAKE_SOURCE_DIR}/lib/video/webcam/ios/camera.c)
+list(APPEND CORE_SRCS ${CMAKE_SOURCE_DIR}/lib/video/webcam/ios/camera.c)
+list(APPEND CORE_SRCS ${CMAKE_SOURCE_DIR}/lib/video/webcam/ios/permissions.m)
 endif()
 
 # Additional debug sources only in non-Release builds
