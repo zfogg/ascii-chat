@@ -5,6 +5,7 @@
 
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/runtime.h>
+#include <ascii-chat/options/validation.h>
 #include <math.h>
 #include <yyjson.h>
 #include <limits.h>
@@ -784,6 +785,9 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
     if (error != ASCIICHAT_OK)
       return error;
   }
+  asciichat_error_t palette_error = validate_glyph_palette(candidate);
+  if (palette_error != ASCIICHAT_OK)
+    return palette_error;
   candidate->flip_x_explicit |= current->flip_x_explicit;
   options_resolve_flip_x(candidate);
   return ASCIICHAT_OK;

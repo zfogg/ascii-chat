@@ -50,6 +50,11 @@ export class OutboundQueue {
     return this.recovery.get(`${type}:${stream}`) !== false;
   }
 
+  /** Discard a broken encoded chain before requesting the next keyframe. */
+  requestKeyframe(type: number, stream = 0): void {
+    if (type === 3002 || type === 3003) this.discard(type, stream, true);
+  }
+
   private discard(type: number, stream: number, encoded: boolean): void {
     if (encoded) this.recovery.set(`${type}:${stream}`, true);
     this.queue = this.queue.filter((entry) => {

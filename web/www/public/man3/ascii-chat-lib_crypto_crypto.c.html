@@ -1,262 +1,387 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>crypto.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">crypto.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">crypto.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">crypto.c - &#x1F510; Core cryptography: encryption/decryption, key
-    exchange, authentication, and session rekeying with BearSSL</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>CRYPTO_RESULT_STRING_COUNT</b>
-    (sizeof(g_crypto_result_strings) / sizeof(g_crypto_result_strings[0]))
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>crypto_result_t</b> <b>crypto_init</b> (<b>crypto_context_t</b>
-    *ctx)
-  <br/>
-  Initialize libsodium and crypto context. <b>crypto_result_t</b>
-    <b>crypto_init_with_password</b> (<b>crypto_context_t</b> *ctx, const char
-    *password)
-  <br/>
-  Initialize with password-based encryption. void <b>crypto_destroy</b>
-    (<b>crypto_context_t</b> *ctx)
-  <br/>
-  Cleanup crypto context with secure memory wiping. <b>crypto_result_t</b>
-    <b>crypto_generate_keypair</b> (<b>crypto_context_t</b> *ctx)
-  <br/>
-  Generate new X25519 key pair for key exchange. <b>crypto_result_t</b>
-    <b>crypto_get_public_key</b> (const <b>crypto_context_t</b> *ctx,
-    <b>uint8_t</b> *public_key_out)
-  <br/>
-  Get public key for sending to peer (step 1 of handshake).
-    <b>crypto_result_t</b> <b>crypto_set_peer_public_key</b>
-    (<b>crypto_context_t</b> *ctx, const <b>uint8_t</b> *peer_public_key)
-  <br/>
-  Set peer's public key and compute shared secret (step 2 of handshake).
-    <b>bool</b> <b>crypto_is_ready</b> (const <b>crypto_context_t</b> *ctx)
-  <br/>
-  Check if key exchange is complete and ready for encryption.
-    <b>crypto_result_t</b> <b>crypto_validate_password</b> (const char
-    *password)
-  <br/>
-  Validate password length requirements. <b>crypto_result_t</b>
-    <b>crypto_derive_password_key</b> (<b>crypto_context_t</b> *ctx, const char
-    *password)
-  <br/>
-  Derive key from password using Argon2id. <b>bool</b>
-    <b>crypto_verify_password</b> (const <b>crypto_context_t</b> *ctx, const
-    char *password)
-  <br/>
-  Verify password matches stored salt/key. <b>crypto_result_t</b>
-    <b>crypto_derive_password_encryption_key</b> (const char *password,
-    <b>uint8_t</b> encryption_key[32])
-  <br/>
-  Derive deterministic encryption key from password for handshake.
-    <b>crypto_result_t</b> <b>crypto_encrypt</b> (<b>crypto_context_t</b> *ctx,
-    const <b>uint8_t</b> *plaintext, size_t plaintext_len, <b>uint8_t</b>
-    *ciphertext_out, size_t ciphertext_out_size, size_t *ciphertext_len_out)
-  <br/>
-  Encrypt data using XSalsa20-Poly1305. <b>crypto_result_t</b>
-    <b>crypto_decrypt</b> (<b>crypto_context_t</b> *ctx, const <b>uint8_t</b>
-    *ciphertext, size_t ciphertext_len, <b>uint8_t</b> *plaintext_out, size_t
-    plaintext_out_size, size_t *plaintext_len_out)
-  <br/>
-  Decrypt data using XSalsa20-Poly1305. const char *
-    <b>crypto_result_to_string</b> (<b>crypto_result_t</b> result)
-  <br/>
-  Convert crypto result to human-readable string. void <b>crypto_get_status</b>
-    (const <b>crypto_context_t</b> *ctx, char *status_buffer, size_t
-    <b>buffer_size</b>)
-  <br/>
-  Get crypto context status information for debugging. <b>bool</b>
-    <b>crypto_secure_compare</b> (const <b>uint8_t</b> *lhs, const
-    <b>uint8_t</b> *rhs, size_t len)
-  <br/>
-  Secure constant-time comparison of byte arrays. <b>crypto_result_t</b>
-    <b>crypto_random_bytes</b> (<b>uint8_t</b> *buffer, size_t len)
-  <br/>
-  Generate cryptographically secure random bytes. <b>crypto_result_t</b>
-    <b>crypto_create_public_key_packet</b> (const <b>crypto_context_t</b> *ctx,
-    <b>uint8_t</b> *packet_out, size_t packet_size, size_t *packet_len_out)
-  <br/>
-  Create public key packet for network transmission. <b>crypto_result_t</b>
-    <b>crypto_process_public_key_packet</b> (<b>crypto_context_t</b> *ctx, const
-    <b>uint8_t</b> *packet, size_t packet_len)
-  <br/>
-  Process received public key packet from peer. <b>crypto_result_t</b>
-    <b>crypto_create_encrypted_packet</b> (<b>crypto_context_t</b> *ctx, const
-    <b>uint8_t</b> *data, size_t data_len, <b>uint8_t</b> *packet_out, size_t
-    packet_size, size_t *packet_len_out)
-  <br/>
-  Create encrypted data packet for network transmission. <b>crypto_result_t</b>
-    <b>crypto_process_encrypted_packet</b> (<b>crypto_context_t</b> *ctx, const
-    <b>uint8_t</b> *packet, size_t packet_len, <b>uint8_t</b> *data_out, size_t
-    data_size, size_t *data_len_out)
-  <br/>
-  Process received encrypted packet from peer. <b>crypto_result_t</b>
-    <b>crypto_generate_nonce</b> (<b>uint8_t</b> nonce[32])
-  <br/>
-  Generate random nonce for authentication. <b>crypto_result_t</b>
-    <b>crypto_compute_hmac</b> (<b>crypto_context_t</b> *ctx, const
-    <b>uint8_t</b> key[32], const <b>uint8_t</b> data[32], <b>uint8_t</b>
-    hmac[32])
-  <br/>
-  Compute HMAC-SHA256 for fixed 32-byte data. <b>crypto_result_t</b>
-    <b>crypto_compute_hmac_ex</b> (const <b>crypto_context_t</b> *ctx, const
-    <b>uint8_t</b> key[32], const <b>uint8_t</b> *data, size_t data_len,
-    <b>uint8_t</b> hmac[32])
-  <br/>
-  Compute HMAC-SHA256 for variable-length data. <b>bool</b>
-    <b>crypto_verify_hmac</b> (const <b>uint8_t</b> key[32], const
-    <b>uint8_t</b> data[32], const <b>uint8_t</b> expected_hmac[32])
-  <br/>
-  Verify HMAC-SHA256 for fixed 32-byte data. <b>bool</b>
-    <b>crypto_verify_hmac_ex</b> (const <b>uint8_t</b> key[32], const
-    <b>uint8_t</b> *data, size_t data_len, const <b>uint8_t</b>
-    expected_hmac[32])
-  <br/>
-  Verify HMAC-SHA256 for variable-length data. <b>crypto_result_t</b>
-    <b>crypto_compute_auth_response</b> (const <b>crypto_context_t</b> *ctx,
-    const <b>uint8_t</b> nonce[32], <b>uint8_t</b> hmac_out[32])
-  <br/>
-  Compute authentication response HMAC bound to DH shared_secret. <b>bool</b>
-    <b>crypto_verify_auth_response</b> (const <b>crypto_context_t</b> *ctx,
-    const <b>uint8_t</b> nonce[32], const <b>uint8_t</b> expected_hmac[32])
-  <br/>
-  Verify authentication response HMAC bound to DH shared_secret.
-    <b>crypto_result_t</b> <b>crypto_create_auth_challenge</b> (const
-    <b>crypto_context_t</b> *ctx, <b>uint8_t</b> *packet_out, size_t
-    packet_size, size_t *packet_len_out)
-  <br/>
-  Create authentication challenge packet. <b>crypto_result_t</b>
-    <b>crypto_process_auth_challenge</b> (<b>crypto_context_t</b> *ctx, const
-    <b>uint8_t</b> *packet, size_t packet_len)
-  <br/>
-  Process authentication challenge packet. <b>crypto_result_t</b>
-    <b>crypto_process_auth_response</b> (<b>crypto_context_t</b> *ctx, const
-    <b>uint8_t</b> *packet, size_t packet_len)
-  <br/>
-  Process authentication response packet. <b>asciichat_error_t</b>
-    <b>crypto_compute_password_hmac</b> (<b>crypto_context_t</b> *ctx, const
-    <b>uint8_t</b> *password_key, const <b>uint8_t</b> *nonce, const
-    <b>uint8_t</b> *shared_secret, <b>uint8_t</b> *hmac_out)
-  <br/>
-  Compute password-based HMAC for authentication. <b>asciichat_error_t</b>
-    <b>crypto_verify_peer_signature</b> (const <b>uint8_t</b> *peer_public_key,
-    const <b>uint8_t</b> *ephemeral_key, size_t ephemeral_key_size, const
-    <b>uint8_t</b> *signature)
-  <br/>
-  Verify peer's signature on ephemeral key. <b>asciichat_error_t</b>
-    <b>crypto_sign_ephemeral_key</b> (const <b>private_key_t</b> *private_key,
-    const <b>uint8_t</b> *ephemeral_key, size_t ephemeral_key_size,
-    <b>uint8_t</b> *signature_out)
-  <br/>
-  Sign ephemeral key with private key. void <b>crypto_combine_auth_data</b>
-    (const <b>uint8_t</b> *hmac, const <b>uint8_t</b> *challenge_nonce,
-    <b>uint8_t</b> *combined_out)
-  <br/>
-  Combine HMAC and challenge nonce for transmission. void
-    <b>crypto_extract_auth_data</b> (const <b>uint8_t</b> *combined_data,
-    <b>uint8_t</b> *hmac_out, <b>uint8_t</b> *challenge_out)
-  <br/>
-  Extract HMAC and challenge nonce from combined data. <b>bool</b>
-    <b>crypto_should_rekey</b> (const <b>crypto_context_t</b> *ctx)
-  <br/>
-  Check if rekeying should be triggered based on time or packet count
-    thresholds. <b>crypto_result_t</b> <b>crypto_rekey_init</b>
-    (<b>crypto_context_t</b> *ctx)
-  <br/>
-  Initiate rekeying by generating new ephemeral keys. <b>crypto_result_t</b>
-    <b>crypto_rekey_process_request</b> (<b>crypto_context_t</b> *ctx, const
-    <b>uint8_t</b> *peer_new_public_key)
-  <br/>
-  Process REKEY_REQUEST from peer (responder side). <b>crypto_result_t</b>
-    <b>crypto_rekey_process_response</b> (<b>crypto_context_t</b> *ctx, const
-    <b>uint8_t</b> *peer_new_public_key)
-  <br/>
-  Process REKEY_RESPONSE from peer (initiator side). <b>crypto_result_t</b>
-    <b>crypto_rekey_commit</b> (<b>crypto_context_t</b> *ctx)
-  <br/>
-  Commit to new keys after successful REKEY_COMPLETE. void
-    <b>crypto_rekey_abort</b> (<b>crypto_context_t</b> *ctx)
-  <br/>
-  Abort rekeying and fallback to old keys. void <b>crypto_get_rekey_status</b>
-    (const <b>crypto_context_t</b> *ctx, char *status_buffer, size_t
-    <b>buffer_size</b>)
-  <br/>
-  Get the current rekeying state for debugging/logging.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F510; Core cryptography: encryption/decryption, key exchange,
-    authentication, and session rekeying with BearSSL</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>lib/crypto/crypto.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_CRYPTO_RESULT_STRING_COUNT___(sizeof(g_crypto_result_strings)_/_sizeof(g_crypto_result_strings_0_))"><a class="permalink" href="#_define_CRYPTO_RESULT_STRING_COUNT___(sizeof(g_crypto_result_strings)_/_sizeof(g_crypto_result_strings_0_))">#define
-  CRYPTO_RESULT_STRING_COUNT (sizeof(g_crypto_result_strings) /
-  sizeof(g_crypto_result_strings[0]))</a></h2>
-<p class="Pp">Definition at line <b>604</b> of file
-  <b>lib/crypto/crypto.c</b>.</p>
-<p class="Pp">Referenced by <b>crypto_result_to_string()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>crypto.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">crypto.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">crypto.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          crypto.c - &#x1F510; Core cryptography: encryption/decryption, key
+          exchange, authentication, and session rekeying with BearSSL
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>CRYPTO_ENCRYPTED_BUFFER_SIZE</b> 32
+            <br />
+            #define <b>CRYPTO_DECRYPTED_BUFFER_SIZE</b> 32
+            <br />
+            #define
+            <b>CRYPTO_RESULT_STRING_COUNT</b> (sizeof(g_crypto_result_strings) /
+            sizeof(g_crypto_result_strings[0]))
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>crypto_result_t</b> <b>crypto_init</b> (<b>crypto_context_t</b>
+            *ctx)
+            <br />
+            Initialize libsodium and crypto context. <b>crypto_result_t</b>
+            <b>crypto_init_with_password</b> (<b>crypto_context_t</b> *ctx,
+            const char *password)
+            <br />
+            Initialize with password-based encryption. void
+            <b>crypto_destroy</b> (<b>crypto_context_t</b>
+            *ctx)
+            <br />
+            Cleanup crypto context with secure memory wiping.
+            <b>crypto_result_t</b> <b>crypto_generate_keypair</b> (<b
+              >crypto_context_t</b
+            >
+            *ctx)
+            <br />
+            Generate new X25519 key pair for key exchange.
+            <b>crypto_result_t</b> <b>crypto_get_public_key</b> (const
+            <b>crypto_context_t</b> *ctx, <b>uint8_t</b> *public_key_out)
+            <br />
+            Get public key for sending to peer (step 1 of handshake).
+            <b>crypto_result_t</b> <b>crypto_set_peer_public_key</b> (<b
+              >crypto_context_t</b
+            >
+            *ctx, const <b>uint8_t</b> *peer_public_key)
+            <br />
+            Set peer's public key and compute shared secret (step 2 of
+            handshake).
+            <b>bool</b> <b>crypto_is_ready</b> (const
+            <b>crypto_context_t</b> *ctx)
+            <br />
+            Check if key exchange is complete and ready for encryption.
+            <b>crypto_result_t</b> <b>crypto_validate_password</b> (const char
+            *password)
+            <br />
+            Validate password length requirements. <b>crypto_result_t</b>
+            <b>crypto_derive_password_key</b> (<b>crypto_context_t</b> *ctx,
+            const char *password)
+            <br />
+            Derive key from password using Argon2id. <b>bool</b>
+            <b>crypto_verify_password</b> (const <b>crypto_context_t</b> *ctx,
+            const char *password)
+            <br />
+            Verify password matches stored salt/key. <b>crypto_result_t</b>
+            <b>crypto_derive_password_encryption_key</b> (const char *password,
+            <b>uint8_t</b> encryption_key[32])
+            <br />
+            Derive deterministic encryption key from password for handshake.
+            <b>crypto_result_t</b> <b>crypto_encrypt</b> (<b
+              >crypto_context_t</b
+            >
+            *ctx, const <b>uint8_t</b> *plaintext, size_t plaintext_len,
+            <b>uint8_t</b>
+            *ciphertext_out, size_t ciphertext_out_size, size_t
+            *ciphertext_len_out)
+            <br />
+            Encrypt data using XSalsa20-Poly1305. <b>crypto_result_t</b>
+            <b>crypto_decrypt</b> (<b>crypto_context_t</b> *ctx, const
+            <b>uint8_t</b> *ciphertext, size_t ciphertext_len,
+            <b>uint8_t</b> *plaintext_out, size_t plaintext_out_size, size_t
+            *plaintext_len_out)
+            <br />
+            Decrypt data using XSalsa20-Poly1305. const char *
+            <b>crypto_result_to_string</b> (<b>crypto_result_t</b> result)
+            <br />
+            Convert crypto result to human-readable string. void
+            <b>crypto_get_status</b> (const <b>crypto_context_t</b> *ctx, char
+            *status_buffer, size_t buffer_size)
+            <br />
+            Get crypto context status information for debugging. <b>bool</b>
+            <b>crypto_secure_compare</b> (const <b>uint8_t</b> *lhs, const
+            <b>uint8_t</b> *rhs, size_t len)
+            <br />
+            Secure constant-time comparison of byte arrays.
+            <b>crypto_result_t</b> <b>crypto_random_bytes</b> (<b>uint8_t</b>
+            *buffer, size_t len)
+            <br />
+            Generate cryptographically secure random bytes.
+            <b>crypto_result_t</b> <b>crypto_create_public_key_packet</b> (const
+            <b>crypto_context_t</b> *ctx, <b>uint8_t</b> *packet_out, size_t
+            packet_size, size_t *packet_len_out)
+            <br />
+            Create public key packet for network transmission.
+            <b>crypto_result_t</b> <b>crypto_process_public_key_packet</b> (<b
+              >crypto_context_t</b
+            >
+            *ctx, const <b>uint8_t</b> *packet, size_t packet_len)
+            <br />
+            Process received public key packet from peer. <b>crypto_result_t</b>
+            <b>crypto_create_encrypted_packet</b> (<b>crypto_context_t</b> *ctx,
+            const <b>uint8_t</b> *data, size_t data_len,
+            <b>uint8_t</b> *packet_out, size_t packet_size, size_t
+            *packet_len_out)
+            <br />
+            Create encrypted data packet for network transmission.
+            <b>crypto_result_t</b> <b>crypto_process_encrypted_packet</b> (<b
+              >crypto_context_t</b
+            >
+            *ctx, const <b>uint8_t</b> *packet, size_t packet_len,
+            <b>uint8_t</b> *data_out, size_t data_size, size_t *data_len_out)
+            <br />
+            Process received encrypted packet from peer. <b>crypto_result_t</b>
+            <b>crypto_generate_nonce</b> (<b>uint8_t</b> nonce[32])
+            <br />
+            Generate random nonce for authentication. <b>crypto_result_t</b>
+            <b>crypto_compute_hmac</b> (<b>crypto_context_t</b> *ctx, const
+            <b>uint8_t</b> key[32], const <b>uint8_t</b> data[32],
+            <b>uint8_t</b>
+            hmac[32])
+            <br />
+            Compute HMAC-SHA256 for fixed 32-byte data. <b>crypto_result_t</b>
+            <b>crypto_compute_hmac_ex</b> (const <b>crypto_context_t</b> *ctx,
+            const <b>uint8_t</b> key[32], const <b>uint8_t</b> *data, size_t
+            data_len, <b>uint8_t</b> hmac[32])
+            <br />
+            Compute HMAC-SHA256 for variable-length data. <b>bool</b>
+            <b>crypto_verify_hmac</b> (const <b>uint8_t</b> key[32], const
+            <b>uint8_t</b> data[32], const <b>uint8_t</b> expected_hmac[32])
+            <br />
+            Verify HMAC-SHA256 for fixed 32-byte data. <b>bool</b>
+            <b>crypto_verify_hmac_ex</b> (const <b>uint8_t</b> key[32], const
+            <b>uint8_t</b> *data, size_t data_len, const <b>uint8_t</b>
+            expected_hmac[32])
+            <br />
+            Verify HMAC-SHA256 for variable-length data. <b>crypto_result_t</b>
+            <b>crypto_compute_auth_response</b> (const
+            <b>crypto_context_t</b> *ctx, const <b>uint8_t</b> nonce[32],
+            <b>uint8_t</b> hmac_out[32])
+            <br />
+            Compute authentication response HMAC bound to DH shared_secret.
+            <b>bool</b> <b>crypto_verify_auth_response</b> (const
+            <b>crypto_context_t</b> *ctx, const <b>uint8_t</b> nonce[32], const
+            <b>uint8_t</b> expected_hmac[32])
+            <br />
+            Verify authentication response HMAC bound to DH shared_secret.
+            <b>crypto_result_t</b> <b>crypto_create_auth_challenge</b> (const
+            <b>crypto_context_t</b> *ctx, <b>uint8_t</b> *packet_out, size_t
+            packet_size, size_t *packet_len_out)
+            <br />
+            Create authentication challenge packet. <b>crypto_result_t</b>
+            <b>crypto_process_auth_challenge</b> (<b>crypto_context_t</b> *ctx,
+            const <b>uint8_t</b> *packet, size_t packet_len)
+            <br />
+            Process authentication challenge packet. <b>crypto_result_t</b>
+            <b>crypto_process_auth_response</b> (<b>crypto_context_t</b> *ctx,
+            const <b>uint8_t</b> *packet, size_t packet_len)
+            <br />
+            Process authentication response packet. <b>asciichat_error_t</b>
+            <b>crypto_compute_password_hmac</b> (<b>crypto_context_t</b> *ctx,
+            const <b>uint8_t</b> *password_key, const <b>uint8_t</b> *nonce,
+            const <b>uint8_t</b> *shared_secret, <b>uint8_t</b> *hmac_out)
+            <br />
+            Compute password-based HMAC for authentication.
+            <b>asciichat_error_t</b> <b>crypto_verify_peer_signature</b> (const
+            <b>uint8_t</b> *peer_public_key, const
+            <b>uint8_t</b> *ephemeral_key, size_t ephemeral_key_size, const
+            <b>uint8_t</b> *signature)
+            <br />
+            Verify peer's signature on ephemeral key. <b>asciichat_error_t</b>
+            <b>crypto_sign_ephemeral_key</b> (const
+            <b>private_key_t</b> *private_key, const
+            <b>uint8_t</b> *ephemeral_key, size_t ephemeral_key_size,
+            <b>uint8_t</b> *signature_out)
+            <br />
+            Sign ephemeral key with private key. void
+            <b>crypto_combine_auth_data</b> (const <b>uint8_t</b> *hmac, const
+            <b>uint8_t</b> *challenge_nonce, <b>uint8_t</b> *combined_out)
+            <br />
+            Combine HMAC and challenge nonce for transmission. void
+            <b>crypto_extract_auth_data</b> (const
+            <b>uint8_t</b> *combined_data, <b>uint8_t</b> *hmac_out,
+            <b>uint8_t</b> *challenge_out)
+            <br />
+            Extract HMAC and challenge nonce from combined data. <b>bool</b>
+            <b>crypto_should_rekey</b> (const <b>crypto_context_t</b> *ctx)
+            <br />
+            Check if rekeying should be triggered based on time or packet count
+            thresholds.
+            <b>crypto_result_t</b> <b>crypto_rekey_init</b> (<b
+              >crypto_context_t</b
+            >
+            *ctx)
+            <br />
+            Initiate rekeying by generating new ephemeral keys.
+            <b>crypto_result_t</b> <b>crypto_rekey_process_request</b> (<b
+              >crypto_context_t</b
+            >
+            *ctx, const <b>uint8_t</b> *peer_new_public_key)
+            <br />
+            Process REKEY_REQUEST from peer (responder side).
+            <b>crypto_result_t</b> <b>crypto_rekey_process_response</b> (<b
+              >crypto_context_t</b
+            >
+            *ctx, const <b>uint8_t</b> *peer_new_public_key)
+            <br />
+            Process REKEY_RESPONSE from peer (initiator side).
+            <b>crypto_result_t</b> <b>crypto_rekey_commit</b> (<b
+              >crypto_context_t</b
+            >
+            *ctx)
+            <br />
+            Commit to new keys after successful REKEY_COMPLETE. void
+            <b>crypto_rekey_abort</b> (<b>crypto_context_t</b> *ctx)
+            <br />
+            Abort rekeying and fallback to old keys. void
+            <b>crypto_get_rekey_status</b> (const <b>crypto_context_t</b> *ctx,
+            char *status_buffer, size_t buffer_size)
+            <br />
+            Get the current rekeying state for debugging/logging.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F510; Core cryptography: encryption/decryption, key exchange,
+          authentication, and session rekeying with BearSSL
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>lib/crypto/crypto.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CRYPTO_DECRYPTED_BUFFER_SIZE___32">
+            <a
+              class="permalink"
+              href="#_define_CRYPTO_DECRYPTED_BUFFER_SIZE___32"
+              >#define CRYPTO_DECRYPTED_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>9</b> of file <b>lib/crypto/crypto.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>crypto_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_CRYPTO_ENCRYPTED_BUFFER_SIZE___32">
+            <a
+              class="permalink"
+              href="#_define_CRYPTO_ENCRYPTED_BUFFER_SIZE___32"
+              >#define CRYPTO_ENCRYPTED_BUFFER_SIZE 32</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>8</b> of file <b>lib/crypto/crypto.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>crypto_destroy()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_CRYPTO_RESULT_STRING_COUNT___(sizeof(g_crypto_result_strings)_/_sizeof(g_crypto_result_strings_0_))"
+          >
+            <a
+              class="permalink"
+              href="#_define_CRYPTO_RESULT_STRING_COUNT___(sizeof(g_crypto_result_strings)_/_sizeof(g_crypto_result_strings_0_))"
+              >#define CRYPTO_RESULT_STRING_COUNT
+              (sizeof(g_crypto_result_strings) /
+              sizeof(g_crypto_result_strings[0]))</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>602</b> of file <b>lib/crypto/crypto.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>crypto_result_to_string()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

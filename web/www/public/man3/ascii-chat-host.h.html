@@ -1,164 +1,927 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>host.h(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">host.h(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">host.h(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">host.h - &#x1F3E0; Server-side session hosting abstraction</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>session_host_client_info_t</b>
-  <br/>
-  Client information structure. struct <b>session_host_callbacks_t</b>
-  <br/>
-  Callback function prototypes for session host events. struct
-    <b>session_host_config_t</b>
-  <br/>
-  Configuration for session host.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
-<br/>
-<p class="Pp">typedef struct <b>acip_transport</b> <b>acip_transport_t</b>
-  <br/>
-  Forward declaration of ACIP transport.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>session_host_t</b> * <b>session_host_create</b> (const
-    <b>session_host_config_t</b> *config)
-  <br/>
-  Create a new session host. void <b>session_host_destroy</b>
-    (<b>session_host_t</b> *host)
-  <br/>
-  Destroy session host and free resources. <b>asciichat_error_t</b>
-    <b>session_host_start</b> (<b>session_host_t</b> *host)
-  <br/>
-  Start accepting client connections. void <b>session_host_stop</b>
-    (<b>session_host_t</b> *host)
-  <br/>
-  Stop accepting connections and disconnect all clients. <b>bool</b>
-    <b>session_host_is_running</b> (<b>session_host_t</b> *host)
-  <br/>
-  Check if host is running. <b>uint32_t</b> <b>session_host_add_client</b>
-    (<b>session_host_t</b> *host, <b>socket_t</b> socket, const char *ip, int
-    port)
-  <br/>
-  Add a client from an accepted socket. <b>uint32_t</b>
-    <b>session_host_add_memory_participant</b> (<b>session_host_t</b> *host)
-  <br/>
-  Add a memory participant (host's own media). <b>asciichat_error_t</b>
-    <b>session_host_inject_frame</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> <b>participant_id</b>, const <b>image_t</b> *<b>frame</b>)
-  <br/>
-  Inject a video frame from memory participant. <b>asciichat_error_t</b>
-    <b>session_host_inject_audio</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> <b>participant_id</b>, const float *samples, size_t count)
-  <br/>
-  Inject audio samples from memory participant. <b>asciichat_error_t</b>
-    <b>session_host_remove_client</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> client_id)
-  <br/>
-  Remove a client by ID. <b>asciichat_error_t</b>
-    <b>session_host_find_client</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> client_id, <b>session_host_client_info_t</b> *info)
-  <br/>
-  Find a client by ID. int <b>session_host_get_client_count</b>
-    (<b>session_host_t</b> *host)
-  <br/>
-  Get number of connected clients. int <b>session_host_get_client_ids</b>
-    (<b>session_host_t</b> *host, <b>uint32_t</b> *ids, int max_ids)
-  <br/>
-  Get list of all connected client IDs. <b>asciichat_error_t</b>
-    <b>session_host_broadcast_frame</b> (<b>session_host_t</b> *host, const char
-    *<b>frame</b>)
-  <br/>
-  Broadcast ASCII frame to all clients. <b>asciichat_error_t</b>
-    <b>session_host_send_frame</b> (<b>session_host_t</b> *host, <b>uint32_t</b>
-    client_id, const char *<b>frame</b>)
-  <br/>
-  Send ASCII frame to a specific client. <b>asciichat_error_t</b>
-    <b>session_host_set_display</b> (<b>session_host_t</b> *host, struct
-    <b>session_display_ctx</b> *display)
-  <br/>
-  Set display context for local frame rendering. <b>asciichat_error_t</b>
-    <b>session_host_start_render</b> (<b>session_host_t</b> *host)
-  <br/>
-  Start media rendering thread (video mixing and audio distribution). void
-    <b>session_host_stop_render</b> (<b>session_host_t</b> *host)
-  <br/>
-  Stop media rendering thread. <b>asciichat_error_t</b>
-    <b>session_host_set_client_transport</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> client_id, <b>acip_transport_t</b> *transport)
-  <br/>
-  Set an alternative transport for a specific client in the host.
-    <b>acip_transport_t</b> * <b>session_host_get_client_transport</b>
-    (<b>session_host_t</b> *host, <b>uint32_t</b> client_id)
-  <br/>
-  Get the current transport for a specific client in the host. <b>bool</b>
-    <b>session_host_client_has_transport</b> (<b>session_host_t</b> *host,
-    <b>uint32_t</b> client_id)
-  <br/>
-  Check if a specific client has an active alternative transport.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F3E0; Server-side session hosting abstraction</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>host.h</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>host.h(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">host.h(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">host.h(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          host.h - &#x1F3E0; Server-side session hosting abstraction
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>session_host_client_info_t</b>
+            <br />
+            Client information structure. struct <b>session_host_callbacks_t</b>
+            <br />
+            Callback function prototypes for session host events. struct
+            <b>session_host_config_t</b>
+            <br />
+            Configuration for session host. struct
+            <b>session_host_render_config_t</b>
+            <br />
+            struct <b>session_host_render_target_t</b>
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Typedefs">
+            <a class="permalink" href="#Typedefs">Typedefs</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            typedef struct <b>acip_transport</b> <b>acip_transport_t</b>
+            <br />
+            Forward declaration of ACIP transport.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>session_host_t</b> * <b>session_host_create</b> (const
+            <b>session_host_config_t</b> *config)
+            <br />
+            Create a new session host. <b>asciichat_error_t</b>
+            <b>session_host_destroy</b> (<b>session_host_t</b>
+            *host)
+            <br />
+            Destroy session host and free resources. <b>asciichat_error_t</b>
+            <b>session_host_start</b> (<b>session_host_t</b> *host)
+            <br />
+            Start accepting client connections. <b>asciichat_error_t</b>
+            <b>session_host_stop</b> (<b>session_host_t</b> *host)
+            <br />
+            Stop accepting connections and disconnect all clients. <b>bool</b>
+            <b>session_host_is_running</b> (<b>session_host_t</b> *host)
+            <br />
+            Check if host is running. <b>uint32_t</b>
+            <b>session_host_add_client</b> (<b>session_host_t</b> *host,
+            <b>acip_transport_t</b> *transport,
+            <b>acip_transport_ownership_t</b> ownership, const char *ip, int
+            port)
+            <br />
+            <b>uint32_t</b> <b>session_host_add_memory_participant</b> (<b
+              >session_host_t</b
+            >
+            *host)
+            <br />
+            Add a memory participant (host's own media).
+            <b>asciichat_error_t</b> <b>session_host_inject_frame</b> (<b
+              >session_host_t</b
+            >
+            *host, <b>uint32_t</b> participant_id, const <b>image_t</b> *frame)
+            <br />
+            Inject a video frame from memory participant.
+            <b>asciichat_error_t</b> <b>session_host_inject_audio</b> (<b
+              >session_host_t</b
+            >
+            *host, <b>uint32_t</b> participant_id, const float *samples, size_t
+            count)
+            <br />
+            Inject audio samples from memory participant.
+            <b>asciichat_error_t</b> <b>session_host_remove_client</b> (<b
+              >session_host_t</b
+            >
+            *host, <b>uint32_t</b> client_id)
+            <br />
+            Remove a client by ID. <b>asciichat_error_t</b>
+            <b>session_host_find_client</b> (<b>session_host_t</b> *host,
+            <b>uint32_t</b> client_id, <b>session_host_client_info_t</b> *info)
+            <br />
+            Find a client by ID. int <b>session_host_get_client_count</b> (<b
+              >session_host_t</b
+            >
+            *host)
+            <br />
+            Get number of connected clients. int
+            <b>session_host_get_client_ids</b> (<b>session_host_t</b> *host,
+            <b>uint32_t</b> *ids, int max_ids)
+            <br />
+            Get list of all connected client IDs. <b>asciichat_error_t</b>
+            <b>session_host_broadcast_frame</b> (<b>session_host_t</b> *host,
+            const char *frame)
+            <br />
+            Broadcast ASCII frame to all clients. <b>asciichat_error_t</b>
+            <b>session_host_send_frame</b> (<b>session_host_t</b> *host,
+            <b>uint32_t</b>
+            client_id, const char *frame)
+            <br />
+            Send ASCII frame to a specific client. <b>asciichat_error_t</b>
+            <b>session_host_set_display</b> (<b>session_host_t</b> *host, struct
+            <b>session_display_ctx</b> *display)
+            <br />
+            Set a native terminal display context for local frame rendering.
+            <b>asciichat_error_t</b> <b>session_host_set_render_target</b> (<b
+              >session_host_t</b
+            >
+            *host, const <b>session_host_render_target_t</b>
+            *target)
+            <br />
+            <b>asciichat_error_t</b> <b>session_host_start_render</b> (<b
+              >session_host_t</b
+            >
+            *host)
+            <br />
+            Start media rendering thread (video mixing and audio distribution).
+            void
+            <b>session_host_stop_render</b> (<b>session_host_t</b> *host)
+            <br />
+            Stop media rendering thread. <b>asciichat_error_t</b>
+            <b>session_host_set_client_transport</b> (<b>session_host_t</b>
+            *host, <b>uint32_t</b> client_id,
+            <b>acip_transport_t</b> *transport,
+            <b>acip_transport_ownership_t</b> ownership)
+            <br />
+            Select a transport for a specific client in the host.
+            <b>acip_transport_t</b> *
+            <b>session_host_get_client_transport</b> (<b>session_host_t</b>
+            *host, <b>uint32_t</b> client_id)
+            <br />
+            Get the current transport for a specific client in the host.
+            <b>bool</b> <b>session_host_client_has_transport</b> (<b
+              >session_host_t</b
+            >
+            *host, <b>uint32_t</b> client_id)
+            <br />
+            Check if a specific client has an active ACIP transport.
+            <b>asciichat_error_t</b> <b>session_host_receive_packet</b> (<b
+              >session_host_t</b
+            >
+            *host, <b>uint32_t</b> client_id, <b>packet_type_t</b> type, const
+            void *data, size_t len)
+            <br />
+            <b>asciichat_error_t</b> <b>session_host_render_video</b> (<b
+              >session_host_t</b
+            >
+            *host)
+            <br />
+            <b>asciichat_error_t</b> <b>session_host_accept_peer</b> (<b
+              >session_host_t</b
+            >
+            *, <b>acip_transport_t</b> *)
+            <br />
+            <b>asciichat_error_t</b> <b>session_host_render_audio</b> (<b
+              >session_host_t</b
+            >
+            *host)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">&#x1F3E0; Server-side session hosting abstraction</p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>host.h</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_host_accept_peer (<b
+              >session_host_t</b
+            >
+            * host, <b>acip_transport_t</b> * transport)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>1072</b> of file <b>host.c</b>.
+          </p>
+          <pre>
+1072                                                                                               {
+1073 #ifndef __EMSCRIPTEN__
+1074   if (!host || !host-&gt;network_server)
+1075     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Host network is not running&quot;);
+1076   return network_server_adopt(host-&gt;network_server, transport, &quot;peer&quot;, true);
+1077 #else
+1078   (void)host;
+1079   (void)transport;
+1080   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;Browser peers use the browser host bridge&quot;);
+1081 #endif
+1082 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ERROR_INVALID_STATE</b>, <b>ERROR_NOT_SUPPORTED</b>,
+            <b>session_host::network_server</b>, <b>network_server_adopt()</b>,
+            <b>session_host_accept_peer()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">Referenced by <b>session_host_accept_peer()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>uint32_t</b> session_host_add_client (<b>session_host_t</b> *
+            host, <b>acip_transport_t</b> * transport,
+            <b>acip_transport_ownership_t</b> ownership, const char * ip, int
+            port)
+          </h2>
+          <p class="Pp">
+            Register a transport-backed client. The same API accepts TCP,
+            WebSocket, and WebRTC. Ownership transfers only on success. NULL
+            registers a participant whose transport will be supplied later.
+            on_client_join runs after admission.
+          </p>
+          <p class="Pp">
+            Definition at line <b>1095</b> of file <b>host.c</b>.
+          </p>
+          <pre>
+1096                                                                                                  {
+1097   if (!host || !host-&gt;initialized) {
+1098     return 0;
+1099   }
+1100
+1101   if ((ownership != ACIP_TRANSPORT_BORROWED &amp;&amp; ownership != ACIP_TRANSPORT_OWNED) ||
+1102       (!transport &amp;&amp; ownership == ACIP_TRANSPORT_OWNED)) {
+1103     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport ownership&quot;);
+1104     return 0;
+1105   }
+1106
+1107   mutex_lock(&amp;host-&gt;clients_mutex);
+1108
+1109   // Check if we have room
+1110   if (host-&gt;client_count &gt;= host-&gt;max_clients) {
+1111     mutex_unlock(&amp;host-&gt;clients_mutex);
+1112     SET_ERRNO(ERROR_SESSION_FULL, &quot;Maximum clients reached&quot;);
+1113     return 0;
+1114   }
+1115
+1116   // Find empty slot
+1117   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+1118     if (!host-&gt;clients[i].active) {
+1119       host-&gt;clients[i].participant_type = PARTICIPANT_TYPE_NETWORK;
+1120       host-&gt;clients[i].client_id = host-&gt;next_client_id++;
+1121       host-&gt;clients[i].connection = NULL;
+1122       if (ip) {
+1123         SAFE_STRNCPY(host-&gt;clients[i].ip_address, ip, sizeof(host-&gt;clients[i].ip_address));
+1124       }
+1125       host-&gt;clients[i].port = port;
+1126       host-&gt;clients[i].active = true;
+1127       host-&gt;clients[i].video_active = false;
+1128       host-&gt;clients[i].audio_active = false;
+1129       host-&gt;clients[i].connected_at = (uint64_t)time(NULL);
+1130       host-&gt;clients[i].transport = NULL;
+1131       host-&gt;clients[i].transport_ownership = ACIP_TRANSPORT_BORROWED;
+1132       host-&gt;clients[i].render_width = 0;
+1133       host-&gt;clients[i].render_height = 0;
+1134       memset(&amp;host-&gt;clients[i].rendering, 0, sizeof(host-&gt;clients[i].rendering));
+1135       host-&gt;clients[i].rendering.fps_limit = 60;
+1136       host-&gt;clients[i].next_video_deadline = 0;
+1137
+1138       // Allocate media buffers
+1139       host-&gt;clients[i].incoming_video = image_new(480, 270); // Network-optimal size (HD preview)
+1140       host-&gt;clients[i].incoming_audio = ringbuffer_create(
+1141           sizeof(float), (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS) * HOST_AUDIO_BUFFER_FRAMES); // ~200ms buffer @ 48kHz
+1142
+1143       if (!host-&gt;clients[i].incoming_video || !host-&gt;clients[i].incoming_audio) {
+1144         // Cleanup on allocation failure
+1145         if (host-&gt;clients[i].incoming_video) {
+1146           image_destroy(host-&gt;clients[i].incoming_video);
+1147           host-&gt;clients[i].incoming_video = NULL;
+1148         }
+1149         if (host-&gt;clients[i].incoming_audio) {
+1150           ringbuffer_destroy(host-&gt;clients[i].incoming_audio);
+1151           host-&gt;clients[i].incoming_audio = NULL;
+1152         }
+1153         host-&gt;clients[i].active = false;
+1154         mutex_unlock(&amp;host-&gt;clients_mutex);
+1155         SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate media buffers for client&quot;);
+1156         return 0;
+1157       }
+1158
+1159       host-&gt;clients[i].transport = transport;
+1160       host-&gt;clients[i].transport_ownership = ownership;
+1161       uint32_t client_id = host-&gt;clients[i].client_id;
+1162       host-&gt;client_count++;
+1163
+1164       mutex_unlock(&amp;host-&gt;clients_mutex);
+1165
+1166       // Invoke callback
+1167       if (host-&gt;callbacks.on_client_join) {
+1168         host-&gt;callbacks.on_client_join(host, client_id, host-&gt;user_data);
+1169       }
+1170
+1171       return client_id;
+1172     }
+1173   }
+1174
+1175   mutex_unlock(&amp;host-&gt;clients_mutex);
+1176   return 0;
+1177 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ACIP_TRANSPORT_BORROWED</b>,
+            <b>ACIP_TRANSPORT_OWNED</b>, <b>session_host_client_t::active</b>,
+            <b>session_host_client_t::audio_active</b>, <b>AUDIO_CHANNELS</b>,
+            <b>session_host::callbacks</b>, <b>session_host::client_count</b>,
+            <b>session_host_client_t::client_id</b>,
+            <b>session_host::clients</b>, <b>session_host::clients_mutex</b>,
+            <b>session_host_client_t::connected_at</b>,
+            <b>session_host_client_t::connection</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_SESSION_FULL</b>, <b>acip_render_settings_t::fps_limit</b>,
+            <b>HOST_AUDIO_BUFFER_FRAMES</b>, <b>image_destroy()</b>,
+            <b>image_new()</b>, <b>session_host_client_t::incoming_audio</b>,
+            <b>session_host_client_t::incoming_video</b>,
+            <b>session_host::initialized</b>,
+            <b>session_host_client_t::ip_address</b>,
+            <b>session_host::max_clients</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>session_host::next_client_id</b>,
+            <b>session_host_client_t::next_video_deadline</b>,
+            <b>session_host_callbacks_t::on_client_join</b>,
+            <b>OPUS_FRAME_SAMPLES</b>,
+            <b>session_host_client_t::participant_type</b>,
+            <b>PARTICIPANT_TYPE_NETWORK</b>, <b>session_host_client_t::port</b>,
+            <b>session_host_client_t::render_height</b>,
+            <b>session_host_client_t::render_width</b>,
+            <b>session_host_client_t::rendering</b>, <b>ringbuffer_create()</b>,
+            <b>ringbuffer_destroy()</b>, <b>SAFE_STRNCPY</b>,
+            <b>session_host_add_client()</b>, <b>SET_ERRNO</b>,
+            <b>session_host_client_t::transport</b>,
+            <b>session_host_client_t::transport_ownership</b>,
+            <b>session_host::user_data</b>, and
+            <b>session_host_client_t::video_active</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>add_transport_client()</b>,
+            <b>browser_host_add_client()</b>, and
+            <b>session_host_add_client()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_host_receive_packet (<b
+              >session_host_t</b
+            >
+            * host, <b>uint32_t</b> client_id, <b>packet_type_t</b> type, const
+            void * data, size_t len)
+          </h2>
+          <p class="Pp">
+            Process a packet delivered by an event-driven transport.
+          </p>
+          <p class="Pp">Definition at line <b>324</b> of file <b>host.c</b>.</p>
+          <pre>
+325                                                                             {
+326   if (!host || !host-&gt;initialized || (!data &amp;&amp; len))
+327     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid host packet&quot;);
+328   acip_transport_t *client_transport = session_host_get_client_transport(host, client_id);
+329   switch (ptype) {
+330   case PACKET_TYPE_IMAGE_FRAME:
+331     // Client sent a video frame - parse and store in incoming buffer
+332     if (data &amp;&amp; len &gt;= sizeof(image_frame_packet_t)) {
+333       const image_frame_packet_t *frame_hdr = (const image_frame_packet_t *)data;
+334       const uint8_t *pixel_data = (const uint8_t *)data + sizeof(image_frame_packet_t);
+335       size_t pixel_data_size = len - sizeof(image_frame_packet_t);
+336       uint32_t width = NET_TO_HOST_U32(frame_hdr-&gt;width);
+337       uint32_t height = NET_TO_HOST_U32(frame_hdr-&gt;height);
+338       uint32_t pixel_format = NET_TO_HOST_U32(frame_hdr-&gt;pixel_format);
+339       size_t bytes_per_pixel = (pixel_format == PIXEL_FORMAT_RGBA || pixel_format == PIXEL_FORMAT_BGRA) ? 4 : 3;
+340       size_t expected_size = 0;
+341       size_t pixel_count = 0;
+342
+343       if (pixel_format &lt; PIXEL_FORMAT_RGB || pixel_format &gt; PIXEL_FORMAT_BGRA || width == 0 || height == 0 ||
+344           width &gt; INT_MAX || height &gt; INT_MAX ||
+345           checked_size_mul((size_t)width, (size_t)height, &amp;pixel_count) != ASCIICHAT_OK ||
+346           checked_size_mul(pixel_count, bytes_per_pixel, &amp;expected_size) != ASCIICHAT_OK ||
+347           expected_size != pixel_data_size) {
+348         log_warn(&quot;Discarding malformed video frame from client %u (%ux%u, format %u, payload %zu)&quot;, client_id, width,
+349                  height, pixel_format, pixel_data_size);
+350       } else {
+351         // Frame dimensions and pixel format are network-order fields. Resize
+352         // this participant's image when its capture dimensions change.
+353         mutex_lock(&amp;host-&gt;clients_mutex);
+354         for (int j = 0; j &lt; host-&gt;max_clients; j++) {
+355           if (host-&gt;clients[j].active &amp;&amp; host-&gt;clients[j].client_id == client_id &amp;&amp; host-&gt;clients[j].incoming_video) {
+356             image_t *img = host-&gt;clients[j].incoming_video;
+357             if (img-&gt;w != (int)width || img-&gt;h != (int)height) {
+358               image_t *resized = image_new(width, height);
+359               if (!resized) {
+360                 log_warn(&quot;Could not allocate %ux%u video frame for client %u&quot;, width, height, client_id);
+361                 break;
+362               }
+363               image_destroy(img);
+364               host-&gt;clients[j].incoming_video = img = resized;
+365             }
+366
+367             uint8_t *dst = (uint8_t *)img-&gt;pixels;
+368             if (pixel_format == PIXEL_FORMAT_RGB) {
+369               memcpy(dst, pixel_data, pixel_count * 3);
+370             } else if (pixel_format == PIXEL_FORMAT_BGR) {
+371               for (size_t p = 0; p &lt; pixel_count; p++) {
+372                 dst[p * 3] = pixel_data[p * 3 + 2];
+373                 dst[p * 3 + 1] = pixel_data[p * 3 + 1];
+374                 dst[p * 3 + 2] = pixel_data[p * 3];
+375               }
+376             } else {
+377               const bool bgra = pixel_format == PIXEL_FORMAT_BGRA;
+378               for (size_t p = 0; p &lt; pixel_count; p++) {
+379                 const uint8_t *src = pixel_data + p * 4;
+380                 dst[p * 3] = src[bgra ? 2 : 0];
+381                 dst[p * 3 + 1] = src[1];
+382                 dst[p * 3 + 2] = src[bgra ? 0 : 2];
+383               }
+384             }
+385             log_debug_every(500 * US_PER_MS_INT, &quot;Frame received from client %u (%ux%u, format %u)&quot;, client_id, width,
+386                             height, pixel_format);
+387             break;
+388           }
+389         }
+390         mutex_unlock(&amp;host-&gt;clients_mutex);
+391       }
+392     }
+393     break;
+394
+395   case PACKET_TYPE_AUDIO_OPUS_BATCH:
+396     // Client sent Opus-encoded audio batch
+397     if (data &amp;&amp; len &gt; 16) { // Must have at least header
+398       const uint8_t *batch_data = (const uint8_t *)data;
+399       // Parse header: sample_rate (4), frame_duration (4), frame_count (4), reserved (4)
+400       (void)batch_data[0]; // Avoid unused variable warning if we don't use sample_rate/frame_duration
+401       uint32_t batch_frame_count_net = 0;
+402       memcpy(&amp;batch_frame_count_net, batch_data + 8, sizeof(batch_frame_count_net));
+403       uint32_t batch_frame_count = NET_TO_HOST_U32(batch_frame_count_net);
+404
+405       size_t frame_sizes_len = (size_t)batch_frame_count * sizeof(uint16_t);
+406       if (batch_frame_count &gt; 0 &amp;&amp; batch_frame_count &lt;= 1000 &amp;&amp; 16 + frame_sizes_len &lt;= len) {
+407         const uint8_t *frame_sizes = batch_data + 16;
+408         const uint8_t *opus_frames = batch_data + 16 + (batch_frame_count * sizeof(uint16_t));
+409         const uint8_t *batch_end = batch_data + len;
+410
+411         // Find client and decode audio
+412         mutex_lock(&amp;host-&gt;clients_mutex);
+413         for (int j = 0; j &lt; host-&gt;max_clients; j++) {
+414           if (host-&gt;clients[j].client_id == client_id &amp;&amp; host-&gt;clients[j].active &amp;&amp; host-&gt;clients[j].incoming_audio) {
+415             if (!host-&gt;clients[j].opus_decoder)
+416               host-&gt;clients[j].opus_decoder = opus_codec_create_decoder_channels(AUDIO_SAMPLE_RATE, AUDIO_CHANNELS);
+417             if (!host-&gt;clients[j].opus_decoder) {
+418               mutex_unlock(&amp;host-&gt;clients_mutex);
+419               return SET_ERRNO(ERROR_AUDIO, &quot;Failed to initialize participant decoder&quot;);
+420             }
+421             // Each participant owns an independent predictive Opus stream.
+422             const uint8_t *current_frame = opus_frames;
+423             for (uint32_t k = 0; k &lt; batch_frame_count; k++) {
+424               uint16_t frame_size_net = 0;
+425               memcpy(&amp;frame_size_net, frame_sizes + k * sizeof(frame_size_net), sizeof(frame_size_net));
+426               uint16_t frame_size = NET_TO_HOST_U16(frame_size_net);
+427               if ((size_t)(batch_end - current_frame) &lt; frame_size) {
+428                 break;
+429               }
+430               if (frame_size &gt; 0) {
+431                 // Allocate buffer for decoded samples
+432                 float decoded_samples[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)]; // Max 20ms @ 48kHz
+433                 int decoded_count = opus_codec_decode(host-&gt;clients[j].opus_decoder, current_frame, (int)frame_size,
+434                                                       decoded_samples, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
+435                 if (decoded_count &gt; 0) {
+436                   host-&gt;clients[j].audio_active = true;
+437                   // Write samples to ringbuffer one at a time
+438                   for (int s = 0; s &lt; decoded_count; s++) {
+439                     ringbuffer_write(host-&gt;clients[j].incoming_audio, &amp;decoded_samples[s]);
+440                   }
+441                 }
+442               }
+443               current_frame += frame_size;
+444             }
+445             log_debug_every(NS_PER_MS_INT, &quot;Audio batch received from client %u (%u frames)&quot;, client_id,
+446                             batch_frame_count);
+447             break;
+448           }
+449         }
+450         mutex_unlock(&amp;host-&gt;clients_mutex);
+451       }
+452     }
+453     break;
+454
+455   case PACKET_TYPE_STREAM_START:
+456     log_info(&quot;Client %u started streaming&quot;, client_id);
+457     mutex_lock(&amp;host-&gt;clients_mutex);
+458     for (int j = 0; j &lt; host-&gt;max_clients; j++) {
+459       if (host-&gt;clients[j].client_id == client_id) {
+460         host-&gt;clients[j].video_active = true;
+461         break;
+462       }
+463     }
+464     mutex_unlock(&amp;host-&gt;clients_mutex);
+465     break;
+466
+467   case PACKET_TYPE_CLIENT_CAPABILITIES:
+468   case PACKET_TYPE_ACIP_SETTINGS_SYNC: {
+469     uint8_t reply[ACIP_SETTINGS_MAX_SIZE];
+470     size_t reply_length = 0;
+471     asciichat_error_t result = ASCIICHAT_OK;
+472     session_host_client_t *target = NULL;
+473     mutex_lock(&amp;host-&gt;clients_mutex);
+474     for (int j = 0; j &lt; host-&gt;max_clients; ++j) {
+475       if (host-&gt;clients[j].active &amp;&amp; host-&gt;clients[j].client_id == client_id) {
+476         target = &amp;host-&gt;clients[j];
+477         break;
+478       }
+479     }
+480     if (!target)
+481       result = SET_ERRNO(ERROR_INVALID_STATE, &quot;Unknown settings participant&quot;);
+482     else if (ptype == PACKET_TYPE_CLIENT_CAPABILITIES) {
+483       if (!data || len != sizeof(terminal_capabilities_packet_t))
+484         result = SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid capabilities&quot;);
+485       else {
+486         terminal_capabilities_packet_t packet;
+487         memcpy(&amp;packet, data, sizeof(packet));
+488         if (target-&gt;rendering.width) {
+489           // Codec advertisements cannot change an established viewer's settings.
+490           mutex_unlock(&amp;host-&gt;clients_mutex);
+491           return ASCIICHAT_OK;
+492         }
+493         result = acip_render_settings_capabilities(&amp;target-&gt;rendering, &amp;packet);
+494         if (result == ASCIICHAT_OK) {
+495           uint8_t query[ACIP_SETTINGS_HEADER_SIZE];
+496           size_t query_length;
+497           acip_settings_header_t header = {.schema = 1, .expected_revision = UINT32_MAX};
+498           result = acip_settings_encode(&amp;header, &quot;&quot;, query, sizeof(query), &amp;query_length);
+499           if (result == ASCIICHAT_OK)
+500             result =
+501                 acip_settings_request(&amp;target-&gt;rendering, query, query_length, reply, sizeof(reply), &amp;reply_length);
+502         }
+503       }
+504     } else if (!target-&gt;rendering.revision)
+505       result = SET_ERRNO(ERROR_INVALID_STATE, &quot;Settings received before capabilities&quot;);
+506     else
+507       result = acip_settings_request(&amp;target-&gt;rendering, data, len, reply, sizeof(reply), &amp;reply_length);
+508     if (target &amp;&amp; result == ASCIICHAT_OK) {
+509       target-&gt;render_width = target-&gt;rendering.width;
+510       target-&gt;render_height = target-&gt;rendering.height;
+511       if (reply_length)
+512         result = packet_send_via_transport(target-&gt;transport, PACKET_TYPE_ACIP_SETTINGS_ACK, reply, reply_length, 0);
+513     }
+514     mutex_unlock(&amp;host-&gt;clients_mutex);
+515     return result;
+516   }
+517
+518   case PACKET_TYPE_STREAM_STOP:
+519     log_info(&quot;Client %u stopped streaming&quot;, client_id);
+520     mutex_lock(&amp;host-&gt;clients_mutex);
+521     for (int j = 0; j &lt; host-&gt;max_clients; j++) {
+522       if (host-&gt;clients[j].client_id == client_id) {
+523         host_forget_render_history(host, client_id);
+524         host-&gt;clients[j].video_active = false;
+525         host-&gt;clients[j].audio_active = false;
+526         break;
+527       }
+528     }
+529     mutex_unlock(&amp;host-&gt;clients_mutex);
+530     break;
+531
+532   case PACKET_TYPE_PING:
+533     // Respond with PONG
+534     log_debug_every(NS_PER_MS_INT, &quot;PING from client %u&quot;, client_id);
+535     acip_send_pong(client_transport);
+536     break;
+537
+538   case PACKET_TYPE_CLIENT_LEAVE:
+539     log_info(&quot;Client %u requested disconnect&quot;, client_id);
+540     // Mark for removal (will be handled separately to avoid deadlock)
+541     break;
+542
+543   default:
+544     log_warn(&quot;Unknown packet type %u from client %u&quot;, ptype, client_id);
+545     break;
+546   }
+547
+548   return ASCIICHAT_OK;
+549 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_render_settings_capabilities()</b>,
+            <b>acip_send_pong()</b>, <b>acip_settings_encode()</b>,
+            <b>ACIP_SETTINGS_HEADER_SIZE</b>, <b>ACIP_SETTINGS_MAX_SIZE</b>,
+            <b>acip_settings_request()</b>,
+            <b>session_host_client_t::active</b>, <b>ASCIICHAT_OK</b>,
+            <b>session_host_client_t::audio_active</b>, <b>AUDIO_CHANNELS</b>,
+            <b>AUDIO_SAMPLE_RATE</b>, <b>session_host_client_t::client_id</b>,
+            <b>session_host::clients</b>, <b>session_host::clients_mutex</b>,
+            <b>ERROR_AUDIO</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>image_t::h</b>,
+            <b>acip_render_settings_t::height</b>,
+            <b>image_frame_packet_t::height</b>, <b>image_destroy()</b>,
+            <b>image_new()</b>, <b>session_host_client_t::incoming_audio</b>,
+            <b>session_host_client_t::incoming_video</b>,
+            <b>session_host::initialized</b>, <b>log_debug_every</b>,
+            <b>log_info</b>, <b>log_warn</b>, <b>session_host::max_clients</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>, <b>NET_TO_HOST_U16</b>,
+            <b>NET_TO_HOST_U32</b>, <b>NS_PER_MS_INT</b>,
+            <b>opus_codec_create_decoder_channels()</b>,
+            <b>opus_codec_decode()</b>,
+            <b>session_host_client_t::opus_decoder</b>,
+            <b>OPUS_FRAME_SAMPLES</b>, <b>packet_send_via_transport()</b>,
+            <b>PACKET_TYPE_ACIP_SETTINGS_ACK</b>,
+            <b>PACKET_TYPE_ACIP_SETTINGS_SYNC</b>,
+            <b>PACKET_TYPE_AUDIO_OPUS_BATCH</b>,
+            <b>PACKET_TYPE_CLIENT_CAPABILITIES</b>,
+            <b>PACKET_TYPE_CLIENT_LEAVE</b>, <b>PACKET_TYPE_IMAGE_FRAME</b>,
+            <b>PACKET_TYPE_PING</b>, <b>PACKET_TYPE_STREAM_START</b>,
+            <b>PACKET_TYPE_STREAM_STOP</b>,
+            <b>image_frame_packet_t::pixel_format</b>, <b>PIXEL_FORMAT_BGR</b>,
+            <b>PIXEL_FORMAT_BGRA</b>, <b>PIXEL_FORMAT_RGB</b>,
+            <b>PIXEL_FORMAT_RGBA</b>, <b>image_t::pixels</b>,
+            <b>session_host_client_t::render_height</b>,
+            <b>session_host_client_t::render_width</b>,
+            <b>session_host_client_t::rendering</b>,
+            <b>acip_render_settings_t::revision</b>, <b>ringbuffer_write()</b>,
+            <b>session_host_get_client_transport()</b>,
+            <b>session_host_receive_packet()</b>, <b>SET_ERRNO</b>,
+            <b>session_host_client_t::transport</b>, <b>US_PER_MS_INT</b>,
+            <b>session_host_client_t::video_active</b>, <b>image_t::w</b>,
+            <b>acip_render_settings_t::width</b>, and
+            <b>image_frame_packet_t::width</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>browser_host_receive()</b>, and
+            <b>session_host_receive_packet()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_host_render_audio (<b
+              >session_host_t</b
+            >
+            * host)
+          </h2>
+          <p class="Pp">
+            Mix and distribute one 20 ms audio frame without starting a thread.
+          </p>
+          <p class="Pp">Definition at line <b>798</b> of file <b>host.c</b>.</p>
+          <pre>
+798                                                                   {
+799   if (!host || !host-&gt;initialized)
+800     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;invalid host&quot;);
+801   uint64_t mix_start = time_get_ns();
+802   double total[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)] = {0};
+803   asciichat_error_t result = ASCIICHAT_OK;
+804   mutex_lock(&amp;host-&gt;clients_mutex);
+805   // Drain each source once. Keep unclipped samples so mix-minus can subtract
+806   // the recipient before clipping without leaking its voice into the output.
+807   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+808     session_host_client_t *client = &amp;host-&gt;clients[i];
+809     memset(client-&gt;audio_frame, 0, sizeof(client-&gt;audio_frame));
+810     if (!client-&gt;active || !client-&gt;audio_active || !client-&gt;incoming_audio)
+811       continue;
+812     for (int j = 0; j &lt; (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS); j++) {
+813       if (ringbuffer_read(client-&gt;incoming_audio, &amp;client-&gt;audio_frame[j]))
+814         total[j] += client-&gt;audio_frame[j];
+815     }
+816   }
+817   for (int i = 0; i &lt; host-&gt;max_clients; i++) {
+818     session_host_client_t *client = &amp;host-&gt;clients[i];
+819     if (!client-&gt;active || !client-&gt;transport)
+820       continue;
+821     ASCII_OTEL_SCOPE(SERVER_AUDIO);
+822     if (!client-&gt;opus_encoder)
+823       client-&gt;opus_encoder =
+824           opus_codec_create_encoder_channels(OPUS_APPLICATION_AUDIO, AUDIO_SAMPLE_RATE, 128000, AUDIO_CHANNELS);
+825     if (!client-&gt;opus_encoder) {
+826       result = SET_ERRNO(ERROR_AUDIO, &quot;Failed to initialize participant encoder&quot;);
+827       continue;
+828     }
+829     float mixed[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
+830     for (int j = 0; j &lt; (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS); j++) {
+831       float sample = (float)(total[j] - client-&gt;audio_frame[j]);
+832       mixed[j] = sample &gt; 1.0f ? 1.0f : sample &lt; -1.0f ? -1.0f : sample;
+833     }
+834     uint8_t opus_buffer[AUDIO_OPUS_SESSION_PACKET_CAPACITY];
+835     size_t opus_len = opus_codec_encode(client-&gt;opus_encoder, mixed, OPUS_FRAME_SAMPLES * AUDIO_CHANNELS, opus_buffer,
+836                                         sizeof(opus_buffer));
+837     if (opus_len &gt; 0) {
+838       uint16_t frame_sizes[1] = {(uint16_t)opus_len};
+839       asciichat_error_t sent = acip_send_audio_opus_batch(client-&gt;transport, opus_buffer, opus_len, frame_sizes, 1,
+840                                                           AUDIO_SAMPLE_RATE, CLIENT_AUDIO_PIPELINE_FRAME_MS);
+841       if (sent != ASCIICHAT_OK)
+842         log_warn(&quot;Failed to send mixed audio to client %u&quot;, client-&gt;client_id);
+843     }
+844   }
+845   mutex_unlock(&amp;host-&gt;clients_mutex);
+846   stats_duration_record(stats_runtime_scope(), STATS_DURATION_AUDIO_MIX, time_get_ns() - mix_start);
+847 #ifndef __EMSCRIPTEN__
+848   float recorded[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
+849   for (int j = 0; j &lt; (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS); j++)
+850     recorded[j] = total[j] &gt; 1.0 ? 1.0f : total[j] &lt; -1.0 ? -1.0f : (float)total[j];
+851   audio_recording_submit(AUDIO_RECORDING_REMOTE, recorded, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS), time_get_ns());
+852 #endif
+853   return result;
+854 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_send_audio_opus_batch()</b>,
+            <b>session_host_client_t::active</b>, <b>ASCII_OTEL_SCOPE</b>,
+            <b>ASCIICHAT_OK</b>, <b>session_host_client_t::audio_active</b>,
+            <b>AUDIO_CHANNELS</b>, <b>session_host_client_t::audio_frame</b>,
+            <b>AUDIO_OPUS_SESSION_PACKET_CAPACITY</b>,
+            <b>AUDIO_RECORDING_REMOTE</b>, <b>audio_recording_submit()</b>,
+            <b>AUDIO_SAMPLE_RATE</b>, <b>CLIENT_AUDIO_PIPELINE_FRAME_MS</b>,
+            <b>session_host_client_t::client_id</b>,
+            <b>session_host::clients</b>, <b>session_host::clients_mutex</b>,
+            <b>ERROR_AUDIO</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>session_host_client_t::incoming_audio</b>,
+            <b>session_host::initialized</b>, <b>log_warn</b>,
+            <b>session_host::max_clients</b>, <b>mutex_lock</b>,
+            <b>mutex_unlock</b>, <b>OPUS_APPLICATION_AUDIO</b>,
+            <b>opus_codec_create_encoder_channels()</b>,
+            <b>opus_codec_encode()</b>,
+            <b>session_host_client_t::opus_encoder</b>,
+            <b>OPUS_FRAME_SAMPLES</b>, <b>ringbuffer_read()</b>,
+            <b>session_host_render_audio()</b>, <b>SET_ERRNO</b>,
+            <b>STATS_DURATION_AUDIO_MIX</b>, <b>stats_duration_record()</b>,
+            <b>stats_runtime_scope()</b>, <b>time_get_ns()</b>, and
+            <b>session_host_client_t::transport</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>browser_host_create()</b>,
+            <b>browser_host_render_audio()</b>, and
+            <b>session_host_render_audio()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_host_render_video (<b
+              >session_host_t</b
+            >
+            * host)
+          </h2>
+          <p class="Pp">
+            Run one shared host video cycle without starting a thread.
+          </p>
+          <p class="Pp">Definition at line <b>791</b> of file <b>host.c</b>.</p>
+          <pre>
+791                                                                   {
+792   if (!host || !host-&gt;initialized)
+793     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid session host&quot;);
+794   host_render_video(host, false);
+795   return ASCIICHAT_OK;
+796 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>session_host::initialized</b>,
+            <b>session_host_render_video()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>browser_host_render()</b>, and
+            <b>session_host_render_video()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> session_host_set_render_target (<b
+              >session_host_t</b
+            >
+            * host, const <b>session_host_render_target_t</b> * target)
+          </h2>
+          <p class="Pp">
+            Set local output on native or WASM hosts. NULL disables the local
+            target. A client target is rendered once and delivered through its
+            existing transport. A backend's context must outlive its
+            registration.
+          </p>
+          <p class="Pp">
+            Definition at line <b>1516</b> of file <b>host.c</b>.
+          </p>
+          <pre>
+1516                                                                                                                    {
+1517   if (!host || !host-&gt;initialized) {
+1518     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;invalid host&quot;);
+1519   }
+1520   if (target) {
+1521     bool has_backend = target-&gt;get_config || target-&gt;render_frame;
+1522     bool complete_backend = target-&gt;get_config &amp;&amp; target-&gt;render_frame;
+1523     bool valid_target = target-&gt;client_id ? !has_backend : complete_backend;
+1524     if (!valid_target)
+1525       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Local rendering requires a client or a complete display backend&quot;);
+1526   }
+1527
+1528   mutex_lock(&amp;host-&gt;clients_mutex);
+1529   if (target &amp;&amp; target-&gt;client_id) {
+1530     bool found = false;
+1531     for (int i = 0; i &lt; host-&gt;max_clients; ++i)
+1532       if (host-&gt;clients[i].active &amp;&amp; host-&gt;clients[i].client_id == target-&gt;client_id)
+1533         found = true;
+1534     if (!found) {
+1535       mutex_unlock(&amp;host-&gt;clients_mutex);
+1536       return SET_ERRNO(ERROR_NOT_FOUND, &quot;Local display client not found: %u&quot;, target-&gt;client_id);
+1537     }
+1538   }
+1539   host-&gt;render_target = target ? *target : (session_host_render_target_t){0};
+1540   mutex_unlock(&amp;host-&gt;clients_mutex);
+1541   return ASCIICHAT_OK;
+1542 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>session_host_client_t::active</b>,
+            <b>ASCIICHAT_OK</b>, <b>session_host_client_t::client_id</b>,
+            <b>session_host_render_target_t::client_id</b>,
+            <b>session_host::clients</b>, <b>session_host::clients_mutex</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>ERROR_NOT_FOUND</b>,
+            <b>session_host_render_target_t::get_config</b>,
+            <b>session_host::initialized</b>, <b>session_host::max_clients</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>session_host_render_target_t::render_frame</b>,
+            <b>session_host::render_target</b>,
+            <b>session_host_set_render_target()</b>, and <b>SET_ERRNO</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>browser_host_set_local_client()</b>, and
+            <b>session_host_set_render_target()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

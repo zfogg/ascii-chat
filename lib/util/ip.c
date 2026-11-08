@@ -17,7 +17,6 @@
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/platform/network.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/util/pcre2.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,38 +27,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #endif
-#include <pcre2.h>
-
-// ============================================================================
-// PCRE2 IPv4 Address Validator
-// ============================================================================
-
-/**
- * @brief IPv4 address validator using PCRE2
- *
- * Validates the format of IPv4 addresses:
- * - Each octet is 0-255
- * - Rejects leading zeros (e.g., "192.168.001.1" is invalid)
- * - No other characters allowed
- */
-
-// Regex pattern validates IPv4 format:
-// - Each octet: 0-255 without leading zeros
-// - Exactly 4 octets separated by dots
-static const char *IPV4_PATTERN = "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}"
-                                  "(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$";
-
-static pcre2_singleton_t *g_ipv4_regex = NULL;
-
-/**
- * Get compiled IPv4 regex (lazy initialization)
- */
-static pcre2_code *ipv4_regex_get(void) {
-  if (g_ipv4_regex == NULL) {
-    g_ipv4_regex = asciichat_pcre2_singleton_compile(IPV4_PATTERN, 0);
-  }
-  return asciichat_pcre2_singleton_get_code(g_ipv4_regex);
-}
 
 // Helper function to validate IPv4 address format
 int is_valid_ipv4(const char *ip) {
@@ -81,30 +48,9 @@ int is_valid_ipv4(const char *ip) {
     return 0; // Invalid
   }
 
-  // Get compiled IPv4 regex
-  pcre2_code *regex = ipv4_regex_get();
-  if (!regex) {
-    log_error("IPv4 validator not initialized");
-    return 0;
-  }
-
-  // Create match data for regex matching
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
-  if (!match_data) {
-    log_error("Failed to allocate match data for IPv4 regex");
-    return 0;
-  }
-
-  // Validate format using PCRE2 regex
-  int match_result = pcre2_match(regex, (PCRE2_SPTR8)ip, ip_len, 0, 0, match_data, NULL);
-
-  pcre2_match_data_free(match_data);
-
-  if (match_result < 0) {
-    return 0; // Format validation failed
-  }
-
-  return 1; // Valid IPv4 format
+  // inet_pton accepts only dotted-decimal IPv4 addresses and rejects leading zeros.
+  struct in_addr address;
+  return inet_pton(AF_INET, ip, &address) == 1;
 }
 
 // Helper function to validate IPv6 address format
@@ -200,6 +146,27 @@ int parse_ipv6_address(const char *input, char *output, size_t output_size) {
 }
 
 // Format IP address from socket address structure
+asciichat_error_t parse_numeric_socket_address(const char *host, uint16_t port, struct sockaddr_storage *address,
+                                               socklen_t *length) {
+  if (!host || !*host || !address || !length)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid numeric socket address");
+  struct sockaddr_in ipv4 = {.sin_family = AF_INET, .sin_port = htons(port)};
+  struct sockaddr_in6 ipv6 = {.sin6_family = AF_INET6, .sin6_port = htons(port)};
+  memset(address, 0, sizeof(*address));
+  if (inet_pton(AF_INET, host, &ipv4.sin_addr) == 1) {
+    memcpy(address, &ipv4, sizeof(ipv4));
+    *length = sizeof(ipv4);
+    return ASCIICHAT_OK;
+  }
+  if (inet_pton(AF_INET6, host, &ipv6.sin6_addr) == 1) {
+    memcpy(address, &ipv6, sizeof(ipv6));
+    *length = sizeof(ipv6);
+    return ASCIICHAT_OK;
+  }
+  *length = 0;
+  return SET_ERRNO(ERROR_INVALID_PARAM, "Expected a numeric IPv4 or IPv6 address");
+}
+
 asciichat_error_t format_ip_address(int family, const struct sockaddr *addr, char *output, size_t output_size) {
   if (!addr || !output || output_size == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");

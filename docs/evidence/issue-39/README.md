@@ -121,12 +121,12 @@ also smoke-tested. The synthetic source bypasses microphone/AEC processing.
 Reproduce with a server on Windows and an SSH reverse forward to the Mac:
 
 ```sh
-ascii-chat --log-level info server 127.0.0.1 --port 54389 --audio-spectral=true --status-screen=false
+ascii-chat --log-level info server 127.0.0.1 --port 54389 --audio-spectral-mixer=true --status-screen=false
 ssh -R 54391:127.0.0.1:54389 loomen@zachbook-pro
 # In that SSH shell, start the Mac client:
-ascii-chat --log-level warn client 127.0.0.1:54391 --test-pattern 0 --video-codec raw --test-audio --audio-spectral=true --speakers-volume 0.5 --snapshot --snapshot-delay 60 --width 40 --height 12 --splash-screen=false
+ascii-chat --log-level warn client 127.0.0.1:54391 --test-pattern 0 --video-codec raw --test-audio --speakers-volume 0.5 --snapshot --snapshot-delay 60 --width 40 --height 12 --splash-screen=false
 # In a separate Windows shell, start the Windows client:
-ascii-chat --log-level warn client 127.0.0.1:54389 --test-pattern 0 --video-codec raw --test-audio --audio-spectral=true --speakers-volume 0.5 --snapshot --snapshot-delay 60 --width 40 --height 12 --splash-screen=false
+ascii-chat --log-level warn client 127.0.0.1:54389 --test-pattern 0 --video-codec raw --test-audio --speakers-volume 0.5 --snapshot --snapshot-delay 60 --width 40 --height 12 --splash-screen=false
 ```
 
 Set `ASCIICHAT_DUMP_AUDIO=1` in each client's environment to capture received
@@ -135,5 +135,5 @@ speaker indices for the machine as needed; Windows used Realtek device 6 and the
 Mac used its default builtin speakers. To regenerate the chart:
 
 ```sh
-python tests/audio/analyze_test_audio.py --source build/test-audio-source.wav --windows-received build/test-audio-windows-received.wav --mac-received build/test-audio-mac-received.wav --output build/test-audio-report
+uv run --project tests/ascii_chat_tests --frozen python tests/audio/analyze_test_audio.py --source build/test-audio-source.wav --windows-received build/test-audio-windows-received.wav --mac-received build/test-audio-mac-received.wav --output build/test-audio-report
 ```

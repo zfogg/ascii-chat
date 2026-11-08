@@ -11,7 +11,9 @@ pytestmark = [pytest.mark.integration, pytest.mark.media]
 
 def test_glyph_match(binary, test_environment):
     binary = str(binary)
-    with tempfile.TemporaryDirectory() as temp:
+    # Explicit config files must be within an allowed directory; use the
+    # isolated HOME from the test environment on every platform.
+    with tempfile.TemporaryDirectory(dir=test_environment["HOME"]) as temp:
         image = Path(temp) / "pattern.ppm"
         pixels = bytearray()
         for y in range(120):
@@ -33,10 +35,16 @@ def test_glyph_match(binary, test_environment):
         assert default == capture(["--renderer=luminance"]), "default must be luminance"
         glyph = capture(["--renderer=glyph"])
         assert glyph != default, "glyph mode did not change the frame"
+        background_args = [arg for arg in common if arg != "--color-mode=none"]
+        background = subprocess.run(background_args + ["--renderer=glyph", "--render-mode=background",
+                                                         "--color-mode=truecolor"], stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, env=test_environment, timeout=40, check=True)
+        assert b"\x1b[48;2;" in background.stdout, "glyph background colors were not emitted"
         standard_chars = set(b"   ...',;:clodxkO0KXNWM")
         glyph_chars = set(b"".join(re.sub(rb"\x1b\[[0-9;]*[a-zA-Z]", b"", line) for line in glyph))
         assert glyph_chars - standard_chars, "default glyph mode should use the 95-glyph atlas"
         restricted = capture(["--renderer=glyph", "--palette-chars=@#"])
+        assert restricted == capture(["--renderer=glyph", "--palette-chars=@@##"]), "duplicate glyphs changed output"
         for line in restricted:
             # Monochrome rows may use CSI repeat to compress a run.
             assert set(re.sub(rb"\x1b\[[0-9;]*[a-zA-Z]", b"", line)) <= set(b"@#"), line
@@ -49,9 +57,9 @@ def test_glyph_match(binary, test_environment):
         allowed = set(b"   ...',;:clodxkO0KXNWM")
         for line in standard:
             assert set(re.sub(rb"\x1b\[[0-9;]*[a-zA-Z]", b"", line)) <= allowed, line
-        # A Unicode palette remains usable via the luminance fallback.
+        # Block symbols are eligible for spatial matching, including UTF-8 emission.
         unicode = capture(["--renderer=glyph", "--palette=blocks"])
-        assert unicode == capture(["--renderer=luminance", "--palette=blocks"]), "Unicode fallback differs"
+        assert any(b >= 128 for b in b"".join(unicode)), "block glyphs were not emitted"
         large = [arg for arg in common if not arg.startswith("--width=")]
         result = subprocess.run(large + ["--width=481", "--renderer=glyph", "--palette=blocks"],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=test_environment, timeout=40, check=True)
@@ -60,4 +68,9 @@ def test_glyph_match(binary, test_environment):
         invalid = subprocess.run(common + ["--renderer=unknown"], stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE, env=test_environment, timeout=40)
         assert invalid.returncode != 0, "invalid renderer must be rejected"
+        unsupported = subprocess.run([arg for arg in common if arg != "--quiet"] +
+                                     ["--renderer=glyph", "--palette=digital"], stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE, env=test_environment, timeout=40)
+        assert unsupported.returncode != 0, "unsupported glyph palette must fail before rendering"
+        assert b"glyph mask" in (unsupported.stdout + unsupported.stderr).lower(), unsupported
     print("mirror glyph matching: baseline, printable glyph, and oversized fallback frames produced")

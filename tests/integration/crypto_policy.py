@@ -1,6 +1,6 @@
 """Real CLI security negotiation, authentication failures, and rendered frames.
 
-Run: python tests/integration/crypto_policy.py /absolute/path/to/ascii-chat
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/integration/crypto_policy.py /absolute/path/to/ascii-chat
 Uses temporary identities and loopback TCP/WS/WSS listeners only.
 """
 

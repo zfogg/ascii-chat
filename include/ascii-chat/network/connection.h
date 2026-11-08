@@ -7,6 +7,7 @@
 
 typedef struct network_connection network_connection_t;
 typedef struct network_server network_server_t;
+typedef struct acip_quic_endpoint acip_quic_endpoint_t;
 
 typedef enum {
   NETWORK_NEGOTIATING,
@@ -40,6 +41,10 @@ typedef struct {
   void *tick_context;
   size_t max_connections, max_payload;
   uint64_t handshake_timeout_ms, partial_timeout_ms, idle_timeout_ms;
+  /** Optional borrowed native QUIC listener. It must outlive server shutdown. */
+  acip_quic_endpoint_t *quic_endpoint;
+  /** Optional borrowed HTTP/3 WebTransport listener. */
+  acip_quic_endpoint_t *webtransport_endpoint;
 } network_server_config_t;
 
 asciichat_error_t network_server_create(const network_server_config_t *, network_server_t **);
@@ -57,6 +62,10 @@ const network_server_config_t *network_server_config(network_server_t *);
 
 /** Adopt an authenticated peer transport on success; the caller retains it on failure. */
 asciichat_error_t network_server_adopt(network_server_t *, acip_transport_t *, const char *peer, bool secure);
+/** Adopt a connected transport before application authentication. The caller
+ * retains it on failure; on success the server owns it and drives negotiation. */
+asciichat_error_t network_server_adopt_negotiating(network_server_t *, acip_transport_t *, const char *peer,
+                                                   bool secure);
 
 /** Iteration pins connections and application state, without holding registry
  * locks across callbacks or sends. The callback must not wait for server shutdown.
@@ -78,6 +87,10 @@ crypto_handshake_context_t *network_connection_handshake(network_connection_t *)
 asciichat_error_t network_connection_prepare_security(network_connection_t *, bool server, const char *password);
 /** Wrap an already authenticated transport in the same ownership contract. */
 asciichat_error_t network_connection_adopt(acip_transport_t *, network_connection_t **);
+/** Wrap a connected transport before application negotiation. Ownership
+ * transfers only on success. The caller drives negotiation before run(). */
+asciichat_error_t network_connection_adopt_negotiating(acip_transport_t *, const char *peer, bool secure,
+                                                       network_connection_t **);
 
 /** Shared outbound establishment. Native TCP is adopted into the event backend;
  * WebSocket establishes its library-managed transport. Returns one owned object.
@@ -86,6 +99,9 @@ typedef struct {
   uint32_t timeout_ms;
   bool (*should_exit_callback)(void *);
   void *callback_data;
+  const char *quic_ca_file;   /**< Optional trust anchors for an explicit quic:// connection. */
+  bool quic_visual_datagrams; /**< Prefer negotiated visual datagrams. */
+  bool quic_audio_datagrams;  /**< Prefer datagrams for audio when supported by the peer. */
 } network_connect_config_t;
 
 /** A NULL config uses backend defaults and the application's exit callback.

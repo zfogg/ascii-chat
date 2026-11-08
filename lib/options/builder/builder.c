@@ -60,6 +60,8 @@ static asciichat_error_t builder_format_error(char **output, const char *format,
 // ============================================================================
 // Static counters for default value storage
 // ============================================================================
+static void track_owned_string_builder(options_builder_t *builder, char *str);
+
 static int g_int_defaults[OPTIONS_MAX_INT_DEFAULTS];
 static size_t g_int_defaults_counter = 0;
 
@@ -509,7 +511,9 @@ void options_builder_destroy(options_builder_t *builder) {
   SAFE_FREE(builder->examples);
   SAFE_FREE(builder->modes);
   SAFE_FREE(builder->custom_sections);
-  SAFE_FREE(builder->owned_strings_builder); // Free the builder's owned strings
+  for (size_t i = 0; i < builder->num_owned_strings_builder; ++i)
+    SAFE_FREE(builder->owned_strings_builder[i]);
+  SAFE_FREE(builder->owned_strings_builder);
   SAFE_FREE(builder);
 }
 
@@ -778,19 +782,20 @@ void options_builder_add_string(options_builder_t *builder, const char *long_nam
                                 const char *env_var_name, bool (*validate)(const void *)) {
   ensure_descriptor_capacity(builder);
 
-  // Store default string pointer in static storage to avoid stack-use-after-return
-  // Increased from 256 to 1024 to support multiple test builders without overflow
-  static const char *defaults[OPTIONS_MAX_DOUBLE_DEFAULTS];
-  static size_t num_defaults = 0;
-
+  // The descriptor expects a pointer to a string pointer. Keep both the slot
+  // and its text in one builder-owned allocation, transferred to the config.
   const void *default_ptr = NULL;
   if (default_value) {
-    if (num_defaults >= OPTIONS_MAX_DOUBLE_DEFAULTS) {
-      log_error("Too many string options (max 1024)");
+    size_t length = strlen(default_value) + 1;
+    char *storage = SAFE_MALLOC(sizeof(char *) + length, char *);
+    if (!storage)
       return;
-    }
-    defaults[num_defaults] = default_value;
-    default_ptr = &defaults[num_defaults++];
+    const char **slot = (const char **)storage;
+    char *text = storage + sizeof(char *);
+    memcpy(text, default_value, length);
+    *slot = text;
+    track_owned_string_builder(builder, storage);
+    default_ptr = slot;
   }
 
   option_descriptor_t desc = {.long_name = long_name,
@@ -1465,7 +1470,9 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     // Use handler registry to apply environment variables and defaults
     if (desc->type >= 0 && desc->type < (int)(NUM_OPTION_TYPES)) {
       if (g_builder_handlers[desc->type].apply_env) {
-        g_builder_handlers[desc->type].apply_env(field, env_value, desc);
+        asciichat_error_t result = g_builder_handlers[desc->type].apply_env(field, env_value, desc);
+        if (result != ASCIICHAT_OK)
+          return result;
       }
     } else if (desc->type == OPTION_TYPE_CALLBACK && desc->parse_fn && desc->default_value) {
       // Special handling for callbacks with parse_fn

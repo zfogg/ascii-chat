@@ -1124,15 +1124,11 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
   int ret;
   {
     ASCII_OTEL_SCOPE(DNS_RESOLVE);
-#ifdef ASCIICHAT_WITH_OTEL
     if (otel_scope.retained)
       gotel_attr_string(&otel_scope.scope, "dns.question.name", hostname);
-#endif
     ret = getaddrinfo(hostname, NULL, &hints, &result);
-#ifdef ASCIICHAT_WITH_OTEL
     if (ret && otel_scope.retained)
       gotel_error(&otel_scope.scope, "dns.error", "DNS lookup failed");
-#endif
   }
   if (ret != 0) {
     WSACleanup();
@@ -1535,7 +1531,8 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
 /**
  * Execute a subprocess using CreateProcess (Windows implementation)
  */
-int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size) {
+int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size,
+                                bool (*cancel)(void *), void *data) {
   if (!executable || !argv) {
     log_error("invalid parameters");
     return -1;
@@ -1615,20 +1612,21 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
 
   if (capture_output) {
     startup_info.hStdOutput = stdout_write;
-    startup_info.hStdError = stdout_write;
+    startup_info.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+    startup_info.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
     startup_info.dwFlags |= STARTF_USESTDHANDLES;
   }
 
-  BOOL success = CreateProcessA(NULL,           // lpApplicationName - NULL so PATH is searched
-                                command_line,   // lpCommandLine - full command line
-                                NULL,           // lpProcessAttributes
-                                NULL,           // lpThreadAttributes
-                                capture_output, // bInheritHandles - only when capturing output
-                                0,              // dwCreationFlags
-                                NULL,           // lpEnvironment
-                                NULL,           // lpCurrentDirectory
-                                &startup_info,  // lpStartupInfo
-                                &process_info   // lpProcessInformation
+  BOOL success = CreateProcessA(NULL,                          // lpApplicationName - NULL so PATH is searched
+                                command_line,                  // lpCommandLine - full command line
+                                NULL,                          // lpProcessAttributes
+                                NULL,                          // lpThreadAttributes
+                                capture_output,                // bInheritHandles - only when capturing output
+                                cancel ? CREATE_SUSPENDED : 0, // Assign cancellable processes to a job first
+                                NULL,                          // lpEnvironment
+                                NULL,                          // lpCurrentDirectory
+                                &startup_info,                 // lpStartupInfo
+                                &process_info                  // lpProcessInformation
   );
 
   SAFE_FREE(command_line);
@@ -1643,36 +1641,100 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
     return -1;
   }
 
+  HANDLE job = NULL;
+  if (cancel) {
+    job = CreateJobObjectA(NULL, NULL);
+    if (!job || !AssignProcessToJobObject(job, process_info.hProcess)) {
+      if (job)
+        CloseHandle(job);
+      TerminateProcess(process_info.hProcess, 1);
+      WaitForSingleObject(process_info.hProcess, INFINITE);
+      CloseHandle(process_info.hProcess);
+      CloseHandle(process_info.hThread);
+      if (stdout_read)
+        CloseHandle(stdout_read);
+      if (stdout_write)
+        CloseHandle(stdout_write);
+      return -1;
+    }
+    if (ResumeThread(process_info.hThread) == (DWORD)-1) {
+      TerminateJobObject(job, 1);
+      WaitForSingleObject(process_info.hProcess, INFINITE);
+      CloseHandle(job);
+      CloseHandle(process_info.hProcess);
+      CloseHandle(process_info.hThread);
+      if (stdout_read)
+        CloseHandle(stdout_read);
+      if (stdout_write)
+        CloseHandle(stdout_write);
+      return -1;
+    }
+  }
+
   // Close the write end of the pipe in the parent so ReadFile can detect EOF
   if (stdout_write) {
     CloseHandle(stdout_write);
     stdout_write = NULL;
   }
 
-  // Read child stdout if capturing
-  if (capture_output && stdout_read) {
-    size_t total_read = 0;
-    DWORD bytes_read = 0;
-    while (total_read < output_size - 1) {
-      BOOL ok =
-          ReadFile(stdout_read, output_buffer + total_read, (DWORD)(output_size - 1 - total_read), &bytes_read, NULL);
-      if (!ok || bytes_read == 0)
-        break;
-      total_read += bytes_read;
+  size_t total_read = 0;
+  bool capture_failed = false;
+  bool cancelled = false;
+  DWORD wait_result = WAIT_TIMEOUT;
+  bool exited = false;
+  bool pipe_closed = !capture_output;
+  for (;;) {
+    if (cancel && cancel(data)) {
+      cancelled = true;
+      if (job)
+        TerminateJobObject(job, 1);
+      wait_result = WaitForSingleObject(process_info.hProcess, INFINITE);
+      break;
     }
-    output_buffer[total_read] = '\0';
-    CloseHandle(stdout_read);
-    stdout_read = NULL;
+    if (capture_output && stdout_read) {
+      DWORD available = 0;
+      BOOL peeked = PeekNamedPipe(stdout_read, NULL, 0, NULL, &available, NULL);
+      if (!peeked) {
+        pipe_closed = true;
+        if (GetLastError() != ERROR_BROKEN_PIPE)
+          capture_failed = true;
+      } else if (available) {
+        char chunk[4096];
+        DWORD bytes_read = 0;
+        DWORD request = available < sizeof(chunk) ? available : sizeof(chunk);
+        if (ReadFile(stdout_read, chunk, request, &bytes_read, NULL) && bytes_read) {
+          size_t remaining = output_size - 1 - total_read;
+          size_t copied = bytes_read < remaining ? bytes_read : remaining;
+          memcpy(output_buffer + total_read, chunk, copied);
+          total_read += copied;
+          if (copied < bytes_read)
+            capture_failed = true;
+          continue;
+        }
+      }
+    }
+    if (exited) {
+      if (pipe_closed)
+        break;
+      Sleep(50);
+      continue;
+    }
+    wait_result = WaitForSingleObject(process_info.hProcess, 50);
+    if (wait_result == WAIT_OBJECT_0)
+      exited = true;
+    else if (wait_result != WAIT_TIMEOUT)
+      break;
   }
-
-  // Wait for process to complete
-  DWORD wait_result = WaitForSingleObject(process_info.hProcess, INFINITE);
+  if (capture_output)
+    output_buffer[total_read] = '\0';
   DWORD exit_code = 0;
   BOOL got_code = GetExitCodeProcess(process_info.hProcess, &exit_code);
 
   // Clean up handles
   CloseHandle(process_info.hProcess);
   CloseHandle(process_info.hThread);
+  if (job)
+    CloseHandle(job);
   if (stdout_read)
     CloseHandle(stdout_read);
 
@@ -1686,7 +1748,7 @@ int platform_execute_subprocess(const char *executable, const char **argv, char 
     return -1;
   }
 
-  return (int)exit_code;
+  return cancelled || capture_failed ? -1 : (int)exit_code;
 }
 
 #endif // _WIN32

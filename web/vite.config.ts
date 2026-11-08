@@ -1,6 +1,9 @@
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
+  test: {
+    projects: ["web/vitest.config.ts"],
+  },
   staged: {
     "*": "vp check --fix",
   },
@@ -95,6 +98,8 @@ export default defineConfig({
       "use-isnan": "error",
       "valid-typeof": "error",
       "no-var": "error",
+      "react/rules-of-hooks": "error",
+      "react/exhaustive-deps": "warn",
       "react/display-name": "error",
       "react/jsx-key": "error",
       "react/jsx-no-comment-textnodes": "error",
@@ -140,8 +145,6 @@ export default defineConfig({
         files: ["**/*.jsx"],
         rules: {
           "react/no-unescaped-entities": "off",
-          "react-hooks/rules-of-hooks": "error",
-          "react-hooks/exhaustive-deps": "warn",
           "react/only-export-components": "warn",
           "no-unused-vars": [
             "error",
@@ -190,8 +193,6 @@ export default defineConfig({
         rules: {
           "@typescript-eslint/no-explicit-any": "error",
           "react/no-unescaped-entities": "off",
-          "react-hooks/rules-of-hooks": "error",
-          "react-hooks/exhaustive-deps": "warn",
           "no-unused-vars": [
             "error",
             {

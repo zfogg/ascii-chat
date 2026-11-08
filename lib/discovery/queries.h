@@ -30,12 +30,6 @@
   "  migration_start_ns\n"                                                                                             \
   "FROM sessions"
 
-#ifndef ASCIICHAT_WITH_OTEL
-typedef struct {
-  const char *name;
-  const char *sql;
-} gotel_query_t;
-#endif
 typedef enum {
 #define DATABASE_QUERY(name, sql) QUERY_##name,
 #include "queries.def"

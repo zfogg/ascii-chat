@@ -1,350 +1,572 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>actions.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">actions.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">actions.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">actions.c - Action function stubs for WASM (not needed for mirror
-    mode).</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp">void <b>action_completions</b> (const char *shell_name, const char
-    *output_path)
-  <br/>
-  Generate shell completions and output to stdout or file. void
-    <b>action_list_webcams</b> (void)
-  <br/>
-  List available webcam devices and exit. void <b>action_list_microphones</b>
-    (void)
-  <br/>
-  List available microphone devices and exit. void <b>action_list_speakers</b>
-    (void)
-  <br/>
-  List available speaker devices and exit. void <b>action_create_config</b>
-    (const char *path)
-  <br/>
-  Create default configuration file and exit. void <b>action_create_manpage</b>
-    (const char *path)
-  <br/>
-  Generate man page template from options builder. void
-    <b>actions_execute_deferred</b> (void)
-  <br/>
-  Execute the deferred action (if any). void <b>action_show_capabilities</b>
-    (void)
-  <br/>
-  Show terminal capabilities and exit. void
-    <b>action_show_capabilities_immediate</b> (void)
-  <br/>
-  Execute show capabilities immediately (for binary-level execution). void
-    <b>action_check_update</b> (void)
-  <br/>
-  Check for updates and display results. void
-    <b>action_check_update_immediate</b> (void)
-  <br/>
-  Execute update check immediately (for binary-level execution).
-    <b>asciichat_error_t</b> <b>platform_enable_keepawake</b> (void)
-  <br/>
-  Enable system sleep prevention (keepawake mode). void
-    <b>platform_disable_keepawake</b> (void)
-  <br/>
-  Disable system sleep prevention (allow OS to sleep).
-    keyboard_line_edit_result_t <b>keyboard_read_line_interactive</b>
-    (keyboard_line_edit_opts_t *opts)
-  <br/>
-  keyboard_key_t <b>keyboard_read_nonblocking</b> (void)
-  <br/>
-  void <b>keyboard_destroy</b> (void)
-  <br/>
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Action function stubs for WASM (not needed for mirror mode).</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>platform/wasm/stubs/actions.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="void_action_check_update_(void_)"><a class="permalink" href="#void_action_check_update_(void_)">void
-  action_check_update (void )</a></h2>
-<p class="Pp">Check for updates and display results. Performs update check
-    against GitHub releases API and displays results. Exits with code 0 on
-    success, 1 on error.</p>
-<p class="Pp">Definition at line <b>52</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>52                                {
-53   // No-op - update checking not supported in WASM
-54 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_action_check_update_immediate_(void_)"><a class="permalink" href="#void_action_check_update_immediate_(void_)">void
-  action_check_update_immediate (void )</a></h2>
-<p class="Pp">Execute update check immediately (for binary-level execution).
-    Performs immediate update check and exits. Used when --check-update is
-    specified before mode detection. Exits with code 0 on success, 1 on
-  error.</p>
-<p class="Pp"></p>
-<p class="Pp">Execute update check immediately (for binary-level execution).</p>
-<p class="Pp">Definition at line <b>56</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>56                                          {
-57   // No-op - update checking not supported in WASM
-58 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_action_completions_(const_char_*_shell_name,_const_char_*_output_path)"><a class="permalink" href="#void_action_completions_(const_char_*_shell_name,_const_char_*_output_path)">void
-  action_completions (const char * shell_name, const char *
-  output_path)</a></h2>
-<p class="Pp">Generate shell completions and output to stdout or file. Generates
-    shell completion script for the specified shell (bash, fish, zsh,
-    powershell). Output is dynamically generated from the options registry,
-    ensuring completions are always in sync with current options. Outputs to
-    stdout by default, or to specified file path if provided. Prompts for
-    overwrite confirmation if file already exists. Exits with code 0 on success,
-    1 on error.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>shell_name</i> Shell name: &quot;bash&quot;,
-  &quot;fish&quot;, &quot;zsh&quot;, or &quot;powershell&quot;
-<br/>
-<i>output_path</i> Optional file path to write completions to. NULL or empty
-  string = stdout.</div>
-<p class="Pp">Definition at line <b>12</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>12                                                                          {
-13   (void)shell_name;
-14   (void)output_path;
-15   // No-op - shell completions not supported in WASM
-16 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_action_create_config_(const_char_*_output_path)"><a class="permalink" href="#void_action_create_config_(const_char_*_output_path)">void
-  action_create_config (const char * output_path)</a></h2>
-<p class="Pp">Create default configuration file and exit. Creates a default
-    configuration file. Outputs to stdout by default, or to specified file path
-    if provided. Prompts for overwrite confirmation if file already exists.
-    Exits with code 0 on success, 1 on error.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>output_path</i> Optional file path to write config to.
-  NULL or empty string = stdout.</div>
-<p class="Pp">Definition at line <b>30</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>30                                             {
-31   (void)path;
-32   // No-op - config file creation not supported in WASM
-33 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_action_create_manpage_(const_char_*_output_path)"><a class="permalink" href="#void_action_create_manpage_(const_char_*_output_path)">void
-  action_create_manpage (const char * output_path)</a></h2>
-<p class="Pp">Generate man page template from options builder. Generates a
-    merged man page template preserving manual content. Outputs to stdout by
-    default, or to specified file path if provided. Prompts for overwrite
-    confirmation if file already exists. Exits with code 0 on success, 1 on
-    error.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>output_path</i> Optional file path to write man page
-  to. NULL or empty string = stdout.</div>
-<p class="Pp">Definition at line <b>35</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>35                                              {
-36   (void)path;
-37   // No-op - man page creation not supported in WASM
-38 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_action_list_microphones_(void_)"><a class="permalink" href="#void_action_list_microphones_(void_)">void
-  action_list_microphones (void )</a></h2>
-<p class="Pp">List available microphone devices and exit. Enumerates all audio
-    input devices and prints them to stdout. Exits with code 0 on success, 1 on
-    error.</p>
-<p class="Pp">Definition at line <b>22</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>22                                    {
-23   // No-op - microphone listing not supported in WASM mirror mode
-24 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_action_list_speakers_(void_)"><a class="permalink" href="#void_action_list_speakers_(void_)">void
-  action_list_speakers (void )</a></h2>
-<p class="Pp">List available speaker devices and exit. Enumerates all audio
-    output devices and prints them to stdout. Exits with code 0 on success, 1 on
-    error.</p>
-<p class="Pp">Definition at line <b>26</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>26                                 {
-27   // No-op - speaker listing not supported in WASM mirror mode
-28 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_action_list_webcams_(void_)"><a class="permalink" href="#void_action_list_webcams_(void_)">void
-  action_list_webcams (void )</a></h2>
-<p class="Pp">List available webcam devices and exit. Enumerates all webcam
-    devices and prints them to stdout. Exits with code 0 on success, 1 on
-  error.</p>
-<p class="Pp">Definition at line <b>18</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>18                                {
-19   // No-op - webcam listing not supported in WASM mirror mode
-20 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_action_show_capabilities_(void_)"><a class="permalink" href="#void_action_show_capabilities_(void_)">void
-  action_show_capabilities (void )</a></h2>
-<p class="Pp">Show terminal capabilities and exit. Detects and displays terminal
-    color support, UTF-8 support, dimensions, and terminal program name. Exits
-    with code 0.</p>
-<p class="Pp"></p>
-<p class="Pp">Note: This action is deferred until after all options are parsed
-    and dimensions are calculated, so that --width and --height flags are
-    properly reflected in the output.</p>
-<p class="Pp">Definition at line <b>44</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>44                                     {
-45   // No-op - capabilities not shown in WASM
-46 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_action_show_capabilities_immediate_(void_)"><a class="permalink" href="#void_action_show_capabilities_immediate_(void_)">void
-  action_show_capabilities_immediate (void )</a></h2>
-<p class="Pp">Execute show capabilities immediately (for binary-level
-    execution). Shows terminal capabilities before full options parsing. Uses
-    detected terminal size (doesn't respect --width/--height). Exits with code
-    0.</p>
-<p class="Pp"></p>
-<p class="Pp">Execute show capabilities immediately (for binary-level
-    execution).</p>
-<p class="Pp">Definition at line <b>48</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>48                                               {
-49   // No-op - capabilities not shown in WASM
-50 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_actions_execute_deferred_(void_)"><a class="permalink" href="#void_actions_execute_deferred_(void_)">void
-  actions_execute_deferred (void )</a></h2>
-<p class="Pp">Execute the deferred action (if any). This function should be
-    called during STAGE 8 of <b>options_init()</b> after all options are fully
-    parsed and dimensions are calculated.</p>
-<p class="Pp">Definition at line <b>40</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>40                                     {
-41   // No-op - no deferred actions in WASM mirror mode
-42 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_keyboard_destroy_(void_)"><a class="permalink" href="#void_keyboard_destroy_(void_)">void
-  keyboard_destroy (void )</a></h2>
-<p class="Pp">Definition at line <b>81</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>81                             {
-82   // No-op - no keyboard to destroy in WASM
-83 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
-    <b>display_cleanup()</b>, <b>session_render_loop()</b>, and
-    <b>ui_status_display_interactive()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="keyboard_line_edit_result_t_keyboard_read_line_interactive_(keyboard_line_edit_opts_t_*_opts)"><a class="permalink" href="#keyboard_line_edit_result_t_keyboard_read_line_interactive_(keyboard_line_edit_opts_t_*_opts)">keyboard_line_edit_result_t
-  keyboard_read_line_interactive (keyboard_line_edit_opts_t * opts)</a></h2>
-<p class="Pp">Definition at line <b>72</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>72                                                                                             {
-73   (void)opts;
-74   return LINE_EDIT_NO_INPUT;  // No input available in WASM
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>actions.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">actions.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">actions.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          actions.c - Action function stubs for WASM (not needed for mirror
+          mode).
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>action_completions</b> (const char *shell_name, const char
+            *output_path)
+            <br />
+            Generate shell completions and output to stdout or file. void
+            <b>action_list_webcams</b> (void)
+            <br />
+            List available webcam devices and exit. void
+            <b>action_list_microphones</b>
+            (void)
+            <br />
+            List available microphone devices and exit. void
+            <b>action_list_speakers</b>
+            (void)
+            <br />
+            List available speaker devices and exit. void
+            <b>action_create_config</b>
+            (const char *path)
+            <br />
+            Create default configuration file and exit. void
+            <b>action_create_manpage</b>
+            (const char *path)
+            <br />
+            Generate man page template from options builder. void
+            <b>actions_execute_deferred</b> (void)
+            <br />
+            Execute the deferred action (if any). void
+            <b>action_show_capabilities</b>
+            (void)
+            <br />
+            Show terminal capabilities and exit. void
+            <b>action_show_capabilities_immediate</b> (void)
+            <br />
+            Execute show capabilities immediately (for binary-level execution).
+            void
+            <b>action_check_update</b> (void)
+            <br />
+            Check for updates and display results. void
+            <b>action_check_update_immediate</b> (void)
+            <br />
+            Execute update check immediately (for binary-level execution).
+            <b>asciichat_error_t</b> <b>platform_enable_keepawake</b> (void)
+            <br />
+            Enable system sleep prevention (keepawake mode). void
+            <b>platform_disable_keepawake</b> (void)
+            <br />
+            Disable system sleep prevention (allow OS to sleep). <b>bool</b>
+            <b>keyboard_request_background</b> (void)
+            <br />
+            <b>bool</b> <b>keyboard_input_available</b> (void)
+            <br />
+            <b>keyboard_key_t</b> <b>keyboard_read_nonblocking</b> (void)
+            <br />
+            Read next keyboard input without blocking. void
+            <b>keyboard_destroy</b> (void)
+            <br />
+            Cleanup keyboard input system and restore terminal.
+            <b>option_action_fn</b> <b>options_action_callback</b> (const char
+            *name, <b>bool</b> immediate)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Action function stubs for WASM (not needed for mirror mode).
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Definition in file <b>platform/wasm/stubs/actions.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_action_check_update_(void_)">
+            <a class="permalink" href="#void_action_check_update_(void_)"
+              >void action_check_update (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Check for updates and display results. Performs update check against
+            GitHub releases API and displays results. Exits with code 0 on
+            success, 1 on error.
+          </p>
+          <p class="Pp">
+            Definition at line <b>53</b> of file
+            <b>platform/wasm/stubs/actions.c</b>.
+          </p>
+          <pre>
+53                                {
+54   // No-op - update checking not supported in WASM
+55 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>action_check_update()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_action_check_update_immediate_(void_)">
+            <a
+              class="permalink"
+              href="#void_action_check_update_immediate_(void_)"
+              >void action_check_update_immediate (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Execute update check immediately (for binary-level execution).
+            Execute update check immediately (for early binary-level execution).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Performs immediate update check and exits. Used when --check-update
+            is specified before mode detection. Exits with code 0 on success, 1
+            on error.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Execute update check immediately (for binary-level execution).
+          </p>
+          <p class="Pp">
+            Definition at line <b>57</b> of file
+            <b>platform/wasm/stubs/actions.c</b>.
+          </p>
+          <pre>
+57                                          {
+58   // No-op - update checking not supported in WASM
+59 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>action_check_update_immediate()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_action_completions_(const_char_*_shell_name,_const_char_*_output_path)"
+          >
+            <a
+              class="permalink"
+              href="#void_action_completions_(const_char_*_shell_name,_const_char_*_output_path)"
+              >void action_completions (const char * shell_name, const char *
+              output_path)</a
+            >
+          </h2>
+          <p class="Pp">
+            Generate shell completions and output to stdout or file. Generates
+            shell completion script for the specified shell (bash, fish, zsh,
+            powershell). Output is dynamically generated from the options
+            registry, ensuring completions are always in sync with current
+            options. Outputs to stdout by default, or to specified file path if
+            provided. Prompts for overwrite confirmation if file already exists.
+            Exits with code 0 on success, 1 on error.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>shell_name</i> Shell name: &quot;bash&quot;, &quot;fish&quot;,
+            &quot;zsh&quot;, or &quot;powershell&quot;
+            <br />
+            <i>output_path</i> Optional file path to write completions to. NULL
+            or empty string = stdout.
+          </div>
+          <p class="Pp">
+            Definition at line <b>13</b> of file
+            <b>platform/wasm/stubs/actions.c</b>.
+          </p>
+          <pre>
+13                                                                          {
+14   (void)shell_name;
+15   (void)output_path;
+16   // No-op - shell completions not supported in WASM
+17 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>action_completions()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_action_create_config_(const_char_*_output_path)"
+          >
+            <a
+              class="permalink"
+              href="#void_action_create_config_(const_char_*_output_path)"
+              >void action_create_config (const char * output_path)</a
+            >
+          </h2>
+          <p class="Pp">
+            Create default configuration file and exit. Creates a default
+            configuration file. Outputs to stdout by default, or to specified
+            file path if provided. Prompts for overwrite confirmation if file
+            already exists. Exits with code 0 on success, 1 on error.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>output_path</i> Optional file path to write config to. NULL or
+            empty string = stdout.
+          </div>
+          <p class="Pp">
+            Definition at line <b>31</b> of file
+            <b>platform/wasm/stubs/actions.c</b>.
+          </p>
+          <pre>
+31                                             {
+32   (void)path;
+33   // No-op - config file creation not supported in WASM
+34 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>action_create_config()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="void_action_create_manpage_(const_char_*_output_path)"
+          >
+            <a
+              class="permalink"
+              href="#void_action_create_manpage_(const_char_*_output_path)"
+              >void action_create_manpage (const char * output_path)</a
+            >
+          </h2>
+          <p class="Pp">
+            Generate man page template from options builder. Generates a merged
+            man page template preserving manual content. Outputs to stdout by
+            default, or to specified file path if provided. Prompts for
+            overwrite confirmation if file already exists. Exits with code 0 on
+            success, 1 on error.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>output_path</i> Optional file path to write man page to. NULL or
+            empty string = stdout.
+          </div>
+          <p class="Pp">
+            Definition at line <b>36</b> of file
+            <b>platform/wasm/stubs/actions.c</b>.
+          </p>
+          <pre>
+36                                              {
+37   (void)path;
+38   // No-op - man page creation not supported in WASM
+39 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>action_create_manpage()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_action_list_microphones_(void_)">
+            <a class="permalink" href="#void_action_list_microphones_(void_)"
+              >void action_list_microphones (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            List available microphone devices and exit. Enumerates all audio
+            input devices and prints them to stdout. Exits with code 0 on
+            success, 1 on error.
+          </p>
+          <p class="Pp">
+            Definition at line <b>23</b> of file
+            <b>platform/wasm/stubs/actions.c</b>.
+          </p>
+          <pre>
+23                                    {
+24   // No-op - microphone listing not supported in WASM mirror mode
+25 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>action_list_microphones()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_action_list_speakers_(void_)">
+            <a class="permalink" href="#void_action_list_speakers_(void_)"
+              >void action_list_speakers (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            List available speaker devices and exit. Enumerates all audio output
+            devices and prints them to stdout. Exits with code 0 on success, 1
+            on error.
+          </p>
+          <p class="Pp">
+            Definition at line <b>27</b> of file
+            <b>platform/wasm/stubs/actions.c</b>.
+          </p>
+          <pre>
+27                                 {
+28   // No-op - speaker listing not supported in WASM mirror mode
+29 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>action_list_speakers()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_action_list_webcams_(void_)">
+            <a class="permalink" href="#void_action_list_webcams_(void_)"
+              >void action_list_webcams (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            List available webcam devices and exit. Enumerates all webcam
+            devices and prints them to stdout. Exits with code 0 on success, 1
+            on error.
+          </p>
+          <p class="Pp">
+            Definition at line <b>19</b> of file
+            <b>platform/wasm/stubs/actions.c</b>.
+          </p>
+          <pre>
+19                                {
+20   // No-op - webcam listing not supported in WASM mirror mode
+21 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>action_list_webcams()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_action_show_capabilities_(void_)">
+            <a class="permalink" href="#void_action_show_capabilities_(void_)"
+              >void action_show_capabilities (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Show terminal capabilities and exit. Detects and displays terminal
+            color support, UTF-8 support, dimensions, and terminal program name.
+            Exits with code 0.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Note: This action is deferred until after all options are parsed and
+            dimensions are calculated, so that --width and --height flags are
+            properly reflected in the output.
+          </p>
+          <p class="Pp">
+            Definition at line <b>45</b> of file
+            <b>platform/wasm/stubs/actions.c</b>.
+          </p>
+          <pre>
+45                                     {
+46   // No-op - capabilities not shown in WASM
+47 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>action_show_capabilities()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_action_show_capabilities_immediate_(void_)">
+            <a
+              class="permalink"
+              href="#void_action_show_capabilities_immediate_(void_)"
+              >void action_show_capabilities_immediate (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Execute show capabilities immediately (for binary-level execution).
+            Execute show capabilities immediately (for early binary-level
+            execution).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Shows terminal capabilities before full options parsing. Uses
+            detected terminal size (doesn't respect --width/--height). Exits
+            with code 0.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Execute show capabilities immediately (for binary-level execution).
+          </p>
+          <p class="Pp">
+            Definition at line <b>49</b> of file
+            <b>platform/wasm/stubs/actions.c</b>.
+          </p>
+          <pre>
+49                                               {
+50   // No-op - capabilities not shown in WASM
+51 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>action_show_capabilities_immediate()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_actions_execute_deferred_(void_)">
+            <a class="permalink" href="#void_actions_execute_deferred_(void_)"
+              >void actions_execute_deferred (void )</a
+            >
+          </h2>
+          <p class="Pp">
+            Execute the deferred action (if any). This function should be called
+            during STAGE 8 of
+            <b>options_init()</b> after all options are fully parsed and
+            dimensions are calculated.
+          </p>
+          <p class="Pp">
+            Definition at line <b>41</b> of file
+            <b>platform/wasm/stubs/actions.c</b>.
+          </p>
+          <pre>
+41                                     {
+42   // No-op - no deferred actions in WASM mirror mode
+43 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>actions_execute_deferred()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> keyboard_request_background (void )</h2>
+          <p class="Pp">
+            Send an asynchronous background query if keyboard input is available
+            and foreground-owned.
+          </p>
+          <p class="Pp">
+            Definition at line <b>73</b> of file
+            <b>platform/wasm/stubs/actions.c</b>.
+          </p>
+          <pre>
+73                                        {
+74   return false;
 75 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>log_search_handle_key()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="keyboard_key_t_keyboard_read_nonblocking_(void_)"><a class="permalink" href="#keyboard_key_t_keyboard_read_nonblocking_(void_)">keyboard_key_t
-  keyboard_read_nonblocking (void )</a></h2>
-<p class="Pp">Definition at line <b>77</b> of file
-    <b>platform/wasm/stubs/actions.c</b>.</p>
-<pre>77                                                {
-78   return KEY_NONE;  // No input available in WASM
-79 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Referenced by <b>display_render_frame()</b>,
-    <b>session_pipeline_run_main()</b>, <b>session_render_loop()</b>, and
-    <b>ui_status_display_interactive()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>keyboard_request_background()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>keyboard_is_initialized()</b>, and
+            <b>keyboard_request_background()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>option_action_fn</b> options_action_callback (const char * name,
+            <b>bool</b> immediate)
+          </h2>
+          <p class="Pp">
+            Definition at line <b>89</b> of file
+            <b>platform/wasm/stubs/actions.c</b>.
+          </p>
+          <pre>
+89                                                                            {
+90   static const struct {
+91     const char *name;
+92     option_action_fn callback;
+93     option_action_fn early_callback;
+94   } actions[] = {
+95       {&quot;list-webcams&quot;, action_list_webcams, action_list_webcams},
+96       {&quot;list-microphones&quot;, action_list_microphones, action_list_microphones},
+97       {&quot;list-speakers&quot;, action_list_speakers, action_list_speakers},
+98       {&quot;show-capabilities&quot;, action_show_capabilities, action_show_capabilities_immediate},
+99       {&quot;check-update&quot;, action_check_update, action_check_update_immediate},
+100   };
+101   if (!name)
+102     return NULL;
+103   for (size_t i = 0; i &lt; sizeof(actions) / sizeof(actions[0]); ++i) {
+104     if (strcmp(name, actions[i].name) == 0)
+105       return immediate ? actions[i].early_callback : actions[i].callback;
+106   }
+107   return NULL;
+108 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>action_check_update()</b>,
+            <b>action_check_update_immediate()</b>,
+            <b>action_list_microphones()</b>, <b>action_list_speakers()</b>,
+            <b>action_list_webcams()</b>, <b>action_show_capabilities()</b>,
+            <b>action_show_capabilities_immediate()</b>, and
+            <b>options_action_callback()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

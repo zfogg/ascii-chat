@@ -1,0 +1,164 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>socket_io.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">socket_io.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">socket_io.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">socket_io.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>PLATFORM_SOCKET_IO_BYTES_BUFFER_SIZE</b> 512
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>socket_io_stats_t</b> <b>socket_io_stats_get</b> (void)
+            <br />
+            void <b>socket_io_stats_reset</b> (void)
+            <br />
+            <b>asciichat_error_t</b> <b>socket_sendv</b> (<b>socket_t</b> sock,
+            const <b>socket_buffer_t</b> *buffers, size_t count, size_t *sent)
+            <br />
+            <b>asciichat_error_t</b> <b>socket_sendv_all</b> (<b>socket_t</b>
+            sock, const <b>socket_buffer_t</b> *buffers, size_t count,
+            <b>uint64_t</b> timeout_ns)
+            <br />
+            <b>asciichat_error_t</b> <b>socket_send_buffer_alloc</b> (size_t
+            capacity, <b>socket_send_buffer_t</b> *buffer)
+            <br />
+            void <b>socket_send_buffer_free</b> (<b>socket_send_buffer_t</b>
+            *buffer)
+            <br />
+            <b>asciichat_error_t</b> <b>socket_zerocopy_try</b> (<b>socket_t</b>
+            sock, const <b>socket_send_buffer_t</b> *buffer, size_t offset,
+            size_t length, size_t *sent, <b>bool</b> *supported)
+            <br />
+            <b>asciichat_error_t</b> <b>socket_zerocopy_poll</b> (<b
+              >socket_t</b
+            >
+            sock, <b>bool</b> *completed, <b>bool</b> *copied)
+            <br />
+            <b>asciichat_error_t</b> <b>socket_send_zerocopy</b> (<b
+              >socket_t</b
+            >
+            sock, const <b>socket_send_buffer_t</b> *buffer, size_t len,
+            <b>uint64_t</b> timeout_ns, <b>bool</b> *supported,
+            <b>bool</b> *copied)
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2
+            class="Ss"
+            id="_define_PLATFORM_SOCKET_IO_BYTES_BUFFER_SIZE___512"
+          >
+            <a
+              class="permalink"
+              href="#_define_PLATFORM_SOCKET_IO_BYTES_BUFFER_SIZE___512"
+              >#define PLATFORM_SOCKET_IO_BYTES_BUFFER_SIZE 512</a
+            >
+          </h2>
+          <p class="Pp">
+            Portable vectored sends and owned Linux copy-avoidance storage.
+          </p>
+          <p class="Pp">
+            Definition at line <b>4</b> of file <b>socket_io.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>socket_send_zerocopy()</b>, and
+            <b>socket_zerocopy_poll()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

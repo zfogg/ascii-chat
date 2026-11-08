@@ -14,17 +14,17 @@ explicit intensity. Values must be integers from 1 to 10. A following session
 name is not consumed as the optional number. `ASCII_CHAT_ZALGO` accepts 1-10.
 
 | Intensity | Coverage of eligible characters | Marks per affected character |
-| --- | --- | --- |
-| 1 | 3% | 1 |
-| 2 | 6% | 1 |
-| 3 | 10% | 1 |
-| 4 | 18% | 1 |
-| 5 | 28% | 1-2 |
-| 6 | 40% | 1-3 |
-| 7 | 55% | 2-4 |
-| 8 | 70% | 3-5 |
-| 9 | 85% | 4-7 |
-| 10 | 100% | 6-10 |
+| --------- | ------------------------------- | ---------------------------- |
+| 1         | 3%                              | 1                            |
+| 2         | 6%                              | 1                            |
+| 3         | 10%                             | 1                            |
+| 4         | 18%                             | 1                            |
+| 5         | 28%                             | 1-2                          |
+| 6         | 40%                             | 1-3                          |
+| 7         | 55%                             | 2-4                          |
+| 8         | 70%                             | 3-5                          |
+| 9         | 85%                             | 4-7                          |
+| 10        | 100%                            | 6-10                         |
 
 Positions and mark choices remain stable between frames. Increasing intensity
 adds marks without reshuffling the pattern. Only printable ASCII characters
@@ -63,15 +63,15 @@ effect; network frames are unchanged.
 These are actual terminal screenshots, using a 90 by 26 foreground grid and
 UTF-8 output. The webcam captures use device 1 (2K Webcam).
 
-| Level | Test pattern | Webcam |
-| --- | --- | --- |
-| 1 | ![Test pattern at level 1](images/zalgo/test-pattern-1.png) | ![Webcam at level 1](images/zalgo/webcam-1.png) |
-| 2 | ![Test pattern at level 2](images/zalgo/test-pattern-2.png) | ![Webcam at level 2](images/zalgo/webcam-2.png) |
-| 3 | ![Test pattern at level 3](images/zalgo/test-pattern-3.png) | ![Webcam at level 3](images/zalgo/webcam-3.png) |
-| 4 | ![Test pattern at level 4](images/zalgo/test-pattern-4.png) | ![Webcam at level 4](images/zalgo/webcam-4.png) |
-| 5 | ![Test pattern at level 5](images/zalgo/test-pattern-5.png) | ![Webcam at level 5](images/zalgo/webcam-5.png) |
-| 6 | ![Test pattern at level 6](images/zalgo/test-pattern-6.png) | ![Webcam at level 6](images/zalgo/webcam-6.png) |
-| 7 | ![Test pattern at level 7](images/zalgo/test-pattern-7.png) | ![Webcam at level 7](images/zalgo/webcam-7.png) |
-| 8 | ![Test pattern at level 8](images/zalgo/test-pattern-8.png) | ![Webcam at level 8](images/zalgo/webcam-8.png) |
-| 9 | ![Test pattern at level 9](images/zalgo/test-pattern-9.png) | ![Webcam at level 9](images/zalgo/webcam-9.png) |
-| 10 | ![Test pattern at level 10](images/zalgo/test-pattern-10.png) | ![Webcam at level 10](images/zalgo/webcam-10.png) |
+| Level | Test pattern                                                  | Webcam                                            |
+| ----- | ------------------------------------------------------------- | ------------------------------------------------- |
+| 1     | ![Test pattern at level 1](images/zalgo/test-pattern-1.png)   | ![Webcam at level 1](images/zalgo/webcam-1.png)   |
+| 2     | ![Test pattern at level 2](images/zalgo/test-pattern-2.png)   | ![Webcam at level 2](images/zalgo/webcam-2.png)   |
+| 3     | ![Test pattern at level 3](images/zalgo/test-pattern-3.png)   | ![Webcam at level 3](images/zalgo/webcam-3.png)   |
+| 4     | ![Test pattern at level 4](images/zalgo/test-pattern-4.png)   | ![Webcam at level 4](images/zalgo/webcam-4.png)   |
+| 5     | ![Test pattern at level 5](images/zalgo/test-pattern-5.png)   | ![Webcam at level 5](images/zalgo/webcam-5.png)   |
+| 6     | ![Test pattern at level 6](images/zalgo/test-pattern-6.png)   | ![Webcam at level 6](images/zalgo/webcam-6.png)   |
+| 7     | ![Test pattern at level 7](images/zalgo/test-pattern-7.png)   | ![Webcam at level 7](images/zalgo/webcam-7.png)   |
+| 8     | ![Test pattern at level 8](images/zalgo/test-pattern-8.png)   | ![Webcam at level 8](images/zalgo/webcam-8.png)   |
+| 9     | ![Test pattern at level 9](images/zalgo/test-pattern-9.png)   | ![Webcam at level 9](images/zalgo/webcam-9.png)   |
+| 10    | ![Test pattern at level 10](images/zalgo/test-pattern-10.png) | ![Webcam at level 10](images/zalgo/webcam-10.png) |

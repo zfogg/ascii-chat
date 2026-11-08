@@ -44,7 +44,9 @@ export function streamMedia(
   return new Promise((resolve, reject) => {
     const worker = new Worker(
       new URL("./streamMedia.worker.ts", import.meta.url),
-      { type: "module" },
+      {
+        type: "module",
+      },
     );
     const media = new MediaSource();
     let buffer: SourceBuffer | undefined;

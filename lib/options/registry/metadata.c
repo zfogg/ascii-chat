@@ -186,7 +186,7 @@ const char *g_audio_capture_source_descs[] = {"Microphone when no media is playi
 // ============================================================================
 
 const char *g_compression_examples[] = {"1", "3", "9", NULL};
-const char *g_fps_examples[] = {"30", "60", "144", NULL};
+const char *g_fps_examples[] = {"0", "30", "60", "144", NULL};
 const char *g_width_examples[] = {"80", "120", "160", NULL};
 const char *g_height_examples[] = {"24", "40", "60", NULL};
 const char *g_maxclients_examples[] = {"2", "4", "8", NULL};

@@ -3,6 +3,9 @@
 set(CRYPTO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/policy.c
     ${CMAKE_CURRENT_SOURCE_DIR}/crypto.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/record.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rekey.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/session.c
     ${CMAKE_CURRENT_SOURCE_DIR}/key_identity/keymask.c
     ${CMAKE_CURRENT_SOURCE_DIR}/key_identity/display.c
     ${CMAKE_CURRENT_SOURCE_DIR}/keys.c

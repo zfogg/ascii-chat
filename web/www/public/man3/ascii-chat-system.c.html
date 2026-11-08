@@ -1,153 +1,245 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>system.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">system.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">system.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">system.c - &#x1F527; Shared cross-platform system utilities (safe
-    string functions, etc.)</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>bin_cache_entry_t</b>
-  <br/>
-  Cache entry for binary PATH lookup.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>PLATFORM_SYSTEM_C</b>
-  <br/>
-  #define <b>BIN_SUFFIX</b> ''
-  <br/>
-  #define <b>PLATFORM_MAX_PATH_LENGTH</b> 4096
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>bool</b> <b>check_binary_in_path_uncached</b> (const char
-    *bin_name)
-  <br/>
-  int <b>safe_snprintf</b> (char *buffer, size_t <b>buffer_size</b>, const char
-    *format,...)
-  <br/>
-  Safe formatted string printing to buffer. int <b>safe_fprintf</b> (FILE
-    *stream, const char *format,...)
-  <br/>
-  Safe formatted output to file stream. int <b>safe_vsnprintf</b> (char *buffer,
-    size_t <b>buffer_size</b>, const char *format, va_list ap)
-  <br/>
-  Safe formatted string printing with va_list. size_t <b>platform_write_all</b>
-    (int fd, const void *buf, size_t count)
-  <br/>
-  Write all bytes to a file descriptor, handling partial writes.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">&#x1F527; Shared cross-platform system utilities (safe string
-    functions, etc.)</p>
-<p class="Pp"></p>
-<p class="Pp"></p>
-<p class="Pp">Definition in file <b>system.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_BIN_SUFFIX___''"><a class="permalink" href="#_define_BIN_SUFFIX___''">#define
-  BIN_SUFFIX ''</a></h2>
-<p class="Pp">Definition at line <b>30</b> of file <b>system.c</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_PLATFORM_MAX_PATH_LENGTH___4096"><a class="permalink" href="#_define_PLATFORM_MAX_PATH_LENGTH___4096">#define
-  PLATFORM_MAX_PATH_LENGTH 4096</a></h2>
-<p class="Pp">Maximum path length supported by the operating system</p>
-<p class="Pp"></p>
-<p class="Pp">Platform-specific values:</p>
-<ul class="Bl-bullet">
-  <li>Windows: 32767 characters (extended-length path with \?\ prefix)</li>
-  <li>Linux: 4096 bytes (PATH_MAX from <b>limits.h</b>)</li>
-  <li>macOS: 1024 bytes (PATH_MAX from sys/syslimits.h)</li>
-</ul>
-<p class="Pp">Note: Windows legacy MAX_PATH (260) is too restrictive for modern
-    use. We use the extended-length limit instead.</p>
-<p class="Pp">Definition at line <b>69</b> of file <b>system.c</b>.</p>
-<p class="Pp">Referenced by <b>acds_identity_save()</b>,
-    <b>audio_analysis_init()</b>, <b>audio_client_init()</b>,
-    <b>client_audio_pipeline_create()</b>, <b>discovery_keys_clear_cache()</b>,
-    <b>discovery_keys_load_cached()</b>, <b>discovery_keys_save_cached()</b>,
-    <b>get_binary_file_address_offsets()</b>, <b>get_log_dir()</b>,
-    <b>gpg_agent_connect()</b>, <b>gpg_sign_with_key()</b>,
-    <b>gpg_verify_detached_ed25519()</b>,
-    <b>gpg_verify_signature_with_binary()</b>, <b>options_init()</b>,
-    <b>parse_gpg_keys_from_response()</b>, <b>path_is_within_base()</b>,
-    <b>path_validate_user_path()</b>, and <b>query_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_PLATFORM_SYSTEM_C"><a class="permalink" href="#_define_PLATFORM_SYSTEM_C">#define
-  PLATFORM_SYSTEM_C</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>system.c</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>bool</b> check_binary_in_path_uncached (const char * bin_name)
-  [extern]</h2>
-<p class="Pp">Referenced by <b>platform_is_binary_in_path()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>system.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">system.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">system.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          system.c - &#x1F527; Shared cross-platform system utilities (safe
+          string functions, etc.)
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>bin_cache_entry_t</b>
+            <br />
+            Cache entry for binary PATH lookup.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            #define <b>PLATFORM_SYSTEM_C</b>
+            <br />
+            #define <b>BIN_SUFFIX</b> ''
+            <br />
+            #define <b>PLATFORM_MAX_PATH_LENGTH</b> 4096
+            <br />
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            int <b>platform_dup</b> (int fd)
+            <br />
+            int <b>platform_fileno</b> (FILE *stream)
+            <br />
+            <b>asciichat_error_t</b> <b>platform_dup2</b> (int source_fd, int
+            target_fd)
+            <br />
+            <b>bool</b> <b>check_binary_in_path_uncached</b> (const char
+            *bin_name)
+            <br />
+            int <b>safe_snprintf</b> (char *buffer, size_t buffer_size, const
+            char *format,...)
+            <br />
+            Safe formatted string printing to buffer. int
+            <b>safe_fprintf</b> (FILE *stream, const char *format,...)
+            <br />
+            Safe formatted output to file stream. int
+            <b>safe_vsnprintf</b> (char *buffer, size_t buffer_size, const char
+            *format, va_list ap)
+            <br />
+            Safe formatted string printing with va_list. size_t
+            <b>platform_write_all</b>
+            (int fd, const void *buf, size_t count)
+            <br />
+            Write all bytes to a file descriptor, handling partial writes.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F527; Shared cross-platform system utilities (safe string
+          functions, etc.)
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"></p>
+        <p class="Pp">Definition in file <b>system.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Macro_Definition_Documentation">
+          <a class="permalink" href="#Macro_Definition_Documentation"
+            >Macro Definition Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_BIN_SUFFIX___''">
+            <a class="permalink" href="#_define_BIN_SUFFIX___''"
+              >#define BIN_SUFFIX ''</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>system.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PLATFORM_MAX_PATH_LENGTH___4096">
+            <a class="permalink" href="#_define_PLATFORM_MAX_PATH_LENGTH___4096"
+              >#define PLATFORM_MAX_PATH_LENGTH 4096</a
+            >
+          </h2>
+          <p class="Pp">
+            Maximum path length supported by the operating system
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Platform-specific values:</p>
+          <ul class="Bl-bullet">
+            <li>
+              Windows: 32767 characters (extended-length path with \?\ prefix)
+            </li>
+            <li>Linux: 4096 bytes (PATH_MAX from limits.h)</li>
+            <li>macOS: 1024 bytes (PATH_MAX from sys/syslimits.h)</li>
+          </ul>
+          <p class="Pp">
+            Note: Windows legacy MAX_PATH (260) is too restrictive for modern
+            use. We use the extended-length limit instead.
+          </p>
+          <p class="Pp">
+            Definition at line <b>103</b> of file <b>system.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acds_identity_save()</b>,
+            <b>audio_analysis_init()</b>, <b>audio_client_init()</b>,
+            <b>client_audio_pipeline_create()</b>,
+            <b>discovery_keys_clear_cache()</b>,
+            <b>discovery_keys_load_cached()</b>,
+            <b>discovery_keys_save_cached()</b>,
+            <b>get_binary_file_address_offsets()</b>, <b>get_log_dir()</b>,
+            <b>gpg_agent_connect()</b>, <b>gpg_sign_with_key()</b>,
+            <b>gpg_verify_detached_ed25519()</b>,
+            <b>gpg_verify_signature_with_binary()</b>,
+            <b>mcp_request_parse()</b>, <b>parse_gpg_keys_from_response()</b>,
+            <b>path_is_within_base()</b>, <b>path_validate_user_path()</b>,
+            <b>query_init()</b>, and <b>render_file_create()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="_define_PLATFORM_SYSTEM_C">
+            <a class="permalink" href="#_define_PLATFORM_SYSTEM_C"
+              >#define PLATFORM_SYSTEM_C</a
+            >
+          </h2>
+          <p class="Pp">Definition at line <b>8</b> of file <b>system.c</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> check_binary_in_path_uncached (const char * bin_name)
+            [extern]
+          </h2>
+          <p class="Pp">References <b>check_binary_in_path_uncached()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>check_binary_in_path_uncached()</b>, and
+            <b>platform_is_binary_in_path()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

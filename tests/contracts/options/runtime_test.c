@@ -36,7 +36,7 @@ static void test_flip_defaults(void) {
     cr_assert(GET_OPTION(flip_x));
   }
   options_edit_t invalid[] = {{.name = "flip_x", .type = OPTIONS_VALUE_BOOL, .value.boolean = false},
-                              {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = 0}};
+                              {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
   options_patch_t patch = {.edits = invalid, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   cr_assert_neq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   CLEAR_ERRNO();
@@ -65,6 +65,12 @@ static void test_flip_defaults(void) {
 static void test_transactions(void) {
   cr_assert_eq(options_set_int("renderer", ASCII_RENDERER_GLYPH), ASCIICHAT_OK);
   cr_assert(GET_OPTION(renderer) == ASCII_RENDERER_GLYPH);
+  uint64_t palette_revision = options_revision();
+  palette_type_t previous_palette = GET_OPTION(palette_type);
+  cr_assert_neq(options_set_int("palette_type", PALETTE_DIGITAL), ASCIICHAT_OK);
+  cr_assert_eq(GET_OPTION(palette_type), previous_palette);
+  cr_assert_eq(options_revision(), palette_revision);
+  CLEAR_ERRNO();
   cr_assert_eq(options_set_int("renderer", ASCII_RENDERER_LUMINANCE), ASCIICHAT_OK);
   cr_assert_eq(GET_OPTION(renderer), ASCII_RENDERER_LUMINANCE);
   uint64_t renderer_revision = options_revision();
@@ -77,7 +83,7 @@ static void test_transactions(void) {
   const options_t *borrowed = options_get();
   uint64_t before = options_revision();
   options_edit_t edits[] = {{.name = "width", .type = OPTIONS_VALUE_INT, .value.integer = 120},
-                            {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = 0}};
+                            {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
   options_patch_t patch = {.edits = edits, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   cr_assert_neq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   cr_assert(GET_OPTION(width) == 80 && options_revision() == before);
@@ -170,6 +176,9 @@ static void test_remote(void) {
   cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_type\":6,\"palette_custom\":\"@#\"}", UINT32_MAX).status,
                0);
   cr_assert(clients[1].caps.palette_explicit && !strcmp(clients[1].palette, "@#"));
+  acip_render_settings_t glyph_previous = clients[1];
+  cr_assert_neq(request(&clients[1], "{\"palette_custom\":\"\\u2603\"}", UINT32_MAX).status, 0);
+  cr_assert(!memcmp(&glyph_previous, &clients[1], sizeof(glyph_previous)));
   acip_render_settings_t previous = clients[0];
   cr_assert_neq(request(&clients[0], "{\"width\":90,\"password\":\"secret\"}", UINT32_MAX).status, 0);
   cr_assert(!memcmp(&previous, &clients[0], sizeof(previous)));

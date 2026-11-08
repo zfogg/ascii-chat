@@ -22,11 +22,11 @@ function(asciichat_build_aec3)
         BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_aec3"
         URL https://github.com/zhixingheyixsh/webrtc_AEC3/archive/c1dbdb9924f59d9b3c09189673286665d55f6a5e.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        SOURCE_SUBDIR asciichat-patch-first)
+        # The archive's root CMakeLists.txt is patched before it is added below.
+        )
     FetchContent_MakeAvailable(asciichat_aec3)
     set(WEBRTC_AEC3_SOURCE_DIR "${asciichat_aec3_SOURCE_DIR}")
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-webrtc-aec3-cmake.cmake")
-    add_subdirectory("${asciichat_aec3_SOURCE_DIR}" "${asciichat_aec3_BINARY_DIR}" EXCLUDE_FROM_ALL)
     # Upstream uses private directory includes; publish the public audio API.
     target_include_directories(AudioProcess PUBLIC
         "${asciichat_aec3_SOURCE_DIR}"

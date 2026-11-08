@@ -269,8 +269,6 @@ static void acip_on_remote_log(const remote_log_packet_t *header, const char *me
 static void acip_on_ping(void *ctx);
 static void acip_on_pong(void *ctx);
 static void acip_on_clear_console(void *ctx);
-static void acip_on_crypto_rekey_request(const void *payload, size_t payload_len, void *ctx);
-static void acip_on_crypto_rekey_response(const void *payload, size_t payload_len, void *ctx);
 static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, void *ctx);
 static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, void *ctx);
 static void acip_on_session_joined(const acip_session_joined_t *joined, void *ctx);
@@ -280,9 +278,7 @@ static const acip_client_callbacks_t g_acip_client_callbacks = {.on_error = acip
                                                                 .on_ping = acip_on_ping,
                                                                 .on_pong = acip_on_pong,
                                                                 .on_clear_console = acip_on_clear_console,
-                                                                .on_crypto_rekey_request = acip_on_crypto_rekey_request,
-                                                                .on_crypto_rekey_response =
-                                                                    acip_on_crypto_rekey_response,
+
                                                                 .on_webrtc_sdp = acip_on_webrtc_sdp,
                                                                 .on_webrtc_ice = acip_on_webrtc_ice,
                                                                 .on_session_joined = acip_on_session_joined,
@@ -547,42 +543,6 @@ static void acip_on_clear_console(void *ctx) {
   log_debug("Console cleared by server");
 }
 
-static void acip_on_crypto_rekey_request(const void *payload, size_t payload_len, void *ctx) {
-  client_connection_t *connection = ctx;
-  (void)ctx;
-
-  // Process the server's rekey request
-  asciichat_error_t crypto_result = crypto_client_process_rekey_request(connection, payload, payload_len);
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to process REKEY_REQUEST: %d", crypto_result);
-    return;
-  }
-
-  // Send REKEY_RESPONSE
-  crypto_result = crypto_client_send_rekey_response(connection);
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to send REKEY_RESPONSE: %d", crypto_result);
-  }
-}
-
-static void acip_on_crypto_rekey_response(const void *payload, size_t payload_len, void *ctx) {
-  client_connection_t *connection = ctx;
-  (void)ctx;
-
-  // Process server's response
-  asciichat_error_t crypto_result = crypto_client_process_rekey_response(connection, payload, payload_len);
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to process REKEY_RESPONSE: %d", crypto_result);
-    return;
-  }
-
-  // Send REKEY_COMPLETE
-  crypto_result = crypto_client_send_rekey_complete(connection);
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to send REKEY_COMPLETE: %d", crypto_result);
-  }
-}
-
 static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, void *ctx) {
   (void)ctx;
   (void)total_len; // Peer manager reads variable data via pointer arithmetic
@@ -627,7 +587,7 @@ static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, v
 }
 
 static void acip_on_session_joined(const acip_session_joined_t *joined, void *ctx) {
-  (void)ctx; // Unused for now, may be used in future for context passing
+  (void)ctx;
 
   if (!joined) {
     log_error("SESSION_JOINED callback received NULL response");
@@ -648,10 +608,7 @@ static void acip_on_session_joined(const acip_session_joined_t *joined, void *ct
 
   // Check if this is a WebRTC session
   if (joined->session_type == SESSION_TYPE_WEBRTC) {
-    // TODO: Phase 3 - Initialize WebRTC connection with TURN credentials
-    // webrtc_initialize_session(joined->session_id, joined->participant_id,
-    //                           joined->turn_username, joined->turn_password);
-    log_debug("WebRTC session detected - TODO: initialize WebRTC with TURN credentials");
+    log_debug("WebRTC session joined; discovery mode owns peer-manager initialization");
   } else {
     // Direct TCP - connection is already established or will be established
     log_debug("Direct TCP session - using existing connection");

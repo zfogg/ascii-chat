@@ -56,12 +56,12 @@ The gate remains median ≥58.8 FPS, at least 90% of samples ≥57 FPS, and at l
 it does not establish normal-priority stability under host contention or Internet
 NAT/TURN interoperability.
 
-| Transport | Median FPS | Minimum–maximum | Samples | Gate |
-| --- | ---: | ---: | ---: | --- |
-| tcp | 60 | 0–62 | 51 | PASS |
-| websocket | 60 | 19–76 | 60 | PASS |
-| webrtc | 60 | 37–62 | 60 | PASS |
-| discovery-tcp | 60 | 13–62 | 60 | FAIL: stability |
+| Transport     | Median FPS | Minimum–maximum | Samples | Gate            |
+| ------------- | ---------: | --------------: | ------: | --------------- |
+| tcp           |         60 |            0–62 |      51 | PASS            |
+| websocket     |         60 |           19–76 |      60 | PASS            |
+| webrtc        |         60 |           37–62 |      60 | PASS            |
+| discovery-tcp |         60 |           13–62 |      60 | FAIL: stability |
 
 A prior fresh WebSocket measurement reached median 60 FPS but failed stability
 (52 of 60 samples at least 57 FPS; the gate requires 54). Its failed command and

@@ -172,6 +172,7 @@ $RequiredPackages = @(
     "miniupnpc",       # UPnP client library for automatic router port forwarding
     "abseil",          # C++ utility library (used by WebRTC AEC3)
     "icu",            # Unicode IDNA hostname normalization
+    "pcre2",          # Regular expressions
     "libuv",          # Native event-driven TCP I/O
     "libwebsockets",   # WebSocket transport library for browser clients
     "ffmpeg",          # Media file/URL streaming library
@@ -230,30 +231,20 @@ foreach ($Package in $RequiredPackages) {
 
 Write-Host ""
 
-# Install yt-dlp for YouTube support
-Write-Host "`nInstalling yt-dlp for YouTube URL support..." -ForegroundColor Cyan
-$PipCmd = if (Get-Command pip3 -ErrorAction SilentlyContinue) {
-    "pip3"
-} elseif (Get-Command pip -ErrorAction SilentlyContinue) {
-    "pip"
-} else {
-    $null
+# Install uv-managed Python and yt-dlp for YouTube support.
+Write-Host "`nInstalling uv-managed Python and yt-dlp..." -ForegroundColor Cyan
+if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    Write-Host "  Installing uv" -ForegroundColor Gray
+    irm https://astral.sh/uv/install.ps1 | iex
+    $env:Path = "$env:USERPROFILE\.local\bin;$env:Path"
 }
-
-if ($PipCmd) {
-    Write-Host "  Running: $PipCmd install --user --upgrade yt-dlp" -ForegroundColor Gray
-    try {
-        & $PipCmd install --user --quiet --upgrade yt-dlp 2>$null
-        Write-Host "  ✓ yt-dlp installed successfully" -ForegroundColor Green
-    } catch {
-        Write-Host "  ! WARNING: Failed to install yt-dlp via pip" -ForegroundColor Yellow
-        Write-Host "  You can install it manually with: $PipCmd install yt-dlp" -ForegroundColor Yellow
-    }
-} else {
-    Write-Host "  ! WARNING: Python/pip not found" -ForegroundColor Yellow
-    Write-Host "  Install Python from https://www.python.org/downloads/ and then run:" -ForegroundColor Yellow
-    Write-Host "  pip install yt-dlp" -ForegroundColor Yellow
+if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    throw "uv installation failed"
 }
+uv python install 3.15
+uv python pin 3.15
+uv tool install --upgrade "yt-dlp[default]"
+uv sync --project "$PSScriptRoot\..\tests\ascii_chat_tests" --frozen
 
 Write-Host ""
 $clangCommand = Get-Command clang.exe -ErrorAction SilentlyContinue
@@ -295,4 +286,25 @@ if ($AllInstalled) {
 } else {
     Write-Host "Some dependencies failed to install!" -ForegroundColor Red
     exit 1
+}
+
+# Install the Vite+ toolchain used by the repository formatters.
+if (-not (Get-Command vp -ErrorAction SilentlyContinue)) {
+    Invoke-RestMethod https://vite.plus/ps1 | Invoke-Expression
+    $env:Path = "$env:USERPROFILE\.vite-plus\bin;$env:Path"
+}
+if (Get-Command vp -ErrorAction SilentlyContinue) {
+    $RepoRoot = Split-Path $PSScriptRoot -Parent
+    Push-Location $RepoRoot
+    try {
+        & vp install --ignore-scripts
+        if ($LASTEXITCODE -ne 0) { throw 'Root Vite+ install failed' }
+        Push-Location web
+        try {
+            & vp install --ignore-scripts
+            if ($LASTEXITCODE -ne 0) { throw 'Web Vite+ install failed' }
+        } finally { Pop-Location }
+    } finally { Pop-Location }
+} else {
+    Write-Warning 'Open a new shell and run vp install in the repository and web directories.'
 }

@@ -14,7 +14,7 @@ asciichat_error_t platform_clipboard_read(char *output, size_t capacity) {
   asciichat_errno_scope_t scope = errno_scope_begin();
   for (size_t i = 0; i < 4; ++i) {
     output[0] = '\0';
-    if (platform_execute_subprocess(commands[i][0], commands[i], output, capacity) == 0 && output[0]) {
+    if (platform_execute_subprocess(commands[i][0], commands[i], output, capacity, NULL, NULL) == 0 && output[0]) {
       errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
       return ASCIICHAT_OK;
     }

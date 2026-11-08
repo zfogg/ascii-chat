@@ -150,7 +150,9 @@ describe("Discovery page", () => {
     await openPage();
     fireEvent.change(
       screen.getByLabelText("Session password", { exact: true }),
-      { target: { value: "test-password" } },
+      {
+        target: { value: "test-password" },
+      },
     );
     await userEvent.click(
       screen.getByRole("button", { name: "Create session" }),

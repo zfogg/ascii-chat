@@ -27,7 +27,6 @@ static void fallback_cleanup(void) {
   if (fallback_directory[0])
     platform_rmdir_recursive(fallback_directory);
   log_destroy();
-  asciichat_pcre2_cleanup_all();
 }
 static void fallback_setup(void) {
   log_init(NULL, LOG_FATAL, false, false);

@@ -39,6 +39,7 @@
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/display.h>
@@ -48,7 +49,9 @@
 
 #include <stdio.h>
 #include <stdatomic.h>
+#include <signal.h>
 #include <string.h>
+#include <uv.h>
 
 // Thread-safe storage for the update check result
 static update_check_result_t g_update_result;
@@ -63,9 +66,11 @@ static bool g_update_checking = false;
 static bool g_update_finished = false;
 static _Atomic bool g_update_overlay = false;
 static _Atomic bool g_update_install_failed = false;
+static _Atomic bool g_update_cancel_requested = false;
 static _Atomic int g_update_selected_action = 0;
 static _Atomic uint64_t g_update_visible_until_ns = 0;
 static void update_banner_open_release(void);
+static void update_banner_present_overlay(void);
 
 static bool update_banner_copy_result(update_check_result_t *result) {
   if (!result || !lifecycle_is_initialized(&g_update_result_lifecycle)) {
@@ -84,6 +89,10 @@ void update_banner_set_result(const update_check_result_t *result) {
   if (!result) {
     return;
   }
+
+  // Resolve the command before publishing a result to the presentation thread.
+  if (result->update_available && update_check_detect_install_method() == INSTALL_METHOD_ARCH_AUR)
+    (void)update_check_get_aur_helper();
 
   if (lifecycle_init_once(&g_update_result_lifecycle)) {
     mutex_init(&g_update_result_mutex, "update_banner_result");
@@ -357,21 +366,21 @@ bool update_banner_install_update(void) {
   if (test_command && test_command[0]) {
 #ifdef _WIN32
     const char *argv[] = {"cmd", "/d", "/c", test_command, NULL};
-    exit_code = platform_execute_subprocess("cmd", argv, NULL, 0);
+    exit_code = platform_execute_subprocess("cmd", argv, NULL, 0, NULL, NULL);
 #else
     const char *argv[] = {"/bin/sh", "-c", test_command, NULL};
-    exit_code = platform_execute_subprocess("/bin/sh", argv, NULL, 0);
+    exit_code = platform_execute_subprocess("/bin/sh", argv, NULL, 0, NULL, NULL);
 #endif
   } else
 #endif
       if (method == INSTALL_METHOD_HOMEBREW) {
     const char *argv[] = {"brew", "upgrade", "ascii-chat", NULL};
-    exit_code = platform_execute_subprocess("brew", argv, NULL, 0);
+    exit_code = platform_execute_subprocess("brew", argv, NULL, 0, NULL, NULL);
   } else if (method == INSTALL_METHOD_SCOOP) {
     // Scoop is a PowerShell script/shim, rather than a native executable.
     const char *argv[] = {"powershell", "-NoProfile", "-Command",
                           "$ErrorActionPreference = 'Stop'; scoop update ascii-chat; if (!$?) { exit 1 }", NULL};
-    exit_code = platform_execute_subprocess("powershell", argv, NULL, 0);
+    exit_code = platform_execute_subprocess("powershell", argv, NULL, 0, NULL, NULL);
   } else if (method == INSTALL_METHOD_ARCH_AUR) {
     const char *helper = update_check_get_aur_helper();
     if (!helper) {
@@ -381,17 +390,17 @@ bool update_banner_install_update(void) {
       return false;
     }
     const char *argv[] = {helper, "-S", "ascii-chat", NULL};
-    exit_code = platform_execute_subprocess(helper, argv, NULL, 0);
+    exit_code = platform_execute_subprocess(helper, argv, NULL, 0, NULL, NULL);
   } else {
 #ifdef _WIN32
     const char *argv[] = {
         "powershell", "-NoProfile", "-ExecutionPolicy",
         "Bypass",     "-Command",   "$ErrorActionPreference = 'Stop'; irm https://ascii-chat.com/install.ps1 | iex",
         NULL};
-    exit_code = platform_execute_subprocess("powershell", argv, NULL, 0);
+    exit_code = platform_execute_subprocess("powershell", argv, NULL, 0, NULL, NULL);
 #else
     const char *argv[] = {"bash", "-o", "pipefail", "-c", "curl -fsSL https://ascii-chat.com/install.sh | bash", NULL};
-    exit_code = platform_execute_subprocess("bash", argv, NULL, 0);
+    exit_code = platform_execute_subprocess("bash", argv, NULL, 0, NULL, NULL);
 #endif
   }
   if (exit_code != 0) {
@@ -406,12 +415,102 @@ bool update_banner_install_update(void) {
   return true;
 }
 
+typedef struct {
+  bool exited;
+  int64_t status;
+  int signal;
+} update_child_result_t;
+
+static void update_child_exited(uv_process_t *process, int64_t status, int signal) {
+  update_child_result_t *result = process->data;
+  result->status = status;
+  result->signal = signal;
+  result->exited = true;
+  uv_close((uv_handle_t *)process, NULL);
+}
+
+// A separate process can be terminated on shutdown even while DNS or TLS is blocked.
+static asciichat_error_t update_check_background(update_check_result_t *result) {
+  if (shutdown_is_requested() || atomic_load(&g_update_cancel_requested))
+    return ERROR_SIGNAL_INTERRUPT;
+  if (update_check_try_fresh_cache(result))
+    return ASCIICHAT_OK;
+  char executable[PLATFORM_MAX_PATH_LENGTH];
+  if (!platform_get_executable_path(executable, sizeof(executable)))
+    return SET_ERRNO(ERROR_PROCESS_FAILED, "Cannot locate executable for background update check");
+  uv_loop_t loop;
+  int rc = uv_loop_init(&loop);
+  if (rc != 0)
+    return SET_ERRNO(ERROR_PROCESS_FAILED, "Cannot initialize update process: %s", uv_strerror(rc));
+  char *args[] = {executable, "--check-update", NULL};
+  uv_stdio_container_t streams[3] = {0};
+  for (size_t i = 0; i < 3; ++i)
+    streams[i].flags = UV_IGNORE;
+  update_child_result_t child_result = {0};
+  uv_process_t child = {.data = &child_result};
+  uv_process_options_t options = {.file = executable,
+                                  .args = args,
+                                  .exit_cb = update_child_exited,
+                                  .stdio_count = 3,
+                                  .stdio = streams,
+                                  .flags = UV_PROCESS_WINDOWS_HIDE};
+  rc = uv_spawn(&loop, &child, &options);
+  if (rc != 0) {
+    uv_loop_close(&loop);
+    return SET_ERRNO(ERROR_PROCESS_FAILED, "Cannot start background update check: %s", uv_strerror(rc));
+  }
+  bool killed = false, timed_out = false;
+  uint64_t deadline = time_get_ns() + 15 * NS_PER_SEC_INT;
+  while (!child_result.exited) {
+    uv_run(&loop, UV_RUN_NOWAIT);
+    bool cancelled = shutdown_is_requested() || atomic_load(&g_update_cancel_requested);
+    bool expired = time_get_ns() >= deadline;
+    if (!child_result.exited && (cancelled || expired) && !killed) {
+      int kill_result = uv_process_kill(&child, SIGKILL);
+      if (kill_result != 0 && kill_result != UV_ESRCH) {
+        log_warn("Cannot stop background update check: %s", uv_strerror(kill_result));
+        uv_close((uv_handle_t *)&child, NULL);
+        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_loop_close(&loop);
+        return cancelled ? ERROR_SIGNAL_INTERRUPT : SET_ERRNO(ERROR_PROCESS_FAILED, "Cannot stop update check");
+      }
+      killed = true;
+      timed_out = expired && !cancelled;
+    }
+    if (!child_result.exited)
+      platform_sleep_ms(10);
+  }
+  uv_run(&loop, UV_RUN_DEFAULT);
+  uv_loop_close(&loop);
+  if (timed_out)
+    return SET_ERRNO(ERROR_NETWORK, "Background update check timed out");
+  if (killed)
+    return ERROR_SIGNAL_INTERRUPT;
+  if (child_result.status != 0 || child_result.signal != 0 || !update_check_try_fresh_cache(result))
+    return SET_ERRNO(ERROR_NETWORK, "Background update check failed");
+  return ASCIICHAT_OK;
+}
+
 static void *update_check_thread_func(void *arg) {
   bool force = arg != NULL;
   uint64_t visible_until = time_get_ns() + 2 * NS_PER_SEC_INT;
   update_check_result_t result;
-  asciichat_error_t err = force ? update_check_perform(&result) : update_check_startup(&result);
-  while (!shutdown_is_requested()) {
+  bool background = !force && !splash_should_display(true) &&
+                    (GET_OPTION(detected_mode) == MODE_MIRROR || GET_OPTION(detected_mode) == MODE_CLIENT ||
+                     GET_OPTION(detected_mode) == MODE_DISCOVERY);
+  asciichat_error_t err;
+  if (background) {
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    bool previous_notifications = errno_notifications_suppress(true);
+    err = update_check_background(&result);
+    if (err != ASCIICHAT_OK && err != ERROR_SIGNAL_INTERRUPT)
+      log_debug("Automatic update check failed: %s", asciichat_error_string(err));
+    errno_notifications_suppress(previous_notifications);
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
+  } else {
+    err = force ? update_check_perform(&result) : update_check_startup(&result);
+  }
+  while (!shutdown_is_requested() && !atomic_load(&g_update_cancel_requested)) {
     uint64_t overlay_until = atomic_load(&g_update_visible_until_ns);
     if (overlay_until > visible_until)
       visible_until = overlay_until;
@@ -440,6 +539,18 @@ static void *update_check_thread_func(void *arg) {
   g_update_checking = false;
   g_update_finished = true;
   mutex_unlock(&g_update_result_mutex);
+  // With no splash, the check runs in the background instead of holding up
+  // the first frame. Notify interactively once its result is available.
+  if (!force && err == ASCIICHAT_OK && result.update_available && !splash_should_display(true) &&
+      (GET_OPTION(detected_mode) == MODE_MIRROR || GET_OPTION(detected_mode) == MODE_CLIENT) &&
+      !atomic_load(&g_update_cancel_requested) && !shutdown_is_requested() && terminal_can_prompt_user() &&
+      !update_check_is_dismissed(&result)) {
+    bool expected = false;
+    if (atomic_compare_exchange_strong(&g_update_overlay, &expected, true)) {
+      atomic_store(&g_update_selected_action, 0);
+      update_banner_present_overlay();
+    }
+  }
   ui_controller_redraw();
   return NULL;
 }
@@ -447,6 +558,7 @@ static void *update_check_thread_func(void *arg) {
 static void update_banner_start_check_impl(bool force) {
   if (g_update_thread_started)
     return;
+  atomic_store(&g_update_cancel_requested, false);
   if (lifecycle_init_once(&g_update_result_lifecycle)) {
     mutex_init(&g_update_result_mutex, "update_banner_result");
     lifecycle_init_commit(&g_update_result_lifecycle);
@@ -496,13 +608,18 @@ void update_banner_toggle_overlay(void) {
     update_banner_wait_for_check();
   if (!g_update_thread_started)
     update_banner_start_check_impl(true);
+  update_banner_present_overlay();
+}
+
+static void update_banner_present_overlay(void) {
   const bool snapshot = true;
+  asciichat_errno_scope_t scope = errno_scope_begin();
   if (ui_controller_submit(UI_SCREEN_UPDATE, STDOUT_FILENO, (terminal_size_t){.cols = 32, .rows = 24},
                            render_update_overlay, &snapshot, sizeof(snapshot)) != ASCIICHAT_OK) {
     g_update_overlay = false;
     LOG_ERRNO_IF_SET("Cannot show update checker");
-    CLEAR_ERRNO();
   }
+  errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
 }
 
 bool update_banner_is_checking(void) {
@@ -535,13 +652,13 @@ static void update_banner_open_release(void) {
   ascii_otel_ui_usage("update", "release_open_requested", 0);
 #ifdef _WIN32
   const char *argv[] = {"cmd", "/c", "start", "", result.release_url, NULL};
-  (void)platform_execute_subprocess("cmd", argv, NULL, 0);
+  (void)platform_execute_subprocess("cmd", argv, NULL, 0, NULL, NULL);
 #elif defined(__APPLE__)
   const char *argv[] = {"open", result.release_url, NULL};
-  (void)platform_execute_subprocess("open", argv, NULL, 0);
+  (void)platform_execute_subprocess("open", argv, NULL, 0, NULL, NULL);
 #else
   const char *argv[] = {"xdg-open", result.release_url, NULL};
-  (void)platform_execute_subprocess("xdg-open", argv, NULL, 0);
+  (void)platform_execute_subprocess("xdg-open", argv, NULL, 0, NULL, NULL);
 #endif
 }
 
@@ -607,4 +724,8 @@ void update_banner_wait_for_check(void) {
     thread_join(&g_update_thread, NULL);
   }
   g_update_thread_started = false;
+}
+
+void update_banner_cancel_check(void) {
+  atomic_store(&g_update_cancel_requested, true);
 }

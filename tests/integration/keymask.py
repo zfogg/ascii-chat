@@ -1,6 +1,6 @@
 """Test the compiled Keymask implementation, imports, trust decisions and terminal UI.
 
-python tests/integration/keymask.py --library build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/keymask.py --library build/bin/asciichat.dll
 Optional: --terminal (pyte + pywinpty/pexpect), --contact-sheet PATH (Pillow).
 All keys and trust files are disposable fixtures; no personal keys are read.
 """

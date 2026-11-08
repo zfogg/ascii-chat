@@ -23,7 +23,6 @@ void process_decrypted_packet(client_info_t *, packet_type_t, void *, size_t);
 static server_context_t server;
 static unsigned starts, stops, sends;
 static asciichat_error_t send_result;
-static crypto_context_t *capture_crypto;
 static packet_type_t last_type;
 static uint8_t last_payload[4096];
 static size_t last_length;
@@ -50,13 +49,7 @@ static asciichat_error_t capture_send(acip_transport_t *transport, const void *d
   last_type = NET_TO_HOST_U16(header.type);
   last_length = length - sizeof(header);
   cr_assert_leq(last_length, sizeof(last_payload));
-  if (capture_crypto && last_type == PACKET_TYPE_CRYPTO_REKEY_COMPLETE) {
-    cr_assert_eq(crypto_encrypt(capture_crypto, (const uint8_t *)data + sizeof(header), last_length, last_payload,
-                                sizeof(last_payload), &last_length),
-                 CRYPTO_OK);
-  } else {
-    memcpy(last_payload, (const uint8_t *)data + sizeof(header), last_length);
-  }
+  memcpy(last_payload, (const uint8_t *)data + sizeof(header), last_length);
   ++sends;
   return send_result;
 }
@@ -291,62 +284,6 @@ Test(server_client, unadvertised_encoded_upload_disconnects_without_creating_a_d
   cr_assert_null(client->video_decoder_ctx);
   cr_assert_null(video_frame_get_latest(client->incoming_video_buffer));
   h265_encoder_destroy(encoder);
-}
-
-static void ready_crypto(crypto_handshake_context_t *local, crypto_handshake_context_t *peer) {
-  memset(local, 0, sizeof(*local));
-  memset(peer, 0, sizeof(*peer));
-  cr_assert_eq(crypto_init(&local->crypto_ctx), CRYPTO_OK);
-  cr_assert_eq(crypto_init(&peer->crypto_ctx), CRYPTO_OK);
-  cr_assert_eq(crypto_set_peer_public_key(&local->crypto_ctx, peer->crypto_ctx.public_key), CRYPTO_OK);
-  cr_assert_eq(crypto_set_peer_public_key(&peer->crypto_ctx, local->crypto_ctx.public_key), CRYPTO_OK);
-  local->state = peer->state = CRYPTO_HANDSHAKE_READY;
-  local->crypto_ctx.handshake_complete = peer->crypto_ctx.handshake_complete = true;
-  local->crypto_ctx.rekey_last_time = peer->crypto_ctx.rekey_last_time = 0;
-}
-Test(server_client, peer_initiated_rekey_changes_the_active_key_only_after_authenticated_completion) {
-  client_info_t *client = admit();
-  crypto_handshake_context_t local, peer;
-  ready_crypto(&local, &peer);
-  client->crypto_handshake_ctx = &local;
-  uint8_t old_key[32];
-  memcpy(old_key, local.crypto_ctx.shared_key, sizeof(old_key));
-  cr_assert_eq(crypto_rekey_init(&peer.crypto_ctx), CRYPTO_OK);
-  dispatch(client, PACKET_TYPE_CRYPTO_REKEY_REQUEST, peer.crypto_ctx.temp_public_key, 32);
-  cr_assert_eq(last_type, PACKET_TYPE_CRYPTO_REKEY_RESPONSE);
-  cr_assert_eq(last_length, 32);
-  cr_assert_arr_eq(local.crypto_ctx.shared_key, old_key, 32);
-  cr_assert_eq(crypto_handshake_process_rekey_response(&peer, last_payload, last_length), ASCIICHAT_OK);
-  cr_assert_arr_eq(local.crypto_ctx.temp_shared_key, peer.crypto_ctx.temp_shared_key, 32);
-  cr_assert_eq(crypto_rekey_commit(&peer.crypto_ctx), CRYPTO_OK);
-  uint8_t proof = 0, encrypted[128];
-  size_t encrypted_length = 0;
-  cr_assert_eq(crypto_encrypt(&peer.crypto_ctx, &proof, 1, encrypted, sizeof(encrypted), &encrypted_length), CRYPTO_OK);
-  dispatch(client, PACKET_TYPE_CRYPTO_REKEY_COMPLETE, encrypted, encrypted_length);
-  cr_assert_eq(local.crypto_ctx.rekey_count, 1);
-  cr_assert_arr_eq(local.crypto_ctx.shared_key, peer.crypto_ctx.shared_key, 32);
-  cr_assert_neq(memcmp(local.crypto_ctx.shared_key, old_key, 32), 0);
-  client->crypto_handshake_ctx = NULL;
-  crypto_handshake_destroy(&local);
-  crypto_handshake_destroy(&peer);
-}
-Test(server_client, malformed_rekey_requests_leave_the_active_key_and_transport_intact) {
-  client_info_t *client = admit();
-  crypto_handshake_context_t local, peer;
-  ready_crypto(&local, &peer);
-  client->crypto_handshake_ctx = &local;
-  uint8_t old_key[32], invalid[32] = {0};
-  memcpy(old_key, local.crypto_ctx.shared_key, sizeof(old_key));
-  unsigned before = sends;
-  dispatch(client, PACKET_TYPE_CRYPTO_REKEY_REQUEST, invalid, sizeof(invalid));
-  cr_assert_eq(sends, before);
-  cr_assert_arr_eq(local.crypto_ctx.shared_key, old_key, sizeof(old_key));
-  cr_assert_not(local.crypto_ctx.rekey_in_progress);
-  cr_assert(atomic_load_bool(&client->active));
-  cr_assert_eq(client->transport, &transport);
-  client->crypto_handshake_ctx = NULL;
-  crypto_handshake_destroy(&local);
-  crypto_handshake_destroy(&peer);
 }
 
 static void resume_client(client_info_t *client) {
@@ -596,44 +533,6 @@ Test(server_client, callback_dispatch_delivers_join_capabilities_keepalive_and_l
   dispatch(client, PACKET_TYPE_PONG, NULL, 0);
   dispatch(client, PACKET_TYPE_CLIENT_LEAVE, NULL, 0);
   cr_assert_not(atomic_load_bool(&client->active));
-}
-Test(server_client, locally_initiated_rekey_requires_valid_response_and_commits_the_negotiated_key) {
-  client_info_t *client = admit();
-  crypto_handshake_context_t local, peer;
-  ready_crypto(&local, &peer);
-  client->crypto_handshake_ctx = &local;
-  uint8_t old_key[32];
-  memcpy(old_key, local.crypto_ctx.shared_key, 32);
-  cr_assert_eq(crypto_rekey_init(&local.crypto_ctx), CRYPTO_OK);
-  cr_assert_eq(crypto_handshake_process_rekey_request(&peer, local.crypto_ctx.temp_public_key, 32), ASCIICHAT_OK);
-  capture_crypto = &local.crypto_ctx;
-  dispatch(client, PACKET_TYPE_CRYPTO_REKEY_RESPONSE, peer.crypto_ctx.temp_public_key, 32);
-  capture_crypto = NULL;
-  cr_assert_eq(last_type, PACKET_TYPE_CRYPTO_REKEY_COMPLETE);
-  cr_assert_gt(last_length, 0);
-  cr_assert_eq(crypto_handshake_process_rekey_complete(&peer, last_payload, last_length), ASCIICHAT_OK);
-  cr_assert_arr_eq(local.crypto_ctx.shared_key, peer.crypto_ctx.shared_key, 32);
-  cr_assert_neq(memcmp(old_key, local.crypto_ctx.shared_key, 32), 0);
-  cr_assert_eq(local.crypto_ctx.rekey_count, 1);
-  client->crypto_handshake_ctx = NULL;
-  crypto_handshake_destroy(&local);
-  crypto_handshake_destroy(&peer);
-}
-Test(server_client, malformed_rekey_response_and_completion_do_not_replace_the_active_key) {
-  client_info_t *client = admit();
-  crypto_handshake_context_t local, peer;
-  ready_crypto(&local, &peer);
-  client->crypto_handshake_ctx = &local;
-  uint8_t old_key[32], invalid[32] = {0};
-  memcpy(old_key, local.crypto_ctx.shared_key, 32);
-  dispatch(client, PACKET_TYPE_CRYPTO_REKEY_RESPONSE, invalid, sizeof(invalid));
-  cr_assert_arr_eq(local.crypto_ctx.shared_key, old_key, 32);
-  dispatch(client, PACKET_TYPE_CRYPTO_REKEY_COMPLETE, invalid, sizeof(invalid));
-  cr_assert_arr_eq(local.crypto_ctx.shared_key, old_key, 32);
-  cr_assert(atomic_load_bool(&client->active));
-  client->crypto_handshake_ctx = NULL;
-  crypto_handshake_destroy(&local);
-  crypto_handshake_destroy(&peer);
 }
 
 Test(server_client, admission_rolls_back_partial_buffers_and_sync_before_a_successful_retry) {

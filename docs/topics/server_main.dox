@@ -373,4 +373,3 @@ HASH_ITER(hh, g_client_manager.clients_by_id, ...);
  * @see @ref topic_server_client "Client Management"
  * @see <a href="../notes/CONCURRENCY.md">Concurrency Documentation</a>
  */
-

@@ -281,4 +281,7 @@ image_t *webcam_read_async(webcam_context_t *ctx);
  */
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height);
 
+/** Return the negotiated capture rate, or 0 when unavailable. */
+double webcam_get_fps(webcam_context_t *ctx);
+
 /** @} */

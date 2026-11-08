@@ -36,6 +36,9 @@ typedef struct {
   acip_session_created_t created;
   acip_session_info_t info;
   acip_session_joined_t joined;
+  /** Optional versioned transport extension after the legacy join response. */
+  uint16_t quic_port;
+  char webtransport_url[512];
 } acds_protocol_t;
 
 void acds_protocol_init(acds_protocol_t *protocol, acds_protocol_send_fn send, void *user_data);

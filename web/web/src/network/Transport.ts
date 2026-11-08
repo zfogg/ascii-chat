@@ -15,7 +15,7 @@ export interface ClientSession {
   sendVideoFrame?(frame: VideoFrame): void;
   videoCodecCapabilities?: number;
   getBufferedAmount?(): number;
-  readonly transportType?: "websocket" | "webrtc";
+  readonly transportType?: "websocket" | "webrtc" | "webtransport";
   connect(): Promise<void>;
   disconnect(): void;
   getPublicKey(): string | null;

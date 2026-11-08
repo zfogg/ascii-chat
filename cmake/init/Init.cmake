@@ -197,6 +197,34 @@ endif()
 # =============================================================================
 # vcpkg Toolchain Setup
 # =============================================================================
+# A completed generation already has an installed dependency tree. Avoid taking
+# vcpkg's global install lock on every subsequent CMake regeneration.
+option(ASCIICHAT_VCPKG_REFRESH "Install or update vcpkg dependencies during configuration" OFF)
+if(EXISTS "${CMAKE_BINARY_DIR}/CMakeCache.txt" AND EXISTS "${CMAKE_BINARY_DIR}/cmake_install.cmake" AND NOT ASCIICHAT_VCPKG_REFRESH)
+    set(VCPKG_MANIFEST_INSTALL OFF)
+endif()
+
+# vcpkg chooses and installs its triplet during project(), so select the static
+# release triplet before loading the toolchain rather than in dependency setup.
+if(CMAKE_HOST_WIN32 AND (NOT CMAKE_SYSTEM_NAME OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
+   AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    if(NOT DEFINED VCPKG_TARGET_TRIPLET AND NOT DEFINED ENV{VCPKG_TARGET_TRIPLET})
+        if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
+            set(_asciichat_vcpkg_arch arm64)
+        else()
+            set(_asciichat_vcpkg_arch x64)
+        endif()
+        set(VCPKG_TARGET_TRIPLET "${_asciichat_vcpkg_arch}-windows-static" CACHE STRING "vcpkg target triplet")
+    endif()
+    if(DEFINED ENV{VCPKG_TARGET_TRIPLET} AND NOT DEFINED VCPKG_TARGET_TRIPLET)
+        set(VCPKG_TARGET_TRIPLET "$ENV{VCPKG_TARGET_TRIPLET}" CACHE STRING "vcpkg target triplet")
+    endif()
+    if(NOT VCPKG_TARGET_TRIPLET MATCHES "-static$")
+        message(FATAL_ERROR "Windows static release requires a static vcpkg triplet; found '${VCPKG_TARGET_TRIPLET}'. Use cmake --fresh --preset release or a separate build directory, and unset VCPKG_TARGET_TRIPLET if it selects a dynamic triplet.")
+    endif()
+    list(APPEND VCPKG_OVERLAY_TRIPLETS "${CMAKE_SOURCE_DIR}/vcpkg-triplets")
+endif()
+
 # Set up vcpkg toolchain if available (must be before project())
 if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(DEFINED ENV{VCPKG_ROOT})

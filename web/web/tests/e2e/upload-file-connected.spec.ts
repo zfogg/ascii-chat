@@ -154,7 +154,9 @@ for (const mode of ["client", "discovery", "mirror"]) {
           .click();
         await expect(
           page.getByRole("button", { name: "Disconnect", exact: true }),
-        ).toBeVisible({ timeout: 45_000 });
+        ).toBeVisible({
+          timeout: 45_000,
+        });
         await expect(page.locator(".status")).toContainText("Connected");
       }
       await page
@@ -168,7 +170,9 @@ for (const mode of ["client", "discovery", "mirror"]) {
             video.evaluate(
               (element) => (element as HTMLVideoElement).currentTime,
             ),
-          { timeout: 90_000 },
+          {
+            timeout: 90_000,
+          },
         )
         .toBeGreaterThan(0.1);
       await page
@@ -198,7 +202,9 @@ for (const mode of ["client", "discovery", "mirror"]) {
           .poll(
             () =>
               page.evaluate(() => window.__clientFrameMetrics?.received ?? 0),
-            { timeout: 20_000 },
+            {
+              timeout: 20_000,
+            },
           )
           .toBeGreaterThan(before + 3);
       const asciiCanvas = page.locator("canvas.ascii-canvas");

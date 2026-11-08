@@ -1,0 +1,279 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>md_docs_2closed-pr-review-audit-2026-10-19(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">
+          md_docs_2closed-pr-review-audit-2026-10-19(3)
+        </td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">
+          md_docs_2closed-pr-review-audit-2026-10-19(3)
+        </td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          md_docs_2closed-pr-review-audit-2026-10-19 - Closed PR review audit
+          &#x2014; October 16&#x2013;19, 2026
+        </p>
+        <p class="Pp">
+          Reviewed all 28 PRs closed in this interval, including inline threads,
+          review summaries, and conversation comments. Coverage reports and
+          test-result notifications were excluded. The following 57 threads were
+          unresolved at the start. Each disposition was checked against current
+          source before changes.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          PR Finding Disposition #527 src/server/protocol.c Fixed: reject
+          runtime settings until capability bootstrap and after shutdown begins.
+          #527 src/server/protocol.c Fixed: ACK writes and transport teardown
+          share the send mutex; shutdown rejects late ACKs. #526
+          lib/network/tcp/async.c Already fixed by PR #528: failed stream
+          startup returns NULL with deferred destruction. #525
+          web/web/tests/e2e/face-follow.spec.ts Fixed: assert source crop aspect
+          ratio. #525 lib/video/face_follow.c Fixed: initialize the first
+          detected crop for zero-delay snapshots. #525 lib/video/face_detect.cpp
+          Clarified: parse the documented byte layout before interpreting
+          16-short detection records. #524 src/common/session/host.c Fixed:
+          split render-target validation into named backend predicates. #523
+          src/common/session/host.c Fixed: resolve half-block mode to foreground
+          for viewers without UTF-8. #523 src/common/session/host.c Fixed: fall
+          back to the standard ASCII palette for non-UTF-8 local rendering. #522
+          .github/workflows/web-tests.yml Fixed: disable checkout credential
+          persistence. #520 web/web/tests/e2e/camera-cadence.spec.ts Fixed:
+          require restored uploads to remain above 17 FPS. #513
+          include/ascii-chat/audio/mixer.h Fixed: use a multiword source bitset
+          for all 128 mixer slots. #513 src/discovery-service/server.c Fixed:
+          dynamically allocate per-session handoff entries; release empty
+          entries and shutdown state. #513
+          web/web/src/network/BrowserHostSession.ts Fixed: stop obsolete browser
+          hosting on a successor commit. #513 lib/network/consensus/handoff.c
+          Fixed: clear rejected candidates after a fresh measurement or
+          committed handoff. #513 src/discovery/session.c Fixed: re-dispatch
+          native hosts on pending handoff and destroy the old host on demotion.
+          #513 lib/network/consensus/handoff.c Fixed: mark incumbent loss
+          independently of measurement membership. #513
+          web/web/src/network/WebRTCSession.ts Already fixed:
+          WebRTCSession.closePeer closes and nulls peerCrypto before
+          replacement. #512 lib/options/options.c False positive: standard
+          integer conversions to size_t are valid; intrinsic buffers are
+          correctly declared and bounded. Native compilation verifies the
+          supported x86 SIMD paths. #512 lib/options/options.c False positive:
+          standard integer conversions to size_t are valid; intrinsic buffers
+          are correctly declared and bounded. Native compilation verifies the
+          supported x86 SIMD paths. #512 lib/video/ascii/avx2/luminance.c False
+          positive: standard integer conversions to size_t are valid; intrinsic
+          buffers are correctly declared and bounded. Native compilation
+          verifies the supported x86 SIMD paths. #512 lib/video/ascii/render.c
+          False positive: standard integer conversions to size_t are valid;
+          intrinsic buffers are correctly declared and bounded. Native
+          compilation verifies the supported x86 SIMD paths. #512
+          lib/video/ascii/render.c False positive: standard integer conversions
+          to size_t are valid; intrinsic buffers are correctly declared and
+          bounded. Native compilation verifies the supported x86 SIMD paths.
+          #512 lib/video/ascii/render.c False positive: standard integer
+          conversions to size_t are valid; intrinsic buffers are correctly
+          declared and bounded. Native compilation verifies the supported x86
+          SIMD paths. #512 lib/video/ascii/sgr.c False positive: standard
+          integer conversions to size_t are valid; intrinsic buffers are
+          correctly declared and bounded. Native compilation verifies the
+          supported x86 SIMD paths. #512 lib/video/ascii/sgr.c False positive:
+          standard integer conversions to size_t are valid; intrinsic buffers
+          are correctly declared and bounded. Native compilation verifies the
+          supported x86 SIMD paths. #512 lib/video/ascii/sgr.c False positive:
+          standard integer conversions to size_t are valid; intrinsic buffers
+          are correctly declared and bounded. Native compilation verifies the
+          supported x86 SIMD paths. #512 lib/video/ascii/sgr.c False positive:
+          standard integer conversions to size_t are valid; intrinsic buffers
+          are correctly declared and bounded. Native compilation verifies the
+          supported x86 SIMD paths. #512 lib/video/ascii/sse2/luminance.c False
+          positive: standard integer conversions to size_t are valid; intrinsic
+          buffers are correctly declared and bounded. Native compilation
+          verifies the supported x86 SIMD paths. #512
+          lib/video/ascii/ssse3/luminance.c False positive: standard integer
+          conversions to size_t are valid; intrinsic buffers are correctly
+          declared and bounded. Native compilation verifies the supported x86
+          SIMD paths. #512 lib/video/terminal/ansi.c False positive: standard
+          integer conversions to size_t are valid; intrinsic buffers are
+          correctly declared and bounded. Native compilation verifies the
+          supported x86 SIMD paths. #512 lib/video/terminal/ansi.c False
+          positive: standard integer conversions to size_t are valid; intrinsic
+          buffers are correctly declared and bounded. Native compilation
+          verifies the supported x86 SIMD paths. #512
+          lib/video/ascii/neon/luminance.c Fixed: rename the NEON vector local
+          to avoid hiding rgb. #512 lib/video/ascii/simd/quantize.c Fixed: mark
+          the per-block active count used on fixed-width SIMD builds. #511
+          src/client/audio.c Already fixed: capture dump writers are opened in
+          lifecycle-guarded audio_client_init, not each capture thread. #497
+          web/web/src/network/ClientConnection.ts Fixed: preserve terminal ERROR
+          when the asynchronous socket close arrives, including reconnect
+          failures. #495 web/web/src/pages/Mirror.tsx Already fixed:
+          useMirrorRenderLoop connects file media to captureVisualizationAudio.
+          #495 web/web/src/pages/Mirror.tsx Already fixed: Mirror keeps
+          mediaFlipX/mediaFlipY separate from camera preferences. #495
+          web/web/src/hooks/useMirrorFile.ts Already fixed: streamMedia and
+          transcodeMedia probe audio codec support before accepting native
+          playback. #494 web/web/src/network/BrowserHostSession.ts Fixed:
+          signaling reconnect terminates obsolete hosting, including adopted
+          hosts. #494 web/web/src/network/BrowserHostSession.ts Fixed: validate
+          ICE configuration before starting/publishing the hosted session. #494
+          src/web/browser_host.c Fixed: run the shared 20 ms Opus mix step from
+          browser scheduling and initialize codecs before receiving audio. #494
+          web/web/src/network/BrowserVideoDecoder.ts Not applicable to current
+          native discovery:
+          <b>src/discovery/main.c</b> sends raw RGB via acip_send_image_frame;
+          <b>src/client/capture.c</b> is the fixed-server client, not the
+          browser-host discovery path. #494
+          web/web/src/components/SessionInvite.tsx Fixed: copied invitations
+          preserve the custom TURN username and keep its password in the URL
+          fragment. #494 web/web/tests/network/BrowserVideoDecoder.test.ts
+          Fixed: import test helpers from vite-plus/test. #494
+          lib/network/acip/acds_client.c False positive: valid_name bounds the
+          <b>uint8_t</b> length; memcpy safely promotes it to size_t. #494
+          lib/network/acip/acds_client.c False positive: the bounded
+          <b>uint8_t</b> length safely promotes to memcpy size_t. #494
+          lib/network/acip/acds_client.c False positive: the bounded
+          <b>uint8_t</b> length safely promotes to memcpy size_t. #493
+          web/www/e2e/demo-widget.spec.ts Fixed: skip dev-only module
+          instrumentation when the target does not serve Vite client. #491
+          src/web/common/ui.c Fixed: synchronize active speaker/microphone state
+          into C when the renderer is ready. #491
+          web/web/src/audio/AudioPipeline.ts Fixed: seed playback gain from the
+          current C speakers_volume before enabling playback. #491
+          web/web/src/pages/Mirror.tsx Already fixed: Mirror Escape calls
+          stopPlayback, clearing persisted playing state. #491
+          lib/tui/session_help.c Fixed: remove unreachable content-width clamp
+          after max_width &gt;= 6. #491 lib/tui/controller.c Intentional: help
+          displays the live presentation FPS counter; periodic refresh keeps
+          that line current. #491
+          web/packages/shared/src/components/AsciiRenderer/useAsciiRendererHandle.ts
+          Fixed: preserve writeFrame boolean failure contract when C rejects a
+          frame or allocation fails. #491 web/web/src/pages/Client.tsx Fixed:
+          seed each playback activation from C volume. #491
+          web/web/src/pages/Mirror.tsx Already fixed: Mirror Escape uses the
+          complete stopPlayback path.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">Additional findings in review summaries:</p>
+        <p class="Pp"></p>
+        <ul class="Bl-bullet">
+          <li>
+            #526: remove duplicate inbound packet accounting from the native
+            host receive loop.
+          </li>
+          <li>
+            #527: expose <b>options_retired_snapshot_count()</b> and the WASM
+            _wasm_options_retired_count() export for the documented
+            borrowed-snapshot retention tradeoff. Existing no-op patch
+            suppression already coalesces unchanged settings. Reclamation cannot
+            invalidate the public until-shutdown borrow guarantee.
+          </li>
+          <li>
+            #525: pin and SHA-256-check the moving-face source clip, including
+            existing cached input; give Face Follow options their own defaults.
+          </li>
+          <li>
+            #521: test supported camera-track preference, cleanup, failure, and
+            recovery.
+          </li>
+          <li>
+            #518: the newer runtime-settings browser regression directly checks
+            the acknowledged matrix_rain value; its acceptance coverage
+            supersedes the older URL-only check.
+          </li>
+          <li>
+            #505: remove the second CRC pass after the same WebRTC packet was
+            already verified.
+          </li>
+          <li>
+            #527/#491 validation: preserve C observer notifications across
+            intervening snapshot reads and acknowledge observed settings before
+            React echoes them back.
+          </li>
+          <li>
+            #527/#491 validation: query font data explicitly without changing
+            animation options; asynchronous renderer recreation must not restore
+            an obsolete Matrix selection.
+          </li>
+          <li>
+            Follow-up review: each participant owns its Opus decoder and output
+            encoder; mix-minus excludes the recipient before clipping. Compiled
+            tests verify sender silence and stream isolation. Face Follow
+            default constants now live in their consuming registries.
+          </li>
+        </ul>
+        <p class="Pp">
+          Validation results are recorded in the accompanying PR description.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          PR #530 follow-up: fixed the 20 ms native audio deadline to retain
+          scheduler overshoot and bound catch-up after a long stall; remove the
+          local memory participant before redispatching a retained host; skip
+          the unused outer CRC for encrypted WebRTC envelopes while retaining
+          inner authentication/CRC validation; share the font-selection mapping
+          and update its comment. Regressions cover simulated 21 ms scheduling,
+          long stalls, repeated live host render re-entry, and encrypted packets
+          with a deliberately altered outer CRC.
+        </p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -137,13 +137,13 @@ ffmpeg -y -v error -f lavfi -i testsrc2=size=160x120:rate=10 \
   -f lavfi -i sine=frequency=440:sample_rate=48000 -t 10 \
   -c:v libx264 -pix_fmt yuv420p -c:a aac /tmp/render-evidence/media.mp4
 
-python tests/integration/tmux_rendering.py --binary build/bin/ascii-chat \
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_rendering.py --binary build/bin/ascii-chat \
   --artifacts /tmp/render-evidence
-python tests/integration/tmux_flows.py --binary build/bin/ascii-chat \
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_flows.py --binary build/bin/ascii-chat \
   --artifacts /tmp/render-evidence
-python tests/integration/tmux_auth.py --binary build/bin/ascii-chat \
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_auth.py --binary build/bin/ascii-chat \
   --artifacts /tmp/render-evidence
-python tests/integration/tmux_exports.py --binary build/bin/ascii-chat \
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_exports.py --binary build/bin/ascii-chat \
   --artifacts /tmp/render-evidence
 ```
 
@@ -152,7 +152,7 @@ settings as the application:
 
 ```sh
 cmake --build build --target ui-native-probe
-python tests/integration/tmux_prompts.py --probe build/bin/ui-native-probe \
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_prompts.py --probe build/bin/ui-native-probe \
   --artifacts /tmp/render-evidence
 ```
 
@@ -201,9 +201,9 @@ The additional deterministic fixture holds `LOG_IO` active for five seconds and
 requires both the small-terminal warning and restored frame before capture ends:
 
 ```sh
-python tests/integration/tmux_capture.py --probe build/bin/ui-native-probe \
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_capture.py --probe build/bin/ui-native-probe \
   --artifacts /tmp/render-evidence
-python tests/integration/tmux_startup.py --binary build/bin/ascii-chat \
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_startup.py --binary build/bin/ascii-chat \
   --artifacts /tmp/render-evidence --count 40 --color-mode 16
 ```
 
@@ -218,7 +218,7 @@ after restoration, and after the loop boundary. Run it with the ordinary fixture
 and again with an `-an -c:v copy` video-only copy to cover both decoder layouts.
 
 ```sh
-python tests/integration/tmux_animation.py --binary build/bin/ascii-chat \
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/tmux_animation.py --binary build/bin/ascii-chat \
   --artifacts /tmp/render-evidence
 ```
 

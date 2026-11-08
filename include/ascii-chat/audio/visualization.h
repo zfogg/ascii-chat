@@ -1,8 +1,6 @@
 #pragma once
 
 #include <stddef.h>
-#include <stdbool.h>
-#include <stddef.h>
 
 typedef enum {
   AUDIO_VISUALIZATION_SOURCE_MIC = 0,
@@ -26,11 +24,3 @@ void audio_visualization_submit_stereo(audio_visualization_source_t source, cons
 
 /* Read the latest samples from one source, or combine the source groups. */
 void audio_visualization_read(audio_visualization_source_t source, float *samples, size_t count);
-
-/* Build a terminal-ready waveform frame. The caller owns the returned buffer. */
-char *audio_visualization_render_waveform(unsigned int width, unsigned int height, audio_visualization_source_t source,
-                                          bool use_color, int color_mode, bool flip_x, bool flip_y);
-
-/* Build a terminal-ready scrolling frequency display. The caller owns the returned buffer. */
-char *audio_visualization_render_fft(unsigned int width, unsigned int height, audio_visualization_source_t source,
-                                     bool use_color, int color_mode, bool flip_x, bool flip_y);

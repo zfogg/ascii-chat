@@ -41,7 +41,7 @@ query: |
 condition:
   kind: event
 group_by:
-- service_name
+  - service_name
 pending_for: 0s
 cooldown: 10m0s
 repeat_interval: 0s
@@ -50,7 +50,8 @@ enabled: true
 browser_enabled: true
 pushover_enabled: false
 annotations:
-  runbook: Open Traces, select this service and Error, and inspect error.type and status messages. Each trace ID fires once and stays handled after acknowledgement
+  runbook:
+    Open Traces, select this service and Error, and inspect error.type and status messages. Each trace ID fires once and stays handled after acknowledgement
     or replay, even when the error propagates through several spans. Sampling and dropped telemetry can undercount; expected EOF/EAGAIN must not be marked ERROR.
     Dedicated crypto, protocol, discovery and invalid-frame alerts own their traces to avoid duplicate generic notifications.
   summary: A new retained trace has an ERROR span. Acknowledged trace IDs do not notify again.

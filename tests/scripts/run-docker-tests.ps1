@@ -311,7 +311,7 @@ cmake --build build_docker --target tests
 "@
     } else {
         $BuildCommand = @"
-if [ ! -d build_docker ]; then
+if [ ! -f build_docker/CMakeCache.txt ] || [ ! -f build_docker/build.ninja ]; then
     echo 'First time setup - configuring CMake using docker preset (Debug with BUILD_TESTS=ON)...'
     cmake --preset docker -B build_docker
 fi
@@ -359,12 +359,15 @@ if ($Interactive) {
     docker run `
         $DockerFlags `
         --rm `
+        --cap-add SYS_PTRACE `
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
         -v "${DepsCacheVolume}:/app/.deps-cache" `
         -e CCACHE_DIR=/ccache `
         -e TESTING=1 `
+        -e ASAN_OPTIONS=detect_leaks=1 `
+        -e LSAN_OPTIONS=detect_leaks=1 `
         -w /app `
         $ImageName `
         bash -c "$FullCommand"

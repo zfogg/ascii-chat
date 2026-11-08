@@ -1,6 +1,8 @@
 #pragma once
 
 #include <ascii-chat/crypto/handshake/common.h>
+#include <ascii-chat/crypto/rekey.h>
+#include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/acip/transport.h>
 
 /** Per-peer, event-driven negotiation. The caller owns and configures handshake.
@@ -32,3 +34,25 @@ acip_transport_t *acip_webrtc_transport_create_secure(struct webrtc_peer_connect
                                                       void (*on_ready)(acip_transport_t *, void *), void *user_data);
 /** Borrow security already owned by an authenticated peer transport. */
 acip_security_t *acip_webrtc_transport_security(acip_transport_t *transport);
+
+bool acip_security_rekey_packet(uint16_t type);
+asciichat_error_t acip_security_rekey_encode(unsigned flow, crypto_rekey_message_t, const void *, size_t, void *,
+                                             size_t, size_t *);
+asciichat_error_t acip_security_rekey_receive(crypto_rekey_session_t *, acip_traffic_class_t, acip_delivery_t,
+                                              const void *, size_t, uint64_t now_ns, bool *consumed);
+
+asciichat_error_t acip_security_rekey_seal(crypto_record_t *, unsigned, crypto_rekey_message_t, const void *, size_t,
+                                           uint8_t **, size_t *);
+
+asciichat_error_t acip_security_activate(acip_transport_t *);
+asciichat_error_t acip_security_flush(acip_transport_t *);
+asciichat_error_t acip_security_request_rekey(acip_transport_t *);
+asciichat_error_t acip_security_decrypt(crypto_context_t *, unsigned, unsigned, const void *, size_t, uint8_t **,
+                                        size_t *, uint64_t *, bool *consumed);
+
+asciichat_error_t acip_security_seal(crypto_context_t *, acip_traffic_class_t, acip_delivery_t, const void *, size_t,
+                                     uint8_t **, size_t *);
+asciichat_error_t acip_security_open(crypto_context_t *, acip_traffic_class_t, acip_delivery_t, const void *, size_t,
+                                     uint8_t **, size_t *, uint64_t *, bool *);
+
+asciichat_error_t acip_security_next_control(crypto_context_t *, acip_traffic_class_t *, uint8_t **, size_t *);

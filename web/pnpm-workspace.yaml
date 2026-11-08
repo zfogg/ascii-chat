@@ -1,6 +1,6 @@
 packages:
   - "packages/*"
-  - "chatgpt-sites/*"
+  - "openai-sites/*"
   - "www"
   - "discovery"
   - "web"

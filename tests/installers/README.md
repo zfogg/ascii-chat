@@ -87,9 +87,9 @@ uninstaller: its layout assumes a conventional package installation.
 ## PATH prompt regression tests
 
 ```bash
-python3 tests/installers/path_profiles.py web/www/public/install.sh
+uv run --project tests/ascii_chat_tests --frozen python tests/installers/path_profiles.py web/www/public/install.sh
 # Explicitly test macOS's bundled Bash 3.2:
-TEST_BASH=/bin/bash python3 tests/installers/path_profiles.py web/www/public/install.sh
+TEST_BASH=/bin/bash uv run --project tests/ascii_chat_tests --frozen python tests/installers/path_profiles.py web/www/public/install.sh
 ```
 
 These use real Bash and Zsh with isolated home directories and a pseudo-terminal.

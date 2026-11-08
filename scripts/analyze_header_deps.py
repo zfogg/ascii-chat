@@ -355,28 +355,28 @@ Statistics show both direct and transitive dependency counts.
 
 Examples:
   # Analyze lib and src (default)
-  python3 scripts/analyze_header_deps.py
+  uv run --project tests/ascii_chat_tests --frozen python scripts/analyze_header_deps.py
 
   # Analyze just lib/
-  python3 scripts/analyze_header_deps.py lib
+  uv run --project tests/ascii_chat_tests --frozen python scripts/analyze_header_deps.py lib
 
   # Analyze just src/
-  python3 scripts/analyze_header_deps.py src
+  uv run --project tests/ascii_chat_tests --frozen python scripts/analyze_header_deps.py src
 
   # Analyze lib and tests
-  python3 scripts/analyze_header_deps.py lib tests
+  uv run --project tests/ascii_chat_tests --frozen python scripts/analyze_header_deps.py lib tests
 
   # Use compact neato layout
-  python3 scripts/analyze_header_deps.py --layout neato
+  uv run --project tests/ascii_chat_tests --frozen python scripts/analyze_header_deps.py --layout neato
 
   # Use spread-out sfdp layout
-  python3 scripts/analyze_header_deps.py --layout sfdp
+  uv run --project tests/ascii_chat_tests --frozen python scripts/analyze_header_deps.py --layout sfdp
 
   # Show transitive graph (warning: very dense, hard to read)
-  python3 scripts/analyze_header_deps.py --transitive-graph
+  uv run --project tests/ascii_chat_tests --frozen python scripts/analyze_header_deps.py --transitive-graph
 
   # Custom output file
-  python3 scripts/analyze_header_deps.py -o my_deps.dot
+  uv run --project tests/ascii_chat_tests --frozen python scripts/analyze_header_deps.py -o my_deps.dot
         """
     )
     parser.add_argument(

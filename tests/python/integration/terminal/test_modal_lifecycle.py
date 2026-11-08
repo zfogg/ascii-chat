@@ -30,7 +30,11 @@ def test_modal_lifecycle(terminal_factory, terminal_probe):
     term.write("\x1b[24~answer\r")
     view("Cancel with Escape")
     term.write("\x1b")
+    view("Prompt cancelled")
+    term.write("\r")
     view("Wait for timeout")
+    view("Prompt timed out")
+    term.write("\r")
     deadline = time.monotonic() + 10
     while term.process.isalive() and time.monotonic() < deadline:
         term.pump(.1)

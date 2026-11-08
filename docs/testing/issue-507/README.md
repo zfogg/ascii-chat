@@ -33,12 +33,12 @@ High priority alone also failed stability at 120×40 (median 60, range 45–66).
 The accepted measurements below use the standard 80×24 terminal size and establish
 performance only for that configuration. The 120×40 failures remain in the JSON.
 
-| Transport | Median FPS | Minimum–maximum | One-second samples |
-| --- | ---: | ---: | ---: |
-| tcp | 60 | 47–62 | 60 |
-| websocket | 60 | 55–79 | 60 |
-| webrtc | 60 | 53–63 | 60 |
-| discovery-tcp | 60 | 53–62 | 60 |
+| Transport     | Median FPS | Minimum–maximum | One-second samples |
+| ------------- | ---------: | --------------: | -----------------: |
+| tcp           |         60 |           47–62 |                 60 |
+| websocket     |         60 |           55–79 |                 60 |
+| webrtc        |         60 |           53–63 |                 60 |
+| discovery-tcp |         60 |           53–62 |                 60 |
 
 Acceptance requires median ≥58.8 FPS, at least 90% of readings ≥57 FPS, and at
 least 80% of the expected one-second samples. All four measurements pass.
@@ -108,9 +108,9 @@ ctest --test-dir build -R "^(network-connections|network-events|webrtc-security|
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/event_io --ascii-chat-binary build/bin/ascii-chat.exe
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/client_connection --ascii-chat-binary build/bin/ascii-chat.exe
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/network --ascii-chat-binary build/bin/ascii-chat.exe
-python tests/integration/runtime_settings_cli.py build/bin/ascii-chat.exe
-python tests/integration/network_fps_windows.py --binary build/perf507/bin/ascii-chat.exe --output build/issue-507/windows/fps --seconds 60 --priority high --width 80 --height 24
-python tests/integration/network_fps_windows.py --binary build/perf507/bin/ascii-chat.exe --output build/issue-507/windows/fps --seconds 60 --priority high --width 80 --height 24 --transport discovery-tcp
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/runtime_settings_cli.py build/bin/ascii-chat.exe
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/network_fps_windows.py --binary build/perf507/bin/ascii-chat.exe --output build/issue-507/windows/fps --seconds 60 --priority high --width 80 --height 24
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/network_fps_windows.py --binary build/perf507/bin/ascii-chat.exe --output build/issue-507/windows/fps --seconds 60 --priority high --width 80 --height 24 --transport discovery-tcp
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/backpressure --backpressure-probe build/perf507/bin/test-backpressure-live.exe --backpressure-output build/issue-507/windows/congestion --backpressure-codecs raw,h264
 cd web/web
 vp test run

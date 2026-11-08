@@ -35,6 +35,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/transport.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/peer_manager.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/stun.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/config.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/turn_credentials.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/sdp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/ice.c
@@ -47,6 +48,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/acds_client_io.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/acds_server.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/send.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/acip/traffic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/prepare.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/security.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/security_options.c
@@ -69,6 +71,15 @@ set(NETWORK_SRCS
 if(NOT EMSCRIPTEN)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/establish.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/acip/backpressure.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/stream.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/http3.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/datagram.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/tls.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/connection.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/endpoint.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/transport.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/worker.c)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/udp.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/tcp/async.c ${CMAKE_CURRENT_SOURCE_DIR}/connection.c ${CMAKE_CURRENT_SOURCE_DIR}/negotiation.c)
 endif()
 

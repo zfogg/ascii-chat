@@ -1,7 +1,7 @@
 """Verify keyboard-controlled audio visualizations through a real terminal.
 
 Requires ffmpeg and the terminal_ui.py dependencies, plus an audio output device.
-Run: python tests/integration/audio_visualization_keys.py --binary build/bin/ascii-chat.exe
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/integration/audio_visualization_keys.py --binary build/bin/ascii-chat.exe
 """
 
 # Apply the shared test policy before importing helpers or starting native children.
@@ -17,6 +17,18 @@ from pathlib import Path
 import shutil
 import tempfile
 from ascii_chat_tests.terminal import Terminal
+
+
+def video_visible(term, text):
+    """The test pattern is a dense, multicolored frame, unlike the audio plots or Matrix."""
+    if "Keyboard Shortcuts" in text or "error" in text.lower():
+        return False
+    rows = term.screen.display
+    dense = sum(sum(not char.isspace() for char in row) >= 40 for row in rows)
+    colors = {term.screen.buffer[y][x].fg for y, row in enumerate(rows)
+              for x, char in enumerate(row) if not char.isspace()}
+    non_plot = sum(char not in " .:-=+*#%@\n" for char in text)
+    return dense >= 8 and len(colors) >= 8 and non_plot >= 100
 
 
 def main():
@@ -37,7 +49,7 @@ def main():
         disabled = Terminal(cli_command(binary, '--log-file',
                              str(root/'audio-disabled.log'), 'mirror', '--file', str(media),
                              '--loop', '--audio=false', '--splash-screen=false',
-                             '--color-mode', 'truecolor'), rows=24, cols=100)
+                             '--color-mode', 'truecolor'), rows=45, cols=100)
         try:
             disabled.pump(5)
             disabled.write('?')
@@ -61,9 +73,10 @@ def main():
         term = Terminal(cli_command(binary, '--log-file',
                          str(root/'audio-keys-runtime.log'), 'mirror', '--file', str(media),
                          '--loop', '--audio-source', 'media', '--volume', '0', '--splash-screen=false',
-                         '--color-mode', 'truecolor'), rows=24, cols=100)
+                         '--color-mode', 'truecolor'), rows=45, cols=100)
         try:
             term.pump(5)
+            term.expect(lambda s: video_visible(term, s), 'Initial video frame missing')
             term.write('?')
             term.expect(lambda s: '(2) Audio Waveform : X' in s and '(3) Audio Frequencies (FFT) : X' in s, 'Help lists audio controls')
             help_text = term.pump(.2)
@@ -75,7 +88,7 @@ def main():
                 text = term.expect(lambda s: 'Terminal too small' in s, 'Help rejects undersized terminal')
                 assert 'Navigation & Control:' not in text, text
                 assert 'Current Settings:' not in text, text
-                term.resize(24, 100)
+                term.resize(45, 100)
                 term.expect(lambda s: 'Navigation & Control:' in s and 'Current Settings:' in s
                             and 'Terminal too small' not in s, 'Help recovers after resize')
             print('PASS narrow/short help fallback and resize recovery')
@@ -108,11 +121,11 @@ def main():
             term.write('3')
             term.expect(lambda s: '(3) Audio Frequencies (FFT) : X' in s, 'FFT toggles off')
             term.write('?')
-            term.expect(lambda s: any(c.isalpha() for c in s) and 'Keyboard Shortcuts' not in s, 'Video restored')
+            term.expect(lambda s: video_visible(term, s), 'Video restored')
             term.write('2')
             term.expect(lambda s: set(s.strip()) <= set(' #+\n') and s.count('#') > 100, 'Waveform re-enables')
             term.write('2')
-            term.expect(lambda s: any(c.isalpha() for c in s) and 'Keyboard Shortcuts' not in s, 'Waveform toggles off')
+            term.expect(lambda s: video_visible(term, s), 'Waveform toggles off')
             term.interrupt()
             print('PASS waveform/FFT keyboard activation, live audio rendering, mutual exclusion, disable and video restoration')
         finally:

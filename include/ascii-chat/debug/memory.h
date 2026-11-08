@@ -224,29 +224,6 @@ void debug_free(void *ptr, const char *file, int line);
  */
 void debug_track_aligned(void *ptr, size_t size, const char *file, int line);
 
-/**
- * @brief Initialize memory debug thread (called at startup)
- * @return 0 on success, non-zero on error
- */
-int debug_memory_thread_init(void);
-
-/**
- * @brief Start the memory debug report thread
- * @return 0 on success, non-zero on error
- */
-int debug_memory_thread_start(void);
-
-/**
- * @brief Trigger memory report from SIGUSR2 signal handler
- * Sets flag and signals the debug thread to print a memory report
- */
-void debug_memory_trigger_report(void);
-
-/**
- * @brief Stop the memory debug report thread (called at shutdown)
- */
-void debug_memory_thread_cleanup(void);
-
 #else /* !DEBUG_MEMORY - Provide stub implementations */
 
 /* Stubs for when DEBUG_MEMORY is not defined */
@@ -286,18 +263,6 @@ static inline void debug_track_aligned(void *ptr, size_t size, const char *file,
   (void)file;
   (void)line;
 }
-
-static inline int debug_memory_thread_init(void) {
-  return 0;
-}
-
-static inline int debug_memory_thread_start(void) {
-  return 0;
-}
-
-static inline void debug_memory_trigger_report(void) {}
-
-static inline void debug_memory_thread_cleanup(void) {}
 
 #endif /* DEBUG_MEMORY */
 

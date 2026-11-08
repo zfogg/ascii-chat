@@ -290,4 +290,8 @@ bool url_is_tcp(const char *url);
  */
 bool url_looks_like_tcp(const char *url);
 
+/** Redact URL userinfo and query/fragment values in diagnostic text, in place.
+ * Set truncated when the text may end partway through a URL authority. */
+void url_redact_diagnostic(char *text, bool truncated);
+
 /** @} */

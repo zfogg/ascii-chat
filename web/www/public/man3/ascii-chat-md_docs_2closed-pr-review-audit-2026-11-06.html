@@ -1,0 +1,610 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>md_docs_2closed-pr-review-audit-2026-11-06(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">
+          md_docs_2closed-pr-review-audit-2026-11-06(3)
+        </td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">
+          md_docs_2closed-pr-review-audit-2026-11-06(3)
+        </td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">
+          md_docs_2closed-pr-review-audit-2026-11-06 - Closed pull request
+          review audit &#x2014; 2026-11-06
+        </p>
+        <p class="Pp">
+          Scope: pull requests closed from 2026-08-06 through 2026-11-06 in this
+          repository. The inventory contains 132 closed PRs, 587 review threads,
+          and 205 threads still marked unresolved. Each row below links to the
+          first comment in one such thread. A GitHub thread being unresolved
+          does not establish that the reported defect is still present.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The PR includes fixes for live findings; other entries were checked
+          against the current code or GitHub code-scanning state. The original
+          closed-PR threads remain unchanged while this draft is reviewed.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          Hosted MCP URL rendering is <b>not</b> an SSRF sandbox. Its existing
+          <b>deployment guidance</b> requires external egress controls for
+          private, loopback, link-local and metadata networks, including
+          redirects and nested media requests. Operators must enforce those
+          controls; the application does not do so.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          The Windows mirror lazy-audio integration passes after waiting for the
+          resized sync inventory to render. The error-popup screenshot smoke
+          test and error-journal contract also pass with a platform-appropriate
+          backtrace assertion.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Fixed_in_this_PR_(89)">
+          <a class="permalink" href="#Fixed_in_this_PR_(89)"
+            >Fixed in this PR (89)</a
+          >
+        </h1>
+        <p class="Pp">
+          PR Comment Current path / assessment #452 discussion
+          <b>lib/audio/visualization.c</b><b> #453 </b>discussion<b> </b
+          ><b>lib/audio/visualization.c</b><b> #466 </b>discussion<b> </b
+          ><b>lib/stats/runtime.c</b><b> #466 </b>discussion<b> </b
+          ><b>lib/stats/runtime.c</b><b> #466 </b>discussion<b> </b
+          ><b>lib/stats/runtime.c</b><b> #466 </b>discussion<b> </b
+          ><b>lib/stats/runtime.c</b><b> #468 </b>discussion<b> </b
+          ><b>include/ascii-chat/options/options.h</b
+          ><b>
+            &#x2014; Header-defined defaults are used selectively by registry
+            translation units. #469 </b
+          >discussion<b> </b><b>lib/crypto/key_identity/display.c</b
+          ><b> #470 </b>discussion<b> </b><b>lib/stats/runtime.c</b
+          ><b> #470 </b>discussion<b> </b><b>lib/stats/runtime.c</b
+          ><b> #470 </b>discussion<b> </b>tests/integration/stats_tui.py<b>
+            #470 </b
+          >discussion<b> </b>tests/unit/stats/stats_test.c<b> #471 </b
+          >discussion<b> </b>cmake/compiler/SIMD.cmake<b> #472 </b>discussion<b
+          > </b>lib/ui/controller.c<b> #472 </b>discussion<b
+          > </b>lib/ui/controller.c<b> #473 </b>discussion<b> </b
+          ><b>src/common/session/keyboard_handler.c</b><b> #474 </b>discussion<b
+          > </b>web/web/src/hooks/useWebcamStream.ts<b> #474 </b>discussion<b
+          > </b>web/web/src/wasm/client.ts<b> #474 </b>discussion<b
+          > </b>web/web/tests/e2e/video-encoding.spec.ts<b> #474 </b
+          >discussion<b> </b>web/web/src/wasm/dist/manifest.json<b> #474 </b
+          >discussion<b> </b>web/web/src/components/DeviceSetupModal.tsx<b>
+            #478 </b
+          >discussion<b> </b>lib/CMakeLists.txt<b> #478 </b>discussion<b
+          > </b>tests/audio/analyze_network_audio.py<b> #478 </b>discussion<b
+          > </b>tests/audio/test_network_audio.py<b> #478 </b>discussion<b
+          > </b>tests/audio/test_network_audio.py<b> #484 </b>discussion<b> </b
+          ><b>lib/options/registry/audio.c</b><b> #484 </b>discussion<b> </b
+          ><b>docs/audio-spectral.md</b><b> #486 </b>discussion<b> </b
+          ><b>src/common/session/display.c</b><b> #543 </b>discussion<b> </b
+          ><b>lib/options/options.c</b><b> #543 </b>discussion<b> </b
+          ><b>lib/options/options.c</b><b> #548 </b>discussion<b
+          > </b>lib/ui/mdns.c<b> #548 </b>discussion<b
+          > </b>tests/integration/mdns_terminal.py<b> #552 </b>discussion<b
+          > </b>web/web/src/components/shared/BinarySettings.tsx<b> #552 </b
+          >discussion<b> </b>web/web/src/components/shared/BinarySettings.tsx<b>
+            #552 </b
+          >discussion<b> </b>web/web/src/components/shared/BinarySettings.tsx<b>
+            #552 </b
+          >discussion<b> </b>web/web/src/components/shared/BinarySettings.tsx<b>
+            #553 </b
+          >discussion<b> </b>web/web/src/components/ErrorOverlay.tsx<b> #553 </b
+          >discussion<b> </b>web/web/src/wasm/client.ts<b> #553 </b>discussion<b
+          > </b><b>lib/network/connection.c</b><b> #557 </b>discussion<b
+          > </b>tests/integration/symbolizer_offline.py<b> #557 </b>discussion<b
+          > </b>tests/CMakeLists.txt<b> #561 </b>discussion<b
+          > </b>lib/ui/session_help.c<b> #562 </b>discussion<b
+          > </b>tests/integration/errno_tui_ellipsis.py<b> #567 </b>discussion<b
+          > </b><b>docs/telemetry.md</b><b> #567 </b>discussion<b> </b
+          ><b>lib/network/http_client.c</b><b> #567 </b>discussion<b> </b
+          ><b>lib/network/http_client.c</b><b> #567 </b>discussion<b> </b
+          ><b>lib/otel.c</b><b> #567 </b>discussion<b> </b
+          ><b>src/client/audio.c</b><b> #567 </b>discussion<b> </b
+          ><b>lib/audio/audio.c</b><b> #567 </b>discussion<b> </b
+          ><b>lib/discovery/database.c</b><b> #567 </b>discussion<b> </b
+          ><b>lib/otel.c</b><b> #567 </b>discussion<b> </b
+          ><b>lib/media/source.c</b><b> #574 </b>discussion<b> </b
+          ><b>lib/asciichat_errno.c</b><b> #574 </b>discussion<b> </b
+          ><b>lib/asciichat_errno.c</b><b> #574 </b>discussion<b> </b
+          ><b>lib/tui/controller.c</b><b> #574 </b>discussion<b> </b
+          ><b>lib/tui/error_popup.c</b><b> #574 </b>discussion<b
+          > </b>tests/integration/error_popup.py<b> #574 </b>discussion<b
+          > </b>tests/integration/source_paths.c<b> #578 </b>discussion<b> </b
+          ><b>src/mcp-server/protocol.c</b><b> #578 </b>discussion<b> </b
+          ><b>lib/options/config/presets.c</b><b> #578 </b>discussion<b> </b
+          ><b>lib/options/manpage.c</b><b> #578 </b>discussion<b> </b
+          ><b>lib/options/registry/mode_defaults.c</b><b> #578 </b>discussion<b
+          > </b><b>src/mcp-server/stdio.c</b><b> #578 </b>discussion<b
+          > </b>tests/integration/test_mcp_render_url.py<b> #580 </b
+          >discussion<b> </b><b>lib/media/source.c</b><b> #598 </b>discussion<b
+          > </b>web/web/src/network/WebRTCSession.ts<b> #598 </b>discussion<b
+          > </b>web/web/src/network/BrowserHostSession.ts<b> #603 </b
+          >discussion<b> </b>.github/workflows/test.yml<b> #603 </b>discussion<b
+          > </b><b>lib/media/ffmpeg_decoder.c</b><b> #605 </b>discussion<b> </b
+          ><b>lib/audio/mixer.c</b><b> #605 </b>discussion<b> </b
+          ><b>lib/audio/processor.c</b><b> #605 </b>discussion<b> </b
+          ><b>lib/audio/recording.c</b><b> #605 </b>discussion<b> </b
+          ><b>lib/video/ascii/common.c</b><b> #605 </b>discussion<b
+          > </b>web/packages/shared/src/components/DeviceSetupModal.tsx<b>
+            #605 </b
+          >discussion<b
+          > </b>web/packages/shared/src/components/DeviceSetupModal.tsx<b>
+            #605 </b
+          >discussion<b
+          > </b>web/packages/shared/src/components/DeviceSetupModal.tsx<b>
+            #605 </b
+          >discussion<b> </b>web/web/src/audio/AudioPipeline.ts<b> #605 </b
+          >discussion<b> </b>web/web/src/audio/AudioPipeline.ts<b> #605 </b
+          >discussion<b> </b>web/web/src/audio/AudioPipeline.ts<b> #605 </b
+          >discussion<b> </b><b>lib/audio/mixer.c</b><b> #605 </b>discussion<b
+          > </b><b>src/client/audio.c</b><b> #605 </b>discussion<b
+          > </b>web/web/src/audio/capture.worker.ts<b> #606 </b>discussion<b
+          > </b>tests/integration/discovery_audio.py<b> #606 </b>discussion<b
+          > </b>tests/integration/synthetic_audio_sessions.py<b> #606 </b
+          >discussion<b> </b>tests/integration/synthetic_audio_sessions.py<b>
+            #606 </b
+          >discussion<b> </b><b>lib/log/json.c</b><b> #606 </b>discussion<b
+          > </b>tests/contracts/session/host_render_test.c<b> #606 </b
+          >discussion<b
+          > </b>tests/contracts/session/participant_workers_test.c<b> #606 </b
+          >discussion<b> </b>tests/integration/panic_report.py<b></b>
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Already_addressed_in_current_code_(41)">
+          <a class="permalink" href="#Already_addressed_in_current_code_(41)"
+            >Already addressed in current code (41)</a
+          >
+        </h1>
+        <p class="Pp">
+          PR Comment Current path / assessment #452 discussion
+          <b>lib/options/registry/display.c</b><b> #452 </b>discussion<b> </b
+          ><b>src/common/session/display.c</b><b> #456 </b>discussion<b> </b
+          ><b>src/server/main.c</b><b> #456 </b>discussion<b> </b
+          ><b>src/common/session/server_like.c</b><b> #461 </b>discussion<b> </b
+          ><b>lib/options/config/config.c</b><b> #461 </b>discussion<b> </b
+          ><b>lib/video/anim/test_pattern.c</b><b> #462 </b>discussion<b
+          > </b>lib/ui/status.c<b> #463 </b>discussion<b
+          > </b>tests/integration/fps_counter.py<b> #464 </b>discussion<b> </b
+          ><b>lib/media/ffmpeg_encoder.c</b><b> #465 </b>discussion<b> </b
+          ><b>lib/options/options.c</b><b> #465 </b>discussion<b
+          > </b>lib/platform/windows/question.c<b> #467 </b>discussion<b> </b
+          ><b>lib/log/log.c</b><b> #467 </b>discussion<b> </b
+          ><b>src/server/main.c</b><b> #467 </b>discussion<b> </b
+          ><b>lib/log/log.c</b><b> #478 </b>discussion<b
+          > </b>lib/CMakeLists.txt<b> #481 </b>discussion<b
+          > </b>tests/integration/client_like_lifecycle.c<b> #483 </b
+          >discussion<b> </b><b>lib/video/h265/encoder.c</b
+          ><b> #486 </b>discussion<b> </b><b>src/common/session/display.c</b
+          ><b> #486 </b>discussion<b> </b><b>lib/video/ascii/zalgo.c</b
+          ><b> #486 </b>discussion<b> </b><b>lib/options/registry/display.c</b
+          ><b> #488 </b>discussion<b> </b><b>src/client/audio.c</b
+          ><b> #488 </b>discussion<b> </b><b>src/client/audio.c</b
+          ><b> #489 </b>discussion<b> </b>tests/CMakeLists.txt<b> #489 </b
+          >discussion<b> </b><b>src/server/client.c</b><b> #489 </b>discussion<b
+          > </b>tests/CMakeLists.txt<b> #490 </b>discussion<b
+          > </b>src/server/crypto.c<b> #548 </b>discussion<b> </b
+          ><b>lib/network/mdns/mdns.c</b><b> #553 </b>discussion<b
+          > </b>web/web/src/network/ClientConnection.ts<b> #553 </b>discussion<b
+          > </b><b>lib/network/packet/packet.c</b><b> #553 </b>discussion<b
+          > </b>web/web/src/network/ClientConnection.ts<b> #553 </b>discussion<b
+          > </b><b>lib/network/packet/packet.c</b><b> #558 </b>discussion<b> </b
+          ><b>lib/network/acip/send.c</b><b> #567 </b>discussion<b> </b
+          ><b>src/client/audio.c</b><b> #567 </b>discussion<b> </b
+          ><b>lib/stats/runtime.c</b><b> #578 </b>discussion<b> </b
+          ><b>include/ascii-chat/options/options.h</b><b> #578 </b>discussion<b
+          > </b><b>src/main.c</b><b> #580 </b>discussion<b> </b
+          ><b>lib/media/source.c</b><b> #580 </b>discussion<b
+          > </b>.github/workflows/test.yml<b> #605 </b>discussion<b> </b
+          ><b>lib/audio/audio.c</b><b> #605 </b>discussion<b> </b
+          ><b>lib/audio/client_pipeline.cpp</b><b> #606 </b>discussion<b> </b
+          ><b>src/common/session/consensus.c</b><b></b>
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Code_scanning_reports_the_alert_fixed_(26)">
+          <a
+            class="permalink"
+            href="#Code_scanning_reports_the_alert_fixed_(26)"
+            >Code scanning reports the alert fixed (26)</a
+          >
+        </h1>
+        <p class="Pp">
+          PR Comment Current path / assessment #452 discussion
+          <b>lib/audio/visualization.c</b><b> #452 </b>discussion<b> </b
+          ><b>lib/audio/visualization.c</b><b> #453 </b>discussion<b> </b
+          ><b>lib/audio/visualization.c</b><b> #460 </b>discussion<b> </b
+          ><b>lib/video/ascii/scalar/foreground.c</b><b> #464 </b>discussion<b
+          > </b>lib/ui/render_progress.c<b> #466 </b>discussion<b> </b
+          ><b>lib/stats/runtime.c</b><b> #468 </b>discussion<b> </b
+          ><b>lib/debug/sync.c</b><b> #468 </b>discussion<b> </b
+          ><b>lib/network/packet/packet.c</b><b> #468 </b>discussion<b> </b
+          ><b>lib/debug/sync.c</b><b> #468 </b>discussion<b> </b
+          ><b>lib/debug/stats.c</b><b> #468 </b>discussion<b> </b
+          ><b>lib/debug/errno.c</b><b> #471 </b>discussion<b
+          > </b>lib/video/ascii/simd/luminance.c<b> #471 </b>discussion<b
+          > </b>lib/video/ascii/simd/luminance.c<b> #471 </b>discussion<b> </b
+          ><b>lib/video/ascii/avx2/luminance.c</b><b> #471 </b>discussion<b> </b
+          ><b>lib/video/ascii/neon/luminance.c</b><b> #471 </b>discussion<b> </b
+          ><b>lib/video/ascii/sse2/luminance.c</b><b> #471 </b>discussion<b> </b
+          ><b>lib/video/ascii/ssse3/luminance.c</b><b> #471 </b>discussion<b
+          > </b><b>lib/video/ascii/sve/luminance.c</b><b> #471 </b>discussion<b
+          > </b><b>lib/debug/errno.c</b><b> #471 </b>discussion<b> </b
+          ><b>lib/debug/stats.c</b><b> #472 </b>discussion<b> </b
+          ><b>lib/debug/mutex.c</b><b> #474 </b>discussion<b> </b
+          ><b>lib/platform/wasm/stubs/crypto.c</b><b> #478 </b>discussion<b> </b
+          ><b>lib/audio/spectral.c</b><b> #478 </b>discussion<b> </b
+          ><b>lib/audio/client_pipeline.cpp</b><b> #480 </b>discussion<b> </b
+          ><b>lib/network/tcp/transport.c</b><b> #578 </b>discussion<b> </b
+          ><b>src/mcp-server/http.c</b><b></b>
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Assessed;_no_code_change_(44)">
+          <a class="permalink" href="#Assessed;_no_code_change_(44)"
+            >Assessed; no code change (44)</a
+          >
+        </h1>
+        <p class="Pp">
+          PR Comment Current path / assessment #458 discussion
+          <b>lib/platform/macos/process_title.c</b
+          ><b>
+            &#x2014; The macOS build uses the one-argument pthread_setname_np
+            signature. #458 </b
+          >discussion<b> </b><b>lib/platform/macos/process_title.c</b
+          ><b>
+            &#x2014; CFRelease is a platform macro; these calls release Core
+            Foundation objects. #458 </b
+          >discussion<b> </b><b>lib/platform/macos/process_title.c</b
+          ><b>
+            &#x2014; CFRelease is a platform macro; these calls release Core
+            Foundation objects. #460 </b
+          >discussion<b> </b><b>lib/video/ascii/ascii.c</b
+          ><b>
+            &#x2014; Integer constants are valid C arguments to size_t
+            parameters. #460 </b
+          >discussion<b> </b><b>lib/video/ascii/ascii.c</b
+          ><b>
+            &#x2014; Another live screen owns the terminal; forcing a cursor
+            escape would override that screen. The exit hook shuts down the
+            controller and restores the cursor. #468 </b
+          >discussion<b> </b><b>lib/options/options.c</b
+          ><b>
+            &#x2014; Integer constants are valid C arguments to size_t
+            parameters. #468 </b
+          >discussion<b> </b><b>lib/options/options.c</b
+          ><b>
+            &#x2014; Integer constants are valid C arguments to size_t
+            parameters. #468 </b
+          >discussion<b> </b><b>lib/options/options.c</b
+          ><b>
+            &#x2014; Integer constants are valid C arguments to size_t
+            parameters. #469 </b
+          >discussion<b> </b><b>lib/crypto/key_identity/keymask.c</b
+          ><b>
+            &#x2014; Integer constants are valid C arguments to size_t
+            parameters. #472 </b
+          >discussion<b> </b><b>lib/debug/named.c</b
+          ><b>
+            &#x2014; The bounds check remains necessary for 32-bit size_t. #486 </b
+          >discussion<b> </b><b>lib/video/ascii/zalgo.c</b
+          ><b>
+            &#x2014; The explicit increment consumes a second byte of a
+            validated multibyte or escape sequence. #567 </b
+          >discussion<b> </b><b>lib/options/config/schema.c</b
+          ><b>
+            &#x2014; Integer constants are valid C arguments to size_t
+            parameters. #567 </b
+          >discussion<b> </b><b>lib/options/options.c</b
+          ><b>
+            &#x2014; Integer constants are valid C arguments to size_t
+            parameters. #574 </b
+          >discussion<b> </b><b>include/ascii-chat/common/error_codes.h</b
+          ><b>
+            &#x2014; Maintainability heuristic; current code is deliberately
+            structured as a protocol handler or compound validation and no
+            functional defect was identified. #574 </b
+          >discussion<b> </b><b>lib/tui/error_popup.c</b
+          ><b>
+            &#x2014; The explicit increment consumes a second byte of a
+            validated multibyte or escape sequence. #578 </b
+          >discussion<b> </b><b>src/mcp-server/http.c</b
+          ><b>
+            &#x2014; Maintainability heuristic; current code is deliberately
+            structured as a protocol handler or compound validation and no
+            functional defect was identified. #578 </b
+          >discussion<b> </b><b>src/mcp-server/http.c</b
+          ><b>
+            &#x2014; Maintainability heuristic; current code is deliberately
+            structured as a protocol handler or compound validation and no
+            functional defect was identified. #578 </b
+          >discussion<b> </b><b>src/mcp-server/request.c</b
+          ><b>
+            &#x2014; Maintainability heuristic; current code is deliberately
+            structured as a protocol handler or compound validation and no
+            functional defect was identified. #578 </b
+          >discussion<b> </b><b>src/mcp-server/protocol.c</b
+          ><b>
+            &#x2014; Maintainability heuristic; current code is deliberately
+            structured as a protocol handler or compound validation and no
+            functional defect was identified. #578 </b
+          >discussion<b> </b><b>src/mcp-server/request.c</b
+          ><b>
+            &#x2014; Maintainability heuristic; current code is deliberately
+            structured as a protocol handler or compound validation and no
+            functional defect was identified. #578 </b
+          >discussion<b> </b><b>src/main.c</b
+          ><b>
+            &#x2014; Maintainability heuristic; current code is deliberately
+            structured as a protocol handler or compound validation and no
+            functional defect was identified. #578 </b
+          >discussion<b> </b><b>lib/options/json.c</b
+          ><b>
+            &#x2014; Maintainability heuristic; current code is deliberately
+            structured as a protocol handler or compound validation and no
+            functional defect was identified. #578 </b
+          >discussion<b> </b><b>src/mcp-server/request.c</b
+          ><b>
+            &#x2014; Integer constants are valid C arguments to size_t
+            parameters. #578 </b
+          >discussion<b> </b><b>src/mcp-server/request.c</b
+          ><b>
+            &#x2014; Integer constants are valid C arguments to size_t
+            parameters. #578 </b
+          >discussion<b> </b><b>src/mcp-server/request.c</b
+          ><b>
+            &#x2014; Integer constants are valid C arguments to size_t
+            parameters. #578 </b
+          >discussion<b> </b><b>src/mcp-server/request.c</b
+          ><b>
+            &#x2014; Integer constants are valid C arguments to size_t
+            parameters. #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #581 </b
+          >discussion<b> </b>lib/platform/windows/keyboard.c<b>
+            &#x2014; Windows keyboard switch has distinct VK_* cases; the
+            reported branches and state variables are used in the Windows build.
+            #588 </b
+          >discussion<b> </b><b>src/discovery/session.c</b
+          ><b>
+            &#x2014; Integer constants are valid C arguments to size_t
+            parameters. #605 </b
+          >discussion<b> </b><b>lib/audio/opus.c</b
+          ><b>
+            &#x2014; The apparent declarations are arguments to the Opus decoder
+            call; the output parameters are used. #605 </b
+          >discussion<b> </b><b>lib/audio/opus.c</b
+          ><b>
+            &#x2014; The apparent declarations are arguments to the Opus decoder
+            call; the output parameters are used. #606 </b
+          >discussion<b> </b><b>src/session/h265/client.c</b
+          ><b>
+            &#x2014; The bounds check remains necessary for 32-bit size_t.</b
+          >
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Not_applicable_(4)">
+          <a class="permalink" href="#Not_applicable_(4)">Not applicable (4)</a>
+        </h1>
+        <p class="Pp">
+          PR Comment Current path / assessment #478 discussion
+          lib/audio/CMakeLists.txt #489 discussion lib/platform/posix/keyboard.c
+          #567 discussion tests/integration/test_otel.py #567 discussion
+          tests/CMakeLists.txt
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Declined_by_the_user_(1)">
+          <a class="permalink" href="#Declined_by_the_user_(1)"
+            >Declined by the user (1)</a
+          >
+        </h1>
+        <p class="Pp">
+          PR Comment Current path / assessment #454 discussion
+          web/www/public/ascii-chat-man1.html &#x2014; User declined the manpage
+          edit.
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Review-body_findings">
+          <a class="permalink" href="#Review-body_findings"
+            >Review-body findings</a
+          >
+        </h1>
+        <ul class="Bl-bullet">
+          <li>
+            #460 rainbow output and #489 key-byte logging: fixed in this PR.
+          </li>
+          <li>
+            #530 encrypted packet CRC: addressed in the <b>earlier audit</b>.
+          </li>
+          <li>
+            #526 host packet accounting: the earlier follow-up removed the
+            duplicate count and recorded it in the same audit.
+          </li>
+          <li>
+            #529 keyboard cleanup: the input worker initializes the keyboard
+            after thread creation succeeds, so a thread-creation failure does
+            not initialize or destroy the keyboard shared with the required sync
+            screen.
+          </li>
+          <li>
+            #564 update cache: path joining is already corrected; helper probing
+            was moved before presentation and its cache made atomic in this PR.
+            The formatting report was checked against current formatting.
+          </li>
+          <li>
+            #565 log selection and highlighting: current log rendering retains
+            the selected position by sequence and highlights matching text.
+          </li>
+          <li>
+            #567 early telemetry options: fixed in this PR by using the option
+            registry during early mode detection.
+          </li>
+          <li>
+            #578 TOML mode validation and non-PCH header: already present in
+            current code. Its hosted URL and bind-address review is addressed by
+            the existing explicit network-isolation requirement and the bind
+            validation in this PR; the application does not itself enforce that
+            egress policy.
+          </li>
+          <li>
+            #581 word deletion: current editor uses an ASCII-only whitespace
+            predicate.
+          </li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Nitpicks_in_review_bodies">
+          <a class="permalink" href="#Nitpicks_in_review_bodies"
+            >Nitpicks in review bodies</a
+          >
+        </h1>
+        <ul class="Bl-bullet">
+          <li>
+            #448 regex fallback: the fallback probe now runs on all platforms
+            using the explicit JIT-disable setting.
+          </li>
+          <li>
+            #459 discovery callback: current code copies the error fields under
+            the mutex.
+          </li>
+          <li>
+            #473 video restoration: the integration predicate now requires a
+            dense, multicolored video frame. The full Windows integration script
+            passes with a terminal tall enough for the help screen.
+          </li>
+          <li>
+            #474 decoded-frame copy: retained the padded, aligned FFmpeg
+            conversion buffer and compact row copy. Direct writes would need
+            separately validated slot capacity and FFmpeg alignment across frame
+            widths.
+          </li>
+        </ul>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

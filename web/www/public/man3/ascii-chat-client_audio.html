@@ -1,0 +1,1275 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>client_audio(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">client_audio(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">client_audio(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">client_audio - Audio Processing</p>
+        <p class="Pp">
+          <br />
+          - &#x1F50A; Audio capture, playback, and sample processing
+        </p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Files">
+            <a class="permalink" href="#Files">Files</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            file <b>audio.c</b>
+            <br />
+            &#x1F50A; Client audio management: capture thread, sample
+            processing, and playback coordination file <b>audio.h</b>
+            <br />
+            ascii-chat Client Audio Processing Management Interface
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            void <b>audio_process_received_samples</b> (<b
+              >client_connection_t</b
+            >
+            *connection, const float *samples, int num_samples)
+            <br />
+            Process received audio samples from server. int
+            <b>audio_client_init</b>
+            (void)
+            <br />
+            Initialize audio subsystem. int <b>audio_start_thread</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            Start audio capture thread. void <b>audio_stop_thread</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            Stop audio capture thread. <b>bool</b>
+            <b>audio_thread_exited</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Check if audio capture thread has exited. void
+            <b>audio_cleanup</b> (void)
+            <br />
+            Cleanup audio subsystem. <b>client_audio_pipeline_t</b> *
+            <b>audio_get_pipeline</b> (<b>client_connection_t</b>
+            *connection)
+            <br />
+            Get the audio pipeline (for advanced usage). int
+            <b>audio_decode_opus</b> (<b>client_connection_t</b> *connection,
+            const <b>uint8_t</b> *opus_data, size_t opus_len, float *output, int
+            max_samples)
+            <br />
+            Decode Opus packet using the audio pipeline.
+            <b>audio_context_t</b> * <b>audio_get_context</b> (void)
+            <br />
+            Get the global audio context for use by other subsystems.
+            <b>asciichat_error_t</b> <b>audio_sender_init</b> (<b
+              >client_connection_t</b
+            >
+            *connection)
+            <br />
+            Initialize audio sender thread.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          &#x1F50A; Audio capture, playback, and sample processing
+        </p>
+        <p class="Pp">Audio Processing</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Overview">
+          <a class="permalink" href="#Overview">Overview</a>
+        </h1>
+        <p class="Pp">
+          The client audio subsystem manages PortAudio initialization, audio
+          capture from microphone, transmission to server, and playback of
+          received audio samples with jitter buffering.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp">
+          <b>Implementation</b>: <b>src/client/audio.c</b>,
+          <b>src/client/audio.h</b>
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Configuration">
+          <a class="permalink" href="#Configuration">Configuration</a>
+        </h1>
+        <p class="Pp"><b>Audio Parameters</b>:</p>
+        <ul class="Bl-bullet">
+          <li>Sample rate: 44100 Hz</li>
+          <li>Channels: 1 (mono)</li>
+          <li>Format: 32-bit float</li>
+          <li>Batch size: 256 samples (~5.8ms @ 44.1kHz)</li>
+          <li>Ring buffer: 8192 samples (~185ms jitter buffer)</li>
+        </ul>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Audio_Capture_Thread">
+          <a class="permalink" href="#Audio_Capture_Thread"
+            >Audio Capture Thread</a
+          >
+        </h1>
+        <pre>static void *audio_capture_thread_func(void *arg)
+{
+<br/>
+  (void)arg;
+<br/>
+  float capture_buffer[AUDIO_BATCH_SIZE];
+<br/>
+  while (!should_exit() &amp;&amp; server_connection_is_active()) {
+<br/>
+    // Capture audio samples from microphone
+<br/>
+    int samples_captured = audio_capture_samples(capture_buffer, AUDIO_BATCH_SIZE);
+<br/>
+    if (samples_captured &gt; 0) {
+<br/>
+      // Send to server
+<br/>
+      send_packet_to_server(PACKET_TYPE_AUDIO, capture_buffer,
+<br/>
+                           samples_captured * sizeof(float),
+<br/>
+                           server_connection_get_client_id());
+<br/>
+    }
+<br/>
+    // Small sleep to avoid busy loop
+<br/>
+    platform_sleep_usec(1000);  // 1ms
+<br/>
+  }
+<br/>
+  atomic_store(&amp;g_audio_thread_exited, true);
+<br/>
+  return NULL;
+}</pre>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Audio_Playback">
+          <a class="permalink" href="#Audio_Playback">Audio Playback</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Jitter_Buffering">
+            <a class="permalink" href="#Jitter_Buffering">Jitter Buffering</a>
+          </h2>
+          <pre>void audio_process_received_samples(const float *samples, int num_samples)
+{
+<br/>
+  // Write to ring buffer for jitter compensation
+<br/>
+  audio_ringbuffer_write(&amp;g_playback_ringbuffer, samples, num_samples);
+<br/>
+  // PortAudio callback reads from ring buffer
+}
+static int audio_playback_callback(const void *input, void *output,
+<br/>
+                                   unsigned long frameCount,
+<br/>
+                                   const PaStreamCallbackTimeInfo *timeInfo,
+<br/>
+                                   PaStreamCallbackFlags statusFlags,
+<br/>
+                                   void *userData)
+{
+<br/>
+  (void)input; (void)timeInfo; (void)statusFlags; (void)userData;
+<br/>
+  float *out = (float *)output;
+<br/>
+  // Read from ring buffer
+<br/>
+  int samples_read = audio_ringbuffer_read(&amp;g_playback_ringbuffer, out, frameCount);
+<br/>
+  // Fill remaining with silence if underrun
+<br/>
+  if (samples_read &lt; (int)frameCount) {
+<br/>
+    memset(&amp;out[samples_read], 0, (frameCount - samples_read) * sizeof(float));
+<br/>
+  }
+<br/>
+  return paContinue;
+}</pre>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>src/client/audio.c</b>
+            <p class="Pp"></p>
+            <p class="Pp"><b>src/client/audio.h</b></p>
+            <p class="Pp"></p>
+            <p class="Pp">lib/audio.h</p>
+            <p class="Pp"></p>
+            <p class="Pp"><b>Client Overview</b></p>
+          </div>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_cleanup_()">
+            <a class="permalink" href="#void_audio_cleanup_()"
+              >void audio_cleanup ()</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>src/client/audio.c</b>&gt;<b></b></p>
+          <p class="Pp">Cleanup audio subsystem. Cleanup audio subsystem</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Stops audio threads and cleans up PortAudio resources. Called during
+            client shutdown.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Closes PortAudio stream and releases audio resources. Must be called
+            after
+            <b>audio_stop_thread()</b> and before process exit.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">The cleanup process:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Stops PortAudio stream (interrupts playback)</dd>
+            <dt>2.</dt>
+            <dd>Closes audio device</dd>
+            <dt>3.</dt>
+            <dd>Destroys Opus encoder/decoder</dd>
+            <dt>4.</dt>
+            <dd>Frees ring buffer</dd>
+            <dt>5.</dt>
+            <dd>Terminates PortAudio</dd>
+          </dl>
+          <p class="Pp">
+            Must be called in proper order during shutdown to avoid resource
+            leaks.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>audio_client_init</b> &quot;Initialize audio subsystem&quot;
+          </div>
+          <p class="Pp">
+            Definition at line <b>1150</b> of file <b>src/client/audio.c</b>.
+          </p>
+          <pre>
+1150                      {
+1151   if (!GET_OPTION(audio_enabled)) {
+1152     return;
+1153   }
+1154
+1155   // Connection workers have joined before application audio cleanup.
+1156
+1157   // Stop audio stream before destroying pipeline to prevent race condition.
+1158   // PortAudio may invoke the callback one more time after we request stop.
+1159   // We need to clear the pipeline pointer first so the callback can't access freed memory.
+1160   if (g_audio_context.initialized) {
+1161     audio_stop_duplex(&amp;g_audio_context);
+1162   }
+1163
+1164   // Clear the pipeline pointer from audio context BEFORE destroying pipeline
+1165   // This prevents any lingering PortAudio callbacks from trying to access freed memory
+1166   audio_set_pipeline(&amp;g_audio_context, NULL);
+1167   audio_terminate_portaudio_final();
+1168
+1169   // Sleep to allow CoreAudio threads to finish executing callbacks.
+1170   // On macOS, CoreAudio's internal threads may continue running after Pa_StopStream() returns.
+1171   // The duplex_callback may still be in-flight on other threads. Even after we set the pipeline
+1172   // pointer to NULL, a CoreAudio thread may have already cached the pointer before the assignment.
+1173   // This sleep ensures all in-flight callbacks have fully completed before we destroy the pipeline.
+1174   // WORKAROUND: Skip sleep during shutdown (process is exiting anyway)
+1175   // 500ms is sufficient on macOS for CoreAudio's internal thread pool to completely wind down.
+1176   // platform_sleep_us(500 * US_PER_MS_INT); // 500ms - macOS CoreAudio needs time to shut down all threads
+1177
+1178   // Close WAV dumpers
+1179   if (g_wav_capture_raw) {
+1180     wav_writer_close(g_wav_capture_raw);
+1181     g_wav_capture_raw = NULL;
+1182     log_debug(&quot;Closed audio capture raw dump&quot;);
+1183   }
+1184   if (g_wav_capture_processed) {
+1185     wav_writer_close(g_wav_capture_processed);
+1186     g_wav_capture_processed = NULL;
+1187     log_debug(&quot;Closed audio capture processed dump&quot;);
+1188   }
+1189   if (g_wav_playback_received) {
+1190     wav_writer_close(g_wav_playback_received);
+1191     g_wav_playback_received = NULL;
+1192     log_debug(&quot;Closed audio playback received dump&quot;);
+1193   }
+1194
+1195   // Finally destroy the audio context
+1196   if (g_audio_context.initialized) {
+1197     audio_destroy(&amp;g_audio_context);
+1198   }
+1199 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_cleanup()</b>, <b>audio_destroy()</b>,
+            <b>audio_set_pipeline()</b>, <b>audio_stop_duplex()</b>,
+            <b>audio_terminate_portaudio_final()</b>, <b>GET_OPTION</b>,
+            <b>log_debug</b>, and <b>wav_writer_close()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_cleanup()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_audio_client_init_()">
+            <a class="permalink" href="#int_audio_client_init_()"
+              >int audio_client_init ()</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>src/client/audio.c</b>&gt;<b></b></p>
+          <p class="Pp">
+            Initialize audio subsystem. Initialize audio subsystem
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Sets up PortAudio context, creates the audio pipeline, and starts
+            audio playback/capture if audio is enabled.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, negative on error</div>
+          <p class="Pp">
+            Sets up PortAudio, selects audio device, and initializes Opus codec.
+            Must be called before spawning audio threads.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Initialization steps:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Initialize PortAudio library</dd>
+            <dt>2.</dt>
+            <dd>Enumerate audio devices (for --audio-device selection)</dd>
+            <dt>3.</dt>
+            <dd>
+              Open audio device for input (microphone) and output (speakers)
+            </dd>
+            <dt>4.</dt>
+            <dd>Create Opus encoder for capture</dd>
+            <dt>5.</dt>
+            <dd>Create Opus decoder for playback</dd>
+            <dt>6.</dt>
+            <dd>Initialize ring buffer for jitter buffering</dd>
+            <dt>7.</dt>
+            <dd>Start PortAudio stream</dd>
+          </dl>
+          <p class="Pp"><b>Options affecting initialization</b>:</p>
+          <ul class="Bl-bullet">
+            <li>
+              --audio-device &lt;index&gt;: Which audio device to use (default:
+              system default)
+            </li>
+            <li>
+              --<b>Audio</b><b> flag must be set (audio disabled by default)</b>
+            </li>
+          </ul>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            0 on success, negative on error:
+            <ul class="Bl-bullet">
+              <li>ERROR_AUDIO: Device not found or PortAudio error</li>
+              <li>ERROR_MEMORY: Insufficient memory for buffers</li>
+            </ul>
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Optional - only called if --audio flag is set. Client works without
+            audio (defaults to disabled).
+          </div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>audio_cleanup</b> &quot;Cleanup audio resources&quot;
+          </div>
+          <p class="Pp">
+            Definition at line <b>883</b> of file <b>src/client/audio.c</b>.
+          </p>
+          <pre>
+883                         {
+884   if (!GET_OPTION(audio_enabled)) {
+885     return 0; // Audio disabled - not an error
+886   }
+887
+888   // Use lifecycle to ensure only one thread initializes audio at a time
+889   // This prevents race conditions in worker thread creation
+890   if (!lifecycle_init_once(&amp;g_audio_client_init_lc)) {
+891     // Another thread is already initializing, wait for it to complete
+892     while (!lifecycle_is_initialized(&amp;g_audio_client_init_lc)) {
+893       platform_sleep_us(1000); // 1ms
+894     }
+895     return 0; // Already initialized by another thread
+896   }
+897
+898   // Clean up previous audio context if it was already initialized
+899   // This prevents leaks and thread creation issues on reconnection
+900   if (g_audio_context.initialized) {
+901     log_debug(&quot;Cleaning up previous audio context before reinitializing&quot;);
+902     audio_destroy(&amp;g_audio_context);
+903     // NOTE: Do NOT reset lifecycle - keep it INITIALIZED so only ONE global
+904     // audio context is ever created. Subsequent calls will return early.
+905   }
+906
+907   // Initialize WAV dumper for received audio if debugging enabled
+908   if (wav_dump_enabled()) {
+909     char tmp[PLATFORM_MAX_PATH_LENGTH];
+910     if (audio_dump_directory(tmp, sizeof(tmp))) {
+911       char path[PLATFORM_MAX_PATH_LENGTH];
+912       safe_snprintf(path, sizeof(path), &quot;%s/audio_playback_received.wav&quot;, tmp);
+913       g_wav_playback_received = wav_writer_open(path, AUDIO_SAMPLE_RATE, AUDIO_CHANNELS);
+914       if (g_wav_playback_received) {
+915         log_debug(&quot;Audio debugging enabled: dumping received audio to %s&quot;, path);
+916       }
+917     }
+918   }
+919
+920   // Initialize PortAudio context using library function
+921   log_debug(&quot;About to call audio_init()...&quot;);
+922   if (audio_init(&amp;g_audio_context) != ASCIICHAT_OK) {
+923     log_error(&quot;Failed to initialize audio system&quot;);
+924     // Clean up WAV writer if it was opened
+925     if (g_wav_playback_received) {
+926       wav_writer_close(g_wav_playback_received);
+927       g_wav_playback_received = NULL;
+928     }
+929     lifecycle_init_abort(&amp;g_audio_client_init_lc);
+930     return -1;
+931   }
+932   log_debug(&quot;audio_init() completed successfully&quot;);
+933
+934   // Initialize WAV dumpers only once (file handles persist)
+935   if (wav_dump_enabled()) {
+936     char tmp[PLATFORM_MAX_PATH_LENGTH];
+937     if (audio_dump_directory(tmp, sizeof(tmp))) {
+938       char path[PLATFORM_MAX_PATH_LENGTH];
+939       safe_snprintf(path, sizeof(path), &quot;%s/audio_capture_raw.wav&quot;, tmp);
+940       g_wav_capture_raw = wav_writer_open(path, AUDIO_SAMPLE_RATE, AUDIO_CHANNELS);
+941       safe_snprintf(path, sizeof(path), &quot;%s/audio_capture_processed.wav&quot;, tmp);
+942       g_wav_capture_processed = wav_writer_open(path, AUDIO_SAMPLE_RATE, AUDIO_CHANNELS);
+943       log_debug(&quot;Audio debugging enabled: dumping to %s/audio_capture_*.wav&quot;, tmp);
+944     }
+945   }
+946
+947   lifecycle_init_commit(&amp;g_audio_client_init_lc);
+948
+949   return 0;
+950 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>AUDIO_CHANNELS</b>,
+            <b>audio_client_init()</b>, <b>audio_destroy()</b>,
+            <b>audio_init()</b>, <b>AUDIO_SAMPLE_RATE</b>, <b>GET_OPTION</b>,
+            <b>lifecycle_init_abort()</b>, <b>lifecycle_init_commit()</b>,
+            <b>lifecycle_init_once()</b>, <b>lifecycle_is_initialized()</b>,
+            <b>log_debug</b>, <b>log_error</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
+            <b>platform_sleep_us()</b>, <b>safe_snprintf()</b>,
+            <b>wav_dump_enabled()</b>, <b>wav_writer_close()</b>, and
+            <b>wav_writer_open()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_client_init()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_audio_decode_opus_(">
+            <a class="permalink" href="#int_audio_decode_opus_("
+              >int audio_decode_opus (<b>client_connection_t</b> * connection,
+              const <b>uint8_t</b> * opus_data, size_t opus_len, float * output,
+              int max_samples)</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>src/client/audio.c</b>&gt;<b></b></p>
+          <p class="Pp">Decode Opus packet using the audio pipeline.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>opus_data</i> Opus packet data
+            <br />
+            <i>opus_len</i> Opus packet length
+            <br />
+            <i>output</i> Output buffer for decoded samples
+            <br />
+            <i>max_samples</i> Maximum samples output buffer can hold
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Number of decoded samples, or negative on error
+          </div>
+          <p class="Pp">
+            Decodes a single Opus-encoded audio packet to PCM samples. Can be
+            used independently of the audio pipeline for testing or external
+            audio processing.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>opus_data</i> Opus packet data (variable-length frame)
+            <br />
+            <i>opus_len</i> Opus packet length in bytes
+            <br />
+            <i>output</i> Output buffer for decoded samples (float array)
+            <br />
+            <i>max_samples</i> Maximum samples output buffer can hold
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Number of decoded samples, or negative on error (invalid Opus data)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            The pipeline must be initialized (audio_client_init) for this to
+            work.
+          </div>
+          <p class="Pp">
+            Definition at line <b>1221</b> of file <b>src/client/audio.c</b>.
+          </p>
+          <pre>
+1222                                        {
+1223   if (!connection-&gt;audio_pipeline || !output || max_samples &lt;= 0) {
+1224     return -1;
+1225   }
+1226
+1227   return client_audio_pipeline_playback(connection-&gt;audio_pipeline, opus_data, (int)opus_len, output, max_samples);
+1228 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_decode_opus()</b>,
+            <b>client_connection::audio_pipeline</b>, and
+            <b>client_audio_pipeline_playback()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_decode_opus()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>audio_context_t</b> * audio_get_context (void )</h2>
+          <p class="Pp">#include &lt;<b>src/client/audio.c</b>&gt;<b></b></p>
+          <p class="Pp">
+            Get the global audio context for use by other subsystems.
+          </p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to the audio context, or NULL if not initialized
+          </div>
+          <p class="Pp">
+            Returns the audio context for access to low-level audio state. Used
+            by capture subsystem to enable microphone fallback when media file
+            has no audio.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to the audio context, or NULL if not initialized
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Most code should use the higher-level interface functions rather
+            than direct context access.
+          </div>
+          <p class="Pp">
+            Definition at line <b>1236</b> of file <b>src/client/audio.c</b>.
+          </p>
+          <pre>
+1236                                          {
+1237   return &amp;g_audio_context;
+1238 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">References <b>audio_get_context()</b>.</p>
+          <p class="Pp">
+            Referenced by <b>audio_get_context()</b>, and <b>capture_init()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>client_audio_pipeline_t</b> * audio_get_pipeline (<b
+              >client_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">#include &lt;<b>src/client/audio.c</b>&gt;<b></b></p>
+          <p class="Pp">Get the audio pipeline (for advanced usage).</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to the audio pipeline, or NULL if not initialized
+          </div>
+          <p class="Pp">
+            Returns the internal audio pipeline structure for direct access to
+            encoder/decoder or buffer manipulation (advanced usage only).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to the audio pipeline, or NULL if not initialized
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Most code should use <b>audio_process_received_samples()</b> and the
+            capture thread instead of direct pipeline access.
+          </div>
+          <p class="Pp">
+            Definition at line <b>1207</b> of file <b>src/client/audio.c</b>.
+          </p>
+          <pre>
+1207                                                                              {
+1208   return connection ? connection-&gt;audio_pipeline : NULL;
+1209 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_get_pipeline()</b>, and
+            <b>client_connection::audio_pipeline</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_get_pipeline()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_process_received_samples_(">
+            <a class="permalink" href="#void_audio_process_received_samples_("
+              >void audio_process_received_samples (<b>client_connection_t</b> *
+              connection, const float * samples, int num_samples)</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>src/client/audio.c</b>&gt;<b></b></p>
+          <p class="Pp">
+            Process received audio samples from server. Process received audio
+            samples from server
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">Uses the audio pipeline for processing:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Input validation and size checking</dd>
+            <dt>2.</dt>
+            <dd>Feed samples to pipeline (applies soft clipping)</dd>
+            <dt>3.</dt>
+            <dd>Feed echo reference for AEC</dd>
+            <dt>4.</dt>
+            <dd>Submit processed samples to PortAudio playback queue</dd>
+          </dl>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>samples</i> Raw audio sample data from server
+            <br />
+            <i>num_samples</i> Number of samples in the buffer
+          </div>
+          <p class="Pp">
+            Queues received audio samples for playback. Handles jitter buffering
+            to smooth out network timing variations. Called by protocol thread
+            when processing PACKET_TYPE_AUDIO_BATCH from server.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            The samples are queued in a ring buffer that smooths out timing
+            variations. The playback thread drains this buffer at a constant
+            rate.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>samples</i> Audio sample data from server (32-bit float,
+            interleaved stereo)
+            <br />
+            <i>num_samples</i> Number of samples in buffer
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This is called by the protocol thread - must be thread-safe. Ring
+            buffer handles synchronization internally.
+          </div>
+          <p class="Pp">
+            Definition at line <b>394</b> of file <b>src/client/audio.c</b>.
+          </p>
+          <pre>
+394                                                                                                             {
+395   // Validate parameters
+396   if (!connection || !connection-&gt;audio_context || !samples || num_samples &lt;= 0) {
+397     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid audio samples: samples=%p, num_samples=%d&quot;, (void *)samples, num_samples);
+398     return;
+399   }
+400
+401   if (!GET_OPTION(audio_enabled)) {
+402     log_warn_every(NS_PER_MS_INT, &quot;Received audio samples but audio is disabled&quot;);
+403     return;
+404   }
+405
+406   // Allow both single packets and batched packets
+407   if (num_samples &gt; AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS || num_samples % AUDIO_CHANNELS) {
+408     log_warn(&quot;Invalid audio sample count: %d (maximum %d)&quot;, num_samples,
+409              AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS);
+410     return;
+411   }
+412
+413   // Calculate RMS energy of received samples
+414   float sum_squares = 0.0f;
+415   for (int i = 0; i &lt; num_samples; i++) {
+416     sum_squares += samples[i] * samples[i];
+417   }
+418   float received_rms = sqrtf(sum_squares / num_samples);
+419
+420   // DUMP: Received audio from server (before playback processing)
+421   if (g_wav_playback_received) {
+422     wav_writer_write(g_wav_playback_received, samples, num_samples);
+423   }
+424
+425   // Track samples for analysis
+426   if (GET_OPTION(audio_analysis_enabled)) {
+427     for (int i = 0; i &lt; num_samples; i += AUDIO_CHANNELS) {
+428       audio_analysis_track_received_sample((samples[i] + samples[i + 1]) * 0.5f);
+429     }
+430   }
+431
+432   // Copy samples to playback buffer (no processing needed - mixer already handled clipping)
+433   float audio_buffer[AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS];
+434   memcpy(audio_buffer, samples, (size_t)num_samples * sizeof(float));
+435
+436   // DEBUG: Log what we're writing to playback buffer (with first 4 samples to verify audio integrity)
+437   int recv_count = ++connection-&gt;audio_receive_count;
+438   if (recv_count &lt;= 10 || recv_count % 50 == 0) {
+439     float peak = 0.0f;
+440     for (int i = 0; i &lt; num_samples; i++) {
+441       float abs_val = fabsf(samples[i]);
+442       if (abs_val &gt; peak)
+443         peak = abs_val;
+444     }
+445     log_debug(&quot;CLIENT AUDIO RECV #%d: %d samples, RMS=%.6f, Peak=%.6f, first4=[%.4f,%.4f,%.4f,%.4f]&quot;, recv_count,
+446               num_samples, received_rms, peak, num_samples &gt; 0 ? samples[0] : 0.0f, num_samples &gt; 1 ? samples[1] : 0.0f,
+447               num_samples &gt; 2 ? samples[2] : 0.0f, num_samples &gt; 3 ? samples[3] : 0.0f);
+448   }
+449
+450   // Submit to playback system (goes to jitter buffer and speakers)
+451   // NOTE: AEC3's AnalyzeRender is called in output_callback() when audio actually plays,
+452   // NOT here. The jitter buffer adds 50-100ms delay, so calling AnalyzeRender here
+453   // would give AEC3 the wrong timing and break echo cancellation.
+454   audio_write_samples(connection-&gt;audio_context, audio_buffer, num_samples);
+455
+456   // Log latency after writing to playback buffer
+457   if (connection-&gt;audio_context-&gt;playback_buffer) {
+458     size_t buffer_samples = audio_ring_buffer_available_read(connection-&gt;audio_context-&gt;playback_buffer);
+459     float buffer_latency_ms = (float)buffer_samples * 1000.0f / (AUDIO_SAMPLE_RATE * AUDIO_CHANNELS);
+460     log_dev_every(500 * US_PER_MS_INT, &quot;LATENCY: Client playback buffer after recv: %.1fms (%zu samples)&quot;,
+461                   buffer_latency_ms, buffer_samples);
+462   }
+463
+464 #ifdef DEBUG_AUDIO
+465   log_debug_every(US_PER_SEC_INT, &quot;Processed %d received audio samples&quot;, num_samples);
+466 #endif
+467 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>audio_analysis_track_received_sample()</b>,
+            <b>AUDIO_CHANNELS</b>, <b>client_connection::audio_context</b>,
+            <b>AUDIO_OPUS_MAX_DECODE_SAMPLES</b>,
+            <b>audio_process_received_samples()</b>,
+            <b>client_connection::audio_receive_count</b>,
+            <b>audio_ring_buffer_available_read()</b>, <b>AUDIO_SAMPLE_RATE</b>,
+            <b>audio_write_samples()</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>GET_OPTION</b>, <b>log_debug</b>, <b>log_debug_every</b>,
+            <b>log_dev_every</b>, <b>log_warn</b>, <b>log_warn_every</b>,
+            <b>NS_PER_MS_INT</b>, <b>audio_context_t::playback_buffer</b>,
+            <b>SET_ERRNO</b>, <b>US_PER_MS_INT</b>, <b>US_PER_SEC_INT</b>, and
+            <b>wav_writer_write()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_process_received_samples()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> audio_sender_init (<b
+              >client_connection_t</b
+            >
+            * connection)
+          </h2>
+          <p class="Pp">#include &lt;<b>src/client/audio.h</b>&gt;<b></b></p>
+          <p class="Pp">
+            Initialize audio sender thread. Initialize async audio sender queue
+            and thread.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Spawns the audio sender thread in the worker pool. This thread pulls
+            packets from the send queue (populated by the capture thread) and
+            sends them to the server.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Must be called after <b>audio_client_init()</b> and BEFORE
+            <b>audio_start_thread()</b> during protocol_start_connection() after
+            server connection succeeds.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            This is called automatically by protocol_start_connection() and
+            should not be called directly in most code.
+          </div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>audio_start_thread</b> &quot;Start audio capture thread&quot;
+          </div>
+          <p class="Pp">Initialize audio sender thread.</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Uses mutex protection to prevent TOCTOU race conditions where
+            multiple threads might attempt initialization simultaneously.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Called from protocol_start_connection() after server connection
+            succeeds, to prevent deadlock if connection fails before capture
+            thread starts.
+          </p>
+          <p class="Pp">
+            Definition at line <b>306</b> of file <b>src/client/audio.c</b>.
+          </p>
+          <pre>
+306                                                                      {
+307   if (mutex_init(&amp;connection-&gt;audio_send_queue_mutex, &quot;audio_send_queue_mutex&quot;) != 0) {
+308     return SET_ERRNO(ERROR_THREAD, &quot;Audio queue mutex initialization failed&quot;);
+309   }
+310   connection-&gt;audio_queue_mutex_initialized = true;
+311   if (client_connection_checkpoint(&quot;audio-queue-mutex&quot;) != ASCIICHAT_OK)
+312     return ERROR_THREAD;
+313   if (cond_init(&amp;connection-&gt;audio_send_queue_cond, &quot;audio_send_queue_cond&quot;) != 0) {
+314     return SET_ERRNO(ERROR_THREAD, &quot;Audio queue condition initialization failed&quot;);
+315   }
+316   connection-&gt;audio_queue_cond_initialized = true;
+317   lifecycle_init(&amp;connection-&gt;audio_send_queue_lc, &quot;audio_queue&quot;);
+318   if (client_connection_checkpoint(&quot;audio-queue&quot;) != ASCIICHAT_OK)
+319     return ERROR_THREAD;
+320   if (connection-&gt;transport &amp;&amp; connection-&gt;transport-&gt;outbound) {
+321     // Admission copies bounded audio into the transport queue without socket I/O.
+322     connection-&gt;audio_send_direct = true;
+323     atomic_store_bool(&amp;connection-&gt;audio_sender_exited, true);
+324     return client_connection_checkpoint(&quot;audio-sender&quot;);
+325   }
+326   asciichat_error_t result =
+327       thread_pool_spawn(connection-&gt;client_worker_pool, audio_sender_thread_func, connection, 5, &quot;audio_sender&quot;);
+328   if (result != ASCIICHAT_OK)
+329     return result;
+330   connection-&gt;audio_sender_thread_created = true;
+331   return client_connection_checkpoint(&quot;audio-sender&quot;);
+332 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_store_bool()</b>,
+            <b>client_connection::audio_queue_cond_initialized</b>,
+            <b>client_connection::audio_queue_mutex_initialized</b>,
+            <b>client_connection::audio_send_direct</b>,
+            <b>client_connection::audio_send_queue_cond</b>,
+            <b>client_connection::audio_send_queue_lc</b>,
+            <b>client_connection::audio_send_queue_mutex</b>,
+            <b>client_connection::audio_sender_exited</b>,
+            <b>audio_sender_init()</b>,
+            <b>client_connection::audio_sender_thread_created</b>,
+            <b>client_connection_checkpoint()</b>,
+            <b>client_connection::client_worker_pool</b>, <b>cond_init()</b>,
+            <b>ERROR_THREAD</b>, <b>lifecycle_init()</b>, <b>mutex_init()</b>,
+            <b>acip_transport::outbound</b>, <b>SET_ERRNO</b>,
+            <b>thread_pool_spawn()</b>, and <b>client_connection::transport</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_sender_init()</b>, and
+            <b>client_protocol_start()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_audio_start_thread_(">
+            <a class="permalink" href="#int_audio_start_thread_("
+              >int audio_start_thread (<b>client_connection_t</b> *
+              connection)</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>src/client/audio.c</b>&gt;<b></b></p>
+          <p class="Pp">
+            Start audio capture thread. Start audio capture thread
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Creates and starts the audio capture thread. Also sends stream start
+            notification to server.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">0 on success, negative on error</div>
+          <p class="Pp">
+            Spawns audio capture/transmission thread in global worker pool.
+            Thread continuously captures audio from microphone, encodes with
+            Opus, and sends to server.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">The capture loop:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Captures samples from PortAudio input stream</dd>
+            <dt>2.</dt>
+            <dd>Encodes with Opus encoder (variable bitrate)</dd>
+            <dt>3.</dt>
+            <dd>Sends PACKET_TYPE_AUDIO_OPUS packet to server</dd>
+            <dt>4.</dt>
+            <dd>Checks exit signals</dd>
+            <dt>5.</dt>
+            <dd>Repeats until exit signal or connection loss</dd>
+          </dl>
+          <p class="Pp">
+            Must be called after <b>audio_client_init()</b> and server
+            connection established.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            0 on success, negative on error (thread pool full)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Audio playback (from ring buffer) happens continuously in PortAudio
+            callback, not in a separate thread.
+          </div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>audio_stop_thread</b> &quot;Stop audio capture thread&quot;
+          </div>
+          <p class="Pp">
+            Definition at line <b>1006</b> of file <b>src/client/audio.c</b>.
+          </p>
+          <pre>
+1006                                                         {
+1007   if (!connection-&gt;audio_context)
+1008     return 0;
+1009   log_debug(&quot;audio_enabled=%d&quot;, GET_OPTION(audio_enabled));
+1010
+1011   if (!GET_OPTION(audio_enabled)) {
+1012     log_debug(&quot;Audio is disabled, skipping audio capture thread creation&quot;);
+1013     return 0; // Audio disabled - not an error
+1014   }
+1015
+1016   // Check if thread is already running (not just created flag)
+1017   if (connection-&gt;audio_capture_thread_created &amp;&amp; !atomic_load_bool(&amp;connection-&gt;audio_capture_thread_exited)) {
+1018     log_warn(&quot;Audio capture thread already running&quot;);
+1019     return 0;
+1020   }
+1021
+1022   // Note: STREAM_START for audio was already sent by protocol_start_connection()
+1023   // No need to send it again here - the protocol layer handles sending combined stream types
+1024
+1025   // Start audio capture thread
+1026   atomic_store_bool(&amp;connection-&gt;audio_capture_thread_exited, false);
+1027   if (thread_pool_spawn(connection-&gt;client_worker_pool, audio_capture_thread_func, connection, 4, &quot;audio_capture&quot;) !=
+1028       ASCIICHAT_OK) {
+1029     log_error(&quot;Failed to spawn audio capture thread in worker pool&quot;);
+1030     LOG_ERRNO_IF_SET(&quot;Audio capture thread creation failed&quot;);
+1031     return -1;
+1032   }
+1033
+1034   connection-&gt;audio_capture_thread_created = true;
+1035
+1036   return 0;
+1037 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>ASCIICHAT_OK</b>, <b>atomic_load_bool()</b>,
+            <b>atomic_store_bool()</b>,
+            <b>client_connection::audio_capture_thread_created</b>,
+            <b>client_connection::audio_capture_thread_exited</b>,
+            <b>client_connection::audio_context</b>,
+            <b>audio_start_thread()</b>,
+            <b>client_connection::client_worker_pool</b>, <b>GET_OPTION</b>,
+            <b>log_debug</b>, <b>LOG_ERRNO_IF_SET</b>, <b>log_error</b>,
+            <b>log_warn</b>, and <b>thread_pool_spawn()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>audio_start_thread()</b>, and
+            <b>client_protocol_start()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_audio_stop_thread_(">
+            <a class="permalink" href="#void_audio_stop_thread_("
+              >void audio_stop_thread (<b>client_connection_t</b> *
+              connection)</a
+            >
+          </h2>
+          <p class="Pp">#include &lt;<b>src/client/audio.c</b>&gt;<b></b></p>
+          <p class="Pp">Stop audio capture thread. Stop audio capture thread</p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Gracefully stops the audio capture thread and cleans up resources.
+            Safe to call multiple times.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">
+            Signals audio capture thread to exit and waits for it to join. Must
+            be called before reconnection or shutdown.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp">The function:</p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Sets exit flag</dd>
+            <dt>2.</dt>
+            <dd>Polls <b>audio_thread_exited()</b> until thread exits</dd>
+            <dt>3.</dt>
+            <dd>Drains remaining samples in ring buffer</dd>
+          </dl>
+          <p class="Pp">
+            Playback continues until ring buffer is empty (graceful fade-out).
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Audio playback thread is internal to PortAudio callback and
+            continues until PortAudio stream is closed in
+            <b>audio_cleanup()</b>.
+          </div>
+          <p class="Pp"><b>See also</b></p>
+          <div class="Bd-indent">
+            <b>audio_start_thread</b> &quot;Start audio capture thread&quot;
+          </div>
+          <p class="Pp">
+            Definition at line <b>1047</b> of file <b>src/client/audio.c</b>.
+          </p>
+          <pre>
+1047                                                         {
+1048   if (!connection || !connection-&gt;audio_context)
+1049     return;
+1050   // If audio was never initialized (e.g., in snapshot mode), nothing to stop
+1051   if (!connection-&gt;audio_context-&gt;initialized) {
+1052     log_debug(&quot;[AUDIO_STOP] Audio never initialized, nothing to stop&quot;);
+1053     return;
+1054   }
+1055
+1056   // Signal audio worker thread to exit first (stop processing)
+1057   log_debug(&quot;[AUDIO_STOP] Signaling audio worker thread to stop&quot;);
+1058   atomic_store_bool(&amp;connection-&gt;audio_context-&gt;worker_should_stop, true);
+1059   // Wake up the worker thread if it's waiting on condition variable
+1060   mutex_lock(&amp;connection-&gt;audio_context-&gt;audio_processing_wait_guard);
+1061   cond_signal(&amp;connection-&gt;audio_context-&gt;audio_processing_wakeup);
+1062   mutex_unlock(&amp;connection-&gt;audio_context-&gt;audio_processing_wait_guard);
+1063   log_debug(&quot;[AUDIO_STOP] Worker thread stop signal sent&quot;);
+1064
+1065   // Signal audio sender thread to exit first.
+1066   // This must happen before thread_pool_stop_all() is called, otherwise the sender
+1067   // thread will be stuck in cond_wait() and thread_pool_stop_all() will hang forever.
+1068   // The sender thread uses a condition variable to wait for packets - we must wake it up.
+1069   // NOTE: Only do this if audio_sender_init() was actually called
+1070   if (lifecycle_is_initialized(&amp;connection-&gt;audio_send_queue_lc)) {
+1071     log_debug(&quot;[AUDIO_STOP] Signaling audio sender thread to exit&quot;);
+1072     atomic_store_bool(&amp;connection-&gt;audio_sender_should_exit, true);
+1073     mutex_lock(&amp;connection-&gt;audio_send_queue_mutex);
+1074     cond_signal(&amp;connection-&gt;audio_send_queue_cond);
+1075     mutex_unlock(&amp;connection-&gt;audio_send_queue_mutex);
+1076     log_debug(&quot;[AUDIO_STOP] Signal sent to sender thread&quot;);
+1077
+1078     // Wait for audio sender thread to exit gracefully
+1079     // This must complete before thread_pool_stop_all() to prevent deadlock
+1080     // CRITICAL: Longer timeout to ensure thread completes any in-flight send operations
+1081     // Network operations can block for 10-50ms, so we need to wait longer
+1082     int wait_count = 0;
+1083     log_debug(&quot;[AUDIO_STOP] Waiting for sender thread to exit, max 500ms&quot;);
+1084     while (wait_count &lt; 50 &amp;&amp; !atomic_load_bool(&amp;connection-&gt;audio_sender_exited)) {
+1085       platform_sleep_us(10 * US_PER_MS_INT); // 10ms * 50 = 500ms max wait
+1086       wait_count++;
+1087     }
+1088
+1089     if (!atomic_load_bool(&amp;connection-&gt;audio_sender_exited)) {
+1090       log_warn(&quot;[AUDIO_STOP] Audio sender thread not responding after 500ms - will be joined by thread pool&quot;);
+1091     } else {
+1092       log_debug(&quot;[AUDIO_STOP] Sender thread exited successfully&quot;);
+1093     }
+1094   } else {
+1095     log_debug(&quot;[AUDIO_STOP] Audio sender was never initialized (connection failed), skipping sender shutdown&quot;);
+1096   }
+1097
+1098   log_debug(&quot;[AUDIO_STOP] Checking if capture thread was created: g_audio_capture_thread_created=%d&quot;,
+1099             connection-&gt;audio_capture_thread_created);
+1100   if (!THREAD_IS_CREATED(connection-&gt;audio_capture_thread_created)) {
+1101     log_debug(&quot;[AUDIO_STOP] Capture thread was not created, committing lifecycle and returning&quot;);
+1102     log_debug(&quot;[AUDIO_STOP] Lifecycle committed, returning&quot;);
+1103     return;
+1104   }
+1105   log_debug(&quot;[AUDIO_STOP] Capture thread was created, waiting for it to exit&quot;);
+1106
+1107   // Note: We don't call signal_exit() here because that's for global shutdown only
+1108   // The audio capture thread checks server_connection_is_active() to detect connection loss
+1109
+1110   // Wait for thread to exit gracefully
+1111   // Threads check should_exit() every 1-5ms, so timeout can be much shorter than 500ms
+1112   int wait_count2 = 0;
+1113   log_debug(&quot;[AUDIO_STOP] Waiting for capture thread to exit, max 50ms&quot;);
+1114   while (wait_count2 &lt; 5 &amp;&amp; !atomic_load_bool(&amp;connection-&gt;audio_capture_thread_exited)) {
+1115     platform_sleep_us(10 * US_PER_MS_INT); // 10ms * 5 = 50ms max wait (threads respond in ~1-5ms)
+1116     wait_count2++;
+1117   }
+1118
+1119   if (!atomic_load_bool(&amp;connection-&gt;audio_capture_thread_exited)) {
+1120     log_warn(&quot;[AUDIO_STOP] Audio capture thread not responding - will be joined by thread pool&quot;);
+1121   } else {
+1122     log_debug(&quot;[AUDIO_STOP] Capture thread exited successfully&quot;);
+1123   }
+1124
+1125   // Thread will be joined by thread_pool_stop_all() in client_connection_stop()
+1126   connection-&gt;audio_capture_thread_created = false;
+1127
+1128   log_debug(&quot;Audio capture thread stopped&quot;);
+1129 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
+            <b>client_connection::audio_capture_thread_created</b>,
+            <b>client_connection::audio_capture_thread_exited</b>,
+            <b>client_connection::audio_context</b>,
+            <b>audio_context_t::audio_processing_wait_guard</b>,
+            <b>audio_context_t::audio_processing_wakeup</b>,
+            <b>client_connection::audio_send_queue_cond</b>,
+            <b>client_connection::audio_send_queue_lc</b>,
+            <b>client_connection::audio_send_queue_mutex</b>,
+            <b>client_connection::audio_sender_exited</b>,
+            <b>client_connection::audio_sender_should_exit</b>,
+            <b>audio_stop_thread()</b>, <b>cond_signal()</b>,
+            <b>audio_context_t::initialized</b>,
+            <b>lifecycle_is_initialized()</b>, <b>log_debug</b>,
+            <b>log_warn</b>, <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>platform_sleep_us()</b>, <b>THREAD_IS_CREATED</b>,
+            <b>US_PER_MS_INT</b>, and
+            <b>audio_context_t::worker_should_stop</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_stop_thread()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>bool</b> audio_thread_exited (<b>client_connection_t</b> *
+            connection)
+          </h2>
+          <p class="Pp">#include &lt;<b>src/client/audio.c</b>&gt;<b></b></p>
+          <p class="Pp">
+            Check if audio capture thread has exited. Check if audio capture
+            thread has exited
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            true if thread has exited, false otherwise
+          </div>
+          <p class="Pp">
+            Atomically checks whether the audio capture thread has finished.
+            Main thread uses this to wait for clean shutdown before
+            reconnection.
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">true if thread exited, false otherwise</div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Playback thread (PortAudio callback) exits when PortAudio stream is
+            closed, not when capture thread exits.
+          </div>
+          <p class="Pp">
+            Definition at line <b>1138</b> of file <b>src/client/audio.c</b>.
+          </p>
+          <pre>
+1138                                                           {
+1139   return atomic_load_bool(&amp;connection-&gt;audio_capture_thread_exited);
+1140 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_load_bool()</b>,
+            <b>client_connection::audio_capture_thread_exited</b>, and
+            <b>audio_thread_exited()</b>.
+          </p>
+          <p class="Pp">Referenced by <b>audio_thread_exited()</b>.</p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

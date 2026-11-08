@@ -84,7 +84,7 @@ vendored C++ sources and model weights as well as the existing C/WASM sources.
 Generate an 18-second fixture from OpenCV's moving-face/occlusion clip:
 
 ```sh
-python tests/scripts/create_face_follow_fixture.py
+uv run --project tests/ascii_chat_tests --frozen python tests/scripts/create_face_follow_fixture.py
 cd web/web
 vp exec playwright test tests/e2e/face-follow.spec.ts --project chromium --workers 1
 ```

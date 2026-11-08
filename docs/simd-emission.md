@@ -107,7 +107,7 @@ Local validation on 2026-10-18:
   16, 32, 64, 128, and 256 bytes; a cortex-a53 run checks NEON without SVE.
 - Instruction audits find vector instructions in packing, lookup, quantization,
   run comparison, and half-block classification for all five backends. Repeat
-  with `python tests/simd/audit_cells.py build-emission/emission-test avx2`;
+  with `uv run --project tests/ascii_chat_tests --frozen python tests/simd/audit_cells.py build-emission/emission-test avx2`;
   for ARM pass `--objdump aarch64-linux-gnu-objdump` and backend `neon` or `sve`.
   Sample instructions for every stage are recorded in `instructions-x86.txt`
   and `instructions-arm.txt` alongside the CSV reports.
@@ -165,7 +165,7 @@ row-reset semantics are now normalized across all paths.
 To reproduce a baseline without changing the checkout:
 
 ```sh
-python tests/simd/export_emission_baseline.py c0b985af819da5b8238d16e733629727d68902a5 /tmp/emission-before
+uv run --project tests/ascii_chat_tests --frozen python tests/simd/export_emission_baseline.py c0b985af819da5b8238d16e733629727d68902a5 /tmp/emission-before
 cmake -S tests/simd -B build-emission-before -G Ninja -DCMAKE_C_COMPILER=clang \
   -DCMAKE_BUILD_TYPE=Release -DTEST_EMISSION=ON \
   -DEMISSION_BENCHMARK_BASELINE=/tmp/emission-before

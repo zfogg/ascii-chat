@@ -68,6 +68,7 @@ typedef struct mem_block {
   uint64_t tid;                                           // Allocating thread ID (for site lookup)
   char thread_name[DEBUG_MEMORY_THREAD_NAME_BUFFER_SIZE]; // Thread name from named registry
   bool is_aligned;
+  backtrace_t backtrace;
   struct mem_block *next;
 } mem_block_t;
 
@@ -415,6 +416,8 @@ void *debug_malloc(size_t size, const char *file, int line) {
 
     mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
     if (block) {
+      memset(&block->backtrace, 0, sizeof(block->backtrace));
+      backtrace_capture(&block->backtrace);
       block->ptr = ptr;
       block->size = size;
       block->is_aligned = false;
@@ -482,6 +485,8 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
 
     mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
     if (block) {
+      memset(&block->backtrace, 0, sizeof(block->backtrace));
+      backtrace_capture(&block->backtrace);
       block->ptr = ptr;
       block->size = size;
       block->is_aligned = true;
@@ -641,6 +646,8 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
 
     mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
     if (block) {
+      memset(&block->backtrace, 0, sizeof(block->backtrace));
+      backtrace_capture(&block->backtrace);
       block->ptr = ptr;
       block->size = total;
       block->is_aligned = false;
@@ -830,6 +837,8 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
       }
 
       // Update block with new metadata
+      memset(&curr->backtrace, 0, sizeof(curr->backtrace));
+      backtrace_capture(&curr->backtrace);
       curr->ptr = new_ptr;
       const char *normalized_file = extract_project_relative_path(file);
       SAFE_STRNCPY(curr->file, normalized_file, sizeof(curr->file) - 1);
@@ -854,6 +863,8 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
       // Block not found - create new tracking entry
       mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
       if (block) {
+        memset(&block->backtrace, 0, sizeof(block->backtrace));
+        backtrace_capture(&block->backtrace);
         block->ptr = new_ptr;
         block->size = size;
         block->is_aligned = false;
@@ -1167,6 +1178,18 @@ void debug_memory_report(void) {
       APPEND_REPORT("\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:"));
     }
 
+    // Bound the snapshot to keep reports usable when many allocations remain live.
+#define TRACE_SNAPSHOT_LIMIT 256
+    typedef struct {
+      backtrace_t backtrace;
+      size_t size;
+      char file[BUFFER_SIZE_SMALL];
+      int line;
+    } trace_snapshot_t;
+    trace_snapshot_t *trace_snapshot = malloc(TRACE_SNAPSHOT_LIMIT * sizeof(*trace_snapshot));
+    size_t trace_count = 0;
+    bool traces_truncated = trace_snapshot == NULL;
+
     if (g_site_cache && unfreed_count > 0) {
       if (ensure_mutex_initialized()) {
         if (!acquire_mutex_with_polling(&g_mem.mutex, 100)) {
@@ -1248,13 +1271,18 @@ void debug_memory_report(void) {
                         colored_string(LOG_COLOR_FATAL, line_str), colored_thread_name,
                         colored_string(size_color, count_str), colored_string(size_color, pretty_bytes));
 
-          // Don't synchronously symbolize backtraces during memory report - symbolization is slow
-          // and can cause hangs during shutdown. Instead, backtraces will be symbolized asynchronously
-          // by the debug sync thread. Just print whatever symbols are available.
-          if (site->backtrace.symbols != NULL && site->backtrace.count > 0) {
-            APPEND_REPORT("    Backtrace (%d frames):\n", site->backtrace.count);
-            for (int i = 0; i < site->backtrace.count; i++) {
-              APPEND_REPORT("      [%d] %s\n", i, site->backtrace.symbols[i]);
+          // Copy live traces while locked; symbolization may allocate and must run unlocked.
+          for (mem_block_t *block = g_mem.head; block; block = block->next) {
+            if (block->line == line && block->tid == tid && strcmp(block->file, file) == 0) {
+              if (trace_snapshot && trace_count < TRACE_SNAPSHOT_LIMIT) {
+                trace_snapshot[trace_count].backtrace = block->backtrace;
+                trace_snapshot[trace_count].size = block->size;
+                safe_snprintf(trace_snapshot[trace_count].file, sizeof(trace_snapshot[trace_count].file), "%s", file);
+                trace_snapshot[trace_count].line = line;
+                trace_count++;
+              } else {
+                traces_truncated = true;
+              }
             }
           }
         }
@@ -1268,6 +1296,29 @@ void debug_memory_report(void) {
     }
 
   skip_allocations_list:
+    // Do not hold the allocation mutex while resolving symbols: platform symbolizers
+    // can allocate or acquire other locks. The copied addresses remain valid.
+    for (size_t trace_index = 0; trace_index < trace_count; trace_index++) {
+      trace_snapshot_t *trace = &trace_snapshot[trace_index];
+      APPEND_REPORT("\n  Allocation from %s:%d (%zu bytes):\n", trace->file, trace->line, trace->size);
+      bool was_in_debug_memory = g_in_debug_memory;
+      g_in_debug_memory = true;
+      backtrace_symbolize(&trace->backtrace);
+      for (int i = 0; i < trace->backtrace.count; i++) {
+        if (trace->backtrace.symbols && trace->backtrace.symbols[i]) {
+          APPEND_REPORT("    [%d] %s\n", i, trace->backtrace.symbols[i]);
+        } else {
+          APPEND_REPORT("    [%d] %p\n", i, trace->backtrace.ptrs[i]);
+        }
+      }
+      backtrace_t_free(&trace->backtrace);
+      g_in_debug_memory = was_in_debug_memory;
+    }
+    if (traces_truncated && unfreed_count > 0) {
+      APPEND_REPORT("  (allocation traces truncated or unavailable)\n");
+    }
+    free(trace_snapshot);
+#undef TRACE_SNAPSHOT_LIMIT
 
     // SKIP cleanup site cache at shutdown
     // We used to clean up the hash table here, but HASH_DEL inside HASH_ITER causes
@@ -1307,93 +1358,10 @@ typedef struct {
 } debug_memory_request_t;
 
 static debug_memory_request_t g_debug_memory_request = {false, false, false, {0}, {0}, false};
-static asciichat_thread_t g_debug_memory_thread;
-
-/**
- * @brief Thread function for memory report printing
- *
- * Waits for SIGUSR2 signal or explicit trigger. When triggered,
- * prints the memory report on this thread rather than in signal context.
- */
-static void *debug_memory_thread_fn(void *arg) {
-  (void)arg;
-
-  while (!g_debug_memory_request.should_exit) {
-    mutex_lock(&g_debug_memory_request.mutex);
-
-    if ((g_debug_memory_request.should_run || g_debug_memory_request.signal_triggered) &&
-        !g_debug_memory_request.should_exit) {
-      mutex_unlock(&g_debug_memory_request.mutex);
-      debug_memory_report();
-      mutex_lock(&g_debug_memory_request.mutex);
-      g_debug_memory_request.should_run = false;
-      g_debug_memory_request.signal_triggered = false;
-    }
-
-    // Wait for work or signal, with 100ms timeout to check should_exit
-    if (!g_debug_memory_request.should_exit) {
-      cond_timedwait(&g_debug_memory_request.cond, &g_debug_memory_request.mutex, 100000000); // 100ms
-    }
-    mutex_unlock(&g_debug_memory_request.mutex);
-  }
-  return NULL;
-}
-
-/**
- * @brief Initialize memory debug thread resources
- */
-int debug_memory_thread_init(void) {
-  return 0;
-}
-
-/**
- * @brief Start the memory debug thread
- */
-int debug_memory_thread_start(void) {
-  if (!g_debug_memory_request.initialized) {
-    mutex_init(&g_debug_memory_request.mutex, "debug_memory_state");
-    cond_init(&g_debug_memory_request.cond, "debug_memory_signal");
-    g_debug_memory_request.initialized = true;
-  }
-
-  g_debug_memory_request.should_exit = false;
-  int err = acthread_create(&g_debug_memory_thread, "debug_memory", debug_memory_thread_fn, NULL);
-  return err;
-}
 
 /**
  * @brief Trigger memory report from SIGUSR2 handler
  */
-void debug_memory_trigger_report(void) {
-  g_debug_memory_request.signal_triggered = true;
-  cond_signal(&g_debug_memory_request.cond);
-}
-
-/**
- * @brief Stop the memory debug thread
- */
-void debug_memory_thread_cleanup(void) {
-  // Only join if thread was actually created
-  if (!g_debug_memory_request.initialized) {
-    return;
-  }
-
-  g_debug_memory_request.initialized = false; // Prevent double-join
-
-  // Set exit flag and signal thread - don't acquire mutex to avoid deadlock
-  // The thread reads should_exit without locking, and cond_signal is safe without mutex
-  g_debug_memory_request.should_exit = true;
-  cond_signal(&g_debug_memory_request.cond);
-
-  // Use timeout join to prevent indefinite hang if debug thread is stuck
-  // Matches pattern used in debug_stats_cleanup_thread() which has 1 second timeout
-  int join_result = thread_join_timeout(&g_debug_memory_thread, NULL, 1000000000ULL); // 1 second timeout
-  if (join_result != 0) {
-    // Thread didn't exit cleanly, but we still need to proceed with shutdown
-    // Log a warning if logging is still available
-  }
-}
-
 void debug_sync_symbolize_allocations(void) {
   // Allocation backtraces are symbolized when the memory report is rendered.
 }
@@ -1416,22 +1384,6 @@ void debug_memory_set_quiet_mode(bool quiet) {
 }
 
 void debug_memory_report(void) {
-  // No-op in release builds
-}
-
-int debug_memory_thread_init(void) {
-  return 0;
-}
-
-int debug_memory_thread_start(void) {
-  return 0;
-}
-
-void debug_memory_trigger_report(void) {
-  // No-op in release builds
-}
-
-void debug_memory_thread_cleanup(void) {
   // No-op in release builds
 }
 

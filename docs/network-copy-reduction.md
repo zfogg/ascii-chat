@@ -7,14 +7,14 @@ CRC32-C polynomial are unchanged.
 
 ## Implementation
 
-| Work item | Implementation |
-| --- | --- |
-| Baseline and measurement | Native correctness/benchmark executable, reconstructed assembly baseline, process CPU measurements, send/completion counters, repeatable JSON output |
-| Portable scatter/gather | `socket_buffer_t`, `socket_sendv`, `socket_sendv_all`; Linux/macOS `sendmsg`, Windows synchronous `WSASend` |
-| Transport and media integration | ACIP payload vectors; PCM, Opus, ASCII-frame and raw-image slices; one gather for encryption; encrypt directly into final owned wire storage |
-| Reception | Transfer the existing decrypted allocation, removing the normalization copy; validate framing before allocating payloads; tolerate zero-copy completion readiness on the receive side |
-| Validation | Native Windows, Docker/Linux, and macOS tests; encrypted exchanges between each OS pair; existing Linux transport, CRC, compression and crypto suites |
-| Linux kernel copy avoidance | `SO_ZEROCOPY`/`MSG_ZEROCOPY`, completion consumption, bounded mapping lifetime, cancellation, copied-completion detection, unsupported/resource-pressure fallback |
+| Work item                       | Implementation                                                                                                                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Baseline and measurement        | Native correctness/benchmark executable, reconstructed assembly baseline, process CPU measurements, send/completion counters, repeatable JSON output                                  |
+| Portable scatter/gather         | `socket_buffer_t`, `socket_sendv`, `socket_sendv_all`; Linux/macOS `sendmsg`, Windows synchronous `WSASend`                                                                           |
+| Transport and media integration | ACIP payload vectors; PCM, Opus, ASCII-frame and raw-image slices; one gather for encryption; encrypt directly into final owned wire storage                                          |
+| Reception                       | Transfer the existing decrypted allocation, removing the normalization copy; validate framing before allocating payloads; tolerate zero-copy completion readiness on the receive side |
+| Validation                      | Native Windows, Docker/Linux, and macOS tests; encrypted exchanges between each OS pair; existing Linux transport, CRC, compression and crypto suites                                 |
+| Linux kernel copy avoidance     | `SO_ZEROCOPY`/`MSG_ZEROCOPY`, completion consumption, bounded mapping lifetime, cancellation, copied-completion detection, unsupported/resource-pressure fallback                     |
 
 The original basic packet sender already avoided concatenating the packet header
 and payload, but used two separate send operations. It now submits both slices
@@ -88,7 +88,7 @@ speedup. Small audio packets never request kernel zero-copy.
 cmake --preset default -B build -DBUILD_TESTS=ON
 cmake --build build --target test-network-vectors
 ctest --test-dir build -R '^network-vectors$' --output-on-failure
-python3 tests/benchmarks/network_copy_benchmark.py \
+uv run --project tests/ascii_chat_tests --frozen python tests/benchmarks/network_copy_benchmark.py \
   build/bin/test-network-vectors --runs 3 --output network-results.json
 ```
 
@@ -135,11 +135,11 @@ copied-completion fallback. Unrelated remote/local checkouts were preserved.
 
 Representative medians from three runs per mode:
 
-| Environment | CPU seconds, assembled → vectored | Encrypted 4 KiB p95 µs, assembled → vectored | Encrypted ~1 MiB MiB/s, assembled → vectored |
-| --- | ---: | ---: | ---: |
-| Windows | 3.297 → 3.078 | 180.2 → 142.8 | 74.22 → 74.85 |
-| Docker/Linux | 4.166 → 4.002 | 273.0 → 258.5 | 64.33 → 67.35 |
-| macOS | 4.450 → 4.287 | 318.3 → 229.3 | 54.56 → 56.50 |
+| Environment  | CPU seconds, assembled → vectored | Encrypted 4 KiB p95 µs, assembled → vectored | Encrypted ~1 MiB MiB/s, assembled → vectored |
+| ------------ | --------------------------------: | -------------------------------------------: | -------------------------------------------: |
+| Windows      |                     3.297 → 3.078 |                                180.2 → 142.8 |                                74.22 → 74.85 |
+| Docker/Linux |                     4.166 → 4.002 |                                273.0 → 258.5 |                                64.33 → 67.35 |
+| macOS        |                     4.450 → 4.287 |                                318.3 → 229.3 |                                54.56 → 56.50 |
 
 The measurements support lower overall CPU cost in this workload, but throughput
 and tail latency vary; earlier Windows samples also showed lower large-packet throughput.

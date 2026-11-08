@@ -1,0 +1,459 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>custom_websocket_fps(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">custom_websocket_fps(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">custom_websocket_fps(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">custom_websocket_fps - WebSocket FPS Regression Test</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="WebSocket_FPS_Regression_Test">
+          <a class="permalink" href="#WebSocket_FPS_Regression_Test"
+            >WebSocket FPS Regression Test</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Overview">
+            <a class="permalink" href="#Overview">Overview</a>
+          </h2>
+          <p class="Pp">
+            The WebSocket FPS regression test
+            (scripts/test-websocket-fps-regression.sh) detects performance
+            regressions in frame delivery over WebSocket connections. This
+            addresses
+            <b>Issue #305: Frame Delivery Throttling (0fps issue)</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Problem_Statement">
+            <a class="permalink" href="#Problem_Statement">Problem Statement</a>
+          </h2>
+          <p class="Pp">
+            Previous WebSocket frame delivery had a critical issue where frames
+            would be delivered at 0fps (complete throttling), making video chat
+            unusable. This test prevents regression of that bug.
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Test_Behavior">
+            <a class="permalink" href="#Test_Behavior">Test Behavior</a>
+          </h2>
+          <p class="Pp">The regression test:</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>
+              <b>Runs the WebSocket server-client test</b>
+              (test-websocket-server-client.sh)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Starts an ascii-chat server with WebSocket support on a random
+              port
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Connects a client to the server</dd>
+            <dt>&#x2022;</dt>
+            <dd>Captures video frames for ~5 seconds</dd>
+            <dt>&#x2022;</dt>
+            <dd>Logs all protocol and FPS metrics</dd>
+            <dt>2.</dt>
+            <dd><b>Analyzes FPS metrics</b> from client logs</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              Extracts &quot;actual fps&quot; measurements from capture lag
+              events
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>Checks for critical throttling (0fps, queue full, etc.)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Compares against configured baseline threshold</dd>
+            <dt>3.</dt>
+            <dd><b>Compares against baseline</b></dd>
+            <dt>&#x2022;</dt>
+            <dd>Minimum FPS baseline: <b>1 fps</b> (very conservative)</dd>
+            <dt>&#x2022;</dt>
+            <dd>Fails if any measured FPS falls below baseline</dd>
+            <dt>&#x2022;</dt>
+            <dd>Indicates frame delivery failure/regression</dd>
+            <dt>4.</dt>
+            <dd><b>Handles three scenarios</b>:</dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              &#x2705; <b>Smooth operation</b>: Protocol initialized, no lag
+              events &#x2192; PASS (no throttling)
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              &#x26A0;&#xFE0F; <b>Lag detected</b>: Protocol initialized, FPS
+              lag events logged but above baseline &#x2192; PASS
+            </dd>
+            <dt>&#x2022;</dt>
+            <dd>
+              &#x274C; <b>Regression detected</b>: FPS below baseline or 0fps
+              &#x2192; FAIL
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Baseline_Metrics">
+            <a class="permalink" href="#Baseline_Metrics">Baseline Metrics</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Current_Baseline_(as-3v1da)">
+            <a class="permalink" href="#Current_Baseline_(as-3v1da)"
+              >Current Baseline (as-3v1da)</a
+            >
+          </h2>
+          <p class="Pp">
+            Metric Value Rationale Minimum FPS 1 fps Catches critical throttling
+            (0fps issue) Test duration 5 seconds Enough time to establish
+            connection and capture frames Transport WebSocket Tests the specific
+            delivery mechanism for remote clients
+          </p>
+          <p class="Pp"></p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Why_Conservative?">
+            <a class="permalink" href="#Why_Conservative?">Why Conservative?</a>
+          </h2>
+          <p class="Pp">
+            The 1 fps baseline is intentionally very conservative to:
+          </p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li>Catch complete frame delivery failure (0fps throttling)</li>
+            <li>Detect severe performance regressions quickly</li>
+            <li>
+              Allow development improvements to raise the baseline gradually
+            </li>
+            <li>Avoid flaky tests due to system resource variations</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Updating_Baseline_Metrics">
+            <a class="permalink" href="#Updating_Baseline_Metrics"
+              >Updating Baseline Metrics</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="When_to_Update">
+            <a class="permalink" href="#When_to_Update">When to Update</a>
+          </h2>
+          <p class="Pp">Update the baseline when:</p>
+          <p class="Pp"></p>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Performance improvements are implemented and verified</dd>
+            <dt>2.</dt>
+            <dd>Test environment changes (e.g., CI runner upgrade)</dd>
+            <dt>3.</dt>
+            <dd>
+              Measured FPS consistently exceeds current baseline in production
+            </dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="How_to_Update">
+            <a class="permalink" href="#How_to_Update">How to Update</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="1">
+            <a class="permalink" href="#1">1. Measure Current Performance</a>
+          </h2>
+          <p class="Pp">
+            Run the test multiple times to establish consistent measurements:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre># Run test 5 times and collect FPS values
+for i in {1..5}; do
+<br/>
+  bash scripts/test-websocket-fps-regression.sh
+<br/>
+  grep &quot;actual fps&quot; /tmp/ascii-chat-client-*.log | tail -1
+done</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="2">
+            <a class="permalink" href="#2">2. Calculate New Baseline</a>
+          </h2>
+          <p class="Pp">
+            Use the <b>minimum observed value</b> with 10% safety margin:
+          </p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+# If observed FPS values are: 15.2, 18.1, 14.8, 16.5, 15.9
+# Minimum: 14.8
+# Baseline (14.8 * 0.9 = 13.32, round down): 13.0 fps</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="3">
+            <a class="permalink" href="#3">3. Update the Script</a>
+          </h2>
+          <p class="Pp">Edit scripts/test-websocket-fps-regression.sh:</p>
+          <p class="Pp"></p>
+          <p class="Pp"></p>
+          <pre>
+# Current (line 24):
+BASELINE_FPS=1
+# Updated example (if improvement verified):
+BASELINE_FPS=10</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="4">
+            <a class="permalink" href="#4">4. Commit the Change</a>
+          </h2>
+          <pre>
+git add scripts/test-websocket-fps-regression.sh
+git commit -m &quot;test: Update WebSocket FPS baseline to 10 fps (as-XXXXX)
+Improved from 1 fps after fix for:
+- Reduce frame queue blocking (improved from 14.8 fps measured)
+- Apply 10% safety margin (14.8 * 0.9 = 13.32 &#x2192; baseline 10 fps)
+- Verified across 5 test runs: 15.2, 18.1, 14.8, 16.5, 15.9 fps&quot;</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Running_Locally">
+            <a class="permalink" href="#Running_Locally">Running Locally</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Quick_Test">
+            <a class="permalink" href="#Quick_Test">Quick Test</a>
+          </h2>
+          <pre>bash scripts/test-websocket-fps-regression.sh</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="With_Custom_Baseline">
+            <a class="permalink" href="#With_Custom_Baseline"
+              >With Custom Baseline</a
+            >
+          </h2>
+          <pre>
+# Override baseline to 5 fps for testing
+bash scripts/test-websocket-fps-regression.sh 5</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Debug_Mode">
+            <a class="permalink" href="#Debug_Mode">Debug Mode</a>
+          </h2>
+          <pre>
+# Show detailed logs
+bash scripts/test-websocket-fps-regression.sh
+# Then examine the logs:
+cat /tmp/ascii-chat-client-*.log | grep &quot;actual fps\|FRAME_RECV&quot;</pre>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="CI_Integration">
+            <a class="permalink" href="#CI_Integration">CI Integration</a>
+          </h2>
+          <p class="Pp">The test runs in GitHub Actions on:</p>
+          <p class="Pp"></p>
+          <ul class="Bl-bullet">
+            <li><b>Push to master/main</b> with protocol changes</li>
+            <li><b>Pull requests</b> affecting WebSocket/protocol code</li>
+            <li>
+              <b>Daily schedule</b> (2 AM UTC) to catch environmental
+              regressions
+            </li>
+            <li><b>Manual trigger</b> via workflow_dispatch</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Interpreting_Test_Results">
+            <a class="permalink" href="#Interpreting_Test_Results"
+              >Interpreting Test Results</a
+            >
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            &#x2705; PASS: Test completed (smooth operation, no throttling
+            detected)&quot;&quot;
+          </h2>
+          <ul class="Bl-bullet">
+            <li>Protocol initialized successfully</li>
+            <li>No FPS lag events recorded (smooth frame capture)</li>
+            <li>No throttling detected</li>
+            <li><b>Action</b>: No issue, proceed with code review</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            &#x26A0;&#xFE0F; Conditional PASS: Measured FPS values during test:
+            X.XX, Y.YY, ...&quot;&quot;
+          </h2>
+          <ul class="Bl-bullet">
+            <li>Protocol initialized</li>
+            <li>FPS lag events recorded but above baseline</li>
+            <li>
+              <b>Action</b>: Acceptable for merge, consider baseline update if
+              consistent
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">&#x274C; FAIL: REGRESSION DETECTED!&quot;&quot;</h2>
+          <ul class="Bl-bullet">
+            <li>FPS below baseline or 0fps throttling detected</li>
+            <li><b>Action</b>:</li>
+          </ul>
+          <dl class="Bl-tag">
+            <dt>1.</dt>
+            <dd>Investigate WebSocket protocol changes</dd>
+            <dt>2.</dt>
+            <dd>Check frame queue implementation</dd>
+            <dt>3.</dt>
+            <dd>Profile CPU/memory during test</dd>
+            <dt>4.</dt>
+            <dd>Look for new blocking calls</dd>
+          </dl>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Related_Issues">
+            <a class="permalink" href="#Related_Issues">Related Issues</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li><b>Issue #305</b>: Frame Delivery Throttling (0fps issue)</li>
+            <li>
+              <b>PR #342</b>: WebSocket callback profiling and efficiency
+              analysis
+            </li>
+            <li><b>Docs</b>: See docs/crypto.md for protocol details</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Troubleshooting">
+            <a class="permalink" href="#Troubleshooting">Troubleshooting</a>
+          </h2>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Test_times_out">
+            <a class="permalink" href="#Test_times_out">Test times out</a>
+          </h2>
+          <ul class="Bl-bullet">
+            <li>Check if ascii-chat binary built successfully</li>
+            <li>Verify WebSocket port binding works (no firewall blocks)</li>
+            <li>Check system resources (disk space for logs)</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="No_FPS_measurements_found">
+            <a class="permalink" href="#No_FPS_measurements_found"
+              >No FPS measurements found</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>
+              This is normal if video capture is smooth (no lag events logged)
+            </li>
+            <li>
+              Check logs manually: grep &quot;actual fps&quot;
+              /tmp/ascii-chat-client-*.log
+            </li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Intermittent_failures">
+            <a class="permalink" href="#Intermittent_failures"
+              >Intermittent failures</a
+            >
+          </h2>
+          <ul class="Bl-bullet">
+            <li>System under heavy load may cause temporary FPS drops</li>
+            <li>Re-run test multiple times to verify</li>
+            <li>Consider system resource constraints in CI environment</li>
+          </ul>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Future_Improvements">
+            <a class="permalink" href="#Future_Improvements"
+              >Future Improvements</a
+            >
+          </h2>
+          <dl class="Bl-tag">
+            <dt>[ ]</dt>
+            <dd>
+              Extract frame delivery count from protocol logs as secondary
+              metric
+            </dd>
+            <dt>[ ]</dt>
+            <dd>Add bandwidth measurement (bytes/frame)</dd>
+            <dt>[ ]</dt>
+            <dd>Track per-packet latency distribution</dd>
+            <dt>[ ]</dt>
+            <dd>Integration with performance dashboard for trend analysis</dd>
+            <dt>[ ]</dt>
+            <dd>Automated baseline updates based on historical data</dd>
+          </dl>
+        </section>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.11.25</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

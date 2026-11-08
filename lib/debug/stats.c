@@ -9,6 +9,7 @@
 #include <ascii-chat/debug/debug_helpers.h>
 
 static atomic_t g_debug_stats_signal = {0};
+static atomic_t g_debug_stats_memory_signal = {0};
 static atomic_t g_debug_stats_exiting = {0};
 static atomic_t g_debug_stats_cleaning = {0};
 static asciichat_thread_t g_debug_stats_thread;
@@ -57,6 +58,10 @@ void debug_stats_trigger_print(void) {
   // handler. The worker checks this flag at most 100ms after its next wakeup.
   atomic_store_bool_impl(&g_debug_stats_signal, true);
 }
+void debug_stats_trigger_memory_report(void) {
+  // Signal handlers may only set the request; the worker performs the report.
+  atomic_store_bool_impl(&g_debug_stats_memory_signal, true);
+}
 bool debug_stats_is_cleanup_in_progress(void) {
   return atomic_load_bool_impl(&g_debug_stats_cleaning);
 }
@@ -65,6 +70,7 @@ void debug_stats_poll(void) {
     return;
   uint64_t now = time_get_ns();
   bool all = atomic_exchange_bool_impl(&g_debug_stats_signal, false);
+  bool requested_memory = atomic_exchange_bool_impl(&g_debug_stats_memory_signal, false);
   mutex_lock(&g_debug_stats_mutex);
   bool memory = g_debug_stats_memory_deadline && now >= g_debug_stats_memory_deadline;
   if (memory)
@@ -73,7 +79,7 @@ void debug_stats_poll(void) {
   if (all)
     debug_stats_print();
 #if defined(DEBUG_MEMORY) && !defined(NDEBUG)
-  if (memory)
+  if (memory || requested_memory)
     debug_memory_report();
 #else
   (void)memory;
@@ -143,6 +149,7 @@ void debug_stats_destroy(void) {
     mutex_destroy(&g_debug_stats_mutex);
     g_debug_stats_initialized = false;
     atomic_store_bool_impl(&g_debug_stats_signal, false);
+    atomic_store_bool_impl(&g_debug_stats_memory_signal, false);
     g_debug_stats_memory_deadline = g_debug_stats_memory_interval = 0;
   }
 }

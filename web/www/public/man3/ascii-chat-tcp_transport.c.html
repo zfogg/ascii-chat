@@ -1,261 +1,460 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>transport.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">transport.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">transport.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">transport.c</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>tcp_transport_data_t</b>
-  <br/>
-  TCP transport implementation data.
-  <br/>
-</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>acip_transport_t</b> * <b>acip_tcp_transport_create</b> (const
-    char *name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> *crypto_ctx)
-  <br/>
-  Create TCP transport from existing socket. void <b>acip_transport_destroy</b>
-    (<b>acip_transport_t</b> *transport)
-  <br/>
-  Destroy transport and free all resources.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>acip_transport_t</b> * acip_tcp_transport_create (const char *
-  name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> * crypto_ctx)</h2>
-<p class="Pp">Create TCP transport from existing socket.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>name</i> Debug name for tracking this transport
-  (required, e.g., &quot;transport_client_5&quot;)
-<br/>
-<i>sockfd</i> Connected socket descriptor
-<br/>
-<i>crypto_ctx</i> Optional crypto context (may be NULL)</div>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Transport instance or NULL on error</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Caller retains socket ownership (transport doesn't close
-  on destroy)</div>
-<p class="Pp">Definition at line <b>386</b> of file <b>tcp/transport.c</b>.</p>
-<pre>386                                                                                                              {
-387   if (!name) {
-388     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
-389     return NULL;
-390   }
-391 
-392   if (sockfd == INVALID_SOCKET_VALUE) {
-393     log_error(&quot;[TCP_CREATE_STATE] &#x274C; INVALID_SOCKET: sockfd=%d&quot;, sockfd);
-394     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
-395     return NULL;
-396   }
-397 
-398   log_info(&quot;[TCP_CREATE_STATE] &#x1F7E2; CREATE_START: sockfd=%d, crypto=%s&quot;, sockfd, crypto_ctx ? &quot;yes&quot; : &quot;no&quot;);
-399 
-400   // Allocate transport structure
-401   acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
-402   if (!transport) {
-403     log_error(&quot;[TCP_CREATE_STATE] &#x274C; ALLOC_TRANSPORT_FAILED: size=%zu&quot;, sizeof(acip_transport_t));
-404     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate TCP transport&quot;);
-405     return NULL;
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>transport.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">transport.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">transport.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">transport.c</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Structures">
+            <a class="permalink" href="#Data_Structures">Data Structures</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            struct <b>tcp_transport_data_t</b>
+            <br />
+            TCP transport implementation data.
+            <br />
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>asciichat_error_t</b> <b>acip_tcp_transport_set_zerocopy</b> (<b
+              >acip_transport_t</b
+            >
+            *transport, <b>bool</b> enabled)
+            <br />
+            <b>acip_transport_t</b> * <b>acip_tcp_transport_create</b> (const
+            char *name, <b>socket_t</b> sockfd,
+            <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            Create TCP transport from existing socket. <b>acip_transport_t</b> *
+            <b>acip_tcp_transport_create_owned</b> (const char *name,
+            <b>socket_t</b> sockfd, <b>crypto_context_t</b> *crypto_ctx)
+            <br />
+            Create a TCP transport that owns its connected socket. void
+            <b>acip_transport_destroy</b> (<b>acip_transport_t</b> *transport)
+            <br />
+            Destroy transport and free all resources.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_tcp_transport_create (const char *
+            name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> * crypto_ctx)
+          </h2>
+          <p class="Pp">Create TCP transport from existing socket.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>name</i> Debug name for tracking this transport (required, e.g.,
+            &quot;transport_client_5&quot;)
+            <br />
+            <i>sockfd</i> Connected socket descriptor
+            <br />
+            <i>crypto_ctx</i> Optional crypto context (may be NULL)
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">Transport instance or NULL on error</div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Caller retains socket ownership (transport doesn't close on destroy)
+          </div>
+          <p class="Pp">
+            Definition at line <b>286</b> of file <b>tcp/transport.c</b>.
+          </p>
+          <pre>
+286                                                                                                              {
+287   if (!name) {
+288     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
+289     return NULL;
+290   }
+291
+292   if (sockfd == INVALID_SOCKET_VALUE) {
+293     log_error(&quot;[TCP_CREATE_STATE] &#x274C; INVALID_SOCKET: sockfd=%d&quot;, sockfd);
+294     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
+295     return NULL;
+296   }
+297
+298   log_info(&quot;[TCP_CREATE_STATE] &#x1F7E2; CREATE_START: sockfd=%d, crypto=%s&quot;, sockfd, crypto_ctx ? &quot;yes&quot; : &quot;no&quot;);
+299
+300   // Allocate transport structure
+301   acip_transport_t *transport = SAFE_CALLOC(1, sizeof(acip_transport_t), acip_transport_t *);
+302   if (!transport) {
+303     log_error(&quot;[TCP_CREATE_STATE] &#x274C; ALLOC_TRANSPORT_FAILED: size=%zu&quot;, sizeof(acip_transport_t));
+304     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate TCP transport&quot;);
+305     return NULL;
+306   }
+307
+308   log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TRANSPORT_ALLOCATED: transport=%p&quot;, (void *)transport);
+309
+310   // Allocate TCP-specific data
+311   tcp_transport_data_t *tcp_data = SAFE_MALLOC(sizeof(tcp_transport_data_t), tcp_transport_data_t *);
+312   if (!tcp_data) {
+313     log_error(&quot;[TCP_CREATE_STATE] &#x274C; ALLOC_TCP_DATA_FAILED: size=%zu&quot;, sizeof(tcp_transport_data_t));
+314     SAFE_FREE(transport);
+315     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate TCP transport data&quot;);
+316     return NULL;
+317   }
+318
+319   log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_DATA_ALLOCATED: tcp_data=%p&quot;, (void *)tcp_data);
+320
+321   // Initialize TCP data
+322   tcp_data-&gt;sockfd = sockfd;
+323   tcp_data-&gt;is_connected = true;
+324   tcp_data-&gt;owns_socket = false;
+325   tcp_data-&gt;zerocopy_disabled = false;
+326
+327   // Initialize send mutex to protect concurrent sends from multiple threads
+328   int mutex_result = mutex_init(&amp;tcp_data-&gt;send_mutex, &quot;tcp_send&quot;);
+329   if (mutex_result != 0) {
+330     log_error(&quot;[TCP_CREATE_STATE] &#x274C; MUTEX_INIT_FAILED: result=%d&quot;, mutex_result);
+331     SAFE_FREE(tcp_data);
+332     SAFE_FREE(transport);
+333     SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize send mutex&quot;);
+334     return NULL;
+335   }
+336
+337   log_info(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_DATA_INITIALIZED: sockfd=%d, is_connected=true, send_mutex=initialized&quot;, sockfd);
+338
+339   // Enable TCP_NODELAY to disable Nagle's algorithm
+340   // This ensures small packets are sent immediately instead of being buffered
+341   int nodelay = 1;
+342   if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (const char *)&amp;nodelay, sizeof(nodelay)) &lt; 0) {
+343     log_warn(&quot;[TCP_CREATE_STATE] &#x26A0;&#xFE0F;  TCP_NODELAY_FAILED: sockfd=%d, %s&quot;, sockfd, SAFE_STRERROR(errno));
+344     // Continue anyway - this is not fatal
+345   } else {
+346     log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_NODELAY_SET: sockfd=%d&quot;, sockfd);
+347   }
+348
+349   // Initialize transport
+350   transport-&gt;methods = &amp;tcp_methods;
+351   transport-&gt;stats_peer = stats_runtime_peer_open(&quot;TCP&quot;);
+352   transport-&gt;crypto_ctx = crypto_ctx;
+353   transport-&gt;impl_data = tcp_data;
+354   int send_buffer = SOCKET_STREAM_SEND_BUFFER;
+355   if (socket_setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &amp;send_buffer, sizeof(send_buffer)) != 0) {
+356     acip_transport_destroy(transport);
+357     SET_ERRNO_SYS(ERROR_NETWORK, &quot;Cannot bound TCP send buffer&quot;);
+358     return NULL;
+359   }
+360
+361   // Register transport and impl_data before logging so named replacements work
+362   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
+363   NAMED_REGISTER(tcp_data, &quot;impl&quot;, &quot;tcp_impl&quot;, &quot;0x%tx&quot;, (uintptr_t)(const void *)(transport));
+364
+365   log_info(&quot;[TCP_CREATE_STATE] &#x2705; CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s&quot;,
+366            (void *)transport, sockfd, crypto_ctx ? &quot;enabled&quot; : &quot;disabled&quot;);
+367
+368 #ifndef __EMSCRIPTEN__
+369   if (transport &amp;&amp; acip_outbound_create(transport) != ASCIICHAT_OK) {
+370     acip_transport_destroy(transport);
+371     return NULL;
+372   }
+373 #endif
+374   return transport;
+375 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_create()</b>,
+            <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
+            <b>ASCIICHAT_OK</b>, <b>acip_transport::crypto_ctx</b>,
+            <b>errno</b>, <b>ERROR_INVALID_PARAM</b>,
+            <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
+            <b>ERROR_NETWORK</b>, <b>acip_transport::impl_data</b>,
+            <b>INVALID_SOCKET_VALUE</b>,
+            <b>tcp_transport_data_t::is_connected</b>, <b>log_debug</b>,
+            <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
+            <b>acip_transport::methods</b>, <b>mutex_init()</b>,
+            <b>NAMED_REGISTER</b>, <b>NAMED_REGISTER_TRANSPORT</b>,
+            <b>tcp_transport_data_t::owns_socket</b>, <b>SAFE_CALLOC</b>,
+            <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SAFE_STRERROR</b>,
+            <b>tcp_transport_data_t::send_mutex</b>, <b>SET_ERRNO</b>,
+            <b>SET_ERRNO_SYS</b>, <b>socket_setsockopt()</b>,
+            <b>SOCKET_STREAM_SEND_BUFFER</b>,
+            <b>tcp_transport_data_t::sockfd</b>,
+            <b>acip_transport::stats_peer</b>, <b>stats_runtime_peer_open()</b>,
+            and <b>tcp_transport_data_t::zerocopy_disabled</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_tcp_transport_create()</b>, and
+            <b>acip_tcp_transport_create_owned()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>acip_transport_t</b> * acip_tcp_transport_create_owned (const
+            char * name, <b>socket_t</b> sockfd, <b>crypto_context_t</b> *
+            crypto_ctx)
+          </h2>
+          <p class="Pp">
+            Create a TCP transport that owns its connected socket.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>name</i> Debug name for the transport
+            <br />
+            <i>sockfd</i> Connected socket; ownership transfers only on success
+            <br />
+            <i>crypto_ctx</i> Optional borrowed crypto context
+          </div>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Transport instance or NULL on error Closing or destroying the
+            transport closes the socket.
+          </div>
+          <p class="Pp">
+            Definition at line <b>377</b> of file <b>tcp/transport.c</b>.
+          </p>
+          <pre>
+377                                                                                                                    {
+378   acip_transport_t *transport = acip_tcp_transport_create(name, sockfd, crypto_ctx);
+379   if (transport)
+380     ((tcp_transport_data_t *)transport-&gt;impl_data)-&gt;owns_socket = true;
+381   return transport;
+382 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_tcp_transport_create()</b>,
+            <b>acip_tcp_transport_create_owned()</b>, and
+            <b>acip_transport::impl_data</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_tcp_transport_create_owned()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_t</b> acip_tcp_transport_set_zerocopy (<b
+              >acip_transport_t</b
+            >
+            * transport, <b>bool</b> enabled)
+          </h2>
+          <p class="Pp">
+            Override the automatic kernel copy-avoidance policy for this TCP
+            transport. Large Linux encrypted sends may pin pages; other
+            platforms fall back to vectors. Copy avoidance is attempted
+            automatically and disabled after copied completions.
+          </p>
+          <p class="Pp">
+            Definition at line <b>109</b> of file <b>tcp/transport.c</b>.
+          </p>
+          <pre>
+109                                                                                              {
+110   if (!transport || acip_transport_get_type(transport) != ACIP_TRANSPORT_TCP)
+111     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Expected TCP transport&quot;);
+112   tcp_transport_data_t *tcp = transport-&gt;impl_data;
+113   mutex_lock(&amp;tcp-&gt;send_mutex);
+114   tcp-&gt;zerocopy_disabled = !enabled;
+115   mutex_unlock(&amp;tcp-&gt;send_mutex);
+116   return ASCIICHAT_OK;
+117 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_tcp_transport_set_zerocopy()</b>,
+            <b>ACIP_TRANSPORT_TCP</b>, <b>ASCIICHAT_OK</b>,
+            <b>ERROR_INVALID_PARAM</b>, <b>acip_transport::impl_data</b>,
+            <b>mutex_lock</b>, <b>mutex_unlock</b>,
+            <b>tcp_transport_data_t::send_mutex</b>, <b>SET_ERRNO</b>, and
+            <b>tcp_transport_data_t::zerocopy_disabled</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_tcp_transport_set_zerocopy()</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_acip_transport_destroy_(">
+            <a class="permalink" href="#void_acip_transport_destroy_("
+              >void acip_transport_destroy (<b>acip_transport_t</b> *
+              transport)</a
+            >
+          </h2>
+          <p class="Pp">Destroy transport and free all resources.</p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>transport</i> Transport to destroy (may be NULL)
+          </div>
+          <p class="Pp"><b>Note</b></p>
+          <div class="Bd-indent">
+            Calls close() first if still connected
+            <p class="Pp"></p>
+            <p class="Pp">Frees the transport structure itself</p>
+            <p class="Pp"></p>
+            <p class="Pp">Safe to pass NULL</p>
+          </div>
+          <p class="Pp">
+            Definition at line <b>388</b> of file <b>tcp/transport.c</b>.
+          </p>
+          <pre>
+388                                                          {
+389   if (!transport) {
+390     log_debug(&quot;[TRANSPORT_DESTROY] &#x26A0;&#xFE0F;  NULL_TRANSPORT: nothing to destroy&quot;);
+391     return;
+392   }
+393
+394   log_debug(&quot;[TRANSPORT_DESTROY] &#x1F534; DESTROY_START: transport=%p, impl_data=%p&quot;, (void *)transport,
+395             transport-&gt;impl_data);
+396
+397 #ifndef __EMSCRIPTEN__
+398   acip_outbound_destroy(transport);
+399 #endif
+400
+401   // Get type before we destroy for logging
+402   acip_transport_type_t type = 0;
+403   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;get_type) {
+404     type = transport-&gt;methods-&gt;get_type(transport);
+405     log_debug(&quot;[TRANSPORT_DESTROY] &#x1F4CB; TRANSPORT_TYPE: type=%d (1=TCP, 2=WebSocket, 3=WebRTC, ...)&quot;, type);
 406   }
-407 
-408   log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TRANSPORT_ALLOCATED: transport=%p&quot;, (void *)transport);
-409 
-410   // Allocate TCP-specific data
-411   tcp_transport_data_t *tcp_data = SAFE_MALLOC(sizeof(tcp_transport_data_t), tcp_transport_data_t *);
-412   if (!tcp_data) {
-413     log_error(&quot;[TCP_CREATE_STATE] &#x274C; ALLOC_TCP_DATA_FAILED: size=%zu&quot;, sizeof(tcp_transport_data_t));
-414     SAFE_FREE(transport);
-415     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate TCP transport data&quot;);
-416     return NULL;
-417   }
-418 
-419   log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_DATA_ALLOCATED: tcp_data=%p&quot;, (void *)tcp_data);
-420 
-421   // Initialize TCP data
-422   tcp_data-&gt;sockfd = sockfd;
-423   tcp_data-&gt;is_connected = true;
-424 
-425   // Initialize send mutex to protect concurrent sends from multiple threads
-426   int mutex_result = mutex_init(&amp;tcp_data-&gt;send_mutex, &quot;tcp_send&quot;);
-427   if (mutex_result != 0) {
-428     log_error(&quot;[TCP_CREATE_STATE] &#x274C; MUTEX_INIT_FAILED: result=%d&quot;, mutex_result);
-429     SAFE_FREE(tcp_data);
-430     SAFE_FREE(transport);
-431     SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize send mutex&quot;);
-432     return NULL;
-433   }
-434 
-435   log_info(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_DATA_INITIALIZED: sockfd=%d, is_connected=true, send_mutex=initialized&quot;, sockfd);
-436 
-437   // Enable TCP_NODELAY to disable Nagle's algorithm
-438   // This ensures small packets are sent immediately instead of being buffered
-439   int nodelay = 1;
-440   if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (const char *)&amp;nodelay, sizeof(nodelay)) &lt; 0) {
-441     log_warn(&quot;[TCP_CREATE_STATE] &#x26A0;&#xFE0F;  TCP_NODELAY_FAILED: sockfd=%d, %s&quot;, sockfd, SAFE_STRERROR(errno));
-442     // Continue anyway - this is not fatal
-443   } else {
-444     log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_NODELAY_SET: sockfd=%d&quot;, sockfd);
-445   }
-446 
-447   // Initialize transport
-448   transport-&gt;methods = &amp;tcp_methods;
-449   transport-&gt;crypto_ctx = crypto_ctx;
-450   transport-&gt;impl_data = tcp_data;
-451 
-452   // Register transport and impl_data before logging so named replacements work
-453   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
-454   NAMED_REGISTER(tcp_data, &quot;impl&quot;, &quot;tcp_impl&quot;, &quot;0x%tx&quot;, (uintptr_t)(const void *)(transport));
-455 
-456   log_info(&quot;[TCP_CREATE_STATE] &#x2705; CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s&quot;,
-457            (void *)transport, sockfd, crypto_ctx ? &quot;enabled&quot; : &quot;disabled&quot;);
-458 
-459   return transport;
-460 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>acip_transport::crypto_ctx</b>, <b>errno</b>,
-    <b>ERROR_INVALID_PARAM</b>, <b>ERROR_INVALID_STATE</b>, <b>ERROR_MEMORY</b>,
-    <b>acip_transport::impl_data</b>, <b>INVALID_SOCKET_VALUE</b>,
-    <b>tcp_transport_data_t::is_connected</b>, <b>log_debug</b>,
-    <b>log_error</b>, <b>log_info</b>, <b>log_warn</b>,
-    <b>acip_transport::methods</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER</b>,
-    <b>NAMED_REGISTER_TRANSPORT</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SAFE_STRERROR</b>, <b>tcp_transport_data_t::send_mutex</b>,
-    <b>SET_ERRNO</b>, and <b>tcp_transport_data_t::sockfd</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>, <b>add_client()</b>,
-    <b>connection_attempt_tcp()</b>, and
-  <b>server_connection_establish()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_acip_transport_destroy_("><a class="permalink" href="#void_acip_transport_destroy_(">void
-  acip_transport_destroy (<b>acip_transport_t</b> * transport)</a></h2>
-<p class="Pp">Destroy transport and free all resources.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>transport</i> Transport to destroy (may be NULL)</div>
-<p class="Pp"><b>Note</b></p>
-<div class="Bd-indent">Calls close() first if still connected
-<p class="Pp"></p>
-<p class="Pp">Frees the transport structure itself</p>
-<p class="Pp"></p>
-<p class="Pp">Safe to pass NULL</p>
-</div>
-<p class="Pp">Definition at line <b>466</b> of file <b>tcp/transport.c</b>.</p>
-<pre>466                                                          {
-467   if (!transport) {
-468     log_debug(&quot;[TRANSPORT_DESTROY] &#x26A0;&#xFE0F;  NULL_TRANSPORT: nothing to destroy&quot;);
-469     return;
-470   }
-471 
-472   log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; DESTROY_START: transport=%p, impl_data=%p&quot;, (void *)transport, transport-&gt;impl_data);
-473 
-474   // Get type before we destroy for logging
-475   acip_transport_type_t type = 0;
-476   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;get_type) {
-477     type = transport-&gt;methods-&gt;get_type(transport);
-478     log_info(&quot;[TRANSPORT_DESTROY] &#x1F4CB; TRANSPORT_TYPE: type=%d (1=TCP, 2=WebSocket, 3=WebRTC, ...)&quot;, type);
-479   }
-480 
-481   // Close if still connected
-482   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;close &amp;&amp; transport-&gt;methods-&gt;is_connected &amp;&amp;
-483       transport-&gt;methods-&gt;is_connected(transport)) {
-484     log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; STILL_CONNECTED: calling close() first (type=%d)&quot;, type);
-485     asciichat_error_t close_result = transport-&gt;methods-&gt;close(transport);
-486     log_info(&quot;[TRANSPORT_DESTROY] &#x1F534; CLOSE_CALLED: result=%d&quot;, close_result != ASCIICHAT_OK ? -1 : 0);
-487   } else {
-488     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; ALREADY_CLOSED: skipping close (type=%d)&quot;, type);
-489   }
-490 
-491   // Call custom destroy implementation if provided
-492   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;destroy_impl) {
-493     log_info(&quot;[TRANSPORT_DESTROY] &#x1F527; CALLING_DESTROY_IMPL: type=%d&quot;, type);
-494     transport-&gt;methods-&gt;destroy_impl(transport);
-495     log_info(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_IMPL_COMPLETE: type=%d&quot;, type);
-496   } else {
-497     log_debug(&quot;[TRANSPORT_DESTROY] &#x23ED;&#xFE0F;  NO_CUSTOM_DESTROY: type=%d (using generic cleanup)&quot;, type);
-498   }
-499 
-500   // Free implementation data
-501   if (transport-&gt;impl_data) {
-502     log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_IMPL_DATA: %p&quot;, transport-&gt;impl_data);
-503     NAMED_UNREGISTER(transport-&gt;impl_data);
-504     SAFE_FREE(transport-&gt;impl_data);
-505     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; IMPL_DATA_FREED&quot;);
-506   }
-507 
-508   // Free transport structure
-509   log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_TRANSPORT: %p&quot;, (void *)transport);
-510   SAFE_FREE(transport);
-511 
-512   log_warn(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_COMPLETE: type=%d&quot;, type);
-513 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>ASCIICHAT_OK</b>,
-    <b>acip_transport_methods_t::close</b>,
-    <b>acip_transport_methods_t::destroy_impl</b>,
-    <b>acip_transport_methods_t::get_type</b>, <b>acip_transport::impl_data</b>,
-    <b>acip_transport_methods_t::is_connected</b>, <b>log_debug</b>,
-    <b>log_info</b>, <b>log_warn</b>, <b>acip_transport::methods</b>,
-    <b>NAMED_UNREGISTER</b>, and <b>SAFE_FREE</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>connection_attempt_tcp()</b>, <b>connection_handle_cleanup()</b>,
-    <b>discovery_session_destroy()</b>, <b>remove_client()</b>,
-    <b>server_connection_close()</b>, <b>server_connection_establish()</b>, and
-    <b>server_connection_set_transport()</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+407
+408   // Close if still connected
+409   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;close &amp;&amp; transport-&gt;methods-&gt;is_connected &amp;&amp;
+410       transport-&gt;methods-&gt;is_connected(transport)) {
+411     log_debug(&quot;[TRANSPORT_DESTROY] &#x1F534; STILL_CONNECTED: calling close() first (type=%d)&quot;, type);
+412     asciichat_error_t close_result = transport-&gt;methods-&gt;close(transport);
+413     if (close_result != ASCIICHAT_OK)
+414       log_warn(&quot;Transport close during cleanup failed: %d&quot;, close_result);
+415     log_debug(&quot;[TRANSPORT_DESTROY] &#x1F534; CLOSE_CALLED: result=%d&quot;, close_result != ASCIICHAT_OK ? -1 : 0);
+416   } else {
+417     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; ALREADY_CLOSED: skipping close (type=%d)&quot;, type);
+418   }
+419
+420   // Call custom destroy implementation if provided
+421   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;destroy_impl) {
+422     log_debug(&quot;[TRANSPORT_DESTROY] &#x1F527; CALLING_DESTROY_IMPL: type=%d&quot;, type);
+423     transport-&gt;methods-&gt;destroy_impl(transport);
+424     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_IMPL_COMPLETE: type=%d&quot;, type);
+425   } else {
+426     log_debug(&quot;[TRANSPORT_DESTROY] &#x23ED;&#xFE0F;  NO_CUSTOM_DESTROY: type=%d (using generic cleanup)&quot;, type);
+427   }
+428
+429   // Free implementation data
+430   if (transport-&gt;impl_data) {
+431     log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_IMPL_DATA: %p&quot;, transport-&gt;impl_data);
+432     NAMED_UNREGISTER(transport-&gt;impl_data);
+433     SAFE_FREE(transport-&gt;impl_data);
+434     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; IMPL_DATA_FREED&quot;);
+435   }
+436
+437   stats_runtime_peer_close(transport-&gt;stats_peer);
+438   transport-&gt;stats_peer = NULL;
+439
+440   // Free transport structure
+441   log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_TRANSPORT: %p&quot;, (void *)transport);
+442   SAFE_FREE(transport);
+443
+444   log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_COMPLETE: type=%d&quot;, type);
+445 }</pre>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>acip_outbound_destroy()</b>,
+            <b>acip_transport_destroy()</b>, <b>ASCIICHAT_OK</b>,
+            <b>acip_transport_methods_t::close</b>,
+            <b>acip_transport_methods_t::destroy_impl</b>,
+            <b>acip_transport_methods_t::get_type</b>,
+            <b>acip_transport::impl_data</b>,
+            <b>acip_transport_methods_t::is_connected</b>, <b>log_debug</b>,
+            <b>log_warn</b>, <b>acip_transport::methods</b>,
+            <b>NAMED_UNREGISTER</b>, <b>SAFE_FREE</b>,
+            <b>acip_transport::stats_peer</b>, and
+            <b>stats_runtime_peer_close()</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>acip_async_tcp_accepted_create()</b>,
+            <b>acip_async_tcp_client_create()</b>,
+            <b>acip_async_tcp_transport_create()</b>,
+            <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
+            <b>acip_websocket_client_transport_create()</b>,
+            <b>acip_websocket_server_transport_create()</b>, and
+            <b>network_connection_open()</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

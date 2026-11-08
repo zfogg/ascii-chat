@@ -23,10 +23,8 @@
 #include <ascii-chat/discovery/strings.h>       // For is_session_string() validation
 #include <ascii-chat/util/parsing.h>            // For parse_port() validation
 #include <ascii-chat/util/path.h>               // For path_validate_user_path()
-#include <ascii-chat/util/pcre2.h>              // For centralized PCRE2 singleton
 #include <ascii-chat/util/time.h>               // For SEC_PER_HOUR, SEC_PER_MIN
 #include <ascii-chat/video/rgba/color_filter.h> // For color_filter_from_cli_name()
-#include <pcre2.h>
 
 // Helper function to convert string to lowercase in-place (non-destructive)
 static void to_lower(const char *src, char *dst, size_t max_len) {
@@ -38,32 +36,6 @@ static void to_lower(const char *src, char *dst, size_t max_len) {
   dst[i] = '\0';
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// PCRE2 REGEX-BASED SETTING PARSER
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * @brief PCRE2 regex validator for enum setting parsing
- *
- * Validates setting strings like "auto", "true", "false" with case-insensitive
- * matching. Uses centralized PCRE2 singleton for thread-safe compilation.
- */
-
-static const char *SETTING_PATTERN = "^(auto|a|0|true|yes|1|on|enabled|enable|false|no|-1|off|disabled|disable)$";
-
-static pcre2_singleton_t *g_setting_regex = NULL;
-
-/**
- * Get compiled setting regex (lazy initialization)
- * Returns NULL if compilation failed
- */
-static pcre2_code *setting_regex_get(void) {
-  if (g_setting_regex == NULL) {
-    g_setting_regex = asciichat_pcre2_singleton_compile(SETTING_PATTERN, 0);
-  }
-  return asciichat_pcre2_singleton_get_code(g_setting_regex);
-}
-
 /**
  * @brief Lookup table for setting string-to-enum mapping
  */
@@ -73,10 +45,9 @@ typedef struct {
 } setting_map_entry_t;
 
 /**
- * @brief Generic setting parser using PCRE2 singleton and lookup table
+ * @brief Generic setting parser using a lookup table
  *
- * Validates string against regex and maps to enum value via lookup table.
- * Falls back to linear search if PCRE2 unavailable.
+ * Validates and maps a string to an enum value via a lookup table.
  *
  * @param arg Input setting string (e.g., "auto", "TRUE", "1")
  * @param dest Pointer to int destination for enum value
@@ -105,34 +76,6 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
   char lower[OPTIONS_PARSING_PARSERS_LOWER_BUFFER_SIZE];
   to_lower(arg, lower, sizeof(lower));
 
-  // Get compiled regex (lazy initialization)
-  pcre2_code *regex = setting_regex_get();
-  if (!regex) {
-    if (error_msg) {
-      *error_msg = platform_strdup("Internal error: PCRE2 regex not available");
-    }
-    return false;
-  }
-
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
-  if (!match_data) {
-    if (error_msg) {
-      *error_msg = platform_strdup("Internal error: Failed to allocate match data");
-    }
-    return false;
-  }
-
-  int rc = asciichat_pcre2_match(regex, (PCRE2_SPTR8)lower, strlen(lower), 0, 0, match_data, NULL);
-  pcre2_match_data_free(match_data);
-
-  if (rc < 0) {
-    // No match - invalid setting
-    if (error_msg) {
-      *error_msg = platform_strdup("Invalid setting value");
-    }
-    return false;
-  }
-
   // Linear search through lookup table to get enum value
   for (int i = 0; lookup_table[i].match != NULL; i++) {
     if (strcmp(lower, lookup_table[i].match) == 0) {
@@ -141,9 +84,8 @@ static bool parse_setting_generic(const char *arg, void *dest, const setting_map
     }
   }
 
-  // Should not reach here if regex validated correctly
   if (error_msg) {
-    *error_msg = platform_strdup("Internal error: Regex matched but lookup failed");
+    *error_msg = platform_strdup("Invalid setting value");
   }
   return false;
 }
@@ -718,12 +660,11 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
     return 1; // Consumed 1 argument
   }
 
-  // Check for TCP URL (tcp://) - passed through directly to FFmpeg
-  // TCP URLs are used for streaming media from custom TCP servers
-  if (strncmp(arg, "tcp://", 6) == 0) {
-    log_debug("Detected TCP URL: %s", arg);
+  // Explicit transport URLs are resolved by the connection layer.
+  if (strncmp(arg, "tcp://", 6) == 0 || strncmp(arg, "quic://", 7) == 0) {
+    log_debug("Detected transport URL: %s", arg);
     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
-    // Don't set port - TCP transport handles URL parsing internally
+    // The connection layer extracts the port from the URL.
     return 1; // Consumed 1 argument
   }
 

@@ -4,13 +4,13 @@ Prompts use absolute monotonic deadlines. Typing, resizing, invalid input, and
 covered screens do not restart the timer. Expiration never accepts a default Yes
 or submits a partial password.
 
-| Prompt | Timeout | Expiration |
-| --- | ---: | --- |
-| Text, confirmation, overwrite, IP disclosure | 30 seconds | Decline/cancel |
-| Password or SSH/GPG passphrase | 60 seconds | Clear input and cancel authentication |
-| Host identity or discovery-key verification | 120 seconds | Reject trust |
-| mDNS server selection | 30 seconds | Cancel connection |
-| Update notification | 10 seconds | Continue normally |
+| Prompt                                       |     Timeout | Expiration                            |
+| -------------------------------------------- | ----------: | ------------------------------------- |
+| Text, confirmation, overwrite, IP disclosure |  30 seconds | Decline/cancel                        |
+| Password or SSH/GPG passphrase               |  60 seconds | Clear input and cancel authentication |
+| Host identity or discovery-key verification  | 120 seconds | Reject trust                          |
+| mDNS server selection                        |  30 seconds | Cancel connection                     |
+| Update notification                          |  10 seconds | Continue normally                     |
 
 These deadlines are fixed; no command-line or environment override is needed.
 
@@ -34,8 +34,8 @@ Older servers and external network timeouts may still close the connection soone
 Build the binary and `ascii-chat-shared` target, then run:
 
 ```powershell
-python tests/integration/prompt_timeouts.py --library build/bin/asciichat.dll
-python tests/integration/terminal_prompt.py --library build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/prompt_timeouts.py --library build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/terminal_prompt.py --library build/bin/asciichat.dll
 ```
 
 The deadline regression suite uses real terminals and pipes held open without

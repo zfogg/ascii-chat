@@ -3,14 +3,14 @@ name = "default"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.15"
 dependencies = [
   "dotenv>=0.9.9",
+  "gcovr>=8.8",
   "neovim>=0.3.1",
   "nltk>=3.8",
   "pip>=26.0.1",
   "pygments-base16>=1.0.3",
-  "pygobject>=3.54.5",
 ]
 
 [tool.pytest.ini_options]
@@ -35,7 +35,10 @@ ignore = ["E402", "E701", "E702"]
 
 [tool.ty.environment]
 python-platform = "all"
-extra-paths = ["deps/ascii-chat-deps/gotel/c/testing/python", "deps/ascii-chat-deps/gotel/python/src"]
+extra-paths = [
+  "deps/ascii-chat-deps/gotel/c/testing/python",
+  "deps/ascii-chat-deps/gotel/python/src",
+]
 
 [tool.ty.rules]
 # Optional platform and audio imports resolve only on hosts with those extras.

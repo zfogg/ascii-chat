@@ -109,7 +109,7 @@ remove_string_from_file() {
 
   # Use Python to search the binary directly (more reliable than strings command)
   # Python searches raw binary data, not just null-terminated strings
-  local count=$(python3 -c "
+  local count=$(uv run --project "$(dirname "$0")/../../tests/ascii_chat_tests" --frozen python -c "
 import sys
 old_path_str = sys.argv[1]
 old_path = old_path_str.encode('latin1')
@@ -132,7 +132,7 @@ print(total)
     # Pass path as command-line argument to avoid bash interpolation issues
     # Note: In bash double quotes, need \\\\ to get a single backslash to Python
     # Calculate path length including separator - both / and \ are 1 byte
-    if ! python3 -c "
+    if ! uv run --project "$(dirname "$0")/../../tests/ascii_chat_tests" --frozen python -c "
 import sys
 
 old_path_str = sys.argv[1]

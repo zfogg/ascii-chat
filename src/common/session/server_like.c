@@ -15,9 +15,11 @@
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/tui/controller.h>
 #include "server_like.h"
+#include "quic_listeners.h"
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/handshake/server.h>
+#include <ascii-chat/network/acip/quic.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/buffer.h>
@@ -39,6 +41,8 @@
  * ============================================================================ */
 
 static network_server_t *g_network_server;
+static acip_quic_endpoint_t *g_quic_endpoint;
+static acip_quic_endpoint_t *g_webtransport_endpoint;
 
 static asciichat_mdns_t *g_mdns_ctx = NULL;
 static nat_upnp_context_t *g_upnp_ctx = NULL;
@@ -243,7 +247,14 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot specify both --keepawake and --no-keepawake");
   }
   if (keepawake_enabled) {
-    platform_enable_keepawake();
+    asciichat_errno_scope_t scope = errno_scope_begin();
+    bool suppressed = errno_notifications_suppress(true);
+    asciichat_error_t keepawake_result = platform_enable_keepawake();
+    errno_notifications_suppress(suppressed);
+    if (keepawake_result != ASCIICHAT_OK) {
+      log_warn("Unable to inhibit system sleep: %s", asciichat_error_string(keepawake_result));
+    }
+    errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
   }
 
   /* === 2. File descriptor limit === */
@@ -271,6 +282,10 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   bool ipv4_has_value = (address && strlen(address) > 0);
   bool ipv6_has_value = (address6 && strlen(address6) > 0);
 
+  result = session_quic_listeners_open(port, &g_quic_endpoint, &g_webtransport_endpoint);
+  if (result != ASCIICHAT_OK)
+    goto cleanup;
+
   network_server_config_t tcp_config = {
       .port = port,
       .ipv4_address = ipv4_has_value ? address : NULL,
@@ -288,6 +303,8 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
       .tick = config->tick_fn,
       .tick_context = config->tick_user_data,
       .user_data = config->connection_user_data,
+      .quic_endpoint = g_quic_endpoint,
+      .webtransport_endpoint = g_webtransport_endpoint,
   };
 
   result = network_server_create(&tcp_config, &g_network_server);
@@ -461,6 +478,9 @@ cleanup:
   }
 
   network_server_destroy(&g_network_server);
+  stopped = session_quic_listeners_close(&g_quic_endpoint, &g_webtransport_endpoint);
+  if (stopped != ASCIICHAT_OK)
+    return stopped;
 
   /* 17. mDNS cleanup */
   if (g_mdns_ctx) {

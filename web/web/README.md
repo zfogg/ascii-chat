@@ -61,7 +61,7 @@ They exercise the C renderer, audio worker/Opus processing, native servers, and
 two browser participants per network mode. Screenshots and initialization/audio JSON
 evidence are test artifacts, not tracked repository assets. The browser CI suite
 also exercises display Face Follow using fixtures generated from the repository
-root with `python3 tests/scripts/create_face_follow_fixture.py`.
+root with `uv run --project tests/ascii_chat_tests --frozen python tests/scripts/create_face_follow_fixture.py`.
 
 ### Local media in Mirror
 

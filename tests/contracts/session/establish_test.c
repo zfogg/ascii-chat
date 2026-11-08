@@ -8,6 +8,9 @@
 /* Isolate dial/prompt boundaries while exercising the production retry owner. */
 static int opens, destroys, negotiations, prompts, detached;
 static asciichat_error_t dial_result, prepare_result, negotiate_result, prompt_result;
+static asciichat_error_t first_dial_result;
+static char dialed_address[URL_BUFFER_SIZE];
+static bool fallback_test;
 static bool challenge;
 static bool record_negotiation_errors, record_cleanup_error;
 static uint8_t expected_crypto_mode;
@@ -20,10 +23,12 @@ static asciichat_error_t dial(const char *name, const char *address, uint16_t po
                               const network_connect_config_t *config, network_connection_t **out,
                               connection_endpoint_t *endpoint) {
   (void)name;
-  (void)address;
   (void)port;
   (void)config;
   opens++;
+  SAFE_STRNCPY(dialed_address, address, sizeof(dialed_address));
+  if (opens == 1 && first_dial_result != ASCIICHAT_OK)
+    return SET_ERRNO(first_dial_result, "initial dial cause");
   if (dial_result != ASCIICHAT_OK)
     return SET_ERRNO(dial_result, "dial cause");
   *out = sentinel;
@@ -101,7 +106,7 @@ static asciichat_error_t prepare(network_connection_t *owner, const connection_e
   cr_assert_eq(owner, sentinel);
   cr_assert_eq(context, &handshake);
   cr_assert_str_eq(endpoint->host, "resolved-host");
-  cr_assert_str_eq(password, opens == 1 ? "initial" : "replacement");
+  cr_assert_str_eq(password, opens == 1 || fallback_test ? "initial" : "replacement");
   return prepare_result;
 }
 static void setup(void) {
@@ -110,6 +115,9 @@ static void setup(void) {
   cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
   opens = destroys = negotiations = prompts = detached = 0;
   dial_result = prepare_result = negotiate_result = prompt_result = ASCIICHAT_OK;
+  first_dial_result = ASCIICHAT_OK;
+  fallback_test = false;
+  dialed_address[0] = '\0';
   challenge = false;
   record_negotiation_errors = true;
   record_cleanup_error = false;
@@ -155,6 +163,52 @@ Test(session_establishment, does_not_retry_protocol_failure) {
   cr_assert(HAS_ERRNO(&cause));
   cr_assert_eq(cause.code, ERROR_NETWORK_PROTOCOL);
   cr_assert_str_eq(cause.context_message, "negotiation cause");
+}
+
+static void configure_fallback(void) {
+  options_t options = options_t_new();
+  options.quic_fallback_port = 4567;
+  SAFE_STRNCPY(options.server_key, "pinned-key", sizeof(options.server_key));
+  cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
+}
+
+static asciichat_error_t establish_quic(network_connection_t **owner) {
+  char password[PASSWORD_BUFFER_SIZE] = "initial";
+  return fixture_establish("fixture", "quic://127.0.0.1:1234", 0, NULL, owner, password, sizeof(password), prepare,
+                           detach, &handshake);
+}
+
+Test(session_establishment, falls_back_only_after_quic_open_timeout) {
+  configure_fallback();
+  fallback_test = true;
+  first_dial_result = ERROR_NETWORK_TIMEOUT;
+  network_connection_t *owner = NULL;
+  cr_assert_eq(establish_quic(&owner), ASCIICHAT_OK);
+  cr_assert_eq(opens, 2);
+  cr_assert_str_eq(dialed_address, "tcp://127.0.0.1:4567");
+  cr_assert_eq(owner, sentinel);
+  cr_assert_not(errno_has_code(ERROR_NETWORK_TIMEOUT));
+}
+
+Test(session_establishment, never_falls_back_after_negotiation_timeout) {
+  configure_fallback();
+  negotiate_result = ERROR_NETWORK_TIMEOUT;
+  network_connection_t *owner = NULL;
+  cr_assert_eq(establish_quic(&owner), ERROR_NETWORK_TIMEOUT);
+  cr_assert_eq(opens, 1);
+  cr_assert_eq(owner, sentinel);
+}
+
+Test(session_establishment, never_falls_back_after_tls_failure_or_cancellation) {
+  configure_fallback();
+  network_connection_t *owner = NULL;
+  first_dial_result = ERROR_CRYPTO;
+  cr_assert_eq(establish_quic(&owner), ERROR_CRYPTO);
+  cr_assert_eq(opens, 1);
+  opens = 0;
+  first_dial_result = ERROR_NETWORK_CONNECT;
+  cr_assert_eq(establish_quic(&owner), ERROR_NETWORK_CONNECT);
+  cr_assert_eq(opens, 1);
 }
 Test(session_establishment, password_retry_dismisses_only_negotiation_errors) {
   SET_ERRNO(ERROR_INVALID_STATE, "earlier operation");

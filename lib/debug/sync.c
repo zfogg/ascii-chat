@@ -760,7 +760,7 @@ asciichat_error_t debug_sync_start_thread(void) {
     return result;
   atomic_store_bool_impl(&g_exiting, false);
   atomic_store_bool_impl(&g_cleaning, false);
-  options_t *opts = options_get();
+  const options_t *opts = options_get();
   if (opts) {
     if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts))
       debug_sync_print_state_delayed((uint64_t)(opts->debug_sync_state_time * NS_PER_SEC_INT));

@@ -268,10 +268,6 @@ asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, si
   // Extract the 32-byte Ed25519 public key
   memcpy(pubkey->pubkey, packet_body + key_offset, ED25519_PUBLIC_KEY_SIZE);
 
-  log_debug("Extracted Ed25519 public key (first 8 bytes): %02x%02x%02x%02x%02x%02x%02x%02x", pubkey->pubkey[0],
-            pubkey->pubkey[1], pubkey->pubkey[2], pubkey->pubkey[3], pubkey->pubkey[4], pubkey->pubkey[5],
-            pubkey->pubkey[6], pubkey->pubkey[7]);
-
   // Calculate Key ID (last 8 bytes of SHA-1 fingerprint)
   // For now, we'll skip fingerprint calculation and just extract from packet if available
   // The keyid is typically at a fixed offset for Ed25519 keys
@@ -281,10 +277,6 @@ asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, si
   // Key ID = last 8 bytes of fingerprint
   // For simplicity, we'll set keyid to 0 for now (not critical for our use case)
   pubkey->keyid = 0;
-
-  log_debug("Extracted Ed25519 public key (first 8 bytes): %02x%02x%02x%02x%02x%02x%02x%02x", pubkey->pubkey[0],
-            pubkey->pubkey[1], pubkey->pubkey[2], pubkey->pubkey[3], pubkey->pubkey[4], pubkey->pubkey[5],
-            pubkey->pubkey[6], pubkey->pubkey[7]);
 
   return ASCIICHAT_OK;
 }
@@ -442,10 +434,6 @@ asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, si
   // Extract the 32-byte Ed25519 public key
   memcpy(seckey->pubkey, packet_body + pubkey_offset, ED25519_PUBLIC_KEY_SIZE);
 
-  log_debug("Extracted Ed25519 public key (first 8 bytes): %02x%02x%02x%02x%02x%02x%02x%02x", seckey->pubkey[0],
-            seckey->pubkey[1], seckey->pubkey[2], seckey->pubkey[3], seckey->pubkey[4], seckey->pubkey[5],
-            seckey->pubkey[6], seckey->pubkey[7]);
-
   // Move offset past public key material
   offset = pubkey_offset + 32;
 
@@ -587,7 +575,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   log_debug("Importing GPG key into temporary homedir");
   const char *argv_import[] = {"gpg", "--homedir", homedir_path, "--batch", "--import", input_path, NULL};
   int status = 0;
-  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_import, NULL, 0); });
+  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_import, NULL, 0, NULL, NULL); });
 
   // Clean up input file (no longer needed)
   platform_unlink(input_path);
@@ -603,7 +591,8 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   log_debug("Retrieving GPG key fingerprint");
   char fpr_output[CRYPTO_GPG_OPENPGP_FPR_OUTPUT_BUFFER_SIZE];
   const char *argv_list[] = {"gpg", "--homedir", homedir_path, "--batch", "--list-secret-keys", "--with-colons", NULL};
-  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_list, fpr_output, sizeof(fpr_output)); });
+  LOG_IO("gpg",
+         { status = platform_execute_subprocess("gpg", argv_list, fpr_output, sizeof(fpr_output), NULL, NULL); });
 
   if (status != 0) {
     platform_unlink(output_path);
@@ -675,7 +664,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
                                output_path,
                                key_fpr,
                                NULL};
-  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_export, NULL, 0); });
+  LOG_IO("gpg", { status = platform_execute_subprocess("gpg", argv_export, NULL, 0, NULL, NULL); });
 
   if (status != 0) {
     platform_unlink(output_path);

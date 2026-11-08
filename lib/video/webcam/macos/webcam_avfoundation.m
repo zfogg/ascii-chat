@@ -110,6 +110,7 @@ struct webcam_context_t {
   dispatch_queue_t queue;
   int width;
   int height;
+  double fps;
   image_t *cached_frame;      // Reusable frame buffer (allocated once, reused for each read)
   OSType actual_pixel_format; // Track actual format from camera
 };
@@ -262,10 +263,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       log_debug("AVFoundation: Found device for FPS configuration");
       NSError *lockError = nil;
       uint32_t target_fps = (uint32_t)GET_OPTION(fps);
-      if (target_fps == 0)
-        target_fps = 60;
-
-      if ([captureDevice lockForConfiguration:&lockError]) {
+      if (target_fps > 0 && [captureDevice lockForConfiguration:&lockError]) {
         // Find the best format that supports the target FPS
         AVCaptureDeviceFormat *bestFormat = nil;
         AVFrameRateRange *bestRange = nil;
@@ -322,7 +320,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
           }
         }
         [captureDevice unlockForConfiguration];
-      } else {
+      } else if (target_fps > 0) {
         log_warn("Could not lock device for FPS configuration: %s", [[lockError localizedDescription] UTF8String]);
       }
     }
@@ -330,6 +328,9 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     // Start the session
     log_debug("Starting AVFoundation capture session...");
     [context->session startRunning];
+    CMTime duration = captureDevice.activeVideoMinFrameDuration;
+    if (CMTIME_IS_NUMERIC(duration) && duration.value > 0 && duration.timescale > 0)
+      context->fps = (double)duration.timescale / duration.value;
 
     // Check if session is actually running
     if (![context->session isRunning]) {
@@ -662,6 +663,8 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     return img;
   }
 }
+
+double webcam_get_fps(webcam_context_t *ctx) { return ctx ? ctx->fps : 0.0; }
 
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   if (!ctx || !width || !height)

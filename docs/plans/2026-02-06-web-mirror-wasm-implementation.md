@@ -1037,7 +1037,12 @@ export enum ColorFilter {
 export interface EmscriptenModule {
   HEAPU8: Uint8Array;
   UTF8ToString(ptr: number, maxBytesToRead?: number): string;
-  ccall(ident: string, returnType: string, argTypes: string[], args: any[]): any;
+  ccall(
+    ident: string,
+    returnType: string,
+    argTypes: string[],
+    args: any[],
+  ): any;
   cwrap(ident: string, returnType: string, argTypes: string[]): Function;
   getValue(ptr: number, type: string): number;
   setValue(ptr: number, value: number, type: string): void;
@@ -1063,7 +1068,11 @@ export interface MirrorWasmModule extends EmscriptenModule {
   _mirror_get_color_filter(): number;
 
   // Frame conversion
-  _mirror_convert_frame(rgba_ptr: number, src_width: number, src_height: number): number;
+  _mirror_convert_frame(
+    rgba_ptr: number,
+    src_width: number,
+    src_height: number,
+  ): number;
   _mirror_free_string(ptr: number): void;
 
   // Memory management
@@ -1109,7 +1118,12 @@ Create `web/web.ascii-chat.com/src/wasm/mirror.ts`:
 
 import { Terminal } from "xterm";
 import MirrorWasmModuleFactory from "./dist/mirror.js";
-import { MirrorWasmModule, RenderMode, ColorMode, ColorFilter } from "./mirror-types";
+import {
+  MirrorWasmModule,
+  RenderMode,
+  ColorMode,
+  ColorFilter,
+} from "./mirror-types";
 
 export class MirrorWasm {
   private module: MirrorWasmModule | null = null;
@@ -1333,7 +1347,11 @@ Append after the class definition:
 // Singleton instance
 let wasmInstance: MirrorWasm | null = null;
 
-export async function initMirrorWasm(xterm: Terminal, width: number, height: number): Promise<MirrorWasm> {
+export async function initMirrorWasm(
+  xterm: Terminal,
+  width: number,
+  height: number,
+): Promise<MirrorWasm> {
   if (!wasmInstance) {
     wasmInstance = new MirrorWasm();
     await wasmInstance.init(xterm, width, height);
@@ -1398,7 +1416,11 @@ interface MirrorSettingsProps {
   onDimensionsChange?: (width: number, height: number) => void;
 }
 
-export function MirrorSettings({ wasm, isRunning, onDimensionsChange }: MirrorSettingsProps) {
+export function MirrorSettings({
+  wasm,
+  isRunning,
+  onDimensionsChange,
+}: MirrorSettingsProps) {
   const [isOpen, setIsOpen] = useState(true);
 
   // Settings state
@@ -1669,7 +1691,7 @@ To:
 Append to end of design document:
 
 ````markdown
----
+***
 
 ## Implementation Notes
 

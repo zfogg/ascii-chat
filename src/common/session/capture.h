@@ -105,7 +105,8 @@ typedef struct {
   /** @brief Seek to this timestamp after opening media (0.0 = no seek) */
   double initial_seek_timestamp;
 
-  /** @brief Optional: callback to check if initialization should be cancelled (e.g., shutdown signal) */
+  /** @brief Optional cancellation callback, also invoked by media loader threads.
+   * The callback and its data must be thread-safe and remain valid until the capture context is destroyed. */
   session_capture_should_exit_fn should_exit_callback;
 
   /** @brief Opaque data passed to should_exit_callback */

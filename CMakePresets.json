@@ -81,6 +81,17 @@
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
+      "name": "debug-fast",
+      "displayName": "Fast Debug (without sanitizers)",
+      "description": "Debug symbols and diagnostics with rendering optimizations; sanitizer instrumentation is disabled",
+      "inherits": "base-debug",
+      "binaryDir": "${sourceDir}/build-fast-debug",
+      "cacheVariables": {
+        "ASCIICHAT_ENABLE_SANITIZERS": "OFF",
+        "BUILD_TESTS": "OFF"
+      }
+    },
+    {
       "name": "debug-musl",
       "displayName": "Debug (musl - Linux only)",
       "description": "Debug build with musl - static linked, no sanitizers (incompatible with musl)",
@@ -195,10 +206,7 @@
       "name": "windows-debug",
       "displayName": "Windows Debug (vcpkg)",
       "description": "Windows Debug build using vcpkg for dependencies",
-      "inherits": [
-        "base-debug",
-        "base-vcpkg"
-      ],
+      "inherits": ["base-debug", "base-vcpkg"],
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -224,10 +232,7 @@
       "name": "windows-release",
       "displayName": "Windows Release (vcpkg)",
       "description": "Windows Release build using vcpkg static libraries (x64-windows-static by default; override for other architectures)",
-      "inherits": [
-        "base-release",
-        "base-vcpkg"
-      ],
+      "inherits": ["base-release", "base-vcpkg"],
       "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": "x64-windows-static"
       },
@@ -324,9 +329,7 @@
     {
       "name": "tests",
       "configurePreset": "tests",
-      "targets": [
-        "tests"
-      ]
+      "targets": ["tests"]
     },
     {
       "name": "github",
@@ -355,23 +358,17 @@
     {
       "name": "check-default",
       "configurePreset": "default",
-      "targets": [
-        "ascii-chat"
-      ]
+      "targets": ["ascii-chat"]
     },
     {
       "name": "check-shared",
       "configurePreset": "shared",
-      "targets": [
-        "ascii-chat"
-      ]
+      "targets": ["ascii-chat"]
     },
     {
       "name": "check-static",
       "configurePreset": "static",
-      "targets": [
-        "ascii-chat"
-      ]
+      "targets": ["ascii-chat"]
     }
   ],
   "testPresets": [

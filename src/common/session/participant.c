@@ -66,6 +66,9 @@ typedef struct session_participant {
   /** @brief Server key for verification (if any) */
   char server_key[BUFFER_SIZE_MEDIUM];
 
+  char quic_ca_file[OPTIONS_BUFF_SIZE];
+  bool quic_audio_datagrams, quic_visual_datagrams;
+
   /** @brief Audio enabled */
   bool enable_audio;
 
@@ -175,6 +178,10 @@ session_participant_t *session_participant_create(const session_participant_conf
   if (config->server_key) {
     SAFE_STRNCPY(p->server_key, config->server_key, sizeof(p->server_key));
   }
+  if (config->quic_ca_file)
+    SAFE_STRNCPY(p->quic_ca_file, config->quic_ca_file, sizeof(p->quic_ca_file));
+  p->quic_audio_datagrams = config->quic_audio_datagrams;
+  p->quic_visual_datagrams = config->quic_visual_datagrams;
 
   p->enable_audio = config->enable_audio;
   p->enable_video = config->enable_video;
@@ -258,7 +265,12 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
   participant_connection_init(p);
   char password[PASSWORD_BUFFER_SIZE] = {0};
   SAFE_STRNCPY(password, p->password, sizeof(password));
-  result = session_connection_establish("participant", p->address, p->port, NULL, &p->network, password,
+  network_connect_config_t quic_config = {.timeout_ms = 10000,
+                                          .quic_ca_file = p->quic_ca_file[0] ? p->quic_ca_file : NULL,
+                                          .quic_audio_datagrams = p->quic_audio_datagrams,
+                                          .quic_visual_datagrams = p->quic_visual_datagrams};
+  const network_connect_config_t *connect_config = strncmp(p->address, "quic://", 7) == 0 ? &quic_config : NULL;
+  result = session_connection_establish("participant", p->address, p->port, connect_config, &p->network, password,
                                         sizeof(password), participant_prepare, NULL, p);
   sodium_memzero(password, sizeof(password));
   p->transport = network_connection_transport(p->network);
@@ -540,7 +552,7 @@ asciichat_error_t session_participant_start_video(session_participant_t *p) {
     session_capture_config_t config = {
         .type = MEDIA_SOURCE_WEBCAM,
         .path = "0", // Default device
-        .target_fps = 60,
+        .target_fps = (uint32_t)GET_OPTION(fps),
         .resize_for_network = true, // Optimize for bandwidth
     };
     const char *file = GET_OPTION(media_file);

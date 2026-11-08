@@ -1184,7 +1184,7 @@ void ui_notice_announce(const char *file, int line, const char *func, const char
 }
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
-#ifdef ASCIICHAT_WITH_OTEL
+#ifndef __EMSCRIPTEN__
   va_list telemetry_args;
   va_start(telemetry_args, fmt);
   ascii_otel_log((int)level, file, line, func, fmt, telemetry_args);

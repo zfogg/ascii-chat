@@ -47,7 +47,10 @@ async function observe(page: Page) {
       pointer: number,
       length: number,
     ) => {
-      const text = m.UTF8ToString(pointer, length);
+      // Inspect rendered text independently of terminal color decoration.
+      const text = m
+        .UTF8ToString(pointer, length)
+        .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
       window.__sessionUiFrames!.push(text);
       if (window.__sessionUiFrames!.length > 30)
         window.__sessionUiFrames!.shift();
@@ -158,7 +161,9 @@ test("help owns presentation during live video and recovers after resize", async
   await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Stop", exact: true }),
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({
+    timeout: 15_000,
+  });
   const canvas = page.locator("canvas.ascii-canvas");
   await canvas.focus();
   await page.keyboard.press("?");
@@ -234,7 +239,7 @@ test("compiled C runtime retains newest covered frame, bounds input and tears do
   expect(result).toEqual(Array(10).fill(true));
 });
 
-test("C application logs survive closed overlays and share exclusive presentation", async ({
+test("C application logs survive search, log help, and media transitions", async ({
   page,
 }) => {
   const renderErrors: string[] = [];
@@ -279,7 +284,9 @@ test("C application logs survive closed overlays and share exclusive presentatio
   await page.getByRole("button", { name: "Start Webcam", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Stop", exact: true }),
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({
+    timeout: 15_000,
+  });
   await canvas.focus();
   await page.keyboard.press("]");
   await expect.poll(() => lastFrame(page)).toContain("/: search logs");
@@ -321,7 +328,9 @@ test("connected web client shows its C network logs", async ({ page }) => {
   );
   await expect(
     page.getByRole("button", { name: "Disconnect", exact: true }),
-  ).toBeVisible({ timeout: 30000 });
+  ).toBeVisible({
+    timeout: 30000,
+  });
   const canvas = page.locator("canvas.ascii-canvas");
   await expect(canvas).toBeVisible();
   await page.evaluate(async (url) => {

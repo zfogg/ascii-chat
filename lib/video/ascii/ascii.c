@@ -77,15 +77,25 @@ static void image_resize_cover(const image_t *source, image_t *dest, ssize_t vie
     crop_y = (source->h - crop_height) / 2;
   }
 
+  // Horizontal source coordinates are identical for every destination row.
+  int *source_columns = SAFE_MALLOC((size_t)dest->w * sizeof(*source_columns), int *);
+  for (int x = 0; x < dest->w; ++x)
+    source_columns[x] = crop_x + (int)(((int64_t)x * crop_width) / dest->w);
+  int previous_source_y = -1;
   for (int y = 0; y < dest->h; y++) {
     int source_y = crop_y + (int)(((int64_t)y * crop_height) / dest->h);
-    const rgb_pixel_t *source_row = source->pixels + ((size_t)source_y * (size_t)source->w);
     rgb_pixel_t *dest_row = dest->pixels + ((size_t)y * (size_t)dest->w);
+    if (source_y == previous_source_y) {
+      memcpy(dest_row, dest_row - dest->w, (size_t)dest->w * sizeof(*dest_row));
+      continue;
+    }
+    previous_source_y = source_y;
+    const rgb_pixel_t *source_row = source->pixels + ((size_t)source_y * (size_t)source->w);
     for (int x = 0; x < dest->w; x++) {
-      int source_x = crop_x + (int)(((int64_t)x * crop_width) / dest->w);
-      dest_row[x] = source_row[source_x];
+      dest_row[x] = source_row[source_columns[x]];
     }
   }
+  SAFE_FREE(source_columns);
 }
 
 // Fit the complete source into the physical viewport, leaving black bars.
@@ -299,13 +309,14 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
 
   // Preserve an 8x8 sample grid for each glyph in the experimental renderer.
   bool explicit_palette = caps->palette_explicit;
-  bool glyph_match = caps->text_renderer == ASCII_RENDERER_GLYPH && caps->render_mode == RENDER_MODE_FOREGROUND &&
+  if (caps->text_renderer == ASCII_RENDERER_GLYPH && explicit_palette &&
+      !ascii_glyph_palette_supported(palette_chars)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains characters without glyph masks");
+    return NULL;
+  }
+  bool glyph_match = caps->text_renderer == ASCII_RENDERER_GLYPH && caps->render_mode != RENDER_MODE_HALF_BLOCK &&
                      resized_width > 0 && resized_height > 0 && resized_width <= IMAGE_MAX_WIDTH / 8 &&
-                     resized_height <= IMAGE_MAX_HEIGHT / 8 &&
-                     (!explicit_palette || ascii_glyph_palette_supported(palette_chars));
-  if (caps->text_renderer == ASCII_RENDERER_GLYPH && explicit_palette && !ascii_glyph_palette_supported(palette_chars))
-    log_warn_every(5 * NS_PER_SEC_INT,
-                   "Unicode palettes use the luminance renderer; glyph masks currently cover printable ASCII");
+                     resized_height <= IMAGE_MAX_HEIGHT / 8;
   if (glyph_match) {
     resized_width *= 8;
     resized_height *= 8;
@@ -434,12 +445,13 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
                                (unsigned)original->h};
     for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
       configuration ^= values[i];
-      configuration *= 1099511628211ULL;
+      // FNV multiplication intentionally wraps modulo 2^64.
+      (void)__builtin_mul_overflow(configuration, 1099511628211ULL, &configuration);
     }
     if (palette_chars) {
       for (const unsigned char *p = (const unsigned char *)palette_chars; *p; ++p) {
         configuration ^= *p;
-        configuration *= 1099511628211ULL;
+        (void)__builtin_mul_overflow(configuration, 1099511628211ULL, &configuration);
       }
     }
     size_t history_height = (size_t)height * (caps->render_mode == RENDER_MODE_HALF_BLOCK ? 2u : 1u);
@@ -460,8 +472,9 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
                               : caps->color_level == TERM_COLOR_256     ? ASCII_COLOR_256
                               : caps->color_level == TERM_COLOR_16      ? ASCII_COLOR_16
                                                                         : ASCII_COLOR_NONE;
-  char *ascii = glyph_match ? ascii_render_glyph_match(resized, glyph_color, simd_cells_backend(),
-                                                       explicit_palette ? palette_chars : NULL)
+  char *ascii = glyph_match ? ascii_render_glyph_match_mode(resized, glyph_color, simd_cells_backend(),
+                                                            explicit_palette ? palette_chars : NULL,
+                                                            caps->render_mode == RENDER_MODE_BACKGROUND)
                             : image_print_with_capabilities(resized, caps, palette_chars);
   ascii_render_set_output_target(previous_output);
   ascii_stabilizer_set_target(previous_stabilizer);

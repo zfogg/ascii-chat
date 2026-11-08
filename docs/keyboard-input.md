@@ -36,7 +36,7 @@ also types and deletes accented characters, CJK, and supplementary emoji.
 On a configured Linux/macOS Clang build with Criterion and pkg-config, run:
 
 ```sh
-python tests/scripts/keyboard_text_coverage.py --build build
+uv run --project tests/ascii_chat_tests --frozen python tests/scripts/keyboard_text_coverage.py --build build
 ```
 
 This runs the same exhaustive Criterion tests for every non-NUL Unicode scalar,

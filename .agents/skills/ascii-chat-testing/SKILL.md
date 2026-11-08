@@ -5,19 +5,19 @@ description: Write, select, run, and diagnose ascii-chat C and Python tests acro
 
 # ascii-chat testing
 
-Run commands from the repository root unless stated otherwise. Read `AGENTS.md`, then inspect `tests/CMakeLists.txt`, `cmake/deps/Criterion.cmake`, and `CMakePresets.json` for the affected target. Current configuration takes precedence over historical commands.
+Run commands from the repository root unless stated otherwise. Read `AGENTS.md`, then inspect `tests/CMakeLists.txt`, `cmake/deps/Criterion.cmake`, and `CMakePresets.json` for the affected target. Current configuration takes precedence over historical commands. Plain Ninja/CMake builds use all available cores by default; do not add an explicit build job count. `ctest --parallel` is allowed with no numeric count so CTest can schedule tests across all available cores.
 
 ## Select the evidence
 
-| Type | Use for | Location |
-| --- | --- | --- |
-| Criterion unit | Isolated API behavior, boundaries, ownership, validation/error paths | `tests/unit/` |
-| Criterion integration | Interacting subsystems, handshakes, network/session lifecycles | C files in `tests/integration/` |
-| Criterion performance | Rendering/throughput regressions with correctness checks and controlled measurements | `tests/performance/` |
-| Criterion contracts | Explicitly linked white-box production contracts | `tests/contracts/` |
-| Python pytest | Python helper contracts and migrated native-process scenarios | `tests/python/` |
-| Python fixture driver | Support program launched by a pytest case or a Criterion wrapper | `tests/ascii_chat_tests/`, `tests/scripts/` |
-| Standalone C probes | Necessary separate process, native platform facility, dependency/build boundary, or Python-driven fixture | `tests/standalone/`, selected integration fixtures |
+| Type                  | Use for                                                                                                   | Location                                           |
+| --------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Criterion unit        | Isolated API behavior, boundaries, ownership, validation/error paths                                      | `tests/unit/`                                      |
+| Criterion integration | Interacting subsystems, handshakes, network/session lifecycles                                            | C files in `tests/integration/`                    |
+| Criterion performance | Rendering/throughput regressions with correctness checks and controlled measurements                      | `tests/performance/`                               |
+| Criterion contracts   | Explicitly linked white-box production contracts                                                          | `tests/contracts/`                                 |
+| Python pytest         | Python helper contracts and migrated native-process scenarios                                             | `tests/python/`                                    |
+| Python fixture driver | Support program launched by a pytest case or a Criterion wrapper                                          | `tests/ascii_chat_tests/`, `tests/scripts/`        |
+| Standalone C probes   | Necessary separate process, native platform facility, dependency/build boundary, or Python-driven fixture | `tests/standalone/`, selected integration fixtures |
 
 The three primary Criterion categories are **unit, integration, performance**. Contract is an additional style/label; migrated suites retain unit/integration labels when assigned. Some contracts have only `criterion;contract`, so inspect discovery before claiming complete coverage. CTest labels describe scope, not language: `integration` also includes registered Python harnesses.
 

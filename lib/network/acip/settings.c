@@ -1,6 +1,7 @@
 #include <ascii-chat/network/acip/settings.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/video/ascii/render.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/common.h>
 #include <string.h>
@@ -55,6 +56,9 @@ asciichat_error_t acip_render_settings_prepare(acip_render_settings_t *candidate
   if (initialize_client_palette(next.caps.palette_type, values->palette_custom, next.palette, &next.palette_length,
                                 next.luminance))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rendering palette");
+  if (values->renderer == ASCII_RENDERER_GLYPH && values->palette_explicit &&
+      !ascii_glyph_palette_supported(next.palette))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains characters without glyph masks");
   if (values->renderer == ASCII_RENDERER_GLYPH && !values->palette_explicit) {
     SAFE_STRNCPY(next.palette,
                  " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~",

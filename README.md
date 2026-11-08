@@ -44,13 +44,13 @@ https://github.com/user-attachments/assets/98ea116a-627a-4f4f-a33e-47854473cdf2
 
 ## Table of Contents
 
-- [💻📸 ascii-chat 🔡💬](#-ascii-chat-)
-  - [Animated Demonstrations](#animated-demonstrations)
+- [💻📸 ascii-chat 🔡💬 Video chat in your terminal](#-ascii-chat--video-chat-in-your-terminal)
+  - [Animated Demonstration](#animated-demonstration)
   - [Code Coverage](#code-coverage)
   - [Table of Contents](#table-of-contents)
   - [Get ascii-chat](#get-ascii-chat)
   - [Build From Source](#build-from-source)
-  - [Usage](#usage)
+  - [Usage and --flags](#usage-and---flags)
   - [MCP Server](#mcp-server)
   - [Cryptography](#cryptography)
   - [Environment Variables](#environment-variables)
@@ -117,10 +117,14 @@ git submodule update --init --recursive
 ./scripts/install-deps.sh     # Linux or macOS
 # ./scripts/install-deps.ps1  # Windows
 
-# 4. Build and install
-sudo make install
+# 4. Configure and build with Clang and Ninja
+cmake --preset default -B build
+cmake --build build
 
-# 5. Run ascii-chat
+# 5. Install (use sudo if the install prefix requires it)
+cmake --install build
+
+# 6. Run ascii-chat
 # Learn how to use it
 ascii-chat --help
 man ascii-chat
@@ -144,7 +148,7 @@ Common development targets (run with `cmake --build build --target <name>`):
 | `ascii-chat`                                                              | Build the main executable (default)                                                                                                                           |
 | `shared-lib`                                                              | Build shared library (`libasciichat.so`/`.dylib`/`.dll`)                                                                                                      |
 | `static-lib`                                                              | Build static library (`libasciichat.a`)                                                                                                                       |
-| `tests`                                                                   | Build and run all unit and integration tests                                                                                                                  |
+| `tests`                                                                   | Build test executables when available (see testing instructions)                                                                                              |
 | `man1`                                                                    | Generate man page for `ascii-chat(1)`                                                                                                                         |
 | `completions`                                                             | Generate shell completions (bash, fish, zsh, powershell)                                                                                                      |
 | `docs`                                                                    | Generate API documentation with Doxygen                                                                                                                       |
@@ -158,7 +162,7 @@ Common development targets (run with `cmake --build build --target <name>`):
 
 ## Usage and --flags
 
-ascii-chat uses a unified binary with four modes: `server`, `client`, `mirror`, and `discovery-service`.
+ascii-chat uses a unified binary with `server`, `client`, `mirror`, `discovery`, `discovery-service`, and `mcp-server` modes. Discovery is the default when no mode is specified.
 
 **Get help:**
 
@@ -167,7 +171,9 @@ ascii-chat --help                      # Top-level help
 ascii-chat server --help               # Server-specific help
 ascii-chat client --help               # Client-specific help
 ascii-chat mirror --help               # Mirror-specific help
+ascii-chat discovery --help             # Discovery-specific help
 ascii-chat discovery-service --help     # Discovery-service-specific help
+ascii-chat mcp-server --help            # MCP server help
 ```
 
 **Read the installed manual:**
@@ -189,6 +195,12 @@ man build/share/man/man5/ascii-chat.5     # File formats
 
 - [ascii-chat.com/man1](https://ascii-chat.com/man1)
 - [ascii-chat.com/man5](https://ascii-chat.com/man5)
+
+### Zalgo text
+
+Use `--zalgo` to add combining marks to terminal text output. The default
+intensity is 7; choose a level from 1 to 10 with, for example, `--zalgo=3`.
+This option is available in client, mirror, and discovery modes.
 
 ### Audio visualizations
 
@@ -226,7 +238,7 @@ export FPATH=$(brew --prefix)/share/zsh/site-functions:$FPATH
 
 # Bash: if you have a custom BASH_COMPLETION_USER_DIR
 export BASH_COMPLETION_USER_DIR=~/.bash-completions
-ascii-chat --completions bash > $BASH_COMPLETION_USER_DIR/completions/completions/ascii-chat.bash
+ascii-chat --completions bash > $BASH_COMPLETION_USER_DIR/completions/ascii-chat.bash
 ```
 
 **If building from source or without a package manager:** Generate completions on-demand:
@@ -325,29 +337,28 @@ The protocol is efficient (20-byte headers, binary), reliable (TCP handles packe
 
 **The Problem:** Running a video chat server should be as easy as opening a Zoom meeting. But networking is hard. Most home routers block incoming connections, requiring manual UPnP/NAT-PMP configuration. You need to know your public IP and share it with others. Symmetric NAT makes peer-to-peer connections nearly impossible. Corporate/university networks often block non-standard ports.
 
-**The ACDS Solution:** Share a three-word session string like `purple-mountain-lake` and people can join. No IP addresses, no port forwarding, no network configuration.
+**The ACDS Solution:** Share a three-word session string like `purple-mountain-lake` and people can join. Depending on the network, a direct connection or relay may require additional configuration.
 
 ### How ACDS Works
 
-ACDS is a rendezvous server that helps clients find each other. The server registers with ACDS and gets a memorable session string (e.g., `happy-sunset-ocean`). ACDS attempts NAT traversal using UPnP, NAT-PMP, and WebRTC ICE/STUN/TURN. The server shares the session string with potential clients.
+ACDS is a rendezvous service for finding sessions by a memorable session string.
+Participants exchange connection information through the service and attempt to
+connect using available transports. Connection options depend on the network,
+configuration, and whether a relay is available.
 
-When a client queries ACDS with the session string, ACDS returns connection info: IP address(es), ports, NAT type, and relay options. The client tries direct TCP first (if UPnP/NAT-PMP succeeded, best latency), then WebRTC DataChannel (P2P via ICE/STUN, good latency, works behind NAT), and finally TURN relay as a fallback (higher latency, always works).
+### Local network discovery
 
-It all happens automatically. No user intervention required.
-
-### mDNS Support (No Server Required!)
-
-ACDS also supports **local network discovery via mDNS** (multicast DNS). On the same LAN, you can:
+Servers advertise on the local network using mDNS by default. On the same LAN,
+start a server and scan for it from a client:
 
 ```bash
-# Server announces on local network
-ascii-chat server --mdns
-
-# Client discovers servers automatically
-ascii-chat client --mdns
+ascii-chat server
+ascii-chat client --scan
 ```
 
-This enables local sessions without any configuration - good for office environments, conferences, or home networks where you don't need internet-wide discovery.
+The client presents discovered servers for selection. In client mode, `--scan`
+is used when no explicit destination has been supplied. LAN discovery does not
+require an ACDS server, but does require a network that permits mDNS traffic.
 
 ### Session Strings
 
@@ -355,26 +366,22 @@ ACDS generates memorable session identifiers from a curated word list. The forma
 
 ### NAT Traversal Technologies
 
-ACDS leverages multiple NAT traversal techniques. UPnP (Universal Plug and Play) works on ~70% of home routers with automatic port forwarding, enabling direct TCP connections with lowest latency. NAT-PMP (NAT Port Mapping Protocol) is Apple's alternative to UPnP, common on Apple routers and some enterprise gear, also enabling direct TCP connections. WebRTC (ICE/STUN/TURN) uses STUN to discover public IP/port mapping, ICE to negotiate P2P connections through NAT, and TURN as a relay fallback that always succeeds. Higher overhead but works in 99% of networks.
+Depending on the connection and configuration, ascii-chat can use UPnP or
+NAT-PMP port mapping, or WebRTC ICE with STUN and TURN. Router support, network
+policy, and relay availability affect which connections succeed. Use
+`--port-forwarding` to request automatic port mapping where supported.
 
 ### Network Error Handling
 
-ACDS implements **proper error signaling** that will eventually propagate to the main protocol:
-
-- `ERROR_SESSION_NOT_FOUND` - Invalid session string
-- `ERROR_SESSION_FULL` - Server at max capacity
-- `ERROR_AUTHENTICATION_FAILED` - Key/password mismatch
-- `ERROR_NETWORK_UNREACHABLE` - Cannot establish connection
-- `ERROR_PROTOCOL_VERSION_MISMATCH` - Client/server version incompatibility
-
-Future enhancement: ACIP will adopt this error framework for comprehensive error handling across the stack.
+ACDS reports errors such as a missing or full session, invalid password or
+signature, rate limiting, and an unavailable session string.
 
 ### Privacy & Security
 
 **ACDS never sees your data:**
 
 - Only exchanges connection metadata (IP addresses, ports)
-- All media flows **directly between peers** using ACIP encryption
+- Media travels between participants using ACIP encryption; a TURN relay may carry traffic when configured
 - ACDS doesn't decrypt, proxy, or store media content
 
 **Official server (trusted by default):**
@@ -391,7 +398,7 @@ Future enhancement: ACIP will adopt this error framework for comprehensive error
 
 ### Why ACDS
 
-"Join happy-sunset-ocean" is easier than "Connect to 73.251.42.118:27224". Works behind firewalls without manual configuration. Tries the best connection first, falls back gracefully. mDNS support for LANs without a server. You can run your own ACDS server for privacy.
+"Join happy-sunset-ocean" is easier than "Connect to 73.251.42.118:27224". Connection options depend on network and relay availability. mDNS supports LAN discovery without ACDS. You can run your own ACDS server for privacy.
 
 ## libasciichat
 
@@ -460,27 +467,40 @@ ascii-chat is built on operating system code and several libraries.
 
 - [**musl libc**](https://musl.libc.org/) - Static builds (Linux releases)
 - [**mimalloc**](https://github.com/microsoft/mimalloc) - High-performance memory allocator (release builds)
+- [**libuv**](https://libuv.org/) - Cross-platform asynchronous networking and event-loop support
 - [**PortAudio**](http://www.portaudio.com/) - Cross-platform audio I/O
+- [**FFTW3**](https://www.fftw.org/) - Fast Fourier transforms used by audio processing
+- [**ALSA**](https://www.alsa-project.org/) - Linux audio backend used by PortAudio (Linux only)
 - [**tomlc17**](https://github.com/cktan/tomlc17) - ascii-chat has TOML config files
 - [**uthash**](https://troydhanson.github.io/uthash/) - ascii-chat uses hash tables normally for a few different things
 - [**utf8proc**](https://github.com/JuliaStrings/utf8proc) - UTF-8 support even though it's named ascii-chat
 - [**PCRE2**](https://www.pcre.org/) - Regular expressions for strings; validation and parsing and search
+- [**ICU**](https://icu.unicode.org/) - Unicode and locale support
 - [**libsodium**](https://libsodium.org/) - End-to-end encryption and authentication
 - [**libsodium-bcrypt-pbkdf**](https://github.com/imaami/libsodium-bcrypt-pbkdf) - Decrypt password-protected SSH Ed25519 keys
+- [**OpenSSL**](https://www.openssl.org/) - TLS and cryptographic support for WebRTC, WebSockets, and TURN credentials
 - [**BearSSL**](https://bearssl.org/) - HTTPS client for GitHub/GitLab key fetching; AES for SSH key decryption
+- [**zlib**](https://zlib.net/) - Compression support required by libwebsockets and FFmpeg
 - [**zstd**](https://facebook.github.io/zstd/) - Network data compression
 - [**Opus**](https://opus-codec.org/) - Audio codec for low-latency voice transmission
+- [**Abseil**](https://abseil.io/) - C++ support library used by WebRTC audio processing
 - [**WebRTC AEC3**](https://github.com/nicnacnic/webrtc_AEC3) - WebRTC acoustic echo cancellation so you can talk to each other without hearing yourself
 - [**Sokol**](https://github.com/floooh/sokol) - Header-only cross-platform utilities (timing, audio)
 - [**SQLite3**](https://www.sqlite.org/) - Database for discovery service session storage
 - [**libdatachannel**](https://github.com/paullouisageneau/libdatachannel) - WebRTC DataChannels
 - [**libwebsockets**](https://libwebsockets.org/) - WebSocket server for browser clients
 - [**miniupnpc**](https://miniupnp.tuxfamily.org/) - Opens ports in your router to ascii-chat so clients can connect
+- [**mDNS**](https://github.com/avahi/avahi) - Local-network service discovery
+- [**yyjson**](https://github.com/ibireme/yyjson) - Fast JSON parsing for structured data and logging
 - [**FFmpeg**](https://ffmpeg.org/) - Media support for `--file` and `--url`. Direct handling of FFmpeg-supported formats, protocols (HTTP, RTSP, RTMP), and files
+- [**x264**](https://www.videolan.org/developers/x264.html) - H.264 encoder used by FFmpeg when enabled
+- [**x265**](https://www.videolan.org/developers/x265.html) - HEVC encoder used by FFmpeg when enabled
 - [**yt-dlp**](https://github.com/yt-dlp/yt-dlp) - Supports 1000+ streaming sites for `--url` (YouTube, TikTok, Twitch, etc.). Optional; ascii-chat falls back to FFmpeg for direct streams (optional)
 - [**libvterm**](http://www.leonerd.org.uk/code/libvterm/) - Terminal emulation for `--render-file` pixel output
 - [**FreeType2**](https://freetype.org/) - Font rasterization for `--render-file` glyph rendering
 - [**fontconfig**](https://www.freedesktop.org/wiki/Software/fontconfig/) - Font resolution and configuration for `--render-file`
+- [**libexecinfo**](https://github.com/termux/libexecinfo) - Backtrace support for musl builds (musl only)
+- [**Criterion**](https://criterion.readthedocs.io/en/master/) - C test framework (Unix test builds only)
 - [**ssh-agent**](https://linux.die.net/man/1/ssh-agent) - SSH key agent authentication (optional)
 - [**gpg-agent**](https://linux.die.net/man/1/gpg-agent) - GPG key agent authentication (optional)
 
@@ -503,6 +523,13 @@ ascii-chat is built on operating system code and several libraries.
 ```powershell
 ./scripts/install-deps.ps1
 ```
+
+The first CMake configuration installs vcpkg manifest dependencies. Later
+configurations reuse them without waiting for another vcpkg install. After
+changing the manifest or vcpkg configuration, refresh the dependencies with
+`cmake --preset default -B build -DASCIICHAT_VCPKG_REFRESH=ON`, then set the
+option back to `OFF` for subsequent configurations. If
+`VCPKG_MANIFEST_INSTALL` was explicitly disabled, set it to `ON` for the refresh.
 
 For detailed installation instructions and troubleshooting, see the **[Build System / Dependencies](https://zfogg.github.io/ascii-chat/group__dependencies.html)** documentation.
 
@@ -556,7 +583,10 @@ Tests are run using CMake's ctest tool, which integrates with Criterion for para
 #### Running Tests with ctest
 
 ```bash
-# Build tests first
+# Enable tests in the default build directory
+cmake --preset default -B build -DBUILD_TESTS=ON
+
+# Build tests (where the tests target is available)
 cmake --build build --target tests
 
 # Run all tests
@@ -607,8 +637,9 @@ The Docker script automatically:
 You can also run individual test executables directly:
 
 ```bash
-# Build the project first
-cmake --preset debug && cmake --build build
+# Configure with tests enabled and build the desired test targets
+cmake --preset default -B build -DBUILD_TESTS=ON
+cmake --build build --target test_unit_mixer test_performance_ascii_simd
 
 # Run individual tests
 build/bin/test_unit_mixer --verbose
@@ -650,7 +681,7 @@ build/bin/test_performance_ascii_simd --filter "*monochrome*"
 - [x] Crypto. Custom handshake protocol with auth and rekeying.
 - [x] GPG key support for crypto (Ed25519 via gpg-agent).
 - [x] Matrix digital rain (--matrix works. try with --color-filter rainbow).
-- [ ] zalgo text generator
+- [x] Zalgo text generator (`--zalgo`).
 - [x] v4l2 webcam images working.
 - [ ] make more little todos from the github issues so they're tracked in the readme because i like the changelog (i can check with git when things are checked off)
 - [ ] submit an ascii-chat internet protocol (ACIP) ietf rfc

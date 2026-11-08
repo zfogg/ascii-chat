@@ -468,7 +468,7 @@ typedef enum {
 #define OPT_STRETCH_DEFAULT false
 
 /** @brief Default FPS (frames per second) */
-#define OPT_FPS_DEFAULT 60
+#define OPT_FPS_DEFAULT 0
 
 /** @brief Default snapshot mode flag (false = continuous) */
 #define OPT_SNAPSHOT_MODE_DEFAULT false
@@ -851,7 +851,6 @@ static const bool default_no_check_update_value = OPT_NO_CHECK_UPDATE_DEFAULT;
 static const bool default_log_format_console_only_value = OPT_LOG_FORMAT_CONSOLE_DEFAULT;
 
 static const double default_debug_errno_stacks_time_value = 0.0;
-static const bool default_debug_errno_stacks_time_explicit_value = false;
 static const double default_debug_sync_state_time_value = 0.0;
 static const bool default_debug_sync_state_time_explicit_value = false;
 static const double default_debug_backtrace_time_value = 0.0;
@@ -994,6 +993,19 @@ typedef struct options_state {
   char websocket_tls_cert[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS certificate file path (server/discovery-service only)
   char websocket_tls_key[OPTIONS_BUFF_SIZE];  ///< WebSocket TLS private key file path (server/discovery-service only)
   char websocket_tls_key_password[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS key password (server/discovery-service only)
+  char webtransport_bind_address[OPTIONS_BUFF_SIZE];  ///< Browser HTTP/3 listener address.
+  char webtransport_origin[OPTIONS_BUFF_SIZE];        ///< Allowed browser origin.
+  char webtransport_path[OPTIONS_BUFF_SIZE];          ///< HTTP/3 CONNECT path.
+  char quic_bind_address[OPTIONS_BUFF_SIZE];          ///< Concrete local QUIC listener address; empty disables QUIC.
+  char quic_tls_cert[OPTIONS_BUFF_SIZE];              ///< Native QUIC TLS certificate.
+  char quic_tls_key[OPTIONS_BUFF_SIZE];               ///< Native QUIC TLS private key.
+  char quic_ca_file[OPTIONS_BUFF_SIZE];               ///< Native QUIC client certificate trust anchors.
+  bool quic_visual_datagrams;                         ///< Prefer negotiated visual datagrams.
+  bool quic_audio_datagrams;                          ///< Prefer negotiated QUIC datagrams for audio.
+  bool discovery_quic;                                ///< Use QUIC for a disclosed discovery host endpoint.
+  char webtransport_public_url[OPTIONS_BUFF_SIZE];    ///< Public HTTPS WebTransport endpoint advertised through ACDS.
+  int quic_port;                                      ///< QUIC UDP port, or zero to use the TCP server port.
+  int quic_fallback_port;                             ///< TCP fallback port, or zero to disable fallback.
   int max_clients;                                    ///< Maximum concurrent clients (server only)
   char session_string[SESSION_STRING_BUFFER_SIZE]; ///< Session string for ACDS discovery (calculated max size: 38 chars
                                                    ///< + null)
@@ -1004,15 +1016,17 @@ typedef struct options_state {
   bool discovery;                           ///< Enable discovery session registration (default: false)
   char discovery_server[OPTIONS_BUFF_SIZE]; ///< discovery server address (default: 127.0.0.1)
   // MCP HTTP transport
-  bool mcp_server_restricted;                    ///< Restrict MCP capabilities for cloud deployment
-  char mcp_transport[OPTIONS_BUFF_SIZE];         ///< MCP transport: stdio or http
-  char http_origin[OPTIONS_BUFF_SIZE];           ///< Allowed HTTP Origin
-  char http_tls_cert[OPTIONS_BUFF_SIZE];         ///< HTTP TLS certificate path
-  char http_tls_key[OPTIONS_BUFF_SIZE];          ///< HTTP TLS key path
-  char http_tls_key_password[OPTIONS_BUFF_SIZE]; ///< HTTP TLS key password
-  int discovery_port;                            ///< discovery server port (default: 27225)
-  char discovery_service_url[OPTIONS_BUFF_SIZE]; ///< discovery server WebSocket URL (ws:// or wss://, mutually
-                                                 ///< exclusive with discovery_port)
+  bool mcp_server_restricted;                       ///< Restrict MCP capabilities for cloud deployment
+  char mcp_downloads_dir[OPTIONS_BUFF_SIZE];        ///< Hosted download directory override
+  char mcp_downloads_url_prefix[OPTIONS_BUFF_SIZE]; ///< Public HTTP origin for download links
+  char mcp_transport[OPTIONS_BUFF_SIZE];            ///< MCP transport: stdio or http
+  char http_origin[OPTIONS_BUFF_SIZE];              ///< Allowed HTTP Origin
+  char http_tls_cert[OPTIONS_BUFF_SIZE];            ///< HTTP TLS certificate path
+  char http_tls_key[OPTIONS_BUFF_SIZE];             ///< HTTP TLS key path
+  char http_tls_key_password[OPTIONS_BUFF_SIZE];    ///< HTTP TLS key password
+  int discovery_port;                               ///< discovery server port (default: 27225)
+  char discovery_service_url[OPTIONS_BUFF_SIZE];    ///< discovery server WebSocket URL (ws:// or wss://, mutually
+                                                    ///< exclusive with discovery_port)
   char discovery_service_key[OPTIONS_BUFF_SIZE]; ///< discovery server public key for trust verification (SSH/GPG key or
                                                  ///< HTTPS URL)
   bool webrtc; ///< Enable WebRTC mode for discovery session (default: true, P2P WebRTC)
@@ -1069,7 +1083,7 @@ typedef struct options_state {
   bool show_capabilities;                                        ///< Show terminal capabilities and exit
   int force_utf8;                                                ///< UTF-8 support setting (auto/true/false)
   int stats_interval;      ///< Periodic plain statistics on stdout; zero disables.
-  int fps;                 ///< Target framerate (1-144, default: 60)
+  int fps;                 ///< Target framerate (0 = auto, 1-144)
   bool fps_explicitly_set; ///< True if FPS was explicitly configured by the user
   bool face_follow;        ///< Automatically frame and follow the selected face
   bool face_follow_debug;  ///< Developer diagnostic face outline

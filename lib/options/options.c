@@ -685,6 +685,8 @@ options_t options_t_new(void) {
   opts.audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
   opts.audio_source = OPT_AUDIO_SOURCE_DEFAULT;
   opts.audio_capture_source = OPT_AUDIO_CAPTURE_SOURCE_DEFAULT;
+  opts.microphone_channels = 1;
+  opts.microphone_channel = 0;
   opts.microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
   opts.speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
   opts.microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT;
@@ -1476,6 +1478,11 @@ static void initialize_mode_defaults(options_t *opts, asciichat_mode_t detected_
   // Initialize all defaults using options_t_new_preserve_binary() to keep binary-level
   // options (--quiet, --verbose, --log-level, etc.) from being reset
   (*opts) = options_t_new_preserve_binary(opts);
+  if (detected_mode == MODE_MCP_SERVER) {
+    opts->port = OPT_MCP_PORT_DEFAULT;
+    // Zero means use the available CPU count unless max-clients is configured.
+    opts->max_clients = 0;
+  }
   // If a session string was detected during mode detection, restore it after options reset
   // This ensures discovery mode knows which session to join
   if (detected_session_string[0] != '\0') {
@@ -2368,12 +2375,15 @@ asciichat_error_t options_init(int argc, char **argv) {
     goto cleanup;
   }
   record_explicit_fps(&opts, mode_args.argc, mode_args.argv, fps_set_by_config);
-  // Validators consume a published snapshot; final publication follows normalization.
-  result = publish_options_for_validation(&opts);
+  result = validate_custom_palette(&opts);
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
-  result = validate_custom_palette(&opts);
+  result = validate_glyph_palette(&opts);
+  if (result != ASCIICHAT_OK)
+    goto cleanup;
+  // Remaining validators consume a published snapshot.
+  result = publish_options_for_validation(&opts);
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }

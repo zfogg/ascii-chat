@@ -120,7 +120,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
     ninja mimalloc zstd libsodium portaudio opus fftw criterion doxygen sqlite3 \
     miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets libuv icu4c openssl@3 yyjson \
-    libvterm freetype fontconfig expat \
+    libvterm freetype fontconfig expat pcre2 \
     >/dev/null 2>&1 || true
 
   if ! command -v python3 &>/dev/null || ! python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))'; then
@@ -132,6 +132,10 @@ if [[ "$PLATFORM" == "macos" ]]; then
   if ! command -v uv &>/dev/null; then
     brew install uv
   fi
+  uv python install 3.15
+  uv python pin 3.15
+  uv tool install --upgrade "yt-dlp[default]"
+  uv sync --project "$(dirname "$0")/../tests/ascii_chat_tests" --frozen
 
   sync_python_tooling
   verify_llvm_for_defer "$(brew --prefix llvm)/bin/clang"
@@ -205,7 +209,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       musl-tools musl-dev \
       nasm \
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libfftw3-dev libsystemd-dev \
-      libcriterion-dev libffi-dev libsqlite3-dev \
+      libcriterion-dev libffi-dev libsqlite3-dev libpcre2-dev \
       libssl-dev \
       libminiupnpc-dev \
       libprotobuf-c-dev \
@@ -385,8 +389,6 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       rpm-build \
       libvterm-devel freetype-devel fontconfig-devel libicu-devel
 
-    python3 -m pip install -U "yt-dlp[default]"
-
     curl -fsSL https://bun.com/install | bash
 
   elif command -v pacman &>/dev/null; then
@@ -449,6 +451,13 @@ elif [[ "$PLATFORM" == "linux" ]]; then
   command -v uv >/dev/null || { echo >&2 "ERROR: uv installation failed"; exit 1; }
   sync_python_tooling
 
+  # uv owns the Python interpreter and project environment. Keep the required
+  # minor version in one place so system Python versions do not affect tests.
+  uv python install 3.15
+  uv python pin 3.15
+  uv tool install --upgrade "yt-dlp[default]"
+  uv sync --project "$(dirname "$0")/../tests/ascii_chat_tests" --frozen
+
   echo ""
   if [ -n "${LLVM_VERSION:-}" ]; then
     verify_llvm_for_defer "/usr/lib/llvm-${LLVM_VERSION}/bin/clang"
@@ -463,4 +472,16 @@ elif [[ "$PLATFORM" == "windows" ]]; then
   echo "On Windows, please use the PowerShell script instead:"
   echo "  ./scripts/install-deps.ps1"
   exit 1
+fi
+
+# Vite+ supplies Oxfmt and the Node.js toolchain used by formatting targets.
+if ! command -v vp >/dev/null 2>&1; then
+  curl -fsSL https://vite.plus | bash
+  export PATH="$HOME/.vite-plus/bin:$PATH"
+fi
+if command -v vp >/dev/null 2>&1; then
+  (cd "$(dirname "$0")/.." && vp install --ignore-scripts)
+  (cd "$(dirname "$0")/../web" && vp install --ignore-scripts)
+else
+  echo >&2 "Vite+ installed; open a new shell and run vp install in the repository and web directories."
 fi

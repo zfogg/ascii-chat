@@ -17,7 +17,7 @@ hexdump -C acds_pubkey.raw
 
 # Convert raw Ed25519 public key to SSH format
 # SSH Ed25519 format: "ssh-ed25519 " + base64(0x0000000b + "ssh-ed25519" + 0x00000020 + 32_byte_pubkey)
-python3 << 'PYTHON'
+uv run --project ../../tests/ascii_chat_tests --frozen python - << 'PYTHON'
 import base64
 import struct
 

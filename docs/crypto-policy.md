@@ -5,16 +5,16 @@ Native clients and the browser use `crypto_policy_resolve()` from
 Its result is the existing ACIP mode bitmask: NONE (0), ENCRYPT (1), AUTH (2), or
 FULL (3). Authentication and payload encryption are independent.
 
-| Input | Plain TCP / WS | TLS / WSS / WebRTC DTLS |
-| --- | --- | --- |
-| Default, no credentials | ENCRYPT | NONE |
-| Password | FULL | FULL |
-| Identity key or pinned server key | FULL | AUTH |
-| Explicit encryption | ENCRYPT | ENCRYPT |
-| Key and explicit no-encrypt | AUTH | AUTH |
-| Password and explicit no-encrypt | AUTH | AUTH |
-| No-auth, no credentials | ENCRYPT | NONE |
-| No-auth and no-encrypt | NONE | NONE |
+| Input                             | Plain TCP / WS | TLS / WSS / WebRTC DTLS |
+| --------------------------------- | -------------- | ----------------------- |
+| Default, no credentials           | ENCRYPT        | NONE                    |
+| Password                          | FULL           | FULL                    |
+| Identity key or pinned server key | FULL           | AUTH                    |
+| Explicit encryption               | ENCRYPT        | ENCRYPT                 |
+| Key and explicit no-encrypt       | AUTH           | AUTH                    |
+| Password and explicit no-encrypt  | AUTH           | AUTH                    |
+| No-auth, no credentials           | ENCRYPT        | NONE                    |
+| No-auth and no-encrypt            | NONE           | NONE                    |
 
 An explicit encryption setting takes precedence over transport/password
 defaults. Supplying both encrypt and no-encrypt is an error. Supplying
@@ -78,7 +78,7 @@ Validation:
 ```sh
 cmake --build build --target ascii-chat test-crypto-policy
 ctest --test-dir build -R '^crypto-policy$' --output-on-failure
-python tests/integration/crypto_policy.py /absolute/path/to/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/crypto_policy.py /absolute/path/to/ascii-chat
 # From web/web, with the rebuilt WASM bundle:
 vp dev --config tests/network/crypto-policy.vite.config.ts
 # In another terminal:
@@ -95,7 +95,7 @@ WebRTC validation (real native and browser DataChannels):
 ```sh
 cmake --build build --target test-webrtc-security
 ctest --test-dir build -R '^webrtc-security$' --output-on-failure
-python tests/integration/webrtc_security.py /absolute/path/to/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/webrtc_security.py /absolute/path/to/ascii-chat
 # From web/web:
 vp exec playwright test --config tests/e2e/peer-security.config.ts
 ```

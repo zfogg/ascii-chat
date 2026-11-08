@@ -70,6 +70,10 @@ void platform_disable_keepawake(void) {
 // Keyboard input stubs
 #include <ascii-chat/platform/keyboard.h>
 
+bool keyboard_request_background(void) {
+  return false;
+}
+
 bool keyboard_input_available(void) {
   return false;
 }

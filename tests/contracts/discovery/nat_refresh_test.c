@@ -471,9 +471,12 @@ Test(nat_refresh, explicit_identity_configuration_is_copied_and_cancelled_start_
   cr_assert_eq(discovery_session_start(created), ASCIICHAT_OK);
   cr_assert_null(created->acds_connection);
   cr_assert_eq(created->state, DISCOVERY_STATE_INIT);
+  uint64_t before_waiting = time_get_ns();
   set_state(created, DISCOVERY_STATE_WAITING_PEER);
+  uint64_t after_waiting = time_get_ns();
   cr_assert_eq(last_state, DISCOVERY_STATE_WAITING_PEER);
-  cr_assert_gt(created->waiting_peer_start_ns, 0);
+  cr_assert_geq(created->waiting_peer_start_ns, before_waiting);
+  cr_assert_leq(created->waiting_peer_start_ns, after_waiting);
   set_error(created, ERROR_NETWORK, "recovery failed");
   cr_assert_eq(error_calls, 1);
   cr_assert_eq(last_state, DISCOVERY_STATE_FAILED);

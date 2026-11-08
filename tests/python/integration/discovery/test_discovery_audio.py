@@ -17,7 +17,10 @@ def test_discovery_audio(binary, tmp_path):
     identity.write_bytes(bytes.fromhex('9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a'))
     services = []
     try:
-        ap, wp, hp = free_port(), free_port(), free_port()
+        ports = set()
+        while len(ports) < 3:
+            ports.add(free_port())
+        ap, wp, hp = ports
         env = {'ASCII_CHAT_QUESTION_PROMPT_RESPONSE':'y;y;y', 'ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK':'1'}
         acds = Service(binary, directory, 'acds', 'discovery-service',
                        ['127.0.0.1', '--key', str(identity), '--port', str(ap), '--websocket-port', str(wp),

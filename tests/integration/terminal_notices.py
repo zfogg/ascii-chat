@@ -1,6 +1,6 @@
 """Notice layout, logging, security decisions and real PTY/ConPTY presentation.
 
-python tests/integration/terminal_notices.py --library build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/terminal_notices.py --library build/bin/asciichat.dll
 Requires the terminal_ui.py dependencies (pyte and pywinpty or pexpect).
 """
 

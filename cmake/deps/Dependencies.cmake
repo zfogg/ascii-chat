@@ -72,6 +72,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/WebRTC.cmake)
 
 # OpenSSL - SSL/TLS library (required by libdatachannel, libwebsockets, and TURN credentials)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/OpenSSL.cmake)
+if(NOT EMSCRIPTEN)
+    include(${CMAKE_SOURCE_DIR}/cmake/deps/Quic.cmake)
+    asciichat_configure_quic()
+endif()
 
 # BearSSL - SSL/TLS library for HTTPS key fetching
 include(${CMAKE_SOURCE_DIR}/cmake/deps/BearSSL.cmake)
@@ -178,7 +182,7 @@ if(NOT EMSCRIPTEN)
     endif()
     include(${CMAKE_SOURCE_DIR}/cmake/deps/OtelExporter.cmake)
     set(BUILD_SHARED_LIBS ${_asciichat_parent_shared_libs})
-    add_compile_definitions(ASCIICHAT_WITH_OTEL=1 GOTEL_WITH_SQLITE=1)
+    add_compile_definitions(GOTEL_WITH_SQLITE=1)
     include_directories($<TARGET_PROPERTY:gotel,INTERFACE_INCLUDE_DIRECTORIES>
                         $<TARGET_PROPERTY:otlp_c,INTERFACE_INCLUDE_DIRECTORIES>)
 endif()

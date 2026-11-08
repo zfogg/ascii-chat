@@ -1,90 +1,135 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<!-- This is an automatically generated file.  Do not edit.
+  <!-- This is an automatically generated file.  Do not edit.
    -*- nroff -*-
  -->
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    table.head, table.foot { width: 100%; }
-    td.head-rtitle, td.foot-os { text-align: right; }
-    td.head-vol { text-align: center; }
-    .Nd, .Bf, .Op { display: inline; }
-    .Pa, .Ad { font-style: italic; }
-    .Ms { font-weight: bold; }
-    .Bl-diag > dt { font-weight: bold; }
-    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
-      font-family: inherit; }
-  </style>
-  <title>client.c(3)</title>
-</head>
-<body>
-<table class="head">
-  <tr>
-    <td class="head-ltitle">client.c(3)</td>
-    <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">client.c(3)</td>
-  </tr>
-</table>
-<div class="manual-text">
-<section class="Sh">
-<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">client.c - Client application state implementation.</p>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
-<br/>
-<p class="Pp"><b>app_client_t</b> * <b>app_client_create</b> (void)
-  <br/>
-  Create and initialize client application context. void
-    <b>app_client_destroy</b> (<b>app_client_t</b> **client_ptr)
-  <br/>
-  Destroy client application context and free all resources.
-  <br/>
-</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
-  Description</a></h1>
-<p class="Pp">Client application state implementation.</p>
-<p class="Pp">Implements <b>app_client_create()</b> and
-    <b>app_client_destroy()</b> for managing the application-layer state of
-    ASCII chat clients.</p>
-<p class="Pp"></p>
-<p class="Pp"><b>Author</b></p>
-<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
-<p class="Pp"><b>Date</b></p>
-<div class="Bd-indent">February 2026</div>
-<p class="Pp">Definition in file <b>lib/network/client.c</b>.</p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
-  Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss"><b>app_client_t</b> * app_client_create (void )</h2>
-<p class="Pp">Create and initialize client application context.</p>
-<p class="Pp"><b>Returns</b></p>
-<div class="Bd-indent">Pointer to initialized context, or NULL on failure</div>
-<p class="Pp">Definition at line <b>25</b> of file
-  <b>lib/network/client.c</b>.</p>
-<pre>25                                       {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>client.c(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">client.c(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">client.c(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">client.c - Client application state implementation.</p>
+        <p class="Pp"></p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>app_client_t</b> * <b>app_client_create</b> (void)
+            <br />
+            Create and initialize client application context. void
+            <b>app_client_destroy</b> (<b>app_client_t</b> **client_ptr)
+            <br />
+            Destroy client application context and free all resources.
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">Client application state implementation.</p>
+        <p class="Pp">
+          Implements <b>app_client_create()</b> and
+          <b>app_client_destroy()</b> for managing the application-layer state
+          of ASCII chat clients.
+        </p>
+        <p class="Pp"></p>
+        <p class="Pp"><b>Author</b></p>
+        <div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+        <p class="Pp"><b>Date</b></p>
+        <div class="Bd-indent">February 2026</div>
+        <p class="Pp">Definition in file <b>lib/network/client.c</b>.</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Function_Documentation">
+          <a class="permalink" href="#Function_Documentation"
+            >Function Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss"><b>app_client_t</b> * app_client_create (void )</h2>
+          <p class="Pp">Create and initialize client application context.</p>
+          <p class="Pp"><b>Returns</b></p>
+          <div class="Bd-indent">
+            Pointer to initialized context, or NULL on failure
+          </div>
+          <p class="Pp">
+            Definition at line <b>25</b> of file <b>lib/network/client.c</b>.
+          </p>
+          <pre>
+25                                       {
 26   app_client_t *client = SAFE_MALLOC(sizeof(app_client_t), app_client_t *);
 27   if (!client) {
 28     log_error(&quot;Failed to allocate app_client_t&quot;);
 29     return NULL;
 30   }
-31 
+31
 32   // Zero-initialize all fields
 33   memset(client, 0, sizeof(*client));
-34 
+34
 35   /* Transport */
 36   connection_handle_init(&amp;client-&gt;connection);
-37 
+37
 38   /* Audio State */
 39   memset(&amp;client-&gt;audio_ctx, 0, sizeof(client-&gt;audio_ctx));
 40   memset(client-&gt;audio_send_queue, 0, sizeof(client-&gt;audio_send_queue));
@@ -95,21 +140,21 @@
 45   client-&gt;audio_capture_thread_created = false;
 46   client-&gt;audio_sender_thread_created = false;
 47   atomic_store_bool(&amp;client-&gt;audio_capture_thread_exited, false);
-48 
+48
 49   // Initialize audio queue mutex and condition variable
 50   if (mutex_init(&amp;client-&gt;audio_send_queue_mutex, &quot;audio_queue&quot;) != 0) {
 51     log_error(&quot;Failed to initialize audio queue mutex&quot;);
 52     SAFE_FREE(client);
 53     return NULL;
 54   }
-55 
+55
 56   if (cond_init(&amp;client-&gt;audio_send_queue_cond, &quot;audio_queue&quot;) != 0) {
 57     log_error(&quot;Failed to initialize audio queue cond&quot;);
 58     mutex_destroy(&amp;client-&gt;audio_send_queue_mutex);
 59     SAFE_FREE(client);
 60     return NULL;
 61   }
-62 
+62
 63   /* Protocol State */
 64   client-&gt;data_thread_created = false;
 65   atomic_store_bool(&amp;client-&gt;data_thread_exited, false);
@@ -118,79 +163,90 @@
 68   client-&gt;should_clear_before_next_frame = false;
 69   client-&gt;my_client_id = 0;
 70   client-&gt;encryption_enabled = false;
-71 
+71
 72   /* Capture State */
 73   client-&gt;capture_thread_created = false;
 74   atomic_store_bool(&amp;client-&gt;capture_thread_exited, false);
-75 
+75
 76   /* Keepalive State */
 77   client-&gt;ping_thread_created = false;
 78   atomic_store_bool(&amp;client-&gt;ping_thread_exited, false);
-79 
+79
 80   /* Display State */
 81   client-&gt;has_tty = false;
 82   atomic_store_bool(&amp;client-&gt;is_first_frame_of_connection, false);
 83   memset(&amp;client-&gt;tty_info, 0, sizeof(client-&gt;tty_info));
-84 
+84
 85   /* Crypto State */
 86   memset(&amp;client-&gt;crypto_ctx, 0, sizeof(client-&gt;crypto_ctx));
 87   client-&gt;crypto_initialized = false;
-88 
+88
 89   // Register atomic fields for sync state monitoring with fully descriptive names
 90   char atomic_name[256];
-91 
+91
 92   // Audio subsystem control and status
 93   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.audio_sender_thread_should_exit_signal&quot;);
 94   NAMED_REGISTER_ATOMIC(&amp;client-&gt;audio_sender_should_exit, atomic_name, NULL);
-95 
+95
 96   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.audio_capture_thread_has_exited_status&quot;);
 97   NAMED_REGISTER_ATOMIC(&amp;client-&gt;audio_capture_thread_exited, atomic_name, NULL);
-98 
+98
 99   // Protocol and network data handling
 100   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.protocol_data_dispatch_thread_has_exited_status&quot;);
 101   NAMED_REGISTER_ATOMIC(&amp;client-&gt;data_thread_exited, atomic_name, NULL);
-102 
+102
 103   // Media capture control and status
 104   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.media_capture_thread_has_exited_status&quot;);
 105   NAMED_REGISTER_ATOMIC(&amp;client-&gt;capture_thread_exited, atomic_name, NULL);
-106 
+106
 107   // Keepalive and connection health monitoring
 108   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.keepalive_ping_thread_has_exited_status&quot;);
 109   NAMED_REGISTER_ATOMIC(&amp;client-&gt;ping_thread_exited, atomic_name, NULL);
-110 
+110
 111   // Display frame sequencing
 112   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.is_first_frame_of_new_connection_flag&quot;);
 113   NAMED_REGISTER_ATOMIC(&amp;client-&gt;is_first_frame_of_connection, atomic_name, NULL);
-114 
+114
 115   log_debug(&quot;App client created&quot;);
-116 
+116
 117   return client;
 118 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, <b>cond_init()</b>,
-    <b>connection_handle_init()</b>, <b>log_debug</b>, <b>log_error</b>,
-    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>NAMED_REGISTER_ATOMIC</b>,
-    <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="void_app_client_destroy_("><a class="permalink" href="#void_app_client_destroy_(">void
-  app_client_destroy (<b>app_client_t</b> ** client_ptr)</a></h2>
-<p class="Pp">Destroy client application context and free all resources.</p>
-<p class="Pp"><b>Parameters</b></p>
-<div class="Bd-indent"><i>client_ptr</i> Pointer to client pointer (set to NULL
-  after free)</div>
-<p class="Pp">Definition at line <b>123</b> of file
-  <b>lib/network/client.c</b>.</p>
-<pre>123                                                    {
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>atomic_store_bool()</b>, <b>cond_init()</b>,
+            <b>connection_handle_init()</b>, <b>log_debug</b>, <b>log_error</b>,
+            <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+            <b>NAMED_REGISTER_ATOMIC</b>, <b>SAFE_FREE</b>, and
+            <b>SAFE_MALLOC</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="void_app_client_destroy_(">
+            <a class="permalink" href="#void_app_client_destroy_("
+              >void app_client_destroy (<b>app_client_t</b> ** client_ptr)</a
+            >
+          </h2>
+          <p class="Pp">
+            Destroy client application context and free all resources.
+          </p>
+          <p class="Pp"><b>Parameters</b></p>
+          <div class="Bd-indent">
+            <i>client_ptr</i> Pointer to client pointer (set to NULL after free)
+          </div>
+          <p class="Pp">
+            Definition at line <b>123</b> of file <b>lib/network/client.c</b>.
+          </p>
+          <pre>
+123                                                    {
 124   if (!client_ptr || !*client_ptr) {
 125     return; // No-op if NULL
 126   }
-127 
+127
 128   app_client_t *client = *client_ptr;
-129 
+129
 130   log_debug(&quot;Destroying app client&quot;);
-131 
+131
 132   // Unregister atomic fields
 133   NAMED_UNREGISTER(&amp;client-&gt;audio_sender_should_exit);
 134   NAMED_UNREGISTER(&amp;client-&gt;audio_capture_thread_exited);
@@ -198,32 +254,37 @@
 136   NAMED_UNREGISTER(&amp;client-&gt;capture_thread_exited);
 137   NAMED_UNREGISTER(&amp;client-&gt;ping_thread_exited);
 138   NAMED_UNREGISTER(&amp;client-&gt;is_first_frame_of_connection);
-139 
+139
 140   // Destroy mutexes and condition variables
 141   mutex_destroy(&amp;client-&gt;audio_send_queue_mutex);
 142   cond_destroy(&amp;client-&gt;audio_send_queue_cond);
-143 
+143
 144   connection_handle_cleanup(&amp;client-&gt;connection);
-145 
+145
 146   SAFE_FREE(*client_ptr);
 147 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>cond_destroy()</b>,
-    <b>connection_handle_cleanup()</b>, <b>log_debug</b>,
-    <b>mutex_destroy()</b>, <b>NAMED_UNREGISTER</b>, and <b>SAFE_FREE</b>.</p>
-</section>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
-</section>
-</div>
-<table class="foot">
-  <tr>
-    <td class="foot-date">Version 0.11.2</td>
-    <td class="foot-os">ascii-chat</td>
-  </tr>
-</table>
-</body>
+          <pre></pre>
+          <p class="Pp"></p>
+          <p class="Pp">
+            References <b>cond_destroy()</b>,
+            <b>connection_handle_cleanup()</b>, <b>log_debug</b>,
+            <b>mutex_destroy()</b>, <b>NAMED_UNREGISTER</b>, and
+            <b>SAFE_FREE</b>.
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.11.25</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
 </html>

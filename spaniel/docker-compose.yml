@@ -2,7 +2,18 @@ name: ascii-chat-otel
 services:
   spaniel:
     image: ${SPANIEL_IMAGE:-ghcr.io/zfogg/spaniel:latest}
-    command: ["--db-path", "/data/spaniel.duckdb", "--no-browser", "--mcp-allow-writes", "--dashboards-dir", "/dashboards", "--alerts-dir", "/alerts"]
+    pull_policy: always
+    command:
+      [
+        "--db-path",
+        "/data/spaniel.duckdb",
+        "--no-browser",
+        "--mcp-allow-writes",
+        "--dashboards-dir",
+        "/dashboards",
+        "--alerts-dir",
+        "/alerts",
+      ]
     environment:
       SPANIEL_ENCRYPTION_PASSWORD: ${SPANIEL_ENCRYPTION_PASSWORD}
       SPANIEL_BIND_ADDRESS_V4: 0.0.0.0

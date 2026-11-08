@@ -2,12 +2,12 @@
 
 Issue #255 uses one layout for important printed messages and interactive prompts.
 
-| Severity | Terminal color | Use |
-| --- | --- | --- |
-| `UI_NOTICE_INFO` | White | Session strings and join instructions |
-| `UI_NOTICE_WARNING` | Yellow | Missing credentials, unavailable features, overwrite confirmations, actionable configuration errors |
-| `UI_NOTICE_DANGER` | Red | Identity changes, failed authentication, disabled encryption, privacy exposure |
-| `UI_NOTICE_FATAL` | Purple (ANSI magenta) | Fatal errors and their immediate context |
+| Severity            | Terminal color        | Use                                                                                                 |
+| ------------------- | --------------------- | --------------------------------------------------------------------------------------------------- |
+| `UI_NOTICE_INFO`    | White                 | Session strings and join instructions                                                               |
+| `UI_NOTICE_WARNING` | Yellow                | Missing credentials, unavailable features, overwrite confirmations, actionable configuration errors |
+| `UI_NOTICE_DANGER`  | Red                   | Identity changes, failed authentication, disabled encryption, privacy exposure                      |
+| `UI_NOTICE_FATAL`   | Purple (ANSI magenta) | Fatal errors and their immediate context                                                            |
 
 `NOTICE(DANGER, "SERVER IDENTITY CHANGED", "%s", details)` records an ordinary log
 message and presents the complete title and body in a box. Do not include borders
@@ -44,23 +44,23 @@ ordinary notices. Security prompts retain their original deadlines.
 
 ## Coverage checklist
 
-| Family | Covered entry points |
-| --- | --- |
-| Unknown host | `prompt_unknown_host`: fingerprint prompt, noninteractive refusal, explicit/debug verification bypass |
-| Changed host key | `display_mitm_warning`: received/expected fingerprints, known-hosts path, recovery guidance, rejection |
-| Missing/removed identity | `prompt_unknown_host_no_identity`, `check_known_host_no_identity`, handshake client/server: unverified peer and identity downgrade |
-| Discovery lookup | Expected host-key mismatch rejects the lookup result; insecure lookup without a pinned host key warns about MITM risk |
-| ACDS trust | `discovery_keys_verify_change`: old/new fingerprints, operator verification, default-No confirmation and noninteractive refusal |
-| Verification failure | Handshake client: invalid server signature, browser-pinned key mismatch, configured server-key mismatch, invalid HMAC |
-| Authentication rejection | Handshake reason flags and client protocol: incorrect/missing password, missing/rejected client key, invalid signature |
-| Credentials and persistence | Client identity loading, private-key file permissions, known-hosts write/flush failures, discovery identity fallback |
-| Encryption | Client/server `--no-encrypt`, encryption mode mismatch, server encryption unavailable, received encryption-policy violation |
-| Privacy | Public IP disclosure confirmation/result; discovery disabled when security was not configured |
-| TLS downgrade | WebSocket certificate/key configuration falling back to plain WS |
-| Session information | LAN-only and global session strings and join commands |
-| Operational failures | Invalid startup options, no discovered servers, connection failure, camera/media failure, audio unavailable, discovery/mirror failure |
-| Destructive local actions | Config, completions, and man-page overwrite prompts use yellow warnings with their existing No default |
-| Fatal failures | `FATAL` context summary and explicit fatal notices use purple boxes; ordinary `log_fatal` records do not retire screens |
+| Family                      | Covered entry points                                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Unknown host                | `prompt_unknown_host`: fingerprint prompt, noninteractive refusal, explicit/debug verification bypass                                 |
+| Changed host key            | `display_mitm_warning`: received/expected fingerprints, known-hosts path, recovery guidance, rejection                                |
+| Missing/removed identity    | `prompt_unknown_host_no_identity`, `check_known_host_no_identity`, handshake client/server: unverified peer and identity downgrade    |
+| Discovery lookup            | Expected host-key mismatch rejects the lookup result; insecure lookup without a pinned host key warns about MITM risk                 |
+| ACDS trust                  | `discovery_keys_verify_change`: old/new fingerprints, operator verification, default-No confirmation and noninteractive refusal       |
+| Verification failure        | Handshake client: invalid server signature, browser-pinned key mismatch, configured server-key mismatch, invalid HMAC                 |
+| Authentication rejection    | Handshake reason flags and client protocol: incorrect/missing password, missing/rejected client key, invalid signature                |
+| Credentials and persistence | Client identity loading, private-key file permissions, known-hosts write/flush failures, discovery identity fallback                  |
+| Encryption                  | Client/server `--no-encrypt`, encryption mode mismatch, server encryption unavailable, received encryption-policy violation           |
+| Privacy                     | Public IP disclosure confirmation/result; discovery disabled when security was not configured                                         |
+| TLS downgrade               | WebSocket certificate/key configuration falling back to plain WS                                                                      |
+| Session information         | LAN-only and global session strings and join commands                                                                                 |
+| Operational failures        | Invalid startup options, no discovered servers, connection failure, camera/media failure, audio unavailable, discovery/mirror failure |
+| Destructive local actions   | Config, completions, and man-page overwrite prompts use yellow warnings with their existing No default                                |
+| Fatal failures              | `FATAL` context summary and explicit fatal notices use purple boxes; ordinary `log_fatal` records do not retire screens               |
 
 Routine packet diagnostics, per-frame errors, backtraces, and debug reports remain
 logs. Existing specialized help/update screens retain their own layouts.
@@ -71,9 +71,9 @@ WASM uses textual console logging and its existing prompt implementation.
 Build with the default CMake preset, then run:
 
 ```sh
-python tests/integration/terminal_notices.py --library build/bin/asciichat.dll
-python tests/integration/terminal_prompt.py --library build/bin/asciichat.dll
-python tests/integration/prompt_timeouts.py --library build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/terminal_notices.py --library build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/terminal_prompt.py --library build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/prompt_timeouts.py --library build/bin/asciichat.dll
 ```
 
 The notice suite also accepts a Linux shared-library path. It checks Unicode

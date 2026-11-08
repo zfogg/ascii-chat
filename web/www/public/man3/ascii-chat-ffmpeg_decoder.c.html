@@ -58,11 +58,15 @@
     <div class="manual-text">
       <section class="Sh">
         <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-        <p class="Pp">ffmpeg_decoder.c - FFmpeg-based media decoder implementation.</p>
+        <p class="Pp">
+          ffmpeg_decoder.c - FFmpeg-based media decoder implementation.
+        </p>
         <p class="Pp"></p>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
         <section class="Ss">
           <h2 class="Ss" id="Data_Structures">
             <a class="permalink" href="#Data_Structures">Data Structures</a>
@@ -80,7 +84,9 @@
           </p>
         </section>
         <section class="Ss">
-          <h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+          <h2 class="Ss" id="Macros">
+            <a class="permalink" href="#Macros">Macros</a>
+          </h2>
           <br />
           <p class="Pp">
             #define <b>TARGET_SAMPLE_RATE</b> 48000
@@ -93,34 +99,43 @@
           </p>
         </section>
         <section class="Ss">
-          <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+          <h2 class="Ss" id="Functions">
+            <a class="permalink" href="#Functions">Functions</a>
+          </h2>
           <br />
           <p class="Pp">
-            <b>ffmpeg_decoder_t</b> * <b>ffmpeg_decoder_create</b> (const char *path)
+            <b>ffmpeg_decoder_t</b> * <b>ffmpeg_decoder_create</b> (const char
+            *path)
             <br />
             Create FFmpeg decoder from file path. <b>ffmpeg_decoder_t</b> *
             <b>ffmpeg_decoder_create_stdin</b> (void)
             <br />
-            Create FFmpeg decoder from stdin. void <b>ffmpeg_decoder_destroy</b> (<b
-              >ffmpeg_decoder_t</b
-            >
+            Create FFmpeg decoder from stdin. void
+            <b>ffmpeg_decoder_destroy</b> (<b>ffmpeg_decoder_t</b>
             *decoder)
             <br />
             Destroy FFmpeg decoder and free resources. <b>image_t</b> *
-            <b>ffmpeg_decoder_read_video_frame</b> (<b>ffmpeg_decoder_t</b> *decoder)
+            <b>ffmpeg_decoder_read_video_frame</b> (<b>ffmpeg_decoder_t</b>
+            *decoder)
             <br />
             Decode next video frame. <b>asciichat_error_t</b>
-            <b>ffmpeg_decoder_start_prefetch</b> (<b>ffmpeg_decoder_t</b> *decoder)
+            <b>ffmpeg_decoder_start_prefetch</b> (<b>ffmpeg_decoder_t</b>
+            *decoder)
             <br />
             Start the background frame prefetching thread. void
-            <b>ffmpeg_decoder_stop_prefetch</b> (<b>ffmpeg_decoder_t</b> *decoder)
+            <b>ffmpeg_decoder_stop_prefetch</b> (<b>ffmpeg_decoder_t</b>
+            *decoder)
             <br />
             Stop the background frame prefetching thread. void
-            <b>ffmpeg_decoder_set_exit_callback</b> (<b>ffmpeg_decoder_t</b> *decoder,
-            <b>bool</b>(*should_exit_callback)(void *), void *user_data)
+            <b>ffmpeg_decoder_set_exit_callback</b> (<b>ffmpeg_decoder_t</b>
+            *decoder, <b>bool</b>(*should_exit_callback)(void *), void
+            *user_data)
             <br />
-            Set exit signal callback for graceful shutdown during I/O. <b>bool</b>
-            <b>ffmpeg_decoder_is_prefetch_running</b> (<b>ffmpeg_decoder_t</b> *decoder)
+            Set exit signal callback for graceful shutdown during I/O.
+            <b>bool</b> <b>ffmpeg_decoder_is_prefetch_running</b> (<b
+              >ffmpeg_decoder_t</b
+            >
+            *decoder)
             <br />
             Check if background frame prefetching thread is running. <b>bool</b>
             <b>ffmpeg_decoder_has_video</b> (<b>ffmpeg_decoder_t</b> *decoder)
@@ -134,34 +149,31 @@
             >
             *decoder)
             <br />
-            Get video frame rate. size_t <b>ffmpeg_decoder_read_audio_samples</b> (<b
-              >ffmpeg_decoder_t</b
-            >
+            Get video frame rate. size_t
+            <b>ffmpeg_decoder_read_audio_samples</b> (<b>ffmpeg_decoder_t</b>
             *decoder, float *buffer, size_t num_samples)
             <br />
-            Decode audio samples. <b>bool</b> <b>ffmpeg_decoder_has_audio</b> (<b
-              >ffmpeg_decoder_t</b
-            >
+            Decode audio samples. <b>bool</b>
+            <b>ffmpeg_decoder_has_audio</b> (<b>ffmpeg_decoder_t</b>
             *decoder)
             <br />
             Check if decoder has audio stream. <b>asciichat_error_t</b>
             <b>ffmpeg_decoder_rewind</b> (<b>ffmpeg_decoder_t</b> *decoder)
             <br />
             Seek to beginning of media. <b>asciichat_error_t</b>
-            <b>ffmpeg_decoder_seek_to_timestamp</b> (<b>ffmpeg_decoder_t</b> *decoder, double
-            timestamp_sec)
+            <b>ffmpeg_decoder_seek_to_timestamp</b> (<b>ffmpeg_decoder_t</b>
+            *decoder, double timestamp_sec)
             <br />
-            Seek to specific timestamp in media. <b>bool</b> <b>ffmpeg_decoder_at_end</b> (<b
-              >ffmpeg_decoder_t</b
-            >
+            Seek to specific timestamp in media. <b>bool</b>
+            <b>ffmpeg_decoder_at_end</b> (<b>ffmpeg_decoder_t</b>
             *decoder)
             <br />
             Check if decoder reached end of stream. double
-            <b>ffmpeg_decoder_get_duration</b> (<b>ffmpeg_decoder_t</b> *decoder)
+            <b>ffmpeg_decoder_get_duration</b> (<b>ffmpeg_decoder_t</b>
+            *decoder)
             <br />
-            Get media duration in seconds. double <b>ffmpeg_decoder_get_position</b> (<b
-              >ffmpeg_decoder_t</b
-            >
+            Get media duration in seconds. double
+            <b>ffmpeg_decoder_get_position</b> (<b>ffmpeg_decoder_t</b>
             *decoder)
             <br />
             Get current playback position in seconds.
@@ -171,7 +183,9 @@
       </section>
       <section class="Sh">
         <h1 class="Sh" id="Detailed_Description">
-          <a class="permalink" href="#Detailed_Description">Detailed Description</a>
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
         </h1>
         <p class="Pp">FFmpeg-based media decoder implementation.</p>
         <p class="Pp"></p>
@@ -191,15 +205,21 @@
             >
           </h2>
           <p class="Pp">AVIO buffer size for stdin reading (64KB)</p>
-          <p class="Pp">Definition at line <b>56</b> of file <b>ffmpeg_decoder.c</b>.</p>
+          <p class="Pp">
+            Definition at line <b>56</b> of file <b>ffmpeg_decoder.c</b>.
+          </p>
           <p class="Pp">Referenced by <b>ffmpeg_decoder_create_stdin()</b>.</p>
         </section>
         <section class="Ss">
           <h2 class="Ss" id="_define_TARGET_CHANNELS___1">
-            <a class="permalink" href="#_define_TARGET_CHANNELS___1">#define TARGET_CHANNELS 1</a>
+            <a class="permalink" href="#_define_TARGET_CHANNELS___1"
+              >#define TARGET_CHANNELS 1</a
+            >
           </h2>
           <p class="Pp">Target audio channels (mono)</p>
-          <p class="Pp">Definition at line <b>53</b> of file <b>ffmpeg_decoder.c</b>.</p>
+          <p class="Pp">
+            Definition at line <b>53</b> of file <b>ffmpeg_decoder.c</b>.
+          </p>
         </section>
         <section class="Ss">
           <h2 class="Ss" id="_define_TARGET_SAMPLE_RATE___48000">
@@ -207,15 +227,22 @@
               >#define TARGET_SAMPLE_RATE 48000</a
             >
           </h2>
-          <p class="Pp">Target audio sample rate (48kHz for Opus compatibility)</p>
-          <p class="Pp">Definition at line <b>50</b> of file <b>ffmpeg_decoder.c</b>.</p>
           <p class="Pp">
-            Referenced by <b>ffmpeg_decoder_create()</b>, and <b>ffmpeg_decoder_create_stdin()</b>.
+            Target audio sample rate (48kHz for Opus compatibility)
+          </p>
+          <p class="Pp">
+            Definition at line <b>50</b> of file <b>ffmpeg_decoder.c</b>.
+          </p>
+          <p class="Pp">
+            Referenced by <b>ffmpeg_decoder_create()</b>, and
+            <b>ffmpeg_decoder_create_stdin()</b>.
           </p>
         </section>
       </section>
       <section class="Sh">
-        <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
         <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
       </section>
     </div>

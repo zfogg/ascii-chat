@@ -39,7 +39,27 @@
         if ((Get-FileHash $gumZip -Algorithm SHA256).Hash -ne '0397091dec9b4e8f00e02b90fd3eb07bf45acabbdb61d67437950f18e03a8b79') { throw 'Gum checksum mismatch.' }
         Expand-Archive -LiteralPath $gumZip -DestinationPath "$work\gum"
         $gum = @(Get-ChildItem "$work\gum" -Recurse -Filter gum.exe)[0].FullName
-        & $gum style --border rounded --padding '1 2' --border-foreground 86 'ascii-chat' "Install for Windows / $arch"
+        function Show-GumPanel {
+            param([string[]]$Lines)
+            & $gum style --border rounded --border-foreground 86 --background 236 --foreground 255 --padding '1 3' @Lines
+            if ($LASTEXITCODE -ne 0) { throw 'Unable to render installer UI.' }
+        }
+        function Show-GumHeading {
+            param([string[]]$Lines)
+            & $gum style --border double --border-foreground 39 --background 24 --foreground 231 --bold --padding '1 4' @Lines
+            if ($LASTEXITCODE -ne 0) { throw 'Unable to render installer UI.' }
+        }
+        function Show-GumFooter {
+            & $gum style --border normal --border-foreground 242 --background 235 --foreground 250 --italic --padding '1 2' 'www.ascii-chat.com' 'Zachary Fogg <me@zfo.gg>'
+            if ($LASTEXITCODE -ne 0) { throw 'Unable to render installer UI.' }
+        }
+        & $gum join horizontal `
+            (& $gum style --foreground 51 --bold 'ascii') `
+            (& $gum style --foreground 141 --bold '-') `
+            (& $gum style --foreground 43 --bold 'chat')
+        if ($LASTEXITCODE -ne 0) { throw 'Unable to render installer UI.' }
+        Show-GumHeading @('ascii-chat.exe installer script', 'Video chat in your terminal', "Install for Windows / $arch")
+        Show-GumPanel @('Release assets are checksum-verified before installation.', 'Managed files are replaced atomically.')
         if ($LASTEXITCODE -ne 0) { throw 'Unable to run Gum (ARM64 requires Windows x64 emulation).' }
         $releaseApi = 'https://api.github.com/repos/zfogg/ascii-chat/releases/latest'
         if ($env:ASCII_CHAT_VERSION) {
@@ -53,7 +73,7 @@
         $name = "ascii-chat-$($tag -replace '^v', '')-Windows-$arch.zip"
         $asset = @($release.assets | Where-Object name -eq $name)
         if ($asset.Count -ne 1) { throw "Release does not contain $name" }
-        Write-Host "Downloading $name"
+        Show-GumPanel @("Downloading $name", 'Please wait while the release is verified.')
         $zip = Join-Path $work 'release.zip'
         Invoke-WebRequest -UseBasicParsing $asset[0].browser_download_url -OutFile $zip -TimeoutSec 300
         if ($asset[0].digest -match '^sha256:(.+)$') {
@@ -100,7 +120,9 @@
         }
         if ($binDir -notin ($env:Path -split ';')) { $env:Path += ";$binDir" }
         $committed = $true
-        & $gum style --foreground 86 "Installed $tag -> $binDir" 'Ready to chat: ascii-chat' 'If PATH changed, open a new Windows terminal to load the updated PATH. This PowerShell session is already updated.'
+        & $gum style --border double --border-foreground 82 --background 22 --foreground 231 --bold --padding '1 3' "Installed $tag -> $binDir" 'Ready to chat: ascii-chat' 'If PATH changed, open a new Windows terminal to load the updated PATH. This PowerShell session is already updated.'
+        if ($LASTEXITCODE -ne 0) { throw 'Unable to render installer UI.' }
+        Show-GumFooter
     }
     finally {
         # Only these exact installer-owned paths can be removed.

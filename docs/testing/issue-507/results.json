@@ -458,11 +458,7 @@
   },
   "benchmark_host": {
     "recorded_at_utc": "2026-10-19T21:39:57.1068674Z",
-    "total_cpu_percent": [
-      92.48,
-      99.9,
-      100.0
-    ],
+    "total_cpu_percent": [92.48, 99.9, 100.0],
     "benchmark_processes": [
       {
         "pid": 59328,

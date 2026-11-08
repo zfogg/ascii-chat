@@ -74,13 +74,13 @@ only send capability updates cannot change rendering after initialization.
 
 Each payload begins with five network-order 32-bit integers:
 
-| Offset | Field | Meaning |
-| --- | --- | --- |
-| 0 | schema | 1 |
-| 4 | request | Connection-local correlation ID; 0 for initial host state |
-| 8 | expected_revision | Host revision to compare, or `UINT32_MAX` |
-| 12 | revision | Committed host revision in replies |
-| 16 | status | `ASCIICHAT_OK` or an `asciichat_error_t` |
+| Offset | Field             | Meaning                                                   |
+| ------ | ----------------- | --------------------------------------------------------- |
+| 0      | schema            | 1                                                         |
+| 4      | request           | Connection-local correlation ID; 0 for initial host state |
+| 8      | expected_revision | Host revision to compare, or `UINT32_MAX`                 |
+| 12     | revision          | Committed host revision in replies                        |
+| 16     | status            | `ASCIICHAT_OK` or an `asciichat_error_t`                  |
 
 The remaining bytes contain a JSON object, limited to 4096 bytes. A header-only
 request queries effective settings. Allowed fields are `width`, `height`, `fps`,
@@ -108,7 +108,7 @@ without rewriting the caller’s preferences.
 concurrent updates, atomic rejection, revision conflicts, snapshot lifetime,
 animation exclusion, and independent remote viewers.
 
-On Windows, `python tests/integration/runtime_settings_cli.py build/bin/ascii-chat.exe`
+On Windows, `uv run --project tests/ascii_chat_tests --frozen python tests/integration/runtime_settings_cli.py build/bin/ascii-chat.exe`
 drives real keyboard controls in isolated hidden child consoles over TCP and
 WebSocket. Browser coverage uses the rebuilt WASM artifacts and an isolated Vite
 server: `vp exec playwright test -c tests/e2e/runtime-settings.config.ts` from

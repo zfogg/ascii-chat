@@ -135,13 +135,13 @@ and recording continue behind the overlay. Only media actually written by the
 presentation controller contributes to presented FPS and terminal-write duration.
 Consequently presented FPS goes to zero while stats covers the media screen.
 
-| Mode | Measurements and details |
-| --- | --- |
-| Server | Ingress/output frames, per-transport traffic, ASCII conversion and audio mix timing, codec activity, output video queue depth, per-client dimensions/totals/video drops/audio queue depth |
-| Client | Capture, encode/decode, send/receive/presentation, traffic, policy skips and queue drops, audio buffer/underruns, connection attempts |
-| Mirror | Capture/conversion/presentation, terminal writes, source/output dimensions, media position/duration, recording frames/timing when enabled |
-| Discovery | Media and transport measurements for the current role, setup time/state, reconnect/migration counters; includes WebRTC data channels |
-| ACDS | Live sessions/participants, transport traffic, creates/lookups/joins/failures, expirations/rate limits, migration completions/timeouts, session table |
+| Mode      | Measurements and details                                                                                                                                                                  |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server    | Ingress/output frames, per-transport traffic, ASCII conversion and audio mix timing, codec activity, output video queue depth, per-client dimensions/totals/video drops/audio queue depth |
+| Client    | Capture, encode/decode, send/receive/presentation, traffic, policy skips and queue drops, audio buffer/underruns, connection attempts                                                     |
+| Mirror    | Capture/conversion/presentation, terminal writes, source/output dimensions, media position/duration, recording frames/timing when enabled                                                 |
+| Discovery | Media and transport measurements for the current role, setup time/state, reconnect/migration counters; includes WebRTC data channels                                                      |
+| ACDS      | Live sessions/participants, transport traffic, creates/lookups/joins/failures, expirations/rate limits, migration completions/timeouts, session table                                     |
 
 Connection details retain at most 64 transport rows; process totals include every
 transport, including disconnected or undisplayed peers. Mode tables are bounded
@@ -206,8 +206,8 @@ server console restoration, redirected summaries, and shutdown with stats open.
 ConPTY (or POSIX PTYs). `terminal_prompt.py` verifies that `=` remains prompt text.
 
 ```sh
-python tests/integration/stats_tui.py --binary build/bin/ascii-chat --artifacts build/stats-evidence
-python tests/integration/stats_terminal.py --binary build/bin/ascii-chat.exe --artifacts build/stats-windows
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/stats_tui.py --binary build/bin/ascii-chat --artifacts build/stats-evidence
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/stats_terminal.py --binary build/bin/ascii-chat.exe --artifacts build/stats-windows
 ```
 
 `tests/benchmarks/stats.c` measures collection calls against a built library;
@@ -219,13 +219,13 @@ overlay closed/open. Measurements depend on build flags, terminal, and hardware.
 These PNGs render the actual ANSI terminal cells captured from running processes
 by `stats_tui.py`, using `render_stats_capture.py`:
 
-| Mode | Overview | Details |
-| --- | --- | --- |
-| Mirror | [Capture](images/stats/mirror-overview.png) | |
-| Client | [Capture](images/stats/client-overview.png) | |
-| Server | [Capture](images/stats/server-overview.png) | [Client table](images/stats/server-details.png) |
-| Discovery | [Capture](images/stats/discovery-overview.png) | |
-| ACDS | [Capture](images/stats/acds-overview.png) | [Session table](images/stats/acds-sessions.png) |
+| Mode      | Overview                                       | Details                                         |
+| --------- | ---------------------------------------------- | ----------------------------------------------- |
+| Mirror    | [Capture](images/stats/mirror-overview.png)    |                                                 |
+| Client    | [Capture](images/stats/client-overview.png)    |                                                 |
+| Server    | [Capture](images/stats/server-overview.png)    | [Client table](images/stats/server-details.png) |
+| Discovery | [Capture](images/stats/discovery-overview.png) |                                                 |
+| ACDS      | [Capture](images/stats/acds-overview.png)      | [Session table](images/stats/acds-sessions.png) |
 
 The Linux debug build with ASan/UBSan passed all 13 statistics tests and the
 terminal integration scenario, including real TCP, WebSocket, and local WebRTC

@@ -352,14 +352,12 @@ static void common_handle_sigusr1(int sig) {
 }
 
 /**
- * @brief Common SIGUSR2 handler - triggers memory report in all modes
+ * @brief Common SIGUSR2 handler - requests a deferred memory report in all modes
  * @param sig The signal number (unused, required by signal handler signature)
  */
 static void common_handle_sigusr2(int sig) {
   (void)sig;
-  // Log to stderr directly since we're in signal context
-  // (avoid logging system which uses mutexes)
-  debug_memory_trigger_report();
+  debug_stats_trigger_memory_report();
 }
 #endif
 #endif
@@ -668,12 +666,16 @@ int main(int argc, char *argv[]) {
       continue; // Value is part of this arg, no need to skip next
     }
 
-    // Options that take required arguments
-    if (strcmp(arg, "--log-file") == 0 || strcmp(arg, "-L") == 0 || strcmp(arg, "--log-level") == 0 ||
-        strcmp(arg, "--config") == 0 || strcmp(arg, "--color-scheme") == 0 || strcmp(arg, "--log-template") == 0) {
-      if (i + 1 < argc) {
-        i++; // Skip the argument value
-      }
+    const registry_entry_t *descriptor =
+        arg[1] == '-' ? registry_find_entry_by_name(opt_name)
+                      : (opt_name[0] && !opt_name[1] ? registry_find_entry_by_short(opt_name[0]) : NULL);
+    if (descriptor && descriptor->type != OPTION_TYPE_BOOL && descriptor->type != OPTION_TYPE_ACTION && i + 1 < argc) {
+      bool next_is_mode = strcmp(argv[i + 1], "discovery") == 0 || strcmp(argv[i + 1], "acds") == 0;
+      for (const mode_descriptor_t *mode = g_mode_table; mode->name; ++mode)
+        if (strcmp(argv[i + 1], mode->name) == 0)
+          next_is_mode = true;
+      if (!descriptor->optional_arg || (argv[i + 1][0] != '-' && !next_is_mode))
+        ++i;
     }
   }
 
@@ -793,13 +795,8 @@ int main(int argc, char *argv[]) {
 
   // Register cleanup of shared subsystems to run on normal exit
   // Library code doesn't call atexit() - the application is responsible
-  // IMPORTANT: atexit handlers run in LIFO order - last registered runs first
-  // So register order (top to bottom) = execution order (bottom to top):
-  // 1. PCRE2 cleanup (runs last) - frees compiled regexes after all code stops using them
-  // 2. Path cleanup (runs 3rd) - now a no-op but kept for API compatibility
-  // 3. Shared destroy (runs 2nd) - frees all shared resources
-  // 4. Cursor show (runs 1st) - shows cursor before exit
-  (void)atexit(asciichat_pcre2_cleanup_all);
+  // Handlers run in reverse registration order: restore the cursor, destroy
+  // shared subsystems, then run the compatibility path cleanup.
   (void)atexit(path_cleanup_thread_locals);
   (void)atexit(asciichat_shared_destroy);
   (void)atexit(on_exit_show_cursor);
@@ -996,22 +993,6 @@ int main(int argc, char *argv[]) {
   }
   log_debug("Debug sync system initialized successfully");
 
-  // Initialize memory debug system
-  // TEMPORARILY DISABLED: these calls hang in non-interactive mode
-  // log_debug("Initializing memory debug system...");
-  // int debug_memory_result = debug_memory_thread_init();
-  // if (debug_memory_result != 0) {
-  //   LOG_ERRNO_IF_SET("Memory debug system initialization failed");
-  //   FATAL(ERROR_PLATFORM_INIT, "Memory debug system initialization failed");
-  // }
-  // log_debug("Memory debug system initialized successfully");
-
-  // Start memory debug (now just prints report directly)
-  // if (debug_memory_thread_start() != 0) {
-  //   LOG_ERRNO_IF_SET("Memory debug startup failed");
-  //   FATAL(ERROR_THREAD, "Memory debug startup failed");
-  // }
-
 #ifndef _WIN32
   // Unblock SIGUSR1 and SIGUSR2 at process level to ensure delivery
   sigset_t set;
@@ -1109,7 +1090,6 @@ int main(int argc, char *argv[]) {
   asciichat_error_t stats_result = stats_runtime_start(mode->name, (unsigned)GET_OPTION(stats_interval));
   if (stats_result != ASCIICHAT_OK)
     return stats_result;
-#ifdef ASCIICHAT_WITH_OTEL
   asciichat_error_t otel_result = ascii_otel_init(mode->name, argc, argv);
   if (otel_result != ASCIICHAT_OK) {
     asciichat_error_context_t context;
@@ -1117,16 +1097,13 @@ int main(int argc, char *argv[]) {
     log_error("Telemetry configuration failed %s", asciichat_error_format(detail, otel_result));
     return otel_result;
   }
-#endif
   int exit_code = mode->entry_point();
   asciichat_error_t requested_exit = errno_exit_code();
   if (requested_exit != ASCIICHAT_OK)
     exit_code = requested_exit;
   stats_runtime_stop();
-#ifdef ASCIICHAT_WITH_OTEL
   ascii_otel_exit(exit_code);
   ascii_otel_shutdown();
-#endif
 
   // Named registry cleanup is handled by asciichat_shared_destroy()
   // (called via atexit handler), which runs AFTER the memory report

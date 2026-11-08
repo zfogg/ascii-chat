@@ -126,6 +126,13 @@ Test(builder_contract, environment_then_explicit_cli_and_already_set_values) {
   platform_setenv("ASCII_TEST_BUILDER_DOUBLE", "2.5");
   platform_setenv("ASCII_TEST_BUILDER_STRING", "from-env");
   sample_t sample = defaults();
+  sample.enabled = true;
+  sample.ratio = 7.0;
+  SAFE_STRNCPY(sample.label, "from-config", sizeof(sample.label));
+  platform_setenv("ASCII_TEST_BUILDER_BOOL", "false");
+  cr_assert_eq(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
+  cr_assert_not(sample.enabled);
+  platform_setenv("ASCII_TEST_BUILDER_BOOL", "yes");
   cr_assert_eq(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
   cr_assert(sample.enabled);
   cr_assert_eq(sample.count, 12);
@@ -145,6 +152,21 @@ Test(builder_contract, environment_then_explicit_cli_and_already_set_values) {
   cr_assert_eq(sample.count, 25);
   cr_assert_float_eq(sample.ratio, 4.5, 1e-9);
   cr_assert_str_eq(sample.label, "from-cli");
+  options_config_destroy(c);
+}
+
+Test(builder_contract, invalid_double_environment_preserves_value_and_returns_error) {
+  options_config_t *c = config();
+  const char *invalid[] = {"not-a-number", "2.5suffix", "1e9999", "nan"};
+  for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+    sample_t sample = defaults();
+    sample.ratio = 7.0;
+    platform_setenv("ASCII_TEST_BUILDER_DOUBLE", invalid[i]);
+    cr_assert_eq(options_config_set_defaults(c, &sample), ERROR_USAGE);
+    cr_assert_float_eq(sample.ratio, 7.0, 1e-9);
+    CLEAR_ERRNO_ALL();
+  }
+  platform_unsetenv("ASCII_TEST_BUILDER_DOUBLE");
   options_config_destroy(c);
 }
 
@@ -347,4 +369,25 @@ Test(builder_contract, conflicting_color_options_return_an_owned_error_message) 
   sample.base.color = false;
   cr_assert_eq(options_config_validate(c, &sample, NULL), ASCIICHAT_OK);
   options_config_destroy(c);
+}
+
+Test(builder_contract, string_defaults_belong_to_each_builder_and_survive_transfer) {
+  for (unsigned i = 0; i < 1100; ++i) {
+    options_builder_t *b = options_builder_create(sizeof(sample_t));
+    char initial[] = "owned default";
+    options_builder_add_string(b, "label", 0, offsetof(sample_t, label), initial, "Label", "Test", false, NULL, NULL);
+    memset(initial, 'x', sizeof(initial) - 1);
+    cr_assert_eq(b->num_descriptors, 1);
+    if (i % 2) {
+      options_builder_destroy(b);
+      continue;
+    }
+    options_config_t *c = options_builder_build(b);
+    options_builder_destroy(b);
+    sample_t sample = {0};
+    cr_assert_not_null(c);
+    cr_assert_eq(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
+    cr_assert_str_eq(sample.label, "owned default");
+    options_config_destroy(c);
+  }
 }

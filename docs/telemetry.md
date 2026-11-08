@@ -129,9 +129,8 @@ fixtures, sends no OTLP, switches to an empty session, checks all panels/rules,
 and restores the original session in a finally block:
 
 ```sh
-python tests/manual/probe_spaniel_alert_pack.py
+uv run --project tests/ascii_chat_tests --frozen python tests/manual/probe_spaniel_alert_pack.py
 ```
-
 
 Debug and Dev builds export traces, logs, and metrics to the local Compose
 collector at `http://127.0.0.1:24318` by default. Release builds require an endpoint.
@@ -227,8 +226,9 @@ capacity must be a power of two. Use `--otel-enabled-telemetry=none` to override
 an inherited endpoint without sending anything.
 
 `OTEL_EXPORTER_OTLP_ENDPOINT` is a fallback base URL. Standard otlp-c exporter
-headers and per-signal endpoint environment settings are also accepted. The
-base URL accepts HTTP or HTTPS and must not contain credentials, query or fragment.
+headers and per-signal endpoint environment settings are also accepted. A base
+endpoint must be configured to enable export; per-signal endpoints alone do not
+start telemetry. The base URL accepts HTTP or HTTPS and must not contain credentials, query or fragment.
 HTTPS uses the existing OpenSSL dependency, enables TLS 1.3 with TLS 1.2 as the
 minimum, and verifies certificates and DNS/IP identities. System roots are used
 by default, including native Windows/macOS anchors. `--otel-ca-file` (also
@@ -427,7 +427,6 @@ cmake --build build_docker --target test_unit_otel_otel ascii-chat
 ctest --test-dir build_docker -R 'test_unit_otel_otel|otel-export' --no-tests=error --output-on-failure
 ```
 
-
 ### Compression and video codecs
 
 `ascii-chat.compression.zstd.{compress,compress_workspace,decompress,decompress_exact}`
@@ -458,7 +457,7 @@ Docker. The test also covers ownership of borrowed decoder input under ASan.
 The sustained-load test is deliberately absent from CTest. Run it explicitly:
 
 ```sh
-python tests/manual/test_otel_load.py build/bin/ascii-chat --seconds 60
+uv run --project tests/ascii_chat_tests --frozen python tests/manual/test_otel_load.py build/bin/ascii-chat --seconds 60
 ```
 
 It measures payload bytes and spans with default sampling, compares disabled/enabled elapsed and child CPU time, records exported RSS,
@@ -482,7 +481,6 @@ queries confirmed 901 mirror captures with six capture spans, 575 server video
 renders with three render spans, and (in the audio/video run) 1,381 client audio
 captures with 14 spans, 955 server audio renders with six spans, and 467 Opus
 decodes with four spans. Metrics continue counting work omitted from traces.
-
 
 ### Spaniel alerts and deadlock watchdog
 
@@ -529,7 +527,7 @@ fatal signal handler. The opt-in native smoke check uses actual two-thread mutex
 cycles and checks live export before terminating its disposable child:
 
 ```sh
-python tests/manual/test_otel_watchdog.py build/lib/libasciichat.so
+uv run --project tests/ascii_chat_tests --frozen python tests/manual/test_otel_watchdog.py build/lib/libasciichat.so
 # macOS: build/lib/libasciichat.dylib; Windows: build/bin/asciichat.dll
 ```
 
@@ -538,7 +536,6 @@ from Needs attention without deleting its telemetry. Repeated query evaluations,
 replay, and container restarts do not rearm the same trace ID. A different trace
 ID creates a fresh instance immediately. Other alerts retain condition semantics:
 acknowledgement suppresses repeats until recovery and the next breach.
-
 
 ### Invalid rendered ASCII frames
 
@@ -565,7 +562,7 @@ invalid UTF-8, an unsupported terminal escape and an unreset SGR state. It check
 four ERROR spans and exact counter totals with media sampling set to zero:
 
 ```sh
-python tests/manual/test_otel_frame_validation.py build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/manual/test_otel_frame_validation.py build/bin/asciichat.dll
 ```
 
 ## TUI usage

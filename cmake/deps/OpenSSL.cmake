@@ -3,12 +3,27 @@
 # Provides: OpenSSL::Crypto, OpenSSL::SSL (or static equivalents)
 #
 
+set(ASCIICHAT_OPENSSL_RUNTIME_DIR "" CACHE INTERNAL "Runtime directory for selected shared OpenSSL" FORCE)
+set(ASCIICHAT_OPENSSL_SOURCE_VERSION "3.6.0")
+set(ASCIICHAT_OPENSSL_SOURCE_SHA256 "b6a5f44b7eb69e3fa35dbf15524405b44837a481d43d81daddde3ff21fcbb8e9")
+set(ASCIICHAT_OPENSSL_BUILD_JOBS 4 CACHE STRING "Parallel jobs for source-built OpenSSL")
+if(NOT ASCIICHAT_OPENSSL_BUILD_JOBS MATCHES "^[1-9][0-9]*$")
+    message(FATAL_ERROR "ASCIICHAT_OPENSSL_BUILD_JOBS must be a positive integer")
+endif()
 # Handle iOS builds - OpenSSL is built from source at configure time
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}OpenSSL${ColorReset} from source (iOS cross-compile)...")
 
-    set(OPENSSL_PREFIX "${IOS_DEPS_CACHE_DIR}/openssl")
-    set(OPENSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-ios-build")
+    set(OPENSSL_VERSION "${ASCIICHAT_OPENSSL_SOURCE_VERSION}")
+    if(BUILD_IOS_SIM)
+        set(_OPENSSL_IOS_VARIANT "sim")
+        set(_OPENSSL_IOS_MIN_VERSION_FLAG "-mios-simulator-version-min=16.0")
+    else()
+        set(_OPENSSL_IOS_VARIANT "device")
+        set(_OPENSSL_IOS_MIN_VERSION_FLAG "-miphoneos-version-min=16.0")
+    endif()
+    set(OPENSSL_PREFIX "${IOS_DEPS_CACHE_DIR}/openssl-${OPENSSL_VERSION}-${_OPENSSL_IOS_VARIANT}")
+    set(OPENSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-ios-${OPENSSL_VERSION}-${_OPENSSL_IOS_VARIANT}-build")
     set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
     set(OPENSSL_LIBDIR "lib")
 
@@ -28,14 +43,13 @@ if(PLATFORM_IOS)
         file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
         file(MAKE_DIRECTORY "${OPENSSL_SOURCE_DIR}")
 
-        # Download OpenSSL source (1.1.1 for libwebsockets compatibility)
-        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-1.1.1w.tar.gz")
+        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-${OPENSSL_VERSION}.tar.gz")
         if(NOT EXISTS "${OPENSSL_TARBALL}")
-            message(STATUS "  Downloading OpenSSL 1.1.1w...")
+            message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz"
+                "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
                 "${OPENSSL_TARBALL}"
-                EXPECTED_HASH SHA256=cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8
+                EXPECTED_HASH "SHA256=${ASCIICHAT_OPENSSL_SOURCE_SHA256}"
                 STATUS DOWNLOAD_STATUS
                 SHOW_PROGRESS
             )
@@ -65,8 +79,8 @@ if(PLATFORM_IOS)
 
         execute_process(
             COMMAND bash -c "
-                export CC=clang
-                export CFLAGS='-arch arm64 -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=16.0 -fPIC'
+                export CC='${CMAKE_C_COMPILER}'
+                export CFLAGS='-arch arm64 -isysroot ${IOS_SDK_PATH} ${_OPENSSL_IOS_MIN_VERSION_FLAG} -fPIC'
                 export LDFLAGS='-arch arm64 -isysroot ${IOS_SDK_PATH} -fPIC'
                 '${OPENSSL_SOURCE_DIR}/Configure' darwin64-arm64-cc --prefix=${OPENSSL_PREFIX} --libdir=lib no-shared no-tests < /dev/null
             "
@@ -75,7 +89,6 @@ if(PLATFORM_IOS)
             RESULT_VARIABLE CONFIG_RESULT
             OUTPUT_VARIABLE CONFIG_OUTPUT
             ERROR_VARIABLE CONFIG_ERROR
-            INPUT ""
         )
         message(STATUS "  Configure result: ${CONFIG_RESULT}")
         if(CONFIG_OUTPUT)
@@ -92,7 +105,7 @@ if(PLATFORM_IOS)
 
         message(STATUS "  Building OpenSSL (this takes a few minutes)...")
         execute_process(
-            COMMAND make -j
+            COMMAND make -j${ASCIICHAT_OPENSSL_BUILD_JOBS}
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE BUILD_RESULT
             OUTPUT_VARIABLE BUILD_OUTPUT
@@ -133,8 +146,9 @@ if(PLATFORM_IOS)
     )
 
     set(OPENSSL_FOUND TRUE)
-    set(OPENSSL_CRYPTO_LIBRARY OpenSSL::Crypto)
-    set(OPENSSL_SSL_LIBRARY OpenSSL::SSL)
+    set(OPENSSL_ROOT_DIR "${OPENSSL_PREFIX}" CACHE PATH "OpenSSL root directory" FORCE)
+    set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a" CACHE FILEPATH "OpenSSL Crypto library" FORCE)
+    set(OPENSSL_SSL_LIBRARY "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a" CACHE FILEPATH "OpenSSL SSL library" FORCE)
     set(OPENSSL_INCLUDE_DIR "${OPENSSL_PREFIX}/include")
 
     return()
@@ -148,10 +162,10 @@ if(USE_MUSL)
     # libdatachannel tries to find_package(OpenSSL).
     message(STATUS "Configuring ${BoldBlue}OpenSSL${ColorReset} from source...")
 
-    set(OPENSSL_PREFIX "${MUSL_DEPS_DIR_STATIC}/openssl")
-    set(OPENSSL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/openssl-build")
+    set(OPENSSL_VERSION "${ASCIICHAT_OPENSSL_SOURCE_VERSION}")
+    set(OPENSSL_PREFIX "${MUSL_DEPS_DIR_STATIC}/openssl-${OPENSSL_VERSION}")
+    set(OPENSSL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/openssl-${OPENSSL_VERSION}-build")
     set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
-    set(OPENSSL_VERSION "3.4.0")
 
     # Detect target architecture for OpenSSL Configure
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
@@ -191,14 +205,13 @@ if(USE_MUSL)
         file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
         file(MAKE_DIRECTORY "${OPENSSL_SOURCE_DIR}")
 
-        # Download OpenSSL source (3.4.0 for SSL_CTX_load_verify_dir support)
-        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-3.4.0.tar.gz")
+        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-${OPENSSL_VERSION}.tar.gz")
         if(NOT EXISTS "${OPENSSL_TARBALL}")
-            message(STATUS "  Downloading OpenSSL 3.4.0...")
+            message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/openssl-3.4.0/openssl-3.4.0.tar.gz"
+                "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
                 "${OPENSSL_TARBALL}"
-                EXPECTED_HASH SHA256=e15dda82fe2fe8139dc2ac21a36d4ca01d5313c75f99f46c4e8a27709b7294bf
+                EXPECTED_HASH "SHA256=${ASCIICHAT_OPENSSL_SOURCE_SHA256}"
                 STATUS DOWNLOAD_STATUS
                 SHOW_PROGRESS
             )
@@ -251,7 +264,7 @@ if(USE_MUSL)
 
         message(STATUS "  Building OpenSSL (this takes a few minutes)...")
         execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} make -j
+            COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} make -j${ASCIICHAT_OPENSSL_BUILD_JOBS}
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE BUILD_RESULT
             OUTPUT_VARIABLE BUILD_OUTPUT
@@ -318,34 +331,24 @@ if(TARGET OpenSSL::Crypto)
 endif()
 
 # =============================================================================
-# Native Linux/macOS: Build OpenSSL from source for libwebsockets
-# Platform-specific versions:
-#   - macOS: OpenSSL 1.1.1w (for libwebsockets compatibility)
-#   - Linux: OpenSSL 3.4.0 (has SSL_CTX_load_verify_dir function)
+# Native Linux/macOS: Build the required QUIC-capable OpenSSL, including shared-dependency builds
+# Source builds use a versioned cache so upgrading does not replace existing caches.
 # =============================================================================
-if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
-    # Determine OpenSSL version based on platform
-    if(APPLE)
-        set(OPENSSL_VERSION "1.1.1w")
-        set(OPENSSL_DOWNLOAD_TAG "OpenSSL_1_1_1w")
-        set(OPENSSL_EXPECTED_HASH "SHA256=cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8")
-        message(STATUS "Configuring ${BoldBlue}OpenSSL 1.1.1w${ColorReset} from source (macOS libwebsockets compatibility)...")
-    else()
-        set(OPENSSL_VERSION "3.4.0")
-        set(OPENSSL_DOWNLOAD_TAG "openssl-3.4.0")
-        set(OPENSSL_EXPECTED_HASH "SHA256=e15dda82fe2fe8139dc2ac21a36d4ca01d5313c75f99f46c4e8a27709b7294bf")
-        message(STATUS "Configuring ${BoldBlue}OpenSSL 3.4.0${ColorReset} from source (Linux with SSL_CTX_load_verify_dir)...")
-    endif()
+if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+    set(OPENSSL_VERSION "${ASCIICHAT_OPENSSL_SOURCE_VERSION}")
+    set(OPENSSL_DOWNLOAD_TAG "openssl-${OPENSSL_VERSION}")
+    set(OPENSSL_EXPECTED_HASH "SHA256=${ASCIICHAT_OPENSSL_SOURCE_SHA256}")
+    message(STATUS "Configuring ${BoldBlue}OpenSSL ${OPENSSL_VERSION}${ColorReset} from source...")
 
-    set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl")
-    set(OPENSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-build")
+    set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-${OPENSSL_VERSION}")
+    set(OPENSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-${OPENSSL_VERSION}-build")
     set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
     set(OPENSSL_TARGET_STAMP "${OPENSSL_BUILD_DIR}/.target")
     set(OPENSSL_NO_ASM OFF)
     # Release packages should not retain a runtime dependency on the build
     # machine's OpenSSL dylib or its install path. Debug/dev builds keep shared
     # OpenSSL for faster iteration.
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    if(NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
         set(OPENSSL_BUILD_SHARED OFF)
     else()
         set(OPENSSL_BUILD_SHARED ON)
@@ -482,7 +485,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYP
 
         message(STATUS "  Building OpenSSL (this takes a few minutes)...")
         execute_process(
-            COMMAND ${_OPENSSL_ENV_CMD} make -j
+            COMMAND ${_OPENSSL_ENV_CMD} make -j${ASCIICHAT_OPENSSL_BUILD_JOBS}
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE BUILD_RESULT
         )
@@ -533,6 +536,13 @@ if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYP
         message(FATAL_ERROR "OpenSSL build succeeded but libraries were not found in ${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}")
     endif()
 
+    if(OPENSSL_BUILD_SHARED)
+        set(ASCIICHAT_OPENSSL_RUNTIME_DIR "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}"
+            CACHE INTERNAL "Runtime directory for selected shared OpenSSL" FORCE)
+        list(PREPEND CMAKE_BUILD_RPATH "${ASCIICHAT_OPENSSL_RUNTIME_DIR}")
+        list(REMOVE_DUPLICATES CMAKE_BUILD_RPATH)
+    endif()
+
     set(OPENSSL_ROOT_DIR "${OPENSSL_PREFIX}" CACHE PATH "OpenSSL root directory" FORCE)
     set(OPENSSL_INCLUDE_DIR "${OPENSSL_PREFIX}/include" CACHE PATH "OpenSSL include directory" FORCE)
     set(OPENSSL_SSL_LIBRARY "${OPENSSL_SSL_LIBRARY}" CACHE FILEPATH "OpenSSL SSL library" FORCE)
@@ -562,16 +572,15 @@ if(NOT USE_MUSL AND NOT WIN32 AND NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYP
 endif()
 
 # =============================================================================
-# macOS Release: Use cached OpenSSL 1.1.1w for libwebsockets compatibility
+# macOS Release: Use the versioned source-build cache when available
 # =============================================================================
 set(_OPENSSL_STATIC_FOUND FALSE)
 if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
-    # Use cached OpenSSL 1.1.1w (libwebsockets is built with this version)
     set(_OPENSSL_HOMEBREW_PATH "")
-    set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl")
+    set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-${ASCIICHAT_OPENSSL_SOURCE_VERSION}/usr/local")
     set(OPENSSL_LIBDIR "lib")
 
-    # Check if cached OpenSSL 1.1.1w exists
+    # Check if the cached static libraries exist.
     if(EXISTS "${OPENSSL_PREFIX}/lib/libssl.a" AND EXISTS "${OPENSSL_PREFIX}/lib/libcrypto.a")
         set(_OPENSSL_HOMEBREW_PATH "${OPENSSL_PREFIX}")
     endif()

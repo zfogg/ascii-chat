@@ -1,0 +1,199 @@
+<!doctype html>
+<html>
+  <!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      table.head,
+      table.foot {
+        width: 100%;
+      }
+      td.head-rtitle,
+      td.foot-os {
+        text-align: right;
+      }
+      td.head-vol {
+        text-align: center;
+      }
+      .Nd,
+      .Bf,
+      .Op {
+        display: inline;
+      }
+      .Pa,
+      .Ad {
+        font-style: italic;
+      }
+      .Ms {
+        font-weight: bold;
+      }
+      .Bl-diag > dt {
+        font-weight: bold;
+      }
+      code.Nm,
+      .Fl,
+      .Cm,
+      .Ic,
+      code.In,
+      .Fd,
+      .Fn,
+      .Cd {
+        font-weight: bold;
+        font-family: inherit;
+      }
+    </style>
+    <title>errno_tui_state_t(3)</title>
+  </head>
+  <body>
+    <table class="head">
+      <tr>
+        <td class="head-ltitle">errno_tui_state_t(3)</td>
+        <td class="head-vol">Library Functions Manual</td>
+        <td class="head-rtitle">errno_tui_state_t(3)</td>
+      </tr>
+    </table>
+    <div class="manual-text">
+      <section class="Sh">
+        <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+        <p class="Pp">errno_tui_state_t</p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="SYNOPSIS">
+          <a class="permalink" href="#SYNOPSIS">SYNOPSIS</a>
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="Data_Fields">
+            <a class="permalink" href="#Data_Fields">Data Fields</a>
+          </h2>
+          <br />
+          <p class="Pp">
+            <b>bool</b> <b>visible</b>
+            <br />
+            <b>bool</b> <b>stack_sort</b>
+            <br />
+            <b>errno_tui_tab_t</b> <b>tab</b>
+            <br />
+            <b>ui_selectable_list_t</b> <b>list</b>
+            <br />
+            int <b>rows</b>
+            <br />
+            int <b>count</b>
+            <br />
+            int <b>output_fd</b>
+            <br />
+            <b>asciichat_error_context_t</b> <b>selected_context</b>
+            <br />
+            <b>bool</b> <b>selected_current</b>
+            <br />
+            <br />
+          </p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Detailed_Description">
+          <a class="permalink" href="#Detailed_Description"
+            >Detailed Description</a
+          >
+        </h1>
+        <p class="Pp">
+          Definition at line <b>57</b> of file <b>errno_stacks.c</b>.
+        </p>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Field_Documentation">
+          <a class="permalink" href="#Field_Documentation"
+            >Field Documentation</a
+          >
+        </h1>
+        <section class="Ss">
+          <h2 class="Ss" id="int_errno_tui_state_t::count">
+            <a class="permalink" href="#int_errno_tui_state_t::count"
+              >int errno_tui_state_t::count</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>63</b> of file <b>errno_stacks.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>ui_selectable_list_t</b> errno_tui_state_t::list
+          </h2>
+          <p class="Pp">
+            Definition at line <b>61</b> of file <b>errno_stacks.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_errno_tui_state_t::output_fd">
+            <a class="permalink" href="#int_errno_tui_state_t::output_fd"
+              >int errno_tui_state_t::output_fd</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>64</b> of file <b>errno_stacks.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss" id="int_errno_tui_state_t::rows">
+            <a class="permalink" href="#int_errno_tui_state_t::rows"
+              >int errno_tui_state_t::rows</a
+            >
+          </h2>
+          <p class="Pp">
+            Definition at line <b>62</b> of file <b>errno_stacks.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss">
+            <b>asciichat_error_context_t</b> errno_tui_state_t::selected_context
+          </h2>
+          <p class="Pp">
+            Definition at line <b>65</b> of file <b>errno_stacks.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_errno_stacks_handle_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> errno_tui_state_t::selected_current</h2>
+          <p class="Pp">
+            Definition at line <b>66</b> of file <b>errno_stacks.c</b>.
+          </p>
+          <p class="Pp">Referenced by <b>ui_errno_stacks_handle_key()</b>.</p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> errno_tui_state_t::stack_sort</h2>
+          <p class="Pp">
+            Definition at line <b>59</b> of file <b>errno_stacks.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>errno_tui_tab_t</b> errno_tui_state_t::tab</h2>
+          <p class="Pp">
+            Definition at line <b>60</b> of file <b>errno_stacks.c</b>.
+          </p>
+        </section>
+        <section class="Ss">
+          <h2 class="Ss"><b>bool</b> errno_tui_state_t::visible</h2>
+          <p class="Pp">
+            Definition at line <b>58</b> of file <b>errno_stacks.c</b>.
+          </p>
+          <p class="Pp"></p>
+        </section>
+      </section>
+      <section class="Sh">
+        <h1 class="Sh" id="Author">
+          <a class="permalink" href="#Author">Author</a>
+        </h1>
+        <p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+      </section>
+    </div>
+    <table class="foot">
+      <tr>
+        <td class="foot-date">Version 0.14.7</td>
+        <td class="foot-os">ascii-chat</td>
+      </tr>
+    </table>
+  </body>
+</html>

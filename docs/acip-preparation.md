@@ -16,13 +16,13 @@ throughput is median preparation throughput, not network or presentation through
 
 Windows x64, Clang, CMake Dev build, October 18, 2026:
 
-| Path | Allocations before/after | Explicit copy bytes before/after | MiB/s before/after |
-| --- | --- | --- | --- |
-| Sync TCP contiguous | 1 / 1 | 22 / 44 | 637.04 / 617.27 |
-| Sync TCP vectors | 2 / 2 | 65,558 / 65,580 | 619.14 / 616.54 |
-| Async TCP contiguous | 2 / 1 | 65,536 / 22 | 632.68 / 631.33 |
-| Async TCP vectors | 2 / 2 | 65,536 / 65,558 | 568.24 / 619.89 |
-| WebSocket contiguous | 2 / 1 | 65,598 / 44 | 621.12 / 598.70 |
+| Path                 | Allocations before/after | Explicit copy bytes before/after | MiB/s before/after |
+| -------------------- | ------------------------ | -------------------------------- | ------------------ |
+| Sync TCP contiguous  | 1 / 1                    | 22 / 44                          | 637.04 / 617.27    |
+| Sync TCP vectors     | 2 / 2                    | 65,558 / 65,580                  | 619.14 / 616.54    |
+| Async TCP contiguous | 2 / 1                    | 65,536 / 22                      | 632.68 / 631.33    |
+| Async TCP vectors    | 2 / 2                    | 65,536 / 65,558                  | 568.24 / 619.89    |
+| WebSocket contiguous | 2 / 1                    | 65,598 / 44                      | 621.12 / 598.70    |
 
 The additional 22-byte header read centralizes policy inspection. Plaintext paths
 retain zero allocations and zero payload copies; the planner reads the header.
@@ -40,9 +40,9 @@ allocation/copy work on contiguous encrypted async TCP and WebSocket paths.
 - `test-webrtc-security`: real libdatachannel peers, 64 KiB round trips, nonce
   advancement, default/encrypted/password/identity/auth-only modes, and rejected
   credentials before application admission.
-- `python tests/integration/crypto_policy.py build/bin/ascii-chat`: 15 real CLI
+- `uv run --project tests/ascii_chat_tests --frozen python tests/integration/crypto_policy.py build/bin/ascii-chat`: 15 real CLI
   TCP/WS/WSS policy cases with rendered frames and rejected credentials.
-- `python tests/integration/webrtc_security.py build/bin/ascii-chat`: local ACDS,
+- `uv run --project tests/ascii_chat_tests --frozen python tests/integration/webrtc_security.py build/bin/ascii-chat`: local ACDS,
   CLI host and participant, negotiation through the production peer manager, and
   received/rendered video in six default/password/mutual-key security modes.
   Observed receive/render rates were 57.9-58.0 fps with a 40x12 terminal.

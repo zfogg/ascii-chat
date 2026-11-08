@@ -16,6 +16,8 @@ void debug_stats_cleanup_thread(void);
 void debug_stats_destroy(void);
 bool debug_stats_is_cleanup_in_progress(void);
 void debug_stats_trigger_print(void);
+/** Request a deferred memory report from the diagnostics worker. */
+void debug_stats_trigger_memory_report(void);
 void debug_stats_set_memory_report_interval(uint64_t interval_ns);
 void debug_stats_print(void);
 // Event-loop integration for single-threaded WASM builds.

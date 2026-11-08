@@ -20,6 +20,7 @@
 #pragma once
 
 #include <stdio.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,12 +81,22 @@ void log_io_stop(log_io_t capture, const char *prefix);
  * @note Prefix and block are only evaluated once
  * @note Variables in the enclosing scope are accessible in the block
  */
-#define LOG_IO(prefix, block)                                                                                          \
+/**
+ * @brief Capture a block only when condition is true; execute the block once either way.
+ * @note The condition is evaluated once, before executing the block.
+ */
+#define LOG_IO_IF(condition, prefix, block)                                                                            \
   do {                                                                                                                 \
-    log_io_t _log_io = log_io_start();                                                                                 \
+    bool _log_io_enabled = (condition);                                                                                \
+    log_io_t _log_io = {0};                                                                                            \
+    if (_log_io_enabled)                                                                                               \
+      _log_io = log_io_start();                                                                                        \
     block;                                                                                                             \
-    log_io_stop(_log_io, (prefix));                                                                                    \
+    if (_log_io_enabled)                                                                                               \
+      log_io_stop(_log_io, (prefix));                                                                                  \
   } while (0)
+
+#define LOG_IO(prefix, block) LOG_IO_IF(true, prefix, block)
 
 #ifdef __cplusplus
 }
