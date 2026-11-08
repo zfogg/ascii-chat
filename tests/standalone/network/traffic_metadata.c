@@ -37,7 +37,9 @@ static asciichat_error_t capture_capabilities(acip_transport_t *transport, acip_
   capture_t *capture = transport->impl_data;
   bool enabled = atomic_load_bool(&capture->datagrams);
   *out = (acip_transport_capabilities_t){
-      .independent_streams = true, .datagrams = enabled, .max_datagram_payload = enabled ? 1200 : 0};
+      .independent_streams = !atomic_load_bool(&capture->blocked),
+      .datagrams = enabled,
+      .max_datagram_payload = enabled ? 1200 : 0};
   return ASCIICHAT_OK;
 }
 
