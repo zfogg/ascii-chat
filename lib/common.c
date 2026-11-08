@@ -33,7 +33,7 @@
 #include <ascii-chat/debug/mutex.h>         // For mutex_stack_cleanup
 #include <ascii-chat/debug/named.h>         // For named_destroy()
 #include <ascii-chat/debug/atomic.h>        // For debug_atomic_shutdown()
-#include <ascii-chat/debug/memory.h>        // For debug_memory_thread_cleanup in debug builds
+#include <ascii-chat/debug/memory.h>
 #include <ascii-chat/platform/symbols.h>    // For symbols cache init
 #include <ascii-chat/platform/terminal.h>   // For terminal_screen_cleanup
 #include <ascii-chat/platform/keyboard.h>   // For keyboard_destroy()
@@ -241,11 +241,6 @@ void asciichat_shared_destroy(void) {
 
   // Clean up current thread's allocations
   debug_sync_final_cleanup();
-
-  // Memory debug thread - prints memory report (must be last)
-#if defined(DEBUG_MEMORY)
-  debug_memory_thread_cleanup();
-#endif
 
   // Atomic debug cleanup
   debug_atomic_shutdown();
