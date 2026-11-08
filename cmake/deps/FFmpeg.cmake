@@ -17,8 +17,12 @@ if(PLATFORM_IOS)
 
     include(ExternalProject)
 
-    set(FFMPEG_PREFIX "${IOS_DEPS_CACHE_DIR}/ffmpeg")
-    set(FFMPEG_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/ffmpeg-build")
+    set(FFMPEG_IOS_ARCH "${CMAKE_OSX_ARCHITECTURES}")
+    if(NOT FFMPEG_IOS_ARCH)
+        set(FFMPEG_IOS_ARCH "arm64")
+    endif()
+    set(FFMPEG_PREFIX "${IOS_DEPS_CACHE_DIR}/ffmpeg-${IOS_BUILD_VARIANT}-${FFMPEG_IOS_ARCH}")
+    set(FFMPEG_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/ffmpeg-build-${IOS_BUILD_VARIANT}-${FFMPEG_IOS_ARCH}")
 
     # Get actual iOS SDK path using xcrun
     if(BUILD_IOS_SIM)
@@ -50,7 +54,7 @@ if(PLATFORM_IOS)
             CONFIGURE_COMMAND bash -c "cd <SOURCE_DIR> && env -u CPPFLAGS -u CFLAGS -u CXXFLAGS -u LDFLAGS ./configure \
                 --prefix=${FFMPEG_PREFIX} \
                 --enable-cross-compile \
-                --arch=arm64 \
+                --arch=${FFMPEG_IOS_ARCH} \
                 --cc=clang \
                 --sysroot=${IOS_SDK_PATH} \
                 --extra-cflags=${FFMPEG_IOS_MIN_FLAG} \

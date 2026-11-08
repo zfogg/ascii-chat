@@ -48,10 +48,8 @@ if(FFMPEG_FOUND)
         ${CMAKE_SOURCE_DIR}/lib/media/render/renderer.c
         ${CMAKE_SOURCE_DIR}/lib/media/kitty/image.c
     )
-    if(NOT PLATFORM_IOS)
-        list(APPEND VIDEO_SRCS
-            ${CMAKE_SOURCE_DIR}/lib/media/render/terminal.c)
-    endif()
+    list(APPEND VIDEO_SRCS
+        ${CMAKE_SOURCE_DIR}/lib/media/render/terminal.c)
 endif()
 
 # SIMD sources (reorganized into ascii/{arch}/{halfblock,foreground,background})

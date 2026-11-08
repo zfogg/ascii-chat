@@ -27,6 +27,14 @@ if(PLATFORM_IOS)
     set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
     set(OPENSSL_LIBDIR "lib")
 
+    if(BUILD_IOS_SIM)
+        set(_OPENSSL_IOS_ARCH "${CMAKE_OSX_ARCHITECTURES}")
+        set(_OPENSSL_IOS_CONFIG "darwin64-x86_64-cc")
+    else()
+        set(_OPENSSL_IOS_ARCH "arm64")
+        set(_OPENSSL_IOS_CONFIG "darwin64-arm64-cc")
+    endif()
+
     # Get actual iOS SDK path using xcrun
     if(BUILD_IOS_SIM)
         execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -36,8 +44,22 @@ if(PLATFORM_IOS)
 
     message(STATUS "  iOS SDK path: ${IOS_SDK_PATH}")
 
+    # Reject a cached archive built for a different iOS architecture. This can
+    # happen when a simulator and device build share the dependency cache.
+    set(_OPENSSL_CACHE_VALID FALSE)
+    if(EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a" AND EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a")
+        execute_process(COMMAND lipo -info "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a"
+                        OUTPUT_VARIABLE _OPENSSL_ARCH_INFO ERROR_VARIABLE _OPENSSL_ARCH_ERROR)
+        if(_OPENSSL_ARCH_INFO MATCHES "${_OPENSSL_IOS_ARCH}")
+            set(_OPENSSL_CACHE_VALID TRUE)
+        else()
+            message(STATUS "  OpenSSL cache architecture mismatch (expected ${_OPENSSL_IOS_ARCH}); rebuilding")
+            file(REMOVE_RECURSE "${OPENSSL_PREFIX}")
+        endif()
+    endif()
+
     # Build OpenSSL synchronously at configure time if not cached
-    if(NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a")
+    if(NOT _OPENSSL_CACHE_VALID)
         message(STATUS "  OpenSSL library not found in cache, will build from source...")
 
         file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
@@ -75,14 +97,14 @@ if(PLATFORM_IOS)
         endif()
 
         # Configure OpenSSL for iOS using clang directly (more reliable than ios64-cross)
-        message(STATUS "  Configuring OpenSSL for iOS (arm64)...")
+        message(STATUS "  Configuring OpenSSL for iOS (${_OPENSSL_IOS_ARCH})...")
 
         execute_process(
             COMMAND bash -c "
                 export CC='${CMAKE_C_COMPILER}'
-                export CFLAGS='-arch arm64 -isysroot ${IOS_SDK_PATH} ${_OPENSSL_IOS_MIN_VERSION_FLAG} -fPIC'
-                export LDFLAGS='-arch arm64 -isysroot ${IOS_SDK_PATH} -fPIC'
-                '${OPENSSL_SOURCE_DIR}/Configure' darwin64-arm64-cc --prefix=${OPENSSL_PREFIX} --libdir=lib no-shared no-tests < /dev/null
+                export CFLAGS='-arch ${_OPENSSL_IOS_ARCH} -isysroot ${IOS_SDK_PATH} ${_OPENSSL_IOS_MIN_VERSION_FLAG} -fPIC'
+                export LDFLAGS='-arch ${_OPENSSL_IOS_ARCH} -isysroot ${IOS_SDK_PATH} -fPIC'
+                '${OPENSSL_SOURCE_DIR}/Configure' ${_OPENSSL_IOS_CONFIG} --prefix=${OPENSSL_PREFIX} --libdir=lib no-shared no-tests no-apps < /dev/null
             "
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             TIMEOUT 60
@@ -105,7 +127,7 @@ if(PLATFORM_IOS)
 
         message(STATUS "  Building OpenSSL (this takes a few minutes)...")
         execute_process(
-            COMMAND make -j${ASCIICHAT_OPENSSL_BUILD_JOBS}
+            COMMAND make -j${ASCIICHAT_OPENSSL_BUILD_JOBS} build_libs
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE BUILD_RESULT
             OUTPUT_VARIABLE BUILD_OUTPUT

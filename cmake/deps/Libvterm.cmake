@@ -1,7 +1,4 @@
 # Upstream libvterm is Make-based; use a small target wrapper and tracked generators.
-if(PLATFORM_IOS AND NOT BUILD_EXECUTABLES)
-    return()
-endif()
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
 if(EMSCRIPTEN OR WIN32 OR USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE
    OR (APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS))

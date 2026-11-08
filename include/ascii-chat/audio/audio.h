@@ -64,7 +64,7 @@
 #include <TargetConditionals.h>
 #endif
 #if defined(__APPLE__) && TARGET_OS_IPHONE
-typedef struct PaStream PaStream;
+#include <ascii-chat/audio/ios_portaudio.h>
 #else
 #include <portaudio.h>
 #endif

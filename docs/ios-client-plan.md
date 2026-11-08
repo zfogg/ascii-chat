@@ -2,8 +2,8 @@
 
 # ascii-chat iOS Client - Implementation Plan (WIP)
 
-> **Status**: Draft / Research Phase
-> **Last Updated**: 2026-03-06
+> **Status**: Simulator app milestone complete — the x86_64 iOS simulator bundle links with the shared C dispatcher, platform camera, TLS networking, QUIC dependencies, and audio boundary; render bridge remains the next milestone
+> **Last Updated**: 2026-11-08
 > **Goal**: Native iOS app in Swift that uses libasciichat (compiled for iOS) to support server, client, mirror, and discovery modes.
 
 ---
@@ -113,6 +113,10 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 **Goal**: Produce `libasciichat.a` (static library) for arm64 iOS and arm64 iOS Simulator.
 
 #### 1a. iOS CMake toolchain file
+
+The repository's existing iOS platform/toolchain configuration is used by the
+simulator build. Keep the platform selection in CMake rather than introducing
+an app-only build path.
 
 Create `cmake/toolchains/iOS.cmake`:
 
@@ -1351,15 +1355,15 @@ Intentionally minimal. The C library does the heavy lifting.
 
 #### Phase 1: Library Compilation + iOS Platform Layer (1-2 weeks)
 
-- [ ] Create `cmake/toolchains/iOS.cmake`
-- [ ] Add `BUILD_IOS` and `BUILD_IOS_SIM` CMake options
-- [ ] Extend `PlatformDetection.cmake` with `PLATFORM_IOS`
+- [x] Configure the iOS simulator/device platform through CMake
+- [x] Keep the iOS target separate from the desktop executable
+- [x] Enable QUIC and WebSocket TLS on iOS, including the selected OpenSSL build
 - [ ] Create `lib/platform/ios/` directory with overrides:
     - [ ] `system.c` — `platform_write()` routes STDOUT to render bridge
     - [ ] `render_bridge.c` — libvterm + term_renderer + frame callback
     - [ ] `terminal.c` — dimensions from options, truecolor, no TTY
     - [ ] `keyboard.c` — override `keyboard_init()`/`keyboard_destroy()` to skip TTY setup; reads from stdin_bridge queue
-    - [ ] `keepawake.m` — UIApplication.idleTimerDisabled
+    - [x] `keepawake.m` — UIApplication.idleTimerDisabled
     - [ ] `filesystem.m` — sandbox-aware paths
     - [ ] `process.c` — stub popen/fork
     - [ ] `question.c` — delegate prompts to Swift callback
@@ -1372,7 +1376,8 @@ Intentionally minimal. The C library does the heavy lifting.
 - [ ] Refactor all render paths to call `platform_frame_flush()` instead of `terminal_flush()` directly
 - [ ] Rename `lib/video/webcam/macos/` → `lib/video/webcam/apple/`
 - [ ] Write PortAudio → AVAudioEngine shim (`lib/audio/ios/portaudio_shim.m`)
-- [ ] Cross-compile dependencies (libsodium, FFmpeg, Opus, zstd, PCRE2, yyjson, libwebsockets, libvterm, FreeType)
+- [x] Cross-compile the currently selected dependency set for the iOS simulator
+- [x] Link and validate the Swift iOS simulator app bundle (`ascii-chat-ios-app.app`)
 - [ ] Build `libasciichat.a` for arm64 + arm64-simulator
 - [ ] Package as `.xcframework`
 - [ ] Verify: link into empty Xcode project, call `asciichat_main()` with mirror mode
@@ -1382,12 +1387,15 @@ Intentionally minimal. The C library does the heavy lifting.
 This is the "hello world" milestone: the actual C `mirror_main()` runs on iOS and
 produces pixels on screen.
 
-- [ ] Xcode project setup with SwiftUI in `src/ios/`
+- [x] SwiftUI app sources, plist, and CMake target live in `src/ios/`
+- [x] Route iOS mode selection through the regular `asciichat_main()` dispatcher
+- [x] Use the shared webcam API and shared video/rendering sources
 - [ ] Module map for C library import
 - [ ] `AsciiChatEngine.swift` — start/stop modes, frame callback → CGImage
 - [ ] `FrameBufferView.swift` — display CGImage from callback
 - [ ] `ModeView.swift` — shared pixel display with gesture input
 - [ ] `MirrorView.swift` — options form + ModeView
+- [ ] Implement the C render bridge and Swift frame callback
 - [ ] Verify: mirror mode shows ASCII webcam output on device
 - [ ] Settings UI: color mode, palette, render mode, dimensions (passed as argv)
 

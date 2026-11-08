@@ -85,7 +85,7 @@ elseif(PLATFORM_POSIX)
         )
         if(PLATFORM_IOS)
             list(APPEND PLATFORM_SRCS
-                ${CMAKE_CURRENT_SOURCE_DIR}/ios/keepawake.c)
+                ${CMAKE_CURRENT_SOURCE_DIR}/ios/keepawake.m)
         else()
             list(APPEND PLATFORM_SRCS
                 ${CMAKE_CURRENT_SOURCE_DIR}/macos/keepawake.c)

@@ -61,6 +61,20 @@
 #include <errno.h>
 #include <limits.h>
 
+static char *websocket_client_ca_pem;
+static size_t websocket_client_ca_pem_size;
+
+static bool websocket_load_client_ca_roots(void) {
+  if (websocket_client_ca_pem)
+    return true;
+
+  if (platform_load_system_ca_certs(&websocket_client_ca_pem, &websocket_client_ca_pem_size) != ASCIICHAT_OK) {
+    log_error("Cannot load system CA roots for WebSocket TLS");
+    return false;
+  }
+  return true;
+}
+
 /**
  * @brief Maximum incoming message queue size (frames received from peer)
  *
@@ -1373,6 +1387,8 @@ static struct lws_context *websocket_create_client_context(void) {
 
   struct lws_context_creation_info info;
   memset(&info, 0, sizeof(info));
+  if (!websocket_load_client_ca_roots())
+    return NULL;
   info.port = CONTEXT_PORT_NO_LISTEN; // Client mode - no listening
   info.protocols = client_protocols;
   info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
@@ -1380,6 +1396,8 @@ static struct lws_context *websocket_create_client_context(void) {
   // Initialize SSL globally for client (required even for clients to use OpenSSL)
   // The LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT flag works for both servers and clients
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+  info.client_ssl_ca_mem = websocket_client_ca_pem;
+  info.client_ssl_ca_mem_len = (unsigned int)websocket_client_ca_pem_size;
   info.extensions = NULL; // Disable client compression due to lws_set_extension_option() assertion
 
   // Increase per-thread service buffer to prevent fragmentation of large messages

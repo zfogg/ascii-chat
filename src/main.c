@@ -488,7 +488,7 @@ static void on_exit_show_cursor(void) {
  * Main Entry Point
  * ============================================================================ */
 
-int main(int argc, char *argv[]) {
+int asciichat_main(int argc, char *argv[]) {
   if (process_utf8_arguments(&argc, &argv) != ASCIICHAT_OK) {
     fprintf(stderr, "Failed to convert command-line arguments to UTF-8\n");
     return 1;
@@ -1114,3 +1114,9 @@ int main(int argc, char *argv[]) {
 
   return exit_code;
 }
+
+#ifndef PLATFORM_IOS
+int main(int argc, char *argv[]) {
+  return asciichat_main(argc, argv);
+}
+#endif

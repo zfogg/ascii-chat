@@ -61,16 +61,20 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/consensus/election.c
     ${CMAKE_CURRENT_SOURCE_DIR}/consensus/metrics.c
     ${CMAKE_CURRENT_SOURCE_DIR}/consensus/coordinator.c
-    # nat/upnp.c is not available on iOS.
     # mdns/
     ${CMAKE_CURRENT_SOURCE_DIR}/mdns/mdns.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mdns/discovery.c
 )
 
+if(NOT PLATFORM_IOS AND NOT EMSCRIPTEN)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/nat/upnp.c)
+elseif(PLATFORM_IOS)
+    list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/nat/upnp_ios.c)
+endif()
+
 if(NOT EMSCRIPTEN)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/establish.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/acip/backpressure.c)
-if(NOT PLATFORM_IOS)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/stream.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/http3.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/datagram.c)
@@ -80,7 +84,6 @@ if(NOT PLATFORM_IOS)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/transport.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/worker.c)
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/quic/udp.c)
-endif()
     list(APPEND NETWORK_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/tcp/async.c ${CMAKE_CURRENT_SOURCE_DIR}/connection.c ${CMAKE_CURRENT_SOURCE_DIR}/negotiation.c)
 endif()
 

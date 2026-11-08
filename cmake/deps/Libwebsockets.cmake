@@ -52,11 +52,7 @@ function(asciichat_build_libwebsockets)
     endif()
     set(LWS_WITHOUT_TESTAPPS ON)
     set(DISABLE_WERROR ON)
-    if(PLATFORM_IOS)
-        set(LWS_WITH_SSL OFF CACHE BOOL "Disable libwebsockets OpenSSL on iOS" FORCE)
-    else()
-        set(LWS_WITH_SSL ON)
-    endif()
+    set(LWS_WITH_SSL ON CACHE BOOL "Enable libwebsockets OpenSSL TLS" FORCE)
     set(LWS_WITH_SCHANNEL OFF)
     set(LWS_WITH_MBEDTLS OFF)
     set(LWS_WITH_GNUTLS OFF)
@@ -82,13 +78,26 @@ function(asciichat_build_libwebsockets)
         URL https://github.com/warmcat/libwebsockets/archive/4cb71af648294663ebd38550ccf47b29adec7974.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         SOURCE_SUBDIR asciichat-patch-first)
+    set(_asciichat_saved_c_flags "${CMAKE_C_FLAGS}")
     FetchContent_MakeAvailable(asciichat_libwebsockets)
+    set(CMAKE_C_FLAGS "${_asciichat_saved_c_flags}")
     set(LWS_SOURCE_DIR "${asciichat_libwebsockets_SOURCE_DIR}")
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-libwebsockets-cmake.cmake")
     add_subdirectory("${asciichat_libwebsockets_SOURCE_DIR}" "${asciichat_libwebsockets_BINARY_DIR}" EXCLUDE_FROM_ALL)
+    if(TARGET websockets)
+        target_compile_definitions(websockets PRIVATE
+            LWS_SUPPRESS_DEPRECATED_API_WARNINGS
+            LWS_HAVE_ECDSA_SIG_set0
+            LWS_HAVE_BN_bn2binpad
+            LWS_HAVE_EVP_MD_CTX_free
+            LWS_HAVE_EVP_PKEY_GET_BN_PARAM
+            LWS_HAVE_RSA_SET0_KEY)
+    endif()
     if(PLATFORM_IOS AND TARGET websockets)
         get_target_property(_lws_sources websockets SOURCES)
-        list(FILTER _lws_sources EXCLUDE REGEX "(^|/)unix-spawn(-tree)?\\.c$")
+        # Keep the basic spawn implementation for the core stub, but omit the
+        # macOS-specific process-tree helper, which is unavailable on iOS.
+        list(FILTER _lws_sources EXCLUDE REGEX "(^|/)unix-spawn-tree\\.c$")
         set_property(TARGET websockets PROPERTY SOURCES "${_lws_sources}")
     endif()
     # An OpenSSL package prefix can also contain installed copies of libraries

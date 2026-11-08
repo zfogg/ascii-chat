@@ -412,7 +412,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
 if(PLATFORM_IOS)
-    add_subdirectory(${CMAKE_SOURCE_DIR}/ios ${CMAKE_BINARY_DIR}/ios)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/src/ios ${CMAKE_BINARY_DIR}/src/ios)
 endif()
 enable_testing()
 if(TARGET ascii-chat)

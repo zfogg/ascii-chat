@@ -242,11 +242,6 @@ void asciichat_shared_destroy(void) {
   // Clean up current thread's allocations
   debug_sync_final_cleanup();
 
-  // Memory debug thread - prints memory report (must be last)
-#if defined(DEBUG_MEMORY)
-  debug_memory_thread_cleanup();
-#endif
-
   // Atomic debug cleanup
   debug_atomic_shutdown();
 #endif

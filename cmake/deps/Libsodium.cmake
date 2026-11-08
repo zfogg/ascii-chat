@@ -27,8 +27,12 @@ if(PLATFORM_IOS)
 
     include(ExternalProject)
 
-    set(LIBSODIUM_PREFIX "${IOS_DEPS_CACHE_DIR}/libsodium")
-    set(LIBSODIUM_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/libsodium-build")
+    set(LIBSODIUM_IOS_ARCH "${CMAKE_OSX_ARCHITECTURES}")
+    if(NOT LIBSODIUM_IOS_ARCH)
+        set(LIBSODIUM_IOS_ARCH "arm64")
+    endif()
+    set(LIBSODIUM_PREFIX "${IOS_DEPS_CACHE_DIR}/libsodium-${IOS_BUILD_VARIANT}-${LIBSODIUM_IOS_ARCH}")
+    set(LIBSODIUM_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/libsodium-build-${IOS_BUILD_VARIANT}-${LIBSODIUM_IOS_ARCH}")
 
     # Determine iOS SDK path
     if(BUILD_IOS_SIM)
@@ -43,10 +47,10 @@ if(PLATFORM_IOS)
         message(STATUS "  libsodium library not found in cache, will build from source")
 
         if(BUILD_IOS_SIM)
-            set(_LIBSODIUM_IOS_TARGET "arm64-apple-ios16.0-simulator")
+            set(_LIBSODIUM_IOS_TARGET "${LIBSODIUM_IOS_ARCH}-apple-ios16.0-simulator")
             set(_LIBSODIUM_IOS_MIN_FLAG "-mios-simulator-version-min=16.0")
         else()
-            set(_LIBSODIUM_IOS_TARGET "arm64-apple-ios16.0")
+            set(_LIBSODIUM_IOS_TARGET "${LIBSODIUM_IOS_ARCH}-apple-ios16.0")
             set(_LIBSODIUM_IOS_MIN_FLAG "-miphoneos-version-min=16.0")
         endif()
 
@@ -66,9 +70,9 @@ if(PLATFORM_IOS)
                 --with-pic
                 --host=arm-apple-darwin
                 CC=${CMAKE_C_COMPILER}
-                CFLAGS=-target\ ${_LIBSODIUM_IOS_TARGET}\ -isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64\ ${_LIBSODIUM_IOS_MIN_FLAG}
+                CFLAGS=-target\ ${_LIBSODIUM_IOS_TARGET}\ -isysroot\ ${IOS_SDK_PATH}\ -arch\ ${LIBSODIUM_IOS_ARCH}\ ${_LIBSODIUM_IOS_MIN_FLAG}
                 LD=ld
-                LDFLAGS=-target\ ${_LIBSODIUM_IOS_TARGET}\ -isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64\ ${_LIBSODIUM_IOS_MIN_FLAG}
+                LDFLAGS=-target\ ${_LIBSODIUM_IOS_TARGET}\ -isysroot\ ${IOS_SDK_PATH}\ -arch\ ${LIBSODIUM_IOS_ARCH}\ ${_LIBSODIUM_IOS_MIN_FLAG}
             BUILD_COMMAND make -j
             INSTALL_COMMAND make install
             BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a

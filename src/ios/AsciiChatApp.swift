@@ -10,20 +10,8 @@ private func asciichat_ios_test_frame(
     _ height: UnsafeMutablePointer<Int>
 ) -> Int32
 
-@_silgen_name("mirror_main")
-private func mirror_main() -> Int32
-
-@_silgen_name("asciichat_ios_camera_read_ascii")
-private func asciichat_ios_camera_read_ascii(
-    _ output: UnsafeMutablePointer<CChar>,
-    _ capacity: Int,
-    _ columns: Int,
-    _ rows: Int,
-    _ length: UnsafeMutablePointer<Int>
-) -> Int32
-
-@_silgen_name("asciichat_ios_camera_stop")
-private func asciichat_ios_camera_stop()
+@_silgen_name("asciichat_ios_main")
+private func asciichat_ios_main(_ mode: Int32) -> Int32
 
 private struct TestFrameView: View {
     private let image: CGImage?
@@ -79,37 +67,14 @@ private struct TestFrameView: View {
 }
 
 private struct CameraAsciiView: View {
-    @State private var text = "Starting camera…"
-    @State private var cameraStarted = false
-    private let timer = Timer.publish(every: 1.0 / 15.0, on: .main, in: .common).autoconnect()
-
-    private func readFrame() {
-        let columns = 64
-        let rows = 32
-        var output = Array(repeating: CChar(0), count: rows * (columns + 1) + 1)
-        var length = 0
-        guard cameraStarted else { return }
-        let emitted = output.withUnsafeMutableBufferPointer { buffer in
-            asciichat_ios_camera_read_ascii(buffer.baseAddress!, buffer.count, columns, rows, &length)
-        }
-        guard emitted != 0 else {
-            text = "Waiting for camera frame…"
-            return
-        }
-        text = String(decoding: output.prefix(length).map { UInt8(bitPattern: $0) }, as: UTF8.self)
-    }
-
     var body: some View {
-        Text(text)
-            .font(.system(size: 8, design: .monospaced))
-            .lineLimit(nil)
+        Text("Camera rendering is owned by the shared mirror pipeline.")
             .padding()
             .onAppear {
-                cameraStarted = mirror_main() != 0
-                if !cameraStarted { text = "Camera unavailable" }
+                DispatchQueue.global(qos: .userInitiated).async {
+                    _ = asciichat_ios_main(0)
+                }
             }
-            .onReceive(timer) { _ in readFrame() }
-            .onDisappear { asciichat_ios_camera_stop() }
     }
 }
 
