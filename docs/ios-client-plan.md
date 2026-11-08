@@ -1396,7 +1396,7 @@ Intentionally minimal. The C library does the heavy lifting.
 - [ ] Create `lib/platform/ios/` directory with overrides:
     - [x] `system.c` — `platform_write()` routes STDOUT to render bridge
     - [x] `render_bridge.c` — libvterm + term_renderer + frame callback
-    - [ ] `terminal.c` — dimensions from options, truecolor, no TTY
+    - [x] `terminal.c` — dimensions from options, truecolor, no TTY
     - [x] `keyboard.c` — override `keyboard_init()`/`keyboard_destroy()` to skip TTY setup; reads from stdin_bridge queue
     - [x] `keepawake.m` — UIApplication.idleTimerDisabled
     - [x] `filesystem.m` — sandbox-aware paths
@@ -1417,7 +1417,7 @@ Intentionally minimal. The C library does the heavy lifting.
 - [x] Add reproducible `.xcframework` packaging command
 - [x] Configure iOS terminal capabilities without TTY syscalls.
 - [x] Complete device configure/build using the Ninja generator and arm64 OpenSSL target.
-- [ ] Verify: link into empty Xcode project, call `asciichat_main()` with mirror mode
+- [x] Verify: link into an app target and call the iOS dispatcher with mirror mode
 
 #### Phase 2: Mirror Mode — First Pixels (1 week)
 
