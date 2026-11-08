@@ -1,57 +1,11 @@
-import type { WasmModule } from "./common/optionsWrapper";
+import type { MainModule as MirrorBindings } from "./generated/mirror-bindings";
+import type { MainModule as ClientBindings } from "./generated/client-bindings";
 
-/** Terminal exports shared by the mirror and client WASM builds. */
-export interface TerminalRendererModule extends WasmModule {
-  _wasm_renderer_config_size(): number;
-  _wasm_renderer_config_write(
-    config: number,
-    cols: number,
-    rows: number,
-    fontSize: number,
-    theme: number,
-    fontData: number,
-    fontDataSize: number,
-    matrix: number,
-  ): number;
-  _mirror_init_with_args?(args: number): number;
-  _client_init_with_args?(args: number): number;
-  _term_renderer_create(config: number, output: number): number;
-  _term_renderer_set_zalgo(renderer: number, level: number): number;
-  _term_renderer_feed(renderer: number, text: number, length: number): number;
-  _term_renderer_pixels(renderer: number): number;
-  _term_renderer_width_px(renderer: number): number;
-  _term_renderer_height_px(renderer: number): number;
-  _term_renderer_pitch(renderer: number): number;
-  _term_renderer_destroy(renderer: number): void;
-  _get_font_default_ptr(selection: number): number;
-  _get_font_default_size(selection: number): number;
-}
-
-/** Initialize through C so changes to native buffers cannot corrupt WASM memory. */
-export function writeTerminalRendererConfig(
-  module: Pick<
-    TerminalRendererModule,
-    | "_wasm_renderer_config_write"
-    | "_get_font_default_ptr"
-    | "_get_font_default_size"
-  >,
-  config: number,
-  cols: number,
-  rows: number,
-  fontSize: number,
-  matrix: boolean,
-  selection = matrix ? 2 : 1,
-): void {
-  const result = module._wasm_renderer_config_write(
-    config,
-    cols,
-    rows,
-    fontSize,
-    0,
-    module._get_font_default_ptr(selection),
-    module._get_font_default_size(selection),
-    matrix ? 1 : 0,
-  );
-  if (result)
-    throw new Error(`Cannot initialize renderer configuration: ${result}`);
+/** Bindings shared by the mirror and client raster worker modules. */
+export interface TerminalRendererModule extends Pick<
+  MirrorBindings,
+  "TerminalRendererBinding" | "initMirror"
+> {
+  initClient?: ClientBindings["initClient"];
+  _set_matrix_rain?(enabled: number): number;
 }

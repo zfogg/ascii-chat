@@ -31,24 +31,21 @@ export async function observeAudioVisualization(page: Page) {
       lastFrame: "",
       lastMode: "",
     });
-    const submit = module._mirror_submit_audio_samples;
-    module._mirror_submit_audio_samples = (
-      pointer: number,
-      count: number,
+    const binding = module.MirrorFrameBinding.prototype;
+    const submit = binding.submitAudio;
+    binding.submitAudio = function (
+      this: unknown,
+      samples: Float32Array,
       source: number,
-    ) => {
-      const samples = module.HEAPF32.subarray(
-        pointer >> 2,
-        (pointer >> 2) + count,
-      );
+    ) {
       proof.inputRms = Math.sqrt(
         samples.reduce(
           (sum: number, sample: number) => sum + sample * sample,
           0,
-        ) / count,
+        ) / samples.length,
       );
-      proof.samples += count;
-      return submit(pointer, count, source);
+      proof.samples += samples.length;
+      return submit.call(this, samples, source);
     };
     let selectedMode = "";
     for (const [setter, mode] of [
@@ -61,19 +58,20 @@ export async function observeAudioVisualization(page: Page) {
         return original(enabled);
       };
     }
-    const render = module._mirror_render_audio_visualization;
-    module._mirror_render_audio_visualization = (
+    const render = binding.renderAudio;
+    binding.renderAudio = function (
+      this: unknown,
       width: number,
       height: number,
       source: number,
-    ) => {
-      const pointer = render(width, height, source);
-      if (pointer) {
-        proof.lastFrame = module.UTF8ToString(pointer);
+    ) {
+      const frame = render.call(this, width, height, source);
+      if (frame !== undefined) {
+        proof.lastFrame = frame;
         proof.lastMode = selectedMode;
         proof.renders++;
       }
-      return pointer;
+      return frame;
     };
   }, moduleUrl);
 }

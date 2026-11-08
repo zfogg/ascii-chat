@@ -26,6 +26,18 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t wasm_renderer_config_write(term_renderer_
   return ASCIICHAT_OK;
 }
 
+extern const unsigned char *get_font_default_ptr(int selection);
+extern unsigned int get_font_default_size(int selection);
+
+/* Construct the native configuration in C so no foreign caller depends on its layout. */
+asciichat_error_t wasm_renderer_create(int cols, int rows, double font_size, int matrix, int selection,
+                                       terminal_renderer_t **output) {
+  term_renderer_config_t config;
+  asciichat_error_t result = wasm_renderer_config_write(
+      &config, cols, rows, font_size, 0, get_font_default_ptr(selection), get_font_default_size(selection), matrix);
+  return result == ASCIICHAT_OK ? term_renderer_create(&config, output) : result;
+}
+
 // Shared log navigation addresses the session executing the browser callback.
 static _Thread_local ui_session_t *active_session;
 

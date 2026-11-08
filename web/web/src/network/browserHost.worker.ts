@@ -1,18 +1,13 @@
 import { initClientWasm, getClientModule, PacketType } from "../wasm/client";
 import { buildImageFramePayload } from "./packetBuilders";
 import { BrowserVideoDecoder } from "./BrowserVideoDecoder";
+import type { HostPacketBinding } from "@ascii-chat/shared/wasm";
 
 type HostModule = NonNullable<ReturnType<typeof getClientModule>> & {
   _browser_host_create(): number;
   _browser_host_add_client(): number;
   _browser_host_set_local_client(id: number): number;
   _browser_host_remove_client(id: number): void;
-  _browser_host_receive(
-    id: number,
-    type: number,
-    ptr: number,
-    length: number,
-  ): number;
   _browser_host_render(): number;
   _browser_host_render_audio(): number;
   hostPacketCallback?: (id: number, bytes: Uint8Array) => void;
@@ -22,6 +17,7 @@ const post = self.postMessage as unknown as (
   transfer?: Transferable[],
 ) => void;
 let module: HostModule;
+let hostInput: HostPacketBinding;
 const clients = new Map<number, number>();
 const decoders = new Map<number, BrowserVideoDecoder>();
 const videoGenerations = new Map<number, number>();
@@ -95,15 +91,8 @@ function receivePacket(id: number, type: number, bytes: Uint8Array) {
     decoder.receive(type, bytes);
     return;
   }
-  const ptr = module._malloc(bytes.length || 1);
-  if (!ptr) throw new Error("Host worker could not allocate packet memory.");
-  try {
-    module.HEAPU8.set(bytes, ptr);
-    if (module._browser_host_receive(client, type, ptr, bytes.length))
-      throw new Error("C host rejected packet.");
-  } finally {
-    module._free(ptr);
-  }
+  if (hostInput.receive(client, type, bytes))
+    throw new Error("C host rejected packet.");
 }
 function render() {
   try {
@@ -168,6 +157,7 @@ self.onmessage = (event) => {
         module = getClientModule() as HostModule;
         if (module._browser_host_create())
           throw new Error("Could not initialize C host worker.");
+        hostInput = new module.HostPacketBinding();
         module.hostPacketCallback = (actual, bytes) => {
           if (
             pendingBatches >= 2 &&

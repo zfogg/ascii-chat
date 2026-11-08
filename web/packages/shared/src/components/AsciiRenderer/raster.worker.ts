@@ -1,5 +1,5 @@
 import type { TerminalRendererModule } from "../../wasm/terminalRenderer";
-import { writeTerminalRendererConfig } from "../../wasm/terminalRenderer";
+import type { TerminalRendererBinding } from "../../wasm/generated/mirror-bindings";
 import type { RasterWorkerRequest } from "./RasterWorker";
 import { browserRasterFontSize } from "./rasterConfig";
 import { createWasmModule, type ClientLikeKind } from "../../wasm/assetUrl";
@@ -9,24 +9,15 @@ async function initialize(
 ): Promise<TerminalRendererModule> {
   const module = await createWasmModule<TerminalRendererModule>(clientLikeKind);
   const initializeOptions =
-    clientLikeKind === "mirror"
-      ? module._mirror_init_with_args?.bind(module)
-      : module._client_init_with_args?.bind(module);
+    clientLikeKind === "mirror" ? module.initMirror : module.initClient;
   if (!initializeOptions)
     throw new Error(`Missing ${clientLikeKind} raster worker initializer`);
-  const size = module.lengthBytesUTF8(clientLikeKind) + 1;
-  const args = module._malloc(size);
-  try {
-    module.stringToUTF8(clientLikeKind, args, size);
-    if (initializeOptions(args))
-      throw new Error("Cannot initialize raster worker options");
-  } finally {
-    module._free(args);
-  }
+  if (initializeOptions(clientLikeKind))
+    throw new Error("Cannot initialize raster worker options");
   return module;
 }
 let initialized: Promise<TerminalRendererModule> | undefined;
-let renderer = 0;
+let renderer: TerminalRendererBinding | null = null;
 let signature = "";
 let queue = Promise.resolve();
 let previousText: string | null = null;
@@ -40,57 +31,33 @@ self.onmessage = (event: MessageEvent<RasterWorkerRequest>) => {
       const nextSignature = `${cols}:${rows}:${matrix}`;
       const changed = text !== previousText || nextSignature !== signature;
       if (signature !== nextSignature) {
-        if (renderer) module._term_renderer_destroy(renderer);
-        renderer = 0;
-        const config = module._malloc(module._wasm_renderer_config_size()),
-          out = module._malloc(4);
-        try {
-          if (module._set_matrix_rain?.(matrix ? 1 : 0) !== 0)
-            throw new Error("Cannot select raster worker font");
-          writeTerminalRendererConfig(
-            module,
-            config,
-            cols,
-            rows,
-            browserRasterFontSize(matrix),
-            matrix,
-            0,
-          );
-          if (module._term_renderer_create(config, out))
-            throw new Error("Cannot create raster worker renderer");
-          renderer = new DataView(module.HEAPU8.buffer, out, 4).getUint32(
-            0,
-            true,
-          );
-          signature = nextSignature;
-        } finally {
-          module._free(config);
-          module._free(out);
-        }
-      }
-      const bytes = new TextEncoder().encode(text);
-      const ptr = module._malloc(bytes.length || 1);
-      try {
-        module.HEAPU8.set(bytes, ptr);
-        module._term_renderer_set_zalgo(renderer, zalgo);
-        if (module._term_renderer_feed(renderer, ptr, bytes.length))
-          throw new Error("Raster worker rejected frame");
-      } finally {
-        module._free(ptr);
-      }
-      const width = module._term_renderer_width_px(renderer);
-      const height = module._term_renderer_height_px(renderer);
-      const pitch = module._term_renderer_pitch(renderer);
-      const source = module._term_renderer_pixels(renderer);
-      const pixels = new Uint8ClampedArray(width * height * 4);
-      for (let row = 0; row < height; row++)
-        pixels.set(
-          module.HEAPU8.subarray(
-            source + row * pitch,
-            source + row * pitch + width * 4,
-          ),
-          row * width * 4,
+        if (module._set_matrix_rain?.(matrix ? 1 : 0) !== 0)
+          throw new Error("Cannot select raster worker font");
+        const replacement = new module.TerminalRendererBinding(
+          cols,
+          rows,
+          browserRasterFontSize(matrix),
+          matrix,
+          0,
         );
+        if (!replacement.valid()) {
+          const code = replacement.error();
+          replacement.delete();
+          throw new Error(`Cannot create raster worker renderer (${code})`);
+        }
+        renderer?.delete();
+        renderer = replacement;
+        signature = nextSignature;
+      }
+      if (!renderer) throw new Error("Raster worker renderer is unavailable");
+      if (renderer.setZalgo(zalgo))
+        throw new Error("Cannot set raster worker effect");
+      if (renderer.feed(text)) throw new Error("Raster worker rejected frame");
+      const width = renderer.width();
+      const height = renderer.height();
+      const pixels = new Uint8ClampedArray(width * height * 4);
+      if (!renderer.copyPixels(pixels))
+        throw new Error("Cannot copy raster worker pixels");
       previousText = text;
       (
         self.postMessage as (message: unknown, transfer: Transferable[]) => void

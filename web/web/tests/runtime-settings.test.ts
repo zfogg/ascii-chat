@@ -9,18 +9,12 @@ import type { ClientSession } from "../src/network/Transport";
 function engine() {
   let revision = 1;
   let values = { fps: 30, flip_x: false };
-  let nextPointer = 1;
-  const strings = new Map<number, string>();
-  const release = vi.fn((pointer: number) => strings.delete(pointer));
   const module: RuntimeOptionsModule = {
     _wasm_options_revision: () => revision,
-    _wasm_options_values: () => {
-      const pointer = nextPointer++;
-      strings.set(pointer, JSON.stringify({ revision, values }));
-      return pointer;
-    },
-    _wasm_options_patch: (pointer, expected) => {
-      const patch = JSON.parse(strings.get(pointer)!) as Partial<typeof values>;
+    readOptions: () => JSON.stringify({ revision, values }),
+    patchOptions: (json, expected) => {
+      if (typeof json !== "string") throw new Error("Expected JSON text");
+      const patch = JSON.parse(json) as Partial<typeof values>;
       if (
         (expected !== -1 && expected !== revision) ||
         (patch.fps !== undefined && patch.fps < 1)
@@ -30,19 +24,10 @@ function engine() {
       revision++;
       return 0;
     },
-    _wasm_options_release: release,
-    _malloc: () => nextPointer++,
-    _free: release,
-    UTF8ToString: (pointer) => strings.get(pointer)!,
-    stringToUTF8: (value, pointer) => {
-      strings.set(pointer, value);
-    },
-    lengthBytesUTF8: (value) => new TextEncoder().encode(value).length,
   };
   return {
     store: new RuntimeOptionsStore(module),
     module,
-    strings,
     change: () => {
       values = { ...values, flip_x: !values.flip_x };
       revision++;
@@ -76,8 +61,8 @@ describe("C runtime settings bridge", () => {
     unsubscribe();
     expect(cancel).toHaveBeenCalledOnce();
   });
-  it("retains committed snapshots on rejection and releases all temporary memory", () => {
-    const { store, strings } = engine();
+  it("retains committed snapshots on rejection", () => {
+    const { store } = engine();
     const initial = store.getSnapshot();
     expect(() => store.applyPatch({ fps: 0 })).toThrow("rejected");
     expect(store.getSnapshot()).toBe(initial);
@@ -86,7 +71,6 @@ describe("C runtime settings bridge", () => {
       "rejected",
     );
     expect(store.getSnapshot().values["fps"]).toBe(60);
-    expect(strings.size).toBe(0);
   });
 });
 

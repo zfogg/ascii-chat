@@ -469,6 +469,10 @@ include(${_cmake_dir}/deps/FaceDetection.cmake)
 # Create WASM mirror module
 add_executable(mirror-web
     ${WEB_SRC_MIRROR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/session_ui.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/terminal_renderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/face.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/test_pattern.cpp
     ${LIB_SRC_MIRROR_ONLY}
     ${WEB_SRC_FACE_FOLLOW}
     $<TARGET_OBJECTS:wasm-common>
@@ -533,6 +537,15 @@ set(WEB_SRC_CLIENT
 # Create WASM client module
 add_executable(client-web
     ${WEB_SRC_CLIENT}
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/session_ui.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/terminal_renderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/face.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/test_pattern.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/audio.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/peer_crypto.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/key_parser.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/client_api.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/browser_protocol.cpp
     ${LIB_SRC_CLIENT_CRYPTO}
     ${LIB_SRC_CLIENT_NETWORK}
     ${WEB_SRC_FACE_FOLLOW}
@@ -735,6 +748,8 @@ set(EXPORTED_RUNTIME_METHODS_CSV "ccall,cwrap,UTF8ToString,stringToUTF8,lengthBy
 
 # Use target_link_options for better cross-platform quoting
 target_link_options(mirror-web PRIVATE
+    -lembind
+    --emit-tsd mirror-bindings.d.ts
     -sMODULARIZE=1
     -sEXPORT_ES6=1
     "-sEXPORT_NAME=MirrorModule"
@@ -757,6 +772,8 @@ target_link_options(mirror-web PRIVATE
 )
 
 target_link_options(client-web PRIVATE
+    -lembind
+    --emit-tsd client-bindings.d.ts
     -sMODULARIZE=1
     -sEXPORT_ES6=1
     "-sEXPORT_NAME=ClientModule"

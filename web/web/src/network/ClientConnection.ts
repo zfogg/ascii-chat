@@ -357,32 +357,19 @@ export class ClientConnection {
 
       if (this.transportState !== ConnectionState.CONNECTED) {
         const module = getClientModule()!;
-        const ptr = module._malloc(payload.length || 1);
-        try {
-          if (!ptr) throw new Error("Could not allocate handshake packet");
-          module.HEAPU8.set(payload, ptr);
-          const result = this.options.discoveryHandshake
-            ? module._client_acds_handshake_receive(
-                parsed.type,
-                ptr,
-                payload.length,
-              )
-            : module._client_handshake_receive(
-                parsed.type,
-                ptr,
-                payload.length,
-              );
-          if (result) throwWasmError(result, "Security handshake rejected");
-          const next = getConnectionState();
-          if (next === ConnectionState.CONNECTED) {
-            this.wasEverConnected = true;
-            this.transportState = ConnectionState.CONNECTED;
-            setNetworkErrorReporter(this.reportToServer);
-          }
-          this.onStateChangeCallback?.(next);
-        } finally {
-          module._free(ptr);
+        const result = module.receiveHandshake(
+          Boolean(this.options.discoveryHandshake),
+          parsed.type,
+          payload,
+        );
+        if (result) throwWasmError(result, "Security handshake rejected");
+        const next = getConnectionState();
+        if (next === ConnectionState.CONNECTED) {
+          this.wasEverConnected = true;
+          this.transportState = ConnectionState.CONNECTED;
+          setNetworkErrorReporter(this.reportToServer);
         }
+        this.onStateChangeCallback?.(next);
         return;
       }
 

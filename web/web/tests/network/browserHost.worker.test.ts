@@ -8,6 +8,7 @@ const wasm = vi.hoisted(() => ({
   _browser_host_set_local_client: vi.fn(() => 0),
   _browser_host_render: vi.fn(() => 0),
   _browser_host_render_audio: vi.fn(() => 0),
+  HostPacketBinding: class {},
 }));
 vi.mock("../../src/wasm/client", () => ({
   initClientWasm: async () => {},

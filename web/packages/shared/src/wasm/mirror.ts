@@ -1,4 +1,8 @@
 import type { SessionUiModule } from "./sessionUi";
+import type {
+  MainModule,
+  MirrorFrameBinding,
+} from "./generated/mirror-bindings";
 import { resetRuntimeOptions } from "./common/runtimeOptions";
 // Shared TypeScript wrapper for Mirror WASM module
 // Provides type-safe interface to libasciichat mirror mode
@@ -20,104 +24,22 @@ import {
 // Type for WASM exports exposed to window.asciiChatWasm
 interface AsciiChatWasmExports {
   _wasmModule?: MirrorModule;
-  get_help_text?(mode: number, option_name: number): number;
+  getHelpText?(mode: number, optionName: string): string | undefined;
 }
 
-// Type definition for the Emscripten module
-interface MirrorModuleExports {
-  _mirror_init_with_args(args_string: number): number;
-  _mirror_cleanup(): void;
-  _mirror_reset_stabilizer(): void;
-  _mirror_convert_frame(
-    rgba_data_ptr: number,
-    src_width: number,
-    src_height: number,
-    contain?: number,
-  ): number;
-  _mirror_free_string(ptr: number): void;
-  _mirror_submit_audio_samples(
-    samples_ptr: number,
-    count: number,
-    source: number,
-  ): void;
-  _mirror_render_audio_visualization(
-    width: number,
-    height: number,
-    source: number,
-  ): number;
-  _get_help_text(mode: number, option_name: number): number;
-  // Terminal renderer functions (libvterm + FreeType)
-  _wasm_renderer_config_size(): number;
-  _wasm_renderer_config_write(
-    config: number,
-    cols: number,
-    rows: number,
-    fontSize: number,
-    theme: number,
-    fontData: number,
-    fontDataSize: number,
-    matrix: number,
-  ): number;
-  _term_renderer_create(cfg_ptr: number, out_ptr: number): number;
-  _term_renderer_set_zalgo(r: number, level: number): number;
-  _term_renderer_feed(r: number, ansi_data_ptr: number, len: number): number;
-  _term_renderer_pixels(r: number): number;
-  _term_renderer_width_px(r: number): number;
-  _term_renderer_height_px(r: number): number;
-  _term_renderer_pitch(r: number): number;
-  _term_renderer_get_cols(r: number): number;
-  _term_renderer_get_rows(r: number): number;
-  _term_renderer_destroy(r: number): void;
-  // Embedded font data
-  _get_font_default_ptr(selection: number): number;
-  _get_font_default_size(selection: number): number;
-  HEAPF32: Float32Array;
-  // Memory management
-  _malloc(size: number): number;
-  _free(ptr: number): void;
-}
-
-export interface MirrorModule extends WasmModule, SessionUiModule {
-  _wasm_capture_transform_required(): number;
-  _wasm_capture_transform_rgba(
-    pointer: number,
-    width: number,
-    height: number,
-  ): number;
-  _wasm_test_pattern_create(width: number, height: number): number;
-  _wasm_test_pattern_render(
-    pointer: number,
-    width: number,
-    height: number,
-    index: number,
-    time: number,
-    cadence: number,
-  ): number;
-  _wasm_test_pattern_render_rgba: MirrorModule["_wasm_test_pattern_render"];
-  _wasm_test_pattern_destroy(pointer: number): void;
+export interface MirrorModule
+  extends
+    WasmModule,
+    SessionUiModule,
+    Pick<
+      MainModule,
+      | "_wasm_capture_transform_required"
+      | "_mirror_cleanup"
+      | "_mirror_reset_stabilizer"
+      | "_get_font_default_ptr"
+      | "_get_font_default_size"
+    > {
   canvas?: HTMLCanvasElement;
-  _mirror_init_with_args?: MirrorModuleExports["_mirror_init_with_args"];
-  _mirror_cleanup: MirrorModuleExports["_mirror_cleanup"];
-  _mirror_reset_stabilizer: MirrorModuleExports["_mirror_reset_stabilizer"];
-  _mirror_convert_frame: MirrorModuleExports["_mirror_convert_frame"];
-  _mirror_free_string: MirrorModuleExports["_mirror_free_string"];
-  _mirror_submit_audio_samples: MirrorModuleExports["_mirror_submit_audio_samples"];
-  _mirror_render_audio_visualization: MirrorModuleExports["_mirror_render_audio_visualization"];
-  _get_help_text: MirrorModuleExports["_get_help_text"];
-  _wasm_renderer_config_size: MirrorModuleExports["_wasm_renderer_config_size"];
-  _wasm_renderer_config_write: MirrorModuleExports["_wasm_renderer_config_write"];
-  _term_renderer_create: MirrorModuleExports["_term_renderer_create"];
-  _term_renderer_set_zalgo: MirrorModuleExports["_term_renderer_set_zalgo"];
-  _term_renderer_feed: MirrorModuleExports["_term_renderer_feed"];
-  _term_renderer_pixels: MirrorModuleExports["_term_renderer_pixels"];
-  _term_renderer_width_px: MirrorModuleExports["_term_renderer_width_px"];
-  _term_renderer_height_px: MirrorModuleExports["_term_renderer_height_px"];
-  _term_renderer_pitch: MirrorModuleExports["_term_renderer_pitch"];
-  _term_renderer_get_cols: MirrorModuleExports["_term_renderer_get_cols"];
-  _term_renderer_get_rows: MirrorModuleExports["_term_renderer_get_rows"];
-  _term_renderer_destroy: MirrorModuleExports["_term_renderer_destroy"];
-  _get_font_default_ptr: MirrorModuleExports["_get_font_default_ptr"];
-  _get_font_default_size: MirrorModuleExports["_get_font_default_size"];
 }
 
 // Re-export enums and types from shared options module
@@ -130,6 +52,12 @@ export type EmscriptenModuleFactory = (
 ) => Promise<MirrorModule>;
 
 let wasmModule: MirrorModule | null = null;
+let frameBinding: MirrorFrameBinding | null = null;
+
+function releaseFrameBinding(): void {
+  frameBinding?.delete();
+  frameBinding = null;
+}
 
 /**
  * Share an already-created compatible module with the terminal renderer.
@@ -137,13 +65,17 @@ let wasmModule: MirrorModule | null = null;
  * points. Reusing it avoids starting a second Emscripten pthread runtime.
  */
 export function adoptMirrorWasmModule(module: MirrorModule): void {
-  if (wasmModule !== module) resetRuntimeOptions(module);
+  if (wasmModule !== module) {
+    releaseFrameBinding();
+    resetRuntimeOptions(module);
+  }
   wasmModule = module;
   initializeOptions(createOptionAccessor(module));
 }
 
 /** Clear a client module reference before its owning client runtime is cleaned up. */
 export function resetAdoptedMirrorWasmModule(): void {
+  releaseFrameBinding();
   if (wasmModule) resetRuntimeOptions(wasmModule);
   wasmModule = null;
   cleanupOptions();
@@ -200,28 +132,14 @@ export async function initMirrorWasm(
   try {
     // Initialize C options system with basic mirror mode arguments
     // This must be called before using any getter/setter functions
-    if (wasmModule._mirror_init_with_args) {
-      // Build space-separated argument string: "mirror ...initialArgs"
-      const args = ["mirror"];
-      if (options?.initialArgs) {
-        args.push(...options.initialArgs);
-      }
-      const argsStr = args.join(" ");
-      const strLen = wasmModule.lengthBytesUTF8(argsStr) + 1;
-      const strPtr = wasmModule._malloc(strLen);
-      if (!strPtr) {
-        throw new Error("Failed to allocate memory for args");
-      }
-
-      try {
-        wasmModule.stringToUTF8(argsStr, strPtr, strLen);
-        const initResult = wasmModule._mirror_init_with_args(strPtr);
-        if (initResult !== 0) {
-          throw new Error(`Failed to initialize mirror C code: ${initResult}`);
-        }
-      } finally {
-        wasmModule._free(strPtr);
-      }
+    // Build space-separated argument string: "mirror ...initialArgs".
+    const args = ["mirror"];
+    if (options?.initialArgs) {
+      args.push(...options.initialArgs);
+    }
+    const initResult = wasmModule.initMirror(args.join(" "));
+    if (initResult !== 0) {
+      throw new Error(`Failed to initialize mirror C code: ${initResult}`);
     }
 
     // Initialize shared options module with option accessor
@@ -235,7 +153,7 @@ export async function initMirrorWasm(
       asciiChatWasm: AsciiChatWasmExports;
     };
     globalWindow.asciiChatWasm = {
-      get_help_text: wasmModule._get_help_text.bind(wasmModule),
+      getHelpText: wasmModule.optionHelp.bind(wasmModule),
       _wasmModule: wasmModule,
     };
   } catch (err) {
@@ -248,6 +166,7 @@ export async function initMirrorWasm(
  * Cleanup WASM module resources
  */
 export function cleanupMirrorWasm(): void {
+  releaseFrameBinding();
   if (wasmModule) {
     wasmModule._mirror_cleanup();
     wasmModule = null;
@@ -284,7 +203,14 @@ export function convertFrameToAscii(
   }
 
   // Validate dimensions
-  if (srcWidth <= 0 || srcHeight <= 0) {
+  if (
+    !Number.isSafeInteger(srcWidth) ||
+    !Number.isSafeInteger(srcHeight) ||
+    srcWidth <= 0 ||
+    srcHeight <= 0 ||
+    srcWidth > 0x7fffffff ||
+    srcHeight > 0x7fffffff
+  ) {
     throw new Error(
       `Invalid image dimensions: ${srcWidth}x${srcHeight}. Width and height must be > 0.`,
     );
@@ -298,67 +224,36 @@ export function convertFrameToAscii(
     );
   }
 
-  // Allocate memory for RGBA data
-  const dataPtr = wasmModule._malloc(rgbaData.length);
-
-  // CRITICAL: In WASM, malloc returns 0 on failure (0 is a valid memory address but indicates error)
-  // Accessing memory at address 0 would corrupt the heap
-  if (dataPtr === 0 || dataPtr === null || typeof dataPtr === "undefined") {
+  // Growing the WASM heap can invalidate a view supplied by a caller.
+  const input =
+    rgbaData.buffer === wasmModule.HEAPU8.buffer ? rgbaData.slice() : rgbaData;
+  frameBinding ??= new wasmModule.MirrorFrameBinding();
+  const frame = frameBinding.convert(
+    input,
+    srcWidth,
+    srcHeight,
+    contentFit === "contain",
+  );
+  if (frame === undefined) {
     throw new Error(
-      `Failed to allocate WASM memory for RGBA data (${rgbaData.length} bytes). WASM heap may be exhausted.`,
+      `WASM mirror_convert_frame failed for ${srcWidth}x${srcHeight}`,
     );
   }
+  return frame;
+}
 
-  if (dataPtr < 0) {
-    throw new Error(`malloc returned invalid pointer: ${dataPtr}`);
-  }
-
-  try {
-    // Validate RGBA data before copying to WASM
-    if (!rgbaData || rgbaData.length === 0) {
-      throw new Error(
-        `Invalid RGBA data: buffer is ${!rgbaData ? "null/undefined" : "empty"}`,
-      );
-    }
-
-    // Copy RGBA data to WASM memory
-    wasmModule.HEAPU8.set(rgbaData, dataPtr);
-
-    // Validate the C function pointers are available
-    if (!wasmModule._mirror_convert_frame) {
-      throw new Error("WASM function _mirror_convert_frame not found");
-    }
-
-    // Call WASM function (dimensions come from options set during init)
-    const resultPtr = wasmModule._mirror_convert_frame(
-      dataPtr,
-      srcWidth,
-      srcHeight,
-      contentFit === "contain" ? 1 : 0,
-    );
-
-    if (!resultPtr) {
-      throw new Error(
-        `WASM mirror_convert_frame returned null after processing ${srcWidth}x${srcHeight}`,
-      );
-    }
-
-    let asciiString: string;
-    try {
-      // Convert C string to JavaScript string
-      asciiString = wasmModule.UTF8ToString(resultPtr);
-    } finally {
-      // Always free the result buffer (allocated by WASM), even if UTF8ToString fails
-      wasmModule._mirror_free_string(resultPtr);
-    }
-
-    return asciiString;
-  } finally {
-    // Only free the input data buffer if malloc succeeded (dataPtr is not 0 or null)
-    if (dataPtr && dataPtr > 0) {
-      wasmModule._free(dataPtr);
-    }
-  }
+/** Apply C's capture orientation to a JavaScript-owned RGBA array in place. */
+export function transformCaptureRgba(
+  rgba: Uint8ClampedArray,
+  width: number,
+  height: number,
+): void {
+  if (!wasmModule) throw new Error("WASM module not initialized");
+  if (rgba.buffer === wasmModule.HEAPU8.buffer)
+    throw new Error("Capture input must be JavaScript-owned");
+  frameBinding ??= new wasmModule.MirrorFrameBinding();
+  if (frameBinding.transform(rgba, width, height))
+    throw new Error("Invalid capture dimensions");
 }
 
 export type AudioVisualizationSource = "microphone" | "media";
@@ -442,21 +337,10 @@ export function submitAudioVisualizationSamples(
   source: AudioVisualizationSource = "media",
 ): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  const pointer = wasmModule._malloc(samples.byteLength);
-  if (!pointer) throw new Error("Failed to allocate WASM audio sample buffer");
-  try {
-    wasmModule.HEAPU8.set(
-      new Uint8Array(samples.buffer, samples.byteOffset, samples.byteLength),
-      pointer,
-    );
-    wasmModule._mirror_submit_audio_samples(
-      pointer,
-      samples.length,
-      audioVisualizationSourceId(source),
-    );
-  } finally {
-    wasmModule._free(pointer);
-  }
+  const input =
+    samples.buffer === wasmModule.HEAPU8.buffer ? samples.slice() : samples;
+  frameBinding ??= new wasmModule.MirrorFrameBinding();
+  frameBinding.submitAudio(input, audioVisualizationSourceId(source));
 }
 
 /** @deprecated Use submitAudioVisualizationSamples. */
@@ -475,17 +359,13 @@ export function renderAudioVisualization(
     wasmModule._set_waveform?.(waveform);
     wasmModule._set_fft?.(fft);
   }
-  const pointer = wasmModule._mirror_render_audio_visualization(
+  frameBinding ??= new wasmModule.MirrorFrameBinding();
+  const frame = frameBinding.renderAudio(
     width,
     height,
     audioVisualizationSourceId(source),
   );
-  if (!pointer) return "";
-  try {
-    return formatAudioVisualizationFrame(wasmModule.UTF8ToString(pointer));
-  } finally {
-    wasmModule._mirror_free_string(pointer);
-  }
+  return frame === undefined ? "" : formatAudioVisualizationFrame(frame);
 }
 
 export interface AudioVisualizationFrameOptions {

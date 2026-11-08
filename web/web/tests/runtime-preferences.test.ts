@@ -25,20 +25,13 @@ afterEach(() => vi.unstubAllGlobals());
 function createEngine(initial: Record<string, string | boolean | number> = {}) {
   let revision = 1;
   let values: Record<string, string | boolean | number> = { ...initial };
-  let pointer = 0;
-  const strings = new Map<number, string>();
   const patches: Record<string, unknown>[] = [];
-  const release = (p: number) => {
-    strings.delete(p);
-  };
   engine.module = {
     _wasm_options_revision: () => revision,
-    _wasm_options_values: () => {
-      strings.set(++pointer, JSON.stringify({ revision, values }));
-      return pointer;
-    },
-    _wasm_options_patch: (p) => {
-      const patch = JSON.parse(strings.get(p)!) as Record<
+    readOptions: () => JSON.stringify({ revision, values }),
+    patchOptions: (json) => {
+      if (typeof json !== "string") throw new Error("Expected JSON text");
+      const patch = JSON.parse(json) as Record<
         string,
         string | boolean | number
       >;
@@ -47,14 +40,6 @@ function createEngine(initial: Record<string, string | boolean | number> = {}) {
       revision++;
       return 0;
     },
-    _wasm_options_release: release,
-    _malloc: () => ++pointer,
-    _free: release,
-    UTF8ToString: (p) => strings.get(p)!,
-    stringToUTF8: (value, p) => {
-      strings.set(p, value);
-    },
-    lengthBytesUTF8: (value) => new TextEncoder().encode(value).length,
   };
   return {
     patches,

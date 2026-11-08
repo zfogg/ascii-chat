@@ -11,6 +11,10 @@ static unsigned char rgba[FACE_FOLLOW_DETECT_WIDTH * FACE_FOLLOW_DETECT_HEIGHT *
 static float output[FACE_WEB_OUTPUT_FIELD_COUNT];
 static size_t face_count;
 
+size_t face_web_output_count(void) {
+  return FACE_WEB_OUTPUT_FIELD_COUNT;
+}
+
 EMSCRIPTEN_KEEPALIVE void face_web_reset(void) {
   face_follow_init(&state);
   face_count = 0;
@@ -18,6 +22,13 @@ EMSCRIPTEN_KEEPALIVE void face_web_reset(void) {
 
 EMSCRIPTEN_KEEPALIVE unsigned char *face_web_input(void) {
   return rgba;
+}
+
+int face_web_validate_input(int width, int height, size_t length) {
+  return width > 0 && height > 0 && width <= FACE_FOLLOW_DETECT_WIDTH && height <= FACE_FOLLOW_DETECT_HEIGHT &&
+                 length == (size_t)width * (size_t)height * 4
+             ? 0
+             : -1;
 }
 
 EMSCRIPTEN_KEEPALIVE void face_web_detect(int width, int height, double now) {

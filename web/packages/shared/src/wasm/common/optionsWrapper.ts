@@ -1,4 +1,5 @@
 import type { RuntimeOptionsModule } from "./runtimeOptions";
+import type { MainModule } from "../generated/mirror-bindings";
 /**
  * @file optionsWrapper.ts
  * @brief Generic WASM option wrapper utilities
@@ -13,13 +14,11 @@ import type { RuntimeOptionsModule } from "./runtimeOptions";
 /**
  * WASM module interface with memory management and string functions
  */
-export interface WasmModule extends RuntimeOptionsModule {
+export interface WasmModule
+  extends
+    RuntimeOptionsModule,
+    Pick<MainModule, "setPalette" | "setPaletteChars" | "getPaletteChars"> {
   HEAPU8: Uint8Array;
-  UTF8ToString(ptr: number): string;
-  stringToUTF8(str: string, outPtr: number, maxBytes: number): void;
-  lengthBytesUTF8(str: string): number;
-  _malloc(size: number): number;
-  _free(ptr: number): void;
 
   // Unified option functions (no mode prefix)
   _set_width?(value: number): number;
@@ -30,10 +29,7 @@ export interface WasmModule extends RuntimeOptionsModule {
   _get_color_mode?(): number;
   _set_color_filter?(filter: number): number;
   _get_color_filter?(): number;
-  _set_palette?(ptr: number): number;
   _get_palette?(): number;
-  _set_palette_chars?(ptr: number): number;
-  _get_palette_chars?(): number;
   _set_matrix_rain?(enabled: number): number;
   _get_matrix_rain?(): number;
   _set_waveform?(enabled: number): number;
@@ -158,32 +154,17 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
      * @throws Error if allocation fails or validation fails
      */
     setString(name: string, value: string): void {
-      const fn = (module as unknown as Record<string, unknown>)[`_set_${name}`];
-      if (typeof fn !== "function") {
-        throw new Error(
-          `WASM function _set_${name} not found. Ensure module is loaded.`,
-        );
-      }
-
       if (!value) {
         throw new Error(`${name} cannot be empty`);
       }
-
-      const strLen = module.lengthBytesUTF8(value) + 1;
-      const strPtr = module._malloc(strLen);
-      if (!strPtr) {
-        throw new Error(`Failed to allocate memory for ${name}`);
-      }
-
-      try {
-        module.stringToUTF8(value, strPtr, strLen);
-        const result = (fn as (ptr: number) => number).call(module, strPtr);
-        if (result !== 0) {
-          throw new Error(`Failed to set ${name}: ${value}`);
-        }
-      } finally {
-        module._free(strPtr);
-      }
+      const fn =
+        name === "palette"
+          ? module.setPalette
+          : name === "palette_chars"
+            ? module.setPaletteChars
+            : null;
+      if (!fn) throw new Error(`WASM string option ${name} not found`);
+      if (fn(value) !== 0) throw new Error(`Failed to set ${name}: ${value}`);
     },
 
     /**
@@ -193,17 +174,9 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
      * @throws Error if the option doesn't exist
      */
     getString(name: string): string {
-      const fn = (module as unknown as Record<string, unknown>)[`_get_${name}`];
-      if (typeof fn !== "function") {
-        throw new Error(
-          `WASM function _get_${name} not found. Ensure module is loaded.`,
-        );
-      }
-
-      const ptr = (fn as () => number).call(module);
-      if (!ptr) return "";
-
-      return module.UTF8ToString(ptr);
+      if (name !== "palette_chars")
+        throw new Error(`WASM string option ${name} not found`);
+      return module.getPaletteChars();
     },
   };
   return accessor;

@@ -5,9 +5,13 @@ import type { MirrorModule } from "../../../packages/shared/src/wasm/mirror";
 function session() {
   const key = vi.fn(() => 1);
   const module = {
-    _wasm_ui_create: () => 7,
-    _wasm_ui_capture_logs: vi.fn(),
-    _wasm_ui_key: key,
+    SessionUiBinding: class {
+      valid() {
+        return true;
+      }
+      key = key;
+      delete() {}
+    },
   } as unknown as MirrorModule;
   return { ui: new SessionUi(module), key };
 }
@@ -29,7 +33,7 @@ describe("shared keyboard representation", () => {
     (input, expected) => {
       const { ui, key } = session();
       expect(ui.key(input)).toBe(1);
-      expect(key).toHaveBeenCalledExactlyOnceWith(7, expected);
+      expect(key).toHaveBeenCalledExactlyOnceWith(expected);
     },
   );
   it.each(["", "Dead", "Process", "ab", "e\u0301", "\ud800", "\udfff"])(
@@ -45,10 +49,39 @@ describe("shared keyboard representation", () => {
     ui.key("Enter", true);
     ui.key("Enter");
     ui.key("PageUp");
-    expect(key.mock.calls).toEqual([
-      [7, 0x11000f],
-      [7, 13],
-      [7, 0x11000d],
-    ]);
+    expect(key.mock.calls).toEqual([[0x11000f], [13], [0x11000d]]);
+  });
+});
+
+describe("session UI ownership", () => {
+  it("disposes the binding once and rejects later use", () => {
+    const dispose = vi.fn();
+    const module = {
+      SessionUiBinding: class {
+        valid() {
+          return true;
+        }
+        delete = dispose;
+      },
+    } as unknown as MirrorModule;
+    const ui = new SessionUi(module);
+    ui.destroy();
+    ui.destroy();
+    expect(dispose).toHaveBeenCalledOnce();
+    expect(() => ui.resize(80, 24)).toThrow("destroyed");
+  });
+
+  it("disposes an unsuccessfully created binding", () => {
+    const dispose = vi.fn();
+    const module = {
+      SessionUiBinding: class {
+        valid() {
+          return false;
+        }
+        delete = dispose;
+      },
+    } as unknown as MirrorModule;
+    expect(() => new SessionUi(module)).toThrow("Cannot create session UI");
+    expect(dispose).toHaveBeenCalledOnce();
   });
 });

@@ -30,31 +30,26 @@ async function observe(page: Page) {
   await page.evaluate(async (url) => {
     const { getMirrorModule } = await import(url);
     const m = getMirrorModule();
-    const patch = m._wasm_options_patch;
+    const patch = m.patchOptions;
     window.__sessionSettingsPatches = [];
-    m._wasm_options_patch = (pointer: number, revision: number) => {
-      window.__sessionSettingsPatches!.push(m.UTF8ToString(pointer));
+    m.patchOptions = (json: string, revision: number) => {
+      window.__sessionSettingsPatches!.push(json);
       if (window.__sessionSettingsPatches!.length > 100)
         throw new Error(
           `Settings feedback loop: ${window.__sessionSettingsPatches!.slice(-10).join("; ")}`,
         );
-      return patch(pointer, revision);
+      return patch(json, revision);
     };
-    const feed = m._term_renderer_feed;
+    const renderer = m.TerminalRendererBinding.prototype;
+    const feed = renderer.feed;
     window.__sessionUiFrames = [];
-    m._term_renderer_feed = (
-      renderer: number,
-      pointer: number,
-      length: number,
-    ) => {
+    renderer.feed = function (this: unknown, value: string) {
       // Inspect rendered text independently of terminal color decoration.
-      const text = m
-        .UTF8ToString(pointer, length)
-        .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
+      const text = value.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
       window.__sessionUiFrames!.push(text);
       if (window.__sessionUiFrames!.length > 30)
         window.__sessionUiFrames!.shift();
-      return feed(renderer, pointer, length);
+      return feed.call(this, value);
     };
   }, moduleUrl);
   await expect
@@ -336,17 +331,14 @@ test("connected web client shows its C network logs", async ({ page }) => {
   await page.evaluate(async (url) => {
     const { getMirrorModule } = await import(url);
     const m = getMirrorModule();
-    const feed = m._term_renderer_feed;
+    const renderer = m.TerminalRendererBinding.prototype;
+    const feed = renderer.feed;
     window.__sessionUiFrames = [];
-    m._term_renderer_feed = (
-      renderer: number,
-      pointer: number,
-      length: number,
-    ) => {
-      window.__sessionUiFrames!.push(m.UTF8ToString(pointer, length));
+    renderer.feed = function (this: unknown, value: string) {
+      window.__sessionUiFrames!.push(value);
       if (window.__sessionUiFrames!.length > 30)
         window.__sessionUiFrames!.shift();
-      return feed(renderer, pointer, length);
+      return feed.call(this, value);
     };
   }, moduleUrl);
   await canvas.focus();

@@ -12,22 +12,17 @@ const m = await createModule({
   printErr() {},
   getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
 });
-const args = m._malloc(16);
-m.stringToUTF8("mirror", args, 16);
-assert.equal(m._mirror_init_with_args(args), 0);
-m._free(args);
+assert.equal(m.initMirror("mirror"), 0);
 m._set_waveform(1);
-const samples = m._malloc(4096 * 4);
+const renderer = new m.MirrorFrameBinding();
 for (let base = 0; base < 49152; base += 4096) {
   const pcm = new Float32Array(4096);
   for (let i = 0; i < pcm.length; i++) {
     const t = (base + i) / 48000;
     pcm[i] = Math.sin(2 * Math.PI * 440 * t) * (0.2 + 0.6 * t);
   }
-  new Float32Array(m.HEAPU8.buffer).set(pcm, samples / 4);
-  m._mirror_submit_audio_samples(samples, 4096, 1);
+  renderer.submitAudio(pcm, 1);
 }
-m._free(samples);
 for (const fft of [0, 1])
   for (const mode of [0, 1, 2])
     for (const flip of [0, 1]) {
@@ -36,10 +31,8 @@ for (const fft of [0, 1])
       m._set_render_mode(mode);
       m._set_flip_x(flip);
       m._set_flip_y(flip);
-      const p = m._mirror_render_audio_visualization(80, 24, 1);
-      assert.ok(p);
-      const frame = m.UTF8ToString(p);
-      m._mirror_free_string(p);
+      const frame = renderer.renderAudio(80, 24, 1);
+      assert.ok(frame);
       // Preserve trailing spaces when checking the exact terminal dimensions.
       const allRows = frame.replace(/\x1b\[[0-9;]*m/g, "").split("\n");
       allRows.pop();
@@ -51,4 +44,5 @@ for (const fft of [0, 1])
       document.querySelector("pre").textContent +=
         `PASS ${fft ? "FFT" : "waveform"} mode=${mode} flipped=${flip}\n`;
     }
+renderer.delete();
 m._mirror_cleanup();

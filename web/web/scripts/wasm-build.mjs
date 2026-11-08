@@ -19,10 +19,12 @@ const repo = resolve(app, "../..");
 const output = resolve(app, "src/wasm/dist");
 const publicOutput = resolve(app, "public/wasm");
 const files = ["mirror.js", "mirror.wasm", "client.js", "client.wasm"];
+const typeOutput = resolve(repo, "web/packages/shared/src/wasm/generated");
+const types = ["mirror-bindings.d.ts", "client-bindings.d.ts"];
 const removedFiles = ["face-follow.js", "face-follow.wasm"];
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 function copyArtifact(source, destination) {
-  if (source.endsWith(".js")) {
+  if (source.endsWith(".js") || source.endsWith(".d.ts")) {
     writeFileSync(
       destination,
       readFileSync(source, "utf8").replaceAll("\r\n", "\n"),
@@ -91,6 +93,12 @@ if (
     if (manifest.files[file] !== hash(readFileSync(resolve(output, file))))
       throw new Error(`WASM artifact mismatch: ${file}`);
   }
+  for (const file of types) {
+    if (
+      manifest.types?.[file] !== hash(readFileSync(resolve(typeOutput, file)))
+    )
+      throw new Error(`WASM declaration mismatch: ${file}`);
+  }
 } else {
   const artifactDirectory = process.env.ASCII_CHAT_WASM_ARTIFACT_DIR;
   const build = resolve(repo, process.env.ASCII_CHAT_WASM_BUILD_DIR || "build");
@@ -110,8 +118,10 @@ if (
   mkdirSync(output, { recursive: true });
   for (const file of files)
     copyArtifact(resolve(source, file), resolve(output, file));
-  // Format generated glue before recording artifact hashes so the pre-commit
-  // formatter and published manifest agree on the exact bytes.
+  mkdirSync(typeOutput, { recursive: true });
+  for (const file of types)
+    copyArtifact(resolve(source, file), resolve(typeOutput, file));
+  // Normalize generated glue and declarations before recording their hashes.
   execFileSync(
     process.execPath,
     [
@@ -123,6 +133,7 @@ if (
       resolve(repo, "scripts/format-empty-ignore"),
       resolve(output, "mirror.js"),
       resolve(output, "client.js"),
+      ...types.map((file) => resolve(typeOutput, file)),
     ],
     { cwd: repo, stdio: "inherit" },
   );
@@ -135,6 +146,12 @@ if (
           files.map((file) => [
             file,
             hash(readFileSync(resolve(output, file))),
+          ]),
+        ),
+        types: Object.fromEntries(
+          types.map((file) => [
+            file,
+            hash(readFileSync(resolve(typeOutput, file))),
           ]),
         ),
       },

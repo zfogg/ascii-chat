@@ -1,20 +1,18 @@
 import type { MirrorModule } from "./mirror";
+import type { MainModule, SessionUiBinding } from "./generated/mirror-bindings";
 
-export interface SessionUiModule {
+export interface SessionUiModule extends Pick<
+  MainModule,
+  | "SessionUiBinding"
+  | "MirrorFrameBinding"
+  | "TerminalRendererBinding"
+  | "initMirror"
+  | "optionHelp"
+  | "TestPatternBinding"
+> {
   _wasm_ui_volume(): number;
   _wasm_ui_fps(): number;
   _wasm_ui_audio(enabled: number): number;
-  _wasm_ui_create(): number;
-  _wasm_ui_destroy(session: number): void;
-  _wasm_ui_resize(session: number, cols: number, rows: number): void;
-  _wasm_ui_loading(session: number, loading: number, message: number): void;
-  _wasm_ui_log(session: number, message: number): void;
-  _wasm_ui_media(session: number, text: number, length: number): number;
-  _wasm_ui_key(session: number, key: number): number;
-  _wasm_ui_tick(session: number, milliseconds: number): number;
-  _wasm_ui_clear(session: number): void;
-  _wasm_ui_redraw(session: number): void;
-  _wasm_ui_capture_logs(session: number): void;
 }
 
 export interface SessionUiEvent {
@@ -25,44 +23,34 @@ export interface SessionUiEvent {
 
 /** Owns one C UI instance. It never owns the WASM module or terminal renderer. */
 export class SessionUi {
-  private pointer: number;
+  private binding: SessionUiBinding | null;
   constructor(readonly module: MirrorModule) {
-    this.pointer = module._wasm_ui_create();
-    if (!this.pointer) throw new Error("Cannot create session UI");
-    module._wasm_ui_capture_logs(this.pointer);
-  }
-  private withText<T>(
-    text: string,
-    callback: (pointer: number, length: number) => T,
-  ): T {
-    const length = this.module.lengthBytesUTF8(text);
-    const pointer = this.module._malloc(length + 1);
-    if (!pointer) throw new Error("Cannot allocate UI text");
-    try {
-      this.module.stringToUTF8(text, pointer, length + 1);
-      return callback(pointer, length);
-    } finally {
-      this.module._free(pointer);
+    const binding = new module.SessionUiBinding();
+    if (!binding.valid()) {
+      binding.delete();
+      throw new Error("Cannot create session UI");
     }
+    this.binding = binding;
+  }
+  private getBinding(): SessionUiBinding {
+    if (!this.binding) throw new Error("Session UI is destroyed");
+    return this.binding;
   }
   resize(cols: number, rows: number) {
-    this.module._wasm_ui_resize(this.pointer, cols, rows);
+    this.getBinding().resize(cols, rows);
   }
   loading(loading: boolean, message: string) {
-    this.withText(message, (p) =>
-      this.module._wasm_ui_loading(this.pointer, Number(loading), p),
-    );
+    this.getBinding().loading(loading, message);
   }
   log(message: string) {
-    this.withText(message, (p) => this.module._wasm_ui_log(this.pointer, p));
+    this.getBinding().log(message);
   }
   media(text: string) {
-    const result = this.withText(text, (p, n) =>
-      this.module._wasm_ui_media(this.pointer, p, n),
-    );
+    const result = this.getBinding().media(text);
     if (result !== 0) throw new Error("Session UI rejected media frame");
   }
   key(key: string, shift = false): number {
+    const binding = this.getBinding();
     const special: Record<string, number> = {
       Escape: 27,
       Enter: shift ? 0x11000f : 13,
@@ -84,20 +72,19 @@ export class SessionUi {
     // Match platform/keyboard.h: text is a scalar; special keys are above Unicode.
     const text = scalar && !(scalar >= 0xd800 && scalar <= 0xdfff) ? scalar : 0;
     const code = special[key] ?? text;
-    return code ? this.module._wasm_ui_key(this.pointer, code) : 0;
+    return code ? binding.key(code) : 0;
   }
   tick(now: number): string | null {
-    const p = this.module._wasm_ui_tick(this.pointer, now);
-    return p ? this.module.UTF8ToString(p) : null;
+    return this.getBinding().tick(now) ?? null;
   }
   redraw() {
-    this.module._wasm_ui_redraw(this.pointer);
+    this.getBinding().redraw();
   }
   clear() {
-    this.module._wasm_ui_clear(this.pointer);
+    this.getBinding().clear();
   }
   destroy() {
-    if (this.pointer) this.module._wasm_ui_destroy(this.pointer);
-    this.pointer = 0;
+    this.binding?.delete();
+    this.binding = null;
   }
 }
