@@ -64,6 +64,8 @@ PaError Pa_StartStream(PaStream *stream) {
   (void)stream;
   AVAudioSession *session = [AVAudioSession sharedInstance];
   [session setCategory:AVAudioSessionCategoryPlayAndRecord error:NULL];
+  [session setMode:AVAudioSessionModeVideoChat error:NULL];
+  [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker error:NULL];
   [session setActive:YES error:NULL];
   return paNoError;
 }
