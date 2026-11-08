@@ -4,6 +4,7 @@ on:
     paths:
       - '.github/workflows/sql-tools-arm64.yml'
       - '.gitmodules'
+      - '.gitattributes'
       - 'Makefile'
       - 'deps/ascii-chat-deps/mmmbed'
       - 'scripts/install-deps.ps1'
