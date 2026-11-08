@@ -532,7 +532,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
     timeout: 20000,
   });
   const proof = await page.evaluate(async (url) => {
-    const { getMirrorModule } = await import(url);
+    const { getMirrorModule, transformCaptureRgba } = await import(url);
     const { runtimeOptions } = await import(
       url.replace("mirror.ts", "common/runtimeOptions.ts")
     );
@@ -573,6 +573,17 @@ test("C resolves source orientation and transforms upload pixels once while pres
     return {
       original: Array.from(original),
       results,
+      fractionalRejected: (() => {
+        try {
+          transformCaptureRgba(new Uint8ClampedArray(16), 2.5, 2);
+          return false;
+        } catch (error) {
+          return (
+            error instanceof Error &&
+            error.message === "Invalid capture dimensions"
+          );
+        }
+      })(),
       invalid: (() => {
         const frame = new module.MirrorFrameBinding();
         try {
@@ -583,6 +594,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
       })(),
     };
   }, moduleUrl);
+  expect(proof.fractionalRejected).toBe(true);
   const reversedRows = [
     20, 0, 0, 255, 10, 0, 0, 255, 40, 0, 0, 255, 30, 0, 0, 255,
   ];

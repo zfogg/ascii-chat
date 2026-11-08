@@ -249,6 +249,8 @@ export function transformCaptureRgba(
   if (!wasmModule) throw new Error("WASM module not initialized");
   if (rgba.buffer === wasmModule.HEAPU8.buffer)
     throw new Error("Capture input must be JavaScript-owned");
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height))
+    throw new Error("Invalid capture dimensions");
   frameBinding ??= new wasmModule.MirrorFrameBinding();
   if (frameBinding.transform(rgba, width, height))
     throw new Error("Invalid capture dimensions");

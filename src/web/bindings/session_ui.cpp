@@ -1,4 +1,5 @@
 #include <emscripten/bind.h>
+#include <algorithm>
 extern "C" {
 #include "../common/ui.h"
 #include "../common/options.h"
@@ -97,12 +98,18 @@ public:
   }
   void submitAudio(VisualizationSamples samples, int source) {
     const size_t length = samples["length"].as<size_t>();
-    if (!length || length > 8192)
+    if (!length)
       return;
-    audio_.resize(length);
-    emscripten::val view = emscripten::val(emscripten::typed_memory_view(length, audio_.data()));
-    view.call<void>("set", samples);
-    mirror_submit_audio_samples(audio_.data(), static_cast<int>(length), source);
+    const size_t chunk_size = std::min(length, size_t{8192});
+    audio_.resize(chunk_size);
+    for (size_t offset = 0; offset < length;) {
+      const size_t count = std::min(chunk_size, length - offset);
+      emscripten::val part = samples.call<emscripten::val>("subarray", offset, offset + count);
+      emscripten::val view = emscripten::val(emscripten::typed_memory_view(count, audio_.data()));
+      view.call<void>("set", part);
+      mirror_submit_audio_samples(audio_.data(), static_cast<int>(count), source);
+      offset += count;
+    }
   }
   std::optional<std::string> renderAudio(unsigned width, unsigned height, int source) {
     char *frame = mirror_render_audio_visualization(width, height, source);

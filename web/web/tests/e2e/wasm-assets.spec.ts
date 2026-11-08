@@ -47,6 +47,15 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     );
     const encoded = codec.encode(pcm);
     const decoded = encoded ? codec.decode(encoded, 960) : null;
+    const snapshot = {
+      encoded: Array.from(encoded ?? []),
+      decoded: Array.from(decoded ?? []),
+    };
+    const reused = codec.encode(new Int16Array(1920));
+    const retainedAfterReuse = {
+      encoded: Array.from(encoded ?? []),
+      decoded: Array.from(decoded ?? []),
+    };
     const opus = {
       valid: codec.valid(),
       competingRejected,
@@ -55,6 +64,33 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
       invalid: codec.encode(new Int16Array(12000)),
     };
     codec.delete();
+    const retainedAfterDelete = {
+      encoded: Array.from(encoded ?? []),
+      decoded: Array.from(decoded ?? []),
+    };
+    module.configureCrypto(
+      new Uint8Array(),
+      new Uint8Array(3),
+      new Uint8Array(),
+    );
+    const invalidPeer = new module.PeerCryptoBinding(
+      false,
+      1,
+      new Uint8Array(),
+      new Uint8Array(3),
+      new Uint8Array(),
+    );
+    const invalidPeerError = invalidPeer.error();
+    invalidPeer.delete();
+    module.wasm_error_dismiss();
+    const invalidConfig = module.configureCrypto(
+      new Uint8Array(),
+      new Uint8Array(3),
+      new Uint8Array(),
+    );
+    module.errorSnapshot();
+    const invalidConfigError = module.errorFrame(0).message;
+    module.wasm_error_dismiss();
 
     async function exercise(quic: boolean) {
       const toClient: Uint8Array[] = [],
@@ -95,13 +131,45 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
           client.initQuic();
           server.initQuic();
           const sealed = client.quicPacket("seal", 0, 0, original);
+          if (
+            Array.from(sealed.packet).join(",") ===
+            Array.from(original).join(",")
+          )
+            throw new Error("QUIC packet was not protected");
           const opened = server.quicPacket("open", 0, 0, sealed.packet);
           decoded = opened.packet;
           sequence = opened.sequence.toString();
+          const altered = client
+            .quicPacket("seal", 0, 0, original)
+            .packet.slice();
+          altered[altered.length - 1] = altered[altered.length - 1]! ^ 1;
+          let rejected = false;
+          try {
+            server.quicPacket("open", 0, 0, altered);
+          } catch {
+            rejected = true;
+          }
+          if (!rejected) throw new Error("Altered QUIC record was accepted");
         } else {
           client.sendPacket(original);
+          if (
+            toServer.length === 0 ||
+            Array.from(toServer[0]!).join(",") ===
+              Array.from(original).join(",")
+          )
+            throw new Error("Classic packet was not protected");
           while (toServer.length)
             decoded = server.receive(toServer.shift()!) ?? decoded;
+          client.sendPacket(original);
+          const altered = toServer.shift()!.slice();
+          altered[altered.length - 1] = altered[altered.length - 1]! ^ 1;
+          let rejected = false;
+          try {
+            server.receive(altered);
+          } catch {
+            rejected = true;
+          }
+          if (!rejected) throw new Error("Altered classic record was accepted");
         }
         return {
           same:
@@ -119,6 +187,13 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
       monoStatus,
       monoSample,
       opus,
+      snapshot,
+      retainedAfterReuse,
+      retainedAfterDelete,
+      reusedBytes: reused?.length ?? 0,
+      invalidPeerError,
+      invalidConfig,
+      invalidConfigError,
       classic: await exercise(false),
       quic: await exercise(true),
     };
@@ -135,6 +210,14 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
   expect(result.opus.competingRejected).toBe(true);
   expect(result.opus.bytes).toBeGreaterThan(0);
   expect(result.opus.samples).toBe(1920);
+  expect(result.reusedBytes).toBeGreaterThan(0);
+  expect(result.retainedAfterReuse).toEqual(result.snapshot);
+  expect(result.retainedAfterDelete).toEqual(result.snapshot);
+  expect(result.invalidPeerError).toContain(
+    "peer identity or verification key length",
+  );
+  expect(result.invalidConfig).not.toBe(0);
+  expect(result.invalidConfigError).toContain("key length");
   expect(result.opus.invalid).toBeNull();
   expect(result.classic.same).toBe(true);
   expect(result.quic.same).toBe(true);
@@ -236,6 +319,14 @@ test("renderer copies stay valid across WASM memory growth", async ({
     if (m.initMirror("mirror")) throw new Error("mirror initialization failed");
     const frame = new m.MirrorFrameBinding();
     const bad = frame.convert(new Uint8Array(4), 2, 2, true);
+    const samples = Float32Array.from({ length: 16384 }, (_, i) =>
+      Math.sin(i / 19),
+    );
+    frame.submitAudio(samples, 0);
+    frame.submitAudio(samples.subarray(0, 8192), 1);
+    frame.submitAudio(samples.subarray(8192), 1);
+    const largeAudio = frame.renderAudio(40, 12, 0);
+    const chunkedAudio = frame.renderAudio(40, 12, 1);
     const renderer = new m.TerminalRendererBinding(20, 10, 16, false, 1);
     if (!renderer.valid())
       throw new Error(`renderer creation failed: ${renderer.error()}`);
@@ -259,6 +350,8 @@ test("renderer copies stay valid across WASM memory growth", async ({
         before,
         after,
         rejected: bad === undefined,
+        largeAudio,
+        chunkedAudio,
         retained: snapshot.every((byte, i) => pixels[i] === byte),
         same: snapshot.every((byte, i) => next[i] === byte),
       };
@@ -270,6 +363,8 @@ test("renderer copies stay valid across WASM memory growth", async ({
   }, version);
   expect(result.after).toBeGreaterThan(result.before);
   expect(result.rejected).toBe(true);
+  expect(result.largeAudio).toBeTruthy();
+  expect(result.largeAudio).toBe(result.chunkedAudio);
   expect(result.retained).toBe(true);
   expect(result.same).toBe(true);
 });

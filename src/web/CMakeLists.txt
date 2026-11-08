@@ -596,6 +596,15 @@ apply_sanitizers_to_target(client-web)
 # key-file loading and detecting input arrays that alias growable WASM memory.
 set(EXPORTED_RUNTIME_METHODS_CSV "HEAPU8,FS")
 
+# Emscripten writes declarations as a side effect of linking. Ninja must know
+# about them so a missing declaration causes the link to run again.
+add_custom_command(TARGET mirror-web POST_BUILD
+    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/mirror-bindings.d.ts"
+    COMMAND ${CMAKE_COMMAND} -E true)
+add_custom_command(TARGET client-web POST_BUILD
+    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/client-bindings.d.ts"
+    COMMAND ${CMAKE_COMMAND} -E true)
+
 target_link_options(mirror-web PRIVATE
     -lembind
     --emit-tsd mirror-bindings.d.ts

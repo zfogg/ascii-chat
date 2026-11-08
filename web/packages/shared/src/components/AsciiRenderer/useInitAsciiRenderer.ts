@@ -361,6 +361,11 @@ export function useInitAsciiRenderer({
               canvas.width = retryDims.pixelWidth;
               canvas.height = retryDims.pixelHeight;
               oldRendererPtr.delete();
+              if (resizeTimeoutRef.current) {
+                clearTimeout(resizeTimeoutRef.current);
+                resizeTimeoutRef.current = null;
+              }
+              pendingDimensionsRef.current = null;
               updateDimensionsRef.current?.(retryDims.cols, retryDims.rows);
               console.debug(
                 "[AsciiRenderer] Recovery successful with dimensions:",

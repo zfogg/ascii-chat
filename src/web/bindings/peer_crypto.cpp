@@ -41,12 +41,14 @@ static int configure_crypto(PeerBytes password, PeerBytes identity, PeerBytes ex
   auto pass = copy_input(password);
   auto secret = copy_input(identity);
   auto key = copy_input(expected);
-  int result = -1;
+  int result;
   if ((secret.empty() || secret.size() == 64) && (key.empty() || key.size() == 32)) {
     pass.push_back(0);
     result =
         client_configure_crypto_options(pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr,
                                         secret.empty() ? nullptr : secret.data(), key.empty() ? nullptr : key.data());
+  } else {
+    result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client identity or verification key length");
   }
   if (!pass.empty())
     sodium_memzero(pass.data(), pass.size());
@@ -111,6 +113,7 @@ public:
     auto secret = copy_input(identity);
     auto key = copy_input(expected);
     if ((!secret.empty() && secret.size() != 64) || (!key.empty() && key.size() != 32)) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer identity or verification key length");
       peer_ = nullptr;
     } else {
       pass.push_back(0);
