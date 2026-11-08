@@ -1,3 +1,4 @@
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/video/ascii/zalgo.h>
 #include <ascii-chat/video/ascii/rle.h>
 #include <ascii-chat/common.h>
@@ -105,6 +106,7 @@ asciichat_error_t zalgo_apply(const char *input, size_t length, int level, size_
   }
 
   char *expanded = NULL;
+  defer(SAFE_FREE(expanded));
   if (has_rep) {
     expanded = ansi_expand_rle(input, length);
   } else {
@@ -116,18 +118,16 @@ asciichat_error_t zalgo_apply(const char *input, size_t length, int level, size_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot expand empty Zalgo frame");
   size_t n = strlen(expanded);
   if (n > max_output_bytes) {
-    SAFE_FREE(expanded);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Zalgo frame exceeds output limit");
   }
   size_t mark_budget = max_output_bytes - n;
   size_t factor = 1 + 2 * zalgo_maximum[level - 1];
   // Every source byte introduces at most the selected level's mark limit.
   if (n > (SIZE_MAX - 1) / factor) {
-    SAFE_FREE(expanded);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Zalgo frame is too large");
   }
   size_t capacity = n * factor < max_output_bytes ? n * factor : max_output_bytes;
-  char *result = SAFE_MALLOC(capacity + 1, char *);
+  SAFE_MALLOC_DEFER_FREE(result, capacity + 1, char *);
   char *dst = result;
   uint32_t row = 0, col = 0;
   for (size_t i = 0; i < n;) {
@@ -152,8 +152,6 @@ asciichat_error_t zalgo_apply(const char *input, size_t length, int level, size_
       unsigned count = c == ' ' ? 0 : zalgo_cell_marks(row, col, level, marks);
       col++;
       if (count * 2 > mark_budget) {
-        SAFE_FREE(expanded);
-        SAFE_FREE(result);
         return SET_ERRNO(ERROR_INVALID_PARAM, "Zalgo decoration exceeds output limit");
       }
       mark_budget -= count * 2;
@@ -168,7 +166,7 @@ asciichat_error_t zalgo_apply(const char *input, size_t length, int level, size_
     }
   }
   *dst = '\0';
-  SAFE_FREE(expanded);
   *output = result;
+  result = NULL;
   return ASCIICHAT_OK;
 }
