@@ -385,6 +385,8 @@ def test_cmake_discovers_defer_and_tracks_headers(
     shutil.copy2(TOOL, tool_dir / "defer.py")
     shutil.copy2(TOOL.parent / "scan.py", tool_dir / "scan.py")
     shutil.copy2(TOOL.parent / "plan.py", tool_dir / "plan.py")
+    shutil.copy2(TOOL.parent / "pyproject.toml", tool_dir / "pyproject.toml")
+    shutil.copy2(TOOL.parent / "uv.lock", tool_dir / "uv.lock")
     shutil.copytree(TOOL.parent / "vendor" / "clang", tool_dir / "vendor" / "clang")
     if backend != "PYTHON":
         for pattern in ("*.cpp", "*.h", "CMakeLists.txt"):
@@ -415,7 +417,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
         'COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_SOURCE_DIR}/ready.in" "${CMAKE_BINARY_DIR}/ready.h" '
         'DEPENDS "${CMAKE_SOURCE_DIR}/ready.in")\n'
         'add_custom_target(generate_version DEPENDS "${CMAKE_BINARY_DIR}/ready.h")\n'
-        f'set(ASCIICHAT_PYTHON3_EXECUTABLE "{Path(sys.executable).as_posix() if backend == "PYTHON" else "python-must-not-run"}")\n'
+        'set(ASCIICHAT_PYTHON3_EXECUTABLE "python-must-not-run")\n'
         f'include("{module}")\n'
         "add_subdirectory(src)\n"
         "ascii_defer_prepare()\n",
@@ -455,6 +457,8 @@ def test_cmake_discovers_defer_and_tracks_headers(
         system = {"win32": "Windows", "darwin": "Darwin"}.get(sys.platform, "Linux")
         configure.append(f"-DCMAKE_SYSTEM_NAME={system}")
     run(*configure)
+    if backend == "PYTHON":
+        assert (build / "defer-python-venv" / "pyvenv.cfg").is_file()
     if backend != "PYTHON":
         native = (
             build

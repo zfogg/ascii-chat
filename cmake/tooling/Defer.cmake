@@ -169,7 +169,7 @@ function(ascii_defer_finish_batches)
         set(_plan "${CMAKE_BINARY_DIR}/defer-plan-${_batch_stage}.cmake")
         set(_planner "${CMAKE_SOURCE_DIR}/src/tooling/defer/plan.py")
         set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_planner}")
-        execute_process(COMMAND "${ASCIICHAT_PYTHON3_EXECUTABLE}" "${_planner}"
+        execute_process(COMMAND ${ASCIICHAT_DEFER_PYTHON_COMMAND} "${_planner}"
             --records "${_plan_records}" --build-dir "${CMAKE_BINARY_DIR}"
             --stage "${_batch_stage}" --output "${_plan}"
             RESULT_VARIABLE _result ERROR_VARIABLE _error ENCODING UTF-8)
@@ -217,7 +217,7 @@ function(ascii_defer_scan_targets out_var)
         return()
     else()
         set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/tooling/defer/scan.py")
-        execute_process(COMMAND "${ASCIICHAT_PYTHON3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/src/tooling/defer/scan.py"
+        execute_process(COMMAND ${ASCIICHAT_DEFER_PYTHON_COMMAND} "${CMAKE_SOURCE_DIR}/src/tooling/defer/scan.py"
             ENCODING UTF-8 INPUT_FILE "${_scan_input}" OUTPUT_VARIABLE _scan_output ERROR_VARIABLE _scan_error RESULT_VARIABLE _scan_result
             OUTPUT_STRIP_TRAILING_WHITESPACE)
     endif()
@@ -246,8 +246,11 @@ function(ascii_defer_prepare)
     endif()
     if(ASCIICHAT_DEFER_BACKEND STREQUAL "NATIVE")
         ascii_defer_prepare_native()
-    elseif(NOT ASCIICHAT_PYTHON3_EXECUTABLE)
-        message(FATAL_ERROR "defer requires Python 3")
+    else()
+        find_program(ASCIICHAT_DEFER_UV_EXECUTABLE NAMES uv REQUIRED)
+        set(ASCIICHAT_DEFER_PYTHON_COMMAND
+            "${CMAKE_COMMAND};-E;env;UV_PROJECT_ENVIRONMENT=${CMAKE_BINARY_DIR}/defer-python-venv;${ASCIICHAT_DEFER_UV_EXECUTABLE};run;--project;${CMAKE_SOURCE_DIR}/src/tooling/defer;--frozen;--managed-python;python"
+            CACHE INTERNAL "uv command for the Python defer backend" FORCE)
     endif()
     if(ASCIICHAT_DEFER_BACKEND STREQUAL "PYTHON" AND NOT ASCIICHAT_LIBCLANG_PATH)
         get_filename_component(_compiler_dir "${CMAKE_C_COMPILER}" DIRECTORY)
@@ -271,7 +274,7 @@ function(ascii_defer_prepare)
     endif()
     if(ASCIICHAT_DEFER_BACKEND STREQUAL "PYTHON")
     execute_process(
-        COMMAND "${ASCIICHAT_PYTHON3_EXECUTABLE}" -c
+        COMMAND ${ASCIICHAT_DEFER_PYTHON_COMMAND} -c
             "import sys; assert sys.version_info >= (3, 10), 'Python 3.10 or newer is required'; sys.path.insert(0, sys.argv[1]); from clang import cindex; cindex.Config.set_compatibility_check(False); cindex.Config.set_library_file(sys.argv[2]); print(cindex.conf.get_clang_version())"
             "${CMAKE_SOURCE_DIR}/src/tooling/defer/vendor" "${ASCIICHAT_LIBCLANG_PATH}"
         RESULT_VARIABLE _clang_check_result OUTPUT_VARIABLE _clang_check_output ERROR_VARIABLE _clang_check_error

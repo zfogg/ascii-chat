@@ -48,7 +48,8 @@
  * `ASCIICHAT_DEFER_NATIVE_BINARY` can instead point to a prebuilt host tool.
  *
  * Set `ASCIICHAT_DEFER_BACKEND=PYTHON` to select the retained Python backend.
- * It requires Python 3.10 or newer and LLVM 19 or newer libclang; set
+ * It runs through the defer uv project and requires uv-managed Python 3.10 or
+ * newer and LLVM 19 or newer libclang; set
  * `ASCIICHAT_LIBCLANG_PATH` if its shared library cannot be found. Both backends
  * require a compilation database and a single-config Ninja or Unix Makefiles
  * generator. Their generated C and fail-closed behavior are checked together.
