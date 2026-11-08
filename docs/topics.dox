@@ -80,6 +80,10 @@
  * @copybrief module_network
  *
  * - @ref topic_network "Network"
+ * - [Network runtime and connection ownership](md_docs_2networking-runtime.html)
+ * - [Event-driven I/O](md_docs_2event-driven-io.html)
+ * - [ACIP over QUIC](md_docs_2quic.html)
+ * - [Transport backpressure](md_docs_2transport-backpressure.html)
  * - @ref topic_compression "Compression"
  * - @ref topic_packet_types "Packet Types"
  * - @ref topic_av "Audio/Video Networking"

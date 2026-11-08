@@ -79,19 +79,17 @@
  * 1. Client sends ACIP_SESSION_LOOKUP to ACDS server
  * 2. ACDS returns session info (capabilities, password requirement, etc.)
  * 3. Client sends ACIP_SESSION_JOIN with credentials (if required)
- * 4. ACDS returns server connection info:
- *    - Direct TCP address/port (if server allows IP exposure)
- *    - TURN credentials and STUN servers (for WebRTC fallback)
- * 5. Client attempts connection in priority order:
- *    - **Direct TCP** (lowest latency, if available)
- *    - **WebRTC P2P** via ICE/STUN (when direct fails)
- *    - **TURN relay** (always succeeds, higher latency)
+ * 4. ACDS returns the server's authenticated transport metadata, which may
+ *    include TCP/WebSocket endpoints, WebTransport information, and ICE/TURN
+ *    configuration.
+ * 5. The client selects a compatible transport and lets its negotiation layer
+ *    determine whether direct, STUN, or TURN connectivity succeeds.
  *
  * **Benefits of ACDS**:
  * - No need to share IP addresses or configure port forwarding
- * - Works behind NATs and firewalls automatically
+ * - Carries the metadata needed to work across NATs and firewalls
  * - Human-friendly session strings (e.g., "purple-mountain-lake")
- * - Graceful fallback from direct TCP to WebRTC to TURN relay
+ * - Shared transport negotiation instead of a mode-owned TCP/WebRTC fallback loop
  *
  * @see @ref topic_acds "ACDS Overview" for complete discovery service documentation
  *

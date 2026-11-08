@@ -26,25 +26,10 @@
  *
  * Packet processing follows a three-stage pipeline:
  *
- * **Stage 1: Packet Reception** (in client.c receive thread):
- * @code{.c}
- * // Receive raw packet data from socket
- * int packet_len = recv_with_timeout(client->socket, buffer, sizeof(buffer), timeout);
- *
- * // Validate packet header (magic number, CRC32, size)
- * if (validate_packet_header(buffer, packet_len) < 0) {
- *   log_warn("Invalid packet header from client %u", client_id);
- *   return -1;
- * }
- *
- * // Decrypt packet if encryption enabled
- * if (client->crypto_initialized) {
- *   decrypt_packet(buffer, packet_len, &client->crypto_ctx);
- * }
- *
- * // Dispatch to appropriate handler based on packet type
- * dispatch_packet_to_handler(client_id, buffer, packet_len);
- * @endcode
+ * **Stage 1: Transport delivery** (shared connection layer):
+ * - The connection backend receives bytes through its `acip_transport_t`.
+ * - ACIP framing, security, and compression are validated before dispatch.
+ * - The connection callback receives a borrowed payload and packet type.
  *
  * **Stage 2: Handler Function** (this module):
  * @code{.c}
