@@ -27,6 +27,15 @@ SQL_MMMBED_DIR := $(SOURCE_DIR)/deps/ascii-chat-deps/mmmbed
 
 init-sql-tools:
 	@test -f "$(SQL_MMMBED_DIR)/go.mod" || git submodule update --init -- deps/ascii-chat-deps/mmmbed
+	@expected=$$(git rev-parse :deps/ascii-chat-deps/mmmbed) && \
+	  actual=$$(git -C "$(SQL_MMMBED_DIR)" rev-parse HEAD) && \
+	  if [ "$${actual}" != "$${expected}" ]; then \
+	    if [ -n "$$(git -C "$(SQL_MMMBED_DIR)" status --porcelain)" ] || \
+	       git -C "$(SQL_MMMBED_DIR)" symbolic-ref --quiet HEAD >/dev/null; then \
+	      echo >&2 "mmmbed submodule has local work; update it to $${expected} before generating SQL"; exit 1; \
+	    fi; \
+	    git submodule update --init -- deps/ascii-chat-deps/mmmbed; \
+	  fi
 
 ensure-mmmbed: init-sql-tools
 	@mkdir -p "$(BIN_DIR)" "$(BUILD_DIR)"
