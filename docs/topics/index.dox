@@ -208,7 +208,7 @@
  *
  * 🧰 Source-to-source transformation tools for debugging and code quality.
  *
- * - @ref topic_defer "Defer Statements" - 🔄 Go/Zig-style defer statements for automatic cleanup
+ * - @ref topic_defer "Defer Tool" - 🔄 Go/Zig-style defer statements for automatic cleanup
  * - @ref topic_panic "Panic Instrumentation" - 🚨 Per-statement logging for crash debugging
  *
  * @section authored_documentation Authored Documentation
