@@ -239,6 +239,7 @@ struct ContentView: View {
     @State private var selectedMode: IOSMode = .mirror
     @State private var launchMessage = "Ready"
     @State private var didStart = false
+    @State private var lifecycleTick = 0
 
     var body: some View {
         VStack {
@@ -283,6 +284,7 @@ struct ContentView: View {
                 Text(asciichat_ios_is_running() != 0 ? "Native session running" : "Native session stopped (\(asciichat_ios_last_result()))")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .id(lifecycleTick)
             }
             if didStart {
                 Divider()
@@ -291,6 +293,9 @@ struct ContentView: View {
             }
         }
         .padding()
+        .onReceive(Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()) { _ in
+            lifecycleTick &+= 1
+        }
         .onDisappear {
             platform_disable_keepawake()
         }
