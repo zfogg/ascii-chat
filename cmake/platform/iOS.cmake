@@ -42,12 +42,14 @@ if(BUILD_IOS OR BUILD_IOS_SIM)
                         OUTPUT_VARIABLE _IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
                         RESULT_VARIABLE _IOS_SDK_RESULT)
         set(IOS_BUILD_VARIANT "sim")
+        set(CMAKE_Swift_COMPILER_TARGET "arm64-apple-ios16.0-simulator" CACHE STRING "Swift iOS simulator target" FORCE)
         message(STATUS "Platform: iOS Simulator (arm64)")
     else()
         execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path
                         OUTPUT_VARIABLE _IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
                         RESULT_VARIABLE _IOS_SDK_RESULT)
         set(IOS_BUILD_VARIANT "device")
+        set(CMAKE_Swift_COMPILER_TARGET "arm64-apple-ios16.0" CACHE STRING "Swift iOS device target" FORCE)
         message(STATUS "Platform: iOS Device (arm64)")
     endif()
 
