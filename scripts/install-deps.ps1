@@ -81,7 +81,12 @@ if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
     }
     & winget install --id GoLang.Go --exact --accept-package-agreements --accept-source-agreements
     if ($LASTEXITCODE -ne 0) { throw "Go installation failed." }
-    $env:Path = "$env:ProgramFiles\Go\bin;$env:Path"
+    $MachinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $env:Path = "$MachinePath;$UserPath;$env:Path"
+    if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
+        throw "Go was installed but is not on PATH. Open a new shell and rerun this script."
+    }
 }
 $GoVersion = & go version
 if ($GoVersion -match 'go(\d+)\.(\d+)' -and ([int]$Matches[1] -lt 1 -or ([int]$Matches[1] -eq 1 -and [int]$Matches[2] -lt 21))) {
