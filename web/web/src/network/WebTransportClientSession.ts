@@ -1,3 +1,4 @@
+import { clientEndpoint } from "./clientEndpoint";
 import { getSecurityEpoch } from "../wasm/client";
 import { serializeClientInitialization } from "./ClientInitialization";
 import { OutboundQueue } from "./OutboundQueue";
@@ -48,7 +49,12 @@ export class WebTransportClientSession implements ClientSession {
     | ((packet: ParsedPacket, payload: Uint8Array) => void)
     | null = null;
 
-  constructor(private readonly options: WebTransportClientOptions) {}
+  constructor(private readonly options: WebTransportClientOptions) {
+    const endpoint = clientEndpoint(options.serverUrl);
+    if (endpoint.mode === "websocket")
+      throw new Error("WebTransport requires a quic:// or https:// endpoint");
+    this.options = { ...options, serverUrl: endpoint.url };
+  }
 
   connect(): Promise<void> {
     this.connectPromise ??= this.start();

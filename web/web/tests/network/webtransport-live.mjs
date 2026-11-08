@@ -350,7 +350,7 @@ try {
         buildImageFramePayload,
       } = await import("/src/network/packetBuilders.ts");
       const session = new WebTransportClientSession({
-        serverUrl: `https://127.0.0.1:${udpPort}/acip`,
+        serverUrl: `quic://127.0.0.1:${udpPort}`,
         cryptoOptions: {
           password: "test-password",
           expectedServerPublicKeyText: serverPublicKey,

@@ -15,9 +15,18 @@ bounded receive path. A channel can run the existing WASM ACIP handshake,
 authenticate packets against their flow, enforce the READY/ACK barrier, and
 request keyframes after visual loss. Its owner must initialize the shared WASM
 client and configure credentials before starting the handshake. In the direct
-browser client, an `https://` server URL selects this channel; `ws://` and
-`wss://` continue to select WebSocket. A direct browser connection can optionally
-specify a WSS fallback URL and a pinned server public key. Fallback keeps ACIP
+browser client, the URL expresses the transport choice:
+
+- `quic://chat.example:27224` selects QUIC explicitly, using the browser's
+  HTTPS WebTransport endpoint. An omitted port defaults to 27224 and an omitted
+  path defaults to `/acip`. Explicit paths and queries are preserved.
+- `ws://localhost:27226` and `wss://chat.example:27226` select WebSocket explicitly.
+  An HTTPS page generally requires WSS instead of WS.
+- `https://chat.example:27224/acip` selects Auto and is the default endpoint
+  form. Auto prefers WebTransport and can use a separately configured WSS
+  fallback URL with a pinned server public key. It does not guess another port.
+
+Explicit QUIC and WebSocket URLs do not switch transports. Auto fallback keeps ACIP
 application encryption enabled and uses the same identity pin. It is attempted
 only when the browser lacks WebTransport or its HTTP/3 session remains pending
 for ten seconds. Explicit connection failures, including certificate errors,

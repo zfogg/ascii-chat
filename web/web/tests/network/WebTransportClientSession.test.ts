@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
   configure: vi.fn(async () => {}),
   keypair: vi.fn(async () => "client-key"),
   address: vi.fn(),
+  endpoint: "",
 }));
 vi.mock("../../src/wasm/client", () => ({
   ConnectionState: {
@@ -48,7 +49,8 @@ vi.mock("../../src/wasm/client", () => ({
 }));
 vi.mock("../../src/network/WebTransportAcipChannel", () => ({
   WebTransportAcipChannel: class {
-    constructor(_url: string, callbacks: WebTransportAcipCallbacks) {
+    constructor(url: string, callbacks: WebTransportAcipCallbacks) {
+      state.endpoint = url;
       state.callbacks = callbacks;
     }
     async connectWithWasmHandshake() {}
@@ -74,6 +76,16 @@ vi.mock("../../src/network/WebTransportAcipChannel", () => ({
 import { WebTransportClientSession } from "../../src/network/WebTransportClientSession";
 
 describe("WebTransport client session", () => {
+  it("connects a quic URL through the HTTPS WebTransport endpoint", async () => {
+    const session = new WebTransportClientSession({
+      serverUrl: "quic://chat.example:4443",
+    });
+    await session.connect();
+    expect(state.endpoint).toBe("https://chat.example:4443/acip");
+    expect(state.address).toHaveBeenCalledWith("chat.example", 4443);
+    session.disconnect();
+  });
+
   it("starts ACIP security and dispatches negotiated media with keyframe recovery", async () => {
     state.sends = [];
     state.supported = true;

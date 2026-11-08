@@ -1,3 +1,4 @@
+import { clientEndpoint } from "../network/clientEndpoint";
 import { RenderSettingsControl, SETTINGS_ACK } from "../network/RenderSettings";
 import type { RuntimeValues } from "@ascii-chat/shared/wasm";
 import { useLayoutEffect } from "react";
@@ -160,8 +161,9 @@ export function useClientConnection(options: UseClientConnectionOptions) {
               height,
             )
           : (() => {
+              const endpoint = clientEndpoint(serverUrl);
               const directOptions = {
-                serverUrl,
+                serverUrl: endpoint.url,
                 ...(applicationEncryption === undefined
                   ? {}
                   : { applicationEncryption }),
@@ -169,8 +171,8 @@ export function useClientConnection(options: UseClientConnectionOptions) {
                 width,
                 height,
               };
-              if (new URL(serverUrl).protocol === "https:")
-                return fallbackWebSocketUrl
+              if (endpoint.mode !== "websocket")
+                return endpoint.mode === "auto" && fallbackWebSocketUrl
                   ? new WebTransportFallbackSession(
                       directOptions,
                       fallbackWebSocketUrl,
