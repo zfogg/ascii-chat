@@ -19,3 +19,7 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   char *argv[] = {program, splash, status, color, mode_name, NULL};
   return asciichat_main(5, argv);
 }
+
+int asciichat_ios_mode_available(asciichat_ios_mode_t mode) {
+  return mode == ASCIICHAT_IOS_MODE_MIRROR;
+}

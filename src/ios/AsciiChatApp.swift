@@ -13,6 +13,9 @@ private func asciichat_ios_test_frame(
 @_silgen_name("asciichat_ios_main")
 private func asciichat_ios_main(_ mode: Int32) -> Int32
 
+@_silgen_name("asciichat_ios_mode_available")
+private func asciichat_ios_mode_available(_ mode: Int32) -> Int32
+
 @_silgen_name("ios_render_bridge_read_frame")
 private func ios_render_bridge_read_frame(
     _ pixels: UnsafeMutablePointer<UInt8>,
@@ -146,7 +149,7 @@ private enum IOSMode: Int32, CaseIterable, Identifiable {
         }
     }
 
-    var isImplemented: Bool { self == .mirror }
+    var isImplemented: Bool { asciichat_ios_mode_available(rawValue) != 0 }
 
     var availabilityLabel: String {
         isImplemented ? "Available" : "Coming soon"
