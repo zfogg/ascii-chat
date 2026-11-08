@@ -313,7 +313,7 @@ struct ContentView: View {
                 launchMessage = "Session ended"
             }
         }
-        .onChange(of: scenePhase) { _, phase in
+        .onChange(of: scenePhase) { phase in
             switch phase {
             case .active:
                 if sessionStarted { _ = platform_enable_keepawake() }
