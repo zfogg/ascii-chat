@@ -19,6 +19,7 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   static char discovery[] = "discovery";
   static char splash[] = "--splash-screen=false";
   static char color[] = "--color-mode=none";
+  static char fps[] = "--fps=60";
 #ifdef ASCIICHAT_IOS_SIMULATOR
   static char test_pattern[] = "--test-pattern=0";
 #else
@@ -28,11 +29,11 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
                     : mode == ASCIICHAT_IOS_MODE_DISCOVERY ? discovery
                                                            : mirror;
   /* Keep only options accepted by mirror; status-screen is server-only. */
-  char *argv[] = {program, splash, color, test_pattern, mode_name, NULL};
+  char *argv[] = {program, splash, color, fps, test_pattern, mode_name, NULL};
   ios_stdin_bridge_reset();
   atomic_store_explicit(&g_ios_running, 1, memory_order_release);
   atomic_store_explicit(&g_ios_last_result, 0, memory_order_release);
-  int result = asciichat_main(5, argv);
+  int result = asciichat_main(6, argv);
   atomic_store_explicit(&g_ios_last_result, result, memory_order_release);
   atomic_store_explicit(&g_ios_running, 0, memory_order_release);
   ios_stdin_bridge_reset();
