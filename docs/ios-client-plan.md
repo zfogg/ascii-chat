@@ -121,6 +121,11 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 - [x] Surface camera and microphone authorization state at startup.
 - [x] Keep the display awake while a native session is running.
 - [x] Add a device-build helper for the arm64 archive path.
+- [x] Feed shared webcam frames into the SwiftUI preview.
+- [x] Start camera capture after asynchronous permission approval.
+- [x] Configure iOS audio for video-chat routing and speaker output.
+- [x] Make unavailable modes non-selectable, not merely non-startable.
+- [x] Add VoiceOver labels and hints to startup controls.
 - [ ] Keep native mode execution alive after startup and report C lifecycle errors to SwiftUI.
 - [ ] Replace the PortAudio compatibility surface with an AVAudioEngine-backed stream.
 - [ ] Produce and validate an arm64 device archive and XCFramework.
