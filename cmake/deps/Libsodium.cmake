@@ -42,6 +42,14 @@ if(PLATFORM_IOS)
     if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
         message(STATUS "  libsodium library not found in cache, will build from source")
 
+        if(BUILD_IOS_SIM)
+            set(_LIBSODIUM_IOS_TARGET "arm64-apple-ios16.0-simulator")
+            set(_LIBSODIUM_IOS_MIN_FLAG "-mios-simulator-version-min=16.0")
+        else()
+            set(_LIBSODIUM_IOS_TARGET "arm64-apple-ios16.0")
+            set(_LIBSODIUM_IOS_MIN_FLAG "-miphoneos-version-min=16.0")
+        endif()
+
         ExternalProject_Add(libsodium-ios
             URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
             URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
@@ -58,9 +66,9 @@ if(PLATFORM_IOS)
                 --with-pic
                 --host=arm-apple-darwin
                 CC=${CMAKE_C_COMPILER}
-                CFLAGS=-isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64\ -miphoneos-version-min=16.0
+                CFLAGS=-target\ ${_LIBSODIUM_IOS_TARGET}\ -isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64\ ${_LIBSODIUM_IOS_MIN_FLAG}
                 LD=ld
-                LDFLAGS=-isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64
+                LDFLAGS=-target\ ${_LIBSODIUM_IOS_TARGET}\ -isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64\ ${_LIBSODIUM_IOS_MIN_FLAG}
             BUILD_COMMAND make -j
             INSTALL_COMMAND make install
             BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
