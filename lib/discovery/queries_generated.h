@@ -71,66 +71,209 @@ typedef enum database_query_id {
 } database_query_id_t;
 struct database_query { const char *name; const char *sql; enum database_access access; enum database_rows rows; };
 static const struct database_query database_queries[] = {
-  {"AddSessionKey", "INSERT OR IGNORE INTO session_identity_keys ( session_string, key_type, identity_pubkey, key_version, added_at ) VALUES ( :session_string, 'ed25519', :identity_pubkey, :key_version, :added_at )", DATABASE_WRITE, DATABASE_ZERO},
-  {"BackfillSessionIdentityKeys", "INSERT OR IGNORE INTO session_identity_keys SELECT s.session_string, 'ed25519', s.host_pubkey, 0, s.created_at, 0 FROM sessions s WHERE typeof(s.host_pubkey) = 'blob' AND length(s.host_pubkey) = 32 AND s.host_pubkey != zeroblob(32) AND NOT EXISTS (SELECT 1 FROM session_key_policy p WHERE p.session_string = s.session_string);", DATABASE_WRITE, DATABASE_ZERO},
-  {"BackfillSessionKeyPolicy", "INSERT OR IGNORE INTO session_key_policy SELECT session_string, 0 FROM sessions;", DATABASE_WRITE, DATABASE_ZERO},
+  {"AddSessionKey", "INSERT OR IGNORE INTO session_identity_keys (session_string, key_type, identity_pubkey, key_version, added_at)\n"
+    "VALUES (:session_string,\n"
+    "  'ed25519', :identity_pubkey, :key_version, :added_at)", DATABASE_WRITE, DATABASE_ZERO},
+  {"BackfillSessionIdentityKeys", "INSERT OR IGNORE INTO session_identity_keys\n"
+    "SELECT s.session_string,\n"
+    "  'ed25519', s.host_pubkey, 0, s.created_at,\n"
+    "  0\n"
+    "FROM sessions s\n"
+    "WHERE typeof(s.host_pubkey) = 'blob'\n"
+    "  AND length(s.host_pubkey) = 32\n"
+    "  AND s.host_pubkey != zeroblob(32)\n"
+    "  AND NOT EXISTS (\n"
+    "    SELECT 1 FROM session_key_policy p\n"
+    "    WHERE p.session_string = s.session_string\n"
+    "  );", DATABASE_WRITE, DATABASE_ZERO},
+  {"BackfillSessionKeyPolicy", "INSERT OR IGNORE INTO session_key_policy\n"
+    "SELECT session_string, 0\n"
+    "FROM sessions;", DATABASE_WRITE, DATABASE_ZERO},
   {"BeginHostTransportRefresh", "SAVEPOINT host_transport_refresh;", DATABASE_WRITE, DATABASE_ZERO},
   {"BeginKeySet", "SAVEPOINT create_key_set", DATABASE_WRITE, DATABASE_ZERO},
   {"BeginTransaction", "BEGIN IMMEDIATE;", DATABASE_WRITE, DATABASE_ZERO},
-  {"ClearHost", "UPDATE sessions SET host_established = 0, host_participant_id = NULL, host_address = NULL, host_port = 0, host_connection_type = 0 WHERE session_id = :session_id", DATABASE_WRITE, DATABASE_ZERO},
+  {"ClearHost", "UPDATE sessions\n"
+    "SET host_established = 0, host_participant_id = NULL, host_address = NULL,\n"
+    "  host_port = 0, host_connection_type = 0\n"
+    "WHERE session_id = :session_id", DATABASE_WRITE, DATABASE_ZERO},
   {"CommitHostTransportRefresh", "RELEASE host_transport_refresh;", DATABASE_WRITE, DATABASE_ZERO},
   {"CommitKeySet", "RELEASE create_key_set", DATABASE_WRITE, DATABASE_ZERO},
   {"CommitTransaction", "COMMIT;", DATABASE_WRITE, DATABASE_ZERO},
-  {"CountRateEvents", "SELECT COUNT(*) FROM rate_events WHERE ip_address = :ip_address AND event_type = :event_type AND timestamp >= :window_start", DATABASE_READ, DATABASE_ONE},
-  {"CountSessions", "SELECT COUNT(*) FROM sessions WHERE expires_at > :now", DATABASE_READ, DATABASE_ONE},
-  {"CountUniqueClients", "SELECT COUNT(DISTINCT participant_id) FROM participants", DATABASE_READ, DATABASE_ONE},
-  {"CreateSession", "INSERT INTO sessions ( session_string, session_id, host_pubkey, password_hash, max_participants, current_participants, capabilities, has_password, expose_ip_publicly, session_type, server_address, server_port, created_at, expires_at, last_activity_at ) VALUES ( :session_string, :session_id, :host_pubkey, :password_hash, :max_participants, 0, :capabilities, :has_password, :expose_ip_publicly, :session_type, :server_address, :server_port, :created_at, :expires_at, :last_activity_at )", DATABASE_WRITE, DATABASE_ZERO},
-  {"DecrementParticipants", "UPDATE sessions SET current_participants = current_participants - 1, last_activity_at = :last_activity_at WHERE session_string = :session_string AND current_participants > 0", DATABASE_WRITE, DATABASE_ZERO},
-  {"DeleteExpiredSessions", "DELETE FROM sessions WHERE last_activity_at < :cutoff_time", DATABASE_WRITE, DATABASE_ZERO},
-  {"DeleteParticipant", "DELETE FROM participants WHERE participant_id = :participant_id AND session_string = :session_string", DATABASE_WRITE, DATABASE_ZERO},
-  {"DeleteRateEvents", "DELETE FROM rate_events WHERE timestamp < :cutoff_time", DATABASE_WRITE, DATABASE_ZERO},
-  {"DeleteSession", "DELETE FROM sessions WHERE session_string = :session_string", DATABASE_WRITE, DATABASE_ZERO},
+  {"CountRateEvents", "SELECT COUNT(*)\n"
+    "FROM rate_events\n"
+    "WHERE ip_address = :ip_address\n"
+    "  AND event_type = :event_type\n"
+    "  AND timestamp >= :window_start", DATABASE_READ, DATABASE_ONE},
+  {"CountSessions", "SELECT COUNT(*)\n"
+    "FROM sessions\n"
+    "WHERE expires_at > :now", DATABASE_READ, DATABASE_ONE},
+  {"CountUniqueClients", "SELECT COUNT(DISTINCT participant_id)\n"
+    "FROM participants", DATABASE_READ, DATABASE_ONE},
+  {"CreateSession", "INSERT INTO sessions (session_string, session_id, host_pubkey, password_hash, max_participants, current_participants, capabilities, has_password, expose_ip_publicly, session_type, server_address, server_port, created_at, expires_at, last_activity_at)\n"
+    "VALUES (:session_string, :session_id, :host_pubkey, :password_hash, :max_participants, 0, :capabilities, :has_password, :expose_ip_publicly, :session_type, :server_address, :server_port, :created_at, :expires_at, :last_activity_at)", DATABASE_WRITE, DATABASE_ZERO},
+  {"DecrementParticipants", "UPDATE sessions\n"
+    "SET current_participants = current_participants - 1,\n"
+    "  last_activity_at = :last_activity_at\n"
+    "WHERE session_string = :session_string\n"
+    "  AND current_participants > 0", DATABASE_WRITE, DATABASE_ZERO},
+  {"DeleteExpiredSessions", "DELETE FROM sessions\n"
+    "WHERE last_activity_at < :cutoff_time", DATABASE_WRITE, DATABASE_ZERO},
+  {"DeleteParticipant", "DELETE FROM participants\n"
+    "WHERE participant_id = :participant_id\n"
+    "  AND session_string = :session_string", DATABASE_WRITE, DATABASE_ZERO},
+  {"DeleteRateEvents", "DELETE FROM rate_events\n"
+    "WHERE timestamp < :cutoff_time", DATABASE_WRITE, DATABASE_ZERO},
+  {"DeleteSession", "DELETE FROM sessions\n"
+    "WHERE session_string = :session_string", DATABASE_WRITE, DATABASE_ZERO},
   {"EnableForeignKeys", "PRAGMA foreign_keys = ON;", DATABASE_WRITE, DATABASE_ZERO},
   {"EnableWAL", "PRAGMA journal_mode = WAL;", DATABASE_WRITE, DATABASE_ONE},
-  {"FindExpiredSessions", "SELECT session_string, last_activity_at FROM sessions WHERE last_activity_at < :cutoff_time", DATABASE_READ, DATABASE_MANY},
-  {"GetMigrationState", "SELECT in_migration, migration_start_ns FROM sessions WHERE session_id = :session_id", DATABASE_READ, DATABASE_ZERO_OR_ONE},
-  {"GetParticipantCount", "SELECT current_participants FROM sessions WHERE session_string = :session_string", DATABASE_READ, DATABASE_ZERO_OR_ONE},
-  {"GetSessionById", "SELECT session_string, session_id, host_pubkey, password_hash, max_participants, current_participants, capabilities, has_password, expose_ip_publicly, session_type, server_address, server_port, created_at, expires_at, last_activity_at, initiator_id, host_established, host_participant_id, host_address, host_port, host_connection_type, in_migration, migration_start_ns FROM sessions WHERE session_id = :session_id", DATABASE_READ, DATABASE_ZERO_OR_ONE},
-  {"GetSessionByString", "SELECT session_string, session_id, host_pubkey, password_hash, max_participants, current_participants, capabilities, has_password, expose_ip_publicly, session_type, server_address, server_port, created_at, expires_at, last_activity_at, initiator_id, host_established, host_participant_id, host_address, host_port, host_connection_type, in_migration, migration_start_ns FROM sessions WHERE session_string = :session_string", DATABASE_READ, DATABASE_ZERO_OR_ONE},
-  {"GetSessionKeyPolicy", "SELECT restricted FROM session_key_policy WHERE session_string = :session_string", DATABASE_READ, DATABASE_ZERO_OR_ONE},
-  {"GetSessionKeys", "SELECT identity_pubkey FROM session_identity_keys WHERE session_string = :session_string AND key_type = 'ed25519' AND revoked = 0 ORDER BY key_version ASC, identity_pubkey ASC", DATABASE_READ, DATABASE_MANY},
-  {"GetSessionParticipants", "SELECT participant_id, identity_pubkey, joined_at FROM participants WHERE session_string = :session_string", DATABASE_READ, DATABASE_MANY},
-  {"GetSessionTransports", "SELECT t.metadata FROM session_transports t JOIN sessions s ON s.session_id = t.session_id LEFT JOIN session_transport_hosts h ON h.session_id = t.session_id WHERE t.session_id = :session_id AND s.in_migration = 0 AND COALESCE(s.host_participant_id, s.initiator_id) IS COALESCE(h.host_id, s.initiator_id);", DATABASE_READ, DATABASE_ZERO_OR_ONE},
-  {"GetStatsSnapshot", "SELECT session_string, current_participants, host_established, in_migration FROM sessions WHERE expires_at > :now ORDER BY session_string", DATABASE_READ, DATABASE_MANY},
-  {"HasLegacySessionKeys", "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'session_keys'", DATABASE_READ, DATABASE_ZERO_OR_ONE},
-  {"ImportLegacySessionKeys", "INSERT OR IGNORE INTO session_identity_keys SELECT k.session_string, 'ed25519', k.identity_pubkey, k.key_version, k.added_at, CASE WHEN k.revoked = 0 THEN 0 ELSE 1 END FROM session_keys k WHERE typeof(k.identity_pubkey) = 'blob' AND length(k.identity_pubkey) = 32 AND EXISTS (SELECT 1 FROM sessions s WHERE s.session_string = k.session_string) AND NOT EXISTS (SELECT 1 FROM session_key_policy p WHERE p.session_string = k.session_string);", DATABASE_WRITE, DATABASE_ZERO},
-  {"IncrementParticipants", "UPDATE sessions SET current_participants = current_participants + 1, last_activity_at = :last_activity_at WHERE session_string = :session_string", DATABASE_WRITE, DATABASE_ZERO},
-  {"InsertParticipant", "INSERT INTO participants ( participant_id, session_string, identity_pubkey, joined_at ) VALUES ( :participant_id, :session_string, :identity_pubkey, :joined_at )", DATABASE_WRITE, DATABASE_ZERO},
-  {"InsertRateEvent", "INSERT INTO rate_events ( ip_address, event_type, timestamp ) VALUES ( :ip_address, :event_type, :timestamp )", DATABASE_WRITE, DATABASE_ZERO},
-  {"InsertSessionKeyPolicy", "INSERT INTO session_key_policy VALUES (:session_string, :restricted)", DATABASE_WRITE, DATABASE_ZERO},
-  {"LookupSession", "SELECT session_string, session_id, host_pubkey, password_hash, max_participants, current_participants, capabilities, has_password, expose_ip_publicly, session_type, server_address, server_port, created_at, expires_at, last_activity_at FROM sessions WHERE session_string = :session_string", DATABASE_READ, DATABASE_ZERO_OR_ONE},
-  {"LookupSessionString", "SELECT session_string FROM sessions WHERE session_id = :session_id", DATABASE_READ, DATABASE_ZERO_OR_ONE},
-  {"RevokeSessionKey", "UPDATE session_identity_keys SET revoked = 1 WHERE session_string = :session_string AND key_type = 'ed25519' AND identity_pubkey = :identity_pubkey", DATABASE_WRITE, DATABASE_ZERO},
+  {"FindExpiredSessions", "SELECT session_string,\n"
+    "  last_activity_at\n"
+    "FROM sessions\n"
+    "WHERE last_activity_at < :cutoff_time", DATABASE_READ, DATABASE_MANY},
+  {"GetMigrationState", "SELECT in_migration,\n"
+    "  migration_start_ns\n"
+    "FROM sessions\n"
+    "WHERE session_id = :session_id", DATABASE_READ, DATABASE_ZERO_OR_ONE},
+  {"GetParticipantCount", "SELECT current_participants\n"
+    "FROM sessions\n"
+    "WHERE session_string = :session_string", DATABASE_READ, DATABASE_ZERO_OR_ONE},
+  {"GetSessionById", "SELECT session_string, session_id, host_pubkey, password_hash, max_participants,\n"
+    "  current_participants, capabilities, has_password, expose_ip_publicly,\n"
+    "  session_type, server_address, server_port, created_at, expires_at,\n"
+    "  last_activity_at, initiator_id, host_established, host_participant_id,\n"
+    "  host_address, host_port, host_connection_type, in_migration,\n"
+    "  migration_start_ns\n"
+    "FROM sessions\n"
+    "WHERE session_id = :session_id", DATABASE_READ, DATABASE_ZERO_OR_ONE},
+  {"GetSessionByString", "SELECT session_string, session_id, host_pubkey, password_hash, max_participants,\n"
+    "  current_participants, capabilities, has_password, expose_ip_publicly,\n"
+    "  session_type, server_address, server_port, created_at, expires_at,\n"
+    "  last_activity_at, initiator_id, host_established, host_participant_id,\n"
+    "  host_address, host_port, host_connection_type, in_migration,\n"
+    "  migration_start_ns\n"
+    "FROM sessions\n"
+    "WHERE session_string = :session_string", DATABASE_READ, DATABASE_ZERO_OR_ONE},
+  {"GetSessionKeyPolicy", "SELECT restricted\n"
+    "FROM session_key_policy\n"
+    "WHERE session_string = :session_string", DATABASE_READ, DATABASE_ZERO_OR_ONE},
+  {"GetSessionKeys", "SELECT identity_pubkey\n"
+    "FROM session_identity_keys\n"
+    "WHERE session_string = :session_string\n"
+    "  AND key_type = 'ed25519'\n"
+    "  AND revoked = 0\n"
+    "ORDER BY key_version ASC, identity_pubkey ASC", DATABASE_READ, DATABASE_MANY},
+  {"GetSessionParticipants", "SELECT participant_id, identity_pubkey,\n"
+    "  joined_at\n"
+    "FROM participants\n"
+    "WHERE session_string = :session_string", DATABASE_READ, DATABASE_MANY},
+  {"GetSessionTransports", "SELECT t.metadata\n"
+    "FROM session_transports t\n"
+    "JOIN sessions s\n"
+    "  ON s.session_id = t.session_id\n"
+    "LEFT JOIN session_transport_hosts h\n"
+    "  ON h.session_id = t.session_id\n"
+    "WHERE t.session_id = :session_id\n"
+    "  AND s.in_migration = 0\n"
+    "  AND COALESCE(\n"
+    "    s.host_participant_id,\n"
+    "    s.initiator_id\n"
+    "  ) IS COALESCE(\n"
+    "    h.host_id,\n"
+    "    s.initiator_id\n"
+    "  );", DATABASE_READ, DATABASE_ZERO_OR_ONE},
+  {"GetStatsSnapshot", "SELECT session_string, current_participants, host_established,\n"
+    "  in_migration\n"
+    "FROM sessions\n"
+    "WHERE expires_at > :now\n"
+    "ORDER BY session_string", DATABASE_READ, DATABASE_MANY},
+  {"HasLegacySessionKeys", "SELECT 1\n"
+    "FROM sqlite_master\n"
+    "WHERE type = 'table'\n"
+    "  AND name = 'session_keys'", DATABASE_READ, DATABASE_ZERO_OR_ONE},
+  {"ImportLegacySessionKeys", "INSERT OR IGNORE INTO session_identity_keys\n"
+    "SELECT k.session_string,\n"
+    "  'ed25519', k.identity_pubkey, k.key_version, k.added_at,\n"
+    "  CASE\n"
+    "    WHEN k.revoked = 0 THEN 0\n"
+    "    ELSE 1\n"
+    "  END\n"
+    "FROM session_keys k\n"
+    "WHERE typeof(k.identity_pubkey) = 'blob'\n"
+    "  AND length(k.identity_pubkey) = 32\n"
+    "  AND EXISTS (\n"
+    "    SELECT 1 FROM sessions s\n"
+    "    WHERE s.session_string = k.session_string\n"
+    "  )\n"
+    "  AND NOT EXISTS (\n"
+    "    SELECT 1 FROM session_key_policy p\n"
+    "    WHERE p.session_string = k.session_string\n"
+    "  );", DATABASE_WRITE, DATABASE_ZERO},
+  {"IncrementParticipants", "UPDATE sessions\n"
+    "SET current_participants = current_participants + 1,\n"
+    "  last_activity_at = :last_activity_at\n"
+    "WHERE session_string = :session_string", DATABASE_WRITE, DATABASE_ZERO},
+  {"InsertParticipant", "INSERT INTO participants (participant_id, session_string, identity_pubkey, joined_at)\n"
+    "VALUES (:participant_id, :session_string, :identity_pubkey, :joined_at)", DATABASE_WRITE, DATABASE_ZERO},
+  {"InsertRateEvent", "INSERT INTO rate_events (ip_address, event_type, timestamp)\n"
+    "VALUES (:ip_address, :event_type, :timestamp)", DATABASE_WRITE, DATABASE_ZERO},
+  {"InsertSessionKeyPolicy", "INSERT INTO session_key_policy\n"
+    "VALUES (:session_string, :restricted)", DATABASE_WRITE, DATABASE_ZERO},
+  {"LookupSession", "SELECT session_string, session_id, host_pubkey, password_hash, max_participants,\n"
+    "  current_participants, capabilities, has_password, expose_ip_publicly,\n"
+    "  session_type, server_address, server_port, created_at, expires_at,\n"
+    "  last_activity_at\n"
+    "FROM sessions\n"
+    "WHERE session_string = :session_string", DATABASE_READ, DATABASE_ZERO_OR_ONE},
+  {"LookupSessionString", "SELECT session_string\n"
+    "FROM sessions\n"
+    "WHERE session_id = :session_id", DATABASE_READ, DATABASE_ZERO_OR_ONE},
+  {"RevokeSessionKey", "UPDATE session_identity_keys\n"
+    "SET revoked = 1\n"
+    "WHERE session_string = :session_string\n"
+    "  AND key_type = 'ed25519'\n"
+    "  AND identity_pubkey = :identity_pubkey", DATABASE_WRITE, DATABASE_ZERO},
   {"RollbackHostTransportRefresh", "ROLLBACK TO host_transport_refresh;", DATABASE_WRITE, DATABASE_ZERO},
   {"RollbackToKeySet", "ROLLBACK TO create_key_set;", DATABASE_WRITE, DATABASE_ZERO},
   {"RollbackTransaction", "ROLLBACK;", DATABASE_WRITE, DATABASE_ZERO},
-  {"SchemaClearTransportsTrigger", "CREATE TRIGGER IF NOT EXISTS clear_session_transports_after_host_clear AFTER UPDATE OF host_established ON sessions WHEN OLD.host_established = 1 AND NEW.host_established = 0 BEGIN DELETE FROM session_transports WHERE session_id = NEW.session_id; END;", DATABASE_WRITE, DATABASE_ZERO},
-  {"SchemaIdentityKeys", "CREATE TABLE IF NOT EXISTS session_identity_keys ( session_string TEXT NOT NULL REFERENCES sessions(session_string) ON DELETE CASCADE, key_type TEXT NOT NULL CHECK(key_type = 'ed25519'), identity_pubkey BLOB NOT NULL CHECK(typeof(identity_pubkey) = 'blob' AND length(identity_pubkey) = 32), key_version INTEGER NOT NULL, added_at INTEGER NOT NULL, revoked INTEGER NOT NULL DEFAULT 0 CHECK(revoked IN (0, 1)), PRIMARY KEY(session_string, key_type, identity_pubkey) );", DATABASE_WRITE, DATABASE_ZERO},
+  {"SchemaClearTransportsTrigger", "CREATE TRIGGER IF NOT EXISTS clear_session_transports_after_host_clear AFTER UPDATE OF host_established ON sessions WHEN OLD.host_established = 1 AND NEW.host_established = 0 BEGIN DELETE\n"
+    "FROM session_transports\n"
+    "WHERE session_id = NEW.session_id;\n"
+    "END;", DATABASE_WRITE, DATABASE_ZERO},
+  {"SchemaIdentityKeys", "CREATE TABLE IF NOT EXISTS session_identity_keys (session_string TEXT NOT NULL REFERENCES sessions(session_string) ON DELETE CASCADE, key_type TEXT NOT NULL CHECK(key_type = 'ed25519'), identity_pubkey BLOB NOT NULL CHECK(typeof(identity_pubkey) = 'blob' AND length(identity_pubkey) = 32), key_version INTEGER NOT NULL, added_at INTEGER NOT NULL, revoked INTEGER NOT NULL DEFAULT 0 CHECK(revoked IN (0, 1)), PRIMARY KEY(session_string, key_type, identity_pubkey));", DATABASE_WRITE, DATABASE_ZERO},
   {"SchemaIdxParticipantsSession", "CREATE INDEX IF NOT EXISTS idx_participants_session ON participants(session_string);", DATABASE_WRITE, DATABASE_ZERO},
   {"SchemaIdxRateEvents", "CREATE INDEX IF NOT EXISTS idx_rate_events ON rate_events(ip_address, event_type, timestamp);", DATABASE_WRITE, DATABASE_ZERO},
   {"SchemaIdxSessionsActivity", "CREATE INDEX IF NOT EXISTS idx_sessions_activity ON sessions(last_activity_at);", DATABASE_WRITE, DATABASE_ZERO},
   {"SchemaIdxSessionsId", "CREATE INDEX IF NOT EXISTS idx_sessions_id ON sessions(session_id);", DATABASE_WRITE, DATABASE_ZERO},
-  {"SchemaKeyPolicy", "CREATE TABLE IF NOT EXISTS session_key_policy ( session_string TEXT PRIMARY KEY REFERENCES sessions(session_string) ON DELETE CASCADE, restricted INTEGER NOT NULL CHECK(restricted IN (0, 1)) );", DATABASE_WRITE, DATABASE_ZERO},
-  {"SchemaParticipants", "CREATE TABLE IF NOT EXISTS participants ( participant_id BLOB PRIMARY KEY, session_string TEXT NOT NULL, identity_pubkey BLOB NOT NULL, joined_at INTEGER NOT NULL, FOREIGN KEY (session_string) REFERENCES sessions(session_string) ON DELETE CASCADE );", DATABASE_WRITE, DATABASE_ZERO},
-  {"SchemaRateEvents", "CREATE TABLE IF NOT EXISTS rate_events ( id INTEGER PRIMARY KEY AUTOINCREMENT, ip_address TEXT NOT NULL, event_type TEXT NOT NULL, timestamp INTEGER NOT NULL );", DATABASE_WRITE, DATABASE_ZERO},
-  {"SchemaSessionTransportHosts", "CREATE TABLE IF NOT EXISTS session_transport_hosts ( session_id BLOB PRIMARY KEY REFERENCES session_transports(session_id) ON DELETE CASCADE, host_id BLOB NOT NULL CHECK(length(host_id) = 16) );", DATABASE_WRITE, DATABASE_ZERO},
-  {"SchemaSessionTransports", "CREATE TABLE IF NOT EXISTS session_transports ( session_id BLOB PRIMARY KEY REFERENCES sessions(session_id) ON DELETE CASCADE, metadata BLOB NOT NULL );", DATABASE_WRITE, DATABASE_ZERO},
-  {"SchemaSessions", "CREATE TABLE IF NOT EXISTS sessions ( session_string TEXT PRIMARY KEY, session_id BLOB UNIQUE NOT NULL, host_pubkey BLOB NOT NULL, password_hash TEXT, max_participants INTEGER DEFAULT 4, current_participants INTEGER DEFAULT 0, capabilities INTEGER DEFAULT 3, has_password INTEGER DEFAULT 0, expose_ip_publicly INTEGER DEFAULT 0, session_type INTEGER DEFAULT 0, server_address TEXT, server_port INTEGER DEFAULT 0, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, last_activity_at INTEGER NOT NULL, initiator_id BLOB, host_established INTEGER DEFAULT 0, host_participant_id BLOB, host_address TEXT, host_port INTEGER DEFAULT 0, host_connection_type INTEGER DEFAULT 0, in_migration INTEGER DEFAULT 0, migration_start_ns INTEGER DEFAULT 0 );", DATABASE_WRITE, DATABASE_ZERO},
-  {"SetSessionInitiator", "UPDATE sessions SET initiator_id = :initiator_id WHERE session_string = :session_string", DATABASE_WRITE, DATABASE_ZERO},
-  {"SetSessionTransportHost", "INSERT OR REPLACE INTO session_transport_hosts(session_id, host_id) VALUES (:session_id, :host_id);", DATABASE_WRITE, DATABASE_ZERO},
-  {"SetSessionTransports", "INSERT OR REPLACE INTO session_transports(session_id, metadata) VALUES (:session_id, :metadata);", DATABASE_WRITE, DATABASE_ZERO},
-  {"StartMigration", "UPDATE sessions SET in_migration = 1, migration_start_ns = :migration_start_ns WHERE session_id = :session_id", DATABASE_WRITE, DATABASE_ZERO},
-  {"UpdateHost", "UPDATE sessions SET host_established = 1, in_migration = 0, migration_start_ns = 0, host_participant_id = :host_participant_id, host_address = :host_address, host_port = :host_port, host_connection_type = :host_connection_type, last_activity_at = :last_activity_at WHERE session_id = :session_id", DATABASE_WRITE, DATABASE_ZERO},
-  {"VerifySessionKey", "SELECT 1 FROM session_identity_keys WHERE session_string = :session_string AND key_type = 'ed25519' AND identity_pubkey = :identity_pubkey AND revoked = 0", DATABASE_READ, DATABASE_ZERO_OR_ONE},
+  {"SchemaKeyPolicy", "CREATE TABLE IF NOT EXISTS session_key_policy (session_string TEXT PRIMARY KEY REFERENCES sessions(session_string) ON DELETE CASCADE, restricted INTEGER NOT NULL CHECK(restricted IN (0, 1)));", DATABASE_WRITE, DATABASE_ZERO},
+  {"SchemaParticipants", "CREATE TABLE IF NOT EXISTS participants (participant_id BLOB PRIMARY KEY, session_string TEXT NOT NULL, identity_pubkey BLOB NOT NULL, joined_at INTEGER NOT NULL, FOREIGN KEY (session_string) REFERENCES sessions(session_string) ON DELETE CASCADE);", DATABASE_WRITE, DATABASE_ZERO},
+  {"SchemaRateEvents", "CREATE TABLE IF NOT EXISTS rate_events (id INTEGER PRIMARY KEY AUTOINCREMENT, ip_address TEXT NOT NULL, event_type TEXT NOT NULL, timestamp INTEGER NOT NULL);", DATABASE_WRITE, DATABASE_ZERO},
+  {"SchemaSessionTransportHosts", "CREATE TABLE IF NOT EXISTS session_transport_hosts (session_id BLOB PRIMARY KEY REFERENCES session_transports(session_id) ON DELETE CASCADE, host_id BLOB NOT NULL CHECK(length(host_id) = 16));", DATABASE_WRITE, DATABASE_ZERO},
+  {"SchemaSessionTransports", "CREATE TABLE IF NOT EXISTS session_transports (session_id BLOB PRIMARY KEY REFERENCES sessions(session_id) ON DELETE CASCADE, metadata BLOB NOT NULL);", DATABASE_WRITE, DATABASE_ZERO},
+  {"SchemaSessions", "CREATE TABLE IF NOT EXISTS sessions (session_string TEXT PRIMARY KEY, session_id BLOB UNIQUE NOT NULL, host_pubkey BLOB NOT NULL, password_hash TEXT, max_participants INTEGER DEFAULT 4, current_participants INTEGER DEFAULT 0, capabilities INTEGER DEFAULT 3, has_password INTEGER DEFAULT 0, expose_ip_publicly INTEGER DEFAULT 0, session_type INTEGER DEFAULT 0, server_address TEXT, server_port INTEGER DEFAULT 0, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, last_activity_at INTEGER NOT NULL, initiat"
+    "or_id BLOB, host_established INTEGER DEFAULT 0, host_participant_id BLOB, host_address TEXT, host_port INTEGER DEFAULT 0, host_connection_type INTEGER DEFAULT 0, in_migration INTEGER DEFAULT 0, migration_start_ns INTEGER DEFAULT 0);", DATABASE_WRITE, DATABASE_ZERO},
+  {"SetSessionInitiator", "UPDATE sessions\n"
+    "SET initiator_id = :initiator_id\n"
+    "WHERE session_string = :session_string", DATABASE_WRITE, DATABASE_ZERO},
+  {"SetSessionTransportHost", "INSERT OR REPLACE INTO session_transport_hosts(session_id, host_id)\n"
+    "VALUES (:session_id, :host_id);", DATABASE_WRITE, DATABASE_ZERO},
+  {"SetSessionTransports", "INSERT OR REPLACE INTO session_transports(session_id, metadata)\n"
+    "VALUES (:session_id, :metadata);", DATABASE_WRITE, DATABASE_ZERO},
+  {"StartMigration", "UPDATE sessions\n"
+    "SET in_migration = 1,\n"
+    "  migration_start_ns = :migration_start_ns\n"
+    "WHERE session_id = :session_id", DATABASE_WRITE, DATABASE_ZERO},
+  {"UpdateHost", "UPDATE sessions\n"
+    "SET host_established = 1, in_migration = 0, migration_start_ns = 0,\n"
+    "  host_participant_id = :host_participant_id, host_address = :host_address,\n"
+    "  host_port = :host_port, host_connection_type = :host_connection_type,\n"
+    "  last_activity_at = :last_activity_at\n"
+    "WHERE session_id = :session_id", DATABASE_WRITE, DATABASE_ZERO},
+  {"VerifySessionKey", "SELECT 1\n"
+    "FROM session_identity_keys\n"
+    "WHERE session_string = :session_string\n"
+    "  AND key_type = 'ed25519'\n"
+    "  AND identity_pubkey = :identity_pubkey\n"
+    "  AND revoked = 0", DATABASE_READ, DATABASE_ZERO_OR_ONE},
 };
 /* clang-format on */
