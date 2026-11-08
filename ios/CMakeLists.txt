@@ -4,7 +4,7 @@ endif()
 
 enable_language(Swift)
 
-add_library(ascii-chat-ios-camera STATIC camera.m)
+add_library(ascii-chat-ios-camera STATIC camera.m mirror_entry.c)
 target_include_directories(ascii-chat-ios-camera PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
