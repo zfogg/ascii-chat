@@ -47,7 +47,7 @@ if ($Release) {
 if (-not $Architecture) {
     $Architecture = if ([Environment]::Is64BitOperatingSystem) {
         # Check if running on ARM64
-        $ProcessorArch = $env:PROCESSOR_ARCHITECTURE
+        $ProcessorArch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
         if ($ProcessorArch -eq "ARM64") {
             "arm64"
         } else {
@@ -66,13 +66,19 @@ if (-not $Architecture) {
 }
 
 $ErrorActionPreference = "Stop"
+$RunningOnWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
 
 Write-Host "`n=== ascii-chat Dependency Installer ===`n" -ForegroundColor Cyan
 
-Write-Host "Getting submodules" -ForegroundColor Yellow
-& git submodule init
-& git submodule update --recursive
-if ($LASTEXITCODE -ne 0) { throw "Submodule initialization failed." }
+$ModuleFile = Join-Path $PSScriptRoot '../deps/ascii-chat-deps/mmmbed/go.mod'
+if (Test-Path -LiteralPath (Join-Path $PSScriptRoot '../.git')) {
+    Write-Host "Getting submodules" -ForegroundColor Yellow
+    & git submodule update --init --recursive
+    if ($LASTEXITCODE -ne 0) { throw "Submodule initialization failed." }
+    & git submodule update --init --checkout -- deps/ascii-chat-deps/mmmbed
+    if ($LASTEXITCODE -ne 0) { throw "mmmbed submodule initialization failed." }
+}
+if (-not (Test-Path -LiteralPath $ModuleFile)) { throw "mmmbed source is missing ($ModuleFile)." }
 
 # SQL catalog generation builds mmmbed from its pinned Go sources.
 if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
@@ -95,7 +101,6 @@ if ($GoVersion -match 'go(\d+)\.(\d+)' -and ([int]$Matches[1] -lt 1 -or ([int]$M
         $GoPaths = (& go env GOPATH) -split [IO.Path]::PathSeparator
         $GoToolDir = Join-Path $GoPaths[0] 'bin'
     }
-    $ModuleFile = Join-Path $PSScriptRoot '../deps/ascii-chat-deps/mmmbed/go.mod'
     $GoToolVersion = ((Get-Content -LiteralPath $ModuleFile | Where-Object { $_ -match '^go ' }) -replace '^go\s+', '').Trim()
     New-Item -ItemType Directory -Force -Path $GoToolDir | Out-Null
     $PreviousGoBin = $env:GOBIN
@@ -110,7 +115,33 @@ if ($GoVersion -match 'go(\d+)\.(\d+)' -and ([int]$Matches[1] -lt 1 -or ([int]$M
     }
 }
 
-if ($IsWindows -and -not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+if ($RunningOnWindows -and $Architecture -eq 'arm64' -and -not (Get-Command aarch64-w64-mingw32-clang -ErrorAction SilentlyContinue)) {
+    $MsysRoot = $env:MSYS2_ROOT
+    if (-not $MsysRoot) { $MsysRoot = Join-Path $env:LOCALAPPDATA 'Programs/ascii-chat-msys2' }
+    $MsysBash = Join-Path $MsysRoot 'usr/bin/bash.exe'
+    if (-not (Test-Path -LiteralPath $MsysBash)) {
+        if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+            throw "MSYS2 is required for the ARM64 CGo compiler. Install MSYS2 or winget and rerun this script."
+        }
+        & winget install --id MSYS2.MSYS2 --exact --location $MsysRoot --accept-package-agreements --accept-source-agreements
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $MsysBash)) {
+            throw "MSYS2 installation failed. Set MSYS2_ROOT to an existing installation and rerun this script."
+        }
+    }
+    & $MsysBash -lc 'pacman -S --needed --noconfirm mingw-w64-clang-aarch64-toolchain'
+    if ($LASTEXITCODE -ne 0) { throw "ARM64 MinGW toolchain installation failed." }
+    $CompilerDir = Join-Path $MsysRoot 'clangarm64/bin'
+    if (-not (Test-Path -LiteralPath (Join-Path $CompilerDir 'aarch64-w64-mingw32-clang.exe'))) {
+        throw "ARM64 MinGW compiler was not found in $CompilerDir."
+    }
+    $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if (($UserPath -split ';') -notcontains $CompilerDir) {
+        [Environment]::SetEnvironmentVariable('Path', "$UserPath;$CompilerDir", 'User')
+    }
+    $env:Path = "$CompilerDir;$env:Path"
+}
+
+if ($RunningOnWindows -and $Architecture -ne 'arm64' -and -not (Get-Command gcc -ErrorAction SilentlyContinue)) {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
         throw "MinGW GCC is required for CGo. Install it or winget and rerun this script."
     }
@@ -155,8 +186,8 @@ if (-not $env:VCPKG_ROOT) {
 $VcpkgRoot = $env:VCPKG_ROOT
 
 # Detect platform and set vcpkg executable name
-# PowerShell Core provides $IsWindows, $IsLinux, $IsMacOS automatically
-if ($IsWindows) {
+# Windows PowerShell 5.1 does not define the PowerShell Core platform variables.
+if ($RunningOnWindows) {
     $VcpkgExe = Join-Path $VcpkgRoot "vcpkg.exe"
     $BootstrapCmd = ".\bootstrap-vcpkg.bat"
     $Platform = "windows"
@@ -188,7 +219,7 @@ if (-not $Triplet) {
     $BaseTriplet = "$Architecture-$Platform"
     # Only Windows uses -static suffix for Release builds
     # Linux/macOS use regular triplets (vcpkg defaults to static linking on Unix)
-    if ($IsWindows -and $Config -eq "Release") {
+    if ($RunningOnWindows -and $Config -eq "Release") {
         $Triplet = "$BaseTriplet-static"
     } else {
         $Triplet = $BaseTriplet
@@ -200,7 +231,7 @@ Write-Host "Using triplet: $Triplet" -ForegroundColor Green
 Write-Host "Build configuration: $Config" -ForegroundColor Green
 
 # Show what type of libraries will be installed
-if ($IsWindows) {
+if ($RunningOnWindows) {
     if ($Triplet -like "*-static") {
         Write-Host "Installing STATIC libraries (no DLLs required)" -ForegroundColor Cyan
     } else {

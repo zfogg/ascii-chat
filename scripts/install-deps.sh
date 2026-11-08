@@ -82,10 +82,6 @@ if [[ "$PLATFORM" == "macos" ]]; then
 
   echo "Homebrew packages: installation attempt completed"
 
-  echo ""
-  echo "Dependencies installed successfully!"
-  echo "You can now run: cmake --build --preset debug"
-
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
   if [ -f /etc/debian_version ]; then
@@ -400,10 +396,6 @@ elif [[ "$PLATFORM" == "linux" ]]; then
   uv tool install --upgrade "yt-dlp[default]"
   uv sync --project "$(dirname "$0")/../tests/ascii_chat_tests" --frozen
 
-  echo ""
-  echo "Dependencies installed successfully!"
-  echo "You can now run: cmake --build --preset debug"
-
 # Windows: Direct to PowerShell script
 elif [[ "$PLATFORM" == "windows" ]]; then
   echo "On Windows, please use the PowerShell script instead:"
@@ -426,10 +418,16 @@ if ! command -v go >/dev/null 2>&1; then
   fi
 fi
 command -v go >/dev/null 2>&1 || { echo >&2 "ERROR: Go installation failed"; exit 1; }
+mmmbed_go_mod="$(dirname "$0")/../deps/ascii-chat-deps/mmmbed/go.mod"
+if [ ! -f "$mmmbed_go_mod" ]; then
+  echo >&2 "ERROR: mmmbed source is missing; run git submodule update --init --checkout -- deps/ascii-chat-deps/mmmbed"
+  exit 1
+fi
 go_version=$(go version)
 if [[ "$go_version" =~ go([0-9]+)\.([0-9]+) ]] &&
    { (( BASH_REMATCH[1] < 1 )) || { (( BASH_REMATCH[1] == 1 )) && (( BASH_REMATCH[2] < 21 )); }; }; then
-  go_tool_version=$(sed -n 's/^go //p' "$(dirname "$0")/../deps/ascii-chat-deps/mmmbed/go.mod")
+  go_tool_version=$(sed -n 's/^go //p' "$mmmbed_go_mod")
+  [ -n "$go_tool_version" ] || { echo >&2 "ERROR: mmmbed/go.mod does not specify a Go version"; exit 1; }
   go_bin=$(go env GOBIN)
   if [ -z "$go_bin" ]; then
     go_bin=$(go env GOPATH)
@@ -439,6 +437,9 @@ if [[ "$go_version" =~ go([0-9]+)\.([0-9]+) ]] &&
   GOBIN="$go_bin" go install "golang.org/dl/go${go_tool_version}@latest"
   "$go_bin/go${go_tool_version}" download
 fi
+echo ""
+echo "Dependencies installed successfully!"
+echo "You can now run: cmake --build --preset debug"
 
 # Vite+ supplies Oxfmt and the Node.js toolchain used by formatting targets.
 if ! command -v vp >/dev/null 2>&1; then

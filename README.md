@@ -139,16 +139,14 @@ For detailed build instructions, configuration options, and troubleshooting, see
 See [Dependency builds](docs/dependency-builds.md) for upstream CMake targets,
 static and shared linkage, and the source dependency smoke tests.
 
-### Useful CMake Targets
-
 ### Regenerating discovery SQL
 
 Discovery and rate-limit queries live in `lib/discovery/sql/` and
 `lib/network/rate_limit/sql/`. After editing them, run:
 
 ```sh
-make generate-sql
-make check-sql
+make sql-generate
+make sql-check
 ```
 
 These targets initialize the pinned mmmbed submodule if needed and build
@@ -161,8 +159,11 @@ contributors generate the same output without a separate Sequel executable.
 Building mmmbed needs Git, Go 1.26, CGo and a C compiler. Go 1.21 or newer can fetch
 the required toolchain automatically; the dependency installers also provision
 the version specified by mmmbed for older Go installations. The make targets
-use Clang on Unix and MinGW GCC on Windows; `GO` and `SQL_CC` can be overridden
-when invoking make.
+use Clang on Unix, MinGW GCC on Windows x64, and MinGW Clang on Windows ARM64;
+`GO` and `SQL_CC` can be overridden when invoking make. Set `MMMBED` to use an existing executable instead of
+building the bundled one.
+
+### Useful CMake Targets
 
 Common development targets (run with `cmake --build build --target <name>`):
 

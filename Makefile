@@ -18,29 +18,36 @@ CMAKE_BUILD_TYPE ?= RelWithDebInfo
 CMAKE_ARGS ?=
 EXTRA_CMAKE_ARGS ?=
 
-.PHONY: generate-sql check-sql init-sql-tools ensure-mmmbed
+.PHONY: sql-generate sql-check init-sql-tools ensure-mmmbed
 SQL_EXEEXT := $(if $(filter Windows_NT,$(OS)),.exe,)
 SQL_MMMBED := $(BIN_DIR)/mmmbed$(SQL_EXEEXT)
+ifeq ($(origin MMMBED),undefined)
+MMMBED := $(SQL_MMMBED)
+SQL_TOOL_PREREQUISITE := ensure-mmmbed
+endif
 GO ?= go
-SQL_CC ?= $(if $(filter Windows_NT,$(OS)),gcc,$(CC))
+SQL_CC ?= $(if $(filter Windows_NT,$(OS)),$(if $(filter ARM64,$(PROCESSOR_ARCHITECTURE) $(PROCESSOR_ARCHITEW6432)),aarch64-w64-mingw32-clang,gcc),$(CC))
 SQL_MMMBED_DIR := $(SOURCE_DIR)/deps/ascii-chat-deps/mmmbed
 
 init-sql-tools:
-	@test -f "$(SQL_MMMBED_DIR)/go.mod" || git submodule update --init -- deps/ascii-chat-deps/mmmbed
-	@expected=$$(git rev-parse :deps/ascii-chat-deps/mmmbed) && \
+	@test -f "$(SQL_MMMBED_DIR)/go.mod" || git submodule update --init --checkout -- deps/ascii-chat-deps/mmmbed
+	@test -f "$(SQL_MMMBED_DIR)/go.mod" || { echo >&2 "mmmbed source is missing"; exit 1; }
+	@if [ ! -e "$(SQL_MMMBED_DIR)/.git" ]; then exit 0; fi; \
+	  expected=$$(git rev-parse :deps/ascii-chat-deps/mmmbed) && \
 	  actual=$$(git -C "$(SQL_MMMBED_DIR)" rev-parse HEAD) && \
 	  if [ "$${actual}" != "$${expected}" ]; then \
 	    if [ -n "$$(git -C "$(SQL_MMMBED_DIR)" status --porcelain)" ] || \
 	       git -C "$(SQL_MMMBED_DIR)" symbolic-ref --quiet HEAD >/dev/null; then \
 	      echo >&2 "mmmbed submodule has local work; update it to $${expected} before generating SQL"; exit 1; \
 	    fi; \
-	    git submodule update --init -- deps/ascii-chat-deps/mmmbed; \
+	    git submodule update --init --checkout -- deps/ascii-chat-deps/mmmbed; \
+	    actual=$$(git -C "$(SQL_MMMBED_DIR)" rev-parse HEAD) && [ "$${actual}" = "$${expected}" ]; \
 	  fi
 
 ensure-mmmbed: init-sql-tools
 	@mkdir -p "$(BIN_DIR)" "$(BUILD_DIR)"
-	@revision=$$(git -C "$(SQL_MMMBED_DIR)" rev-parse HEAD) && \
-	  if [ ! -f "$(SQL_MMMBED)" ] || [ "$${revision}" != "$$(cat "$(BUILD_DIR)/mmmbed-revision" 2>/dev/null)" ]; then \
+	@revision=""; if [ -e "$(SQL_MMMBED_DIR)/.git" ]; then revision=$$(git -C "$(SQL_MMMBED_DIR)" rev-parse HEAD) || exit 1; fi; \
+	  if [ -z "$${revision}" ] || [ ! -f "$(SQL_MMMBED)" ] || [ "$${revision}" != "$$(cat "$(BUILD_DIR)/mmmbed-revision" 2>/dev/null)" ]; then \
 	    go_command="$(GO)"; \
 	    if [ -z "$$("$${go_command}" env GOTOOLCHAIN 2>/dev/null)" ]; then \
 	      go_bin=$$("$${go_command}" env GOBIN); \
@@ -56,11 +63,11 @@ ensure-mmmbed: init-sql-tools
 	    printf '%s\n' "$${revision}" > "$(BUILD_DIR)/mmmbed-revision"; \
 	  fi
 
-generate-sql: ensure-mmmbed
-	"$(SQL_MMMBED)" sql -l c --prefix database --format --dialect sqlite -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h
+sql-generate: $(SQL_TOOL_PREREQUISITE)
+	"$(MMMBED)" sql -l c --prefix database --format --dialect sqlite -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h
 
-check-sql: ensure-mmmbed
-	"$(SQL_MMMBED)" sql -l c --prefix database --format --dialect sqlite -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h --check
+sql-check: $(SQL_TOOL_PREREQUISITE)
+	"$(MMMBED)" sql -l c --prefix database --format --dialect sqlite -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h --check
 
 INSTALL_PREFIX_FROM_ARGS := $(strip $(shell printf '%s %s\n' "$(CMAKE_ARGS)" "$(EXTRA_CMAKE_ARGS)" | tr ' ' '\n' | grep -E '^-DCMAKE_INSTALL_PREFIX=' | tail -n1 | cut -d '=' -f2- ))
 
