@@ -14,6 +14,7 @@ struct PaStream {
   int input_channels;
   int output_channels;
   BOOL active;
+  id interruption_observer;
 };
 
 int asciichat_ios_audio_authorized(void) {
@@ -78,6 +79,20 @@ PaError Pa_StartStream(PaStream *stream) {
   [session setMode:AVAudioSessionModeVideoChat error:NULL];
   [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker error:NULL];
   [session setActive:YES error:NULL];
+  stream->interruption_observer = [[NSNotificationCenter defaultCenter]
+      addObserverForName:AVAudioSessionInterruptionNotification object:session queue:nil
+      usingBlock:^(NSNotification *note) {
+        NSNumber *type = note.userInfo[AVAudioSessionInterruptionTypeKey];
+        if (type.integerValue == AVAudioSessionInterruptionTypeBegan) {
+          [stream->engine pause];
+          stream->active = NO;
+        } else if (stream->engine && !stream->active) {
+          NSError *resume_error = nil;
+          [session setActive:YES error:&resume_error];
+          if (!resume_error && [stream->engine startAndReturnError:&resume_error] == YES)
+            stream->active = YES;
+        }
+      }];
   if (stream->input_channels > 0 && stream->callback) {
     AVAudioInputNode *input = stream->engine.inputNode;
     AVAudioFormat *format = [input inputFormatForBus:0];
@@ -103,6 +118,10 @@ PaError Pa_StopStream(PaStream *stream) {
   if (!stream) return -1;
   [stream->engine.inputNode removeTapOnBus:0];
   [stream->engine stop];
+  if (stream->interruption_observer) {
+    [[NSNotificationCenter defaultCenter] removeObserver:stream->interruption_observer];
+    stream->interruption_observer = nil;
+  }
   stream->active = NO;
   return paNoError;
 }
