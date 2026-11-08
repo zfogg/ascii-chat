@@ -712,10 +712,11 @@ typedef struct {
 PACKED_ATTR /** @endcond */ stream_header_t;
 
 /**
- * @brief Client list packet structure
+ * @brief Snapshot of the clients currently known to the server
  *
- * Contains list of all connected clients with their information.
- * Broadcast by server to all clients when client list changes.
+ * `client_count` says how many entries in `clients` are valid. The server
+ * sends this fixed-size packet when membership changes so each recipient can
+ * rebuild its participant list; unused array slots are ignored.
  *
  * @ingroup packet
  */
@@ -854,6 +855,8 @@ typedef struct {
   uint16_t protocol_version;
   /** @brief Minor protocol revision (server can be newer) */
   uint16_t protocol_revision;
+  /** @brief Patch protocol revision */
+  uint16_t protocol_patch;
   /** @brief Encryption & authentication mode bitmask (ACIP_CRYPTO_* constants: NONE, ENCRYPT, AUTH, or FULL) */
   uint8_t supports_encryption;
   /** @brief Supported compression algorithms bitmask (COMPRESS_ALGO_*) */
@@ -863,9 +866,18 @@ typedef struct {
   /** @brief Feature flags bitmask (FEATURE_RLE_ENCODING, etc.) */
   uint16_t feature_flags;
   /** @brief Reserved bytes for future expansion (must be zero) */
-  uint8_t reserved[7];
+  uint8_t reserved[5];
 } /** @cond */
 PACKED_ATTR /** @endcond */ protocol_version_packet_t;
+
+_Static_assert(sizeof(protocol_version_packet_t) == 16, "protocol version packet wire size must remain 16 bytes");
+
+/**
+ * @brief Initialize a protocol version packet with the current wire version.
+ * @param version Packet to initialize.
+ * @param supports_encryption ACIP encryption/authentication capability mask.
+ */
+void protocol_version_packet_init(protocol_version_packet_t *version, uint8_t supports_encryption);
 
 /**
  * @brief ASCII frame packet structure (Packet Type 2)
