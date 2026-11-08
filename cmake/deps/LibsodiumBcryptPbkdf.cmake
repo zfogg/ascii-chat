@@ -69,6 +69,10 @@ if(PLATFORM_IOS)
         )
     endif()
 
+    function(configure_libsodium_bcrypt_pbkdf)
+        # The iOS branch builds and configures this dependency above.
+    endfunction()
+
     message(STATUS "${BoldGreen}✓${ColorReset} libsodium-bcrypt-pbkdf (iOS): ${LIBSODIUM_BCRYPT_PBKDF_LIBRARY}")
     return()
 endif()

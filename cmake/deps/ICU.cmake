@@ -36,7 +36,7 @@ elseif(USE_MUSL OR PLATFORM_IOS)
         SOURCE_DIR "${_icu_source}" BINARY_DIR "${_icu_host_build}"
         PREFIX "${CMAKE_BINARY_DIR}/_deps/icu-host"
         CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${_icu_host_cc}" "CXX=${_icu_host_cxx}"
-            "CFLAGS=" "CXXFLAGS=" "LDFLAGS=" "LIBS="
+            "CPPFLAGS=" "CFLAGS=" "CXXFLAGS=" "LDFLAGS=" "LIBS="
             <SOURCE_DIR>/source/configure ${_icu_options}
         BUILD_COMMAND ${_icu_make} -j8 INSTALL_COMMAND ""
         LOG_CONFIGURE TRUE LOG_BUILD TRUE LOG_OUTPUT_ON_FAILURE TRUE)
