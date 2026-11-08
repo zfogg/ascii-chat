@@ -25,7 +25,7 @@ static void ios_audio_refresh_devices(void) {
   AVAudioSession *session = AVAudioSession.sharedInstance;
   [session setCategory:AVAudioSessionCategoryPlayAndRecord
                   mode:AVAudioSessionModeVideoChat
-               options:AVAudioSessionCategoryOptionAllowBluetooth | AVAudioSessionCategoryOptionAllowBluetoothA2DP
+               options:AVAudioSessionCategoryOptionAllowBluetoothHFP | AVAudioSessionCategoryOptionAllowBluetoothA2DP
                  error:NULL];
   memset(g_ios_devices, 0, sizeof(g_ios_devices));
   g_ios_device_count = 0;
