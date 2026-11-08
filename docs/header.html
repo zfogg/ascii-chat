@@ -52,6 +52,39 @@
       DoxygenAwesomeFragmentCopyButton.init();
       DoxygenAwesomeParagraphLink.init();
       DoxygenAwesomeInteractiveToc.init();
+
+      // Doxygen includes custom user tabs in menudata.js, but not in the
+      // sidebar-only nav tree. Keep the curated Topic Categories index at the
+      // root of the sidebar alongside Topics, Files, and Examples.
+      document.addEventListener("DOMContentLoaded", function () {
+        function addTopicCategories() {
+          var nav = document.querySelector("#nav-tree-contents ul");
+          if (!nav || nav.querySelector('a[href="group__topic__categories.html"]')) {
+            return !!nav;
+          }
+
+          var topics = nav.querySelector('a[href="topics.html"]');
+          if (!topics) {
+            return false;
+          }
+
+          var item = document.createElement("li");
+          item.className = topics.parentElement.parentElement.className;
+          item.innerHTML =
+            '<a class="el" href="group__topic__categories.html">Topic Categories</a>';
+          topics.parentElement.parentElement.insertAdjacentElement("afterend", item);
+          return true;
+        }
+
+        if (!addTopicCategories()) {
+          var observer = new MutationObserver(function () {
+            if (addTopicCategories()) {
+              observer.disconnect();
+            }
+          });
+          observer.observe(document.body, { childList: true, subtree: true });
+        }
+      });
     </script>
   </head>
   <body>
