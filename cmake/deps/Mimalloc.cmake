@@ -1,8 +1,5 @@
 # Use the installed package or upstream targets, including its allocator feature options.
 if(PLATFORM_IOS)
-    if(TARGET asciichat-project-options)
-        target_compile_definitions(asciichat-project-options INTERFACE USE_MIMALLOC=0)
-    endif()
     return()
 endif()
 if(NOT USE_MIMALLOC)
