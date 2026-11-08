@@ -20,5 +20,7 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>ascii-chat uses the camera for video chat.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ascii-chat uses the microphone for video chat audio.</string>
 </dict>
 </plist>
