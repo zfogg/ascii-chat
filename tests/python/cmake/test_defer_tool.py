@@ -535,7 +535,8 @@ def test_deferred_safe_allocation_frees_on_early_return(
     allocation = ("SAFE_MALLOC_DEFER_FREE(p, sizeof(int) * 2, int *)" if allocator == "malloc"
                   else "SAFE_CALLOC_DEFER_FREE(p, 2, sizeof(int), int *)")
     source = (
-        '#include <stdlib.h>\n'
+        'typedef __SIZE_TYPE__ size_t; extern void *malloc(size_t); extern void *calloc(size_t, size_t); '
+        'extern void free(void *);\n#define NULL ((void *)0)\n'
         'static int releases;\n'
         '#define SAFE_MALLOC(size, cast) ((cast)malloc(size))\n'
         '#define SAFE_CALLOC(count, size, cast) ((cast)calloc(count, size))\n'
@@ -579,7 +580,8 @@ def test_deferred_allocation_rejects_shadowed_pointer(
     tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
     source = (
-        '#include <stdlib.h>\n'
+        'typedef __SIZE_TYPE__ size_t; extern void *malloc(size_t); extern void free(void *);\n'
+        '#define NULL ((void *)0)\n'
         '#define SAFE_MALLOC(size, cast) ((cast)malloc(size))\n'
         '#define SAFE_FREE(p) do { free(p); (p) = NULL; } while (0)\n'
         '#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast)\n'
