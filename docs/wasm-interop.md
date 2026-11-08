@@ -9,10 +9,11 @@ artifacts. Rebuild and publish both modules together after changing a binding.
 
 Browser code should prefer the shared TypeScript facades and generated binding
 types. `SessionUiBinding`, `MirrorFrameBinding`, `TerminalRendererBinding`,
-`AudioProcessorBinding`, `OpusCodecBinding`, and `PeerCryptoBinding` own their
+`AudioProcessorBinding`, `OpusCodecBinding`, `ClientSessionBinding`, and `PeerCryptoBinding` own their
 C resources. An Embind object must be deleted once after its last use; facades
 such as the renderer lifecycle and `PeerCryptoSession.close()` make repeated
-cleanup safe. The C options and mirror initialization functions remain
+cleanup safe. Deleting a client session releases its handshake state; browser host
+state also releases its clients and transports together. The C options and mirror initialization functions remain
 module-local, so they must be initialized before creating objects that use
 them. An object belongs to the WASM module and worker that created it; do not
 transfer it or use it after that module is cleaned up.

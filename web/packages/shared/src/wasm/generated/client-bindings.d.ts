@@ -382,6 +382,11 @@ export interface PeerCryptoBinding extends ClassHandle {
   ): QuicPacketResult;
 }
 
+export interface ClientSessionBinding extends ClassHandle {
+  valid(): boolean;
+  error(): number;
+}
+
 type QuicControlResult = {
   code: number;
   flow: number;
@@ -516,7 +521,6 @@ interface EmbindModule {
   TestPatternBinding: {
     new (_0: number, _1: number): TestPatternBinding;
   };
-  initClient(_0: EmbindString): number;
   AudioProcessorBinding: {
     new (_0: number, _1: boolean, _2: number): AudioProcessorBinding;
     new (
@@ -538,6 +542,10 @@ interface EmbindModule {
       _3: PeerBytes,
       _4: PeerBytes,
     ): PeerCryptoBinding;
+  };
+  initClient(_0: EmbindString): number;
+  ClientSessionBinding: {
+    new (_0: EmbindString): ClientSessionBinding;
   };
   client_cleanup(): void;
   client_generate_keypair(): number;

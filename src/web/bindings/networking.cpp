@@ -14,6 +14,49 @@ extern "C" {
 #include <optional>
 #include <vector>
 
+static int init_client(const std::string &args) {
+  int result = client_init_with_args(args.c_str());
+  if (result)
+    SET_ERRNO(ERROR_INIT, "Browser client initialization failed");
+  return result;
+}
+
+// One JS-owned lifetime controls the module-global client handshake state.
+class ClientSessionBinding {
+public:
+  explicit ClientSessionBinding(const std::string &args) {
+    if (active_) {
+      result_ = SET_ERRNO(ERROR_INVALID_STATE, "Client session is already initialized");
+      return;
+    }
+    result_ = init_client(args);
+    if (!result_) {
+      active_ = true;
+      owned_ = true;
+    }
+  }
+  ~ClientSessionBinding() {
+    if (owned_) {
+      client_cleanup();
+      active_ = false;
+    }
+  }
+  ClientSessionBinding(const ClientSessionBinding &) = delete;
+  ClientSessionBinding &operator=(const ClientSessionBinding &) = delete;
+  bool valid() const {
+    return owned_;
+  }
+  int error() const {
+    return result_;
+  }
+
+private:
+  static bool active_;
+  bool owned_ = false;
+  int result_ = 0;
+};
+bool ClientSessionBinding::active_ = false;
+
 static QuicControlResult take_quic_output(crypto_context_t *context) {
   uint8_t data[256];
   size_t length = 0;
@@ -101,6 +144,12 @@ static std::optional<std::string> client_public_key() {
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_network) {
+  emscripten::function("initClient", &init_client);
+  emscripten::class_<ClientSessionBinding>("ClientSessionBinding")
+      .constructor<std::string>()
+      .function("valid", &ClientSessionBinding::valid)
+      .function("error", &ClientSessionBinding::error);
+
   emscripten::function("client_cleanup", &client_cleanup);
   emscripten::function("client_generate_keypair", &client_generate_keypair);
   emscripten::function("client_get_connection_state", &client_get_connection_state);

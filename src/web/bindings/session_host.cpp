@@ -8,6 +8,7 @@ extern "C" {
 #include "session/host.h"
 }
 #include <emscripten.h>
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -16,9 +17,21 @@ EM_JS(void, browser_host_send, (uint32_t client, const uint8_t *data, size_t len
     Module.hostPacketCallback(client, HEAPU8.slice(data, data + length));
 });
 
-static session_host_t *host;
-static acip_transport_t transports[MAX_SESSION_PARTICIPANTS];
-static uint32_t client_ids[MAX_SESSION_PARTICIPANTS];
+struct BrowserHostState {
+  session_host_t *host = nullptr;
+  std::array<acip_transport_t, MAX_SESSION_PARTICIPANTS> transports{};
+  std::array<uint32_t, MAX_SESSION_PARTICIPANTS> client_ids{};
+  void reset() {
+    session_host_destroy(host);
+    host = nullptr;
+    client_ids.fill(0);
+    transports.fill({});
+  }
+  ~BrowserHostState() {
+    reset();
+  }
+};
+static BrowserHostState state;
 static asciichat_error_t host_transport_send(acip_transport_t *transport, const void *data, size_t length) {
   if (!transport || !data || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser host packet");
@@ -26,7 +39,7 @@ static asciichat_error_t host_transport_send(acip_transport_t *transport, const 
   return ASCIICHAT_OK;
 }
 static bool connected(acip_transport_t *transport) {
-  return host != NULL;
+  return state.host != NULL;
 }
 static socket_t no_socket(acip_transport_t *transport) {
   return INVALID_SOCKET_VALUE;
@@ -44,38 +57,36 @@ static const acip_transport_methods_t methods = [] {
 }();
 
 static void browser_host_destroy(void) {
-  session_host_destroy(host);
-  host = NULL;
-  memset(client_ids, 0, sizeof(client_ids));
-  memset(transports, 0, sizeof(transports));
+  state.reset();
 }
 static asciichat_error_t browser_host_create(void) {
   browser_host_destroy();
   session_host_config_t config{};
   config.max_clients = MAX_SESSION_PARTICIPANTS;
-  host = session_host_create(&config);
-  if (!host)
+  state.host = session_host_create(&config);
+  if (!state.host)
     return ERROR_MEMORY;
-  return session_host_render_audio(host);
+  return session_host_render_audio(state.host);
 }
 static uint32_t browser_host_add_client(void) {
-  if (!host) {
+  if (!state.host) {
     SET_ERRNO(ERROR_INVALID_STATE, "Browser host is not initialized");
     return 0;
   }
   for (size_t i = 0; i < MAX_SESSION_PARTICIPANTS; ++i) {
-    if (client_ids[i])
+    if (state.client_ids[i])
       continue;
-    uint32_t id = session_host_add_client(host, NULL, ACIP_TRANSPORT_BORROWED, "browser", 0);
+    uint32_t id = session_host_add_client(state.host, NULL, ACIP_TRANSPORT_BORROWED, "browser", 0);
     if (!id)
       return 0;
-    client_ids[i] = id;
-    transports[i] = {};
-    transports[i].methods = &methods;
-    transports[i].impl_data = reinterpret_cast<void *>(static_cast<uintptr_t>(id));
-    if (session_host_set_client_transport(host, id, &transports[i], ACIP_TRANSPORT_BORROWED) != ASCIICHAT_OK) {
-      session_host_remove_client(host, id);
-      client_ids[i] = 0;
+    state.client_ids[i] = id;
+    state.transports[i] = {};
+    state.transports[i].methods = &methods;
+    state.transports[i].impl_data = reinterpret_cast<void *>(static_cast<uintptr_t>(id));
+    if (session_host_set_client_transport(state.host, id, &state.transports[i], ACIP_TRANSPORT_BORROWED) !=
+        ASCIICHAT_OK) {
+      session_host_remove_client(state.host, id);
+      state.client_ids[i] = 0;
       return 0;
     }
     return id;
@@ -83,28 +94,28 @@ static uint32_t browser_host_add_client(void) {
   return 0;
 }
 static void browser_host_remove_client(uint32_t id) {
-  if (!host)
+  if (!state.host)
     return;
-  session_host_remove_client(host, id);
+  session_host_remove_client(state.host, id);
   for (size_t i = 0; i < MAX_SESSION_PARTICIPANTS; ++i)
-    if (client_ids[i] == id)
-      client_ids[i] = 0;
+    if (state.client_ids[i] == id)
+      state.client_ids[i] = 0;
 }
 static asciichat_error_t browser_host_set_local_client(uint32_t id) {
   session_host_render_target_t target{};
   target.client_id = id;
-  return session_host_set_render_target(host, id ? &target : NULL);
+  return session_host_set_render_target(state.host, id ? &target : NULL);
 }
 static asciichat_error_t browser_host_receive(uint32_t id, uint32_t type, const void *data, size_t length) {
-  if (!host || !id || !data)
+  if (!state.host || !id || !data)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser host packet or client");
-  return session_host_receive_packet(host, id, static_cast<packet_type_t>(type), data, length);
+  return session_host_receive_packet(state.host, id, static_cast<packet_type_t>(type), data, length);
 }
 static asciichat_error_t browser_host_render(void) {
-  return session_host_render_video(host);
+  return session_host_render_video(state.host);
 }
 static asciichat_error_t browser_host_render_audio(void) {
-  return session_host_render_audio(host);
+  return session_host_render_audio(state.host);
 }
 
 // Browser host packets arrive at frame rate. Retain their backing storage.

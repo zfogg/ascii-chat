@@ -7,6 +7,7 @@ extern "C" {
 #include <sodium.h>
 #include "byte_arrays.h"
 
+#include <memory>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -44,11 +45,11 @@ public:
     auto key = binding_copy_input(expected);
     if ((!secret.empty() && secret.size() != 64) || (!key.empty() && key.size() != 32)) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer identity or verification key length");
-      peer_ = nullptr;
     } else {
       pass.push_back(0);
-      peer_ = peer_crypto_create(server, encryption, pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr,
-                                 secret.empty() ? nullptr : secret.data(), key.empty() ? nullptr : key.data());
+      peer_.reset(peer_crypto_create(server, encryption,
+                                     pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr,
+                                     secret.empty() ? nullptr : secret.data(), key.empty() ? nullptr : key.data()));
     }
     if (!pass.empty())
       sodium_memzero(pass.data(), pass.size());
@@ -57,18 +58,14 @@ public:
     if (!key.empty())
       sodium_memzero(key.data(), key.size());
   }
-  ~PeerCryptoBinding() {
-    if (peer_)
-      peer_crypto_destroy(peer_);
-  }
   PeerCryptoBinding(const PeerCryptoBinding &) = delete;
   PeerCryptoBinding &operator=(const PeerCryptoBinding &) = delete;
 
   bool valid() const {
-    return peer_ != nullptr;
+    return static_cast<bool>(peer_);
   }
   bool ready() const {
-    return peer_ && peer_crypto_ready(peer_);
+    return peer_ && peer_crypto_ready(peer_.get());
   }
   std::string error() const {
     return peer_crypto_error();
@@ -80,51 +77,51 @@ public:
     return input(packet, true);
   }
   int tick() {
-    return peer_crypto_tick(peer_);
+    return peer_crypto_tick(peer_.get());
   }
   int beginQuic() {
-    return network_peer_quic_begin(peer_);
+    return network_peer_quic_begin(peer_.get());
   }
   int initQuic() {
-    return network_peer_quic_init(peer_);
+    return network_peer_quic_init(peer_.get());
   }
   int tickQuic() {
-    return network_peer_quic_tick(peer_);
+    return network_peer_quic_tick(peer_.get());
   }
   double quicEpoch() {
-    return network_peer_quic_epoch(peer_);
+    return network_peer_quic_epoch(peer_.get());
   }
 
   NullablePeerBytes takeOutput() {
-    const void *data = peer_crypto_output_data(peer_);
+    const void *data = peer_crypto_output_data(peer_.get());
     if (!data)
       return NullablePeerBytes(emscripten::val::null());
-    emscripten::val output = binding_copy_output(data, peer_crypto_output_size(peer_));
-    peer_crypto_output_pop(peer_);
+    emscripten::val output = binding_copy_output(data, peer_crypto_output_size(peer_.get()));
+    peer_crypto_output_pop(peer_.get());
     return NullablePeerBytes(output);
   }
   NullablePeerBytes received() {
-    const void *data = peer_crypto_received_data(peer_);
-    const size_t length = peer_crypto_received_size(peer_);
+    const void *data = peer_crypto_received_data(peer_.get());
+    const size_t length = peer_crypto_received_size(peer_.get());
     return NullablePeerBytes(data && length ? binding_copy_output(data, length) : emscripten::val::null());
   }
   QuicControlResult takeQuicOutput() {
-    return network_peer_quic_output(peer_);
+    return network_peer_quic_output(peer_.get());
   }
   QuicPacketResult quicPacket(bool seal, unsigned flow, unsigned delivery, PeerBytes packet) {
-    return network_peer_quic_packet(peer_, seal, flow, delivery, packet);
+    return network_peer_quic_packet(peer_.get(), seal, flow, delivery, packet);
   }
 
 private:
   int input(PeerBytes packet, bool receive) {
     auto bytes = binding_copy_input(packet);
-    int result = receive ? peer_crypto_receive(peer_, bytes.data(), bytes.size())
-                         : peer_crypto_send(peer_, bytes.data(), bytes.size());
+    int result = receive ? peer_crypto_receive(peer_.get(), bytes.data(), bytes.size())
+                         : peer_crypto_send(peer_.get(), bytes.data(), bytes.size());
     if (!bytes.empty())
       sodium_memzero(bytes.data(), bytes.size());
     return result;
   }
-  browser_peer_crypto_t *peer_ = nullptr;
+  std::unique_ptr<browser_peer_crypto_t, decltype(&peer_crypto_destroy)> peer_{nullptr, &peer_crypto_destroy};
 };
 
 EMSCRIPTEN_BINDINGS(ascii_chat_peer_crypto) {

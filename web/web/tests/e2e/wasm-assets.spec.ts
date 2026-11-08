@@ -99,6 +99,41 @@ test("face tracking and client public keys use the native bindings", async ({
   expect(result.parseError).toContain("Cannot parse browser key");
 });
 
+test("client session ownership rejects overlap and supports reinitialization", async ({
+  page,
+}) => {
+  await page.goto("/client");
+  const result = await page.evaluate(async () => {
+    const url = "/src/wasm/dist/client.js";
+    const factory = (await import(/* @vite-ignore */ url)).default;
+    const module = await factory({
+      locateFile: (name: string) => "/src/wasm/dist/" + name,
+      getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
+    });
+    const first = new module.ClientSessionBinding("client");
+    const overlap = new module.ClientSessionBinding("client");
+    const result = {
+      first: first.valid(),
+      overlap: overlap.valid(),
+      key: -1,
+      reinitialized: false,
+    };
+    overlap.delete();
+    result.key = module.client_generate_keypair();
+    first.delete();
+    const next = new module.ClientSessionBinding("client");
+    result.reinitialized = next.valid();
+    next.delete();
+    return result;
+  });
+  expect(result).toEqual({
+    first: true,
+    overlap: false,
+    key: 0,
+    reinitialized: true,
+  });
+});
+
 test("Embind owns audio buffers and encrypted peer sessions", async ({
   page,
 }) => {

@@ -212,6 +212,8 @@ const pendingKeyParserRequests = new Map<
   { resolve: (result: Uint8Array) => void; reject: (error: Error) => void }
 >();
 let clientInitialized = false;
+let clientSession: InstanceType<ClientModule["ClientSessionBinding"]> | null =
+  null;
 let clientInitialization: Promise<void> | null = null;
 
 export interface ClientInitOptions {
@@ -469,10 +471,13 @@ async function initializeClientWasm(options: ClientInitOptions): Promise<void> {
     .join(" ");
   console.log("[Client WASM] Initializing with args:", argsString);
 
-  const result = wasmModule.initClient(argsString);
-  console.log("[Client WASM] _client_init_with_args returned:", result);
-  if (result !== 0)
+  const session = new wasmModule.ClientSessionBinding(argsString);
+  if (!session.valid()) {
+    const result = session.error();
+    session.delete();
     throwWasmError(result, "Failed to initialize client WASM module");
+  }
+  clientSession = session;
   clientInitialized = true;
 }
 
@@ -483,8 +488,8 @@ export function cleanupClientWasm(): void {
   console.log("[cleanupClientWasm] ========== CLEANUP CALLED ==========");
   if (wasmModule) {
     if (clientInitialized) {
-      console.log("[cleanupClientWasm] Calling client_cleanup()...");
-      wasmModule.client_cleanup();
+      clientSession?.delete();
+      clientSession = null;
       clientInitialized = false;
     }
     // Keep the Emscripten module and its shared memory/pthread pool alive.

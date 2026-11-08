@@ -30,13 +30,6 @@ static audio_processor_t *create_processor(int sample_rate, bool bypass, unsigne
   return audio_processor_create(&config, &processor) == ASCIICHAT_OK ? processor : nullptr;
 }
 
-static int init_client(const std::string &args) {
-  int result = client_init_with_args(args.c_str());
-  if (result)
-    SET_ERRNO(ERROR_INIT, "Browser client initialization failed");
-  return result;
-}
-
 class AudioProcessorBinding {
 public:
   AudioProcessorBinding(int sample_rate, bool bypass, unsigned frame_samples)
@@ -174,7 +167,6 @@ private:
 };
 
 EMSCRIPTEN_BINDINGS(ascii_chat_audio) {
-  emscripten::function("initClient", &init_client);
   emscripten::register_type<AudioSamples>("AudioSamples", "Float32Array");
   emscripten::register_type<PcmSamples>("PcmSamples", "Int16Array");
   emscripten::register_type<OpusBytes>("OpusBytes", "Uint8Array");
