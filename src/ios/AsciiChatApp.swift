@@ -246,6 +246,7 @@ struct ContentView: View {
     @State private var selectedMode: IOSMode = .mirror
     @State private var launchMessage = "Ready"
     @State private var didStart = false
+    @State private var sessionStarted = false
     @State private var lifecycleTick = 0
 
     var body: some View {
@@ -275,6 +276,7 @@ struct ContentView: View {
             Button("Start \(selectedMode.title.lowercased())") {
                 launchMessage = "Starting \(selectedMode.title.lowercased())…"
                 didStart = true
+                sessionStarted = true
                 ios_render_bridge_reset()
                 _ = platform_enable_keepawake()
                 DispatchQueue.global(qos: .userInitiated).async {
@@ -282,7 +284,7 @@ struct ContentView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!selectedMode.isImplemented)
+            .disabled(!selectedMode.isImplemented || sessionStarted)
             .accessibilityHint(selectedMode.isImplemented ? "Starts the selected native mode" : "This mode is not implemented yet")
             Text(launchMessage)
                 .font(.caption)
