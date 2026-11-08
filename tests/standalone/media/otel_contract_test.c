@@ -187,6 +187,13 @@ static void catalog_contract(void) {
     sqlite3_stmt *statement = NULL;
     CHECK(ascii_otel_sqlite_prepare(db, database_queries[i].sql, &statement) == SQLITE_OK);
     CHECK(statement != NULL);
+    for (int parameter = 1; parameter <= sqlite3_bind_parameter_count(statement); ++parameter) {
+      const char *name = sqlite3_bind_parameter_name(statement, parameter);
+      CHECK(name != NULL && name[0] == ':');
+      int index = sqlite3_bind_parameter_index(statement, name);
+      CHECK(index == parameter);
+      CHECK(sqlite3_bind_null(statement, index) == SQLITE_OK);
+    }
     CHECK(sqlite3_finalize(statement) == SQLITE_OK);
   }
   CHECK(database_queries[DATABASE_QUERY_LookupSessionString].access == DATABASE_READ);
@@ -198,6 +205,22 @@ static void catalog_contract(void) {
   CHECK(sqlite3_bind_null(named, session_id_index) == SQLITE_OK);
   CHECK(sqlite3_step(named) == SQLITE_DONE);
   CHECK(sqlite3_finalize(named) == SQLITE_OK);
+
+  // Exercise the named bindings through the actual session lifecycle.
+  acip_session_create_t request = {0};
+  request.max_participants = 4;
+  request.capabilities = 3;
+  acds_config_t config = {0};
+  acip_session_created_t created = {0};
+  CHECK(database_session_create(db, &request, &config, &created) == ASCIICHAT_OK);
+  acip_session_join_t join = {0};
+  join.session_string_len = created.session_string_len;
+  memcpy(join.session_string, created.session_string, created.session_string_len);
+  acip_session_joined_t joined = {0};
+  CHECK(database_session_join(db, &join, &config, &joined) == ASCIICHAT_OK);
+  CHECK(joined.success);
+  CHECK(database_session_leave(db, joined.session_id, joined.participant_id) == ASCIICHAT_OK);
+
   rate_limiter_t *limiter = rate_limiter_create_sqlite(NULL);
   CHECK(limiter != NULL);
   rate_limiter_set_sqlite_db(limiter, db);

@@ -302,7 +302,8 @@ It does not change an
 already dropped media decision. Error counters still include dropped work.
 
 HTTP names use gotel's sanitized application-prefixed convention. DNS spans
-include question names. Named SQL templates live in `lib/discovery/sql/`;
+include question names. Named SQL templates live in `lib/discovery/sql/`, with
+table, index and trigger definitions in `lib/discovery/sql/schema.sql`;
 rate-limit templates are shared through `lib/network/rate_limit/sql/`. After
 editing either directory, run `make generate-sql` with mmmbed installed and
 commit the updated `lib/discovery/queries_generated.h`; `make check-sql` checks

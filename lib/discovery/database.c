@@ -148,7 +148,8 @@ static void load_session_participants(sqlite3 *db, session_entry_t *session) {
     return;
   }
 
-  sqlite3_bind_text(stmt, 1, session->session_string, -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session->session_string, -1,
+                    SQLITE_STATIC);
 
   size_t idx = 0;
   while (sqlite3_step(stmt) == SQLITE_ROW && idx < MAX_SESSION_PARTICIPANTS) {
@@ -369,20 +370,23 @@ static asciichat_error_t database_session_create_row(sqlite3 *db, const acip_ses
   log_info("expose_ip_publicly=%d, server_address='%s' server_port=%u, session_type=%u, "
            "has_password=%u",
            req->expose_ip_publicly, req->server_address, req->server_port, req->session_type, req->has_password);
-  sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
-  sqlite3_bind_blob(stmt, 2, session_id, 16, SQLITE_STATIC);
-  sqlite3_bind_blob(stmt, 3, req->identity_pubkey, 32, SQLITE_STATIC);
-  sqlite3_bind_text(stmt, 4, req->has_password ? (const char *)req->password_hash : NULL, -1, SQLITE_STATIC);
-  sqlite3_bind_int(stmt, 5, max_participants);
-  sqlite3_bind_int(stmt, 6, req->capabilities);
-  sqlite3_bind_int(stmt, 7, req->has_password ? 1 : 0);
-  sqlite3_bind_int(stmt, 8, req->expose_ip_publicly ? 1 : 0);
-  sqlite3_bind_int(stmt, 9, req->session_type);
-  sqlite3_bind_text(stmt, 10, req->server_address, -1, SQLITE_STATIC);
-  sqlite3_bind_int(stmt, 11, req->server_port);
-  sqlite3_bind_int64(stmt, 12, (sqlite3_int64)now);
-  sqlite3_bind_int64(stmt, 13, (sqlite3_int64)expires_at);
-  sqlite3_bind_int64(stmt, 14, (sqlite3_int64)now); // last_activity_at = created_at
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":host_pubkey"), req->identity_pubkey, 32, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":password_hash"),
+                    req->has_password ? (const char *)req->password_hash : NULL, -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":max_participants"), max_participants);
+  sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":capabilities"), req->capabilities);
+  sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":has_password"), req->has_password ? 1 : 0);
+  sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":expose_ip_publicly"), req->expose_ip_publicly ? 1 : 0);
+  sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":session_type"), req->session_type);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":server_address"), req->server_address, -1,
+                    SQLITE_STATIC);
+  sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":server_port"), req->server_port);
+  sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":created_at"), (sqlite3_int64)now);
+  sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":expires_at"), (sqlite3_int64)expires_at);
+  sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":last_activity_at"),
+                     (sqlite3_int64)now); // last_activity_at = created_at
 
   rc = sqlite3_step(stmt);
   if (rc == SQLITE_DONE && !sqlite3_stmt_readonly(stmt))
@@ -446,8 +450,9 @@ static asciichat_error_t database_session_create_keys_locked(sqlite3 *db, const 
   if (result == ASCIICHAT_OK) {
     int rc = ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_InsertSessionKeyPolicy].sql, &stmt);
     if (rc == SQLITE_OK) {
-      sqlite3_bind_text(stmt, 1, resp->session_string, -1, SQLITE_STATIC);
-      sqlite3_bind_int(stmt, 2, count > 1);
+      sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), resp->session_string, -1,
+                        SQLITE_STATIC);
+      sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":restricted"), count > 1);
       rc = sqlite3_step(stmt);
     }
     sqlite3_finalize(stmt);
@@ -512,7 +517,7 @@ asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_strin
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare session lookup: %s", sqlite3_errmsg(db));
   }
 
-  sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC);
 
   rc = sqlite3_step(stmt);
   if (rc == SQLITE_DONE && !sqlite3_stmt_readonly(stmt))
@@ -565,7 +570,8 @@ static asciichat_error_t database_session_authorize_join(sqlite3 *db, const acip
   sqlite3_stmt *policy = NULL;
   int policy_rc = ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_GetSessionKeyPolicy].sql, &policy);
   if (policy_rc == SQLITE_OK) {
-    sqlite3_bind_text(policy, 1, session_string, -1, SQLITE_STATIC);
+    sqlite3_bind_text(policy, sqlite3_bind_parameter_index(policy, ":session_string"), session_string, -1,
+                      SQLITE_STATIC);
     policy_rc = sqlite3_step(policy);
   }
   bool restricted = policy_rc == SQLITE_ROW && sqlite3_column_int(policy, 0) != 0;
@@ -653,10 +659,12 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare participant insert: %s", sqlite3_errmsg(db));
   }
 
-  sqlite3_bind_blob(stmt, 1, participant_id, 16, SQLITE_STATIC);
-  sqlite3_bind_text(stmt, 2, session->session_string, -1, SQLITE_STATIC);
-  sqlite3_bind_blob(stmt, 3, req->identity_pubkey, 32, SQLITE_STATIC);
-  sqlite3_bind_int64(stmt, 4, (sqlite3_int64)now);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":participant_id"), participant_id, 16, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session->session_string, -1,
+                    SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":identity_pubkey"), req->identity_pubkey, 32,
+                    SQLITE_STATIC);
+  sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":joined_at"), (sqlite3_int64)now);
 
   rc = sqlite3_step(stmt);
   if (rc == SQLITE_DONE && !sqlite3_stmt_readonly(stmt))
@@ -675,8 +683,9 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
   const char *update_sql = database_queries[DATABASE_QUERY_IncrementParticipants].sql;
   rc = ascii_otel_sqlite_prepare(db, update_sql, &stmt);
   if (rc == SQLITE_OK) {
-    sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
-    sqlite3_bind_text(stmt, 2, session->session_string, -1, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":last_activity_at"), (sqlite3_int64)now);
+    sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session->session_string, -1,
+                      SQLITE_STATIC);
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
   }
@@ -695,8 +704,9 @@ static asciichat_error_t database_session_join_commit(sqlite3 *db, const acip_se
     const char *initiator_sql = database_queries[DATABASE_QUERY_SetSessionInitiator].sql;
     rc = ascii_otel_sqlite_prepare(db, initiator_sql, &stmt);
     if (rc == SQLITE_OK) {
-      sqlite3_bind_blob(stmt, 1, participant_id, 16, SQLITE_STATIC);
-      sqlite3_bind_text(stmt, 2, session->session_string, -1, SQLITE_STATIC);
+      sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":initiator_id"), participant_id, 16, SQLITE_STATIC);
+      sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session->session_string, -1,
+                        SQLITE_STATIC);
       sqlite3_step(stmt);
       sqlite3_finalize(stmt);
       memcpy(session->initiator_id, participant_id, SESSION_ID_SIZE);
@@ -927,8 +937,8 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[S
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare participant delete: %s", sqlite3_errmsg(db));
   }
 
-  sqlite3_bind_blob(stmt, 1, participant_id, 16, SQLITE_STATIC);
-  sqlite3_bind_text(stmt, 2, session_string, -1, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":participant_id"), participant_id, 16, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC);
   rc = sqlite3_step(stmt);
   if (rc == SQLITE_DONE && !sqlite3_stmt_readonly(stmt))
     ascii_otel_metric(ASCII_OTEL_METRIC_DB_ROWS, sqlite3_changes(db));
@@ -953,8 +963,8 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[S
   const char *update_sql = database_queries[DATABASE_QUERY_DecrementParticipants].sql;
   rc = ascii_otel_sqlite_prepare(db, update_sql, &stmt);
   if (rc == SQLITE_OK) {
-    sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
-    sqlite3_bind_text(stmt, 2, session_string, -1, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":last_activity_at"), (sqlite3_int64)now);
+    sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC);
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
   }
@@ -963,7 +973,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[S
   const char *check_sql = database_queries[DATABASE_QUERY_GetParticipantCount].sql;
   rc = ascii_otel_sqlite_prepare(db, check_sql, &stmt);
   if (rc == SQLITE_OK) {
-    sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC);
     if (sqlite3_step(stmt) == SQLITE_ROW) {
       int count = sqlite3_column_int(stmt, 0);
 
@@ -975,7 +985,8 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[S
         const char *del_session_sql = database_queries[DATABASE_QUERY_DeleteSession].sql;
         rc = ascii_otel_sqlite_prepare(db, del_session_sql, &stmt);
         if (rc == SQLITE_OK) {
-          sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+          sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1,
+                            SQLITE_STATIC);
           sqlite3_step(stmt);
           sqlite3_finalize(stmt);
         }
@@ -1015,7 +1026,7 @@ session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_
     return NULL;
   }
 
-  sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC);
 
   session_entry_t *session = NULL;
   if (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -1041,7 +1052,7 @@ session_entry_t *database_session_find_by_string(sqlite3 *db, const char *sessio
     return NULL;
   }
 
-  sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC);
 
   session_entry_t *session = NULL;
   if (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -1070,7 +1081,7 @@ void database_session_cleanup_expired(sqlite3 *db) {
   const char *log_sql = database_queries[DATABASE_QUERY_FindExpiredSessions].sql;
   sqlite3_stmt *stmt = NULL;
   if (ascii_otel_sqlite_prepare(db, log_sql, &stmt) == SQLITE_OK) {
-    sqlite3_bind_int64(stmt, 1, (sqlite3_int64)cutoff_time);
+    sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":cutoff_time"), (sqlite3_int64)cutoff_time);
     while (sqlite3_step(stmt) == SQLITE_ROW) {
       const char *session_string = (const char *)sqlite3_column_text(stmt, 0);
       uint64_t last_activity = (uint64_t)sqlite3_column_int64(stmt, 1);
@@ -1085,7 +1096,7 @@ void database_session_cleanup_expired(sqlite3 *db) {
   // Delete inactive sessions (CASCADE deletes participants)
   const char *del_sql = database_queries[DATABASE_QUERY_DeleteExpiredSessions].sql;
   if (ascii_otel_sqlite_prepare(db, del_sql, &stmt) == SQLITE_OK) {
-    sqlite3_bind_int64(stmt, 1, (sqlite3_int64)cutoff_time);
+    sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":cutoff_time"), (sqlite3_int64)cutoff_time);
     sqlite3_step(stmt);
     int deleted = sqlite3_changes(db);
     sqlite3_finalize(stmt);
@@ -1118,12 +1129,14 @@ asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t sessio
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare host update: %s", sqlite3_errmsg(db));
   }
 
-  sqlite3_bind_blob(stmt, 1, host_participant_id, 16, SQLITE_STATIC);
-  sqlite3_bind_text(stmt, 2, host_address ? host_address : "", -1, SQLITE_STATIC);
-  sqlite3_bind_int(stmt, 3, host_port);
-  sqlite3_bind_int(stmt, 4, connection_type);
-  sqlite3_bind_int64(stmt, 5, (sqlite3_int64)now);
-  sqlite3_bind_blob(stmt, 6, session_id, 16, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":host_participant_id"), host_participant_id, 16,
+                    SQLITE_STATIC);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":host_address"), host_address ? host_address : "", -1,
+                    SQLITE_STATIC);
+  sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":host_port"), host_port);
+  sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":host_connection_type"), connection_type);
+  sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":last_activity_at"), (sqlite3_int64)now);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC);
 
   rc = sqlite3_step(stmt);
   if (rc == SQLITE_DONE && !sqlite3_stmt_readonly(stmt))
@@ -1165,7 +1178,7 @@ asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare host clear: %s", sqlite3_errmsg(db));
   }
 
-  sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC);
 
   rc = sqlite3_step(stmt);
   if (rc == SQLITE_DONE && !sqlite3_stmt_readonly(stmt))
@@ -1206,8 +1219,8 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare migration start: %s", sqlite3_errmsg(db));
   }
 
-  sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now_ns);
-  sqlite3_bind_blob(stmt, 2, session_id, 16, SQLITE_STATIC);
+  sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":migration_start_ns"), (sqlite3_int64)now_ns);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC);
 
   rc = sqlite3_step(stmt);
   if (rc == SQLITE_DONE && !sqlite3_stmt_readonly(stmt))
@@ -1246,7 +1259,7 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[S
     return false;
   }
 
-  sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":session_id"), session_id, 16, SQLITE_STATIC);
 
   bool ready = false;
   if (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -1287,10 +1300,10 @@ asciichat_error_t database_session_add_key(sqlite3 *db, const char *session_stri
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare add_key statement: %s", sqlite3_errmsg(db));
   }
 
-  sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
-  sqlite3_bind_blob(stmt, 2, identity_pubkey, 32, SQLITE_STATIC);
-  sqlite3_bind_int(stmt, 3, key_version);
-  sqlite3_bind_int64(stmt, 4, database_get_current_time_ms());
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":identity_pubkey"), identity_pubkey, 32, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, ":key_version"), key_version);
+  sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":added_at"), database_get_current_time_ms());
 
   int rc = sqlite3_step(stmt);
   sqlite3_finalize(stmt);
@@ -1319,8 +1332,8 @@ asciichat_error_t database_session_revoke_key(sqlite3 *db, const char *session_s
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare revoke_key statement: %s", sqlite3_errmsg(db));
   }
 
-  sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
-  sqlite3_bind_blob(stmt, 2, identity_pubkey, 32, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":identity_pubkey"), identity_pubkey, 32, SQLITE_STATIC);
 
   int rc = sqlite3_step(stmt);
   sqlite3_finalize(stmt);
@@ -1349,8 +1362,8 @@ bool database_session_verify_key(sqlite3 *db, const char *session_string,
     return false;
   }
 
-  sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
-  sqlite3_bind_blob(stmt, 2, identity_pubkey, 32, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, sqlite3_bind_parameter_index(stmt, ":identity_pubkey"), identity_pubkey, 32, SQLITE_STATIC);
 
   bool valid = (sqlite3_step(stmt) == SQLITE_ROW);
   sqlite3_finalize(stmt);
@@ -1372,7 +1385,7 @@ asciichat_error_t database_session_get_keys(sqlite3 *db, const char *session_str
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare get_keys statement: %s", sqlite3_errmsg(db));
   }
 
-  sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":session_string"), session_string, -1, SQLITE_STATIC);
 
   size_t count = 0;
   while (sqlite3_step(stmt) == SQLITE_ROW && count < max_keys) {
@@ -1410,7 +1423,7 @@ asciichat_error_t database_stats_session_count(sqlite3 *db, int64_t *count_out) 
   }
 
   time_t now = time(NULL);
-  sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
+  sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":now"), (sqlite3_int64)now);
 
   int64_t count = 0;
   rc = sqlite3_step(stmt);
@@ -1474,7 +1487,8 @@ asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t 
   const char *sql = database_queries[DATABASE_QUERY_GetStatsSnapshot].sql;
   if (ascii_otel_sqlite_prepare(db, sql, &stmt) != SQLITE_OK)
     return SET_ERRNO(ERROR_CONFIG, "Cannot query active session statistics");
-  sqlite3_bind_int64(stmt, 1, (sqlite3_int64)(time_get_realtime_ns() / NS_PER_MS_INT));
+  sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":now"),
+                     (sqlite3_int64)(time_get_realtime_ns() / NS_PER_MS_INT));
   int result;
   while ((result = sqlite3_step(stmt)) == SQLITE_ROW) {
     (*sessions)++;
@@ -1504,9 +1518,11 @@ asciichat_error_t database_session_transport_set(sqlite3 *db, const uint8_t sess
   sqlite3_stmt *statement = NULL;
   int rc = ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_SetSessionTransports].sql, &statement);
   if (rc == SQLITE_OK)
-    rc = sqlite3_bind_blob(statement, 1, session_id, SESSION_ID_SIZE, SQLITE_TRANSIENT);
+    rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":session_id"), session_id,
+                           SESSION_ID_SIZE, SQLITE_TRANSIENT);
   if (rc == SQLITE_OK)
-    rc = sqlite3_bind_blob(statement, 2, metadata, (int)length, SQLITE_TRANSIENT);
+    rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":metadata"), metadata, (int)length,
+                           SQLITE_TRANSIENT);
   if (rc == SQLITE_OK)
     rc = sqlite3_step(statement);
   sqlite3_finalize(statement);
@@ -1521,7 +1537,8 @@ asciichat_error_t database_session_transport_get(sqlite3 *db, const uint8_t sess
   sqlite3_stmt *statement = NULL;
   int rc = ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_GetSessionTransports].sql, &statement);
   if (rc == SQLITE_OK)
-    rc = sqlite3_bind_blob(statement, 1, session_id, SESSION_ID_SIZE, SQLITE_TRANSIENT);
+    rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":session_id"), session_id,
+                           SESSION_ID_SIZE, SQLITE_TRANSIENT);
   if (rc == SQLITE_OK)
     rc = sqlite3_step(statement);
   asciichat_error_t result = ASCIICHAT_OK;
@@ -1564,9 +1581,11 @@ asciichat_error_t database_session_update_host_with_transport(sqlite3 *db, const
     sqlite3_stmt *statement = NULL;
     int rc = ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_SetSessionTransportHost].sql, &statement);
     if (rc == SQLITE_OK)
-      rc = sqlite3_bind_blob(statement, 1, session, SESSION_ID_SIZE, SQLITE_TRANSIENT);
+      rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":session_id"), session,
+                             SESSION_ID_SIZE, SQLITE_TRANSIENT);
     if (rc == SQLITE_OK)
-      rc = sqlite3_bind_blob(statement, 2, host, SESSION_ID_SIZE, SQLITE_TRANSIENT);
+      rc = sqlite3_bind_blob(statement, sqlite3_bind_parameter_index(statement, ":host_id"), host, SESSION_ID_SIZE,
+                             SQLITE_TRANSIENT);
     if (rc == SQLITE_OK)
       rc = sqlite3_step(statement);
     sqlite3_finalize(statement);
