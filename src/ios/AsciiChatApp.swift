@@ -118,17 +118,18 @@ private struct CameraAsciiView: View {
     @State private var cameraMessage = "Checking camera access…"
     @State private var audioMessage = "Checking microphone access…"
     @State private var cameraStarted = false
+    @State private var cameraPixels = [UInt32](repeating: 0, count: 1920 * 1080)
+    @State private var renderPixels = [UInt8](repeating: 0, count: 4096 * 2048 * 4)
 
     private func readCameraFrame() -> Bool {
         let capacity = 1920 * 1080
-        var pixels = [UInt32](repeating: 0, count: capacity)
         var width = 0
         var height = 0
-        let emitted = pixels.withUnsafeMutableBufferPointer { buffer in
+        let emitted = cameraPixels.withUnsafeMutableBufferPointer { buffer in
             asciichat_ios_camera_read(buffer.baseAddress!, capacity, &width, &height)
         }
         guard emitted != 0, width > 0, height > 0 else { return false }
-        let data = pixels.withUnsafeBytes { Data(bytes: $0.baseAddress!, count: width * height * 4) }
+        let data = cameraPixels.withUnsafeBytes { Data(bytes: $0.baseAddress!, count: width * height * 4) }
         guard let provider = CGDataProvider(data: data as CFData) else { return false }
         image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
                         bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
@@ -144,15 +145,14 @@ private struct CameraAsciiView: View {
         }
         if cameraStarted && readCameraFrame() { return }
         let capacity = 4096 * 2048 * 4
-        var pixels = [UInt8](repeating: 0, count: capacity)
         var width: Int32 = 0
         var height: Int32 = 0
         var pitch: Int32 = 0
-        let emitted = pixels.withUnsafeMutableBufferPointer { buffer in
+        let emitted = renderPixels.withUnsafeMutableBufferPointer { buffer in
             ios_render_bridge_read_frame(buffer.baseAddress!, capacity, &width, &height, &pitch)
         }
         guard emitted != 0, width > 0, height > 0, pitch >= width * 4 else { return }
-        let data = Data(pixels[0 ..< Int(pitch) * Int(height)])
+        let data = Data(renderPixels[0 ..< Int(pitch) * Int(height)])
         guard let provider = CGDataProvider(data: data as CFData) else { return }
         image = CGImage(width: Int(width), height: Int(height), bitsPerComponent: 8, bitsPerPixel: 32,
                         bytesPerRow: Int(pitch), space: CGColorSpaceCreateDeviceRGB(),
