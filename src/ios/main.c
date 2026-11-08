@@ -7,6 +7,10 @@ static volatile int g_ios_running;
 static volatile int g_ios_last_result;
 
 int asciichat_ios_main(asciichat_ios_mode_t mode) {
+  if (!asciichat_ios_mode_available(mode)) {
+    g_ios_last_result = -1;
+    return -1;
+  }
   static char program[] = "ascii-chat-ios";
   static char mirror[] = "mirror";
   static char client[] = "client";
