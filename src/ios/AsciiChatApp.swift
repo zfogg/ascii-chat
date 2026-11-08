@@ -89,6 +89,7 @@ private struct TestFrameView: View {
 
 private struct CameraAsciiView: View {
     @State private var image: CGImage?
+    @State private var cameraMessage = "Checking camera access…"
 
     private func readFrame() {
         let capacity = 4096 * 2048 * 4
@@ -116,7 +117,10 @@ private struct CameraAsciiView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
             } else {
-                Text("Starting shared mirror pipeline…")
+                VStack {
+                    Text("Starting shared mirror pipeline…")
+                    Text(cameraMessage).font(.caption).foregroundStyle(.secondary)
+                }
             }
         }
         .padding()
@@ -125,7 +129,10 @@ private struct CameraAsciiView: View {
         }
         .onAppear {
             if asciichat_ios_camera_authorized() == 0 {
+                cameraMessage = "Camera permission requested"
                 asciichat_ios_camera_request_access()
+            } else {
+                cameraMessage = "Camera access granted"
             }
             let smokeText = "\u{1b}[2J\u{1b}[H\u{1b}[1;36mascii-chat iOS render bridge\u{1b}[0m\n\nC output is reaching SwiftUI through libvterm + FreeType."
             smokeText.withCString { text in
