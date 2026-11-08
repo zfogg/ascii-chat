@@ -37,6 +37,9 @@ private func ios_render_bridge_write(_ fd: Int32, _ data: UnsafeRawPointer, _ le
 @_silgen_name("ios_render_bridge_reset")
 private func ios_render_bridge_reset()
 
+@_silgen_name("ios_render_bridge_sequence")
+private func ios_render_bridge_sequence() -> UInt64
+
 @_silgen_name("asciichat_ios_camera_authorized")
 private func asciichat_ios_camera_authorized() -> Int32
 
@@ -126,6 +129,7 @@ private struct CameraAsciiView: View {
     @State private var cameraStarted = false
     @State private var cameraPixels = [UInt32](repeating: 0, count: 1920 * 1080)
     @State private var renderPixels = [UInt8](repeating: 0, count: 4096 * 2048 * 4)
+    @State private var lastRenderSequence: UInt64 = 0
 
     private func readCameraFrame() -> Bool {
         let capacity = 1920 * 1080
@@ -150,6 +154,8 @@ private struct CameraAsciiView: View {
             if cameraStarted { cameraMessage = "Camera capture running" }
         }
         if cameraStarted && readCameraFrame() { return }
+        let sequence = ios_render_bridge_sequence()
+        if sequence == lastRenderSequence { return }
         let capacity = 4096 * 2048 * 4
         var width: Int32 = 0
         var height: Int32 = 0
@@ -164,6 +170,7 @@ private struct CameraAsciiView: View {
                         bytesPerRow: Int(pitch), space: CGColorSpaceCreateDeviceRGB(),
                         bitmapInfo: [.byteOrder32Little, CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)],
                         provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+        lastRenderSequence = sequence
     }
 
     var body: some View {

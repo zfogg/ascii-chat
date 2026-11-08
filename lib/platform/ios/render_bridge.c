@@ -12,6 +12,7 @@ static terminal_renderer_t *g_renderer;
 static mutex_t g_renderer_mutex;
 static bool g_renderer_mutex_initialized;
 static bool g_renderer_initialized;
+static uint64_t g_render_sequence;
 
 static bool ios_render_bridge_init(void) {
   if (!g_renderer_mutex_initialized) {
@@ -47,6 +48,7 @@ ssize_t ios_render_bridge_write(int fd, const void *data, size_t length) {
 
   mutex_lock(&g_renderer_mutex);
   (void)term_renderer_feed(g_renderer, (const char *)data, length);
+  ++g_render_sequence;
   mutex_unlock(&g_renderer_mutex);
   return (ssize_t)length;
 }
@@ -80,5 +82,8 @@ void ios_render_bridge_reset(void) {
     g_renderer = NULL;
   }
   g_renderer_initialized = false;
+  g_render_sequence = 0;
   mutex_unlock(&g_renderer_mutex);
 }
+
+uint64_t ios_render_bridge_sequence(void) { return g_render_sequence; }
