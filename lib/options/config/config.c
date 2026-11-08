@@ -128,7 +128,12 @@ static const char *get_toml_string_validated(toml_datum_t datum) {
 // type-specific logic and special case handling.
 
 /**
- * @brief Union holding all possible parsed option values
+ * @brief Scratch storage for the scalar value produced while parsing one option.
+ *
+ * The active member is selected by the option type: strings use the bounded
+ * `str_value` array, numeric options use an integer or floating-point member,
+ * and boolean flags use `bool_value`. The config parser copies the selected
+ * value into `options_t`; this union is never retained after that write.
  */
 typedef union {
   char str_value[OPTIONS_BUFF_SIZE]; // STRING type
@@ -139,7 +144,7 @@ typedef union {
 } option_parsed_value_t;
 
 /**
- * @brief Type handler - encapsulates all 4 operations for one option type
+ * @brief Function table for extracting, validating, storing, and formatting one TOML option type.
  *
  * Each operation is a stage in the config parsing pipeline:
  * 1. Extract: TOML datum → intermediate (value_str, int_val, etc)

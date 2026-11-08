@@ -23,7 +23,12 @@
 #define INITIAL_OWNED_STRINGS_CAPACITY 32
 
 /**
- * @brief Type handler for builder operations
+ * @brief The four operations used to handle one registered option type.
+ *
+ * The registry selects a handler by `option_type_t`. It compares a field with
+ * its default, applies an environment value, parses a command-line value into
+ * the destination field, and formats the help placeholder. The table is shared
+ * by the option builder and is not owned by individual builders.
  */
 typedef struct {
   // Check if option value differs from default

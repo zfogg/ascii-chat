@@ -84,10 +84,13 @@ typedef struct {
  */
 
 /**
- * @brief OpenPGP public key packet data
+ * @brief The parsed identity portion of an OpenPGP public-key packet.
  *
  * Represents the parsed data from a Public Key Packet (tag 6),
- * containing algorithm, creation time, and key material.
+ * `version`, `created`, and `algorithm` preserve the packet header fields;
+ * `pubkey` holds the Ed25519 public key and `keyid` holds the trailing key
+ * identifier used to match it. The parser fills this value object, which has
+ * no heap ownership.
  */
 typedef struct {
   uint8_t version;                         ///< Packet version (should be 4)
@@ -105,10 +108,13 @@ typedef struct {
  */
 
 /**
- * @brief OpenPGP secret key packet data
+ * @brief The parsed public and private material from an OpenPGP secret-key packet.
  *
  * Represents the parsed data from a Secret Key Packet (tag 5),
- * containing algorithm, creation time, and both public and secret key material.
+ * The public half mirrors `openpgp_public_key_t`; `seckey` contains the
+ * Ed25519 seed and `is_encrypted` records whether the packet used protected
+ * secret-key material. The current parser accepts only unencrypted version-4
+ * EdDSA packets, and callers must treat `seckey` as sensitive memory.
  */
 typedef struct {
   uint8_t version;                         ///< Packet version (should be 4)

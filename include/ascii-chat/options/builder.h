@@ -183,7 +183,7 @@ typedef enum {
 } option_input_type_t;
 
 /**
- * @brief Metadata for shell completion generation
+ * @brief Completion metadata attached to one option descriptor.
  *
  * Stores additional information about options to enable smart shell
  * completions with value suggestions, numeric ranges, examples, etc.
@@ -232,7 +232,7 @@ typedef enum {
 } dependency_type_t;
 
 /**
- * @brief Option descriptor
+ * @brief The complete registry entry for one command-line/configuration option.
  *
  * Describes a single command-line option with all its metadata.
  * Includes both parsing information and completion metadata for
@@ -324,7 +324,7 @@ typedef struct {
 } help_mode_descriptor_t;
 
 /**
- * @brief Option dependency
+ * @brief A rule connecting one option to another during validation.
  *
  * Describes a dependency relationship between two options.
  */
@@ -393,7 +393,7 @@ typedef struct {
 } custom_section_descriptor_t;
 
 /**
- * @brief Options configuration
+ * @brief Immutable parsing tables produced from an options builder.
  *
  * A complete, immutable configuration of options for a mode.
  * Built by options_builder_t and used for parsing.
@@ -432,7 +432,7 @@ typedef struct {
 } options_config_t;
 
 /**
- * @brief Options builder
+ * @brief Mutable owner used to assemble option descriptors, dependencies, help sections, and examples before building a config.
  *
  * For incrementally constructing option configurations.
  * Use builder functions to add options and dependencies, then build
