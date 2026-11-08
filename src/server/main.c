@@ -1481,7 +1481,8 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
     SAFE_STRNCPY(params->server_address, bind_addr, sizeof(params->server_address));
   }
   params->server_port = port;
-  if (GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
+  if (GET_OPTION(quic_bind_address)[0] ||
+      (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
     params->quic_port = (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : port);
   if ((GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
     SAFE_STRNCPY(params->webtransport_url, GET_OPTION(webtransport_public_url), sizeof(params->webtransport_url));

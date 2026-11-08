@@ -64,8 +64,8 @@ static asciichat_error_t create_context(bool server, const char *alpn, acip_quic
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_tls_server_create(const char *alpn, const char *certificate_file,
-                                              const char *private_key_file, acip_quic_tls_t **out) {
+asciichat_error_t quic_tls_server_create(const char *alpn, const char *certificate_file, const char *private_key_file,
+                                         acip_quic_tls_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC server requires a certificate and private key");
   *out = NULL;
@@ -124,7 +124,7 @@ asciichat_error_t quic_tls_client_configure(acip_quic_tls_t *tls, SSL *ssl, cons
 }
 
 asciichat_error_t quic_tls_session_create(acip_quic_tls_t *tls, const char *server_name,
-                                               ngtcp2_crypto_conn_ref *connection, SSL **out) {
+                                          ngtcp2_crypto_conn_ref *connection, SSL **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC TLS session arguments");
   *out = NULL;

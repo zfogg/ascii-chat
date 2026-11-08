@@ -57,8 +57,8 @@ static ngtcp2_path make_path(const acip_quic_udp_endpoint_t *endpoint, const str
 }
 
 asciichat_error_t quic_udp_endpoint_create(const struct sockaddr *address, socklen_t length,
-                                                acip_quic_tls_t *server_tls, acip_quic_udp_accept_fn accept,
-                                                void *context, acip_quic_udp_endpoint_t **out) {
+                                           acip_quic_tls_t *server_tls, acip_quic_udp_accept_fn accept, void *context,
+                                           acip_quic_udp_endpoint_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC UDP endpoint output");
   *out = NULL;
@@ -96,8 +96,8 @@ asciichat_error_t quic_udp_endpoint_create(const struct sockaddr *address, sockl
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_udp_endpoint_address(const acip_quic_udp_endpoint_t *endpoint,
-                                                 struct sockaddr_storage *address, socklen_t *length) {
+asciichat_error_t quic_udp_endpoint_address(const acip_quic_udp_endpoint_t *endpoint, struct sockaddr_storage *address,
+                                            socklen_t *length) {
   if (!endpoint || !address || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC UDP address output");
   *address = endpoint->local;
@@ -135,8 +135,8 @@ static void send_retry(acip_quic_udp_endpoint_t *endpoint, const ngtcp2_pkt_hd *
 }
 
 asciichat_error_t quic_udp_connect(acip_quic_udp_endpoint_t *endpoint, acip_quic_tls_t *client_tls,
-                                        const char *server_name, const struct sockaddr *remote, socklen_t remote_length,
-                                        uint64_t now_ns, acip_quic_connection_t **out) {
+                                   const char *server_name, const struct sockaddr *remote, socklen_t remote_length,
+                                   uint64_t now_ns, acip_quic_connection_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC UDP connection output");
   *out = NULL;
@@ -147,8 +147,7 @@ asciichat_error_t quic_udp_connect(acip_quic_udp_endpoint_t *endpoint, acip_quic
   if (!peer)
     return SET_ERRNO(ERROR_BUFFER_FULL, "QUIC UDP connection limit reached or allocation failed");
   ngtcp2_path path = make_path(endpoint, remote, remote_length);
-  asciichat_error_t result =
-      quic_connection_client_create(client_tls, server_name, &path, now_ns, &peer->connection);
+  asciichat_error_t result = quic_connection_client_create(client_tls, server_name, &path, now_ns, &peer->connection);
   if (result != ASCIICHAT_OK) {
     SAFE_FREE(peer);
     return result;
@@ -167,8 +166,7 @@ static asciichat_error_t receive_one(acip_quic_udp_endpoint_t *endpoint, const u
   udp_peer_t *peer = endpoint->peers;
   while (peer) {
     bool matches = false;
-    asciichat_error_t result =
-        quic_connection_matches_cid(peer->connection, header.dcid, header.dcidlen, &matches);
+    asciichat_error_t result = quic_connection_matches_cid(peer->connection, header.dcid, header.dcidlen, &matches);
     if (result != ASCIICHAT_OK)
       return result;
     if (matches)
@@ -196,7 +194,7 @@ static asciichat_error_t receive_one(acip_quic_udp_endpoint_t *endpoint, const u
     if (!peer)
       return ASCIICHAT_OK;
     asciichat_error_t result = quic_connection_server_create_validated(endpoint->server_tls, &path, data, length,
-                                                                            &original_dcid, now, &peer->connection);
+                                                                       &original_dcid, now, &peer->connection);
     if (result == ASCIICHAT_OK)
       result = endpoint->accept(peer->connection, endpoint->context);
     if (result != ASCIICHAT_OK) {
@@ -214,8 +212,7 @@ static asciichat_error_t receive_one(acip_quic_udp_endpoint_t *endpoint, const u
   return result;
 }
 
-asciichat_error_t quic_udp_pump(acip_quic_udp_endpoint_t *endpoint, uint64_t now,
-                                     acip_quic_connection_t **failed) {
+asciichat_error_t quic_udp_pump(acip_quic_udp_endpoint_t *endpoint, uint64_t now, acip_quic_connection_t **failed) {
   if (!endpoint || !failed)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC UDP pump arguments");
   *failed = NULL;
@@ -253,7 +250,7 @@ asciichat_error_t quic_udp_pump(acip_quic_udp_endpoint_t *endpoint, uint64_t now
     for (unsigned i = 0; i < QUIC_UDP_WRITE_BATCH; ++i) {
       if (!peer->pending_length) {
         asciichat_error_t result = quic_connection_write(peer->connection, &peer->pending_path, peer->pending,
-                                                              sizeof(peer->pending), &peer->pending_length, now);
+                                                         sizeof(peer->pending), &peer->pending_length, now);
         if (result != ASCIICHAT_OK) {
           *failed = peer->connection;
           return result;
@@ -280,7 +277,7 @@ asciichat_error_t quic_udp_pump(acip_quic_udp_endpoint_t *endpoint, uint64_t now
 }
 
 asciichat_error_t quic_udp_wait_parameters(const acip_quic_udp_endpoint_t *endpoint, uint64_t now_ns,
-                                                uint64_t maximum_wait_ns, uint64_t *wait_ns, bool *want_write) {
+                                           uint64_t maximum_wait_ns, uint64_t *wait_ns, bool *want_write) {
   if (!endpoint || !wait_ns || !want_write || now_ns == UINT64_MAX)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC UDP wait parameters");
   *wait_ns = maximum_wait_ns;
@@ -297,8 +294,7 @@ asciichat_error_t quic_udp_wait_parameters(const acip_quic_udp_endpoint_t *endpo
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t quic_udp_wait(acip_quic_udp_endpoint_t *endpoint, uint64_t wait_ns, bool want_write,
-                                     bool *ready) {
+asciichat_error_t quic_udp_wait(acip_quic_udp_endpoint_t *endpoint, uint64_t wait_ns, bool want_write, bool *ready) {
   if (!endpoint || !ready)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC UDP wait");
   *ready = false;
@@ -377,8 +373,8 @@ void quic_udp_endpoint_destroy(acip_quic_udp_endpoint_t **endpoint) {
   *endpoint = NULL;
 }
 
-asciichat_error_t quic_udp_migrate(acip_quic_udp_endpoint_t *endpoint, const struct sockaddr *address,
-                                        socklen_t length, uint64_t now_ns) {
+asciichat_error_t quic_udp_migrate(acip_quic_udp_endpoint_t *endpoint, const struct sockaddr *address, socklen_t length,
+                                   uint64_t now_ns) {
   if (!endpoint || endpoint->server_tls || endpoint->count != 1 || !valid_sockaddr(address, length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC migration requires a single client connection and concrete address");
   if (endpoint->peers->pending_length)
@@ -388,7 +384,7 @@ asciichat_error_t quic_udp_migrate(acip_quic_udp_endpoint_t *endpoint, const str
   if (result != ASCIICHAT_OK)
     return result;
   result = quic_connection_migrate(endpoint->peers->connection, (struct sockaddr *)&candidate->local,
-                                        candidate->local_length, now_ns);
+                                   candidate->local_length, now_ns);
   if (result == ASCIICHAT_OK) {
     socket_t old_socket = endpoint->socket;
     endpoint->socket = candidate->socket;

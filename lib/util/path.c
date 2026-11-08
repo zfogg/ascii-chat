@@ -27,8 +27,7 @@
 #include <ascii-chat/platform/stat.h>
 
 /** Retained for callers that used to release thread-local path resources. */
-void path_cleanup_thread_locals(void) {
-}
+void path_cleanup_thread_locals(void) {}
 
 /* Normalize a path by resolving .. and . components
  * Handles both Windows (\) and Unix (/) separators

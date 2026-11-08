@@ -7,7 +7,7 @@
 static const uint8_t stream_magic[4] = {'A', 'C', 'Q', 'S'};
 
 asciichat_error_t quic_stream_preamble(acip_traffic_class_t traffic_class,
-                                            uint8_t output[ACIP_QUIC_STREAM_PREAMBLE_SIZE]) {
+                                       uint8_t output[ACIP_QUIC_STREAM_PREAMBLE_SIZE]) {
   if (!output || (unsigned)traffic_class > ACIP_TRAFFIC_VISUAL)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC stream traffic class");
   memcpy(output, stream_magic, sizeof(stream_magic));
@@ -36,7 +36,7 @@ static asciichat_error_t emit_packet(const void *packet, size_t size, void *arg)
 }
 
 asciichat_error_t quic_stream_read(acip_quic_stream_reader_t *reader, const void *bytes, size_t length,
-                                        acip_quic_stream_emit_fn emit, void *context) {
+                                   acip_quic_stream_emit_fn emit, void *context) {
   if (!reader || (!bytes && length) || !emit || reader->failed || reader->finished)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC stream input");
   const uint8_t *input = bytes;

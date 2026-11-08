@@ -535,7 +535,8 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     // An empty address lets ACDS use the creator's observed source address.
     params.acds_expose_ip = GET_OPTION(discovery_expose_ip);
     params.server_port = (uint16_t)GET_OPTION(port);
-    if (GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
+    if (GET_OPTION(quic_bind_address)[0] ||
+        (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
       params.quic_port = (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : GET_OPTION(port));
     if ((GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])) {
       if (strlen(GET_OPTION(webtransport_public_url)) >= sizeof(params.webtransport_url)) {
@@ -1230,8 +1231,9 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
        session->cached_nat_quality.upnp_available))
     message.nat_tier = (uint8_t)nat_compute_tier(&session->cached_nat_quality);
   mutex_unlock(&session->nat_quality_mutex);
-  if ((GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])) && GET_OPTION(quic_tls_cert)[0] &&
-      GET_OPTION(quic_tls_key)[0])
+  if ((GET_OPTION(quic_bind_address)[0] ||
+       (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])) &&
+      GET_OPTION(quic_tls_cert)[0] && GET_OPTION(quic_tls_key)[0])
     message.capabilities |= 1; // A configured native listener can prepare a direct successor.
   memcpy(message.session, session->session_id, SESSION_ID_SIZE);
   memcpy(message.participant, session->participant_id, SESSION_ID_SIZE);
@@ -1785,10 +1787,13 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
   if (session->acds_transport) {
     uint8_t payload[sizeof(announcement) + ACDS_TRANSPORT_METADATA_MAX];
     size_t metadata_length = 0;
-    uint16_t quic_port = (GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
+    uint16_t quic_port = (GET_OPTION(quic_bind_address)[0] ||
+                          (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
                              ? (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : host_port)
                              : 0;
-    const char *url = (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]) ? GET_OPTION(webtransport_public_url) : "";
+    const char *url = (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])
+                          ? GET_OPTION(webtransport_public_url)
+                          : "";
     asciichat_error_t sent = ASCIICHAT_OK;
     if (quic_port || *url)
       sent = acds_transport_metadata_encode(quic_port, url, payload + sizeof(announcement), ACDS_TRANSPORT_METADATA_MAX,

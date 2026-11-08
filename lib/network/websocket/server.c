@@ -65,11 +65,11 @@ typedef struct {
   bool cleaning_up;                  ///< True if cleanup is in progress (prevents race with remove_client)
 
   // Pending message send state (for LWS_CALLBACK_SERVER_WRITEABLE)
-  uint8_t *pending_send_data; ///< Current message being sent
-  size_t pending_send_len;    ///< Total length of message being sent
-  size_t pending_send_offset; ///< Current offset in message (bytes already sent)
-  bool has_pending_send;      ///< True if there's an in-progress message
-  atomic_t receive_callback_count; ///< RECEIVE callbacks for this connection
+  uint8_t *pending_send_data;        ///< Current message being sent
+  size_t pending_send_len;           ///< Total length of message being sent
+  size_t pending_send_offset;        ///< Current offset in message (bytes already sent)
+  bool has_pending_send;             ///< True if there's an in-progress message
+  atomic_t receive_callback_count;   ///< RECEIVE callbacks for this connection
   atomic_t writeable_callback_count; ///< WRITEABLE callbacks for this connection
 } websocket_connection_data_t;
 
@@ -456,7 +456,7 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
   // interferes with fragmented frame processing in libwebsockets)
 
   log_dev("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
-            (unsigned long long)atomic_load_u64(&conn_data->receive_callback_count));
+          (unsigned long long)atomic_load_u64(&conn_data->receive_callback_count));
 
   // Record timing for this callback
   websocket_callback_timing_record(&g_ws_callback_timing.receive, callback_enter_ns, websocket_callback_timing_start());
