@@ -5,9 +5,15 @@
 #include <ascii-chat/audio/ios_portaudio.h>
 
 struct PaStream {
+  AVAudioEngine *engine;
+  AVAudioPlayerNode *player;
   PaStreamCallback *callback;
   void *user_data;
   unsigned long frames_per_buffer;
+  double sample_rate;
+  int input_channels;
+  int output_channels;
+  BOOL active;
 };
 
 int asciichat_ios_audio_authorized(void) {
@@ -45,8 +51,6 @@ PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const 
                       double sample_rate, unsigned long frames_per_buffer, unsigned long flags,
                       PaStreamCallback *callback, void *user_data) {
   (void)input;
-  (void)output;
-  (void)sample_rate;
   (void)flags;
   if (!stream)
     return -1;
@@ -56,24 +60,68 @@ PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const 
   opened->callback = callback;
   opened->user_data = user_data;
   opened->frames_per_buffer = frames_per_buffer;
+  opened->sample_rate = sample_rate;
+  opened->input_channels = input ? input->channelCount : 0;
+  opened->output_channels = output ? output->channelCount : 0;
+  opened->engine = [AVAudioEngine new];
+  if (opened->output_channels > 0)
+    opened->player = [AVAudioPlayerNode new];
   *stream = opened;
   return paNoError;
 }
 
 PaError Pa_StartStream(PaStream *stream) {
-  (void)stream;
+  if (!stream || !stream->engine)
+    return -1;
   AVAudioSession *session = [AVAudioSession sharedInstance];
   [session setCategory:AVAudioSessionCategoryPlayAndRecord error:NULL];
   [session setMode:AVAudioSessionModeVideoChat error:NULL];
   [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker error:NULL];
   [session setActive:YES error:NULL];
+  if (stream->input_channels > 0 && stream->callback) {
+    AVAudioInputNode *input = stream->engine.inputNode;
+    AVAudioFormat *format = [input inputFormatForBus:0];
+    [input installTapOnBus:0 bufferSize:(AVAudioFrameCount)stream->frames_per_buffer format:format
+                     block:^(AVAudioPCMBuffer *buffer, AVAudioTime *when) {
+      (void)when;
+      PaStreamCallbackTimeInfo time_info = {0, 0, 0};
+      stream->callback(buffer.floatChannelData, NULL, buffer.frameLength, &time_info, 0, stream->user_data);
+    }];
+  }
+  if (stream->player) {
+    [stream->engine attachNode:stream->player];
+    [stream->engine connect:stream->player to:stream->engine.mainMixerNode format:nil];
+  }
+  NSError *error = nil;
+  [stream->engine startAndReturnError:&error];
+  if (error)
+    return -1;
+  stream->active = YES;
   return paNoError;
 }
-PaError Pa_StopStream(PaStream *stream) { (void)stream; return paNoError; }
-PaError Pa_CloseStream(PaStream *stream) { free(stream); return paNoError; }
+PaError Pa_StopStream(PaStream *stream) {
+  if (!stream) return -1;
+  [stream->engine.inputNode removeTapOnBus:0];
+  [stream->engine stop];
+  stream->active = NO;
+  return paNoError;
+}
+PaError Pa_CloseStream(PaStream *stream) {
+  if (!stream) return paNoError;
+  if (stream->active) Pa_StopStream(stream);
+  free(stream);
+  return paNoError;
+}
 PaError Pa_WriteStream(PaStream *stream, const void *buffer, unsigned long frames) {
-  (void)stream;
-  (void)buffer;
-  (void)frames;
+  if (!stream || !stream->player || !buffer || frames == 0)
+    return -1;
+  AVAudioFormat *format = [[AVAudioFormat alloc] initStandardFormatWithSampleRate:stream->sample_rate
+                                                                            channels:(AVAudioChannelCount)stream->output_channels];
+  AVAudioPCMBuffer *audio = [[AVAudioPCMBuffer alloc] initWithPCMFormat:format frameCapacity:(AVAudioFrameCount)frames];
+  audio.frameLength = (AVAudioFrameCount)frames;
+  const float *samples = buffer;
+  for (int channel = 0; channel < stream->output_channels; ++channel)
+    memcpy(audio.floatChannelData[channel], samples + (size_t)channel * frames, frames * sizeof(float));
+  [stream->player scheduleBuffer:audio completionHandler:nil];
   return paNoError;
 }
