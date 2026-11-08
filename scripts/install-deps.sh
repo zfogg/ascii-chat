@@ -389,12 +389,19 @@ elif [[ "$PLATFORM" == "linux" ]]; then
   fi
   command -v uv >/dev/null || { echo >&2 "ERROR: uv installation failed"; exit 1; }
 
-  # uv owns the Python interpreter and project environment. Keep the required
-  # minor version in one place so system Python versions do not affect tests.
-  uv python install 3.15
-  uv python pin 3.15
-  uv tool install --upgrade "yt-dlp[default]"
-  uv sync --project "$(dirname "$0")/../tests/ascii_chat_tests" --frozen
+  # Keep the interpreter and project environment owned by the invoking user
+  # when system packages are installed through sudo.
+  run_uv() {
+    if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
+      sudo -H -u "$SUDO_USER" "$(command -v uv)" "$@"
+    else
+      uv "$@"
+    fi
+  }
+  run_uv python install 3.15
+  run_uv python pin 3.15
+  run_uv tool install --upgrade "yt-dlp[default]"
+  run_uv sync --project "$(dirname "$0")/../tests/ascii_chat_tests" --frozen
 
 # Windows: Direct to PowerShell script
 elif [[ "$PLATFORM" == "windows" ]]; then
