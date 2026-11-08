@@ -37,7 +37,7 @@ endif()
 
 set(AUDIO_SRCS ${AUDIO_SRCS} PARENT_SCOPE)
 
-if(PLATFORM_IOS AND TARGET AudioProcess)
+if(PLATFORM_IOS AND TARGET AudioProcess AND CMAKE_OSX_ARCHITECTURES MATCHES "^(x86_64|i386)$")
     target_sources(AudioProcess PRIVATE
         ${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/resampler/sinc_resampler_sse.cc
         ${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/utility/ooura_fft_sse2.cc)

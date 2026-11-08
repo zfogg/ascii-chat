@@ -6,11 +6,18 @@
 #include <stdint.h>
 
 static webcam_context_t *g_camera;
+static unsigned short g_camera_index;
 
-int asciichat_ios_camera_start(unsigned short device_index) {
-  if (g_camera)
-    return 1;
-  return webcam_init_context(&g_camera, device_index) == ASCIICHAT_OK;
+asciichat_error_t asciichat_ios_camera_start(unsigned short device_index) {
+  if (g_camera) {
+    if (g_camera_index == device_index)
+      return ASCIICHAT_OK;
+    return SET_ERRNO(ERROR_INVALID_STATE, "iOS camera is already using device %hu", g_camera_index);
+  }
+  asciichat_error_t result = webcam_init_context(&g_camera, device_index);
+  if (result == ASCIICHAT_OK)
+    g_camera_index = device_index;
+  return result;
 }
 
 int asciichat_ios_camera_read(uint32_t *pixels, size_t capacity, size_t *width, size_t *height) {
@@ -42,4 +49,5 @@ void asciichat_ios_camera_stop(void) {
     return;
   webcam_cleanup_context(g_camera);
   g_camera = NULL;
+  g_camera_index = 0;
 }
