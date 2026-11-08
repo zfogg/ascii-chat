@@ -14,6 +14,8 @@
 int main() {
   using namespace defer_tool;
   CHECK(may_contain_defer("defer /* comment (x) */ (cleanup());"));
+  CHECK(may_contain_defer("defer_named(handle, cleanup());"));
+  CHECK(may_contain_defer("defer_cancel(handle);"));
   CHECK(may_contain_defer("defer // comment\n(cleanup());"));
   CHECK(may_contain_defer("defer \\\n(cleanup());"));
   CHECK(!may_contain_defer("not_defer(x); deferred(x);"));

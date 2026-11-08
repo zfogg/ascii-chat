@@ -34,6 +34,7 @@ def native_binary() -> Path:
         "struct S { int n; }; struct S f(int x) { struct S s = {x}; defer(x++); return s; }\n",
         "void f(void) { defer /* cleanup (LIFO) */ ((void)0); }\n",
         "int f(void) { defer((void)0); return\n__LINE__; }\n",
+        "void f(int x) { defer_named(cleanup, x++); if (x) defer_cancel(cleanup); }\n",
     ],
 )
 def test_generated_c_matches_python(
@@ -41,7 +42,9 @@ def test_generated_c_matches_python(
 ) -> None:
     source_path = tmp_path / "input.c"
     source_path.write_text(
-        "#define defer(...) do {} while (0)\n" + source, encoding="utf-8"
+        "#define defer(...) do {} while (0)\n"
+        "#define defer_named(name, ...) do {} while (0)\n"
+        "#define defer_cancel(name) do {} while (0)\n" + source, encoding="utf-8"
     )
     native_output = tmp_path / "native.c"
     python_output = tmp_path / "python.c"

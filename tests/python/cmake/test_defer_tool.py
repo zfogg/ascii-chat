@@ -345,6 +345,110 @@ def test_invalid_cleanup_is_rejected_before_writing_output(
     assert not (tmp_path / "output.c").exists()
 
 
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [
+        ("defer_named(h, n += 1);", 1),
+        ("defer_named(h, n += 1); defer_cancel(h);", 0),
+        ("defer_named(h, n += 1); if (1) defer_cancel(h);", 0),
+        ("defer_named(h, n += 1); if (0) defer_cancel(h);", 1),
+        ("defer_named(h, n = n * 10 + 1); defer(n = n * 10 + 2); defer_cancel(h);", 2),
+        ("defer_named(h, n += 1); { defer_cancel(h); }", 0),
+        ("for (int i=0; i<3; ++i) { defer_named(h, n += 1); if (i == 1) defer_cancel(h); }", 2),
+        ("defer_named(h, n += 1); defer_cancel(h); defer_cancel(h);", 0),
+        ("defer_named(h, n += 1); defer_cancel(h); return;", 0),
+        ("defer_named(h, n += 1); return;", 1),
+        ("defer_named(h, n += 1); { defer_named(inner, n += 2); defer_cancel(h); goto done; } done:;", 2),
+        ("{ defer_named(h, n += 1); } { defer_named(h, n += 2); defer_cancel(h); }", 1),
+    ],
+)
+def test_named_defer_cancellation(
+    tmp_path: Path, transform_environment: dict[str, str], body: str, expected: int
+) -> None:
+    source = (
+        "#define defer_named(name, ...) do {} while (0)\n"
+        "#define defer_cancel(name) do {} while (0)\n"
+        f"static int n; static void f(void) {{ {body} }}\n"
+        f"int main(void) {{ f(); return n != {expected}; }}\n"
+    )
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run(
+        [str(CLANG), "-std=c17", str(tmp_path / "output.c"), "-o", str(executable)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "defer_cancel(missing);",
+        "defer_cancel(h); defer_named(h, n++);",
+        "defer_named(h, n++); defer_named(h, n++);",
+        "{ defer_named(h, n++); } defer_cancel(h);",
+        "defer_named(h + 1, n++);",
+        "defer_named(h, defer_cancel(h));",
+        "defer_named(h, n++); defer(CANCEL());",
+    ],
+)
+def test_named_defer_rejects_unsafe_handles(
+    tmp_path: Path, transform_environment: dict[str, str], body: str
+) -> None:
+    result = transform(
+        tmp_path, transform_environment,
+        "#define defer_named(name, ...) do {} while (0)\n"
+        "#define defer_cancel(name) do {} while (0)\n"
+        "#define CANCEL() defer_cancel(h)\n"
+        f"static int n; void f(void) {{ {body} }}\n",
+    )
+    assert result.returncode != 0
+    assert not (tmp_path / "output.c").exists()
+
+
+@pytest.mark.parametrize("source", ["void f(void) { defer_named(h, (void)0); }", "void f(void) { defer_cancel(h); }"])
+def test_cmake_scanners_find_named_defer(
+    tmp_path: Path, base_environment: dict[str, str], source: str
+) -> None:
+    native_binary = base_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    if not native_binary:
+        pytest.skip("native defer binary was not supplied")
+    path = tmp_path / "input.c"
+    path.write_text(source, encoding="utf-8")
+    python = subprocess.run(
+        [sys.executable, str(TOOL.parent / "scan.py")], input=str(path) + "\n",
+        capture_output=True, text=True, check=False,
+    )
+    native = subprocess.run([native_binary, "--scan", str(path)], capture_output=True, text=True, check=False)
+    assert python.returncode == native.returncode == 0
+    assert Path(python.stdout.strip()).resolve() == path.resolve()
+    assert Path(native.stdout.strip()).resolve() == path.resolve()
+
+
+def test_named_defer_works_with_public_header(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = tmp_path / "public.c"
+    output = tmp_path / "generated.c"
+    source.write_text(
+        '#include "ascii-chat/tooling/defer/defer.h"\n'
+        'int main(void) { defer_named(cleanup, (void)0); defer_cancel(cleanup); return 0; }\n',
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", "-std=c17", f"-I{ROOT / 'include'}"],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    result = subprocess.run(
+        [str(CLANG), "-std=c17", f"-I{ROOT / 'include'}", "-fsyntax-only", str(output)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def transform(
     tmp_path: Path, env: dict[str, str], source: str
 ) -> subprocess.CompletedProcess[str]:

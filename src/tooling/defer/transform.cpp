@@ -79,6 +79,7 @@ struct Action {
   std::string flag;
   std::string text;
   std::set<std::string> identifiers;
+  std::string handle;
 };
 struct Scope {
   unsigned start;
@@ -121,7 +122,9 @@ public:
       const auto kind = clang_getCursorKind(cursor);
       if (kind == CXCursor_MacroDefinition)
         macro_definitions_[spelling(cursor)].push_back(cursor);
-      if (kind == CXCursor_MacroExpansion && spelling(cursor) == "defer" && in_file(cursor))
+      if (kind == CXCursor_MacroExpansion &&
+          (spelling(cursor) == "defer" || spelling(cursor) == "defer_named" || spelling(cursor) == "defer_cancel") &&
+          in_file(cursor))
         macros_.emplace(begin(cursor), cursor);
     }
     if (!macros_.empty() && std::regex_search(source_, std::regex(R"((^|\n)[ \t]*#[ \t]*(line\b|[0-9]))")))
@@ -202,7 +205,8 @@ std::set<std::string> Transformer::expanded_identifiers(const std::vector<Token>
   for (const auto &token : action_tokens)
     if (token.kind == CXToken_Identifier && found.insert(token.text).second)
       pending.push_back(token.text);
-  const std::set<std::string> forbidden = {"return", "goto", "break", "continue", "defer"};
+  const std::set<std::string> forbidden = {"return", "goto",        "break",       "continue",
+                                           "defer",  "defer_named", "defer_cancel"};
   while (!pending.empty()) {
     auto name = pending.back();
     pending.pop_back();
@@ -349,7 +353,8 @@ void Transformer::visit_function(CXCursor cursor) {
 void Transformer::visit_defer(CXCursor cursor, CXCursorKind parent) {
   const auto start = begin(cursor);
   auto macro = macros_.find(start);
-  if (parent != CXCursor_CompoundStmt)
+  const auto name = spelling(macro->second);
+  if (name != "defer_cancel" && parent != CXCursor_CompoundStmt)
     fail_at(start, "defer must be a direct statement in a block; add braces around the statement");
   const auto macro_end = end(macro->second);
   auto parts = tokens(unit_, clang_getCursorExtent(macro->second));
@@ -357,18 +362,46 @@ void Transformer::visit_defer(CXCursor cursor, CXCursorKind parent) {
                               [](const Token &token) { return token.text == "("; });
   if (opening == parts.end() || macro_end <= opening->start || source_[macro_end - 1] != ')')
     fail("cannot parse defer at byte " + std::to_string(start));
-  auto raw_action = source_.substr(opening->start + 1, macro_end - opening->start - 2);
+  const auto argument = static_cast<std::size_t>(opening - parts.begin()) + 1;
+  std::string handle;
+  unsigned action_begin = opening->start + 1;
+  if (name != "defer") {
+    if (argument + 1 >= parts.size() || parts[argument].kind != CXToken_Identifier ||
+        parts[argument + 1].text != (name == "defer_named" ? "," : ")") ||
+        (name == "defer_cancel" && argument + 2 != parts.size()))
+      fail_at(start, name + " requires a single identifier handle");
+    handle = parts[argument].text;
+    if (name == "defer_cancel") {
+      for (auto scope = scopes_.rbegin(); scope != scopes_.rend(); ++scope)
+        for (auto action = scope->actions.rbegin(); action != scope->actions.rend(); ++action)
+          if (action->handle == handle) {
+            edits_.push_back(
+                {start, static_cast<unsigned>(after_semicolon(source_, macro_end)), action->flag + " = 0;"});
+            seen_.insert(start);
+            return;
+          }
+      fail_at(start, "unknown defer handle '" + handle + "'; declare it with defer_named before cancellation");
+    }
+    for (const auto &scope : scopes_)
+      for (const auto &action : scope.actions)
+        if (action.handle == handle)
+          fail_at(start, "duplicate active defer handle '" + handle + "'; choose a unique name");
+    action_begin = parts[argument + 1].finish;
+  }
+  auto raw_action = source_.substr(action_begin, macro_end - action_begin - 1);
   auto action = trim(raw_action);
   if (action.empty())
     fail("empty defer at byte " + std::to_string(start));
-  const auto action_start = opening->start + 1 + static_cast<unsigned>(raw_action.find_first_not_of(" \t\r\n\f\v"));
-  const std::set<std::string> forbidden = {"return", "goto", "break", "continue", "defer"};
-  for (std::size_t i = 1; i < parts.size(); ++i)
+  const auto action_start = action_begin + static_cast<unsigned>(raw_action.find_first_not_of(" \t\r\n\f\v"));
+  const std::set<std::string> forbidden = {"return", "goto",        "break",       "continue",
+                                           "defer",  "defer_named", "defer_cancel"};
+  for (std::size_t i = name == "defer" ? 1 : argument + 2; i < parts.size(); ++i)
     if (forbidden.count(parts[i].text))
       fail_at(start, "control transfer or nested defer inside cleanup is unsupported");
-  std::vector<Token> action_tokens(parts.begin() + std::min<std::size_t>(1, parts.size()), parts.end());
+  std::vector<Token> action_tokens(
+      parts.begin() + std::min(name == "defer" ? std::size_t(1) : argument + 2, parts.size()), parts.end());
   auto flag = "__ascii_defer_active_" + std::to_string(start);
-  scopes_.back().actions.push_back({start, action_start, flag, action, expanded_identifiers(action_tokens)});
+  scopes_.back().actions.push_back({start, action_start, flag, action, expanded_identifiers(action_tokens), handle});
   edits_.push_back({start, static_cast<unsigned>(after_semicolon(source_, macro_end)), flag + " = 1;"});
   seen_.insert(start);
 }
@@ -537,7 +570,7 @@ std::string Transformer::explain(unsigned line) {
     if (exit_line != line)
       continue;
     found = true;
-    result << path_ << ':' << line << ": cleanup on this exit (only if registered):\n";
+    result << path_ << ':' << line << ": cleanup on this exit (only if registered and not canceled):\n";
     if (actions.empty())
       result << "  no deferred actions\n";
     for (std::size_t i = 0; i < actions.size(); ++i) {

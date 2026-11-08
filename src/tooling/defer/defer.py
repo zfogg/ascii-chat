@@ -38,6 +38,7 @@ class DeferredAction:
     flag: bytes
     action: bytes
     identifiers: set[str]
+    handle: str = ""
 
 
 @dataclass
@@ -81,7 +82,7 @@ class Transformer:
                 self.macro_definitions.setdefault(cursor.spelling, []).append(cursor)
             if (
                 cursor.kind == cindex.CursorKind.MACRO_INSTANTIATION
-                and cursor.spelling == "defer"
+                and cursor.spelling in ("defer", "defer_named", "defer_cancel")
                 and self.in_file(cursor)
             ):
                 self.macros[cursor.extent.start.offset] = cursor
@@ -127,7 +128,7 @@ class Transformer:
         }
         pending = list(found)
         visited: set[str] = set()
-        forbidden = {"return", "goto", "break", "continue", "defer"}
+        forbidden = {"return", "goto", "break", "continue", "defer", "defer_named", "defer_cancel"}
         while pending:
             name = pending.pop()
             if name == "__COUNTER__":
@@ -228,7 +229,7 @@ class Transformer:
         for offset, actions in self.exits:
             if self.source.count(b"\n", 0, offset) + 1 != line:
                 continue
-            output.append(f"{self.path.as_posix()}:{line}: cleanup on this exit (only if registered):")
+            output.append(f"{self.path.as_posix()}:{line}: cleanup on this exit (only if registered and not canceled):")
             if not actions:
                 output.append("  no deferred actions")
             for number, (start, action) in enumerate(actions, 1):
@@ -349,11 +350,12 @@ class Transformer:
         if not self.scopes and kind != cindex.CursorKind.COMPOUND_STMT:
             return
         if start in self.macros and kind == cindex.CursorKind.DO_STMT:
-            if parent_kind != cindex.CursorKind.COMPOUND_STMT:
+            macro = self.macros[start]
+            name = macro.spelling
+            if name != "defer_cancel" and parent_kind != cindex.CursorKind.COMPOUND_STMT:
                 raise TransformError(
                     self.diagnostic(start, "defer must be a direct statement in a block; add braces around the statement")
                 )
-            macro = self.macros[start]
             macro_end = macro.extent.end.offset
             text = self.source[start:macro_end]
             tokens = list(self.tu.get_tokens(extent=macro.extent))
@@ -361,25 +363,48 @@ class Transformer:
                 (token for token in tokens[1:] if token.spelling == "("), None
             )
             open_paren = opening.extent.start.offset - start if opening else -1
-            if open_paren < 0 or not text.endswith(b")"):
+            if opening is None or open_paren < 0 or not text.endswith(b")"):
                 raise TransformError(f"cannot parse defer at byte {start}")
-            raw_action = text[open_paren + 1 : -1]
+            argument = tokens.index(opening) + 1
+            handle = ""
+            action_offset = start + open_paren + 1
+            if name != "defer":
+                if (argument + 1 >= len(tokens) or tokens[argument].kind != cindex.TokenKind.IDENTIFIER
+                    or tokens[argument + 1].spelling != ("," if name == "defer_named" else ")")
+                    or (name == "defer_cancel" and argument + 2 != len(tokens))):
+                    raise TransformError(self.diagnostic(start, f"{name} requires a single identifier handle"))
+                handle = tokens[argument].spelling
+                if name == "defer_cancel":
+                    for scope in reversed(self.scopes):
+                        for existing in reversed(scope.defers):
+                            if existing.handle == handle:
+                                self.edits.append((start, self.after_semicolon(macro_end), existing.flag + b" = 0;"))
+                                self.seen.add(start)
+                                return
+                    raise TransformError(self.diagnostic(
+                        start, f"unknown defer handle '{handle}'; declare it with defer_named before cancellation"
+                    ))
+                if any(existing.handle == handle for scope in self.scopes for existing in scope.defers):
+                    raise TransformError(self.diagnostic(start, f"duplicate active defer handle '{handle}'; choose a unique name"))
+                action_offset = tokens[argument + 1].extent.end.offset
+            raw_action = self.source[action_offset:macro_end - 1]
             action_start = (
-                start + open_paren + 1 + len(raw_action) - len(raw_action.lstrip())
+                action_offset + len(raw_action) - len(raw_action.lstrip())
             )
             action = raw_action.strip()
             if not action:
                 raise TransformError(f"empty defer at byte {start}")
-            forbidden = {"return", "goto", "break", "continue", "defer"}
-            for token in tokens[1:]:
+            forbidden = {"return", "goto", "break", "continue", "defer", "defer_named", "defer_cancel"}
+            action_tokens = tokens[1 if name == "defer" else argument + 2:]
+            for token in action_tokens:
                 if token.spelling in forbidden:
                     raise TransformError(
                         f"control transfer or nested defer inside cleanup at byte {start}"
                     )
-            identifiers = self.expanded_identifiers(tokens[1:])
+            identifiers = self.expanded_identifiers(action_tokens)
             flag = f"__ascii_defer_active_{start}".encode()
             self.scopes[-1].defers.append(
-                DeferredAction(start, action_start, flag, action, identifiers)
+                DeferredAction(start, action_start, flag, action, identifiers, handle)
             )
             self.edits.append((start, self.after_semicolon(macro_end), flag + b" = 1;"))
             self.seen.add(start)

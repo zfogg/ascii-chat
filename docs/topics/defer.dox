@@ -27,6 +27,19 @@
  * Nonlocal transfers such as longjmp and process
  * termination do not run deferred actions.
  *
+ * `defer_named(handle, action);` registers a cancellable action, and
+ * `defer_cancel(handle);` cancels it. The handle is a lexical name, not a C
+ * variable: it cannot be copied, stored, or passed to another function. It is
+ * visible after registration in its block and nested blocks. Names of active
+ * handles must be unique. Canceling an already canceled handle is harmless;
+ * leaving and re-entering a loop body registers a fresh action.
+ *
+ * @code{.c}
+ * defer_named(release_buffer, free(buffer));
+ * if (hand_off(buffer) == SUCCESS)
+ *   defer_cancel(release_buffer);
+ * @endcode
+ *
  * Defer is supported in project `.c` files, not inline function bodies in headers.
  * Each defer must be a direct statement of a `{ ... }` block. Add braces around
  * an if or loop body before using defer there. Put a defer inside braces under a
@@ -63,7 +76,8 @@
  * defer-tool --explain src/example.c:42 -- -std=c23 -Iinclude
  * @endcode
  * Actions are listed in cleanup order. Each runs only if execution actually
- * reached its registration; the output does not claim to predict branch choices.
+ * reached its registration and has not canceled it; the output does not claim
+ * to predict branch choices.
  * Use explicit Clang arguments for this mode.
  *
  * For a longer randomized check on a Unix host with Clang and libFuzzer,
