@@ -13,6 +13,7 @@
 #include <fstream>
 #include <iterator>
 #include <map>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #ifdef _WIN32
@@ -199,6 +200,20 @@ void write_if_changed(const fs::path &path, const std::string &contents) {
     throw std::runtime_error("cannot replace output: " + error.message());
 }
 
+static std::unique_ptr<TranslationUnit> parse_wrapped(CXIndex index, const std::string &source_name,
+                                                      const std::vector<const char *> &arguments,
+                                                      std::string &content) {
+  for (unsigned pass = 0; pass < 64; ++pass) {
+    CXUnsavedFile unsaved{source_name.c_str(), content.data(), static_cast<unsigned long>(content.size())};
+    auto unit = std::make_unique<TranslationUnit>(index, source_name, arguments, &unsaved, 1);
+    auto expanded = expand_defer_wrappers(unit->get(), source_name, content);
+    if (expanded == content)
+      return unit;
+    content = std::move(expanded);
+  }
+  throw std::runtime_error("defer wrapper expansion exceeded the recursion limit");
+}
+
 FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, const fs::path &output_path,
                                 const DriverOptions &options) {
   DirectoryGuard directory;
@@ -215,13 +230,12 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
     raw.push_back(arg.c_str());
   auto content = read_file(source);
   const auto source_name = source.u8string();
-  CXUnsavedFile unsaved{source_name.c_str(), content.data(), static_cast<unsigned long>(content.size())};
-  TranslationUnit unit(index.get(), source_name, raw, &unsaved, 1);
-  auto transformed = transform(unit.get(), source.u8string(), content);
+  auto unit = parse_wrapped(index.get(), source_name, raw, content);
+  auto transformed = transform(unit->get(), source.u8string(), content);
   validate_generated(index.get(), source_name, raw, transformed);
   FileDependencies dependencies{output, {source.u8string()}};
   clang_getInclusions(
-      unit.get(),
+      unit->get(),
       [](CXFile file, CXSourceLocation *, unsigned, CXClientData opaque) {
         auto *files = static_cast<std::set<std::string> *>(opaque);
         files->insert(fs::absolute(fs::u8path(consume_string(clang_getFileName(file)))).lexically_normal().u8string());
@@ -243,11 +257,10 @@ std::string inspect_file(ClangIndex &index, const fs::path &source_path, unsigne
     raw.push_back(arg.c_str());
   auto content = read_file(source);
   const auto source_name = source.u8string();
-  CXUnsavedFile unsaved{source_name.c_str(), content.data(), static_cast<unsigned long>(content.size())};
-  TranslationUnit unit(index.get(), source_name, raw, &unsaved, 1);
-  validate_generated(index.get(), source_name, raw, transform(unit.get(), source_name, content));
-  return show ? show_transformed(unit.get(), source_name, content, line)
-              : explain(unit.get(), source_name, content, line);
+  auto unit = parse_wrapped(index.get(), source_name, raw, content);
+  validate_generated(index.get(), source_name, raw, transform(unit->get(), source_name, content));
+  return show ? show_transformed(unit->get(), source_name, content, line)
+              : explain(unit->get(), source_name, content, line);
 }
 
 void write_depfile(const fs::path &path, const std::vector<FileDependencies> &files) {

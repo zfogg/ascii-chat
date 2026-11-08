@@ -35,6 +35,139 @@ def generated_diagnostic(diagnostic: cindex.Diagnostic) -> str:
     return f"{cindex._CXString.from_result(filename)}:{line.value}:{column.value}: {diagnostic.spelling}"
 
 
+def macro_reaches_defer(name: str, definitions: dict[str, list[cindex.Cursor]], memo: dict[str, bool],
+                        visiting: set[str], markers: set[str]) -> tuple[bool, bool]:
+    if name in markers:
+        return True, False
+    if name in memo:
+        return memo[name], False
+    if name not in definitions:
+        return False, False
+    if len(visiting) >= 128:
+        raise TransformError("defer macro dependency nesting exceeds the supported limit")
+    if name in visiting:
+        return False, True
+    visiting.add(name)
+    result, cyclic = False, False
+    for definition in definitions[name]:
+        for token in list(definition.get_tokens())[1:]:
+            if token.kind == cindex.TokenKind.IDENTIFIER and token.spelling != name:
+                found, incomplete = macro_reaches_defer(token.spelling, definitions, memo, visiting, markers)
+                cyclic |= incomplete
+                if found:
+                    result = True
+                    break
+        if result:
+            break
+    visiting.remove(name)
+    if result or not cyclic:
+        memo[name] = result
+    return result, cyclic
+
+
+def parse_wrapped(index: cindex.Index, path: Path, arguments: list[str], source: bytes) -> tuple[cindex.TranslationUnit, bytes]:
+    markers = {"defer", "defer_named", "defer_cancel"}
+    for _ in range(64):
+        tu = index.parse(str(path), args=arguments, unsaved_files=[(str(path), source)],
+                         options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD)
+        if tu.cursor is None:
+            raise TransformError("Clang returned no translation unit cursor")
+        nodes = list(tu.cursor.get_children())
+        definitions: dict[str, list[cindex.Cursor]] = {}
+        for node in nodes:
+            if node.kind == cindex.CursorKind.MACRO_DEFINITION:
+                definitions.setdefault(node.spelling, []).append(node)
+        memo: dict[str, bool] = {}
+        visiting: set[str] = set()
+
+        edits: list[tuple[int, int, bytes]] = []
+        for node in nodes:
+            if (node.kind != cindex.CursorKind.MACRO_INSTANTIATION or node.spelling in markers
+                or not node.location.file):
+                continue
+            invocation = list(node.get_tokens())
+            if not macro_reaches_defer(node.spelling, definitions, memo, visiting, markers)[0] and not any(token.spelling in markers for token in invocation):
+                continue
+            for token in invocation[1:]:
+                if token.spelling == "__COUNTER__":
+                    raise TransformError("defer wrapper arguments containing __COUNTER__ cannot be expanded safely")
+                if (token.kind == cindex.TokenKind.IDENTIFIER and token.spelling in definitions
+                    and not macro_reaches_defer(token.spelling, definitions, memo, visiting, markers)[0]):
+                    raise TransformError("defer wrapper arguments containing macros cannot be expanded safely; use a local value")
+            if Path(node.location.file.name).resolve() != path:
+                raise TransformError("defer wrapper in included headers is not supported; move the function into a C source file")
+            definition = node.referenced
+            if definition is None:
+                raise TransformError(f"cannot resolve macro containing defer: {node.spelling}")
+            parts = list(definition.get_tokens())
+            if not parts:
+                raise TransformError(f"cannot read macro containing defer: {node.spelling}")
+            function = len(parts) > 1 and parts[1].spelling == "(" and parts[0].extent.end.offset == parts[1].extent.start.offset
+            body = 1
+            parameters: list[str] = []
+            variadic = False
+            if function:
+                body = 2
+                while body < len(parts) and parts[body].spelling != ")":
+                    if parts[body].spelling != ",":
+                        if parts[body].spelling == "..." and body + 1 < len(parts) and parts[body + 1].spelling == ")":
+                            variadic = True
+                            parameters.append("__VA_ARGS__")
+                        else:
+                            if parts[body].kind != cindex.TokenKind.IDENTIFIER:
+                                raise TransformError("complex defer wrapper parameters are unsupported")
+                            parameters.append(parts[body].spelling)
+                    body += 1
+                if body == len(parts):
+                    raise TransformError("unterminated defer wrapper parameters")
+                body += 1
+            if any(token.spelling in ("#", "##", "__VA_OPT__", "_Pragma", "__COUNTER__") for token in parts[body:]):
+                raise TransformError("defer wrapper uses unsupported stringification, token pasting, __VA_OPT__, _Pragma, or __COUNTER__")
+            first, last = node.extent.start.offset, node.extent.end.offset
+            if b"\n" in source[first:last]:
+                raise TransformError("multiline defer wrapper invocations are unsupported")
+            arguments_list: list[bytes] = []
+            if function:
+                if len(invocation) < 3 or invocation[1].spelling != "(":
+                    raise TransformError("cannot parse defer wrapper invocation")
+                argument_start = invocation[1].extent.end.offset
+                depth = 0
+                for token in invocation[2:]:
+                    if token.spelling == ")" and depth == 0:
+                        value = source[argument_start:token.extent.start.offset].strip()
+                        if value or parameters:
+                            arguments_list.append(value)
+                        break
+                    if token.spelling == "," and depth == 0:
+                        arguments_list.append(source[argument_start:token.extent.start.offset].strip())
+                        argument_start = token.extent.end.offset
+                    elif token.spelling in ("(", "[", "{"):
+                        depth += 1
+                    elif token.spelling in (")", "]", "}"):
+                        depth -= 1
+                fixed = len(parameters) - int(variadic)
+                if (not variadic and len(arguments_list) != len(parameters)) or (variadic and len(arguments_list) < fixed):
+                    raise TransformError("defer wrapper argument count does not match its definition")
+                if variadic:
+                    arguments_list = arguments_list[:fixed] + [b", ".join(arguments_list[fixed:])]
+            replacements = dict(zip(parameters, arguments_list, strict=True))
+            expanded = b" ".join(replacements.get(token.spelling, token.spelling.encode("utf-8"))
+                                  for token in parts[body:] if token.kind != cindex.TokenKind.COMMENT)
+            edits.append((first, last, expanded))
+        if not edits:
+            return tu, source
+        outermost: list[tuple[int, int, bytes]] = []
+        for first, last, replacement in sorted(edits, key=lambda edit: (edit[0], -edit[1])):
+            if outermost and first < outermost[-1][1]:
+                if last > outermost[-1][1]:
+                    raise TransformError("overlapping defer macro expansions cannot be transformed safely")
+                continue
+            outermost.append((first, last, replacement))
+        for first, last, replacement in reversed(outermost):
+            source = source[:first] + replacement + source[last:]
+    raise TransformError("defer wrapper expansion exceeded the recursion limit")
+
+
 def has_external_case(cursor: cindex.Cursor) -> bool:
     for child in cursor.get_children():
         if child.kind in (cindex.CursorKind.CASE_STMT, cindex.CursorKind.DEFAULT_STMT):
@@ -94,7 +227,7 @@ class Transformer:
             if cursor.kind == cindex.CursorKind.MACRO_DEFINITION:
                 self.macro_definitions.setdefault(cursor.spelling, []).append(cursor)
             if (cursor.kind == cindex.CursorKind.MACRO_INSTANTIATION
-                and cursor.spelling in ("defer", "defer_named", "defer_cancel", "SAFE_MALLOC_DEFER_FREE", "SAFE_CALLOC_DEFER_FREE")):
+                and cursor.spelling in ("defer", "defer_named", "defer_cancel")):
                 if self.in_file(cursor):
                     self.macros[cursor.extent.start.offset] = cursor
                 elif cursor.location.file:
@@ -284,7 +417,7 @@ class Transformer:
     ) -> None:
         kind = cursor.kind
         start = cursor.extent.start.offset
-        if kind in (cindex.CursorKind.DO_STMT, cindex.CursorKind.DECL_STMT) and start in self.macros:
+        if kind == cindex.CursorKind.DO_STMT and start in self.macros:
             if scopes:
                 self.defer_scopes[start] = scopes[-1]
             return
@@ -387,44 +520,6 @@ class Transformer:
                 self.visit(child, kind)
             return
         if not self.scopes and kind != cindex.CursorKind.COMPOUND_STMT:
-            return
-        if start in self.macros and kind == cindex.CursorKind.DECL_STMT:
-            if parent_kind != cindex.CursorKind.COMPOUND_STMT:
-                raise TransformError(self.diagnostic(start, "deferred allocation must be a direct block declaration"))
-            macro = self.macros[start]
-            tokens = list(self.tu.get_tokens(extent=macro.extent))
-            if len(tokens) < 5 or tokens[1].spelling != "(":
-                raise TransformError(self.diagnostic(start, "cannot parse deferred allocation"))
-            args: list[bytes] = []
-            arg_start = tokens[1].extent.end.offset
-            depth = 0
-            for token in tokens[2:]:
-                if token.spelling == ")" and depth == 0:
-                    args.append(self.source[arg_start:token.extent.start.offset].strip())
-                    break
-                if token.spelling == "," and depth == 0:
-                    args.append(self.source[arg_start:token.extent.start.offset].strip())
-                    arg_start = token.extent.end.offset
-                    continue
-                if token.spelling in ("(", "[", "{"):
-                    depth += 1
-                elif token.spelling in (")", "]", "}"):
-                    depth -= 1
-            zeroed = macro.spelling == "SAFE_CALLOC_DEFER_FREE"
-            if (len(args) != (4 if zeroed else 3) or not re.fullmatch(rb"[A-Za-z_][A-Za-z_0-9]*", args[0])
-                or any(not arg for arg in args)):
-                raise TransformError(self.diagnostic(start, "deferred allocation requires a variable name, allocation arguments, and pointer type"))
-            name = args[0].decode("ascii")
-            flag = f"__ascii_defer_active_{start}".encode()
-            action = b"SAFE_FREE(" + args[0] + b")"
-            definitions = self.macro_definitions.get("SAFE_FREE", [])
-            safe_free_tokens = list(definitions[0].get_tokens())[:1] if definitions else []
-            identifiers = self.expanded_identifiers(safe_free_tokens) | {name, "SAFE_FREE"}
-            self.scopes[-1].defers.append(DeferredAction(start, start, flag, action, identifiers))
-            replacement = args[-1] + b" " + args[0] + b" = " + (b"SAFE_CALLOC(" if zeroed else b"SAFE_MALLOC(")
-            replacement += b", ".join(args[1:]) + b"); " + flag + b" = 1;"
-            self.edits.append((start, self.after_semicolon(macro.extent.end.offset), replacement))
-            self.seen.add(start)
             return
         if start in self.macros and kind == cindex.CursorKind.DO_STMT:
             macro = self.macros[start]
@@ -621,7 +716,19 @@ class Transformer:
         root = self.tu.cursor
         if root is None:
             raise TransformError("Clang returned no translation unit cursor")
+        marker_offsets: list[int] = []
+
+        def collect_markers(cursor: cindex.Cursor) -> None:
+            if cursor.kind == cindex.CursorKind.CALL_EXPR and cursor.spelling == "__ascii_defer_marker":
+                if not self.in_file(cursor):
+                    raise TransformError("defer in included headers is not supported; move the function into a C source file")
+                marker_offsets.append(cursor.extent.start.offset)
+            for child in cursor.get_children():
+                collect_markers(child)
+
         for cursor in root.get_children():
+            if cursor.kind == cindex.CursorKind.FUNCTION_DECL and cursor.is_definition():
+                collect_markers(cursor)
             if (
                 cursor.kind == cindex.CursorKind.FUNCTION_DECL
                 and cursor.is_definition()
@@ -639,6 +746,9 @@ class Transformer:
             raise TransformError(
                 f"unhandled defer macro expansion(s) at byte offsets {sorted(missed)}"
             )
+        for position in marker_offsets:
+            if position not in self.seen:
+                raise TransformError(self.diagnostic(position, "defer hidden by an unsupported macro expansion; write the cleanup directly"))
         output = self.source
         for start, end, replacement in sorted(
             self.edits, key=lambda edit: (edit[0], edit[1]), reverse=True
@@ -802,8 +912,7 @@ def main() -> int:
             source = source_path.read_bytes()
             clang_args.append("-DASCIICHAT_DEFER_PARSING=1")
             index = cindex.Index.create()
-            tu = index.parse(str(source_path), args=clang_args, unsaved_files=[(str(source_path), source)],
-                             options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD)
+            tu, source = parse_wrapped(index, source_path, clang_args, source)
             transformer = Transformer(source_path, source, tu)
             inspection = transformer.show_transformed(int(line)) if args.show_transformed else transformer.explain(int(line))
             transformed = Transformer(source_path, source, tu).transform()
@@ -838,12 +947,7 @@ def main() -> int:
         if not match or int(match.group(1)) < 19:
             raise TransformError(f"LLVM 19 or newer libclang required, found {version}")
         index = cindex.Index.create()
-        tu = index.parse(
-            str(args.source.resolve()),
-            args=clang_args,
-            unsaved_files=[(str(args.source), source)],
-            options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
-        )
+        tu, source = parse_wrapped(index, args.source, clang_args, source)
         output = Transformer(args.source, source, tu).transform()
         validation = index.parse(
             str(args.source), args=clang_args, unsaved_files=[(str(args.source), output)],

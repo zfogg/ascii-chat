@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
+#include <functional>
 #include <limits>
 #include <map>
 #include <regex>
@@ -123,8 +124,7 @@ public:
       if (kind == CXCursor_MacroDefinition)
         macro_definitions_[spelling(cursor)].push_back(cursor);
       if (kind == CXCursor_MacroExpansion &&
-          (spelling(cursor) == "defer" || spelling(cursor) == "defer_named" || spelling(cursor) == "defer_cancel" ||
-           spelling(cursor) == "SAFE_MALLOC_DEFER_FREE" || spelling(cursor) == "SAFE_CALLOC_DEFER_FREE")) {
+          (spelling(cursor) == "defer" || spelling(cursor) == "defer_named" || spelling(cursor) == "defer_cancel")) {
         if (!in_file(cursor)) {
           CXFile file = nullptr;
           unsigned line = 0, column = 0;
@@ -184,7 +184,6 @@ private:
                           unsigned limit = std::numeric_limits<unsigned>::max());
   void visit_function(CXCursor cursor);
   void visit_defer(CXCursor cursor, CXCursorKind parent);
-  void visit_allocation(CXCursor cursor, CXCursorKind parent);
   void visit_block(CXCursor cursor, CXCursorKind parent);
   void visit(CXCursor cursor, CXCursorKind parent = CXCursor_UnexposedDecl);
   void require_keyword(unsigned position, std::string_view keyword) const {
@@ -298,7 +297,7 @@ std::string Transformer::cleanup(std::size_t first, std::size_t last, unsigned p
 void Transformer::index_control_flow(CXCursor cursor, std::vector<unsigned> scopes, unsigned limit) {
   const auto kind = clang_getCursorKind(cursor);
   const auto start = begin(cursor);
-  if ((kind == CXCursor_DoStmt || kind == CXCursor_DeclStmt) && macros_.count(start)) {
+  if (kind == CXCursor_DoStmt && macros_.count(start)) {
     if (!scopes.empty())
       defer_scopes_[start] = scopes.back();
     return;
@@ -315,54 +314,6 @@ void Transformer::index_control_flow(CXCursor cursor, std::vector<unsigned> scop
     declarations_.push_back({spelling(cursor), start, scopes, limit});
   for (auto child : children(cursor))
     index_control_flow(child, scopes, limit);
-}
-
-void Transformer::visit_allocation(CXCursor cursor, CXCursorKind parent) {
-  const auto start = begin(cursor);
-  const auto macro = macros_.at(start);
-  const auto name = spelling(macro);
-  if (parent != CXCursor_CompoundStmt)
-    fail_at(start, "deferred allocation must be a direct block declaration");
-  const auto parts = tokens(unit_, clang_getCursorExtent(macro));
-  if (parts.size() < 5 || parts[1].text != "(")
-    fail_at(start, "cannot parse deferred allocation");
-  std::vector<std::string> args;
-  unsigned arg_start = parts[1].finish;
-  int depth = 0;
-  for (std::size_t i = 2; i < parts.size(); ++i) {
-    const auto &token = parts[i];
-    if (token.text == ")" && depth == 0) {
-      args.push_back(trim(source_.substr(arg_start, token.start - arg_start)));
-      break;
-    }
-    if (token.text == "," && depth == 0) {
-      args.push_back(trim(source_.substr(arg_start, token.start - arg_start)));
-      arg_start = token.finish;
-      continue;
-    }
-    if (token.text == "(" || token.text == "[" || token.text == "{")
-      ++depth;
-    else if (token.text == ")" || token.text == "]" || token.text == "}")
-      --depth;
-  }
-  const bool zeroed = name == "SAFE_CALLOC_DEFER_FREE";
-  if (args.size() != (zeroed ? 4U : 3U) || !std::regex_match(args[0], std::regex("[A-Za-z_][A-Za-z_0-9]*")) ||
-      std::any_of(args.begin(), args.end(), [](const auto &arg) { return arg.empty(); }))
-    fail_at(start, "deferred allocation requires a variable name, allocation arguments, and pointer type");
-  const auto flag = "__ascii_defer_active_" + std::to_string(start);
-  const auto action = "SAFE_FREE(" + args[0] + ")";
-  std::vector<Token> identifiers = {{"SAFE_FREE", CXToken_Identifier, start, start},
-                                    {args[0], CXToken_Identifier, start, start}};
-  scopes_.back().actions.push_back({start, start, flag, action, expanded_identifiers(identifiers), ""});
-  std::string replacement = args.back() + " " + args[0] + " = " + (zeroed ? "SAFE_CALLOC(" : "SAFE_MALLOC(");
-  for (std::size_t i = 1; i < args.size(); ++i) {
-    if (i > 1)
-      replacement += ", ";
-    replacement += args[i];
-  }
-  replacement += "); " + flag + " = 1;";
-  edits_.push_back({start, static_cast<unsigned>(after_semicolon(source_, end(macro))), replacement});
-  seen_.insert(start);
 }
 
 void Transformer::visit_function(CXCursor cursor) {
@@ -512,10 +463,6 @@ void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
     visit_defer(cursor, parent);
     return;
   }
-  if (macros_.count(start) && kind == CXCursor_DeclStmt) {
-    visit_allocation(cursor, parent);
-    return;
-  }
   if (kind == CXCursor_CompoundStmt) {
     visit_block(cursor, parent);
     return;
@@ -607,7 +554,19 @@ std::string Transformer::run() {
     if (severity >= CXDiagnostic_Error)
       fail("Clang could not parse source: " + message);
   }
+  std::vector<unsigned> marker_offsets;
+  std::function<void(CXCursor)> collect_markers = [&](CXCursor cursor) {
+    if (clang_getCursorKind(cursor) == CXCursor_CallExpr && spelling(cursor) == "__ascii_defer_marker") {
+      if (!in_file(cursor))
+        fail("defer in included headers is not supported; move the function into a C source file");
+      marker_offsets.push_back(begin(cursor));
+    }
+    for (auto child : children(cursor))
+      collect_markers(child);
+  };
   for (auto cursor : children(clang_getTranslationUnitCursor(unit_))) {
+    if (clang_getCursorKind(cursor) == CXCursor_FunctionDecl && clang_isCursorDefinition(cursor))
+      collect_markers(cursor);
     if (clang_getCursorKind(cursor) != CXCursor_FunctionDecl || !clang_isCursorDefinition(cursor) || !in_file(cursor))
       continue;
     bool has_defer = false;
@@ -626,6 +585,9 @@ std::string Transformer::run() {
   }
   if (seen_.size() != macros_.size())
     fail("unhandled defer macro expansion");
+  for (auto position : marker_offsets)
+    if (!seen_.count(position))
+      fail_at(position, "defer hidden by an unsupported macro expansion; write the cleanup directly");
   std::stable_sort(edits_.begin(), edits_.end(), [](const Edit &a, const Edit &b) {
     return std::tie(a.start, a.finish) > std::tie(b.start, b.finish);
   });
@@ -685,6 +647,174 @@ std::string Transformer::show_transformed(unsigned line) {
 
 std::string transform(CXTranslationUnit unit, const std::string &path, const std::string &source) {
   return Transformer(unit, path, source).run();
+}
+
+std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &path, const std::string &source) {
+  std::map<std::string, std::vector<CXCursor>> definitions;
+  auto root = children(clang_getTranslationUnitCursor(unit));
+  for (auto cursor : root)
+    if (clang_getCursorKind(cursor) == CXCursor_MacroDefinition)
+      definitions[spelling(cursor)].push_back(cursor);
+  const std::set<std::string> markers = {"defer", "defer_named", "defer_cancel"};
+  std::map<std::string, bool> memo;
+  std::set<std::string> visiting;
+  std::function<std::pair<bool, bool>(const std::string &)> reaches =
+      [&](const std::string &name) -> std::pair<bool, bool> {
+    if (markers.count(name))
+      return {true, false};
+    if (memo.count(name))
+      return {memo.at(name), false};
+    const auto it = definitions.find(name);
+    if (it == definitions.end())
+      return {false, false};
+    if (visiting.size() >= 128)
+      throw std::runtime_error("defer macro dependency nesting exceeds the supported limit");
+    if (!visiting.insert(name).second)
+      return {false, true};
+    bool result = false, cyclic = false;
+    for (auto definition : it->second) {
+      const auto parts = tokens(unit, clang_getCursorExtent(definition));
+      for (std::size_t i = 1; i < parts.size() && !result; ++i)
+        if (parts[i].kind == CXToken_Identifier && parts[i].text != name) {
+          const auto dependency = reaches(parts[i].text);
+          result = dependency.first;
+          cyclic = cyclic || dependency.second;
+        }
+    }
+    visiting.erase(name);
+    if (result || !cyclic)
+      memo[name] = result;
+    return {result, cyclic};
+  };
+  std::vector<Edit> edits;
+  const auto canonical = std::filesystem::weakly_canonical(std::filesystem::absolute(std::filesystem::u8path(path)));
+  for (auto cursor : root) {
+    if (clang_getCursorKind(cursor) != CXCursor_MacroExpansion || markers.count(spelling(cursor)))
+      continue;
+    CXFile file = nullptr;
+    clang_getExpansionLocation(clang_getCursorLocation(cursor), &file, nullptr, nullptr, nullptr);
+    if (!file)
+      continue;
+    const auto invocation = tokens(unit, clang_getCursorExtent(cursor));
+    bool relevant = reaches(spelling(cursor)).first;
+    for (const auto &token : invocation)
+      if (token.kind == CXToken_Identifier && markers.count(token.text))
+        relevant = true;
+    if (!relevant)
+      continue;
+    for (std::size_t i = 1; i < invocation.size(); ++i) {
+      const auto &token = invocation[i];
+      if (token.kind == CXToken_Identifier && definitions.count(token.text) && !reaches(token.text).first)
+        throw std::runtime_error("defer wrapper arguments containing macros cannot be expanded safely; use a local value");
+      if (token.text == "__COUNTER__")
+        throw std::runtime_error("defer wrapper arguments containing __COUNTER__ cannot be expanded safely");
+    }
+    if (std::filesystem::weakly_canonical(
+            std::filesystem::absolute(std::filesystem::u8path(consume_string(clang_getFileName(file))))) != canonical)
+      throw std::runtime_error(
+          "defer wrapper in included headers is not supported; move the function into a C source file");
+    const auto definition = clang_getCursorReferenced(cursor);
+    if (clang_Cursor_isNull(definition))
+      throw std::runtime_error("cannot resolve macro containing defer: " + spelling(cursor));
+    const auto parts = tokens(unit, clang_getCursorExtent(definition));
+    if (parts.empty())
+      throw std::runtime_error("cannot read macro containing defer: " + spelling(cursor));
+    const bool function = clang_Cursor_isMacroFunctionLike(definition);
+    std::size_t body = 1;
+    std::vector<std::string> parameters;
+    bool variadic = false;
+    if (function) {
+      if (parts.size() < 3 || parts[1].text != "(")
+        throw std::runtime_error("cannot parse defer wrapper parameters");
+      body = 2;
+      while (body < parts.size() && parts[body].text != ")") {
+        if (parts[body].text != ",") {
+          if (parts[body].text == "..." && body + 1 < parts.size() && parts[body + 1].text == ")") {
+            variadic = true;
+            parameters.push_back("__VA_ARGS__");
+          } else {
+            if (parts[body].kind != CXToken_Identifier)
+              throw std::runtime_error("complex defer wrapper parameters are unsupported");
+            parameters.push_back(parts[body].text);
+          }
+        }
+        ++body;
+      }
+      if (body == parts.size())
+        throw std::runtime_error("unterminated defer wrapper parameters");
+      ++body;
+    }
+    if (std::any_of(parts.begin() + static_cast<std::ptrdiff_t>(body), parts.end(), [](const Token &part) {
+          return part.text == "#" || part.text == "##" || part.text == "__VA_OPT__" || part.text == "_Pragma" ||
+                 part.text == "__COUNTER__";
+        }))
+      throw std::runtime_error("defer wrapper uses unsupported stringification, token pasting, __VA_OPT__, _Pragma, or __COUNTER__");
+    const auto first = begin(cursor), last = end(cursor);
+    if (source.substr(first, last - first).find('\n') != std::string::npos)
+      throw std::runtime_error("multiline defer wrapper invocations are unsupported");
+    std::vector<std::string> arguments;
+    if (function) {
+      if (invocation.size() < 3 || invocation[1].text != "(")
+        throw std::runtime_error("cannot parse defer wrapper invocation");
+      unsigned argument_start = invocation[1].finish;
+      int depth = 0;
+      for (std::size_t i = 2; i < invocation.size(); ++i) {
+        const auto &token = invocation[i];
+        if (token.text == ")" && depth == 0) {
+          const auto value = trim(source.substr(argument_start, token.start - argument_start));
+          if (!value.empty() || !parameters.empty())
+            arguments.push_back(value);
+          break;
+        }
+        if (token.text == "," && depth == 0) {
+          arguments.push_back(trim(source.substr(argument_start, token.start - argument_start)));
+          argument_start = token.finish;
+        } else if (token.text == "(" || token.text == "[" || token.text == "{")
+          ++depth;
+        else if (token.text == ")" || token.text == "]" || token.text == "}")
+          --depth;
+      }
+      const auto fixed = parameters.size() - (variadic ? 1U : 0U);
+      if ((!variadic && arguments.size() != parameters.size()) || (variadic && arguments.size() < fixed))
+        throw std::runtime_error("defer wrapper argument count does not match its definition");
+      if (variadic) {
+        std::string remaining;
+        for (std::size_t i = fixed; i < arguments.size(); ++i) {
+          if (i > fixed)
+            remaining += ", ";
+          remaining += arguments[i];
+        }
+        arguments.resize(fixed);
+        arguments.push_back(std::move(remaining));
+      }
+    }
+    std::string replacement;
+    for (std::size_t i = body; i < parts.size(); ++i) {
+      if (parts[i].kind == CXToken_Comment)
+        continue;
+      const auto param = std::find(parameters.begin(), parameters.end(), parts[i].text);
+      if (!replacement.empty())
+        replacement += ' ';
+      replacement +=
+          param == parameters.end() ? parts[i].text : arguments[static_cast<std::size_t>(param - parameters.begin())];
+    }
+    edits.push_back({first, last, replacement});
+  }
+  std::sort(edits.begin(), edits.end(),
+            [](const Edit &a, const Edit &b) { return a.start != b.start ? a.start < b.start : a.finish > b.finish; });
+  std::vector<Edit> outermost;
+  for (const auto &edit : edits) {
+    if (!outermost.empty() && edit.start < outermost.back().finish) {
+      if (edit.finish > outermost.back().finish)
+        throw std::runtime_error("overlapping defer macro expansions cannot be transformed safely");
+      continue;
+    }
+    outermost.push_back(edit);
+  }
+  auto result = source;
+  for (auto edit = outermost.rbegin(); edit != outermost.rend(); ++edit)
+    result.replace(edit->start, edit->finish - edit->start, edit->replacement);
+  return result;
 }
 
 std::string explain(CXTranslationUnit unit, const std::string &path, const std::string &source, unsigned line) {

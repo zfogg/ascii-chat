@@ -9,6 +9,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -133,6 +134,23 @@ def test_show_transformed_selects_function_without_writing(
     assert "other(void)" not in result.stdout
     assert '#line 3 ' in result.stdout
     assert list(tmp_path.iterdir()) == [source]
+
+
+def test_explain_understands_wrapped_defer(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = tmp_path / "input.c"
+    source.write_text(
+        '#define defer(...) do {} while (0)\n#define INNER(x) defer(x++)\n#define OUTER(x) INNER(x)\n'
+        'void f(int n) {\n  OUTER(n);\n  return;\n}\n', encoding="utf-8",
+    )
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--explain", f"{source}:6", "--", "-std=c17"],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "n ++" in result.stdout
+    assert "registered at line 5" in result.stdout
 
 
 def test_invalid_cleanup_reports_original_source_line(
@@ -541,8 +559,8 @@ def test_deferred_safe_allocation_frees_on_early_return(
         '#define SAFE_MALLOC(size, cast) ((cast)malloc(size))\n'
         '#define SAFE_CALLOC(count, size, cast) ((cast)calloc(count, size))\n'
         '#define SAFE_FREE(p) do { if (p) { ++releases; free(p); p = NULL; } } while (0)\n'
-        '#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast)\n'
-        '#define SAFE_CALLOC_DEFER_FREE(name, count, size, cast) cast name = SAFE_CALLOC(count, size, cast)\n'
+        '#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast); defer(SAFE_FREE(name))\n'
+        '#define SAFE_CALLOC_DEFER_FREE(name, count, size, cast) cast name = SAFE_CALLOC(count, size, cast); defer(SAFE_FREE(name))\n'
         'static int *transferred;\n'
         f'static int f(int early) {{ {allocation}; if (!p) return 1; if (early == 1) return 0; '
         'if (early == 2) { transferred = p; p = NULL; return 0; } p[0] = 7; return p[0] != 7; }\n'
@@ -557,6 +575,159 @@ def test_deferred_safe_allocation_frees_on_early_return(
     assert subprocess.run([str(executable)], check=False).returncode == 0
 
 
+def test_recursively_wrapped_defer_runs_on_return(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = (
+        '#define INNER(action) defer(action)\n'
+        '#define MIDDLE(name) int name = 7; INNER(total += name)\n'
+        '#define OUTER(name) MIDDLE(name)\n'
+        'static int total; static int f(void) { OUTER(value); return value; }\n'
+        'int main(void) { return f() != 7 || total != 7; }\n'
+    )
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run([str(CLANG), "-std=c17", str(tmp_path / "output.c"), "-o", str(executable)],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+def test_recursively_wrapped_variadic_defer(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = (
+        '#define INNER(...) defer(__VA_ARGS__)\n'
+        '#define OUTER(...) INNER(__VA_ARGS__)\n'
+        'static int total; static void add(int a, int b) { total += a + b; }\n'
+        'static void f(void) { OUTER(add(2, 3)); }\n'
+        'int main(void) { f(); return total != 5; }\n'
+    )
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run([str(CLANG), "-std=c17", str(tmp_path / "output.c"), "-o", str(executable)],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+def test_nested_wrapper_invocations_preserve_cleanup_order(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = (
+        '#define INNER() defer(total = total * 10 + 1)\n'
+        '#define OUTER(first) first; defer(total = total * 10 + 2)\n'
+        'static int total; static void f(void) { OUTER(INNER()); }\n'
+        'int main(void) { f(); return total != 21; }\n'
+    )
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run([str(CLANG), "-std=c17", str(tmp_path / "output.c"), "-o", str(executable)],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+def test_object_like_wrapper_chain(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = (
+        '#define INNER defer(total++)\n#define OUTER INNER\n'
+        'static int total; static void f(void) { OUTER; }\n'
+        'int main(void) { f(); return total != 1; }\n'
+    )
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run([str(CLANG), "-std=c17", str(tmp_path / "output.c"), "-o", str(executable)],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+def test_wrapped_defer_with_definition_comments(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = (
+        '#define WRAP(action) defer(/* block comment */ action) // trailing comment\n'
+        'static int total; static void f(void) { WRAP(total++); total += 2; }\n'
+        'int main(void) { f(); return total != 3; }\n'
+    )
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run([str(CLANG), "-std=c17", str(tmp_path / "output.c"), "-o", str(executable)],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+def test_wrapped_defer_preserves_call_site_line(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = (
+        '#define WRAP() int line = __LINE__; defer(total = line)\n'
+        'static int total;\n'
+        'static void f(void) { WRAP(); }\n'
+        'int main(void) { f(); return total != 4; }\n'
+    )
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run([str(CLANG), "-std=c17", str(tmp_path / "output.c"), "-o", str(executable)],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+def test_invalid_wrapped_cleanup_reports_call_site(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = '#define WRAPPER() defer(missing_name++)\nvoid f(void) { WRAPPER(); }\n'
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode != 0
+    assert "input.c:3:" in result.stderr.replace("\\", "/")
+    assert "missing_name" in result.stderr
+    assert not (tmp_path / "output.c").exists()
+
+
+@pytest.mark.parametrize("source", [
+    '#define WRAP(x) defer((void)0); (void)#x\nvoid f(void) { WRAP(a); }\n',
+    '#define WRAP(x) defer((void)(x))\nvoid f(void) { WRAP(\n1); }\n',
+    '#define VALUE 1\n#define STR(x) #x\n#define WRAP(x) const char *s = STR(x); defer((void)s)\nvoid f(void) { WRAP(VALUE); }\n',
+    '#define WRAP(x) int a = x, b = x; defer((void)a); (void)b\nvoid f(void) { WRAP(__COUNTER__); }\n',
+    '#define WRAP() int a = __COUNTER__; defer((void)a)\nvoid f(void) { WRAP(); }\n',
+])
+def test_unsafe_defer_wrappers_fail_closed(
+    tmp_path: Path, transform_environment: dict[str, str], source: str
+) -> None:
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode != 0
+    assert "defer wrapper" in result.stderr
+    assert not (tmp_path / "output.c").exists()
+
+
+def test_token_pasted_hidden_defer_fails_closed(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = tmp_path / "input.c"
+    output = tmp_path / "output.c"
+    header = (ROOT / "include/ascii-chat/tooling/defer/defer.h").as_posix()
+    source.write_text(
+        f'#include "{header}"\n'
+        '#define JOIN(a, b) a ## b\n#define WRAP(action) JOIN(de, fer)(action)\n'
+        'void f(void) { WRAP((void)0); }\n', encoding="utf-8",
+    )
+    result = subprocess.run([*tool_command(transform_environment), str(source), str(output), "--", "-std=c17"],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode != 0
+    assert "defer" in result.stderr
+    assert not output.exists()
+
+
 @pytest.mark.parametrize("call", ["SAFE_MALLOC_DEFER_FREE(p, 4, char *)", "SAFE_CALLOC_DEFER_FREE(p, 1, 4, char *)"])
 def test_untransformed_deferred_allocation_fails_compilation(
     tmp_path: Path, compiler_environment: dict[str, str], call: str
@@ -566,6 +737,9 @@ def test_untransformed_deferred_allocation_fails_compilation(
         '#define SAFE_MALLOC(size, cast) ((cast)0)\n'
         '#define SAFE_CALLOC(count, size, cast) ((cast)0)\n'
         '#include "ascii-chat/tooling/defer/defer.h"\n'
+        '#define SAFE_FREE(p) ((void)(p))\n'
+        '#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast); defer(SAFE_FREE(name))\n'
+        '#define SAFE_CALLOC_DEFER_FREE(name, count, size, cast) cast name = SAFE_CALLOC(count, size, cast); defer(SAFE_FREE(name))\n'
         f'void f(void) {{ {call}; (void)p; }}\n', encoding="utf-8",
     )
     result = subprocess.run(
@@ -584,7 +758,7 @@ def test_deferred_allocation_rejects_shadowed_pointer(
         '#define NULL ((void *)0)\n'
         '#define SAFE_MALLOC(size, cast) ((cast)malloc(size))\n'
         '#define SAFE_FREE(p) do { free(p); (p) = NULL; } while (0)\n'
-        '#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast)\n'
+        '#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast); defer(SAFE_FREE(name))\n'
         'void f(void) { SAFE_MALLOC_DEFER_FREE(p, 4, char *); { char *p = NULL; (void)p; return; } }\n'
     )
     result = transform(tmp_path, transform_environment, source)
@@ -741,6 +915,18 @@ def test_defer_in_included_header_fails_before_writing(
     assert not (tmp_path / "output.c").exists()
 
 
+def test_wrapped_defer_in_included_header_fails_before_writing(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    (tmp_path / "inline.h").write_text(
+        "#define WRAP(action) defer(action)\nstatic inline void f(void) { WRAP((void)0); }\n", encoding="utf-8"
+    )
+    result = transform(tmp_path, transform_environment, '#include "inline.h"\nint main(void) { return 0; }\n')
+    assert result.returncode != 0
+    assert "defer wrapper in included headers is not supported" in result.stderr
+    assert not (tmp_path / "output.c").exists()
+
+
 @pytest.mark.parametrize("backend", ["NATIVE", "NATIVE_CROSS", "PYTHON"])
 def test_cmake_discovers_defer_and_tracks_headers(
     tmp_path: Path, compiler_environment: dict[str, str], backend: str
@@ -786,10 +972,38 @@ def test_cmake_discovers_defer_and_tracks_headers(
         '#define SAFE_CALLOC(count, size, cast) ((cast)calloc(count, size))\n'
         '#define SAFE_FREE(p) do { free(p); (p) = NULL; } while (0)\n'
         '#include "ascii-chat/tooling/defer/defer.h"\n'
+        '#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast); defer(SAFE_FREE(name))\n'
+        '#define SAFE_CALLOC_DEFER_FREE(name, count, size, cast) cast name = SAFE_CALLOC(count, size, cast); defer(SAFE_FREE(name))\n'
         'int allocated(void) { SAFE_MALLOC_DEFER_FREE(p, 4, char *); '
         'SAFE_CALLOC_DEFER_FREE(q, 2, 4, char *); return p == NULL || q == NULL; }\n',
         encoding="utf-8",
     )
+    (source_dir / "wrappers.h").write_text(
+        '#include "ascii-chat/tooling/defer/defer.h"\n'
+        '#define INNER_WRAPPER(action) defer(action)\n'
+        '#define OUTER_WRAPPER(action) INNER_WRAPPER(action)\n'
+        '#define OBJECT_INNER defer((void)0)\n#define OBJECT_OUTER OBJECT_INNER\n', encoding="utf-8",
+    )
+    (source_dir / "wrapped.c").write_text(
+        '#include "wrappers.h"\nvoid wrapped(void) { OUTER_WRAPPER((void)0); }\n', encoding="utf-8",
+    )
+    (source_dir / "object.c").write_text(
+        '#include "wrappers.h"\nvoid object_wrapper(void) { OBJECT_OUTER; }\n', encoding="utf-8",
+    )
+    external = tmp_path / "external"
+    external.mkdir()
+    (external / "external_wrapper.h").write_text(
+        '#include "ascii-chat/tooling/defer/defer.h"\n'
+        '#define EXTERNAL_INNER(action) defer(action)\n'
+        '#define EXTERNAL_OUTER(action) EXTERNAL_INNER(action)\n', encoding="utf-8",
+    )
+    (source_dir / "external.c").write_text(
+        '#include "external_wrapper.h"\nvoid external_wrapper(void) { EXTERNAL_OUTER((void)0); }\n',
+        encoding="utf-8",
+    )
+    late_header = source_dir / "late.h"
+    late_header.write_text('#include "ascii-chat/tooling/defer/defer.h"\n#define LATE(action) ((void)0)\n', encoding="utf-8")
+    (source_dir / "late.c").write_text('#include "late.h"\nvoid late(void) { LATE((void)0); }\n', encoding="utf-8")
     main = source_dir / "main.c"
     main.write_text("int main(void) { return 0; }\n", encoding="utf-8")
     header = source_dir / "value.h"
@@ -812,11 +1026,11 @@ def test_cmake_discovers_defer_and_tracks_headers(
         encoding="utf-8",
     )
     (source_dir / "CMakeLists.txt").write_text(
-        "add_executable(ascii-chat-probe main.c second.c named.c allocated.c)\n"
+        "add_executable(ascii-chat-probe main.c second.c named.c allocated.c wrapped.c object.c external.c late.c)\n"
         "set_source_files_properties(second.c PROPERTIES COMPILE_DEFINITIONS SECOND_REQUIRED)\n"
         "set_target_properties(ascii-chat-probe PROPERTIES UNITY_BUILD ON)\n"
         "add_dependencies(ascii-chat-probe generate_version)\n"
-        f'target_include_directories(ascii-chat-probe PRIVATE "{include_dir}" "${{CMAKE_BINARY_DIR}}")\n',
+        f'target_include_directories(ascii-chat-probe PRIVATE "{include_dir}" "{external.as_posix()}" "${{CMAKE_BINARY_DIR}}")\n',
         encoding="utf-8",
     )
     build = project / "out"
@@ -840,6 +1054,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
         f"-DCMAKE_CXX_COMPILER={clangxx}",
         f"-DASCIICHAT_DEFER_BACKEND={'PYTHON' if backend == 'PYTHON' else 'NATIVE'}",
         f"-DASCIICHAT_LIBCLANG_PATH={compiler_environment['LIBCLANG_LIBRARY_FILE']}",
+        f"-DASCIICHAT_DEFER_WRAPPER_HEADER_DIRS={external}",
     ]
     if backend == "NATIVE_CROSS":
         system = {"win32": "Windows", "darwin": "Darwin"}.get(sys.platform, "Linux")
@@ -861,6 +1076,8 @@ def test_cmake_discovers_defer_and_tracks_headers(
             "the native tool must be built during the build, not configuration"
         )
     run(cmake, "--build", str(build))
+    time.sleep(1.1)
+    late_header.write_text('#include "ascii-chat/tooling/defer/defer.h"\n#define LATE(action) defer(action)\n', encoding="utf-8")
     main.write_text(
         '#include "ascii-chat/tooling/defer/defer.h"\n#include "value.h"\n#include "ready.h"\n'
         "static int n; static void f(void) { defer\n (n = VALUE); }\n"
@@ -873,6 +1090,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
     assert (
         build / "defer_transformed" / "ascii-chat-probe" / "src" / "second.c"
     ).is_file()
+    assert (build / "defer_transformed" / "ascii-chat-probe" / "src" / "late.c").is_file()
     generated = build / "defer_transformed" / "ascii-chat-probe" / "src" / "main.c"
     assert generated.is_file()
     assert "defer\n (n = VALUE)" in main.read_text(encoding="utf-8")
@@ -896,8 +1114,6 @@ def test_cmake_discovers_defer_and_tracks_headers(
     other_before = other_generated.stat().st_mtime_ns
     object_before = other_object.stat().st_mtime_ns
     # Some filesystems have coarse timestamp resolution.
-    import time
-
     time.sleep(1.1)
     header.write_text("#define VALUE 2\n", encoding="utf-8")
     run(cmake, "--build", str(build))

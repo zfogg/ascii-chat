@@ -24,13 +24,21 @@
  * allocation and register `SAFE_FREE(name)` for the enclosing block. Include
  * `<ascii-chat/common.h>` as well as the defer header. Like other deferred
  * actions, cleanup reads the current pointer value at exit; after transferring
- * ownership, set the local pointer to `NULL`. Use these helpers directly as
- * block declarations, not inside another macro.
+ * ownership, set the local pointer to `NULL`.
  *
  * @code{.c}
  * SAFE_CALLOC_DEFER_FREE(items, count, sizeof(*items), item_t *);
  * if (!populate(items, count)) return ERROR;
  * @endcode
+ *
+ * Ordinary macros may wrap `defer()` through multiple levels. The transformer
+ * expands those wrappers before analyzing cleanup. Wrapper definitions that
+ * use stringification, token pasting, `__VA_OPT__`, `_Pragma`, or `__COUNTER__`
+ * are rejected, as are multiline invocations and arguments containing non-defer
+ * macros (use a local value instead). The expanded defer must still be a direct
+ * statement in a block. CMake discovers wrappers declared in project headers;
+ * set `ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS` to a semicolon-separated list of
+ * additional header directories when wrappers are declared outside the project.
  *
  * Reaching a defer registers it. Actions run in reverse registration order,
  * with inner blocks cleaned up first. They evaluate their expressions at exit,

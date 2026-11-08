@@ -14,21 +14,24 @@
     }                                                                                                                  \
   } while (0)
 
-static std::string transform_source(const std::string &source) {
+static std::string transform_source(std::string source) {
   defer_tool::ClangIndex index;
-  CXUnsavedFile file = {"memory.c", source.c_str(), static_cast<unsigned long>(source.size())};
   const std::vector<const char *> args = {"-std=c17"};
-  defer_tool::TranslationUnit unit(index.get(), "memory.c", args, &file, 1);
-  return defer_tool::transform(unit.get(), "memory.c", source);
+  for (unsigned pass = 0; pass < 64; ++pass) {
+    CXUnsavedFile file = {"memory.c", source.c_str(), static_cast<unsigned long>(source.size())};
+    defer_tool::TranslationUnit unit(index.get(), "memory.c", args, &file, 1);
+    auto expanded = defer_tool::expand_defer_wrappers(unit.get(), "memory.c", source);
+    if (expanded == source)
+      return defer_tool::transform(unit.get(), "memory.c", source);
+    source = std::move(expanded);
+  }
+  throw std::runtime_error("wrapper expansion limit");
 }
 
 int main() {
   const std::string prefix = "#define defer(...) do {} while(0)\n"
                              "#define defer_named(name, ...) do {} while(0)\n"
-                             "#define defer_cancel(name) do {} while(0)\n"
-                             "#define SAFE_MALLOC(size, cast) ((cast)0)\n"
-                             "#define SAFE_FREE(p) do { (p) = 0; } while(0)\n"
-                             "#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast)\n";
+                             "#define defer_cancel(name) do {} while(0)\n";
   auto output = transform_source(prefix + "void f(void) { int x = 1; defer(x++); return; }\n");
   CHECK(output.find("__ascii_defer_active_") != std::string::npos);
   CHECK(output.find("if (__ascii_defer_active_") != std::string::npos);
@@ -39,9 +42,10 @@ int main() {
   output = transform_source(prefix + "int f(int) { defer((void)0); return 7; }\n");
   CHECK(output.find("__ascii_defer_argument_") != std::string::npos);
   CHECK(output.find("((int){0})") != std::string::npos);
-  output = transform_source(prefix + "void f(void) { SAFE_MALLOC_DEFER_FREE(p, 4, char *); (void)p; }\n");
-  CHECK(output.find("char * p = SAFE_MALLOC(4, char *)") != std::string::npos);
-  CHECK(output.find("SAFE_FREE(p)") != std::string::npos);
+  output = transform_source(
+      prefix + "#define INNER(x) defer(x++)\n#define OUTER(x) INNER(x)\nvoid f(void) { int n=0; OUTER(n); }\n");
+  CHECK(output.find("__ascii_defer_active_") != std::string::npos);
+  CHECK(output.find("n ++") != std::string::npos);
   output = transform_source(prefix + "int f(int (*)(int)) { defer((void)0); return 7; }\n");
   CHECK(output.find("__ascii_defer_argument_") != std::string::npos);
   for (const auto &source : std::vector<std::string>{

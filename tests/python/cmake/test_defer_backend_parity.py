@@ -36,6 +36,8 @@ def native_binary() -> Path:
         "int f(void) { defer((void)0); return\n__LINE__; }\n",
         "void f(int x) { defer_named(cleanup, x++); if (x) defer_cancel(cleanup); }\n",
         "void f(void) { SAFE_MALLOC_DEFER_FREE(p, 4, char *); SAFE_CALLOC_DEFER_FREE(q, 2, 4, char *); (void)p; (void)q; }\n",
+        "#define FIRST(x) defer(x++)\n#define SECOND(x) FIRST(x)\nvoid f(void) { int n = 1; SECOND(n); }\n",
+        "#define FIRST(...) defer(__VA_ARGS__)\n#define SECOND(...) FIRST(__VA_ARGS__)\nvoid f(void) { int n = 1; SECOND(n++); }\n",
     ],
 )
 def test_generated_c_matches_python(
@@ -49,8 +51,8 @@ def test_generated_c_matches_python(
         "#define SAFE_MALLOC(size, cast) ((cast)0)\n"
         "#define SAFE_CALLOC(count, size, cast) ((cast)0)\n"
         "#define SAFE_FREE(p) do { (p) = 0; } while (0)\n"
-        "#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast)\n"
-        "#define SAFE_CALLOC_DEFER_FREE(name, count, size, cast) cast name = SAFE_CALLOC(count, size, cast)\n"
+        "#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast); defer(SAFE_FREE(name))\n"
+        "#define SAFE_CALLOC_DEFER_FREE(name, count, size, cast) cast name = SAFE_CALLOC(count, size, cast); defer(SAFE_FREE(name))\n"
         + source, encoding="utf-8"
     )
     native_output = tmp_path / "native.c"
