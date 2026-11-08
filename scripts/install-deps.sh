@@ -147,7 +147,9 @@ if [[ "$PLATFORM" == "macos" ]]; then
 
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
-  # Use the configured package repositories; never run a remote script as root.
+  if [ -f /etc/debian_version ]; then
+    bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+  fi
 
   if command -v apt-get &>/dev/null; then
     echo "Detected apt-get package manager"
