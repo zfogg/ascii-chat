@@ -195,7 +195,7 @@ GENERATE_HTML          = @GENERATE_HTML@
 HTML_OUTPUT            = doc/html
 HTML_FILE_EXTENSION    = .html
 HTML_HEADER            = @ASCII_CHAT_SOURCE_DIR@/docs/header.html
-HTML_FOOTER            =
+HTML_FOOTER            = @ASCII_CHAT_SOURCE_DIR@/docs/footer.html
 HTML_STYLESHEET        =
 HTML_EXTRA_FILES       = @AWESOME_CSS_DIR@/doxygen-awesome-darkmode-toggle.js \
                          @AWESOME_CSS_DIR@/doxygen-awesome-fragment-copy-button.js \

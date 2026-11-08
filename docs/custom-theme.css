@@ -29,7 +29,3 @@ html {
   }
 }
 
-/* The generated Doxygen credit/footer is visual noise for this documentation. */
-#nav-path {
-  display: none !important;
-}
