@@ -138,7 +138,9 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 - [x] Validate simulator architecture and device SDK inputs in build helpers.
 - [x] Expose canonical native mode names from the C entry-point API.
 - [ ] Keep native mode execution alive after startup and report C lifecycle errors to SwiftUI.
-- [ ] Replace the PortAudio compatibility surface with an AVAudioEngine-backed stream.
+- [x] Replace the PortAudio compatibility surface with an AVAudioEngine-backed stream.
+- [x] Recover AVAudioEngine streams after iOS audio interruptions.
+- [x] Handle foreground/background transitions for active native sessions.
 - [ ] Produce and validate an arm64 device archive and XCFramework.
 
 ### 1. Compile libasciichat for iOS
@@ -1395,24 +1397,24 @@ Intentionally minimal. The C library does the heavy lifting.
     - [ ] `system.c` — `platform_write()` routes STDOUT to render bridge
     - [x] `render_bridge.c` — libvterm + term_renderer + frame callback
     - [ ] `terminal.c` — dimensions from options, truecolor, no TTY
-    - [ ] `keyboard.c` — override `keyboard_init()`/`keyboard_destroy()` to skip TTY setup; reads from stdin_bridge queue
+    - [x] `keyboard.c` — override `keyboard_init()`/`keyboard_destroy()` to skip TTY setup; reads from stdin_bridge queue
     - [x] `keepawake.m` — UIApplication.idleTimerDisabled
-    - [ ] `filesystem.m` — sandbox-aware paths
+    - [x] `filesystem.m` — sandbox-aware paths
     - [ ] `process.c` — stub popen/fork
     - [ ] `question.c` — delegate prompts to Swift callback
     - [ ] `stdin_bridge.c` — condvar + ring buffer for keyboard input from Swift; auto-triggers keyboard UI on first read
-    - [ ] `frame_flush.c` — iOS override of `platform_frame_flush()` (terminal_flush + render bridge flush)
+    - [x] `frame_flush.c` — iOS terminal flush bypasses desktop TTY draining
 - [ ] Create module files:
     - [ ] `lib/log/ios_log.c` — os_log integration
     - [ ] `lib/options/registry/ios_mode_defaults.c`
 - [ ] Add `lib/platform/frame_flush.h` and `lib/platform/frame_flush.c` (desktop default)
 - [ ] Refactor all render paths to call `platform_frame_flush()` instead of `terminal_flush()` directly
 - [ ] Rename `lib/video/webcam/macos/` → `lib/video/webcam/apple/`
-- [ ] Write PortAudio → AVAudioEngine shim (`lib/audio/ios/portaudio_shim.m`)
+- [x] Write PortAudio → AVAudioEngine shim (`lib/audio/ios/portaudio_shim.m`)
 - [x] Cross-compile the currently selected dependency set for the iOS simulator
 - [x] Link and validate the Swift iOS simulator app bundle (`ascii-chat-ios-app.app`)
 - [ ] Build `libasciichat.a` for arm64 + arm64-simulator
-- [ ] Package as `.xcframework`
+- [x] Add reproducible `.xcframework` packaging command
 - [ ] Verify: link into empty Xcode project, call `asciichat_main()` with mirror mode
 
 #### Phase 2: Mirror Mode — First Pixels (1 week)
