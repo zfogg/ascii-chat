@@ -58,7 +58,7 @@ jobs:
         run: cmake --build build_docs --target docs
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: build_docs/share/doc/html
 
