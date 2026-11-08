@@ -64,10 +64,12 @@
  */
 
 /**
- * @brief OpenPGP packet header information
+ * @brief The framing fields needed to locate and classify one OpenPGP packet body.
  *
- * Represents the parsed header of an OpenPGP packet, including
- * tag, length, and offset information.
+ * `tag` identifies the packet kind, `length` is the number of body bytes,
+ * `header_len` tells the caller where that body begins, and `new_format`
+ * records which RFC 4880 header encoding was used. Packet readers use this
+ * value to advance through a byte stream without retaining any packet data.
  */
 typedef struct {
   uint8_t tag;       ///< Packet tag (type identifier)

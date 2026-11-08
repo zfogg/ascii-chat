@@ -336,7 +336,7 @@ typedef struct {
 } option_dependency_t;
 
 /**
- * @brief Positional argument descriptor
+ * @brief Describes one non-option command-line argument and how the parser consumes it.
  *
  * Describes a positional (non-option) argument parsed after getopt processing.
  * These are arguments that don't start with '-' or '--'.
@@ -352,7 +352,8 @@ typedef struct {
  * - num_remaining: Count of remaining args
  * - error_msg: Set on failure (caller will free)
  *
- * Returns true on success, false on error.
+ * Returns true on success, false on error. The strings and examples are
+ * borrowed from the configuration that owns them.
  */
 typedef struct {
   const char *name;      ///< Name for help text (e.g., "address", "bind-addr")

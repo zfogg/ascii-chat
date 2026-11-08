@@ -74,10 +74,13 @@ typedef struct {
 } public_key_t;
 
 /**
- * @brief Private key structure (for server --ssh-key)
+ * @brief Private identity-key material used for server authentication and signing.
  *
- * Private key structure supporting both Ed25519 and X25519 keys.
- * Includes agent support flags and metadata for signing operations.
+ * Supports Ed25519 signing keys and X25519 private scalars, along with the
+ * public key and labels needed when a key is loaded from a file or delegated
+ * to an SSH/GPG agent. The server currently receives identity keys through the
+ * configured `--key` option; this type itself is not tied to a command-line
+ * flag.
  *
  * @note Ed25519 keys: 64 bytes (32-byte seed + 32-byte public key)
  * @note X25519 keys: 32 bytes (private scalar)
