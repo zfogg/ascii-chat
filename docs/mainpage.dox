@@ -295,43 +295,120 @@
  * 5. Start audio/video capture and network streaming
  * 6. Handle incoming packets and render to terminal
  *
- * @subsection current_architecture Current runtime shape
+ * @subsection modern_walkthrough Modern connection walkthrough
  *
- * The current implementation is transport-oriented. A mode creates or accepts a
- * `network_connection_t`, obtains its `acip_transport_t`, and supplies callbacks
- * for application state and ACIP packets. TCP, WebSocket, WebRTC, QUIC, and
- * WebTransport share that boundary; mode code should not grow a protocol-specific
- * socket receive loop.
+ * This is the current shape of a native client connection. The important
+ * distinction is that the application owns the connection lifecycle while the
+ * transport owns delivery. The application never needs to know whether the
+ * peer is reached by TCP, WebSocket, WebRTC, QUIC, or WebTransport.
  *
- * A typical outbound path looks like this:
+ * **1. Open one connection**
+ *
+ * Resolve and establish the endpoint through the shared connection layer. The
+ * endpoint parser selects the backend from the address and the connection keeps
+ * the transport, handshake state, deadlines, and worker together.
  *
  * @code{.c}
  * network_connection_t *connection = NULL;
  * connection_endpoint_t endpoint;
- * network_connect_config_t config = {
+ * network_connect_config_t connect_config = {
  *     .timeout_ms = 5000,
  *     .should_exit_callback = should_exit,
- *     .callback_data = NULL,
+ *     .callback_data = app,
+ *     .quic_ca_file = NULL,
+ *     .quic_visual_datagrams = true,
+ *     .quic_audio_datagrams = true,
  * };
  *
  * asciichat_error_t result = network_connection_open(
- *     "client", address, default_port, &config, &connection, &endpoint);
- * if (result == ASCIICHAT_OK) {
- *     result = network_connection_run(connection, &callbacks, app_context);
+ *     "client_connection", address, default_port, &connect_config,
+ *     &connection, &endpoint);
+ * if (result != ASCIICHAT_OK) {
+ *     log_error("connection failed: %s", asciichat_error_string(result));
+ *     return result;
  * }
+ * @endcode
+ *
+ * **2. Let the connection perform negotiation**
+ *
+ * Register callbacks for application state, packets, closing, and final cleanup.
+ * The callback contract is transport-neutral: packet payloads are borrowed until
+ * the callback returns, and teardown can retain dependencies when a worker has
+ * not joined yet.
+ *
+ * @code{.c}
+ * static const network_connection_callbacks_t callbacks = {
+ *     .open = app_connection_open,
+ *     .packet = app_packet_received,
+ *     .closing = app_connection_closing,
+ *     .closed = app_connection_closed,
+ * };
+ *
+ * result = network_connection_run(connection, &callbacks, app);
+ * @endcode
+ *
+ * During `network_connection_run()`, the shared pipeline performs the crypto
+ * handshake, validates ACIP framing, applies negotiated compression/security,
+ * and dispatches packets to `app_packet_received`. Application code does not
+ * call `recv()`, decrypt packet buffers by hand, or create a receive thread for
+ * each transport.
+ *
+ * **3. Send media through ACIP**
+ *
+ * Media producers hand frames and audio batches to type-specific ACIP helpers.
+ * Those helpers feed the shared outbound scheduler, which applies bounded
+ * admission, control-packet priority, media dropping, encryption sequencing,
+ * and negotiated datagram behavior.
+ *
+ * @code{.c}
+ * acip_transport_t *transport = network_connection_transport(connection);
+ *
+ * result = acip_send_ascii_frame_contract(
+ *     transport, &frame_workspace, frame, frame_length,
+ *     width, height, NULL, 0, 0);
+ * if (result != ASCIICHAT_OK) {
+ *     log_warn("frame was not accepted: %s", asciichat_error_string(result));
+ * }
+ *
+ * result = acip_send_audio_opus_batch(
+ *     transport, audio, audio_length, frame_sizes, frame_count,
+ *     sample_rate, frame_duration_ms);
+ * @endcode
+ *
+ * Do not add a mode-owned video queue, audio queue, or transport send thread.
+ * The scheduler is the single admission point shared by every backend. It may
+ * choose reliable delivery or a negotiated visual/audio datagram according to
+ * explicit send options and current transport capabilities.
+ *
+ * **4. Handle the peer and application state**
+ *
+ * A packet callback updates application state or forwards the payload to the media
+ * pipeline. It must finish using the borrowed payload before returning; retain a
+ * copy only when a later worker needs it. Long-running work belongs in an owned
+ * queue or worker, not inside the backend event loop.
+ *
+ * **5. Shut down in ownership order**
+ *
+ * Request cancellation, stop media producers, and let connection callbacks drain.
+ * The `closing` callback joins application workers without holding a lock those
+ * workers need. The `closed` callback releases application state after transport
+ * callbacks have stopped. Finally destroy the connection:
+ *
+ * @code{.c}
+ * network_connection_request_stop(connection);
+ * result = network_connection_run(connection, &callbacks, app);
  * network_connection_destroy(&connection);
  * @endcode
  *
- * Packet callbacks receive borrowed payloads. Media producers send through the
- * ACIP helpers, which feed the shared outbound scheduler for admission,
- * ordering, encryption, and transport-specific delivery. They do not allocate
- * an independent queue for every backend.
+ * Servers use the same contracts with `network_server_t`; an already connected
+ * transport can be adopted with `network_server_adopt()` or
+ * `network_server_adopt_negotiating()`. ACDS supplies session and endpoint
+ * metadata, but it does not replace the connection/transport lifecycle.
  *
- * For the detailed lifecycle, read [Network runtime and connection ownership](md_docs_2networking-runtime.html).
- * For transport selection and backend behavior, read @ref topic_network and
- * [Event-driven I/O](md_docs_2event-driven-io.html). The old socket-by-socket examples were
- * removed because they described an earlier architecture and encouraged callers
- * to bypass the transport abstraction.
+ * For the implementation map, read @ref topic_network. For detailed runtime
+ * rules, read [Network runtime and connection ownership](md_docs_2networking-runtime.html),
+ * [Event-driven I/O](md_docs_2event-driven-io.html), and
+ * [Transport backpressure](md_docs_2transport-backpressure.html).
  *
  * @section building Building Documentation
  *
