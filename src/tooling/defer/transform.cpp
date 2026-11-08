@@ -129,6 +129,7 @@ public:
   }
 
   std::string run();
+  std::string explain(unsigned line);
 
 private:
   [[noreturn]] static void fail(const std::string &message) {
@@ -192,6 +193,7 @@ private:
   std::map<unsigned, unsigned> defer_scopes_;
   std::vector<Declaration> declarations_;
   std::vector<Directive> directives_;
+  mutable std::vector<std::pair<unsigned, std::vector<std::pair<unsigned, std::string>>>> exits_;
 };
 
 std::set<std::string> Transformer::expanded_identifiers(const std::vector<Token> &action_tokens) const {
@@ -242,6 +244,7 @@ std::set<std::string> Transformer::expanded_identifiers(const std::vector<Token>
 
 std::string Transformer::cleanup(std::size_t first, std::size_t last, unsigned position) const {
   std::string result;
+  std::vector<std::pair<unsigned, std::string>> actions;
   std::vector<unsigned> current;
   for (const auto &scope : scopes_)
     current.push_back(scope.start);
@@ -252,20 +255,27 @@ std::string Transformer::cleanup(std::size_t first, std::size_t last, unsigned p
       const auto &action = *it;
       if (action.start >= position)
         continue;
+      actions.emplace_back(action.start, action.text);
       for (const auto &directive : directives_)
         if (action.start < directive.position && directive.position < position &&
             ((directive.kind != "define" && directive.kind != "undef") || action.identifiers.count(directive.name)))
-          fail("preprocessor state affecting cleanup may change at byte " + std::to_string(directive.position));
+          fail_at(directive.position,
+                  "preprocessor state affecting cleanup registered at line " +
+                      std::to_string(1 + std::count(source_.begin(), source_.begin() + action.start, '\n')) +
+                      " may change before exit; move the directive outside the defer scope");
       for (const auto &declaration : declarations_)
         if (action.identifiers.count(declaration.name) && action.start < declaration.position &&
             declaration.position < position && position < declaration.limit && prefix(declaration.scopes, owner) &&
             prefix(current, declaration.scopes))
-          fail("cleanup identifier '" + declaration.name + "' may be shadowed at exit byte " +
-               std::to_string(position));
+          fail_at(declaration.position,
+                  "cleanup identifier '" + declaration.name + "' registered at line " +
+                      std::to_string(1 + std::count(source_.begin(), source_.begin() + action.start, '\n')) +
+                      " may be shadowed at exit; rename the inner declaration");
       result += "if (" + action.flag + ") { " + line_directive(action.action_start) + action.text + "\n; } " +
                 line_directive(position);
     }
   }
+  exits_.emplace_back(position, std::move(actions));
   return result;
 }
 
@@ -517,10 +527,37 @@ std::string Transformer::run() {
   return line_directive(0) + output;
 }
 
+std::string Transformer::explain(unsigned line) {
+  run();
+  std::ostringstream result;
+  bool found = false;
+  for (const auto &[position, actions] : exits_) {
+    const auto exit_line =
+        1 + std::count(source_.begin(), source_.begin() + std::min<std::size_t>(position, source_.size()), '\n');
+    if (exit_line != line)
+      continue;
+    found = true;
+    result << path_ << ':' << line << ": cleanup on this exit (only if registered):\n";
+    if (actions.empty())
+      result << "  no deferred actions\n";
+    for (std::size_t i = 0; i < actions.size(); ++i) {
+      const auto registration = 1 + std::count(source_.begin(), source_.begin() + actions[i].first, '\n');
+      result << "  " << i + 1 << ". " << actions[i].second << " (registered at line " << registration << ")\n";
+    }
+  }
+  if (!found)
+    fail("no analyzed scope exit at " + path_ + ":" + std::to_string(line));
+  return result.str();
+}
+
 } // namespace
 
 std::string transform(CXTranslationUnit unit, const std::string &path, const std::string &source) {
   return Transformer(unit, path, source).run();
+}
+
+std::string explain(CXTranslationUnit unit, const std::string &path, const std::string &source, unsigned line) {
+  return Transformer(unit, path, source).explain(line);
 }
 
 } // namespace defer_tool

@@ -52,6 +52,7 @@ class Transformer:
         self.source = source
         self.tu = tu
         self.edits: list[tuple[int, int, bytes]] = []
+        self.exits: list[tuple[int, list[tuple[int, bytes]]]] = []
         self.macros: dict[int, cindex.Cursor] = {}
         self.macro_definitions: dict[str, list[cindex.Cursor]] = {}
         self.seen: set[int] = set()
@@ -178,19 +179,25 @@ class Transformer:
 
     def cleanup(self, scopes: list[Scope], offset: int) -> bytes:
         result = []
+        actions: list[tuple[int, bytes]] = []
         current = tuple(scope.start for scope in self.scopes)
         for scope in reversed(scopes):
             owner = current[: current.index(scope.start) + 1]
             for item in reversed(scope.defers):
                 if item.start < offset:
+                    actions.append((item.start, item.action))
+                    registration_line = self.source.count(b"\n", 0, item.start) + 1
                     for directive_offset, kind, name in self.directives:
                         if item.start < directive_offset < offset and (
                             kind not in (b"define", b"undef")
                             or (name and name.decode() in item.identifiers)
                         ):
-                            raise TransformError(
-                                f"preprocessor state affecting cleanup may change at byte {directive_offset}"
-                            )
+                            raise TransformError(self.diagnostic(
+                                directive_offset,
+                                f"preprocessor state affecting cleanup registered at line {registration_line} "
+                                "may change before exit; "
+                                "move the directive outside the defer scope",
+                            ))
                     for name, declaration, path, limit in self.declarations:
                         if (
                             name in item.identifiers
@@ -198,9 +205,11 @@ class Transformer:
                             and path[: len(owner)] == owner
                             and current[: len(path)] == path
                         ):
-                            raise TransformError(
-                                f"cleanup identifier {name!r} may be shadowed at exit byte {offset}"
-                            )
+                            raise TransformError(self.diagnostic(
+                                declaration,
+                                f"cleanup identifier '{name}' registered at line {registration_line} "
+                                "may be shadowed at exit; rename the inner declaration",
+                            ))
                     result.append(
                         b"if ("
                         + item.flag
@@ -210,7 +219,24 @@ class Transformer:
                         + b"\n; } "
                         + self.line_directive(offset)
                     )
+        self.exits.append((offset, actions))
         return b"".join(result)
+
+    def explain(self, line: int) -> str:
+        self.transform()
+        output: list[str] = []
+        for offset, actions in self.exits:
+            if self.source.count(b"\n", 0, offset) + 1 != line:
+                continue
+            output.append(f"{self.path.as_posix()}:{line}: cleanup on this exit (only if registered):")
+            if not actions:
+                output.append("  no deferred actions")
+            for number, (start, action) in enumerate(actions, 1):
+                registration = self.source.count(b"\n", 0, start) + 1
+                output.append(f"  {number}. {action.decode('utf-8')} (registered at line {registration})")
+        if not output:
+            raise TransformError(f"no analyzed scope exit at {self.path.as_posix()}:{line}")
+        return "\n".join(output) + "\n"
 
     def index_control_flow(
         self,
@@ -633,23 +659,54 @@ def batch_main() -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--explain", metavar="SOURCE:LINE", help="explain cleanup at a source exit")
     parser.add_argument("--compilation-database", type=Path)
     parser.add_argument("--depfile", type=Path)
-    parser.add_argument("source", type=Path)
-    parser.add_argument("output", type=Path)
+    parser.add_argument("source", type=Path, nargs="?")
+    parser.add_argument("output", type=Path, nargs="?")
     parser.add_argument(
         "--libclang", type=Path, help="path to matching LLVM libclang shared library"
     )
     parser.add_argument(
         "clang_args", nargs=argparse.REMAINDER, help="Clang arguments after --"
     )
-    args = parser.parse_args()
+    explain_args: list[str] = []
+    argv = sys.argv[1:]
+    if any(arg == "--explain" or arg.startswith("--explain=") for arg in argv) and "--" in argv:
+        separator = argv.index("--")
+        explain_args = argv[separator + 1 :]
+        argv = argv[:separator]
+    args = parser.parse_args(argv)
     if args.libclang:
         cindex.Config.set_library_file(str(args.libclang.resolve()))
-    clang_args = args.clang_args
+    clang_args = explain_args if args.explain else args.clang_args
     if clang_args[:1] == ["--"]:
         clang_args = clang_args[1:]
     try:
+        if args.explain:
+            path, separator, line = args.explain.rpartition(":")
+            if not separator or not path or not line.isascii() or not line.isdigit() or int(line) == 0:
+                raise TransformError("--explain expects source:line with a positive line number")
+            if args.source or args.output or args.depfile or args.compilation_database:
+                raise TransformError("--explain accepts only explicit Clang arguments")
+            source_path = Path(path).resolve()
+            source = source_path.read_bytes()
+            clang_args.append("-DASCIICHAT_DEFER_PARSING=1")
+            index = cindex.Index.create()
+            tu = index.parse(str(source_path), args=clang_args, unsaved_files=[(str(source_path), source)],
+                             options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD)
+            transformer = Transformer(source_path, source, tu)
+            explanation = transformer.explain(int(line))
+            transformed = Transformer(source_path, source, tu).transform()
+            validation = index.parse(str(source_path), args=clang_args, unsaved_files=[(str(source_path), transformed)],
+                                     options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD)
+            errors = [str(item) for item in validation.diagnostics if item.severity >= cindex.Diagnostic.Error]
+            if errors:
+                raise TransformError(f"generated C is invalid: {errors[0]}")
+            print(explanation, end="")
+            return 0
+        if args.source is None or args.output is None:
+            raise TransformError("expected source and output paths")
         args.source = args.source.resolve()
         args.output = args.output.resolve()
         if args.depfile:

@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -28,6 +29,7 @@ llvm::cl::opt<std::string> compilation_database("compilation-database", llvm::cl
 llvm::cl::opt<std::string> depfile("depfile", llvm::cl::desc("Write header dependencies"));
 llvm::cl::opt<std::string> batch("batch", llvm::cl::desc("Transform source/output pairs from a manifest"));
 llvm::cl::opt<std::string> libclang("libclang", llvm::cl::desc("Path to the libclang shared library"));
+llvm::cl::opt<std::string> explain_location("explain", llvm::cl::desc("Explain cleanup at source:line"));
 
 } // namespace
 
@@ -68,6 +70,22 @@ int main(int argc, char **argv) {
     const auto depfile_path = depfile.empty() ? std::filesystem::path{}
                                               : std::filesystem::absolute(std::filesystem::u8path(depfile.getValue()));
     defer_tool::ClangIndex index;
+    if (!explain_location.empty()) {
+      if (!batch.empty() || !depfile.empty())
+        throw std::runtime_error("--explain cannot be combined with --batch or --depfile");
+      const auto location = explain_location.getValue();
+      const auto separator = location.rfind(':');
+      if (separator == std::string::npos || separator == 0 || separator + 1 == location.size() ||
+          location.find_first_not_of("0123456789", separator + 1) != std::string::npos)
+        throw std::runtime_error("--explain expects source:line");
+      const auto line = std::stoul(location.substr(separator + 1));
+      if (!line || line > std::numeric_limits<unsigned>::max())
+        throw std::runtime_error("--explain line must be a positive integer");
+      options.clang_arguments.assign(sources.begin(), sources.end());
+      llvm::outs() << defer_tool::explain_file(index, std::filesystem::u8path(location.substr(0, separator)),
+                                               static_cast<unsigned>(line), options);
+      return 0;
+    }
     std::vector<defer_tool::FileDependencies> dependencies;
     std::vector<std::pair<std::filesystem::path, std::filesystem::path>> inputs;
     if (!batch.empty()) {

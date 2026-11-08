@@ -231,6 +231,23 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
   return dependencies;
 }
 
+std::string explain_file(ClangIndex &index, const fs::path &source_path, unsigned line, const DriverOptions &options) {
+  if (!options.compilation_database.empty())
+    throw std::runtime_error("--explain requires explicit Clang arguments rather than a compilation database");
+  const auto source = fs::weakly_canonical(fs::absolute(source_path));
+  auto arguments = options.clang_arguments;
+  arguments.push_back("-DASCIICHAT_DEFER_PARSING=1");
+  std::vector<const char *> raw;
+  for (const auto &arg : arguments)
+    raw.push_back(arg.c_str());
+  auto content = read_file(source);
+  const auto source_name = source.u8string();
+  CXUnsavedFile unsaved{source_name.c_str(), content.data(), static_cast<unsigned long>(content.size())};
+  TranslationUnit unit(index.get(), source_name, raw, &unsaved, 1);
+  validate_generated(index.get(), source_name, raw, transform(unit.get(), source_name, content));
+  return explain(unit.get(), source_name, content, line);
+}
+
 void write_depfile(const fs::path &path, const std::vector<FileDependencies> &files) {
   if (files.empty())
     throw std::runtime_error("cannot write dependencies for an empty batch");

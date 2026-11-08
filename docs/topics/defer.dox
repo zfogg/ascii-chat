@@ -57,6 +57,15 @@
  * turning cleanup into a no-op. Panic instrumentation cannot currently be used
  * with defer transformation.
  *
+ * To inspect an exit without writing a generated file, pass its source line and
+ * the C compilation arguments to either implementation:
+ * @code{.sh}
+ * defer-tool --explain src/example.c:42 -- -std=c23 -Iinclude
+ * @endcode
+ * Actions are listed in cleanup order. Each runs only if execution actually
+ * reached its registration; the output does not claim to predict branch choices.
+ * Use explicit Clang arguments for this mode.
+ *
  * For a longer randomized check on a Unix host with Clang and libFuzzer,
  * configure `src/tooling/defer` with `ASCIICHAT_DEFER_BUILD_FUZZER=ON`, build
  * `ascii-defer-fuzz`, and run it with a writable copy of `tests/fuzz/defer` as

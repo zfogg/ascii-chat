@@ -84,6 +84,44 @@ def tool_command(env: dict[str, str]) -> list[str]:
     return [binary] if binary else [sys.executable, str(TOOL)]
 
 
+def test_explain_reports_nested_cleanup_without_writing(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = tmp_path / "input.c"
+    source.write_text(
+        "#define defer(...) do {} while (0)\n"
+        "int f(int x) {\n"
+        "  defer(x += 1);\n"
+        "  {\n"
+        "    defer(x += 2);\n"
+        "    return x;\n"
+        "  }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--explain", f"{source}:6", "--", "-std=c17"],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "only if registered" in result.stdout
+    assert "1. x += 2 (registered at line 5)" in result.stdout
+    assert "2. x += 1 (registered at line 3)" in result.stdout
+    assert list(tmp_path.iterdir()) == [source]
+
+
+@pytest.mark.parametrize("location", ["missing", "file.c:0", "file.c:not-a-line"])
+def test_explain_rejects_invalid_locations(
+    tmp_path: Path, transform_environment: dict[str, str], location: str
+) -> None:
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--explain", location],
+        capture_output=True, text=True, env=transform_environment, cwd=tmp_path, check=False,
+    )
+    assert result.returncode != 0
+    assert "--explain" in result.stderr
+
+
 @pytest.mark.parametrize("alias", ["source", "output"])
 def test_depfile_cannot_replace_source_or_output(
     tmp_path: Path, transform_environment: dict[str, str], alias: str
@@ -215,6 +253,63 @@ int main(void) {{ {calls} if (count != {len(expected)}) return 9; {checks} retur
     assert run.returncode == 0, f"seed={seed}, exit={run.returncode}: {run.stderr}"
 
 
+@pytest.mark.parametrize("seed", range(12))
+def test_loop_exits_match_reference_model(
+    tmp_path: Path, transform_environment: dict[str, str], seed: int
+) -> None:
+    """Compare each backend's execution trace to a small independent model."""
+    rng = random.Random(seed)
+    outer, loop, branch = rng.sample(range(1, 50), 3)
+    expected: list[int] = []
+    for mode in range(4):
+        for index in range(3):
+            if index == 1:
+                expected.append(branch + index)
+                expected.append(loop + index)
+                if mode == 0:
+                    continue
+                if mode == 1:
+                    break
+                if mode == 2:
+                    expected.append(outer + index)
+                    break
+            else:
+                expected.append(loop + index)
+        else:
+            index = 3
+        if mode != 2:
+            expected.append(outer + index)
+    checks = "\n".join(f"if (trace[{i}] != {value}) return {i + 10};" for i, value in enumerate(expected))
+    source = f"""
+static int trace[64], count;
+static void mark(int value) {{ trace[count++] = value; }}
+static void f(int mode) {{
+  int i = 0;
+  defer(mark({outer} + i));
+  for (; i < 3; ++i) {{
+    defer(mark({loop} + i));
+    if (i == 1) {{
+      defer(mark({branch} + i));
+      if (mode == 0) continue;
+      if (mode == 1) break;
+      if (mode == 2) return;
+    }}
+  }}
+}}
+int main(void) {{ for (int i = 0; i < 4; ++i) f(i); if (count != {len(expected)}) return 1; {checks} return 0; }}
+"""
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    compiled = subprocess.run(
+        [str(CLANG), "-std=c17", str(tmp_path / "output.c"), "-o", str(executable)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert compiled.returncode == 0, compiled.stderr
+    run = subprocess.run([str(executable)], capture_output=True, text=True, check=False)
+    assert run.returncode == 0, f"seed={seed}, exit={run.returncode}: {run.stderr}"
+
+
 def test_diagnostic_identifies_location_and_remedy(
     tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
@@ -222,6 +317,23 @@ def test_diagnostic_identifies_location_and_remedy(
     assert result.returncode != 0
     assert "input.c:2:" in result.stderr.replace("\\", "/")
     assert "add braces" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("source", "remedy"),
+    [
+        ("int x; void f(void) { defer(x++); int x = 2; (void)x; return; }", "rename the inner declaration"),
+        ("#define VALUE 1\nint x; void f(void) { defer(x += VALUE);\n#undef VALUE\nreturn; }", "move the directive"),
+    ],
+)
+def test_unsafe_cleanup_diagnostic_identifies_remedy(
+    tmp_path: Path, transform_environment: dict[str, str], source: str, remedy: str
+) -> None:
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode != 0
+    assert "input.c:" in result.stderr.replace("\\", "/")
+    assert remedy in result.stderr
+    assert not (tmp_path / "output.c").exists()
 
 
 def test_invalid_cleanup_is_rejected_before_writing_output(
