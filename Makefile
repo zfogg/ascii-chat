@@ -13,18 +13,81 @@ LIB_DIR   := $(SOURCE_DIR)/lib
 DOCS_DIR  := $(SOURCE_DIR)/docs
 
 CMAKE ?= cmake
-MMMBED ?= mmmbed
 CMAKE_GENERATOR ?= Ninja
 CMAKE_BUILD_TYPE ?= RelWithDebInfo
 CMAKE_ARGS ?=
 EXTRA_CMAKE_ARGS ?=
 
-.PHONY: generate-sql check-sql
-generate-sql:
-	$(MMMBED) sql -l c --prefix database --format --dialect sqlite -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h
+.PHONY: sql-generate sql-check init-sql-tools ensure-mmmbed
+SQL_EXEEXT := $(if $(filter Windows_NT,$(OS)),.exe,)
+SQL_MMMBED := $(BIN_DIR)/mmmbed$(SQL_EXEEXT)
+ifeq ($(origin MMMBED),undefined)
+MMMBED := $(SQL_MMMBED)
+SQL_TOOL_PREREQUISITE := ensure-mmmbed
+endif
+GO ?= go
+SQL_CC_AUTODETECT := $(if $(filter undefined,$(origin SQL_CC)),1,0)
+SQL_CC ?= $(if $(filter Windows_NT,$(OS)),$(if $(filter ARM64 CLANGARM64,$(PROCESSOR_ARCHITECTURE) $(PROCESSOR_ARCHITEW6432) $(MSYSTEM)),aarch64-w64-mingw32-clang,gcc),$(CC))
+SQL_MMMBED_DIR := $(SOURCE_DIR)/deps/ascii-chat-deps/mmmbed
 
-check-sql:
-	$(MMMBED) sql -l c --prefix database --format --dialect sqlite -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h --check
+init-sql-tools:
+	@test -f "$(SQL_MMMBED_DIR)/go.mod" || git submodule update --init --checkout -- deps/ascii-chat-deps/mmmbed
+	@test -f "$(SQL_MMMBED_DIR)/go.mod" || { echo >&2 "mmmbed source is missing"; exit 1; }
+	@if [ ! -e "$(SQL_MMMBED_DIR)/.git" ]; then exit 0; fi; \
+	  expected=$$(git rev-parse :deps/ascii-chat-deps/mmmbed) && \
+	  actual=$$(git -C "$(SQL_MMMBED_DIR)" rev-parse HEAD) && \
+	  if [ "$${actual}" != "$${expected}" ]; then \
+	    if [ -n "$$(git -C "$(SQL_MMMBED_DIR)" status --porcelain)" ] || \
+	       git -C "$(SQL_MMMBED_DIR)" symbolic-ref --quiet HEAD >/dev/null; then \
+	      echo >&2 "mmmbed submodule has local work; update it to $${expected} before generating SQL"; exit 1; \
+	    fi; \
+	    git submodule update --init --checkout -- deps/ascii-chat-deps/mmmbed; \
+	    actual=$$(git -C "$(SQL_MMMBED_DIR)" rev-parse HEAD) && [ "$${actual}" = "$${expected}" ]; \
+	  fi
+
+ensure-mmmbed: init-sql-tools
+	@mkdir -p "$(BIN_DIR)" "$(BUILD_DIR)"
+	@go_command="$(GO)"; \
+	  go_version=$$(sed -n 's/^go //p' "$(SQL_MMMBED_DIR)/go.mod"); \
+	  go_switch=$$("$${go_command}" env GOTOOLCHAIN 2>/dev/null); \
+	  installed=$$("$${go_command}" version | sed -n 's/^go version go\([0-9][0-9.]*\).*/\1/p'); \
+	  automatic=0; case "$${go_switch}" in auto|path|*+auto|*+path) automatic=1;; esac; \
+	  if [ -z "$${go_switch}" ] || { [ "$${automatic}" = 0 ] && \
+	    awk -v have="$${installed}" -v need="$${go_version}" 'BEGIN { split(have,h,"."); split(need,n,"."); for (i=1;i<=3;i++) { if (h[i]+0<n[i]+0) exit 0; if (h[i]+0>n[i]+0) exit 1 } exit 1 }'; }; then \
+	      go_bin=$$("$${go_command}" env GOBIN); \
+	      if [ -z "$${go_bin}" ]; then \
+	        go_bin=$$("$${go_command}" env GOPATH); \
+	        $(if $(filter Windows_NT,$(OS)),go_bin="$${go_bin%%;*}",go_bin="$${go_bin%%:*}"); \
+	        go_bin="$${go_bin}/bin"; \
+	      fi; \
+	      go_command="$${go_bin}/go$${go_version}$(SQL_EXEEXT)"; \
+	      go_switch=local; \
+	  fi; \
+	  host_os=$$(GOTOOLCHAIN="$${go_switch}" "$${go_command}" env GOHOSTOS) && \
+	    host_arch=$$(GOTOOLCHAIN="$${go_switch}" "$${go_command}" env GOHOSTARCH) || exit 1; \
+	  sql_cc="$(SQL_CC)"; \
+	  if [ "$(SQL_CC_AUTODETECT)" = 1 ] && [ "$${host_os}" = windows ] && [ "$${host_arch}" = arm64 ]; then \
+	    sql_cc=aarch64-w64-mingw32-clang; \
+	  fi; \
+	  cache="$(abspath $(BUILD_DIR))/sql-tools/$${host_os}-$${host_arch}"; mkdir -p "$${cache}"; \
+	  revision=""; dirty=""; \
+	  if [ -e "$(SQL_MMMBED_DIR)/.git" ]; then \
+	    revision=$$(git -C "$(SQL_MMMBED_DIR)" rev-parse HEAD) || exit 1; \
+	    dirty=$$(git -C "$(SQL_MMMBED_DIR)" status --porcelain) || exit 1; \
+	  fi; \
+	  if [ -n "$${dirty}" ] || [ -z "$${revision}" ] || [ ! -f "$${cache}/mmmbed$(SQL_EXEEXT)" ] || \
+	     [ "$${revision}" != "$$(cat "$${cache}/revision" 2>/dev/null)" ]; then \
+	    cd "$(SQL_MMMBED_DIR)" && GOTOOLCHAIN="$${go_switch}" CGO_ENABLED=1 CC="$${sql_cc}" GOOS="$${host_os}" GOARCH="$${host_arch}" \
+	      "$${go_command}" build -o "$${cache}/mmmbed$(SQL_EXEEXT)" ./cmd/mmmbed && \
+	    if [ -n "$${dirty}" ]; then printf 'dirty:%s\n' "$${revision}"; else printf '%s\n' "$${revision}"; fi > "$${cache}/revision" || exit 1; \
+	  fi; \
+	  cp "$${cache}/mmmbed$(SQL_EXEEXT)" "$(SQL_MMMBED)"
+
+sql-generate: $(SQL_TOOL_PREREQUISITE)
+	"$(MMMBED)" sql -l c --prefix database --format --dialect sqlite -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h
+
+sql-check: $(SQL_TOOL_PREREQUISITE)
+	"$(MMMBED)" sql -l c --prefix database --format --dialect sqlite -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h --check
 
 INSTALL_PREFIX_FROM_ARGS := $(strip $(shell printf '%s %s\n' "$(CMAKE_ARGS)" "$(EXTRA_CMAKE_ARGS)" | tr ' ' '\n' | grep -E '^-DCMAKE_INSTALL_PREFIX=' | tail -n1 | cut -d '=' -f2- ))
 

@@ -305,8 +305,8 @@ HTTP names use gotel's sanitized application-prefixed convention. DNS spans
 include question names. Named SQL templates live in `lib/discovery/sql/`, with
 table, index and trigger definitions in `lib/discovery/sql/schema.sql`;
 rate-limit templates are shared through `lib/network/rate_limit/sql/`. After
-editing either directory, run `make generate-sql` with mmmbed installed and
-commit the updated `lib/discovery/queries_generated.h`; `make check-sql` checks
+editing either directory, run `make sql-generate` and
+commit the updated `lib/discovery/queries_generated.h`; `make sql-check` checks
 whether it is current. The checked-in header avoids requiring mmmbed when
 building ascii-chat. Gotel consumes the generated catalog through an accessor,
 including its SQL and names without assuming the application's record layout.

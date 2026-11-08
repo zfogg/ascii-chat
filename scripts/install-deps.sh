@@ -65,7 +65,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
 
   # Install packages - completely ignore all errors since many are already installed
   # GitHub runners have pre-installed packages with version conflicts that can't be resolved
-  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
+  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool go \
     ninja mimalloc zstd libsodium portaudio opus fftw criterion doxygen sqlite3 \
     miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets libuv icu4c openssl@3 yyjson \
     libvterm freetype fontconfig expat pcre2 \
@@ -81,10 +81,6 @@ if [[ "$PLATFORM" == "macos" ]]; then
   uv sync --project "$(dirname "$0")/../tests/ascii_chat_tests" --frozen
 
   echo "Homebrew packages: installation attempt completed"
-
-  echo ""
-  echo "Dependencies installed successfully!"
-  echo "You can now run: cmake --build --preset debug"
 
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
@@ -147,7 +143,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     # Install non-LLVM dependencies first
     apt-get install -y \
       pkg-config make autoconf automake libtool ccache gperf \
-      cmake ninja-build \
+      cmake ninja-build golang-go \
       musl-tools musl-dev \
       nasm \
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libfftw3-dev libsystemd-dev \
@@ -314,7 +310,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       pkg-config make autoconf automake libtool \
       clang llvm lld \
       libcxx-devel libcxxabi-devel \
-      cmake ninja-build \
+      cmake ninja-build golang \
       musl-devel musl-gcc musl-libc-static \
       nasm \
       libx264-devel libx265-devel \
@@ -343,7 +339,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       clang llvm lldb lld \
       libc++ libc++abi \
       nasm \
-      cmake ninja make \
+      cmake ninja make go \
       musl mimalloc \
       zstd zlib libsodium portaudio opus fftw sqlite libdatachannel miniupnpc ffmpeg \
       x264 x265 \
@@ -400,16 +396,53 @@ elif [[ "$PLATFORM" == "linux" ]]; then
   uv tool install --upgrade "yt-dlp[default]"
   uv sync --project "$(dirname "$0")/../tests/ascii_chat_tests" --frozen
 
-  echo ""
-  echo "Dependencies installed successfully!"
-  echo "You can now run: cmake --build --preset debug"
-
 # Windows: Direct to PowerShell script
 elif [[ "$PLATFORM" == "windows" ]]; then
   echo "On Windows, please use the PowerShell script instead:"
   echo "  ./scripts/install-deps.ps1"
   exit 1
 fi
+
+# Go 1.21 and later automatically download the version specified by mmmbed's
+# go.mod. On older distributions, use Go's versioned toolchain launcher in
+# the configured GOBIN (or GOPATH/bin) without replacing the system Go.
+if ! command -v go >/dev/null 2>&1; then
+  if [[ "$PLATFORM" == "macos" ]]; then
+    brew install go
+  elif command -v apt-get >/dev/null 2>&1; then
+    apt-get install -y golang-go
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y golang
+  elif command -v pacman >/dev/null 2>&1; then
+    pacman -S --needed --noconfirm go
+  fi
+fi
+command -v go >/dev/null 2>&1 || { echo >&2 "ERROR: Go installation failed"; exit 1; }
+mmmbed_go_mod="$(dirname "$0")/../deps/ascii-chat-deps/mmmbed/go.mod"
+if [ ! -f "$mmmbed_go_mod" ]; then
+  echo >&2 "ERROR: mmmbed source is missing; run git submodule update --init --checkout -- deps/ascii-chat-deps/mmmbed"
+  exit 1
+fi
+go_tool_version=$(sed -n 's/^go //p' "$mmmbed_go_mod")
+[ -n "$go_tool_version" ] || { echo >&2 "ERROR: mmmbed/go.mod does not specify a Go version"; exit 1; }
+go_installed=$(go version | sed -n 's/^go version go\([0-9][0-9.]*\).*/\1/p')
+go_switch=$(go env GOTOOLCHAIN 2>/dev/null || true)
+go_automatic=0
+case "$go_switch" in auto|path|*+auto|*+path) go_automatic=1;; esac
+if [ -z "$go_switch" ] || { [ "$go_automatic" = 0 ] &&
+  awk -v have="$go_installed" -v need="$go_tool_version" 'BEGIN { split(have,h,"."); split(need,n,"."); for (i=1;i<=3;i++) { if (h[i]+0<n[i]+0) exit 0; if (h[i]+0>n[i]+0) exit 1 } exit 1 }'; }; then
+  go_bin=$(go env GOBIN)
+  if [ -z "$go_bin" ]; then
+    go_bin=$(go env GOPATH)
+    go_bin="${go_bin%%:*}/bin"
+  fi
+  mkdir -p "$go_bin"
+  GOBIN="$go_bin" go install "golang.org/dl/go${go_tool_version}@latest"
+  "$go_bin/go${go_tool_version}" download
+fi
+echo ""
+echo "Dependencies installed successfully!"
+echo "You can now run: cmake --build --preset debug"
 
 # Vite+ supplies Oxfmt and the Node.js toolchain used by formatting targets.
 if ! command -v vp >/dev/null 2>&1; then
