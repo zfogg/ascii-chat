@@ -587,7 +587,7 @@ static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, v
 }
 
 static void acip_on_session_joined(const acip_session_joined_t *joined, void *ctx) {
-  (void)ctx; // Unused for now, may be used in future for context passing
+  (void)ctx;
 
   if (!joined) {
     log_error("SESSION_JOINED callback received NULL response");
@@ -608,10 +608,7 @@ static void acip_on_session_joined(const acip_session_joined_t *joined, void *ct
 
   // Check if this is a WebRTC session
   if (joined->session_type == SESSION_TYPE_WEBRTC) {
-    // TODO: Phase 3 - Initialize WebRTC connection with TURN credentials
-    // webrtc_initialize_session(joined->session_id, joined->participant_id,
-    //                           joined->turn_username, joined->turn_password);
-    log_debug("WebRTC session detected - TODO: initialize WebRTC with TURN credentials");
+    log_debug("WebRTC session joined; discovery mode owns peer-manager initialization");
   } else {
     // Direct TCP - connection is already established or will be established
     log_debug("Direct TCP session - using existing connection");

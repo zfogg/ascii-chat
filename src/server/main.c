@@ -139,6 +139,7 @@
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/nat/upnp.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
+#include <ascii-chat/network/webrtc/config.h>
 #include <ascii-chat/network/webrtc/webrtc.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/protocol.h>
@@ -1585,30 +1586,15 @@ static int server_configure_stun(stun_server_t stun_servers[MAX_CONFIGURED_STUN_
 static size_t server_configure_turn(turn_server_t turn_servers[MAX_CONFIGURED_TURN_SERVERS], const char *turn_username,
                                     const char *turn_credential) {
   size_t turn_count = 0;
-  if (turn_username[0] && turn_credential[0]) {
-    char urls[OPTIONS_BUFF_SIZE];
-    SAFE_STRNCPY(urls, GET_OPTION(turn_servers), sizeof(urls));
-    char *saveptr = NULL;
-    char *url = platform_strtok_r(urls, ",", &saveptr);
-    while (url && turn_count < 4) {
-      while (*url == ' ' || *url == '\t')
-        url++;
-      size_t len = strlen(url);
-      while (len && (url[len - 1] == ' ' || url[len - 1] == '\t'))
-        url[--len] = '\0';
-      if (len && len < sizeof(turn_servers[0].url)) {
-        turn_server_t *turn = &turn_servers[turn_count++];
-        SAFE_STRNCPY(turn->url, url, sizeof(turn->url));
-        SAFE_STRNCPY(turn->username, turn_username, sizeof(turn->username));
-        SAFE_STRNCPY(turn->credential, turn_credential, sizeof(turn->credential));
-        turn->url_len = (uint8_t)len;
-        turn->username_len = (uint8_t)strlen(turn->username);
-        turn->credential_len = (uint8_t)strlen(turn->credential);
-      }
-      url = platform_strtok_r(NULL, ",", &saveptr);
-    }
+  const char *urls = GET_OPTION(turn_servers);
+  if (!urls || !urls[0] || !turn_username[0] || !turn_credential[0])
+    return 0;
+  asciichat_error_t result = webrtc_turn_servers_parse(urls, turn_username, turn_credential, turn_servers,
+                                                       MAX_CONFIGURED_TURN_SERVERS, &turn_count);
+  if (result != ASCIICHAT_OK) {
+    log_error("Failed to configure TURN servers: %s", asciichat_error_format(NULL, result));
+    return 0;
   }
-
   return turn_count;
 }
 

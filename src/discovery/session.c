@@ -33,6 +33,7 @@
 #include <ascii-chat/network/connection_endpoint.h>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/webrtc/stun.h>
+#include <ascii-chat/network/webrtc/config.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
 #include <ascii-chat/discovery/identity.h>
 #include "ascii-chat/common/error_codes.h"
@@ -914,45 +915,14 @@ static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *ses
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate TURN server array");
     }
 
-    // Parse comma-separated TURN server URLs
-    char turn_copy[OPTIONS_BUFF_SIZE];
-    SAFE_STRNCPY(turn_copy, turn_servers_str, sizeof(turn_copy));
-    session->turn_count = 0;
-
-    char *saveptr = NULL;
-    char *token = platform_strtok_r(turn_copy, ",", &saveptr);
-    while (token && session->turn_count < max_turn_servers) {
-      // Trim whitespace
-      while (*token == ' ' || *token == '\t')
-        token++;
-      size_t len = strlen(token);
-      while (len > 0 && (token[len - 1] == ' ' || token[len - 1] == '\t')) {
-        token[--len] = '\0';
-      }
-
-      if (len > 0 && len < sizeof(session->turn_servers[0].url)) {
-        // Set TURN server URL
-        session->turn_servers[session->turn_count].url_len = (uint8_t)len;
-        SAFE_STRNCPY(session->turn_servers[session->turn_count].url, token,
-                     sizeof(session->turn_servers[session->turn_count].url));
-
-        // Keep wire-compatible summaries; the peer manager receives full credentials separately.
-        SAFE_STRNCPY(session->turn_servers[session->turn_count].username, turn_username,
-                     sizeof(session->turn_servers[session->turn_count].username));
-        session->turn_servers[session->turn_count].username_len =
-            (uint8_t)strlen(session->turn_servers[session->turn_count].username);
-
-        SAFE_STRNCPY(session->turn_servers[session->turn_count].credential, turn_credential,
-                     sizeof(session->turn_servers[session->turn_count].credential));
-        session->turn_servers[session->turn_count].credential_len =
-            (uint8_t)strlen(session->turn_servers[session->turn_count].credential);
-
-        session->turn_count++;
-      } else if (len > 0) {
-        log_warn("TURN server URL too long (max 63 chars): %s", token);
-      }
-
-      token = platform_strtok_r(NULL, ",", &saveptr);
+    asciichat_error_t parse_result =
+        webrtc_turn_servers_parse(turn_servers_str, turn_username, turn_credential, session->turn_servers,
+                                  max_turn_servers, &session->turn_count);
+    if (parse_result != ASCIICHAT_OK) {
+      SAFE_FREE(session->turn_servers);
+      session->turn_servers = NULL;
+      session->turn_count = 0;
+      return parse_result;
     }
 
     if (session->turn_count > 0) {

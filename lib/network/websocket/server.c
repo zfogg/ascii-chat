@@ -69,13 +69,9 @@ typedef struct {
   size_t pending_send_len;    ///< Total length of message being sent
   size_t pending_send_offset; ///< Current offset in message (bytes already sent)
   bool has_pending_send;      ///< True if there's an in-progress message
+  atomic_t receive_callback_count; ///< RECEIVE callbacks for this connection
+  atomic_t writeable_callback_count; ///< WRITEABLE callbacks for this connection
 } websocket_connection_data_t;
-
-// Per-connection callback counters for diagnosing event loop interleaving.
-// These track how many RECEIVE vs WRITEABLE callbacks fire during message assembly.
-// TODO: Make these per-connection instead of global for proper multi-client support
-static atomic_t g_receive_callback_count = {0};
-static atomic_t g_writeable_callback_count = {0};
 
 // Forward declaration for websocket_protocols (defined later in file)
 static struct lws_protocols websocket_protocols[];
@@ -142,6 +138,8 @@ static asciichat_error_t websocket_establish_connection(struct lws *wsi, websock
   conn_data->pending_send_len = 0;
   conn_data->pending_send_offset = 0;
   conn_data->has_pending_send = false;
+  atomic_store_u64(&conn_data->receive_callback_count, 0);
+  atomic_store_u64(&conn_data->writeable_callback_count, 0);
 
   // Get client address
   char client_ip[IP_ADDRESS_BUFFER_SIZE] = {0};
@@ -313,7 +311,8 @@ static void websocket_close_connection(struct lws *wsi, websocket_connection_dat
 }
 
 static void websocket_send_queued_messages(struct lws *wsi, websocket_connection_data_t *conn_data) {
-  atomic_fetch_add_u64(&g_writeable_callback_count, 1);
+  if (conn_data)
+    atomic_fetch_add_u64(&conn_data->writeable_callback_count, 1);
   if (!conn_data || conn_data->cleaning_up || !conn_data->transport)
     return;
   uint64_t started = time_get_ns();
@@ -376,7 +375,7 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
   log_debug("[WS_TIMING] is_first=%d is_final=%d, about to increment callback count", is_first, is_final);
   log_dev("[WS_FRAG_DEBUG] === RECEIVE CALLBACK: is_first=%d is_final=%d len=%zu ===", is_first, is_final, len);
 
-  atomic_fetch_add_u64(&g_receive_callback_count, 1);
+  atomic_fetch_add_u64(&conn_data->receive_callback_count, 1);
   log_debug("[WS_TIMING] incremented callback count");
 
   // OPTIMIZATION: Only enable TCP_QUICKACK on first fragment of each message.
@@ -394,15 +393,15 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
 
   if (is_first) {
     // Reset fragment counters at start of new message
-    atomic_store_u64(&g_writeable_callback_count, 0);
-    atomic_store_u64(&g_receive_callback_count, 1);
+    atomic_store_u64(&conn_data->writeable_callback_count, 0);
+    atomic_store_u64(&conn_data->receive_callback_count, 1);
   }
 
   // Log fragment arrival
   // Note: Timing calculation with global g_receive_first_fragment_ns is broken for multi-fragment
   // messages and will be fixed with per-connection tracking
   {
-    uint64_t frag_num = atomic_load_u64(&g_receive_callback_count);
+    uint64_t frag_num = atomic_load_u64(&conn_data->receive_callback_count);
     log_dev("[WS_FRAG] Fragment #%llu: %zu bytes (first=%d final=%d)", (unsigned long long)frag_num, len, is_first,
             is_final);
   }
@@ -457,7 +456,7 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
   // interferes with fragmented frame processing in libwebsockets)
 
   log_dev("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
-          (unsigned long long)atomic_load_u64(&g_receive_callback_count));
+            (unsigned long long)atomic_load_u64(&conn_data->receive_callback_count));
 
   // Record timing for this callback
   websocket_callback_timing_record(&g_ws_callback_timing.receive, callback_enter_ns, websocket_callback_timing_start());

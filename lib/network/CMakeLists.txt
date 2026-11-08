@@ -35,6 +35,7 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/transport.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/peer_manager.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/stun.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/config.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/turn_credentials.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/sdp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webrtc/ice.c
