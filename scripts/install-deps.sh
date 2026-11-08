@@ -391,16 +391,26 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
   # Keep the interpreter and project environment owned by the invoking user
   # when system packages are installed through sudo.
+  if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
+    python_env="$(dirname "$0")/../tests/ascii_chat_tests/.venv"
+    if [ -d "$python_env" ] && [ ! -L "$python_env" ] && [ "$(stat -c %u "$python_env")" -eq 0 ]; then
+      chown -R "$SUDO_USER" "$python_env"
+    fi
+  fi
   run_uv() {
     if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
-      sudo -H -u "$SUDO_USER" "$(command -v uv)" "$@"
+      uv_settings=()
+      for name in UV_INDEX_URL UV_EXTRA_INDEX_URL UV_INDEX UV_DEFAULT_INDEX UV_INSECURE_HOST UV_NATIVE_TLS UV_SYSTEM_CERTS; do
+        if [ "${!name+x}" ]; then uv_settings+=("$name=${!name}"); fi
+      done
+      sudo -H -u "$SUDO_USER" env "${uv_settings[@]}" "$(command -v uv)" "$@"
     else
       uv "$@"
     fi
   }
   run_uv python install 3.15
   run_uv python pin 3.15
-  run_uv tool install --upgrade "yt-dlp[default]"
+  uv tool install --upgrade "yt-dlp[default]"
   run_uv sync --project "$(dirname "$0")/../tests/ascii_chat_tests" --frozen
 
 # Windows: Direct to PowerShell script
