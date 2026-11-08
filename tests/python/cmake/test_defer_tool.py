@@ -663,6 +663,19 @@ def test_untransformed_defer_fails_compilation(
     assert "defer() requires" in result.stderr
 
 
+def test_defer_in_included_header_fails_before_writing(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    (tmp_path / "inline.h").write_text(
+        "static inline void f(void) { defer((void)0); }\n", encoding="utf-8"
+    )
+    result = transform(tmp_path, transform_environment, '#include "inline.h"\nint main(void) { return 0; }\n')
+    assert result.returncode != 0
+    assert "inline.h:1:" in result.stderr.replace("\\", "/")
+    assert "defer in included headers is not supported" in result.stderr
+    assert not (tmp_path / "output.c").exists()
+
+
 @pytest.mark.parametrize("backend", ["NATIVE", "NATIVE_CROSS", "PYTHON"])
 def test_cmake_discovers_defer_and_tracks_headers(
     tmp_path: Path, compiler_environment: dict[str, str], backend: str

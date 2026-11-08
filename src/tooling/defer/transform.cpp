@@ -123,9 +123,18 @@ public:
       if (kind == CXCursor_MacroDefinition)
         macro_definitions_[spelling(cursor)].push_back(cursor);
       if (kind == CXCursor_MacroExpansion &&
-          (spelling(cursor) == "defer" || spelling(cursor) == "defer_named" || spelling(cursor) == "defer_cancel") &&
-          in_file(cursor))
-        macros_.emplace(begin(cursor), cursor);
+          (spelling(cursor) == "defer" || spelling(cursor) == "defer_named" || spelling(cursor) == "defer_cancel")) {
+        if (!in_file(cursor)) {
+          CXFile file = nullptr;
+          unsigned line = 0, column = 0;
+          clang_getExpansionLocation(clang_getCursorLocation(cursor), &file, &line, &column, nullptr);
+          if (file)
+            fail(consume_string(clang_getFileName(file)) + ":" + std::to_string(line) + ":" + std::to_string(column) +
+                 ": defer in included headers is not supported; move the function into a C source file");
+        } else {
+          macros_.emplace(begin(cursor), cursor);
+        }
+      }
     }
     if (!macros_.empty() && std::regex_search(source_, std::regex(R"((^|\n)[ \t]*#[ \t]*(line\b|[0-9]))")))
       fail("source-level line directives cannot be preserved safely");

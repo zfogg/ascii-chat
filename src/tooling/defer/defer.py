@@ -93,12 +93,15 @@ class Transformer:
         for cursor in root.get_children():
             if cursor.kind == cindex.CursorKind.MACRO_DEFINITION:
                 self.macro_definitions.setdefault(cursor.spelling, []).append(cursor)
-            if (
-                cursor.kind == cindex.CursorKind.MACRO_INSTANTIATION
-                and cursor.spelling in ("defer", "defer_named", "defer_cancel")
-                and self.in_file(cursor)
-            ):
-                self.macros[cursor.extent.start.offset] = cursor
+            if (cursor.kind == cindex.CursorKind.MACRO_INSTANTIATION
+                and cursor.spelling in ("defer", "defer_named", "defer_cancel")):
+                if self.in_file(cursor):
+                    self.macros[cursor.extent.start.offset] = cursor
+                elif cursor.location.file:
+                    raise TransformError(
+                        f"{cursor.location.file}:{cursor.location.line}:{cursor.location.column}: "
+                        "defer in included headers is not supported; move the function into a C source file"
+                    )
         if self.macros and re.search(rb"(?m)^[ \t]*#[ \t]*(?:line\b|[0-9])", source):
             raise TransformError(
                 "source-level line directives cannot be preserved safely"
