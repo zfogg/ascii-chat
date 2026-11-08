@@ -292,11 +292,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/CPUDetection.cmake)
 #   IS_APPLE_SILICON - Whether running on Apple Silicon
 #   ASCIICHAT_ENABLE_CRC32_HW - Whether CRC32 hardware acceleration is enabled
 #   WITH_DEBUG_INFO - Optional: If true, keep debug symbols (for RelWithDebInfo), default false
-function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_APPLE_SILICON ASCIICHAT_ENABLE_CRC32_HW)
+function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_APPLE_SILICON ASCIICHAT_ENABLE_CRC32_HW WITH_DEBUG_INFO)
     # Handle optional WITH_DEBUG_INFO parameter
-    set(WITH_DEBUG_INFO FALSE)
-    if(ARGC GREATER 5)
-        set(WITH_DEBUG_INFO ${ARGV5})
+    if(NOT DEFINED WITH_DEBUG_INFO)
+        set(WITH_DEBUG_INFO FALSE)
     endif()
 
     target_compile_definitions(asciichat-project-options INTERFACE NDEBUG)

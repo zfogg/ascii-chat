@@ -1,8 +1,8 @@
 #import <AVFoundation/AVFoundation.h>
 
-#include <stdlib.h>
-#include <string.h>
 #include <ascii-chat/audio/ios_portaudio.h>
+#include <ascii-chat/platform/memory.h>
+#include <string.h>
 
 struct PaStream {
   AVAudioEngine *engine;
@@ -13,6 +13,8 @@ struct PaStream {
   double sample_rate;
   int input_channels;
   int output_channels;
+  float *input_interleaved;
+  size_t input_capacity_frames;
   BOOL active;
   id interruption_observer;
 };
@@ -55,15 +57,17 @@ PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const 
   (void)flags;
   if (!stream)
     return -1;
-  PaStream *opened = calloc(1, sizeof(*opened));
-  if (!opened)
-    return -1;
+  PaStream *opened = SAFE_CALLOC(1, sizeof(*opened), PaStream *);
   opened->callback = callback;
   opened->user_data = user_data;
   opened->frames_per_buffer = frames_per_buffer;
   opened->sample_rate = sample_rate;
   opened->input_channels = input ? input->channelCount : 0;
   opened->output_channels = output ? output->channelCount : 0;
+  opened->input_capacity_frames = frames_per_buffer ? frames_per_buffer : 1024;
+  if (opened->input_channels > 0)
+    opened->input_interleaved = SAFE_CALLOC(opened->input_capacity_frames,
+                                            (size_t)opened->input_channels * sizeof(float), float *);
   opened->engine = [AVAudioEngine new];
   if (opened->output_channels > 0)
     opened->player = [AVAudioPlayerNode new];
@@ -100,7 +104,14 @@ PaError Pa_StartStream(PaStream *stream) {
                      block:^(AVAudioPCMBuffer *buffer, AVAudioTime *when) {
       (void)when;
       PaStreamCallbackTimeInfo time_info = {0, 0, 0};
-      stream->callback(buffer.floatChannelData, NULL, buffer.frameLength, &time_info, 0, stream->user_data);
+      size_t frames = buffer.frameLength;
+      if (frames > stream->input_capacity_frames)
+        frames = stream->input_capacity_frames;
+      for (size_t frame = 0; frame < frames; ++frame)
+        for (int channel = 0; channel < stream->input_channels; ++channel)
+          stream->input_interleaved[frame * (size_t)stream->input_channels + (size_t)channel] =
+              buffer.floatChannelData[channel][frame];
+      stream->callback(stream->input_interleaved, NULL, frames, &time_info, 0, stream->user_data);
     }];
   }
   if (stream->player) {
@@ -128,7 +139,8 @@ PaError Pa_StopStream(PaStream *stream) {
 PaError Pa_CloseStream(PaStream *stream) {
   if (!stream) return paNoError;
   if (stream->active) Pa_StopStream(stream);
-  free(stream);
+  SAFE_FREE(stream->input_interleaved);
+  SAFE_FREE(stream);
   return paNoError;
 }
 PaError Pa_WriteStream(PaStream *stream, const void *buffer, unsigned long frames) {
@@ -139,8 +151,9 @@ PaError Pa_WriteStream(PaStream *stream, const void *buffer, unsigned long frame
   AVAudioPCMBuffer *audio = [[AVAudioPCMBuffer alloc] initWithPCMFormat:format frameCapacity:(AVAudioFrameCount)frames];
   audio.frameLength = (AVAudioFrameCount)frames;
   const float *samples = buffer;
-  for (int channel = 0; channel < stream->output_channels; ++channel)
-    memcpy(audio.floatChannelData[channel], samples + (size_t)channel * frames, frames * sizeof(float));
+  for (size_t frame = 0; frame < frames; ++frame)
+    for (int channel = 0; channel < stream->output_channels; ++channel)
+      audio.floatChannelData[channel][frame] = samples[frame * (size_t)stream->output_channels + (size_t)channel];
   [stream->player scheduleBuffer:audio completionHandler:nil];
   return paNoError;
 }
