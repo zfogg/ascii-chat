@@ -504,6 +504,13 @@ if(WIN32)
     unset(_MSVC_LIB_HINTS)
 endif()
 
+# Python is optional for developer-only tooling such as clang-tidy. Search PATH
+# so native builds do not depend on a Python installation or hard-coded paths.
+find_program(ASCIICHAT_PYTHON3_EXECUTABLE
+    NAMES python3 python
+    DOC "Optional Python 3 interpreter for developer tooling"
+)
+
 # =============================================================================
 # Ninja - Build system
 # =============================================================================

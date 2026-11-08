@@ -64,8 +64,7 @@ if(NOT TARGET clang-format-check)
     add_custom_target(clang-format-check DEPENDS format-check)
 endif()
 
-# clang-tidy is optional and its Python wrapper is opt-in. Set
-# ASCIICHAT_PYTHON3_EXECUTABLE when enabling this developer target.
+# clang-tidy is optional and uses Python when an interpreter is found in PATH.
 set(CLANG_TIDY_EXECUTABLE "${ASCIICHAT_CLANG_TIDY_EXECUTABLE}")
 set(RUN_CLANG_TIDY_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/run-clang-tidy.py")
 
