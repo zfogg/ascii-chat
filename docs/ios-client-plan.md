@@ -130,6 +130,11 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 - [x] Cover the startup/media bridge contracts with a manual smoke test.
 - [x] Reuse SwiftUI camera and render buffers between frame polls.
 - [x] Expose camera and microphone startup failures in the prototype UI.
+- [x] Expose native session running/result state to SwiftUI.
+- [x] Skip unchanged terminal frames using a published render sequence.
+- [x] Reject unavailable modes in the C entry point as well as the UI.
+- [x] Permit clean restart after a native session ends.
+- [x] Tear down camera capture state when the preview disappears.
 - [x] Validate simulator architecture and device SDK inputs in build helpers.
 - [x] Expose canonical native mode names from the C entry-point API.
 - [ ] Keep native mode execution alive after startup and report C lifecycle errors to SwiftUI.
