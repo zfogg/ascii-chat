@@ -26,6 +26,7 @@
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/frame_flush.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/stat.h>
@@ -1613,7 +1614,7 @@ asciichat_error_t config_create_default(const char *config_path) {
     (void)platform_write_all(STDOUT_FILENO, builder.buffer, builder.size);
     // Flush C stdio buffer and terminal to ensure piped output is written immediately
     (void)fflush(stdout);
-    (void)terminal_flush(STDOUT_FILENO);
+    (void)platform_frame_flush(STDOUT_FILENO);
   }
 
   return ASCIICHAT_OK;

@@ -34,6 +34,7 @@
 #include <ascii-chat/options/runtime.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/frame_flush.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/video/ascii/palette.h>
@@ -1122,7 +1123,7 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     if (ctx->snapshot_mode) {
       (void)fflush(stdout);
       int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
-      (void)terminal_flush(flush_fd);
+      (void)platform_frame_flush(flush_fd);
     }
 
   } else if (terminal_is_interactive()) {
@@ -1143,7 +1144,7 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     if (ctx->snapshot_mode) {
       (void)fflush(stdout);
       int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
-      (void)terminal_flush(flush_fd);
+      (void)platform_frame_flush(flush_fd);
     }
   } else {
     // Named render files leave stdout available for ASCII output
@@ -1173,7 +1174,7 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     (void)fflush(stdout);
     if (ctx->snapshot_mode && ctx->has_tty) {
       int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
-      (void)terminal_flush(flush_fd);
+      (void)platform_frame_flush(flush_fd);
     }
   }
 
@@ -1272,7 +1273,7 @@ void session_display_write_raw(session_display_ctx_t *ctx, const char *data, siz
   (void)ui_controller_write(fd, data, len);
 
   // Flush immediately after write to TTY to ensure data is sent
-  (void)terminal_flush(fd);
+  (void)platform_frame_flush(fd);
 }
 
 void session_display_reset(session_display_ctx_t *ctx) {

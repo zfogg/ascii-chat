@@ -1,6 +1,7 @@
 # lib/platform - Platform abstraction layer
 
 set(PLATFORM_SRCS_COMMON
+    ${CMAKE_CURRENT_SOURCE_DIR}/frame_flush.c
     ${CMAKE_CURRENT_SOURCE_DIR}/wakeup.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/keyboard.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cpu.c
@@ -90,6 +91,7 @@ elseif(PLATFORM_POSIX)
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/filesystem.m
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/system.m
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/render_bridge.c
+                ${CMAKE_CURRENT_SOURCE_DIR}/ios/stdin_bridge.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/lws_spawn_stub.c)
             list(APPEND PLATFORM_LIBS Security)
         else()

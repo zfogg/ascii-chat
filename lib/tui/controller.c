@@ -30,6 +30,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/frame_flush.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/cond.h>
 #include <stdatomic.h>
@@ -1115,7 +1116,7 @@ static void *presentation_main(void *unused) {
           fps_counter_write_begin(g_fps);
           // A frontend reply drains the complete update. A local console query
           // adds an RPC without establishing any stronger completion boundary.
-          asciichat_error_t drained = g_probe_requested_ns ? ASCIICHAT_OK : terminal_flush(screen->fd);
+          asciichat_error_t drained = g_probe_requested_ns ? ASCIICHAT_OK : platform_frame_flush(screen->fd);
           fps_counter_write_end(g_fps, drained == ASCIICHAT_OK);
           if (written != ASCIICHAT_OK || drained != ASCIICHAT_OK)
             CLEAR_ERRNO();

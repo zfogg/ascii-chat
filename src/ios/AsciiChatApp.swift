@@ -78,6 +78,9 @@ private func platform_enable_keepawake() -> Int32
 @_silgen_name("platform_disable_keepawake")
 private func platform_disable_keepawake()
 
+@_silgen_name("ios_stdin_bridge_push")
+private func ios_stdin_bridge_push(_ data: UnsafeRawPointer, _ length: Int) -> Int
+
 private struct TestFrameView: View {
     private let image: CGImage?
 
@@ -263,6 +266,7 @@ struct ContentView: View {
     @State private var lifecycleTick = 0
     @State private var audioDevices: [String] = []
     @State private var selectedAudioDevice: Int32 = 0
+    @State private var commandLine = ""
 
     private func refreshAudioDevices() {
         let count = max(0, Int(asciichat_ios_audio_device_count()))
@@ -335,6 +339,17 @@ struct ContentView: View {
                     .id(lifecycleTick)
             }
             if didStart {
+                HStack {
+                    TextField("Send command or answer", text: $commandLine)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Send") {
+                        let text = commandLine + "\n"
+                        text.withCString { pointer in
+                            _ = ios_stdin_bridge_push(pointer, text.utf8.count)
+                        }
+                        commandLine = ""
+                    }
+                }
                 Divider()
                 TestFrameView()
                 CameraAsciiView()

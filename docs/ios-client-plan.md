@@ -1394,7 +1394,7 @@ Intentionally minimal. The C library does the heavy lifting.
 - [x] Keep the iOS target separate from the desktop executable
 - [x] Enable QUIC and WebSocket TLS on iOS, including the selected OpenSSL build
 - [ ] Create `lib/platform/ios/` directory with overrides:
-    - [ ] `system.c` — `platform_write()` routes STDOUT to render bridge
+    - [x] `system.c` — `platform_write()` routes STDOUT to render bridge
     - [x] `render_bridge.c` — libvterm + term_renderer + frame callback
     - [ ] `terminal.c` — dimensions from options, truecolor, no TTY
     - [x] `keyboard.c` — override `keyboard_init()`/`keyboard_destroy()` to skip TTY setup; reads from stdin_bridge queue
@@ -1402,18 +1402,18 @@ Intentionally minimal. The C library does the heavy lifting.
     - [x] `filesystem.m` — sandbox-aware paths
     - [ ] `process.c` — stub popen/fork
     - [ ] `question.c` — delegate prompts to Swift callback
-    - [ ] `stdin_bridge.c` — condvar + ring buffer for keyboard input from Swift; auto-triggers keyboard UI on first read
+    - [x] `stdin_bridge.c` — condvar + ring buffer for keyboard input from Swift; auto-triggers keyboard UI on first read
     - [x] `frame_flush.c` — iOS terminal flush bypasses desktop TTY draining
 - [ ] Create module files:
     - [ ] `lib/log/ios_log.c` — os_log integration
     - [ ] `lib/options/registry/ios_mode_defaults.c`
-- [ ] Add `lib/platform/frame_flush.h` and `lib/platform/frame_flush.c` (desktop default)
-- [ ] Refactor all render paths to call `platform_frame_flush()` instead of `terminal_flush()` directly
+- [x] Add `include/ascii-chat/platform/frame_flush.h` and `lib/platform/frame_flush.c` (desktop default)
+- [x] Refactor all render paths to call `platform_frame_flush()` instead of `terminal_flush()` directly
 - [ ] Rename `lib/video/webcam/macos/` → `lib/video/webcam/apple/`
 - [x] Write PortAudio → AVAudioEngine shim (`lib/audio/ios/portaudio_shim.m`)
 - [x] Cross-compile the currently selected dependency set for the iOS simulator
 - [x] Link and validate the Swift iOS simulator app bundle (`ascii-chat-ios-app.app`)
-- [ ] Build `libasciichat.a` for arm64 + arm64-simulator
+- [x] Build `libasciichat.a` for arm64 + arm64-simulator
 - [x] Add reproducible `.xcframework` packaging command
 - [x] Configure iOS terminal capabilities without TTY syscalls.
 - [x] Complete device configure/build using the Ninja generator and arm64 OpenSSL target.

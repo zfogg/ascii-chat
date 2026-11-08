@@ -16,6 +16,7 @@
 #include <ascii-chat/platform/api.h>
 #ifdef PLATFORM_IOS
 #include <ascii-chat/platform/ios/render_bridge.h>
+#include <ascii-chat/platform/ios/stdin_bridge.h>
 #endif
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/internal.h>
@@ -513,6 +514,9 @@ FILE *platform_fdopen(const char *name, int fd, const char *mode) {
  * @return Number of bytes read, or -1 on error
  */
 ssize_t platform_read(int fd, void *buf, size_t count) {
+#ifdef PLATFORM_IOS
+  if (fd == STDIN_FILENO) return ios_stdin_bridge_read(buf, count);
+#endif
   return read(fd, buf, count);
 }
 
