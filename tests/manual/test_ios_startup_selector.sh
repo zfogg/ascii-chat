@@ -16,4 +16,12 @@ if IOS_SIM_ARCH=invalid "$(cd "$(dirname "$0")/../.." && pwd)/scripts/build-ios-
   echo "simulator architecture validation failed" >&2
   exit 1
 fi
+cache_dir="$(mktemp -d)"
+printf 'CMAKE_OSX_ARCHITECTURES:STRING=x86_64\n' > "$cache_dir/CMakeCache.txt"
+if IOS_SIM_ARCH=arm64 "$(cd "$(dirname "$0")/../.." && pwd)/scripts/build-ios-simulator.sh" "$cache_dir" >/dev/null 2>&1; then
+  echo "simulator cache architecture validation failed" >&2
+  rm -rf "$cache_dir"
+  exit 1
+fi
+rm -rf "$cache_dir"
 echo "iOS startup selector contract passed"

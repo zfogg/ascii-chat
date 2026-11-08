@@ -22,8 +22,6 @@ if(PLATFORM_IOS)
         set(_OPENSSL_IOS_VARIANT "device")
         set(_OPENSSL_IOS_MIN_VERSION_FLAG "-miphoneos-version-min=16.0")
     endif()
-    set(OPENSSL_PREFIX "${IOS_DEPS_CACHE_DIR}/openssl-${OPENSSL_VERSION}-${_OPENSSL_IOS_VARIANT}")
-    set(OPENSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-ios-${OPENSSL_VERSION}-${_OPENSSL_IOS_VARIANT}-build")
     set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
     set(OPENSSL_LIBDIR "lib")
 

@@ -1416,7 +1416,7 @@ Intentionally minimal. The C library does the heavy lifting.
 - [ ] Build `libasciichat.a` for arm64 + arm64-simulator
 - [x] Add reproducible `.xcframework` packaging command
 - [x] Configure iOS terminal capabilities without TTY syscalls.
-- [ ] Complete device configure/build using the Ninja generator and arm64 OpenSSL target (in progress).
+- [x] Complete device configure/build using the Ninja generator and arm64 OpenSSL target.
 - [ ] Verify: link into empty Xcode project, call `asciichat_main()` with mirror mode
 
 #### Phase 2: Mirror Mode — First Pixels (1 week)
