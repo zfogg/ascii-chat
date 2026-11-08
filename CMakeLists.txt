@@ -4,15 +4,23 @@ if(POLICY CMP0174)
 endif()
 
 # =============================================================================
-# Git Submodule Initialization (must come FIRST, before any dependencies are accessed)
-# =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/init/SubmoduleCheck.cmake)
-
-# =============================================================================
 # CMake Build Types
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/ProjectSettings.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/init/Options.cmake)
+
+# =============================================================================
+# Git Submodule Initialization (must happen before dependencies are accessed)
+# =============================================================================
+# Formatting only needs the source tree and clang-format; avoid initializing or
+# restoring the native dependency submodules for this lightweight target.
+if(NOT ASCIICHAT_FORMAT_ONLY)
+if(NOT ASCIICHAT_FORMAT_ONLY)
+    include(${CMAKE_SOURCE_DIR}/cmake/init/SubmoduleCheck.cmake)
+endif()
+endif()
+
 # INFO: CMAKE_BUILD_TYPE is now configured.
 
 # =============================================================================
