@@ -123,7 +123,8 @@ public:
       if (kind == CXCursor_MacroDefinition)
         macro_definitions_[spelling(cursor)].push_back(cursor);
       if (kind == CXCursor_MacroExpansion &&
-          (spelling(cursor) == "defer" || spelling(cursor) == "defer_named" || spelling(cursor) == "defer_cancel")) {
+          (spelling(cursor) == "defer" || spelling(cursor) == "defer_named" || spelling(cursor) == "defer_cancel" ||
+           spelling(cursor) == "SAFE_MALLOC_DEFER_FREE" || spelling(cursor) == "SAFE_CALLOC_DEFER_FREE")) {
         if (!in_file(cursor)) {
           CXFile file = nullptr;
           unsigned line = 0, column = 0;
@@ -183,6 +184,7 @@ private:
                           unsigned limit = std::numeric_limits<unsigned>::max());
   void visit_function(CXCursor cursor);
   void visit_defer(CXCursor cursor, CXCursorKind parent);
+  void visit_allocation(CXCursor cursor, CXCursorKind parent);
   void visit_block(CXCursor cursor, CXCursorKind parent);
   void visit(CXCursor cursor, CXCursorKind parent = CXCursor_UnexposedDecl);
   void require_keyword(unsigned position, std::string_view keyword) const {
@@ -296,7 +298,7 @@ std::string Transformer::cleanup(std::size_t first, std::size_t last, unsigned p
 void Transformer::index_control_flow(CXCursor cursor, std::vector<unsigned> scopes, unsigned limit) {
   const auto kind = clang_getCursorKind(cursor);
   const auto start = begin(cursor);
-  if (kind == CXCursor_DoStmt && macros_.count(start)) {
+  if ((kind == CXCursor_DoStmt || kind == CXCursor_DeclStmt) && macros_.count(start)) {
     if (!scopes.empty())
       defer_scopes_[start] = scopes.back();
     return;
@@ -313,6 +315,54 @@ void Transformer::index_control_flow(CXCursor cursor, std::vector<unsigned> scop
     declarations_.push_back({spelling(cursor), start, scopes, limit});
   for (auto child : children(cursor))
     index_control_flow(child, scopes, limit);
+}
+
+void Transformer::visit_allocation(CXCursor cursor, CXCursorKind parent) {
+  const auto start = begin(cursor);
+  const auto macro = macros_.at(start);
+  const auto name = spelling(macro);
+  if (parent != CXCursor_CompoundStmt)
+    fail_at(start, "deferred allocation must be a direct block declaration");
+  const auto parts = tokens(unit_, clang_getCursorExtent(macro));
+  if (parts.size() < 5 || parts[1].text != "(")
+    fail_at(start, "cannot parse deferred allocation");
+  std::vector<std::string> args;
+  unsigned arg_start = parts[1].finish;
+  int depth = 0;
+  for (std::size_t i = 2; i < parts.size(); ++i) {
+    const auto &token = parts[i];
+    if (token.text == ")" && depth == 0) {
+      args.push_back(trim(source_.substr(arg_start, token.start - arg_start)));
+      break;
+    }
+    if (token.text == "," && depth == 0) {
+      args.push_back(trim(source_.substr(arg_start, token.start - arg_start)));
+      arg_start = token.finish;
+      continue;
+    }
+    if (token.text == "(" || token.text == "[" || token.text == "{")
+      ++depth;
+    else if (token.text == ")" || token.text == "]" || token.text == "}")
+      --depth;
+  }
+  const bool zeroed = name == "SAFE_CALLOC_DEFER_FREE";
+  if (args.size() != (zeroed ? 4U : 3U) || !std::regex_match(args[0], std::regex("[A-Za-z_][A-Za-z_0-9]*")) ||
+      std::any_of(args.begin(), args.end(), [](const auto &arg) { return arg.empty(); }))
+    fail_at(start, "deferred allocation requires a variable name, allocation arguments, and pointer type");
+  const auto flag = "__ascii_defer_active_" + std::to_string(start);
+  const auto action = "SAFE_FREE(" + args[0] + ")";
+  std::vector<Token> identifiers = {{"SAFE_FREE", CXToken_Identifier, start, start},
+                                    {args[0], CXToken_Identifier, start, start}};
+  scopes_.back().actions.push_back({start, start, flag, action, expanded_identifiers(identifiers), ""});
+  std::string replacement = args.back() + " " + args[0] + " = " + (zeroed ? "SAFE_CALLOC(" : "SAFE_MALLOC(");
+  for (std::size_t i = 1; i < args.size(); ++i) {
+    if (i > 1)
+      replacement += ", ";
+    replacement += args[i];
+  }
+  replacement += "); " + flag + " = 1;";
+  edits_.push_back({start, static_cast<unsigned>(after_semicolon(source_, end(macro))), replacement});
+  seen_.insert(start);
 }
 
 void Transformer::visit_function(CXCursor cursor) {
@@ -460,6 +510,10 @@ void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
     return;
   if (macros_.count(start) && kind == CXCursor_DoStmt) {
     visit_defer(cursor, parent);
+    return;
+  }
+  if (macros_.count(start) && kind == CXCursor_DeclStmt) {
+    visit_allocation(cursor, parent);
     return;
   }
   if (kind == CXCursor_CompoundStmt) {

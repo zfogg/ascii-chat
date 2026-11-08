@@ -94,7 +94,7 @@ class Transformer:
             if cursor.kind == cindex.CursorKind.MACRO_DEFINITION:
                 self.macro_definitions.setdefault(cursor.spelling, []).append(cursor)
             if (cursor.kind == cindex.CursorKind.MACRO_INSTANTIATION
-                and cursor.spelling in ("defer", "defer_named", "defer_cancel")):
+                and cursor.spelling in ("defer", "defer_named", "defer_cancel", "SAFE_MALLOC_DEFER_FREE", "SAFE_CALLOC_DEFER_FREE")):
                 if self.in_file(cursor):
                     self.macros[cursor.extent.start.offset] = cursor
                 elif cursor.location.file:
@@ -284,7 +284,7 @@ class Transformer:
     ) -> None:
         kind = cursor.kind
         start = cursor.extent.start.offset
-        if kind == cindex.CursorKind.DO_STMT and start in self.macros:
+        if kind in (cindex.CursorKind.DO_STMT, cindex.CursorKind.DECL_STMT) and start in self.macros:
             if scopes:
                 self.defer_scopes[start] = scopes[-1]
             return
@@ -387,6 +387,44 @@ class Transformer:
                 self.visit(child, kind)
             return
         if not self.scopes and kind != cindex.CursorKind.COMPOUND_STMT:
+            return
+        if start in self.macros and kind == cindex.CursorKind.DECL_STMT:
+            if parent_kind != cindex.CursorKind.COMPOUND_STMT:
+                raise TransformError(self.diagnostic(start, "deferred allocation must be a direct block declaration"))
+            macro = self.macros[start]
+            tokens = list(self.tu.get_tokens(extent=macro.extent))
+            if len(tokens) < 5 or tokens[1].spelling != "(":
+                raise TransformError(self.diagnostic(start, "cannot parse deferred allocation"))
+            args: list[bytes] = []
+            arg_start = tokens[1].extent.end.offset
+            depth = 0
+            for token in tokens[2:]:
+                if token.spelling == ")" and depth == 0:
+                    args.append(self.source[arg_start:token.extent.start.offset].strip())
+                    break
+                if token.spelling == "," and depth == 0:
+                    args.append(self.source[arg_start:token.extent.start.offset].strip())
+                    arg_start = token.extent.end.offset
+                    continue
+                if token.spelling in ("(", "[", "{"):
+                    depth += 1
+                elif token.spelling in (")", "]", "}"):
+                    depth -= 1
+            zeroed = macro.spelling == "SAFE_CALLOC_DEFER_FREE"
+            if (len(args) != (4 if zeroed else 3) or not re.fullmatch(rb"[A-Za-z_][A-Za-z_0-9]*", args[0])
+                or any(not arg for arg in args)):
+                raise TransformError(self.diagnostic(start, "deferred allocation requires a variable name, allocation arguments, and pointer type"))
+            name = args[0].decode("ascii")
+            flag = f"__ascii_defer_active_{start}".encode()
+            action = b"SAFE_FREE(" + args[0] + b")"
+            definitions = self.macro_definitions.get("SAFE_FREE", [])
+            safe_free_tokens = list(definitions[0].get_tokens())[:1] if definitions else []
+            identifiers = self.expanded_identifiers(safe_free_tokens) | {name, "SAFE_FREE"}
+            self.scopes[-1].defers.append(DeferredAction(start, start, flag, action, identifiers))
+            replacement = args[-1] + b" " + args[0] + b" = " + (b"SAFE_CALLOC(" if zeroed else b"SAFE_MALLOC(")
+            replacement += b", ".join(args[1:]) + b"); " + flag + b" = 1;"
+            self.edits.append((start, self.after_semicolon(macro.extent.end.offset), replacement))
+            self.seen.add(start)
             return
         if start in self.macros and kind == cindex.CursorKind.DO_STMT:
             macro = self.macros[start]

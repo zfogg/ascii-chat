@@ -35,6 +35,7 @@ def native_binary() -> Path:
         "void f(void) { defer /* cleanup (LIFO) */ ((void)0); }\n",
         "int f(void) { defer((void)0); return\n__LINE__; }\n",
         "void f(int x) { defer_named(cleanup, x++); if (x) defer_cancel(cleanup); }\n",
+        "void f(void) { SAFE_MALLOC_DEFER_FREE(p, 4, char *); SAFE_CALLOC_DEFER_FREE(q, 2, 4, char *); (void)p; (void)q; }\n",
     ],
 )
 def test_generated_c_matches_python(
@@ -44,7 +45,13 @@ def test_generated_c_matches_python(
     source_path.write_text(
         "#define defer(...) do {} while (0)\n"
         "#define defer_named(name, ...) do {} while (0)\n"
-        "#define defer_cancel(name) do {} while (0)\n" + source, encoding="utf-8"
+        "#define defer_cancel(name) do {} while (0)\n"
+        "#define SAFE_MALLOC(size, cast) ((cast)0)\n"
+        "#define SAFE_CALLOC(count, size, cast) ((cast)0)\n"
+        "#define SAFE_FREE(p) do { (p) = 0; } while (0)\n"
+        "#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast)\n"
+        "#define SAFE_CALLOC_DEFER_FREE(name, count, size, cast) cast name = SAFE_CALLOC(count, size, cast)\n"
+        + source, encoding="utf-8"
     )
     native_output = tmp_path / "native.c"
     python_output = tmp_path / "python.c"

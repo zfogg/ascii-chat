@@ -25,7 +25,10 @@ static std::string transform_source(const std::string &source) {
 int main() {
   const std::string prefix = "#define defer(...) do {} while(0)\n"
                              "#define defer_named(name, ...) do {} while(0)\n"
-                             "#define defer_cancel(name) do {} while(0)\n";
+                             "#define defer_cancel(name) do {} while(0)\n"
+                             "#define SAFE_MALLOC(size, cast) ((cast)0)\n"
+                             "#define SAFE_FREE(p) do { (p) = 0; } while(0)\n"
+                             "#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast)\n";
   auto output = transform_source(prefix + "void f(void) { int x = 1; defer(x++); return; }\n");
   CHECK(output.find("__ascii_defer_active_") != std::string::npos);
   CHECK(output.find("if (__ascii_defer_active_") != std::string::npos);
@@ -36,6 +39,9 @@ int main() {
   output = transform_source(prefix + "int f(int) { defer((void)0); return 7; }\n");
   CHECK(output.find("__ascii_defer_argument_") != std::string::npos);
   CHECK(output.find("((int){0})") != std::string::npos);
+  output = transform_source(prefix + "void f(void) { SAFE_MALLOC_DEFER_FREE(p, 4, char *); (void)p; }\n");
+  CHECK(output.find("char * p = SAFE_MALLOC(4, char *)") != std::string::npos);
+  CHECK(output.find("SAFE_FREE(p)") != std::string::npos);
   output = transform_source(prefix + "int f(int (*)(int)) { defer((void)0); return 7; }\n");
   CHECK(output.find("__ascii_defer_argument_") != std::string::npos);
   for (const auto &source : std::vector<std::string>{

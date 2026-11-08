@@ -19,6 +19,19 @@
  * // Use file; fclose runs when this block exits.
  * @endcode
  *
+ * `SAFE_MALLOC_DEFER_FREE(name, size, pointer_type)` and
+ * `SAFE_CALLOC_DEFER_FREE(name, count, size, pointer_type)` declare a tracked
+ * allocation and register `SAFE_FREE(name)` for the enclosing block. Include
+ * `<ascii-chat/common.h>` as well as the defer header. Like other deferred
+ * actions, cleanup reads the current pointer value at exit; after transferring
+ * ownership, set the local pointer to `NULL`. Use these helpers directly as
+ * block declarations, not inside another macro.
+ *
+ * @code{.c}
+ * SAFE_CALLOC_DEFER_FREE(items, count, sizeof(*items), item_t *);
+ * if (!populate(items, count)) return ERROR;
+ * @endcode
+ *
  * Reaching a defer registers it. Actions run in reverse registration order,
  * with inner blocks cleaned up first. They evaluate their expressions at exit,
  * using the current values of referenced variables. They run on fallthrough,

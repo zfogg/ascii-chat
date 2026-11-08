@@ -528,6 +528,69 @@ def test_named_defer_works_with_public_header(
     assert result.returncode == 0, result.stderr
 
 
+@pytest.mark.parametrize("allocator", ["malloc", "calloc"])
+def test_deferred_safe_allocation_frees_on_early_return(
+    tmp_path: Path, transform_environment: dict[str, str], allocator: str
+) -> None:
+    allocation = ("SAFE_MALLOC_DEFER_FREE(p, sizeof(int) * 2, int *)" if allocator == "malloc"
+                  else "SAFE_CALLOC_DEFER_FREE(p, 2, sizeof(int), int *)")
+    source = (
+        '#include <stdlib.h>\n'
+        'static int releases;\n'
+        '#define SAFE_MALLOC(size, cast) ((cast)malloc(size))\n'
+        '#define SAFE_CALLOC(count, size, cast) ((cast)calloc(count, size))\n'
+        '#define SAFE_FREE(p) do { if (p) { ++releases; free(p); p = NULL; } } while (0)\n'
+        '#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast)\n'
+        '#define SAFE_CALLOC_DEFER_FREE(name, count, size, cast) cast name = SAFE_CALLOC(count, size, cast)\n'
+        'static int *transferred;\n'
+        f'static int f(int early) {{ {allocation}; if (!p) return 1; if (early == 1) return 0; '
+        'if (early == 2) { transferred = p; p = NULL; return 0; } p[0] = 7; return p[0] != 7; }\n'
+        'int main(void) { if (f(0) || f(1) || f(2)) return 1; free(transferred); return releases != 2; }\n'
+    )
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run([str(CLANG), "-std=c17", str(tmp_path / "output.c"), "-o", str(executable)],
+                            capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+@pytest.mark.parametrize("call", ["SAFE_MALLOC_DEFER_FREE(p, 4, char *)", "SAFE_CALLOC_DEFER_FREE(p, 1, 4, char *)"])
+def test_untransformed_deferred_allocation_fails_compilation(
+    tmp_path: Path, compiler_environment: dict[str, str], call: str
+) -> None:
+    source = tmp_path / "untransformed.c"
+    source.write_text(
+        '#define SAFE_MALLOC(size, cast) ((cast)0)\n'
+        '#define SAFE_CALLOC(count, size, cast) ((cast)0)\n'
+        '#include "ascii-chat/tooling/defer/defer.h"\n'
+        f'void f(void) {{ {call}; (void)p; }}\n', encoding="utf-8",
+    )
+    result = subprocess.run(
+        [str(CLANG), "-std=c17", "-fsyntax-only", f"-I{ROOT / 'include'}", str(source)],
+        capture_output=True, text=True, env=compiler_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert "requires the source transformation" in result.stderr
+
+
+def test_deferred_allocation_rejects_shadowed_pointer(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = (
+        '#include <stdlib.h>\n'
+        '#define SAFE_MALLOC(size, cast) ((cast)malloc(size))\n'
+        '#define SAFE_FREE(p) do { free(p); (p) = NULL; } while (0)\n'
+        '#define SAFE_MALLOC_DEFER_FREE(name, size, cast) cast name = SAFE_MALLOC(size, cast)\n'
+        'void f(void) { SAFE_MALLOC_DEFER_FREE(p, 4, char *); { char *p = NULL; (void)p; return; } }\n'
+    )
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode != 0
+    assert "shadowed" in result.stderr
+    assert not (tmp_path / "output.c").exists()
+
+
 def transform(
     tmp_path: Path, env: dict[str, str], source: str
 ) -> subprocess.CompletedProcess[str]:
@@ -715,6 +778,16 @@ def test_cmake_discovers_defer_and_tracks_headers(
         "void named(void) { defer_named(cleanup, (void)0); defer_cancel(cleanup); }\n",
         encoding="utf-8",
     )
+    (source_dir / "allocated.c").write_text(
+        '#include <stdlib.h>\n'
+        '#define SAFE_MALLOC(size, cast) ((cast)malloc(size))\n'
+        '#define SAFE_CALLOC(count, size, cast) ((cast)calloc(count, size))\n'
+        '#define SAFE_FREE(p) do { free(p); (p) = NULL; } while (0)\n'
+        '#include "ascii-chat/tooling/defer/defer.h"\n'
+        'int allocated(void) { SAFE_MALLOC_DEFER_FREE(p, 4, char *); '
+        'SAFE_CALLOC_DEFER_FREE(q, 2, 4, char *); return p == NULL || q == NULL; }\n',
+        encoding="utf-8",
+    )
     main = source_dir / "main.c"
     main.write_text("int main(void) { return 0; }\n", encoding="utf-8")
     header = source_dir / "value.h"
@@ -737,7 +810,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
         encoding="utf-8",
     )
     (source_dir / "CMakeLists.txt").write_text(
-        "add_executable(ascii-chat-probe main.c second.c named.c)\n"
+        "add_executable(ascii-chat-probe main.c second.c named.c allocated.c)\n"
         "set_source_files_properties(second.c PROPERTIES COMPILE_DEFINITIONS SECOND_REQUIRED)\n"
         "set_target_properties(ascii-chat-probe PROPERTIES UNITY_BUILD ON)\n"
         "add_dependencies(ascii-chat-probe generate_version)\n"
