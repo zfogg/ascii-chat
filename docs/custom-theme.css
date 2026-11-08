@@ -3,4 +3,12 @@ html {
   --primary-color: #e91e8c;
   --primary-dark-color: #b3176d;
   --primary-light-color: #f06db3;
+
+  /*
+   * The two Doxygen sidebars consume a fixed amount of room at desktop
+   * widths. Keep the compact default for smaller screens, but let the main
+   * document breathe between the sidebars instead of leaving a large empty
+   * gutter beside a 1050px content column.
+   */
+  --content-maxwidth: max(1050px, min(1600px, calc(100vw - 520px)));
 }

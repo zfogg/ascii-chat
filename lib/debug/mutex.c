@@ -11,7 +11,7 @@
 #include <ascii-chat/debug/stats.h>
 /**
  * @file debug/mutex.c
- * @ingroup debug_sync
+ * @ingroup debug_util
  * @brief Per-thread mutex lock stack for deadlock detection
  * @date February 2026
  *
@@ -849,7 +849,7 @@ static void copy_cond_deadlock_entry(uintptr_t key, uint64_t generation, const c
  *
  * Skips checks during shutdown to avoid accessing freed memory.
  *
- * @ingroup debug_sync
+ * @ingroup debug_util
  */
 void debug_sync_check_cond_deadlocks(void) {
   if (debug_sync_is_cleanup_in_progress()) {

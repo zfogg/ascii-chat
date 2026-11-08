@@ -4,8 +4,9 @@
 /**
  * @file sync.h
  * @brief 🔒 Synchronization primitive debugging (mutexes, rwlocks, condition variables)
- * @ingroup debug_sync
- * @addtogroup debug_sync
+ * @ingroup debug_util
+ * @addtogroup debug_util
+ * @ingroup debug_util
  * @{
  *
  * This module provides comprehensive synchronization state inspection and debugging:
@@ -128,7 +129,7 @@ extern "C" {
 
 /**
  * @brief Print timing state for all named mutexes to stdout/log
- * @ingroup debug_sync
+ * @ingroup debug_util
  *
  * Queries the named.c registry and prints a table of all registered mutexes
  * with their timing information:
@@ -152,7 +153,7 @@ void debug_sync_print_mutex_state(void);
 
 /**
  * @brief Print timing state for all named read-write locks to stdout/log
- * @ingroup debug_sync
+ * @ingroup debug_util
  *
  * Queries the named.c registry and prints a table of all registered rwlocks
  * with their timing information:
@@ -176,7 +177,7 @@ void debug_sync_print_rwlock_state(void);
 
 /**
  * @brief Print timing state for all named condition variables to stdout/log
- * @ingroup debug_sync
+ * @ingroup debug_util
  *
  * Queries the named.c registry and prints a table of all registered condition
  * variables with their timing information:
@@ -199,7 +200,7 @@ void debug_sync_print_cond_state(void);
 
 /**
  * @brief Print all synchronization primitive states at once
- * @ingroup debug_sync
+ * @ingroup debug_util
  *
  * Comprehensive debugging view that combines output from:
  * 1. debug_sync_print_mutex_state()
@@ -236,7 +237,7 @@ void debug_sync_print_state(void);
  * @param total_acquired Pointer to store total lock acquisitions (can be NULL)
  * @param total_released Pointer to store total lock releases (can be NULL)
  * @param currently_held Pointer to store currently held locks (can be NULL)
- * @ingroup debug_sync
+ * @ingroup debug_util
  *
  * Retrieves global statistics about synchronization primitive usage.
  * Any parameter can be NULL if that statistic isn't needed.
@@ -269,7 +270,7 @@ void debug_sync_get_stats(uint64_t *total_acquired, uint64_t *total_released, ui
 
 /**
  * @brief Check all condition variables for potential deadlocks
- * @ingroup debug_sync
+ * @ingroup debug_util
  *
  * Scans all registered condition variables and logs warnings for any that
  * have threads waiting without being signaled for longer than 5 seconds.
