@@ -128,7 +128,13 @@ PaError Pa_StartStream(PaStream *stream) {
                            for (int channel = 0; channel < stream->input_channels; ++channel)
                              stream->input_interleaved[frame * (size_t)stream->input_channels + (size_t)channel] =
                                  buffer.floatChannelData[channel][offset + frame];
-                         stream->callback(stream->input_interleaved, NULL, frames, &time_info, 0, stream->user_data);
+                         const int callback_result = stream->callback(stream->input_interleaved, NULL, frames,
+                                                                      &time_info, 0, stream->user_data);
+                         if (callback_result == paAbort || callback_result == paComplete) {
+                           stream->active = NO;
+                           [stream->engine.inputNode removeTapOnBus:0];
+                           break;
+                         }
                          offset += frames;
                        }
                      }];
@@ -141,6 +147,8 @@ PaError Pa_StartStream(PaStream *stream) {
   [stream->engine startAndReturnError:&error];
   if (error)
     return -1;
+  if (stream->player)
+    [stream->player play];
   stream->active = YES;
   return paNoError;
 }
@@ -159,8 +167,15 @@ PaError Pa_StopStream(PaStream *stream) {
 PaError Pa_CloseStream(PaStream *stream) {
   if (!stream)
     return paNoError;
-  if (stream->active)
-    Pa_StopStream(stream);
+  [stream->engine.inputNode removeTapOnBus:0];
+  [stream->engine stop];
+  if (stream->interruption_observer) {
+    [[NSNotificationCenter defaultCenter] removeObserver:stream->interruption_observer];
+    stream->interruption_observer = nil;
+  }
+  stream->active = NO;
+  stream->player = nil;
+  stream->engine = nil;
   SAFE_FREE(stream->input_interleaved);
   SAFE_FREE(stream);
   return paNoError;

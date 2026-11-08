@@ -16,7 +16,14 @@ if [[ -e "$output" ]]; then
   echo "output already exists; remove it explicitly before packaging: $output" >&2
   exit 1
 fi
+
+headers_dir="$(mktemp -d "${TMPDIR:-/tmp}/ascii-chat-ios-headers.XXXXXX")"
+trap 'rm -rf "$headers_dir"' EXIT
+cp -R include/. "$headers_dir/"
+mkdir -p "$headers_dir/ascii-chat-deps"
+cp -R deps/ascii-chat-deps/sokol "$headers_dir/ascii-chat-deps/"
+
 xcodebuild -create-xcframework \
-  -library "$device_lib" -headers include \
-  -library "$simulator_lib" -headers include \
+  -library "$device_lib" -headers "$headers_dir" \
+  -library "$simulator_lib" -headers "$headers_dir" \
   -output "$output"

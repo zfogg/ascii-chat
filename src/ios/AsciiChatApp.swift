@@ -284,7 +284,11 @@ struct ContentView: View {
                 ios_render_bridge_reset()
                 _ = platform_enable_keepawake()
                 DispatchQueue.global(qos: .userInitiated).async {
-                    _ = asciichat_ios_main(selectedMode.rawValue)
+                    let result = asciichat_ios_main(selectedMode.rawValue)
+                    DispatchQueue.main.async {
+                        launchMessage = result == 0 ? "Session ended" : "Session failed (\(result))"
+                        sessionStarted = false
+                    }
                 }
             }
             .buttonStyle(.borderedProminent)
