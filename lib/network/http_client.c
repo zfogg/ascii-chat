@@ -170,6 +170,13 @@ static int parse_http_status(const char *response, size_t length) {
 // Cap response size at 1 MB to prevent unbounded memory growth
 #define HTTPS_MAX_RESPONSE_SIZE (1024 * 1024)
 
+static void free_http_anchors(anchor_list *anchors) {
+  for (size_t i = 0; i < anchors->ptr; i++) {
+    free_ta_contents(&anchors->buf[i]);
+  }
+  SAFE_FREE(anchors->buf);
+}
+
 char *https_get(const char *hostname, const char *path) {
   ASCII_OTEL_SCOPE(HTTP);
   ascii_otel_http(&otel_scope, hostname, path);
@@ -197,13 +204,13 @@ char *https_get(const char *hostname, const char *path) {
 
   // Parse PEM certificates into BearSSL trust anchors
   anchor_list anchors = ANCHOR_LIST_INIT;
+  defer(free_http_anchors(&anchors));
   size_t num_anchors = read_trust_anchors_from_memory(&anchors, (unsigned char *)pem_data, pem_size);
   SAFE_FREE(pem_data);
 
   if (num_anchors == 0) {
     log_error("No trust anchors loaded");
-    // Free anchors before returning to prevent leak
-    goto cleanup_anchors;
+    return NULL;
   }
   log_info("Loaded %zu trust anchors", num_anchors);
 
@@ -225,16 +232,19 @@ char *https_get(const char *hostname, const char *path) {
   }
   if (dns_result != 0) {
     log_error("Failed to resolve hostname: %s", hostname);
-    goto cleanup_anchors;
+    return NULL;
   }
+
+  defer(if (result) freeaddrinfo(result));
 
   // Create TCP socket
   socket_t sock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
   if (sock == INVALID_SOCKET_VALUE) {
     log_error("Failed to create socket");
-    freeaddrinfo(result);
-    goto cleanup_anchors;
+    return NULL;
   }
+
+  defer(if (sock != INVALID_SOCKET_VALUE) socket_close(sock));
 
   // Set socket timeouts to avoid blocking indefinitely on stalled connections.
   // Windows expects a DWORD timeout in milliseconds, while POSIX expects a
@@ -253,12 +263,11 @@ char *https_get(const char *hostname, const char *path) {
   // Connect to server
   if (connect(sock, result->ai_addr, (int)result->ai_addrlen) != 0) {
     log_error("Failed to connect to %s:443", hostname);
-    socket_close(sock);
-    freeaddrinfo(result);
-    goto cleanup_anchors;
+    return NULL;
   }
 
   freeaddrinfo(result);
+  result = NULL;
 
   log_info("Connected to %s:443", hostname);
 
@@ -271,8 +280,8 @@ char *https_get(const char *hostname, const char *path) {
   br_ssl_client_init_full(&sc, &xc, anchors.buf, anchors.ptr);
 
   // Set I/O buffer
-  unsigned char *iobuf;
-  iobuf = SAFE_MALLOC(BR_SSL_BUFSIZE_BIDI, unsigned char *);
+  const size_t iobuf_size = BR_SSL_BUFSIZE_BIDI;
+  SAFE_MALLOC_DEFER_FREE(iobuf, iobuf_size, unsigned char *);
   br_ssl_engine_set_buffer(&sc.eng, iobuf, BR_SSL_BUFSIZE_BIDI, 1);
 
   // Initialize I/O context
@@ -297,19 +306,16 @@ char *https_get(const char *hostname, const char *path) {
   // Send HTTP request over TLS
   if (br_sslio_write_all(&ioc, request, (size_t)request_len) != 0) {
     log_error("Failed to send HTTP request");
-    SAFE_FREE(iobuf);
-    socket_close(sock);
-    goto cleanup_anchors;
+    return NULL;
   }
 
   br_sslio_flush(&ioc);
   log_info("Sent HTTP request");
 
   // Read HTTP response
-  char *response_buf = NULL;
   size_t response_capacity = 8192;
   size_t response_len = 0;
-  response_buf = SAFE_MALLOC(response_capacity, char *);
+  SAFE_MALLOC_DEFER_FREE(response_buf, response_capacity, char *);
 
   while (1) {
     // Ensure we have space to read
@@ -317,10 +323,7 @@ char *https_get(const char *hostname, const char *path) {
       response_capacity *= 2;
       if (response_capacity > HTTPS_MAX_RESPONSE_SIZE) {
         log_error("Response exceeds maximum size (%d bytes)", HTTPS_MAX_RESPONSE_SIZE);
-        SAFE_FREE(response_buf);
-        SAFE_FREE(iobuf);
-        socket_close(sock);
-        goto cleanup_anchors;
+        return NULL;
       }
       response_buf = SAFE_REALLOC(response_buf, response_capacity, char *);
     }
@@ -332,10 +335,7 @@ char *https_get(const char *hostname, const char *path) {
       int err = br_ssl_engine_last_error(&sc.eng);
       if (err != BR_ERR_OK) {
         log_error("TLS error: %d", err);
-        SAFE_FREE(response_buf);
-        SAFE_FREE(iobuf);
-        socket_close(sock);
-        goto cleanup_anchors;
+        return NULL;
       }
       // EOF or connection closed
       break;
@@ -353,6 +353,7 @@ char *https_get(const char *hostname, const char *path) {
   // Close connection
   br_sslio_close(&ioc);
   socket_close(sock);
+  sock = INVALID_SOCKET_VALUE;
 
   // Parse HTTP response
   int code = parse_http_status(response_buf, response_len);
@@ -363,22 +364,13 @@ char *https_get(const char *hostname, const char *path) {
       SET_ERRNO(ERROR_NETWORK, "Invalid HTTP response: %s", response_buf);
     else
       SET_ERRNO(ERROR_NETWORK, "HTTP request failed: %.50s", response_buf);
-    SAFE_FREE(response_buf);
-    SAFE_FREE(iobuf);
-    goto cleanup_anchors;
+    return NULL;
   }
 
   body = extract_http_body(response_buf, response_len);
   if (body)
     ascii_otel_http_status(&otel_scope, 200);
-  SAFE_FREE(response_buf);
-  SAFE_FREE(iobuf);
 
-cleanup_anchors:
-  for (size_t i = 0; i < anchors.ptr; i++) {
-    free_ta_contents(&anchors.buf[i]);
-  }
-  SAFE_FREE(anchors.buf);
   return body;
 }
 

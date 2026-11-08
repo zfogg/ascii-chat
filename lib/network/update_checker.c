@@ -196,11 +196,11 @@ asciichat_error_t update_check_save_cache(const update_check_result_t *result) {
   if (!cache_path) {
     return SET_ERRNO(ERROR_FILE_OPERATION, "Could not determine cache file path");
   }
+  defer(SAFE_FREE(cache_path));
 
   FILE *f = platform_fopen("file_stream", cache_path, "w");
   if (!f) {
     const char *error_msg = file_write_error_message(cache_path);
-    SAFE_FREE(cache_path);
     return SET_ERRNO(ERROR_FILE_OPERATION, "%s", error_msg);
   }
 
@@ -219,8 +219,6 @@ asciichat_error_t update_check_save_cache(const update_check_result_t *result) {
   fprintf(f, "%lld\n", (long long)result->dismissed_until);
 
   fclose(f);
-  SAFE_FREE(cache_path);
-
   return ASCIICHAT_OK;
 }
 
@@ -364,19 +362,19 @@ asciichat_error_t update_check_perform(update_check_result_t *result) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to fetch GitHub releases");
   }
 
+  defer(SAFE_FREE(response));
+
   // Parse JSON response
   char latest_tag[NETWORK_UPDATE_CHECKER_LATEST_TAG_BUFFER_SIZE] = {0};
   char release_url[NETWORK_UPDATE_CHECKER_RELEASE_URL_BUFFER_SIZE] = {0};
 
   if (!parse_github_release_json(response, latest_tag, sizeof(latest_tag), release_url, sizeof(release_url))) {
     log_error("Failed to parse GitHub API response");
-    SAFE_FREE(response);
     // Don't save cache on parse failure — retry next startup
     result->check_succeeded = false;
     return SET_ERRNO(ERROR_FORMAT, "Failed to parse GitHub API JSON");
   }
 
-  SAFE_FREE(response);
 
   // Fill in result
   SAFE_STRNCPY(result->latest_version, latest_tag, sizeof(result->latest_version));
