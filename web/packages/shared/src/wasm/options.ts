@@ -109,6 +109,9 @@ export function paletteName(type: number): Palette {
   return name;
 }
 
+/** The native options buffer reserves one byte for its terminator. */
+export const MAX_CUSTOM_PALETTE_BYTES = 255;
+
 /** Validate a patch before it is submitted to the atomic native options API. */
 export function validateOptions(values: OptionValues): void {
   const enums: Record<string, readonly number[]> = {
@@ -128,6 +131,10 @@ export function validateOptions(values: OptionValues): void {
       throw new Error("Custom palette must be a string");
     if (Array.from(palette).length > 1024)
       throw new Error("Custom palette cannot exceed 1024 characters");
+    if (new TextEncoder().encode(palette).length > MAX_CUSTOM_PALETTE_BYTES)
+      throw new Error(
+        `Custom palette cannot exceed ${MAX_CUSTOM_PALETTE_BYTES} UTF-8 bytes`,
+      );
   }
 }
 /** Applies a validated patch to the native options state atomically. */

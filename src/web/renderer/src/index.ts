@@ -14,6 +14,7 @@ export {
   TextRenderer,
   defaultPalettes,
   defaultBrowserSettings,
+  MAX_CUSTOM_PALETTE_BYTES,
   colorModeValues,
   colorFilterValues,
   paletteTypes,

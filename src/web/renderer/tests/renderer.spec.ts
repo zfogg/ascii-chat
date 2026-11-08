@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
@@ -115,7 +116,7 @@ test("Embind session owns native initialization and cleanup", async ({
 }) => {
   await page.goto("/");
   const result = await page.evaluate(async () => {
-    const url = "/renderer/src/renderer.js";
+    const url = "/src/web/renderer/src/renderer.js";
     const factory = (await import(url)).default;
     const module = await factory({
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
@@ -158,7 +159,7 @@ test("object options patches commit atomically and respect revisions", async ({
 }) => {
   await page.goto("/");
   const result = await page.evaluate(async () => {
-    const url = "/renderer/src/renderer.js";
+    const url = "/src/web/renderer/src/renderer.js";
     const factory = (await import(url)).default;
     const module = await factory({
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
@@ -288,4 +289,38 @@ test("shared rendering constants match the native definitions", async ({
     if (!match) throw new Error("Missing native palette " + key);
     expect(value).toBe(match[1]);
   }
+});
+
+test("palette length matches the native UTF-8 limit", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const url = "/src/web/renderer/src/index.js";
+    const { createRenderer } = await import(url);
+    const renderer = await createRenderer();
+    try {
+      renderer.options.palette("custom", "x".repeat(255));
+      const saved = renderer.options.read();
+      const errors = [];
+      for (const palette of [
+        "x".repeat(256),
+        "🌈".repeat(64),
+        "x".repeat(1025),
+      ]) {
+        try {
+          renderer.options.palette("custom", palette);
+          errors.push("");
+        } catch (error) {
+          errors.push(String(error));
+        }
+      }
+      return { saved, after: renderer.options.read(), errors };
+    } finally {
+      renderer.dispose();
+    }
+  });
+  expect(result.saved.values.palette_custom).toHaveLength(255);
+  expect(result.after).toEqual(result.saved);
+  expect(
+    result.errors.every((error: string) => error.includes("Custom palette")),
+  ).toBe(true);
 });

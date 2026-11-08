@@ -48,6 +48,7 @@ runtime settings used by the browser client; `expectedRevision` is optional.
 The constants and palettes are also available from `ascii-chat/options`.
 Patches are JavaScript objects, validated and committed atomically in C. A bad
 field or stale revision leaves the entire state unchanged.
+Custom palettes are limited to 255 UTF-8 bytes by the native options buffer.
 Use `renderer.options.palette("custom", " .:-=+*#%@")` for a custom palette,
 or select `standard`, `blocks`, `digital`, `minimal`, or `cool`. Options
 include `width`, `height`, `color_mode`, `render_mode`, `renderer`,

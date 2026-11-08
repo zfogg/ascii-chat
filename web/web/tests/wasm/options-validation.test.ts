@@ -25,18 +25,20 @@ describe("shared options validation", () => {
     { color_filter: 100 },
     { renderer: 2 },
     { palette_custom: "x".repeat(1025) },
+    { palette_custom: "x".repeat(256) },
+    { palette_custom: "🌈".repeat(64) },
   ])("rejects invalid patches before committing: %o", (patch) => {
     const { options, patchOptions } = setup();
     expect(() => options.patch({ width: 80, ...patch })).toThrow();
     expect(patchOptions).not.toHaveBeenCalled();
   });
-  it("accepts valid modes and a palette of 1024 Unicode characters", () => {
+  it("accepts valid modes and a palette of 255 UTF-8 bytes", () => {
     const { options, patchOptions } = setup();
     options.patch({
       color_mode: ColorMode.Truecolor,
       render_mode: RenderMode.HalfBlock,
       palette_type: paletteTypes.custom,
-      palette_custom: "🌈".repeat(1024),
+      palette_custom: "x".repeat(255),
     });
     expect(patchOptions).toHaveBeenCalledOnce();
     expect(() => paletteName(42)).toThrow();
