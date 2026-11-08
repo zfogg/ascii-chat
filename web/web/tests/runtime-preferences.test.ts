@@ -27,7 +27,7 @@ function createEngine(initial: Record<string, string | boolean | number> = {}) {
   let values: Record<string, string | boolean | number> = { ...initial };
   const patches: Record<string, unknown>[] = [];
   engine.module = {
-    _wasm_options_revision: () => revision,
+    wasm_options_revision: () => revision,
     readOptions: () => JSON.stringify({ revision, values }),
     patchOptions: (json) => {
       if (typeof json !== "string") throw new Error("Expected JSON text");

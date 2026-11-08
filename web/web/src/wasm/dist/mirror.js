@@ -346,12 +346,12 @@ async function MirrorModule(moduleArg = {}) {
   function updateMemoryViews() {
     var b = wasmMemory.buffer;
     HEAP8 = new Int8Array(b);
-    Module["HEAP16"] = HEAP16 = new Int16Array(b);
+    HEAP16 = new Int16Array(b);
     Module["HEAPU8"] = HEAPU8 = new Uint8Array(b);
     HEAPU16 = new Uint16Array(b);
     HEAP32 = new Int32Array(b);
     HEAPU32 = new Uint32Array(b);
-    Module["HEAPF32"] = HEAPF32 = new Float32Array(b);
+    HEAPF32 = new Float32Array(b);
     HEAPF64 = new Float64Array(b);
     HEAP64 = new BigInt64Array(b);
     HEAPU64 = new BigUint64Array(b);
@@ -892,29 +892,6 @@ async function MirrorModule(moduleArg = {}) {
     stackRestore(stackHigh);
     writeStackCookie();
   }
-  function getValue(ptr, type = "i8") {
-    if (type.endsWith("*")) type = "*";
-    switch (type) {
-      case "i1":
-        return (growMemViews(), HEAP8)[ptr];
-      case "i8":
-        return (growMemViews(), HEAP8)[ptr];
-      case "i16":
-        return (growMemViews(), HEAP16)[ptr >> 1];
-      case "i32":
-        return (growMemViews(), HEAP32)[ptr >> 2];
-      case "i64":
-        return (growMemViews(), HEAP64)[ptr >> 3];
-      case "float":
-        return (growMemViews(), HEAPF32)[ptr >> 2];
-      case "double":
-        return (growMemViews(), HEAPF64)[ptr >> 3];
-      case "*":
-        return (growMemViews(), HEAPU32)[ptr >> 2];
-      default:
-        abort(`invalid type for getValue: ${type}`);
-    }
-  }
   var wasmTableMirror = [];
   var getWasmTableEntry = (funcPtr) => {
     var func = wasmTableMirror[funcPtr];
@@ -944,37 +921,6 @@ async function MirrorModule(moduleArg = {}) {
   var noExitRuntime = true;
   var registerTLSInit = (tlsInitFunc) =>
     PThread.tlsInitFunctions.push(tlsInitFunc);
-  function setValue(ptr, value, type = "i8") {
-    if (type.endsWith("*")) type = "*";
-    switch (type) {
-      case "i1":
-        (growMemViews(), HEAP8)[ptr] = value;
-        break;
-      case "i8":
-        (growMemViews(), HEAP8)[ptr] = value;
-        break;
-      case "i16":
-        (growMemViews(), HEAP16)[ptr >> 1] = value;
-        break;
-      case "i32":
-        (growMemViews(), HEAP32)[ptr >> 2] = value;
-        break;
-      case "i64":
-        (growMemViews(), HEAP64)[ptr >> 3] = BigInt(value);
-        break;
-      case "float":
-        (growMemViews(), HEAPF32)[ptr >> 2] = value;
-        break;
-      case "double":
-        (growMemViews(), HEAPF64)[ptr >> 3] = value;
-        break;
-      case "*":
-        (growMemViews(), HEAPU32)[ptr >> 2] = value;
-        break;
-      default:
-        abort(`invalid type for setValue: ${type}`);
-    }
-  }
   var warnOnce = (text) => {
     warnOnce.shown ||= {};
     if (!warnOnce.shown[text]) {
@@ -6055,76 +6001,6 @@ async function MirrorModule(moduleArg = {}) {
       return e.errno;
     }
   }
-  var getCFunc = (ident) => {
-    var func = Module["_" + ident];
-    assert(
-      func,
-      "Cannot call unknown function " + ident + ", make sure it is exported",
-    );
-    return func;
-  };
-  var writeArrayToMemory = (array, buffer) => {
-    assert(
-      array.length >= 0,
-      "writeArrayToMemory array must have a length (should be an array or typed array)",
-    );
-    (growMemViews(), HEAP8).set(array, buffer);
-  };
-  var stringToUTF8OnStack = (str) => {
-    var size = lengthBytesUTF8(str) + 1;
-    var ret = stackAlloc(size);
-    stringToUTF8(str, ret, size);
-    return ret;
-  };
-  var ccall = (ident, returnType, argTypes, args, opts) => {
-    var toC = {
-      string: (str) => {
-        var ret = 0;
-        if (str !== null && str !== undefined && str !== 0) {
-          ret = stringToUTF8OnStack(str);
-        }
-        return ret;
-      },
-      array: (arr) => {
-        var ret = stackAlloc(arr.length);
-        writeArrayToMemory(arr, ret);
-        return ret;
-      },
-    };
-    function convertReturnValue(ret) {
-      if (returnType === "string") {
-        return UTF8ToString(ret);
-      }
-      if (returnType === "boolean") return Boolean(ret);
-      return ret;
-    }
-    var func = getCFunc(ident);
-    var cArgs = [];
-    var stack = 0;
-    assert(returnType !== "array", 'Return type should not be "array".');
-    if (args) {
-      for (var i = 0; i < args.length; i++) {
-        var converter = toC[argTypes[i]];
-        if (converter) {
-          if (stack === 0) stack = stackSave();
-          cArgs[i] = converter(args[i]);
-        } else {
-          cArgs[i] = args[i];
-        }
-      }
-    }
-    var ret = func(...cArgs);
-    function onDone(ret) {
-      if (stack !== 0) stackRestore(stack);
-      return convertReturnValue(ret);
-    }
-    ret = onDone(ret);
-    return ret;
-  };
-  var cwrap =
-    (ident, returnType, argTypes, opts) =>
-    (...args) =>
-      ccall(ident, returnType, argTypes, args, opts);
   PThread.init();
   FS.createPreloadedFile = FS_createPreloadedFile;
   FS.preloadFile = FS_preloadFile;
@@ -6195,13 +6071,6 @@ async function MirrorModule(moduleArg = {}) {
     }
     consumedModuleProp("preInit");
   }
-  Module["ccall"] = ccall;
-  Module["cwrap"] = cwrap;
-  Module["setValue"] = setValue;
-  Module["getValue"] = getValue;
-  Module["UTF8ToString"] = UTF8ToString;
-  Module["stringToUTF8"] = stringToUTF8;
-  Module["lengthBytesUTF8"] = lengthBytesUTF8;
   Module["FS"] = FS;
   var missingLibrarySymbols = [
     "writeI53ToI64",
@@ -6239,6 +6108,8 @@ async function MirrorModule(moduleArg = {}) {
     "STACK_ALIGN",
     "POINTER_SIZE",
     "ASSERTIONS",
+    "ccall",
+    "cwrap",
     "convertJsFunctionToWasm",
     "getEmptyTableSlot",
     "updateTableMap",
@@ -6248,6 +6119,8 @@ async function MirrorModule(moduleArg = {}) {
     "intArrayToString",
     "stringToAscii",
     "stringToNewUTF8",
+    "stringToUTF8OnStack",
+    "writeArrayToMemory",
     "registerKeyEventCallback",
     "maybeCStringToJsString",
     "findEventTarget",
@@ -6373,8 +6246,10 @@ async function MirrorModule(moduleArg = {}) {
     "callMain",
     "abort",
     "wasmExports",
+    "HEAPF32",
     "HEAPF64",
     "HEAP8",
+    "HEAP16",
     "HEAPU16",
     "HEAP32",
     "HEAPU32",
@@ -6424,11 +6299,16 @@ async function MirrorModule(moduleArg = {}) {
     "addOnPostRun",
     "freeTableIndexes",
     "functionsInTableMap",
+    "setValue",
+    "getValue",
     "PATH",
     "PATH_FS",
     "UTF8Decoder",
     "UTF8ArrayToString",
+    "UTF8ToString",
     "stringToUTF8Array",
+    "stringToUTF8",
+    "lengthBytesUTF8",
     "intArrayFromString",
     "AsciiToString",
     "UTF16Decoder",
@@ -6438,8 +6318,6 @@ async function MirrorModule(moduleArg = {}) {
     "UTF32ToString",
     "stringToUTF32",
     "lengthBytesUTF32",
-    "stringToUTF8OnStack",
-    "writeArrayToMemory",
     "JSEvents",
     "specialHTMLTargets",
     "findCanvasEventTarget",
@@ -6729,8 +6607,8 @@ async function MirrorModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    2852448: () => Module.getRandomValue(),
-    2852484: () => {
+    2852512: () => Module.getRandomValue(),
+    2852548: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -6767,206 +6645,11 @@ async function MirrorModule(moduleArg = {}) {
   var __embind_initialize_bindings = makeInvalidEarlyAccess(
     "__embind_initialize_bindings",
   );
-  var _wasm_options_revision = (Module["_wasm_options_revision"] =
-    makeInvalidEarlyAccess("_wasm_options_revision"));
-  var _wasm_options_retired_count = (Module["_wasm_options_retired_count"] =
-    makeInvalidEarlyAccess("_wasm_options_retired_count"));
-  var _wasm_options_patch = (Module["_wasm_options_patch"] =
-    makeInvalidEarlyAccess("_wasm_options_patch"));
-  var _wasm_options_values = (Module["_wasm_options_values"] =
-    makeInvalidEarlyAccess("_wasm_options_values"));
-  var _malloc = (Module["_malloc"] = makeInvalidEarlyAccess("_malloc"));
-  var _free = (Module["_free"] = makeInvalidEarlyAccess("_free"));
-  var _wasm_options_release = (Module["_wasm_options_release"] =
-    makeInvalidEarlyAccess("_wasm_options_release"));
-  var _set_width = (Module["_set_width"] =
-    makeInvalidEarlyAccess("_set_width"));
-  var _get_width = (Module["_get_width"] =
-    makeInvalidEarlyAccess("_get_width"));
-  var _set_height = (Module["_set_height"] =
-    makeInvalidEarlyAccess("_set_height"));
-  var _get_height = (Module["_get_height"] =
-    makeInvalidEarlyAccess("_get_height"));
-  var _set_color_mode = (Module["_set_color_mode"] =
-    makeInvalidEarlyAccess("_set_color_mode"));
-  var _get_color_mode = (Module["_get_color_mode"] =
-    makeInvalidEarlyAccess("_get_color_mode"));
-  var _set_color_filter = (Module["_set_color_filter"] =
-    makeInvalidEarlyAccess("_set_color_filter"));
-  var _get_color_filter = (Module["_get_color_filter"] =
-    makeInvalidEarlyAccess("_get_color_filter"));
-  var _set_palette = (Module["_set_palette"] =
-    makeInvalidEarlyAccess("_set_palette"));
-  var _get_palette = (Module["_get_palette"] =
-    makeInvalidEarlyAccess("_get_palette"));
-  var _set_palette_chars = (Module["_set_palette_chars"] =
-    makeInvalidEarlyAccess("_set_palette_chars"));
-  var _get_palette_chars = (Module["_get_palette_chars"] =
-    makeInvalidEarlyAccess("_get_palette_chars"));
-  var _set_matrix_rain = (Module["_set_matrix_rain"] =
-    makeInvalidEarlyAccess("_set_matrix_rain"));
-  var _get_matrix_rain = (Module["_get_matrix_rain"] =
-    makeInvalidEarlyAccess("_get_matrix_rain"));
-  var _set_waveform = (Module["_set_waveform"] =
-    makeInvalidEarlyAccess("_set_waveform"));
-  var _get_waveform = (Module["_get_waveform"] =
-    makeInvalidEarlyAccess("_get_waveform"));
-  var _set_fft = (Module["_set_fft"] = makeInvalidEarlyAccess("_set_fft"));
-  var _get_fft = (Module["_get_fft"] = makeInvalidEarlyAccess("_get_fft"));
-  var _set_flip_x = (Module["_set_flip_x"] =
-    makeInvalidEarlyAccess("_set_flip_x"));
-  var _get_flip_x = (Module["_get_flip_x"] =
-    makeInvalidEarlyAccess("_get_flip_x"));
-  var _set_flip_y = (Module["_set_flip_y"] =
-    makeInvalidEarlyAccess("_set_flip_y"));
-  var _get_flip_y = (Module["_get_flip_y"] =
-    makeInvalidEarlyAccess("_get_flip_y"));
-  var _set_render_mode = (Module["_set_render_mode"] =
-    makeInvalidEarlyAccess("_set_render_mode"));
-  var _get_render_mode = (Module["_get_render_mode"] =
-    makeInvalidEarlyAccess("_get_render_mode"));
-  var _set_target_fps = (Module["_set_target_fps"] =
-    makeInvalidEarlyAccess("_set_target_fps"));
-  var _get_target_fps = (Module["_get_target_fps"] =
-    makeInvalidEarlyAccess("_get_target_fps"));
-  var _get_help_text = (Module["_get_help_text"] =
-    makeInvalidEarlyAccess("_get_help_text"));
-  var _wasm_capture_transform_required = (Module[
-    "_wasm_capture_transform_required"
-  ] = makeInvalidEarlyAccess("_wasm_capture_transform_required"));
-  var _wasm_capture_transform_rgba = (Module["_wasm_capture_transform_rgba"] =
-    makeInvalidEarlyAccess("_wasm_capture_transform_rgba"));
+  var _malloc = makeInvalidEarlyAccess("_malloc");
+  var _free = makeInvalidEarlyAccess("_free");
   var _pthread_self = makeInvalidEarlyAccess("_pthread_self");
   var _strerror = makeInvalidEarlyAccess("_strerror");
-  var _wasm_error_snapshot = (Module["_wasm_error_snapshot"] =
-    makeInvalidEarlyAccess("_wasm_error_snapshot"));
-  var _wasm_error_code = (Module["_wasm_error_code"] =
-    makeInvalidEarlyAccess("_wasm_error_code"));
-  var _wasm_error_message = (Module["_wasm_error_message"] =
-    makeInvalidEarlyAccess("_wasm_error_message"));
-  var _wasm_error_file = (Module["_wasm_error_file"] =
-    makeInvalidEarlyAccess("_wasm_error_file"));
-  var _wasm_error_full_file = (Module["_wasm_error_full_file"] =
-    makeInvalidEarlyAccess("_wasm_error_full_file"));
-  var _wasm_error_function = (Module["_wasm_error_function"] =
-    makeInvalidEarlyAccess("_wasm_error_function"));
-  var _wasm_error_line = (Module["_wasm_error_line"] =
-    makeInvalidEarlyAccess("_wasm_error_line"));
-  var _wasm_error_dismiss = (Module["_wasm_error_dismiss"] =
-    makeInvalidEarlyAccess("_wasm_error_dismiss"));
-  var _session_av_state_create = (Module["_session_av_state_create"] =
-    makeInvalidEarlyAccess("_session_av_state_create"));
-  var _session_av_state_destroy = (Module["_session_av_state_destroy"] =
-    makeInvalidEarlyAccess("_session_av_state_destroy"));
-  var _session_av_state_generation = (Module["_session_av_state_generation"] =
-    makeInvalidEarlyAccess("_session_av_state_generation"));
-  var _session_av_state_begin = (Module["_session_av_state_begin"] =
-    makeInvalidEarlyAccess("_session_av_state_begin"));
-  var _session_av_state_is_current = (Module["_session_av_state_is_current"] =
-    makeInvalidEarlyAccess("_session_av_state_is_current"));
-  var _session_av_state_should_run = (Module["_session_av_state_should_run"] =
-    makeInvalidEarlyAccess("_session_av_state_should_run"));
-  var _session_av_state_complete = (Module["_session_av_state_complete"] =
-    makeInvalidEarlyAccess("_session_av_state_complete"));
-  var _session_av_state_is_active = (Module["_session_av_state_is_active"] =
-    makeInvalidEarlyAccess("_session_av_state_is_active"));
-  var _session_av_state_begin_stop = (Module["_session_av_state_begin_stop"] =
-    makeInvalidEarlyAccess("_session_av_state_begin_stop"));
-  var _session_av_state_finish_stop = (Module["_session_av_state_finish_stop"] =
-    makeInvalidEarlyAccess("_session_av_state_finish_stop"));
-  var _errno_print_stacks = (Module["_errno_print_stacks"] =
-    makeInvalidEarlyAccess("_errno_print_stacks"));
-  var _errno_print_history = (Module["_errno_print_history"] =
-    makeInvalidEarlyAccess("_errno_print_history"));
   var _fflush = makeInvalidEarlyAccess("_fflush");
-  var _wasm_test_pattern_create = (Module["_wasm_test_pattern_create"] =
-    makeInvalidEarlyAccess("_wasm_test_pattern_create"));
-  var _wasm_test_pattern_render = (Module["_wasm_test_pattern_render"] =
-    makeInvalidEarlyAccess("_wasm_test_pattern_render"));
-  var _wasm_test_pattern_destroy = (Module["_wasm_test_pattern_destroy"] =
-    makeInvalidEarlyAccess("_wasm_test_pattern_destroy"));
-  var _wasm_test_pattern_render_rgba = (Module[
-    "_wasm_test_pattern_render_rgba"
-  ] = makeInvalidEarlyAccess("_wasm_test_pattern_render_rgba"));
-  var _wasm_renderer_config_size = (Module["_wasm_renderer_config_size"] =
-    makeInvalidEarlyAccess("_wasm_renderer_config_size"));
-  var _wasm_renderer_config_write = (Module["_wasm_renderer_config_write"] =
-    makeInvalidEarlyAccess("_wasm_renderer_config_write"));
-  var _get_font_default_ptr = (Module["_get_font_default_ptr"] =
-    makeInvalidEarlyAccess("_get_font_default_ptr"));
-  var _get_font_default_size = (Module["_get_font_default_size"] =
-    makeInvalidEarlyAccess("_get_font_default_size"));
-  var _term_renderer_create = (Module["_term_renderer_create"] =
-    makeInvalidEarlyAccess("_term_renderer_create"));
-  var _wasm_ui_create = (Module["_wasm_ui_create"] =
-    makeInvalidEarlyAccess("_wasm_ui_create"));
-  var _wasm_ui_destroy = (Module["_wasm_ui_destroy"] =
-    makeInvalidEarlyAccess("_wasm_ui_destroy"));
-  var _wasm_ui_resize = (Module["_wasm_ui_resize"] =
-    makeInvalidEarlyAccess("_wasm_ui_resize"));
-  var _wasm_ui_loading = (Module["_wasm_ui_loading"] =
-    makeInvalidEarlyAccess("_wasm_ui_loading"));
-  var _wasm_ui_log = (Module["_wasm_ui_log"] =
-    makeInvalidEarlyAccess("_wasm_ui_log"));
-  var _wasm_ui_media = (Module["_wasm_ui_media"] =
-    makeInvalidEarlyAccess("_wasm_ui_media"));
-  var _wasm_ui_key = (Module["_wasm_ui_key"] =
-    makeInvalidEarlyAccess("_wasm_ui_key"));
-  var _wasm_ui_tick = (Module["_wasm_ui_tick"] =
-    makeInvalidEarlyAccess("_wasm_ui_tick"));
-  var _wasm_ui_clear = (Module["_wasm_ui_clear"] =
-    makeInvalidEarlyAccess("_wasm_ui_clear"));
-  var _wasm_ui_redraw = (Module["_wasm_ui_redraw"] =
-    makeInvalidEarlyAccess("_wasm_ui_redraw"));
-  var _wasm_ui_capture_logs = (Module["_wasm_ui_capture_logs"] =
-    makeInvalidEarlyAccess("_wasm_ui_capture_logs"));
-  var _wasm_ui_volume = (Module["_wasm_ui_volume"] =
-    makeInvalidEarlyAccess("_wasm_ui_volume"));
-  var _wasm_ui_fps = (Module["_wasm_ui_fps"] =
-    makeInvalidEarlyAccess("_wasm_ui_fps"));
-  var _wasm_ui_audio = (Module["_wasm_ui_audio"] =
-    makeInvalidEarlyAccess("_wasm_ui_audio"));
-  var _term_renderer_set_zalgo = (Module["_term_renderer_set_zalgo"] =
-    makeInvalidEarlyAccess("_term_renderer_set_zalgo"));
-  var _term_renderer_feed = (Module["_term_renderer_feed"] =
-    makeInvalidEarlyAccess("_term_renderer_feed"));
-  var _term_renderer_pixels = (Module["_term_renderer_pixels"] =
-    makeInvalidEarlyAccess("_term_renderer_pixels"));
-  var _term_renderer_width_px = (Module["_term_renderer_width_px"] =
-    makeInvalidEarlyAccess("_term_renderer_width_px"));
-  var _term_renderer_height_px = (Module["_term_renderer_height_px"] =
-    makeInvalidEarlyAccess("_term_renderer_height_px"));
-  var _term_renderer_pitch = (Module["_term_renderer_pitch"] =
-    makeInvalidEarlyAccess("_term_renderer_pitch"));
-  var _term_renderer_get_cols = (Module["_term_renderer_get_cols"] =
-    makeInvalidEarlyAccess("_term_renderer_get_cols"));
-  var _term_renderer_get_rows = (Module["_term_renderer_get_rows"] =
-    makeInvalidEarlyAccess("_term_renderer_get_rows"));
-  var _term_renderer_destroy = (Module["_term_renderer_destroy"] =
-    makeInvalidEarlyAccess("_term_renderer_destroy"));
-  var _mirror_init_with_args = (Module["_mirror_init_with_args"] =
-    makeInvalidEarlyAccess("_mirror_init_with_args"));
-  var _mirror_reset_stabilizer = (Module["_mirror_reset_stabilizer"] =
-    makeInvalidEarlyAccess("_mirror_reset_stabilizer"));
-  var _mirror_cleanup = (Module["_mirror_cleanup"] =
-    makeInvalidEarlyAccess("_mirror_cleanup"));
-  var _mirror_convert_frame = (Module["_mirror_convert_frame"] =
-    makeInvalidEarlyAccess("_mirror_convert_frame"));
-  var _mirror_submit_audio_samples = (Module["_mirror_submit_audio_samples"] =
-    makeInvalidEarlyAccess("_mirror_submit_audio_samples"));
-  var _mirror_render_audio_visualization = (Module[
-    "_mirror_render_audio_visualization"
-  ] = makeInvalidEarlyAccess("_mirror_render_audio_visualization"));
-  var _mirror_free_string = (Module["_mirror_free_string"] =
-    makeInvalidEarlyAccess("_mirror_free_string"));
-  var _face_web_reset = (Module["_face_web_reset"] =
-    makeInvalidEarlyAccess("_face_web_reset"));
-  var _face_web_input = (Module["_face_web_input"] =
-    makeInvalidEarlyAccess("_face_web_input"));
-  var _face_web_detect = (Module["_face_web_detect"] =
-    makeInvalidEarlyAccess("_face_web_detect"));
-  var _face_web_tick = (Module["_face_web_tick"] =
-    makeInvalidEarlyAccess("_face_web_tick"));
   var __emscripten_tls_init = makeInvalidEarlyAccess("__emscripten_tls_init");
   var _emscripten_builtin_memalign = makeInvalidEarlyAccess(
     "_emscripten_builtin_memalign",
@@ -7029,148 +6712,12 @@ async function MirrorModule(moduleArg = {}) {
       "missing Wasm export: _embind_initialize_bindings",
     );
     assert(
-      typeof wasmExports["wasm_options_revision"] != "undefined",
-      "missing Wasm export: wasm_options_revision",
-    );
-    assert(
-      typeof wasmExports["wasm_options_retired_count"] != "undefined",
-      "missing Wasm export: wasm_options_retired_count",
-    );
-    assert(
-      typeof wasmExports["wasm_options_patch"] != "undefined",
-      "missing Wasm export: wasm_options_patch",
-    );
-    assert(
-      typeof wasmExports["wasm_options_values"] != "undefined",
-      "missing Wasm export: wasm_options_values",
-    );
-    assert(
       typeof wasmExports["malloc"] != "undefined",
       "missing Wasm export: malloc",
     );
     assert(
       typeof wasmExports["free"] != "undefined",
       "missing Wasm export: free",
-    );
-    assert(
-      typeof wasmExports["wasm_options_release"] != "undefined",
-      "missing Wasm export: wasm_options_release",
-    );
-    assert(
-      typeof wasmExports["set_width"] != "undefined",
-      "missing Wasm export: set_width",
-    );
-    assert(
-      typeof wasmExports["get_width"] != "undefined",
-      "missing Wasm export: get_width",
-    );
-    assert(
-      typeof wasmExports["set_height"] != "undefined",
-      "missing Wasm export: set_height",
-    );
-    assert(
-      typeof wasmExports["get_height"] != "undefined",
-      "missing Wasm export: get_height",
-    );
-    assert(
-      typeof wasmExports["set_color_mode"] != "undefined",
-      "missing Wasm export: set_color_mode",
-    );
-    assert(
-      typeof wasmExports["get_color_mode"] != "undefined",
-      "missing Wasm export: get_color_mode",
-    );
-    assert(
-      typeof wasmExports["set_color_filter"] != "undefined",
-      "missing Wasm export: set_color_filter",
-    );
-    assert(
-      typeof wasmExports["get_color_filter"] != "undefined",
-      "missing Wasm export: get_color_filter",
-    );
-    assert(
-      typeof wasmExports["set_palette"] != "undefined",
-      "missing Wasm export: set_palette",
-    );
-    assert(
-      typeof wasmExports["get_palette"] != "undefined",
-      "missing Wasm export: get_palette",
-    );
-    assert(
-      typeof wasmExports["set_palette_chars"] != "undefined",
-      "missing Wasm export: set_palette_chars",
-    );
-    assert(
-      typeof wasmExports["get_palette_chars"] != "undefined",
-      "missing Wasm export: get_palette_chars",
-    );
-    assert(
-      typeof wasmExports["set_matrix_rain"] != "undefined",
-      "missing Wasm export: set_matrix_rain",
-    );
-    assert(
-      typeof wasmExports["get_matrix_rain"] != "undefined",
-      "missing Wasm export: get_matrix_rain",
-    );
-    assert(
-      typeof wasmExports["set_waveform"] != "undefined",
-      "missing Wasm export: set_waveform",
-    );
-    assert(
-      typeof wasmExports["get_waveform"] != "undefined",
-      "missing Wasm export: get_waveform",
-    );
-    assert(
-      typeof wasmExports["set_fft"] != "undefined",
-      "missing Wasm export: set_fft",
-    );
-    assert(
-      typeof wasmExports["get_fft"] != "undefined",
-      "missing Wasm export: get_fft",
-    );
-    assert(
-      typeof wasmExports["set_flip_x"] != "undefined",
-      "missing Wasm export: set_flip_x",
-    );
-    assert(
-      typeof wasmExports["get_flip_x"] != "undefined",
-      "missing Wasm export: get_flip_x",
-    );
-    assert(
-      typeof wasmExports["set_flip_y"] != "undefined",
-      "missing Wasm export: set_flip_y",
-    );
-    assert(
-      typeof wasmExports["get_flip_y"] != "undefined",
-      "missing Wasm export: get_flip_y",
-    );
-    assert(
-      typeof wasmExports["set_render_mode"] != "undefined",
-      "missing Wasm export: set_render_mode",
-    );
-    assert(
-      typeof wasmExports["get_render_mode"] != "undefined",
-      "missing Wasm export: get_render_mode",
-    );
-    assert(
-      typeof wasmExports["set_target_fps"] != "undefined",
-      "missing Wasm export: set_target_fps",
-    );
-    assert(
-      typeof wasmExports["get_target_fps"] != "undefined",
-      "missing Wasm export: get_target_fps",
-    );
-    assert(
-      typeof wasmExports["get_help_text"] != "undefined",
-      "missing Wasm export: get_help_text",
-    );
-    assert(
-      typeof wasmExports["wasm_capture_transform_required"] != "undefined",
-      "missing Wasm export: wasm_capture_transform_required",
-    );
-    assert(
-      typeof wasmExports["wasm_capture_transform_rgba"] != "undefined",
-      "missing Wasm export: wasm_capture_transform_rgba",
     );
     assert(
       typeof wasmExports["pthread_self"] != "undefined",
@@ -7181,260 +6728,8 @@ async function MirrorModule(moduleArg = {}) {
       "missing Wasm export: strerror",
     );
     assert(
-      typeof wasmExports["wasm_error_snapshot"] != "undefined",
-      "missing Wasm export: wasm_error_snapshot",
-    );
-    assert(
-      typeof wasmExports["wasm_error_code"] != "undefined",
-      "missing Wasm export: wasm_error_code",
-    );
-    assert(
-      typeof wasmExports["wasm_error_message"] != "undefined",
-      "missing Wasm export: wasm_error_message",
-    );
-    assert(
-      typeof wasmExports["wasm_error_file"] != "undefined",
-      "missing Wasm export: wasm_error_file",
-    );
-    assert(
-      typeof wasmExports["wasm_error_full_file"] != "undefined",
-      "missing Wasm export: wasm_error_full_file",
-    );
-    assert(
-      typeof wasmExports["wasm_error_function"] != "undefined",
-      "missing Wasm export: wasm_error_function",
-    );
-    assert(
-      typeof wasmExports["wasm_error_line"] != "undefined",
-      "missing Wasm export: wasm_error_line",
-    );
-    assert(
-      typeof wasmExports["wasm_error_dismiss"] != "undefined",
-      "missing Wasm export: wasm_error_dismiss",
-    );
-    assert(
-      typeof wasmExports["session_av_state_create"] != "undefined",
-      "missing Wasm export: session_av_state_create",
-    );
-    assert(
-      typeof wasmExports["session_av_state_destroy"] != "undefined",
-      "missing Wasm export: session_av_state_destroy",
-    );
-    assert(
-      typeof wasmExports["session_av_state_generation"] != "undefined",
-      "missing Wasm export: session_av_state_generation",
-    );
-    assert(
-      typeof wasmExports["session_av_state_begin"] != "undefined",
-      "missing Wasm export: session_av_state_begin",
-    );
-    assert(
-      typeof wasmExports["session_av_state_is_current"] != "undefined",
-      "missing Wasm export: session_av_state_is_current",
-    );
-    assert(
-      typeof wasmExports["session_av_state_should_run"] != "undefined",
-      "missing Wasm export: session_av_state_should_run",
-    );
-    assert(
-      typeof wasmExports["session_av_state_complete"] != "undefined",
-      "missing Wasm export: session_av_state_complete",
-    );
-    assert(
-      typeof wasmExports["session_av_state_is_active"] != "undefined",
-      "missing Wasm export: session_av_state_is_active",
-    );
-    assert(
-      typeof wasmExports["session_av_state_begin_stop"] != "undefined",
-      "missing Wasm export: session_av_state_begin_stop",
-    );
-    assert(
-      typeof wasmExports["session_av_state_finish_stop"] != "undefined",
-      "missing Wasm export: session_av_state_finish_stop",
-    );
-    assert(
-      typeof wasmExports["errno_print_stacks"] != "undefined",
-      "missing Wasm export: errno_print_stacks",
-    );
-    assert(
-      typeof wasmExports["errno_print_history"] != "undefined",
-      "missing Wasm export: errno_print_history",
-    );
-    assert(
       typeof wasmExports["fflush"] != "undefined",
       "missing Wasm export: fflush",
-    );
-    assert(
-      typeof wasmExports["wasm_test_pattern_create"] != "undefined",
-      "missing Wasm export: wasm_test_pattern_create",
-    );
-    assert(
-      typeof wasmExports["wasm_test_pattern_render"] != "undefined",
-      "missing Wasm export: wasm_test_pattern_render",
-    );
-    assert(
-      typeof wasmExports["wasm_test_pattern_destroy"] != "undefined",
-      "missing Wasm export: wasm_test_pattern_destroy",
-    );
-    assert(
-      typeof wasmExports["wasm_test_pattern_render_rgba"] != "undefined",
-      "missing Wasm export: wasm_test_pattern_render_rgba",
-    );
-    assert(
-      typeof wasmExports["wasm_renderer_config_size"] != "undefined",
-      "missing Wasm export: wasm_renderer_config_size",
-    );
-    assert(
-      typeof wasmExports["wasm_renderer_config_write"] != "undefined",
-      "missing Wasm export: wasm_renderer_config_write",
-    );
-    assert(
-      typeof wasmExports["get_font_default_ptr"] != "undefined",
-      "missing Wasm export: get_font_default_ptr",
-    );
-    assert(
-      typeof wasmExports["get_font_default_size"] != "undefined",
-      "missing Wasm export: get_font_default_size",
-    );
-    assert(
-      typeof wasmExports["term_renderer_create"] != "undefined",
-      "missing Wasm export: term_renderer_create",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_create"] != "undefined",
-      "missing Wasm export: wasm_ui_create",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_destroy"] != "undefined",
-      "missing Wasm export: wasm_ui_destroy",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_resize"] != "undefined",
-      "missing Wasm export: wasm_ui_resize",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_loading"] != "undefined",
-      "missing Wasm export: wasm_ui_loading",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_log"] != "undefined",
-      "missing Wasm export: wasm_ui_log",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_media"] != "undefined",
-      "missing Wasm export: wasm_ui_media",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_key"] != "undefined",
-      "missing Wasm export: wasm_ui_key",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_tick"] != "undefined",
-      "missing Wasm export: wasm_ui_tick",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_clear"] != "undefined",
-      "missing Wasm export: wasm_ui_clear",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_redraw"] != "undefined",
-      "missing Wasm export: wasm_ui_redraw",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_capture_logs"] != "undefined",
-      "missing Wasm export: wasm_ui_capture_logs",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_volume"] != "undefined",
-      "missing Wasm export: wasm_ui_volume",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_fps"] != "undefined",
-      "missing Wasm export: wasm_ui_fps",
-    );
-    assert(
-      typeof wasmExports["wasm_ui_audio"] != "undefined",
-      "missing Wasm export: wasm_ui_audio",
-    );
-    assert(
-      typeof wasmExports["term_renderer_set_zalgo"] != "undefined",
-      "missing Wasm export: term_renderer_set_zalgo",
-    );
-    assert(
-      typeof wasmExports["term_renderer_feed"] != "undefined",
-      "missing Wasm export: term_renderer_feed",
-    );
-    assert(
-      typeof wasmExports["term_renderer_pixels"] != "undefined",
-      "missing Wasm export: term_renderer_pixels",
-    );
-    assert(
-      typeof wasmExports["term_renderer_width_px"] != "undefined",
-      "missing Wasm export: term_renderer_width_px",
-    );
-    assert(
-      typeof wasmExports["term_renderer_height_px"] != "undefined",
-      "missing Wasm export: term_renderer_height_px",
-    );
-    assert(
-      typeof wasmExports["term_renderer_pitch"] != "undefined",
-      "missing Wasm export: term_renderer_pitch",
-    );
-    assert(
-      typeof wasmExports["term_renderer_get_cols"] != "undefined",
-      "missing Wasm export: term_renderer_get_cols",
-    );
-    assert(
-      typeof wasmExports["term_renderer_get_rows"] != "undefined",
-      "missing Wasm export: term_renderer_get_rows",
-    );
-    assert(
-      typeof wasmExports["term_renderer_destroy"] != "undefined",
-      "missing Wasm export: term_renderer_destroy",
-    );
-    assert(
-      typeof wasmExports["mirror_init_with_args"] != "undefined",
-      "missing Wasm export: mirror_init_with_args",
-    );
-    assert(
-      typeof wasmExports["mirror_reset_stabilizer"] != "undefined",
-      "missing Wasm export: mirror_reset_stabilizer",
-    );
-    assert(
-      typeof wasmExports["mirror_cleanup"] != "undefined",
-      "missing Wasm export: mirror_cleanup",
-    );
-    assert(
-      typeof wasmExports["mirror_convert_frame"] != "undefined",
-      "missing Wasm export: mirror_convert_frame",
-    );
-    assert(
-      typeof wasmExports["mirror_submit_audio_samples"] != "undefined",
-      "missing Wasm export: mirror_submit_audio_samples",
-    );
-    assert(
-      typeof wasmExports["mirror_render_audio_visualization"] != "undefined",
-      "missing Wasm export: mirror_render_audio_visualization",
-    );
-    assert(
-      typeof wasmExports["mirror_free_string"] != "undefined",
-      "missing Wasm export: mirror_free_string",
-    );
-    assert(
-      typeof wasmExports["face_web_reset"] != "undefined",
-      "missing Wasm export: face_web_reset",
-    );
-    assert(
-      typeof wasmExports["face_web_input"] != "undefined",
-      "missing Wasm export: face_web_input",
-    );
-    assert(
-      typeof wasmExports["face_web_detect"] != "undefined",
-      "missing Wasm export: face_web_detect",
-    );
-    assert(
-      typeof wasmExports["face_web_tick"] != "undefined",
-      "missing Wasm export: face_web_tick",
     );
     assert(
       typeof wasmExports["_emscripten_tls_init"] != "undefined",
@@ -7518,295 +6813,11 @@ async function MirrorModule(moduleArg = {}) {
       "_embind_initialize_bindings",
       0,
     );
-    _wasm_options_revision = Module["_wasm_options_revision"] =
-      createExportWrapper("wasm_options_revision", 0);
-    _wasm_options_retired_count = Module["_wasm_options_retired_count"] =
-      createExportWrapper("wasm_options_retired_count", 0);
-    _wasm_options_patch = Module["_wasm_options_patch"] = createExportWrapper(
-      "wasm_options_patch",
-      2,
-    );
-    _wasm_options_values = Module["_wasm_options_values"] = createExportWrapper(
-      "wasm_options_values",
-      0,
-    );
-    _malloc = Module["_malloc"] = createExportWrapper("malloc", 1);
-    _free = Module["_free"] = createExportWrapper("free", 1);
-    _wasm_options_release = Module["_wasm_options_release"] =
-      createExportWrapper("wasm_options_release", 1);
-    _set_width = Module["_set_width"] = createExportWrapper("set_width", 1);
-    _get_width = Module["_get_width"] = createExportWrapper("get_width", 0);
-    _set_height = Module["_set_height"] = createExportWrapper("set_height", 1);
-    _get_height = Module["_get_height"] = createExportWrapper("get_height", 0);
-    _set_color_mode = Module["_set_color_mode"] = createExportWrapper(
-      "set_color_mode",
-      1,
-    );
-    _get_color_mode = Module["_get_color_mode"] = createExportWrapper(
-      "get_color_mode",
-      0,
-    );
-    _set_color_filter = Module["_set_color_filter"] = createExportWrapper(
-      "set_color_filter",
-      1,
-    );
-    _get_color_filter = Module["_get_color_filter"] = createExportWrapper(
-      "get_color_filter",
-      0,
-    );
-    _set_palette = Module["_set_palette"] = createExportWrapper(
-      "set_palette",
-      1,
-    );
-    _get_palette = Module["_get_palette"] = createExportWrapper(
-      "get_palette",
-      0,
-    );
-    _set_palette_chars = Module["_set_palette_chars"] = createExportWrapper(
-      "set_palette_chars",
-      1,
-    );
-    _get_palette_chars = Module["_get_palette_chars"] = createExportWrapper(
-      "get_palette_chars",
-      0,
-    );
-    _set_matrix_rain = Module["_set_matrix_rain"] = createExportWrapper(
-      "set_matrix_rain",
-      1,
-    );
-    _get_matrix_rain = Module["_get_matrix_rain"] = createExportWrapper(
-      "get_matrix_rain",
-      0,
-    );
-    _set_waveform = Module["_set_waveform"] = createExportWrapper(
-      "set_waveform",
-      1,
-    );
-    _get_waveform = Module["_get_waveform"] = createExportWrapper(
-      "get_waveform",
-      0,
-    );
-    _set_fft = Module["_set_fft"] = createExportWrapper("set_fft", 1);
-    _get_fft = Module["_get_fft"] = createExportWrapper("get_fft", 0);
-    _set_flip_x = Module["_set_flip_x"] = createExportWrapper("set_flip_x", 1);
-    _get_flip_x = Module["_get_flip_x"] = createExportWrapper("get_flip_x", 0);
-    _set_flip_y = Module["_set_flip_y"] = createExportWrapper("set_flip_y", 1);
-    _get_flip_y = Module["_get_flip_y"] = createExportWrapper("get_flip_y", 0);
-    _set_render_mode = Module["_set_render_mode"] = createExportWrapper(
-      "set_render_mode",
-      1,
-    );
-    _get_render_mode = Module["_get_render_mode"] = createExportWrapper(
-      "get_render_mode",
-      0,
-    );
-    _set_target_fps = Module["_set_target_fps"] = createExportWrapper(
-      "set_target_fps",
-      1,
-    );
-    _get_target_fps = Module["_get_target_fps"] = createExportWrapper(
-      "get_target_fps",
-      0,
-    );
-    _get_help_text = Module["_get_help_text"] = createExportWrapper(
-      "get_help_text",
-      2,
-    );
-    _wasm_capture_transform_required = Module[
-      "_wasm_capture_transform_required"
-    ] = createExportWrapper("wasm_capture_transform_required", 0);
-    _wasm_capture_transform_rgba = Module["_wasm_capture_transform_rgba"] =
-      createExportWrapper("wasm_capture_transform_rgba", 3);
+    _malloc = createExportWrapper("malloc", 1);
+    _free = createExportWrapper("free", 1);
     _pthread_self = createExportWrapper("pthread_self", 0);
     _strerror = createExportWrapper("strerror", 1);
-    _wasm_error_snapshot = Module["_wasm_error_snapshot"] = createExportWrapper(
-      "wasm_error_snapshot",
-      0,
-    );
-    _wasm_error_code = Module["_wasm_error_code"] = createExportWrapper(
-      "wasm_error_code",
-      1,
-    );
-    _wasm_error_message = Module["_wasm_error_message"] = createExportWrapper(
-      "wasm_error_message",
-      1,
-    );
-    _wasm_error_file = Module["_wasm_error_file"] = createExportWrapper(
-      "wasm_error_file",
-      1,
-    );
-    _wasm_error_full_file = Module["_wasm_error_full_file"] =
-      createExportWrapper("wasm_error_full_file", 1);
-    _wasm_error_function = Module["_wasm_error_function"] = createExportWrapper(
-      "wasm_error_function",
-      1,
-    );
-    _wasm_error_line = Module["_wasm_error_line"] = createExportWrapper(
-      "wasm_error_line",
-      1,
-    );
-    _wasm_error_dismiss = Module["_wasm_error_dismiss"] = createExportWrapper(
-      "wasm_error_dismiss",
-      0,
-    );
-    _session_av_state_create = Module["_session_av_state_create"] =
-      createExportWrapper("session_av_state_create", 0);
-    _session_av_state_destroy = Module["_session_av_state_destroy"] =
-      createExportWrapper("session_av_state_destroy", 1);
-    _session_av_state_generation = Module["_session_av_state_generation"] =
-      createExportWrapper("session_av_state_generation", 1);
-    _session_av_state_begin = Module["_session_av_state_begin"] =
-      createExportWrapper("session_av_state_begin", 1);
-    _session_av_state_is_current = Module["_session_av_state_is_current"] =
-      createExportWrapper("session_av_state_is_current", 2);
-    _session_av_state_should_run = Module["_session_av_state_should_run"] =
-      createExportWrapper("session_av_state_should_run", 1);
-    _session_av_state_complete = Module["_session_av_state_complete"] =
-      createExportWrapper("session_av_state_complete", 2);
-    _session_av_state_is_active = Module["_session_av_state_is_active"] =
-      createExportWrapper("session_av_state_is_active", 1);
-    _session_av_state_begin_stop = Module["_session_av_state_begin_stop"] =
-      createExportWrapper("session_av_state_begin_stop", 1);
-    _session_av_state_finish_stop = Module["_session_av_state_finish_stop"] =
-      createExportWrapper("session_av_state_finish_stop", 1);
-    _errno_print_stacks = Module["_errno_print_stacks"] = createExportWrapper(
-      "errno_print_stacks",
-      0,
-    );
-    _errno_print_history = Module["_errno_print_history"] = createExportWrapper(
-      "errno_print_history",
-      0,
-    );
     _fflush = createExportWrapper("fflush", 1);
-    _wasm_test_pattern_create = Module["_wasm_test_pattern_create"] =
-      createExportWrapper("wasm_test_pattern_create", 2);
-    _wasm_test_pattern_render = Module["_wasm_test_pattern_render"] =
-      createExportWrapper("wasm_test_pattern_render", 6);
-    _wasm_test_pattern_destroy = Module["_wasm_test_pattern_destroy"] =
-      createExportWrapper("wasm_test_pattern_destroy", 1);
-    _wasm_test_pattern_render_rgba = Module["_wasm_test_pattern_render_rgba"] =
-      createExportWrapper("wasm_test_pattern_render_rgba", 6);
-    _wasm_renderer_config_size = Module["_wasm_renderer_config_size"] =
-      createExportWrapper("wasm_renderer_config_size", 0);
-    _wasm_renderer_config_write = Module["_wasm_renderer_config_write"] =
-      createExportWrapper("wasm_renderer_config_write", 8);
-    _get_font_default_ptr = Module["_get_font_default_ptr"] =
-      createExportWrapper("get_font_default_ptr", 1);
-    _get_font_default_size = Module["_get_font_default_size"] =
-      createExportWrapper("get_font_default_size", 1);
-    _term_renderer_create = Module["_term_renderer_create"] =
-      createExportWrapper("term_renderer_create", 2);
-    _wasm_ui_create = Module["_wasm_ui_create"] = createExportWrapper(
-      "wasm_ui_create",
-      0,
-    );
-    _wasm_ui_destroy = Module["_wasm_ui_destroy"] = createExportWrapper(
-      "wasm_ui_destroy",
-      1,
-    );
-    _wasm_ui_resize = Module["_wasm_ui_resize"] = createExportWrapper(
-      "wasm_ui_resize",
-      3,
-    );
-    _wasm_ui_loading = Module["_wasm_ui_loading"] = createExportWrapper(
-      "wasm_ui_loading",
-      3,
-    );
-    _wasm_ui_log = Module["_wasm_ui_log"] = createExportWrapper(
-      "wasm_ui_log",
-      2,
-    );
-    _wasm_ui_media = Module["_wasm_ui_media"] = createExportWrapper(
-      "wasm_ui_media",
-      3,
-    );
-    _wasm_ui_key = Module["_wasm_ui_key"] = createExportWrapper(
-      "wasm_ui_key",
-      2,
-    );
-    _wasm_ui_tick = Module["_wasm_ui_tick"] = createExportWrapper(
-      "wasm_ui_tick",
-      2,
-    );
-    _wasm_ui_clear = Module["_wasm_ui_clear"] = createExportWrapper(
-      "wasm_ui_clear",
-      1,
-    );
-    _wasm_ui_redraw = Module["_wasm_ui_redraw"] = createExportWrapper(
-      "wasm_ui_redraw",
-      1,
-    );
-    _wasm_ui_capture_logs = Module["_wasm_ui_capture_logs"] =
-      createExportWrapper("wasm_ui_capture_logs", 1);
-    _wasm_ui_volume = Module["_wasm_ui_volume"] = createExportWrapper(
-      "wasm_ui_volume",
-      0,
-    );
-    _wasm_ui_fps = Module["_wasm_ui_fps"] = createExportWrapper(
-      "wasm_ui_fps",
-      0,
-    );
-    _wasm_ui_audio = Module["_wasm_ui_audio"] = createExportWrapper(
-      "wasm_ui_audio",
-      1,
-    );
-    _term_renderer_set_zalgo = Module["_term_renderer_set_zalgo"] =
-      createExportWrapper("term_renderer_set_zalgo", 2);
-    _term_renderer_feed = Module["_term_renderer_feed"] = createExportWrapper(
-      "term_renderer_feed",
-      3,
-    );
-    _term_renderer_pixels = Module["_term_renderer_pixels"] =
-      createExportWrapper("term_renderer_pixels", 1);
-    _term_renderer_width_px = Module["_term_renderer_width_px"] =
-      createExportWrapper("term_renderer_width_px", 1);
-    _term_renderer_height_px = Module["_term_renderer_height_px"] =
-      createExportWrapper("term_renderer_height_px", 1);
-    _term_renderer_pitch = Module["_term_renderer_pitch"] = createExportWrapper(
-      "term_renderer_pitch",
-      1,
-    );
-    _term_renderer_get_cols = Module["_term_renderer_get_cols"] =
-      createExportWrapper("term_renderer_get_cols", 1);
-    _term_renderer_get_rows = Module["_term_renderer_get_rows"] =
-      createExportWrapper("term_renderer_get_rows", 1);
-    _term_renderer_destroy = Module["_term_renderer_destroy"] =
-      createExportWrapper("term_renderer_destroy", 1);
-    _mirror_init_with_args = Module["_mirror_init_with_args"] =
-      createExportWrapper("mirror_init_with_args", 1);
-    _mirror_reset_stabilizer = Module["_mirror_reset_stabilizer"] =
-      createExportWrapper("mirror_reset_stabilizer", 0);
-    _mirror_cleanup = Module["_mirror_cleanup"] = createExportWrapper(
-      "mirror_cleanup",
-      0,
-    );
-    _mirror_convert_frame = Module["_mirror_convert_frame"] =
-      createExportWrapper("mirror_convert_frame", 4);
-    _mirror_submit_audio_samples = Module["_mirror_submit_audio_samples"] =
-      createExportWrapper("mirror_submit_audio_samples", 3);
-    _mirror_render_audio_visualization = Module[
-      "_mirror_render_audio_visualization"
-    ] = createExportWrapper("mirror_render_audio_visualization", 3);
-    _mirror_free_string = Module["_mirror_free_string"] = createExportWrapper(
-      "mirror_free_string",
-      1,
-    );
-    _face_web_reset = Module["_face_web_reset"] = createExportWrapper(
-      "face_web_reset",
-      0,
-    );
-    _face_web_input = Module["_face_web_input"] = createExportWrapper(
-      "face_web_input",
-      0,
-    );
-    _face_web_detect = Module["_face_web_detect"] = createExportWrapper(
-      "face_web_detect",
-      3,
-    );
-    _face_web_tick = Module["_face_web_tick"] = createExportWrapper(
-      "face_web_tick",
-      2,
-    );
     __emscripten_tls_init = createExportWrapper("_emscripten_tls_init", 0);
     _emscripten_builtin_memalign = createExportWrapper(
       "emscripten_builtin_memalign",

@@ -1,3 +1,4 @@
+#include "face_follow.h"
 
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define FACE_WEB_OUTPUT_FIELD_COUNT 11
@@ -15,12 +16,12 @@ size_t face_web_output_count(void) {
   return FACE_WEB_OUTPUT_FIELD_COUNT;
 }
 
-EMSCRIPTEN_KEEPALIVE void face_web_reset(void) {
+void face_web_reset(void) {
   face_follow_init(&state);
   face_count = 0;
 }
 
-EMSCRIPTEN_KEEPALIVE unsigned char *face_web_input(void) {
+unsigned char *face_web_input(void) {
   return rgba;
 }
 
@@ -31,7 +32,7 @@ int face_web_validate_input(int width, int height, size_t length) {
              : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE void face_web_detect(int width, int height, double now) {
+void face_web_detect(int width, int height, double now) {
   if (width < 1 || height < 1 || width > FACE_FOLLOW_DETECT_WIDTH || height > FACE_FOLLOW_DETECT_HEIGHT)
     return;
   for (int i = 0; i < width * height; i++) {
@@ -44,7 +45,7 @@ EMSCRIPTEN_KEEPALIVE void face_web_detect(int width, int height, double now) {
   face_follow_observe(&state, faces, face_count, now);
 }
 
-EMSCRIPTEN_KEEPALIVE float *face_web_tick(double now, int enabled) {
+float *face_web_tick(double now, int enabled) {
   face_follow_tick(&state, now, enabled != 0);
   output[0] = state.crop.x;
   output[1] = state.crop.y;

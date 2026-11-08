@@ -21,49 +21,26 @@
           printErr: () => {},
           getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
         });
-        const str = (value) => {
-          const n = new TextEncoder().encode(value).length + 1,
-            p = m._malloc(n);
-          m.stringToUTF8(value, p, n);
-          return p;
-        };
-        const args = str("[]");
-        assert(m._client_init_with_args(args) === 0, "init");
-        m._free(args);
+        assert(m.initClient("[]") === 0, "init");
         let packets = [];
         m.discoverySend = (handle, type, payload) =>
           packets.push({ type, payload });
         const snap = (p) => {
-          m._browser_discovery_snapshot(p);
+          p.snapshot();
           return m.discoveryResult;
         };
-        const enter = (p, create, name, password) => {
-          const a = str(name),
-            b = str(password);
-          try {
-            return m._browser_discovery_enter(p, create, a, b);
-          } finally {
-            m._free(a);
-            m._free(b);
-          }
-        };
-        const receive = (p, type, bytes) => {
-          const b = m._malloc(bytes.length || 1);
-          m.HEAPU8.set(bytes, b);
-          try {
-            return m._browser_discovery_receive(p, type, b, bytes.length);
-          } finally {
-            m._free(b);
-          }
-        };
+        const enter = (p, create, name, password) =>
+          p.enter(create, name, new TextEncoder().encode(password));
+        const receive = (p, type, bytes) => p.receive(type, bytes);
         const test = (name, fn) => {
           packets = [];
-          const p = m._browser_discovery_new();
+          const p = new m.DiscoveryBinding();
           try {
+            assert(p.valid(), "discovery creation");
             fn(p);
             lines.push("PASS " + name);
           } finally {
-            m._browser_discovery_destroy(p);
+            p.delete();
           }
           results.textContent = lines.join("\n");
         };
@@ -144,12 +121,12 @@
           joined[196] = 1;
           assert(!receive(p, 6005, joined), "joined");
           assert(snap(p).state === 6 && snap(p).joined.hostId[0] === 2, "host");
-          assert(!m._browser_discovery_leave(p), "leave");
+          assert(!p.leave(), "leave");
           assert(
             packets[2].type === 6006 && packets[2].payload.length === 32,
             "leave wire",
           );
-          m._browser_discovery_leave(p);
+          p.leave();
           assert(packets.length === 3, "idempotent leave");
         });
         test("wrong password preserves reason and stops retries", (p) => {

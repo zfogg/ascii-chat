@@ -14,7 +14,7 @@ export function orientUpload(
   const module = getMirrorModule();
   if (!module)
     throw new Error("Initialize C rendering before uploading frames");
-  if (!module._wasm_capture_transform_required()) return frame;
+  if (!module.wasm_capture_transform_required()) return frame;
   const context = canvas.getContext("2d", { willReadFrequently: true });
   if (!context) throw new Error("Capture canvas is unavailable");
   const image = context.getImageData(0, 0, frame.width, frame.height);

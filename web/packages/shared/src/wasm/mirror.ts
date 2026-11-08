@@ -33,11 +33,9 @@ export interface MirrorModule
     SessionUiModule,
     Pick<
       MainModule,
-      | "_wasm_capture_transform_required"
-      | "_mirror_cleanup"
-      | "_mirror_reset_stabilizer"
-      | "_get_font_default_ptr"
-      | "_get_font_default_size"
+      | "wasm_capture_transform_required"
+      | "mirror_cleanup"
+      | "mirror_reset_stabilizer"
     > {
   canvas?: HTMLCanvasElement;
 }
@@ -168,14 +166,14 @@ export async function initMirrorWasm(
 export function cleanupMirrorWasm(): void {
   releaseFrameBinding();
   if (wasmModule) {
-    wasmModule._mirror_cleanup();
+    wasmModule.mirror_cleanup();
     wasmModule = null;
     cleanupOptions();
   }
 }
 
 export function resetMirrorStabilizer(): void {
-  wasmModule?._mirror_reset_stabilizer();
+  wasmModule?.mirror_reset_stabilizer();
 }
 
 /**
@@ -356,8 +354,8 @@ export function renderAudioVisualization(
   if (mode) {
     const waveform = mode === "waveform" ? 1 : 0;
     const fft = mode === "fft" ? 1 : 0;
-    wasmModule._set_waveform?.(waveform);
-    wasmModule._set_fft?.(fft);
+    wasmModule.set_waveform?.(waveform);
+    wasmModule.set_fft?.(fft);
   }
   frameBinding ??= new wasmModule.MirrorFrameBinding();
   const frame = frameBinding.renderAudio(

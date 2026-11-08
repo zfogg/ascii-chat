@@ -1,3 +1,5 @@
+#include "common/font.h"
+#include "client.h"
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE 256
@@ -20,7 +22,7 @@
 static acip_render_settings_t remote_render_settings;
 
 /** Effective remote state is separate from this participant's saved preferences. */
-EMSCRIPTEN_KEEPALIVE asciichat_error_t client_settings_receive(const void *payload, size_t length) {
+asciichat_error_t client_settings_receive(const void *payload, size_t length) {
   acip_settings_header_t header;
   const char *json;
   size_t json_length;
@@ -41,7 +43,7 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_settings_receive(const void *paylo
   SAFE_FREE(candidate);
   return result;
 }
-EMSCRIPTEN_KEEPALIVE char *client_settings_values(void) {
+char *client_settings_values(void) {
   options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
   acip_render_settings_options(&remote_render_settings, values);
   char *json = options_values_json(values, true);
@@ -227,7 +229,6 @@ static int apply_client_crypto_options(void) {
 }
 
 /** Configure browser-provided authentication material for the next handshake. */
-EMSCRIPTEN_KEEPALIVE
 int client_configure_crypto_options(const char *password, const uint8_t *identity_secret_key,
                                     const uint8_t *expected_server_public_key) {
   if (!g_initialized)
@@ -267,7 +268,6 @@ int client_configure_crypto_options(const char *password, const uint8_t *identit
 }
 
 /** Parse an OpenSSH Ed25519 private-key file through the shared SSH parser. */
-EMSCRIPTEN_KEEPALIVE
 int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out) {
   if (!key_path || !secret_key_out)
     return -1;
@@ -289,7 +289,6 @@ int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out) 
 }
 
 /** Parse an OpenSSH Ed25519 public-key line through the shared SSH parser. */
-EMSCRIPTEN_KEEPALIVE
 int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out) {
   if (!key_line || !public_key_out)
     return -1;
@@ -298,7 +297,6 @@ int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out) {
 }
 
 /** Parse an armored OpenPGP Ed25519 public key through the shared C parser. */
-EMSCRIPTEN_KEEPALIVE
 int client_parse_gpg_public_key(const char *armored_key, uint8_t *public_key_out) {
   if (!armored_key || !public_key_out)
     return -1;
@@ -307,7 +305,6 @@ int client_parse_gpg_public_key(const char *armored_key, uint8_t *public_key_out
 }
 
 /** Parse a binary OpenPGP Ed25519 public-key packet stream. */
-EMSCRIPTEN_KEEPALIVE
 int client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *public_key_out) {
   if (!key_data || key_data_len == 0 || !public_key_out)
     return -1;
@@ -316,7 +313,6 @@ int client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_
 }
 
 /** Parse an unencrypted armored OpenPGP Ed25519 private key through the shared C parser. */
-EMSCRIPTEN_KEEPALIVE
 int client_parse_gpg_private_key(const char *armored_key, uint8_t *secret_key_out) {
   if (!armored_key || !secret_key_out)
     return -1;
@@ -348,7 +344,6 @@ cleanup:
 }
 
 /** Parse an unencrypted binary OpenPGP Ed25519 secret-key packet stream. */
-EMSCRIPTEN_KEEPALIVE
 int client_parse_gpg_private_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *secret_key_out) {
   if (!key_data || key_data_len == 0 || !secret_key_out)
     return -1;
@@ -380,7 +375,6 @@ cleanup:
 }
 
 /** Copy the most recent C crypto error into a caller-provided buffer. */
-EMSCRIPTEN_KEEPALIVE
 int client_get_crypto_error_message(char *output, size_t output_size) {
   if (!output || output_size == 0)
     return -1;
@@ -400,7 +394,6 @@ int client_get_crypto_error_message(char *output, size_t output_size) {
  * @param args_json Space-separated string of argument strings, e.g. "client --width 80 --height 40"
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_init_with_args(const char *args_json) {
   // The module, renderers, and allocator outlive individual connections.
   if (g_initialized)
@@ -442,7 +435,6 @@ int client_init_with_args(const char *args_json) {
   return 0;
 }
 
-EMSCRIPTEN_KEEPALIVE
 void client_cleanup(void) {
   remote_render_settings = (acip_render_settings_t){0};
   errno_destroy();
@@ -471,7 +463,6 @@ void client_cleanup(void) {
  * Generate client keypair for handshake
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_generate_keypair(void) {
 
   if (!g_initialized) {
@@ -507,7 +498,6 @@ int client_generate_keypair(void) {
  * @param server_port Server port number
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_set_server_address(const char *server_host, int server_port) {
   if (!g_initialized) {
     return -1;
@@ -528,7 +518,6 @@ int client_set_server_address(const char *server_host, int server_port) {
  * Get client public key as hex string
  * @return Allocated hex string (caller must free with client_free_string), or NULL on error
  */
-EMSCRIPTEN_KEEPALIVE
 char *client_get_public_key_hex(void) {
   if (g_crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_DISABLED) {
     return NULL;
@@ -562,7 +551,6 @@ char *client_get_public_key_hex(void) {
  * @param packet_len Total packet length
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
 
   // Safety check: if handshake context is not in INIT state, reinitialize it
@@ -632,7 +620,6 @@ int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
  * @param packet_len Total packet length
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
 
   if (!packet || packet_len == 0) {
@@ -697,7 +684,6 @@ int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
  * @param packet_len Total packet length
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len) {
 
   if (!packet || packet_len == 0) {
@@ -743,7 +729,6 @@ int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len) {
  * @param packet_len Total packet length
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
 
   if (!packet || packet_len == 0) {
@@ -802,7 +787,6 @@ int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
  * @param out_len Output parameter for ciphertext length
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext, size_t ciphertext_size,
                           size_t *out_len) {
   if (!g_handshake_complete) {
@@ -838,7 +822,6 @@ int client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_
  * @param out_len Output parameter for plaintext length
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size,
                           size_t *out_len) {
   if (!g_handshake_complete) {
@@ -869,7 +852,6 @@ int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint
  * @param packet_len Length of raw packet
  * @return Allocated JSON string with packet metadata (caller must free), or NULL on error
  */
-EMSCRIPTEN_KEEPALIVE
 char *client_parse_packet(const uint8_t *raw_packet, size_t packet_len) {
   if (!raw_packet || packet_len < sizeof(packet_header_t)) {
     return NULL;
@@ -905,7 +887,6 @@ char *client_parse_packet(const uint8_t *raw_packet, size_t packet_len) {
  * @param out_len Output parameter for total packet length
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_serialize_packet(uint16_t packet_type, const uint8_t *payload, size_t payload_len, uint32_t client_id,
                             uint8_t *output, size_t *out_len) {
   if (!output || !out_len) {
@@ -927,7 +908,6 @@ int client_serialize_packet(uint16_t packet_type, const uint8_t *payload, size_t
  * @param height Frame height
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_send_video_frame(const uint8_t *rgba_data, int width, int height) {
   if (!g_initialized) {
     return -1;
@@ -950,7 +930,6 @@ int client_send_video_frame(const uint8_t *rgba_data, int width, int height) {
  * Get current connection state
  * @return Connection state enum value
  */
-EMSCRIPTEN_KEEPALIVE
 int client_get_connection_state(void) {
   return (int)g_connection_state;
 }
@@ -959,7 +938,6 @@ int client_get_connection_state(void) {
 // Memory Management
 // ============================================================================
 
-EMSCRIPTEN_KEEPALIVE
 void client_free_string(char *ptr) {
   SAFE_FREE(ptr);
 }
@@ -975,7 +953,6 @@ void client_free_string(char *ptr) {
  * @param bitrate Target bitrate in bits/sec
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_opus_encoder_init(int sample_rate, int channels, int bitrate) {
   if (g_opus_encoder) {
     opus_encoder_destroy(g_opus_encoder);
@@ -1005,7 +982,6 @@ int client_opus_encoder_init(int sample_rate, int channels, int bitrate) {
  * @param channels Number of channels (1=mono, 2=stereo)
  * @return 0 on success, -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_opus_decoder_init(int sample_rate, int channels) {
   if (g_opus_decoder) {
     opus_decoder_destroy(g_opus_decoder);
@@ -1029,7 +1005,6 @@ int client_opus_decoder_init(int sample_rate, int channels) {
  * @param max_opus_bytes Maximum size of output buffer
  * @return Number of bytes encoded, or -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_opus_encode(const int16_t *pcm_data, int frame_size, uint8_t *opus_data, int max_opus_bytes) {
   if (!g_opus_encoder) {
     return -1;
@@ -1052,7 +1027,6 @@ int client_opus_encode(const int16_t *pcm_data, int frame_size, uint8_t *opus_da
  * @param decode_fec Whether to use FEC
  * @return Number of samples decoded per channel, or -1 on error
  */
-EMSCRIPTEN_KEEPALIVE
 int client_opus_decode(const uint8_t *opus_data, int opus_bytes, int16_t *pcm_data, int frame_size, int decode_fec) {
   if (!g_opus_decoder) {
     return -1;
@@ -1069,7 +1043,6 @@ int client_opus_decode(const uint8_t *opus_data, int opus_bytes, int16_t *pcm_da
 /**
  * Cleanup Opus encoder
  */
-EMSCRIPTEN_KEEPALIVE
 void client_opus_encoder_cleanup(void) {
   if (g_opus_encoder) {
     opus_encoder_destroy(g_opus_encoder);
@@ -1080,7 +1053,6 @@ void client_opus_encoder_cleanup(void) {
 /**
  * Cleanup Opus decoder
  */
-EMSCRIPTEN_KEEPALIVE
 void client_opus_decoder_cleanup(void) {
   if (g_opus_decoder) {
     opus_decoder_destroy(g_opus_decoder);
@@ -1088,12 +1060,11 @@ void client_opus_decoder_cleanup(void) {
   }
 }
 
-EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_begin(uint8_t mode) {
+asciichat_error_t client_acds_handshake_begin(uint8_t mode) {
   g_crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(mode);
   return acds_handshake_begin(&g_wasm_transport, mode);
 }
-EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_receive(uint32_t type, const void *payload,
-                                                                     size_t length) {
+asciichat_error_t client_acds_handshake_receive(uint32_t type, const void *payload, size_t length) {
   asciichat_error_t result = acds_handshake_receive(&g_crypto_handshake_ctx, &g_wasm_transport, type, payload, length);
   if (result != ASCIICHAT_OK) {
     g_connection_state = CONNECTION_STATE_ERROR;
@@ -1110,7 +1081,7 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_acds_handshake_receive(uint32_t ty
 }
 
 /** Resolve browser inputs through the same policy as native and mobile clients. */
-EMSCRIPTEN_KEEPALIVE int client_resolve_crypto_policy(bool secure, int encryption) {
+int client_resolve_crypto_policy(bool secure, int encryption) {
   crypto_policy_t policy = {
       .transport_secure = secure,
       .encrypt = encryption == 1,
@@ -1126,14 +1097,14 @@ EMSCRIPTEN_KEEPALIVE int client_resolve_crypto_policy(bool secure, int encryptio
   return mode;
 }
 
-EMSCRIPTEN_KEEPALIVE asciichat_error_t client_handshake_begin(void) {
+asciichat_error_t client_handshake_begin(void) {
   g_connection_state = CONNECTION_STATE_CONNECTING;
   g_version_received = false;
   g_crypto_handshake_ctx.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(g_crypto_mode);
   return acds_handshake_begin(&g_wasm_transport, g_crypto_mode);
 }
 
-EMSCRIPTEN_KEEPALIVE asciichat_error_t client_handshake_receive(uint32_t type, const void *payload, size_t length) {
+asciichat_error_t client_handshake_receive(uint32_t type, const void *payload, size_t length) {
   if (!g_version_received && type != PACKET_TYPE_PROTOCOL_VERSION)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Expected server protocol version first");
   if (type == PACKET_TYPE_PROTOCOL_VERSION) {
@@ -1175,9 +1146,9 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_handshake_receive(uint32_t type, c
 
 /* Browser transport marshals framing, then invokes the SAME network content
  * contract as native before any terminal parser or recording receives bytes. */
-EMSCRIPTEN_KEEPALIVE asciichat_error_t client_validate_frame(const char *text, size_t length, uint32_t width,
-                                                             uint32_t height, uint32_t checksum, uint32_t flags,
-                                                             const void *metadata, size_t metadata_length) {
+asciichat_error_t client_validate_frame(const char *text, size_t length, uint32_t width, uint32_t height,
+                                        uint32_t checksum, uint32_t flags, const void *metadata,
+                                        size_t metadata_length) {
   if (flags & ~(FRAME_FLAG_RENDER_CONTRACT | FRAME_FLAG_IS_COMPRESSED | 1u))
     return SET_ERRNO(ERROR_INVALID_FRAME, "Unknown browser frame flags");
   acip_render_settings_t settings;
@@ -1202,14 +1173,14 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_validate_frame(const char *text, s
   return session_frame_validate_contract(text, length, width, height, contract ? &settings : NULL, effects);
 }
 
-EMSCRIPTEN_KEEPALIVE asciichat_error_t client_decode_frame_data(const void *encoded, size_t encoded_length,
-                                                                void *output, size_t output_length) {
+asciichat_error_t client_decode_frame_data(const void *encoded, size_t encoded_length, void *output,
+                                           size_t output_length) {
   if (!encoded || !output || !encoded_length || encoded_length > FRAME_RENDER_MAX_BYTES || !output_length ||
       output_length > FRAME_RENDER_MAX_BYTES)
     return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid browser frame decompression bounds");
   return decompress_data_exact(encoded, encoded_length, output, output_length);
 }
 
-EMSCRIPTEN_KEEPALIVE crypto_context_t *client_security_context(void) {
+crypto_context_t *client_security_context(void) {
   return g_handshake_complete ? &g_crypto_handshake_ctx.crypto_ctx : NULL;
 }

@@ -11,8 +11,8 @@ type Action = {
   sequence: number;
 };
 type Module = ReturnType<typeof getClientModule> & {
-  _browser_host_create(): number;
-  _browser_host_destroy(): void;
+  browser_host_create(): number;
+  browser_host_destroy(): void;
   handoffResult: Action;
 };
 
@@ -83,7 +83,7 @@ export class HandoffProtocol {
         (value, i) => value === this.joined.participantId[i],
       )
     ) {
-      const result = module._browser_host_create();
+      const result = module.browser_host_create();
       this.prepared = result === 0;
       this.send(
         HANDOFF_PACKET,
@@ -117,7 +117,7 @@ export class HandoffProtocol {
   }
   private releasePreparedHost(): void {
     if (this.prepared) {
-      (getClientModule() as Module | null)?._browser_host_destroy();
+      (getClientModule() as Module | null)?.browser_host_destroy();
       this.prepared = false;
     }
   }

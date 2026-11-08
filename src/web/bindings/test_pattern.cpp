@@ -1,14 +1,12 @@
 #include <emscripten/bind.h>
+extern "C" {
+#include "../common/test_pattern.h"
+}
+
 #include <cstddef>
 #include <cstdint>
 
 EMSCRIPTEN_DECLARE_VAL_TYPE(PatternPixels);
-
-extern "C" {
-void *wasm_test_pattern_create(int width, int height);
-const uint8_t *wasm_test_pattern_render_rgba(void *, int, int, int, double, bool);
-void wasm_test_pattern_destroy(void *);
-}
 
 class TestPatternBinding {
 public:
@@ -34,7 +32,7 @@ public:
   }
 
 private:
-  void *pattern_;
+  test_pattern_t *pattern_;
 };
 
 EMSCRIPTEN_BINDINGS(ascii_chat_test_pattern) {

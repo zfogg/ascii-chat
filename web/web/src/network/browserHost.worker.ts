@@ -4,12 +4,12 @@ import { BrowserVideoDecoder } from "./BrowserVideoDecoder";
 import type { HostPacketBinding } from "@ascii-chat/shared/wasm";
 
 type HostModule = NonNullable<ReturnType<typeof getClientModule>> & {
-  _browser_host_create(): number;
-  _browser_host_add_client(): number;
-  _browser_host_set_local_client(id: number): number;
-  _browser_host_remove_client(id: number): void;
-  _browser_host_render(): number;
-  _browser_host_render_audio(): number;
+  browser_host_create(): number;
+  browser_host_add_client(): number;
+  browser_host_set_local_client(id: number): number;
+  browser_host_remove_client(id: number): void;
+  browser_host_render(): number;
+  browser_host_render_audio(): number;
   hostPacketCallback?: (id: number, bytes: Uint8Array) => void;
 };
 const post = self.postMessage as unknown as (
@@ -98,7 +98,7 @@ function render() {
   try {
     if (pendingBatches < 2) {
       const start = performance.now();
-      if (module._browser_host_render())
+      if (module.browser_host_render())
         throw new Error("C host could not render video.");
       const duration = performance.now() - start;
       totalMs += duration;
@@ -155,7 +155,7 @@ self.onmessage = (event) => {
       if (message.kind === "init") {
         await initClientWasm();
         module = getClientModule() as HostModule;
-        if (module._browser_host_create())
+        if (module.browser_host_create())
           throw new Error("Could not initialize C host worker.");
         hostInput = new module.HostPacketBinding();
         module.hostPacketCallback = (actual, bytes) => {
@@ -177,7 +177,7 @@ self.onmessage = (event) => {
         render();
         setInterval(() => {
           try {
-            if (module._browser_host_render_audio())
+            if (module.browser_host_render_audio())
               throw new Error("C host could not mix audio.");
             if (packets.length) {
               pendingBatches++;
@@ -195,17 +195,17 @@ self.onmessage = (event) => {
         let id: number;
         admittingClient = message.id;
         try {
-          id = module._browser_host_add_client();
+          id = module.browser_host_add_client();
         } finally {
           admittingClient = null;
         }
         if (!id) throw new Error("Host participant limit reached.");
         clients.set(message.id, id);
-        if (message.local && module._browser_host_set_local_client(id))
+        if (message.local && module.browser_host_set_local_client(id))
           throw new Error("Could not configure the host's local display.");
       } else if (message.kind === "remove") {
         const id = clients.get(message.id);
-        if (id) module._browser_host_remove_client(id);
+        if (id) module.browser_host_remove_client(id);
         clients.delete(message.id);
         videoGenerations.delete(message.id);
         decoders.get(message.id)?.destroy();

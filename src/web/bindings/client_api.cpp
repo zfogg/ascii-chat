@@ -1,4 +1,12 @@
 #include <emscripten/bind.h>
+extern "C" {
+#include "../client.h"
+#include "../common/options.h"
+#include <session/av_state.h>
+#include <ascii-chat/network/errors.h>
+}
+#include <sodium.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -9,38 +17,6 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(ClientBytes);
 EMSCRIPTEN_DECLARE_VAL_TYPE(ClientPacketResult);
 EMSCRIPTEN_DECLARE_VAL_TYPE(ClientSettingsResult);
 EMSCRIPTEN_DECLARE_VAL_TYPE(ClientFrameResult);
-
-extern "C" {
-int client_set_server_address(const char *, int);
-char *client_get_public_key_hex(void);
-int client_handle_crypto_parameters(const uint8_t *, size_t);
-int client_handle_key_exchange_init(const uint8_t *, size_t);
-int client_handle_auth_challenge(const uint8_t *, size_t);
-int client_handle_handshake_complete(const uint8_t *, size_t);
-int client_handshake_receive(uint32_t, const void *, size_t);
-int client_acds_handshake_receive(uint32_t, const void *, size_t);
-int client_encrypt_packet(const uint8_t *, size_t, uint8_t *, size_t, size_t *);
-int client_decrypt_packet(const uint8_t *, size_t, uint8_t *, size_t, size_t *);
-char *client_parse_packet(const uint8_t *, size_t);
-int client_serialize_packet(uint16_t, const uint8_t *, size_t, uint32_t, uint8_t *, size_t *);
-void client_free_string(char *);
-int client_settings_receive(const void *, size_t);
-char *client_settings_values(void);
-void wasm_options_release(char *);
-int client_validate_frame(const char *, size_t, uint32_t, uint32_t, uint32_t, uint32_t, const void *, size_t);
-int client_decode_frame_data(const void *, size_t, void *, size_t);
-int client_send_video_frame(const uint8_t *, int, int);
-void sodium_memzero(void *, size_t);
-void *session_av_state_create(void);
-void session_av_state_destroy(void *);
-uint32_t session_av_state_generation(const void *);
-uint32_t session_av_state_begin(void *);
-bool session_av_state_complete(void *, uint32_t);
-bool session_av_state_is_current(void *, uint32_t);
-bool session_av_state_is_active(void *);
-void session_av_state_begin_stop(void *);
-void session_av_state_finish_stop(void *);
-}
 
 class AVStateBinding {
 public:
@@ -77,7 +53,7 @@ public:
   }
 
 private:
-  void *state_;
+  session_av_state_t *state_;
 };
 
 static std::vector<uint8_t> client_copy_input(ClientBytes input) {
@@ -189,6 +165,14 @@ static ClientSettingsResult receive_settings(ClientBytes payload) {
     wasm_options_release(json);
   return ClientSettingsResult(result);
 }
+static std::optional<std::string> client_settings() {
+  char *json = client_settings_values();
+  if (!json)
+    return std::nullopt;
+  std::string result(json);
+  wasm_options_release(json);
+  return result;
+}
 static ClientFrameResult validate_frame(ClientBytes encoded, unsigned width, unsigned height, unsigned checksum,
                                         unsigned flags, ClientBytes contract, unsigned original_size) {
   const size_t input_size = encoded["length"].as<size_t>();
@@ -219,6 +203,17 @@ static ClientFrameResult validate_frame(ClientBytes encoded, unsigned width, uns
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_client_api) {
+  emscripten::function("clientSettings", &client_settings);
+  emscripten::function("client_cleanup", &client_cleanup);
+  emscripten::function("client_generate_keypair", &client_generate_keypair);
+  emscripten::function("client_get_connection_state", &client_get_connection_state);
+  emscripten::function("client_resolve_crypto_policy", &client_resolve_crypto_policy);
+  emscripten::function("client_handshake_begin", +[]() { return static_cast<int>(client_handshake_begin()); });
+  emscripten::function(
+      "client_acds_handshake_begin", +[](uint8_t mode) { return static_cast<int>(client_acds_handshake_begin(mode)); });
+  emscripten::function(
+      "network_error_action",
+      +[](int code) { return static_cast<int>(network_error_action(static_cast<asciichat_error_t>(code))); });
   emscripten::register_type<ClientBytes>("ClientBytes", "Uint8Array");
   emscripten::register_type<ClientPacketResult>("ClientPacketResult", "{ code: number; bytes: Uint8Array }");
   emscripten::register_type<ClientSettingsResult>("ClientSettingsResult", "{ code: number; json: string | null }");

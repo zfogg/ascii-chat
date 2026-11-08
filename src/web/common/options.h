@@ -9,7 +9,16 @@
 
 #pragma once
 
-#include <emscripten.h>
+#include <ascii-chat/asciichat_errno.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+double wasm_options_revision(void);
+asciichat_error_t wasm_options_patch(const char *json, double expected_revision);
+char *wasm_options_values(void);
+void wasm_options_release(char *json);
 
 // Dimension setters/getters
 int set_width(int value);
@@ -50,9 +59,16 @@ int get_flip_x(void);
 int set_flip_y(int enabled);
 int get_flip_y(void);
 
+int set_render_mode(int mode);
+int get_render_mode(void);
+
 // Target FPS setters/getters
 int set_target_fps(int fps);
 int get_target_fps(void);
 
 // Help text API
 const char *get_help_text(int mode, const char *option_name);
+
+#ifdef __cplusplus
+}
+#endif

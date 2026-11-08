@@ -1,4 +1,11 @@
 #include <emscripten/bind.h>
+extern "C" {
+#include "../common/ui.h"
+#include "../common/options.h"
+#include "../common/capture.h"
+#include "../mirror.h"
+}
+
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -7,39 +14,12 @@
 EMSCRIPTEN_DECLARE_VAL_TYPE(RgbaBytes);
 EMSCRIPTEN_DECLARE_VAL_TYPE(VisualizationSamples);
 
-extern "C" {
-struct ui_session;
-ui_session *wasm_ui_create(void);
-void wasm_ui_destroy(ui_session *session);
-void wasm_ui_resize(ui_session *session, int cols, int rows);
-void wasm_ui_loading(ui_session *session, int loading, const char *message);
-void wasm_ui_log(ui_session *session, const char *message);
-int wasm_ui_media(ui_session *session, const char *text, size_t length);
-int wasm_ui_key(ui_session *session, int key);
-const char *wasm_ui_tick(ui_session *session, double milliseconds);
-void wasm_ui_clear(ui_session *session);
-void wasm_ui_redraw(ui_session *session);
-void wasm_ui_capture_logs(ui_session *session);
-int mirror_init_with_args(const char *args);
-char *mirror_convert_frame(uint8_t *rgba, int width, int height, int contain);
-void mirror_free_string(char *text);
-void mirror_submit_audio_samples(const float *samples, int count, int source);
-char *mirror_render_audio_visualization(unsigned width, unsigned height, int source);
-int wasm_capture_transform_rgba(uint8_t *pixels, int width, int height);
-const char *get_help_text(int mode, const char *option_name);
-char *wasm_options_values(void);
-void wasm_options_release(char *json);
-int wasm_options_patch(const char *json, double expected_revision);
-int set_palette(const char *value);
-int set_palette_chars(const char *value);
-const char *get_palette_chars(void);
-}
-
 // The C session owns the frame returned by tick. Copy it before the next call.
 class SessionUiBinding {
 public:
-  SessionUiBinding() : session_(wasm_ui_create()) {
-    if (session_)
+  SessionUiBinding() : SessionUiBinding(true) {}
+  explicit SessionUiBinding(bool capture_logs) : session_(wasm_ui_create()) {
+    if (session_ && capture_logs)
       wasm_ui_capture_logs(session_);
   }
   ~SessionUiBinding() {
@@ -168,6 +148,37 @@ static std::optional<std::string> option_help(int mode, const std::string &name)
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_session_ui) {
+  emscripten::function("wasm_options_revision", &wasm_options_revision);
+  emscripten::function("wasm_ui_volume", &wasm_ui_volume);
+  emscripten::function("wasm_ui_fps", &wasm_ui_fps);
+  emscripten::function("wasm_ui_audio", +[](int value) { return static_cast<int>(wasm_ui_audio(value)); });
+  emscripten::function("wasm_capture_transform_required", &wasm_capture_transform_required);
+  emscripten::function("mirror_cleanup", &mirror_cleanup);
+  emscripten::function("mirror_reset_stabilizer", &mirror_reset_stabilizer);
+  emscripten::function("set_width", &set_width);
+  emscripten::function("get_width", &get_width);
+  emscripten::function("set_height", &set_height);
+  emscripten::function("get_height", &get_height);
+  emscripten::function("set_color_mode", &set_color_mode);
+  emscripten::function("get_color_mode", &get_color_mode);
+  emscripten::function("set_color_filter", &set_color_filter);
+  emscripten::function("get_color_filter", &get_color_filter);
+  emscripten::function("set_matrix_rain", &set_matrix_rain);
+  emscripten::function("get_matrix_rain", &get_matrix_rain);
+  emscripten::function("set_waveform", &set_waveform);
+  emscripten::function("get_waveform", &get_waveform);
+  emscripten::function("set_fft", &set_fft);
+  emscripten::function("get_fft", &get_fft);
+  emscripten::function("set_flip_x", &set_flip_x);
+  emscripten::function("get_flip_x", &get_flip_x);
+  emscripten::function("set_flip_y", &set_flip_y);
+  emscripten::function("get_flip_y", &get_flip_y);
+  emscripten::function("set_render_mode", &set_render_mode);
+  emscripten::function("get_render_mode", &get_render_mode);
+  emscripten::function("set_target_fps", &set_target_fps);
+  emscripten::function("get_target_fps", &get_target_fps);
+  emscripten::function("get_palette", &get_palette);
+
   emscripten::register_optional<std::string>();
   emscripten::register_type<RgbaBytes>("RgbaBytes", "Uint8Array | Uint8ClampedArray");
   emscripten::register_type<VisualizationSamples>("VisualizationSamples", "Float32Array");
@@ -186,6 +197,7 @@ EMSCRIPTEN_BINDINGS(ascii_chat_session_ui) {
       .function("renderAudio", &MirrorFrameBinding::renderAudio);
   emscripten::class_<SessionUiBinding>("SessionUiBinding")
       .constructor<>()
+      .constructor<bool>()
       .function("valid", &SessionUiBinding::valid)
       .function("resize", &SessionUiBinding::resize)
       .function("loading", &SessionUiBinding::loading)

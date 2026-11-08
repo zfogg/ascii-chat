@@ -1,3 +1,4 @@
+#include "browser_host.h"
 /** Browser adapter for the same session host used by CLI discovery. */
 #include <emscripten.h>
 #include <emscripten/html5.h>
@@ -32,13 +33,13 @@ static acip_transport_type_t transport_type(acip_transport_t *transport) {
 static const acip_transport_methods_t methods = {
     .send = host_transport_send, .is_connected = connected, .get_socket = no_socket, .get_type = transport_type};
 
-EMSCRIPTEN_KEEPALIVE void browser_host_destroy(void) {
+void browser_host_destroy(void) {
   session_host_destroy(host);
   host = NULL;
   memset(client_ids, 0, sizeof(client_ids));
   memset(transports, 0, sizeof(transports));
 }
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_create(void) {
+asciichat_error_t browser_host_create(void) {
   browser_host_destroy();
   session_host_config_t config = {.max_clients = MAX_SESSION_PARTICIPANTS};
   host = session_host_create(&config);
@@ -46,7 +47,7 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_create(void) {
     return ERROR_MEMORY;
   return session_host_render_audio(host);
 }
-EMSCRIPTEN_KEEPALIVE uint32_t browser_host_add_client(void) {
+uint32_t browser_host_add_client(void) {
   if (!host)
     return 0;
   for (size_t i = 0; i < MAX_SESSION_PARTICIPANTS; ++i) {
@@ -66,7 +67,7 @@ EMSCRIPTEN_KEEPALIVE uint32_t browser_host_add_client(void) {
   }
   return 0;
 }
-EMSCRIPTEN_KEEPALIVE void browser_host_remove_client(uint32_t id) {
+void browser_host_remove_client(uint32_t id) {
   if (!host)
     return;
   session_host_remove_client(host, id);
@@ -74,17 +75,16 @@ EMSCRIPTEN_KEEPALIVE void browser_host_remove_client(uint32_t id) {
     if (client_ids[i] == id)
       client_ids[i] = 0;
 }
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_set_local_client(uint32_t id) {
+asciichat_error_t browser_host_set_local_client(uint32_t id) {
   session_host_render_target_t target = {.client_id = id};
   return session_host_set_render_target(host, id ? &target : NULL);
 }
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_receive(uint32_t id, uint32_t type, const void *data,
-                                                            size_t length) {
+asciichat_error_t browser_host_receive(uint32_t id, uint32_t type, const void *data, size_t length) {
   return session_host_receive_packet(host, id, (packet_type_t)type, data, length);
 }
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_render(void) {
+asciichat_error_t browser_host_render(void) {
   return session_host_render_video(host);
 }
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_host_render_audio(void) {
+asciichat_error_t browser_host_render_audio(void) {
   return session_host_render_audio(host);
 }

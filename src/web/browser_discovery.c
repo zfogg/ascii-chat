@@ -1,10 +1,10 @@
+#include "browser_discovery.h"
 #include <ascii-chat/common/limits.h>
 #include <emscripten.h>
 #include <ascii-chat/network/consensus/handoff.h>
 
-EMSCRIPTEN_KEEPALIVE void browser_handoff_encode(int kind, const uint8_t *session, const uint8_t *id,
-                                                 uint32_t generation, uint32_t sequence, int capabilities, int nat_tier,
-                                                 int port, uint8_t *out) {
+void browser_handoff_encode(int kind, const uint8_t *session, const uint8_t *id, uint32_t generation, uint32_t sequence,
+                            int capabilities, int nat_tier, int port, uint8_t *out) {
   consensus_handoff_message_t message = {.kind = (uint8_t)kind,
                                          .generation = generation,
                                          .sequence = sequence,
@@ -17,7 +17,7 @@ EMSCRIPTEN_KEEPALIVE void browser_handoff_encode(int kind, const uint8_t *sessio
 }
 EM_JS(void, handoff_snapshot, (int kind, const uint8_t *id, uint32_t generation, uint32_t sequence),
       { Module.handoffResult = {kind, participant : HEAPU8.slice(id, id + 16), generation, sequence}; });
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_handoff_decode(const uint8_t *data, size_t length) {
+asciichat_error_t browser_handoff_decode(const uint8_t *data, size_t length) {
   consensus_handoff_message_t message;
   asciichat_error_t result = consensus_handoff_decode(data, length, &message);
   if (result == ASCIICHAT_OK)
@@ -35,27 +35,25 @@ static asciichat_error_t browser_send(void *p, packet_type_t type, const void *p
   discovery_send(p, type, payload, length);
   return ASCIICHAT_OK;
 }
-EMSCRIPTEN_KEEPALIVE acds_protocol_t *browser_discovery_new(void) {
+acds_protocol_t *browser_discovery_new(void) {
   acds_protocol_t *p = SAFE_CALLOC(1, sizeof(*p), acds_protocol_t *);
   if (p)
     acds_protocol_init(p, browser_send, p);
   return p;
 }
-EMSCRIPTEN_KEEPALIVE void browser_discovery_destroy(acds_protocol_t *p) {
+void browser_discovery_destroy(acds_protocol_t *p) {
   if (!p)
     return;
   acds_protocol_destroy(p);
   SAFE_FREE(p);
 }
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_discovery_enter(acds_protocol_t *p, bool create, const char *name,
-                                                               const char *password) {
+asciichat_error_t browser_discovery_enter(acds_protocol_t *p, bool create, const char *name, const char *password) {
   return acds_protocol_enter(p, create, name, password);
 }
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_discovery_receive(acds_protocol_t *p, uint32_t type, const void *data,
-                                                                 size_t length) {
+asciichat_error_t browser_discovery_receive(acds_protocol_t *p, uint32_t type, const void *data, size_t length) {
   return acds_protocol_receive(p, (packet_type_t)type, data, length);
 }
-EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_discovery_leave(acds_protocol_t *p) {
+asciichat_error_t browser_discovery_leave(acds_protocol_t *p) {
   return acds_protocol_leave(p);
 }
 EM_JS(void, discovery_snapshot,
@@ -82,7 +80,7 @@ EM_JS(void, discovery_snapshot,
           }
         };
       });
-EMSCRIPTEN_KEEPALIVE void browser_discovery_snapshot(acds_protocol_t *p) {
+void browser_discovery_snapshot(acds_protocol_t *p) {
   discovery_snapshot(p->state, p->terminal, p->error, p->name, p->joined.participant_id, p->joined.session_id,
                      p->joined.host_established ? p->joined.host_id : p->joined.initiator_id, p->joined.turn_username,
                      p->joined.turn_password, p->joined.server_address, p->joined.server_port, p->joined.session_type,

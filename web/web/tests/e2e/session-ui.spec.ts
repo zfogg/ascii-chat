@@ -197,37 +197,31 @@ test("compiled C runtime retains newest covered frame, bounds input and tears do
   const result = await page.evaluate(async (url) => {
     const { getMirrorModule } = await import(url);
     const m = getMirrorModule();
-    const text = (value: string, fn: (p: number, n: number) => void) => {
-      const n = m.lengthBytesUTF8(value),
-        p = m._malloc(n + 1);
-      try {
-        m.stringToUTF8(value, p, n + 1);
-        fn(p, n);
-      } finally {
-        m._free(p);
-      }
-    };
     const outcomes = [];
     for (let i = 0; i < 10; i++) {
-      const s = m._wasm_ui_create();
-      m._wasm_ui_resize(s, 120, 40);
-      text("old", (p, n) => m._wasm_ui_media(s, p, n));
-      m._wasm_ui_key(s, 63);
-      const help = m.UTF8ToString(m._wasm_ui_tick(s, 100));
-      text("newest", (p, n) => m._wasm_ui_media(s, p, n));
-      const covered = m.UTF8ToString(m._wasm_ui_tick(s, 200));
-      m._wasm_ui_key(s, 27);
-      const restored = m.UTF8ToString(m._wasm_ui_tick(s, 300));
-      const unchanged = m._wasm_ui_tick(s, 400);
-      const invalid = m._wasm_ui_media(s, 0, 0);
-      outcomes.push(
-        help.includes("Keyboard Shortcuts") &&
-          covered.includes("Keyboard Shortcuts") &&
-          restored.endsWith("newest") &&
-          unchanged === 0 &&
-          invalid !== 0,
-      );
-      m._wasm_ui_destroy(s);
+      const session = new m.SessionUiBinding(false);
+      try {
+        session.resize(120, 40);
+        session.media("old");
+        session.key(63);
+        const help = session.tick(100) ?? "";
+        session.media("newest");
+        const covered = session.tick(200) ?? "";
+        session.key(27);
+        const restored = session.tick(300) ?? "";
+        const unchanged = session.tick(400);
+        const invalid =
+          i === 0 ? session.media("x".repeat(16 * 1024 * 1024 + 1)) : 1;
+        outcomes.push(
+          help.includes("Keyboard Shortcuts") &&
+            covered.includes("Keyboard Shortcuts") &&
+            restored.endsWith("newest") &&
+            unchanged === undefined &&
+            invalid !== 0,
+        );
+      } finally {
+        session.delete();
+      }
     }
     return outcomes;
   }, moduleUrl);
@@ -379,12 +373,7 @@ test("C owns automatic horizontal orientation and the browser echoes it without 
     page.evaluate(async (url) => {
       const { getMirrorModule } = await import(url);
       const m = getMirrorModule();
-      const p = m._wasm_options_values();
-      try {
-        return JSON.parse(m.UTF8ToString(p)).values;
-      } finally {
-        m._wasm_options_release(p);
-      }
+      return JSON.parse(m.readOptions()).values;
     }, moduleUrl);
   const orientation = async (flip: boolean, explicit = false) => {
     await expect(horizontal).toHaveAttribute("aria-pressed", String(flip));
@@ -460,13 +449,8 @@ for (const mode of ["client", "discovery"]) {
         const { getMirrorModule } = await import(url);
         const m = getMirrorModule();
         if (!m) return null;
-        const p = m._wasm_options_values();
-        try {
-          const values = JSON.parse(m.UTF8ToString(p)).values;
-          return [values.flip_x, values.flip_x_explicit];
-        } finally {
-          m._wasm_options_release(p);
-        }
+        const values = JSON.parse(m.readOptions()).values;
+        return [values.flip_x, values.flip_x_explicit];
       }, moduleUrl);
     await expect(horizontal).toHaveAttribute("aria-pressed", "true");
     await page
@@ -501,13 +485,8 @@ test("horizontal orientation startup commits saved choices before reading C", as
         const { getMirrorModule } = await import(url);
         const m = getMirrorModule();
         if (!m) return null;
-        const p = m._wasm_options_values();
-        try {
-          const values = JSON.parse(m.UTF8ToString(p)).values;
-          return [values.flip_x, values.flip_x_explicit];
-        } finally {
-          m._wasm_options_release(p);
-        }
+        const values = JSON.parse(m.readOptions()).values;
+        return [values.flip_x, values.flip_x_explicit];
       }, moduleUrl);
     await expect.poll(state).toEqual([flip, true]);
     await expect(

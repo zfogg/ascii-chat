@@ -1,4 +1,11 @@
 #include <emscripten/bind.h>
+extern "C" {
+#include "../peer_crypto.h"
+#include "../client.h"
+#include "../security.h"
+}
+#include <sodium.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -8,33 +15,6 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(PeerBytes);
 EMSCRIPTEN_DECLARE_VAL_TYPE(NullablePeerBytes);
 EMSCRIPTEN_DECLARE_VAL_TYPE(QuicControlResult);
 EMSCRIPTEN_DECLARE_VAL_TYPE(QuicPacketResult);
-
-extern "C" {
-void *peer_crypto_create(bool server, int encryption, const char *password, const uint8_t *identity,
-                         const uint8_t *expected_key);
-void peer_crypto_destroy(void *peer);
-bool peer_crypto_ready(void *peer);
-const char *peer_crypto_error(void);
-int peer_crypto_send(void *peer, const void *data, size_t length);
-int peer_crypto_receive(void *peer, const void *data, size_t length);
-const void *peer_crypto_output_data(void *peer);
-size_t peer_crypto_output_size(void *peer);
-void peer_crypto_output_pop(void *peer);
-const void *peer_crypto_received_data(void *peer);
-size_t peer_crypto_received_size(void *peer);
-void *peer_security_context(void *peer);
-void *client_security_context(void);
-int peer_crypto_tick(void *peer);
-int peer_crypto_quic_begin(void *peer);
-int browser_security_init(void *context);
-int browser_security_tick(void *context);
-double browser_security_epoch(void *context);
-int browser_security_output(void *context, uint8_t *output, size_t capacity, size_t *length, uint32_t *flow);
-int browser_security_packet(void *context, bool seal, uint32_t flow, uint32_t delivery, const uint8_t *input,
-                            size_t length, uint8_t *output, size_t capacity, size_t *out_length, uint64_t *sequence);
-void sodium_memzero(void *data, size_t length);
-int client_configure_crypto_options(const char *password, const uint8_t *identity, const uint8_t *expected_key);
-}
 
 static std::vector<uint8_t> copy_input(PeerBytes bytes) {
   const size_t length = bytes["length"].as<size_t>();
@@ -77,7 +57,7 @@ static int configure_crypto(PeerBytes password, PeerBytes identity, PeerBytes ex
   return result;
 }
 
-static QuicControlResult take_quic_output(void *context) {
+static QuicControlResult take_quic_output(crypto_context_t *context) {
   uint8_t data[256];
   size_t length = 0;
   uint32_t flow = 0;
@@ -89,7 +69,7 @@ static QuicControlResult take_quic_output(void *context) {
   return QuicControlResult(result);
 }
 
-static QuicPacketResult process_quic_packet(void *context, bool seal, unsigned flow, unsigned delivery,
+static QuicPacketResult process_quic_packet(crypto_context_t *context, bool seal, unsigned flow, unsigned delivery,
                                             PeerBytes packet) {
   auto input_data = copy_input(packet);
   std::vector<uint8_t> output(input_data.size() + (seal ? 94 : 0));
@@ -211,7 +191,7 @@ private:
       sodium_memzero(bytes.data(), bytes.size());
     return result;
   }
-  void *peer_ = nullptr;
+  browser_peer_crypto_t *peer_ = nullptr;
 };
 
 EMSCRIPTEN_BINDINGS(ascii_chat_peer_crypto) {

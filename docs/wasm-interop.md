@@ -34,8 +34,10 @@ its temporary SSH-key file. JavaScript strings and copies owned by browser APIs
 cannot be reliably wiped. C error snapshots are copied into JavaScript values
 before reporting them.
 
-Some legacy C exports remain while other browser paths are migrated. New code
-should add typed operations to the adapters instead of adding pointer or
-`_malloc` signatures to application-facing TypeScript interfaces. Keep
-high-frequency buffers preallocated where practical, and test any additional
-copies in the actual worker or rendering path.
+Embind is the browser-facing API, including options and host control. The
+C functions used by adapters are declared in the corresponding web headers,
+which their implementations include as well. Emscripten's filesystem remains
+available for temporary key files; the current heap view is used only to detect
+input arrays that alias growable WASM memory. Keep high-frequency buffers
+preallocated where practical, and test any additional copies in the actual
+worker or rendering path.

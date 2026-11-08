@@ -49,8 +49,8 @@ export async function observeAudioVisualization(page: Page) {
     };
     let selectedMode = "";
     for (const [setter, mode] of [
-      ["_set_waveform", "waveform"],
-      ["_set_fft", "fft"],
+      ["set_waveform", "waveform"],
+      ["set_fft", "fft"],
     ] as const) {
       const original = module[setter];
       module[setter] = (enabled: number) => {

@@ -1,4 +1,10 @@
 #include <emscripten/bind.h>
+extern "C" {
+#include "../client.h"
+#include "../common/errors.h"
+}
+#include <sodium.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -7,24 +13,6 @@
 EMSCRIPTEN_DECLARE_VAL_TYPE(KeyInput);
 EMSCRIPTEN_DECLARE_VAL_TYPE(KeyParseResult);
 EMSCRIPTEN_DECLARE_VAL_TYPE(ErrorFrameResult);
-
-extern "C" {
-int client_parse_ssh_private_key(const char *, uint8_t *);
-int client_parse_ssh_public_key(const char *, uint8_t *);
-int client_parse_gpg_private_key(const char *, uint8_t *);
-int client_parse_gpg_public_key(const char *, uint8_t *);
-int client_parse_gpg_private_key_binary(const uint8_t *, size_t, uint8_t *);
-int client_parse_gpg_public_key_binary(const uint8_t *, size_t, uint8_t *);
-int client_get_crypto_error_message(char *, size_t);
-size_t wasm_error_snapshot(void);
-int wasm_error_code(size_t);
-const char *wasm_error_message(size_t);
-const char *wasm_error_file(size_t);
-const char *wasm_error_full_file(size_t);
-const char *wasm_error_function(size_t);
-int wasm_error_line(size_t);
-void sodium_memzero(void *, size_t);
-}
 
 static KeyParseResult parse_key(int kind, bool binary, KeyInput input) {
   const size_t length = input["length"].as<size_t>();
@@ -83,6 +71,7 @@ static ErrorFrameResult error_frame(size_t index) {
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_key_parser) {
+  emscripten::function("wasm_error_dismiss", &wasm_error_dismiss);
   emscripten::register_type<KeyInput>("KeyInput", "Uint8Array");
   emscripten::register_type<KeyParseResult>("KeyParseResult", "{ code: number; bytes: Uint8Array }");
   emscripten::register_type<ErrorFrameResult>(

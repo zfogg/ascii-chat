@@ -4,47 +4,43 @@ import type { MainModule } from "../generated/mirror-bindings";
  * @file optionsWrapper.ts
  * @brief Generic WASM option wrapper utilities
  *
- * Eliminates boilerplate for calling WASM option setters/getters by providing
- * a factory function that handles memory allocation, type conversion, and error handling.
+ * Provides typed access to the Embind option functions and converts boolean values.
  *
  * Each WASM module (mirror, client) exports unified option functions (set_width, get_width, etc.)
  * This wrapper provides type-safe TypeScript bindings that work with any WASM module.
  */
 
-/**
- * WASM module interface with memory management and string functions
- */
-export interface WasmModule
-  extends
-    RuntimeOptionsModule,
-    Pick<MainModule, "setPalette" | "setPaletteChars" | "getPaletteChars"> {
-  HEAPU8: Uint8Array;
-
-  // Unified option functions (no mode prefix)
-  _set_width?(value: number): number;
-  _get_width?(): number;
-  _set_height?(value: number): number;
-  _get_height?(): number;
-  _set_color_mode?(mode: number): number;
-  _get_color_mode?(): number;
-  _set_color_filter?(filter: number): number;
-  _get_color_filter?(): number;
-  _get_palette?(): number;
-  _set_matrix_rain?(enabled: number): number;
-  _get_matrix_rain?(): number;
-  _set_waveform?(enabled: number): number;
-  _get_waveform?(): number;
-  _set_fft?(enabled: number): number;
-  _get_fft?(): number;
-  _set_flip_x?(enabled: number): number;
-  _get_flip_x?(): number;
-  _set_flip_y?(enabled: number): number;
-  _get_flip_y?(): number;
-  _set_render_mode?(mode: number): number;
-  _get_render_mode?(): number;
-  _set_target_fps?(fps: number): number;
-  _get_target_fps?(): number;
-}
+/** TypeScript signatures generated from the shared Embind options interface. */
+export type WasmModule = RuntimeOptionsModule &
+  Pick<
+    MainModule,
+    | "setPalette"
+    | "setPaletteChars"
+    | "getPaletteChars"
+    | "set_width"
+    | "get_width"
+    | "set_height"
+    | "get_height"
+    | "set_color_mode"
+    | "get_color_mode"
+    | "set_color_filter"
+    | "get_color_filter"
+    | "set_matrix_rain"
+    | "get_matrix_rain"
+    | "set_waveform"
+    | "get_waveform"
+    | "set_fft"
+    | "get_fft"
+    | "set_flip_x"
+    | "get_flip_x"
+    | "set_flip_y"
+    | "get_flip_y"
+    | "set_render_mode"
+    | "get_render_mode"
+    | "set_target_fps"
+    | "get_target_fps"
+    | "get_palette"
+  > & { HEAPU8: Uint8Array };
 
 /**
  * Type-safe option accessor interface
@@ -60,7 +56,7 @@ export interface OptionAccessor {
 
 /**
  * Create a type-safe option accessor for a WASM module
- * Handles memory management and type conversions transparently
+ * Handles option type conversions and errors.
  *
  * Usage:
  *   const options = createOptionAccessor(wasmModule);
@@ -84,10 +80,10 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
      * @throws Error if the option doesn't exist or validation fails
      */
     setInt(name: string, value: number): void {
-      const fn = (module as unknown as Record<string, unknown>)[`_set_${name}`];
+      const fn = (module as unknown as Record<string, unknown>)[`set_${name}`];
       if (typeof fn !== "function") {
         throw new Error(
-          `WASM function _set_${name} not found. Ensure module is loaded.`,
+          `WASM function set_${name} not found. Ensure module is loaded.`,
         );
       }
       const result = (fn as (v: number) => number).call(module, value);
@@ -103,10 +99,10 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
      * @throws Error if the option doesn't exist
      */
     getInt(name: string): number {
-      const fn = (module as unknown as Record<string, unknown>)[`_get_${name}`];
+      const fn = (module as unknown as Record<string, unknown>)[`get_${name}`];
       if (typeof fn !== "function") {
         throw new Error(
-          `WASM function _get_${name} not found. Ensure module is loaded.`,
+          `WASM function get_${name} not found. Ensure module is loaded.`,
         );
       }
       return (fn as () => number).call(module);
@@ -119,10 +115,10 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
      * @throws Error if the option doesn't exist or validation fails
      */
     setBool(name: string, value: boolean): void {
-      const fn = (module as unknown as Record<string, unknown>)[`_set_${name}`];
+      const fn = (module as unknown as Record<string, unknown>)[`set_${name}`];
       if (typeof fn !== "function") {
         throw new Error(
-          `WASM function _set_${name} not found. Ensure module is loaded.`,
+          `WASM function set_${name} not found. Ensure module is loaded.`,
         );
       }
       const result = (fn as (v: number) => number).call(module, value ? 1 : 0);
@@ -138,17 +134,17 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
      * @throws Error if the option doesn't exist
      */
     getBool(name: string): boolean {
-      const fn = (module as unknown as Record<string, unknown>)[`_get_${name}`];
+      const fn = (module as unknown as Record<string, unknown>)[`get_${name}`];
       if (typeof fn !== "function") {
         throw new Error(
-          `WASM function _get_${name} not found. Ensure module is loaded.`,
+          `WASM function get_${name} not found. Ensure module is loaded.`,
         );
       }
       return (fn as () => number).call(module) !== 0;
     },
 
     /**
-     * Set a string option (handles memory allocation)
+     * Set a string option
      * @param name The option name
      * @param value The string value to set
      * @throws Error if allocation fails or validation fails
@@ -168,7 +164,7 @@ export function createOptionAccessor(module: WasmModule): OptionAccessor {
     },
 
     /**
-     * Get a string option (reads from WASM memory)
+     * Get a string option
      * @param name The option name
      * @returns The current string value
      * @throws Error if the option doesn't exist

@@ -1,4 +1,10 @@
 #include <emscripten/bind.h>
+extern "C" {
+#include "../browser_discovery.h"
+#include "../browser_host.h"
+}
+#include <sodium.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -6,19 +12,6 @@
 
 EMSCRIPTEN_DECLARE_VAL_TYPE(ProtocolBytes);
 EMSCRIPTEN_DECLARE_VAL_TYPE(OptionalHandoffBytes);
-
-extern "C" {
-void *browser_discovery_new(void);
-void browser_discovery_destroy(void *);
-int browser_discovery_enter(void *, bool, const char *, const char *);
-int browser_discovery_receive(void *, uint32_t, const void *, size_t);
-int browser_discovery_leave(void *);
-void browser_discovery_snapshot(void *);
-int browser_host_receive(uint32_t, uint32_t, const void *, size_t);
-void browser_handoff_encode(int, const uint8_t *, const uint8_t *, uint32_t, uint32_t, int, int, int, uint8_t *);
-int browser_handoff_decode(const uint8_t *, size_t);
-void sodium_memzero(void *, size_t);
-}
 
 static std::vector<uint8_t> protocol_input(ProtocolBytes input, bool terminate = false) {
   const size_t length = input["length"].as<size_t>();
@@ -65,7 +58,7 @@ public:
   }
 
 private:
-  void *session_;
+  acds_protocol_t *session_;
 };
 
 // Browser host packets arrive at frame rate. Retain their backing storage.
@@ -103,6 +96,15 @@ static int handoff_decode(ProtocolBytes packet) {
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_browser_protocol) {
+  emscripten::function("browser_host_create", +[]() { return static_cast<int>(browser_host_create()); });
+  emscripten::function("browser_host_destroy", &browser_host_destroy);
+  emscripten::function("browser_host_add_client", &browser_host_add_client);
+  emscripten::function(
+      "browser_host_set_local_client",
+      +[](uint32_t id) { return static_cast<int>(browser_host_set_local_client(id)); });
+  emscripten::function("browser_host_remove_client", &browser_host_remove_client);
+  emscripten::function("browser_host_render", +[]() { return static_cast<int>(browser_host_render()); });
+  emscripten::function("browser_host_render_audio", +[]() { return static_cast<int>(browser_host_render_audio()); });
   emscripten::register_type<ProtocolBytes>("ProtocolBytes", "Uint8Array");
   emscripten::register_type<OptionalHandoffBytes>("OptionalHandoffBytes", "Uint8Array | null");
   emscripten::class_<DiscoveryBinding>("DiscoveryBinding")

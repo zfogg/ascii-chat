@@ -153,7 +153,7 @@ export function useInitAsciiRenderer({
       const module = moduleRef.current;
       if (!module) throw new Error("WASM renderer module is unavailable");
       const selection = rendererFontSelection(isMatrixMode);
-      const metricKey = `${selection}:${module._get_font_default_ptr(selection)}:${module._get_font_default_size(selection)}`;
+      const metricKey = `${selection}`;
       let cell = cellMetricsRef.current.get(metricKey);
       if (!cell) {
         const probe = callRendererCreate({

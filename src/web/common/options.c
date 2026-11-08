@@ -17,18 +17,15 @@
 #include <ascii-chat/options/runtime.h>
 #include <ascii-chat/common.h>
 
-EMSCRIPTEN_KEEPALIVE double wasm_options_revision(void) {
+double wasm_options_revision(void) {
   return (double)options_revision();
 }
-EMSCRIPTEN_KEEPALIVE double wasm_options_retired_count(void) {
-  return (double)options_retired_snapshot_count();
-}
-EMSCRIPTEN_KEEPALIVE asciichat_error_t wasm_options_patch(const char *json, double expected_revision) {
+asciichat_error_t wasm_options_patch(const char *json, double expected_revision) {
   return options_apply_json(json, json ? strlen(json) : 0,
                             expected_revision < 0 ? OPTIONS_REVISION_ANY : (uint64_t)expected_revision,
                             OPTIONS_ORIGIN_LOCAL, NULL);
 }
-EMSCRIPTEN_KEEPALIVE char *wasm_options_values(void) {
+char *wasm_options_values(void) {
   options_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot), options_snapshot_t *);
   char *json = NULL;
   if (options_read_snapshot(snapshot) == ASCIICHAT_OK) {
@@ -43,7 +40,7 @@ EMSCRIPTEN_KEEPALIVE char *wasm_options_values(void) {
   SAFE_FREE(snapshot);
   return json;
 }
-EMSCRIPTEN_KEEPALIVE void wasm_options_release(char *json) {
+void wasm_options_release(char *json) {
   SAFE_FREE(json);
 }
 
@@ -51,25 +48,21 @@ EMSCRIPTEN_KEEPALIVE void wasm_options_release(char *json) {
 // Dimension Accessors
 // ============================================================================
 
-EMSCRIPTEN_KEEPALIVE
 int set_width(int value) {
   asciichat_error_t err = options_set_int("width", value);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int get_width(void) {
   int result = GET_OPTION(width);
   return result;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int set_height(int value) {
   asciichat_error_t err = options_set_int("height", value);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int get_height(void) {
   int result = GET_OPTION(height);
   return result;
@@ -79,13 +72,11 @@ int get_height(void) {
 // Color Mode Accessors
 // ============================================================================
 
-EMSCRIPTEN_KEEPALIVE
 int set_color_mode(int mode) {
   asciichat_error_t err = options_set_int("color_mode", mode);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int get_color_mode(void) {
   int result = GET_OPTION(color_mode);
   return result;
@@ -95,13 +86,11 @@ int get_color_mode(void) {
 // Color Filter Accessors
 // ============================================================================
 
-EMSCRIPTEN_KEEPALIVE
 int set_color_filter(int filter) {
   asciichat_error_t err = options_set_int("color_filter", filter);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int get_color_filter(void) {
   int result = GET_OPTION(color_filter);
   return result;
@@ -111,7 +100,6 @@ int get_color_filter(void) {
 // Palette Accessors
 // ============================================================================
 
-EMSCRIPTEN_KEEPALIVE
 int set_palette(const char *palette_name) {
   if (!palette_name)
     return -1;
@@ -131,13 +119,11 @@ int set_palette(const char *palette_name) {
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int get_palette(void) {
   int result = GET_OPTION(palette_type);
   return result;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int set_palette_chars(const char *chars) {
   if (!chars)
     return -1;
@@ -145,7 +131,6 @@ int set_palette_chars(const char *chars) {
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE
 const char *get_palette_chars(void) {
   const char *result = GET_OPTION(palette_custom);
   return result;
@@ -155,34 +140,28 @@ const char *get_palette_chars(void) {
 // Matrix Rain Accessors
 // ============================================================================
 
-EMSCRIPTEN_KEEPALIVE
 int set_matrix_rain(int enabled) {
   asciichat_error_t err = options_set_bool("matrix_rain", enabled != 0);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int get_matrix_rain(void) {
   int result = GET_OPTION(matrix_rain) ? 1 : 0;
   return result;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int set_waveform(int enabled) {
   return options_set_bool("waveform", enabled != 0) == ASCIICHAT_OK ? 0 : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int get_waveform(void) {
   return GET_OPTION(waveform) ? 1 : 0;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int set_fft(int enabled) {
   return options_set_bool("fft", enabled != 0) == ASCIICHAT_OK ? 0 : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int get_fft(void) {
   return GET_OPTION(fft) ? 1 : 0;
 }
@@ -191,13 +170,11 @@ int get_fft(void) {
 // Horizontal Flip Accessors
 // ============================================================================
 
-EMSCRIPTEN_KEEPALIVE
 int set_flip_x(int enabled) {
   asciichat_error_t err = options_set_bool("flip_x", enabled != 0);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int get_flip_x(void) {
   int result = GET_OPTION(flip_x) ? 1 : 0;
   return result;
@@ -207,13 +184,11 @@ int get_flip_x(void) {
 // Vertical Flip Accessors
 // ============================================================================
 
-EMSCRIPTEN_KEEPALIVE
 int set_flip_y(int enabled) {
   asciichat_error_t err = options_set_bool("flip_y", enabled != 0);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int get_flip_y(void) {
   int result = GET_OPTION(flip_y) ? 1 : 0;
   return result;
@@ -223,13 +198,11 @@ int get_flip_y(void) {
 // Render Mode Accessors
 // ============================================================================
 
-EMSCRIPTEN_KEEPALIVE
 int set_render_mode(int mode) {
   asciichat_error_t err = options_set_int("render_mode", mode);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int get_render_mode(void) {
   int result = GET_OPTION(render_mode);
   return result;
@@ -239,13 +212,11 @@ int get_render_mode(void) {
 // Target FPS Accessors
 // ============================================================================
 
-EMSCRIPTEN_KEEPALIVE
 int set_target_fps(int fps) {
   asciichat_error_t err = options_set_int("fps", fps);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
 
-EMSCRIPTEN_KEEPALIVE
 int get_target_fps(void) {
   int result = GET_OPTION(fps);
   return result;
@@ -263,7 +234,6 @@ int get_target_fps(void) {
  * @param option_name The long name of the option
  * @return Help text string or NULL if not applicable
  */
-EMSCRIPTEN_KEEPALIVE
 const char *get_help_text(int mode, const char *option_name) {
   if (!option_name || !option_name[0])
     return NULL;

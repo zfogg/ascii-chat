@@ -1,3 +1,4 @@
+#include "peer_crypto.h"
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/network/acip/prepare.h>
@@ -14,16 +15,16 @@ typedef struct peer_output {
   size_t length;
 } peer_output_t;
 
-typedef struct {
+struct browser_peer_crypto {
   acip_security_t security;
   bool quic_handshake;
   acip_transport_t transport;
   peer_output_t *output, *tail;
   void *received;
   size_t received_length;
-} browser_peer_crypto_t;
+};
 
-EMSCRIPTEN_KEEPALIVE const char *peer_crypto_error(void) {
+const char *peer_crypto_error(void) {
   static asciichat_error_context_t error;
   return HAS_ERRNO(&error) ? error.context_message : "Peer security operation failed";
 }
@@ -75,7 +76,7 @@ static bool peer_connected(acip_transport_t *transport) {
 
 static const acip_transport_methods_t peer_methods = {.send = peer_send, .is_connected = peer_connected};
 
-EMSCRIPTEN_KEEPALIVE void peer_crypto_output_pop(browser_peer_crypto_t *peer) {
+void peer_crypto_output_pop(browser_peer_crypto_t *peer) {
   if (!peer || !peer->output)
     return;
   peer_output_t *output = peer->output;
@@ -86,7 +87,7 @@ EMSCRIPTEN_KEEPALIVE void peer_crypto_output_pop(browser_peer_crypto_t *peer) {
   SAFE_FREE(output);
 }
 
-EMSCRIPTEN_KEEPALIVE void peer_crypto_destroy(browser_peer_crypto_t *peer) {
+void peer_crypto_destroy(browser_peer_crypto_t *peer) {
   if (!peer)
     return;
   while (peer->output)
@@ -96,8 +97,8 @@ EMSCRIPTEN_KEEPALIVE void peer_crypto_destroy(browser_peer_crypto_t *peer) {
   SAFE_FREE(peer);
 }
 
-EMSCRIPTEN_KEEPALIVE browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const char *password,
-                                                               const uint8_t *identity, const uint8_t *expected_key) {
+browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const char *password, const uint8_t *identity,
+                                          const uint8_t *expected_key) {
   browser_peer_crypto_t *peer = SAFE_CALLOC(1, sizeof(*peer), browser_peer_crypto_t *);
   if (!peer)
     return NULL;
@@ -151,34 +152,33 @@ EMSCRIPTEN_KEEPALIVE browser_peer_crypto_t *peer_crypto_create(bool server, int 
   return peer;
 }
 
-EMSCRIPTEN_KEEPALIVE bool peer_crypto_ready(browser_peer_crypto_t *peer) {
+bool peer_crypto_ready(browser_peer_crypto_t *peer) {
   return peer && peer->security.ready;
 }
 
-EMSCRIPTEN_KEEPALIVE const void *peer_crypto_output_data(browser_peer_crypto_t *peer) {
+const void *peer_crypto_output_data(browser_peer_crypto_t *peer) {
   return peer && peer->output ? peer->output->data : NULL;
 }
 
-EMSCRIPTEN_KEEPALIVE size_t peer_crypto_output_size(browser_peer_crypto_t *peer) {
+size_t peer_crypto_output_size(browser_peer_crypto_t *peer) {
   return peer && peer->output ? peer->output->length : 0;
 }
 
-EMSCRIPTEN_KEEPALIVE const void *peer_crypto_received_data(browser_peer_crypto_t *peer) {
+const void *peer_crypto_received_data(browser_peer_crypto_t *peer) {
   return peer ? peer->received : NULL;
 }
 
-EMSCRIPTEN_KEEPALIVE size_t peer_crypto_received_size(browser_peer_crypto_t *peer) {
+size_t peer_crypto_received_size(browser_peer_crypto_t *peer) {
   return peer ? peer->received_length : 0;
 }
 
-EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_send(browser_peer_crypto_t *peer, const void *data, size_t length) {
+asciichat_error_t peer_crypto_send(browser_peer_crypto_t *peer, const void *data, size_t length) {
   if (!peer || !peer->security.ready)
     return SET_ERRNO(ERROR_INVALID_STATE, "Peer security is not ready");
   return peer_send(&peer->transport, data, length);
 }
 
-EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_receive(browser_peer_crypto_t *peer, const void *data,
-                                                           size_t length) {
+asciichat_error_t peer_crypto_receive(browser_peer_crypto_t *peer, const void *data, size_t length) {
   if (!peer || !data || length < sizeof(packet_header_t))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid peer packet");
   buffer_release(peer->received);
@@ -234,17 +234,17 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_receive(browser_peer_crypto_t
   return result;
 }
 
-EMSCRIPTEN_KEEPALIVE crypto_context_t *peer_security_context(browser_peer_crypto_t *peer) {
+crypto_context_t *peer_security_context(browser_peer_crypto_t *peer) {
   return peer ? &peer->security.handshake.crypto_ctx : NULL;
 }
 
-EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_tick(browser_peer_crypto_t *peer) {
+asciichat_error_t peer_crypto_tick(browser_peer_crypto_t *peer) {
   if (!peer || !peer->security.ready || peer->quic_handshake || !ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode))
     return ASCIICHAT_OK;
   return acip_security_flush(&peer->transport);
 }
 
-EMSCRIPTEN_KEEPALIVE asciichat_error_t peer_crypto_quic_begin(browser_peer_crypto_t *peer) {
+asciichat_error_t peer_crypto_quic_begin(browser_peer_crypto_t *peer) {
   if (!peer || peer->security.version_received || peer->quic_handshake || !ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode))
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid peer QUIC handshake transition");
   peer->quic_handshake = true;

@@ -780,7 +780,7 @@ export function ClientPage({
   );
 
   useEffect(() => {
-    getMirrorModule()?._wasm_ui_audio(
+    getMirrorModule()?.wasm_ui_audio(
       Number(audioEnabled || micEnabled || displayInput),
     );
   }, [audioEnabled, micEnabled, displayInput, connectionState, rendererReady]);
@@ -838,7 +838,7 @@ export function ClientPage({
     try {
       const pipeline = ensureAudio();
       const ui = getMirrorModule();
-      if (ui) pipeline.setVolume(ui._wasm_ui_volume());
+      if (ui) pipeline.setVolume(ui.wasm_ui_volume());
       if (speakers) await pipeline.enablePlayback();
       const client = clientRef.current;
       if (!client) throw new Error("Connect before starting the audio stream");
@@ -1709,7 +1709,7 @@ export function ClientPage({
                   event,
                   fileSelected ? fileVideoRef.current : videoRef.current,
                 );
-                audioRef.current?.setVolume(event.module._wasm_ui_volume());
+                audioRef.current?.setVolume(event.module.wasm_ui_volume());
                 if (event.action === 3) disconnectMedia();
               }}
               zalgo={settings.zalgo ?? 0}

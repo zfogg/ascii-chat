@@ -1,17 +1,12 @@
 #include <emscripten/bind.h>
+extern "C" {
+#include "../face_follow.h"
+}
+
 #include <cstddef>
 
 EMSCRIPTEN_DECLARE_VAL_TYPE(FacePixels);
 EMSCRIPTEN_DECLARE_VAL_TYPE(FaceValues);
-
-extern "C" {
-void face_web_reset(void);
-unsigned char *face_web_input(void);
-int face_web_validate_input(int width, int height, size_t length);
-void face_web_detect(int width, int height, double now);
-float *face_web_tick(double now, int enabled);
-size_t face_web_output_count(void);
-}
 
 static int detect_face(FacePixels pixels, int width, int height, double now) {
   const size_t length = pixels["length"].as<size_t>();

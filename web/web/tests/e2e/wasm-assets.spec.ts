@@ -32,6 +32,12 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
       bad: dsp.process(input, new Float32Array(1)),
     };
     dsp.delete();
+    const mono = new module.AudioProcessorBinding(48000, true, 960, 1);
+    const monoInput = new Float32Array(13).fill(0.125);
+    const monoOutput = new Float32Array(13);
+    const monoStatus = mono.process(monoInput, monoOutput);
+    const monoSample = monoOutput[0];
+    mono.delete();
     const codec = new module.OpusCodecBinding(48000, 2, 64000, 4000);
     const competingCodec = new module.OpusCodecBinding(48000, 2, 64000, 4000);
     const competingRejected = !competingCodec.valid();
@@ -110,6 +116,8 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     }
     return {
       audio,
+      monoStatus,
+      monoSample,
       opus,
       classic: await exercise(false),
       quic: await exercise(true),
@@ -121,6 +129,8 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     sample: 0.25,
     bad: -1,
   });
+  expect(result.monoStatus).toBe(0);
+  expect(result.monoSample).toBe(0.125);
   expect(result.opus.valid).toBe(true);
   expect(result.opus.competingRejected).toBe(true);
   expect(result.opus.bytes).toBeGreaterThan(0);
@@ -238,10 +248,10 @@ test("renderer copies stay valid across WASM memory growth", async ({
       if (!renderer.copyPixels(pixels)) throw new Error("pixel copy failed");
       const snapshot = Array.from(pixels);
       const before = m.HEAPU8.byteLength;
-      const allocation = m._malloc(before);
-      if (!allocation) throw new Error("could not force memory growth");
+      const largeFrame = new Uint8Array(before);
+      if (frame.transform(largeFrame, before / 4, 1))
+        throw new Error("could not force memory growth");
       const after = m.HEAPU8.byteLength;
-      m._free(allocation);
       const next = new Uint8ClampedArray(pixels.length);
       if (!renderer.copyPixels(next))
         throw new Error("pixel copy after growth failed");
@@ -255,7 +265,7 @@ test("renderer copies stay valid across WASM memory growth", async ({
     } finally {
       renderer.delete();
       frame.delete();
-      m._mirror_cleanup();
+      m.mirror_cleanup();
     }
   }, version);
   expect(result.after).toBeGreaterThan(result.before);
@@ -275,18 +285,20 @@ test("client runtime initializes after its versioned module loads", async ({
     await initClientWasm({ width: 80, height: 24 });
     const wasm = getClientWasmModule() as Record<string, unknown>;
     const diagnostics = {
-      stacks: typeof wasm["_errno_print_stacks"],
-      history: typeof wasm["_errno_print_history"],
+      errorSnapshot: typeof wasm["errorSnapshot"],
+      errorFrame: typeof wasm["errorFrame"],
       legacy: Object.keys(wasm).filter((name) =>
-        name.startsWith("_asciichat_errno_"),
+        /^_(?:errno|asciichat_errno|client_|mirror_|browser_|wasm_|set_|get_|term_renderer|peer_)/.test(
+          name,
+        ),
       ),
     };
     cleanupClientWasm();
     return diagnostics;
   });
   expect(diagnostics).toEqual({
-    stacks: "function",
-    history: "function",
+    errorSnapshot: "function",
+    errorFrame: "function",
     legacy: [],
   });
 });
@@ -364,3 +376,20 @@ for (const mode of ["mirror", "client"] as const) {
     ).toBe(true);
   });
 }
+
+test("discovery protocol uses owned Embind sessions", async ({ page }) => {
+  await page.goto("/tests/network/discovery-protocol.html");
+  await expect(page).toHaveTitle("PASS: shared C discovery protocol", {
+    timeout: 30000,
+  });
+  await expect(page.locator("#results")).toContainText("8 tests passed");
+});
+
+test("renderer diagnostic pages use Embind", async ({ page }) => {
+  for (const path of ["/wasm-render-test.html", "/wasm-block-test.html"]) {
+    await page.goto(path);
+    await expect(page.locator("#status")).toContainText("PASS", {
+      timeout: 30000,
+    });
+  }
+});

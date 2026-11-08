@@ -10,9 +10,9 @@ export interface SessionUiModule extends Pick<
   | "optionHelp"
   | "TestPatternBinding"
 > {
-  _wasm_ui_volume(): number;
-  _wasm_ui_fps(): number;
-  _wasm_ui_audio(enabled: number): number;
+  wasm_ui_volume(): number;
+  wasm_ui_fps(): number;
+  wasm_ui_audio(enabled: number): number;
 }
 
 export interface SessionUiEvent {

@@ -301,8 +301,8 @@ export class ClientConnection {
       const module = getClientModule();
       if (!module) throw new Error("WASM client unavailable");
       const result = this.options.discoveryHandshake
-        ? module._client_acds_handshake_begin(this.cryptoMode)
-        : module._client_handshake_begin();
+        ? module.client_acds_handshake_begin(this.cryptoMode)
+        : module.client_handshake_begin();
       if (result)
         throwWasmError(result, "Could not begin security negotiation");
     } catch (error) {

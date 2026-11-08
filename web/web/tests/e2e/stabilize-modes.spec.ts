@@ -29,25 +29,20 @@ test("mirror WASM stabilizes every render mode", async ({ page }) => {
       const m = getMirrorModule();
       if (!m) throw new Error("Mirror module was not initialized");
       const options = runtimeOptions(m);
-      const pointer = m._malloc(4 * 4 * 4);
-      if (!pointer) throw new Error("Could not allocate test pixels");
+      const frame = new m.MirrorFrameBinding();
+      const pixels = new Uint8Array(4 * 4 * 4);
       try {
         const convert = (value: number, background: boolean) => {
           for (let i = 0; i < 16; i++) {
-            m.HEAPU8.set([value, value, value, 255], pointer + i * 4);
+            pixels.set([value, value, value, 255], i * 4);
           }
-          const output = m._mirror_convert_frame(pointer, 4, 4, 0);
-          if (!output) throw new Error("WASM conversion failed");
-          try {
-            const ansi = m.UTF8ToString(output);
-            const match = ansi.match(
-              background ? /\x1b\[48;2;(\d+);/ : /\x1b\[38;2;(\d+);/,
-            );
-            if (!match) throw new Error("Missing truecolor output");
-            return Number(match[1]);
-          } finally {
-            m._mirror_free_string(output);
-          }
+          const ansi = frame.convert(pixels, 4, 4, false);
+          if (!ansi) throw new Error("WASM conversion failed");
+          const match = ansi.match(
+            background ? /\x1b\[48;2;(\d+);/ : /\x1b\[38;2;(\d+);/,
+          );
+          if (!match) throw new Error("Missing truecolor output");
+          return Number(match[1]);
         };
         const results = [];
         for (const renderer of [0, 1]) {
@@ -62,7 +57,7 @@ test("mirror WASM stabilizes every render mode", async ({ page }) => {
                 renderer,
                 stabilize: enabled,
               });
-              m._mirror_reset_stabilizer();
+              m.mirror_reset_stabilizer();
               return [
                 convert(100, renderMode === 1),
                 convert(104, renderMode === 1),
@@ -78,7 +73,7 @@ test("mirror WASM stabilizes every render mode", async ({ page }) => {
         }
         return results;
       } finally {
-        m._free(pointer);
+        frame.delete();
       }
     },
     [

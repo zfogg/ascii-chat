@@ -1,63 +1,6 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
 declare namespace RuntimeExports {
-  /**
-   * @param {string|null=} returnType
-   * @param {Array=} argTypes
-   * @param {Array=} args
-   * @param {Object=} opts
-   */
-  function ccall(
-    ident: any,
-    returnType?: (string | null) | undefined,
-    argTypes?: any[] | undefined,
-    args?: any[] | undefined,
-    opts?: any | undefined,
-  ): any;
-  /**
-   * @param {string=} returnType
-   * @param {Array=} argTypes
-   * @param {Object=} opts
-   */
-  function cwrap(
-    ident: any,
-    returnType?: string | undefined,
-    argTypes?: any[] | undefined,
-    opts?: any | undefined,
-  ): (...args: any[]) => any;
-  /**
-   * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
-   * emscripten HEAP, returns a copy of that string as a Javascript String object.
-   *
-   * @param {number} ptr
-   * @param {number=} maxBytesToRead - An optional length that specifies the
-   *   maximum number of bytes to read. You can omit this parameter to scan the
-   *   string until the first 0 byte. If maxBytesToRead is passed, and the string
-   *   at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the
-   *   string will cut short at that byte index.
-   * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
-   * @return {string}
-   */
-  function UTF8ToString(
-    ptr: number,
-    maxBytesToRead?: number | undefined,
-    ignoreNul?: boolean | undefined,
-  ): string;
-  function stringToUTF8(str: any, outPtr: any, maxBytesToWrite: any): any;
-  function lengthBytesUTF8(str: any): number;
-  /**
-   * @param {number} ptr
-   * @param {string} type
-   */
-  function getValue(ptr: number, type?: string): any;
-  /**
-   * @param {number} ptr
-   * @param {number} value
-   * @param {string} type
-   */
-  function setValue(ptr: number, value: number, type?: string): void;
   let HEAPU8: any;
-  let HEAP16: any;
-  let HEAPF32: any;
   namespace FS {
     export let root: any;
     export let mounts: any[];
@@ -329,134 +272,7 @@ declare class FSNode {
   get isFolder(): any;
   get isDevice(): any;
 }
-interface WasmModule {
-  _wasm_options_revision(): number;
-  _wasm_options_retired_count(): number;
-  _wasm_options_patch(_0: number, _1: number): number;
-  _wasm_options_values(): number;
-  _malloc(_0: number): number;
-  _free(_0: number): void;
-  _wasm_options_release(_0: number): void;
-  _set_width(_0: number): number;
-  _get_width(): number;
-  _set_height(_0: number): number;
-  _get_height(): number;
-  _set_color_mode(_0: number): number;
-  _get_color_mode(): number;
-  _set_color_filter(_0: number): number;
-  _get_color_filter(): number;
-  _set_palette(_0: number): number;
-  _get_palette(): number;
-  _set_palette_chars(_0: number): number;
-  _get_palette_chars(): number;
-  _set_matrix_rain(_0: number): number;
-  _get_matrix_rain(): number;
-  _set_waveform(_0: number): number;
-  _get_waveform(): number;
-  _set_fft(_0: number): number;
-  _get_fft(): number;
-  _set_flip_x(_0: number): number;
-  _get_flip_x(): number;
-  _set_flip_y(_0: number): number;
-  _get_flip_y(): number;
-  _set_render_mode(_0: number): number;
-  _get_render_mode(): number;
-  _set_target_fps(_0: number): number;
-  _get_target_fps(): number;
-  _get_help_text(_0: number, _1: number): number;
-  _wasm_capture_transform_required(): number;
-  _wasm_capture_transform_rgba(_0: number, _1: number, _2: number): number;
-  _wasm_error_snapshot(): number;
-  _wasm_error_code(_0: number): number;
-  _wasm_error_message(_0: number): number;
-  _wasm_error_file(_0: number): number;
-  _wasm_error_full_file(_0: number): number;
-  _wasm_error_function(_0: number): number;
-  _wasm_error_line(_0: number): number;
-  _wasm_error_dismiss(): void;
-  _session_av_state_create(): number;
-  _session_av_state_destroy(_0: number): void;
-  _session_av_state_generation(_0: number): number;
-  _session_av_state_begin(_0: number): number;
-  _session_av_state_is_current(_0: number, _1: number): number;
-  _session_av_state_should_run(_0: number): number;
-  _session_av_state_complete(_0: number, _1: number): number;
-  _session_av_state_is_active(_0: number): number;
-  _session_av_state_begin_stop(_0: number): void;
-  _session_av_state_finish_stop(_0: number): void;
-  _errno_print_stacks(): void;
-  _errno_print_history(): void;
-  _wasm_test_pattern_create(_0: number, _1: number): number;
-  _wasm_test_pattern_render(
-    _0: number,
-    _1: number,
-    _2: number,
-    _3: number,
-    _4: number,
-    _5: number,
-  ): number;
-  _wasm_test_pattern_destroy(_0: number): void;
-  _wasm_test_pattern_render_rgba(
-    _0: number,
-    _1: number,
-    _2: number,
-    _3: number,
-    _4: number,
-    _5: number,
-  ): number;
-  _wasm_renderer_config_size(): number;
-  _wasm_renderer_config_write(
-    _0: number,
-    _1: number,
-    _2: number,
-    _3: number,
-    _4: number,
-    _5: number,
-    _6: number,
-    _7: number,
-  ): number;
-  _get_font_default_ptr(_0: number): number;
-  _get_font_default_size(_0: number): number;
-  _term_renderer_create(_0: number, _1: number): number;
-  _wasm_ui_create(): number;
-  _wasm_ui_destroy(_0: number): void;
-  _wasm_ui_resize(_0: number, _1: number, _2: number): void;
-  _wasm_ui_loading(_0: number, _1: number, _2: number): void;
-  _wasm_ui_log(_0: number, _1: number): void;
-  _wasm_ui_media(_0: number, _1: number, _2: number): number;
-  _wasm_ui_key(_0: number, _1: number): number;
-  _wasm_ui_tick(_0: number, _1: number): number;
-  _wasm_ui_clear(_0: number): void;
-  _wasm_ui_redraw(_0: number): void;
-  _wasm_ui_capture_logs(_0: number): void;
-  _wasm_ui_volume(): number;
-  _wasm_ui_fps(): number;
-  _wasm_ui_audio(_0: number): number;
-  _term_renderer_set_zalgo(_0: number, _1: number): number;
-  _term_renderer_feed(_0: number, _1: number, _2: number): number;
-  _term_renderer_pixels(_0: number): number;
-  _term_renderer_width_px(_0: number): number;
-  _term_renderer_height_px(_0: number): number;
-  _term_renderer_pitch(_0: number): number;
-  _term_renderer_get_cols(_0: number): number;
-  _term_renderer_get_rows(_0: number): number;
-  _term_renderer_destroy(_0: number): void;
-  _mirror_init_with_args(_0: number): number;
-  _mirror_reset_stabilizer(): void;
-  _mirror_cleanup(): void;
-  _mirror_convert_frame(_0: number, _1: number, _2: number, _3: number): number;
-  _mirror_submit_audio_samples(_0: number, _1: number, _2: number): void;
-  _mirror_render_audio_visualization(
-    _0: number,
-    _1: number,
-    _2: number,
-  ): number;
-  _mirror_free_string(_0: number): void;
-  _face_web_reset(): void;
-  _face_web_input(): number;
-  _face_web_detect(_0: number, _1: number, _2: number): void;
-  _face_web_tick(_0: number, _1: number): number;
-}
+interface WasmModule {}
 
 type EmbindString =
   | ArrayBuffer
@@ -534,6 +350,36 @@ export interface TestPatternBinding extends ClassHandle {
 }
 
 interface EmbindModule {
+  wasm_options_revision(): number;
+  wasm_ui_volume(): number;
+  wasm_ui_fps(): number;
+  wasm_ui_audio(_0: number): number;
+  wasm_capture_transform_required(): number;
+  mirror_cleanup(): void;
+  mirror_reset_stabilizer(): void;
+  set_width(_0: number): number;
+  get_width(): number;
+  set_height(_0: number): number;
+  get_height(): number;
+  set_color_mode(_0: number): number;
+  get_color_mode(): number;
+  set_color_filter(_0: number): number;
+  get_color_filter(): number;
+  set_matrix_rain(_0: number): number;
+  get_matrix_rain(): number;
+  set_waveform(_0: number): number;
+  get_waveform(): number;
+  set_fft(_0: number): number;
+  get_fft(): number;
+  set_flip_x(_0: number): number;
+  get_flip_x(): number;
+  set_flip_y(_0: number): number;
+  get_flip_y(): number;
+  set_render_mode(_0: number): number;
+  get_render_mode(): number;
+  set_target_fps(_0: number): number;
+  get_target_fps(): number;
+  get_palette(): number;
   initMirror(_0: EmbindString): number;
   patchOptions(_0: EmbindString, _1: number): number;
   readOptions(): string | undefined;
@@ -546,6 +392,7 @@ interface EmbindModule {
   };
   SessionUiBinding: {
     new (): SessionUiBinding;
+    new (_0: boolean): SessionUiBinding;
   };
   TerminalRendererBinding: {
     new (

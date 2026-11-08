@@ -7,5 +7,5 @@ export interface TerminalRendererModule extends Pick<
   "TerminalRendererBinding" | "initMirror"
 > {
   initClient?: ClientBindings["initClient"];
-  _set_matrix_rain?(enabled: number): number;
+  set_matrix_rain?(enabled: number): number;
 }

@@ -1,4 +1,9 @@
 #include <emscripten/bind.h>
+extern "C" {
+#include "../audio.h"
+#include "../client.h"
+}
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -10,20 +15,6 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(OpusBytes);
 EMSCRIPTEN_DECLARE_VAL_TYPE(NullableOpusBytes);
 EMSCRIPTEN_DECLARE_VAL_TYPE(NullablePcmSamples);
 
-extern "C" {
-struct audio_processor;
-audio_processor *wasm_audio_processor_create_stereo(int sample_rate, bool bypass);
-int wasm_audio_processor_process(audio_processor *processor, float *samples, size_t count);
-void wasm_audio_processor_destroy(audio_processor *processor);
-int client_init_with_args(const char *args);
-int client_opus_encoder_init(int rate, int channels, int bitrate);
-int client_opus_decoder_init(int rate, int channels);
-int client_opus_encode(const int16_t *pcm, int frame_size, uint8_t *output, int capacity);
-int client_opus_decode(const uint8_t *input, int length, int16_t *pcm, int frame_size, int fec);
-void client_opus_encoder_cleanup(void);
-void client_opus_decoder_cleanup(void);
-}
-
 static int init_client(const std::string &args) {
   return client_init_with_args(args.c_str());
 }
@@ -32,6 +23,11 @@ class AudioProcessorBinding {
 public:
   AudioProcessorBinding(int sample_rate, bool bypass, unsigned frame_samples)
       : processor_(wasm_audio_processor_create_stereo(sample_rate, bypass)), scratch_(frame_samples) {}
+  AudioProcessorBinding(int sample_rate, bool bypass, unsigned frame_samples, int channels)
+      : processor_(channels == 1   ? wasm_audio_processor_create(sample_rate, bypass)
+                   : channels == 2 ? wasm_audio_processor_create_stereo(sample_rate, bypass)
+                                   : nullptr),
+        scratch_(frame_samples) {}
   ~AudioProcessorBinding() {
     if (processor_)
       wasm_audio_processor_destroy(processor_);
@@ -45,7 +41,7 @@ public:
   }
   int process(AudioSamples input, AudioSamples output) {
     const size_t count = input["length"].as<size_t>();
-    if (!processor_ || count == 0 || count != scratch_.size() || output["length"].as<size_t>() != count)
+    if (!processor_ || count == 0 || count > scratch_.size() || output["length"].as<size_t>() != count)
       return -1;
     emscripten::val view = emscripten::val(emscripten::typed_memory_view(count, scratch_.data()));
     view.call<void>("set", input);
@@ -144,6 +140,7 @@ EMSCRIPTEN_BINDINGS(ascii_chat_audio) {
   emscripten::register_type<NullablePcmSamples>("NullablePcmSamples", "Int16Array | null");
   emscripten::class_<AudioProcessorBinding>("AudioProcessorBinding")
       .constructor<int, bool, unsigned>()
+      .constructor<int, bool, unsigned, int>()
       .function("valid", &AudioProcessorBinding::valid)
       .function("process", &AudioProcessorBinding::process);
   emscripten::class_<OpusCodecBinding>("OpusCodecBinding")

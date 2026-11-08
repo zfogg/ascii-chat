@@ -1,23 +1,14 @@
 #include <emscripten/bind.h>
+extern "C" {
+#include "../common/ui.h"
+#include <ascii-chat/media/render/renderer.h>
+}
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
 
 EMSCRIPTEN_DECLARE_VAL_TYPE(RasterPixels);
-
-extern "C" {
-struct terminal_renderer_s;
-int wasm_renderer_create(int cols, int rows, double font_size, int matrix, int selection, terminal_renderer_s **output);
-int term_renderer_set_zalgo(terminal_renderer_s *renderer, int level);
-int term_renderer_feed(terminal_renderer_s *renderer, const char *text, size_t length);
-const uint8_t *term_renderer_pixels(terminal_renderer_s *renderer);
-int term_renderer_width_px(terminal_renderer_s *renderer);
-int term_renderer_height_px(terminal_renderer_s *renderer);
-int term_renderer_pitch(terminal_renderer_s *renderer);
-int term_renderer_get_cols(terminal_renderer_s *renderer);
-int term_renderer_get_rows(terminal_renderer_s *renderer);
-void term_renderer_destroy(terminal_renderer_s *renderer);
-}
 
 class TerminalRendererBinding {
 public:

@@ -27,45 +27,20 @@
     const module = await ClientModuleFactory({
       locateFile: (name) => `/wasm/${name}`,
     });
-    const config = module._malloc(544);
-    const out = module._malloc(4);
-    const view = new DataView(module.HEAPU8.buffer, config, 544);
-    view.setInt32(0, 18, true);
-    view.setInt32(4, 1, true);
-    view.setFloat64(8, 12, true);
-    view.setInt32(16, 0, true);
-    module.HEAPU8.fill(0, config + 20, config + 532);
-    module.HEAPU8[config + 532] = 0;
-    view.setInt32(536, module._get_font_default_ptr(), true);
-    view.setInt32(540, module._get_font_default_size(), true);
-    const result = module._term_renderer_create(config, out);
-    if (result !== 0) throw new Error(`renderer create failed: ${result}`);
-    const renderer = new DataView(module.HEAPU8.buffer, out, 4).getUint32(
-      0,
-      true,
-    );
+    const renderer = new module.TerminalRendererBinding(18, 1, 12, false, 0);
+    if (!renderer.valid())
+      throw new Error(`renderer create failed: ${renderer.error()}`);
     const frame = "\x1b[31mRED   \x1b[32mGREEN   \x1b[34mBLUE";
-    const framePtr = module._malloc(frame.length + 1);
-    module.stringToUTF8(frame, framePtr, frame.length + 1);
-    const feed = module._term_renderer_feed(renderer, framePtr, frame.length);
-    if (feed !== 0) throw new Error(`renderer feed failed: ${feed}`);
-    const width = module._term_renderer_width_px(renderer);
-    const height = module._term_renderer_height_px(renderer);
-    const pitch = module._term_renderer_pitch(renderer);
-    const pixelsPtr = module._term_renderer_pixels(renderer);
-    const pixels = module.HEAPU8.slice(pixelsPtr, pixelsPtr + pitch * height);
+    if (renderer.feed(frame)) throw new Error("renderer feed failed");
+    const width = renderer.width();
+    const height = renderer.height();
+    const pixels = new Uint8ClampedArray(width * height * 4);
+    if (!renderer.copyPixels(pixels)) throw new Error("renderer copy failed");
     const canvas = document.querySelector("#result");
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext("2d");
-    const image = ctx.createImageData(width, height);
-    for (let y = 0; y < height; y++) {
-      image.data.set(
-        pixels.subarray(y * pitch, y * pitch + width * 4),
-        y * width * 4,
-      );
-    }
-    ctx.putImageData(image, 0, 0);
+    ctx.putImageData(new ImageData(pixels, width, height), 0, 0);
     const counts = { red: 0, green: 0, blue: 0 };
     for (let i = 0; i < pixels.length; i += 4) {
       const [r, g, b] = pixels.subarray(i, i + 3);
@@ -82,25 +57,22 @@
       "\x1b[0m\x1b[48;2;17;33;49m                  ",
     ];
     const renderPixels = (target, text) => {
-      const bytes = new TextEncoder().encode(text);
-      const ptr = module._malloc(bytes.length);
-      module.HEAPU8.set(bytes, ptr);
-      if (module._term_renderer_feed(target, ptr, bytes.length))
-        throw new Error("cell cache test feed failed");
-      module._free(ptr);
-      const start = module._term_renderer_pixels(target);
-      return module.HEAPU8.slice(start, start + pitch * height);
+      if (target.feed(text)) throw new Error("cell cache test feed failed");
+      const pixels = new Uint8ClampedArray(width * height * 4);
+      if (!target.copyPixels(pixels))
+        throw new Error("cell cache pixel copy failed");
+      return pixels;
     };
     let comparisons = 0;
     for (const text of sampleFrames) {
-      if (module._term_renderer_create(config, out))
-        throw new Error("create failed");
-      const fresh = new DataView(module.HEAPU8.buffer, out, 4).getUint32(
-        0,
-        true,
-      );
-      const expected = renderPixels(fresh, text);
-      module._term_renderer_destroy(fresh);
+      const fresh = new module.TerminalRendererBinding(18, 1, 12, false, 0);
+      if (!fresh.valid()) throw new Error("create failed");
+      let expected;
+      try {
+        expected = renderPixels(fresh, text);
+      } finally {
+        fresh.delete();
+      }
       for (let pass = 0; pass < 2; pass++) {
         const actual = renderPixels(renderer, text);
         if (!actual.every((value, index) => value === expected[index]))
@@ -113,10 +85,7 @@
       null,
       2,
     );
-    module._term_renderer_destroy(renderer);
-    module._free(framePtr);
-    module._free(config);
-    module._free(out);
+    renderer.delete();
   } catch (error) {
     status.textContent = String(error?.stack || error);
   }

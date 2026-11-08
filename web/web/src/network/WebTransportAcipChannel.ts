@@ -105,7 +105,7 @@ export class WebTransportAcipChannel {
     registerSendPacketCallback((packet) => this.sendHandshake(packet));
     try {
       await this.bridge.connect();
-      const result = module._client_handshake_begin();
+      const result = module.client_handshake_begin();
       if (result) throwWasmError(result, "Could not begin QUIC ACIP handshake");
     } catch (error) {
       this.close();

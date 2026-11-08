@@ -271,7 +271,7 @@ export function MirrorPage() {
   }, [clearDisplayAudio, releaseDisplay]);
   const { stop: stopScreen } = screenCapture;
   useEffect(() => {
-    getMirrorModule()?._wasm_ui_audio(
+    getMirrorModule()?.wasm_ui_audio(
       Number(speakersEnabled || microphoneEnabled || screenCapture.active),
     );
   }, [speakersEnabled, microphoneEnabled, screenCapture.active]);

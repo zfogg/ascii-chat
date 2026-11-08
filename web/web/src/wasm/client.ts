@@ -72,7 +72,7 @@ export function throwWasmError(result: number, fallback: string): never {
     source: "C/WASM",
     title: `${fallback} (${result})`,
     frames: frames.length ? frames : [{ code: result, message: fallback }],
-    dismiss: () => module?._wasm_error_dismiss(),
+    dismiss: () => module?.wasm_error_dismiss(),
   });
   const error = new Error(`${fallback} (${result})`);
   Object.defineProperty(error, "asciichatWasmReported", { value: true });
@@ -523,8 +523,8 @@ export function cleanupClientWasm(): void {
   console.log("[cleanupClientWasm] ========== CLEANUP CALLED ==========");
   if (wasmModule) {
     if (clientInitialized) {
-      console.log("[cleanupClientWasm] Calling _client_cleanup()...");
-      wasmModule._client_cleanup();
+      console.log("[cleanupClientWasm] Calling client_cleanup()...");
+      wasmModule.client_cleanup();
       clientInitialized = false;
     }
     // Keep the Emscripten module and its shared memory/pthread pool alive.
@@ -548,7 +548,7 @@ export async function generateKeypair(): Promise<string> {
   }
 
   console.log("[Client WASM] Generating keypair...");
-  const result = wasmModule._client_generate_keypair();
+  const result = wasmModule.client_generate_keypair();
   if (result !== 0) {
     throwWasmError(result, "Failed to generate keypair");
   }
@@ -733,7 +733,7 @@ export function getConnectionState(): ConnectionState {
   if (!wasmModule) {
     throw new Error("WASM module not initialized");
   }
-  return wasmModule._client_get_connection_state();
+  return wasmModule.client_get_connection_state();
 }
 
 /**
@@ -742,7 +742,7 @@ export function getConnectionState(): ConnectionState {
 export function setColorMode(mode: ColorMode): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  const result = wasmModule._set_color_mode(mode);
+  const result = wasmModule.set_color_mode(mode);
   if (result !== 0) throwWasmError(result, `Invalid color mode: ${mode}`);
 }
 
@@ -751,7 +751,7 @@ export function setColorMode(mode: ColorMode): void {
  */
 export function getColorMode(): ColorMode {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._get_color_mode();
+  return wasmModule.get_color_mode();
 }
 
 /**
@@ -760,7 +760,7 @@ export function getColorMode(): ColorMode {
 export function setColorFilter(filter: ColorFilter): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  const result = wasmModule._set_color_filter(filter);
+  const result = wasmModule.set_color_filter(filter);
   if (result !== 0) throwWasmError(result, `Invalid color filter: ${filter}`);
 }
 
@@ -769,7 +769,7 @@ export function setColorFilter(filter: ColorFilter): void {
  */
 export function getColorFilter(): ColorFilter {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._get_color_filter();
+  return wasmModule.get_color_filter();
 }
 
 /**
@@ -828,7 +828,7 @@ export function getPaletteChars(): string {
 export function setMatrixRain(enabled: boolean): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  const result = wasmModule._set_matrix_rain(enabled ? 1 : 0);
+  const result = wasmModule.set_matrix_rain(enabled ? 1 : 0);
   if (result !== 0)
     throwWasmError(result, `Failed to set matrix rain: ${enabled}`);
 }
@@ -838,7 +838,7 @@ export function setMatrixRain(enabled: boolean): void {
  */
 export function getMatrixRain(): boolean {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._get_matrix_rain() !== 0;
+  return wasmModule.get_matrix_rain() !== 0;
 }
 
 /**
@@ -847,7 +847,7 @@ export function getMatrixRain(): boolean {
 export function setFlipX(enabled: boolean): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  const result = wasmModule._set_flip_x(enabled ? 1 : 0);
+  const result = wasmModule.set_flip_x(enabled ? 1 : 0);
   if (result !== 0) throwWasmError(result, `Failed to set flip X: ${enabled}`);
 }
 
@@ -856,7 +856,7 @@ export function setFlipX(enabled: boolean): void {
  */
 export function getFlipX(): boolean {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._get_flip_x() !== 0;
+  return wasmModule.get_flip_x() !== 0;
 }
 
 /**
@@ -865,7 +865,7 @@ export function getFlipX(): boolean {
 export function setTargetFps(fps: number): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  const result = wasmModule._set_target_fps(fps);
+  const result = wasmModule.set_target_fps(fps);
   if (result !== 0) throwWasmError(result, `Invalid target FPS: ${fps}`);
 }
 
@@ -874,7 +874,7 @@ export function setTargetFps(fps: number): void {
  */
 export function getTargetFps(): number {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._get_target_fps();
+  return wasmModule.get_target_fps();
 }
 
 /**
@@ -883,7 +883,7 @@ export function getTargetFps(): number {
 export function setWidth(width: number): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  const result = wasmModule._set_width(width);
+  const result = wasmModule.set_width(width);
   if (result !== 0) throwWasmError(result, `Invalid width: ${width}`);
 }
 
@@ -892,7 +892,7 @@ export function setWidth(width: number): void {
  */
 export function getWidth(): number {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._get_width();
+  return wasmModule.get_width();
 }
 
 /**
@@ -901,7 +901,7 @@ export function getWidth(): number {
 export function setHeight(height: number): void {
   if (!wasmModule) throw new Error("WASM module not initialized");
 
-  const result = wasmModule._set_height(height);
+  const result = wasmModule.set_height(height);
   if (result !== 0) throwWasmError(result, `Invalid height: ${height}`);
 }
 
@@ -910,7 +910,7 @@ export function setHeight(height: number): void {
  */
 export function getHeight(): number {
   if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule._get_height();
+  return wasmModule.get_height();
 }
 
 /**
@@ -933,8 +933,8 @@ export function resolveCryptoPolicy(
   encryption?: boolean,
 ): number {
   if (!wasmModule) throw new Error("WASM client is not initialized");
-  const mode = wasmModule._client_resolve_crypto_policy(
-    new URL(serverUrl).protocol === "wss:" ? 1 : 0,
+  const mode = wasmModule.client_resolve_crypto_policy(
+    new URL(serverUrl).protocol === "wss:",
     encryption === undefined ? -1 : encryption ? 1 : 0,
   );
   if (mode < 0) throw new Error("Invalid crypto policy");

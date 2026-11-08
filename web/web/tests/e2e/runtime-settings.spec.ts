@@ -30,12 +30,8 @@ const effective = (page: Page) =>
     const { getClientModule } = await import(url);
     const module = getClientModule();
     if (!module) return {};
-    const pointer = module._client_settings_values();
-    try {
-      return JSON.parse(module.UTF8ToString(pointer));
-    } finally {
-      module._wasm_options_release(pointer);
-    }
+    const json = module.clientSettings();
+    return json ? JSON.parse(json) : {};
   });
 
 const receivedFps = (page: Page) =>

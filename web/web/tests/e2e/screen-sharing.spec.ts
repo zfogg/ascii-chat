@@ -564,7 +564,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
       const frame = { data: original, width: 2, height: 2 };
       const upload = orientUpload(canvas, frame);
       results.push({
-        required: module._wasm_capture_transform_required(),
+        required: module.wasm_capture_transform_required(),
         pixels: Array.from(upload.data as Uint8Array),
         local: Array.from(frame.data),
         flip: store.getSnapshot().values["flip_x"],
@@ -573,7 +573,14 @@ test("C resolves source orientation and transforms upload pixels once while pres
     return {
       original: Array.from(original),
       results,
-      invalid: module._wasm_capture_transform_rgba(0, 2, 2),
+      invalid: (() => {
+        const frame = new module.MirrorFrameBinding();
+        try {
+          return frame.transform(new Uint8Array(0), 2, 2);
+        } finally {
+          frame.delete();
+        }
+      })(),
     };
   }, moduleUrl);
   const reversedRows = [

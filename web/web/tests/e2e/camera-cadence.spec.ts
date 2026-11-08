@@ -546,9 +546,9 @@ test("a 33 FPS camera aligns C FPS, conversion and presentation with actual capt
       page.evaluate(() =>
         (
           window as unknown as {
-            asciiChatWasm: { _wasmModule: { _get_target_fps(): number } };
+            asciiChatWasm: { _wasmModule: { get_target_fps(): number } };
           }
-        ).asciiChatWasm._wasmModule._get_target_fps(),
+        ).asciiChatWasm._wasmModule.get_target_fps(),
       ),
     )
     .toBe(33);

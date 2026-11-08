@@ -25,7 +25,7 @@ vi.mock("../../src/wasm/client", () => ({
   initPacketSecurity: state.init,
   tickPacketSecurity: () => [],
   getClientModule: () => ({
-    _client_handshake_begin: state.begin,
+    client_handshake_begin: state.begin,
     receiveHandshake: state.receive,
   }),
   getConnectionState: () => 3,
