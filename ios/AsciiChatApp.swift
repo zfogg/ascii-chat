@@ -22,6 +22,9 @@ private func asciichat_ios_camera_read_ascii(
     _ length: UnsafeMutablePointer<Int>
 ) -> Int32
 
+@_silgen_name("asciichat_ios_camera_stop")
+private func asciichat_ios_camera_stop()
+
 private struct TestFrameView: View {
     private let image: CGImage?
 
@@ -76,22 +79,21 @@ private struct TestFrameView: View {
 }
 
 private struct CameraAsciiView: View {
-    private let text: String
+    @State private var text = "Starting camera…"
+    @State private var cameraStarted = false
+    private let timer = Timer.publish(every: 1.0 / 15.0, on: .main, in: .common).autoconnect()
 
-    init() {
+    private func readFrame() {
         let columns = 64
         let rows = 32
         var output = Array(repeating: CChar(0), count: rows * (columns + 1) + 1)
         var length = 0
-        guard asciichat_ios_camera_start(0) != 0 else {
-            text = "Camera unavailable"
-            return
-        }
+        guard cameraStarted else { return }
         let emitted = output.withUnsafeMutableBufferPointer { buffer in
             asciichat_ios_camera_read_ascii(buffer.baseAddress!, buffer.count, columns, rows, &length)
         }
         guard emitted != 0 else {
-            text = "Waiting for camera frame"
+            text = "Waiting for camera frame…"
             return
         }
         text = String(decoding: output.prefix(length).map { UInt8(bitPattern: $0) }, as: UTF8.self)
@@ -102,6 +104,12 @@ private struct CameraAsciiView: View {
             .font(.system(size: 8, design: .monospaced))
             .lineLimit(nil)
             .padding()
+            .onAppear {
+                cameraStarted = asciichat_ios_camera_start(0) != 0
+                if !cameraStarted { text = "Camera unavailable" }
+            }
+            .onReceive(timer) { _ in readFrame() }
+            .onDisappear { asciichat_ios_camera_stop() }
     }
 }
 
