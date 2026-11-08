@@ -152,7 +152,7 @@ typedef struct {
   const char *server_key;
 
   /** QUIC trust anchors and negotiated media preferences. */
-  const char *quic_ca_file;
+  const char *tls_ca_file;
   bool quic_audio_datagrams;
   bool quic_visual_datagrams;
 

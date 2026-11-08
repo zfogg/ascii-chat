@@ -35,9 +35,9 @@ expose enough detail to safely classify every UDP failure, so an immediate
 opaque failure is reported rather than retried.
 
 For example, start a listener with `--quic-bind-address 127.0.0.1`,
-`--quic-port`, `--quic-tls-cert`, and `--quic-tls-key`, then connect with
-`ascii-chat client quic://localhost:PORT --quic-ca-file CA.pem`. The client
-uses system trust when `--quic-ca-file` is omitted and verifies the certificate
+`--quic-port`, `--tls-cert`, and `--tls-key`, then connect with
+`ascii-chat client quic://localhost:PORT --tls-ca-file CA.pem`. The client
+uses system trust when `--tls-ca-file` is omitted and verifies the certificate
 against the address hostname. An explicit QUIC connection does not fall back
 by default. Clients can set `--quic-fallback-port PORT` and `--server-key KEY`
 to retry the same hostname over TCP when the QUIC TLS connection times out.
@@ -68,7 +68,7 @@ network server, including partially initialized listener cleanup.
 
 A native participant opts into `--discovery-quic` and uses the advertised QUIC
 port. With older ACDS servers that return no transport metadata, this explicit
-option uses the advertised TCP port as the UDP port. Use `--quic-ca-file` for a
+option uses the advertised TCP port as the UDP port. Use `--tls-ca-file` for a
 private trust anchor and `--server-key` to pin the application identity. The
 media datagram options and authenticated pre-TLS TCP fallback also apply.
 
@@ -135,7 +135,7 @@ join authenticates and receives video from the successor.
 
 Enable the browser listener with `--webtransport-bind-address 127.0.0.1`,
 `--quic-port PORT`, `--webtransport-origin https://example.com`,
-`--quic-tls-cert CERT`, and `--quic-tls-key KEY`. The origin must exactly
+`--tls-cert CERT`, and `--tls-key KEY`. The origin must exactly
 match the browser page origin, including its port. The CONNECT path defaults
 to `/acip` and can be set with `--webtransport-path`. Use a certificate trusted
 by the browser and matching the listener hostname. Native raw QUIC and HTTP/3 share one UDP listener selected by `--quic-port`
@@ -316,7 +316,7 @@ The worker and adapter are not yet integrated into the production lifecycle or
 connection selection.
 
 The server can opt into a native listener with `--quic-bind-address`,
-`--quic-tls-cert`, and `--quic-tls-key`. The bind address must be a concrete
+`--tls-cert`, and `--tls-key`. The bind address must be a concrete
 numeric IPv4 or IPv6 address. `--quic-port` selects the UDP port; zero uses
 the TCP server port. The TCP listener remains available. These flags configure
 raw ACIP-over-QUIC, not browser WebTransport.

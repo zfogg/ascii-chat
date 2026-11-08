@@ -294,6 +294,7 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
  * - protocol_version_packet_t containing:
  *   - protocol_version: Major version number (must match PROTOCOL_VERSION_MAJOR)
  *   - protocol_revision: Minor version number
+ *   - protocol_patch: Patch version number
  *   - supports_encryption: Encryption capability flag
  *   - compression_algorithms: Supported compression bitmask
  *   - feature_flags: Optional feature flags
@@ -329,16 +330,18 @@ void handle_protocol_version_packet(client_info_t *client, const void *data, siz
   const protocol_version_packet_t *version = (const protocol_version_packet_t *)data;
   uint16_t client_major = NET_TO_HOST_U16(version->protocol_version);
   uint16_t client_minor = NET_TO_HOST_U16(version->protocol_revision);
+  uint16_t client_patch = NET_TO_HOST_U16(version->protocol_patch);
 
   // Validate major version match (minor version can differ for backward compat)
   if (client_major != PROTOCOL_VERSION_MAJOR) {
-    log_warn("Client %s protocol version mismatch: client=%u.%u, server=%u.%u", client->client_id, client_major,
-             client_minor, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR);
+    log_warn("Client %s protocol version mismatch: client=%u.%u.%u, server=%u.%u.%u", client->client_id, client_major,
+             client_minor, client_patch, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR, PROTOCOL_VERSION_PATCH);
     // Note: We don't disconnect on version mismatch for backward compatibility
     // Clients may be older or newer than server
   } else if (client_minor != PROTOCOL_VERSION_MINOR) {
-    log_info("Client %s has different protocol revision: client=%u.%u, server=%u.%u", client->client_id, client_major,
-             client_minor, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR);
+    log_info("Client %s has different protocol revision: client=%u.%u.%u, server=%u.%u.%u", client->client_id,
+             client_major, client_minor, client_patch, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR,
+             PROTOCOL_VERSION_PATCH);
   }
 
   // Validate reserved bytes are zero

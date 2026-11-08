@@ -65,25 +65,25 @@ def main():
             host = Service(binary, directory, "host", "--test-pattern", common +
                            ["--port", str(hp), "--key", str(host_key), "--discovery-expose-ip",
                             "--quic-bind-address", "127.0.0.1", "--quic-port", str(qp),
-                            "--quic-tls-cert", str(cert), "--quic-tls-key", str(key)], environment)
+                            "--tls-cert", str(cert), "--tls-key", str(key)], environment)
             services.append(host)
             host.wait_for("Session created:", timeout=30)
             match = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())
             assert match, host.text()[-8000:]
             name = match[1]
-            route = ["--test-pattern", "--discovery-quic", "--quic-ca-file", str(cert),
+            route = ["--test-pattern", "--discovery-quic", "--tls-ca-file", str(cert),
                      "--server-key", str(trusted_keys)]
             successor = Service(binary, directory, "successor", name, common + route +
                                 ["--port", str(successor_tcp), "--key", str(successor_key), "--discovery-expose-ip",
                                  "--quic-bind-address", "127.0.0.1", "--quic-port", str(successor_udp),
-                                 "--quic-tls-cert", str(cert), "--quic-tls-key", str(key)], environment)
+                                 "--tls-cert", str(cert), "--tls-key", str(key)], environment)
             services.append(successor)
             successor.wait_for("Discovery decoded video: frames=1", timeout=35)
             observer = Service(binary, directory, "observer", name, common + route, environment)
             services.append(observer)
             observer.wait_for("Discovery decoded video: frames=1", timeout=35)
             restricted = Service(binary, directory, "restricted", name, common +
-                                 ["--test-pattern", "--discovery-quic", "--quic-ca-file", str(cert),
+                                 ["--test-pattern", "--discovery-quic", "--tls-ca-file", str(cert),
                                   "--server-key", str(host_key) + ".pub", "--quic-fallback-port", str(successor_tcp)], environment)
             services.append(restricted)
             restricted.wait_for("Discovery decoded video: frames=1", timeout=35)

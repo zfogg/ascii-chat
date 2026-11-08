@@ -742,7 +742,7 @@ static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpo
     ((struct sockaddr_in6 *)&local)->sin6_port = 0;
   else
     return SET_ERRNO(ERROR_NETWORK, "Unsupported QUIC local route");
-  acip_quic_config_t config = {.ca_file = settings ? settings->quic_ca_file : NULL,
+  acip_quic_config_t config = {.ca_file = settings ? settings->tls_ca_file : NULL,
                                .enable_datagrams = true,
                                .prefer_audio_datagrams = settings && settings->quic_audio_datagrams,
                                .prefer_visual_datagrams = settings && settings->quic_visual_datagrams};
