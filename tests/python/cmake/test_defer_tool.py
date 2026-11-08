@@ -340,7 +340,8 @@ def test_loop_exits_match_reference_model(
         for index in range(3):
             if index == 1:
                 expected.append(branch + index)
-                expected.append(loop + index)
+                if mode != 3:
+                    expected.append(loop + index)
                 if mode == 0:
                     continue
                 if mode == 1:
@@ -356,15 +357,18 @@ def test_loop_exits_match_reference_model(
             expected.append(outer + index)
     checks = "\n".join(f"if (trace[{i}] != {value}) return {i + 10};" for i, value in enumerate(expected))
     source = f"""
+#define defer_named(name, ...) do {{}} while (0)
+#define defer_cancel(name) do {{}} while (0)
 static int trace[64], count;
 static void mark(int value) {{ trace[count++] = value; }}
 static void f(int mode) {{
   int i = 0;
   defer(mark({outer} + i));
   for (; i < 3; ++i) {{
-    defer(mark({loop} + i));
+    defer_named(iteration_cleanup, mark({loop} + i));
     if (i == 1) {{
       defer(mark({branch} + i));
+      if (mode == 3) defer_cancel(iteration_cleanup);
       if (mode == 0) continue;
       if (mode == 1) break;
       if (mode == 2) return;
