@@ -361,8 +361,10 @@ class Transformer:
                         )
                     name = f"__ascii_defer_argument_{start}_{index}"
                     if not parameter.spelling:
-                        if not (cindex.TypeKind.VOID.value <= original_type.kind.value <= cindex.TypeKind.LASTBUILTIN.value):
-                            raise TransformError(self.diagnostic(start, "unnamed non-builtin parameter cannot be captured safely; give it a name"))
+                        if ((not (cindex.TypeKind.VOID.value <= original_type.kind.value <= cindex.TypeKind.LASTBUILTIN.value)
+                             and original_type.kind != cindex.TypeKind.POINTER)
+                            or any(word in original_type.spelling for word in ("unnamed", "anonymous"))):
+                            raise TransformError(self.diagnostic(start, "unnamed parameter type cannot be captured safely; give it a name"))
                         declarations.append(f"typedef __typeof__(({original_type.spelling}){{0}}) {name};")
                     else:
                         declarations.append(f"typedef __typeof__({parameter.spelling}) {name};")

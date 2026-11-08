@@ -330,10 +330,12 @@ void Transformer::visit_function(CXCursor cursor) {
         fail("variably modified parameter in defer function at byte " + std::to_string(start));
       auto alias = "__ascii_defer_argument_" + std::to_string(start) + "_" + std::to_string(i);
       if (name.empty()) {
-        if (parameter_type.kind < CXType_FirstBuiltin || parameter_type.kind > CXType_LastBuiltin)
-          fail_at(start, "unnamed non-builtin parameter cannot be captured safely; give it a name");
-        function_prelude_ +=
-            " typedef __typeof__((" + consume_string(clang_getTypeSpelling(parameter_type)) + "){0}) " + alias + ";";
+        const auto type_name = consume_string(clang_getTypeSpelling(parameter_type));
+        if (((parameter_type.kind < CXType_FirstBuiltin || parameter_type.kind > CXType_LastBuiltin) &&
+             parameter_type.kind != CXType_Pointer) ||
+            type_name.find("unnamed") != std::string::npos || type_name.find("anonymous") != std::string::npos)
+          fail_at(start, "unnamed parameter type cannot be captured safely; give it a name");
+        function_prelude_ += " typedef __typeof__((" + type_name + "){0}) " + alias + ";";
       } else {
         function_prelude_ += " typedef __typeof__(" + name + ") " + alias + ";";
       }

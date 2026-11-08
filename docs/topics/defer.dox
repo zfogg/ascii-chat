@@ -45,7 +45,7 @@
  * an if or loop body before using defer there. Put a defer inside braces under a
  * switch case; a defer directly in a switch body is rejected. Computed goto,
  * jumps into a block containing defer, backward jumps that can register the same defer repeatedly, and
- * unnamed non-builtin or variably modified parameters in non-void defer functions
+ * unnamed non-builtin, non-pointer or variably modified parameters in non-void defer functions
  * are rejected. Cleanup actions may not contain return,
  * goto, break, continue, another defer, or `__COUNTER__`. The transformer also
  * rejects source-level line directives, token-pasting macros in cleanup,

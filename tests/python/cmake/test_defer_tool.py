@@ -208,7 +208,7 @@ def test_parameter_shadowing_function_name(
     assert compiled.returncode == 0, compiled.stderr
 
 
-@pytest.mark.parametrize("parameter", ["int", "unsigned long", "double", "const int"])
+@pytest.mark.parametrize("parameter", ["int", "unsigned long", "double", "const int", "int *", "int (*)(int)"])
 def test_unnamed_builtin_parameter_with_defer(
     tmp_path: Path, transform_environment: dict[str, str], parameter: str
 ) -> None:
@@ -221,12 +221,12 @@ def test_unnamed_builtin_parameter_with_defer(
     assert result.returncode == 0, result.stderr
 
 
-def test_unnamed_pointer_parameter_fails_closed(
+def test_unnamed_record_parameter_fails_closed(
     tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
-    result = transform(tmp_path, transform_environment, "int f(int *) { defer((void)0); return 7; }\n")
+    result = transform(tmp_path, transform_environment, "struct S { int n; }; int f(struct S) { defer((void)0); return 7; }\n")
     assert result.returncode != 0
-    assert "unnamed non-builtin parameter" in result.stderr
+    assert "unnamed parameter type" in result.stderr
     assert not (tmp_path / "output.c").exists()
 
 
