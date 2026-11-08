@@ -53,7 +53,7 @@ static void emit_color(outbuf_t *out, ascii_color_t mode, bool background, int v
 
 static size_t glyph_bytes(uint32_t key) {
   uint8_t first;
-  memcpy(&first, &key, 1);
+  memcpy(&first, &key, sizeof(first));
   return first < 128 ? 1 : (first & 0xe0) == 0xc0 ? 2 : (first & 0xf0) == 0xe0 ? 3 : 4;
 }
 
@@ -106,7 +106,7 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
       ascii_stabilizer_target()->width == (size_t)image->w && ascii_stabilizer_target()->height == (size_t)image->h)
     frame->stabilizer = ascii_stabilizer_target();
   for (size_t i = 0; i < 64; ++i)
-    memcpy(frame->table + i, cache->cache64[i].utf8_bytes, cache->cache64[i].byte_len);
+    memcpy(frame->table + i, cache->cache64[i].utf8_bytes, (size_t)cache->cache64[i].byte_len);
   frame->scratch = bytes <= sizeof(frame->inline_scratch) ? frame->inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
   frame->packed = frame->scratch;
   frame->index = frame->packed + frame->width;
@@ -181,7 +181,7 @@ asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb
   frame->bg = frame->fg + width;
   const char blocks[5][4] = {"\xe2\x96\x91", "\xe2\x96\x92", "\xe2\x96\x93", "\xe2\x96\x88", "\xe2\x96\x80"};
   for (size_t i = 0; i < 5; ++i)
-    memcpy(frame->table + i, blocks[i], 3);
+    memcpy(frame->table + i, blocks[i], sizeof(blocks[i]) - 1);
   return ASCIICHAT_OK;
 }
 void ascii_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool more_rows, const simd_cells_t *ops) {
