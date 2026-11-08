@@ -64,7 +64,8 @@ if(NOT TARGET clang-format-check)
     add_custom_target(clang-format-check DEPENDS format-check)
 endif()
 
-# Use centralized clang-tidy from FindPrograms.cmake
+# clang-tidy is optional and its Python wrapper is opt-in. Set
+# ASCIICHAT_PYTHON3_EXECUTABLE when enabling this developer target.
 set(CLANG_TIDY_EXECUTABLE "${ASCIICHAT_CLANG_TIDY_EXECUTABLE}")
 set(RUN_CLANG_TIDY_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/run-clang-tidy.py")
 
