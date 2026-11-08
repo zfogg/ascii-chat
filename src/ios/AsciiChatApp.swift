@@ -246,6 +246,7 @@ private enum IOSMode: Int32, CaseIterable, Identifiable {
 }
 
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedMode: IOSMode = .mirror
     @State private var launchMessage = "Ready"
     @State private var didStart = false
@@ -310,6 +311,16 @@ struct ContentView: View {
             if sessionStarted && asciichat_ios_is_running() == 0 {
                 sessionStarted = false
                 launchMessage = "Session ended"
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .active:
+                if sessionStarted { _ = platform_enable_keepawake() }
+            case .background, .inactive:
+                platform_disable_keepawake()
+            @unknown default:
+                break
             }
         }
         .onDisappear {
