@@ -218,6 +218,7 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
   CXUnsavedFile unsaved{source_name.c_str(), content.data(), static_cast<unsigned long>(content.size())};
   TranslationUnit unit(index.get(), source_name, raw, &unsaved, 1);
   auto transformed = transform(unit.get(), source.u8string(), content);
+  validate_generated(index.get(), source_name, raw, transformed);
   FileDependencies dependencies{output, {source.u8string()}};
   clang_getInclusions(
       unit.get(),

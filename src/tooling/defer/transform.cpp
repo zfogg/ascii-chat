@@ -43,6 +43,7 @@ struct Token {
 std::vector<Token> tokens(CXTranslationUnit unit, CXSourceRange extent) {
   CXToken *raw = nullptr;
   unsigned count = 0;
+  // libclang initializes both output parameters; count is not a local constant.
   clang_tokenize(unit, extent, &raw, &count);
   std::vector<Token> result;
   for (unsigned i = 0; i < count; ++i) {
@@ -133,6 +134,13 @@ private:
   [[noreturn]] static void fail(const std::string &message) {
     throw std::runtime_error(message);
   }
+  [[noreturn]] void fail_at(unsigned position, const std::string &message) const {
+    const auto pos = std::min<std::size_t>(position, source_.size());
+    const auto line = 1 + std::count(source_.begin(), source_.begin() + pos, '\n');
+    const auto previous = pos == 0 ? std::string::npos : source_.rfind('\n', pos - 1);
+    const auto column = previous == std::string::npos ? pos + 1 : pos - previous;
+    fail(path_ + ":" + std::to_string(line) + ":" + std::to_string(column) + ": " + message);
+  }
   bool in_file(CXCursor cursor) const {
     CXFile file = nullptr;
     clang_getExpansionLocation(clang_getCursorLocation(cursor), &file, nullptr, nullptr, nullptr);
@@ -159,10 +167,13 @@ private:
   std::string cleanup(std::size_t first, std::size_t last, unsigned position) const;
   void index_control_flow(CXCursor cursor, std::vector<unsigned> scopes = {},
                           unsigned limit = std::numeric_limits<unsigned>::max());
+  void visit_function(CXCursor cursor);
+  void visit_defer(CXCursor cursor, CXCursorKind parent);
+  void visit_block(CXCursor cursor, CXCursorKind parent);
   void visit(CXCursor cursor, CXCursorKind parent = CXCursor_UnexposedDecl);
   void require_keyword(unsigned position, std::string_view keyword) const {
     if (!is_keyword_at(source_, position, keyword))
-      fail("control transfer from a macro cannot be transformed (byte " + std::to_string(position) + ")");
+      fail_at(position, "control transfer from a macro cannot be transformed; write the transfer directly");
   }
 
   CXTranslationUnit unit_;
@@ -280,122 +291,140 @@ void Transformer::index_control_flow(CXCursor cursor, std::vector<unsigned> scop
     index_control_flow(child, scopes, limit);
 }
 
+void Transformer::visit_function(CXCursor cursor) {
+  const auto kind = clang_getCursorKind(cursor);
+  const auto start = begin(cursor);
+  function_void_ = clang_getCursorResultType(cursor).kind == CXType_Void;
+  function_prelude_.clear();
+  return_type_.clear();
+  if (!function_void_) {
+    const auto function_type = "__ascii_defer_function_" + std::to_string(start);
+    function_prelude_ = "typedef __typeof__(&" + spelling(cursor) + ") " + function_type + ";";
+    std::string args;
+    const int count = clang_Cursor_getNumArguments(cursor);
+    for (int i = 0; i < count; ++i) {
+      auto parameter = clang_Cursor_getArgument(cursor, static_cast<unsigned>(i));
+      const auto name = spelling(parameter);
+      if (name.empty())
+        fail("unnamed parameter in defer function at byte " + std::to_string(start));
+      auto type = clang_getCanonicalType(clang_getCursorType(parameter));
+      while (type.kind == CXType_Pointer || type.kind == CXType_ConstantArray || type.kind == CXType_IncompleteArray) {
+        type = clang_getCanonicalType(type.kind == CXType_Pointer ? clang_getPointeeType(type)
+                                                                  : clang_getArrayElementType(type));
+      }
+      if (type.kind == CXType_VariableArray || type.kind == CXType_DependentSizedArray)
+        fail("variably modified parameter in defer function at byte " + std::to_string(start));
+      auto alias = "__ascii_defer_argument_" + std::to_string(start) + "_" + std::to_string(i);
+      function_prelude_ += " typedef __typeof__(" + name + ") " + alias + ";";
+      if (i)
+        args += ", ";
+      args += "(" + alias + "){0}";
+    }
+    return_type_ = "__typeof__(((" + function_type + ")0)(" + args + "))";
+    for (int i = 0; i < count; ++i) {
+      if (spelling(clang_Cursor_getArgument(cursor, static_cast<unsigned>(i))) == spelling(cursor)) {
+        const auto result = consume_string(clang_getTypeSpelling(clang_getCursorResultType(cursor)));
+        if (result.find("unnamed") != std::string::npos || result.find("anonymous") != std::string::npos)
+          fail("cannot name return type when parameter shadows function");
+        function_prelude_.clear();
+        return_type_ = "__typeof__((" + result + "){0})";
+        break;
+      }
+    }
+  }
+  for (auto child : children(cursor))
+    visit(child, kind);
+}
+
+void Transformer::visit_defer(CXCursor cursor, CXCursorKind parent) {
+  const auto start = begin(cursor);
+  auto macro = macros_.find(start);
+  if (parent != CXCursor_CompoundStmt)
+    fail_at(start, "defer must be a direct statement in a block; add braces around the statement");
+  const auto macro_end = end(macro->second);
+  auto parts = tokens(unit_, clang_getCursorExtent(macro->second));
+  auto opening = std::find_if(parts.begin() + std::min<std::size_t>(1, parts.size()), parts.end(),
+                              [](const Token &token) { return token.text == "("; });
+  if (opening == parts.end() || macro_end <= opening->start || source_[macro_end - 1] != ')')
+    fail("cannot parse defer at byte " + std::to_string(start));
+  auto raw_action = source_.substr(opening->start + 1, macro_end - opening->start - 2);
+  auto action = trim(raw_action);
+  if (action.empty())
+    fail("empty defer at byte " + std::to_string(start));
+  const auto action_start = opening->start + 1 + static_cast<unsigned>(raw_action.find_first_not_of(" \t\r\n\f\v"));
+  const std::set<std::string> forbidden = {"return", "goto", "break", "continue", "defer"};
+  for (std::size_t i = 1; i < parts.size(); ++i)
+    if (forbidden.count(parts[i].text))
+      fail_at(start, "control transfer or nested defer inside cleanup is unsupported");
+  std::vector<Token> action_tokens(parts.begin() + std::min<std::size_t>(1, parts.size()), parts.end());
+  auto flag = "__ascii_defer_active_" + std::to_string(start);
+  scopes_.back().actions.push_back({start, action_start, flag, action, expanded_identifiers(action_tokens)});
+  edits_.push_back({start, static_cast<unsigned>(after_semicolon(source_, macro_end)), flag + " = 1;"});
+  seen_.insert(start);
+}
+
+void Transformer::visit_block(CXCursor cursor, CXCursorKind parent) {
+  const auto kind = clang_getCursorKind(cursor);
+  const auto start = begin(cursor), finish = end(cursor);
+  if (parent == CXCursor_FunctionDecl && !function_prelude_.empty())
+    edits_.push_back({start + 1, start + 1, function_prelude_ + " "});
+  // Record registrations in source order; cleanup emits them in reverse order.
+  scopes_.push_back({start, {}});
+  for (auto child : children(cursor))
+    visit(child, kind);
+  const auto &actions = scopes_.back().actions;
+  if (!actions.empty() && parent == CXCursor_SwitchStmt)
+    fail_at(start, "defer directly in switch body is unsupported; use a case block");
+  if (!actions.empty() && has_external_case(cursor))
+    fail_at(start, "switch dispatch can enter a defer scope; put each case in its own block");
+  if (!actions.empty()) {
+    std::string declarations;
+    for (const auto &action : actions)
+      declarations += "int " + action.flag + " = 0; ";
+    edits_.push_back({start + 1, start + 1, declarations});
+    edits_.push_back({finish - 1, finish - 1, cleanup(scopes_.size() - 1, scopes_.size(), finish)});
+  }
+  scopes_.pop_back();
+}
+
 void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
+  // A transfer unwinds only scopes between the current node and its target.
   const auto kind = clang_getCursorKind(cursor);
   const auto start = begin(cursor), finish = end(cursor);
   if (kind == CXCursor_FunctionDecl && clang_isCursorDefinition(cursor) && in_file(cursor)) {
-    function_void_ = clang_getCursorResultType(cursor).kind == CXType_Void;
-    function_prelude_.clear();
-    return_type_.clear();
-    if (!function_void_) {
-      const auto function_type = "__ascii_defer_function_" + std::to_string(start);
-      function_prelude_ = "typedef __typeof__(&" + spelling(cursor) + ") " + function_type + ";";
-      std::string args;
-      const int count = clang_Cursor_getNumArguments(cursor);
-      for (int i = 0; i < count; ++i) {
-        auto parameter = clang_Cursor_getArgument(cursor, static_cast<unsigned>(i));
-        const auto name = spelling(parameter);
-        if (name.empty())
-          fail("unnamed parameter in defer function at byte " + std::to_string(start));
-        auto type = clang_getCanonicalType(clang_getCursorType(parameter));
-        while (type.kind == CXType_Pointer || type.kind == CXType_ConstantArray ||
-               type.kind == CXType_IncompleteArray) {
-          type = clang_getCanonicalType(type.kind == CXType_Pointer ? clang_getPointeeType(type)
-                                                                    : clang_getArrayElementType(type));
-        }
-        if (type.kind == CXType_VariableArray || type.kind == CXType_DependentSizedArray)
-          fail("variably modified parameter in defer function at byte " + std::to_string(start));
-        auto alias = "__ascii_defer_argument_" + std::to_string(start) + "_" + std::to_string(i);
-        function_prelude_ += " typedef __typeof__(" + name + ") " + alias + ";";
-        if (i)
-          args += ", ";
-        args += "(" + alias + "){0}";
-      }
-      return_type_ = "__typeof__(((" + function_type + ")0)(" + args + "))";
-      for (int i = 0; i < count; ++i) {
-        if (spelling(clang_Cursor_getArgument(cursor, static_cast<unsigned>(i))) == spelling(cursor)) {
-          const auto result = consume_string(clang_getTypeSpelling(clang_getCursorResultType(cursor)));
-          if (result.find("unnamed") != std::string::npos || result.find("anonymous") != std::string::npos)
-            fail("cannot name return type when parameter shadows function");
-          function_prelude_.clear();
-          return_type_ = "__typeof__((" + result + "){0})";
-          break;
-        }
-      }
-    }
-    for (auto child : children(cursor))
-      visit(child, kind);
+    visit_function(cursor);
     return;
   }
   if (scopes_.empty() && kind != CXCursor_CompoundStmt)
     return;
-  auto macro = macros_.find(start);
-  if (macro != macros_.end() && kind == CXCursor_DoStmt) {
-    if (parent != CXCursor_CompoundStmt)
-      fail("defer must be a direct statement in a block");
-    const auto macro_end = end(macro->second);
-    auto parts = tokens(unit_, clang_getCursorExtent(macro->second));
-    auto opening = std::find_if(parts.begin() + std::min<std::size_t>(1, parts.size()), parts.end(),
-                                [](const Token &token) { return token.text == "("; });
-    if (opening == parts.end() || macro_end <= opening->start || source_[macro_end - 1] != ')')
-      fail("cannot parse defer at byte " + std::to_string(start));
-    auto raw_action = source_.substr(opening->start + 1, macro_end - opening->start - 2);
-    auto action = trim(raw_action);
-    if (action.empty())
-      fail("empty defer at byte " + std::to_string(start));
-    const auto action_start = opening->start + 1 + static_cast<unsigned>(raw_action.find_first_not_of(" \t\r\n\f\v"));
-    const std::set<std::string> forbidden = {"return", "goto", "break", "continue", "defer"};
-    for (std::size_t i = 1; i < parts.size(); ++i)
-      if (forbidden.count(parts[i].text))
-        fail("control transfer or nested defer inside cleanup");
-    std::vector<Token> action_tokens(parts.begin() + std::min<std::size_t>(1, parts.size()), parts.end());
-    auto flag = "__ascii_defer_active_" + std::to_string(start);
-    scopes_.back().actions.push_back({start, action_start, flag, action, expanded_identifiers(action_tokens)});
-    edits_.push_back({start, static_cast<unsigned>(after_semicolon(source_, macro_end)), flag + " = 1;"});
-    seen_.insert(start);
+  if (macros_.count(start) && kind == CXCursor_DoStmt) {
+    visit_defer(cursor, parent);
     return;
   }
   if (kind == CXCursor_CompoundStmt) {
-    if (parent == CXCursor_FunctionDecl && !function_prelude_.empty())
-      edits_.push_back({start + 1, start + 1, function_prelude_ + " "});
-    scopes_.push_back({start, {}});
-    for (auto child : children(cursor))
-      visit(child, kind);
-    const auto &actions = scopes_.back().actions;
-    if (!actions.empty() && parent == CXCursor_SwitchStmt)
-      fail("defer directly in switch body is unsupported; use a case block");
-    if (!actions.empty() && has_external_case(cursor))
-      fail("switch dispatch can enter a defer scope");
-    if (!actions.empty()) {
-      std::string declarations;
-      for (const auto &action : actions)
-        declarations += "int " + action.flag + " = 0; ";
-      edits_.push_back({start + 1, start + 1, declarations});
-      edits_.push_back({finish - 1, finish - 1, cleanup(scopes_.size() - 1, scopes_.size(), finish)});
-    }
-    scopes_.pop_back();
+    visit_block(cursor, parent);
     return;
   }
   if (kind == CXCursor_IndirectGotoStmt)
-    fail("computed goto cannot be transformed");
+    fail_at(start, "computed goto cannot be transformed");
   if (kind == CXCursor_GotoStmt) {
     std::vector<std::string> refs;
     for (auto child : children(cursor))
       if (clang_getCursorKind(child) == CXCursor_LabelRef)
         refs.push_back(spelling(child));
     if (refs.size() != 1 || !labels_.count(refs[0]))
-      fail("cannot determine goto target");
+      fail_at(start, "cannot determine goto target");
     const auto &target = labels_.at(refs[0]);
     std::vector<unsigned> current;
     for (const auto &scope : scopes_)
       current.push_back(scope.start);
     if (!prefix(current, target.second))
-      fail("goto enters a block with defer analysis");
+      fail_at(start, "goto enters a block with defer analysis");
     if (target.first < start)
       for (const auto &[position, owner] : defer_scopes_)
         if (target.first <= position && position < start &&
             std::find(target.second.begin(), target.second.end(), owner) != target.second.end())
-          fail("backward goto can register defer repeatedly");
+          fail_at(start, "backward goto can register defer repeatedly");
     auto actions = cleanup(target.second.size(), scopes_.size(), start);
     if (!actions.empty()) {
       require_keyword(start, "goto");
@@ -430,7 +459,7 @@ void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
     if (kind == CXCursor_ContinueStmt)
       target = std::find_if(target, controls_.rend(), [](const auto &control) { return control.first; });
     if (target == controls_.rend())
-      fail("cannot determine control-flow target");
+      fail_at(start, "cannot determine control-flow target");
     auto actions = cleanup(target->second, scopes_.size(), start);
     if (!actions.empty()) {
       require_keyword(start, kind == CXCursor_BreakStmt ? "break" : "continue");

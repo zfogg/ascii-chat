@@ -66,6 +66,15 @@ private:
   CXTranslationUnit value_ = nullptr;
 };
 
+inline void validate_generated(CXIndex index, const std::string &file, const std::vector<const char *> &arguments,
+                               const std::string &content) {
+  CXUnsavedFile generated{file.c_str(), content.data(), static_cast<unsigned long>(content.size())};
+  TranslationUnit validation(index, file, arguments, &generated, 1);
+  const auto diagnostics = validation.errors();
+  if (!diagnostics.empty())
+    throw std::runtime_error("generated C is invalid: " + diagnostics.front());
+}
+
 inline std::vector<CXCursor> children(CXCursor parent) {
   std::vector<CXCursor> result;
   clang_visitChildren(

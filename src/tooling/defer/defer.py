@@ -93,6 +93,11 @@ class Transformer:
         file = cursor.location.file
         return bool(file and Path(file.name).resolve() == self.path)
 
+    def diagnostic(self, position: int, message: str) -> str:
+        line = self.source.count(b"\n", 0, position) + 1
+        column = position - self.source.rfind(b"\n", 0, position)
+        return f"{self.path.as_posix()}:{line}:{column}: {message}"
+
     def after_semicolon(self, end: int) -> int:
         pos = end
         while pos < len(self.source):
@@ -249,7 +254,7 @@ class Transformer:
             suffix and (suffix.isalnum() or suffix == b"_" or suffix[0] >= 128)
         ):
             raise TransformError(
-                f"control transfer from a macro cannot be transformed (byte {offset})"
+                self.diagnostic(offset, "control transfer from a macro cannot be transformed; write the transfer directly")
             )
 
     def visit(
@@ -320,7 +325,7 @@ class Transformer:
         if start in self.macros and kind == cindex.CursorKind.DO_STMT:
             if parent_kind != cindex.CursorKind.COMPOUND_STMT:
                 raise TransformError(
-                    f"defer at byte {start} must be a direct statement in a block"
+                    self.diagnostic(start, "defer must be a direct statement in a block; add braces around the statement")
                 )
             macro = self.macros[start]
             macro_end = macro.extent.end.offset
@@ -363,10 +368,10 @@ class Transformer:
             actions = scope.defers
             if actions and parent_kind == cindex.CursorKind.SWITCH_STMT:
                 raise TransformError(
-                    f"defer directly in switch body is unsupported (byte {start}); use a case block"
+                    self.diagnostic(start, "defer directly in switch body is unsupported; use a case block")
                 )
             if actions and has_external_case(cursor):
-                raise TransformError("switch dispatch can enter a defer scope")
+                raise TransformError(self.diagnostic(start, "switch dispatch can enter a defer scope; put each case in its own block"))
             if actions:
                 declarations = b" ".join(
                     b"int " + item.flag + b" = 0;" for item in actions
@@ -663,13 +668,21 @@ def main() -> int:
         match = re.search(r"\bclang version (\d+)\.", version)
         if not match or int(match.group(1)) < 19:
             raise TransformError(f"LLVM 19 or newer libclang required, found {version}")
-        tu = cindex.Index.create().parse(
+        index = cindex.Index.create()
+        tu = index.parse(
             str(args.source.resolve()),
             args=clang_args,
             unsaved_files=[(str(args.source), source)],
             options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
         )
         output = Transformer(args.source, source, tu).transform()
+        validation = index.parse(
+            str(args.source), args=clang_args, unsaved_files=[(str(args.source), output)],
+            options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
+        )
+        errors = [str(item) for item in validation.diagnostics if item.severity >= cindex.Diagnostic.Error]
+        if errors:
+            raise TransformError(f"generated C is invalid: {errors[0]}")
         args.output.parent.mkdir(parents=True, exist_ok=True)
         if not args.output.exists() or args.output.read_bytes() != output:
             temporary = args.output.with_name(args.output.name + f".{os.getpid()}.tmp")

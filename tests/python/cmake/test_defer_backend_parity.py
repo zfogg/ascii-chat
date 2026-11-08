@@ -67,3 +67,27 @@ def test_generated_c_matches_python(
     assert python.returncode == 0, python.stderr
     assert native.returncode == 0, native.stderr
     assert native_output.read_bytes() == python_output.read_bytes()
+
+
+@pytest.mark.parametrize(
+    ("source", "diagnostic"),
+    [
+        ("void f(int x) { if (x) defer((void)0); }", "add braces"),
+        ("void f(int x) { switch(x) { case 0: { defer((void)0); case 1: break; } } }", "switch dispatch"),
+        ("void f(void) { defer(return); }", "control transfer"),
+    ],
+)
+def test_unsafe_programs_fail_in_both_backends(
+    native_binary: Path, tmp_path: Path, source: str, diagnostic: str
+) -> None:
+    source_path = tmp_path / "input.c"
+    source_path.write_text("#define defer(...) do {} while (0)\n" + source + "\n", encoding="utf-8")
+    for command in ([str(native_binary)], [sys.executable, str(PYTHON_TOOL)]):
+        output = tmp_path / ("native.c" if len(command) == 1 else "python.c")
+        result = subprocess.run(
+            [*command, str(source_path), str(output), "--", "-std=c17"],
+            capture_output=True, text=True, check=False,
+        )
+        assert result.returncode != 0
+        assert diagnostic in result.stderr
+        assert not output.exists()

@@ -55,4 +55,9 @@
  * Directly compiling an untransformed source containing defer fails rather than
  * turning cleanup into a no-op. Panic instrumentation cannot currently be used
  * with defer transformation.
+ *
+ * For a longer randomized check on a Unix host with Clang and libFuzzer,
+ * configure `src/tooling/defer` with `ASCIICHAT_DEFER_BUILD_FUZZER=ON`, build
+ * `ascii-defer-fuzz`, and run it with a writable copy of `tests/fuzz/defer` as
+ * the corpus. Successful transformations are parsed again and must remain valid C.
  */

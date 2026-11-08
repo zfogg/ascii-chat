@@ -19,7 +19,7 @@ struct Record {
   std::string output;
 };
 
-std::string literal(const std::string &value) {
+std::string cmake_literal(const std::string &value) {
   std::string separator = "=";
   while (value.find("]" + separator + "]") != std::string::npos)
     separator += "=";
@@ -67,34 +67,35 @@ void plan_batches(const fs::path &records, const fs::path &build_path, const std
     }
     auto digest = hash.final();
     const auto id = llvm::toHex(digest, true).substr(0, 24);
-    const auto name = literal("ascii-defer-" + id);
+    const auto name = cmake_literal("ascii-defer-" + id);
     const auto manifest = build_directory / "defer_transformed" / ("batch-" + id + ".txt");
     const auto depfile = build_directory / "defer_transformed" / ("batch-" + id + ".d");
     std::string content, sources, outputs;
     std::set<std::string> targets;
     for (const auto &entry : entries) {
       content += entry.source + "\t" + entry.output + "\n";
-      sources += " " + literal(entry.source);
-      outputs += " " + literal(entry.output);
+      sources += " " + cmake_literal(entry.source);
+      outputs += " " + cmake_literal(entry.output);
       targets.insert(entry.target);
     }
     write_if_changed(manifest, content);
     rules += "add_custom_command(\n  OUTPUT" + outputs + "\n";
-    rules += "  COMMAND \"${ASCIICHAT_DEFER_NATIVE_BINARY}\" --batch " + literal(manifest.generic_u8string()) +
-             " --compilation-database \"${CMAKE_BINARY_DIR}\" --depfile " + literal(depfile.generic_u8string()) + "\n";
-    rules += "  DEPENDS" + sources + " " + literal(manifest.generic_u8string()) +
+    rules += "  COMMAND \"${ASCIICHAT_DEFER_NATIVE_BINARY}\" --batch " + cmake_literal(manifest.generic_u8string()) +
+             " --compilation-database \"${CMAKE_BINARY_DIR}\" --depfile " + cmake_literal(depfile.generic_u8string()) +
+             "\n";
+    rules += "  DEPENDS" + sources + " " + cmake_literal(manifest.generic_u8string()) +
              " \"${ASCIICHAT_DEFER_NATIVE_BINARY}\" \"${CMAKE_BINARY_DIR}/compile_commands.json\"\n";
-    rules += "  DEPFILE " + literal(depfile.generic_u8string()) +
+    rules += "  DEPFILE " + cmake_literal(depfile.generic_u8string()) +
              "\n  COMMENT \"Transforming defer source batch\" VERBATIM)\n";
     rules += "add_custom_target(" + name + " DEPENDS" + outputs + ")\n";
     if (!prerequisites.empty()) {
       rules += "add_dependencies(" + name;
       for (const auto &dependency : prerequisites)
-        rules += " " + literal(dependency);
+        rules += " " + cmake_literal(dependency);
       rules += ")\n";
     }
     for (const auto &target : targets)
-      rules += "add_dependencies(" + literal(target) + " " + name + ")\n";
+      rules += "add_dependencies(" + cmake_literal(target) + " " + name + ")\n";
   }
   write_if_changed(output, rules);
 }

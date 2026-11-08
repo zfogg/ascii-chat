@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 from pathlib import Path
 import shutil
 import subprocess
@@ -166,6 +167,70 @@ def test_spliced_macro_control_transfer_is_rejected(
         "void f(void) { while (1) { defer((void)0); break\\\n_if(0); break; } }\n",
     )
     assert result.returncode != 0
+
+
+@pytest.mark.parametrize("seed", range(12))
+def test_generated_nested_cleanup_semantics(
+    tmp_path: Path, transform_environment: dict[str, str], seed: int
+) -> None:
+    rng = random.Random(seed)
+    outer, inner, immediate, tail = rng.sample(range(1, 100), 4)
+    expected: list[int] = []
+    results = []
+    for mode in range(4):
+        if mode & 1:
+            if mode & 2:
+                expected.extend((inner, outer))
+                results.append(7)
+                continue
+            expected.extend((immediate, inner))
+        expected.extend((tail, outer))
+        results.append(8)
+    checks = "\n".join(f"if (trace[{i}] != {value}) return {i + 10};" for i, value in enumerate(expected))
+    calls = "\n".join(f"if (f({i}) != {value}) return {i + 1};" for i, value in enumerate(results))
+    source = f"""
+static int trace[64], count;
+static void mark(int value) {{ trace[count++] = value; }}
+static int f(int mode) {{
+    defer(mark({outer}));
+    if (mode & 1) {{
+        defer(mark({inner}));
+        if (mode & 2) return 7;
+        mark({immediate});
+    }}
+    mark({tail});
+    return 8;
+}}
+int main(void) {{ {calls} if (count != {len(expected)}) return 9; {checks} return 0; }}
+"""
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode == 0, result.stderr
+    exe = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    compiled = subprocess.run(
+        [str(CLANG), "-std=c17", str(tmp_path / "output.c"), "-o", str(exe)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert compiled.returncode == 0, compiled.stderr
+    run = subprocess.run([str(exe)], capture_output=True, text=True, check=False)
+    assert run.returncode == 0, f"seed={seed}, exit={run.returncode}: {run.stderr}"
+
+
+def test_diagnostic_identifies_location_and_remedy(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    result = transform(tmp_path, transform_environment, "void f(int x) { if (x) defer((void)0); }\n")
+    assert result.returncode != 0
+    assert "input.c:2:" in result.stderr.replace("\\", "/")
+    assert "add braces" in result.stderr
+
+
+def test_invalid_cleanup_is_rejected_before_writing_output(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    result = transform(tmp_path, transform_environment, "void f(int x) { defer(x+,); }\n")
+    assert result.returncode != 0
+    assert "generated C is invalid" in result.stderr
+    assert not (tmp_path / "output.c").exists()
 
 
 def transform(

@@ -50,16 +50,17 @@ inline std::size_t after_semicolon(std::string_view source, std::size_t offset) 
 inline bool may_contain_defer(std::string_view source) {
   std::string unspliced;
   unspliced.reserve(source.size());
-  for (std::size_t i = 0; i < source.size(); ++i) {
+  std::size_t i = 0;
+  while (i < source.size()) {
     if (source.substr(i, 2) == "\\\n") {
-      ++i;
-      continue;
-    }
-    if (source.substr(i, 3) == "\\\r\n") {
       i += 2;
       continue;
     }
-    unspliced += source[i];
+    if (source.substr(i, 3) == "\\\r\n") {
+      i += 3;
+      continue;
+    }
+    unspliced += source[i++];
   }
   source = unspliced;
   std::size_t search = 0;

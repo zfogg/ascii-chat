@@ -1,0 +1,97 @@
+name: Defer tool compatibility
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/tooling/defer/**'
+      - 'cmake/tooling/Defer.cmake'
+      - 'cmake/deps/LLVMDevelopment.cmake'
+      - 'include/ascii-chat/tooling/defer/**'
+      - 'tests/python/cmake/test_defer*.py'
+      - 'tests/fuzz/defer/**'
+      - 'scripts/install-llvm-dev.ps1'
+      - '.github/workflows/defer.yml'
+  push:
+    branches: [master, main]
+    paths:
+      - 'src/tooling/defer/**'
+      - 'cmake/tooling/Defer.cmake'
+      - 'cmake/deps/LLVMDevelopment.cmake'
+      - 'include/ascii-chat/tooling/defer/**'
+      - 'tests/python/cmake/test_defer*.py'
+      - 'tests/fuzz/defer/**'
+      - 'scripts/install-llvm-dev.ps1'
+      - '.github/workflows/defer.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  linux-llvm:
+    name: Linux / LLVM ${{ matrix.llvm }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        llvm: [23, 22, 21, 20, 19]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install LLVM development files
+        run: |
+          wget -q https://apt.llvm.org/llvm.sh -O "$RUNNER_TEMP/llvm.sh"
+          sudo bash "$RUNNER_TEMP/llvm.sh" "${{ matrix.llvm }}"
+          sudo apt-get install -y ninja-build "llvm-${{ matrix.llvm }}-dev" "libclang-${{ matrix.llvm }}-dev"
+          echo "/usr/lib/llvm-${{ matrix.llvm }}/bin" >> "$GITHUB_PATH"
+          echo "LIBCLANG_LIBRARY_FILE=/usr/lib/llvm-${{ matrix.llvm }}/lib/libclang.so" >> "$GITHUB_ENV"
+      - run: uv python install 3.15 && uv sync --project tests/ascii_chat_tests --frozen
+      - name: Build and test both implementations
+        run: |
+          cmake -S src/tooling/defer -B build/defer-compat -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DBUILD_TESTING=ON
+          cmake --build build/defer-compat
+          ctest --test-dir build/defer-compat --output-on-failure
+          ASCIICHAT_DEFER_TEST_BINARY="$PWD/build/defer-compat/defer-tool" uv run --project tests/ascii_chat_tests --frozen python -m pytest --noconftest --override-ini addopts= -q tests/python/cmake/test_defer_tool.py tests/python/cmake/test_defer_native_driver.py tests/python/cmake/test_defer_backend_parity.py tests/python/cmake/test_defer_planning.py
+      - name: Fuzz transformer smoke test
+        if: matrix.llvm == 23
+        run: |
+          cmake -S src/tooling/defer -B build/defer-fuzz -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DASCIICHAT_DEFER_BUILD_FUZZER=ON -DBUILD_TESTING=OFF
+          cmake --build build/defer-fuzz --target ascii-defer-fuzz
+          cp -R tests/fuzz/defer "$RUNNER_TEMP/defer-corpus"
+          build/defer-fuzz/ascii-defer-fuzz -runs=200 -max_len=4096 "$RUNNER_TEMP/defer-corpus"
+
+  native-platforms:
+    name: ${{ matrix.os }} / current LLVM
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - name: Install macOS LLVM
+        if: runner.os == 'macOS'
+        run: |
+          brew install llvm ninja || brew upgrade llvm
+          echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+          echo "LIBCLANG_LIBRARY_FILE=$(brew --prefix llvm)/lib/libclang.dylib" >> "$GITHUB_ENV"
+      - name: Install Windows LLVM development archive
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./scripts/install-llvm-dev.ps1
+          $root = Join-Path $PWD '.deps-cache/llvm-dev-23.1.3'
+          "ASCIICHAT_LLVM_DEV_ROOT=$root" >> $env:GITHUB_ENV
+          "LIBCLANG_LIBRARY_FILE=$root/bin/libclang.dll" >> $env:GITHUB_ENV
+      - run: uv python install 3.15 && uv sync --project tests/ascii_chat_tests --frozen
+      - name: Build and test both implementations
+        shell: bash
+        run: |
+          cmake -S src/tooling/defer -B build/defer-compat -G Ninja -DCMAKE_CXX_COMPILER=clang++ -DBUILD_TESTING=ON
+          cmake --build build/defer-compat
+          ctest --test-dir build/defer-compat --output-on-failure
+          if [ "$RUNNER_OS" = Windows ]; then tool="$PWD/build/defer-compat/defer-tool.exe"; else tool="$PWD/build/defer-compat/defer-tool"; fi
+          ASCIICHAT_DEFER_TEST_BINARY="$tool" uv run --project tests/ascii_chat_tests --frozen python -m pytest --noconftest --override-ini addopts= -q tests/python/cmake/test_defer_tool.py tests/python/cmake/test_defer_native_driver.py tests/python/cmake/test_defer_backend_parity.py tests/python/cmake/test_defer_planning.py

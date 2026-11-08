@@ -53,13 +53,21 @@ fi
 echo "Detected platform: $PLATFORM"
 echo ""
 
+run_uv() {
+  if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
+    sudo -H -u "$SUDO_USER" -- "$(command -v uv)" "$@"
+  else
+    uv "$@"
+  fi
+}
+
 sync_python_tooling() {
   local script_dir project_root
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
   project_root="$(cd "${script_dir}/.." && pwd -P)"
   command -v uv >/dev/null || { echo >&2 "ERROR: uv is required"; exit 1; }
-  uv sync --project "${project_root}/src/tooling/defer" --frozen --python 3.15 --managed-python
-  uv sync --project "${project_root}/tests/ascii_chat_tests" --frozen --python 3.15 --managed-python
+  run_uv sync --project "${project_root}/src/tooling/defer" --frozen --managed-python
+  run_uv sync --project "${project_root}/tests/ascii_chat_tests" --frozen --managed-python
 }
 
 verify_llvm_for_defer() {
@@ -74,7 +82,7 @@ verify_llvm_for_defer() {
     exit 1
   fi
   compiler_dir="$(cd "$(dirname "$compiler")" && pwd -P)"
-  resolved_dir="$(dirname "$(uv run --project "$(dirname "${BASH_SOURCE[0]}")/../src/tooling/defer" --frozen --python 3.15 --managed-python python -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$compiler")")"
+  resolved_dir="$(dirname "$(run_uv run --project "$(dirname "${BASH_SOURCE[0]}")/../src/tooling/defer" --frozen --managed-python python -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$compiler")")"
   libdir="${compiler_dir}/../lib"
   for library in "$libdir/libclang.dylib" "$libdir/libclang.so" "$libdir/libclang.so.$major" \
       "$resolved_dir/../lib/libclang.dylib" "$resolved_dir/../lib/libclang.so" "$resolved_dir/../lib/libclang.so.$major"; do
@@ -123,9 +131,8 @@ if [[ "$PLATFORM" == "macos" ]]; then
   if ! command -v uv &>/dev/null; then
     brew install uv
   fi
-  uv python install 3.15
-  uv python pin 3.15
-  uv tool install --upgrade "yt-dlp[default]"
+  run_uv python install 3.15
+  run_uv tool install --upgrade "yt-dlp[default]"
   sync_python_tooling
   verify_llvm_for_defer "$(brew --prefix llvm)/bin/clang"
   echo "Homebrew packages: installation attempt completed"
@@ -442,9 +449,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
   command -v uv >/dev/null || { echo >&2 "ERROR: uv installation failed"; exit 1; }
   # uv owns the Python interpreter and project environment. Keep the required
   # minor version in one place so system Python versions do not affect tests.
-  uv python install 3.15
-  uv python pin 3.15
-  uv tool install --upgrade "yt-dlp[default]"
+  run_uv python install 3.15
+  run_uv tool install --upgrade "yt-dlp[default]"
   sync_python_tooling
 
   echo ""
