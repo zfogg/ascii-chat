@@ -8,19 +8,6 @@ endif()
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/ProjectSettings.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/init/Options.cmake)
-
-# =============================================================================
-# Git Submodule Initialization (must happen before dependencies are accessed)
-# =============================================================================
-# Formatting only needs the source tree and clang-format; avoid initializing or
-# restoring the native dependency submodules for this lightweight target.
-if(NOT ASCIICHAT_FORMAT_ONLY)
-if(NOT ASCIICHAT_FORMAT_ONLY)
-    include(${CMAKE_SOURCE_DIR}/cmake/init/SubmoduleCheck.cmake)
-endif()
-endif()
-
 # INFO: CMAKE_BUILD_TYPE is now configured.
 
 # =============================================================================
@@ -97,6 +84,13 @@ message(STATUS "Using dependency cache: ${BoldCyan}${ASCIICHAT_DEPS_CACHE_DIR}${
 include(${CMAKE_SOURCE_DIR}/cmake/ProjectConstants.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/Options.cmake)
+
+# Formatting only needs the source tree and clang-format; avoid initializing or
+# restoring the native dependency submodules for this lightweight target.
+if(NOT ASCIICHAT_FORMAT_ONLY)
+    include(${CMAKE_SOURCE_DIR}/cmake/init/SubmoduleCheck.cmake)
+endif()
+
 include(${CMAKE_SOURCE_DIR}/cmake/install/Version.cmake)
 version_detect()          # Sets PROJECT_VERSION_FROM_GIT and PROJECT_VERSION_DATE
 library_version_detect()  # Sets ASCIICHAT_LIB_VERSION (library version from lib/v* tags)
