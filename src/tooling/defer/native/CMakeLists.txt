@@ -19,7 +19,7 @@ ascii_configure_llvm_host_tool(ascii-defer-core)
 target_link_libraries(ascii-defer-core PUBLIC ascii-llvm-support ascii-libclang ${CMAKE_DL_LIBS})
 
 add_executable(ascii-defer-native main.cpp)
-set_target_properties(ascii-defer-native PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
+set_target_properties(ascii-defer-native PROPERTIES OUTPUT_NAME defer-tool CXX_STANDARD 17 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
 if(APPLE)
     set_property(TARGET ascii-defer-native APPEND PROPERTY BUILD_RPATH "$<TARGET_FILE_DIR:ascii-libclang>")
 endif()

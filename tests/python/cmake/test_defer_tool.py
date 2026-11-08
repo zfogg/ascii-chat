@@ -301,9 +301,9 @@ def test_cmake_discovers_defer_and_tracks_headers(
             build
             / "defer-host"
             / (
-                "ascii-defer-native.exe"
+                "defer-tool.exe"
                 if sys.platform == "win32"
-                else "ascii-defer-native"
+                else "defer-tool"
             )
         )
         assert not native.exists(), (
