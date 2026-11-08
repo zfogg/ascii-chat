@@ -17,6 +17,8 @@ grep -q '1.0 / 60.0' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/AsciiChatApp.
 grep -q 'ios_render_bridge_flush' "$(cd "$(dirname "$0")/../.." && pwd)/lib/platform/ios/render_bridge.c"
 grep -q -- '--fps=60' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/main.c"
 grep -q 'ASCIICHAT_IOS_SIMULATOR' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/CMakeLists.txt"
+grep -q 'kCVPixelFormatType_32BGRA' "$(cd "$(dirname "$0")/../.." && pwd)/lib/video/webcam/macos/webcam_avfoundation.m"
+grep -q 'accepts one pixel format' "$(cd "$(dirname "$0")/../.." && pwd)/lib/video/webcam/macos/webcam_avfoundation.m"
 grep -q 'asciichat_ios_mode_name' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/main.c"
 grep -q 'asciichat_ios_mode_available(mode)' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/main.c"
 if IOS_SIM_ARCH=invalid "$(cd "$(dirname "$0")/../.." && pwd)/scripts/build-ios-simulator.sh" >/dev/null 2>&1; then
