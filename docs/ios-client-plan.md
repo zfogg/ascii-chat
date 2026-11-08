@@ -2,7 +2,7 @@
 
 # ascii-chat iOS Client - Implementation Plan (WIP)
 
-> **Status**: Render bridge smoke-test milestone complete — the simulator visibly displays ANSI text emitted through the C libvterm/FreeType bridge; regular mirror-mode lifecycle remains next
+> **Status**: Simulator app, shared render bridge, mode selector, camera permission flow, TLS/QUIC dependency wiring, and platform review fixes are implemented; native mode lifecycle and AVAudioEngine remain next
 > **Last Updated**: 2026-11-08
 > **Goal**: Native iOS app in Swift that uses libasciichat (compiled for iOS) to support server, client, mirror, and discovery modes.
 
@@ -107,6 +107,16 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 ---
 
 ## Workstreams
+
+### Current milestone checklist
+
+- [x] Build and link the SwiftUI simulator application against the shared C library.
+- [x] Route ANSI output through the shared libvterm + FreeType renderer into SwiftUI.
+- [x] Expose mirror, client, and discovery entry points through the native mode selector.
+- [x] Request camera authorization through AVFoundation and keep capture in `video/webcam/ios/`.
+- [ ] Keep native mode execution alive after startup and report C lifecycle errors to SwiftUI.
+- [ ] Replace the PortAudio compatibility surface with an AVAudioEngine-backed stream.
+- [ ] Produce and validate an arm64 device archive and XCFramework.
 
 ### 1. Compile libasciichat for iOS
 
