@@ -28,6 +28,9 @@ private func ios_render_bridge_read_frame(
 @_silgen_name("ios_render_bridge_write")
 private func ios_render_bridge_write(_ fd: Int32, _ data: UnsafeRawPointer, _ length: Int) -> Int
 
+@_silgen_name("ios_render_bridge_reset")
+private func ios_render_bridge_reset()
+
 @_silgen_name("asciichat_ios_camera_authorized")
 private func asciichat_ios_camera_authorized() -> Int32
 
@@ -249,6 +252,7 @@ struct ContentView: View {
             Button("Start \(selectedMode.title.lowercased())") {
                 launchMessage = "Starting \(selectedMode.title.lowercased())…"
                 didStart = true
+                ios_render_bridge_reset()
                 _ = platform_enable_keepawake()
                 DispatchQueue.global(qos: .userInitiated).async {
                     _ = asciichat_ios_main(selectedMode.rawValue)

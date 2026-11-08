@@ -70,3 +70,15 @@ int ios_render_bridge_read_frame(uint8_t *pixels, size_t capacity, int *width, i
   mutex_unlock(&g_renderer_mutex);
   return 1;
 }
+
+void ios_render_bridge_reset(void) {
+  if (!g_renderer_mutex_initialized)
+    return;
+  mutex_lock(&g_renderer_mutex);
+  if (g_renderer) {
+    term_renderer_destroy(g_renderer);
+    g_renderer = NULL;
+  }
+  g_renderer_initialized = false;
+  mutex_unlock(&g_renderer_mutex);
+}
