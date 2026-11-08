@@ -46,7 +46,12 @@
  * @return 1 if TTY, 0 if not
  */
 int platform_isatty(int fd) {
+#ifdef PLATFORM_IOS
+  (void)fd;
+  return 0;
+#else
   return isatty(fd);
+#endif
 }
 
 /**
@@ -55,7 +60,12 @@ int platform_isatty(int fd) {
  * @return TTY name or NULL if not a TTY
  */
 const char *platform_ttyname(int fd) {
+#ifdef PLATFORM_IOS
+  (void)fd;
+  return NULL;
+#else
   return ttyname(fd);
+#endif
 }
 
 /**
@@ -64,6 +74,13 @@ const char *platform_ttyname(int fd) {
  * @return 0 on success, -1 on failure
  */
 asciichat_error_t terminal_get_size_fd(int fd, terminal_size_t *size) {
+#ifdef PLATFORM_IOS
+  (void)fd;
+  if (!size) return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal size output is NULL");
+  size->cols = GET_OPTION(width) > 0 ? (unsigned short)GET_OPTION(width) : 100;
+  size->rows = GET_OPTION(height) > 0 ? (unsigned short)GET_OPTION(height) : 40;
+  return ASCIICHAT_OK;
+#else
   if (!size)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal size output is NULL");
   *size = (terminal_size_t){0};
@@ -73,9 +90,16 @@ asciichat_error_t terminal_get_size_fd(int fd, terminal_size_t *size) {
   size->cols = ws.ws_col;
   size->rows = ws.ws_row;
   return ASCIICHAT_OK;
+#endif
 }
 
 asciichat_error_t terminal_get_size(terminal_size_t *size) {
+#ifdef PLATFORM_IOS
+  if (!size) return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal size output is NULL");
+  size->cols = GET_OPTION(width) > 0 ? (unsigned short)GET_OPTION(width) : 100;
+  size->rows = GET_OPTION(height) > 0 ? (unsigned short)GET_OPTION(height) : 40;
+  return ASCIICHAT_OK;
+#else
   struct winsize ws;
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0) {
     size->rows = ws.ws_row;
@@ -85,6 +109,7 @@ asciichat_error_t terminal_get_size(terminal_size_t *size) {
   // return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to get terminal size");
   // NOTE: this might be called from wasm or when piping in the terminal so we needn't error here.
   return ASCIICHAT_OK;
+#endif
 }
 
 /**
