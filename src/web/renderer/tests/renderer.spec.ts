@@ -15,6 +15,7 @@ test("standalone package renders modes, visualizations and canvas at 60 fps", as
       const modes: number[] = [];
       const frames: string[] = [];
       for (const color of [
+        ColorMode.Auto,
         ColorMode.None,
         ColorMode.Ansi16,
         ColorMode.Ansi256,
@@ -95,7 +96,7 @@ test("standalone package renders modes, visualizations and canvas at 60 fps", as
       renderer.dispose();
     }
   });
-  expect(results.modes).toBe(24);
+  expect(results.modes).toBe(30);
   expect(results.uniqueFrames).toBeGreaterThan(8);
   expect(results.rain).toBeGreaterThan(0);
   expect(results.waveform).toBeGreaterThan(0);
