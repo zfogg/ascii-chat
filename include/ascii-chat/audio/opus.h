@@ -91,10 +91,12 @@ typedef enum {
  * ============================================================================ */
 
 /**
- * @brief Opus codec context for encoding or decoding
+ * @brief State for one Opus encoding or decoding direction.
  *
- * Opaque structure that holds the state of an Opus encoder or decoder.
- * Use opus_codec_create() or opus_codec_create_decoder() to initialize.
+ * Exactly one of `encoder` and `decoder` is normally populated. The remaining
+ * fields record the PCM format and encoder bitrate, while `tmp_buffer` is
+ * scratch storage used during conversion. Create and destroy this object with
+ * the codec API; callers should not manipulate the libopus handles directly.
  *
  * @note This is an opaque type. Do not access fields directly.
  * @ingroup audio

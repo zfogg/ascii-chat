@@ -9,6 +9,10 @@
  * and where to look for lifecycle and concurrency rules.
  */
 /**
+ * @struct options_t
+ * @brief The immutable, RCU-published snapshot of every runtime option. It carries the selected mode, media and terminal settings, network and discovery endpoints, authentication and encryption policy, logging controls, and the explicit-value markers used when defaults are merged. Readers borrow the current snapshot through `options_get()`; writers create a replacement rather than mutating a snapshot in place.
+ */
+/**
  * @struct acds_create_key_set_t
    * @brief Stores `request`, `reserved string`, and `count`. The owning acds create key set code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
@@ -169,6 +173,14 @@
    * @brief Stores `data`, `size`, `sample rate`, and `channels`. The owning audio frame code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
+ * @struct audio_analysis_stats_t
+ * @brief Accumulates the measurements used to judge audio quality: total and silent or clipped samples, peak/RMS level and DC offset, packet counts, start/end timestamps, jitter and delivery gaps, and detected tonal artifacts. The analysis module updates the counters while audio flows through it; callers read a snapshot for diagnostics and reliability reports.
+ */
+/**
+ * @struct audio_batch_info_t
+ * @brief Describes the fixed metadata at the front of one packed audio packet: number of frames, total sample count, sample rate, and channel count. `audio_parse_batch_header()` fills it from the wire bytes and the packet handlers validate it before walking the audio frames that follow.
+ */
+/**
  * @struct audio_processor
    * @brief Stores `config`, `spectral left`, `spectral right`, `compressor`, `gate`, `highpass`, `lowpass`, and `highpass right`. The owning audio processor code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
@@ -211,6 +223,10 @@
 /**
  * @struct browser_peer_crypto_t
    * @brief Stores `security`, `quic handshake`, `transport`, `tail`, `received`, and `received length`. The owning browser peer crypto code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
+ */
+/**
+ * @struct crypto_context_t
+ * @brief Owns one endpoint's cryptographic state: ephemeral and peer keys, the derived shared and password keys, negotiated nonce/MAC sizes, handshake and authentication nonces, encryption counters, session identity, and temporary keys used during rekeying. It is initialized and wiped by the crypto API; transports borrow the context to seal and open packets but do not copy or free its secret material.
  */
 /**
  * @struct buffer_budget_t
@@ -290,23 +306,23 @@
  */
 /**
  * @struct crypto_policy_t
-   * @brief Stores `transport secure`, `encrypt`, `no encrypt`, `no auth`, `has password`, `has identity`, and `has verification key`. The owning crypto policy code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
+   * @brief The inputs used to resolve the connection's security mode: whether the transport is already secure, whether encryption or authentication is required or disabled, and which password, identity, and verification-key material is available. The resolver reads this value and writes the resulting policy into the security context; it does not own any key or password storage.
  */
 /**
  * @struct crypto_record
-   * @brief Stores `crypto`, `last receive epoch`, `previous crypto`, `previous epoch`, `previous allowed`, `datagram seen`, `last receive delivery`, and `server`. The owning crypto record code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
+   * @brief Binds a live crypto context to record-layer state. It tracks the current and previous key epochs, which old flows may still accept, the delivery class of the last received record, datagram replay observations, and whether this endpoint is the server. During rekeying the previous context stays here until every allowed flow has retired.
  */
 /**
  * @struct crypto_rekey_session_t
-   * @brief Stores `security`, `send`, `context`, `peer ack`, `deferred key`, `deferred request`, and `ack sent`. The owning crypto rekey session code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
+   * @brief Coordinates one in-flight session-key rotation. It points at the record state and packet-emission callback, remembers the peer's acknowledged epoch, holds a deferred peer key while rate limits permit processing it, and records whether requests, markers, and acknowledgements are outstanding. The deferred key is wiped when the exchange is consumed.
  */
 /**
  * @struct crypto_session
-   * @brief Stores `owner`, `mutex`, `records`, `rotation`, `messages`, `count`, and `failure`. The owning crypto session code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
+   * @brief Shared, mutex-protected record and rekey state attached to one `crypto_context_t`. It owns the record state, rotation state, and bounded queue of control messages emitted by rekeying; `count` tracks queued messages and `failure` latches the first terminal crypto error until the session is destroyed.
  */
 /**
  * @struct crypto_session_message_t
-   * @brief Stores `channel`, `type`, `length`, and `payload`. The owning crypto session message code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
+   * @brief One queued rekey control message. `channel` selects the ACIP flow, `type` identifies the marker, request, response, acknowledgement, or needed signal, and `length` plus the inline `payload` hold the bounded key or epoch data copied into the queue.
  */
 /**
  * @struct database_session_stats_t
@@ -1067,4 +1083,8 @@
 /**
  * @struct yt_dlp_request_options_t
    * @brief Stores `headers`, `cookies`, `proxy`, and `proxy specified`. The owning yt dlp request options code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
+ */
+/**
+ * @struct opus_codec_t
+ * @brief Holds exactly one active Opus direction: an encoder or decoder handle, its sample rate and channel count, the encoder bitrate, and a temporary output buffer. The audio pipeline keeps this context for the lifetime of a stream and passes PCM in or out through the codec API; callers must not manipulate the Opus handles directly.
  */

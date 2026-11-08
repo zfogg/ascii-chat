@@ -958,6 +958,17 @@ typedef enum {
  */
 typedef enum { ASCII_RENDERER_LUMINANCE = 0, ASCII_RENDERER_GLYPH = 1 } ascii_renderer_t;
 
+/**
+ * @struct options_t
+ * @brief Immutable, RCU-published snapshot of the application's runtime configuration.
+ *
+ * The fields cover mode selection, terminal and media rendering, audio,
+ * network and discovery endpoints, authentication and encryption policy,
+ * logging, and the explicit-value markers used while merging defaults. Readers
+ * borrow the current snapshot through `options_get()`; updates allocate and
+ * publish a replacement instead of mutating a snapshot that another thread may
+ * still be using.
+ */
 typedef struct options_state {
   // ============================================================================
   // Mode Detection (auto-detected during options_init)

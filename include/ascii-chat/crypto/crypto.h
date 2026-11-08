@@ -85,10 +85,14 @@
 /** @} */
 
 /**
- * @brief Cryptographic context structure
+ * @brief Endpoint cryptographic state for handshake, packet protection, authentication, and rekeying.
  *
- * Manages all cryptographic state for a single connection, including
- * key exchange, encryption/decryption, authentication, and session rekeying.
+ * The context owns ephemeral X25519 material, the derived shared and optional
+ * password keys, negotiated wire sizes, authentication nonces, packet counters,
+ * and temporary keys during a rotation. Transports borrow it when sealing or
+ * opening packets. It is initialized through the crypto API and destroyed with
+ * `crypto_destroy()` so secret fields are wiped rather than copied or freed by
+ * callers.
  *
  * @note Nonce generation: Nonces are constructed as `session_id || counter`
  *       where session_id is 16 bytes and counter fills the remaining bytes.
@@ -108,6 +112,16 @@
  *       - Authenticated format: Ephemeral key + identity key + signature (when server has identity key)
  *
  * @ingroup crypto
+ */
+/**
+ * @brief Endpoint cryptographic state for handshake, packet protection, authentication, and rekeying.
+ *
+ * The context owns ephemeral X25519 material, the derived shared and optional
+ * password keys, negotiated wire sizes, authentication nonces, packet counters,
+ * and temporary keys during a rotation. Transports borrow it when sealing or
+ * opening packets. It must be initialized through the crypto API and destroyed
+ * through `crypto_destroy()` so secret fields are wiped rather than copied or
+ * freed by callers.
  */
 typedef struct crypto_context_t {
   /** X25519 key exchange keys */

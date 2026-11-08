@@ -21,7 +21,12 @@ extern "C" {
 #endif
 
 /**
- * @brief Audio analysis statistics for sent or received audio
+ * @brief Measurements used to diagnose sent or received audio quality.
+ *
+ * The counters cover samples, clipping, silence, peak/RMS level, DC offset,
+ * packet delivery, jitter and gaps, and short tonal artifacts. The analysis
+ * module updates these values while audio is flowing; callers read them as a
+ * diagnostic snapshot rather than as codec state.
  */
 typedef struct {
   uint64_t total_samples;     // Total samples processed
