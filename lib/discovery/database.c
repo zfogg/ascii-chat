@@ -881,7 +881,13 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[S
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare session lookup: %s", sqlite3_errmsg(db));
   }
 
-  sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+  int session_id_index = sqlite3_bind_parameter_index(stmt, ":session_id");
+  rc = session_id_index ? sqlite3_bind_blob(stmt, session_id_index, session_id, SESSION_ID_SIZE, SQLITE_STATIC)
+                        : SQLITE_RANGE;
+  if (rc != SQLITE_OK) {
+    sqlite3_finalize(stmt);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to bind session lookup parameter");
+  }
   rc = sqlite3_step(stmt);
   if (rc == SQLITE_DONE && !sqlite3_stmt_readonly(stmt))
     ascii_otel_metric(ASCII_OTEL_METRIC_DB_ROWS, sqlite3_changes(db));

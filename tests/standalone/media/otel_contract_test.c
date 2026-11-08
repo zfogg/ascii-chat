@@ -193,8 +193,9 @@ static void catalog_contract(void) {
   CHECK(database_queries[DATABASE_QUERY_LookupSessionString].rows == DATABASE_ZERO_OR_ONE);
   sqlite3_stmt *named = NULL;
   CHECK(ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_LookupSessionString].sql, &named) == SQLITE_OK);
-  CHECK(sqlite3_bind_parameter_index(named, ":session_id") == 1);
-  CHECK(sqlite3_bind_null(named, 1) == SQLITE_OK);
+  int session_id_index = sqlite3_bind_parameter_index(named, ":session_id");
+  CHECK(session_id_index > 0);
+  CHECK(sqlite3_bind_null(named, session_id_index) == SQLITE_OK);
   CHECK(sqlite3_step(named) == SQLITE_DONE);
   CHECK(sqlite3_finalize(named) == SQLITE_OK);
   rate_limiter_t *limiter = rate_limiter_create_sqlite(NULL);
