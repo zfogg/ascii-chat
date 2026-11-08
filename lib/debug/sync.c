@@ -1,6 +1,6 @@
 /**
  * @file sync.c
- * @ingroup debug_sync
+ * @ingroup debug_util
  * @brief 🔒 Synchronization primitive debugging with dynamic state inspection
  * @date February 2026
  *

@@ -1,7 +1,7 @@
 /**
  * @file lib/debug/named.c
  * @brief Named object registry for debugging
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Provides a centralized registry for naming any addressable resource.
  * Uses uthash for O(1) lookup by uintptr_t key.

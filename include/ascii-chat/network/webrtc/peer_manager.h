@@ -42,7 +42,7 @@ extern "C" {
 #endif
 
 /**
- * @defgroup webrtc_peer_manager WebRTC Peer Manager
+ * @addtogroup webrtc
  * @brief Manage WebRTC peer connections for session participants
  * @{
  */

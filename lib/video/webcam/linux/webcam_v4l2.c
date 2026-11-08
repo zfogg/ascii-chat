@@ -828,7 +828,9 @@ image_t *webcam_read_async(webcam_context_t *ctx) {
   return ctx->async_cached_frame;
 }
 
-double webcam_get_fps(webcam_context_t *ctx) { return ctx ? ctx->fps : 0.0; }
+double webcam_get_fps(webcam_context_t *ctx) {
+  return ctx ? ctx->fps : 0.0;
+}
 
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   if (!ctx || !width || !height)

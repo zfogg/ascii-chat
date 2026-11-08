@@ -3,7 +3,7 @@
 /**
  * @file debug/mutex.h
  * @brief Per-thread mutex lock stack for deadlock detection
- * @ingroup debug_sync
+ * @ingroup debug_util
  *
  * Maintains a stack of mutexes per thread, tracking both locked and pending locks.
  * Used to detect circular wait deadlock patterns by comparing stacks across threads.

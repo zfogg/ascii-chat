@@ -31,6 +31,7 @@ extern "C" {
 
 /**
  * @defgroup ansi ANSI Utilities
+ * @ingroup module_abstractions
  * @{
  */
 

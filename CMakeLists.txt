@@ -4,11 +4,6 @@ if(POLICY CMP0174)
 endif()
 
 # =============================================================================
-# Git Submodule Initialization (must come FIRST, before any dependencies are accessed)
-# =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/init/SubmoduleCheck.cmake)
-
-# =============================================================================
 # CMake Build Types
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/ProjectSettings.cmake)
@@ -89,6 +84,15 @@ message(STATUS "Using dependency cache: ${BoldCyan}${ASCIICHAT_DEPS_CACHE_DIR}${
 include(${CMAKE_SOURCE_DIR}/cmake/ProjectConstants.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/Options.cmake)
+
+if(ASCIICHAT_FORMAT_ONLY)
+    set(CMAKE_PROJECT_NAME ascii-chat-format CACHE INTERNAL "Format-only project name")
+    include(${CMAKE_SOURCE_DIR}/cmake/tools/CustomTargets.cmake)
+    return()
+endif()
+
+include(${CMAKE_SOURCE_DIR}/cmake/init/SubmoduleCheck.cmake)
+
 include(${CMAKE_SOURCE_DIR}/cmake/install/Version.cmake)
 version_detect()          # Sets PROJECT_VERSION_FROM_GIT and PROJECT_VERSION_DATE
 library_version_detect()  # Sets ASCIICHAT_LIB_VERSION (library version from lib/v* tags)
@@ -213,6 +217,11 @@ message(STATUS "Generated paths.h with ASCIICHAT_INSTALL_PREFIX=${BoldYellow}${C
 
 include(${PROJECT_SOURCE_DIR}/cmake/utils/SourceRoot.cmake)
 asciichat_configure_source_root("${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
+
+if(ASCIICHAT_FORMAT_ONLY)
+    include(${CMAKE_SOURCE_DIR}/cmake/tools/CustomTargets.cmake)
+    return()
+endif()
 
 # Only Ninja generator is supported - enforce this requirement
 #if(NOT CMAKE_GENERATOR MATCHES "Ninja")
@@ -391,7 +400,6 @@ ascii_panic_prepare()
 # Query tool is independent of defer/panic - it doesn't do source transformation
 ascii_query_prepare()
 
-include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 
 # Build panic runtime after Libraries.cmake creates ascii-chat-panic target
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/ToolingRuntime.cmake)

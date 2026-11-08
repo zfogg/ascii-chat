@@ -2,6 +2,7 @@
 
 /**
  * @defgroup platform Platform Abstractions
+ * @ingroup module_abstractions
  * @brief Cross-platform abstractions for threading, sockets, system calls, and hardware access
  * @{
  *

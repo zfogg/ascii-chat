@@ -223,6 +223,7 @@ void lifecycle_destroy_commit(lifecycle_t *lc);
 
 /**
  * @defgroup lifecycle_sync Lifecycle with Sync Primitives
+ * @ingroup module_core
  * @brief Combined lifecycle + sync primitive initialization and shutdown.
  *
  * When lifecycle_t.sync_type is set (e.g., LIFECYCLE_SYNC_MUTEX), the lifecycle

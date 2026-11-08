@@ -7,6 +7,12 @@
  *
  * @section socket_architecture Architecture
  *
+ * @warning This is a low-level backend reference, not the application networking API.
+ * Current protocol code uses `acip_transport_t` and
+ * `packet_send_via_transport()`/`packet_receive_via_transport()` so TCP, WebSocket,
+ * WebRTC, and QUIC can share the same ACIP handlers. Use this page when implementing
+ * or debugging a socket-backed transport.
+ *
  * The socket abstraction layer provides a unified, cross-platform interface for TCP/UDP
  * network communication. It abstracts the differences between Windows Winsock2 and
  * POSIX BSD sockets, enabling application code to remain completely platform-agnostic.

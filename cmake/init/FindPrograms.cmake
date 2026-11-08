@@ -504,29 +504,12 @@ if(WIN32)
     unset(_MSVC_LIB_HINTS)
 endif()
 
-# =============================================================================
-# Python 3 - For scripts
-# =============================================================================
-if(WIN32)
-    set(_PYTHON_HINTS
-        "$ENV{USERPROFILE}/scoop/shims"
-        "$ENV{LOCALAPPDATA}/Programs/Python/Python312"
-        "$ENV{LOCALAPPDATA}/Programs/Python/Python311"
-        "$ENV{LOCALAPPDATA}/Programs/Python/Python310"
-        "$ENV{ProgramFiles}/Python312"
-        "$ENV{ProgramFiles}/Python311"
-    )
-elseif(APPLE)
-    set(_PYTHON_HINTS ${HOMEBREW_PREFIX}/bin /usr/local/bin /usr/bin)
-else()
-    set(_PYTHON_HINTS /usr/bin /usr/local/bin)
-endif()
+# Python is optional for developer-only tooling such as clang-tidy. Search PATH
+# so native builds do not depend on a Python installation or hard-coded paths.
 find_program(ASCIICHAT_PYTHON3_EXECUTABLE
     NAMES python3 python
-    HINTS ${_PYTHON_HINTS}
-    DOC "Python 3 interpreter"
+    DOC "Optional Python 3 interpreter for developer tooling"
 )
-unset(_PYTHON_HINTS)
 
 # =============================================================================
 # Ninja - Build system

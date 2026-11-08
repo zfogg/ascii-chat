@@ -391,27 +391,6 @@ endif()
 # Apply sanitizers to executable
 apply_sanitizers_to_target(ascii-chat)
 
-# Add build timing for ascii-chat executable
-add_custom_command(TARGET ascii-chat PRE_LINK
-    COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT "Starting ascii-chat timer"
-    VERBATIM
-)
-add_custom_command(TARGET ascii-chat POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT "Finishing ascii-chat timer"
-    VERBATIM
-)
-
-# Custom target wrapper for ALL builds (when no explicit --target is used)
-# This shows "up to date" message when ascii-chat doesn't need rebuilding
-add_custom_target(show-ascii-chat-success ALL
-    COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMAND_ECHO NONE
-    DEPENDS ascii-chat
-    VERBATIM
-)
-
 # macOS Info.plist embedding (for client mode webcam access)
 if(PLATFORM_DARWIN AND EXISTS "${CMAKE_SOURCE_DIR}/Info.plist")
     set_target_properties(ascii-chat PROPERTIES
@@ -595,31 +574,6 @@ endif()
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/platform/CodeSigning.cmake)
 
-# =============================================================================
-# Global Build Timer - End Marker
-# =============================================================================
-# Show total build time after the final target is built
-# ascii-chat is always built last, so attach the timer there
-add_custom_command(TARGET ascii-chat POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT "Finishing total build timer"
-    VERBATIM
-)
-
-# Custom target wrapper for ALL builds (when no explicit --target)
-# This only runs for default builds and prevents duplicate messages
-add_custom_target(build-timer-end ALL
-    DEPENDS show-ascii-chat-success
-    VERBATIM
-)
-
-# =============================================================================
-# Build-All Target - Shows Total Time After All Common Targets Built
-# =============================================================================
-# Usage: cmake --build build --target build-all
-# This builds common targets (executable and libraries),
-# then shows the total build time including all .o compilation
-
 # Determine dependencies based on build configuration
 set(BUILD_ALL_DEPS ascii-chat ascii-chat-shared)
 if(NOT BUILDING_OBJECT_LIBS)
@@ -627,10 +581,8 @@ if(NOT BUILDING_OBJECT_LIBS)
 endif()
 
 add_custom_target(build-all
-    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMAND_ECHO NONE
     DEPENDS ${BUILD_ALL_DEPS}
-    COMMENT "Finishing build-all timer"
+    COMMENT "Building all native targets"
     VERBATIM
 )
 

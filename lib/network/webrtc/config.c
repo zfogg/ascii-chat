@@ -18,9 +18,11 @@ asciichat_error_t webrtc_turn_servers_parse(const char *csv_urls, const char *us
   char *saveptr = NULL;
   char *token = platform_strtok_r(copy, ",", &saveptr);
   while (token && *count_out < capacity) {
-    while (*token == ' ' || *token == '\t') token++;
+    while (*token == ' ' || *token == '\t')
+      token++;
     size_t len = strlen(token);
-    while (len && (token[len - 1] == ' ' || token[len - 1] == '\t')) token[--len] = '\0';
+    while (len && (token[len - 1] == ' ' || token[len - 1] == '\t'))
+      token[--len] = '\0';
     if (len >= sizeof(servers[*count_out].url))
       return SET_ERRNO(ERROR_INVALID_PARAM, "TURN URL is too long");
     if (len) {
