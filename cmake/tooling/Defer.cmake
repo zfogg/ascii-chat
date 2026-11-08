@@ -13,7 +13,6 @@ set(ASCIICHAT_DEFER_TOOL "" CACHE FILEPATH "Path to pre-built ascii-instr-defer 
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildLLVMTool.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/GenerateCompilationDB.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 
 function(ascii_defer_prepare)
 
@@ -142,13 +141,6 @@ function(ascii_defer_prepare)
             ASCIICHAT_BUILD_TESTS
     )
 
-    # Create timer targets for defer transformation (comments disabled for quiet builds)
-    add_timer_targets(
-        NAME defer-all
-        COMMENT_START ""
-        COMMENT_END ""
-    )
-
     # Create per-file transformation commands for incremental builds
     set(_all_generated_outputs "")
 
@@ -168,7 +160,7 @@ function(ascii_defer_prepare)
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_dir}"
             COMMAND echo "DEBUG: Transforming ${_rel_path} with compilation db at ${CMAKE_BINARY_DIR}"
             COMMAND ${Python3_EXECUTABLE} "${CMAKE_SOURCE_DIR}/cmake/utils/run_defer_with_includes.py" "${CMAKE_BINARY_DIR}" "${_defer_tool_exe}" "${_rel_path}" --output-dir=${defer_transformed_dir}
-            DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
+            DEPENDS ${_defer_tool_depends} "${_abs_path}" "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Defer: ${_rel_path}"
             VERBATIM
@@ -202,10 +194,8 @@ function(ascii_defer_prepare)
     add_custom_target(defer-all-generated-outputs
         DEPENDS ${_all_generated_outputs}
     )
-    add_dependencies(defer-all-timer-end defer-all-generated-outputs)
-
     add_custom_target(ascii-generate-defer-transformed-sources
-        DEPENDS defer-all-timer-end
+        DEPENDS defer-all-generated-outputs
     )
 
     # Replace source file paths with transformed versions

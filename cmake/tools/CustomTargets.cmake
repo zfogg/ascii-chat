@@ -169,7 +169,6 @@ endif()
 
 # Wrapper target that builds shared library
 add_custom_target(shared-lib
-    COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    DEPENDS ascii-chat-shared build-timer-start
+    DEPENDS ascii-chat-shared
     VERBATIM
 )

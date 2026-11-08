@@ -1413,18 +1413,6 @@ endif()
 # Apply sanitizers to shared library
 apply_sanitizers_to_target(ascii-chat-shared)
 
-# Add build timing for ascii-chat-shared library
-add_custom_command(TARGET ascii-chat-shared PRE_LINK
-    COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT "Starting ascii-chat-shared timer"
-    VERBATIM
-)
-add_custom_command(TARGET ascii-chat-shared POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT "Finishing ascii-chat-shared timer"
-    VERBATIM
-)
-
 # =============================================================================
 # macOS dSYM Generation for Shared Library (Debug/Dev builds only)
 # =============================================================================
@@ -1800,18 +1788,14 @@ if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
 
     # User-friendly 'static-lib' target - builds AND validates the static library
     add_custom_target(static-lib
-        COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        COMMAND_ECHO NONE
-        DEPENDS ${STATIC_LIB_OUTPUT}.validated build-timer-start
+        DEPENDS ${STATIC_LIB_OUTPUT}.validated
         VERBATIM
     )
 else()
     message(STATUS "Symbol validation: ${BoldYellow}disabled${ColorReset} (llvm-nm not found)")
     # User-friendly 'static-lib' target - builds the static library (no validation)
     add_custom_target(static-lib
-        COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        COMMAND_ECHO NONE
-        DEPENDS ${STATIC_LIB_OUTPUT} build-timer-start
+        DEPENDS ${STATIC_LIB_OUTPUT}
         VERBATIM
     )
 endif()

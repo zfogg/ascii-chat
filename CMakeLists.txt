@@ -411,7 +411,6 @@ ascii_panic_prepare()
 # Query tool is independent of defer/panic - it doesn't do source transformation
 ascii_query_prepare()
 
-include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 
 # Build panic runtime after Libraries.cmake creates ascii-chat-panic target
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/ToolingRuntime.cmake)
