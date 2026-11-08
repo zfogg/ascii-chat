@@ -38,7 +38,6 @@ asciichat_error_t client_validate_frame(const char *text, size_t length, uint32_
                                         size_t metadata_length);
 asciichat_error_t client_decode_frame_data(const void *encoded, size_t encoded_length, void *output,
                                            size_t output_length);
-int client_send_video_frame(const uint8_t *rgba_data, int width, int height);
 int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out);
 int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out);
 int client_parse_gpg_private_key(const char *armored_key, uint8_t *secret_key_out);

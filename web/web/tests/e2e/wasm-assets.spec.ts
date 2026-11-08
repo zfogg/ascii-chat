@@ -35,7 +35,6 @@ test("binding failures record actionable C errors", async ({ page }) => {
         ),
         snapshot(() => renderer.copyPixels(new Uint8ClampedArray(0))),
         snapshot(() => m.faceDetect(new Uint8ClampedArray(1), 1, 1, 0)),
-        snapshot(() => m.sendClientFrame(new Uint8Array(1), 1, 1)),
         snapshot(() => m.handleHandshake(99, new Uint8Array())),
         snapshot(() => m.parsePacketJson(new Uint8Array())),
         snapshot(() => m.parseKey(99, false, new Uint8Array())),
@@ -59,7 +58,7 @@ test("binding failures record actionable C errors", async ({ page }) => {
       frame.delete();
     }
   });
-  expect(errors).toHaveLength(10);
+  expect(errors).toHaveLength(9);
   for (const error of errors) {
     expect(error?.code).toBe(86);
     expect(error?.message).toBeTruthy();

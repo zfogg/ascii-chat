@@ -813,27 +813,6 @@ int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint
   return result == ASCIICHAT_OK ? 0 : -1;
 }
 
-/**
- * Process a video frame and prepare it for sending
- * @param rgba_data RGBA pixel data from canvas
- * @param width Frame width
- * @param height Frame height
- * @return 0 on success, -1 on error
- */
-int client_send_video_frame(const uint8_t *rgba_data, int width, int height) {
-  if (!g_initialized) {
-    return -1;
-  }
-
-  // This is a placeholder - actual implementation would:
-  // 1. Convert RGBA to target format (e.g., compress with libjpeg-turbo)
-  // 2. Build frame packet
-  // 3. Encrypt if handshake complete
-  // 4. Return serialized packet via callback to JS
-
-  return 0;
-}
-
 // ============================================================================
 // Connection State API
 // ============================================================================

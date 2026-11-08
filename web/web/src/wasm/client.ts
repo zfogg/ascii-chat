@@ -674,22 +674,6 @@ export function serializePacket(
   return result.bytes;
 }
 /**
- * Send a video frame (placeholder for now)
- */
-export async function sendVideoFrame(
-  rgbaData: Uint8Array,
-  width: number,
-  height: number,
-): Promise<void> {
-  if (!wasmModule) {
-    throw new Error("WASM module not initialized");
-  }
-
-  const result = wasmModule.sendClientFrame(rgbaData, width, height);
-  if (result !== 0) throwWasmError(result, "Failed to send video frame");
-}
-
-/**
  * Get current connection state
  */
 export function getConnectionState(): ConnectionState {

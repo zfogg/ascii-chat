@@ -544,7 +544,6 @@ interface EmbindModule {
   receiveHandshake(_0: boolean, _1: number, _2: ClientBytes): number;
   cryptPacket(_0: boolean, _1: ClientBytes): ClientPacketResult;
   serializePacket(_0: number, _1: ClientBytes, _2: number): ClientPacketResult;
-  sendClientFrame(_0: ClientBytes, _1: number, _2: number): number;
   validateFrame(
     _0: ClientBytes,
     _1: number,

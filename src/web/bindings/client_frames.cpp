@@ -6,16 +6,6 @@ extern "C" {
 #include <cstdint>
 #include <vector>
 
-static int send_client_frame(ClientBytes rgba, int width, int height) {
-  const size_t length = rgba["length"].as<size_t>();
-  if (width <= 0 || height <= 0 || static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4 != length)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client video frame: %dx%d, %zu bytes", width, height, length);
-  auto bytes = binding_copy_input(rgba);
-  const int result = client_send_video_frame(bytes.data(), width, height);
-  if (result)
-    SET_ERRNO(ERROR_NETWORK, "Cannot send client video frame");
-  return result;
-}
 static ClientFrameResult validate_frame(ClientBytes encoded, unsigned width, unsigned height, unsigned checksum,
                                         unsigned flags, ClientBytes contract, unsigned original_size) {
   const size_t input_size = encoded["length"].as<size_t>();
@@ -48,6 +38,5 @@ static ClientFrameResult validate_frame(ClientBytes encoded, unsigned width, uns
 EMSCRIPTEN_BINDINGS(ascii_chat_client_frames) {
   emscripten::register_type<ClientFrameResult>("ClientFrameResult",
                                                "{ code: number; decodeFailed: boolean; bytes: Uint8Array }");
-  emscripten::function("sendClientFrame", &send_client_frame);
   emscripten::function("validateFrame", &validate_frame);
 }
