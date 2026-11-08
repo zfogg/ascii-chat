@@ -26,7 +26,8 @@ MMMBED := $(SQL_MMMBED)
 SQL_TOOL_PREREQUISITE := ensure-mmmbed
 endif
 GO ?= go
-SQL_CC ?= $(if $(filter Windows_NT,$(OS)),$(if $(filter ARM64,$(PROCESSOR_ARCHITECTURE) $(PROCESSOR_ARCHITEW6432)),aarch64-w64-mingw32-clang,gcc),$(CC))
+SQL_CC_AUTODETECT := $(if $(filter undefined,$(origin SQL_CC)),1,0)
+SQL_CC ?= $(if $(filter Windows_NT,$(OS)),$(if $(filter ARM64 CLANGARM64,$(PROCESSOR_ARCHITECTURE) $(PROCESSOR_ARCHITEW6432) $(MSYSTEM)),aarch64-w64-mingw32-clang,gcc),$(CC))
 SQL_MMMBED_DIR := $(SOURCE_DIR)/deps/ascii-chat-deps/mmmbed
 
 init-sql-tools:
@@ -64,6 +65,10 @@ ensure-mmmbed: init-sql-tools
 	  fi; \
 	  host_os=$$(GOTOOLCHAIN="$${go_switch}" "$${go_command}" env GOHOSTOS) && \
 	    host_arch=$$(GOTOOLCHAIN="$${go_switch}" "$${go_command}" env GOHOSTARCH) || exit 1; \
+	  sql_cc="$(SQL_CC)"; \
+	  if [ "$(SQL_CC_AUTODETECT)" = 1 ] && [ "$${host_os}" = windows ] && [ "$${host_arch}" = arm64 ]; then \
+	    sql_cc=aarch64-w64-mingw32-clang; \
+	  fi; \
 	  cache="$(abspath $(BUILD_DIR))/sql-tools/$${host_os}-$${host_arch}"; mkdir -p "$${cache}"; \
 	  revision=""; dirty=""; \
 	  if [ -e "$(SQL_MMMBED_DIR)/.git" ]; then \
@@ -72,7 +77,7 @@ ensure-mmmbed: init-sql-tools
 	  fi; \
 	  if [ -n "$${dirty}" ] || [ -z "$${revision}" ] || [ ! -f "$${cache}/mmmbed$(SQL_EXEEXT)" ] || \
 	     [ "$${revision}" != "$$(cat "$${cache}/revision" 2>/dev/null)" ]; then \
-	    cd "$(SQL_MMMBED_DIR)" && GOTOOLCHAIN="$${go_switch}" CGO_ENABLED=1 CC="$(SQL_CC)" GOOS="$${host_os}" GOARCH="$${host_arch}" \
+	    cd "$(SQL_MMMBED_DIR)" && GOTOOLCHAIN="$${go_switch}" CGO_ENABLED=1 CC="$${sql_cc}" GOOS="$${host_os}" GOARCH="$${host_arch}" \
 	      "$${go_command}" build -o "$${cache}/mmmbed$(SQL_EXEEXT)" ./cmd/mmmbed && \
 	    if [ -n "$${dirty}" ]; then printf 'dirty:%s\n' "$${revision}"; else printf '%s\n' "$${revision}"; fi > "$${cache}/revision" || exit 1; \
 	  fi; \
