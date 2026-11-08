@@ -69,34 +69,58 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "`n=== ascii-chat Dependency Installer ===`n" -ForegroundColor Cyan
 
+Write-Host "Getting submodules" -ForegroundColor Yellow
+& git submodule init
+& git submodule update --recursive
+if ($LASTEXITCODE -ne 0) { throw "Submodule initialization failed." }
+
 # SQL catalog generation builds mmmbed from its pinned Go sources.
 if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        throw "Go 1.23 or newer is required. Install Go or winget and rerun this script."
+        throw "Go is required. Install Go or winget and rerun this script."
     }
     & winget install --id GoLang.Go --exact --accept-package-agreements --accept-source-agreements
     if ($LASTEXITCODE -ne 0) { throw "Go installation failed." }
     $env:Path = "$env:ProgramFiles\Go\bin;$env:Path"
 }
 $GoVersion = & go version
-if ($GoVersion -match 'go(\d+)\.(\d+)' -and ([int]$Matches[1] -lt 1 -or ([int]$Matches[1] -eq 1 -and [int]$Matches[2] -lt 23))) {
-    $GoToolDir = Join-Path $HOME '.local/bin'
+if ($GoVersion -match 'go(\d+)\.(\d+)' -and ([int]$Matches[1] -lt 1 -or ([int]$Matches[1] -eq 1 -and [int]$Matches[2] -lt 21))) {
+    $GoToolDir = & go env GOBIN
+    if (-not $GoToolDir) {
+        $GoPaths = (& go env GOPATH) -split [IO.Path]::PathSeparator
+        $GoToolDir = Join-Path $GoPaths[0] 'bin'
+    }
+    $ModuleFile = Join-Path $PSScriptRoot '../deps/ascii-chat-deps/mmmbed/go.mod'
+    $GoToolVersion = ((Get-Content -LiteralPath $ModuleFile | Where-Object { $_ -match '^go ' }) -replace '^go\s+', '').Trim()
     New-Item -ItemType Directory -Force -Path $GoToolDir | Out-Null
     $PreviousGoBin = $env:GOBIN
     try {
         $env:GOBIN = $GoToolDir
-        & go install golang.org/dl/go1.23.12@latest
-        if ($LASTEXITCODE -ne 0) { throw "Could not install the Go 1.23 toolchain launcher." }
-        & (Join-Path $GoToolDir 'go1.23.12.exe') download
-        if ($LASTEXITCODE -ne 0) { throw "Could not download the Go 1.23 toolchain." }
+        & go install "golang.org/dl/go$GoToolVersion@latest"
+        if ($LASTEXITCODE -ne 0) { throw "Could not install the Go toolchain launcher." }
+        & (Join-Path $GoToolDir "go$GoToolVersion.exe") download
+        if ($LASTEXITCODE -ne 0) { throw "Could not download the Go toolchain." }
     } finally {
         $env:GOBIN = $PreviousGoBin
     }
 }
 
-Write-Host "Getting submodules" -ForegroundColor Yellow
-& git submodule init
-& git submodule update --recursive
+if ($IsWindows -and -not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        throw "MinGW GCC is required for CGo. Install it or winget and rerun this script."
+    }
+    if ($Architecture -ne 'x64') {
+        throw "Install a native MinGW GCC toolchain for $Architecture and rerun this script."
+    }
+    & winget install --id BrechtSanders.WinLibs.POSIX.UCRT --exact --accept-package-agreements --accept-source-agreements
+    if ($LASTEXITCODE -ne 0) { throw "MinGW GCC installation failed." }
+    $MachinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $env:Path = "$MachinePath;$UserPath;$env:Path"
+    if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+        throw "MinGW GCC was installed but is not on PATH. Open a new shell and rerun this script."
+    }
+}
 
 # Check for Visual Studio Build Tools (provides nmake for BearSSL)
 $VsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"

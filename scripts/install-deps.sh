@@ -411,8 +411,9 @@ elif [[ "$PLATFORM" == "windows" ]]; then
   exit 1
 fi
 
-# mmmbed requires Go 1.23. Older Linux distributions may ship Go before
-# automatic toolchain selection; install a versioned tool without replacing it.
+# Go 1.21 and later automatically download the version specified by mmmbed's
+# go.mod. On older distributions, use Go's versioned toolchain launcher in
+# the configured GOBIN (or GOPATH/bin) without replacing the system Go.
 if ! command -v go >/dev/null 2>&1; then
   if [[ "$PLATFORM" == "macos" ]]; then
     brew install go
@@ -427,10 +428,16 @@ fi
 command -v go >/dev/null 2>&1 || { echo >&2 "ERROR: Go installation failed"; exit 1; }
 go_version=$(go version)
 if [[ "$go_version" =~ go([0-9]+)\.([0-9]+) ]] &&
-   { (( BASH_REMATCH[1] < 1 )) || { (( BASH_REMATCH[1] == 1 )) && (( BASH_REMATCH[2] < 23 )); }; }; then
-  mkdir -p "$HOME/.local/bin"
-  GOBIN="$HOME/.local/bin" go install golang.org/dl/go1.23.12@latest
-  "$HOME/.local/bin/go1.23.12" download
+   { (( BASH_REMATCH[1] < 1 )) || { (( BASH_REMATCH[1] == 1 )) && (( BASH_REMATCH[2] < 21 )); }; }; then
+  go_tool_version=$(sed -n 's/^go //p' "$(dirname "$0")/../deps/ascii-chat-deps/mmmbed/go.mod")
+  go_bin=$(go env GOBIN)
+  if [ -z "$go_bin" ]; then
+    go_bin=$(go env GOPATH)
+    go_bin="${go_bin%%:*}/bin"
+  fi
+  mkdir -p "$go_bin"
+  GOBIN="$go_bin" go install "golang.org/dl/go${go_tool_version}@latest"
+  "$go_bin/go${go_tool_version}" download
 fi
 
 # Vite+ supplies Oxfmt and the Node.js toolchain used by formatting targets.

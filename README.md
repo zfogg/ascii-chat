@@ -151,15 +151,18 @@ make generate-sql
 make check-sql
 ```
 
-These targets initialize the pinned mmmbed and Sequel submodules if needed and
-build `bin/mmmbed` and `bin/sequel` (`.exe` on Windows) when missing or when a
-pinned submodule revision changes. The
-generated header is `lib/discovery/queries_generated.h`; commit it with the SQL
-changes. The binaries and intermediate build files are ignored by Git. SQL is
-formatted with the pinned Sequel version, so contributors generate the same
-output. To use these targets, install Go 1.23 or newer, Git, CMake, Ninja, and a
-C compiler. The dependency installers install Go; Go 1.23 is bootstrapped
-alongside older system versions when needed.
+These targets initialize the pinned mmmbed submodule if needed and build
+`bin/mmmbed` (`bin/mmmbed.exe` on Windows) when missing or when the pinned
+revision changes. The generated header is `lib/discovery/queries_generated.h`;
+commit it with the SQL changes. The binary and intermediate build files are
+ignored by Git. Mmmbed uses its pinned Sequel Go dependency to format SQL, so
+contributors generate the same output without a separate Sequel executable.
+
+Building mmmbed needs Git, Go 1.26, CGo and a C compiler. Go 1.21 or newer can fetch
+the required toolchain automatically; the dependency installers also provision
+the version specified by mmmbed for older Go installations. The make targets
+use Clang on Unix and MinGW GCC on Windows; `GO` and `SQL_CC` can be overridden
+when invoking make.
 
 Common development targets (run with `cmake --build build --target <name>`):
 
