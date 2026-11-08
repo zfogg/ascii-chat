@@ -116,6 +116,7 @@ private struct TestFrameView: View {
 private struct CameraAsciiView: View {
     @State private var image: CGImage?
     @State private var cameraMessage = "Checking camera access…"
+    @State private var audioMessage = "Checking microphone access…"
     @State private var cameraStarted = false
 
     private func readCameraFrame() -> Bool {
@@ -170,6 +171,7 @@ private struct CameraAsciiView: View {
                 VStack {
                     Text("Starting shared mirror pipeline…")
                     Text(cameraMessage).font(.caption).foregroundStyle(.secondary)
+                    Text(audioMessage).font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
@@ -189,7 +191,10 @@ private struct CameraAsciiView: View {
                 cameraStarted = asciichat_ios_camera_start(0) != 0
             }
             if asciichat_ios_audio_authorized() == 0 {
+                audioMessage = "Microphone permission requested"
                 asciichat_ios_audio_request_access()
+            } else {
+                audioMessage = "Microphone access granted"
             }
             let smokeText = "\u{1b}[2J\u{1b}[H\u{1b}[1;36mascii-chat iOS render bridge\u{1b}[0m\n\nC output is reaching SwiftUI through libvterm + FreeType."
             smokeText.withCString { text in
