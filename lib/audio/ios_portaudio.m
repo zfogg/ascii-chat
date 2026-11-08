@@ -17,6 +17,8 @@ struct PaStream {
   float *input_interleaved;
   size_t input_capacity_frames;
   BOOL active;
+  unsigned long queued_frames;
+  NSLock *queue_lock;
   id interruption_observer;
 };
 
@@ -78,6 +80,7 @@ PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const 
   opened->input_channels = input ? input->channelCount : 0;
   opened->output_channels = output ? output->channelCount : 0;
   opened->input_capacity_frames = frames_per_buffer ? frames_per_buffer : 1024;
+  opened->queue_lock = [NSLock new];
   if (opened->input_channels > 0)
     opened->input_interleaved =
         SAFE_CALLOC(opened->input_capacity_frames, (size_t)opened->input_channels * sizeof(float), float *);
@@ -176,6 +179,7 @@ PaError Pa_CloseStream(PaStream *stream) {
   stream->active = NO;
   stream->player = nil;
   stream->engine = nil;
+  stream->queue_lock = nil;
   SAFE_FREE(stream->input_interleaved);
   SAFE_FREE(stream);
   return paNoError;
@@ -183,6 +187,16 @@ PaError Pa_CloseStream(PaStream *stream) {
 PaError Pa_WriteStream(PaStream *stream, const void *buffer, unsigned long frames) {
   if (!stream || !stream->player || !buffer || frames == 0)
     return -1;
+  [stream->queue_lock lock];
+  {
+    const unsigned long max_queued_frames = (unsigned long)(stream->sample_rate * 2.0);
+    if (!stream->active || frames > max_queued_frames || stream->queued_frames > max_queued_frames - frames) {
+      [stream->queue_lock unlock];
+      return paOutputUnderflow;
+    }
+    stream->queued_frames += frames;
+  }
+  [stream->queue_lock unlock];
   AVAudioFormat *format =
       [[AVAudioFormat alloc] initStandardFormatWithSampleRate:stream->sample_rate
                                                      channels:(AVAudioChannelCount)stream->output_channels];
@@ -192,6 +206,11 @@ PaError Pa_WriteStream(PaStream *stream, const void *buffer, unsigned long frame
   for (size_t frame = 0; frame < frames; ++frame)
     for (int channel = 0; channel < stream->output_channels; ++channel)
       audio.floatChannelData[channel][frame] = samples[frame * (size_t)stream->output_channels + (size_t)channel];
-  [stream->player scheduleBuffer:audio completionHandler:nil];
+  [stream->player scheduleBuffer:audio
+               completionHandler:^{
+                 [stream->queue_lock lock];
+                 stream->queued_frames = stream->queued_frames > frames ? stream->queued_frames - frames : 0;
+                 [stream->queue_lock unlock];
+               }];
   return paNoError;
 }

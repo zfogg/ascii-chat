@@ -38,6 +38,9 @@ if(PLATFORM_IOS)
         set(_OPENSSL_IOS_ARCH "arm64")
         set(_OPENSSL_IOS_CONFIG "darwin64-arm64-cc")
     endif()
+    string(REPLACE ";" "-" _OPENSSL_IOS_ARCH_KEY "${_OPENSSL_IOS_ARCH}")
+    set(OPENSSL_PREFIX "${IOS_DEPS_CACHE_DIR}/openssl-${OPENSSL_VERSION}-${_OPENSSL_IOS_VARIANT}-${_OPENSSL_IOS_ARCH_KEY}")
+    set(OPENSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-ios-${OPENSSL_VERSION}-${_OPENSSL_IOS_VARIANT}-${_OPENSSL_IOS_ARCH_KEY}-build")
 
     # Get actual iOS SDK path using xcrun
     if(BUILD_IOS_SIM)

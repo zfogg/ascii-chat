@@ -1622,9 +1622,15 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   // This ensures WebSocket upgrade includes Sec-WebSocket-Protocol: acip
   connect_info.local_protocol_name = "acip";
   connect_info.protocol = "acip";
-  // Use SSL + skip server certificate hostname verification + allow self-signed certs (for development)
-  connect_info.ssl_connection =
-      use_ssl ? (LCCSCF_USE_SSL | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_SELFSIGNED) : 0;
+  connect_info.ssl_connection = use_ssl ? LCCSCF_USE_SSL : 0;
+  if (use_ssl && (!websocket_client_ca_pem || websocket_client_ca_pem_size == 0)) {
+    log_error("WSS requested but no system CA roots are available");
+    SET_ERRNO(ERROR_INVALID_STATE, "No CA roots available for WebSocket TLS");
+    lws_context_destroy(ws_data->context);
+    ws_data->context = NULL;
+    acip_transport_destroy(transport);
+    return NULL;
+  }
   connect_info.opaque_user_data = ws_data;
 
   log_debug("Calling lws_client_connect_via_info...");
