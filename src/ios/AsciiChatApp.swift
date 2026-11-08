@@ -304,6 +304,10 @@ struct ContentView: View {
         .padding()
         .onReceive(Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()) { _ in
             lifecycleTick &+= 1
+            if sessionStarted && asciichat_ios_is_running() == 0 {
+                sessionStarted = false
+                launchMessage = "Session ended"
+            }
         }
         .onDisappear {
             platform_disable_keepawake()
