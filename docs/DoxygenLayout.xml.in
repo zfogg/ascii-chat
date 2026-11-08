@@ -9,6 +9,7 @@
          evidence reports, and historical records from overwhelming the API navigation. -->
     <tab type="pages" visible="no" title="" intro=""/>
     <tab type="topics" visible="yes" title="" intro=""/>
+    <tab type="user" visible="yes" url="@ref topic_categories" title="Topic Categories"/>
     <tab type="modules" visible="yes" title="" intro="">
       <tab type="modulelist" visible="yes" title="" intro=""/>
       <tab type="modulemembers" visible="yes" title="" intro=""/>
