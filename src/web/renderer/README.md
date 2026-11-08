@@ -89,20 +89,21 @@ HTML canvas on the main thread.
 
 Configure the repository's Emscripten build as described in the main WASM
 build guide, then build `renderer-web` (the parent build exposes this target
-too). `npm ci` installs package development dependencies. In this directory:
+too). Install the root workspace dependencies with `vp install --frozen-lockfile`. In this directory:
 
 ```sh
 cmake --build ../../../build-wasm --target renderer-web
-npm ci
 # Set ASCII_CHAT_WASM_ARTIFACT_DIR to an absolute path for another build dir.
 npm run build
 npm test
+npm run test:package
 npm pack --dry-run
 ```
 
 The build copies `renderer.js` and `renderer.wasm` from the build tree to
 ignored `dist/`, alongside compiled TypeScript and declarations. The npm pack
-includes those generated files; none are committed. Tests serve the package
+includes those generated files; none are committed. The package test installs the tarball in a clean
+project and checks both JavaScript imports and TypeScript declarations. Tests serve the package
 from an isolated local HTTP server and render a test pattern through WASM to a
 canvas for 120 animation frames, in addition to mode and visualization checks.
 `CHROME_PATH` can select a locally installed Chromium executable.

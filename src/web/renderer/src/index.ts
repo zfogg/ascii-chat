@@ -10,7 +10,7 @@ import {
   paletteName,
   defaultPalettes,
   type OptionValues,
-} from "@ascii-chat/shared/wasm/options";
+} from "./options.js";
 export {
   Options,
   ColorMode,
@@ -24,13 +24,13 @@ export {
   colorFilterValues,
   paletteTypes,
   paletteName,
-} from "@ascii-chat/shared/wasm/options";
+} from "./options.js";
 export type {
   OptionValue,
   OptionValues,
   OptionsSnapshot,
   Palette,
-} from "@ascii-chat/shared/wasm/options";
+} from "./options.js";
 
 /** Rendering keys supported by the shared native options registry. */
 export type RendererOptions = OptionValues &

@@ -51,7 +51,7 @@ preallocated where practical, and test any additional copies in the actual
 worker or rendering path.
 
 The standalone [`ascii-chat` renderer package](https://github.com/zfogg/ascii-chat/blob/master/src/web/renderer/README.md)
-uses the shared Embind frame and options adapters in `src/web/common/` and is
+uses shared Embind frame bindings and options in `src/web/bindings/` and `src/web/common/` and is
 built by the separate `renderer-web` target. It produces an independently
 initialized WASM module and npm package rather than adding another site asset.
 Its Embind session object runs native cleanup in its destructor when the TypeScript facade is disposed. Its README documents its TypeScript API, ownership, browser isolation headers,

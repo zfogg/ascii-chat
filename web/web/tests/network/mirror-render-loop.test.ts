@@ -328,7 +328,7 @@ test("camera video callbacks also convert once per arrival when direct capture i
   expect(writeFrame).toHaveBeenCalledTimes(10);
 });
 
-test("resets stabilization when the media revision changes", () => {
+test("resets session rendering when the media revision changes", () => {
   const params = {
     isWebcamRunning: false,
     terminalDimensions: { cols: 80, rows: 30 },
@@ -345,11 +345,11 @@ test("resets stabilization when the media revision changes", () => {
       useMirrorRenderLoop({ ...params, mediaRevision: revision }),
     { initialProps: { revision: 1 } },
   );
-  expect(resetRenderStabilizer).toHaveBeenCalledTimes(1);
+  expect(cleanupRenderSession).toHaveBeenCalledTimes(1);
   rerender({ revision: 1 });
-  expect(resetRenderStabilizer).toHaveBeenCalledTimes(1);
+  expect(cleanupRenderSession).toHaveBeenCalledTimes(1);
   rerender({ revision: 2 });
-  expect(resetRenderStabilizer).toHaveBeenCalledTimes(2);
+  expect(cleanupRenderSession).toHaveBeenCalledTimes(2);
 });
 
 test("cleans up session rendering when the active loop stops", () => {
@@ -368,7 +368,7 @@ test("cleans up session rendering when the active loop stops", () => {
       streamRef: { current: null },
     }),
   );
-  expect(cleanupRenderSession).not.toHaveBeenCalled();
-  unmount();
   expect(cleanupRenderSession).toHaveBeenCalledOnce();
+  unmount();
+  expect(cleanupRenderSession).toHaveBeenCalledTimes(2);
 });

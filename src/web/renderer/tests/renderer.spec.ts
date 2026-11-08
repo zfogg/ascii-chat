@@ -7,7 +7,7 @@ test("standalone package renders modes, visualizations and canvas at 60 fps", as
 }) => {
   await page.goto("/");
   const results = await page.evaluate(async () => {
-    const url = "/src/web/renderer/src/index.js";
+    const url = "/index.js";
     const { createRenderer, ColorMode, RenderMode, TextRenderer } =
       await import(url);
     const renderer = await createRenderer();
@@ -105,7 +105,7 @@ test("standalone package renders modes, visualizations and canvas at 60 fps", as
   expect(results.fft).toBeGreaterThan(0);
   expect(results.pixels).toBe(true);
   expect(results.count).toBe(120);
-  expect(results.fps).toBeGreaterThan(50);
+  expect(results.fps).toBeGreaterThanOrEqual(59);
   console.log(
     `Standalone renderer: ${results.fps.toFixed(1)} fps, canvas ${results.canvas.join("x")}`,
   );
@@ -116,7 +116,7 @@ test("Embind session owns native initialization and cleanup", async ({
 }) => {
   await page.goto("/");
   const result = await page.evaluate(async () => {
-    const url = "/src/web/renderer/src/renderer.js";
+    const url = "/renderer.js";
     const factory = (await import(url)).default;
     const module = await factory({
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
@@ -159,7 +159,7 @@ test("object options patches commit atomically and respect revisions", async ({
 }) => {
   await page.goto("/");
   const result = await page.evaluate(async () => {
-    const url = "/src/web/renderer/src/renderer.js";
+    const url = "/renderer.js";
     const factory = (await import(url)).default;
     const module = await factory({
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
@@ -233,13 +233,14 @@ test("shared rendering constants match the native definitions", async ({
   );
   await page.goto("/");
   const values = await page.evaluate(async () => {
-    const url = "/src/web/renderer/src/index.js";
+    const url = "/index.js";
     const {
       ColorMode,
       RenderMode,
       ColorFilter,
       TextRenderer,
       defaultPalettes,
+      MAX_CUSTOM_PALETTE_BYTES,
     } = await import(url);
     return {
       ColorMode,
@@ -247,6 +248,7 @@ test("shared rendering constants match the native definitions", async ({
       ColorFilter,
       TextRenderer,
       defaultPalettes,
+      MAX_CUSTOM_PALETTE_BYTES,
     };
   });
   const nativeNumber = (source: string, name: string) => {
@@ -280,6 +282,11 @@ test("shared rendering constants match the native definitions", async ({
     expect(value).toBe(
       nativeNumber(options, "ASCII_RENDERER_" + key.toUpperCase()),
     );
+  const paletteLimit = options.match(
+    /#define\s+OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE\s+(\d+)/,
+  );
+  if (!paletteLimit) throw new Error("Missing native palette buffer size");
+  expect(values.MAX_CUSTOM_PALETTE_BYTES).toBe(Number(paletteLimit[1]) - 1);
   for (const [key, value] of Object.entries(values.defaultPalettes)) {
     const match = palette.match(
       new RegExp(
@@ -294,7 +301,7 @@ test("shared rendering constants match the native definitions", async ({
 test("palette length matches the native UTF-8 limit", async ({ page }) => {
   await page.goto("/");
   const result = await page.evaluate(async () => {
-    const url = "/src/web/renderer/src/index.js";
+    const url = "/index.js";
     const { createRenderer } = await import(url);
     const renderer = await createRenderer();
     try {

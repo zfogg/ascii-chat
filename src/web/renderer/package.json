@@ -15,21 +15,25 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/src/web/renderer/src/index.d.ts",
-      "import": "./dist/src/web/renderer/src/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
-    "./renderer.wasm": "./dist/src/web/renderer/src/renderer.wasm",
-    "./renderer.js": "./dist/src/web/renderer/src/renderer.js",
+    "./renderer.wasm": "./dist/renderer.wasm",
+    "./renderer.js": "./dist/renderer.js",
     "./options": {
-      "types": "./dist/src/web/renderer/src/options.d.ts",
-      "import": "./dist/src/web/renderer/src/options.js"
+      "types": "./dist/options.d.ts",
+      "import": "./dist/options.js"
+    },
+    "./bindings": {
+      "types": "./dist/renderer-bindings.d.ts"
     }
   },
   "scripts": {
-    "build": "node clean.mjs && tsc -p tsconfig.json && node build.mjs",
+    "build": "tsc --noEmit -p tsconfig.json && vp pack src/index.ts src/options.ts --dts --platform browser && node build.mjs",
     "prepack": "npm run build",
     "test": "playwright test",
-    "pretest": "npm run build"
+    "pretest": "npm run build",
+    "test:package": "node tests/package-consumer.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
