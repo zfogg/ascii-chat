@@ -1,120 +1,130 @@
 /**
- * @page topics Topics
+ * @defgroup topics Topics
  * @brief 📚 Comprehensive topic documentation for ascii-chat
  *
  * This page organizes documentation by functional modules, matching the architectural
  * structure of the codebase. Each section corresponds to a module group defined by
- * @defgroup/@ingroup annotations in the source code.
+ * group annotations in the source code.
  *
  * @tableofcontents
+ *
+ * The authored documentation is organized under @ref topic_categories "Topic Categories".
+ * Use that index for focused runtime guides, operational notes, validation material,
+ * research, and tooling; use the sections below for source-oriented architecture.
+ *
+ * @section topics_guides 📖 How to use Topics
+ *
+ * Start with @ref topic_categories "Topic Categories" for the curated index of all
+ * authored guides and notes. The sections below are the source-oriented architecture
+ * map; each topic page connects its design notes to the relevant files and symbols.
  *
  * @section topics_utilities 🛠️ Utilities
  *
  * @copybrief module_utilities
  *
- * - @subpage topic_util
+ * - @ref topic_util "Utility Functions"
  *
  * @section topics_data_structures 📦 Data Structures
  *
  * @copybrief module_data_structures
  *
- * - @subpage topic_buffer
- * - @subpage topic_ringbuffer
- * - @subpage topic_packet_queue
+ * - @ref topic_buffer "Owned Buffers"
+ * - @ref topic_ringbuffer "Ring Buffer"
+ * - @ref topic_packet_queue "Packet Queue"
  * - @subpage uthash library
  *
  * @section topics_abstractions 🔌 Abstraction Layers
  *
  * @copybrief module_abstractions
  *
- * - @subpage topic_platform
- * - @subpage topic_webcam
+ * - @ref topic_platform "Platform Abstraction Layer"
+ * - @ref topic_webcam "Webcam Capture"
  *
  * @section topics_crypto 🔐 Cryptography
  *
  * @copybrief module_crypto
  *
- * - @subpage topic_crypto
- * - @subpage topic_handshake
- * - @subpage topic_keys
+ * - @ref topic_crypto "Cryptography"
+ * - @ref topic_handshake "Handshake Protocol"
+ * - @ref topic_keys "Key Management"
  *
  * @section topics_video 📹 Video
  *
  * @copybrief module_video
  *
- * - @subpage topic_video
- * - @subpage topic_video_frame
- * - @subpage topic_grid_layout
- * - @subpage topic_palette
+ * - @ref topic_video "Video"
+ * - @ref topic_video_frame "Video Frames"
+ * - @ref topic_grid_layout "Grid Layout"
+ * - @ref topic_palette "Palettes"
  *
  * @section topics_audio 🔊 Audio Processing
  *
  * @copybrief module_audio
  *
- * - @subpage topic_audio
- * - @subpage topic_mixer
+ * - @ref topic_audio "Audio"
+ * - @ref topic_mixer "Mixer"
  *
  * @section topics_core ⚙️ Core Infrastructure
  *
  * @copybrief module_core
  *
- * - @subpage topic_main
- * - @subpage topic_common
- * - @subpage topic_errno
- * - @subpage topic_logging
- * - @subpage topic_options
- * - @subpage topic_config
+ * - @ref topic_main "Main"
+ * - @ref topic_common "Common"
+ * - @ref errno "Error Handling"
+ * - @ref topic_logging "Logging"
+ * - @ref topic_options "Options"
+ * - @ref topic_config "Configuration"
  *
  * @section topics_network 🌐 Network
  *
  * @copybrief module_network
  *
- * - @subpage topic_network
- * - @subpage topic_compression
- * - @subpage topic_packet_types
- * - @subpage topic_av
+ * - @ref topic_network "Network"
+ * - @ref topic_compression "Compression"
+ * - @ref topic_packet_types "Packet Types"
+ * - @ref topic_av "Audio/Video Networking"
  *
  * @section topics_client 💻 Client Application
  *
  * @copybrief module_client
  *
- * - @subpage topic_client
- * - @subpage topic_client_main
- * - @subpage topic_client_connection
- * - @subpage topic_client_protocol
- * - @subpage topic_client_capture
- * - @subpage topic_client_display
- * - @subpage topic_client_audio
- * - @subpage topic_client_keepalive
- * - @subpage topic_client_crypto
+ * - @ref topic_client "Client"
+ * - @ref topic_client_main "Client Main"
+ * - @ref topic_client_connection "Client Connection"
+ * - @ref topic_client_protocol "Client Protocol"
+ * - @ref topic_client_capture "Client Capture"
+ * - @ref topic_client_display "Client Display"
+ * - @ref topic_client_audio "Client Audio"
+ * - @ref topic_client_keepalive "Client Keepalive"
+ * - @ref topic_client_crypto "Client Crypto"
  *
  * @section topics_server 🖥️ Server Application
  *
  * @copybrief module_server
  *
- * - @subpage topic_server
- * - @subpage topic_server_main
- * - @subpage topic_server_client
- * - @subpage topic_server_protocol
- * - @subpage topic_server_stream
- * - @subpage topic_server_render
- * - @subpage topic_server_stats
- * - @subpage topic_server_crypto
+ * - @ref topic_server "Server"
+ * - @ref topic_server_main "Server Main"
+ * - @ref topic_server_client "Server Client"
+ * - @ref topic_server_protocol "Server Protocol"
+ * - @ref topic_server_stream "Server Stream"
+ * - @ref topic_server_render "Server Render"
+ * - @ref topic_server_stats "Server Stats"
+ * - @ref topic_server_crypto "Server Crypto"
  *
  * @section topics_development 🔧 Development & Debugging
  *
  * @copybrief module_development
  *
- * - @subpage topic_dependencies
- * - @subpage topic_build
- * - @subpage topic_testing
- * - @subpage topic_debug
- * - @subpage topic_lock_debug
+ * - @ref topic_dependencies "Dependencies"
+ * - @ref topic_build "Build System"
+ * - @ref topic_testing "Testing"
+ * - @ref topic_debug "Debugging"
+ * - @ref topic_lock_debug "Lock Debugging"
  *
  * @subsection topics_tooling 🧰 Tooling
  *
  * Source-to-source transformation tools for debugging and code quality.
  *
- * - @subpage topic_defer - 🔄 Go/Zig-style defer statements for automatic cleanup
- * - @subpage topic_panic - 🚨 Per-statement logging for crash debugging
+ * - @ref topic_defer "Defer Statements" - 🔄 Go/Zig-style defer statements for automatic cleanup
+ * - @ref topic_panic "Panic Instrumentation" - 🚨 Per-statement logging for crash debugging
  */

@@ -33,6 +33,40 @@
  *
  * **Implementation**: lib/network/network.h, lib/network/packet.h
  *
+ * @warning This page originally described the pre-transport network API. The current
+ * application boundary is the ACIP transport abstraction in
+ * `include/ascii-chat/network/acip/transport.h`. The raw socket helpers documented
+ * below remain useful inside transport backends, but protocol and application code
+ * should pass an `acip_transport_t *` to the packet/ACIP helpers instead of calling
+ * `send()`/`recv()` or binding protocol logic to a socket descriptor.
+ *
+ * @section network_transport_abstraction Current Transport Architecture
+ *
+ * ACIP separates *what* is sent from *how* it is delivered:
+ *
+ * - `acip_transport_t` owns connection state, lifecycle, readiness, backpressure,
+ *   optional crypto state, and transport-specific framing.
+ * - Packet and protocol code uses `packet_send_via_transport()` and
+ *   `packet_receive_via_transport()` (or the higher-level `acip_send_*()` helpers).
+ * - TCP, WebSocket, and WebRTC backends implement the same method table. QUIC has
+ *   its own transport implementation and is selected by the connection layer where
+ *   supported.
+ * - A connection may expose its transport through the connection API; callers should
+ *   not reach through it to manipulate the underlying socket.
+ *
+ * The normal flow is therefore:
+ *
+ * @code{.c}
+ * acip_transport_t *transport = network_connection_transport(connection);
+ * asciichat_error_t result = packet_send_via_transport(
+ *     transport, PACKET_TYPE_PING, NULL, 0, 0);
+ * @endcode
+ *
+ * Transport ownership is explicit (`ACIP_TRANSPORT_BORROWED` or
+ * `ACIP_TRANSPORT_OWNED`). A transport must not be destroyed while another worker
+ * still uses it; use the connection/session lifecycle helpers to interrupt I/O,
+ * join users, and release ownership in order.
+ *
  * @section network_architecture Architecture
  *
  * The network module is built around a few key concepts: timeouts to prevent
@@ -218,7 +252,9 @@
  * @section network_integration Integration
  *
  * The Network I/O module integrates with:
- * - **platform/socket.h**: Uses platform socket abstraction
+ * - **network/acip/transport.h**: Transport-neutral packet delivery boundary
+ * - **network/connection.h**: Connection lifecycle and transport ownership
+ * - **platform/socket.h**: Low-level socket abstraction used by socket-backed transports
  * - **network/packet_types.h**: Packet type definitions
  * - **crypto/crypto.h**: Encryption/decryption operations
  * - **compression.h**: Compression/decompression support

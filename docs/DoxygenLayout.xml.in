@@ -4,7 +4,10 @@
   <!-- Navigation index tabs for HTML output -->
   <navindex>
     <tab type="mainpage" visible="yes" title=""/>
-    <tab type="pages" visible="yes" title="" intro=""/>
+    <!-- Authored pages are reachable from the curated Documentation Guide under Topics.
+         Keeping the global page dump out of the sidebar prevents implementation notes,
+         evidence reports, and historical records from overwhelming the API navigation. -->
+    <tab type="pages" visible="no" title="" intro=""/>
     <tab type="topics" visible="yes" title="" intro=""/>
     <tab type="modules" visible="yes" title="" intro="">
       <tab type="modulelist" visible="yes" title="" intro=""/>
