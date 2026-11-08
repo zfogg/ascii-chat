@@ -159,6 +159,7 @@ private enum IOSMode: Int32, CaseIterable, Identifiable {
 struct ContentView: View {
     @State private var selectedMode: IOSMode = .mirror
     @State private var launchMessage = "Ready"
+    @State private var didStart = false
 
     var body: some View {
         VStack {
@@ -178,6 +179,7 @@ struct ContentView: View {
                 .foregroundStyle(selectedMode.isImplemented ? .green : .secondary)
             Button("Start \(selectedMode.title.lowercased())") {
                 launchMessage = "Starting \(selectedMode.title.lowercased())…"
+                didStart = true
                 DispatchQueue.global(qos: .userInitiated).async {
                     _ = asciichat_ios_main(selectedMode.rawValue)
                 }
@@ -187,9 +189,11 @@ struct ContentView: View {
             Text(launchMessage)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Divider()
-            TestFrameView()
-            CameraAsciiView()
+            if didStart {
+                Divider()
+                TestFrameView()
+                CameraAsciiView()
+            }
         }
         .padding()
     }
