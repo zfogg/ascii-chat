@@ -30,6 +30,7 @@ jobs:
           sudo bash llvm.sh
           sudo apt-get update
           sudo apt-get install --yes cmake ninja-build clang-format
+          rm -f llvm.sh
 
       - name: Configure CMake
         run: cmake -S . -B build_format -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF -DASCIICHAT_FORMAT_ONLY=ON
@@ -46,5 +47,8 @@ jobs:
             exit 0
           fi
           git add --all
+          git rm --cached --ignore-unmatch llvm.sh
           git commit -m "style: format code with clang-format [skip ci]"
+          git fetch origin master
+          git rebase origin/master
           git push origin HEAD:master
