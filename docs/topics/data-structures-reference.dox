@@ -10,235 +10,235 @@
  */
 /**
  * @struct acds_create_key_set_t
-   * @brief Stores request, reserved string, and count. The owning acds create key set code updates these values during setup, work, and cleanup.
+   * @brief Stores `request`, `reserved string`, and `count`. The owning acds create key set code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acds_protocol_t
-   * @brief Stores send, user data, state, terminal, auto join, require webrtc, and error. The owning acds protocol code updates these values during setup, work, and cleanup.
+   * @brief Stores `send`, `user data`, `state`, `terminal`, `auto join`, `require webrtc`, `error`, and `join`. The owning acds protocol code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_http3_server
-   * @brief Stores http, request, path, settings, header bytes, pending stream, and pending bytes. The owning acip http3 server code updates these values during setup, work, and cleanup.
+   * @brief Stores `http`, `request`, `path`, `settings`, `header bytes`, `pending stream`, `pending bytes`, and `pending`. The owning acip http3 server code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_outbound
-   * @brief Stores transport, mutex, changed, worker, stopped by caller, failure code, and failure. The owning acip outbound code updates these values during setup, work, and cleanup.
+   * @brief Stores `transport`, `mutex`, `changed`, `worker`, `stopped by caller`, `failure code`, `failure`, and `failure detail`. The owning acip outbound code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_outbound_stats_t
-   * @brief Stores peak bytes, recovery frames, and oldest frame age ns. The owning acip outbound stats code updates these values during setup, work, and cleanup.
+   * @brief Stores `peak bytes`, `recovery frames`, and `oldest frame age nanoseconds`. The owning acip outbound stats code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_packet_plan_t
-   * @brief Stores buffers, count, plaintext size, ciphertext capacity, encrypt, records, and records locked. The owning acip packet plan code updates these values during setup, work, and cleanup.
+   * @brief Stores `buffers`, `count`, `plaintext size`, `ciphertext capacity`, `encrypt`, `records`, `records locked`, and `options`. The owning acip packet plan code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_quic_config_t
-   * @brief Stores alpn, certificate file, private key file, ca file, webtransport origin, origin, and webtransport path. The owning acip quic config code updates these values during setup, work, and cleanup.
+   * @brief Stores `alpn`, `certificate file`, `private key file`, `ca file`, `webtransport origin`, `webtransport path`, `enable datagrams`, and `accept native`. The owning acip quic config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_quic_connection
-   * @brief Stores conn, reference, crypto, ssl, tls, security, and http3. The owning acip quic connection code updates these values during setup, work, and cleanup.
+   * @brief Stores `conn`, `reference`, `crypto`, `ssl`, `tls`, `security`, `http3`, and `initial dcid`. The owning acip quic connection code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_quic_datagram_reader_t
-   * @brief Stores slots, bytes, and last time ns. The owning acip quic datagram reader code updates these values during setup, work, and cleanup.
+   * @brief Stores `slots`, `bytes`, and `last time nanoseconds`. The owning acip quic datagram reader code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_quic_datagram_slot_t
-   * @brief Stores data, received, cost, started ns, total, received count, and traffic class. The owning acip quic datagram slot code updates these values during setup, work, and cleanup.
+   * @brief Stores `data`, `received`, `cost`, `started nanoseconds`, `total`, `received count`, and `traffic class`. The owning acip quic datagram slot code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_quic_endpoint
-   * @brief Stores lane, tls, udp, worker, transports, count, and prefer visual datagrams. The owning acip quic endpoint code updates these values during setup, work, and cleanup.
+   * @brief Stores `lane`, `tls`, `udp`, `worker`, `transports`, `count`, `prefer visual datagrams`, and `terminal error`. The owning acip quic endpoint code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_quic_stream_reader_t
-   * @brief Stores preamble, preamble used, traffic class, packets, failed, and finished. The owning acip quic stream reader code updates these values during setup, work, and cleanup.
+   * @brief Stores `preamble`, `preamble used`, `traffic class`, `packets`, `failed`, and `finished`. The owning acip quic stream reader code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_quic_tls_t
-   * @brief Stores ssl ctx, alpn, alpn length, server, connections, enable datagrams, and webtransport. The owning acip quic tls code updates these values during setup, work, and cleanup.
+   * @brief Stores `ssl context`, `alpn`, `alpn length`, `server`, `enable datagrams`, `webtransport`, `accept native`, and `webtransport origin`. The owning acip quic tls code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_quic_udp_endpoint
-   * @brief Stores socket, local, local length, server tls, retry secret, accept, and context. The owning acip quic udp endpoint code updates these values during setup, work, and cleanup.
+   * @brief Stores `socket`, `local length`, `server tls`, `retry secret`, `accept`, `context`, `peers`, and `count`. The owning acip quic udp endpoint code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_quic_worker
-   * @brief Stores endpoint, lane, failure, context, thread, stopping, and wake pending. The owning acip quic worker code updates these values during setup, work, and cleanup.
+   * @brief Stores `endpoint`, `lane`, `failure`, `context`, `thread`, `stopping`, `wake pending`, and `failure on lane`. The owning acip quic worker code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_render_settings_t
-   * @brief Stores caps, height, revision, fps limit, palette, luminance, and palette length. The owning acip render settings code updates these values during setup, work, and cleanup.
+   * @brief Stores `caps`, `height`, `revision`, `fps limit`, `palette`, `luminance`, and `palette length`. The owning acip render settings code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_security
-   * @brief Stores handshake, mode, forbid encryption, require encryption, version received, parameters received, and ready. The owning acip security code updates these values during setup, work, and cleanup.
+   * @brief Stores `handshake`, `mode`, `forbid encryption`, `require encryption`, `version received`, `parameters received`, and `ready`. The owning acip security code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_send_options_t
-   * @brief Stores traffic class, delivery, and deadline ns. The owning acip send options code updates these values during setup, work, and cleanup.
+   * @brief Stores `traffic class`, `delivery`, and `deadline nanoseconds`. The owning acip send options code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_settings_header_t
-   * @brief Stores status. The owning acip settings header code updates these values during setup, work, and cleanup.
+   * @brief Stores `status`. The owning acip settings header code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_transport_capabilities_t
-   * @brief Stores independent streams, datagrams, and max datagram payload. The owning acip transport capabilities code updates these values during setup, work, and cleanup.
+   * @brief Stores `independent streams`, `datagrams`, and `max datagram payload`. The owning acip transport capabilities code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct acip_websocket_runtime
-   * @brief Stores context. The owning acip websocket runtime code updates these values during setup, work, and cleanup.
+   * @brief Owns the libwebsockets context used by the WebSocket transport; it is created once, shared by transport callbacks, and destroyed only after those callbacks stop.
  */
 /**
  * @struct animation_config_t
-   * @brief Stores type, fps, speed, and hidden policy. The owning animation config code updates these values during setup, work, and cleanup.
+   * @brief Stores `type`, `fps`, `speed`, and `hidden policy`. The owning animation config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct animation_sample_t
-   * @brief Stores type, seconds, frame, changed, next frame ns, and domain. The owning animation sample code updates these values during setup, work, and cleanup.
+   * @brief Stores `type`, `seconds`, `frame`, `changed`, and `next frame nanoseconds`. The owning animation sample code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct animation_t
-   * @brief Stores config, seconds, last ns, last frame, and visible. The owning animation code updates these values during setup, work, and cleanup.
+   * @brief Stores `config`, `seconds`, `last nanoseconds`, `last frame`, and `visible`. The owning animation code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct animation_target_t
-   * @brief Holds the working values used by animation target; callers normally access them through the owning subsystem's API.
+   * @brief Stores `type`, `position`, `out`, `color`, `input`, `ansi`, `index`, and `cadence`. The owning animation target code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ansi_rle_context_t
-   * @brief Stores buffer, capacity, length, mode, first pixel, last r, and last g. The owning ansi rle context code updates these values during setup, work, and cleanup.
+   * @brief Stores `buffer`, `capacity`, `length`, `mode`, `first pixel`, `last r`, `last g`, and `last b`. The owning ansi rle context code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ansi_timing_t
-   * @brief Stores start ns and end ns. The owning ansi timing code updates these values during setup, work, and cleanup.
+   * @brief Stores `start nanoseconds` and `end nanoseconds`. The owning ansi timing code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct app_callbacks_t
-   * @brief Holds the working values used by app callbacks; callers normally access them through the owning subsystem's API.
+   * @brief A table of application callbacks and their user-data pointers; the dispatcher calls these hooks without taking ownership of the objects referenced by the caller.
  */
 /**
  * @struct ascii_frame_t
-   * @brief Stores output, output target, source height, table, bg, luma, and stabilizer. The owning ascii frame code updates these values during setup, work, and cleanup.
+   * @brief Stores `output`, `output target`, `source height`, `table`, `bg`, `luma`, `stabilizer`, and `row`. The owning ascii frame code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ascii_otel_scope
-   * @brief Stores scope, retained, and previous. The owning ascii otel scope code updates these values during setup, work, and cleanup.
+   * @brief Stores `scope` and `retained`. The owning ascii otel scope code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ascii_stabilizer_t
-   * @brief Stores cells, height, configuration, elapsed ns, last timestamp ns, and fixed step ns. The owning ascii stabilizer code updates these values during setup, work, and cleanup.
+   * @brief Stores `cells`, `height`, `configuration`, `elapsed nanoseconds`, `last timestamp nanoseconds`, and `fixed step nanoseconds`. The owning ascii stabilizer code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ascii_temporal_cell_t
-   * @brief Stores samples, glyph, color, background, source owner, and valid. The owning ascii temporal cell code updates these values during setup, work, and cleanup.
+   * @brief Stores `samples`, `glyph`, `color`, `background`, `source owner`, and `valid`. The owning ascii temporal cell code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct asciichat_errno_history_t
-   * @brief Stores context, resolved ns, and outcome. The owning asciichat errno history code updates these values during setup, work, and cleanup.
+   * @brief Stores `context`, `resolved nanoseconds`, and `outcome`. The owning asciichat errno history code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct asciichat_errno_scope_t
-   * @brief Stores thread id, generation, after id, and previous after id. The owning asciichat errno scope code updates these values during setup, work, and cleanup.
+   * @brief Stores `thread identifier`, `generation`, `after identifier`, and `previous after identifier`. The owning asciichat errno scope code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct asciichat_errno_snapshot_t
-   * @brief Stores total and copied. The owning asciichat errno snapshot code updates these values during setup, work, and cleanup.
+   * @brief Stores `total` and `copied`. The owning asciichat errno snapshot code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct asciichat_error_context_t
-   * @brief Stores code, file, line, function, context message, timestamp, and created ns. The owning asciichat error context code updates these values during setup, work, and cleanup.
+   * @brief Stores `code`, `file`, `line`, `function`, `context message`, `timestamp`, `created nanoseconds`, and `error identifier`. The owning asciichat error context code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct asciichat_error_stats_t
-   * @brief Stores error counts, total errors, last error time, last error code, dropped errors, overwritten history, and pending errors. The owning asciichat error stats code updates these values during setup, work, and cleanup.
+   * @brief Stores `error counts`, `total errors`, `last error time`, `last error code`, `dropped errors`, `overwritten history`, `pending errors`, and `registered threads`. The owning asciichat error stats code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct async_packet
-   * @brief Stores next, data, and size. The owning async packet code updates these values during setup, work, and cleanup.
+   * @brief Stores `data` and `size`. The owning async packet code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct async_tcp_t
-   * @brief Stores stream, mutex, closed, loop, thread, thread started, and queued receive. The owning async tcp code updates these values during setup, work, and cleanup.
+   * @brief Stores `stream`, `mutex`, `closed`, `loop`, `thread`, `thread started`, `queued receive`, and `destroy on close`. The owning async tcp code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct audio_frame_t
-   * @brief Stores data, size, sample rate, and channels. The owning audio frame code updates these values during setup, work, and cleanup.
+   * @brief Stores `data`, `size`, `sample rate`, and `channels`. The owning audio frame code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct audio_processor
-   * @brief Stores config, spectral left, spectral right, compressor, gate, highpass, and lowpass. The owning audio processor code updates these values during setup, work, and cleanup.
+   * @brief Stores `config`, `spectral left`, `spectral right`, `compressor`, `gate`, `highpass`, `lowpass`, and `highpass right`. The owning audio processor code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct audio_processor_config_t
-   * @brief Stores channels, sample rate, flags, spectral enabled, spectral, and agc max gain. The owning audio processor config code updates these values during setup, work, and cleanup.
+   * @brief Stores `channels`, `sample rate`, `flags`, `spectral enabled`, `spectral`, `agc max gain`, `lowpass hz`, and `comp makeup db`. The owning audio processor config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct audio_processor_flags_t
-   * @brief Stores lowpass. The owning audio processor flags code updates these values during setup, work, and cleanup.
+   * @brief Stores `lowpass`. The owning audio processor flags code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct audio_recording
-   * @brief Stores mix, channels, epoch ns, read position, source position, started, and source started. The owning audio recording code updates these values during setup, work, and cleanup.
+   * @brief Stores `mix`, `channels`, `epoch nanoseconds`, `read position`, `source position`, `started`, and `source started`. The owning audio recording code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct audio_resampler_t
-   * @brief Stores phase, previous, and has previous. The owning audio resampler code updates these values during setup, work, and cleanup.
+   * @brief Stores `phase`, `previous`, and `has previous`. The owning audio resampler code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct audio_rt_metric_t
-   * @brief Stores state, metric, and value. The owning audio rt metric code updates these values during setup, work, and cleanup.
+   * @brief Stores `state`, `metric`, and `value`. The owning audio rt metric code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct audio_send_packet_t
-   * @brief Stores data, size, frame sizes, frame count, and telemetry context. The owning audio send packet code updates these values during setup, work, and cleanup.
+   * @brief Stores `data`, `size`, `frame sizes`, `frame count`, and `telemetry context`. The owning audio send packet code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct backtrace_t
-   * @brief Stores ptrs, symbols, count, and tried symbolize. The owning backtrace code updates these values during setup, work, and cleanup.
+   * @brief Stores `ptrs`, `symbols`, `count`, and `tried symbolize`. The owning backtrace code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct binary_actions_t
-   * @brief Stores show version, create config, create manpage, has action, config create path, manpage create path, and user quiet. The owning binary actions code updates these values during setup, work, and cleanup.
+   * @brief Stores `show version`, `create config`, `create manpage`, `has action`, `config create path`, `manpage create path`, `user quiet`, and `parsed color setting`. The owning binary actions code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct binding_t
-   * @brief Stores keys, action, description, and media. The owning binding code updates these values during setup, work, and cleanup.
+   * @brief Stores `keys`, `action`, `description`, and `media`. The owning binding code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct browser_peer_crypto_t
-   * @brief Stores security, quic handshake, transport, tail, received, and received length. The owning browser peer crypto code updates these values during setup, work, and cleanup.
+   * @brief Stores `security`, `quic handshake`, `transport`, `tail`, `received`, and `received length`. The owning browser peer crypto code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct buffer_budget_t
-   * @brief Stores bytes. The owning buffer budget code updates these values during setup, work, and cleanup.
+   * @brief Stores `bytes`. The owning buffer budget code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct buffer_domain
-   * @brief Stores mutex, config, stats, bins, and closing. The owning buffer domain code updates these values during setup, work, and cleanup.
+   * @brief Stores `mutex`, `config`, `stats`, `bins`, and `closing`. The owning buffer domain code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct buffer_domain_config_t
-   * @brief Stores limit bytes, cache bytes, storage, idle ns, and control. The owning buffer domain config code updates these values during setup, work, and cleanup.
+   * @brief Stores `limit bytes`, `cache bytes`, `idle nanoseconds`, and `control`. The owning buffer domain config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct buffer_header
-   * @brief Stores next, domain, allocation, data, capacity, length, and charge. The owning buffer header code updates these values during setup, work, and cleanup.
+   * @brief Stores `domain`, `allocation`, `data`, `capacity`, `length`, `charge`, `alignment`, and `references`. The owning buffer header code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct buffer_stats_t
-   * @brief Stores reserved bytes, live bytes, requested bytes, cached bytes, peak bytes, outstanding, and hits. The owning buffer stats code updates these values during setup, work, and cleanup.
+   * @brief Stores `reserved bytes`, `live bytes`, `requested bytes`, `cached bytes`, `peak bytes`, `outstanding`, `hits`, and `allocations`. The owning buffer stats code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct buffer_workspace_t
-   * @brief Stores data and length. The owning buffer workspace code updates these values during setup, work, and cleanup.
+   * @brief Stores `data` and `length`. The owning buffer workspace code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct client_connection
-   * @brief Stores network, transport, capture context, display context, audio context, display first frame, and audio receive count. The owning client connection code updates these values during setup, work, and cleanup.
+   * @brief Stores `network`, `transport`, `capture context`, `display context`, `audio context`, `display first frame`, `audio receive count`, and `frame fps tracker`. The owning client connection code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct client_info
@@ -246,311 +246,311 @@
  */
 /**
  * @struct client_like_state_t
-   * @brief Stores capture, display, audio ctx, probe source, capture config, media url val, and media file val. The owning client like state code updates these values during setup, work, and cleanup.
+   * @brief Stores `capture`, `display`, `audio context`, `probe source`, `capture config`, `media url val`, `media file val`, and `audio available`. The owning client like state code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct collect_ctx_t
-   * @brief Stores config, entries, and success. The owning collect ctx code updates these values during setup, work, and cleanup.
+   * @brief Stores `config`, `entries`, and `success`. The owning collect ctx code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct colorscheme_palette_t
-   * @brief Stores foreground and background. The owning colorscheme palette code updates these values during setup, work, and cleanup.
+   * @brief Stores `foreground` and `background`. The owning colorscheme palette code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct compression_workspace_t
-   * @brief Stores codec and output. The owning compression workspace code updates these values during setup, work, and cleanup.
+   * @brief Stores `codec` and `output`. The owning compression workspace code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct cond_deadlock_batch_t
-   * @brief Stores entries and count. The owning cond deadlock batch code updates these values during setup, work, and cleanup.
+   * @brief Stores `entries` and `count`. The owning cond deadlock batch code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct cond_deadlock_entry_t
-   * @brief Stores state and name. The owning cond deadlock entry code updates these values during setup, work, and cleanup.
+   * @brief Stores `state` and `name`. The owning cond deadlock entry code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct cond_deadlock_snapshot_t
-   * @brief Stores waiting count, last wait time ns, last signal time ns, last waiting key, last wait file, last wait line, and last wait func. The owning cond deadlock snapshot code updates these values during setup, work, and cleanup.
+   * @brief Stores `waiting count`, `last wait time nanoseconds`, `last signal time nanoseconds`, `last waiting key`, `last wait file`, `last wait line`, `last wait func`, and `last wait mutex`. The owning cond deadlock snapshot code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct connection_endpoint_t
-   * @brief Stores protocol, input, host, port, and has explicit port. The owning connection endpoint code updates these values during setup, work, and cleanup.
+   * @brief Stores `protocol`, `input`, `host`, `port`, and `has explicit port`. The owning connection endpoint code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct consensus_handoff_message_t
-   * @brief Stores kind, session, participant, generation, sequence, upload kbps, and rtt ms. The owning consensus handoff message code updates these values during setup, work, and cleanup.
+   * @brief Stores `kind`, `session`, `participant`, `generation`, `sequence`, `upload kbps`, `rtt ms`, and `capabilities`. The owning consensus handoff message code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct consensus_handoff_peer_t
-   * @brief Stores id, capabilities, nat tier, port, pending capabilities, pending nat tier, and pending port. The owning consensus handoff peer code updates these values during setup, work, and cleanup.
+   * @brief Stores `identifier`, `capabilities`, `nat tier`, `port`, `pending capabilities`, `pending nat tier`, `pending port`, and `sequence`. The owning consensus handoff peer code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct consensus_handoff_t
-   * @brief Stores session, host, successor, generation, round, and host sequence. The owning consensus handoff code updates these values during setup, work, and cleanup.
+   * @brief Stores `session`, `host`, `successor`, `generation`, `round`, `host sequence`, `prepare deadline ms`, and `ready`. The owning consensus handoff code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct crypto_policy_t
-   * @brief Stores transport secure, encrypt, no encrypt, no auth, has password, has identity, and has verification key. The owning crypto policy code updates these values during setup, work, and cleanup.
+   * @brief Stores `transport secure`, `encrypt`, `no encrypt`, `no auth`, `has password`, `has identity`, and `has verification key`. The owning crypto policy code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct crypto_record
-   * @brief Stores crypto, last receive epoch, previous crypto, previous epoch, previous allowed, datagram seen, and last receive delivery. The owning crypto record code updates these values during setup, work, and cleanup.
+   * @brief Stores `crypto`, `last receive epoch`, `previous crypto`, `previous epoch`, `previous allowed`, `datagram seen`, `last receive delivery`, and `server`. The owning crypto record code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct crypto_rekey_session_t
-   * @brief Stores security, send, context, peer ack, deferred key, deferred request, and ack sent. The owning crypto rekey session code updates these values during setup, work, and cleanup.
+   * @brief Stores `security`, `send`, `context`, `peer ack`, `deferred key`, `deferred request`, and `ack sent`. The owning crypto rekey session code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct crypto_session
-   * @brief Stores owner, mutex, records, rotation, messages, count, and failure. The owning crypto session code updates these values during setup, work, and cleanup.
+   * @brief Stores `owner`, `mutex`, `records`, `rotation`, `messages`, `count`, and `failure`. The owning crypto session code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct crypto_session_message_t
-   * @brief Stores channel, type, length, and payload. The owning crypto session message code updates these values during setup, work, and cleanup.
+   * @brief Stores `channel`, `type`, `length`, and `payload`. The owning crypto session message code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct database_session_stats_t
-   * @brief Stores session string, participants, host ready, and migrating. The owning database session stats code updates these values during setup, work, and cleanup.
+   * @brief Stores `session string`, `participants`, `host ready`, and `migrating`. The owning database session stats code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct datagram_send
-   * @brief Stores next, data, cost, deadline ns, and count. The owning datagram send code updates these values during setup, work, and cleanup.
+   * @brief Stores `data`, `cost`, `deadline nanoseconds`, and `count`. The owning datagram send code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct deadlock_state_t
-   * @brief Stores mutexes and count. The owning deadlock state code updates these values during setup, work, and cleanup.
+   * @brief Stores `mutexes` and `count`. The owning deadlock state code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct discovery_host_audio_capture_t
-   * @brief Stores host, audio, participant id, running, thread, started, and result. The owning discovery host audio capture code updates these values during setup, work, and cleanup.
+   * @brief Stores `host`, `audio`, `participant identifier`, `running`, `thread`, `started`, and `result`. The owning discovery host audio capture code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct discovery_ui_state_t
-   * @brief Stores mutex, error, and error code. The owning discovery ui state code updates these values during setup, work, and cleanup.
+   * @brief Stores `mutex`, `error`, and `error code`. The owning discovery ui state code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct discovery_video_receiver_t
-   * @brief Stores connection, protocol, network, receiver thread, audio thread, receiver started, and audio started. The owning discovery video receiver code updates these values during setup, work, and cleanup.
+   * @brief Stores `connection`, `protocol`, `network`, `receiver thread`, `audio thread`, `receiver started`, `audio started`, and `transport`. The owning discovery video receiver code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct emit_context_t
-   * @brief Stores reader, emit, and context. The owning emit context code updates these values during setup, work, and cleanup.
+   * @brief Stores `reader`, `emit`, and `context`. The owning emit context code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct endpoint_transport
-   * @brief Stores next, connection, transport, and claimed. The owning endpoint transport code updates these values during setup, work, and cleanup.
+   * @brief Stores `connection`, `transport`, and `claimed`. The owning endpoint transport code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct errno_tui_row_t
-   * @brief Stores context, resolved ns, group id, group timestamp, outcome, and historical. The owning errno tui row code updates these values during setup, work, and cleanup.
+   * @brief Stores `context`, `resolved nanoseconds`, `group identifier`, `group timestamp`, `outcome`, and `historical`. The owning errno tui row code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct errno_tui_state_t
-   * @brief Stores visible, stack sort, tab, list, rows, count, and output fd. The owning errno tui state code updates these values during setup, work, and cleanup.
+   * @brief Stores `visible`, `stack sort`, `tab`, `list`, `rows`, `count`, `output file descriptor`, and `selected context`. The owning errno tui state code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct error_frame_t
-   * @brief Stores context, next, and used. The owning error frame code updates these values during setup, work, and cleanup.
+   * @brief Stores `context`, `next`, and `used`. The owning error frame code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct error_thread
-   * @brief Stores id, generation, top, depth, cause after id, and next. The owning error thread code updates these values during setup, work, and cleanup.
+   * @brief Stores `identifier`, `generation`, `top`, `depth`, and `cause after identifier`. The owning error thread code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct event_command_t
-   * @brief Stores fn and arg. The owning event command code updates these values during setup, work, and cleanup.
+   * @brief Stores `fn` and `arg`. The owning event command code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct event_work_t
-   * @brief Stores work, stream, run, done, and arg. The owning event work code updates these values during setup, work, and cleanup.
+   * @brief Stores `work`, `stream`, `run`, `done`, and `arg`. The owning event work code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct event_write
-   * @brief Stores request, stream, done, arg, size, next, and storage. The owning event write code updates these values during setup, work, and cleanup.
+   * @brief Stores `request`, `stream`, `done`, `arg`, `size`, `storage`, `offset`, and `started`. The owning event write code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct face_follow_detection_t
-   * @brief Stores box and confidence. The owning face follow detection code updates these values during setup, work, and cleanup.
+   * @brief Stores `box` and `confidence`. The owning face follow detection code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct face_follow_image
-   * @brief Stores state, results, last detection, source height, and output. The owning face follow image code updates these values during setup, work, and cleanup.
+   * @brief Stores `state`, `results`, `last detection`, `source height`, and `output`. The owning face follow image code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct face_follow_rect_t
-   * @brief Stores h. The owning face follow rect code updates these values during setup, work, and cleanup.
+   * @brief Stores `h`. The owning face follow rect code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct face_follow_state_t
-   * @brief Stores face, last seen, zoom outside since, anchor y, zoom direction, detected, and zoom pending. The owning face follow state code updates these values during setup, work, and cleanup.
+   * @brief Stores `face`, `last seen`, `zoom outside since`, `anchor y`, `zoom direction`, `detected`, `zoom pending`, and `misses`. The owning face follow state code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ffmpeg_encoder_s
-   * @brief Stores codec ctx, stream, frame, frame encoded, sws ctx, audio stream, and audio codec ctx. The owning ffmpeg encoder s code updates these values during setup, work, and cleanup.
+   * @brief Stores `codec context`, `stream`, `frame`, `frame encoded`, `audio stream`, `audio codec context`, `audio frame`, and `audio pts`. The owning ffmpeg encoder s code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct flow_control_debounce_t
-   * @brief Stores due ns and pending. The owning flow control debounce code updates these values during setup, work, and cleanup.
+   * @brief Stores `due nanoseconds` and `pending`. The owning flow control debounce code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct frame_queue_s
-   * @brief Stores slots, capacity, count, mu, not empty, not full, and name. The owning frame queue s code updates these values during setup, work, and cleanup.
+   * @brief Stores `slots`, `capacity`, `count`, `mu`, `not empty`, `not full`, and `name`. The owning frame queue s code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct frame_slot_s
-   * @brief Stores frame, busy, and capacity. The owning frame slot s code updates these values during setup, work, and cleanup.
+   * @brief Stores `frame`, `busy`, and `capacity`. The owning frame slot s code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct glyph_cache_entry_t
-   * @brief Stores codepoint, bitmap buf, width, rows, pitch, bitmap left, and bitmap top. The owning glyph cache entry code updates these values during setup, work, and cleanup.
+   * @brief Stores `codepoint`, `bitmap buffer`, `width`, `rows`, `pitch`, `bitmap left`, `bitmap top`, and `hh`. The owning glyph cache entry code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct glyph_candidate_t
-   * @brief Stores mask, centered, energy, and key. The owning glyph candidate code updates these values during setup, work, and cleanup.
+   * @brief Stores `mask`, `centered`, `energy`, and `key`. The owning glyph candidate code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct h265_client_context
-   * @brief Stores encoder, source type, source location, current width, current height, frame buf, and frame buf size. The owning h265 client context code updates these values during setup, work, and cleanup.
+   * @brief Stores `encoder`, `source type`, `source location`, `current width`, `current height`, `frame buffer`, `frame buffer size`, and `media context`. The owning h265 client context code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct h265_client_decoder_t
-   * @brief Stores client id, decoder, last width, last height, and in use. The owning h265 client decoder code updates these values during setup, work, and cleanup.
+   * @brief Stores `client identifier`, `decoder`, `last width`, `last height`, and `in use`. The owning h265 client decoder code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct h265_decoder
-   * @brief Stores codec ctx, frame, packet, parser, last width, last height, and total frames. The owning h265 decoder code updates these values during setup, work, and cleanup.
+   * @brief Stores `codec context`, `frame`, `packet`, `parser`, `last width`, `last height`, `total frames`, and `keyframes`. The owning h265 decoder code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct h265_encoder
-   * @brief Stores codec ctx, codec, frame, packet, current width, current height, and yuv buf. The owning h265 encoder code updates these values during setup, work, and cleanup.
+   * @brief Stores `codec context`, `codec`, `frame`, `packet`, `current width`, `current height`, `yuv buffer`, and `yuv buffer size`. The owning h265 encoder code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct h265_packet_header_t
-   * @brief Stores type, client id, frame num, flags, and reserved. The owning h265 packet header code updates these values during setup, work, and cleanup.
+   * @brief Stores `type`, `client identifier`, `frame num`, `flags`, and `reserved`. The owning h265 packet header code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct h265_server_context
-   * @brief Stores clients and active client count. The owning h265 server context code updates these values during setup, work, and cleanup.
+   * @brief Stores `clients` and `active client count`. The owning h265 server context code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct host_connection_t
-   * @brief Stores client id, negotiation, and identity. The owning host connection code updates these values during setup, work, and cleanup.
+   * @brief Stores `client identifier`, `negotiation`, and `identity`. The owning host connection code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct http_pulse_t
-   * @brief Stores timer and context. The owning http pulse code updates these values during setup, work, and cleanup.
+   * @brief Stores `timer`. The owning http pulse code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct http_session_t
-   * @brief Stores response, sent, file open, file, mime, issue session, and session id. The owning http session code updates these values during setup, work, and cleanup.
+   * @brief Stores `response`, `sent`, `file open`, `file`, `mime`, `issue session`, `session identifier`, and `status`. The owning http session code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct http3_receive_stream_t
-   * @brief Stores id, offset, prefix, prefix length, kind, and active. The owning http3 receive stream code updates these values during setup, work, and cleanup.
+   * @brief Stores `identifier`, `offset`, `prefix`, `prefix length`, `kind`, and `active`. The owning http3 receive stream code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct input_editor_t
-   * @brief Stores buffer, cursor, deadline, and pasted. The owning input editor code updates these values during setup, work, and cleanup.
+   * @brief Stores `buffer`, `cursor`, `deadline`, and `pasted`. The owning input editor code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct keyboard_text_decoder_t
-   * @brief Stores bytes and expected. The owning keyboard text decoder code updates these values during setup, work, and cleanup.
+   * @brief Stores `bytes` and `expected`. The owning keyboard text decoder code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct lifecycle_t
-   * @brief Holds the working values used by lifecycle; callers normally access them through the owning subsystem's API.
+   * @brief Stores `state`, `sync type`, `mutex`, `rwlock`, and `sync`. The owning lifecycle code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct linux_binary_lookup_t
-   * @brief Stores address, match, and found. The owning linux binary lookup code updates these values during setup, work, and cleanup.
+   * @brief Stores `address`, `match`, and `found`. The owning linux binary lookup code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct log_row_ref_t
-   * @brief Stores entry and row. The owning log row ref code updates these values during setup, work, and cleanup.
+   * @brief Stores `entry` and `row`. The owning log row ref code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct log_search_state_t
-   * @brief Stores mode, input buffer, len, cursor, previous pattern count, active patterns, and active pattern count. The owning log search state code updates these values during setup, work, and cleanup.
+   * @brief Stores `mode`, `input buffer`, `length`, `cursor`, `previous pattern count`, `active patterns`, `active pattern count`, and `case insensitive`. The owning log search state code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct loop_work_t
-   * @brief Stores request, done, and arg. The owning loop work code updates these values during setup, work, and cleanup.
+   * @brief Stores `request`, `done`, and `arg`. The owning loop work code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct manpage_merge_state_t
-   * @brief Stores in auto section, current auto section, found section header, in merge section, merge content generated, current merge section, and manual env vars. The owning manpage merge state code updates these values during setup, work, and cleanup.
+   * @brief Stores `in auto section`, `current auto section`, `found section header`, `in merge section`, `merge content generated`, `current merge section`, `manual env vars`, and `manual env descs`. The owning manpage merge state code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct mcp_job
-   * @brief Stores server, message, response, request, tool, telemetry parent, and thread. The owning mcp job code updates these values during setup, work, and cleanup.
+   * @brief Stores `message`, `response`, `request`, `tool`, `telemetry parent`, `thread`, `cancelled`, and `done`. The owning mcp job code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct mcp_policy_t
-   * @brief Stores hosted, restricted, address, address6, tls password, max jobs, and origin. The owning mcp policy code updates these values during setup, work, and cleanup.
+   * @brief Stores `hosted`, `restricted`, `address`, `address6`, `tls password`, `max jobs`, `origin`, and `port`. The owning mcp policy code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct mcp_render_request_t
-   * @brief Stores argv, argc, upload dir, stage dir, stage file, output path, and timeout ms. The owning mcp render request code updates these values during setup, work, and cleanup.
+   * @brief Stores `argv`, `argc`, `upload dir`, `stage dir`, `stage file`, `output path`, `timeout ms`, and `capture webcam`. The owning mcp render request code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct mcp_render_result_t
-   * @brief Stores text, length, error, elapsed ms, timed out, and output path. The owning mcp render result code updates these values during setup, work, and cleanup.
+   * @brief Stores `text`, `length`, `error`, `elapsed ms`, `timed out`, and `output path`. The owning mcp render result code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct mcp_server
-   * @brief Stores policy, jobs, output mutex, http context, stopping, and initialized. The owning mcp server code updates these values during setup, work, and cleanup.
+   * @brief Stores `policy`, `jobs`, `output mutex`, `http context`, `stopping`, and `initialized`. The owning mcp server code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct mdns_refresh_t
-   * @brief Stores mutex, stop, thread, running, generation, count, and servers. The owning mdns refresh code updates these values during setup, work, and cleanup.
+   * @brief Stores `mutex`, `stop`, `thread`, `running`, `generation`, `count`, and `servers`. The owning mdns refresh code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct media_playlist_t
-   * @brief Stores urls and index. The owning media playlist code updates these values during setup, work, and cleanup.
+   * @brief Stores `urls` and `index`. The owning media playlist code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct media_snapshot_slot
-   * @brief Stores busy, snapshot, and capacity. The owning media snapshot slot code updates these values during setup, work, and cleanup.
+   * @brief Stores `busy`, `snapshot`, and `capacity`. The owning media snapshot slot code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct mixer_listener_buffer
-   * @brief Stores samples, read, and count. The owning mixer listener buffer code updates these values during setup, work, and cleanup.
+   * @brief Stores `samples`, `read`, and `count`. The owning mixer listener buffer code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct mode_arguments_t
-   * @brief Stores argc, argv, and allocated. The owning mode arguments code updates these values during setup, work, and cleanup.
+   * @brief Stores `argc`, `argv`, and `allocated`. The owning mode arguments code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct mutex_stack_entry_t
-   * @brief Stores mutex key, mutex name, state, and timestamp ns. The owning mutex stack entry code updates these values during setup, work, and cleanup.
+   * @brief Stores `mutex key`, `mutex name`, `state`, and `timestamp nanoseconds`. The owning mutex stack entry code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct mutex_wait_snapshot_t
-   * @brief Stores mutex key, thread key, since ns, cycle, span name, error code, and error message. The owning mutex wait snapshot code updates these values during setup, work, and cleanup.
+   * @brief Stores `mutex key`, `thread key`, `since nanoseconds`, `cycle`, `span name`, `error code`, `error message`, and `span identifier`. The owning mutex wait snapshot code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct named_iter_entry_t
-   * @brief Stores key and name. The owning named iter entry code updates these values during setup, work, and cleanup.
+   * @brief Stores `key` and `name`. The owning named iter entry code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct named_metadata_cache_t
-   * @brief Stores revision, count, capacity, and entries. The owning named metadata cache code updates these values during setup, work, and cleanup.
+   * @brief Stores `revision`, `count`, `capacity`, and `entries`. The owning named metadata cache code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct named_metadata_entry_t
-   * @brief Stores key, valid, and metadata. The owning named metadata entry code updates these values during setup, work, and cleanup.
+   * @brief Stores `key`, `valid`, and `metadata`. The owning named metadata entry code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct named_metadata_t
-   * @brief Stores name, type, and format. The owning named metadata code updates these values during setup, work, and cleanup.
+   * @brief Stores `name`, `type`, and `format`. The owning named metadata code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct native_view_t
-   * @brief Stores screen, layers, layer count, active, and sync backdrop. The owning native view code updates these values during setup, work, and cleanup.
+   * @brief Stores `screen`, `layers`, `layer count`, `active`, and `sync backdrop`. The owning native view code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct network_connect_config_t
-   * @brief Stores timeout ms, callback data, quic ca file, quic visual datagrams, and quic audio datagrams. The owning network connect config code updates these values during setup, work, and cleanup.
+   * @brief Stores `timeout ms`, `callback data`, `quic ca file`, `quic visual datagrams`, and `quic audio datagrams`. The owning network connect config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct network_connection
@@ -558,19 +558,19 @@
  */
 /**
  * @struct network_connection_callbacks_t
-   * @brief Holds the working values used by network connection callbacks; callers normally access them through the owning subsystem's API.
+   * @brief A table of open, packet, closing, and closed hooks that lets an owner supply application behavior to the shared connection runtime.
  */
 /**
  * @struct network_establish_config_t
-   * @brief Stores address, default port, connect, password, protocol, authenticate, and prepare. The owning network establish config code updates these values during setup, work, and cleanup.
+   * @brief Stores `address`, `default port`, `connect`, `password`, `protocol`, `authenticate`, `prepare`, and `context`. The owning network establish config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct network_establish_result_t
-   * @brief Stores endpoint and password failure. The owning network establish result code updates these values during setup, work, and cleanup.
+   * @brief Stores `endpoint` and `password failure`. The owning network establish result code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct network_negotiation_t
-   * @brief Stores protocol, handshake, identity keys, identity key count, whitelist, whitelist count, and password. The owning network negotiation code updates these values during setup, work, and cleanup.
+   * @brief Stores `protocol`, `handshake`, `identity keys`, `identity key count`, `whitelist`, `whitelist count`, `password`, and `forbid encryption`. The owning network negotiation code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct network_server
@@ -578,47 +578,47 @@
  */
 /**
  * @struct network_server_config_t
-   * @brief Stores port, ipv6 address, bind ipv6, websocket enabled, websocket port, tls key path, and callbacks. The owning network server config code updates these values during setup, work, and cleanup.
+   * @brief Stores `port`, `ipv6 address`, `bind ipv6`, `websocket enabled`, `websocket port`, `tls key path`, `callbacks`, and `user data`. The owning network server config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct notice_snapshot_t
-   * @brief Stores severity, unicode, color, started, marker offset, title offset, and page. The owning notice snapshot code updates these values during setup, work, and cleanup.
+   * @brief Stores `severity`, `unicode`, `color`, `started`, `marker offset`, `title offset`, `page`, and `pages`. The owning notice snapshot code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct options_edit_t
-   * @brief Holds the working values used by options edit; callers normally access them through the owning subsystem's API.
+   * @brief Stores `name`, `type`, `operation`, `integer`, `boolean`, `number`, `string`, and `value`. The owning options edit code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct options_patch_result_t
-   * @brief Stores revision and changed. The owning options patch result code updates these values during setup, work, and cleanup.
+   * @brief Stores `revision` and `changed`. The owning options patch result code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct options_patch_t
-   * @brief Stores edits, count, expected revision, and origin. The owning options patch code updates these values during setup, work, and cleanup.
+   * @brief Stores `edits`, `count`, `expected revision`, and `origin`. The owning options patch code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct options_snapshot_t
-   * @brief Stores values, revision, and origin. The owning options snapshot code updates these values during setup, work, and cleanup.
+   * @brief Stores `values`, `revision`, and `origin`. The owning options snapshot code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct options_state
-   * @brief Stores detected mode, mode arg index, help, version, config file, width, and height. The owning options state code updates these values during setup, work, and cleanup.
+   * @brief Stores `detected mode`, `mode arg index`, `help`, `version`, `config file`, `width`, `height`, and `auto width`. The owning options state code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct outbound_packet
-   * @brief Stores next, data, cost, created, type, stream, and options. The owning outbound packet code updates these values during setup, work, and cleanup.
+   * @brief Stores `data`, `cost`, `created`, `type`, `stream`, `options`, `done`, and `result`. The owning outbound packet code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct outbound_stream_t
-   * @brief Stores type, stream, and needs keyframe. The owning outbound stream code updates these values during setup, work, and cleanup.
+   * @brief Stores `type`, `stream`, and `needs keyframe`. The owning outbound stream code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct packet_decoder_t
-   * @brief Stores header, header used, packet, size, max payload, MAX PACKET SIZE, and failed. The owning packet decoder code updates these values during setup, work, and cleanup.
+   * @brief Stores `header`, `header used`, `packet`, `size`, `max payload`, and `failed`. The owning packet decoder code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct packet_node
-   * @brief Stores packet and next. The owning packet node code updates these values during setup, work, and cleanup.
+   * @brief Stores `packet`. The owning packet node code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct packet_queue
@@ -626,43 +626,43 @@
  */
 /**
  * @struct packet_queue_config_t
-   * @brief Stores max packets, max bytes, and overflow. The owning packet queue config code updates these values during setup, work, and cleanup.
+   * @brief Stores `max packets`, `max bytes`, and `overflow`. The owning packet queue config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct parallel_connect_config_t
-   * @brief Stores hostname, port, timeout ms, should exit callback, and callback data. The owning parallel connect config code updates these values during setup, work, and cleanup.
+   * @brief Stores `hostname`, `port`, `timeout ms`, `should exit callback`, and `callback data`. The owning parallel connect config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct peer_output
-   * @brief Stores next, data, and length. The owning peer output code updates these values during setup, work, and cleanup.
+   * @brief Stores `data` and `length`. The owning peer output code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct pending_ice_candidate
-   * @brief Stores participant id, candidate, mid, and next. The owning pending ice candidate code updates these values during setup, work, and cleanup.
+   * @brief Stores `participant identifier`, `candidate`, and `mid`. The owning pending ice candidate code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct pipeline_frame_t
-   * @brief Stores slot, pixels, h, frame serial, telemetry context, fresh, and captured ns. The owning pipeline frame code updates these values during setup, work, and cleanup.
+   * @brief Stores `slot`, `pixels`, `h`, `frame serial`, `telemetry context`, `fresh`, `captured nanoseconds`, and `acquisition started nanoseconds`. The owning pipeline frame code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct platform_directory_list_t
-   * @brief Stores candidates and count. The owning platform directory list code updates these values during setup, work, and cleanup.
+   * @brief Stores `candidates` and `count`. The owning platform directory list code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct platform_event_listener
-   * @brief Stores listener, tcp, accept, and arg. The owning platform event listener code updates these values during setup, work, and cleanup.
+   * @brief Stores `listener`, `tcp`, `accept`, and `arg`. The owning platform event listener code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct platform_event_loop
-   * @brief Stores uv, wake, tick, tick fn, tick arg, tick initialized, and streams. The owning platform event loop code updates these values during setup, work, and cleanup.
+   * @brief Stores `uv`, `wake`, `tick`, `tick fn`, `tick arg`, `tick initialized`, `streams`, and `mutex`. The owning platform event loop code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct platform_event_stream
-   * @brief Stores listener, owner, tcp, timer, output timer, output, and mutex. The owning platform event stream code updates these values during setup, work, and cleanup.
+   * @brief Stores `listener`, `owner`, `tcp`, `timer`, `output timer`, `output`, `mutex`, and `recycled count`. The owning platform event stream code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct platform_process_stats_t
-   * @brief Stores cpu seconds and threads. The owning platform process stats code updates these values during setup, work, and cleanup.
+   * @brief Stores `cpu seconds` and `threads`. The owning platform process stats code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct platform_wakeup
@@ -670,401 +670,401 @@
  */
 /**
  * @struct progress_snapshot_t
-   * @brief Stores started ns, completed, total, total known, finalizing, failed, and length. The owning progress snapshot code updates these values during setup, work, and cleanup.
+   * @brief Stores `started nanoseconds`, `completed`, `total`, `total known`, `finalizing`, `failed`, `length`, and `destination length`. The owning progress snapshot code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct prompt_opts_t
-   * @brief Stores timeout seconds, echo, same line, prompt, mask char, kind, and purpose. The owning prompt opts code updates these values during setup, work, and cleanup.
+   * @brief Stores `timeout seconds`, `echo`, `same line`, `mask char`, and `kind`. The owning prompt opts code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct prompt_snapshot_t
-   * @brief Stores kind, prompt bytes, cursor, selected button, newline limit, severity, and color. The owning prompt snapshot code updates these values during setup, work, and cleanup.
+   * @brief Stores `kind`, `prompt bytes`, `cursor`, `selected button`, `newline limit`, `severity`, `color`, and `unicode`. The owning prompt snapshot code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct queued_packet_t
-   * @brief Stores header, data, and data len. The owning queued packet code updates these values during setup, work, and cleanup.
+   * @brief Stores `header`, `data`, and `data length`. The owning queued packet code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct quic_transport_t
-   * @brief Stores connection, lane, received, security changed, wake context, close context, and destroy context. The owning quic transport code updates these values during setup, work, and cleanup.
+   * @brief Stores `connection`, `lane`, `received`, `security changed`, `wake context`, `close context`, `destroy context`, and `tail`. The owning quic transport code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct receive_context_t
-   * @brief Stores connection and stream. The owning receive context code updates these values during setup, work, and cleanup.
+   * @brief Stores `connection` and `stream`. The owning receive context code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct receive_stream_t
-   * @brief Stores id, received offset, reader, and registered. The owning receive stream code updates these values during setup, work, and cleanup.
+   * @brief Stores `identifier`, `received offset`, `reader`, and `registered`. The owning receive stream code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct received_packet
-   * @brief Stores next, data, and cost. The owning received packet code updates these values during setup, work, and cleanup.
+   * @brief Stores `data` and `cost`. The owning received packet code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct render_file_ctx_s
-   * @brief Stores progress, error, renderer, encoder, recording, frames written, and audio samples written. The owning render file ctx s code updates these values during setup, work, and cleanup.
+   * @brief Stores `progress`, `error`, `renderer`, `encoder`, `recording`, `frames written`, `audio samples written`, and `first frame nanoseconds`. The owning render file ctx s code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct render_progress
-   * @brief Stores mutex, snapshot, fd, last preview ns, and active. The owning render progress code updates these values during setup, work, and cleanup.
+   * @brief Stores `mutex`, `snapshot`, `file descriptor`, `last preview nanoseconds`, and `active`. The owning render progress code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct render_worker_t
-   * @brief Stores loop, process, errors, timer, cancelled, result, and exit time. The owning render worker code updates these values during setup, work, and cleanup.
+   * @brief Stores `loop`, `process`, `errors`, `timer`, `cancelled`, `result`, `exit time`, and `timeout`. The owning render worker code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct rendered_cell_t
-   * @brief Stores background, pixels, and valid. The owning rendered cell code updates these values during setup, work, and cleanup.
+   * @brief Stores `background`, `pixels`, and `valid`. The owning rendered cell code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct rgb_error_t
-   * @brief Stores r, g, and b. The owning rgb error code updates these values during setup, work, and cleanup.
+   * @brief Stores `r`, `g`, and `b`. The owning rgb error code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct runtime_field_t
-   * @brief Stores name, type, size, and cli. The owning runtime field code updates these values during setup, work, and cleanup.
+   * @brief Stores `name`, `type`, `size`, and `cli`. The owning runtime field code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct screen
-   * @brief Stores next, owned, snapshot, render, minimum, fd, and dirty. The owning screen code updates these values during setup, work, and cleanup.
+   * @brief Stores `owned`, `snapshot`, `render`, `minimum`, `file descriptor`, and `dirty`. The owning screen code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct screen_snapshot_t
-   * @brief Stores references, slot, terminal, acquisition started ns, and data. The owning screen snapshot code updates these values during setup, work, and cleanup.
+   * @brief Stores `references`, `slot`, `terminal`, `acquisition started nanoseconds`, and `data`. The owning screen snapshot code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct screen_terminal_t
-   * @brief Stores references and fd. The owning screen terminal code updates these values during setup, work, and cleanup.
+   * @brief Stores `references` and `file descriptor`. The owning screen terminal code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct send_chunk
-   * @brief Stores next, data, cost, and end offset. The owning send chunk code updates these values during setup, work, and cleanup.
+   * @brief Stores `data`, `cost`, and `end offset`. The owning send chunk code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct send_stream_t
-   * @brief Stores id, acked offset, tail, and fin submitted. The owning send stream code updates these values during setup, work, and cleanup.
+   * @brief Stores `identifier`, `acked offset`, `tail`, and `fin submitted`. The owning send stream code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct server_client_removal_t
-   * @brief Stores client and display name. The owning server client removal code updates these values during setup, work, and cleanup.
+   * @brief Stores `client` and `display name`. The owning server client removal code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct server_connection_state_t
-   * @brief Stores negotiation and client. The owning server connection state code updates these values during setup, work, and cleanup.
+   * @brief Stores `negotiation` and `client`. The owning server connection state code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct server_discovery_policy_t
-   * @brief Stores password, has password, has identity, explicit expose, and expose ip. The owning server discovery policy code updates these values during setup, work, and cleanup.
+   * @brief Stores `password`, `has password`, `has identity`, `explicit expose`, and `expose ip`. The owning server discovery policy code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct server_discovery_startup_t
-   * @brief Stores session string and mdns only. The owning server discovery startup code updates these values during setup, work, and cleanup.
+   * @brief Stores `session string` and `mdns only`. The owning server discovery startup code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct server_stats_visit_t
-   * @brief Stores view and queued. The owning server stats visit code updates these values during setup, work, and cleanup.
+   * @brief Stores `view` and `queued`. The owning server stats visit code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct session_client_like_config
-   * @brief Stores run fn, initialization, run user data, kind, discovery, exit user data, and max reconnect attempts. The owning session client like config code updates these values during setup, work, and cleanup.
+   * @brief Stores `run fn`, `run user data`, `kind`, `discovery`, `exit user data`, `max reconnect attempts`, `reconnect user data`, and `reconnect delay ms`. The owning session client like config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct session_connection_ops_t
-   * @brief Holds the working values used by session connection ops; callers normally access them through the owning subsystem's API.
+   * @brief A table of session connection operations and user-data pointers used to adapt discovery/session logic to the common connection lifecycle.
  */
 /**
  * @struct session_connection_t
-   * @brief Stores state, owner thread, ops, and context. The owning session connection code updates these values during setup, work, and cleanup.
+   * @brief Stores `state`, `owner thread`, `ops`, and `context`. The owning session connection code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct session_host
-   * @brief Stores frame workspace, render histories, port, ipv4 address, ipv6 address, max clients, and encryption enabled. The owning session host code updates these values during setup, work, and cleanup.
+   * @brief Stores `frame workspace`, `render histories`, `port`, `ipv4 address`, `ipv6 address`, `max clients`, `encryption enabled`, and `key path`. The owning session host code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct session_host_render_config_t
-   * @brief Stores caps, palette, width, and height. The owning session host render config code updates these values during setup, work, and cleanup.
+   * @brief Stores `caps`, `palette`, `width`, and `height`. The owning session host render config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct session_host_render_target_t
-   * @brief Stores client id and context. The owning session host render target code updates these values during setup, work, and cleanup.
+   * @brief Stores `client identifier` and `context`. The owning session host render target code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct session_pipeline_s
-   * @brief Stores capture tid, encode tid, input tid, input start status, keyboard handler, should exit, and input data. The owning session pipeline s code updates these values during setup, work, and cleanup.
+   * @brief Stores `capture tid`, `encode tid`, `input tid`, `input start status`, `keyboard handler`, `should exit`, `input data`, and `frame slots`. The owning session pipeline s code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct session_protocol_media_t
-   * @brief Stores context, terminal output, frame workspace, and Optional. The owning session protocol media code updates these values during setup, work, and cleanup.
+   * @brief Stores `context`, `terminal output`, and `frame workspace`. The owning session protocol media code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct session_protocol_t
-   * @brief Stores transport, media, control, callback result, packets received, frames received, and frames skipped viewport. The owning session protocol code updates these values during setup, work, and cleanup.
+   * @brief Stores `transport`, `media`, `control`, `callback result`, `packets received`, `frames received`, `frames skipped viewport`, and `audio packets received`. The owning session protocol code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct session_server_like_config
-   * @brief Stores init fn, init user data, interrupt fn, tick user data, cleanup fn, cleanup user data, and status fn. The owning session server like config code updates these values during setup, work, and cleanup.
+   * @brief Stores `init fn`, `init user data`, `interrupt fn`, `tick user data`, `cleanup fn`, `cleanup user data`, `status fn`, and `status user data`. The owning session server like config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct session_settings_t
-   * @brief Stores version, height, color mode, palette type, palette custom, fps, and matrix rain. The owning session settings code updates these values during setup, work, and cleanup.
+   * @brief Stores `version`, `height`, `color mode`, `palette type`, `palette custom`, `fps`, and `matrix rain`. The owning session settings code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct SHA1_CTX
-   * @brief Stores state, count, and buffer. The owning SHA1 CTX code updates these values during setup, work, and cleanup.
+   * @brief Stores `state`, `count`, and `buffer`. The owning SHA1 CTX code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct simd_backend_t
-   * @brief Stores name, required features, and luminance. The owning simd backend code updates these values during setup, work, and cleanup.
+   * @brief Stores `name`, `required features`, and `luminance`. The owning simd backend code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct simd_cells_t
-   * @brief Stores luminance. The owning simd cells code updates these values during setup, work, and cleanup.
+   * @brief Stores `luminance`. The owning simd cells code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct socket_buffer_t
-   * @brief Stores data and len. The owning socket buffer code updates these values during setup, work, and cleanup.
+   * @brief Stores `data` and `length`. The owning socket buffer code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct socket_io_stats_t
-   * @brief Stores send calls, sent bytes, zerocopy calls, zerocopy completions, and zerocopy copied. The owning socket io stats code updates these values during setup, work, and cleanup.
+   * @brief Stores `send calls`, `sent bytes`, `zerocopy calls`, `zerocopy completions`, and `zerocopy copied`. The owning socket io stats code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct socket_send_buffer_t
-   * @brief Stores data, capacity, mapped, and budget. The owning socket send buffer code updates these values during setup, work, and cleanup.
+   * @brief Stores `data`, `capacity`, `mapped`, and `budget`. The owning socket send buffer code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct spectral_config_t
-   * @brief Stores sample rate, fft size, noise gate, compressor, adaptive eq, pitch correct, and auto gain. The owning spectral config code updates these values during setup, work, and cleanup.
+   * @brief Stores `sample rate`, `fft size`, `noise gate`, `compressor`, `adaptive eq`, `pitch correct`, `auto gain`, and `reduction db`. The owning spectral config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct spectral_processor
-   * @brief Stores config, inverse, restored, frequency, ready, magnitude, and gains. The owning spectral processor code updates these values during setup, work, and cleanup.
+   * @brief Stores `config`, `inverse`, `restored`, `frequency`, `ready`, `magnitude`, `gains`, and `eq gain`. The owning spectral processor code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ssh_private_key_parse_t
-   * @brief Stores file content, key blob, key blob len, offset, ciphername len, ciphername pos, and is encrypted. The owning ssh private key parse code updates these values during setup, work, and cleanup.
+   * @brief Stores `file content`, `key blob`, `key blob length`, `offset`, `ciphername length`, `ciphername pos`, `is encrypted`, and `kdfname length`. The owning ssh private key parse code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stats_capabilities_t
-   * @brief Stores counters, gauges, and durations. The owning stats capabilities code updates these values during setup, work, and cleanup.
+   * @brief Stores `counters`, `gauges`, and `durations`. The owning stats capabilities code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stats_descriptor_t
-   * @brief Stores name, unit, and description. The owning stats descriptor code updates these values during setup, work, and cleanup.
+   * @brief Stores `name`, `unit`, and `description`. The owning stats descriptor code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stats_duration_cell_t
-   * @brief Stores recorded ns. The owning stats duration cell code updates these values during setup, work, and cleanup.
+   * @brief Stores `recorded nanoseconds`. The owning stats duration cell code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stats_duration_shard_t
-   * @brief Stores owner and durations. The owning stats duration shard code updates these values during setup, work, and cleanup.
+   * @brief Stores `owner` and `durations`. The owning stats duration shard code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stats_duration_snapshot_t
-   * @brief Stores observations, total ns, min ns, max ns, and last ns. The owning stats duration snapshot code updates these values during setup, work, and cleanup.
+   * @brief Stores `observations`, `total nanoseconds`, `min nanoseconds`, `max nanoseconds`, and `last nanoseconds`. The owning stats duration snapshot code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stats_peer
-   * @brief Stores scope, sampler, transport, and id. The owning stats peer code updates these values during setup, work, and cleanup.
+   * @brief Stores `scope`, `sampler`, `transport`, and `identifier`. The owning stats peer code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stats_rates_t
-   * @brief Stores ready, elapsed ns, counters per second, duration valid, and duration mean ns. The owning stats rates code updates these values during setup, work, and cleanup.
+   * @brief Stores `ready`, `elapsed nanoseconds`, `counters per second`, `duration valid`, and `duration mean nanoseconds`. The owning stats rates code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stats_sampler
-   * @brief Stores config, history, latest, capacity, head, and count. The owning stats sampler code updates these values during setup, work, and cleanup.
+   * @brief Stores `config`, `history`, `latest`, `capacity`, `head`, and `count`. The owning stats sampler code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stats_sampler_config_t
-   * @brief Stores window ns and resolution ns. The owning stats sampler config code updates these values during setup, work, and cleanup.
+   * @brief Stores `window nanoseconds` and `resolution nanoseconds`. The owning stats sampler config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stats_scope
-   * @brief Stores observer, observer context, id, started ns, capabilities, counters, and gauges. The owning stats scope code updates these values during setup, work, and cleanup.
+   * @brief Stores `observer`, `observer context`, `identifier`, `started nanoseconds`, `capabilities`, `counters`, `gauges`, and `snapshot mutex`. The owning stats scope code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stats_snapshot_t
-   * @brief Stores scope id, started ns, sampled ns, capabilities, counters, gauges, and durations. The owning stats snapshot code updates these values during setup, work, and cleanup.
+   * @brief Stores `scope identifier`, `started nanoseconds`, `sampled nanoseconds`, `capabilities`, `counters`, `gauges`, and `durations`. The owning stats snapshot code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stats_table_context_t
-   * @brief Stores view and text. The owning stats table context code updates these values during setup, work, and cleanup.
+   * @brief Stores `view` and `text`. The owning stats table context code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stats_view_t
-   * @brief Stores mode, headings, count, offset, page, selected, and sampled ns. The owning stats view code updates these values during setup, work, and cleanup.
+   * @brief Stores `mode`, `headings`, `count`, `offset`, `page`, `selected`, and `sampled nanoseconds`. The owning stats view code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stdin_buffer_reader_t
-   * @brief Stores buffer and pos. The owning stdin buffer reader code updates these values during setup, work, and cleanup.
+   * @brief Stores `buffer` and `pos`. The owning stdin buffer reader code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct stdin_buffer_t
-   * @brief Stores data and size. The owning stdin buffer code updates these values during setup, work, and cleanup.
+   * @brief Stores `data` and `size`. The owning stdin buffer code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct sync_buffer_t
-   * @brief Stores buffer, buffer size, offset, and truncated. The owning sync buffer code updates these values during setup, work, and cleanup.
+   * @brief Stores `buffer`, `buffer size`, `offset`, and `truncated`. The owning sync buffer code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct sync_row_t
-   * @brief Stores waiter, wait ns, total score, file, line, waiters, and wait known. The owning sync row code updates these values during setup, work, and cleanup.
+   * @brief Stores `waiter`, `wait nanoseconds`, `total score`, `file`, `line`, `waiters`, and `wait known`. The owning sync row code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct sync_sample_t
-   * @brief Stores busy, rows, capacity, sampled ns, and limited. The owning sync sample code updates these values during setup, work, and cleanup.
+   * @brief Stores `busy`, `rows`, `capacity`, `sampled nanoseconds`, and `limited`. The owning sync sample code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct tcp_server
-   * @brief Stores event loop, listen socket, listen socket6, running, and config. The owning tcp server code updates these values during setup, work, and cleanup.
+   * @brief Stores `event loop`, `listen socket`, `listen socket6`, `running`, and `config`. The owning tcp server code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct tcp_server_config_t
-   * @brief Stores port, ipv4 address, ipv6 address, bind ipv4, bind ipv6, event handler, and tick user data. The owning tcp server config code updates these values during setup, work, and cleanup.
+   * @brief Stores `port`, `ipv4 address`, `ipv6 address`, `bind ipv4`, `bind ipv6`, `event handler`, `tick user data`, and `user data`. The owning tcp server config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct term_renderer_config_t
-   * @brief Stores cols, rows, font size pt, theme, font spec, font is path, and font data. The owning term renderer config code updates these values during setup, work, and cleanup.
+   * @brief Stores `cols`, `rows`, `font size pt`, `theme`, `font spec`, `font is path`, `font data`, and `font data size`. The owning term renderer config code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct terminal_fd_reader_s
-   * @brief Stores fp, frame height, frame width, line buffer, line buffer size, eof reached, and first frame processed. The owning terminal fd reader s code updates these values during setup, work, and cleanup.
+   * @brief Stores `fp`, `frame height`, `frame width`, `line buffer`, `line buffer size`, `eof reached`, and `first frame processed`. The owning terminal fd reader s code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct terminal_fd_writer_s
-   * @brief Stores fp. The owning terminal fd writer s code updates these values during setup, work, and cleanup.
+   * @brief Stores `fp`. The owning terminal fd writer s code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct terminal_renderer_s
-   * @brief Stores cells, vt, vts, rows, ft lib, ft face, and zalgo face. The owning terminal renderer s code updates these values during setup, work, and cleanup.
+   * @brief Stores `cells`, `vt`, `vts`, `rows`, `ft lib`, `ft face`, `zalgo face`, and `zalgo level`. The owning terminal renderer s code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct terminal_resize_watcher_t
-   * @brief Stores size. The owning terminal resize watcher code updates these values during setup, work, and cleanup.
+   * @brief Stores `size`. The owning terminal resize watcher code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct test_pattern
-   * @brief Stores image and rgba. The owning test pattern code updates these values during setup, work, and cleanup.
+   * @brief Stores `image` and `rgba`. The owning test pattern code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct text_snapshot_t
-   * @brief Stores fd, media, dimensions, len, and text. The owning text snapshot code updates these values during setup, work, and cleanup.
+   * @brief Stores `file descriptor`, `media`, `dimensions`, `length`, and `text`. The owning text snapshot code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct thread_lock_stack_t
-   * @brief Stores stack, depth, guard, and telemetry. The owning thread lock stack code updates these values during setup, work, and cleanup.
+   * @brief Stores `stack`, `depth`, `guard`, and `telemetry`. The owning thread lock stack code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct thread_registry_entry_t
-   * @brief Stores thread id and stack. The owning thread registry entry code updates these values during setup, work, and cleanup.
+   * @brief Stores `thread identifier` and `stack`. The owning thread registry entry code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct title_writer_t
-   * @brief Stores data, length, and capacity. The owning title writer code updates these values during setup, work, and cleanup.
+   * @brief Stores `data`, `length`, and `capacity`. The owning title writer code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct tui_input_events_t
-   * @brief Stores ready, paste, count, and keys. The owning tui input events code updates these values during setup, work, and cleanup.
+   * @brief Stores `ready`, `paste`, `count`, and `keys`. The owning tui input events code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct udp_peer
-   * @brief Stores next, connection, pending path, pending, and pending length. The owning udp peer code updates these values during setup, work, and cleanup.
+   * @brief Stores `connection`, `pending path`, `pending`, and `pending length`. The owning udp peer code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_button_t
-   * @brief Stores label, shortcut, disabled, color, and foreground. The owning ui button code updates these values during setup, work, and cleanup.
+   * @brief Stores `label`, `shortcut`, `disabled`, and `color`. The owning ui button code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_buttons_t
-   * @brief Stores selected. The owning ui buttons code updates these values during setup, work, and cleanup.
+   * @brief Stores `selected`. The owning ui buttons code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_discovery_view_t
-   * @brief Stores enabled, joining, and session string. The owning ui discovery view code updates these values during setup, work, and cleanup.
+   * @brief Stores `enabled`, `joining`, and `session string`. The owning ui discovery view code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_help_entry_t
-   * @brief Stores keys and description. The owning ui help entry code updates these values during setup, work, and cleanup.
+   * @brief Stores `keys` and `description`. The owning ui help entry code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_help_menu_t
-   * @brief Stores title, entries, count, settings, settings count, footer, and top margin. The owning ui help menu code updates these values during setup, work, and cleanup.
+   * @brief Stores `title`, `entries`, `count`, `settings`, `settings count`, `footer`, and `top margin`. The owning ui help menu code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_layout_t
-   * @brief Stores footer row. The owning ui layout code updates these values during setup, work, and cleanup.
+   * @brief Stores `footer row`. The owning ui layout code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_popup_t
-   * @brief Stores title, lines, line count, footer, minimum width, and top margin. The owning ui popup code updates these values during setup, work, and cleanup.
+   * @brief Stores `title`, `lines`, `line count`, `footer`, `minimum width`, and `top margin`. The owning ui popup code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_presentation_state_t
-   * @brief Stores screen and covered. The owning ui presentation state code updates these values during setup, work, and cleanup.
+   * @brief Stores `screen` and `covered`. The owning ui presentation state code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_scrollbar_geometry_t
-   * @brief Stores length and visible. The owning ui scrollbar geometry code updates these values during setup, work, and cleanup.
+   * @brief Stores `length` and `visible`. The owning ui scrollbar geometry code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_selectable_list_t
-   * @brief Stores selected and first visible. The owning ui selectable list code updates these values during setup, work, and cleanup.
+   * @brief Stores `selected` and `first visible`. The owning ui selectable list code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_session
-   * @brief Stores size, frame, media, logs, animation, splash, and owns logs. The owning ui session code updates these values during setup, work, and cleanup.
+   * @brief Stores `size`, `frame`, `media`, `logs`, `animation`, `splash`, `owns logs`, and `started`. The owning ui session code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_session_view_t
-   * @brief Stores screen, minimum, dirty, clear, refresh ns, draw, and context. The owning ui session view code updates these values during setup, work, and cleanup.
+   * @brief Stores `screen`, `minimum`, `dirty`, `clear`, `refresh nanoseconds`, `draw`, and `context`. The owning ui session view code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_splash_view_t
-   * @brief Stores discovery, animation, use colors, update notification, and connection target. The owning ui splash view code updates these values during setup, work, and cleanup.
+   * @brief Stores `discovery`, `animation`, `use colors`, `update notification`, and `connection target`. The owning ui splash view code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_table_column_t
-   * @brief Stores heading, width, alignment, and ellipsis. The owning ui table column code updates these values during setup, work, and cleanup.
+   * @brief Stores `heading`, `width`, `alignment`, and `ellipsis`. The owning ui table column code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_table_t
-   * @brief Stores columns, row count, viewport, cells, data, and header. The owning ui table code updates these values during setup, work, and cleanup.
+   * @brief Stores `columns`, `row count`, `viewport`, `cells`, `data`, and `header`. The owning ui table code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_viewport_range_t
-   * @brief Stores count. The owning ui viewport range code updates these values during setup, work, and cleanup.
+   * @brief Stores `count`. The owning ui viewport range code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct ui_viewport_t
-   * @brief Stores page size. The owning ui viewport code updates these values during setup, work, and cleanup.
+   * @brief Stores `page size`. The owning ui viewport code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct update_child_result_t
-   * @brief Stores exited, status, and signal. The owning update child result code updates these values during setup, work, and cleanup.
+   * @brief Stores `exited`, `status`, and `signal`. The owning update child result code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct utf8_char_t
-   * @brief Stores width, utf8 bytes, byte len, and  pad. The owning utf8 char code updates these values during setup, work, and cleanup.
+   * @brief Stores `width`, `utf8 bytes`, `byte length`, and `pad`. The owning utf8 char code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct utf8_palette_cache
-   * @brief Stores cache, cache64, char index ramp, last access time, access count, total age seconds, and creation time. The owning utf8 palette cache code updates these values during setup, work, and cleanup.
+   * @brief Stores `cache`, `cache64`, `char index ramp`, `last access time`, `access count`, `total age seconds`, `creation time`, and `cached score`. The owning utf8 palette cache code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct waveform_color_stop_t
-   * @brief Stores frequency, red, green, and blue. The owning waveform color stop code updates these values during setup, work, and cleanup.
+   * @brief Stores `frequency`, `red`, `green`, and `blue`. The owning waveform color stop code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct webcam_frame_clock_t
-   * @brief Stores previous, wall, and initialized. The owning webcam frame clock code updates these values during setup, work, and cleanup.
+   * @brief Stores `previous`, `wall`, and `initialized`. The owning webcam frame clock code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct websocket_endpoint_t
-   * @brief Stores host, path, port, and use ssl. The owning websocket endpoint code updates these values during setup, work, and cleanup.
+   * @brief Stores `host`, `path`, `port`, and `use ssl`. The owning websocket endpoint code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
 /**
  * @struct yt_dlp_request_options_t
-   * @brief Stores headers, cookies, proxy, and proxy specified. The owning yt dlp request options code updates these values during setup, work, and cleanup.
+   * @brief Stores `headers`, `cookies`, `proxy`, and `proxy specified`. The owning yt dlp request options code updates these members during setup, work, and cleanup; pointers remain owned by the subsystem that created them.
  */
