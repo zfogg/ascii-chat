@@ -226,10 +226,12 @@ typedef struct {
 } utf8_char_info_t;
 
 /**
- * @brief UTF-8 palette structure
+ * @brief Decoded palette text plus lookup data for rendering Unicode glyphs safely.
  *
- * Properly handles multi-byte UTF-8 characters in palettes. Stores
- * per-character information for efficient lookup and rendering.
+ * The palette keeps character boundaries separate from byte offsets, so a
+ * renderer can choose by character index without splitting a multibyte code
+ * point. Its cached UTF-8 entries also carry byte length and terminal cell
+ * width for output sizing.
  *
  * @note char_count is the number of characters (not bytes), which is
  *       important for proper palette indexing.
