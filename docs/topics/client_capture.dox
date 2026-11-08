@@ -1,114 +1,34 @@
 /**
- * @defgroup client_capture Media Capture
- * @ingroup module_client
- * @brief 📹 Webcam video capture and transmission to server
- */
-
-/**
  * @page topic_client_capture Media Capture
- * @ingroup client_capture
+ * @ingroup module_client
+ * @brief Capture, encode, and publish client video frames.
  *
- * @section client_capture_overview Overview
+ * Capture is a producer in the session pipeline. It obtains frames from the
+ * configured media input, applies the active image/codec path, and sends through
+ * the client connection's ACIP transport. It does not own a socket or framing
+ * loop.
  *
- * The media capture subsystem manages webcam video capture, frame compression,
- * and transmission to the server. Supports platform-specific webcam backends
- * and test pattern mode for testing without hardware.
+ * @section client_capture_sources Sources
  *
- * **Implementation**: src/client/capture.c, src/client/capture.h
+ * Inputs may be webcams, files, network media, test patterns, or other FFmpeg
+ * sources selected by the options layer. Capability probing and negotiated
+ * dimensions/FPS belong to the media input and encoder; capture code must not
+ * assume a camera exists.
  *
- * @section client_capture_platforms Platform Support
+ * @section client_capture_send Sending
  *
- * **Webcam Backends**:
- * - **macOS**: AVFoundation (lib/video/webcam/macos/webcam_avfoundation.m)
- * - **Linux**: Video4Linux2 (lib/video/webcam/linux/webcam_v4l2.c)
- * - **Windows**: Media Foundation (lib/video/webcam/windows/webcam_mediafoundation.c)
+ * Encoded video is handed to the transport through ACIP client send helpers.
+ * The shared scheduler applies bounded admission and can drop disposable visual
+ * media under pressure while preserving control traffic. Producers must honor
+ * returned errors and stop cleanly during shutdown.
  *
- * @section client_capture_thread Capture Thread
+ * @section client_capture_modes Modes
  *
- * @code{.c}
- * static void *capture_thread_func(void *arg)
- * {
- *   (void)arg;
+ * Snapshot and test-pattern modes support automation and systems without camera
+ * hardware. Recording occurs in the media pipeline before terminal presentation
+ * and is independent of TUI visibility.
  *
- *   // Calculate frame interval for target FPS
- *   uint64_t frame_interval_usec = 1000000 / VIDEO_CAPTURE_FPS;
- *   uint64_t start_time = get_monotonic_time_usec();
- *
- *   while (!should_exit() && server_connection_is_active()) {
- *     // Capture frame from webcam
- *     video_frame_t *frame = webcam_capture();
- *     if (!frame) {
- *       platform_sleep_usec(frame_interval_usec);
- *       continue;
- *     }
- *
- *     // Optional compression
- *     void *send_data = frame->data;
- *     size_t send_size = frame->data_size;
- *     void *compressed_data = NULL;
- *
- *     if (opt_compress) {
- *       compressed_data = compress_frame(frame->data, frame->data_size, &send_size);
- *       if (compressed_data) {
- *         send_data = compressed_data;
- *       }
- *     }
- *
- *     // Send frame to server
- *     send_packet_to_server(PACKET_TYPE_IMAGE_FRAME, send_data, send_size,
- *                          server_connection_get_client_id());
- *
- *     if (compressed_data) free(compressed_data);
- *     if (frame->owns_data && frame->data) free(frame->data);
- *     free(frame);
- *
- *     // Rate limiting
- *     platform_sleep_usec(frame_interval_usec);
- *
- *     // Snapshot mode: exit after delay
- *     if (opt_snapshot) {
- *       uint64_t elapsed = (get_monotonic_time_usec() - start_time) / 1000000;
- *       if (elapsed >= opt_snapshot_delay) {
- *         signal_exit();
- *         break;
- *       }
- *     }
- *   }
- *
- *   atomic_store(&g_capture_thread_exited, true);
- *   return NULL;
- * }
- * @endcode
- *
- * @section client_capture_snapshot Snapshot Mode
- *
- * **Snapshot mode** (`--snapshot`, `--snapshot-delay <seconds>`):
- * - Useful for testing without continuous streaming
- * - `--snapshot`: Capture single frame and exit
- * - `--snapshot-delay N`: Capture for N seconds then exit
- *
- * @code{.bash}
- * # Single frame test
- * ./bin/ascii-chat client --snapshot
- *
- * # 5-second test
- * ./bin/ascii-chat client --snapshot --snapshot-delay 5
- * @endcode
- *
- * @section client_capture_test_pattern Test Pattern Mode
- *
- * **Test pattern mode** (`--test-pattern`):
- * - Generates synthetic video frames without webcam hardware
- * - Useful for testing on Windows or systems without webcam
- * - Uses platform-specific test pattern generation
- *
- * @code{.bash}
- * # Use test pattern instead of webcam
- * ./bin/ascii-chat client --test-pattern
- * @endcode
- *
+ * @see topic_client_connection
+ * @see topic_av
  * @see src/client/capture.c
- * @see src/client/capture.h
- * @see lib/video/webcam/webcam.h
- * @see @ref topic_client "Client Overview"
  */
