@@ -3,7 +3,7 @@ import pytest
 """Run native synchronization regressions, including real PTY presentation.
 
 Build: cmake --build build --target test-sync-regressions
-Run: python tests/python/integration/sync/test_regressions.py build/bin/test-sync-regressions.exe
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/python/integration/sync/test_regressions.py build/bin/test-sync-regressions.exe
 Requires the same pyte/pywinpty (Windows) or pexpect (POSIX) as terminal_ui.py.
 """
 

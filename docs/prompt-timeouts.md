@@ -34,8 +34,8 @@ Older servers and external network timeouts may still close the connection soone
 Build the binary and `ascii-chat-shared` target, then run:
 
 ```powershell
-python tests/integration/prompt_timeouts.py --library build/bin/asciichat.dll
-python tests/integration/terminal_prompt.py --library build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/prompt_timeouts.py --library build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/terminal_prompt.py --library build/bin/asciichat.dll
 ```
 
 The deadline regression suite uses real terminals and pipes held open without

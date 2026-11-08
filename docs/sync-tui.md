@@ -47,8 +47,8 @@ Run the native regressions and live-mode checks with:
 ```sh
 cmake --build build --target ascii-chat test-sync-regressions
 uv run --project tests/ascii_chat_tests --frozen python -m pytest tests/python/integration/sync --sync-probe build/bin/test-sync-regressions.exe
-python tests/integration/sync_tui_modes.py --binary build/bin/ascii-chat.exe --artifacts build/sync-tui-evidence
-python tests/integration/tui_switching.py --binary build/bin/ascii-chat.exe
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/sync_tui_modes.py --binary build/bin/ascii-chat.exe --artifacts build/sync-tui-evidence
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/tui_switching.py --binary build/bin/ascii-chat.exe
 ```
 
 The live-mode test uses generated video/audio and loopback services. Its optional

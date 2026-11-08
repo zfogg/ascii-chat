@@ -129,7 +129,7 @@ fixtures, sends no OTLP, switches to an empty session, checks all panels/rules,
 and restores the original session in a finally block:
 
 ```sh
-python tests/manual/probe_spaniel_alert_pack.py
+uv run --project tests/ascii_chat_tests --frozen python tests/manual/probe_spaniel_alert_pack.py
 ```
 
 Debug and Dev builds export traces, logs, and metrics to the local Compose
@@ -457,7 +457,7 @@ Docker. The test also covers ownership of borrowed decoder input under ASan.
 The sustained-load test is deliberately absent from CTest. Run it explicitly:
 
 ```sh
-python tests/manual/test_otel_load.py build/bin/ascii-chat --seconds 60
+uv run --project tests/ascii_chat_tests --frozen python tests/manual/test_otel_load.py build/bin/ascii-chat --seconds 60
 ```
 
 It measures payload bytes and spans with default sampling, compares disabled/enabled elapsed and child CPU time, records exported RSS,
@@ -527,7 +527,7 @@ fatal signal handler. The opt-in native smoke check uses actual two-thread mutex
 cycles and checks live export before terminating its disposable child:
 
 ```sh
-python tests/manual/test_otel_watchdog.py build/lib/libasciichat.so
+uv run --project tests/ascii_chat_tests --frozen python tests/manual/test_otel_watchdog.py build/lib/libasciichat.so
 # macOS: build/lib/libasciichat.dylib; Windows: build/bin/asciichat.dll
 ```
 
@@ -562,7 +562,7 @@ invalid UTF-8, an unsupported terminal escape and an unreset SGR state. It check
 four ERROR spans and exact counter totals with media sampling set to zero:
 
 ```sh
-python tests/manual/test_otel_frame_validation.py build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/manual/test_otel_frame_validation.py build/bin/asciichat.dll
 ```
 
 ## TUI usage

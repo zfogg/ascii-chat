@@ -1,6 +1,6 @@
 """Exercise production splash timing and shutdown through the shared library.
 
-Usage: python tests/ui/probe_splash_lifecycle.py build/bin/asciichat.dll
+Usage: uv run --project tests/ascii_chat_tests --frozen python tests/ui/probe_splash_lifecycle.py build/bin/asciichat.dll
 Each case runs in a subprocess so a blocked writer cannot hang the test runner.
 """
 

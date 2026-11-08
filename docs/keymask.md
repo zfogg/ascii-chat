@@ -67,7 +67,7 @@ applies terminal/notice policy. Public headers mirror that directory under
 Build using the default CMake preset, then run against the compiled shared library:
 
 ```sh
-python tests/integration/keymask.py --library build/bin/asciichat.dll --terminal --binary build/bin/ascii-chat.exe
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/keymask.py --library build/bin/asciichat.dll --terminal --binary build/bin/ascii-chat.exe
 ```
 
 Use the corresponding `.so`/`.dylib` path on other platforms. The core checks use

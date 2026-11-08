@@ -54,7 +54,7 @@ cmake --preset default -B build-metrics -DCMAKE_BUILD_TYPE=Release \
   -DASCIICHAT_ENABLE_SANITIZERS=OFF -DASCIICHAT_ENABLE_COVERAGE=OFF \
   -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
 cmake --build build-metrics --target test-transport-metrics
-python3 tests/benchmarks/transport_metrics.py \
+uv run --project tests/ascii_chat_tests --frozen python tests/benchmarks/transport_metrics.py \
   --binary build-metrics/bin/test-transport-metrics \
   --output build-metrics/measurements --netem --runs 3 \
   --transports tcp,webrtc,quic,quic-datagrams --source-revision "$(git rev-parse HEAD)"

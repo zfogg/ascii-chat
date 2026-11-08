@@ -108,7 +108,7 @@ without rewriting the caller’s preferences.
 concurrent updates, atomic rejection, revision conflicts, snapshot lifetime,
 animation exclusion, and independent remote viewers.
 
-On Windows, `python tests/integration/runtime_settings_cli.py build/bin/ascii-chat.exe`
+On Windows, `uv run --project tests/ascii_chat_tests --frozen python tests/integration/runtime_settings_cli.py build/bin/ascii-chat.exe`
 drives real keyboard controls in isolated hidden child consoles over TCP and
 WebSocket. Browser coverage uses the rebuilt WASM artifacts and an isolated Vite
 server: `vp exec playwright test -c tests/e2e/runtime-settings.config.ts` from

@@ -88,7 +88,7 @@ speedup. Small audio packets never request kernel zero-copy.
 cmake --preset default -B build -DBUILD_TESTS=ON
 cmake --build build --target test-network-vectors
 ctest --test-dir build -R '^network-vectors$' --output-on-failure
-python3 tests/benchmarks/network_copy_benchmark.py \
+uv run --project tests/ascii_chat_tests --frozen python tests/benchmarks/network_copy_benchmark.py \
   build/bin/test-network-vectors --runs 3 --output network-results.json
 ```
 

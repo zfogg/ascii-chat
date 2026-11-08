@@ -40,9 +40,9 @@ allocation/copy work on contiguous encrypted async TCP and WebSocket paths.
 - `test-webrtc-security`: real libdatachannel peers, 64 KiB round trips, nonce
   advancement, default/encrypted/password/identity/auth-only modes, and rejected
   credentials before application admission.
-- `python tests/integration/crypto_policy.py build/bin/ascii-chat`: 15 real CLI
+- `uv run --project tests/ascii_chat_tests --frozen python tests/integration/crypto_policy.py build/bin/ascii-chat`: 15 real CLI
   TCP/WS/WSS policy cases with rendered frames and rejected credentials.
-- `python tests/integration/webrtc_security.py build/bin/ascii-chat`: local ACDS,
+- `uv run --project tests/ascii_chat_tests --frozen python tests/integration/webrtc_security.py build/bin/ascii-chat`: local ACDS,
   CLI host and participant, negotiation through the production peer manager, and
   received/rendered video in six default/password/mutual-key security modes.
   Observed receive/render rates were 57.9-58.0 fps with a 40x12 terminal.

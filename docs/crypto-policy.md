@@ -78,7 +78,7 @@ Validation:
 ```sh
 cmake --build build --target ascii-chat test-crypto-policy
 ctest --test-dir build -R '^crypto-policy$' --output-on-failure
-python tests/integration/crypto_policy.py /absolute/path/to/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/crypto_policy.py /absolute/path/to/ascii-chat
 # From web/web, with the rebuilt WASM bundle:
 vp dev --config tests/network/crypto-policy.vite.config.ts
 # In another terminal:
@@ -95,7 +95,7 @@ WebRTC validation (real native and browser DataChannels):
 ```sh
 cmake --build build --target test-webrtc-security
 ctest --test-dir build -R '^webrtc-security$' --output-on-failure
-python tests/integration/webrtc_security.py /absolute/path/to/ascii-chat
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/webrtc_security.py /absolute/path/to/ascii-chat
 # From web/web:
 vp exec playwright test --config tests/e2e/peer-security.config.ts
 ```

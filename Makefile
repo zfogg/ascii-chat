@@ -230,11 +230,7 @@ fresh-clone: build
 	touch .env
 	cp web/.env.example web/.env
 	cd web && pnpm install && cd ..
-ifeq ($(OS),Windows_NT)
-FORMAT_PYTHON ?= python
-else
-FORMAT_PYTHON ?= python3
-endif
+FORMAT_PYTHON ?= uv run --project tests/ascii_chat_tests --frozen python
 
 format-docs:
 	@$(FORMAT_PYTHON) scripts/format-repo.py docs

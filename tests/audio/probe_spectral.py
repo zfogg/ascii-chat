@@ -1,5 +1,5 @@
 """Exercise the compiled spectral API (no Python DSP substitute).
-Usage: python tests/audio/probe_spectral.py build/bin/asciichat.dll
+Usage: uv run --project tests/ascii_chat_tests --frozen python tests/audio/probe_spectral.py build/bin/asciichat.dll
 """
 
 # Apply the shared test policy before importing helpers or starting native children.

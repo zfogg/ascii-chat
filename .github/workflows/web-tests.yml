@@ -52,6 +52,8 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: astral-sh/setup-uv@v6
+
       - name: Set up Vite+ and Node.js
         uses: voidzero-dev/setup-vp@v1.21.2
         with:
@@ -95,6 +97,8 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: astral-sh/setup-uv@v6
+
       - name: Set up Vite+ and Node.js
         uses: voidzero-dev/setup-vp@v1.21.2
         with:
@@ -120,7 +124,7 @@ jobs:
             sudo apt-get update
             sudo apt-get install --yes ffmpeg
           fi
-          python3 tests/scripts/create_face_follow_fixture.py
+          uv run --project tests/ascii_chat_tests --frozen python tests/scripts/create_face_follow_fixture.py
 
       - name: Run focused browser checks
         run: vp run test:e2e:ci

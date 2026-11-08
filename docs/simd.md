@@ -71,8 +71,8 @@ Cross-compilation uses Clang with an installed ARM64 Linux sysroot. To compare
 the actual application's rendered output across backends:
 
 ```sh
-python3 tests/simd/smoke.py build_release/bin/ascii-chat auto sse2 ssse3 avx2
-python3 tests/simd/audit_flags.py build_release/compile_commands.json
+uv run --project tests/ascii_chat_tests --frozen python tests/simd/smoke.py build_release/bin/ascii-chat auto sse2 ssse3 avx2
+uv run --project tests/ascii_chat_tests --frozen python tests/simd/audit_flags.py build_release/compile_commands.json
 ```
 
 Full release validation must also run the application (including rendering and

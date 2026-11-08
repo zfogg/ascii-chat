@@ -46,9 +46,9 @@ so redirecting stdout alone does not disable the display or grep/Escape input.
 for server using a real PTY and rendered-screen assertions.
 
 ```sh
-python tests/integration/broken_output.py --binary build/bin/ascii-chat.exe
-python tests/manual/cpu_usage.py --binary build/bin/ascii-chat.exe --output build/cpu-check --filter closed-output --warmup 5 --seconds 10
-python tests/manual/cpu_usage.py --binary build/bin/ascii-chat.exe --output build/cpu-matrix --warmup 5 --seconds 10
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/broken_output.py --binary build/bin/ascii-chat.exe
+uv run --project tests/ascii_chat_tests --frozen python tests/manual/cpu_usage.py --binary build/bin/ascii-chat.exe --output build/cpu-check --filter closed-output --warmup 5 --seconds 10
+uv run --project tests/ascii_chat_tests --frozen python tests/manual/cpu_usage.py --binary build/bin/ascii-chat.exe --output build/cpu-matrix --warmup 5 --seconds 10
 ```
 
 Use the native executable path on Linux. The manual runner supports Windows/Linux and needs ports 38451–38454 free. Its waveform/FFT cases use corrected valid flags. JSONL rows preserve commands, PIDs, samples, exits, and pipe actions. Supplemental scripts and original results remain under `build/cpu_*.py` and `build/cpu-results-*` (untracked build artifacts).

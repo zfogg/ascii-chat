@@ -82,9 +82,6 @@ jobs:
         os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15","windows-latest"]' || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
       - uses: astral-sh/setup-uv@v6
       - name: Configure Windows linker environment
         if: runner.os == 'Windows'
@@ -98,13 +95,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: python -m pip install gcovr==8.6
-      - run: python .github/scripts/test_generate_coverage.py
-      - run: python .github/scripts/test_prepare_coverage_upload.py
-      - run: python .github/scripts/test_criterion_to_junit.py
+      - uses: astral-sh/setup-uv@v6
+      - run: uv python install 3.15
+      - run: uv sync --frozen
+      - run: uv run --frozen python .github/scripts/test_generate_coverage.py
+      - run: uv run --frozen python .github/scripts/test_prepare_coverage_upload.py
+      - run: uv run --frozen python .github/scripts/test_criterion_to_junit.py
 
   unit-tests:
     needs: preflight
@@ -139,18 +135,12 @@ jobs:
           extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr libc6-dbg' || 'gcovr' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # CPython 3.12 retains allocations during teardown under preloaded ASan.
-      # Use Python 3.14 for ctypes hosts while keeping leak checks enabled.
-      - name: Set up Python for sanitizer hosts
-        id: unit-python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14"
-
+      # Use the repository-managed Python for ctypes hosts while keeping leak
+      # checks enabled.
       - uses: astral-sh/setup-uv@v6
 
       - name: Install Python test dependencies
-        run: uv sync --project tests/ascii_chat_tests --frozen --python "${{ steps.unit-python.outputs.python-path }}"
+        run: uv python install 3.15 && uv sync --project tests/ascii_chat_tests --frozen
 
       - name: Cache build, dependencies, and ccache
         id: cache-build
@@ -390,16 +380,10 @@ jobs:
           # macOS debug symbol bundles matching these paths are directories.
           rm -rf build/bin/test_* build/bin/ascii-chat build/bin/ascii-chat.dSYM build/lib/libasciichat*
 
-      - name: Set up Python test interpreter
-        id: integration-python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14"
-
       - uses: astral-sh/setup-uv@v6
 
       - name: Install terminal test dependencies
-        run: uv sync --project tests/ascii_chat_tests --frozen --python "${{ steps.integration-python.outputs.python-path }}"
+        run: uv python install 3.15 && uv sync --project tests/ascii_chat_tests --frozen
 
       - name: Configure integration tests
         run: |
@@ -723,16 +707,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
       - uses: actions/download-artifact@v4
         with:
           pattern: "*test-results-*"
           path: coverage-reports
       - name: Require all seven coverage reports
         id: coverage
-        run: python .github/scripts/prepare-coverage-upload.py coverage-reports
+        run: uv run --frozen python .github/scripts/prepare-coverage-upload.py coverage-reports
       - name: Preserve complete coverage inputs and summary
         uses: actions/upload-artifact@v4
         with:
@@ -746,7 +728,7 @@ jobs:
       - name: Install pinned Codecov CLI
         id: codecov-cli
         run: |
-          python -m pip install codecov-cli==11.3.1
+          uv tool install codecov-cli==11.3.1
           echo "binary=$(command -v codecovcli)" >> "$GITHUB_OUTPUT"
       - name: Upload complete coverage to Codecov
         uses: codecov/codecov-action@v5

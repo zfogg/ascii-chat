@@ -62,9 +62,9 @@ Validate edits against Codecov's live schema:
 
 ```sh
 curl --fail --data-binary @codecov.yml https://api.codecov.io/validate
-python .github/scripts/test_generate_coverage.py
-python .github/scripts/test_prepare_coverage_upload.py
-python .github/scripts/test_criterion_to_junit.py
+uv run --project tests/ascii_chat_tests --frozen python .github/scripts/test_generate_coverage.py
+uv run --project tests/ascii_chat_tests --frozen python .github/scripts/test_prepare_coverage_upload.py
+uv run --project tests/ascii_chat_tests --frozen python .github/scripts/test_criterion_to_junit.py
 ```
 
 References: [YAML reference](https://docs.codecov.com/docs/codecovyml-reference),
@@ -88,7 +88,7 @@ find build_coverage -name '*.gcda' -delete
 ctest --test-dir build_coverage -L '^(unit|integration|performance)$' \
   --no-tests=error --output-on-failure --parallel 2 \
   --output-junit Testing/coverage-tests.xml
-python .github/scripts/generate-coverage.py \
+uv run --project tests/ascii_chat_tests --frozen python .github/scripts/generate-coverage.py \
   --build build_coverage --output build_coverage/coverage.xml
 ```
 

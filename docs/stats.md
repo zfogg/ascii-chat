@@ -206,8 +206,8 @@ server console restoration, redirected summaries, and shutdown with stats open.
 ConPTY (or POSIX PTYs). `terminal_prompt.py` verifies that `=` remains prompt text.
 
 ```sh
-python tests/integration/stats_tui.py --binary build/bin/ascii-chat --artifacts build/stats-evidence
-python tests/integration/stats_terminal.py --binary build/bin/ascii-chat.exe --artifacts build/stats-windows
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/stats_tui.py --binary build/bin/ascii-chat --artifacts build/stats-evidence
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/stats_terminal.py --binary build/bin/ascii-chat.exe --artifacts build/stats-windows
 ```
 
 `tests/benchmarks/stats.c` measures collection calls against a built library;

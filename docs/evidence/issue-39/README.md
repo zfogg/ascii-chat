@@ -135,5 +135,5 @@ speaker indices for the machine as needed; Windows used Realtek device 6 and the
 Mac used its default builtin speakers. To regenerate the chart:
 
 ```sh
-python tests/audio/analyze_test_audio.py --source build/test-audio-source.wav --windows-received build/test-audio-windows-received.wav --mac-received build/test-audio-mac-received.wav --output build/test-audio-report
+uv run --project tests/ascii_chat_tests --frozen python tests/audio/analyze_test_audio.py --source build/test-audio-source.wav --windows-received build/test-audio-windows-received.wav --mac-received build/test-audio-mac-received.wav --output build/test-audio-report
 ```

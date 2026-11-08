@@ -59,7 +59,7 @@ ascii-chat mirror --test-pattern=0 --snapshot --snapshot-delay=2 --audio=false -
   --width=80 --height=32 --color-mode=truecolor --renderer=glyph --render-file=glyph.gif > pattern0-glyph.log 2>&1
 # Repeat with --test-pattern=1 and --file=demo.mp4, naming the logs
 # pattern1-{baseline,glyph}.log and testsrc-{baseline,glyph}.log.
-python scripts/render_glyph_comparisons.py CAPTURE_DIR OUTPUT_DIR DejaVuSansMono.ttf
+uv run --project tests/ascii_chat_tests --frozen python scripts/render_glyph_comparisons.py CAPTURE_DIR OUTPUT_DIR DejaVuSansMono.ttf
 
 # Extract a 30-second action segment and capture it twice. Use the same options
 # for both sides except --renderer=glyph.
@@ -73,7 +73,7 @@ ascii-chat --quiet --no-check-update mirror \
   --file=demo-action.mp4 \
   --snapshot --snapshot-delay=30 --audio=false --fps=8 --width=80 --height=32 \
   --color-mode=truecolor --renderer=glyph > glyph.log 2>&1
-python scripts/render_ansi_video.py baseline.log glyph.log website-demo.mp4 DejaVuSansMono.ttf
+uv run --project tests/ascii_chat_tests --frozen python scripts/render_ansi_video.py baseline.log glyph.log website-demo.mp4 DejaVuSansMono.ttf
 ```
 
 ## Renderer-only timing

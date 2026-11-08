@@ -66,7 +66,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   # Install packages - completely ignore all errors since many are already installed
   # GitHub runners have pre-installed packages with version conflicts that can't be resolved
   brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
-    ninja python mimalloc zstd libsodium portaudio opus fftw criterion doxygen sqlite3 \
+    ninja mimalloc zstd libsodium portaudio opus fftw criterion doxygen sqlite3 \
     miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets libuv icu4c openssl@3 yyjson \
     libvterm freetype fontconfig expat pcre2 \
     >/dev/null 2>&1 || true
@@ -75,6 +75,10 @@ if [[ "$PLATFORM" == "macos" ]]; then
   if ! command -v uv &>/dev/null; then
     brew install uv
   fi
+  uv python install 3.15
+  uv python pin 3.15
+  uv tool install --upgrade "yt-dlp[default]"
+  uv sync --project "$(dirname "$0")/../tests/ascii_chat_tests" --frozen
 
   echo "Homebrew packages: installation attempt completed"
 
@@ -143,7 +147,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     # Install non-LLVM dependencies first
     apt-get install -y \
       pkg-config make autoconf automake libtool ccache gperf \
-      cmake ninja-build python3 \
+      cmake ninja-build \
       musl-tools musl-dev \
       nasm \
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libfftw3-dev libsystemd-dev \
@@ -310,7 +314,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       pkg-config make autoconf automake libtool \
       clang llvm lld \
       libcxx-devel libcxxabi-devel \
-      cmake ninja-build python3 \
+      cmake ninja-build \
       musl-devel musl-gcc musl-libc-static \
       nasm \
       libx264-devel libx265-devel \
@@ -327,8 +331,6 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       doxygen \
       rpm-build \
       libvterm-devel freetype-devel fontconfig-devel libicu-devel
-
-    python3 -m pip install -U "yt-dlp[default]"
 
     curl -fsSL https://bun.com/install | bash
 
@@ -390,6 +392,13 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Ensure ${uv_install_dir} is on PATH in future shells."
   fi
   command -v uv >/dev/null || { echo >&2 "ERROR: uv installation failed"; exit 1; }
+
+  # uv owns the Python interpreter and project environment. Keep the required
+  # minor version in one place so system Python versions do not affect tests.
+  uv python install 3.15
+  uv python pin 3.15
+  uv tool install --upgrade "yt-dlp[default]"
+  uv sync --project "$(dirname "$0")/../tests/ascii_chat_tests" --frozen
 
   echo ""
   echo "Dependencies installed successfully!"

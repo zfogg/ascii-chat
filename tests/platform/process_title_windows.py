@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify process naming preserves terminal titles in a hidden Windows console.
 
-Usage: python tests/platform/process_title_windows.py [build/bin/asciichat.dll]
+Usage: uv run --project tests/ascii_chat_tests --frozen python tests/platform/process_title_windows.py [build/bin/asciichat.dll]
 Also checks redirected terminal calls produce no OSC title output.
 """
 

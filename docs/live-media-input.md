@@ -57,9 +57,9 @@ retained/paused redraws do not count.
 Run the native playlist smoke test against the rebuilt binary:
 
 ```powershell
-python tests/integration/media_playlist.py --binary build/bin/ascii-chat.exe --artifacts build/playlist-smoke
-python tests/integration/media_responsiveness.py --binary build/bin/ascii-chat.exe --artifacts build/pattern-response
-python tests/integration/media_responsiveness.py --binary build/bin/ascii-chat.exe --webcam --artifacts build/webcam-response
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/media_playlist.py --binary build/bin/ascii-chat.exe --artifacts build/playlist-smoke
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/media_responsiveness.py --binary build/bin/ascii-chat.exe --artifacts build/pattern-response
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/media_responsiveness.py --binary build/bin/ascii-chat.exe --webcam --artifacts build/webcam-response
 ```
 
 Each responsiveness run renders for two minutes before measuring three open-prompt
@@ -77,9 +77,9 @@ To trace native frame freshness and verify the FPS overlay on every complete
 terminal update, run:
 
 ```powershell
-python tests/integration/live_frame_latency.py --binary build/bin/ascii-chat.exe --webcam --with-audio --duration 125 --check-input --artifacts build/live-frame-latency
-python tests/integration/live_frame_latency.py --binary build/bin/ascii-chat.exe --webcam --fps 5 --duration 15 --artifacts build/throttled-camera
-python tests/integration/frame_presentation.py --binary build/bin/ascii-chat.exe --artifacts build/frame-presentation
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/live_frame_latency.py --binary build/bin/ascii-chat.exe --webcam --with-audio --duration 125 --check-input --artifacts build/live-frame-latency
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/live_frame_latency.py --binary build/bin/ascii-chat.exe --webcam --fps 5 --duration 15 --artifacts build/throttled-camera
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/frame_presentation.py --binary build/bin/ascii-chat.exe --artifacts build/frame-presentation
 ```
 
 The first check also measures `o` responsiveness after sustained rendering. The
@@ -122,8 +122,8 @@ as well as complete frames and toggle-off behavior. The frontend emulator replie
 after parsing output, so its own rendering speed applies backpressure too:
 
 ```powershell
-python tests/integration/frame_presentation.py --binary build/bin/ascii-chat.exe --artifacts build/frame-presentation
-python tests/integration/terminal_backpressure.py --binary build/bin/ascii-chat.exe --artifacts build/terminal-backpressure
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/frame_presentation.py --binary build/bin/ascii-chat.exe --artifacts build/frame-presentation
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/terminal_backpressure.py --binary build/bin/ascii-chat.exe --artifacts build/terminal-backpressure
 ```
 
 The backpressure regression delays replies, holds one for 800 ms, verifies that
@@ -140,7 +140,7 @@ for sanitizer checks, but adds significant cost to per-cell ANSI generation.
 cmake --preset default -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build build --target ascii-chat
 build/bin/ascii-chat.exe --log-level debug --log-file build/frame-timings.log mirror --fps-counter
-python tests/integration/frame_timing_report.py build/frame-timings.log
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/frame_timing_report.py build/frame-timings.log
 ```
 
 Keep the terminal frontend, viewport size, render mode, color mode, and machine

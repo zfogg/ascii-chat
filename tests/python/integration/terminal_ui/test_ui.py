@@ -4,7 +4,7 @@ from types import SimpleNamespace
 """Exercise the actual UI through a resizable terminal.
 
 Requires pyte and pywinpty (Windows) or pexpect (POSIX), plus ffmpeg.
-Run: python tests/python/integration/terminal_ui/test_ui.py --binary build/bin/ascii-chat.exe
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/python/integration/terminal_ui/test_ui.py --binary build/bin/ascii-chat.exe
 The test creates its own media and uses only loopback network connections.
 """
 

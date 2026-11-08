@@ -118,9 +118,9 @@ license applies in addition to this repository's source license.
 ```sh
 cmake --preset default -B build
 cmake --build build
-python -m pip install numpy scipy matplotlib sounddevice soundfile
-python tests/audio/probe_spectral.py build/bin/asciichat.dll
-python tests/audio/probe_spectral_integration.py build/bin/asciichat.dll
+uv sync --project tests/ascii_chat_tests --extra audio
+uv run --project tests/ascii_chat_tests --frozen python tests/audio/probe_spectral.py build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/audio/probe_spectral_integration.py build/bin/asciichat.dll
 ```
 
 Pass the shared library path for your platform. The tests call the compiled C/C++
@@ -131,12 +131,12 @@ non-finite input, reset, empty-mixer locking, recipient isolation, and the exist
 AEC3/capture chain. Benchmarks include Python call overhead and report wall time,
 not whole-application CPU utilization. Criterion is not supported on Windows.
 
-For physical recording, list device indices with `python -m sounddevice`, obtain
+For physical recording, list device indices with `uv run --project tests/ascii_chat_tests --extra audio python -m sounddevice`, obtain
 the attributed speech fixture described in the evidence README, then run:
 
 ```sh
-python tests/audio/record_spectral.py --library build/bin/asciichat.dll --source speech-source.wav --input-device 34 --output-device 27
-python tests/audio/analyze_spectral.py --library build/bin/asciichat.dll --source speech-source.wav
+uv run --project tests/ascii_chat_tests --frozen python tests/audio/record_spectral.py --library build/bin/asciichat.dll --source speech-source.wav --input-device 34 --output-device 27
+uv run --project tests/ascii_chat_tests --frozen python tests/audio/analyze_spectral.py --library build/bin/asciichat.dll --source speech-source.wav
 ```
 
 The recorder plays 12 seconds of speech between silent intervals and saves raw
@@ -155,9 +155,9 @@ server mixing enabled. Explicit `--audio=true` avoids toggling the default on
 state off. To reproduce on a machine with the selected audio devices:
 
 ```sh
-python tests/manual/probe_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-audio --speech build/audio-evidence/speaker-speech.wav
-python tests/manual/probe_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-encrypted --speech build/audio-evidence/speaker-speech.wav --encrypted
-python tests/audio/analyze_network_audio.py --input build/network-audio --output build/network-report
+uv run --project tests/ascii_chat_tests --frozen python tests/manual/probe_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-audio --speech build/audio-evidence/speaker-speech.wav
+uv run --project tests/ascii_chat_tests --frozen python tests/manual/probe_network_audio.py --binary build/bin/ascii-chat.exe --output build/network-encrypted --speech build/audio-evidence/speaker-speech.wav --encrypted
+uv run --project tests/ascii_chat_tests --frozen python tests/audio/analyze_network_audio.py --input build/network-audio --output build/network-report
 ```
 
 The encrypted loopback test disables host identity verification only in its child
@@ -190,7 +190,7 @@ generated separately and is not proof that a peer received anything. Network
 verification must inspect the peer's received recording.
 
 ```sh
-python tests/audio/probe_audio_pattern.py build/bin/asciichat.dll --wav test-audio.wav
+uv run --project tests/ascii_chat_tests --frozen python tests/audio/probe_audio_pattern.py build/bin/asciichat.dll --wav test-audio.wav
 ```
 
 This checks sample bounds, each section's energy, sweep frequency, silence,

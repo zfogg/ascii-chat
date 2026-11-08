@@ -71,9 +71,9 @@ WASM uses textual console logging and its existing prompt implementation.
 Build with the default CMake preset, then run:
 
 ```sh
-python tests/integration/terminal_notices.py --library build/bin/asciichat.dll
-python tests/integration/terminal_prompt.py --library build/bin/asciichat.dll
-python tests/integration/prompt_timeouts.py --library build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/terminal_notices.py --library build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/terminal_prompt.py --library build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/integration/prompt_timeouts.py --library build/bin/asciichat.dll
 ```
 
 The notice suite also accepts a Linux shared-library path. It checks Unicode
