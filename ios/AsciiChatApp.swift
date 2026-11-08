@@ -10,8 +10,8 @@ private func asciichat_ios_test_frame(
     _ height: UnsafeMutablePointer<Int>
 ) -> Int32
 
-@_silgen_name("asciichat_ios_camera_start")
-private func asciichat_ios_camera_start(_ deviceIndex: UInt16) -> Int32
+@_silgen_name("asciichat_ios_mirror_main")
+private func asciichat_ios_mirror_main() -> Int32
 
 @_silgen_name("asciichat_ios_camera_read_ascii")
 private func asciichat_ios_camera_read_ascii(
@@ -105,7 +105,7 @@ private struct CameraAsciiView: View {
             .lineLimit(nil)
             .padding()
             .onAppear {
-                cameraStarted = asciichat_ios_camera_start(0) != 0
+                cameraStarted = asciichat_ios_mirror_main() != 0
                 if !cameraStarted { text = "Camera unavailable" }
             }
             .onReceive(timer) { _ in readFrame() }

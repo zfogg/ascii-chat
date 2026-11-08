@@ -1,6 +1,7 @@
 #import <AVFoundation/AVFoundation.h>
 
 #include <ascii-chat/ios/camera.h>
+#include <ascii-chat/ios/mirror.h>
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -33,6 +34,10 @@
 
 static AVCaptureSession *g_session;
 static AsciiChatCameraDelegate *g_delegate;
+
+int asciichat_ios_mirror_main(void) {
+  return asciichat_ios_camera_start(0);
+}
 
 int asciichat_ios_camera_start(unsigned short device_index) {
   if (g_session) return 1;
