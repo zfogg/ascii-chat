@@ -42,3 +42,9 @@
 [submodule "deps/ascii-chat-deps/nghttp3"]
 	path = deps/ascii-chat-deps/nghttp3
 	url = https://github.com/ngtcp2/nghttp3.git
+[submodule "deps/ascii-chat-deps/mmmbed"]
+	path = deps/ascii-chat-deps/mmmbed
+	url = https://github.com/zfogg/mmmbed.git
+[submodule "deps/ascii-chat-deps/sequel"]
+	path = deps/ascii-chat-deps/sequel
+	url = https://github.com/zfogg/sequel.git

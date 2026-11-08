@@ -69,6 +69,31 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "`n=== ascii-chat Dependency Installer ===`n" -ForegroundColor Cyan
 
+# SQL catalog generation builds mmmbed from its pinned Go sources.
+if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        throw "Go 1.23 or newer is required. Install Go or winget and rerun this script."
+    }
+    & winget install --id GoLang.Go --exact --accept-package-agreements --accept-source-agreements
+    if ($LASTEXITCODE -ne 0) { throw "Go installation failed." }
+    $env:Path = "$env:ProgramFiles\Go\bin;$env:Path"
+}
+$GoVersion = & go version
+if ($GoVersion -match 'go(\d+)\.(\d+)' -and ([int]$Matches[1] -lt 1 -or ([int]$Matches[1] -eq 1 -and [int]$Matches[2] -lt 23))) {
+    $GoToolDir = Join-Path $HOME '.local/bin'
+    New-Item -ItemType Directory -Force -Path $GoToolDir | Out-Null
+    $PreviousGoBin = $env:GOBIN
+    try {
+        $env:GOBIN = $GoToolDir
+        & go install golang.org/dl/go1.23.12@latest
+        if ($LASTEXITCODE -ne 0) { throw "Could not install the Go 1.23 toolchain launcher." }
+        & (Join-Path $GoToolDir 'go1.23.12.exe') download
+        if ($LASTEXITCODE -ne 0) { throw "Could not download the Go 1.23 toolchain." }
+    } finally {
+        $env:GOBIN = $PreviousGoBin
+    }
+}
+
 Write-Host "Getting submodules" -ForegroundColor Yellow
 & git submodule init
 & git submodule update --recursive

@@ -141,6 +141,26 @@ static and shared linkage, and the source dependency smoke tests.
 
 ### Useful CMake Targets
 
+### Regenerating discovery SQL
+
+Discovery and rate-limit queries live in `lib/discovery/sql/` and
+`lib/network/rate_limit/sql/`. After editing them, run:
+
+```sh
+make generate-sql
+make check-sql
+```
+
+These targets initialize the pinned mmmbed and Sequel submodules if needed and
+build `bin/mmmbed` and `bin/sequel` (`.exe` on Windows) when missing or when a
+pinned submodule revision changes. The
+generated header is `lib/discovery/queries_generated.h`; commit it with the SQL
+changes. The binaries and intermediate build files are ignored by Git. SQL is
+formatted with the pinned Sequel version, so contributors generate the same
+output. To use these targets, install Go 1.23 or newer, Git, CMake, Ninja, and a
+C compiler. The dependency installers install Go; Go 1.23 is bootstrapped
+alongside older system versions when needed.
+
 Common development targets (run with `cmake --build build --target <name>`):
 
 | Target                                                                    | Description                                                                                                                                                   |

@@ -13,18 +13,50 @@ LIB_DIR   := $(SOURCE_DIR)/lib
 DOCS_DIR  := $(SOURCE_DIR)/docs
 
 CMAKE ?= cmake
-MMMBED ?= mmmbed
 CMAKE_GENERATOR ?= Ninja
 CMAKE_BUILD_TYPE ?= RelWithDebInfo
 CMAKE_ARGS ?=
 EXTRA_CMAKE_ARGS ?=
 
-.PHONY: generate-sql check-sql
-generate-sql:
-	$(MMMBED) sql -l c --prefix database --format --dialect sqlite -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h
+.PHONY: generate-sql check-sql init-sql-tools ensure-mmmbed ensure-sequel
+SQL_EXEEXT := $(if $(filter Windows_NT,$(OS)),.exe,)
+SQL_MMMBED := $(BIN_DIR)/mmmbed$(SQL_EXEEXT)
+SQL_SEQUEL := $(BIN_DIR)/sequel$(SQL_EXEEXT)
+SQL_TOOLCHAIN_GO := $(HOME)/.local/bin/go1.23.12$(SQL_EXEEXT)
+GO ?= $(if $(wildcard $(SQL_TOOLCHAIN_GO)),$(SQL_TOOLCHAIN_GO),go)
+SQL_MMMBED_DIR := $(SOURCE_DIR)/deps/ascii-chat-deps/mmmbed
+SQL_SEQUEL_DIR := $(SOURCE_DIR)/deps/ascii-chat-deps/sequel
+SQL_TOOL_BUILD := $(BUILD_DIR)/sql-tools-sequel
 
-check-sql:
-	$(MMMBED) sql -l c --prefix database --format --dialect sqlite -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h --check
+init-sql-tools:
+	@test -f "$(SQL_MMMBED_DIR)/go.mod" && test -f "$(SQL_SEQUEL_DIR)/CMakeLists.txt" || \
+	  git submodule update --init -- deps/ascii-chat-deps/mmmbed deps/ascii-chat-deps/sequel
+
+ensure-mmmbed: init-sql-tools
+	@mkdir -p "$(BIN_DIR)" "$(BUILD_DIR)"
+	@revision=$$(git -C "$(SQL_MMMBED_DIR)" rev-parse HEAD) && \
+	  if [ ! -f "$(SQL_MMMBED)" ] || [ "$${revision}" != "$$(cat "$(BUILD_DIR)/mmmbed-revision" 2>/dev/null)" ]; then \
+	    cd "$(SQL_MMMBED_DIR)" && "$(GO)" build -o "$(SQL_MMMBED)" ./cmd/mmmbed && \
+	    printf '%s\n' "$${revision}" > "$(BUILD_DIR)/mmmbed-revision"; \
+	  fi
+
+ensure-sequel: init-sql-tools
+	@mkdir -p "$(BIN_DIR)" "$(BUILD_DIR)"
+	@revision=$$(git -C "$(SQL_SEQUEL_DIR)" rev-parse HEAD) && \
+	  if [ ! -f "$(SQL_SEQUEL)" ] || [ "$${revision}" != "$$(cat "$(BUILD_DIR)/sequel-revision" 2>/dev/null)" ]; then \
+	    $(CMAKE) -S "$(SQL_SEQUEL_DIR)" -B "$(SQL_TOOL_BUILD)" -G "$(CMAKE_GENERATOR)" \
+	      -DCMAKE_BUILD_TYPE=Release -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="$(BIN_DIR)" \
+	      -DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE="$(BIN_DIR)" \
+	      -DSEQUEL_BUILD_TESTS=OFF -DSEQUEL_BUILD_CLI=ON && \
+	    $(CMAKE) --build "$(SQL_TOOL_BUILD)" --config Release --target sequel-cli && \
+	    printf '%s\n' "$${revision}" > "$(BUILD_DIR)/sequel-revision"; \
+	  fi
+
+generate-sql: ensure-mmmbed ensure-sequel
+	SEQUEL="$(SQL_SEQUEL)" "$(SQL_MMMBED)" sql -l c --prefix database --format --dialect sqlite -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h
+
+check-sql: ensure-mmmbed ensure-sequel
+	SEQUEL="$(SQL_SEQUEL)" "$(SQL_MMMBED)" sql -l c --prefix database --format --dialect sqlite -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h --check
 
 INSTALL_PREFIX_FROM_ARGS := $(strip $(shell printf '%s %s\n' "$(CMAKE_ARGS)" "$(EXTRA_CMAKE_ARGS)" | tr ' ' '\n' | grep -E '^-DCMAKE_INSTALL_PREFIX=' | tail -n1 | cut -d '=' -f2- ))
 

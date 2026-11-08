@@ -1,4 +1,9 @@
 /bin/*
+# SQL catalog generators (also covered by /bin/*).
+/bin/mmmbed
+/bin/mmmbed.exe
+/bin/sequel
+/bin/sequel.exe
 /build/*
 /node_modules/
 /.claude/settings.local.json

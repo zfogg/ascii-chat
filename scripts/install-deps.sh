@@ -65,7 +65,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
 
   # Install packages - completely ignore all errors since many are already installed
   # GitHub runners have pre-installed packages with version conflicts that can't be resolved
-  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool \
+  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool go \
     ninja mimalloc zstd libsodium portaudio opus fftw criterion doxygen sqlite3 \
     miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets libuv icu4c openssl@3 yyjson \
     libvterm freetype fontconfig expat pcre2 \
@@ -147,7 +147,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     # Install non-LLVM dependencies first
     apt-get install -y \
       pkg-config make autoconf automake libtool ccache gperf \
-      cmake ninja-build \
+      cmake ninja-build golang-go \
       musl-tools musl-dev \
       nasm \
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libfftw3-dev libsystemd-dev \
@@ -314,7 +314,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       pkg-config make autoconf automake libtool \
       clang llvm lld \
       libcxx-devel libcxxabi-devel \
-      cmake ninja-build \
+      cmake ninja-build golang \
       musl-devel musl-gcc musl-libc-static \
       nasm \
       libx264-devel libx265-devel \
@@ -343,7 +343,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       clang llvm lldb lld \
       libc++ libc++abi \
       nasm \
-      cmake ninja make \
+      cmake ninja make go \
       musl mimalloc \
       zstd zlib libsodium portaudio opus fftw sqlite libdatachannel miniupnpc ffmpeg \
       x264 x265 \
@@ -409,6 +409,28 @@ elif [[ "$PLATFORM" == "windows" ]]; then
   echo "On Windows, please use the PowerShell script instead:"
   echo "  ./scripts/install-deps.ps1"
   exit 1
+fi
+
+# mmmbed requires Go 1.23. Older Linux distributions may ship Go before
+# automatic toolchain selection; install a versioned tool without replacing it.
+if ! command -v go >/dev/null 2>&1; then
+  if [[ "$PLATFORM" == "macos" ]]; then
+    brew install go
+  elif command -v apt-get >/dev/null 2>&1; then
+    apt-get install -y golang-go
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y golang
+  elif command -v pacman >/dev/null 2>&1; then
+    pacman -S --needed --noconfirm go
+  fi
+fi
+command -v go >/dev/null 2>&1 || { echo >&2 "ERROR: Go installation failed"; exit 1; }
+go_version=$(go version)
+if [[ "$go_version" =~ go([0-9]+)\.([0-9]+) ]] &&
+   { (( BASH_REMATCH[1] < 1 )) || { (( BASH_REMATCH[1] == 1 )) && (( BASH_REMATCH[2] < 23 )); }; }; then
+  mkdir -p "$HOME/.local/bin"
+  GOBIN="$HOME/.local/bin" go install golang.org/dl/go1.23.12@latest
+  "$HOME/.local/bin/go1.23.12" download
 fi
 
 # Vite+ supplies Oxfmt and the Node.js toolchain used by formatting targets.
