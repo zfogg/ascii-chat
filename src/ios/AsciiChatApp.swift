@@ -34,6 +34,12 @@ private func asciichat_ios_camera_authorized() -> Int32
 @_silgen_name("asciichat_ios_camera_request_access")
 private func asciichat_ios_camera_request_access()
 
+@_silgen_name("asciichat_ios_audio_authorized")
+private func asciichat_ios_audio_authorized() -> Int32
+
+@_silgen_name("asciichat_ios_audio_request_access")
+private func asciichat_ios_audio_request_access()
+
 private struct TestFrameView: View {
     private let image: CGImage?
 
@@ -133,6 +139,9 @@ private struct CameraAsciiView: View {
                 asciichat_ios_camera_request_access()
             } else {
                 cameraMessage = "Camera access granted"
+            }
+            if asciichat_ios_audio_authorized() == 0 {
+                asciichat_ios_audio_request_access()
             }
             let smokeText = "\u{1b}[2J\u{1b}[H\u{1b}[1;36mascii-chat iOS render bridge\u{1b}[0m\n\nC output is reaching SwiftUI through libvterm + FreeType."
             smokeText.withCString { text in

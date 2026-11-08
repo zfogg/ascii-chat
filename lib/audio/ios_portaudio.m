@@ -10,6 +10,16 @@ struct PaStream {
   unsigned long frames_per_buffer;
 };
 
+int asciichat_ios_audio_authorized(void) {
+  return [AVAudioSession.sharedInstance recordPermission] == AVAudioSessionRecordPermissionGranted;
+}
+
+void asciichat_ios_audio_request_access(void) {
+  [AVAudioSession.sharedInstance requestRecordPermission:^(BOOL granted) {
+    (void)granted;
+  }];
+}
+
 static const PaDeviceInfo g_ios_device = {
     .structVersion = 1,
     .name = "iOS Audio",
