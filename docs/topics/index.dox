@@ -140,16 +140,25 @@
  *
  * - @ref topic_main "main()" - Unified binary dispatcher routing to server or client mode
  * - @ref topic_common "Common Definitions" - Core utilities, macros, memory debugging, constants
- * - @ref topic_errno "Error Handling System" - Typed error codes, error context, thread-safe errors
+ * - @ref errno "Error Handling System" - Typed error codes, error context, thread-safe errors
  * - @ref topic_logging "Logging System" - Level-based logging, rate limiting, file output
  * - @ref topic_options "Options and Configuration" - Command-line parsing and TOML config
  * - @ref topic_config "Configuration" - TOML configuration file management
+ *
+ * @section categories_ui 🖥️ User Interface
+ *
+ * @copybrief module_ui
+ *
+ * - @ref topic_ui "UI Architecture" - Snapshot-driven terminal presentation and input routing
+ * - @ref topic_tui "Terminal UI (TUI)" - Interactive screens, resizing, diagnostics, and testing
+ * - @ref topic_keyboard_shortcuts "Keyboard Shortcuts" - Current global, media, prompt, and modal bindings
  *
  * @section categories_network 🌐 Network
  *
  * @copybrief module_network
  *
  * - @ref topic_network "Network I/O" - Socket operations, timeouts, connections, packet protocol
+ * - @ref topic_quic "QUIC and WebTransport" - Native QUIC, HTTP/3, datagrams, trust, and migration
  * - @ref topic_compression "Network Compression" - zstd compression utilities for network payload optimization
  * - @ref topic_packet_types "Packet Types" - Network packet structures and definitions
  * - @ref topic_av "Audio/Video Networking" - Network APIs for audio/video streaming
@@ -200,7 +209,7 @@
  * - @ref topic_build "Build System" - CMake configuration, cross-platform compilation, build types
  * - @ref topic_testing "Testing" - Test framework, test runner, Docker testing, coverage reporting
  * - @ref topic_debug "Debugging Utilities" - Error tracking, memory leak detection, diagnostics
- * - @ref topic_errno "Error Handling System" - Typed error codes, error context, thread-safe errors
+ * - @ref errno "Error Handling System" - Typed error codes, error context, thread-safe errors
  * - @ref exit_codes "Exit Codes" - Exit code categories and error descriptions from asciichat_error_t
  * - @ref topic_lock_debug "Lock Debugging" - Lock tracking, deadlock detection, contention analysis
  *

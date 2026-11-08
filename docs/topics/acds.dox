@@ -61,13 +61,16 @@
  * ACDS transforms ascii-chat from a **LAN-only toy** into a **production-ready video conferencing system**
  * that works anywhere, for anyone.
  *
- * **Implementation**: src/acds/*.c, lib/acds/*.c
+ * **Implementation**: `src/discovery-service/`, `src/discovery/`, and
+ * `lib/discovery/`.
  *
  * What makes ACDS powerful?
  * -------------------------
  * - **Human-friendly**: Share "happy-sunset-ocean" instead of "73.251.42.118:27224"
- * - **Automatic NAT traversal**: Works behind firewalls without manual configuration
- * - **Fallback strategy**: Tries best connection first (direct TCP), falls back gracefully (WebRTC/TURN)
+ * - **NAT traversal support**: Supplies signaling and ICE configuration; peers
+ *   determine whether direct, STUN, or TURN connectivity succeeds
+ * - **Transport-aware setup**: Stores and relays the endpoint metadata needed to
+ *   establish TCP, WebSocket, WebTransport, or WebRTC connections
  * - **mDNS for local**: Zero-config on LANs—no internet/server required
  * - **Privacy-first**: ACDS never sees your media—only exchanges connection metadata
  * - **Open protocol**: Run your own ACDS server for complete privacy
@@ -80,7 +83,7 @@
  *
  * @subsubsection acds_server_component Discovery Server
  * @ingroup acds_server
- * **File**: src/acds/main.c, src/acds/server.c
+ * **Files**: `src/discovery-service/main.c`, `src/discovery-service/server.c`
  *
  * The main ACDS server that:
  * - Listens for TCP connections on port 27225 (default)
@@ -89,11 +92,12 @@
  * - Manages rate limiting to prevent abuse
  * - Runs cleanup threads for expired sessions
  *
- * **Threading Model**:
- * - **Main Thread**: Accept loop using select() for responsive shutdown
- * - **Per-Client Handler Threads**: One thread per connected client
- * - **Cleanup Thread**: Background thread for rate limit and session expiration cleanup
- * - **Worker Pool**: Thread pool for background tasks
+ * **Execution Model**:
+ * - The shared `network_server_t` drives listeners and connection callbacks.
+ * - Packet callbacks run serially per connection outside backend event loops.
+ * - Cleanup and rate-limit maintenance retain their own background work where
+ *   the implementation requires it; ACDS does not create one receive thread per
+ *   client.
  *
  * **Key Functions**:
  * @code{.c}
@@ -197,7 +201,7 @@
  *
  * Ed25519 identity key management for ACDS server:
  * - Auto-generates identity key on first run
- * - Loads existing key from `~/.config/ascii-chat/acds_identity`
+ * - Loads existing key from the configured discovery identity path
  * - Computes SHA256 fingerprint for display
  * - Cross-platform key storage (Unix and Windows paths)
  *
@@ -354,13 +358,13 @@
  *
  * - **STUN**: Discovers public IP/port mapping through NAT
  * - **ICE**: Negotiates P2P connection through NAT using candidate gathering
- * - **TURN**: Provides relay fallback when P2P fails (always succeeds, higher latency)
+ * - **TURN**: Provides relay fallback when P2P fails (when configured and reachable)
  * - WebRTC DataChannels provide reliable data transfer
  *
  * **Connection Priority**:
- * 1. **Direct TCP** (if UPnP/NAT-PMP succeeded) — Best latency
- * 2. **WebRTC P2P** (via ICE/STUN) — Good latency, works behind most NATs
- * 3. **TURN relay** (fallback) — Higher latency, always works
+ * Transport negotiation chooses a compatible endpoint. ACDS does not promise a
+ * fixed priority or that TURN is reachable; direct connectivity, ICE/STUN, and
+ * TURN are inputs to the negotiated result.
  *
  * @section acds_mdns mDNS Support (Local Network Discovery)
  *
@@ -429,15 +433,18 @@
  *
  * @subsection acds_command_line Command-Line Options
  *
- * Run `ascii-chat discovery-server --help` for complete options:
+ * Run `ascii-chat discovery-service --help` (or `ascii-chat acds --help`)
+ * for the complete option list:
  *
  * **Network Options**:
  * - `-p --port PORT`: TCP listen port (default: 27225)
  * - `[address] [address]`: IPv4 and/or IPv6 bind addresses (default: 127.0.0.1 ::1)
  *
  * **Database & Identity**:
- * - `-d --database PATH`: SQLite database file path (default: ~/.config/ascii-chat/acds.db)
- * - `-k --key PATH`: Ed25519 identity key file path (default: ~/.config/ascii-chat/acds_identity)
+ * - `-d --database PATH`: SQLite database file path (default:
+ *   ~/.ascii-chat/discovery.db)
+ * - `-k --key PATH`: Ed25519 identity key file path (default:
+ *   ~/.ascii-chat/discovery_identity)
  *
  * **Security Policies**:
  * - `-S --require-server-identity`: Require servers to provide signed identity
@@ -456,20 +463,20 @@
  * @subsection acds_examples Usage Examples
  *
  * @code{.bash}
- * # Run discovery server on all interfaces
- * ascii-chat discovery-server 0.0.0.0 :: --port 27225
+ * # Run the discovery service on all interfaces
+ * ascii-chat discovery-service 0.0.0.0 :: --port 27225
  *
  * # Run with custom database and identity key
- * ascii-chat discovery-server --database /var/lib/acds/sessions.db --key /etc/acds/identity.key
+ * ascii-chat discovery-service --database /var/lib/acds/sessions.db --key /etc/acds/identity.key
  *
  * # Run with strict identity requirements
- * ascii-chat discovery-server --require-server-identity --require-client-identity
+ * ascii-chat discovery-service --require-server-identity --require-client-identity
  *
  * # Run with debug logging
- * ascii-chat -V --log-level debug discovery-server --port 27225
+ * ascii-chat -V --log-level debug discovery-service --port 27225
  *
  * # Run with custom STUN/TURN servers
- * ascii-chat discovery-server \
+ * ascii-chat discovery-service \
  *   --stun-servers "stun:stun.example.com:3478,stun:stun.l.google.com:19302" \
  *   --turn-servers "turn:turn.example.com:3478" \
  *   --turn-username myuser --turn-credential mypassword
@@ -678,13 +685,13 @@
  *
  * Initialization sequence:
  * 1. **Signal Handling**: Register SIGINT/SIGTERM handlers for graceful shutdown
- * 2. **Global Context**: Initialize global server instance and UPnP/mDNS contexts
+ * 2. **Global Context**: Initialize the server, transport, and optional UPnP/mDNS contexts
  * 3. **Server Initialization**: Call `acds_server_init()`
- *    - Load or generate Ed25519 identity keys (stored in `~/.config/ascii-chat/acds_identity`)
- *    - Open SQLite database (`~/.config/ascii-chat/acds.db` by default)
+ *    - Load or generate Ed25519 identity keys (stored in `~/.ascii-chat/discovery_identity`)
+ *    - Open SQLite database (`~/.ascii-chat/discovery.db` by default)
  *    - Create database schema if missing
  *    - Initialize rate limiter
- *    - Bind TCP socket(s) to configured addresses
+ *    - Create the shared `network_server_t` and its configured listeners
  *    - Enable UPnP/NAT-PMP port mapping if requested
  *    - Register mDNS service if enabled
  * 4. **Thread Pool**: Create worker thread pool for background tasks
@@ -695,17 +702,18 @@
  *
  * **Main Loop**: `acds_server_run()` in `src/discovery-service/server.c`
  *
- * Server runs in an accept loop that:
- * 1. **Accept Loop**: Use select()-based multiplexing to accept client connections
- * 2. **Per-Client Handler**: Spawn a handler thread for each connected client
+ * Server runs through the shared event-driven connection layer:
+ * 1. **Accept Loop**: Let `network_server_t` accept and drive listeners
+ * 2. **Connection Callbacks**: Deliver lifecycle and packet callbacks serially
+ *    outside the backend event loop
  * 3. **Client Processing**:
- *    - Perform crypto handshake (using shared lib/crypto/ infrastructure)
- *    - Enter packet dispatch loop
+ *    - Perform the shared crypto handshake
+ *    - Adopt the connection's `acip_transport_t`
  *    - Process incoming ACIP packets:
  *      - SESSION_CREATE/LOOKUP/JOIN - routed to `lib/discovery/database.c`
  *      - WEBRTC_SDP/ICE - routed to signaling relay
  *      - Invalid packets rejected with error response
- * 4. **Connection Cleanup**: Remove from client registry on disconnect
+ * 4. **Connection Cleanup**: Stop producers, drain transport callbacks, and release client context
  * 5. **Background Tasks**:
  *    - Cleanup thread runs every 5 minutes
  *    - Removes old rate limit events from database
@@ -717,10 +725,10 @@
  * **Graceful Shutdown**: Triggered by SIGINT/SIGTERM or application request
  *
  * Shutdown sequence in `acds_server_shutdown()`:
- * 1. **Signal Main Loop**: Set `server->tcp_server.running = false`
- * 2. **Stop Accepting**: Close listen socket (pending accepts fail)
- * 3. **Wait for Handlers**: All per-client handler threads exit
- * 4. **Stop Workers**: Signal worker thread pool to shutdown
+ * 1. **Signal Main Loop**: Request the shared network server to stop
+ * 2. **Stop Accepting**: Stop listeners and interrupt pending backend I/O
+ * 3. **Drain Connections**: Stop producers and wait for transport callbacks
+ * 4. **Stop Workers**: Join the network server's backend workers
  * 5. **Database Cleanup**: Checkpoint and close SQLite database
  * 6. **Resource Cleanup**:
  *    - Release UPnP/NAT-PMP port mappings

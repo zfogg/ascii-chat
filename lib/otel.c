@@ -850,3 +850,16 @@ void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count) 
     log_warn("Could not attach SQLite telemetry");
   release();
 }
+
+void ascii_otel_sqlite_catalog(sqlite3 *db, const gotel_query_catalog_t *catalog) {
+  gotel_host_t *h = retain();
+  if (!h)
+    return;
+  gotel_sqlite_t *a = NULL;
+  sequel_analysis_options_t analysis = {.format = true};
+  gotel_sqlite_options_t options = {.analysis = &analysis};
+  if (otel_status(gotel_sqlite_attach_catalog_with_options(h, db, "ascii-chat.storage", catalog, &options, &a),
+                  "Attach SQLite telemetry") != ASCIICHAT_OK)
+    log_warn("Could not attach SQLite telemetry");
+  release();
+}

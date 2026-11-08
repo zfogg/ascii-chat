@@ -1,0 +1,2130 @@
+/**
+ * @page data_structures_reference Data Structures Reference
+ * @brief A guided reference to ascii-chat's data structures.
+ * @ingroup module_data_structures
+ *
+ * Start with the generated Data Structures index for the complete alphabetical
+ * list. This page adds the design context that is easy to miss when browsing
+ * declarations: which subsystem owns a type, what kind of state it carries,
+ * and where to look for lifecycle and concurrency rules.
+ */
+/**
+ * @struct acds_create_key_set_t
+   * @brief Internal data shared by acds create key set.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acds_protocol_t
+   * @brief Internal data shared by acds protocol.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_http3_server
+   * @brief Internal data shared by acip http3 server.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_outbound
+   * @brief Internal data shared by acip outbound.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_outbound_stats_t
+   * @brief Statistics collected for acip outbound stats.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_packet_plan_t
+   * @brief Packet data for acip packet plan.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_config_t
+   * @brief Configuration used by acip quic config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_connection
+   * @brief Internal data shared by acip quic connection.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_datagram_reader_t
+   * @brief Internal data shared by acip quic datagram reader.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_datagram_slot_t
+   * @brief Internal data shared by acip quic datagram slot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_endpoint
+   * @brief Internal data shared by acip quic endpoint.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_stream_reader_t
+   * @brief Internal data shared by acip quic stream reader.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_tls_t
+   * @brief Internal data shared by acip quic tls.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_udp_endpoint
+   * @brief Internal data shared by acip quic udp endpoint.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_worker
+   * @brief Worker state for acip quic worker.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_render_settings_t
+   * @brief Internal data shared by acip render settings.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_security
+   * @brief Internal data shared by acip security.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_send_options_t
+   * @brief Internal data shared by acip send options.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_settings_header_t
+   * @brief Internal data shared by acip settings header.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_transport_capabilities_t
+   * @brief Internal data shared by acip transport capabilities.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_websocket_runtime
+   * @brief Internal data shared by acip websocket runtime.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct animation_config_t
+   * @brief Configuration used by animation config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct animation_sample_t
+   * @brief Internal data shared by animation sample.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct animation_t
+   * @brief Internal data shared by animation.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct animation_target_t
+   * @brief Internal data shared by animation target.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ansi_rle_context_t
+   * @brief Working context for ansi rle context.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ansi_timing_t
+   * @brief Internal data shared by ansi timing.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct app_callbacks_t
+   * @brief Callbacks used by app callbacks.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ascii_frame_t
+   * @brief Internal data shared by ascii frame.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ascii_otel_scope
+   * @brief Internal data shared by ascii otel scope.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ascii_stabilizer_t
+   * @brief Internal data shared by ascii stabilizer.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ascii_temporal_cell_t
+   * @brief Internal data shared by ascii temporal cell.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct asciichat_errno_history_t
+   * @brief Internal data shared by asciichat errno history.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct asciichat_errno_scope_t
+   * @brief Internal data shared by asciichat errno scope.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct asciichat_errno_snapshot_t
+   * @brief Internal data shared by asciichat errno snapshot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct asciichat_error_context_t
+   * @brief Working context for asciichat error context.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct asciichat_error_stats_t
+   * @brief Statistics collected for asciichat error stats.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct async_packet
+   * @brief Packet data for async packet.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct async_tcp_t
+   * @brief Internal data shared by async tcp.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_frame_t
+   * @brief Internal data shared by audio frame.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_processor
+   * @brief Internal data shared by audio processor.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_processor_config_t
+   * @brief Configuration used by audio processor config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_processor_flags_t
+   * @brief Internal data shared by audio processor flags.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_recording
+   * @brief Internal data shared by audio recording.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_resampler_t
+   * @brief Internal data shared by audio resampler.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_rt_metric_t
+   * @brief Statistics collected for audio rt metric.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_send_packet_t
+   * @brief Packet data for audio send packet.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct backtrace_t
+   * @brief Internal data shared by backtrace.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct binary_actions_t
+   * @brief Internal data shared by binary actions.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct binding_t
+   * @brief Internal data shared by binding.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct browser_peer_crypto_t
+   * @brief Internal data shared by browser peer crypto.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct buffer_budget_t
+   * @brief Internal data shared by buffer budget.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct buffer_domain
+   * @brief Internal data shared by buffer domain.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct buffer_domain_config_t
+   * @brief Configuration used by buffer domain config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct buffer_header
+   * @brief Internal data shared by buffer header.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct buffer_stats_t
+   * @brief Statistics collected for buffer stats.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct buffer_workspace_t
+   * @brief Internal data shared by buffer workspace.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct client_connection
+   * @brief Internal data shared by client connection.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct client_info
+   * @brief Internal data shared by client info.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct client_like_state_t
+   * @brief Runtime state for client like state.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct collect_ctx_t
+   * @brief Internal data shared by collect ctx.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct colorscheme_palette_t
+   * @brief Internal data shared by colorscheme palette.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct compression_workspace_t
+   * @brief Internal data shared by compression workspace.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct cond_deadlock_batch_t
+   * @brief Internal data shared by cond deadlock batch.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct cond_deadlock_entry_t
+   * @brief A cond deadlock entry entry used by the owning registry or queue.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct cond_deadlock_snapshot_t
+   * @brief Internal data shared by cond deadlock snapshot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct connection_endpoint_t
+   * @brief Internal data shared by connection endpoint.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct consensus_handoff_message_t
+   * @brief Internal data shared by consensus handoff message.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct consensus_handoff_peer_t
+   * @brief Internal data shared by consensus handoff peer.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct consensus_handoff_t
+   * @brief Internal data shared by consensus handoff.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct crypto_policy_t
+   * @brief Internal data shared by crypto policy.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct crypto_record
+   * @brief Internal data shared by crypto record.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct crypto_rekey_session_t
+   * @brief Internal data shared by crypto rekey session.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct crypto_session
+   * @brief Internal data shared by crypto session.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct crypto_session_message_t
+   * @brief Internal data shared by crypto session message.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct database_session_stats_t
+   * @brief Statistics collected for database session stats.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct datagram_send
+   * @brief Internal data shared by datagram send.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct deadlock_state_t
+   * @brief Runtime state for deadlock state.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct discovery_host_audio_capture_t
+   * @brief Internal data shared by discovery host audio capture.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct discovery_ui_state_t
+   * @brief Runtime state for discovery ui state.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct discovery_video_receiver_t
+   * @brief Internal data shared by discovery video receiver.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct emit_context_t
+   * @brief Working context for emit context.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct endpoint_transport
+   * @brief Internal data shared by endpoint transport.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct errno_tui_row_t
+   * @brief Internal data shared by errno tui row.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct errno_tui_state_t
+   * @brief Runtime state for errno tui state.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct error_frame_t
+   * @brief Internal data shared by error frame.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct error_thread
+   * @brief Worker state for error thread.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct event_command_t
+   * @brief Internal data shared by event command.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct event_work_t
+   * @brief Internal data shared by event work.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct event_write
+   * @brief Internal data shared by event write.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct face_follow_detection_t
+   * @brief Internal data shared by face follow detection.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct face_follow_image
+   * @brief Internal data shared by face follow image.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct face_follow_rect_t
+   * @brief Internal data shared by face follow rect.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct face_follow_state_t
+   * @brief Runtime state for face follow state.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ffmpeg_encoder_s
+   * @brief Internal data shared by ffmpeg encoder.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct flow_control_debounce_t
+   * @brief Internal data shared by flow control debounce.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct frame_queue_s
+   * @brief Internal data shared by frame queue.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct frame_slot_s
+   * @brief Internal data shared by frame slot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct glyph_cache_entry_t
+   * @brief A glyph cache entry entry used by the owning registry or queue.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct glyph_candidate_t
+   * @brief Internal data shared by glyph candidate.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct h265_client_context
+   * @brief Working context for h265 client context.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct h265_client_decoder_t
+   * @brief Internal data shared by h265 client decoder.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct h265_decoder
+   * @brief Internal data shared by h265 decoder.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct h265_encoder
+   * @brief Internal data shared by h265 encoder.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct h265_packet_header_t
+   * @brief Packet data for h265 packet header.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct h265_server_context
+   * @brief Working context for h265 server context.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct host_connection_t
+   * @brief Internal data shared by host connection.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct http_pulse_t
+   * @brief Internal data shared by http pulse.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct http_session_t
+   * @brief Internal data shared by http session.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct http3_receive_stream_t
+   * @brief Internal data shared by http3 receive stream.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct input_editor_t
+   * @brief Internal data shared by input editor.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct keyboard_text_decoder_t
+   * @brief Internal data shared by keyboard text decoder.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct lifecycle_t
+   * @brief Internal data shared by lifecycle.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct linux_binary_lookup_t
+   * @brief Internal data shared by linux binary lookup.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct log_row_ref_t
+   * @brief Internal data shared by log row ref.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct log_search_state_t
+   * @brief Runtime state for log search state.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct loop_work_t
+   * @brief Internal data shared by loop work.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct manpage_merge_state_t
+   * @brief Runtime state for manpage merge state.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mcp_job
+   * @brief Internal data shared by mcp job.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mcp_policy_t
+   * @brief Internal data shared by mcp policy.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mcp_render_request_t
+   * @brief Internal data shared by mcp render request.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mcp_render_result_t
+   * @brief Internal data shared by mcp render result.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mcp_server
+   * @brief Internal data shared by mcp server.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mdns_refresh_t
+   * @brief Internal data shared by mdns refresh.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct media_playlist_t
+   * @brief Internal data shared by media playlist.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct media_snapshot_slot
+   * @brief Internal data shared by media snapshot slot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mixer_listener_buffer
+   * @brief Internal data shared by mixer listener buffer.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mode_arguments_t
+   * @brief Internal data shared by mode arguments.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mutex_stack_entry_t
+   * @brief A mutex stack entry entry used by the owning registry or queue.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mutex_wait_snapshot_t
+   * @brief Internal data shared by mutex wait snapshot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct named_iter_entry_t
+   * @brief A named iter entry entry used by the owning registry or queue.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct named_metadata_cache_t
+   * @brief Internal data shared by named metadata cache.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct named_metadata_entry_t
+   * @brief A named metadata entry entry used by the owning registry or queue.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct named_metadata_t
+   * @brief Internal data shared by named metadata.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct native_view_t
+   * @brief Internal data shared by native view.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_connect_config_t
+   * @brief Configuration used by network connect config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_connection
+   * @brief Internal data shared by network connection.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_connection_callbacks_t
+   * @brief Callbacks used by network connection callbacks.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_establish_config_t
+   * @brief Configuration used by network establish config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_establish_result_t
+   * @brief Internal data shared by network establish result.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_negotiation_t
+   * @brief Internal data shared by network negotiation.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_server
+   * @brief Internal data shared by network server.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_server_config_t
+   * @brief Configuration used by network server config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct notice_snapshot_t
+   * @brief Internal data shared by notice snapshot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct options_edit_t
+   * @brief Internal data shared by options edit.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct options_patch_result_t
+   * @brief Internal data shared by options patch result.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct options_patch_t
+   * @brief Internal data shared by options patch.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct options_snapshot_t
+   * @brief Internal data shared by options snapshot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct options_state
+   * @brief Runtime state for options state.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct outbound_packet
+   * @brief Packet data for outbound packet.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct outbound_stream_t
+   * @brief Internal data shared by outbound stream.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct packet_decoder_t
+   * @brief Packet data for packet decoder.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct packet_node
+   * @brief Packet data for packet node.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct packet_queue
+   * @brief Packet data for packet queue.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct packet_queue_config_t
+   * @brief Configuration used by packet queue config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct parallel_connect_config_t
+   * @brief Configuration used by parallel connect config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct peer_output
+   * @brief Internal data shared by peer output.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct pending_ice_candidate
+   * @brief Internal data shared by pending ice candidate.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct pipeline_frame_t
+   * @brief Internal data shared by pipeline frame.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct platform_directory_list_t
+   * @brief Internal data shared by platform directory list.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct platform_event_listener
+   * @brief Internal data shared by platform event listener.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct platform_event_loop
+   * @brief Internal data shared by platform event loop.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct platform_event_stream
+   * @brief Internal data shared by platform event stream.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct platform_process_stats_t
+   * @brief Statistics collected for platform process stats.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct platform_wakeup
+   * @brief Internal data shared by platform wakeup.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct progress_snapshot_t
+   * @brief Internal data shared by progress snapshot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct prompt_opts_t
+   * @brief Internal data shared by prompt opts.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct prompt_snapshot_t
+   * @brief Internal data shared by prompt snapshot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct queued_packet_t
+   * @brief Packet data for queued packet.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct quic_transport_t
+   * @brief Internal data shared by quic transport.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct receive_context_t
+   * @brief Working context for receive context.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct receive_stream_t
+   * @brief Internal data shared by receive stream.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct received_packet
+   * @brief Packet data for received packet.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct render_file_ctx_s
+   * @brief Internal data shared by render file ctx.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct render_progress
+   * @brief Internal data shared by render progress.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct render_worker_t
+   * @brief Worker state for render worker.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct rendered_cell_t
+   * @brief Internal data shared by rendered cell.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct rgb_error_t
+   * @brief Internal data shared by rgb error.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct runtime_field_t
+   * @brief Internal data shared by runtime field.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct screen
+   * @brief Internal data shared by screen.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct screen_snapshot_t
+   * @brief Internal data shared by screen snapshot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct screen_terminal_t
+   * @brief Internal data shared by screen terminal.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct send_chunk
+   * @brief Internal data shared by send chunk.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct send_stream_t
+   * @brief Internal data shared by send stream.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct server_client_removal_t
+   * @brief Internal data shared by server client removal.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct server_connection_state_t
+   * @brief Runtime state for server connection state.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct server_discovery_policy_t
+   * @brief Internal data shared by server discovery policy.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct server_discovery_startup_t
+   * @brief Internal data shared by server discovery startup.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct server_stats_visit_t
+   * @brief Statistics collected for server stats visit.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_client_like_config
+   * @brief Configuration used by session client like config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_connection_ops_t
+   * @brief Internal data shared by session connection ops.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_connection_t
+   * @brief Internal data shared by session connection.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_host
+   * @brief Internal data shared by session host.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_host_render_config_t
+   * @brief Configuration used by session host render config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_host_render_target_t
+   * @brief Internal data shared by session host render target.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_pipeline_s
+   * @brief Internal data shared by session pipeline.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_protocol_media_t
+   * @brief Internal data shared by session protocol media.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_protocol_t
+   * @brief Internal data shared by session protocol.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_server_like_config
+   * @brief Configuration used by session server like config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_settings_t
+   * @brief Internal data shared by session settings.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct SHA1_CTX
+   * @brief Internal data shared by SHA1 CTX.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct simd_backend_t
+   * @brief Internal data shared by simd backend.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct simd_cells_t
+   * @brief Internal data shared by simd cells.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct socket_buffer_t
+   * @brief Internal data shared by socket buffer.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct socket_io_stats_t
+   * @brief Statistics collected for socket io stats.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct socket_send_buffer_t
+   * @brief Internal data shared by socket send buffer.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct spectral_config_t
+   * @brief Configuration used by spectral config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct spectral_processor
+   * @brief Internal data shared by spectral processor.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ssh_private_key_parse_t
+   * @brief Internal data shared by ssh private key parse.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_capabilities_t
+   * @brief Statistics collected for stats capabilities.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_descriptor_t
+   * @brief Statistics collected for stats descriptor.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_duration_cell_t
+   * @brief Statistics collected for stats duration cell.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_duration_shard_t
+   * @brief Statistics collected for stats duration shard.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_duration_snapshot_t
+   * @brief Statistics collected for stats duration snapshot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_peer
+   * @brief Statistics collected for stats peer.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_rates_t
+   * @brief Statistics collected for stats rates.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_sampler
+   * @brief Statistics collected for stats sampler.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_sampler_config_t
+   * @brief Configuration used by stats sampler config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_scope
+   * @brief Statistics collected for stats scope.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_snapshot_t
+   * @brief Statistics collected for stats snapshot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_table_context_t
+   * @brief Working context for stats table context.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_view_t
+   * @brief Statistics collected for stats view.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stdin_buffer_reader_t
+   * @brief Internal data shared by stdin buffer reader.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stdin_buffer_t
+   * @brief Internal data shared by stdin buffer.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct sync_buffer_t
+   * @brief Internal data shared by sync buffer.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct sync_row_t
+   * @brief Internal data shared by sync row.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct sync_sample_t
+   * @brief Internal data shared by sync sample.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct tcp_server
+   * @brief Internal data shared by tcp server.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct tcp_server_config_t
+   * @brief Configuration used by tcp server config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct term_renderer_config_t
+   * @brief Configuration used by term renderer config.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct terminal_fd_reader_s
+   * @brief Internal data shared by terminal fd reader.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct terminal_fd_writer_s
+   * @brief Internal data shared by terminal fd writer.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct terminal_renderer_s
+   * @brief Internal data shared by terminal renderer.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct terminal_resize_watcher_t
+   * @brief Internal data shared by terminal resize watcher.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct test_pattern
+   * @brief Internal data shared by test pattern.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct text_snapshot_t
+   * @brief Internal data shared by text snapshot.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct thread_lock_stack_t
+   * @brief Worker state for thread lock stack.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct thread_registry_entry_t
+   * @brief Worker state for thread registry entry.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct title_writer_t
+   * @brief Internal data shared by title writer.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct tui_input_events_t
+   * @brief Internal data shared by tui input events.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct udp_peer
+   * @brief Internal data shared by udp peer.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_button_t
+   * @brief Internal data shared by ui button.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_buttons_t
+   * @brief Internal data shared by ui buttons.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_discovery_view_t
+   * @brief Internal data shared by ui discovery view.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_help_entry_t
+   * @brief A ui help entry entry used by the owning registry or queue.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_help_menu_t
+   * @brief Internal data shared by ui help menu.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_layout_t
+   * @brief Internal data shared by ui layout.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_popup_t
+   * @brief Internal data shared by ui popup.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_presentation_state_t
+   * @brief Runtime state for ui presentation state.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_scrollbar_geometry_t
+   * @brief Internal data shared by ui scrollbar geometry.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_selectable_list_t
+   * @brief Internal data shared by ui selectable list.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_session
+   * @brief Internal data shared by ui session.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_session_view_t
+   * @brief Internal data shared by ui session view.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_splash_view_t
+   * @brief Internal data shared by ui splash view.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_table_column_t
+   * @brief Internal data shared by ui table column.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_table_t
+   * @brief Internal data shared by ui table.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_viewport_range_t
+   * @brief Internal data shared by ui viewport range.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_viewport_t
+   * @brief Internal data shared by ui viewport.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct update_child_result_t
+   * @brief Internal data shared by update child result.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct utf8_char_t
+   * @brief Internal data shared by utf8 char.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct utf8_palette_cache
+   * @brief Internal data shared by utf8 palette cache.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct waveform_color_stop_t
+   * @brief Internal data shared by waveform color stop.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct webcam_frame_clock_t
+   * @brief Internal data shared by webcam frame clock.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct websocket_endpoint_t
+   * @brief Internal data shared by websocket endpoint.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct yt_dlp_request_options_t
+   * @brief Internal data shared by yt dlp request options.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */

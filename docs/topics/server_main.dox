@@ -256,7 +256,7 @@ HASH_ITER(hh, g_client_manager.clients_by_id, ...);
  * - If two addresses provided: Bind to both addresses (full dual-stack, order-independent)
  *
  * **Connection Acceptance**:
- * - Uses `select()` to check both sockets simultaneously
+ * - The shared `network_server_t` owns listener readiness and acceptance
  * - Accepts connections from either socket as they arrive
  * - Handles IPv4-mapped IPv6 addresses transparently
  * - Logs connection source (IPv4, IPv6, or IPv4-mapped)

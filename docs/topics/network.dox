@@ -1,398 +1,146 @@
 /**
- * @page topic_network Network README
+ * @page topic_network Network and Transport Architecture
  * @ingroup module_network
  * @ingroup network
  *
+ * @brief How connections, transports, ACIP, and media admission fit together.
+ *
  * @section network_overview Overview
  *
- * Welcome to the Network I/O module! This is where all the network communication
- * happens—everything from basic socket operations to packet transmission. The network
- * module is designed for real-time video streaming, which means it's optimized for
- * low latency, reliability, and handling large data transfers smoothly.
+ * ascii-chat separates network work into three layers. Connections own lifecycle,
+ * callbacks, deadlines, security state, and packet delivery. Transports own the
+ * details of delivery: framing, readiness, backpressure, optional datagrams,
+ * and backend resources. ACIP owns packet types, negotiation, authentication,
+ * encryption, compression, and dispatch above both. The same protocol handlers
+ * therefore work across native and browser-facing transports.
  *
- * What does the network module do?
- * --------------------------------
- * The Network I/O module provides fundamental network operations that everything
- * else builds on. Think of it as the foundation for all network communication.
- * Here's what it handles:
- * - **Socket I/O operations** with timeout support (so operations don't hang forever)
- * - **Connection management** (connect, accept) with timeouts (critical for reliable
- *   connections)
- * - **Socket configuration** (keepalive, non-blocking mode, timeouts) to keep
- *   connections healthy
- * - **Chunked transmission** for large data transfers (so big video frames don't
- *   block the connection)
- * - **Packet protocol** with encryption and compression support (built on top of
- *   the basic I/O)
- * - **Error reporting and diagnostics** (so you know what went wrong when things
- *   break)
+ * The main boundaries are:
+ * - `include/ascii-chat/network/connection.h` — connection and server lifecycle
+ * - `include/ascii-chat/network/acip/transport.h` — transport contract
+ * - `include/ascii-chat/network/acip/protocol.h` — ACIP dispatch and callbacks
+ * - `include/ascii-chat/network/packet/packet.h` — packet encoding and decoding
+ * - `include/ascii-chat/network/negotiation.h` — connection establishment
+ * - `include/ascii-chat/network/acip/send.h` — shared outbound scheduling
  *
- * All operations support configurable timeouts, which is critical for real-time
- * video streaming—we can't afford to wait forever when something goes wrong.
- * The timeout system ensures that operations fail fast rather than hanging indefinitely.
+ * @section network_connection_layer Connections
  *
- * **Implementation**: lib/network/network.h, lib/network/packet.h
+ * `network_connection_t` moves through `NETWORK_NEGOTIATING`,
+ * `NETWORK_READY`, `NETWORK_CLOSING`, and `NETWORK_CLOSED`. Its callbacks
+ * run serially outside backend event loops:
+ * - `open` allocates application state and may reject startup.
+ * - `packet` receives a borrowed payload valid until the callback returns.
+ * - `closing` stops and joins application producers.
+ * - `closed` releases application state after transport callbacks drain.
  *
- * @warning This page originally described the pre-transport network API. The current
- * application boundary is the ACIP transport abstraction in
- * `include/ascii-chat/network/acip/transport.h`. The raw socket helpers documented
- * below remain useful inside transport backends, but protocol and application code
- * should pass an `acip_transport_t *` to the packet/ACIP helpers instead of calling
- * `send()`/`recv()` or binding protocol logic to a socket descriptor.
+ * Use `network_connection_transport()` to reach the transport. Do not keep a
+ * socket descriptor, invent a second receive loop, or destroy the transport
+ * behind the connection's back.
  *
- * @section network_transport_abstraction Current Transport Architecture
+ * @section network_transport_layer Transports
  *
- * ACIP separates *what* is sent from *how* it is delivered:
+ * `acip_transport_t` is the stable delivery boundary. Its method table covers
+ * send/receive, close, interruption, readiness, capabilities, and backend
+ * cleanup. The transport owns its implementation state; application
+ * `user_data` is an association owned by the connection or protocol owner.
  *
- * - `acip_transport_t` owns connection state, lifecycle, readiness, backpressure,
- *   optional crypto state, and transport-specific framing.
- * - Packet and protocol code uses `packet_send_via_transport()` and
- *   `packet_receive_via_transport()` (or the higher-level `acip_send_*()` helpers).
- * - TCP, WebSocket, and WebRTC backends implement the same method table. QUIC has
- *   its own transport implementation and is selected by the connection layer where
- *   supported.
- * - A connection may expose its transport through the connection API; callers should
- *   not reach through it to manipulate the underlying socket.
+ * - `acip_transport_send()` and `acip_transport_sendv()` borrow buffers
+ *   until the method returns. Queued backends copy data when they retain it.
+ * - `acip_transport_sendv_ex()` carries deadlines and datagram preferences.
+ *   Unsupported semantics return an error; they are not silently downgraded.
+ * - `acip_transport_interrupt()` stops pending I/O without freeing the object.
+ * - `acip_transport_destroy()` is an ownership operation, not cancellation.
+ *   Stop producers, drain callbacks, and join users before destroying it.
  *
- * The normal flow is therefore:
+ * @subsection network_backends Backends
  *
+ * | Backend | Endpoint or use | Delivery |
+ * | --- | --- | --- |
+ * | TCP | Native address/port or `tcp://` | Ordered byte stream with ACIP framing |
+ * | WebSocket | `ws://` or `wss://` | ACIP packets in WebSocket messages |
+ * | WebRTC | Discovery-negotiated peer | DataChannel transport; signaling is separate |
+ * | QUIC | `quic://` | Reliable streams and negotiated datagrams |
+ * | WebTransport | Advertised `https://` endpoint | HTTP/3 transport backed by QUIC |
+ *
+ * A backend may expose an underlying socket for event integration, but callers
+ * must not bypass the transport contract. WebRTC and WebTransport may not have
+ * a useful application socket at all.
+ *
+ * @section network_packet_flow Packet flow
+ *
+ * Application code normally sends through a type-specific ACIP helper:
  * @code{.c}
  * acip_transport_t *transport = network_connection_transport(connection);
- * asciichat_error_t result = packet_send_via_transport(
- *     transport, PACKET_TYPE_PING, NULL, 0, 0);
+ * asciichat_error_t result = acip_send_ascii_frame(
+ *     transport, frame, frame_length, frame_metadata);
  * @endcode
  *
- * Transport ownership is explicit (`ACIP_TRANSPORT_BORROWED` or
- * `ACIP_TRANSPORT_OWNED`). A transport must not be destroyed while another worker
- * still uses it; use the connection/session lifecycle helpers to interrupt I/O,
- * join users, and release ownership in order.
+ * Lower-level code can use `packet_send_via_transport()` when it already owns
+ * a packet type and payload. The receive side validates ACIP framing, applies
+ * negotiated security and compression, and dispatches the borrowed payload to
+ * the registered handler.
  *
- * @section network_architecture Architecture
+ * @section network_admission Media admission and backpressure
  *
- * The network module is built around a few key concepts: timeouts to prevent
- * hanging, socket configuration to keep connections healthy, and a packet protocol
- * that handles the complexity of reliable data transmission. Let's walk through
- * how everything fits together.
+ * The shared ACIP outbound scheduler sits between media producers and every
+ * transport. It provides bounded admission, ordered control traffic, media
+ * dropping under pressure, and encryption sequencing. A mode must not add a
+ * second audio queue, video send buffer, or transport send thread.
  *
- * @subsection network_timeout_system Timeout System
+ * Reliable control packets stay ahead of disposable media. Visual and audio
+ * datagrams are used only when the peer negotiated the capability and the caller
+ * explicitly requests that delivery mode.
  *
- * All I/O operations support configurable timeouts—this is probably the most
- * important feature for real-time video streaming. Without timeouts, operations
- * can hang forever when the network is flaky, which would freeze your video stream.
+ * See @ref md_docs_2transport-backpressure "Transport backpressure and media admission"
+ * and @ref md_docs_2network-copy-reduction "Network copy reduction".
  *
- * What timeouts do we have?
- * -------------------------
- * - **Connection timeout**: 3 seconds (`CONNECT_TIMEOUT`)—when you're trying to
- *   connect to a server, we'll give up after 3 seconds rather than waiting forever
- * - **Send timeout**: 5 seconds (`SEND_TIMEOUT`)—when sending data, we'll give
- *   up after 5 seconds if it's not going through
- * - **Receive timeout**: 15 seconds (`RECV_TIMEOUT`)—when receiving data, we'll
- *   wait up to 15 seconds (this is longer because network delays are more common
- *   on receive)
- * - **Accept timeout**: 3 seconds (`ACCEPT_TIMEOUT`)—when waiting for incoming
- *   connections, we'll check every 3 seconds rather than blocking forever
+ * @section network_establishment Establishment and adoption
  *
- * Why these values?
- * ----------------
- * These timeouts are tuned specifically for real-time video streaming. They're
- * short enough that you notice problems quickly, but long enough that normal
- * network hiccups don't cause false positives. Chunked transmission prevents
- * large data from blocking indefinitely—even if a single chunk times out, we
- * can still make progress on the rest.
+ * `network_connection_open()` resolves an endpoint, chooses its backend, and
+ * returns one owned connection. `network_connect_config_t` carries timeout,
+ * cancellation, QUIC trust-anchor, and datagram preferences through
+ * establishment. `network_connection_run()` drives packet callbacks on the
+ * controlling worker.
  *
- * @subsection network_socket_configuration Socket Configuration
+ * Servers create a `network_server_t` with listeners and callbacks. An already
+ * connected or authenticated transport can be adopted with
+ * `network_server_adopt()` or `network_server_adopt_negotiating()`; ownership
+ * transfers only on success.
  *
- * Socket configuration is about keeping your connections healthy and efficient.
- * We configure sockets with several important settings:
+ * @section network_security Security
  *
- * What socket options do we set?
- * ------------------------------
- * - **TCP keepalive**: This detects dead connections automatically—if the connection
- *   has been idle for a while, keepalive probes check if it's still alive. If the
- *   other end doesn't respond, we know the connection is dead and can clean it up.
- *   We use `KEEPALIVE_IDLE`, `KEEPALIVE_INTERVAL`, and `KEEPALIVE_COUNT` to tune this.
- * - **Non-blocking mode**: This enables asynchronous I/O patterns—instead of blocking
- *   and waiting for data, we can check if data is available and do other work while
- *   waiting
- * - **Socket-level timeouts**: We set `SO_SNDTIMEO` and `SO_RCVTIMEO` at the socket
- *   level, so even if the application doesn't explicitly check timeouts, the socket
- *   itself will time out
- * - **Platform abstraction**: All of this works cross-platform (Linux, macOS, Windows)
- *   through our platform abstraction layer
+ * Transport selection does not replace application authentication. The shared
+ * crypto handshake and identity policy still decide whether a peer is trusted.
+ * A WebRTC DataChannel or TLS/WebSocket connection supplies delivery security,
+ * but password, key, and ACDS identity requirements remain explicit policy.
  *
- * @subsection network_packet_protocol Packet Protocol
+ * @section network_shutdown Shutdown
  *
- * The packet protocol sits on top of the basic socket I/O and adds structure,
- * validation, encryption, and compression. It's how we reliably transmit data
- * even when the network is unreliable.
+ * Shutdown is staged: stop producers, join them without holding a needed lock,
+ * let transport callbacks drain, then close and destroy the owner. A failed join
+ * retains live dependencies so a later shutdown attempt can finish safely.
  *
- * What does the packet protocol do?
- * ---------------------------------
- * The packet protocol provides:
- * - **Packet header validation**: Every packet starts with a magic number and CRC32
- *   checksum, so we can detect corrupted packets immediately
- * - **Secure packet transmission**: Packets can be encrypted using the crypto context
- *   (automatic encryption/decryption)
- * - **Secure packet reception**: Packets are automatically decrypted and validated
- *   when received
- * - **Automatic compression**: Large packets are automatically compressed to save
- *   bandwidth
- * - **Protocol compliance checking**: We verify that packets follow the protocol
- *   specification, so malformed packets are rejected early
+ * Connection, handshake, partial-packet, idle, and cancellation deadlines belong
+ * to the connection/backend layers. New network code should not add a blocking
+ * `recv()` loop with hard-coded timeout constants in a mode.
  *
- * How are packets structured?
- * -------------------------
- * **Packet Structure**:
- * - **Header**: Contains a magic number (so we know it's really our packet), type
- *   (what kind of packet it is), length (how much data follows), CRC32 (to detect
- *   corruption), and client ID (which client this is from)
- * - **Payload**: The actual data, which can be encrypted and/or compressed
- * - **Validation**: The CRC32 checksum in the header lets us verify packet integrity
- *   before we even try to decrypt or decompress
+ * @section network_low_level Low-level socket helpers
  *
- * This structure makes it easy to detect problems early—if the magic number is
- * wrong or the CRC32 doesn't match, we know the packet is corrupted before we
- * waste time trying to decrypt it.
+ * Platform socket helpers remain useful inside TCP, WebSocket, and listener
+ * implementations. They are not the public protocol boundary. Add new behavior
+ * to the connection or transport abstraction first, then use platform helpers
+ * only inside the backend that needs them.
  *
- * @section network_operations Operations
+ * @section network_discovery Discovery and peer connections
  *
- * @subsection network_io_operations Socket I/O Operations
+ * ACDS is a signaling and session-discovery service, not a second media
+ * protocol. The client uses the shared connection and ACIP runtime to
+ * authenticate with ACDS, exchange session metadata, and relay WebRTC SDP/ICE.
+ * After peer establishment, media and control packets use the negotiated peer
+ * transport; the ACDS connection is not in the media path.
  *
- * **Send/Receive Operations**:
- * @code{.c}
- * // Send data with timeout
- * ssize_t sent = send_with_timeout(sockfd, data, len, SEND_TIMEOUT);
- * if (sent < 0) {
- *     log_error("Send failed: %s", network_error_string());
- * }
- *
- * // Receive data with timeout
- * ssize_t received = recv_with_timeout(sockfd, buffer, len, RECV_TIMEOUT);
- * if (received < 0) {
- *     log_error("Receive failed: %s", network_error_string());
- * }
- * @endcode
- *
- * **Connection Operations**:
- * @code{.c}
- * // Connect to server with timeout
- * if (!connect_with_timeout(sockfd, &addr, addrlen, CONNECT_TIMEOUT)) {
- *     log_error("Connection failed: %s", network_error_string());
- * }
- *
- * // Accept connection with timeout
- * int client_fd = accept_with_timeout(listenfd, NULL, NULL, ACCEPT_TIMEOUT);
- * if (client_fd < 0) {
- *     log_error("Accept failed: %s", network_error_string());
- * }
- * @endcode
- *
- * @subsection network_packet_operations Packet Operations
- *
- * **Basic Packet I/O**:
- * @code{.c}
- * // Send a packet
- * asciichat_error_t err = packet_send(sockfd, PACKET_TYPE_PING, NULL, 0);
- * if (err != ASCIICHAT_OK) {
- *     log_error("Packet send failed");
- * }
- *
- * // Receive a packet
- * packet_type_t type;
- * void *data;
- * size_t len;
- * err = packet_receive(sockfd, &type, &data, &len);
- * if (err == ASCIICHAT_OK) {
- *     // Process packet
- *     process_packet(type, data, len);
- *     free(data);  // Free allocated buffer
- * }
- * @endcode
- *
- * **Secure Packet I/O**:
- * @code{.c}
- * // Send encrypted packet
- * int result = send_packet_secure(sockfd, PACKET_TYPE_ASCII_FRAME,
- *                                  frame_data, frame_size, crypto_ctx);
- * if (result < 0) {
- *     log_error("Secure send failed");
- * }
- *
- * // Receive and decrypt packet
- * packet_envelope_t envelope;
- * packet_recv_result_t result = receive_packet_secure(sockfd, crypto_ctx,
- *                                                      true, &envelope);
- * if (result == PACKET_RECV_SUCCESS) {
- *     // Process decrypted packet
- *     process_packet(envelope.type, envelope.data, envelope.len);
- *     free(envelope.allocated_buffer);  // Free allocated buffer
- * }
- * @endcode
- *
- * @subsection network_socket_config Socket Configuration
- *
- * **Socket Setup**:
- * @code{.c}
- * // Set socket timeout
- * if (set_socket_timeout(sockfd, SEND_TIMEOUT) < 0) {
- *     log_error("Failed to set socket timeout");
- * }
- *
- * // Enable TCP keepalive
- * if (set_socket_keepalive(sockfd) < 0) {
- *     log_error("Failed to enable keepalive");
- * }
- *
- * // Set non-blocking mode
- * if (set_socket_nonblocking(sockfd) < 0) {
- *     log_error("Failed to set non-blocking mode");
- * }
- * @endcode
- *
- * @section network_integration Integration
- *
- * The Network I/O module integrates with:
- * - **network/acip/transport.h**: Transport-neutral packet delivery boundary
- * - **network/connection.h**: Connection lifecycle and transport ownership
- * - **platform/socket.h**: Low-level socket abstraction used by socket-backed transports
- * - **network/packet_types.h**: Packet type definitions
- * - **crypto/crypto.h**: Encryption/decryption operations
- * - **compression.h**: Compression/decompression support
- * - **network/av.h**: Media packet sending
- * - **crypto/handshake.h**: Crypto handshake operations
- *
- * @section network_performance Performance
- *
- * **Chunked Transmission**:
- * - Enables progressive sending of large frames
- * - Prevents timeout issues with large data
- * - Allows progress tracking
- *
- * **Timeout Handling**:
- * - Prevents indefinite blocking
- * - Tuned for real-time video streaming
- * - Platform-specific optimizations (select/poll/epoll)
- *
- * **Keepalive Settings**:
- * - Efficiently detects dead connections
- * - No application-level heartbeats required
- * - Configurable idle time and probe count
- *
- * @section network_error_handling Error Handling
- *
- * **Error Reporting**:
- * @code{.c}
- * // Get human-readable error string
- * const char *error_msg = network_error_string();
- * log_error("Network error: %s", error_msg);
- * @endcode
- *
- * **Error Codes**:
- * - Function return values: -1 indicates error
- * - asciichat_error_t codes: ASCIICHAT_OK on success, error codes on failure
- * - packet_recv_result_t codes: PACKET_RECV_SUCCESS, PACKET_RECV_EOF, etc.
- *
- * @section network_timeouts Timeout Configuration
- *
- * Timeout configuration is all about balance—too short and you get false positives
- * on slow networks, too long and you delay error detection unnecessarily. We've
- * tuned these values specifically for real-time video streaming.
- *
- * What timeouts do we use?
- * ------------------------
- * - **CONNECT_TIMEOUT** (3 seconds): Reduced from the default for faster connection
- *   attempts. If a connection doesn't work, we want to know quickly so we can try
- *   again or report the error
- * - **SEND_TIMEOUT** (5 seconds): This gives enough time for timely delivery of video
- *   frames. It's long enough that network hiccups don't cause false positives, but
- *   short enough that stuck sends are detected quickly
- * - **RECV_TIMEOUT** (15 seconds): This is longer than send timeout because network
- *   delays are more common on receive. We want to give the network time to deliver
- *   data, but not so much time that we hang forever
- * - **ACCEPT_TIMEOUT** (3 seconds): This is balanced between responsiveness (we don't
- *   want to waste CPU checking too often) and quick detection of problems
- *
- * ⚠️ Important timeout notes:
- * ----------------------------
- * Timeout values that are too short may cause false positives on slow networks—you
- * might think the connection is dead when it's just slow. Values that are too long
- * may delay error detection unnecessarily—you might wait too long before realizing
- * something is wrong.
- *
- * If you're running on a very slow network (like satellite internet), you might want
- * to increase these timeouts. If you're running on a very fast network (like a local
- * LAN), you could decrease them for faster error detection.
- *
- * @section network_chunked_transmission Chunked Transmission
- *
- * Large data transfers are automatically chunked—this is how we send big video frames
- * without blocking the connection. Instead of sending everything at once (which could
- * cause timeouts or block other operations), we break large data into smaller chunks.
- *
- * How does chunked transmission work?
- * -----------------------------------
- * - **Prevents timeout issues**: Large frames can be several megabytes—if we try to
- *   send it all at once, we might timeout before it finishes. Chunking lets us send
- *   the frame in pieces, so each piece can complete quickly
- * - **Enables progress tracking**: We can report progress as chunks are sent, so
- *   you know things are working even when sending large frames
- * - **Handles partial sends automatically**: Sometimes `send()` doesn't send everything
- *   you ask it to—chunking handles this gracefully by retrying until the chunk is sent
- * - **Retries until complete**: If a chunk fails to send, we retry until all data is
- *   sent or the timeout occurs
- *
- * This is used automatically for large data—you don't need to do anything special.
- * The system detects when data is large enough to benefit from chunking and handles
- * it automatically.
- *
- * @section network_packet_security Packet Security
- *
- * The packet protocol supports:
- * - **Encryption**: Automatic encryption/decryption when crypto context provided
- * - **Compression**: Automatic compression for large packets
- * - **Validation**: Magic number and CRC32 checksum verification
- * - **Policy Enforcement**: Encryption requirement enforcement
- *
- * **Handshake Packets**:
- * - Always sent unencrypted (plaintext)
- * - Use `packet_is_handshake_type()` to check before encryption
- * - Required for crypto handshake establishment
- *
- * @section network_best_practices Best Practices
- *
- * 1. **Always check return values**:
- *    @code{.c}
- *    if (send_with_timeout(sockfd, data, len, timeout) < 0) {
- *        // Handle error
- *    }
- *    @endcode
- *
- * 2. **Free allocated packet buffers**:
- *    @code{.c}
- *    void *data;
- *    size_t len;
- *    packet_receive(sockfd, &type, &data, &len);
- *    // ... use data ...
- *    free(data);  // Always free
- *    @endcode
- *
- * 3. **Use secure packet functions for encryption**:
- *    @code{.c}
- *    send_packet_secure(sockfd, type, data, len, crypto_ctx);
- *    receive_packet_secure(sockfd, crypto_ctx, true, &envelope);
- *    @endcode
- *
- * 4. **Enable keepalive for long-lived connections**:
- *    @code{.c}
- *    set_socket_keepalive(sockfd);
- *    @endcode
- *
- * 5. **Configure timeouts appropriately**:
- *    @code{.c}
- *    set_socket_timeout(sockfd, SEND_TIMEOUT);
- *    @endcode
- *
- * @see network/network.h
- * @see network/packet.h
- * @see network/packet_types.h
+ * @see topic_av
+ * @see topic_packet_types
+ * @see topic_acds
+ * @see md_docs_2networking-runtime.html
+ * @see md_docs_2event-driven-io.html
  */

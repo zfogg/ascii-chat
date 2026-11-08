@@ -12,9 +12,7 @@
 #include <sqlite3.h>
 #include <string.h>
 
-#define RATE_LIMIT_QUERY(name, sql) static const char query_##name[] = sql;
-#include "queries.def"
-#undef RATE_LIMIT_QUERY
+#include "../../discovery/queries_generated.h"
 
 /**
  * @brief SQLite backend data
@@ -35,7 +33,7 @@ static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address
   uint64_t window_start_ns = now_ns - ((uint64_t)limit->window_secs * NS_PER_SEC_INT);
 
   // Count events in the time window
-  const char *sql = query_CountRateEvents;
+  const char *sql = database_queries[DATABASE_QUERY_CountRateEvents].sql;
 
   sqlite3_stmt *stmt = NULL;
   int rc = ascii_otel_sqlite_prepare(backend->db, sql, &stmt);
@@ -43,9 +41,10 @@ static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare rate limit query: %s", sqlite3_errmsg(backend->db));
   }
 
-  sqlite3_bind_text(stmt, 1, ip_address, -1, SQLITE_STATIC);
-  sqlite3_bind_text(stmt, 2, rate_limiter_event_type_string(event_type), -1, SQLITE_STATIC);
-  sqlite3_bind_int64(stmt, 3, (sqlite3_int64)window_start_ns);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":ip_address"), ip_address, -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":event_type"), rate_limiter_event_type_string(event_type),
+                    -1, SQLITE_STATIC);
+  sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":window_start"), (sqlite3_int64)window_start_ns);
 
   rc = sqlite3_step(stmt);
   if (rc != SQLITE_ROW) {
@@ -74,7 +73,7 @@ static asciichat_error_t sqlite_record(void *backend_data, const char *ip_addres
   uint64_t now_ns = time_get_realtime_ns();
 
   // Insert event
-  const char *sql = query_InsertRateEvent;
+  const char *sql = database_queries[DATABASE_QUERY_InsertRateEvent].sql;
 
   sqlite3_stmt *stmt = NULL;
   int rc = ascii_otel_sqlite_prepare(backend->db, sql, &stmt);
@@ -82,9 +81,10 @@ static asciichat_error_t sqlite_record(void *backend_data, const char *ip_addres
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare rate limit insert: %s", sqlite3_errmsg(backend->db));
   }
 
-  sqlite3_bind_text(stmt, 1, ip_address, -1, SQLITE_STATIC);
-  sqlite3_bind_text(stmt, 2, rate_limiter_event_type_string(event_type), -1, SQLITE_STATIC);
-  sqlite3_bind_int64(stmt, 3, (sqlite3_int64)now_ns);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":ip_address"), ip_address, -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, ":event_type"), rate_limiter_event_type_string(event_type),
+                    -1, SQLITE_STATIC);
+  sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":timestamp"), (sqlite3_int64)now_ns);
 
   rc = sqlite3_step(stmt);
   sqlite3_finalize(stmt);
@@ -110,7 +110,7 @@ static asciichat_error_t sqlite_cleanup(void *backend_data, uint32_t max_age_sec
   uint64_t cutoff_ns = now_ns - ((uint64_t)max_age_secs * NS_PER_SEC_INT);
 
   // Delete old events
-  const char *sql = query_DeleteRateEvents;
+  const char *sql = database_queries[DATABASE_QUERY_DeleteRateEvents].sql;
 
   sqlite3_stmt *stmt = NULL;
   int rc = ascii_otel_sqlite_prepare(backend->db, sql, &stmt);
@@ -118,7 +118,7 @@ static asciichat_error_t sqlite_cleanup(void *backend_data, uint32_t max_age_sec
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare rate limit cleanup: %s", sqlite3_errmsg(backend->db));
   }
 
-  sqlite3_bind_int64(stmt, 1, (sqlite3_int64)cutoff_ns);
+  sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, ":cutoff_time"), (sqlite3_int64)cutoff_ns);
 
   rc = sqlite3_step(stmt);
   int changes = sqlite3_changes(backend->db);

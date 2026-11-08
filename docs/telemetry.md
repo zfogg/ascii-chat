@@ -302,8 +302,14 @@ It does not change an
 already dropped media decision. Error counters still include dropped work.
 
 HTTP names use gotel's sanitized application-prefixed convention. DNS spans
-include question names. Named SQL templates live in `lib/discovery/queries.def`;
-rate-limit templates are shared through `lib/network/rate_limit/queries.def`.
+include question names. Named SQL templates live in `lib/discovery/sql/`, with
+table, index and trigger definitions in `lib/discovery/sql/schema.sql`;
+rate-limit templates are shared through `lib/network/rate_limit/sql/`. After
+editing either directory, run `make generate-sql` with mmmbed installed and
+commit the updated `lib/discovery/queries_generated.h`; `make check-sql` checks
+whether it is current. The checked-in header avoids requiring mmmbed when
+building ascii-chat. Gotel consumes the generated catalog through an accessor,
+including its SQL and names without assuming the application's record layout.
 SQLite bind/step/reset/finalize calls retain their driver semantics. Gotel
 owns the trace callback slot and matches original templates, emits completed
 PROFILE spans, and records database duration histogram observations. Unknown

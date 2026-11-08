@@ -1,42 +1,14 @@
 #pragma once
 
 #include <ascii-chat/otel.h>
+#include "queries_generated.h"
 
-// Base SELECT for all session fields
-#define SELECT_SESSION_BASE                                                                                            \
-  "SELECT\n"                                                                                                           \
-  "  session_string,\n"                                                                                                \
-  "  session_id,\n"                                                                                                    \
-  "  host_pubkey,\n"                                                                                                   \
-  "  password_hash,\n"                                                                                                 \
-  "  max_participants,\n"                                                                                              \
-  "  current_participants,\n"                                                                                          \
-  "  capabilities,\n"                                                                                                  \
-  "  has_password,\n"                                                                                                  \
-  "  expose_ip_publicly,\n"                                                                                            \
-  "  session_type,\n"                                                                                                  \
-  "  server_address,\n"                                                                                                \
-  "  server_port,\n"                                                                                                   \
-  "  created_at,\n"                                                                                                    \
-  "  expires_at,\n"                                                                                                    \
-  "  last_activity_at,\n"                                                                                              \
-  "  initiator_id,\n"                                                                                                  \
-  "  host_established,\n"                                                                                              \
-  "  host_participant_id,\n"                                                                                           \
-  "  host_address,\n"                                                                                                  \
-  "  host_port,\n"                                                                                                     \
-  "  host_connection_type,\n"                                                                                          \
-  "  in_migration,\n"                                                                                                  \
-  "  migration_start_ns\n"                                                                                             \
-  "FROM sessions"
-
-typedef enum {
-#define DATABASE_QUERY(name, sql) QUERY_##name,
-#include "queries.def"
-#undef DATABASE_QUERY
-} database_query_id_t;
-static const gotel_query_t database_queries[] = {
-#define DATABASE_QUERY(name, sql) [QUERY_##name] = {#name, sql},
-#include "queries.def"
-#undef DATABASE_QUERY
-};
+/* Gotel reads the generated records directly without imposing its descriptor
+ * layout on the application catalog. The generated table has static lifetime. */
+static bool database_query_get(const void *context, size_t index, gotel_query_t *out) {
+  const struct database_query *queries = context;
+  if (!queries || !out || index >= DATABASE_QUERY_COUNT)
+    return false;
+  *out = (gotel_query_t){queries[index].name, queries[index].sql};
+  return true;
+}
