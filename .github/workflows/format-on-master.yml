@@ -32,11 +32,11 @@ jobs:
           sudo apt-get install --yes cmake ninja-build clang-format
           rm -f llvm.sh
 
-      - name: Configure CMake
-        run: cmake -S . -B build_format -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF -DASCIICHAT_FORMAT_ONLY=ON
-
-      - name: Format authored sources with CMake
-        run: cmake --build build_format --target format
+      - name: Format authored C sources
+        shell: bash
+        run: |
+          git ls-files -z -- 'src/**/*.c' 'src/**/*.h' 'lib/**/*.c' 'lib/**/*.h' 'src/*.c' 'src/*.h' 'lib/*.c' 'lib/*.h' \
+            | xargs -0 --no-run-if-empty clang-format -i
 
       - name: Commit and push formatting changes
         run: |
@@ -49,6 +49,19 @@ jobs:
           git add --all
           git rm --cached --ignore-unmatch llvm.sh
           git commit -m "style: format code with clang-format [skip ci]"
-          git fetch origin master
-          git rebase origin/master
-          git push origin HEAD:master
+          for attempt in 1 2 3 4 5; do
+            echo "Push attempt ${attempt}/5"
+            git fetch origin master
+            if ! git rebase origin/master; then
+              git rebase --abort
+              echo "A rebase conflict requires manual resolution."
+              exit 1
+            fi
+            if git push origin HEAD:master; then
+              exit 0
+            fi
+            echo "Remote changed during push; retrying."
+            sleep $((attempt * 2))
+          done
+          echo "Could not push after 5 attempts."
+          exit 1
