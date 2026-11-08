@@ -145,6 +145,12 @@ private enum IOSMode: Int32, CaseIterable, Identifiable {
         case .discovery: return "Discovery"
         }
     }
+
+    var isImplemented: Bool { self == .mirror }
+
+    var availabilityLabel: String {
+        isImplemented ? "Available" : "Coming soon"
+    }
 }
 
 struct ContentView: View {
@@ -152,21 +158,30 @@ struct ContentView: View {
 
     var body: some View {
         VStack {
-            Text("ascii-chat iOS prototype")
-            TestFrameView()
-            CameraAsciiView()
+            Text("ascii-chat")
+                .font(.largeTitle.bold())
+            Text("Choose a mode to start")
+                .foregroundStyle(.secondary)
             Picker("Mode", selection: $selectedMode) {
                 ForEach(IOSMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
+                    Text(mode.title + (mode.isImplemented ? "" : " · Soon"))
+                        .tag(mode)
                 }
             }
             .pickerStyle(.segmented)
+            Text(selectedMode.availabilityLabel)
+                .font(.caption)
+                .foregroundStyle(selectedMode.isImplemented ? .green : .secondary)
             Button("Start \(selectedMode.title.lowercased())") {
                 DispatchQueue.global(qos: .userInitiated).async {
                     _ = asciichat_ios_main(selectedMode.rawValue)
                 }
             }
             .buttonStyle(.borderedProminent)
+            .disabled(!selectedMode.isImplemented)
+            Divider()
+            TestFrameView()
+            CameraAsciiView()
         }
         .padding()
     }
