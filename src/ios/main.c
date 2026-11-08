@@ -14,6 +14,8 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   char *mode_name = mode == ASCIICHAT_IOS_MODE_CLIENT ? client
                     : mode == ASCIICHAT_IOS_MODE_DISCOVERY ? discovery
                                                             : mirror;
-  char *argv[] = {program, mode_name, splash, status, color, NULL};
+  /* Global options precede the positional mode, matching the desktop CLI
+   * parser and preserving the regular dispatcher path on iOS. */
+  char *argv[] = {program, splash, status, color, mode_name, NULL};
   return asciichat_main(5, argv);
 }

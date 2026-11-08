@@ -120,6 +120,15 @@ private struct CameraAsciiView: View {
                 _ = ios_render_bridge_write(1, text, smokeText.utf8.count)
             }
         }
+        .overlay(alignment: .bottom) {
+            Button("Start mirror") {
+                DispatchQueue.global(qos: .userInitiated).async {
+                    _ = asciichat_ios_main(0)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .padding()
+        }
     }
 }
 

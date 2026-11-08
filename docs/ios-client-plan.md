@@ -1397,6 +1397,7 @@ produces pixels on screen.
 - [ ] `MirrorView.swift` — options form + ModeView
 - [x] Implement the C render bridge and Swift frame polling bridge
 - [x] Verify bridge output is visible in the iOS simulator
+- [x] Keep native mode startup behind an explicit SwiftUI control
 - [ ] Verify: mirror mode shows ASCII webcam output on device
 - [ ] Settings UI: color mode, palette, render mode, dimensions (passed as argv)
 
