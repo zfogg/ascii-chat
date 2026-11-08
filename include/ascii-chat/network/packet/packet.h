@@ -598,7 +598,7 @@ static inline bool packet_is_precompressed(packet_type_t type) {
 }
 
 /**
- * @brief Network packet header structure
+ * @brief Fixed prefix shared by every ACIP packet on the wire
  *
  * Standard header for all network packets. Contains magic number for
  * validation, packet type, payload length, CRC32 checksum, and client ID.

@@ -119,7 +119,13 @@ typedef struct session_log_buffer session_log_buffer_t;
 #define LOG_COMPILE_LEVEL LOG_DEV
 #endif
 
-/** @brief A single buffered log entry */
+/**
+ * @brief Heap-backed message waiting for the logging output thread
+ *
+ * `message` contains the formatted line and `use_stderr` preserves whether it
+ * should be written to stderr or stdout. The entry owns the message pointer
+ * until it is consumed and freed.
+ */
 typedef struct {
   bool use_stderr; /* true for stderr, false for stdout */
   char *message;   /* Formatted message (heap allocated) */

@@ -109,10 +109,12 @@ typedef enum {
 /** @} */
 
 /**
- * @brief Palette definition structure
+ * @brief Validated luminance palette used to turn brightness into characters
  *
- * Contains all information about a palette, including its character
- * sequence, UTF-8 requirements, and validation status.
+ * The character sequence is stored in display order from dark to light.
+ * `chars` gives the decoded UTF-8 bytes and terminal width for each character;
+ * the original string and its byte length are retained so callers can report,
+ * reuse, or free the exact input.
  *
  * @note Character sequence must be ordered from darkest to lightest
  *       for proper luminance mapping.

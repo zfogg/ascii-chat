@@ -35,7 +35,7 @@
 #endif
 
 /**
- * @brief Single filter pattern with all its settings
+ * @brief Compiled filter entry used to match logs and print context
  */
 typedef struct {
   const char *original;  ///< Original pattern string (for display)

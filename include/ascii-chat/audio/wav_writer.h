@@ -18,7 +18,7 @@ extern "C" {
 #endif
 
 /**
- * @brief Open WAV output stream with the format needed to finalize its header.
+ * @brief File handle and sample counters needed to finalize a WAV recording
  *
  * `file` is the owned output handle; `samples_written`, `sample_rate`, and
  * `channels` let close-time code calculate RIFF and data sizes after samples
