@@ -13,10 +13,18 @@ LIB_DIR   := $(SOURCE_DIR)/lib
 DOCS_DIR  := $(SOURCE_DIR)/docs
 
 CMAKE ?= cmake
+MMMBED ?= mmmbed
 CMAKE_GENERATOR ?= Ninja
 CMAKE_BUILD_TYPE ?= RelWithDebInfo
 CMAKE_ARGS ?=
 EXTRA_CMAKE_ARGS ?=
+
+.PHONY: generate-sql check-sql
+generate-sql:
+	$(MMMBED) sql -l c --prefix database -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h
+
+check-sql:
+	$(MMMBED) sql -l c --prefix database -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h --check
 
 INSTALL_PREFIX_FROM_ARGS := $(strip $(shell printf '%s %s\n' "$(CMAKE_ARGS)" "$(EXTRA_CMAKE_ARGS)" | tr ' ' '\n' | grep -E '^-DCMAKE_INSTALL_PREFIX=' | tail -n1 | cut -d '=' -f2- ))
 
