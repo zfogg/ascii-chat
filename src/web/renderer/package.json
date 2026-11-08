@@ -15,14 +15,18 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/renderer/src/index.d.ts",
-      "import": "./dist/renderer/src/index.js"
+      "types": "./dist/src/web/renderer/src/index.d.ts",
+      "import": "./dist/src/web/renderer/src/index.js"
     },
-    "./renderer.wasm": "./dist/renderer/src/renderer.wasm",
-    "./renderer.js": "./dist/renderer/src/renderer.js"
+    "./renderer.wasm": "./dist/src/web/renderer/src/renderer.wasm",
+    "./renderer.js": "./dist/src/web/renderer/src/renderer.js",
+    "./options": {
+      "types": "./dist/src/web/renderer/src/options.d.ts",
+      "import": "./dist/src/web/renderer/src/options.js"
+    }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && node build.mjs",
+    "build": "node clean.mjs && tsc -p tsconfig.json && node build.mjs",
     "prepack": "npm run build",
     "test": "playwright test",
     "pretest": "npm run build"

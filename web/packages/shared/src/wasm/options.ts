@@ -40,6 +40,38 @@ export const defaultPalettes = {
   cool: "   ▁▂▃▄▅▆▇█",
 } as const;
 
+/** Browser-facing names map to the native numeric values above. */
+export const colorModeValues = {
+  auto: ColorMode.Auto,
+  none: ColorMode.None,
+  "16": ColorMode.Ansi16,
+  "256": ColorMode.Ansi256,
+  truecolor: ColorMode.Truecolor,
+} as const;
+export const colorFilterValues = {
+  none: ColorFilter.None,
+  black: ColorFilter.Black,
+  white: ColorFilter.White,
+  green: ColorFilter.Green,
+  magenta: ColorFilter.Magenta,
+  fuchsia: ColorFilter.Fuchsia,
+  orange: ColorFilter.Orange,
+  teal: ColorFilter.Teal,
+  cyan: ColorFilter.Cyan,
+  pink: ColorFilter.Pink,
+  red: ColorFilter.Red,
+  yellow: ColorFilter.Yellow,
+  rainbow: ColorFilter.Rainbow,
+} as const;
+export const defaultBrowserSettings = {
+  colorMode: "truecolor",
+  colorFilter: "none",
+  palette: "standard",
+  renderer: "luminance",
+  renderMode: RenderMode.Foreground,
+  paletteChars: defaultPalettes.standard,
+} as const;
+
 /** Values accepted by the native options registry. */
 export type OptionValue = number | string | boolean;
 export type OptionValues = Readonly<Record<string, OptionValue>>;
@@ -72,7 +104,31 @@ const paletteNames: readonly Palette[] = [
   "custom",
 ];
 export function paletteName(type: number): Palette {
-  return paletteNames[type] ?? "standard";
+  const name = paletteNames[type];
+  if (!name) throw new Error(`Invalid palette type: ${type}`);
+  return name;
+}
+
+/** Validate a patch before it is submitted to the atomic native options API. */
+export function validateOptions(values: OptionValues): void {
+  const enums: Record<string, readonly number[]> = {
+    color_mode: Object.values(ColorMode),
+    render_mode: Object.values(RenderMode),
+    color_filter: Object.values(ColorFilter),
+    renderer: Object.values(TextRenderer),
+    palette_type: [0, ...Object.values(paletteTypes)],
+  };
+  for (const [name, valid] of Object.entries(enums)) {
+    if (Object.hasOwn(values, name) && !valid.includes(values[name] as number))
+      throw new Error(`Invalid ${name}: ${String(values[name])}`);
+  }
+  if (Object.hasOwn(values, "palette_custom")) {
+    const palette = values["palette_custom"];
+    if (typeof palette !== "string")
+      throw new Error("Custom palette must be a string");
+    if (Array.from(palette).length > 1024)
+      throw new Error("Custom palette cannot exceed 1024 characters");
+  }
 }
 /** Applies a validated patch to the native options state atomically. */
 export class Options {
@@ -80,9 +136,11 @@ export class Options {
   read(): OptionsSnapshot {
     const snapshot = this.bindings.readOptions();
     if (snapshot === null) throw new Error("Unable to read renderer options");
+    validateOptions(snapshot.values);
     return snapshot;
   }
   patch(values: OptionValues, expectedRevision = -1): OptionsSnapshot {
+    validateOptions(values);
     const code = this.bindings.patchOptions(values, expectedRevision);
     if (code !== 0)
       throw new Error(

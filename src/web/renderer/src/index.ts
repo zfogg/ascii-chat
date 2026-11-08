@@ -5,7 +5,7 @@ import {
   defaultPalettes,
   type OptionsBindings,
   type OptionValues,
-} from "../../common/options.js";
+} from "@ascii-chat/shared/wasm/options";
 export {
   Options,
   ColorMode,
@@ -13,15 +13,18 @@ export {
   ColorFilter,
   TextRenderer,
   defaultPalettes,
+  defaultBrowserSettings,
+  colorModeValues,
+  colorFilterValues,
   paletteTypes,
   paletteName,
-} from "../../common/options.js";
+} from "@ascii-chat/shared/wasm/options";
 export type {
   OptionValue,
   OptionValues,
   OptionsSnapshot,
   Palette,
-} from "../../common/options.js";
+} from "@ascii-chat/shared/wasm/options";
 
 /** Rendering keys supported by the shared native options registry. */
 export type RendererOptions = OptionValues &
@@ -49,7 +52,11 @@ interface FrameBinding {
     height: number,
     contain: boolean,
   ): string | undefined;
-  transform(pixels: Uint8Array | Uint8ClampedArray, width: number, height: number): number;
+  transform(
+    pixels: Uint8Array | Uint8ClampedArray,
+    width: number,
+    height: number,
+  ): number;
   submitAudio(samples: Float32Array, source: number): void;
   renderAudio(
     width: number,
@@ -167,7 +174,6 @@ function formatAudioFrame(frame: string, values: OptionValues): string {
   );
 }
 
-
 /** Each instance creates an independent WASM module and owns all its state. */
 export class AsciiRenderer {
   readonly options: Options;
@@ -196,7 +202,8 @@ export class AsciiRenderer {
       ...runtime,
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0]!,
     });
-    if (!module.RendererSessionBinding) throw new Error("WASM module has no renderer session");
+    if (!module.RendererSessionBinding)
+      throw new Error("WASM module has no renderer session");
     const session = new module.RendererSessionBinding();
     if (!session.valid()) {
       const code = session.error();
@@ -228,9 +235,14 @@ export class AsciiRenderer {
     if (text === undefined) throw new Error("ASCII frame conversion failed");
     return text;
   }
-  transform(pixels: Uint8Array | Uint8ClampedArray, width: number, height: number): void {
+  transform(
+    pixels: Uint8Array | Uint8ClampedArray,
+    width: number,
+    height: number,
+  ): void {
     this.check();
-    if (this.frame.transform(pixels, width, height)) throw new Error("Capture transform failed");
+    if (this.frame.transform(pixels, width, height))
+      throw new Error("Capture transform failed");
   }
   submitAudio(samples: Float32Array, source: AudioSource = "media"): void {
     this.check();
@@ -279,9 +291,17 @@ export class AsciiRenderer {
       this.rasterPixels = undefined;
     }
     const raster = this.raster;
-    const width = raster.width(), height = raster.height();
-    const pixels = (this.rasterPixels ??= new Uint8ClampedArray(width * height * 4));
-    AsciiRenderer.rasterize(raster, "\x1b[H" + text, Number(values["zalgo"] ?? 0), pixels);
+    const width = raster.width(),
+      height = raster.height();
+    const pixels = (this.rasterPixels ??= new Uint8ClampedArray(
+      width * height * 4,
+    ));
+    AsciiRenderer.rasterize(
+      raster,
+      "\x1b[H" + text,
+      Number(values["zalgo"] ?? 0),
+      pixels,
+    );
     if (canvas.width !== width) canvas.width = width;
     if (canvas.height !== height) canvas.height = height;
     const context = canvas.getContext("2d");
@@ -290,11 +310,22 @@ export class AsciiRenderer {
   }
 
   /** Rasterize an ANSI frame with an existing native terminal renderer. */
-  static rasterize(raster: RasterBinding, text: string, zalgo = 0,
-                   pixels = new Uint8ClampedArray(raster.width() * raster.height() * 4)): Uint8ClampedArray<ArrayBuffer> {
-    if (!raster.valid() || raster.setZalgo(zalgo) !== 0 || raster.feed(text) !== 0)
+  static rasterize(
+    raster: RasterBinding,
+    text: string,
+    zalgo = 0,
+    pixels = new Uint8ClampedArray(raster.width() * raster.height() * 4),
+  ): Uint8ClampedArray<ArrayBuffer> {
+    if (
+      !raster.valid() ||
+      raster.setZalgo(zalgo) !== 0 ||
+      raster.feed(text) !== 0
+    )
       throw new Error(`Rasterization failed (${raster.error()})`);
-    if (pixels.length !== raster.width() * raster.height() * 4 || !raster.copyPixels(pixels))
+    if (
+      pixels.length !== raster.width() * raster.height() * 4 ||
+      !raster.copyPixels(pixels)
+    )
       throw new Error("Cannot copy raster pixels");
     return pixels;
   }

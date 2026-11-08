@@ -102,12 +102,12 @@ def make_guides():
  guides=GUIDES + make_call_guides(*args) + make_media_guides(*args) + make_control_guides(*args) + make_audio_guides(*args)
  # Include concrete adapters/helpers so cross-process checkpoints retain their local code context.
  context={
-  ('discovery','membership',0):['src/web/discovery.c'],
+  ('discovery','membership',0):['src/web/bindings/discovery.cpp'],
   ('discovery','membership',1):['src/discovery-service/server.c'],
   ('discovery','membership',2):['src/discovery-service/signaling.c'],
   ('discovery','relay',0):[L+'network/acip/send.c'],
   ('discovery','relay',2):[N+'DiscoveryProtocol.ts'],
-  ('join','membership',0):['src/web/discovery.c'],
+  ('join','membership',0):['src/web/bindings/discovery.cpp'],
   ('join','membership',1):[L+'network/acip/acds_client.c'],
   ('join','membership',2):['src/discovery-service/signaling.c'],
   ('join','media',0):[L+'network/acip/acds_client.c'],

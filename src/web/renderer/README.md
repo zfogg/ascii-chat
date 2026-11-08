@@ -45,6 +45,7 @@ creates an independent module. Do not use a disposed renderer.
 `renderer.options.read()` returns `{revision, values}`. `configure(values)` or
 `renderer.options.patch(values, expectedRevision)` applies the same validated
 runtime settings used by the browser client; `expectedRevision` is optional.
+The constants and palettes are also available from `ascii-chat/options`.
 Patches are JavaScript objects, validated and committed atomically in C. A bad
 field or stale revision leaves the entire state unchanged.
 Use `renderer.options.palette("custom", " .:-=+*#%@")` for a custom palette,

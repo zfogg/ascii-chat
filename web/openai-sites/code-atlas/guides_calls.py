@@ -23,7 +23,7 @@ G('join','Join a named session','Make a call','CLI + browser','Someone sent me a
  C('intent','Resolve the invite','CLI and browser entry points collect the identifier before starting discovery.',
  P('src/discovery/main.c','discovery_main','Enter native discovery','The mode installs discovery preparation and run callbacks into the client-like lifecycle. Implicit discovery dispatch reaches this entry point.'),
  P(W+'pages/Discovery.tsx','DiscoveryPage','Reuse browser client UI','DiscoveryPage renders ClientPage with discoveryMode; media and connection controls are shared rather than reimplemented.',W+'pages/Client.tsx'),
- P(N+'DiscoveryProtocol.ts','DiscoveryProtocol','Marshal joining credentials','The browser allocates name/password strings, calls C discovery exports, and forwards queued outgoing packets after returning from C.','src/web/discovery.c')),
+ P(N+'DiscoveryProtocol.ts','DiscoveryProtocol','Marshal joining credentials','The browser allocates name/password strings, calls C discovery exports, and forwards queued outgoing packets after returning from C.','src/web/bindings/discovery.cpp')),
  C('membership','Look up and join','The shared C protocol sequences requests and interprets service responses.',
  P(L+'network/acip/acds_client.c','acds_protocol_enter','Choose the entry flow','Creation and joining are explicit protocol intents. Lookup/join responses advance the same state machine.',L+'discovery/strings.c'),
  P('src/discovery/session.c','join_session','Join from native code','The native adapter consumes membership responses, stores participant and host details, and transitions toward negotiation.',L+'network/acip/acds_client_io.c'),

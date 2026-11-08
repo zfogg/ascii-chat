@@ -32,7 +32,7 @@ setup and QUIC transport operations; `protocol.cpp` handles handshake and packet
 handles settings conversion; `client_frames.cpp` validates and sends frames.
 `discovery.cpp` binds discovery and handoff, `session_host.cpp` binds the shared
 session host, and `av_state.cpp` owns asynchronous media lifecycle state. Their
-C adapters are `discovery.c` and `session_host.c`. Common byte
+bindings call their native APIs directly. Common byte
 copies are shared, and these file boundaries do not change the JavaScript API.
 The key parser and crypto configuration accept temporary byte arrays. Their
 C++ adapters clear secret scratch buffers after the C call, and TypeScript

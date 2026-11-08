@@ -16,15 +16,15 @@ import {
   getMirrorModule,
   runtimeOptions,
   paletteTypes,
+  defaultBrowserSettings,
+  colorModeValues,
+  colorFilterValues,
   initMirrorWasm,
   cleanupMirrorWasm,
   convertFrameToAscii,
   isWasmReady,
   renderAudioVisualization,
   submitAudioVisualizationSamples,
-  ColorMode,
-  ColorFilter,
-  RenderMode,
 } from "@ascii-chat/shared/wasm";
 import type { EmscriptenModuleFactory } from "@ascii-chat/shared/wasm";
 import {
@@ -78,13 +78,16 @@ function applyDemoOption(
   const fft = settings.fft ?? false;
   const waveform = !fft && (settings.waveform ?? false);
   activeDemoOptions().applyPatch({
-    color_mode: settings.colorMode ?? ColorMode.Truecolor,
-    color_filter: settings.colorFilter ?? ColorFilter.None,
-    render_mode: settings.renderMode ?? RenderMode.Foreground,
+    color_mode:
+      settings.colorMode ?? colorModeValues[defaultBrowserSettings.colorMode],
+    color_filter:
+      settings.colorFilter ??
+      colorFilterValues[defaultBrowserSettings.colorFilter],
+    render_mode: settings.renderMode ?? defaultBrowserSettings.renderMode,
     palette_type:
       settings.paletteChars !== undefined
         ? paletteTypes.custom
-        : paletteTypes[settings.palette ?? "standard"],
+        : paletteTypes[settings.palette ?? defaultBrowserSettings.palette],
     ...(settings.paletteChars !== undefined
       ? { palette_custom: settings.paletteChars }
       : {}),

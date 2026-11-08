@@ -1,4 +1,4 @@
-import { AsciiRenderer } from "../../../../../../src/web/renderer/src/index";
+import { AsciiRenderer } from "ascii-chat";
 import type { TerminalRendererModule } from "../../wasm/terminalRenderer";
 import type { TerminalRendererBinding } from "../../wasm/generated/mirror-bindings";
 import type { RasterWorkerRequest } from "./RasterWorker";

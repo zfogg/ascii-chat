@@ -1,4 +1,4 @@
-import { Options } from "../../../../../../src/web/common/options";
+import { Options } from "@ascii-chat/shared/wasm/options";
 import type { MainModule } from "../generated/mirror-bindings";
 
 /** Each C/WASM instance owns its state. Observers run on the browser thread. */

@@ -1,4 +1,4 @@
-import { AsciiRenderer } from "../../../../../../src/web/renderer/src/index";
+import { AsciiRenderer } from "ascii-chat";
 import { useLayoutEffect } from "react";
 import { RasterWorker } from "./RasterWorker";
 import { browserKeyCode } from "./keyboard";

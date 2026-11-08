@@ -6,7 +6,7 @@ test("standalone package renders modes, visualizations and canvas at 60 fps", as
 }) => {
   await page.goto("/");
   const results = await page.evaluate(async () => {
-    const url = "/renderer/src/index.js";
+    const url = "/src/web/renderer/src/index.js";
     const { createRenderer, ColorMode, RenderMode, TextRenderer } =
       await import(url);
     const renderer = await createRenderer();
@@ -232,7 +232,7 @@ test("shared rendering constants match the native definitions", async ({
   );
   await page.goto("/");
   const values = await page.evaluate(async () => {
-    const url = "/renderer/src/index.js";
+    const url = "/src/web/renderer/src/index.js";
     const {
       ColorMode,
       RenderMode,

@@ -1,9 +1,11 @@
 packages:
-  - "packages/*"
-  - "openai-sites/*"
-  - "www"
-  - "discovery"
+  - "src/web/renderer"
   - "web"
+  - "web/packages/*"
+  - "web/openai-sites/*"
+  - "web/www"
+  - "web/discovery"
+  - "web/web"
 # Vite+ resolves its tools from the workspace before its own dependencies.
 # Expose its bundled versions so ancestor node_modules cannot shadow them.
 publicHoistPattern:

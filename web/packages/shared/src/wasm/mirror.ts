@@ -1,5 +1,5 @@
 import type { MainModule } from "./generated/mirror-bindings";
-import { AsciiRenderer } from "../../../../../src/web/renderer/src/index";
+import { AsciiRenderer } from "ascii-chat";
 import { resetRuntimeOptions, runtimeOptions } from "./common/runtimeOptions";
 // Shared TypeScript wrapper for Mirror WASM module
 // Provides type-safe interface to libasciichat mirror mode
@@ -10,7 +10,7 @@ import {
   ColorMode,
   ColorFilter,
   type Palette,
-} from "../../../../../src/web/common/options";
+} from "@ascii-chat/shared/wasm/options";
 export type MirrorModule = MainModule & {
   HEAPU8: Uint8Array;
   canvas?: HTMLCanvasElement;

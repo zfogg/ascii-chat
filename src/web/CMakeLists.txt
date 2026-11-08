@@ -516,7 +516,6 @@ set(WEB_SRC_CLIENT
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/peer_crypto.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/discovery.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/host.c
     ${LIB_ROOT}/network/acip/server.c
     ${LIB_ROOT}/network/acip/settings.c
@@ -697,7 +696,7 @@ endif()
 # the npm package copies them into its ignored dist directory.
 add_executable(renderer-web
     ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/frame.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/frame.cpp
     ${WEB_SRC_MIRROR}
     ${CMAKE_CURRENT_SOURCE_DIR}/renderer/renderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/terminal_renderer.cpp
@@ -718,5 +717,5 @@ target_link_options(renderer-web PRIVATE
 set_target_properties(renderer-web PROPERTIES OUTPUT_NAME "renderer")
 apply_sanitizers_to_target(renderer-web)
 
-target_sources(mirror-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/common/frame.cpp)
-target_sources(client-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/common/frame.cpp)
+target_sources(mirror-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/bindings/frame.cpp)
+target_sources(client-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/bindings/frame.cpp)

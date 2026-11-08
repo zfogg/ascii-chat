@@ -2,6 +2,8 @@ import {
   getMirrorModule,
   runtimeOptions,
   paletteTypes,
+  RenderMode,
+  TextRenderer,
   isWasmReady,
   type RuntimeOptionsStore,
   type RuntimeValues,
@@ -50,8 +52,11 @@ export function applyMirrorWasmSettings(
     color_filter: mapColorFilterToWasm(
       visualization ? "none" : settings.colorFilter,
     ),
-    render_mode: settings.renderMode ?? 0,
-    renderer: settings.renderer === "glyph" ? 1 : 0,
+    render_mode: settings.renderMode ?? RenderMode.Foreground,
+    renderer:
+      settings.renderer === "glyph"
+        ? TextRenderer.Glyph
+        : TextRenderer.Luminance,
     stabilize: settings.stabilize ?? false,
     palette_type: paletteTypes[settings.palette],
     palette_custom: settings.paletteChars || DEFAULT_PALETTE_CHARS,

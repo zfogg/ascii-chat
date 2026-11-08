@@ -14,7 +14,11 @@
       "@ascii-chat/shared/hooks": ["../packages/shared/src/hooks/index.ts"],
       "@ascii-chat/shared/wasm": ["../packages/shared/src/wasm/index.ts"],
       "@ascii-chat/shared/utils": ["../packages/shared/src/utils/index.ts"],
-      "@ascii-chat/shared/styles/*": ["../packages/shared/src/styles/*"]
+      "@ascii-chat/shared/styles/*": ["../packages/shared/src/styles/*"],
+      "ascii-chat": ["../../src/web/renderer/src/index.ts"],
+      "@ascii-chat/shared/wasm/options": [
+        "../packages/shared/src/wasm/options.ts"
+      ]
     },
     "skipLibCheck": true,
     "moduleResolution": "bundler"

@@ -29,11 +29,14 @@ export type {
   MirrorModule,
 } from "./mirror";
 export {
+  colorModeValues,
+  colorFilterValues,
+  defaultBrowserSettings,
   paletteTypes,
   paletteName,
   defaultPalettes,
   TextRenderer,
-} from "../../../../../src/web/common/options";
+} from "@ascii-chat/shared/wasm/options";
 export type { SessionUiEvent } from "../components/AsciiRenderer/types";
 export type {
   AudioProcessorBinding,
