@@ -73,7 +73,7 @@ const path = require("node:path");
       });
       const args = "client --width 40 --height 12 --log-level fatal";
       if (m.initClient(args)) throw new Error("client init failed");
-      const selection = '{"waveform":true}';
+      const selection = { waveform: true };
       if (m.patchOptions(selection, -1))
         throw new Error("waveform selection failed");
       const revision = m.browser_options_revision();
@@ -573,11 +573,11 @@ const path = require("node:path");
         for (const palette of ["XX", "界é"])
           for (let mode = 0; mode <= 2; ++mode)
             for (let color = 0; color <= 3; ++color) {
-              const json = JSON.stringify({
+              const json = {
                 palette_custom: palette,
                 render_mode: mode,
                 color_mode: color,
-              });
+              };
               const patched = mirror.patchOptions(json, -1);
               if (patched) throw new Error("mirror settings failed");
               const output = mirrorFrame.convert(rgba, 8, 4, false);
@@ -602,7 +602,7 @@ const path = require("node:path");
               mirrorFrames++;
             }
         for (const fft of [false, true]) {
-          const json = JSON.stringify({ fft });
+          const json = { fft };
           const result = mirror.patchOptions(json, -1);
           if (result) throw new Error("mirror audio settings failed");
           const frame = mirrorFrame.renderAudio(40, 12, 0);

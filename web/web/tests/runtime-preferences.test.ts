@@ -31,13 +31,8 @@ function createEngine(initial: Record<string, string | boolean | number> = {}) {
   const patches: Record<string, unknown>[] = [];
   engine.module = {
     browser_options_revision: () => revision,
-    readOptions: () => JSON.stringify({ revision, values }),
-    patchOptions: (json) => {
-      if (typeof json !== "string") throw new Error("Expected JSON text");
-      const patch = JSON.parse(json) as Record<
-        string,
-        string | boolean | number
-      >;
+    readOptions: () => ({ revision, values: { ...values } }),
+    patchOptions: (patch) => {
       patches.push(patch);
       values = { ...values, ...patch };
       revision++;

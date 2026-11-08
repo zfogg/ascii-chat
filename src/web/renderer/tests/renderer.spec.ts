@@ -125,7 +125,7 @@ test("Embind session owns native initialization and cleanup", async ({
     const second = duplicate.valid();
     const error = duplicate.error();
     duplicate.delete();
-    const stillActive = owner.valid() && module.readOptions() !== undefined;
+    const stillActive = owner.valid() && module.readOptions() !== null;
     owner.delete();
     const replacement = new module.RendererSessionBinding();
     const restarted = replacement.valid();
@@ -150,4 +150,57 @@ test("Embind session owns native initialization and cleanup", async ({
     initExposed: false,
   });
   expect(result.error).not.toBe(0);
+});
+
+test("object options patches commit atomically and respect revisions", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const url = "/renderer/src/renderer.js";
+    const factory = (await import(url)).default;
+    const module = await factory({
+      getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
+    });
+    const session = new module.RendererSessionBinding();
+    try {
+      const before = module.readOptions();
+      const rejected = module.patchOptions(
+        { width: 45, height: 0 },
+        before.revision,
+      );
+      const afterRejected = module.readOptions();
+      const committed = module.patchOptions(
+        { width: 45, height: 22 },
+        before.revision,
+      );
+      const afterCommit = module.readOptions();
+      const stale = module.patchOptions(
+        { width: 46, height: 23 },
+        before.revision,
+      );
+      const afterStale = module.readOptions();
+      const badInput = module.patchOptions("not an object", -1);
+      return {
+        before,
+        rejected,
+        afterRejected,
+        committed,
+        afterCommit,
+        stale,
+        afterStale,
+        badInput,
+      };
+    } finally {
+      session.delete();
+    }
+  });
+  expect(result.rejected).not.toBe(0);
+  expect(result.afterRejected).toEqual(result.before);
+  expect(result.committed).toBe(0);
+  expect(result.afterCommit.values).toMatchObject({ width: 45, height: 22 });
+  expect(result.afterCommit.revision).toBe(result.before.revision + 1);
+  expect(result.stale).not.toBe(0);
+  expect(result.afterStale).toEqual(result.afterCommit);
+  expect(result.badInput).not.toBe(0);
 });

@@ -3,7 +3,7 @@ import type {
   MainModule,
   MirrorFrameBinding,
 } from "./generated/mirror-bindings";
-import { resetRuntimeOptions } from "./common/runtimeOptions";
+import { resetRuntimeOptions, runtimeOptions } from "./common/runtimeOptions";
 // Shared TypeScript wrapper for Mirror WASM module
 // Provides type-safe interface to libasciichat mirror mode
 // Decoupled from Emscripten factory location — callers provide the factory.
@@ -363,10 +363,10 @@ export function renderAudioVisualization(
 ): string {
   if (!wasmModule) throw new Error("WASM module not initialized");
   if (mode) {
-    const waveform = mode === "waveform" ? 1 : 0;
-    const fft = mode === "fft" ? 1 : 0;
-    wasmModule.set_waveform?.(waveform);
-    wasmModule.set_fft?.(fft);
+    runtimeOptions(wasmModule).applyPatch({
+      waveform: mode === "waveform",
+      fft: mode === "fft",
+    });
   }
   frameBinding ??= new wasmModule.MirrorFrameBinding();
   const frame = frameBinding.renderAudio(

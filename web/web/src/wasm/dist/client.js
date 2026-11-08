@@ -5624,6 +5624,10 @@ async function ClientModule(moduleArg = {}) {
     value = Emval.toValue(value);
     handle[key] = value;
   };
+  var __emval_typeof = (handle) => {
+    handle = Emval.toValue(handle);
+    return Emval.toHandle(typeof handle);
+  };
   var isLeapYear = (year) =>
     year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   var MONTH_DAYS_LEAP_CUMULATIVE = [
@@ -6615,8 +6619,8 @@ async function ClientModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    3031680: () => Module.getRandomValue(),
-    3031716: () => {
+    3031792: () => Module.getRandomValue(),
+    3031828: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -7008,6 +7012,7 @@ async function ClientModule(moduleArg = {}) {
       _emval_new_object: __emval_new_object,
       _emval_run_destructors: __emval_run_destructors,
       _emval_set_property: __emval_set_property,
+      _emval_typeof: __emval_typeof,
       _localtime_js: __localtime_js,
       _mmap_js: __mmap_js,
       _munmap_js: __munmap_js,

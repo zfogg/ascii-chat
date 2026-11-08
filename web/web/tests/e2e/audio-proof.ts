@@ -47,17 +47,6 @@ export async function observeAudioVisualization(page: Page) {
       proof.samples += samples.length;
       return submit.call(this, samples, source);
     };
-    let selectedMode = "";
-    for (const [setter, mode] of [
-      ["set_waveform", "waveform"],
-      ["set_fft", "fft"],
-    ] as const) {
-      const original = module[setter];
-      module[setter] = (enabled: number) => {
-        if (enabled) selectedMode = mode;
-        return original(enabled);
-      };
-    }
     const render = binding.renderAudio;
     binding.renderAudio = function (
       this: unknown,
@@ -68,7 +57,7 @@ export async function observeAudioVisualization(page: Page) {
       const frame = render.call(this, width, height, source);
       if (frame !== undefined) {
         proof.lastFrame = frame;
-        proof.lastMode = selectedMode;
+        proof.lastMode = module.readOptions()?.values.fft ? "fft" : "waveform";
         proof.renders++;
       }
       return frame;

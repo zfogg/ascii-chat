@@ -56,8 +56,14 @@ export class RuntimeOptionsStore {
   };
 
   applyPatch(values: RuntimeValues, expectedRevision = -1): RuntimeSnapshot {
-    new Options(this.module).patch(values, expectedRevision);
-    const snapshot = this.getSnapshot();
+    const committed = new Options(this.module).patch(values, expectedRevision);
+    const snapshot =
+      this.snapshot?.revision === committed.revision
+        ? this.snapshot
+        : (this.snapshot = {
+            revision: committed.revision,
+            values: Object.freeze(committed.values),
+          });
     if (this.notified !== snapshot) {
       this.notified = snapshot;
       for (const listener of this.listeners) listener();

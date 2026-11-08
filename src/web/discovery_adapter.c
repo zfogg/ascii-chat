@@ -1,4 +1,4 @@
-#include "browser_discovery.h"
+#include "discovery_adapter.h"
 #include <ascii-chat/common/limits.h>
 #include <emscripten.h>
 #include <ascii-chat/network/consensus/handoff.h>

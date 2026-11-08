@@ -11,16 +11,14 @@ function engine() {
   let values = { fps: 30, flip_x: false };
   const module: RuntimeOptionsModule = {
     browser_options_revision: () => revision,
-    readOptions: () => JSON.stringify({ revision, values }),
-    patchOptions: (json, expected) => {
-      if (typeof json !== "string") throw new Error("Expected JSON text");
-      const patch = JSON.parse(json) as Partial<typeof values>;
+    readOptions: () => ({ revision, values: { ...values } }),
+    patchOptions: (patch, expected) => {
       if (
         (expected !== -1 && expected !== revision) ||
-        (patch.fps !== undefined && patch.fps < 1)
+        (typeof patch["fps"] === "number" && patch["fps"] < 1)
       )
         return 1;
-      values = { ...values, ...patch };
+      values = { ...values, ...patch } as typeof values;
       revision++;
       return 0;
     },

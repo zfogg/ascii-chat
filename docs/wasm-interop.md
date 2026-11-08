@@ -27,6 +27,13 @@ the canvas path can reuse its `ImageData` allocation. Do not retain a
 `typed_memory_view` across a call that may grow memory or across asynchronous
 work.
 
+Client bindings are grouped by responsibility: `networking.cpp` owns connection
+setup and QUIC transport operations; `protocol.cpp` handles handshake and packet conversion; `common/opts.cpp`
+handles settings conversion; `client_frames.cpp` validates and sends frames.
+`discovery.cpp` binds discovery and handoff, `session_host.cpp` binds the shared
+session host, and `av_state.cpp` owns asynchronous media lifecycle state. Their
+C adapters are `discovery_adapter.c` and `session_host_adapter.c`. Common byte
+copies are shared, and these file boundaries do not change the JavaScript API.
 The key parser and crypto configuration accept temporary byte arrays. Their
 C++ adapters clear secret scratch buffers after the C call, and TypeScript
 clears its temporary arrays in `finally`. The parser worker continues to unlink
@@ -34,7 +41,7 @@ its temporary SSH-key file. JavaScript strings and copies owned by browser APIs
 cannot be reliably wiped. C error snapshots are copied into JavaScript values
 before reporting them.
 
-Embind is the browser-facing API, including options and host control. The
+Embind is the browser-facing API, including options and host control. Options use `patchOptions({ width: 80, height: 40 }, revision)` for one validated atomic update and `readOptions()` for an owned snapshot object. Pass `-1` to accept any revision; stale revisions and invalid fields reject the entire patch. The TypeScript options facade supplies the default revision and returns the committed snapshot. The
 C functions used by adapters are declared in the corresponding web headers,
 which their implementations include as well. Emscripten's filesystem remains
 available for temporary key files; the current heap view is used only to detect

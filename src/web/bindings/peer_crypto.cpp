@@ -3,7 +3,7 @@ extern "C" {
 #include "../peer_crypto.h"
 #include "../client.h"
 }
-#include "network.h"
+#include "networking.h"
 #include <sodium.h>
 #include "byte_arrays.h"
 

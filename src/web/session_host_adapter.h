@@ -1,4 +1,4 @@
-/** Browser-facing C interface implemented in browser_host.c. */
+/** Browser-facing C interface implemented in session_host_adapter.c. */
 #pragma once
 
 #include <stddef.h>

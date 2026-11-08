@@ -4,8 +4,7 @@ import type { MainModule as ClientBindings } from "./generated/client-bindings";
 /** Bindings shared by the mirror and client raster worker modules. */
 export interface TerminalRendererModule extends Pick<
   MirrorBindings,
-  "TerminalRendererBinding" | "initMirror"
+  "TerminalRendererBinding" | "initMirror" | "patchOptions"
 > {
   initClient?: ClientBindings["initClient"];
-  set_matrix_rain?(enabled: number): number;
 }

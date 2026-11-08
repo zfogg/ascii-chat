@@ -1,6 +1,6 @@
 /**
  * @file options.c
- * @brief WASM shared option setters and getters
+ * @brief WASM shared option snapshots and atomic patches
  * @ingroup web_common
  *
  * Provides unified option access for all WASM modes.
@@ -10,12 +10,10 @@
 #include "options.h"
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/options/parsers.h>
-#include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/log/log.h>
-#include <stdlib.h>
 #include <ascii-chat/options/runtime.h>
 #include <ascii-chat/common.h>
+#include <stdio.h>
+#include <string.h>
 
 double browser_options_revision(void) {
   return (double)options_revision();
@@ -42,184 +40,6 @@ char *browser_options_values(void) {
 }
 void browser_options_release(char *json) {
   SAFE_FREE(json);
-}
-
-// ============================================================================
-// Dimension Accessors
-// ============================================================================
-
-int set_width(int value) {
-  asciichat_error_t err = options_set_int("width", value);
-  return (err == ASCIICHAT_OK) ? 0 : -1;
-}
-
-int get_width(void) {
-  int result = GET_OPTION(width);
-  return result;
-}
-
-int set_height(int value) {
-  asciichat_error_t err = options_set_int("height", value);
-  return (err == ASCIICHAT_OK) ? 0 : -1;
-}
-
-int get_height(void) {
-  int result = GET_OPTION(height);
-  return result;
-}
-
-// ============================================================================
-// Color Mode Accessors
-// ============================================================================
-
-int set_color_mode(int mode) {
-  asciichat_error_t err = options_set_int("color_mode", mode);
-  return (err == ASCIICHAT_OK) ? 0 : -1;
-}
-
-int get_color_mode(void) {
-  int result = GET_OPTION(color_mode);
-  return result;
-}
-
-// ============================================================================
-// Color Filter Accessors
-// ============================================================================
-
-int set_color_filter(int filter) {
-  asciichat_error_t err = options_set_int("color_filter", filter);
-  return (err == ASCIICHAT_OK) ? 0 : -1;
-}
-
-int get_color_filter(void) {
-  int result = GET_OPTION(color_filter);
-  return result;
-}
-
-// ============================================================================
-// Palette Accessors
-// ============================================================================
-
-int set_palette(const char *palette_name) {
-  if (!palette_name)
-    return -1;
-
-  palette_type_t palette_value;
-  char *error_msg = NULL;
-
-  if (!parse_palette_type(palette_name, &palette_value, &error_msg)) {
-    if (error_msg) {
-      log_error("Failed to parse palette '%s': %s", palette_name, error_msg);
-      free(error_msg);
-    }
-    return -1;
-  }
-
-  asciichat_error_t err = options_set_int("palette_type", (int)palette_value);
-  return (err == ASCIICHAT_OK) ? 0 : -1;
-}
-
-int get_palette(void) {
-  int result = GET_OPTION(palette_type);
-  return result;
-}
-
-int set_palette_chars(const char *chars) {
-  if (!chars)
-    return -1;
-  asciichat_error_t err = options_set_string("palette_custom", chars);
-  return (err == ASCIICHAT_OK) ? 0 : -1;
-}
-
-const char *get_palette_chars(void) {
-  const char *result = GET_OPTION(palette_custom);
-  return result;
-}
-
-// ============================================================================
-// Matrix Rain Accessors
-// ============================================================================
-
-int set_matrix_rain(int enabled) {
-  asciichat_error_t err = options_set_bool("matrix_rain", enabled != 0);
-  return (err == ASCIICHAT_OK) ? 0 : -1;
-}
-
-int get_matrix_rain(void) {
-  int result = GET_OPTION(matrix_rain) ? 1 : 0;
-  return result;
-}
-
-int set_waveform(int enabled) {
-  return options_set_bool("waveform", enabled != 0) == ASCIICHAT_OK ? 0 : -1;
-}
-
-int get_waveform(void) {
-  return GET_OPTION(waveform) ? 1 : 0;
-}
-
-int set_fft(int enabled) {
-  return options_set_bool("fft", enabled != 0) == ASCIICHAT_OK ? 0 : -1;
-}
-
-int get_fft(void) {
-  return GET_OPTION(fft) ? 1 : 0;
-}
-
-// ============================================================================
-// Horizontal Flip Accessors
-// ============================================================================
-
-int set_flip_x(int enabled) {
-  asciichat_error_t err = options_set_bool("flip_x", enabled != 0);
-  return (err == ASCIICHAT_OK) ? 0 : -1;
-}
-
-int get_flip_x(void) {
-  int result = GET_OPTION(flip_x) ? 1 : 0;
-  return result;
-}
-
-// ============================================================================
-// Vertical Flip Accessors
-// ============================================================================
-
-int set_flip_y(int enabled) {
-  asciichat_error_t err = options_set_bool("flip_y", enabled != 0);
-  return (err == ASCIICHAT_OK) ? 0 : -1;
-}
-
-int get_flip_y(void) {
-  int result = GET_OPTION(flip_y) ? 1 : 0;
-  return result;
-}
-
-// ============================================================================
-// Render Mode Accessors
-// ============================================================================
-
-int set_render_mode(int mode) {
-  asciichat_error_t err = options_set_int("render_mode", mode);
-  return (err == ASCIICHAT_OK) ? 0 : -1;
-}
-
-int get_render_mode(void) {
-  int result = GET_OPTION(render_mode);
-  return result;
-}
-
-// ============================================================================
-// Target FPS Accessors
-// ============================================================================
-
-int set_target_fps(int fps) {
-  asciichat_error_t err = options_set_int("fps", fps);
-  return (err == ASCIICHAT_OK) ? 0 : -1;
-}
-
-int get_target_fps(void) {
-  int result = GET_OPTION(fps);
-  return result;
 }
 
 // ============================================================================

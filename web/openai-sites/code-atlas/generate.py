@@ -109,7 +109,7 @@ summary={
 'src/common/session/host.c':'Reusable host session: client membership, incoming packets, and video rendering.',
 'src/web/mirror.c':'Browser-callable C entry points, including mirror_convert_frame: converts RGBA frames into ASCII output.',
 'src/web/client.c':'WASM client exports for initialization, cryptographic handshakes, and packet processing; transport callbacks cross into JavaScript.',
-'src/web/browser_host.c':'Adapts browser transport callbacks to the shared C session host.',
+'src/web/session_host_adapter.c':'Adapts browser transport callbacks to the shared C session host.',
 'src/web/common/ui.c':'Thin Emscripten exports forwarding resize, keys, media, and tick events to lib/tui/session.c.',
 'lib/tui/session.c':'Nonblocking C UI state and rendering driven by host ticks and input.',
 'web/packages/shared/src/wasm/sessionUi.ts':'Owns one C UI instance; marshals strings and input into WASM and reads generated output.',

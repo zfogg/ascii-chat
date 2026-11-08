@@ -543,12 +543,15 @@ test("a 33 FPS camera aligns C FPS, conversion and presentation with actual capt
   expect(fps).toBeLessThanOrEqual(35);
   await expect
     .poll(() =>
-      page.evaluate(() =>
-        (
-          window as unknown as {
-            asciiChatWasm: { _wasmModule: { get_target_fps(): number } };
-          }
-        ).asciiChatWasm._wasmModule.get_target_fps(),
+      page.evaluate(
+        () =>
+          (
+            window as unknown as {
+              asciiChatWasm: {
+                _wasmModule: { readOptions(): { values: { fps: number } } };
+              };
+            }
+          ).asciiChatWasm._wasmModule.readOptions().values.fps,
       ),
     )
     .toBe(33);

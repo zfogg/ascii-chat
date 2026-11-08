@@ -5617,6 +5617,10 @@ async function MirrorModule(moduleArg = {}) {
     runDestructors(destructors);
     __emval_decref(handle);
   };
+  var __emval_typeof = (handle) => {
+    handle = Emval.toValue(handle);
+    return Emval.toHandle(typeof handle);
+  };
   var isLeapYear = (year) =>
     year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   var MONTH_DAYS_LEAP_CUMULATIVE = [
@@ -6607,8 +6611,8 @@ async function MirrorModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    2853584: () => Module.getRandomValue(),
-    2853620: () => {
+    2853552: () => Module.getRandomValue(),
+    2853588: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -6911,6 +6915,7 @@ async function MirrorModule(moduleArg = {}) {
       _emval_invoke: __emval_invoke,
       _emval_new_cstring: __emval_new_cstring,
       _emval_run_destructors: __emval_run_destructors,
+      _emval_typeof: __emval_typeof,
       _localtime_js: __localtime_js,
       _mmap_js: __mmap_js,
       _munmap_js: __munmap_js,

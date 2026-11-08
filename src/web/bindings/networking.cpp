@@ -2,13 +2,15 @@
 extern "C" {
 #include "../client.h"
 #include "../security.h"
+#include <ascii-chat/network/errors.h>
 }
-#include "network.h"
+#include "networking.h"
 #include "byte_arrays.h"
 #include <sodium.h>
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <optional>
 #include <vector>
 
 static QuicControlResult take_quic_output(crypto_context_t *context) {
@@ -78,7 +80,39 @@ QuicPacketResult network_peer_quic_packet(browser_peer_crypto_t *peer, bool seal
   return process_quic_packet(peer_security_context(peer), seal, flow, delivery, packet);
 }
 
+static int set_server_address(const std::string &host, int port) {
+  if (host.empty() || port <= 0 || port > 65535)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client server address or port");
+  const int result = client_set_server_address(host.c_str(), port);
+  if (result)
+    SET_ERRNO(ERROR_INVALID_STATE, "Cannot set client server address");
+  return result;
+}
+static std::optional<std::string> client_public_key() {
+  char *key = client_get_public_key_hex();
+  if (!key) {
+    SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot get client public key");
+    return std::nullopt;
+  }
+  std::string result(key);
+  client_free_string(key);
+  return result;
+}
+
 EMSCRIPTEN_BINDINGS(ascii_chat_network) {
+  emscripten::function("client_cleanup", &client_cleanup);
+  emscripten::function("client_generate_keypair", &client_generate_keypair);
+  emscripten::function("client_get_connection_state", &client_get_connection_state);
+  emscripten::function("client_resolve_crypto_policy", &client_resolve_crypto_policy);
+  emscripten::function("client_handshake_begin", +[]() { return static_cast<int>(client_handshake_begin()); });
+  emscripten::function(
+      "client_acds_handshake_begin", +[](uint8_t mode) { return static_cast<int>(client_acds_handshake_begin(mode)); });
+  emscripten::function(
+      "network_error_action",
+      +[](int code) { return static_cast<int>(network_error_action(static_cast<asciichat_error_t>(code))); });
+  emscripten::function("setServerAddress", &set_server_address);
+  emscripten::function("clientPublicKey", &client_public_key);
+
   emscripten::register_type<QuicControlResult>("QuicControlResult",
                                                "{ code: number; flow: number; packet: Uint8Array | null }");
   emscripten::register_type<QuicPacketResult>("QuicPacketResult",

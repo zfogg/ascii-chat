@@ -9,7 +9,10 @@ import type {
   ClientScalarBindings,
   PeerCryptoBinding,
 } from "@ascii-chat/shared/wasm";
-import { createWasmModule } from "@ascii-chat/shared/wasm";
+import {
+  createWasmModule,
+  createOptionAccessor,
+} from "@ascii-chat/shared/wasm";
 import {
   publishBrowserError,
   type BrowserErrorFrame,
@@ -736,61 +739,27 @@ export function getConnectionState(): ConnectionState {
   return wasmModule.client_get_connection_state();
 }
 
-/**
- * Set color mode
- */
-export function setColorMode(mode: ColorMode): void {
+/** Access the client's shared atomic runtime options. */
+function clientOptions() {
   if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule.set_color_mode(mode);
-  if (result !== 0) throwWasmError(result, `Invalid color mode: ${mode}`);
+  return createOptionAccessor(wasmModule);
 }
-
-/**
- * Get current color mode
- */
+export function setColorMode(value: ColorMode): void {
+  clientOptions().setInt("color_mode", value);
+}
 export function getColorMode(): ColorMode {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule.get_color_mode();
+  return clientOptions().getInt("color_mode");
 }
-
-/**
- * Set color filter
- */
-export function setColorFilter(filter: ColorFilter): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule.set_color_filter(filter);
-  if (result !== 0) throwWasmError(result, `Invalid color filter: ${filter}`);
+export function setColorFilter(value: ColorFilter): void {
+  clientOptions().setInt("color_filter", value);
 }
-
-/**
- * Get current color filter
- */
 export function getColorFilter(): ColorFilter {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule.get_color_filter();
+  return clientOptions().getInt("color_filter");
 }
-
-/**
- * Set palette
- */
-export function setPalette(palette: Palette): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule.setPalette(palette);
-  if (result !== 0) throwWasmError(result, `Failed to set palette: ${palette}`);
+export function setPalette(value: Palette): void {
+  clientOptions().setString("palette", value);
 }
-
-/**
- * Get current palette
- */
 export function getPalette(): string {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  const json = wasmModule.readOptions();
-  if (!json) return "";
-  const values = (JSON.parse(json) as { values: Record<string, unknown> })
-    .values;
   const names: Palette[] = [
     "standard",
     "standard",
@@ -800,117 +769,43 @@ export function getPalette(): string {
     "cool",
     "custom",
   ];
-  return names[Number(values["palette_type"])] ?? "standard";
+  return names[clientOptions().getInt("palette")] ?? "standard";
 }
-
-/**
- * Set custom palette characters
- */
-export function setPaletteChars(chars: string): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule.setPaletteChars(chars);
-  if (result !== 0)
-    throwWasmError(result, `Failed to set palette chars: ${chars}`);
+export function setPaletteChars(value: string): void {
+  clientOptions().setString("palette_chars", value);
 }
-
-/**
- * Get current custom palette characters
- */
 export function getPaletteChars(): string {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule.getPaletteChars();
+  return clientOptions().getString("palette_chars");
 }
-
-/**
- * Set Matrix rain effect
- */
-export function setMatrixRain(enabled: boolean): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule.set_matrix_rain(enabled ? 1 : 0);
-  if (result !== 0)
-    throwWasmError(result, `Failed to set matrix rain: ${enabled}`);
+export function setMatrixRain(value: boolean): void {
+  clientOptions().setBool("matrix_rain", value);
 }
-
-/**
- * Get current matrix rain state
- */
 export function getMatrixRain(): boolean {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule.get_matrix_rain() !== 0;
+  return clientOptions().getBool("matrix_rain");
 }
-
-/**
- * Set flip X (horizontal flip)
- */
-export function setFlipX(enabled: boolean): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule.set_flip_x(enabled ? 1 : 0);
-  if (result !== 0) throwWasmError(result, `Failed to set flip X: ${enabled}`);
+export function setFlipX(value: boolean): void {
+  clientOptions().setBool("flip_x", value);
 }
-
-/**
- * Get current flip X state
- */
 export function getFlipX(): boolean {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule.get_flip_x() !== 0;
+  return clientOptions().getBool("flip_x");
 }
-
-/**
- * Set target FPS
- */
-export function setTargetFps(fps: number): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule.set_target_fps(fps);
-  if (result !== 0) throwWasmError(result, `Invalid target FPS: ${fps}`);
+export function setTargetFps(value: number): void {
+  clientOptions().setInt("fps", value);
 }
-
-/**
- * Get current target FPS
- */
 export function getTargetFps(): number {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule.get_target_fps();
+  return clientOptions().getInt("fps");
 }
-
-/**
- * Set ASCII width (columns)
- */
-export function setWidth(width: number): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule.set_width(width);
-  if (result !== 0) throwWasmError(result, `Invalid width: ${width}`);
+export function setWidth(value: number): void {
+  clientOptions().setInt("width", value);
 }
-
-/**
- * Get current ASCII width
- */
 export function getWidth(): number {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule.get_width();
+  return clientOptions().getInt("width");
 }
-
-/**
- * Set ASCII height (rows)
- */
-export function setHeight(height: number): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-
-  const result = wasmModule.set_height(height);
-  if (result !== 0) throwWasmError(result, `Invalid height: ${height}`);
+export function setHeight(value: number): void {
+  clientOptions().setInt("height", value);
 }
-
-/**
- * Get current ASCII height
- */
 export function getHeight(): number {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  return wasmModule.get_height();
+  return clientOptions().getInt("height");
 }
 
 /**

@@ -103,8 +103,8 @@ export function getHeight(): number {
 }
 
 export function setDimensions(width: number, height: number): void {
-  setWidth(width);
-  setHeight(height);
+  if (!options) throw new Error("Options not initialized");
+  options.patch({ width, height });
 }
 
 export function getDimensions(): { width: number; height: number } {

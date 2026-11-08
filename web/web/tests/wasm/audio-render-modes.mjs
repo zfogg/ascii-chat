@@ -13,7 +13,7 @@ const m = await createModule({
   getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
 });
 assert.equal(m.initMirror("mirror"), 0);
-m.set_waveform(1);
+m.patchOptions({ waveform: true }, -1);
 const renderer = new m.MirrorFrameBinding();
 for (let base = 0; base < 49152; base += 4096) {
   const pcm = new Float32Array(4096);
@@ -26,11 +26,16 @@ for (let base = 0; base < 49152; base += 4096) {
 for (const fft of [0, 1])
   for (const mode of [0, 1, 2])
     for (const flip of [0, 1]) {
-      m.set_waveform(1 - fft);
-      m.set_fft(fft);
-      m.set_render_mode(mode);
-      m.set_flip_x(flip);
-      m.set_flip_y(flip);
+      m.patchOptions(
+        {
+          waveform: !fft,
+          fft: !!fft,
+          render_mode: mode,
+          flip_x: !!flip,
+          flip_y: !!flip,
+        },
+        -1,
+      );
       const frame = renderer.renderAudio(80, 24, 1);
       assert.ok(frame);
       // Preserve trailing spaces when checking the exact terminal dimensions.

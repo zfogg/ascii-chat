@@ -32,13 +32,16 @@ async function observe(page: Page) {
     const m = getMirrorModule();
     const patch = m.patchOptions;
     window.__sessionSettingsPatches = [];
-    m.patchOptions = (json: string, revision: number) => {
-      window.__sessionSettingsPatches!.push(json);
+    m.patchOptions = (
+      values: Record<string, number | string | boolean>,
+      revision: number,
+    ) => {
+      window.__sessionSettingsPatches!.push(JSON.stringify(values));
       if (window.__sessionSettingsPatches!.length > 100)
         throw new Error(
           `Settings feedback loop: ${window.__sessionSettingsPatches!.slice(-10).join("; ")}`,
         );
-      return patch(json, revision);
+      return patch(values, revision);
     };
     const renderer = m.TerminalRendererBinding.prototype;
     const feed = renderer.feed;
@@ -373,7 +376,7 @@ test("C owns automatic horizontal orientation and the browser echoes it without 
     page.evaluate(async (url) => {
       const { getMirrorModule } = await import(url);
       const m = getMirrorModule();
-      return JSON.parse(m.readOptions()).values;
+      return m.readOptions().values;
     }, moduleUrl);
   const orientation = async (flip: boolean, explicit = false) => {
     await expect(horizontal).toHaveAttribute("aria-pressed", String(flip));
@@ -449,7 +452,7 @@ for (const mode of ["client", "discovery"]) {
         const { getMirrorModule } = await import(url);
         const m = getMirrorModule();
         if (!m) return null;
-        const values = JSON.parse(m.readOptions()).values;
+        const values = m.readOptions().values;
         return [values.flip_x, values.flip_x_explicit];
       }, moduleUrl);
     await expect(horizontal).toHaveAttribute("aria-pressed", "true");
@@ -485,7 +488,7 @@ test("horizontal orientation startup commits saved choices before reading C", as
         const { getMirrorModule } = await import(url);
         const m = getMirrorModule();
         if (!m) return null;
-        const values = JSON.parse(m.readOptions()).values;
+        const values = m.readOptions().values;
         return [values.flip_x, values.flip_x_explicit];
       }, moduleUrl);
     await expect.poll(state).toEqual([flip, true]);

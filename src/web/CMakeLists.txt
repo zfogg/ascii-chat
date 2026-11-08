@@ -520,8 +520,8 @@ set(WEB_SRC_CLIENT
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/peer_crypto.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/browser_host.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/browser_discovery.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/session_host_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/discovery_adapter.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/host.c
     ${LIB_ROOT}/network/acip/server.c
     ${LIB_ROOT}/network/acip/settings.c
@@ -543,10 +543,13 @@ add_executable(client-web
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/test_pattern.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/audio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/peer_crypto.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/network.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/networking.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/key_parser.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/client_api.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/browser_protocol.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/av_state.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/protocol.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/client_frames.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/discovery.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/session_host.cpp
     ${LIB_SRC_CLIENT_CRYPTO}
     ${LIB_SRC_CLIENT_NETWORK}
     ${WEB_SRC_FACE_FOLLOW}
