@@ -16,6 +16,12 @@ private func asciichat_ios_main(_ mode: Int32) -> Int32
 @_silgen_name("asciichat_ios_mode_available")
 private func asciichat_ios_mode_available(_ mode: Int32) -> Int32
 
+@_silgen_name("asciichat_ios_is_running")
+private func asciichat_ios_is_running() -> Int32
+
+@_silgen_name("asciichat_ios_last_result")
+private func asciichat_ios_last_result() -> Int32
+
 @_silgen_name("ios_render_bridge_read_frame")
 private func ios_render_bridge_read_frame(
     _ pixels: UnsafeMutablePointer<UInt8>,
@@ -273,6 +279,11 @@ struct ContentView: View {
             Text(launchMessage)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            if didStart {
+                Text(asciichat_ios_is_running() != 0 ? "Native session running" : "Native session stopped (\(asciichat_ios_last_result()))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
             if didStart {
                 Divider()
                 TestFrameView()
