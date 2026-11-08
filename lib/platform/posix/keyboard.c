@@ -51,6 +51,11 @@ static bool g_tty_fd_owned = false;
  * ============================================================================ */
 
 asciichat_error_t keyboard_init(void) {
+#ifdef PLATFORM_IOS
+  if (!lifecycle_is_initialized(&g_keyboard_lc))
+    (void)lifecycle_init(&g_keyboard_lc, "ios_keyboard");
+  return ASCIICHAT_OK;
+#else
   // If already initialized, return success
   if (lifecycle_is_initialized(&g_keyboard_lc)) {
     log_debug("Already initialized");
@@ -158,9 +163,14 @@ asciichat_error_t keyboard_init(void) {
   // Mark as initialized (still under lock-free CAS)
   log_debug("SUCCESS - using %s for keyboard input", use_stdin ? "stdin" : "/dev/tty");
   return ASCIICHAT_OK;
+#endif
 }
 
 void keyboard_destroy(void) {
+#ifdef PLATFORM_IOS
+  (void)lifecycle_shutdown(&g_keyboard_lc);
+  return;
+#else
   if (!lifecycle_shutdown(&g_keyboard_lc)) {
     return; // Not initialized or already shutting down
   }
@@ -184,6 +194,7 @@ void keyboard_destroy(void) {
       // Silently ignore errors during cleanup
     }
   }
+#endif
 }
 
 static int keyboard_raw_read(void) {
