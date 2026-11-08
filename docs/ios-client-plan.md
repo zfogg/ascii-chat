@@ -126,6 +126,8 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 - [x] Configure iOS audio for video-chat routing and speaker output.
 - [x] Make unavailable modes non-selectable, not merely non-startable.
 - [x] Add VoiceOver labels and hints to startup controls.
+- [x] Reset the shared render bridge before starting a new native session.
+- [x] Cover the startup/media bridge contracts with a manual smoke test.
 - [ ] Keep native mode execution alive after startup and report C lifecycle errors to SwiftUI.
 - [ ] Replace the PortAudio compatibility surface with an AVAudioEngine-backed stream.
 - [ ] Produce and validate an arm64 device archive and XCFramework.
