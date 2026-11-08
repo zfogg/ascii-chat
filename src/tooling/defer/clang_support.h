@@ -55,8 +55,14 @@ public:
     std::vector<std::string> result;
     for (unsigned i = 0; i < clang_getNumDiagnostics(value_); ++i) {
       CXDiagnostic diagnostic = clang_getDiagnostic(value_, i);
-      if (clang_getDiagnosticSeverity(diagnostic) >= CXDiagnostic_Error)
-        result.push_back(consume_string(clang_formatDiagnostic(diagnostic, clang_defaultDiagnosticDisplayOptions())));
+      if (clang_getDiagnosticSeverity(diagnostic) >= CXDiagnostic_Error) {
+        CXString filename;
+        unsigned line = 0, column = 0;
+        clang_getPresumedLocation(clang_getDiagnosticLocation(diagnostic), &filename, &line, &column);
+        const auto name = consume_string(filename);
+        result.push_back(name + ":" + std::to_string(line) + ":" + std::to_string(column) + ": " +
+                         consume_string(clang_getDiagnosticSpelling(diagnostic)));
+      }
       clang_disposeDiagnostic(diagnostic);
     }
     return result;

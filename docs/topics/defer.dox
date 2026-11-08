@@ -43,10 +43,10 @@
  * Defer is supported in project `.c` files, not inline function bodies in headers.
  * Each defer must be a direct statement of a `{ ... }` block. Add braces around
  * an if or loop body before using defer there. Put a defer inside braces under a
- * switch case; a defer directly in a switch body is rejected. Computed goto, jumps into another
- * block, backward jumps that can register the same defer repeatedly, and
- * unnamed or variably modified parameters in non-void defer functions are
- * rejected. Cleanup actions may not contain return,
+ * switch case; a defer directly in a switch body is rejected. Computed goto,
+ * jumps into a block containing defer, backward jumps that can register the same defer repeatedly, and
+ * unnamed non-builtin or variably modified parameters in non-void defer functions
+ * are rejected. Cleanup actions may not contain return,
  * goto, break, continue, another defer, or `__COUNTER__`. The transformer also
  * rejects source-level line directives, token-pasting macros in cleanup,
  * preprocessor changes that can alter cleanup, and exits where an action identifier may bind to a different local
@@ -79,6 +79,10 @@
  * reached its registration and has not canceled it; the output does not claim
  * to predict branch choices.
  * Use explicit Clang arguments for this mode.
+ * Use `defer-tool --show-transformed src/example.c:42 -- -std=c23 -Iinclude`
+ * to print the generated version of the function containing that line. The
+ * displayed snippet includes source mapping directives and is for inspection;
+ * it is not a standalone translation unit.
  *
  * For a longer randomized check on a Unix host with Clang and libFuzzer,
  * configure `src/tooling/defer` with `ASCIICHAT_DEFER_BUILD_FUZZER=ON`, build

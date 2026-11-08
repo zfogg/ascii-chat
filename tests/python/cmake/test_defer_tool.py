@@ -110,6 +110,41 @@ def test_explain_reports_nested_cleanup_without_writing(
     assert list(tmp_path.iterdir()) == [source]
 
 
+def test_show_transformed_selects_function_without_writing(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = tmp_path / "input.c"
+    source.write_text(
+        "#define defer(...) do {} while (0)\n"
+        "void other(void) {}\n"
+        "int target(int x) {\n"
+        "  defer(x++);\n"
+        "  return x;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--show-transformed", f"{source}:5", "--", "-std=c17"],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "int target(int x)" in result.stdout
+    assert "__ascii_defer_active_" in result.stdout
+    assert "other(void)" not in result.stdout
+    assert '#line 3 ' in result.stdout
+    assert list(tmp_path.iterdir()) == [source]
+
+
+def test_invalid_cleanup_reports_original_source_line(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    result = transform(tmp_path, transform_environment, "void f(void) {\n  defer(missing_name++);\n}\n")
+    assert result.returncode != 0
+    assert "input.c:3:" in result.stderr.replace("\\", "/")
+    assert "missing_name" in result.stderr
+    assert not (tmp_path / "output.c").exists()
+
+
 @pytest.mark.parametrize("location", ["missing", "file.c:0", "file.c:not-a-line"])
 def test_explain_rejects_invalid_locations(
     tmp_path: Path, transform_environment: dict[str, str], location: str
@@ -171,6 +206,46 @@ def test_parameter_shadowing_function_name(
         capture_output=True, text=True, env=transform_environment, check=False,
     )
     assert compiled.returncode == 0, compiled.stderr
+
+
+@pytest.mark.parametrize("parameter", ["int", "unsigned long", "double", "const int"])
+def test_unnamed_builtin_parameter_with_defer(
+    tmp_path: Path, transform_environment: dict[str, str], parameter: str
+) -> None:
+    result = transform(tmp_path, transform_environment, f"int f({parameter}) {{ defer((void)0); return 7; }}\n")
+    assert result.returncode == 0, result.stderr
+    result = subprocess.run(
+        [str(CLANG), "-std=c17", "-fsyntax-only", str(tmp_path / "output.c")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_unnamed_pointer_parameter_fails_closed(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    result = transform(tmp_path, transform_environment, "int f(int *) { defer((void)0); return 7; }\n")
+    assert result.returncode != 0
+    assert "unnamed non-builtin parameter" in result.stderr
+    assert not (tmp_path / "output.c").exists()
+
+
+def test_goto_into_block_without_defer_runs_exited_cleanup(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    result = transform(
+        tmp_path, transform_environment,
+        "static int n; void f(void) { defer(n=n*10+1); { defer(n=n*10+2); goto target; } "
+        "{ target: n=n*10+3; } } int main(void) { f(); return n != 231; }\n",
+    )
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run(
+        [str(CLANG), "-std=c17", str(tmp_path / "output.c"), "-o", str(executable)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
 
 
 def test_switch_cannot_enter_defer_scope(

@@ -133,6 +133,7 @@ public:
 
   std::string run();
   std::string explain(unsigned line);
+  std::string show_transformed(unsigned line);
 
 private:
   [[noreturn]] static void fail(const std::string &message) {
@@ -319,9 +320,8 @@ void Transformer::visit_function(CXCursor cursor) {
     for (int i = 0; i < count; ++i) {
       auto parameter = clang_Cursor_getArgument(cursor, static_cast<unsigned>(i));
       const auto name = spelling(parameter);
-      if (name.empty())
-        fail("unnamed parameter in defer function at byte " + std::to_string(start));
       auto type = clang_getCanonicalType(clang_getCursorType(parameter));
+      const auto parameter_type = type;
       while (type.kind == CXType_Pointer || type.kind == CXType_ConstantArray || type.kind == CXType_IncompleteArray) {
         type = clang_getCanonicalType(type.kind == CXType_Pointer ? clang_getPointeeType(type)
                                                                   : clang_getArrayElementType(type));
@@ -329,7 +329,14 @@ void Transformer::visit_function(CXCursor cursor) {
       if (type.kind == CXType_VariableArray || type.kind == CXType_DependentSizedArray)
         fail("variably modified parameter in defer function at byte " + std::to_string(start));
       auto alias = "__ascii_defer_argument_" + std::to_string(start) + "_" + std::to_string(i);
-      function_prelude_ += " typedef __typeof__(" + name + ") " + alias + ";";
+      if (name.empty()) {
+        if (parameter_type.kind < CXType_FirstBuiltin || parameter_type.kind > CXType_LastBuiltin)
+          fail_at(start, "unnamed non-builtin parameter cannot be captured safely; give it a name");
+        function_prelude_ +=
+            " typedef __typeof__((" + consume_string(clang_getTypeSpelling(parameter_type)) + "){0}) " + alias + ";";
+      } else {
+        function_prelude_ += " typedef __typeof__(" + name + ") " + alias + ";";
+      }
       if (i)
         args += ", ";
       args += "(" + alias + "){0}";
@@ -461,14 +468,19 @@ void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
     std::vector<unsigned> current;
     for (const auto &scope : scopes_)
       current.push_back(scope.start);
-    if (!prefix(current, target.second))
-      fail_at(start, "goto enters a block with defer analysis");
+    std::size_t common = 0;
+    while (common < current.size() && common < target.second.size() && current[common] == target.second[common])
+      ++common;
+    for (const auto &[position, owner] : defer_scopes_)
+      if (std::find(target.second.begin() + static_cast<std::ptrdiff_t>(common), target.second.end(), owner) !=
+          target.second.end())
+        fail_at(start, "goto enters a block containing defer; move the label outside that block");
     if (target.first < start)
       for (const auto &[position, owner] : defer_scopes_)
         if (target.first <= position && position < start &&
             std::find(target.second.begin(), target.second.end(), owner) != target.second.end())
           fail_at(start, "backward goto can register defer repeatedly");
-    auto actions = cleanup(target.second.size(), scopes_.size(), start);
+    auto actions = cleanup(common, scopes_.size(), start);
     if (!actions.empty()) {
       require_keyword(start, "goto");
       const auto stop = static_cast<unsigned>(after_semicolon(source_, finish));
@@ -583,6 +595,27 @@ std::string Transformer::explain(unsigned line) {
   return result.str();
 }
 
+std::string Transformer::show_transformed(unsigned line) {
+  run();
+  std::vector<CXCursor> matches;
+  for (auto cursor : children(clang_getTranslationUnitCursor(unit_))) {
+    if (clang_getCursorKind(cursor) != CXCursor_FunctionDecl || !clang_isCursorDefinition(cursor) || !in_file(cursor))
+      continue;
+    const auto start_line = 1 + std::count(source_.begin(), source_.begin() + begin(cursor), '\n');
+    const auto end_line = 1 + std::count(source_.begin(), source_.begin() + end(cursor), '\n');
+    if (start_line <= line && line <= end_line)
+      matches.push_back(cursor);
+  }
+  if (matches.size() != 1)
+    fail("expected one function at " + path_ + ":" + std::to_string(line));
+  const auto first = begin(matches.front()), last = end(matches.front());
+  auto output = source_.substr(first, last - first);
+  for (const auto &edit : edits_)
+    if (edit.start >= first && edit.finish <= last)
+      output.replace(edit.start - first, edit.finish - edit.start, edit.replacement + line_directive(edit.finish));
+  return line_directive(first) + output + "\n";
+}
+
 } // namespace
 
 std::string transform(CXTranslationUnit unit, const std::string &path, const std::string &source) {
@@ -591,6 +624,11 @@ std::string transform(CXTranslationUnit unit, const std::string &path, const std
 
 std::string explain(CXTranslationUnit unit, const std::string &path, const std::string &source, unsigned line) {
   return Transformer(unit, path, source).explain(line);
+}
+
+std::string show_transformed(CXTranslationUnit unit, const std::string &path, const std::string &source,
+                             unsigned line) {
+  return Transformer(unit, path, source).show_transformed(line);
 }
 
 } // namespace defer_tool

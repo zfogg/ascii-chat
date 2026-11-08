@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 import os
 import re
 import subprocess
@@ -20,6 +21,18 @@ cindex.Config.set_compatibility_check(False)
 
 class TransformError(Exception):
     """The source cannot be transformed without changing its behavior."""
+
+
+def generated_diagnostic(diagnostic: cindex.Diagnostic) -> str:
+    """Use presumed locations so generated #line directives map to original C."""
+    filename = cindex._CXString()
+    line, column = ctypes.c_uint(), ctypes.c_uint()
+    function = cindex.conf.lib.clang_getPresumedLocation
+    function.argtypes = [cindex.SourceLocation, ctypes.POINTER(cindex._CXString),
+                         ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint)]
+    function.restype = None
+    function(diagnostic.location, ctypes.byref(filename), ctypes.byref(line), ctypes.byref(column))
+    return f"{cindex._CXString.from_result(filename)}:{line.value}:{column.value}: {diagnostic.spelling}"
 
 
 def has_external_case(cursor: cindex.Cursor) -> bool:
@@ -239,6 +252,27 @@ class Transformer:
             raise TransformError(f"no analyzed scope exit at {self.path.as_posix()}:{line}")
         return "\n".join(output) + "\n"
 
+    def show_transformed(self, line: int) -> bytes:
+        self.transform()
+        root = self.tu.cursor
+        if root is None:
+            raise TransformError("Clang returned no translation unit cursor")
+        matches = []
+        for cursor in root.get_children():
+            if cursor.kind != cindex.CursorKind.FUNCTION_DECL or not cursor.is_definition() or not self.in_file(cursor):
+                continue
+            first, last = cursor.extent.start.offset, cursor.extent.end.offset
+            if self.source.count(b"\n", 0, first) + 1 <= line <= self.source.count(b"\n", 0, last) + 1:
+                matches.append((first, last))
+        if len(matches) != 1:
+            raise TransformError(f"expected one function at {self.path.as_posix()}:{line}")
+        first, last = matches[0]
+        output = self.source[first:last]
+        for start, end, replacement in sorted(self.edits, key=lambda edit: (edit[0], edit[1]), reverse=True):
+            if first <= start and end <= last:
+                output = output[:start - first] + replacement + self.line_directive(end) + output[end - first:]
+        return self.line_directive(first) + output + b"\n"
+
     def index_control_flow(
         self,
         cursor: cindex.Cursor,
@@ -303,11 +337,8 @@ class Transformer:
                 declarations = [f"typedef __typeof__(&{cursor.spelling}) {fn_type};"]
                 call_arguments = []
                 for index, parameter in enumerate(cursor.get_arguments()):
-                    if not parameter.spelling:
-                        raise TransformError(
-                            f"unnamed parameter in defer function at byte {start}"
-                        )
                     parameter_type = parameter.type.get_canonical()
+                    original_type = parameter_type
                     while parameter_type.kind in (
                         cindex.TypeKind.POINTER,
                         cindex.TypeKind.CONSTANTARRAY,
@@ -329,9 +360,12 @@ class Transformer:
                             f"variably modified parameter in defer function at byte {start}"
                         )
                     name = f"__ascii_defer_argument_{start}_{index}"
-                    declarations.append(
-                        f"typedef __typeof__({parameter.spelling}) {name};"
-                    )
+                    if not parameter.spelling:
+                        if not (cindex.TypeKind.VOID.value <= original_type.kind.value <= cindex.TypeKind.LASTBUILTIN.value):
+                            raise TransformError(self.diagnostic(start, "unnamed non-builtin parameter cannot be captured safely; give it a name"))
+                        declarations.append(f"typedef __typeof__(({original_type.spelling}){{0}}) {name};")
+                    else:
+                        declarations.append(f"typedef __typeof__({parameter.spelling}) {name};")
                     call_arguments.append(f"({name}){{0}}")
                 self.function_prelude = " ".join(declarations).encode()
                 arguments = ", ".join(call_arguments)
@@ -443,10 +477,14 @@ class Transformer:
                 raise TransformError(f"cannot determine goto target at byte {start}")
             destination, target_scopes = self.labels[refs[0]]
             current_scopes = tuple(scope.start for scope in self.scopes)
-            if current_scopes[: len(target_scopes)] != target_scopes:
-                raise TransformError(
-                    f"goto enters a block with defer analysis (byte {start})"
-                )
+            common = 0
+            while (common < len(current_scopes) and common < len(target_scopes)
+                   and current_scopes[common] == target_scopes[common]):
+                common += 1
+            if any(owner in target_scopes[common:] for owner in self.defer_scopes.values()):
+                raise TransformError(self.diagnostic(
+                    start, "goto enters a block containing defer; move the label outside that block"
+                ))
             if destination < start and any(
                 destination <= offset < start and owner in target_scopes
                 for offset, owner in self.defer_scopes.items()
@@ -454,7 +492,7 @@ class Transformer:
                 raise TransformError(
                     f"backward goto can register defer repeatedly (byte {start})"
                 )
-            cleanup = self.cleanup(self.scopes[len(target_scopes) :], start)
+            cleanup = self.cleanup(self.scopes[common:], start)
             if cleanup:
                 self.require_keyword(start, b"goto")
                 stop = self.after_semicolon(end)
@@ -685,6 +723,7 @@ def batch_main() -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--explain", metavar="SOURCE:LINE", help="explain cleanup at a source exit")
+    parser.add_argument("--show-transformed", metavar="SOURCE:LINE", help="show the transformed function")
     parser.add_argument("--compilation-database", type=Path)
     parser.add_argument("--depfile", type=Path)
     parser.add_argument("source", type=Path, nargs="?")
@@ -697,23 +736,25 @@ def main() -> int:
     )
     explain_args: list[str] = []
     argv = sys.argv[1:]
-    if any(arg == "--explain" or arg.startswith("--explain=") for arg in argv) and "--" in argv:
+    if any(arg.split("=", 1)[0] in ("--explain", "--show-transformed") for arg in argv) and "--" in argv:
         separator = argv.index("--")
         explain_args = argv[separator + 1 :]
         argv = argv[:separator]
     args = parser.parse_args(argv)
     if args.libclang:
         cindex.Config.set_library_file(str(args.libclang.resolve()))
-    clang_args = explain_args if args.explain else args.clang_args
+    clang_args = explain_args if args.explain or args.show_transformed else args.clang_args
     if clang_args[:1] == ["--"]:
         clang_args = clang_args[1:]
     try:
-        if args.explain:
-            path, separator, line = args.explain.rpartition(":")
+        if args.explain or args.show_transformed:
+            if args.explain and args.show_transformed:
+                raise TransformError("--explain and --show-transformed cannot be combined")
+            path, separator, line = (args.explain or args.show_transformed).rpartition(":")
             if not separator or not path or not line.isascii() or not line.isdigit() or int(line) == 0:
                 raise TransformError("--explain expects source:line with a positive line number")
             if args.source or args.output or args.depfile or args.compilation_database:
-                raise TransformError("--explain accepts only explicit Clang arguments")
+                raise TransformError("inspection accepts only explicit Clang arguments")
             source_path = Path(path).resolve()
             source = source_path.read_bytes()
             clang_args.append("-DASCIICHAT_DEFER_PARSING=1")
@@ -721,14 +762,17 @@ def main() -> int:
             tu = index.parse(str(source_path), args=clang_args, unsaved_files=[(str(source_path), source)],
                              options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD)
             transformer = Transformer(source_path, source, tu)
-            explanation = transformer.explain(int(line))
+            inspection = transformer.show_transformed(int(line)) if args.show_transformed else transformer.explain(int(line))
             transformed = Transformer(source_path, source, tu).transform()
             validation = index.parse(str(source_path), args=clang_args, unsaved_files=[(str(source_path), transformed)],
                                      options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD)
-            errors = [str(item) for item in validation.diagnostics if item.severity >= cindex.Diagnostic.Error]
+            errors = [generated_diagnostic(item) for item in validation.diagnostics if item.severity >= cindex.Diagnostic.Error]
             if errors:
                 raise TransformError(f"generated C is invalid: {errors[0]}")
-            print(explanation, end="")
+            if isinstance(inspection, bytes):
+                sys.stdout.buffer.write(inspection)
+            else:
+                print(inspection, end="")
             return 0
         if args.source is None or args.output is None:
             raise TransformError("expected source and output paths")
@@ -762,7 +806,7 @@ def main() -> int:
             str(args.source), args=clang_args, unsaved_files=[(str(args.source), output)],
             options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
         )
-        errors = [str(item) for item in validation.diagnostics if item.severity >= cindex.Diagnostic.Error]
+        errors = [generated_diagnostic(item) for item in validation.diagnostics if item.severity >= cindex.Diagnostic.Error]
         if errors:
             raise TransformError(f"generated C is invalid: {errors[0]}")
         args.output.parent.mkdir(parents=True, exist_ok=True)

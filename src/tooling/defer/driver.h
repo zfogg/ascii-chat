@@ -23,8 +23,8 @@ void write_if_changed(const std::filesystem::path &path, const std::string &cont
 void verify_libclang(const std::filesystem::path &requested);
 FileDependencies transform_file(ClangIndex &index, const std::filesystem::path &source,
                                 const std::filesystem::path &output, const DriverOptions &options);
-std::string explain_file(ClangIndex &index, const std::filesystem::path &source, unsigned line,
-                         const DriverOptions &options);
+std::string inspect_file(ClangIndex &index, const std::filesystem::path &source, unsigned line,
+                         const DriverOptions &options, bool show_transformed);
 void write_depfile(const std::filesystem::path &path, const std::vector<FileDependencies> &files);
 
 } // namespace defer_tool

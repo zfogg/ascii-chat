@@ -33,9 +33,13 @@ int main() {
   output = transform_source(prefix + "void f(void) { int x = 1; defer_named(h, x++); defer_cancel(h); }\n");
   CHECK(output.find(" = 0;") != std::string::npos);
   CHECK(output.find("x++") != std::string::npos);
+  output = transform_source(prefix + "int f(int) { defer((void)0); return 7; }\n");
+  CHECK(output.find("__ascii_defer_argument_") != std::string::npos);
+  CHECK(output.find("((int){0})") != std::string::npos);
   for (const auto &source : std::vector<std::string>{
            "void f(int x) { again: defer(x++); if (x) goto again; }\n", "void f(int x) { if (x) defer(x++); }\n",
            "void f(int x) { defer({ if (x) return; }); }\n", "void f(void) { defer_cancel(missing); }\n",
+           "int f(int *) { defer((void)0); return 7; }\n",
            "void f(int x) { defer_named(h, x++); defer_named(h, x++); }\n",
            "void f(int x) { switch(x) { case 0: ; defer(x++); break; case 1: break; } }\n",
            "#define break_if(x) if (x) break\nvoid f(int x) { while (x) { defer(x++); break_if(x); } }\n"}) {
