@@ -5,7 +5,7 @@ const build = resolve(
 );
 const dest = new URL("./dist/src/web/renderer/src/", import.meta.url);
 await mkdir(dest, { recursive: true });
-for (const file of ["renderer.js", "renderer.wasm"]) {
+for (const file of ["renderer.js", "renderer.wasm", "renderer-bindings.d.ts"]) {
   await copyFile(resolve(build, file), new URL(file, dest));
 }
 await copyFile(
@@ -33,6 +33,11 @@ for (const extension of ["js", "d.ts"]) {
   const text = await readFile(entry, "utf8");
   await writeFile(
     entry,
-    text.replaceAll("@ascii-chat/shared/wasm/options", "./options.js"),
+    text
+      .replaceAll("@ascii-chat/shared/wasm/options", "./options.js")
+      .replaceAll(
+        "@ascii-chat/shared/wasm/generated/mirror-bindings",
+        "./renderer-bindings.js",
+      ),
   );
 }

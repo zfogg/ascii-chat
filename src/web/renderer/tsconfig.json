@@ -12,6 +12,9 @@
     "paths": {
       "@ascii-chat/shared/wasm/options": [
         "../../../web/packages/shared/src/wasm/options.ts"
+      ],
+      "@ascii-chat/shared/wasm/generated/*": [
+        "../../../web/packages/shared/src/wasm/generated/*"
       ]
     }
   },

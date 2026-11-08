@@ -16,6 +16,9 @@
       "ascii-chat": ["../../src/web/renderer/src/index.ts"],
       "@ascii-chat/shared/wasm/options": [
         "../packages/shared/src/wasm/options.ts"
+      ],
+      "@ascii-chat/shared/wasm/generated/*": [
+        "../packages/shared/src/wasm/generated/*"
       ]
     },
     "skipLibCheck": true,

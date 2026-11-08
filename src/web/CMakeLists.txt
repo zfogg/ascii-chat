@@ -707,7 +707,11 @@ add_executable(renderer-web
 target_compile_definitions(renderer-web PRIVATE __EMSCRIPTEN__ EMSCRIPTEN_BUILD=1)
 target_compile_options(renderer-web PRIVATE -pthread -msimd128 -sUSE_FREETYPE=1)
 target_link_libraries(renderer-web PRIVATE asciichat-icu ${UTF8PROC_LIBRARIES} ${LIBSODIUM_LIBRARIES} ${PCRE2_LIBRARIES} ${VTERM_LDFLAGS})
+add_custom_command(TARGET renderer-web POST_BUILD
+    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/renderer-bindings.d.ts"
+    COMMAND ${CMAKE_COMMAND} -E true)
 target_link_options(renderer-web PRIVATE
+    --emit-tsd "${CMAKE_CURRENT_BINARY_DIR}/renderer-bindings.d.ts"
     -pthread -sUSE_PTHREADS=1 "-sPTHREAD_POOL_SIZE=Module['pthreadPoolSize']??4" -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1
     -lembind -sMODULARIZE=1 -sEXPORT_ES6=1 "-sEXPORT_NAME=RendererModule"
     "-sEXPORTED_FUNCTIONS=[]" "-sEXPORTED_RUNTIME_METHODS=HEAPU8,FS"
