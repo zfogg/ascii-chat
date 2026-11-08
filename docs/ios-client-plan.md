@@ -128,6 +128,10 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 - [x] Add VoiceOver labels and hints to startup controls.
 - [x] Reset the shared render bridge before starting a new native session.
 - [x] Cover the startup/media bridge contracts with a manual smoke test.
+- [x] Reuse SwiftUI camera and render buffers between frame polls.
+- [x] Expose camera and microphone startup failures in the prototype UI.
+- [x] Validate simulator architecture and device SDK inputs in build helpers.
+- [x] Expose canonical native mode names from the C entry-point API.
 - [ ] Keep native mode execution alive after startup and report C lifecycle errors to SwiftUI.
 - [ ] Replace the PortAudio compatibility surface with an AVAudioEngine-backed stream.
 - [ ] Produce and validate an arm64 device archive and XCFramework.
