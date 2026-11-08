@@ -61,26 +61,6 @@
 #include <errno.h>
 #include <limits.h>
 
-static char *websocket_client_ca_pem;
-static size_t websocket_client_ca_pem_size;
-static static_mutex_t websocket_client_ca_mutex = STATIC_MUTEX_INIT;
-
-static bool websocket_load_client_ca_roots(void) {
-  static_mutex_lock_named(&websocket_client_ca_mutex, "websocket_ca");
-  if (websocket_client_ca_pem) {
-    static_mutex_unlock(&websocket_client_ca_mutex);
-    return true;
-  }
-
-  if (platform_load_system_ca_certs(&websocket_client_ca_pem, &websocket_client_ca_pem_size) != ASCIICHAT_OK) {
-    log_error("Cannot load system CA roots for WebSocket TLS");
-    static_mutex_unlock(&websocket_client_ca_mutex);
-    return false;
-  }
-  static_mutex_unlock(&websocket_client_ca_mutex);
-  return true;
-}
-
 /**
  * @brief Maximum incoming message queue size (frames received from peer)
  *
@@ -1393,7 +1373,10 @@ static struct lws_context *websocket_create_client_context(void) {
 
   struct lws_context_creation_info info;
   memset(&info, 0, sizeof(info));
-  websocket_load_client_ca_roots();
+  char *client_ca_pem = NULL;
+  size_t client_ca_pem_size = 0;
+  if (platform_load_system_ca_certs(&client_ca_pem, &client_ca_pem_size) != ASCIICHAT_OK)
+    log_warn("No system CA roots found while creating WebSocket context; WSS will report this explicitly");
   info.port = CONTEXT_PORT_NO_LISTEN; // Client mode - no listening
   info.protocols = client_protocols;
   info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
@@ -1401,10 +1384,8 @@ static struct lws_context *websocket_create_client_context(void) {
   // Initialize SSL globally for client (required even for clients to use OpenSSL)
   // The LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT flag works for both servers and clients
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
-  static_mutex_lock_named(&websocket_client_ca_mutex, "websocket_ca");
-  info.client_ssl_ca_mem = websocket_client_ca_pem;
-  info.client_ssl_ca_mem_len = (unsigned int)websocket_client_ca_pem_size;
-  static_mutex_unlock(&websocket_client_ca_mutex);
+  info.client_ssl_ca_mem = client_ca_pem;
+  info.client_ssl_ca_mem_len = (unsigned int)client_ca_pem_size;
   info.extensions = NULL; // Disable client compression due to lws_set_extension_option() assertion
 
   // Increase per-thread service buffer to prevent fragmentation of large messages
@@ -1423,7 +1404,9 @@ static struct lws_context *websocket_create_client_context(void) {
   // Enable libwebsockets logging through centralized logging system
   lws_log_init_client();
 
-  return lws_create_context(&info);
+  struct lws_context *context = lws_create_context(&info);
+  SAFE_FREE(client_ca_pem);
+  return context;
 }
 
 struct acip_websocket_runtime {
@@ -1581,6 +1564,17 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   int port = endpoint.port;
   bool use_ssl = endpoint.use_ssl;
 
+  if (use_ssl) {
+    char *ca_pem = NULL;
+    size_t ca_pem_size = 0;
+    if (platform_load_system_ca_certs(&ca_pem, &ca_pem_size) != ASCIICHAT_OK || ca_pem_size == 0) {
+      SAFE_FREE(ca_pem);
+      SET_ERRNO(ERROR_INVALID_STATE, "No CA roots available for WebSocket TLS");
+      return NULL;
+    }
+    SAFE_FREE(ca_pem);
+  }
+
   acip_transport_t *transport = websocket_allocate_client_transport(name);
   if (!transport) {
     return NULL;
@@ -1623,14 +1617,6 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   connect_info.local_protocol_name = "acip";
   connect_info.protocol = "acip";
   connect_info.ssl_connection = use_ssl ? LCCSCF_USE_SSL : 0;
-  if (use_ssl && (!websocket_client_ca_pem || websocket_client_ca_pem_size == 0)) {
-    log_error("WSS requested but no system CA roots are available");
-    SET_ERRNO(ERROR_INVALID_STATE, "No CA roots available for WebSocket TLS");
-    lws_context_destroy(ws_data->context);
-    ws_data->context = NULL;
-    acip_transport_destroy(transport);
-    return NULL;
-  }
   connect_info.opaque_user_data = ws_data;
 
   log_debug("Calling lws_client_connect_via_info...");
