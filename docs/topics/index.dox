@@ -145,6 +145,14 @@
  * - @ref topic_options "Options and Configuration" - Command-line parsing and TOML config
  * - @ref topic_config "Configuration" - TOML configuration file management
  *
+ * @section categories_ui 🖥️ User Interface
+ *
+ * @copybrief module_ui
+ *
+ * - @ref topic_ui "UI Architecture" - Snapshot-driven terminal presentation and input routing
+ * - @ref topic_tui "Terminal UI (TUI)" - Interactive screens, resizing, diagnostics, and testing
+ * - @ref topic_keyboard_shortcuts "Keyboard Shortcuts" - Current global, media, prompt, and modal bindings
+ *
  * @section categories_network 🌐 Network
  *
  * @copybrief module_network

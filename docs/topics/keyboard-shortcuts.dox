@@ -1,0 +1,65 @@
+/**
+ * @page topic_keyboard_shortcuts Keyboard Shortcuts
+ * @ingroup module_ui
+ * @brief Current interactive keyboard bindings.
+ *
+ * The help overlay is generated from `lib/tui/shortcuts.c`, so this page mirrors
+ * the application-level bindings without pretending that every modal screen
+ * accepts every key. Press `?` for the same list at runtime.
+ *
+ * @section shortcuts_global Global TUI bindings
+ *
+ * | Key | Action | Availability |
+ * | --- | --- | --- |
+ * | `?` | Toggle the current help screen | Interactive screens |
+ * | `]` | Open the live log viewer/searcher | Interactive screens |
+ * | `=` | Open runtime statistics | Native builds |
+ * | `0` | Open sync-primitives diagnostics | Debug builds |
+ * | `` ` `` | Open errno-stack diagnostics | Diagnostic UI builds |
+ * | `F12` | Open the version update checker | Native builds |
+ * | `o`, `O`, `Ctrl-O` | Open media from a path or URL | Client/media screens |
+ *
+ * @section shortcuts_media Media controls
+ *
+ * | Key | Action |
+ * | --- | --- |
+ * | `Space` | Pause or resume media |
+ * | `Left` / `Right` | Seek backward or forward when supported |
+ * | `Up` / `Down` | Increase or decrease speaker volume |
+ * | `m` | Toggle mute |
+ * | `c` | Cycle color mode |
+ * | `r` | Cycle render mode |
+ * | `f` | Cycle color filter |
+ * | `x` / `y` | Toggle horizontal / vertical flip |
+ * | `1` | Toggle Matrix rain |
+ * | `2` | Toggle audio waveform |
+ * | `3` | Toggle audio frequency display |
+ * | `-` | Toggle FPS counter |
+ * | `w` | Toggle face follow |
+ * | `z` | Toggle Zalgo intensity |
+ *
+ * Audio visualizations require audio to be enabled. Pressing `2` or `3` selects
+ * that visualization and disables the other visualization and Matrix rain.
+ *
+ * @section shortcuts_editing Prompt and navigation keys
+ *
+ * Text prompts support printable Unicode input, Backspace, Delete, Left/Right,
+ * Home/End, Enter to accept, and Escape or Ctrl-C to cancel. Shift-Enter inserts
+ * a newline in multiline prompts. Bracketed paste is inserted as one validated
+ * value and cannot trigger application shortcuts.
+ *
+ * Log, sync, notice, and selection screens add local navigation such as
+ * Up/Down, Page Up/Page Down, Home/End, and Escape. Their live help overlay is
+ * authoritative when a local binding differs from the media screen.
+ *
+ * @section shortcuts_build_dependent Build-dependent keys
+ *
+ * The sync inspector is omitted from release builds, errno-stack diagnostics
+ * require `ASCIICHAT_DIAGNOSTIC_UI`, and native-only controls are filtered from
+ * browser help. This is why runtime help is generated rather than copied into
+ * a static table.
+ *
+ * @see topic_tui
+ * @see topic_keyboard
+ * @see md_docs_2keyboard-input.html
+ */

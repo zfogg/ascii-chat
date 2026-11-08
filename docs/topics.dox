@@ -75,6 +75,14 @@
  * - @ref topic_options "Options"
  * - @ref topic_config "Configuration"
  *
+ * @section topics_ui 🖥️ User Interface
+ *
+ * @copybrief module_ui
+ *
+ * - @ref topic_ui "UI Architecture"
+ * - @ref topic_tui "Terminal UI (TUI)"
+ * - @ref topic_keyboard_shortcuts "Keyboard Shortcuts"
+ *
  * @section topics_network 🌐 Network
  *
  * @copybrief module_network
