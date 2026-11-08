@@ -1605,6 +1605,7 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   char *long_opt_value = NULL;
   char *equals = NULL;
   char *arg_copy = NULL;            // Copy of arg for safe parsing without modifying original
+  defer(SAFE_FREE(arg_copy));
   const char *arg_for_lookup = arg; // What to use for option lookup
 
   // Handle long options with `=` (e.g., --port=8080)
@@ -1632,7 +1633,6 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   if (!desc) {
     // Try to suggest a similar option
     const char *suggestion = find_similar_option_with_mode(arg_for_lookup, config, mode_bitmask);
-    SAFE_FREE(arg_copy);
     if (suggestion) {
       return SET_ERRNO(ERROR_USAGE, "Unknown option: %s. %s", arg_for_lookup, suggestion);
     } else {
@@ -1649,7 +1649,6 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
     if (!(desc->mode_bitmask & mode_bitmask)) {
       // Option not available in current mode - show where it IS available
       const char *available_modes = format_available_modes(desc->mode_bitmask);
-      SAFE_FREE(arg_copy);
       return SET_ERRNO(ERROR_USAGE, "Option %s is not available in this mode. Available in modes: %s", arg,
                        available_modes);
     }
@@ -1714,30 +1713,25 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
       // Boolean flags: pass value if provided (--flag=true/false), otherwise NULL to toggle
       asciichat_error_t result = handler->apply_cli(field, opt_value, desc);
       if (result != ASCIICHAT_OK) {
-        SAFE_FREE(arg_copy);
         return result;
       }
     } else if (desc->type == OPTION_TYPE_ACTION) {
       // Action flags don't take values
       asciichat_error_t result = handler->apply_cli(field, NULL, desc);
       if (result != ASCIICHAT_OK) {
-        SAFE_FREE(arg_copy);
         return result;
       }
     } else {
       // Other types need a value (INT, STRING, DOUBLE, CALLBACK)
       asciichat_error_t result = handler->apply_cli(field, opt_value, desc);
       if (result != ASCIICHAT_OK) {
-        SAFE_FREE(arg_copy);
         return result;
       }
     }
   } else {
-    SAFE_FREE(arg_copy);
     return SET_ERRNO(ERROR_USAGE, "Invalid option type for %s", arg);
   }
 
-  SAFE_FREE(arg_copy);
   return ASCIICHAT_OK;
 }
 

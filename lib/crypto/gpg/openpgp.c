@@ -8,6 +8,7 @@
 #define CRYPTO_GPG_OPENPGP_PASSPHRASE_BUFFER_SIZE 512
 #define CRYPTO_GPG_OPENPGP_FPR_OUTPUT_BUFFER_SIZE 4096
 
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/crypto/gpg/homedir.h>
@@ -41,7 +42,7 @@ asciichat_error_t openpgp_base64_decode(const char *base64, size_t base64_len, u
   }
 
   // Remove whitespace from base64 input (PGP armor has newlines)
-  char *clean_base64 = SAFE_MALLOC(base64_len + 1, char *);
+  SAFE_MALLOC_DEFER_FREE(clean_base64, base64_len + 1, char *);
   char *clean_ptr = clean_base64;
   for (size_t i = 0; i < base64_len; i++) {
     if (base64[i] != '\n' && base64[i] != '\r' && base64[i] != ' ' && base64[i] != '\t') {
@@ -57,8 +58,6 @@ asciichat_error_t openpgp_base64_decode(const char *base64, size_t base64_len, u
   const char *end;
   int result = sodium_base642bin(*binary_out, clean_len, clean_base64, clean_len, NULL, binary_len, &end,
                                  sodium_base64_VARIANT_ORIGINAL);
-
-  SAFE_FREE(clean_base64);
 
   if (result != 0) {
     SAFE_FREE(*binary_out);
@@ -363,10 +362,10 @@ asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t
     return decode_result;
   }
 
+  defer(SAFE_FREE(binary_data));
   log_debug("Decoded %zu bytes of OpenPGP packet data", binary_len);
 
   asciichat_error_t result = openpgp_parse_binary_pubkey(binary_data, binary_len, ed25519_pk);
-  SAFE_FREE(binary_data);
   return result;
 }
 
@@ -809,6 +808,8 @@ asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t
     return decode_result;
   }
 
+  defer(SAFE_FREE(binary_data));
+
   log_debug("Decoded %zu bytes of OpenPGP secret key packet data", binary_len);
 
   // Parse OpenPGP packets to find the secret key packet (tag 5)
@@ -819,7 +820,6 @@ asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t
     openpgp_packet_header_t header;
     asciichat_error_t header_result = openpgp_parse_packet_header(binary_data + offset, binary_len - offset, &header);
     if (header_result != ASCIICHAT_OK) {
-      SAFE_FREE(binary_data);
       return header_result;
     }
 
@@ -835,11 +835,9 @@ asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t
         // Check if key is encrypted
         if (seckey.is_encrypted) {
 #ifdef EMSCRIPTEN_BUILD
-          SAFE_FREE(binary_data);
           return SET_ERRNO(ERROR_NOT_SUPPORTED,
                            "Encrypted OpenPGP private keys are not supported in the browser; use an unencrypted key");
 #else
-          SAFE_FREE(binary_data);
           log_debug("Detected encrypted GPG key, attempting to decrypt with passphrase");
 
           // Decrypt the key using gpg binary
@@ -872,7 +870,6 @@ asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t
     offset += header.header_len + header.length;
   }
 
-  SAFE_FREE(binary_data);
 
   if (!found_seckey) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "No Ed25519 secret key found in PGP armored block");
