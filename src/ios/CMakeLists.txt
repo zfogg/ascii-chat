@@ -37,6 +37,9 @@ target_include_directories(ascii-chat-ios-app PRIVATE
 target_compile_definitions(ascii-chat-ios-app PRIVATE
     PLATFORM_IOS=1
     LWS_HAVE_HMAC_CTX_new=1)
+if(CMAKE_OSX_SYSROOT MATCHES "Simulator")
+    target_compile_definitions(ascii-chat-ios-app PRIVATE ASCIICHAT_IOS_SIMULATOR=1)
+endif()
 
 target_compile_options(ascii-chat-ios-app PRIVATE
     "$<$<COMPILE_LANGUAGE:Swift>:-parse-as-library>"

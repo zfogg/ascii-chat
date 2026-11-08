@@ -136,36 +136,15 @@ private struct TestFrameView: View {
 
 private struct CameraAsciiView: View {
     @State private var image: CGImage?
-    @State private var cameraMessage = "Checking camera access…"
+    @State private var cameraMessage = "Waiting for C renderer…"
     @State private var audioMessage = "Checking microphone access…"
-    @State private var cameraStarted = false
-    @State private var cameraPixels = [UInt32](repeating: 0, count: 1920 * 1080)
     @State private var renderPixels = [UInt8](repeating: 0, count: 4096 * 2048 * 4)
     @State private var lastRenderSequence: UInt64 = 0
-
-    private func readCameraFrame() -> Bool {
-        let capacity = 1920 * 1080
-        var width = 0
-        var height = 0
-        let emitted = cameraPixels.withUnsafeMutableBufferPointer { buffer in
-            asciichat_ios_camera_read(buffer.baseAddress!, capacity, &width, &height)
-        }
-        guard emitted != 0, width > 0, height > 0 else { return false }
-        let data = cameraPixels.withUnsafeBytes { Data(bytes: $0.baseAddress!, count: width * height * 4) }
-        guard let provider = CGDataProvider(data: data as CFData) else { return false }
-        image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
-                        bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
-                        bitmapInfo: [.byteOrder32Little, CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)],
-                        provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
-        return true
-    }
+    @State private var renderedFrames = 0
+    @State private var measuredFPS = 0
+    @State private var fpsWindowStart = Date()
 
     private func readFrame() {
-        if !cameraStarted && asciichat_ios_camera_authorized() != 0 {
-            cameraStarted = asciichat_ios_camera_start(0) != 0
-            if cameraStarted { cameraMessage = "Camera capture running" }
-        }
-        if cameraStarted && readCameraFrame() { return }
         let sequence = ios_render_bridge_sequence()
         if sequence == lastRenderSequence { return }
         let capacity = 4096 * 2048 * 4
@@ -183,6 +162,7 @@ private struct CameraAsciiView: View {
                         bitmapInfo: [.byteOrder32Little, CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)],
                         provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
         lastRenderSequence = sequence
+        renderedFrames += 1
     }
 
     var body: some View {
@@ -199,22 +179,27 @@ private struct CameraAsciiView: View {
                     Text(audioMessage).font(.caption).foregroundStyle(.secondary)
                 }
             }
+            Text("C render: \(measuredFPS) FPS")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
         }
         .padding()
-        .onReceive(Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()) { _ in
-            if asciichat_ios_camera_authorized() == 0 && cameraMessage == "Camera permission requested" {
-                cameraMessage = "Camera access is still pending or denied"
-            }
+        .onReceive(Timer.publish(every: 1.0 / 60.0, on: .main, in: .common).autoconnect()) { _ in
             readFrame()
+            let now = Date()
+            let elapsed = now.timeIntervalSince(fpsWindowStart)
+            if elapsed >= 1.0 {
+                measuredFPS = Int(Double(renderedFrames) / elapsed)
+                renderedFrames = 0
+                fpsWindowStart = now
+            }
         }
         .onAppear {
             if asciichat_ios_camera_authorized() == 0 {
                 cameraMessage = "Camera permission requested"
                 asciichat_ios_camera_request_access()
             } else {
-                cameraMessage = "Camera access granted"
-                cameraStarted = asciichat_ios_camera_start(0) != 0
-                if !cameraStarted { cameraMessage = "Camera capture unavailable" }
+                cameraMessage = "C mirror pipeline owns camera capture"
             }
             if asciichat_ios_audio_authorized() == 0 {
                 audioMessage = "Microphone permission requested"
@@ -227,12 +212,7 @@ private struct CameraAsciiView: View {
                 _ = ios_render_bridge_write(1, text, smokeText.utf8.count)
             }
         }
-        .onDisappear {
-            if cameraStarted {
-                asciichat_ios_camera_stop()
-                cameraStarted = false
-            }
-        }
+        .onDisappear {}
     }
 }
 

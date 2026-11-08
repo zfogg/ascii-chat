@@ -19,7 +19,11 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   static char discovery[] = "discovery";
   static char splash[] = "--splash-screen=false";
   static char color[] = "--color-mode=none";
+#ifdef ASCIICHAT_IOS_SIMULATOR
+  static char test_pattern[] = "--test-pattern=0";
+#else
   static char test_pattern[] = "--test-pattern=false";
+#endif
   char *mode_name = mode == ASCIICHAT_IOS_MODE_CLIENT      ? client
                     : mode == ASCIICHAT_IOS_MODE_DISCOVERY ? discovery
                                                            : mirror;

@@ -49,9 +49,16 @@ ssize_t ios_render_bridge_write(int fd, const void *data, size_t length) {
 
   mutex_lock(&g_renderer_mutex);
   (void)term_renderer_feed(g_renderer, (const char *)data, length);
-  atomic_fetch_add_explicit(&g_render_sequence, 1, memory_order_release);
   mutex_unlock(&g_renderer_mutex);
   return (ssize_t)length;
+}
+
+void ios_render_bridge_flush(void) {
+  if (!ios_render_bridge_init())
+    return;
+  mutex_lock(&g_renderer_mutex);
+  atomic_fetch_add_explicit(&g_render_sequence, 1, memory_order_release);
+  mutex_unlock(&g_renderer_mutex);
 }
 
 int ios_render_bridge_read_frame(uint8_t *pixels, size_t capacity, int *width, int *height, int *pitch) {
