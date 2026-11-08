@@ -34,7 +34,7 @@ struct acip_quic_udp_endpoint {
   size_t count;
 };
 
-static bool valid_address(const struct sockaddr *address, socklen_t length) {
+static bool valid_sockaddr(const struct sockaddr *address, socklen_t length) {
   if (!address || (size_t)length < sizeof(struct sockaddr) || (size_t)length > sizeof(ngtcp2_sockaddr_union))
     return false;
   if (address->sa_family == AF_INET && (size_t)length == sizeof(struct sockaddr_in))
@@ -62,7 +62,7 @@ asciichat_error_t quic_udp_endpoint_create(const struct sockaddr *address, sockl
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC UDP endpoint output");
   *out = NULL;
-  if (!valid_address(address, length) || (!!server_tls != !!accept) || (server_tls && !server_tls->server))
+  if (!valid_sockaddr(address, length) || (!!server_tls != !!accept) || (server_tls && !server_tls->server))
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC UDP requires a concrete bind address and valid listener");
   acip_quic_udp_endpoint_t *endpoint = SAFE_CALLOC(1, sizeof(*endpoint), acip_quic_udp_endpoint_t *);
   if (!endpoint)
@@ -140,7 +140,7 @@ asciichat_error_t quic_udp_connect(acip_quic_udp_endpoint_t *endpoint, acip_quic
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC UDP connection output");
   *out = NULL;
-  if (!endpoint || !client_tls || client_tls->server || !valid_address(remote, remote_length) ||
+  if (!endpoint || !client_tls || client_tls->server || !valid_sockaddr(remote, remote_length) ||
       remote->sa_family != ((struct sockaddr *)&endpoint->local)->sa_family)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC UDP connection configuration");
   udp_peer_t *peer = new_peer(endpoint);
@@ -235,7 +235,7 @@ asciichat_error_t quic_udp_pump(acip_quic_udp_endpoint_t *endpoint, uint64_t now
         continue;
       return SET_ERRNO(ERROR_NETWORK, "QUIC UDP receive failed");
     }
-    if (!received || !valid_address((struct sockaddr *)&remote, remote_length))
+    if (!received || !valid_sockaddr((struct sockaddr *)&remote, remote_length))
       continue;
     asciichat_error_t result =
         receive_one(endpoint, data, (size_t)received, (struct sockaddr *)&remote, remote_length, now, failed);
@@ -379,7 +379,7 @@ void quic_udp_endpoint_destroy(acip_quic_udp_endpoint_t **endpoint) {
 
 asciichat_error_t quic_udp_migrate(acip_quic_udp_endpoint_t *endpoint, const struct sockaddr *address,
                                         socklen_t length, uint64_t now_ns) {
-  if (!endpoint || endpoint->server_tls || endpoint->count != 1 || !valid_address(address, length))
+  if (!endpoint || endpoint->server_tls || endpoint->count != 1 || !valid_sockaddr(address, length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "QUIC migration requires a single client connection and concrete address");
   if (endpoint->peers->pending_length)
     return SET_ERRNO(ERROR_BUFFER_FULL, "Flush the pending UDP packet before migrating");
