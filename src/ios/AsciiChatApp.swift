@@ -235,6 +235,8 @@ struct ContentView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .accessibilityLabel("Session mode")
+            .accessibilityHint("Choose mirror, client, or discovery mode")
             Text(selectedMode.availabilityLabel)
                 .font(.caption)
                 .foregroundStyle(selectedMode.isImplemented ? .green : .secondary)
@@ -248,6 +250,7 @@ struct ContentView: View {
             }
             .buttonStyle(.borderedProminent)
             .disabled(!selectedMode.isImplemented)
+            .accessibilityHint(selectedMode.isImplemented ? "Starts the selected native mode" : "This mode is not implemented yet")
             Text(launchMessage)
                 .font(.caption)
                 .foregroundStyle(.secondary)
