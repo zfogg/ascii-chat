@@ -86,7 +86,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/Options.cmake)
 
 if(ASCIICHAT_FORMAT_ONLY)
-    project(ascii-chat-format NONE)
+    project(ascii-chat-format LANGUAGES C)
     include(${CMAKE_SOURCE_DIR}/cmake/tools/CustomTargets.cmake)
     return()
 endif()
