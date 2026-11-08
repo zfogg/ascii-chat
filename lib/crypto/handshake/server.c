@@ -7,6 +7,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE 65
 
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/tui/notice.h>
@@ -215,17 +216,13 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
   size_t authenticated_size = ctx->crypto_ctx.public_key_size + ED25519_PUBLIC_KEY_SIZE + ED25519_SIGNATURE_SIZE;
 
   bool client_sent_identity = false;
-  uint8_t *client_ephemeral_key = SAFE_MALLOC(ctx->crypto_ctx.public_key_size, uint8_t *);
-  uint8_t *client_identity_key = SAFE_MALLOC(ED25519_PUBLIC_KEY_SIZE, uint8_t *);
-  uint8_t *client_signature = SAFE_MALLOC(ED25519_SIGNATURE_SIZE, uint8_t *);
+  const size_t identity_size = ED25519_PUBLIC_KEY_SIZE;
+  const size_t signature_size = ED25519_SIGNATURE_SIZE;
+  SAFE_MALLOC_DEFER_FREE(client_ephemeral_key, ctx->crypto_ctx.public_key_size, uint8_t *);
+  SAFE_MALLOC_DEFER_FREE(client_identity_key, identity_size, uint8_t *);
+  SAFE_MALLOC_DEFER_FREE(client_signature, signature_size, uint8_t *);
 
   if (!client_ephemeral_key || !client_identity_key || !client_signature) {
-    if (client_ephemeral_key)
-      SAFE_FREE(client_ephemeral_key);
-    if (client_identity_key)
-      SAFE_FREE(client_identity_key);
-    if (client_signature)
-      SAFE_FREE(client_signature);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for client keys");
   }
 
@@ -234,9 +231,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
       crypto_handshake_validate_packet_size(ctx, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, payload_len);
   if (validation_result != ASCIICHAT_OK) {
     // Payload ownership remains with caller
-    SAFE_FREE(client_ephemeral_key);
-    SAFE_FREE(client_identity_key);
-    SAFE_FREE(client_signature);
+
     return validation_result;
   }
 
@@ -322,9 +317,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
     NOTICE(WARNING, "UNVERIFIED CLIENT IDENTITY", "Client connected without identity authentication");
   } else {
     // Payload ownership remains with caller
-    SAFE_FREE(client_ephemeral_key);
-    SAFE_FREE(client_identity_key);
-    SAFE_FREE(client_signature);
+
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
                      "Invalid client key response size: %zu bytes (expected %zu for "
                      "authenticated or %zu for simple)",
@@ -393,11 +386,6 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
     return SET_ERRNO(ERROR_CRYPTO, "Failed to set peer public key and derive shared secret: %s",
                      crypto_result_to_string(crypto_result));
   }
-
-  // Clean up allocated memory
-  SAFE_FREE(client_ephemeral_key);
-  SAFE_FREE(client_identity_key);
-  SAFE_FREE(client_signature);
 
   // Do authentication challenge if client provided identity key OR server
   // requires password
