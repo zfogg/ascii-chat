@@ -12,13 +12,13 @@ DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "ascii-chat"
 PROJECT_NUMBER         = "@PROJECT_VERSION@"
 PROJECT_BRIEF          = "Video chat in your terminal"
-PROJECT_LOGO           = @CMAKE_SOURCE_DIR@/images/installer_icon.png
+PROJECT_LOGO           = @ASCII_CHAT_SOURCE_DIR@/images/installer_icon.png
 
 HTML_EXTRA_STYLESHEET  = @AWESOME_CSS_DIR@/doxygen-awesome.css \
                          @AWESOME_CSS_DIR@/doxygen-awesome-sidebar-only.css \
-                         @CMAKE_SOURCE_DIR@/docs/custom-theme.css
+                         @ASCII_CHAT_SOURCE_DIR@/docs/custom-theme.css
 
-OUTPUT_DIRECTORY       = @CMAKE_BINARY_DIR@/share
+OUTPUT_DIRECTORY       = @ASCII_CHAT_BINARY_DIR@/share
 CREATE_SUBDIRS         = NO
 ALLOW_UNICODE_NAMES    = NO
 OUTPUT_LANGUAGE        = English
@@ -30,8 +30,8 @@ ALWAYS_DETAILED_SEC    = NO
 INLINE_INHERITED_MEMB  = NO
 
 FULL_PATH_NAMES        = NO
-STRIP_FROM_PATH        = @CMAKE_SOURCE_DIR@/
-STRIP_FROM_INC_PATH    = @CMAKE_SOURCE_DIR@/
+STRIP_FROM_PATH        = @ASCII_CHAT_SOURCE_DIR@/
+STRIP_FROM_INC_PATH    = @ASCII_CHAT_SOURCE_DIR@/
 
 SHORT_NAMES            = NO
 JAVADOC_AUTOBRIEF      = NO
@@ -103,7 +103,7 @@ SHOW_USED_FILES        = YES
 SHOW_FILES             = YES
 SHOW_NAMESPACES        = YES
 FILE_VERSION_FILTER    =
-LAYOUT_FILE            =
+LAYOUT_FILE            = @DOXYLAYOUTFILE_OUT@
 CITE_BIB_FILES         =
 
 #---------------------------------------------------------------------------
@@ -118,26 +118,26 @@ WARN_IF_INCOMPLETE_DOC = YES
 WARN_NO_PARAMDOC       = NO
 WARN_AS_ERROR          = NO
 WARN_FORMAT            = "$file:$line: $text"
-WARN_LOGFILE           = @CMAKE_BINARY_DIR@/docs/doxygen_warnings.log
+WARN_LOGFILE           = @ASCII_CHAT_BINARY_DIR@/docs/doxygen_warnings.log
 
 #---------------------------------------------------------------------------
 # Configuration options related to the input files
 #---------------------------------------------------------------------------
 
-INPUT                  = @CMAKE_SOURCE_DIR@/lib \
-                         @CMAKE_SOURCE_DIR@/src \
-                         @CMAKE_SOURCE_DIR@/include \
-                         @CMAKE_SOURCE_DIR@/docs
+INPUT                  = @ASCII_CHAT_SOURCE_DIR@/lib \
+                         @ASCII_CHAT_SOURCE_DIR@/src \
+                         @ASCII_CHAT_SOURCE_DIR@/include \
+                         @ASCII_CHAT_SOURCE_DIR@/docs
 
-EXCLUDE                = @CMAKE_SOURCE_DIR@/tests \
-                         @CMAKE_SOURCE_DIR@/lib/platform/posix \
-                         @CMAKE_SOURCE_DIR@/lib/platform/windows \
-                         @CMAKE_SOURCE_DIR@/deps \
-                         @CMAKE_SOURCE_DIR@/.deps-cache \
-                         @CMAKE_SOURCE_DIR@/build \
-                         @CMAKE_SOURCE_DIR@/build_docker \
-                         @CMAKE_SOURCE_DIR@/build_release \
-                         @CMAKE_BINARY_DIR@
+EXCLUDE                = @ASCII_CHAT_SOURCE_DIR@/tests \
+                         @ASCII_CHAT_SOURCE_DIR@/lib/platform/posix \
+                         @ASCII_CHAT_SOURCE_DIR@/lib/platform/windows \
+                         @ASCII_CHAT_SOURCE_DIR@/deps \
+                         @ASCII_CHAT_SOURCE_DIR@/.deps-cache \
+                         @ASCII_CHAT_SOURCE_DIR@/build \
+                         @ASCII_CHAT_SOURCE_DIR@/build_docker \
+                         @ASCII_CHAT_SOURCE_DIR@/build_release \
+                         @ASCII_CHAT_BINARY_DIR@
 
 EXCLUDE_PATTERNS       = */.deps-cache* \
                          */deps/*
@@ -159,7 +159,7 @@ EXCLUDE_SYMBOLS        =
 EXAMPLE_PATH           =
 EXAMPLE_PATTERNS       =
 EXAMPLE_RECURSIVE      = NO
-IMAGE_PATH             = @CMAKE_SOURCE_DIR@/docs
+IMAGE_PATH             = @ASCII_CHAT_SOURCE_DIR@/docs
 INPUT_FILTER           =
 FILTER_PATTERNS        =
 FILTER_SOURCE_FILES    = NO
@@ -194,7 +194,7 @@ IGNORE_PREFIX          =
 GENERATE_HTML          = @GENERATE_HTML@
 HTML_OUTPUT            = doc/html
 HTML_FILE_EXTENSION    = .html
-HTML_HEADER            = @CMAKE_SOURCE_DIR@/docs/header.html
+HTML_HEADER            = @ASCII_CHAT_SOURCE_DIR@/docs/header.html
 HTML_FOOTER            =
 HTML_STYLESHEET        =
 HTML_EXTRA_FILES       = @AWESOME_CSS_DIR@/doxygen-awesome-darkmode-toggle.js \
@@ -313,7 +313,7 @@ SKIP_FUNCTION_MACROS   = NO
 #---------------------------------------------------------------------------
 
 TAGFILES               =
-GENERATE_TAGFILE       = @CMAKE_BINARY_DIR@/docs/@PROJECT_NAME_FULL@.tag
+GENERATE_TAGFILE       = @ASCII_CHAT_BINARY_DIR@/docs/@PROJECT_NAME_FULL@.tag
 ALLEXTERNALS           = NO
 EXTERNAL_GROUPS        = YES
 EXTERNAL_PAGES         = YES

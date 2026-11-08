@@ -6,13 +6,20 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+DOCS_BUILD_DIR="${ASCII_CHAT_DOCS_BUILD_DIR:-build_docs}"
+
+if [ ! -f "$DOCS_BUILD_DIR/CMakeCache.txt" ]; then
+  cmake -S docs -B "$DOCS_BUILD_DIR" -DASCII_CHAT_SOURCE_DIR="$PWD"
+fi
+
 echo "Watching for changes to rebuild documentation..."
 echo "Files being watched:"
 echo "  - include/**/*.h (except generated manpage content)"
 echo "  - lib/**/*.{h,c} (except generated manpage content)"
 echo "  - src/**/*.{h,c} (except version.s)"
 echo "  - docs/**/*.dox"
-echo "  - Doxyfile"
+echo "  - docs/Doxyfile.in"
+echo "  - docs/CMakeLists.txt"
 echo ""
 echo "Ignoring:"
 echo "  - */manpage/content/* (generated)"
@@ -28,5 +35,6 @@ echo ""
     -not -path "*/manpage/content/*" \
     -not -name "version.h*"
   find docs -type f -name "*.dox"
-  echo "Doxyfile"
-} | entr -c cmake --build build --target docs
+  echo "docs/Doxyfile.in"
+  echo "docs/CMakeLists.txt"
+} | entr -c cmake --build "$DOCS_BUILD_DIR" --target docs
