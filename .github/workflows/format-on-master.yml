@@ -61,7 +61,7 @@ jobs:
               exit 0
             fi
             echo "Remote changed during push; retrying."
-            sleep $((attempt * 2))
+            sleep 3
           done
           echo "Could not push after 5 attempts."
           exit 1
