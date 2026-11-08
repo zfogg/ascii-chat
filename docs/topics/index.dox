@@ -286,7 +286,7 @@
  *
  * @subsection authored_tooling Tooling
  *
- * - @ref topic_defer "Defer Tool" - Go/Zig-style defer transformation for C
+ * - [Defer Tool](group__defer.html) - Go/Zig-style defer transformation for C
  * - [Query tool user guide](custom_query_guide.html)
  * - [Query tool HTTP API](custom_query_api.html)
  * - [Query tool troubleshooting](custom_query_troubleshooting.html)
