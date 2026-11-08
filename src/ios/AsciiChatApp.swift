@@ -63,6 +63,15 @@ private func asciichat_ios_audio_authorized() -> Int32
 @_silgen_name("asciichat_ios_audio_request_access")
 private func asciichat_ios_audio_request_access()
 
+@_silgen_name("asciichat_ios_audio_device_count")
+private func asciichat_ios_audio_device_count() -> Int32
+
+@_silgen_name("asciichat_ios_audio_device_name")
+private func asciichat_ios_audio_device_name(_ index: Int32) -> UnsafePointer<CChar>?
+
+@_silgen_name("asciichat_ios_audio_select_device")
+private func asciichat_ios_audio_select_device(_ index: Int32) -> Int32
+
 @_silgen_name("platform_enable_keepawake")
 private func platform_enable_keepawake() -> Int32
 
@@ -252,6 +261,17 @@ struct ContentView: View {
     @State private var didStart = false
     @State private var sessionStarted = false
     @State private var lifecycleTick = 0
+    @State private var audioDevices: [String] = []
+    @State private var selectedAudioDevice: Int32 = 0
+
+    private func refreshAudioDevices() {
+        let count = max(0, Int(asciichat_ios_audio_device_count()))
+        audioDevices = (0 ..< count).compactMap { index in
+            guard let pointer = asciichat_ios_audio_device_name(Int32(index)) else { return nil }
+            return String(cString: pointer)
+        }
+        if selectedAudioDevice >= Int32(audioDevices.count) { selectedAudioDevice = 0 }
+    }
 
     var body: some View {
         VStack {
@@ -277,6 +297,17 @@ struct ContentView: View {
             Text(selectedMode.availabilityLabel)
                 .font(.caption)
                 .foregroundStyle(selectedMode.isImplemented ? .green : .secondary)
+            if !audioDevices.isEmpty {
+                Picker("Audio route", selection: $selectedAudioDevice) {
+                    ForEach(audioDevices.indices, id: \.self) { index in
+                        Text(audioDevices[index]).tag(Int32(index))
+                    }
+                }
+                .pickerStyle(.menu)
+                .onChange(of: selectedAudioDevice) { device in
+                    _ = asciichat_ios_audio_select_device(device)
+                }
+            }
             Button("Start \(selectedMode.title.lowercased())") {
                 launchMessage = "Starting \(selectedMode.title.lowercased())…"
                 didStart = true
@@ -312,6 +343,7 @@ struct ContentView: View {
         .padding()
         .onReceive(Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()) { _ in
             lifecycleTick &+= 1
+            refreshAudioDevices()
             if sessionStarted && asciichat_ios_is_running() == 0 {
                 sessionStarted = false
                 launchMessage = "Session ended"

@@ -19,6 +19,7 @@ static ios_audio_device_t g_ios_devices[IOS_AUDIO_MAX_DEVICES];
 static int g_ios_device_count;
 static NSLock *g_ios_device_lock;
 static id g_ios_route_observer;
+static int g_ios_selected_device = -1;
 
 static void ios_audio_refresh_devices(void) {
   AVAudioSession *session = AVAudioSession.sharedInstance;
@@ -178,7 +179,10 @@ PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const 
   opened->sample_rate = sample_rate;
   opened->input_channels = input ? input->channelCount : 0;
   opened->output_channels = output ? output->channelCount : 0;
-  opened->device_index = input ? input->device : output ? output->device : 0;
+  opened->device_index = g_ios_selected_device >= 0 ? g_ios_selected_device
+                         : input                    ? input->device
+                         : output                   ? output->device
+                                                    : 0;
   if (opened->device_index < 0 || opened->device_index >= g_ios_device_count) {
     SAFE_FREE(opened);
     return paInvalidDevice;
@@ -327,6 +331,25 @@ PaError Pa_CloseStream(PaStream *stream) {
   SAFE_FREE(stream);
   return paNoError;
 }
+
+int asciichat_ios_audio_device_count(void) {
+  ios_audio_refresh_devices();
+  return g_ios_device_count;
+}
+
+const char *asciichat_ios_audio_device_name(int index) {
+  ios_audio_refresh_devices();
+  return index >= 0 && index < g_ios_device_count ? g_ios_devices[index].name : NULL;
+}
+
+int asciichat_ios_audio_select_device(int index) {
+  ios_audio_refresh_devices();
+  if (index < 0 || index >= g_ios_device_count)
+    return -1;
+  g_ios_selected_device = index;
+  return 0;
+}
+
 PaError Pa_WriteStream(PaStream *stream, const void *buffer, unsigned long frames) {
   if (!stream || !stream->player || !buffer || frames == 0)
     return -1;

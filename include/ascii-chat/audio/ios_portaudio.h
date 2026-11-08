@@ -59,3 +59,6 @@ PaError Pa_StartStream(PaStream *stream);
 PaError Pa_StopStream(PaStream *stream);
 PaError Pa_CloseStream(PaStream *stream);
 PaError Pa_WriteStream(PaStream *stream, const void *buffer, unsigned long frames);
+int asciichat_ios_audio_device_count(void);
+const char *asciichat_ios_audio_device_name(int index);
+int asciichat_ios_audio_select_device(int index);
