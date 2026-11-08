@@ -1,0 +1,2130 @@
+/**
+ * @page data_structures_reference Data Structures Reference
+ * @brief A guided reference to ascii-chat's data structures.
+ * @ingroup module_data_structures
+ *
+ * Start with the generated Data Structures index for the complete alphabetical
+ * list. This page adds the design context that is easy to miss when browsing
+ * declarations: which subsystem owns a type, what kind of state it carries,
+ * and where to look for lifecycle and concurrency rules.
+ */
+/**
+ * @struct acds_create_key_set_t
+ * @brief Represents acds create key set state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acds_protocol_t
+ * @brief Represents acds protocol state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_http3_server
+ * @brief Represents acip http3 server state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_outbound
+ * @brief Represents acip outbound state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_outbound_stats_t
+ * @brief Represents acip outbound stats state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_packet_plan_t
+ * @brief Represents acip packet plan state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_config_t
+ * @brief Represents acip quic config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_connection
+ * @brief Represents acip quic connection state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_datagram_reader_t
+ * @brief Represents acip quic datagram reader state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_datagram_slot_t
+ * @brief Represents acip quic datagram slot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_endpoint
+ * @brief Represents acip quic endpoint state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_stream_reader_t
+ * @brief Represents acip quic stream reader state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_tls_t
+ * @brief Represents acip quic tls state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_udp_endpoint
+ * @brief Represents acip quic udp endpoint state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_quic_worker
+ * @brief Represents acip quic worker state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_render_settings_t
+ * @brief Represents acip render settings state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_security
+ * @brief Represents acip security state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_send_options_t
+ * @brief Represents acip send options state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_settings_header_t
+ * @brief Represents acip settings header state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_transport_capabilities_t
+ * @brief Represents acip transport capabilities state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct acip_websocket_runtime
+ * @brief Represents acip websocket runtime state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct animation_config_t
+ * @brief Represents animation config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct animation_sample_t
+ * @brief Represents animation sample state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct animation_t
+ * @brief Represents animation state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct animation_target_t
+ * @brief Represents animation target state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ansi_rle_context_t
+ * @brief Represents ansi rle context state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ansi_timing_t
+ * @brief Represents ansi timing state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct app_callbacks_t
+ * @brief Represents app callbacks state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ascii_frame_t
+ * @brief Represents ascii frame state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ascii_otel_scope
+ * @brief Represents ascii otel scope state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ascii_stabilizer_t
+ * @brief Represents ascii stabilizer state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ascii_temporal_cell_t
+ * @brief Represents ascii temporal cell state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct asciichat_errno_history_t
+ * @brief Represents asciichat errno history state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct asciichat_errno_scope_t
+ * @brief Represents asciichat errno scope state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct asciichat_errno_snapshot_t
+ * @brief Represents asciichat errno snapshot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct asciichat_error_context_t
+ * @brief Represents asciichat error context state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct asciichat_error_stats_t
+ * @brief Represents asciichat error stats state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct async_packet
+ * @brief Represents async packet state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct async_tcp_t
+ * @brief Represents async tcp state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_frame_t
+ * @brief Represents audio frame state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_processor
+ * @brief Represents audio processor state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_processor_config_t
+ * @brief Represents audio processor config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_processor_flags_t
+ * @brief Represents audio processor flags state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_recording
+ * @brief Represents audio recording state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_resampler_t
+ * @brief Represents audio resampler state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_rt_metric_t
+ * @brief Represents audio rt metric state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct audio_send_packet_t
+ * @brief Represents audio send packet state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct backtrace_t
+ * @brief Represents backtrace state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct binary_actions_t
+ * @brief Represents binary actions state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct binding_t
+ * @brief Represents binding state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct browser_peer_crypto_t
+ * @brief Represents browser peer crypto state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct buffer_budget_t
+ * @brief Represents buffer budget state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct buffer_domain
+ * @brief Represents buffer domain state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct buffer_domain_config_t
+ * @brief Represents buffer domain config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct buffer_header
+ * @brief Represents buffer header state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct buffer_stats_t
+ * @brief Represents buffer stats state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct buffer_workspace_t
+ * @brief Represents buffer workspace state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct client_connection
+ * @brief Represents client connection state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct client_info
+ * @brief Represents client info state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct client_like_state_t
+ * @brief Represents client like state state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct collect_ctx_t
+ * @brief Represents collect ctx state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct colorscheme_palette_t
+ * @brief Represents colorscheme palette state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct compression_workspace_t
+ * @brief Represents compression workspace state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct cond_deadlock_batch_t
+ * @brief Represents cond deadlock batch state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct cond_deadlock_entry_t
+ * @brief Represents cond deadlock entry state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct cond_deadlock_snapshot_t
+ * @brief Represents cond deadlock snapshot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct connection_endpoint_t
+ * @brief Represents connection endpoint state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct consensus_handoff_message_t
+ * @brief Represents consensus handoff message state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct consensus_handoff_peer_t
+ * @brief Represents consensus handoff peer state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct consensus_handoff_t
+ * @brief Represents consensus handoff state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct crypto_policy_t
+ * @brief Represents crypto policy state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct crypto_record
+ * @brief Represents crypto record state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct crypto_rekey_session_t
+ * @brief Represents crypto rekey session state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct crypto_session
+ * @brief Represents crypto session state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct crypto_session_message_t
+ * @brief Represents crypto session message state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct database_session_stats_t
+ * @brief Represents database session stats state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct datagram_send
+ * @brief Represents datagram send state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct deadlock_state_t
+ * @brief Represents deadlock state state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct discovery_host_audio_capture_t
+ * @brief Represents discovery host audio capture state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct discovery_ui_state_t
+ * @brief Represents discovery ui state state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct discovery_video_receiver_t
+ * @brief Represents discovery video receiver state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct emit_context_t
+ * @brief Represents emit context state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct endpoint_transport
+ * @brief Represents endpoint transport state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct errno_tui_row_t
+ * @brief Represents errno tui row state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct errno_tui_state_t
+ * @brief Represents errno tui state state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct error_frame_t
+ * @brief Represents error frame state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct error_thread
+ * @brief Represents error thread state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct event_command_t
+ * @brief Represents event command state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct event_work_t
+ * @brief Represents event work state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct event_write
+ * @brief Represents event write state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct face_follow_detection_t
+ * @brief Represents face follow detection state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct face_follow_image
+ * @brief Represents face follow image state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct face_follow_rect_t
+ * @brief Represents face follow rect state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct face_follow_state_t
+ * @brief Represents face follow state state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ffmpeg_encoder_s
+ * @brief Represents ffmpeg encoder state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct flow_control_debounce_t
+ * @brief Represents flow control debounce state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct frame_queue_s
+ * @brief Represents frame queue state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct frame_slot_s
+ * @brief Represents frame slot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct glyph_cache_entry_t
+ * @brief Represents glyph cache entry state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct glyph_candidate_t
+ * @brief Represents glyph candidate state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct h265_client_context
+ * @brief Represents h265 client context state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct h265_client_decoder_t
+ * @brief Represents h265 client decoder state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct h265_decoder
+ * @brief Represents h265 decoder state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct h265_encoder
+ * @brief Represents h265 encoder state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct h265_packet_header_t
+ * @brief Represents h265 packet header state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct h265_server_context
+ * @brief Represents h265 server context state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct host_connection_t
+ * @brief Represents host connection state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct http_pulse_t
+ * @brief Represents http pulse state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct http_session_t
+ * @brief Represents http session state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct http3_receive_stream_t
+ * @brief Represents http3 receive stream state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct input_editor_t
+ * @brief Represents input editor state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct keyboard_text_decoder_t
+ * @brief Represents keyboard text decoder state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct lifecycle_t
+ * @brief Represents lifecycle state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct linux_binary_lookup_t
+ * @brief Represents linux binary lookup state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct log_row_ref_t
+ * @brief Represents log row ref state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct log_search_state_t
+ * @brief Represents log search state state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct loop_work_t
+ * @brief Represents loop work state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct manpage_merge_state_t
+ * @brief Represents manpage merge state state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mcp_job
+ * @brief Represents mcp job state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mcp_policy_t
+ * @brief Represents mcp policy state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mcp_render_request_t
+ * @brief Represents mcp render request state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mcp_render_result_t
+ * @brief Represents mcp render result state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mcp_server
+ * @brief Represents mcp server state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mdns_refresh_t
+ * @brief Represents mdns refresh state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct media_playlist_t
+ * @brief Represents media playlist state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct media_snapshot_slot
+ * @brief Represents media snapshot slot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mixer_listener_buffer
+ * @brief Represents mixer listener buffer state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mode_arguments_t
+ * @brief Represents mode arguments state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mutex_stack_entry_t
+ * @brief Represents mutex stack entry state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct mutex_wait_snapshot_t
+ * @brief Represents mutex wait snapshot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct named_iter_entry_t
+ * @brief Represents named iter entry state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct named_metadata_cache_t
+ * @brief Represents named metadata cache state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct named_metadata_entry_t
+ * @brief Represents named metadata entry state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct named_metadata_t
+ * @brief Represents named metadata state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct native_view_t
+ * @brief Represents native view state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_connect_config_t
+ * @brief Represents network connect config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_connection
+ * @brief Represents network connection state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_connection_callbacks_t
+ * @brief Represents network connection callbacks state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_establish_config_t
+ * @brief Represents network establish config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_establish_result_t
+ * @brief Represents network establish result state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_negotiation_t
+ * @brief Represents network negotiation state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_server
+ * @brief Represents network server state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct network_server_config_t
+ * @brief Represents network server config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct notice_snapshot_t
+ * @brief Represents notice snapshot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct options_edit_t
+ * @brief Represents options edit state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct options_patch_result_t
+ * @brief Represents options patch result state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct options_patch_t
+ * @brief Represents options patch state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct options_snapshot_t
+ * @brief Represents options snapshot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct options_state
+ * @brief Represents options state state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct outbound_packet
+ * @brief Represents outbound packet state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct outbound_stream_t
+ * @brief Represents outbound stream state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct packet_decoder_t
+ * @brief Represents packet decoder state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct packet_node
+ * @brief Represents packet node state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct packet_queue
+ * @brief Represents packet queue state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct packet_queue_config_t
+ * @brief Represents packet queue config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct parallel_connect_config_t
+ * @brief Represents parallel connect config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct peer_output
+ * @brief Represents peer output state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct pending_ice_candidate
+ * @brief Represents pending ice candidate state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct pipeline_frame_t
+ * @brief Represents pipeline frame state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct platform_directory_list_t
+ * @brief Represents platform directory list state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct platform_event_listener
+ * @brief Represents platform event listener state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct platform_event_loop
+ * @brief Represents platform event loop state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct platform_event_stream
+ * @brief Represents platform event stream state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct platform_process_stats_t
+ * @brief Represents platform process stats state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct platform_wakeup
+ * @brief Represents platform wakeup state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct progress_snapshot_t
+ * @brief Represents progress snapshot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct prompt_opts_t
+ * @brief Represents prompt opts state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct prompt_snapshot_t
+ * @brief Represents prompt snapshot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct queued_packet_t
+ * @brief Represents queued packet state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct quic_transport_t
+ * @brief Represents quic transport state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct receive_context_t
+ * @brief Represents receive context state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct receive_stream_t
+ * @brief Represents receive stream state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct received_packet
+ * @brief Represents received packet state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct render_file_ctx_s
+ * @brief Represents render file ctx state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct render_progress
+ * @brief Represents render progress state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct render_worker_t
+ * @brief Represents render worker state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct rendered_cell_t
+ * @brief Represents rendered cell state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct rgb_error_t
+ * @brief Represents rgb error state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct runtime_field_t
+ * @brief Represents runtime field state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct screen
+ * @brief Represents screen state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct screen_snapshot_t
+ * @brief Represents screen snapshot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct screen_terminal_t
+ * @brief Represents screen terminal state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct send_chunk
+ * @brief Represents send chunk state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct send_stream_t
+ * @brief Represents send stream state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct server_client_removal_t
+ * @brief Represents server client removal state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct server_connection_state_t
+ * @brief Represents server connection state state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct server_discovery_policy_t
+ * @brief Represents server discovery policy state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct server_discovery_startup_t
+ * @brief Represents server discovery startup state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct server_stats_visit_t
+ * @brief Represents server stats visit state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_client_like_config
+ * @brief Represents session client like config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_connection_ops_t
+ * @brief Represents session connection ops state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_connection_t
+ * @brief Represents session connection state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_host
+ * @brief Represents session host state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_host_render_config_t
+ * @brief Represents session host render config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_host_render_target_t
+ * @brief Represents session host render target state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_pipeline_s
+ * @brief Represents session pipeline state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_protocol_media_t
+ * @brief Represents session protocol media state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_protocol_t
+ * @brief Represents session protocol state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_server_like_config
+ * @brief Represents session server like config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct session_settings_t
+ * @brief Represents session settings state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct SHA1_CTX
+ * @brief Represents SHA1 CTX state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct simd_backend_t
+ * @brief Represents simd backend state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct simd_cells_t
+ * @brief Represents simd cells state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct socket_buffer_t
+ * @brief Represents socket buffer state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct socket_io_stats_t
+ * @brief Represents socket io stats state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct socket_send_buffer_t
+ * @brief Represents socket send buffer state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct spectral_config_t
+ * @brief Represents spectral config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct spectral_processor
+ * @brief Represents spectral processor state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ssh_private_key_parse_t
+ * @brief Represents ssh private key parse state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_capabilities_t
+ * @brief Represents stats capabilities state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_descriptor_t
+ * @brief Represents stats descriptor state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_duration_cell_t
+ * @brief Represents stats duration cell state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_duration_shard_t
+ * @brief Represents stats duration shard state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_duration_snapshot_t
+ * @brief Represents stats duration snapshot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_peer
+ * @brief Represents stats peer state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_rates_t
+ * @brief Represents stats rates state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_sampler
+ * @brief Represents stats sampler state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_sampler_config_t
+ * @brief Represents stats sampler config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_scope
+ * @brief Represents stats scope state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_snapshot_t
+ * @brief Represents stats snapshot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_table_context_t
+ * @brief Represents stats table context state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stats_view_t
+ * @brief Represents stats view state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stdin_buffer_reader_t
+ * @brief Represents stdin buffer reader state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct stdin_buffer_t
+ * @brief Represents stdin buffer state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct sync_buffer_t
+ * @brief Represents sync buffer state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct sync_row_t
+ * @brief Represents sync row state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct sync_sample_t
+ * @brief Represents sync sample state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct tcp_server
+ * @brief Represents tcp server state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct tcp_server_config_t
+ * @brief Represents tcp server config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct term_renderer_config_t
+ * @brief Represents term renderer config state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct terminal_fd_reader_s
+ * @brief Represents terminal fd reader state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct terminal_fd_writer_s
+ * @brief Represents terminal fd writer state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct terminal_renderer_s
+ * @brief Represents terminal renderer state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct terminal_resize_watcher_t
+ * @brief Represents terminal resize watcher state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct test_pattern
+ * @brief Represents test pattern state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct text_snapshot_t
+ * @brief Represents text snapshot state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct thread_lock_stack_t
+ * @brief Represents thread lock stack state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct thread_registry_entry_t
+ * @brief Represents thread registry entry state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct title_writer_t
+ * @brief Represents title writer state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct tui_input_events_t
+ * @brief Represents tui input events state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct udp_peer
+ * @brief Represents udp peer state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_button_t
+ * @brief Represents ui button state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_buttons_t
+ * @brief Represents ui buttons state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_discovery_view_t
+ * @brief Represents ui discovery view state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_help_entry_t
+ * @brief Represents ui help entry state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_help_menu_t
+ * @brief Represents ui help menu state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_layout_t
+ * @brief Represents ui layout state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_popup_t
+ * @brief Represents ui popup state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_presentation_state_t
+ * @brief Represents ui presentation state state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_scrollbar_geometry_t
+ * @brief Represents ui scrollbar geometry state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_selectable_list_t
+ * @brief Represents ui selectable list state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_session
+ * @brief Represents ui session state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_session_view_t
+ * @brief Represents ui session view state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_splash_view_t
+ * @brief Represents ui splash view state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_table_column_t
+ * @brief Represents ui table column state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_table_t
+ * @brief Represents ui table state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_viewport_range_t
+ * @brief Represents ui viewport range state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct ui_viewport_t
+ * @brief Represents ui viewport state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct update_child_result_t
+ * @brief Represents update child result state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct utf8_char_t
+ * @brief Represents utf8 char state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct utf8_palette_cache
+ * @brief Represents utf8 palette cache state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct waveform_color_stop_t
+ * @brief Represents waveform color stop state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct webcam_frame_clock_t
+ * @brief Represents webcam frame clock state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct websocket_endpoint_t
+ * @brief Represents websocket endpoint state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
+/**
+ * @struct yt_dlp_request_options_t
+ * @brief Represents yt dlp request options state, configuration, or protocol data.
+ *
+ * This type groups the fields that travel together through the related
+ * subsystem. Consult the member descriptions and the owning module topic for
+ * lifecycle, ownership, and thread-safety requirements.
+ */
