@@ -10,1061 +10,1061 @@
  */
 /**
  * @struct acds_create_key_set_t
-   * @brief Security state for acds create key set.
+   * @brief Stores request, reserved string, and count. The owning acds create key set code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acds_protocol_t
-   * @brief Working state for acds protocol.
+   * @brief Stores send, user data, state, terminal, auto join, require webrtc, and error. The owning acds protocol code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_http3_server
-   * @brief Working state for acip http3 server.
+   * @brief Stores http, request, path, settings, header bytes, pending stream, and pending bytes. The owning acip http3 server code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_outbound
-   * @brief Working state for acip outbound.
+   * @brief Stores transport, mutex, changed, worker, stopped by caller, failure code, and failure. The owning acip outbound code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_outbound_stats_t
-   * @brief Counters and measurements for acip outbound stats.
+   * @brief Stores peak bytes, recovery frames, and oldest frame age ns. The owning acip outbound stats code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_packet_plan_t
-   * @brief Network state for acip packet plan.
+   * @brief Stores buffers, count, plaintext size, ciphertext capacity, encrypt, records, and records locked. The owning acip packet plan code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_quic_config_t
-   * @brief Configuration for acip quic config.
+   * @brief Stores alpn, certificate file, private key file, ca file, webtransport origin, origin, and webtransport path. The owning acip quic config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_quic_connection
-   * @brief Network state for acip quic connection.
+   * @brief Stores conn, reference, crypto, ssl, tls, security, and http3. The owning acip quic connection code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_quic_datagram_reader_t
-   * @brief Working state for acip quic datagram reader.
+   * @brief Stores slots, bytes, and last time ns. The owning acip quic datagram reader code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_quic_datagram_slot_t
-   * @brief Storage and flow-control state for acip quic datagram slot.
+   * @brief Stores data, received, cost, started ns, total, received count, and traffic class. The owning acip quic datagram slot code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_quic_endpoint
-   * @brief Network state for acip quic endpoint.
+   * @brief Stores lane, tls, udp, worker, transports, count, and prefer visual datagrams. The owning acip quic endpoint code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_quic_stream_reader_t
-   * @brief Network state for acip quic stream reader.
+   * @brief Stores preamble, preamble used, traffic class, packets, failed, and finished. The owning acip quic stream reader code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_quic_tls_t
-   * @brief Working state for acip quic tls.
+   * @brief Stores ssl ctx, alpn, alpn length, server, connections, enable datagrams, and webtransport. The owning acip quic tls code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_quic_udp_endpoint
-   * @brief Network state for acip quic udp endpoint.
+   * @brief Stores socket, local, local length, server tls, retry secret, accept, and context. The owning acip quic udp endpoint code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_quic_worker
-   * @brief Runtime state for acip quic worker.
+   * @brief Stores endpoint, lane, failure, context, thread, stopping, and wake pending. The owning acip quic worker code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_render_settings_t
-   * @brief Configuration for acip render settings.
+   * @brief Stores caps, height, revision, fps limit, palette, luminance, and palette length. The owning acip render settings code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_security
-   * @brief Security state for acip security.
+   * @brief Stores handshake, mode, forbid encryption, require encryption, version received, parameters received, and ready. The owning acip security code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_send_options_t
-   * @brief Configuration for acip send options.
+   * @brief Stores traffic class, delivery, and deadline ns. The owning acip send options code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_settings_header_t
-   * @brief Configuration for acip settings header.
+   * @brief Stores status. The owning acip settings header code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_transport_capabilities_t
-   * @brief Network state for acip transport capabilities.
+   * @brief Stores independent streams, datagrams, and max datagram payload. The owning acip transport capabilities code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct acip_websocket_runtime
-   * @brief Runtime state for acip websocket runtime.
+   * @brief Stores context. The owning acip websocket runtime code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct animation_config_t
-   * @brief Configuration for animation config.
+   * @brief Stores type, fps, speed, and hidden policy. The owning animation config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct animation_sample_t
-   * @brief Counters and measurements for animation sample.
+   * @brief Stores type, seconds, frame, changed, next frame ns, and domain. The owning animation sample code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct animation_t
-   * @brief Working state for animation.
+   * @brief Stores config, seconds, last ns, last frame, and visible. The owning animation code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct animation_target_t
-   * @brief Working state for animation target.
+   * @brief Holds the working values used by animation target; callers normally access them through the owning subsystem's API.
  */
 /**
  * @struct ansi_rle_context_t
-   * @brief Working state for ansi rle context.
+   * @brief Stores buffer, capacity, length, mode, first pixel, last r, and last g. The owning ansi rle context code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ansi_timing_t
-   * @brief Working state for ansi timing.
+   * @brief Stores start ns and end ns. The owning ansi timing code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct app_callbacks_t
-   * @brief Working state for app callbacks.
+   * @brief Holds the working values used by app callbacks; callers normally access them through the owning subsystem's API.
  */
 /**
  * @struct ascii_frame_t
-   * @brief Network state for ascii frame.
+   * @brief Stores output, output target, source height, table, bg, luma, and stabilizer. The owning ascii frame code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ascii_otel_scope
-   * @brief Working state for ascii otel scope.
+   * @brief Stores scope, retained, and previous. The owning ascii otel scope code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ascii_stabilizer_t
-   * @brief Working state for ascii stabilizer.
+   * @brief Stores cells, height, configuration, elapsed ns, last timestamp ns, and fixed step ns. The owning ascii stabilizer code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ascii_temporal_cell_t
-   * @brief Working state for ascii temporal cell.
+   * @brief Stores samples, glyph, color, background, source owner, and valid. The owning ascii temporal cell code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct asciichat_errno_history_t
-   * @brief Working state for asciichat errno history.
+   * @brief Stores context, resolved ns, and outcome. The owning asciichat errno history code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct asciichat_errno_scope_t
-   * @brief Working state for asciichat errno scope.
+   * @brief Stores thread id, generation, after id, and previous after id. The owning asciichat errno scope code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct asciichat_errno_snapshot_t
-   * @brief Working state for asciichat errno snapshot.
+   * @brief Stores total and copied. The owning asciichat errno snapshot code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct asciichat_error_context_t
-   * @brief Working state for asciichat error context.
+   * @brief Stores code, file, line, function, context message, timestamp, and created ns. The owning asciichat error context code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct asciichat_error_stats_t
-   * @brief Counters and measurements for asciichat error stats.
+   * @brief Stores error counts, total errors, last error time, last error code, dropped errors, overwritten history, and pending errors. The owning asciichat error stats code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct async_packet
-   * @brief Network state for async packet.
+   * @brief Stores next, data, and size. The owning async packet code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct async_tcp_t
-   * @brief Working state for async tcp.
+   * @brief Stores stream, mutex, closed, loop, thread, thread started, and queued receive. The owning async tcp code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct audio_frame_t
-   * @brief Network state for audio frame.
+   * @brief Stores data, size, sample rate, and channels. The owning audio frame code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct audio_processor
-   * @brief Audio state for audio processor.
+   * @brief Stores config, spectral left, spectral right, compressor, gate, highpass, and lowpass. The owning audio processor code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct audio_processor_config_t
-   * @brief Configuration for audio processor config.
+   * @brief Stores channels, sample rate, flags, spectral enabled, spectral, and agc max gain. The owning audio processor config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct audio_processor_flags_t
-   * @brief Audio state for audio processor flags.
+   * @brief Stores lowpass. The owning audio processor flags code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct audio_recording
-   * @brief Audio state for audio recording.
+   * @brief Stores mix, channels, epoch ns, read position, source position, started, and source started. The owning audio recording code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct audio_resampler_t
-   * @brief Audio state for audio resampler.
+   * @brief Stores phase, previous, and has previous. The owning audio resampler code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct audio_rt_metric_t
-   * @brief Counters and measurements for audio rt metric.
+   * @brief Stores state, metric, and value. The owning audio rt metric code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct audio_send_packet_t
-   * @brief Network state for audio send packet.
+   * @brief Stores data, size, frame sizes, frame count, and telemetry context. The owning audio send packet code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct backtrace_t
-   * @brief Working state for backtrace.
+   * @brief Stores ptrs, symbols, count, and tried symbolize. The owning backtrace code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct binary_actions_t
-   * @brief Working state for binary actions.
+   * @brief Stores show version, create config, create manpage, has action, config create path, manpage create path, and user quiet. The owning binary actions code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct binding_t
-   * @brief Working state for binding.
+   * @brief Stores keys, action, description, and media. The owning binding code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct browser_peer_crypto_t
-   * @brief Security state for browser peer crypto.
+   * @brief Stores security, quic handshake, transport, tail, received, and received length. The owning browser peer crypto code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct buffer_budget_t
-   * @brief Storage and flow-control state for buffer budget.
+   * @brief Stores bytes. The owning buffer budget code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct buffer_domain
-   * @brief Storage and flow-control state for buffer domain.
+   * @brief Stores mutex, config, stats, bins, and closing. The owning buffer domain code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct buffer_domain_config_t
-   * @brief Configuration for buffer domain config.
+   * @brief Stores limit bytes, cache bytes, storage, idle ns, and control. The owning buffer domain config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct buffer_header
-   * @brief Storage and flow-control state for buffer header.
+   * @brief Stores next, domain, allocation, data, capacity, length, and charge. The owning buffer header code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct buffer_stats_t
-   * @brief Counters and measurements for buffer stats.
+   * @brief Stores reserved bytes, live bytes, requested bytes, cached bytes, peak bytes, outstanding, and hits. The owning buffer stats code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct buffer_workspace_t
-   * @brief Storage and flow-control state for buffer workspace.
+   * @brief Stores data and length. The owning buffer workspace code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct client_connection
-   * @brief Network state for client connection.
+   * @brief Stores network, transport, capture context, display context, audio context, display first frame, and audio receive count. The owning client connection code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct client_info
-   * @brief Stores one connected client's media buffers, terminal capabilities, queues, and render workers.
+   * @brief Stores a peer's transport identity, negotiated capabilities, decoders, terminal settings, media buffers, statistics, render workers, and synchronization state.
  */
 /**
  * @struct client_like_state_t
-   * @brief Working state for client like state.
+   * @brief Stores capture, display, audio ctx, probe source, capture config, media url val, and media file val. The owning client like state code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct collect_ctx_t
-   * @brief Working state for collect ctx.
+   * @brief Stores config, entries, and success. The owning collect ctx code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct colorscheme_palette_t
-   * @brief Media state for colorscheme palette.
+   * @brief Stores foreground and background. The owning colorscheme palette code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct compression_workspace_t
-   * @brief Working state for compression workspace.
+   * @brief Stores codec and output. The owning compression workspace code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct cond_deadlock_batch_t
-   * @brief Working state for cond deadlock batch.
+   * @brief Stores entries and count. The owning cond deadlock batch code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct cond_deadlock_entry_t
-   * @brief Working state for cond deadlock entry.
+   * @brief Stores state and name. The owning cond deadlock entry code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct cond_deadlock_snapshot_t
-   * @brief Working state for cond deadlock snapshot.
+   * @brief Stores waiting count, last wait time ns, last signal time ns, last waiting key, last wait file, last wait line, and last wait func. The owning cond deadlock snapshot code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct connection_endpoint_t
-   * @brief The parsed endpoint scheme and address used to choose a network transport.
+   * @brief Stores protocol, input, host, port, and has explicit port. The owning connection endpoint code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct consensus_handoff_message_t
-   * @brief Network state for consensus handoff message.
+   * @brief Stores kind, session, participant, generation, sequence, upload kbps, and rtt ms. The owning consensus handoff message code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct consensus_handoff_peer_t
-   * @brief Working state for consensus handoff peer.
+   * @brief Stores id, capabilities, nat tier, port, pending capabilities, pending nat tier, and pending port. The owning consensus handoff peer code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct consensus_handoff_t
-   * @brief Working state for consensus handoff.
+   * @brief Stores session, host, successor, generation, round, and host sequence. The owning consensus handoff code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct crypto_policy_t
-   * @brief Configuration for crypto policy.
+   * @brief Stores transport secure, encrypt, no encrypt, no auth, has password, has identity, and has verification key. The owning crypto policy code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct crypto_record
-   * @brief Security state for crypto record.
+   * @brief Stores crypto, last receive epoch, previous crypto, previous epoch, previous allowed, datagram seen, and last receive delivery. The owning crypto record code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct crypto_rekey_session_t
-   * @brief Security state for crypto rekey session.
+   * @brief Stores security, send, context, peer ack, deferred key, deferred request, and ack sent. The owning crypto rekey session code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct crypto_session
-   * @brief Security state for crypto session.
+   * @brief Stores owner, mutex, records, rotation, messages, count, and failure. The owning crypto session code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct crypto_session_message_t
-   * @brief Security state for crypto session message.
+   * @brief Stores channel, type, length, and payload. The owning crypto session message code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct database_session_stats_t
-   * @brief Counters and measurements for database session stats.
+   * @brief Stores session string, participants, host ready, and migrating. The owning database session stats code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct datagram_send
-   * @brief Working state for datagram send.
+   * @brief Stores next, data, cost, deadline ns, and count. The owning datagram send code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct deadlock_state_t
-   * @brief Working state for deadlock state.
+   * @brief Stores mutexes and count. The owning deadlock state code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct discovery_host_audio_capture_t
-   * @brief Audio state for discovery host audio capture.
+   * @brief Stores host, audio, participant id, running, thread, started, and result. The owning discovery host audio capture code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct discovery_ui_state_t
-   * @brief Presentation state for discovery ui state.
+   * @brief Stores mutex, error, and error code. The owning discovery ui state code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct discovery_video_receiver_t
-   * @brief Media state for discovery video receiver.
+   * @brief Stores connection, protocol, network, receiver thread, audio thread, receiver started, and audio started. The owning discovery video receiver code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct emit_context_t
-   * @brief Working state for emit context.
+   * @brief Stores reader, emit, and context. The owning emit context code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct endpoint_transport
-   * @brief Network state for endpoint transport.
+   * @brief Stores next, connection, transport, and claimed. The owning endpoint transport code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct errno_tui_row_t
-   * @brief Presentation state for errno tui row.
+   * @brief Stores context, resolved ns, group id, group timestamp, outcome, and historical. The owning errno tui row code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct errno_tui_state_t
-   * @brief Presentation state for errno tui state.
+   * @brief Stores visible, stack sort, tab, list, rows, count, and output fd. The owning errno tui state code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct error_frame_t
-   * @brief Network state for error frame.
+   * @brief Stores context, next, and used. The owning error frame code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct error_thread
-   * @brief Runtime state for error thread.
+   * @brief Stores id, generation, top, depth, cause after id, and next. The owning error thread code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct event_command_t
-   * @brief Callbacks and dispatch state for event command.
+   * @brief Stores fn and arg. The owning event command code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct event_work_t
-   * @brief Working state for event work.
+   * @brief Stores work, stream, run, done, and arg. The owning event work code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct event_write
-   * @brief Working state for event write.
+   * @brief Stores request, stream, done, arg, size, next, and storage. The owning event write code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct face_follow_detection_t
-   * @brief Working state for face follow detection.
+   * @brief Stores box and confidence. The owning face follow detection code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct face_follow_image
-   * @brief Media state for face follow image.
+   * @brief Stores state, results, last detection, source height, and output. The owning face follow image code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct face_follow_rect_t
-   * @brief Working state for face follow rect.
+   * @brief Stores h. The owning face follow rect code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct face_follow_state_t
-   * @brief Working state for face follow state.
+   * @brief Stores face, last seen, zoom outside since, anchor y, zoom direction, detected, and zoom pending. The owning face follow state code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ffmpeg_encoder_s
-   * @brief Working state for ffmpeg encoder s.
+   * @brief Stores codec ctx, stream, frame, frame encoded, sws ctx, audio stream, and audio codec ctx. The owning ffmpeg encoder s code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct flow_control_debounce_t
-   * @brief Working state for flow control debounce.
+   * @brief Stores due ns and pending. The owning flow control debounce code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct frame_queue_s
-   * @brief Storage and flow-control state for frame queue s.
+   * @brief Stores slots, capacity, count, mu, not empty, not full, and name. The owning frame queue s code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct frame_slot_s
-   * @brief Storage and flow-control state for frame slot s.
+   * @brief Stores frame, busy, and capacity. The owning frame slot s code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct glyph_cache_entry_t
-   * @brief Media state for glyph cache entry.
+   * @brief Stores codepoint, bitmap buf, width, rows, pitch, bitmap left, and bitmap top. The owning glyph cache entry code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct glyph_candidate_t
-   * @brief Media state for glyph candidate.
+   * @brief Stores mask, centered, energy, and key. The owning glyph candidate code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct h265_client_context
-   * @brief Working state for h265 client context.
+   * @brief Stores encoder, source type, source location, current width, current height, frame buf, and frame buf size. The owning h265 client context code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct h265_client_decoder_t
-   * @brief Working state for h265 client decoder.
+   * @brief Stores client id, decoder, last width, last height, and in use. The owning h265 client decoder code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct h265_decoder
-   * @brief Working state for h265 decoder.
+   * @brief Stores codec ctx, frame, packet, parser, last width, last height, and total frames. The owning h265 decoder code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct h265_encoder
-   * @brief Working state for h265 encoder.
+   * @brief Stores codec ctx, codec, frame, packet, current width, current height, and yuv buf. The owning h265 encoder code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct h265_packet_header_t
-   * @brief Network state for h265 packet header.
+   * @brief Stores type, client id, frame num, flags, and reserved. The owning h265 packet header code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct h265_server_context
-   * @brief Working state for h265 server context.
+   * @brief Stores clients and active client count. The owning h265 server context code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct host_connection_t
-   * @brief Network state for host connection.
+   * @brief Stores client id, negotiation, and identity. The owning host connection code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct http_pulse_t
-   * @brief Working state for http pulse.
+   * @brief Stores timer and context. The owning http pulse code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct http_session_t
-   * @brief Security state for http session.
+   * @brief Stores response, sent, file open, file, mime, issue session, and session id. The owning http session code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct http3_receive_stream_t
-   * @brief Network state for http3 receive stream.
+   * @brief Stores id, offset, prefix, prefix length, kind, and active. The owning http3 receive stream code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct input_editor_t
-   * @brief Presentation state for input editor.
+   * @brief Stores buffer, cursor, deadline, and pasted. The owning input editor code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct keyboard_text_decoder_t
-   * @brief Presentation state for keyboard text decoder.
+   * @brief Stores bytes and expected. The owning keyboard text decoder code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct lifecycle_t
-   * @brief Runtime state for lifecycle.
+   * @brief Holds the working values used by lifecycle; callers normally access them through the owning subsystem's API.
  */
 /**
  * @struct linux_binary_lookup_t
-   * @brief Working state for linux binary lookup.
+   * @brief Stores address, match, and found. The owning linux binary lookup code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct log_row_ref_t
-   * @brief Working state for log row ref.
+   * @brief Stores entry and row. The owning log row ref code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct log_search_state_t
-   * @brief Working state for log search state.
+   * @brief Stores mode, input buffer, len, cursor, previous pattern count, active patterns, and active pattern count. The owning log search state code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct loop_work_t
-   * @brief Working state for loop work.
+   * @brief Stores request, done, and arg. The owning loop work code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct manpage_merge_state_t
-   * @brief Working state for manpage merge state.
+   * @brief Stores in auto section, current auto section, found section header, in merge section, merge content generated, current merge section, and manual env vars. The owning manpage merge state code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct mcp_job
-   * @brief Working state for mcp job.
+   * @brief Stores server, message, response, request, tool, telemetry parent, and thread. The owning mcp job code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct mcp_policy_t
-   * @brief Configuration for mcp policy.
+   * @brief Stores hosted, restricted, address, address6, tls password, max jobs, and origin. The owning mcp policy code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct mcp_render_request_t
-   * @brief Media state for mcp render request.
+   * @brief Stores argv, argc, upload dir, stage dir, stage file, output path, and timeout ms. The owning mcp render request code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct mcp_render_result_t
-   * @brief Media state for mcp render result.
+   * @brief Stores text, length, error, elapsed ms, timed out, and output path. The owning mcp render result code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct mcp_server
-   * @brief Working state for mcp server.
+   * @brief Stores policy, jobs, output mutex, http context, stopping, and initialized. The owning mcp server code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct mdns_refresh_t
-   * @brief Working state for mdns refresh.
+   * @brief Stores mutex, stop, thread, running, generation, count, and servers. The owning mdns refresh code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct media_playlist_t
-   * @brief Working state for media playlist.
+   * @brief Stores urls and index. The owning media playlist code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct media_snapshot_slot
-   * @brief Storage and flow-control state for media snapshot slot.
+   * @brief Stores busy, snapshot, and capacity. The owning media snapshot slot code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct mixer_listener_buffer
-   * @brief Storage and flow-control state for mixer listener buffer.
+   * @brief Stores samples, read, and count. The owning mixer listener buffer code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct mode_arguments_t
-   * @brief Working state for mode arguments.
+   * @brief Stores argc, argv, and allocated. The owning mode arguments code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct mutex_stack_entry_t
-   * @brief Working state for mutex stack entry.
+   * @brief Stores mutex key, mutex name, state, and timestamp ns. The owning mutex stack entry code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct mutex_wait_snapshot_t
-   * @brief Working state for mutex wait snapshot.
+   * @brief Stores mutex key, thread key, since ns, cycle, span name, error code, and error message. The owning mutex wait snapshot code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct named_iter_entry_t
-   * @brief Working state for named iter entry.
+   * @brief Stores key and name. The owning named iter entry code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct named_metadata_cache_t
-   * @brief Working state for named metadata cache.
+   * @brief Stores revision, count, capacity, and entries. The owning named metadata cache code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct named_metadata_entry_t
-   * @brief Working state for named metadata entry.
+   * @brief Stores key, valid, and metadata. The owning named metadata entry code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct named_metadata_t
-   * @brief Working state for named metadata.
+   * @brief Stores name, type, and format. The owning named metadata code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct native_view_t
-   * @brief Working state for native view.
+   * @brief Stores screen, layers, layer count, active, and sync backdrop. The owning native view code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct network_connect_config_t
-   * @brief Configuration for network connect config.
+   * @brief Stores timeout ms, callback data, quic ca file, quic visual datagrams, and quic audio datagrams. The owning network connect config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct network_connection
-   * @brief Owns one peer connection, its transport, handshake state, callbacks, and lifecycle.
+   * @brief Owns the peer transport, decoder, security state, callbacks, context pointer, lifecycle state, timing data, and cleanup result.
  */
 /**
  * @struct network_connection_callbacks_t
-   * @brief Network state for network connection callbacks.
+   * @brief Holds the working values used by network connection callbacks; callers normally access them through the owning subsystem's API.
  */
 /**
  * @struct network_establish_config_t
-   * @brief Configuration for network establish config.
+   * @brief Stores address, default port, connect, password, protocol, authenticate, and prepare. The owning network establish config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct network_establish_result_t
-   * @brief Working state for network establish result.
+   * @brief Stores endpoint and password failure. The owning network establish result code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct network_negotiation_t
-   * @brief Working state for network negotiation.
+   * @brief Stores protocol, handshake, identity keys, identity key count, whitelist, whitelist count, and password. The owning network negotiation code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct network_server
-   * @brief Owns the server listeners, connection registry, backend workers, and shutdown state.
+   * @brief Owns the server listeners, peer thread pool, connection registry, shutdown flags, and optional WebSocket and QUIC backends.
  */
 /**
  * @struct network_server_config_t
-   * @brief Configuration for network server config.
+   * @brief Stores port, ipv6 address, bind ipv6, websocket enabled, websocket port, tls key path, and callbacks. The owning network server config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct notice_snapshot_t
-   * @brief Working state for notice snapshot.
+   * @brief Stores severity, unicode, color, started, marker offset, title offset, and page. The owning notice snapshot code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct options_edit_t
-   * @brief Configuration for options edit.
+   * @brief Holds the working values used by options edit; callers normally access them through the owning subsystem's API.
  */
 /**
  * @struct options_patch_result_t
-   * @brief Configuration for options patch result.
+   * @brief Stores revision and changed. The owning options patch result code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct options_patch_t
-   * @brief Configuration for options patch.
+   * @brief Stores edits, count, expected revision, and origin. The owning options patch code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct options_snapshot_t
-   * @brief Configuration for options snapshot.
+   * @brief Stores values, revision, and origin. The owning options snapshot code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct options_state
-   * @brief Configuration for options state.
+   * @brief Stores detected mode, mode arg index, help, version, config file, width, and height. The owning options state code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct outbound_packet
-   * @brief Network state for outbound packet.
+   * @brief Stores next, data, cost, created, type, stream, and options. The owning outbound packet code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct outbound_stream_t
-   * @brief Network state for outbound stream.
+   * @brief Stores type, stream, and needs keyframe. The owning outbound stream code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct packet_decoder_t
-   * @brief Network state for packet decoder.
+   * @brief Stores header, header used, packet, size, max payload, MAX PACKET SIZE, and failed. The owning packet decoder code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct packet_node
-   * @brief Network state for packet node.
+   * @brief Stores packet and next. The owning packet node code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct packet_queue
-   * @brief A bounded thread-safe queue of typed packets with explicit overflow and ownership rules.
+   * @brief Links packets under a mutex, enforces item and byte limits, applies its overflow policy, and records enqueue, dequeue, and drop counts.
  */
 /**
  * @struct packet_queue_config_t
-   * @brief Configuration for packet queue config.
+   * @brief Stores max packets, max bytes, and overflow. The owning packet queue config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct parallel_connect_config_t
-   * @brief Configuration for parallel connect config.
+   * @brief Stores hostname, port, timeout ms, should exit callback, and callback data. The owning parallel connect config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct peer_output
-   * @brief Working state for peer output.
+   * @brief Stores next, data, and length. The owning peer output code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct pending_ice_candidate
-   * @brief Working state for pending ice candidate.
+   * @brief Stores participant id, candidate, mid, and next. The owning pending ice candidate code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct pipeline_frame_t
-   * @brief Network state for pipeline frame.
+   * @brief Stores slot, pixels, h, frame serial, telemetry context, fresh, and captured ns. The owning pipeline frame code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct platform_directory_list_t
-   * @brief Working state for platform directory list.
+   * @brief Stores candidates and count. The owning platform directory list code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct platform_event_listener
-   * @brief Working state for platform event listener.
+   * @brief Stores listener, tcp, accept, and arg. The owning platform event listener code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct platform_event_loop
-   * @brief Owns the platform event loop, registered sources, and work scheduled for dispatch.
+   * @brief Stores uv, wake, tick, tick fn, tick arg, tick initialized, and streams. The owning platform event loop code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct platform_event_stream
-   * @brief Describes a platform event source and the callback used to consume its events.
+   * @brief Stores listener, owner, tcp, timer, output timer, output, and mutex. The owning platform event stream code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct platform_process_stats_t
-   * @brief Counters and measurements for platform process stats.
+   * @brief Stores cpu seconds and threads. The owning platform process stats code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct platform_wakeup
-   * @brief Holds the platform-specific handles and flags used to wake a thread blocked in an I/O wait.
+   * @brief Holds a binary semaphore for blocking a waiter and an atomic pending flag that coalesces repeated signals until the waiter consumes the published work.
  */
 /**
  * @struct progress_snapshot_t
-   * @brief Working state for progress snapshot.
+   * @brief Stores started ns, completed, total, total known, finalizing, failed, and length. The owning progress snapshot code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct prompt_opts_t
-   * @brief Working state for prompt opts.
+   * @brief Stores timeout seconds, echo, same line, prompt, mask char, kind, and purpose. The owning prompt opts code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct prompt_snapshot_t
-   * @brief Working state for prompt snapshot.
+   * @brief Stores kind, prompt bytes, cursor, selected button, newline limit, severity, and color. The owning prompt snapshot code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct queued_packet_t
-   * @brief One packet held by a queue, including its type, owned payload, and delivery metadata.
+   * @brief Stores header, data, and data len. The owning queued packet code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct quic_transport_t
-   * @brief Network state for quic transport.
+   * @brief Stores connection, lane, received, security changed, wake context, close context, and destroy context. The owning quic transport code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct receive_context_t
-   * @brief Working state for receive context.
+   * @brief Stores connection and stream. The owning receive context code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct receive_stream_t
-   * @brief Network state for receive stream.
+   * @brief Stores id, received offset, reader, and registered. The owning receive stream code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct received_packet
-   * @brief Network state for received packet.
+   * @brief Stores next, data, and cost. The owning received packet code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct render_file_ctx_s
-   * @brief Media state for render file ctx s.
+   * @brief Stores progress, error, renderer, encoder, recording, frames written, and audio samples written. The owning render file ctx s code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct render_progress
-   * @brief Media state for render progress.
+   * @brief Stores mutex, snapshot, fd, last preview ns, and active. The owning render progress code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct render_worker_t
-   * @brief Runtime state for render worker.
+   * @brief Stores loop, process, errors, timer, cancelled, result, and exit time. The owning render worker code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct rendered_cell_t
-   * @brief Working state for rendered cell.
+   * @brief Stores background, pixels, and valid. The owning rendered cell code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct rgb_error_t
-   * @brief Working state for rgb error.
+   * @brief Stores r, g, and b. The owning rgb error code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct runtime_field_t
-   * @brief Runtime state for runtime field.
+   * @brief Stores name, type, size, and cli. The owning runtime field code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct screen
-   * @brief Presentation state for screen.
+   * @brief Stores next, owned, snapshot, render, minimum, fd, and dirty. The owning screen code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct screen_snapshot_t
-   * @brief Presentation state for screen snapshot.
+   * @brief Stores references, slot, terminal, acquisition started ns, and data. The owning screen snapshot code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct screen_terminal_t
-   * @brief Presentation state for screen terminal.
+   * @brief Stores references and fd. The owning screen terminal code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct send_chunk
-   * @brief Working state for send chunk.
+   * @brief Stores next, data, cost, and end offset. The owning send chunk code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct send_stream_t
-   * @brief Network state for send stream.
+   * @brief Stores id, acked offset, tail, and fin submitted. The owning send stream code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct server_client_removal_t
-   * @brief Working state for server client removal.
+   * @brief Stores client and display name. The owning server client removal code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct server_connection_state_t
-   * @brief Network state for server connection state.
+   * @brief Stores negotiation and client. The owning server connection state code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct server_discovery_policy_t
-   * @brief Configuration for server discovery policy.
+   * @brief Stores password, has password, has identity, explicit expose, and expose ip. The owning server discovery policy code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct server_discovery_startup_t
-   * @brief Working state for server discovery startup.
+   * @brief Stores session string and mdns only. The owning server discovery startup code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct server_stats_visit_t
-   * @brief Counters and measurements for server stats visit.
+   * @brief Stores view and queued. The owning server stats visit code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct session_client_like_config
-   * @brief Configuration for session client like config.
+   * @brief Stores run fn, initialization, run user data, kind, discovery, exit user data, and max reconnect attempts. The owning session client like config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct session_connection_ops_t
-   * @brief Security state for session connection ops.
+   * @brief Holds the working values used by session connection ops; callers normally access them through the owning subsystem's API.
  */
 /**
  * @struct session_connection_t
-   * @brief Security state for session connection.
+   * @brief Stores state, owner thread, ops, and context. The owning session connection code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct session_host
-   * @brief Security state for session host.
+   * @brief Stores frame workspace, render histories, port, ipv4 address, ipv6 address, max clients, and encryption enabled. The owning session host code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct session_host_render_config_t
-   * @brief Configuration for session host render config.
+   * @brief Stores caps, palette, width, and height. The owning session host render config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct session_host_render_target_t
-   * @brief Security state for session host render target.
+   * @brief Stores client id and context. The owning session host render target code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct session_pipeline_s
-   * @brief Security state for session pipeline s.
+   * @brief Stores capture tid, encode tid, input tid, input start status, keyboard handler, should exit, and input data. The owning session pipeline s code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct session_protocol_media_t
-   * @brief Security state for session protocol media.
+   * @brief Stores context, terminal output, frame workspace, and Optional. The owning session protocol media code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct session_protocol_t
-   * @brief Security state for session protocol.
+   * @brief Stores transport, media, control, callback result, packets received, frames received, and frames skipped viewport. The owning session protocol code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct session_server_like_config
-   * @brief Configuration for session server like config.
+   * @brief Stores init fn, init user data, interrupt fn, tick user data, cleanup fn, cleanup user data, and status fn. The owning session server like config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct session_settings_t
-   * @brief Configuration for session settings.
+   * @brief Stores version, height, color mode, palette type, palette custom, fps, and matrix rain. The owning session settings code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct SHA1_CTX
-   * @brief Working state for SHA1 CTX.
+   * @brief Stores state, count, and buffer. The owning SHA1 CTX code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct simd_backend_t
-   * @brief Working state for simd backend.
+   * @brief Stores name, required features, and luminance. The owning simd backend code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct simd_cells_t
-   * @brief Working state for simd cells.
+   * @brief Stores luminance. The owning simd cells code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct socket_buffer_t
-   * @brief A borrowed byte range used to pass one contiguous piece of socket data.
+   * @brief Stores data and len. The owning socket buffer code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct socket_io_stats_t
-   * @brief Counters and measurements for socket io stats.
+   * @brief Stores send calls, sent bytes, zerocopy calls, zerocopy completions, and zerocopy copied. The owning socket io stats code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct socket_send_buffer_t
-   * @brief Storage and flow-control state for socket send buffer.
+   * @brief Stores data, capacity, mapped, and budget. The owning socket send buffer code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct spectral_config_t
-   * @brief Configuration for spectral config.
+   * @brief Stores sample rate, fft size, noise gate, compressor, adaptive eq, pitch correct, and auto gain. The owning spectral config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct spectral_processor
-   * @brief Audio state for spectral processor.
+   * @brief Stores config, inverse, restored, frequency, ready, magnitude, and gains. The owning spectral processor code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ssh_private_key_parse_t
-   * @brief Security state for ssh private key parse.
+   * @brief Stores file content, key blob, key blob len, offset, ciphername len, ciphername pos, and is encrypted. The owning ssh private key parse code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stats_capabilities_t
-   * @brief Counters and measurements for stats capabilities.
+   * @brief Stores counters, gauges, and durations. The owning stats capabilities code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stats_descriptor_t
-   * @brief Counters and measurements for stats descriptor.
+   * @brief Stores name, unit, and description. The owning stats descriptor code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stats_duration_cell_t
-   * @brief Counters and measurements for stats duration cell.
+   * @brief Stores recorded ns. The owning stats duration cell code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stats_duration_shard_t
-   * @brief Counters and measurements for stats duration shard.
+   * @brief Stores owner and durations. The owning stats duration shard code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stats_duration_snapshot_t
-   * @brief Counters and measurements for stats duration snapshot.
+   * @brief Stores observations, total ns, min ns, max ns, and last ns. The owning stats duration snapshot code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stats_peer
-   * @brief Counters and measurements for stats peer.
+   * @brief Stores scope, sampler, transport, and id. The owning stats peer code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stats_rates_t
-   * @brief Counters and measurements for stats rates.
+   * @brief Stores ready, elapsed ns, counters per second, duration valid, and duration mean ns. The owning stats rates code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stats_sampler
-   * @brief Counters and measurements for stats sampler.
+   * @brief Stores config, history, latest, capacity, head, and count. The owning stats sampler code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stats_sampler_config_t
-   * @brief Configuration for stats sampler config.
+   * @brief Stores window ns and resolution ns. The owning stats sampler config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stats_scope
-   * @brief Counters and measurements for stats scope.
+   * @brief Stores observer, observer context, id, started ns, capabilities, counters, and gauges. The owning stats scope code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stats_snapshot_t
-   * @brief Counters and measurements for stats snapshot.
+   * @brief Stores scope id, started ns, sampled ns, capabilities, counters, gauges, and durations. The owning stats snapshot code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stats_table_context_t
-   * @brief Counters and measurements for stats table context.
+   * @brief Stores view and text. The owning stats table context code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stats_view_t
-   * @brief Counters and measurements for stats view.
+   * @brief Stores mode, headings, count, offset, page, selected, and sampled ns. The owning stats view code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stdin_buffer_reader_t
-   * @brief Storage and flow-control state for stdin buffer reader.
+   * @brief Stores buffer and pos. The owning stdin buffer reader code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct stdin_buffer_t
-   * @brief Storage and flow-control state for stdin buffer.
+   * @brief Stores data and size. The owning stdin buffer code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct sync_buffer_t
-   * @brief Storage and flow-control state for sync buffer.
+   * @brief Stores buffer, buffer size, offset, and truncated. The owning sync buffer code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct sync_row_t
-   * @brief Working state for sync row.
+   * @brief Stores waiter, wait ns, total score, file, line, waiters, and wait known. The owning sync row code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct sync_sample_t
-   * @brief Counters and measurements for sync sample.
+   * @brief Stores busy, rows, capacity, sampled ns, and limited. The owning sync sample code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct tcp_server
-   * @brief Working state for tcp server.
+   * @brief Stores event loop, listen socket, listen socket6, running, and config. The owning tcp server code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct tcp_server_config_t
-   * @brief Configuration for tcp server config.
+   * @brief Stores port, ipv4 address, ipv6 address, bind ipv4, bind ipv6, event handler, and tick user data. The owning tcp server config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct term_renderer_config_t
-   * @brief Configuration for term renderer config.
+   * @brief Stores cols, rows, font size pt, theme, font spec, font is path, and font data. The owning term renderer config code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct terminal_fd_reader_s
-   * @brief Presentation state for terminal fd reader s.
+   * @brief Stores fp, frame height, frame width, line buffer, line buffer size, eof reached, and first frame processed. The owning terminal fd reader s code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct terminal_fd_writer_s
-   * @brief Presentation state for terminal fd writer s.
+   * @brief Stores fp. The owning terminal fd writer s code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct terminal_renderer_s
-   * @brief Presentation state for terminal renderer s.
+   * @brief Stores cells, vt, vts, rows, ft lib, ft face, and zalgo face. The owning terminal renderer s code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct terminal_resize_watcher_t
-   * @brief Presentation state for terminal resize watcher.
+   * @brief Stores size. The owning terminal resize watcher code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct test_pattern
-   * @brief Working state for test pattern.
+   * @brief Stores image and rgba. The owning test pattern code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct text_snapshot_t
-   * @brief Working state for text snapshot.
+   * @brief Stores fd, media, dimensions, len, and text. The owning text snapshot code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct thread_lock_stack_t
-   * @brief Runtime state for thread lock stack.
+   * @brief Stores stack, depth, guard, and telemetry. The owning thread lock stack code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct thread_registry_entry_t
-   * @brief Runtime state for thread registry entry.
+   * @brief Stores thread id and stack. The owning thread registry entry code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct title_writer_t
-   * @brief Working state for title writer.
+   * @brief Stores data, length, and capacity. The owning title writer code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct tui_input_events_t
-   * @brief Presentation state for tui input events.
+   * @brief Stores ready, paste, count, and keys. The owning tui input events code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct udp_peer
-   * @brief Working state for udp peer.
+   * @brief Stores next, connection, pending path, pending, and pending length. The owning udp peer code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_button_t
-   * @brief Presentation state for ui button.
+   * @brief Stores label, shortcut, disabled, color, and foreground. The owning ui button code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_buttons_t
-   * @brief Presentation state for ui buttons.
+   * @brief Stores selected. The owning ui buttons code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_discovery_view_t
-   * @brief Presentation state for ui discovery view.
+   * @brief Stores enabled, joining, and session string. The owning ui discovery view code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_help_entry_t
-   * @brief Presentation state for ui help entry.
+   * @brief Stores keys and description. The owning ui help entry code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_help_menu_t
-   * @brief Presentation state for ui help menu.
+   * @brief Stores title, entries, count, settings, settings count, footer, and top margin. The owning ui help menu code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_layout_t
-   * @brief Presentation state for ui layout.
+   * @brief Stores footer row. The owning ui layout code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_popup_t
-   * @brief Presentation state for ui popup.
+   * @brief Stores title, lines, line count, footer, minimum width, and top margin. The owning ui popup code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_presentation_state_t
-   * @brief Describes which screen currently owns the terminal and whether it is covered.
+   * @brief Stores screen and covered. The owning ui presentation state code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_scrollbar_geometry_t
-   * @brief Presentation state for ui scrollbar geometry.
+   * @brief Stores length and visible. The owning ui scrollbar geometry code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_selectable_list_t
-   * @brief Presentation state for ui selectable list.
+   * @brief Stores selected and first visible. The owning ui selectable list code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_session
-   * @brief Security state for ui session.
+   * @brief Stores size, frame, media, logs, animation, splash, and owns logs. The owning ui session code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_session_view_t
-   * @brief Security state for ui session view.
+   * @brief Stores screen, minimum, dirty, clear, refresh ns, draw, and context. The owning ui session view code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_splash_view_t
-   * @brief Presentation state for ui splash view.
+   * @brief Stores discovery, animation, use colors, update notification, and connection target. The owning ui splash view code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_table_column_t
-   * @brief Presentation state for ui table column.
+   * @brief Stores heading, width, alignment, and ellipsis. The owning ui table column code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_table_t
-   * @brief Presentation state for ui table.
+   * @brief Stores columns, row count, viewport, cells, data, and header. The owning ui table code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_viewport_range_t
-   * @brief Presentation state for ui viewport range.
+   * @brief Stores count. The owning ui viewport range code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct ui_viewport_t
-   * @brief Presentation state for ui viewport.
+   * @brief Stores page size. The owning ui viewport code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct update_child_result_t
-   * @brief Working state for update child result.
+   * @brief Stores exited, status, and signal. The owning update child result code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct utf8_char_t
-   * @brief Working state for utf8 char.
+   * @brief Stores width, utf8 bytes, byte len, and  pad. The owning utf8 char code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct utf8_palette_cache
-   * @brief Media state for utf8 palette cache.
+   * @brief Stores cache, cache64, char index ramp, last access time, access count, total age seconds, and creation time. The owning utf8 palette cache code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct waveform_color_stop_t
-   * @brief Audio state for waveform color stop.
+   * @brief Stores frequency, red, green, and blue. The owning waveform color stop code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct webcam_frame_clock_t
-   * @brief Network state for webcam frame clock.
+   * @brief Stores previous, wall, and initialized. The owning webcam frame clock code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct websocket_endpoint_t
-   * @brief Network state for websocket endpoint.
+   * @brief Stores host, path, port, and use ssl. The owning websocket endpoint code updates these values during setup, work, and cleanup.
  */
 /**
  * @struct yt_dlp_request_options_t
-   * @brief Configuration for yt dlp request options.
+   * @brief Stores headers, cookies, proxy, and proxy specified. The owning yt dlp request options code updates these values during setup, work, and cleanup.
  */
