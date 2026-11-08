@@ -40,6 +40,10 @@ function sourceHash() {
       (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
     )) {
       const path = resolve(directory, entry.name);
+      // The standalone npm renderer has its own build and dependency tree.
+      // It does not contribute sources to the site modules.
+      if (relative(repo, path).replaceAll("\\", "/") === "src/web/renderer")
+        continue;
       // version.h is generated for the build machine; version.h.in is the source.
       if (
         relative(repo, path).replaceAll("\\", "/") ===

@@ -41,3 +41,10 @@ available for temporary key files; the current heap view is used only to detect
 input arrays that alias growable WASM memory. Keep high-frequency buffers
 preallocated where practical, and test any additional copies in the actual
 worker or rendering path.
+
+The standalone [`ascii-chat` renderer package](https://github.com/zfogg/ascii-chat/blob/master/src/web/renderer/README.md)
+uses the shared Embind frame and options adapters in `src/web/common/` and is
+built by the separate `renderer-web` target. It produces an independently
+initialized WASM module and npm package rather than adding another site asset.
+Its README documents its TypeScript API, ownership, browser isolation headers,
+build, and real-browser performance test.

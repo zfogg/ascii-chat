@@ -289,22 +289,6 @@ export interface ClassHandle {
   [Symbol.dispose](): void;
   clone(): this;
 }
-type RgbaBytes = Uint8Array | Uint8ClampedArray;
-
-type VisualizationSamples = Float32Array;
-
-export interface MirrorFrameBinding extends ClassHandle {
-  convert(
-    _0: RgbaBytes,
-    _1: number,
-    _2: number,
-    _3: boolean,
-  ): string | undefined;
-  transform(_0: RgbaBytes, _1: number, _2: number): number;
-  submitAudio(_0: VisualizationSamples, _1: number): void;
-  renderAudio(_0: number, _1: number, _2: number): string | undefined;
-}
-
 export interface SessionUiBinding extends ClassHandle {
   valid(): boolean;
   resize(_0: number, _1: number): void;
@@ -312,9 +296,9 @@ export interface SessionUiBinding extends ClassHandle {
   log(_0: EmbindString): void;
   media(_0: EmbindString): number;
   key(_0: number): number;
-  tick(_0: number): string | undefined;
   clear(): void;
   redraw(): void;
+  tick(_0: number): string | undefined;
 }
 
 type RasterPixels = Uint8ClampedArray;
@@ -457,48 +441,26 @@ export interface HostPacketBinding extends ClassHandle {
   receive(_0: number, _1: number, _2: ProtocolBytes): number;
 }
 
+type RgbaBytes = Uint8Array | Uint8ClampedArray;
+
+type VisualizationSamples = Float32Array;
+
+export interface MirrorFrameBinding extends ClassHandle {
+  convert(
+    _0: RgbaBytes,
+    _1: number,
+    _2: number,
+    _3: boolean,
+  ): string | undefined;
+  transform(_0: RgbaBytes, _1: number, _2: number): number;
+  submitAudio(_0: VisualizationSamples, _1: number): void;
+  renderAudio(_0: number, _1: number, _2: number): string | undefined;
+}
+
 interface EmbindModule {
-  browser_options_revision(): number;
-  browser_ui_volume(): number;
-  browser_ui_fps(): number;
   browser_ui_audio(_0: number): number;
-  browser_capture_transform_required(): number;
-  mirror_cleanup(): void;
-  sessionRenderResetStabilizer(): void;
-  sessionRenderCleanup(): void;
-  set_width(_0: number): number;
-  get_width(): number;
-  set_height(_0: number): number;
-  get_height(): number;
-  set_color_mode(_0: number): number;
-  get_color_mode(): number;
-  set_color_filter(_0: number): number;
-  get_color_filter(): number;
-  set_matrix_rain(_0: number): number;
-  get_matrix_rain(): number;
-  set_waveform(_0: number): number;
-  get_waveform(): number;
-  set_fft(_0: number): number;
-  get_fft(): number;
-  set_flip_x(_0: number): number;
-  get_flip_x(): number;
-  set_flip_y(_0: number): number;
-  get_flip_y(): number;
-  set_render_mode(_0: number): number;
-  get_render_mode(): number;
-  set_target_fps(_0: number): number;
-  get_target_fps(): number;
-  get_palette(): number;
-  initMirror(_0: EmbindString): number;
-  patchOptions(_0: EmbindString, _1: number): number;
-  readOptions(): string | undefined;
-  setPalette(_0: EmbindString): number;
-  setPaletteChars(_0: EmbindString): number;
-  getPaletteChars(): string;
-  optionHelp(_0: number, _1: EmbindString): string | undefined;
-  MirrorFrameBinding: {
-    new (): MirrorFrameBinding;
-  };
+  browser_ui_fps(): number;
+  browser_ui_volume(): number;
   SessionUiBinding: {
     new (): SessionUiBinding;
     new (_0: boolean): SessionUiBinding;
@@ -556,7 +518,6 @@ interface EmbindModule {
   keyParserError(): string;
   errorSnapshot(): number;
   errorFrame(_0: number): ErrorFrameResult;
-  clientSettings(): string | undefined;
   client_cleanup(): void;
   client_generate_keypair(): number;
   client_get_connection_state(): number;
@@ -568,12 +529,10 @@ interface EmbindModule {
     new (): AVStateBinding;
   };
   setServerAddress(_0: EmbindString, _1: number): number;
-  clientPublicKey(): string | undefined;
   sendClientFrame(_0: ClientBytes, _1: number, _2: number): number;
   handleHandshake(_0: number, _1: ClientBytes): number;
   receiveHandshake(_0: boolean, _1: number, _2: ClientBytes): number;
   cryptPacket(_0: boolean, _1: ClientBytes): ClientPacketResult;
-  parsePacketJson(_0: ClientBytes): string | undefined;
   serializePacket(_0: number, _1: ClientBytes, _2: number): ClientPacketResult;
   receiveSettings(_0: ClientBytes): ClientSettingsResult;
   validateFrame(
@@ -609,6 +568,47 @@ interface EmbindModule {
     _7: number,
   ): OptionalHandoffBytes;
   handoffDecode(_0: ProtocolBytes): number;
+  browser_options_revision(): number;
+  set_width(_0: number): number;
+  get_width(): number;
+  set_height(_0: number): number;
+  get_height(): number;
+  set_color_mode(_0: number): number;
+  get_color_mode(): number;
+  set_color_filter(_0: number): number;
+  get_color_filter(): number;
+  set_matrix_rain(_0: number): number;
+  get_matrix_rain(): number;
+  set_waveform(_0: number): number;
+  get_waveform(): number;
+  set_fft(_0: number): number;
+  get_fft(): number;
+  set_flip_x(_0: number): number;
+  get_flip_x(): number;
+  set_flip_y(_0: number): number;
+  get_flip_y(): number;
+  set_render_mode(_0: number): number;
+  get_render_mode(): number;
+  set_target_fps(_0: number): number;
+  get_target_fps(): number;
+  get_palette(): number;
+  clientSettings(): string | undefined;
+  clientPublicKey(): string | undefined;
+  parsePacketJson(_0: ClientBytes): string | undefined;
+  patchOptions(_0: EmbindString, _1: number): number;
+  readOptions(): string | undefined;
+  setPalette(_0: EmbindString): number;
+  setPaletteChars(_0: EmbindString): number;
+  getPaletteChars(): string;
+  optionHelp(_0: number, _1: EmbindString): string | undefined;
+  initMirror(_0: EmbindString): number;
+  sessionRenderCleanup(): void;
+  sessionRenderResetStabilizer(): void;
+  mirror_cleanup(): void;
+  browser_capture_transform_required(): number;
+  MirrorFrameBinding: {
+    new (): MirrorFrameBinding;
+  };
 }
 
 export type MainModule = WasmModule & typeof RuntimeExports & EmbindModule;

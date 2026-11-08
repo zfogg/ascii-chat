@@ -1,3 +1,4 @@
+import { Options } from "../../../../../../src/web/common/options";
 import type { MainModule } from "../generated/mirror-bindings";
 
 /** Each C/WASM instance owns its state. Observers run on the browser thread. */
@@ -23,9 +24,7 @@ export class RuntimeOptionsStore {
   readonly getSnapshot = (): RuntimeSnapshot => {
     const revision = this.module.browser_options_revision();
     if (this.snapshot?.revision === revision) return this.snapshot;
-    const json = this.module.readOptions();
-    if (json === undefined) throw new Error("Cannot read engine settings");
-    const decoded = JSON.parse(json) as RuntimeSnapshot;
+    const decoded = new Options(this.module).read();
     this.snapshot = {
       revision: decoded.revision,
       values: Object.freeze(decoded.values),
@@ -57,12 +56,7 @@ export class RuntimeOptionsStore {
   };
 
   applyPatch(values: RuntimeValues, expectedRevision = -1): RuntimeSnapshot {
-    const json = JSON.stringify(values);
-    const result = this.module.patchOptions(json, expectedRevision);
-    if (result)
-      throw new Error(
-        `Settings update rejected (${result}); refresh the settings and retry.`,
-      );
+    new Options(this.module).patch(values, expectedRevision);
     const snapshot = this.getSnapshot();
     if (this.notified !== snapshot) {
       this.notified = snapshot;

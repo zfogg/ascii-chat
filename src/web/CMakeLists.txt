@@ -693,3 +693,31 @@ if(EMSCRIPTEN)
     add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../../tests/wasm/dependencies"
         "${CMAKE_CURRENT_BINARY_DIR}/tests/dependencies" EXCLUDE_FROM_ALL)
 endif()
+
+# Standalone embeddable renderer. Its artifacts stay in the build tree until
+# the npm package copies them into its ignored dist directory.
+add_executable(renderer-web
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/frame.cpp
+    ${WEB_SRC_MIRROR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/renderer/renderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/terminal_renderer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/test_pattern.cpp
+    ${LIB_SRC_MIRROR_ONLY}
+    $<TARGET_OBJECTS:wasm-common>
+)
+target_compile_definitions(renderer-web PRIVATE __EMSCRIPTEN__ EMSCRIPTEN_BUILD=1 BUILD_WASM_MIRROR=1)
+target_compile_options(renderer-web PRIVATE -pthread -msimd128 -sUSE_FREETYPE=1)
+target_link_libraries(renderer-web PRIVATE asciichat-icu ${UTF8PROC_LIBRARIES} ${LIBSODIUM_LIBRARIES} ${PCRE2_LIBRARIES} ${VTERM_LDFLAGS})
+target_link_options(renderer-web PRIVATE
+    -pthread -sUSE_PTHREADS=1 "-sPTHREAD_POOL_SIZE=Module['pthreadPoolSize']??4" -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1
+    -lembind -sMODULARIZE=1 -sEXPORT_ES6=1 "-sEXPORT_NAME=RendererModule"
+    "-sEXPORTED_FUNCTIONS=[]" "-sEXPORTED_RUNTIME_METHODS=HEAPU8,FS"
+    -sENVIRONMENT=web,worker -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=32MB -sMAXIMUM_MEMORY=128MB
+    -sSTACK_SIZE=2097152 -sASSERTIONS=1 -msimd128 -O3 --no-entry -Wno-js-compiler -Wno-pthreads-mem-growth
+)
+set_target_properties(renderer-web PROPERTIES OUTPUT_NAME "renderer")
+apply_sanitizers_to_target(renderer-web)
+
+target_sources(mirror-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/common/frame.cpp)
+target_sources(client-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/common/frame.cpp)

@@ -289,22 +289,6 @@ export interface ClassHandle {
   [Symbol.dispose](): void;
   clone(): this;
 }
-type RgbaBytes = Uint8Array | Uint8ClampedArray;
-
-type VisualizationSamples = Float32Array;
-
-export interface MirrorFrameBinding extends ClassHandle {
-  convert(
-    _0: RgbaBytes,
-    _1: number,
-    _2: number,
-    _3: boolean,
-  ): string | undefined;
-  transform(_0: RgbaBytes, _1: number, _2: number): number;
-  submitAudio(_0: VisualizationSamples, _1: number): void;
-  renderAudio(_0: number, _1: number, _2: number): string | undefined;
-}
-
 export interface SessionUiBinding extends ClassHandle {
   valid(): boolean;
   resize(_0: number, _1: number): void;
@@ -312,9 +296,9 @@ export interface SessionUiBinding extends ClassHandle {
   log(_0: EmbindString): void;
   media(_0: EmbindString): number;
   key(_0: number): number;
-  tick(_0: number): string | undefined;
   clear(): void;
   redraw(): void;
+  tick(_0: number): string | undefined;
 }
 
 type RasterPixels = Uint8ClampedArray;
@@ -349,15 +333,46 @@ export interface TestPatternBinding extends ClassHandle {
   ): boolean;
 }
 
+type RgbaBytes = Uint8Array | Uint8ClampedArray;
+
+type VisualizationSamples = Float32Array;
+
+export interface MirrorFrameBinding extends ClassHandle {
+  convert(
+    _0: RgbaBytes,
+    _1: number,
+    _2: number,
+    _3: boolean,
+  ): string | undefined;
+  transform(_0: RgbaBytes, _1: number, _2: number): number;
+  submitAudio(_0: VisualizationSamples, _1: number): void;
+  renderAudio(_0: number, _1: number, _2: number): string | undefined;
+}
+
 interface EmbindModule {
-  browser_options_revision(): number;
-  browser_ui_volume(): number;
-  browser_ui_fps(): number;
   browser_ui_audio(_0: number): number;
-  browser_capture_transform_required(): number;
-  mirror_cleanup(): void;
-  sessionRenderResetStabilizer(): void;
-  sessionRenderCleanup(): void;
+  browser_ui_fps(): number;
+  browser_ui_volume(): number;
+  SessionUiBinding: {
+    new (): SessionUiBinding;
+    new (_0: boolean): SessionUiBinding;
+  };
+  TerminalRendererBinding: {
+    new (
+      _0: number,
+      _1: number,
+      _2: number,
+      _3: boolean,
+      _4: number,
+    ): TerminalRendererBinding;
+  };
+  faceReset(): void;
+  faceDetect(_0: FacePixels, _1: number, _2: number, _3: number): number;
+  faceTick(_0: number, _1: boolean): FaceValues;
+  TestPatternBinding: {
+    new (_0: number, _1: number): TestPatternBinding;
+  };
+  browser_options_revision(): number;
   set_width(_0: number): number;
   get_width(): number;
   set_height(_0: number): number;
@@ -381,34 +396,19 @@ interface EmbindModule {
   set_target_fps(_0: number): number;
   get_target_fps(): number;
   get_palette(): number;
-  initMirror(_0: EmbindString): number;
   patchOptions(_0: EmbindString, _1: number): number;
   readOptions(): string | undefined;
   setPalette(_0: EmbindString): number;
   setPaletteChars(_0: EmbindString): number;
   getPaletteChars(): string;
   optionHelp(_0: number, _1: EmbindString): string | undefined;
+  initMirror(_0: EmbindString): number;
+  sessionRenderCleanup(): void;
+  sessionRenderResetStabilizer(): void;
+  mirror_cleanup(): void;
+  browser_capture_transform_required(): number;
   MirrorFrameBinding: {
     new (): MirrorFrameBinding;
-  };
-  SessionUiBinding: {
-    new (): SessionUiBinding;
-    new (_0: boolean): SessionUiBinding;
-  };
-  TerminalRendererBinding: {
-    new (
-      _0: number,
-      _1: number,
-      _2: number,
-      _3: boolean,
-      _4: number,
-    ): TerminalRendererBinding;
-  };
-  faceReset(): void;
-  faceDetect(_0: FacePixels, _1: number, _2: number, _3: number): number;
-  faceTick(_0: number, _1: boolean): FaceValues;
-  TestPatternBinding: {
-    new (_0: number, _1: number): TestPatternBinding;
   };
 }
 
