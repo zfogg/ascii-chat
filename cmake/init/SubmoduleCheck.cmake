@@ -16,11 +16,26 @@
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Colors.cmake)
 
 function(check_and_init_git_submodules)
+    set(REQUIRED_SUBMODULES
+        "deps/ascii-chat-deps/bearssl/Makefile"
+        "deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/Makefile"
+        "deps/ascii-chat-deps/sokol/sokol_app.h"
+        "deps/ascii-chat-deps/uthash/src/utarray.h"
+        "deps/ascii-chat-deps/ngtcp2/CMakeLists.txt"
+        "deps/ascii-chat-deps/nghttp3/CMakeLists.txt"
+        "deps/ascii-chat-deps/nghttp3/lib/sfparse/sfparse.c"
+    )
+    set(MISSING_SUBMODULES FALSE)
+    foreach(SUBMODULE ${REQUIRED_SUBMODULES})
+        if(NOT EXISTS "${CMAKE_SOURCE_DIR}/${SUBMODULE}")
+            set(MISSING_SUBMODULES TRUE)
+        endif()
+    endforeach()
     # Check if we're in a git repository (local development)
     if(NOT EXISTS "${CMAKE_SOURCE_DIR}/.git")
         # Not a git repo - must be Docker/Coolify build with pre-cloned submodules
         # Verify critical submodule files exist
-        if(NOT EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl/Makefile")
+        if(MISSING_SUBMODULES)
             message(FATAL_ERROR "Critical submodules not found in build context.\n"
                                 "This is a Docker/Coolify build and deps/ascii-chat-deps must be included.\n"
                                 "Ensure Coolify has 'Submodules' enabled and the build context includes deps/.")
@@ -32,8 +47,8 @@ function(check_and_init_git_submodules)
     # Local development: .git exists, initialize submodules if needed
     find_program(GIT_EXECUTABLE git REQUIRED)
 
-    # Check if any critical submodules are missing (use BearSSL as indicator)
-    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl/Makefile")
+    # Existing checkouts can have older submodules without newly added ones.
+    if(MISSING_SUBMODULES)
         message(STATUS "${Yellow}Git submodules not initialized. Running: git submodule update --init --recursive${ColorReset}")
 
         execute_process(
@@ -54,13 +69,6 @@ function(check_and_init_git_submodules)
     endif()
 
     # Verify critical submodules exist after initialization
-    set(REQUIRED_SUBMODULES
-        "deps/ascii-chat-deps/bearssl/Makefile"
-        "deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/Makefile"
-        "deps/ascii-chat-deps/sokol/sokol_app.h"
-        "deps/ascii-chat-deps/uthash/src/utarray.h"
-    )
-
     foreach(SUBMODULE ${REQUIRED_SUBMODULES})
         if(NOT EXISTS "${CMAKE_SOURCE_DIR}/${SUBMODULE}")
             message(FATAL_ERROR "${BoldRed}FATAL: Required git submodule file not found: ${SUBMODULE}${ColorReset}\n"

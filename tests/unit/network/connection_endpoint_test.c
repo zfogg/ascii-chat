@@ -36,6 +36,19 @@ Test(connection_endpoint, resolve_tcp_with_port) {
   cr_assert_eq(endpoint.port, 5000, "Unexpected port");
 }
 
+Test(connection_endpoint, resolve_quic_endpoints) {
+  connection_endpoint_t endpoint = {0};
+  cr_assert_eq(connection_endpoint_resolve("quic://example.com:443", 27224, &endpoint), ASCIICHAT_OK);
+  cr_assert_eq(endpoint.protocol, CONNECTION_ENDPOINT_QUIC);
+  cr_assert_str_eq(endpoint.host, "example.com");
+  cr_assert_eq(endpoint.port, 443);
+  cr_assert_eq(connection_endpoint_resolve("quic://[::1]", 27224, &endpoint), ASCIICHAT_OK);
+  cr_assert_str_eq(endpoint.host, "::1");
+  cr_assert_eq(endpoint.port, 27224);
+  cr_assert_eq(connection_endpoint_resolve("quic://example.com/path", 27224, &endpoint), ERROR_INVALID_PARAM);
+  cr_assert_eq(connection_endpoint_resolve("quic://user@example.com", 27224, &endpoint), ERROR_INVALID_PARAM);
+}
+
 Test(connection_endpoint, resolve_bare_hostname) {
   connection_endpoint_t endpoint = {0};
   asciichat_error_t result = connection_endpoint_resolve("example.com", 27224, &endpoint);

@@ -146,6 +146,27 @@ int parse_ipv6_address(const char *input, char *output, size_t output_size) {
 }
 
 // Format IP address from socket address structure
+asciichat_error_t parse_numeric_socket_address(const char *host, uint16_t port, struct sockaddr_storage *address,
+                                               socklen_t *length) {
+  if (!host || !*host || !address || !length)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid numeric socket address");
+  struct sockaddr_in ipv4 = {.sin_family = AF_INET, .sin_port = htons(port)};
+  struct sockaddr_in6 ipv6 = {.sin6_family = AF_INET6, .sin6_port = htons(port)};
+  memset(address, 0, sizeof(*address));
+  if (inet_pton(AF_INET, host, &ipv4.sin_addr) == 1) {
+    memcpy(address, &ipv4, sizeof(ipv4));
+    *length = sizeof(ipv4);
+    return ASCIICHAT_OK;
+  }
+  if (inet_pton(AF_INET6, host, &ipv6.sin6_addr) == 1) {
+    memcpy(address, &ipv6, sizeof(ipv6));
+    *length = sizeof(ipv6);
+    return ASCIICHAT_OK;
+  }
+  *length = 0;
+  return SET_ERRNO(ERROR_INVALID_PARAM, "Expected a numeric IPv4 or IPv6 address");
+}
+
 asciichat_error_t format_ip_address(int family, const struct sockaddr *addr, char *output, size_t output_size) {
   if (!addr || !output || output_size == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");

@@ -331,6 +331,13 @@ typedef enum {
   PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE = 1108,
   /** @brief Client -> Server: "I want to proceed without encryption" (UNENCRYPTED) */
   PACKET_TYPE_CRYPTO_NO_ENCRYPTION = 1109,
+  /** @brief Internal authenticated readiness barrier for ACIP over QUIC */
+  PACKET_TYPE_QUIC_READY = 1110,
+  /** @brief Internal authenticated request for a QUIC encoded-video keyframe */
+  PACKET_TYPE_QUIC_KEYFRAME_REQUEST = 1111,
+  PACKET_TYPE_CRYPTO_EPOCH_MARKER = 1112,
+  PACKET_TYPE_CRYPTO_REKEY_NEEDED = 1113,
+  PACKET_TYPE_CRYPTO_EPOCH_ACK = 1114,
 
   // ============================================================================
   // Cryptographic Rekeying (Types 1200-1299)
@@ -561,6 +568,12 @@ static inline bool packet_is_handshake_type(packet_type_t type) {
   return false;
 }
 
+/** Initial negotiation stays plaintext; rotation is authenticated session traffic. */
+static inline bool packet_is_initial_handshake_type(packet_type_t type) {
+  return packet_is_handshake_type(type) &&
+         !(type >= PACKET_TYPE_CRYPTO_REKEY_REQUEST && type <= PACKET_TYPE_CRYPTO_REKEY_COMPLETE);
+}
+
 /**
  * @brief Check if packet type contains already-compressed data
  *
@@ -618,6 +631,15 @@ typedef struct {
   uint32_t client_id;
 } /** @cond */
 PACKED_ATTR /** @endcond */ packet_header_t;
+
+/** Shared ACIP wire codec. Headers are returned in network byte order. */
+asciichat_error_t packet_header_build(packet_header_t *header, packet_type_t type, const socket_buffer_t *payload,
+                                      size_t count, uint32_t client_id);
+asciichat_error_t packet_encode(packet_type_t type, const void *payload, size_t length, uint32_t client_id,
+                                void *output, size_t capacity, size_t *written);
+/** Validate exactly one complete packet, including the empty-payload checksum.
+ * A zero limit uses MAX_PACKET_SIZE. The optional header output is a copy. */
+asciichat_error_t packet_validate(const void *packet, size_t length, size_t limit, packet_header_t *header);
 
 /**
  * @name Multi-User Protocol Constants
@@ -812,6 +834,7 @@ PACKED_ATTR /** @endcond */ auth_failure_packet_t;
 #define FEATURE_RLE_ENCODING 0x01                /**< @brief Run-length encoding support */
 #define FEATURE_DELTA_FRAMES 0x02                /**< @brief Delta frame encoding (future) */
 #define PROTOCOL_FEATURE_RECOVERABLE_ERRORS 0x04 /**< Peer accepts nonfatal audio error notifications */
+#define PROTOCOL_FEATURE_IDENTITY_SET 0x08       /**< CLIENT_HELLO accepts a bounded set of pinned Ed25519 keys */
 
 /** @} */
 
@@ -1146,6 +1169,7 @@ typedef struct {
   size_t len;
   /** @brief True if packet was encrypted (decrypted before envelope creation) */
   bool was_encrypted;
+  bool consumed; ///< Shared security control; never dispatch to the application.
   /** @brief Buffer that needs to be freed by caller (may be NULL if not allocated) */
   void *allocated_buffer;
   /** @brief Size of allocated buffer in bytes */

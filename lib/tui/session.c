@@ -119,10 +119,12 @@ asciichat_error_t ui_session_media(ui_session_t *s, const char *data, size_t len
   return ASCIICHAT_OK;
 }
 
+static bool ui_session_logs_key_sized(keyboard_key_t key, terminal_size_t size);
+
 ui_session_action_t ui_session_input(ui_session_t *s, keyboard_key_t key) {
   if (!s)
     return UI_ACTION_NONE;
-  if (s->show_logs && ui_session_logs_key(key)) {
+  if (s->show_logs && ui_session_logs_key_sized(key, s->size)) {
     s->dirty = true;
     return UI_ACTION_LOGS;
   }
@@ -253,7 +255,7 @@ void ui_session_logs_render(frame_buffer_t *output, terminal_size_t size, ui_ses
   terminal_screen_compose(output, size, &config, s->logs);
 }
 
-bool ui_session_logs_key(keyboard_key_t key) {
+static bool ui_session_logs_key_sized(keyboard_key_t key, terminal_size_t size) {
   if (key == KEY_ESCAPE && log_search_is_active()) {
     log_search_exit_mode(false);
     return true;
@@ -262,7 +264,7 @@ bool ui_session_logs_key(keyboard_key_t key) {
     log_search_handle_key(key);
     return true;
   }
-  if (terminal_screen_logs_handle_key(key))
+  if (terminal_screen_logs_handle_key_sized(key, size))
     return true;
   // Client-like log screens own these keys while the renderer is hidden.
   // Search and log navigation take precedence over rendering shortcuts.
@@ -290,6 +292,10 @@ bool ui_session_logs_key(keyboard_key_t key) {
     break;
   }
   return false;
+}
+
+bool ui_session_logs_key(keyboard_key_t key) {
+  return ui_session_logs_key_sized(key, ui_controller_size());
 }
 
 static void draw_logs(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,

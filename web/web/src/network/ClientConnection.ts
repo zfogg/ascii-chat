@@ -1,4 +1,6 @@
+import { tickPacketSecurity } from "../wasm/client";
 import { OutboundQueue } from "./OutboundQueue";
+import { serializeClientInitialization } from "./ClientInitialization";
 /**
  * High-level client connection manager
  * Orchestrates WebSocket, WASM crypto, and packet handling
@@ -57,10 +59,6 @@ export type PacketReceivedCallback = (
   payload: Uint8Array,
 ) => void;
 
-// The WASM client context is shared. Drain a cancelled initialization before a
-// replacement session configures that context or installs its send callback.
-let initializationQueue: Promise<void> = Promise.resolve();
-
 export class ClientConnection {
   readonly transportType = "websocket" as const;
   private socket:
@@ -71,6 +69,7 @@ export class ClientConnection {
     | null = null;
   private transportState = ConnectionState.DISCONNECTED;
   private cryptoMode = 0;
+  private securityTimer: ReturnType<typeof setInterval> | null = null;
   private get usesApplicationEncryption(): boolean {
     return (this.cryptoMode & 1) !== 0;
   }
@@ -138,12 +137,7 @@ export class ClientConnection {
   // Initial startup and reconnect publish crypto and callbacks in the same order.
   // Cancellation is checked after every asynchronous boundary before publishing.
   private initializeWasm(): Promise<boolean> {
-    const pending = initializationQueue.then(() => this.prepareWasm());
-    initializationQueue = pending.then(
-      () => {},
-      () => {},
-    );
-    return pending;
+    return serializeClientInitialization(() => this.prepareWasm());
   }
 
   private async prepareWasm(): Promise<boolean> {
@@ -210,6 +204,8 @@ export class ClientConnection {
           console.log("[ClientConnection] SocketBridge reconnecting...");
           this.onStateChangeCallback?.(ConnectionState.CONNECTING);
         } else if (state === "closed") {
+          if (this.securityTimer) clearInterval(this.securityTimer);
+          this.securityTimer = null;
           this.outbound?.close();
           this.outbound = null;
           // A rejection may arrive before the first successful handshake.
@@ -250,6 +246,23 @@ export class ClientConnection {
   }
 
   private async handleSocketOpen(): Promise<void> {
+    if (this.securityTimer) clearInterval(this.securityTimer);
+    this.securityTimer = setInterval(() => {
+      if (
+        this.transportState !== ConnectionState.CONNECTED ||
+        !this.usesApplicationEncryption
+      )
+        return;
+      try {
+        for (const { packet } of tickPacketSecurity())
+          this.socket?.send(packet);
+      } catch (error) {
+        this.disconnect();
+        this.transportState = ConnectionState.ERROR;
+        this.onStateChangeCallback?.(ConnectionState.ERROR);
+        console.error("[ClientConnection] Security failed:", error);
+      }
+    }, 100);
     this.retryingRemoteError = false;
     const isReconnection = this.socketHasEverOpened;
     this.socketHasEverOpened = true;
@@ -395,6 +408,7 @@ export class ClientConnection {
           // Decrypt the payload (ciphertext) to get the inner plaintext packet (header + payload)
           // console.log(`[ClientConnection] Calling decryptPacket...`);
           const plaintext = new Uint8Array(decryptPacket(payload));
+          if (!plaintext.length) return;
           // console.log(
           //   `[ClientConnection] Decryption complete, plaintext length: ${plaintext.length} bytes`,
           // );
@@ -633,6 +647,8 @@ export class ClientConnection {
     console.log("[ClientConnection] Disconnecting...");
     this.outbound?.close();
     this.outbound = null;
+    if (this.securityTimer) clearInterval(this.securityTimer);
+    this.securityTimer = null;
     this.isUserDisconnecting = true;
     this.transportState = ConnectionState.DISCONNECTED;
     setNetworkErrorReporter(null);

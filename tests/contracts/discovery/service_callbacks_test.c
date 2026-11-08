@@ -227,7 +227,7 @@ static acip_session_create_t create_request(void) {
 }
 static void create_session_fixture(void) {
   acip_session_create_t req = create_request();
-  acds_on_session_create(&req, &creator_transport, "127.0.0.1", &authority);
+  acds_on_session_create(&req, &creator_transport, "127.0.0.1", NULL, 0, &authority);
   cr_assert_eq(created_responses, 1);
   cr_assert(creator_data.joined_session);
   cr_assert(creator_data.session_established);
@@ -309,17 +309,17 @@ Test(discovery_service_callbacks, invalid_creation_and_address_claims_do_not_pub
   initialize();
   acip_session_create_t request = create_request();
   creator_transport.user_data = NULL;
-  acds_on_session_create(&request, &creator_transport, "127.0.0.1", &authority);
+  acds_on_session_create(&request, &creator_transport, "127.0.0.1", NULL, 0, &authority);
   cr_assert_eq(response_type, PACKET_TYPE_ERROR_MESSAGE);
   creator_transport.user_data = &creator_data;
   request.total_keys = MAX_SESSION_KEYS + 1;
-  acds_on_session_create(&request, &creator_transport, "127.0.0.1", &authority);
+  acds_on_session_create(&request, &creator_transport, "127.0.0.1", NULL, 0, &authority);
   cr_assert_not(creator_data.joined_session);
   cr_assert_eq(created_responses, 0);
   request = create_request();
   request.session_type = SESSION_TYPE_DIRECT_TCP;
   SAFE_STRNCPY(request.server_address, "127.0.0.99", sizeof(request.server_address));
-  acds_on_session_create(&request, &creator_transport, "127.0.0.1", &authority);
+  acds_on_session_create(&request, &creator_transport, "127.0.0.1", NULL, 0, &authority);
   cr_assert_not(creator_data.joined_session);
   cr_assert_eq(created_responses, 0);
   cr_assert_eq(creator_data.create_keys.count, 0);
@@ -331,7 +331,7 @@ Test(discovery_service_callbacks, rate_limit_rejection_and_backend_failure_clear
   acip_session_lookup_t lookup = {0};
   for (rate_mode = 1; rate_mode <= 2; ++rate_mode) {
     creator_data.create_keys.count = 1;
-    acds_on_session_create(&create, &creator_transport, "127.0.0.1", &authority);
+    acds_on_session_create(&create, &creator_transport, "127.0.0.1", NULL, 0, &authority);
     cr_assert_eq(response_type, PACKET_TYPE_ERROR_MESSAGE);
     cr_assert_eq(creator_data.create_keys.count, 0);
     cr_assert_not(creator_data.joined_session);

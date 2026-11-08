@@ -82,12 +82,6 @@ typedef struct {
   /** @brief Called when server requests console clear */
   void (*on_clear_console)(void *ctx);
 
-  /** @brief Called when server sends crypto rekey request */
-  void (*on_crypto_rekey_request)(const void *payload, size_t payload_len, void *ctx);
-
-  /** @brief Called when server sends crypto rekey response */
-  void (*on_crypto_rekey_response)(const void *payload, size_t payload_len, void *ctx);
-
   /** @brief Called when WebRTC SDP offer/answer received */
   void (*on_webrtc_sdp)(const acip_webrtc_sdp_t *sdp, size_t total_len, void *ctx);
 
@@ -199,15 +193,6 @@ typedef struct {
 
   /** @brief Called when remote log received from client */
   void (*on_remote_log)(const remote_log_packet_t *header, const char *message, void *client_ctx, void *app_ctx);
-
-  /** @brief Called when client sends crypto rekey request */
-  void (*on_crypto_rekey_request)(const void *payload, size_t payload_len, void *client_ctx, void *app_ctx);
-
-  /** @brief Called when client sends crypto rekey response */
-  void (*on_crypto_rekey_response)(const void *payload, size_t payload_len, void *client_ctx, void *app_ctx);
-
-  /** @brief Called when client sends crypto rekey complete */
-  void (*on_crypto_rekey_complete)(const void *payload, size_t payload_len, void *client_ctx, void *app_ctx);
 
   /** @brief Called when client sends KEY_EXCHANGE_RESP (crypto handshake) */
   void (*on_crypto_key_exchange_resp)(packet_type_t type, const void *payload, size_t payload_len, void *client_ctx,

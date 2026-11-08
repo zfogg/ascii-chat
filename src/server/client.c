@@ -894,12 +894,6 @@ static void acip_server_on_pong(void *client_ctx, void *app_ctx);
 static void acip_server_on_error(const error_packet_t *header, const char *message, void *client_ctx, void *app_ctx);
 static void acip_server_on_remote_log(const remote_log_packet_t *header, const char *message, void *client_ctx,
                                       void *app_ctx);
-static void acip_server_on_crypto_rekey_request(const void *payload, size_t payload_len, void *client_ctx,
-                                                void *app_ctx);
-static void acip_server_on_crypto_rekey_response(const void *payload, size_t payload_len, void *client_ctx,
-                                                 void *app_ctx);
-static void acip_server_on_crypto_rekey_complete(const void *payload, size_t payload_len, void *client_ctx,
-                                                 void *app_ctx);
 
 /**
  * @brief Global ACIP server callbacks structure
@@ -925,9 +919,7 @@ static const acip_server_callbacks_t g_acip_server_callbacks = {
     .on_pong = acip_server_on_pong,
     .on_error = acip_server_on_error,
     .on_remote_log = acip_server_on_remote_log,
-    .on_crypto_rekey_request = acip_server_on_crypto_rekey_request,
-    .on_crypto_rekey_response = acip_server_on_crypto_rekey_response,
-    .on_crypto_rekey_complete = acip_server_on_crypto_rekey_complete,
+
     .app_ctx = NULL // Not used - client context passed per-call
 };
 
@@ -1450,110 +1442,6 @@ static void acip_server_on_remote_log(const remote_log_packet_t *header, const c
 
   handle_remote_log_packet_from_client(client, full_packet, total_len);
   SAFE_FREE(full_packet);
-}
-
-static void acip_server_on_crypto_rekey_request(const void *payload, size_t payload_len, void *client_ctx,
-                                                void *app_ctx) {
-  (void)app_ctx;
-  client_info_t *client = (client_info_t *)client_ctx;
-
-  log_debug("Received REKEY_REQUEST from client %s", client->client_id);
-
-  // Process the client's rekey request
-  mutex_lock(&client->client_state_mutex);
-  asciichat_error_t crypto_result =
-      crypto_handshake_process_rekey_request(client->crypto_handshake_ctx, (void *)payload, payload_len);
-  mutex_unlock(&client->client_state_mutex);
-
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to process REKEY_REQUEST from client %s: %d", client->client_id, crypto_result);
-    return;
-  }
-
-  // Send REKEY_RESPONSE
-  mutex_lock(&client->client_state_mutex);
-  // Get transport reference briefly to avoid deadlock on transport buffers
-  mutex_lock(&client->send_mutex);
-  if (atomic_load_bool(&client->shutting_down) || !client->transport) {
-    mutex_unlock(&client->send_mutex);
-    mutex_unlock(&client->client_state_mutex);
-    return; // Client is shutting down
-  }
-  acip_transport_t *rekey_transport = client->transport;
-  mutex_unlock(&client->send_mutex);
-
-  // Network I/O happens OUTSIDE the send_mutex (client_state_mutex still held for crypto state)
-  crypto_result = crypto_handshake_rekey_response(client->crypto_handshake_ctx, rekey_transport);
-  mutex_unlock(&client->client_state_mutex);
-
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to send REKEY_RESPONSE to client %s: %d", client->client_id, crypto_result);
-  } else {
-    log_debug("Sent REKEY_RESPONSE to client %s", client->client_id);
-  }
-}
-
-static void acip_server_on_crypto_rekey_response(const void *payload, size_t payload_len, void *client_ctx,
-                                                 void *app_ctx) {
-  (void)app_ctx;
-  client_info_t *client = (client_info_t *)client_ctx;
-
-  log_debug("Received REKEY_RESPONSE from client %s", client->client_id);
-
-  // Process the client's rekey response
-  mutex_lock(&client->client_state_mutex);
-  asciichat_error_t crypto_result =
-      crypto_handshake_process_rekey_response(client->crypto_handshake_ctx, (void *)payload, payload_len);
-  mutex_unlock(&client->client_state_mutex);
-
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to process REKEY_RESPONSE from client %s: %d", client->client_id, crypto_result);
-    return;
-  }
-
-  // Send REKEY_COMPLETE to confirm and activate new key
-  mutex_lock(&client->client_state_mutex);
-  // Get transport reference briefly to avoid deadlock on transport buffers
-  mutex_lock(&client->send_mutex);
-  if (atomic_load_bool(&client->shutting_down) || !client->transport) {
-    mutex_unlock(&client->send_mutex);
-    mutex_unlock(&client->client_state_mutex);
-    return; // Client is shutting down
-  }
-  acip_transport_t *complete_transport = client->transport;
-  mutex_unlock(&client->send_mutex);
-
-  // Network I/O happens OUTSIDE the send_mutex (client_state_mutex still held for crypto state)
-  crypto_result = crypto_handshake_rekey_complete(client->crypto_handshake_ctx, complete_transport);
-  mutex_unlock(&client->client_state_mutex);
-
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to send REKEY_COMPLETE to client %s: %d", client->client_id, crypto_result);
-  } else {
-    log_debug("Sent REKEY_COMPLETE to client %s - session rekeying complete", client->client_id);
-  }
-}
-
-static void acip_server_on_crypto_rekey_complete(const void *payload, size_t payload_len, void *client_ctx,
-                                                 void *app_ctx) {
-  (void)app_ctx;
-  client_info_t *client = (client_info_t *)client_ctx;
-
-  log_debug("Received REKEY_COMPLETE from client %s", client->client_id);
-
-  // Process and commit to new key
-  mutex_lock(&client->client_state_mutex);
-  asciichat_error_t crypto_result =
-      crypto_handshake_process_rekey_complete(client->crypto_handshake_ctx, (void *)payload, payload_len);
-  mutex_unlock(&client->client_state_mutex);
-
-  if (crypto_result != ASCIICHAT_OK) {
-    log_error("Failed to process REKEY_COMPLETE from client %s: %d", client->client_id, crypto_result);
-  } else {
-    log_debug("Session rekeying completed successfully with client %s", client->client_id);
-    // Notify client that rekeying is complete (new keys now active on both sides)
-    log_info_client(client, "Session rekey complete - new encryption keys active");
-  }
 }
 
 /**

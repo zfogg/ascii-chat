@@ -60,7 +60,8 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t browser_discovery_leave(acds_protocol_t *
 }
 EM_JS(void, discovery_snapshot,
       (int state, bool terminal, const char *error, const char *name, const uint8_t *participant,
-       const uint8_t *session, const uint8_t *host, const char *user, const char *password),
+       const uint8_t *session, const uint8_t *host, const char *user, const char *password, const char *address,
+       unsigned port, unsigned session_type, unsigned quic_port, const char *webtransport_url),
       {
         Module.discoveryResult = {
           state,
@@ -72,12 +73,18 @@ EM_JS(void, discovery_snapshot,
             sessionId : HEAPU8.slice(session, session + 16),
             hostId : HEAPU8.slice(host, host + 16),
             turnUsername : UTF8ToString(user),
-            turnPassword : UTF8ToString(password)
+            turnPassword : UTF8ToString(password),
+            serverAddress : UTF8ToString(address),
+            serverPort : port,
+            sessionType : session_type,
+            quicPort : quic_port,
+            webtransportUrl : UTF8ToString(webtransport_url)
           }
         };
       });
 EMSCRIPTEN_KEEPALIVE void browser_discovery_snapshot(acds_protocol_t *p) {
   discovery_snapshot(p->state, p->terminal, p->error, p->name, p->joined.participant_id, p->joined.session_id,
                      p->joined.host_established ? p->joined.host_id : p->joined.initiator_id, p->joined.turn_username,
-                     p->joined.turn_password);
+                     p->joined.turn_password, p->joined.server_address, p->joined.server_port, p->joined.session_type,
+                     p->quic_port, p->webtransport_url);
 }

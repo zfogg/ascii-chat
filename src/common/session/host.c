@@ -25,6 +25,9 @@
  */
 
 #include "session/host.h"
+#ifndef __EMSCRIPTEN__
+#include "quic_listeners.h"
+#endif
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/negotiation.h>
 #include "session/host_timing.h"
@@ -174,6 +177,8 @@ typedef struct session_host {
 
   /** @brief IPv4 listen socket */
   network_server_t *network_server;
+  bool configured_quic_listeners;
+  acip_quic_endpoint_t *quic_endpoint, *webtransport_endpoint;
 
   /** @brief IPv6 listen socket */
   asciichat_thread_t network_thread;
@@ -226,6 +231,7 @@ session_host_t *session_host_create(const session_host_config_t *config) {
   host->port = config->port > 0 ? config->port : OPT_PORT_INT_DEFAULT;
   host->max_clients = config->max_clients > 0 ? config->max_clients : SESSION_HOST_DEFAULT_MAX_CLIENTS;
   host->encryption_enabled = config->encryption_enabled;
+  host->configured_quic_listeners = config->configured_quic_listeners;
 
   if (config->ipv4_address) {
     SAFE_STRNCPY(host->ipv4_address, config->ipv4_address, sizeof(host->ipv4_address));
@@ -1020,7 +1026,14 @@ asciichat_error_t session_host_start(session_host_t *host) {
 #ifdef __EMSCRIPTEN__
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "Browser hosts accept browser-managed connections");
 #else
+  asciichat_error_t result = ASCIICHAT_OK;
+  if (host->configured_quic_listeners)
+    result = session_quic_listeners_open(host->port, &host->quic_endpoint, &host->webtransport_endpoint);
+  if (result != ASCIICHAT_OK)
+    return result;
   network_server_config_t config = {
+      .quic_endpoint = host->quic_endpoint,
+      .webtransport_endpoint = host->webtransport_endpoint,
       .port = host->port,
       .ipv4_address = host->ipv4_address[0] ? host->ipv4_address : "0.0.0.0",
       .bind_ipv4 = true,
@@ -1028,7 +1041,7 @@ asciichat_error_t session_host_start(session_host_t *host) {
       .partial_timeout_ms = 30000,
       .callbacks = {host_connection_open, host_connection_packet, host_connection_closing, host_connection_closed},
       .user_data = host};
-  asciichat_error_t result = network_server_create(&config, &host->network_server);
+  result = network_server_create(&config, &host->network_server);
   if (result == ASCIICHAT_OK)
     result = network_server_start(host->network_server);
   if (result == ASCIICHAT_OK)
@@ -1065,6 +1078,9 @@ asciichat_error_t session_host_stop(session_host_t *host) {
   if (result != ASCIICHAT_OK)
     return result;
   network_server_destroy(&host->network_server);
+  result = session_quic_listeners_close(&host->quic_endpoint, &host->webtransport_endpoint);
+  if (result != ASCIICHAT_OK)
+    return result;
 #endif
   host->running = false;
   return ASCIICHAT_OK;

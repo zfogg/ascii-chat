@@ -47,7 +47,10 @@ async function observe(page: Page) {
       pointer: number,
       length: number,
     ) => {
-      const text = m.UTF8ToString(pointer, length);
+      // Inspect rendered text independently of terminal color decoration.
+      const text = m
+        .UTF8ToString(pointer, length)
+        .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
       window.__sessionUiFrames!.push(text);
       if (window.__sessionUiFrames!.length > 30)
         window.__sessionUiFrames!.shift();
@@ -236,7 +239,7 @@ test("compiled C runtime retains newest covered frame, bounds input and tears do
   expect(result).toEqual(Array(10).fill(true));
 });
 
-test("C application logs survive closed overlays and share exclusive presentation", async ({
+test("C application logs survive search, log help, and media transitions", async ({
   page,
 }) => {
   const renderErrors: string[] = [];

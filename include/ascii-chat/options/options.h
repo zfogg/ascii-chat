@@ -993,6 +993,19 @@ typedef struct options_state {
   char websocket_tls_cert[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS certificate file path (server/discovery-service only)
   char websocket_tls_key[OPTIONS_BUFF_SIZE];  ///< WebSocket TLS private key file path (server/discovery-service only)
   char websocket_tls_key_password[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS key password (server/discovery-service only)
+  char webtransport_bind_address[OPTIONS_BUFF_SIZE];  ///< Browser HTTP/3 listener address.
+  char webtransport_origin[OPTIONS_BUFF_SIZE];        ///< Allowed browser origin.
+  char webtransport_path[OPTIONS_BUFF_SIZE];          ///< HTTP/3 CONNECT path.
+  char quic_bind_address[OPTIONS_BUFF_SIZE];          ///< Concrete local QUIC listener address; empty disables QUIC.
+  char quic_tls_cert[OPTIONS_BUFF_SIZE];              ///< Native QUIC TLS certificate.
+  char quic_tls_key[OPTIONS_BUFF_SIZE];               ///< Native QUIC TLS private key.
+  char quic_ca_file[OPTIONS_BUFF_SIZE];               ///< Native QUIC client certificate trust anchors.
+  bool quic_visual_datagrams;                         ///< Prefer negotiated visual datagrams.
+  bool quic_audio_datagrams;                          ///< Prefer negotiated QUIC datagrams for audio.
+  bool discovery_quic;                                ///< Use QUIC for a disclosed discovery host endpoint.
+  char webtransport_public_url[OPTIONS_BUFF_SIZE];    ///< Public HTTPS WebTransport endpoint advertised through ACDS.
+  int quic_port;                                      ///< QUIC UDP port, or zero to use the TCP server port.
+  int quic_fallback_port;                             ///< TCP fallback port, or zero to disable fallback.
   int max_clients;                                    ///< Maximum concurrent clients (server only)
   char session_string[SESSION_STRING_BUFFER_SIZE]; ///< Session string for ACDS discovery (calculated max size: 38 chars
                                                    ///< + null)

@@ -144,8 +144,15 @@ static asciichat_error_t async_recv(acip_transport_t *transport, void **data, si
           (envelope.len && asciichat_crc32(envelope.data, envelope.len) != NET_TO_HOST_U32(header.crc32)))
         result = SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid decrypted async packet");
     }
-  } else if (transport->crypto_ctx && transport->crypto_ctx->encrypt_data && !packet_is_handshake_type(envelope.type)) {
+  } else if (transport->crypto_ctx && transport->crypto_ctx->encrypt_data &&
+             !packet_is_initial_handshake_type(envelope.type)) {
     result = SET_ERRNO(ERROR_CRYPTO, "Unexpected plaintext packet");
+  }
+  if (result == ASCIICHAT_OK && envelope.consumed) {
+    buffer_release(envelope.allocated_buffer);
+    SAFE_FREE(packet);
+    mutex_unlock(&tcp->mutex);
+    return ERROR_NETWORK_INCOMPLETE;
   }
   if (result == ASCIICHAT_OK && tcp->recycled_count < 8 && buffer_capacity(envelope.allocated_buffer) <= 256 * 1024) {
     // Retain an owner while the receiver borrows its own reference. Only

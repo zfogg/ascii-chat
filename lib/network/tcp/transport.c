@@ -163,6 +163,10 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
     }
   }
 
+  if (envelope.consumed) {
+    buffer_release(envelope.allocated_buffer);
+    return ERROR_NETWORK_INCOMPLETE;
+  }
   *buffer = envelope.data;
   *out_len = envelope.len;
   *out_allocated_buffer = envelope.allocated_buffer;

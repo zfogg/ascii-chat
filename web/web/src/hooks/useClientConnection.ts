@@ -1,3 +1,4 @@
+import { clientEndpoint } from "../network/clientEndpoint";
 import { RenderSettingsControl, SETTINGS_ACK } from "../network/RenderSettings";
 import type { RuntimeValues } from "@ascii-chat/shared/wasm";
 import { useLayoutEffect } from "react";
@@ -16,6 +17,8 @@ import type { AsciiRendererHandle, BinarySettingsConfig } from "../components";
 import type { ClientSession } from "../network/Transport";
 import type { AsciiFrame } from "../network/AsciiFrameParser";
 import { WebRTCSession, type DiscoveryOptions } from "../network/WebRTCSession";
+import { WebTransportClientSession } from "../network/WebTransportClientSession";
+import { WebTransportFallbackSession } from "../network/WebTransportFallbackSession";
 
 const STATE_NAMES: Record<number, string> = {
   [ConnectionState.DISCONNECTED]: "Disconnected",
@@ -42,6 +45,7 @@ interface UseClientConnectionOptions {
   onAudioPacket?: (type: number, payload: Uint8Array) => void;
   onConnectionStateChange?: (state: ConnectionState) => void;
   serverUrl: string;
+  fallbackWebSocketUrl?: string;
   terminalDimensions: { cols: number; rows: number };
   settings: BinarySettingsConfig;
   rendererRef: React.RefObject<AsciiRendererHandle | null>;
@@ -63,6 +67,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     applicationEncryption,
     cryptoOptions,
     serverUrl,
+    fallbackWebSocketUrl,
     terminalDimensions,
     settings,
     rendererRef,
@@ -155,15 +160,26 @@ export function useClientConnection(options: UseClientConnectionOptions) {
               width,
               height,
             )
-          : new ClientConnection({
-              serverUrl,
-              ...(applicationEncryption === undefined
-                ? {}
-                : { applicationEncryption }),
-              ...(cryptoOptions ? { cryptoOptions } : {}),
-              width,
-              height,
-            });
+          : (() => {
+              const endpoint = clientEndpoint(serverUrl);
+              const directOptions = {
+                serverUrl: endpoint.url,
+                ...(applicationEncryption === undefined
+                  ? {}
+                  : { applicationEncryption }),
+                ...(cryptoOptions ? { cryptoOptions } : {}),
+                width,
+                height,
+              };
+              if (endpoint.mode !== "websocket")
+                return endpoint.mode === "auto" && fallbackWebSocketUrl
+                  ? new WebTransportFallbackSession(
+                      directOptions,
+                      fallbackWebSocketUrl,
+                    )
+                  : new WebTransportClientSession(directOptions);
+              return new ClientConnection(directOptions);
+            })();
 
         if (discovery)
           autoReconnectEnabledRef.current = !discovery.createSession;
@@ -394,6 +410,7 @@ export function useClientConnection(options: UseClientConnectionOptions) {
     [
       validateEncoding,
       serverUrl,
+      fallbackWebSocketUrl,
       applicationEncryption,
       cryptoOptions,
       terminalDimensions,

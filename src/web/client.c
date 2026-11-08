@@ -6,6 +6,7 @@
 #define BROWSER_PACKET_JSON_BUFFER_SIZE 1024
 
 #include "buffer_sizes.h"
+#include "security.h"
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/compression.h>
 #include "session/frame_validation.h"
@@ -477,6 +478,7 @@ int client_generate_keypair(void) {
     return -1;
   }
 
+  // A replacement handshake must not retain the previous connection's sequence state.
   // Reset handshake context if previously used (reconnection / React Strict Mode remount)
   if (g_crypto_handshake_ctx.state != CRYPTO_HANDSHAKE_DISABLED) {
     crypto_handshake_destroy(&g_crypto_handshake_ctx);
@@ -807,16 +809,24 @@ int client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_
     return -1;
   }
 
-  // Encrypt the packet using handshake context's crypto context
-  size_t ciphertext_len = 0;
-  crypto_result_t result = crypto_encrypt(&g_crypto_handshake_ctx.crypto_ctx, plaintext, plaintext_len, ciphertext,
-                                          ciphertext_size, &ciphertext_len);
-  if (result != CRYPTO_OK) {
+  const size_t overhead = 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+  if (!out_len || plaintext_len > SIZE_MAX - overhead || ciphertext_size < plaintext_len + overhead)
     return -1;
+  uint8_t *wire = NULL;
+  size_t length = 0;
+  packet_header_t header;
+  if (plaintext_len < sizeof(header))
+    return -1;
+  memcpy(&header, plaintext, sizeof(header));
+  acip_traffic_class_t channel = acip_packet_traffic_class(NET_TO_HOST_U16(header.type));
+  asciichat_error_t result = acip_security_seal(&g_crypto_handshake_ctx.crypto_ctx, channel, ACIP_DELIVERY_RELIABLE,
+                                                plaintext, plaintext_len, &wire, &length);
+  if (result == ASCIICHAT_OK) {
+    *out_len = length - sizeof(packet_header_t);
+    memcpy(ciphertext, wire + sizeof(packet_header_t), *out_len);
   }
-
-  *out_len = ciphertext_len;
-  return 0;
+  buffer_release(wire);
+  return result == ASCIICHAT_OK ? 0 : -1;
 }
 
 /**
@@ -835,16 +845,22 @@ int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint
     return -1;
   }
 
-  // Decrypt the packet using handshake context's crypto context
-  size_t plaintext_len = 0;
-  crypto_result_t result = crypto_decrypt(&g_crypto_handshake_ctx.crypto_ctx, ciphertext, ciphertext_len, plaintext,
-                                          plaintext_size, &plaintext_len);
-  if (result != CRYPTO_OK) {
+  if (!out_len || plaintext_size < ciphertext_len)
     return -1;
+  *out_len = 0;
+  uint8_t *plain = NULL;
+  size_t length = 0;
+  uint64_t sequence;
+  bool consumed = false;
+  asciichat_error_t result =
+      acip_security_decrypt(&g_crypto_handshake_ctx.crypto_ctx, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE,
+                            ciphertext, ciphertext_len, &plain, &length, &sequence, &consumed);
+  if (result == ASCIICHAT_OK && !consumed) {
+    memcpy(plaintext, plain, length);
+    *out_len = length;
   }
-
-  *out_len = plaintext_len;
-  return 0;
+  buffer_release(plain);
+  return result == ASCIICHAT_OK ? 0 : -1;
 }
 
 /**
@@ -859,25 +875,13 @@ char *client_parse_packet(const uint8_t *raw_packet, size_t packet_len) {
     return NULL;
   }
 
-  // Parse packet header directly from bytes
-  const packet_header_t *header = (const packet_header_t *)raw_packet;
-
-  // Validate magic number (convert from network byte order)
-  uint64_t magic = NET_TO_HOST_U64(header->magic);
-  if (magic != PACKET_MAGIC) {
+  packet_header_t wire_header;
+  if (packet_validate(raw_packet, packet_len, 0, &wire_header) != ASCIICHAT_OK)
     return NULL;
-  }
-
-  // Convert header fields from network byte order
-  uint16_t type = NET_TO_HOST_U16(header->type);
-  uint32_t length = NET_TO_HOST_U32(header->length);
-  uint32_t client_id = NET_TO_HOST_U32(header->client_id);
-  uint32_t crc32 = NET_TO_HOST_U32(header->crc32);
-
-  if (length != packet_len - sizeof(packet_header_t) ||
-      (length > 0 && asciichat_crc32_sw(raw_packet + sizeof(packet_header_t), length) != crc32)) {
-    return NULL;
-  }
+  uint16_t type = NET_TO_HOST_U16(wire_header.type);
+  uint32_t length = NET_TO_HOST_U32(wire_header.length);
+  uint32_t client_id = NET_TO_HOST_U32(wire_header.client_id);
+  uint32_t crc32 = NET_TO_HOST_U32(wire_header.crc32);
 
   // Build JSON response with packet metadata
   char *json = SAFE_MALLOC(BROWSER_PACKET_JSON_BUFFER_SIZE, char *);
@@ -908,26 +912,12 @@ int client_serialize_packet(uint16_t packet_type, const uint8_t *payload, size_t
     return -1;
   }
 
-  // Calculate CRC32 of payload (use software version for WASM)
-  uint32_t crc = payload && payload_len > 0 ? asciichat_crc32_sw(payload, payload_len) : 0;
-
-  // Build packet header (convert to network byte order)
-  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-                            .type = HOST_TO_NET_U16(packet_type),
-                            .length = HOST_TO_NET_U32((uint32_t)payload_len),
-                            .crc32 = HOST_TO_NET_U32(crc),
-                            .client_id = HOST_TO_NET_U32(client_id)};
-
-  // Copy header to output
-  memcpy(output, &header, sizeof(packet_header_t));
-
-  // Copy payload to output
-  if (payload && payload_len > 0) {
-    memcpy(output + sizeof(packet_header_t), payload, payload_len);
-  }
-
-  *out_len = sizeof(packet_header_t) + payload_len;
-  return 0;
+  if (payload_len > SIZE_MAX - sizeof(packet_header_t))
+    return -1;
+  return packet_encode(packet_type, payload, payload_len, client_id, output, sizeof(packet_header_t) + payload_len,
+                       out_len) == ASCIICHAT_OK
+             ? 0
+             : -1;
 }
 
 /**
@@ -1218,4 +1208,8 @@ EMSCRIPTEN_KEEPALIVE asciichat_error_t client_decode_frame_data(const void *enco
       output_length > FRAME_RENDER_MAX_BYTES)
     return SET_ERRNO(ERROR_INVALID_FRAME, "Invalid browser frame decompression bounds");
   return decompress_data_exact(encoded, encoded_length, output, output_length);
+}
+
+EMSCRIPTEN_KEEPALIVE crypto_context_t *client_security_context(void) {
+  return g_handshake_complete ? &g_crypto_handshake_ctx.crypto_ctx : NULL;
 }

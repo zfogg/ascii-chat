@@ -12,6 +12,7 @@
 #include <ascii-chat/util/endian.h>
 #include <string.h>
 #include <sodium.h>
+#include <ascii-chat/crypto/session.h>
 
 typedef struct endpoint {
   struct endpoint *other;
@@ -122,7 +123,7 @@ static void exchange(endpoint_t *sender, endpoint_t *receiver) {
   buffer_release(owned);
 }
 
-static void exchange_unused_outer_crc(endpoint_t *sender, endpoint_t *receiver) {
+static void exchange_encrypted_wire(endpoint_t *sender, endpoint_t *receiver) {
   const uint8_t payload[] = {1, 2, 3, 4};
   packet_header_t inner = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
                            .type = HOST_TO_NET_U16(PACKET_TYPE_PING),
@@ -138,8 +139,6 @@ static void exchange_unused_outer_crc(endpoint_t *sender, endpoint_t *receiver) 
   cr_assert_eq(acip_packet_encrypt(&sender->security->handshake.crypto_ctx, &plan, NULL, wire + sizeof(outer),
                                    plan.ciphertext_capacity, &outer, &encrypted_length),
                ASCIICHAT_OK);
-  // The protocol leaves the outer CRC unused; authenticated inner CRC stays valid.
-  outer.crc32 ^= UINT32_MAX;
   memcpy(wire, &outer, sizeof(outer));
   cr_assert_eq(webrtc_datachannel_send(sender->dc, wire, sizeof(outer) + encrypted_length), ASCIICHAT_OK);
   SAFE_FREE(wire);
@@ -153,6 +152,40 @@ static void exchange_unused_outer_crc(endpoint_t *sender, endpoint_t *receiver) 
   cr_assert_eq(length, sizeof(inner) + sizeof(payload));
   cr_assert_eq(memcmp((uint8_t *)data + sizeof(inner), payload, sizeof(payload)), 0);
   buffer_release(owned);
+}
+
+// Idle writers must complete and retire multiple epochs without application traffic.
+static void rotate_idle(endpoint_t *client, endpoint_t *server) {
+  for (uint64_t epoch = 1; epoch <= 2; ++epoch) {
+    endpoint_t *peers[] = {client, server};
+    for (unsigned i = 0; i < 2; ++i) {
+      crypto_context_t *crypto = &peers[i]->security->handshake.crypto_ctx;
+      crypto_session_t *session;
+      cr_assert_eq(crypto_session_lock(crypto, &session), ASCIICHAT_OK);
+      session->rotation.activated_ns = time_get_ns() - REKEY_MIN_INTERVAL;
+      session->rotation.last_request_ns = 0;
+      crypto->rekey_last_time = 0;
+      crypto_session_unlock(session);
+    }
+    cr_assert_eq(acip_security_request_rekey(client->transport), ASCIICHAT_OK);
+    uint64_t start = time_get_ns();
+    bool settled = false;
+    while (!settled && time_get_ns() - start < 5 * NS_PER_SEC_INT) {
+      settled = true;
+      for (unsigned i = 0; i < 2; ++i) {
+        crypto_session_t *session;
+        cr_assert_eq(crypto_session_lock(&peers[i]->security->handshake.crypto_ctx, &session), ASCIICHAT_OK);
+        settled = settled && session->records.key_epoch == epoch && !session->records.previous_valid &&
+                  session->rotation.peer_ack == epoch && !session->rotation.exchange_ns;
+        crypto_session_unlock(session);
+      }
+      if (!settled)
+        platform_sleep_ms(5);
+    }
+    cr_assert(settled, "Idle shared rotation %llu did not retire", (unsigned long long)epoch);
+    exchange(client, server);
+    exchange(server, client);
+  }
 }
 
 static void fixture(uint8_t mode, const char *password, bool identity, int rejection) {
@@ -216,8 +249,9 @@ static void fixture(uint8_t mode, const char *password, bool identity, int rejec
     exchange(&client, &server);
     exchange(&server, &client);
     if (ACIP_CRYPTO_HAS_ENCRYPT(mode)) {
-      exchange_unused_outer_crc(&client, &server);
-      exchange_unused_outer_crc(&server, &client);
+      exchange_encrypted_wire(&client, &server);
+      exchange_encrypted_wire(&server, &client);
+      rotate_idle(&client, &server);
     }
   }
   if (client_owner)
