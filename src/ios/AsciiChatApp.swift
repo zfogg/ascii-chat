@@ -34,6 +34,17 @@ private func asciichat_ios_camera_authorized() -> Int32
 @_silgen_name("asciichat_ios_camera_request_access")
 private func asciichat_ios_camera_request_access()
 
+@_silgen_name("asciichat_ios_camera_start")
+private func asciichat_ios_camera_start(_ device: UInt16) -> Int32
+
+@_silgen_name("asciichat_ios_camera_read")
+private func asciichat_ios_camera_read(
+    _ pixels: UnsafeMutablePointer<UInt32>, _ capacity: Int,
+    _ width: UnsafeMutablePointer<Int>, _ height: UnsafeMutablePointer<Int>) -> Int32
+
+@_silgen_name("asciichat_ios_camera_stop")
+private func asciichat_ios_camera_stop()
+
 @_silgen_name("asciichat_ios_audio_authorized")
 private func asciichat_ios_audio_authorized() -> Int32
 
@@ -102,8 +113,28 @@ private struct TestFrameView: View {
 private struct CameraAsciiView: View {
     @State private var image: CGImage?
     @State private var cameraMessage = "Checking camera access…"
+    @State private var cameraStarted = false
+
+    private func readCameraFrame() -> Bool {
+        let capacity = 1920 * 1080
+        var pixels = [UInt32](repeating: 0, count: capacity)
+        var width = 0
+        var height = 0
+        let emitted = pixels.withUnsafeMutableBufferPointer { buffer in
+            asciichat_ios_camera_read(buffer.baseAddress!, capacity, &width, &height)
+        }
+        guard emitted != 0, width > 0, height > 0 else { return false }
+        let data = pixels.withUnsafeBytes { Data(bytes: $0.baseAddress!, count: width * height * 4) }
+        guard let provider = CGDataProvider(data: data as CFData) else { return false }
+        image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+                        bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                        bitmapInfo: [.byteOrder32Little, CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)],
+                        provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+        return true
+    }
 
     private func readFrame() {
+        if cameraStarted && readCameraFrame() { return }
         let capacity = 4096 * 2048 * 4
         var pixels = [UInt8](repeating: 0, count: capacity)
         var width: Int32 = 0
@@ -145,6 +176,7 @@ private struct CameraAsciiView: View {
                 asciichat_ios_camera_request_access()
             } else {
                 cameraMessage = "Camera access granted"
+                cameraStarted = asciichat_ios_camera_start(0) != 0
             }
             if asciichat_ios_audio_authorized() == 0 {
                 asciichat_ios_audio_request_access()
@@ -153,6 +185,9 @@ private struct CameraAsciiView: View {
             smokeText.withCString { text in
                 _ = ios_render_bridge_write(1, text, smokeText.utf8.count)
             }
+        }
+        .onDisappear {
+            if cameraStarted { asciichat_ios_camera_stop() }
         }
     }
 }
