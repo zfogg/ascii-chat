@@ -193,6 +193,10 @@ list(APPEND CORE_SRCS
     ${LIB_DIR}/options/registry/debug.c
 )
 
+if(PLATFORM_IOS)
+    list(APPEND CORE_SRCS ${LIB_DIR}/ios/camera.c)
+endif()
+
 # Additional debug sources only in non-Release builds
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS
