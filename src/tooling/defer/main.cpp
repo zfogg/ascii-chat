@@ -40,7 +40,8 @@ int main(int argc, char **argv) {
         std::istringstream lines(defer_tool::read_file(std::filesystem::u8path(scan_input.getValue())));
         std::string source;
         while (std::getline(lines, source)) {
-          if (!source.empty() && source.back() == '\r') source.pop_back();
+          if (!source.empty() && source.back() == '\r')
+            source.pop_back();
           if (!source.empty() && defer_tool::may_contain_defer(defer_tool::read_file(std::filesystem::u8path(source))))
             llvm::outs() << source << '\n';
         }
@@ -54,11 +55,12 @@ int main(int argc, char **argv) {
       if (plan_stage.empty() || plan_output.empty() || build_directory.empty())
         throw std::runtime_error("planning requires --plan-stage, --plan-output, and --build-dir");
       defer_tool::plan_batches(std::filesystem::u8path(plan_records.getValue()),
-                              std::filesystem::u8path(build_directory.getValue()), plan_stage.getValue(),
-                              std::filesystem::u8path(plan_output.getValue()));
+                               std::filesystem::u8path(build_directory.getValue()), plan_stage.getValue(),
+                               std::filesystem::u8path(plan_output.getValue()));
       return 0;
     }
-    if (!libclang.empty()) defer_tool::verify_libclang(std::filesystem::u8path(libclang.getValue()));
+    if (!libclang.empty())
+      defer_tool::verify_libclang(std::filesystem::u8path(libclang.getValue()));
     defer_tool::DriverOptions options;
     if (!compilation_database.empty())
       options.compilation_database =

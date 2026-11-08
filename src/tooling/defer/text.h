@@ -51,8 +51,14 @@ inline bool may_contain_defer(std::string_view source) {
   std::string unspliced;
   unspliced.reserve(source.size());
   for (std::size_t i = 0; i < source.size(); ++i) {
-    if (source.substr(i, 2) == "\\\n") { ++i; continue; }
-    if (source.substr(i, 3) == "\\\r\n") { i += 2; continue; }
+    if (source.substr(i, 2) == "\\\n") {
+      ++i;
+      continue;
+    }
+    if (source.substr(i, 3) == "\\\r\n") {
+      i += 2;
+      continue;
+    }
     unspliced += source[i];
   }
   source = unspliced;
