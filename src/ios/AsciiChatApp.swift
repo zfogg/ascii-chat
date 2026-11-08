@@ -120,25 +120,46 @@ private struct CameraAsciiView: View {
                 _ = ios_render_bridge_write(1, text, smokeText.utf8.count)
             }
         }
-        .overlay(alignment: .bottom) {
-            Button("Start mirror") {
-                DispatchQueue.global(qos: .userInitiated).async {
-                    _ = asciichat_ios_main(0)
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .padding()
+    }
+}
+
+private enum IOSMode: Int32, CaseIterable, Identifiable {
+    case mirror = 0
+    case client = 1
+    case discovery = 2
+
+    var id: Int32 { rawValue }
+    var title: String {
+        switch self {
+        case .mirror: return "Mirror"
+        case .client: return "Client"
+        case .discovery: return "Discovery"
         }
     }
 }
 
 struct ContentView: View {
+    @State private var selectedMode: IOSMode = .mirror
+
     var body: some View {
         VStack {
             Text("ascii-chat iOS prototype")
             TestFrameView()
             CameraAsciiView()
+            Picker("Mode", selection: $selectedMode) {
+                ForEach(IOSMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            Button("Start \(selectedMode.title.lowercased())") {
+                DispatchQueue.global(qos: .userInitiated).async {
+                    _ = asciichat_ios_main(selectedMode.rawValue)
+                }
+            }
+            .buttonStyle(.borderedProminent)
         }
+        .padding()
     }
 }
 
