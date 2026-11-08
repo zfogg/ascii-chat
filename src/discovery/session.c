@@ -1233,7 +1233,7 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
   mutex_unlock(&session->nat_quality_mutex);
   if ((GET_OPTION(quic_bind_address)[0] ||
        (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])) &&
-       GET_OPTION(tls_cert)[0] && GET_OPTION(tls_key)[0])
+      GET_OPTION(tls_cert)[0] && GET_OPTION(tls_key)[0])
     message.capabilities |= 1; // A configured native listener can prepare a direct successor.
   memcpy(message.session, session->session_id, SESSION_ID_SIZE);
   memcpy(message.participant, session->participant_id, SESSION_ID_SIZE);
