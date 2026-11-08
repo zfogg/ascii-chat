@@ -24,9 +24,11 @@ if(PLATFORM_IOS)
     if(BUILD_IOS_SIM)
         execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
         set(IOS_SDK_NAME "iphonesimulator")
+        set(FFMPEG_IOS_MIN_FLAG "-mios-simulator-version-min=16.0")
     else()
         execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
         set(IOS_SDK_NAME "iphoneos")
+        set(FFMPEG_IOS_MIN_FLAG "-miphoneos-version-min=16.0")
     endif()
 
     if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.a" OR
@@ -45,12 +47,14 @@ if(PLATFORM_IOS)
             STAMP_DIR ${FFMPEG_BUILD_DIR}/stamps
             UPDATE_DISCONNECTED 1
             BUILD_ALWAYS 0
-            CONFIGURE_COMMAND bash -c "cd <SOURCE_DIR> && ./configure \
+            CONFIGURE_COMMAND bash -c "cd <SOURCE_DIR> && env -u CPPFLAGS -u CFLAGS -u CXXFLAGS -u LDFLAGS ./configure \
                 --prefix=${FFMPEG_PREFIX} \
                 --enable-cross-compile \
                 --arch=arm64 \
                 --cc=clang \
                 --sysroot=${IOS_SDK_PATH} \
+                --extra-cflags=${FFMPEG_IOS_MIN_FLAG} \
+                --extra-ldflags=${FFMPEG_IOS_MIN_FLAG} \
                 --enable-static \
                 --disable-shared \
                 --enable-pic \
@@ -68,8 +72,7 @@ if(PLATFORM_IOS)
                 --enable-protocol=file,http,https,rtsp,rtmp,hls \
                 --enable-demuxer=mov,matroska,avi,gif,image2,mp3,wav,flac,ogg,hls \
                 --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg,mp3,aac,flac,vorbis,opus,pcm_s16le \
-                --enable-encoder=hevc_videotoolbox,libx265 \
-                --enable-libx265 \
+                --enable-encoder=hevc_videotoolbox \
                 --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video,aac,mpegaudio \
                 --enable-swscale \
                 --enable-swresample"
