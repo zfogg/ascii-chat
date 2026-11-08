@@ -216,7 +216,10 @@ private struct CameraAsciiView: View {
             }
         }
         .onDisappear {
-            if cameraStarted { asciichat_ios_camera_stop() }
+            if cameraStarted {
+                asciichat_ios_camera_stop()
+                cameraStarted = false
+            }
         }
     }
 }
