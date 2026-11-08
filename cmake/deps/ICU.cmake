@@ -28,7 +28,7 @@ elseif(USE_MUSL OR PLATFORM_IOS)
     set(_icu_host_build "${CMAKE_BINARY_DIR}/_deps/icu-host-build")
     set(_icu_prefix "${CMAKE_BINARY_DIR}/_deps/installed/icu")
     set(_icu_options --enable-static --disable-shared --disable-tests --disable-samples
-        --disable-extras --disable-icuio --with-data-packaging=static)
+        --disable-extras --disable-icuio --disable-tools --with-data-packaging=static)
     ExternalProject_Add(asciichat-icu-host
         URL https://github.com/unicode-org/icu/releases/download/release-78.3/icu4c-78.3-sources.tgz
         URL_HASH SHA512=04A49455E1489030C520A4BFD2664FA2171E7938D08F2ACDBBCB1FDA976639FD8B1F0704F2EEC89BA59A7B6D118CEAAB6EC5A096E40D9085A0895D91CE225245
