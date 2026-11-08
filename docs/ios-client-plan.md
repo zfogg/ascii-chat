@@ -114,6 +114,9 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 - [x] Route ANSI output through the shared libvterm + FreeType renderer into SwiftUI.
 - [x] Expose mirror, client, and discovery entry points through the native mode selector.
 - [x] Request camera authorization through AVFoundation and keep capture in `video/webcam/ios/`.
+- [x] Start with a mode selector and disable native modes until their lifecycle is ready.
+- [x] Declare camera and microphone privacy usage in the app bundle.
+- [x] Provide a repeatable x86_64/arm64 simulator build helper.
 - [ ] Keep native mode execution alive after startup and report C lifecycle errors to SwiftUI.
 - [ ] Replace the PortAudio compatibility surface with an AVAudioEngine-backed stream.
 - [ ] Produce and validate an arm64 device archive and XCFramework.
