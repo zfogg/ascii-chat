@@ -693,6 +693,11 @@ def test_cmake_discovers_defer_and_tracks_headers(
         "void second(void) { de\\\nfer /* cleanup (LIFO) */ ((void)0); }\n",
         encoding="utf-8",
     )
+    (source_dir / "named.c").write_text(
+        '#include "ascii-chat/tooling/defer/defer.h"\n'
+        "void named(void) { defer_named(cleanup, (void)0); defer_cancel(cleanup); }\n",
+        encoding="utf-8",
+    )
     main = source_dir / "main.c"
     main.write_text("int main(void) { return 0; }\n", encoding="utf-8")
     header = source_dir / "value.h"
@@ -715,7 +720,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
         encoding="utf-8",
     )
     (source_dir / "CMakeLists.txt").write_text(
-        "add_executable(ascii-chat-probe main.c second.c)\n"
+        "add_executable(ascii-chat-probe main.c second.c named.c)\n"
         "set_source_files_properties(second.c PROPERTIES COMPILE_DEFINITIONS SECOND_REQUIRED)\n"
         "set_target_properties(ascii-chat-probe PROPERTIES UNITY_BUILD ON)\n"
         "add_dependencies(ascii-chat-probe generate_version)\n"
