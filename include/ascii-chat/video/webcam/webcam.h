@@ -2,6 +2,7 @@
 
 /**
  * @defgroup os OS Abstractions
+ * @ingroup module_abstractions
  *
  * @defgroup webcam Webcam Module
  * @ingroup os

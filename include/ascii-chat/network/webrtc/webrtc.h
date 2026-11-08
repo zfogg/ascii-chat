@@ -27,6 +27,7 @@ extern "C" {
 
 /**
  * @defgroup webrtc WebRTC P2P Connections
+ * @ingroup module_network
  * @brief WebRTC DataChannel transport for ACIP packets
  * @{
  */

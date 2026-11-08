@@ -1,5 +1,6 @@
 /**
  * @defgroup session Session Management Module
+ * @ingroup module_core
  * @brief Real-time audio-video session abstraction layer
  * @details
  *
