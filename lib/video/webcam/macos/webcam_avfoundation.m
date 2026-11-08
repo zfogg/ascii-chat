@@ -6,6 +6,7 @@
 
 #ifdef __APPLE__
 
+#import <TargetConditionals.h>
 #import <AVFoundation/AVFoundation.h>
 #import <CoreMedia/CoreMedia.h>
 #import <CoreVideo/CoreVideo.h>
@@ -122,6 +123,11 @@ static NSArray *getSupportedDeviceTypes(void) {
   // Always add built-in camera
   [deviceTypes addObject:AVCaptureDeviceTypeBuiltInWideAngleCamera];
 
+#if TARGET_OS_IPHONE
+  if (@available(iOS 11.1, *)) {
+    [deviceTypes addObject:AVCaptureDeviceTypeBuiltInTrueDepthCamera];
+  }
+#else
   // Add continuity camera support for macOS 13.0+
   if (@available(macOS 13.0, *)) {
     [deviceTypes addObject:AVCaptureDeviceTypeContinuityCamera];
@@ -131,6 +137,7 @@ static NSArray *getSupportedDeviceTypes(void) {
   if (@available(macOS 14.0, *)) {
     [deviceTypes addObject:AVCaptureDeviceTypeExternal];
   }
+#endif
 
   return [[deviceTypes copy] autorelease];
 }
