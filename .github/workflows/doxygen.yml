@@ -21,7 +21,7 @@ on:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -89,7 +89,21 @@ jobs:
 
       - name: Build documentation with CMake
         run: |
+          # Do not let removed symbols/pages survive in the generated tree.
+          rm -rf build_release/share/doc/html build_release/share/man/man3
           cmake --build build_release --target docs
+
+      - name: Commit generated documentation changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No repository documentation changes to commit."
+            exit 0
+          fi
+          git add --all
+          git commit -m "docs: regenerate documentation [skip ci]"
+          git push origin HEAD:master
 
       - name: Save build cache
         if: always()

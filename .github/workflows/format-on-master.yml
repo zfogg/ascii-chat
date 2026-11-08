@@ -1,0 +1,48 @@
+name: Format code on master
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: format-master
+  cancel-in-progress: false
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out master
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install latest LLVM tools
+        run: |
+          # Official installer from https://apt.llvm.org/
+          bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+          sudo apt-get update
+          sudo apt-get install --yes cmake ninja-build clang-format
+
+      - name: Configure CMake
+        run: cmake --preset release -B build_release -DUSE_MUSL=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
+
+      - name: Format authored sources with CMake
+        run: cmake --build build_release --target format
+
+      - name: Commit and push formatting changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "Formatting is already clean."
+            exit 0
+          fi
+          git add --all
+          git commit -m "style: format code with clang-format [skip ci]"
+          git push origin HEAD:master
