@@ -53,6 +53,13 @@ uint32_t ascii_stabilizer_blend_color(uint32_t previous, uint32_t current, unsig
   return result;
 }
 
+static unsigned source_color_motion(uint32_t previous, uint32_t current) {
+  unsigned difference = 0;
+  for (unsigned shift = 0; shift <= 16; shift += 8)
+    difference += (unsigned)abs((int)((previous >> shift) & 255) - (int)((current >> shift) & 255));
+  return difference / 3;
+}
+
 uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate,
                                  uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
                                  uint32_t *stabilized_color) {
@@ -152,8 +159,10 @@ void ascii_stabilizer_frame_row(ascii_frame_t *frame, ascii_color_t mode, bool b
               break;
           }
         }
-        color = ascii_stabilizer_blend_color(cell->color, color, weight);
+        if (mode == ASCII_COLOR_NONE || source_color_motion(cell->source_color, color) <= ASCII_TEMPORAL_MOTION_LIMIT)
+          color = ascii_stabilizer_blend_color(cell->color, color, weight);
       }
+      cell->source_color = frame->packed[x];
       cell->samples[0] = luma;
       cell->glyph = frame->glyph[x] = glyph;
       cell->color = frame->packed[x] = color;
@@ -179,7 +188,12 @@ void ascii_stabilizer_halfrow(ascii_frame_t *frame, ascii_color_t mode, const si
         uint8_t samples[16];
         memset(samples, luma, sizeof(samples));
         ascii_temporal_cell_t *cell = &frame->stabilizer->cells[(top_row + half) * frame->width + x];
-        ascii_stabilizer_choose(cell, samples, 0, 0, UINT64_MAX, color, frame->stabilizer->elapsed_ns, pixels[half]);
+        uint64_t elapsed = frame->stabilizer->elapsed_ns;
+        if (cell->valid && mode != ASCII_COLOR_NONE &&
+            source_color_motion(cell->source_color, color) > ASCII_TEMPORAL_MOTION_LIMIT)
+          elapsed = UINT64_MAX;
+        cell->source_color = color;
+        ascii_stabilizer_choose(cell, samples, 0, 0, UINT64_MAX, color, elapsed, pixels[half]);
       }
       if (!has_bottom)
         frame->index[x] = frame->packed[x];

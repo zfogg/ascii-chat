@@ -675,7 +675,13 @@ typedef enum {
   /** @brief Background color support (TERM_CAP_BACKGROUND) */
   TERM_CAP_BACKGROUND = 0x0010,
   /** @brief Client requests Matrix digital-rain post-processing */
-  TERM_CAP_MATRIX_RAIN = 0x0020
+  TERM_CAP_MATRIX_RAIN = 0x0020,
+  /** @brief Request glyph matching from the first rendered frame. */
+  TERM_CAP_GLYPH_RENDERER = 0x0040,
+  /** @brief The advertised palette was explicitly selected. */
+  TERM_CAP_EXPLICIT_PALETTE = 0x0080,
+  /** @brief Request temporal stabilization from the first rendered frame. */
+  TERM_CAP_STABILIZE = 0x0100
 } terminal_capability_flags_t;
 
 /**

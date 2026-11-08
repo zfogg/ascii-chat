@@ -99,6 +99,10 @@ asciichat_error_t acip_render_settings_capabilities(acip_render_settings_t *stat
     values->palette_type = PALETTE_STANDARD;
   SAFE_STRNCPY(values->palette_custom, packet->palette_custom, sizeof(values->palette_custom));
   values->matrix_rain = (NET_TO_HOST_U32(packet->capabilities) & TERM_CAP_MATRIX_RAIN) != 0;
+  uint32_t flags = NET_TO_HOST_U32(packet->capabilities);
+  values->renderer = (flags & TERM_CAP_GLYPH_RENDERER) ? ASCII_RENDERER_GLYPH : ASCII_RENDERER_LUMINANCE;
+  values->palette_explicit = (flags & TERM_CAP_EXPLICIT_PALETTE) != 0;
+  values->stabilize = (flags & TERM_CAP_STABILIZE) != 0;
   acip_render_settings_t next = *state;
   next.caps.capabilities = NET_TO_HOST_U32(packet->capabilities);
   next.caps.utf8_support = NET_TO_HOST_U32(packet->utf8_support) != 0;

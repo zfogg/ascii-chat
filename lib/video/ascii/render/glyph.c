@@ -31,6 +31,17 @@ static int glyph_palette_index(const uint8_t *p, size_t *length) {
   return -1;
 }
 
+static uint8_t glyph_block_pixel(int block, int x, int y) {
+  if (block >= 17)
+    return (uint8_t)((block - 16) * 255 / 4);
+  bool set = block == 0    ? y < 4
+             : block <= 7  ? y >= 8 - block
+             : block == 8  ? true
+             : block <= 15 ? x < 16 - block
+                           : x >= 4;
+  return set ? 255 : 0;
+}
+
 // Block elements have font-independent geometry. Coverage is the area of
 // each quarter-cell covered by the block, including eighth-cell boundaries.
 static void glyph_block_mask(int block, uint8_t mask[16]) {
@@ -40,13 +51,7 @@ static void glyph_block_mask(int block, uint8_t mask[16]) {
       for (int sy = 0; sy < 2; ++sy) {
         for (int sx = 0; sx < 2; ++sx) {
           int px = 2 * x + sx, py = 2 * y + sy;
-          bool set = block == 0    ? py < 4
-                     : block <= 7  ? py >= 8 - block
-                     : block == 8  ? true
-                     : block <= 15 ? px < 16 - block
-                     : block == 16 ? px >= 4
-                                   : false;
-          coverage += set ? 1 : 0;
+          coverage += glyph_block_pixel(block, px, py) == 255 ? 1 : 0;
         }
       }
       mask[y * 4 + x] = block >= 17 ? (uint8_t)((block - 16) * 255 / 4) : (uint8_t)(coverage * 255 / 4);
@@ -203,7 +208,8 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
     if (g >= GLYPH_ASCII_COUNT)
       glyph_block_mask(g - GLYPH_ASCII_COUNT, block_mask);
     for (int i = 0; i < 64; ++i)
-      glyph->fine[i] = g < GLYPH_ASCII_COUNT ? glyph_masks_fine[g][i] : mask[(i / 16) * 4 + (i % 8) / 2];
+      glyph->fine[i] =
+          g < GLYPH_ASCII_COUNT ? glyph_masks_fine[g][i] : glyph_block_pixel(g - GLYPH_ASCII_COUNT, i % 8, i / 8);
     glyph->sum = glyph->energy = 0;
     for (int i = 0; i < 16; ++i) {
       glyph->mask[i] = mask[i];

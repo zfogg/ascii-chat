@@ -26,7 +26,13 @@ typedef struct {
   bool dither;
 } ascii_render_options_t;
 
-/** Render an image using the chosen renderer. The caller frees the returned text. */
+/**
+ * Render an image using the chosen renderer. The caller frees the returned text.
+ * Luminance maps one input pixel to one terminal cell. Glyph matching consumes
+ * an 8×8 pixel region per cell and requires both image dimensions to be positive
+ * multiples of eight. Callers select and scale the input to their desired cell
+ * dimensions before calling this function.
+ */
 char *ascii_render_image(const image_t *image, const ascii_render_options_t *options);
 /** Check whether a renderer accepts a nonempty palette. */
 bool ascii_render_palette_supported(ascii_renderer_t kind, const char *palette);

@@ -108,6 +108,22 @@ static void test_dimensions(void) {
   options_state_destroy();
 }
 
+static void test_initial_renderer_capabilities(void) {
+  cr_assert_eq(options_state_init(), ASCIICHAT_OK);
+  cr_assert_eq(options_set_int("renderer", ASCII_RENDERER_GLYPH), ASCIICHAT_OK);
+  cr_assert_eq(options_set_bool("stabilize", true), ASCIICHAT_OK);
+  terminal_capabilities_packet_t packet;
+  session_protocol_build_capabilities(80, 24, &packet);
+  acip_render_settings_t remote = {0};
+  cr_assert_eq(acip_render_settings_capabilities(&remote, &packet), ASCIICHAT_OK);
+  cr_assert_eq(remote.caps.text_renderer, ASCII_RENDERER_GLYPH);
+  cr_assert(remote.caps.stabilize);
+  cr_assert(!remote.caps.palette_explicit);
+  cr_assert_str_eq(remote.palette,
+                   " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~");
+  options_state_destroy();
+}
+
 typedef struct {
   acip_render_settings_t host;
   uint8_t reply[ACIP_SETTINGS_MAX_SIZE];
@@ -376,6 +392,7 @@ static void test_rendered_frame_validation(void) {
 void test_session_protocol(void) {
   test_rendered_frame_validation();
   test_dimensions();
+  test_initial_renderer_capabilities();
   test_participant_settings();
   sink_t sinks[2] = {0};
   const acip_transport_methods_t methods = {.sendv = send_vectors};

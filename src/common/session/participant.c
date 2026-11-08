@@ -382,6 +382,8 @@ asciichat_error_t session_participant_request_settings(session_participant_t *p,
 
   options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
   session_settings_to_options(settings, values);
+  if (!values->fps)
+    values->fps = DEFAULT_MAX_FPS;
   if (values->color_mode == TERM_COLOR_AUTO) {
     terminal_capabilities_t caps = detect_terminal_capabilities();
     values->color_mode = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;

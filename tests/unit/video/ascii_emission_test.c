@@ -202,6 +202,64 @@ Test(ascii_emission, renderer_api_dispatches_and_rejects_unknown_kind) {
   CLEAR_ERRNO();
 }
 
+Test(ascii_emission, monochrome_fallback_does_not_emit_color_resets) {
+  simd_cells_t fallback = simd_cells_scalar;
+  fallback.emit_mono = NULL;
+  uint32_t glyphs[] = {'A', 'B'};
+  uint32_t foreground[] = {1, UINT32_MAX};
+  uint32_t background[] = {2, UINT32_MAX};
+  outbuf_t output = {0};
+  ascii_emit_prepared_row(&output, ASCII_COLOR_NONE, &fallback, glyphs, foreground, background, 2);
+  ob_term(&output);
+  cr_assert_str_eq(output.buf, "AB");
+  SAFE_FREE(output.buf);
+}
+
+Test(ascii_emission, fine_block_geometry_preserves_single_pixel_edges) {
+  rgb_pixel_t pixels[64] = {0};
+  for (int x = 0; x < 8; ++x)
+    pixels[56 + x] = (rgb_pixel_t){120, 120, 120};
+  image_t image = {.w = 8, .h = 8, .pixels = pixels};
+  char *output = test_render_glyph(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "_\xe2\x96\x81");
+  cr_assert_not_null(output);
+  terminal_cell_t cell = {0};
+  decode(output, &cell, 1, 1, true);
+  cr_assert_str_eq(cell.glyph, "\xe2\x96\x81");
+  SAFE_FREE(output);
+}
+
+Test(ascii_emission, stabilization_rejects_isoluminant_color_motion) {
+  ascii_stabilizer_t state = {0};
+  cr_assert_eq(ascii_stabilizer_prepare(&state, 1, 1, 1), ASCIICHAT_OK);
+  state.elapsed_ns = 16000000;
+  ascii_stabilizer_t *prior = ascii_stabilizer_set_target(&state);
+  rgb_pixel_t pixels[2] = {{150, 0, 0}, {150, 0, 0}};
+  image_t image = {.w = 1, .h = 1, .pixels = pixels};
+  char *first = ascii_render(&image, " .#@", ASCII_COLOR_TRUE, false, false, &simd_cells_scalar);
+  cr_assert_not_null(first);
+  SAFE_FREE(first);
+  pixels[0] = (rgb_pixel_t){0, 77, 0};
+  char *next = ascii_render(&image, " .#@", ASCII_COLOR_TRUE, false, false, &simd_cells_scalar);
+  cr_assert_not_null(next);
+  cr_assert_eq(state.cells[0].color, 0x004d00);
+  SAFE_FREE(next);
+  ascii_stabilizer_reset(&state);
+  cr_assert_eq(ascii_stabilizer_prepare(&state, 1, 2, 2), ASCIICHAT_OK);
+  state.elapsed_ns = 16000000;
+  pixels[0] = pixels[1] = (rgb_pixel_t){150, 0, 0};
+  first = ascii_render_halfblocks((const uint8_t *)pixels, 1, 2, 3, ASCII_COLOR_TRUE, &simd_cells_scalar);
+  cr_assert_not_null(first);
+  SAFE_FREE(first);
+  pixels[0] = pixels[1] = (rgb_pixel_t){0, 77, 0};
+  next = ascii_render_halfblocks((const uint8_t *)pixels, 1, 2, 3, ASCII_COLOR_TRUE, &simd_cells_scalar);
+  cr_assert_not_null(next);
+  cr_assert_eq(state.cells[0].color, 0x004d00);
+  cr_assert_eq(state.cells[1].color, 0x004d00);
+  SAFE_FREE(next);
+  ascii_stabilizer_set_target(prior);
+  ascii_stabilizer_reset(&state);
+}
+
 Test(ascii_emission, all_backends_terminal_cells, .timeout = 120) {
   const int widths[] = {1, 2, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 127, 129, 257};
   const char *palettes[] = {" .:+#@", " \xc2\xb7\xe2\x96\x91\xe2\x96\x88", "@"};
@@ -867,7 +925,8 @@ Test(ascii_emission, optimized_luminance_matches_generic_hysteresis) {
   for (unsigned old = 0; old < 256; old += 3) {
     for (unsigned current = 0; current < 256; current += 5) {
       unsigned old_bin = old >> 2, bin = current >> 2;
-      ascii_temporal_cell_t reference = {.glyph = frame.table[old_bin], .color = 0x646464, .valid = true};
+      ascii_temporal_cell_t reference = {
+          .glyph = frame.table[old_bin], .color = 0x646464, .source_color = old * 0x010101u, .valid = true};
       memset(reference.samples, old, sizeof(reference.samples));
       state.cells[0] = reference;
       uint64_t best = UINT64_MAX, previous = UINT64_MAX;

@@ -59,8 +59,16 @@ static size_t glyph_bytes(uint32_t key) {
 
 void ascii_emit_prepared_row(outbuf_t *out, ascii_color_t mode, const simd_cells_t *ops, const uint32_t *glyph,
                              const uint32_t *fg, const uint32_t *bg, size_t width) {
-  if (mode == ASCII_COLOR_NONE && ops->emit_mono) {
-    ops->emit_mono(out, glyph, width);
+  if (mode == ASCII_COLOR_NONE) {
+    if (ops->emit_mono) {
+      ops->emit_mono(out, glyph, width);
+    } else {
+      for (size_t x = 0; x < width;) {
+        size_t run = ops->run(glyph + x, fg + x, bg + x, width - x);
+        emit_glyph_run(out, &glyph[x], glyph_bytes(glyph[x]), (uint32_t)run);
+        x += run;
+      }
+    }
     return;
   }
   uint32_t current_fg = UINT32_MAX, current_bg = UINT32_MAX;

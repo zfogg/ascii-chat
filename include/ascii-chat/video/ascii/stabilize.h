@@ -12,6 +12,7 @@ typedef struct {
   uint32_t glyph;
   uint32_t color;
   uint32_t background;
+  uint32_t source_color;
   uint64_t source_owner;
   bool valid;
 } ascii_temporal_cell_t;
