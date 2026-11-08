@@ -270,6 +270,15 @@ if (-not $clangCommand) {
         $AllInstalled = $false
     }
 }
+if ($AllInstalled -and $IsWindows) {
+    if (-not $env:ASCIICHAT_LLVM_DEV_ROOT) {
+        & (Join-Path $PSScriptRoot 'install-llvm-dev.ps1')
+        $suffix = if ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64') { '-aarch64' } else { '' }
+        $env:ASCIICHAT_LLVM_DEV_ROOT = Join-Path (Split-Path $PSScriptRoot -Parent) ".deps-cache/llvm-dev-23.1.3$suffix"
+    }
+    $env:PATH = "$(Join-Path $env:ASCIICHAT_LLVM_DEV_ROOT 'bin');$env:PATH"
+    Write-Host "LLVM development root: $env:ASCIICHAT_LLVM_DEV_ROOT"
+}
 if ($AllInstalled) {
     Write-Host "All dependencies installed successfully!" -ForegroundColor Green
     Write-Host ""

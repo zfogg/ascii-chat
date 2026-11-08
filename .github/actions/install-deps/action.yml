@@ -423,8 +423,7 @@ runs:
         Ensure-ScoopBucket -Bucket 'main'
         Ensure-ScoopBucket -Bucket 'extras'
 
-        # NOTE: LLVM is installed separately from vovkos/llvm-package-windows
-        # because scoop/choco/winget LLVM packages don't include dev libraries
+        # The matching LLVM development archive is installed separately below.
         # doxygen is needed for generating documentation included in installers
         # NOTE: git is already pre-installed on GitHub Actions Windows runners
         $basePackages = @('ninja', 'ccache', 'doxygen')
@@ -456,7 +455,7 @@ runs:
           exit 1
         }
 
-    # LLVM 23 supplies the compiler and matching libclang used by the Python transformer.
+    # The MSI supplies the compiler; the matching development archive supplies LLVM C++ libraries.
     - name: Install LLVM 23 (Windows)
       if: inputs.os == 'windows'
       shell: pwsh
@@ -528,6 +527,53 @@ runs:
           Write-Host "Current PATH: $env:PATH" -ForegroundColor Red
           exit 1
         }
+
+    - name: Restore LLVM development files (Windows)
+      if: inputs.os == 'windows'
+      uses: actions/cache@v4
+      with:
+        path: |
+          .deps-cache/llvm-dev-23.1.3*/include
+          .deps-cache/llvm-dev-23.1.3*/lib
+          .deps-cache/llvm-dev-23.1.3*/bin
+        key: ${{ runner.os }}-${{ runner.arch }}-llvm-dev-23.1.3-v1
+
+    - name: Install LLVM development files (Windows)
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        $arch = if ('${{ runner.arch }}' -eq 'ARM64') { 'aarch64' } else { 'x86_64' }
+        $suffix = if ($arch -eq 'aarch64') { '-aarch64' } else { '' }
+        $root = Join-Path $PWD ".deps-cache/llvm-dev-23.1.3$suffix"
+        & ./scripts/install-llvm-dev.ps1 -Architecture $arch -Destination $root
+        Add-Content -Path $env:GITHUB_ENV -Value "ASCIICHAT_LLVM_DEV_ROOT=$root"
+        Add-Content -Path $env:GITHUB_PATH -Value (Join-Path $root 'bin')
+
+    - name: Verify LLVM development libraries (Windows)
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        $build = Join-Path $env:RUNNER_TEMP 'llvm-dev-probe'
+        cmake -S cmake/probes/llvm-dev -B $build -G Ninja "-DCMAKE_CXX_COMPILER=$env:CXX" "-DASCIICHAT_LLVM_DEV_ROOT=$env:ASCIICHAT_LLVM_DEV_ROOT"
+        if ($LASTEXITCODE -ne 0) { throw 'LLVM development probe configuration failed' }
+        cmake --build $build
+        if ($LASTEXITCODE -ne 0) { throw 'LLVM development probe failed to compile or link' }
+        & (Join-Path $build 'ascii-llvm-dev-probe.exe') --check
+        if ($LASTEXITCODE -ne 0) { throw 'LLVM development probe failed to run' }
+
+    - name: Verify LLVM development libraries (Unix)
+      if: inputs.os == 'ubuntu' || inputs.os == 'macos'
+      shell: bash
+      run: |
+        set -e
+        if [[ '${{ inputs.os }}' == 'macos' ]]; then
+          compiler="$(brew --prefix llvm)/bin/clang++"
+        else
+          compiler="$(command -v clang++)"
+        fi
+        cmake -S cmake/probes/llvm-dev -B "$RUNNER_TEMP/llvm-dev-probe" -G Ninja "-DCMAKE_CXX_COMPILER=$compiler"
+        cmake --build "$RUNNER_TEMP/llvm-dev-probe"
+        "$RUNNER_TEMP/llvm-dev-probe/ascii-llvm-dev-probe" --check
 
     - name: Set up build environment (macOS)
       if: inputs.os == 'macos'
@@ -679,13 +725,11 @@ runs:
         $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
         New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
         $PSNativeCommandUseErrorActionPreference = $false
-        $PSNativeCommandUseErrorActionPreference = $false
         gh release download build-tools --pattern "bearssls.Windows.amd64.lib" --dir $bearsslDir
         if ($LASTEXITCODE -eq 0) {
           Move-Item -LiteralPath (Join-Path $bearsslDir "bearssls.Windows.amd64.lib") -Destination (Join-Path $bearsslDir "bearssls.lib") -Force
         } else {
           Write-Host "Prebuilt BearSSL unavailable; CMake will build it from source"
-          $LASTEXITCODE = 0
           $LASTEXITCODE = 0
         }
       env:

@@ -88,6 +88,21 @@ verify_llvm_for_defer() {
     echo >&2 "ERROR: libclang for $compiler was not found in $libdir; install the matching LLVM development package"
     exit 1
   fi
+  local llvm_config=''
+  for candidate in "${resolved_dir}/llvm-config" "${compiler_dir}/llvm-config"; do
+    if [ -x "$candidate" ]; then llvm_config="$candidate"; break; fi
+  done
+  if [ -z "$llvm_config" ]; then
+    echo >&2 "ERROR: llvm-config for $compiler was not found; install the matching LLVM development package"
+    exit 1
+  fi
+  local llvm_include
+  llvm_include="$("$llvm_config" --includedir)"
+  if [ ! -f "$llvm_include/llvm/Support/CommandLine.h" ] || [ ! -f "$llvm_include/clang-c/Index.h" ]; then
+    echo >&2 "ERROR: LLVM and libclang development headers are missing from $llvm_include"
+    exit 1
+  fi
+  "$llvm_config" --libs support --system-libs >/dev/null
 }
 
 # macOS: Use Homebrew
@@ -350,7 +365,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Installing dependencies..."
     yum install -y \
       pkg-config make autoconf automake libtool python3 python3-pip \
-      clang clang-devel llvm lld \
+      clang clang-devel llvm llvm-devel lld \
       libcxx-devel libcxxabi-devel \
       cmake ninja-build \
       musl-devel musl-gcc musl-libc-static \
