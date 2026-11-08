@@ -79,11 +79,17 @@ elseif(PLATFORM_POSIX)
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/clipboard.m
         ${CMAKE_CURRENT_SOURCE_DIR}/macos/system.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/process_title.c
-            ${CMAKE_CURRENT_SOURCE_DIR}/macos/keepawake.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/font.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/filesystem.m
             ${CMAKE_SOURCE_DIR}/lib/video/webcam/macos/webcam_avfoundation.m
         )
+        if(PLATFORM_IOS)
+            list(APPEND PLATFORM_SRCS
+                ${CMAKE_CURRENT_SOURCE_DIR}/ios/keepawake.c)
+        else()
+            list(APPEND PLATFORM_SRCS
+                ${CMAKE_CURRENT_SOURCE_DIR}/macos/keepawake.c)
+        endif()
     elseif(PLATFORM_LINUX)
         list(APPEND PLATFORM_SRCS
             ${CMAKE_CURRENT_SOURCE_DIR}/linux/clipboard.c

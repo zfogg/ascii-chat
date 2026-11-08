@@ -1341,6 +1341,8 @@ void debug_memory_report(void) {
   }
 }
 
+void debug_memory_thread_cleanup(void) {}
+
 // ============================================================================
 // Memory Report Debug Thread (triggered via SIGUSR2)
 // ============================================================================
@@ -1386,6 +1388,8 @@ void debug_memory_set_quiet_mode(bool quiet) {
 void debug_memory_report(void) {
   // No-op in release builds
 }
+
+void debug_memory_thread_cleanup(void) {}
 
 void *debug_malloc(size_t size, const char *file, int line) {
   (void)file;

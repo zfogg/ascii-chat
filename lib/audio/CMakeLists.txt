@@ -1,5 +1,8 @@
 # lib/audio - Audio processing
 
+if(PLATFORM_IOS)
+    set(AUDIO_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/ios_stub.c)
+else()
 set(AUDIO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/test_pattern.c
     ${CMAKE_CURRENT_SOURCE_DIR}/processor.c
@@ -15,6 +18,7 @@ set(AUDIO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/analysis.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client_pipeline.cpp
 )
+endif()
 
 set(AUDIO_SRCS ${AUDIO_SRCS} PARENT_SCOPE)
 

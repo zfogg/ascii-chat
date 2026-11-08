@@ -60,7 +60,14 @@
 #include <ascii-chat/audio/format.h>
 #include <stdbool.h>
 #include <ascii-chat/atomic.h>
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+#if defined(__APPLE__) && TARGET_OS_IPHONE
+typedef struct PaStream PaStream;
+#else
 #include <portaudio.h>
+#endif
 #ifdef __linux__
 #include <sched.h>
 #include <sys/resource.h>

@@ -447,8 +447,10 @@ else()
             ${COREMEDIA_FRAMEWORK}
             ${COREVIDEO_FRAMEWORK}
             ${CORESERVICES_FRAMEWORK}
-            ${IOKIT_FRAMEWORK}  # Required for IOPMLib.h (keepawake functionality)
         )
+        if(NOT PLATFORM_IOS)
+            target_link_libraries(ascii-chat-platform PRIVATE ${IOKIT_FRAMEWORK})
+        endif()
     elseif(PLATFORM_LINUX)
         target_link_libraries(ascii-chat-platform PRIVATE ${CMAKE_THREAD_LIBS_INIT})
         # Link libsystemd on Linux for keepawake functionality
@@ -583,10 +585,10 @@ if(VTERM_MUSL_TARGET)
 endif()
 
 # libvterm for terminal rendering in render-file
-if(VTERM_INCLUDE_DIRS)
+if(VTERM_INCLUDE_DIRS AND NOT PLATFORM_IOS)
     target_include_directories(ascii-chat-video PRIVATE ${VTERM_INCLUDE_DIRS})
 endif()
-if(VTERM_LDFLAGS)
+if(VTERM_LDFLAGS AND NOT PLATFORM_IOS)
     target_link_libraries(ascii-chat-video PRIVATE ${VTERM_LDFLAGS})
 endif()
 
@@ -788,7 +790,7 @@ endif()
 # Module 10: Network (depends on: util, platform, crypto, core)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT PLATFORM_IOS)
     target_link_libraries(ascii-chat-network PRIVATE asciichat-quic)
 endif()
 # clang-cl disables C++ exceptions by default, but this adapter catches

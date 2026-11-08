@@ -1,0 +1,1 @@
+/* Audio is provided by the native iOS client layer. */

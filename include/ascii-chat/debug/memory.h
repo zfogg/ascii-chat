@@ -109,6 +109,7 @@ void debug_memory_set_quiet_mode(bool quiet);
  * @endcode
  */
 void debug_memory_report(void);
+void debug_memory_thread_cleanup(void);
 
 /**
  * @brief Allocate memory with debug tracking
