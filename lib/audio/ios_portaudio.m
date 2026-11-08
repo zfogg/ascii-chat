@@ -46,6 +46,34 @@ static void ios_audio_refresh_devices(void) {
                                   .defaultSampleRate = 48000.0};
   }
 
+  NSArray<AVAudioSessionPortDescription *> *outputs = session.currentRoute.outputs;
+  for (AVAudioSessionPortDescription *output in outputs) {
+    if (g_ios_device_count >= IOS_AUDIO_MAX_DEVICES)
+      break;
+    BOOL already_listed = NO;
+    for (int index = 0; index < g_ios_device_count; ++index) {
+      AVAudioSessionPortDescription *input = g_ios_devices[index].input_port;
+      if (input && [input.UID isEqualToString:output.UID]) {
+        g_ios_devices[index].output_port = output;
+        g_ios_devices[index].info.maxOutputChannels = (int)output.channels.count;
+        already_listed = YES;
+        break;
+      }
+    }
+    if (already_listed)
+      continue;
+    ios_audio_device_t *device = &g_ios_devices[g_ios_device_count++];
+    device->output_port = output;
+    snprintf(device->name, sizeof(device->name), "%s", output.portName.UTF8String ?: "iOS Output");
+    device->info = (PaDeviceInfo){.structVersion = 1,
+                                  .name = device->name,
+                                  .maxInputChannels = 0,
+                                  .maxOutputChannels = (int)output.channels.count,
+                                  .defaultLowInputLatency = 0.01,
+                                  .defaultLowOutputLatency = 0.01,
+                                  .defaultSampleRate = 48000.0};
+  }
+
   if (g_ios_device_count == 0 && g_ios_device_count < IOS_AUDIO_MAX_DEVICES) {
     ios_audio_device_t *device = &g_ios_devices[g_ios_device_count++];
     snprintf(device->name, sizeof(device->name), "Apple Built-in Audio");
