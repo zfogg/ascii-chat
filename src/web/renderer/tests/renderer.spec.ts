@@ -108,3 +108,46 @@ test("standalone package renders modes, visualizations and canvas at 60 fps", as
     `Standalone renderer: ${results.fps.toFixed(1)} fps, canvas ${results.canvas.join("x")}`,
   );
 });
+
+test("Embind session owns native initialization and cleanup", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const url = "/renderer/src/renderer.js";
+    const factory = (await import(url)).default;
+    const module = await factory({
+      getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
+    });
+    const owner = new module.RendererSessionBinding();
+    const duplicate = new module.RendererSessionBinding();
+    const first = owner.valid();
+    const second = duplicate.valid();
+    const error = duplicate.error();
+    duplicate.delete();
+    const stillActive = owner.valid() && module.readOptions() !== undefined;
+    owner.delete();
+    const replacement = new module.RendererSessionBinding();
+    const restarted = replacement.valid();
+    replacement.delete();
+    return {
+      first,
+      second,
+      error,
+      stillActive,
+      restarted,
+      cleanupExposed: "mirror_cleanup" in module,
+      initExposed: "initMirror" in module,
+    };
+  });
+  expect(result).toEqual({
+    first: true,
+    second: false,
+    error: expect.any(Number),
+    stillActive: true,
+    restarted: true,
+    cleanupExposed: false,
+    initExposed: false,
+  });
+  expect(result.error).not.toBe(0);
+});

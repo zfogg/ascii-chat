@@ -94,9 +94,13 @@ interface PatternBinding {
   ): boolean;
   delete(): void;
 }
+interface SessionBinding {
+  valid(): boolean;
+  error(): number;
+  delete(): void;
+}
 interface Module extends OptionsBindings {
-  initMirror(args: string): number;
-  mirror_cleanup(): void;
+  RendererSessionBinding: new () => SessionBinding;
   sessionRenderResetStabilizer(): void;
   MirrorFrameBinding: new () => FrameBinding;
   TerminalRendererBinding: new (
@@ -125,7 +129,10 @@ export class AsciiRenderer {
   private rasterPixels: Uint8ClampedArray<ArrayBuffer> | undefined;
   private pattern: PatternBinding | undefined;
   private patternKey = "";
-  private constructor(private readonly module: Module) {
+  private constructor(
+    private readonly module: Module,
+    private readonly session: SessionBinding,
+  ) {
     this.options = new Options(module);
     this.frame = new module.MirrorFrameBinding();
   }
@@ -140,9 +147,18 @@ export class AsciiRenderer {
       ...runtime,
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0]!,
     });
-    if (module.initMirror("mirror") !== 0)
-      throw new Error("Failed to initialize ASCII renderer");
-    return new AsciiRenderer(module);
+    const session = new module.RendererSessionBinding();
+    if (!session.valid()) {
+      const code = session.error();
+      session.delete();
+      throw new Error(`Failed to initialize ASCII renderer (${code})`);
+    }
+    try {
+      return new AsciiRenderer(module, session);
+    } catch (error) {
+      session.delete();
+      throw error;
+    }
   }
   configure(values: RendererOptions): void {
     this.options.patch(values);
@@ -250,7 +266,7 @@ export class AsciiRenderer {
       this.pattern?.delete();
       this.raster?.delete();
       this.frame.delete();
-      this.module.mirror_cleanup();
+      this.session.delete();
       this.disposed = true;
     }
   }

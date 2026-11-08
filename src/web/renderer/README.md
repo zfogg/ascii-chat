@@ -35,8 +35,9 @@ Call `render` for every input frame; it accepts tightly packed RGBA bytes as a
 `draw` uses libvterm and FreeType to paint to a 2D canvas; it retains its raster
 renderer across calls. Pass matching output columns and rows to `draw` and the
 `width` and `height` options. `reset()` clears the temporal stabilizer when the
-source changes. `dispose()` releases the frame, test-pattern, raster, and WASM
-session resources and is safe to call more than once. Each `createRenderer()`
+source changes. `dispose()` releases the frame, test-pattern, raster, and Embind-owned session.
+The session destructor performs the native cleanup; `dispose()` is safe to call
+more than once. Each `createRenderer()`
 creates an independent module. Do not use a disposed renderer.
 
 ## Settings and effects

@@ -706,7 +706,7 @@ add_executable(renderer-web
     ${LIB_SRC_MIRROR_ONLY}
     $<TARGET_OBJECTS:wasm-common>
 )
-target_compile_definitions(renderer-web PRIVATE __EMSCRIPTEN__ EMSCRIPTEN_BUILD=1 BUILD_WASM_MIRROR=1)
+target_compile_definitions(renderer-web PRIVATE __EMSCRIPTEN__ EMSCRIPTEN_BUILD=1 BUILD_WASM_MIRROR=1 BUILD_WASM_RENDERER=1)
 target_compile_options(renderer-web PRIVATE -pthread -msimd128 -sUSE_FREETYPE=1)
 target_link_libraries(renderer-web PRIVATE asciichat-icu ${UTF8PROC_LIBRARIES} ${LIBSODIUM_LIBRARIES} ${PCRE2_LIBRARIES} ${VTERM_LDFLAGS})
 target_link_options(renderer-web PRIVATE

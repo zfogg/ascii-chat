@@ -603,8 +603,8 @@ interface EmbindModule {
   optionHelp(_0: number, _1: EmbindString): string | undefined;
   initMirror(_0: EmbindString): number;
   sessionRenderCleanup(): void;
-  sessionRenderResetStabilizer(): void;
   mirror_cleanup(): void;
+  sessionRenderResetStabilizer(): void;
   browser_capture_transform_required(): number;
   MirrorFrameBinding: {
     new (): MirrorFrameBinding;
