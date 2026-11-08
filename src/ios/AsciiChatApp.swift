@@ -22,6 +22,9 @@ private func ios_render_bridge_read_frame(
     _ pitch: UnsafeMutablePointer<Int32>
 ) -> Int32
 
+@_silgen_name("ios_render_bridge_write")
+private func ios_render_bridge_write(_ fd: Int32, _ data: UnsafeRawPointer, _ length: Int) -> Int
+
 private struct TestFrameView: View {
     private let image: CGImage?
 
@@ -112,8 +115,9 @@ private struct CameraAsciiView: View {
             readFrame()
         }
         .onAppear {
-            DispatchQueue.global(qos: .userInitiated).async {
-                _ = asciichat_ios_main(0)
+            let smokeText = "\u{1b}[2J\u{1b}[H\u{1b}[1;36mascii-chat iOS render bridge\u{1b}[0m\n\nC output is reaching SwiftUI through libvterm + FreeType."
+            smokeText.withCString { text in
+                _ = ios_render_bridge_write(1, text, smokeText.utf8.count)
             }
         }
     }

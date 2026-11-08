@@ -2,7 +2,7 @@
 
 # ascii-chat iOS Client - Implementation Plan (WIP)
 
-> **Status**: Render bridge milestone complete — the simulator app links and launches with C-side libvterm/FreeType frame capture exposed to SwiftUI; runtime mirror-frame verification remains next
+> **Status**: Render bridge smoke-test milestone complete — the simulator visibly displays ANSI text emitted through the C libvterm/FreeType bridge; regular mirror-mode lifecycle remains next
 > **Last Updated**: 2026-11-08
 > **Goal**: Native iOS app in Swift that uses libasciichat (compiled for iOS) to support server, client, mirror, and discovery modes.
 
@@ -1396,6 +1396,7 @@ produces pixels on screen.
 - [ ] `ModeView.swift` — shared pixel display with gesture input
 - [ ] `MirrorView.swift` — options form + ModeView
 - [x] Implement the C render bridge and Swift frame polling bridge
+- [x] Verify bridge output is visible in the iOS simulator
 - [ ] Verify: mirror mode shows ASCII webcam output on device
 - [ ] Settings UI: color mode, palette, render mode, dimensions (passed as argv)
 
