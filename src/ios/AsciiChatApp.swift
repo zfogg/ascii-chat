@@ -40,6 +40,12 @@ private func asciichat_ios_audio_authorized() -> Int32
 @_silgen_name("asciichat_ios_audio_request_access")
 private func asciichat_ios_audio_request_access()
 
+@_silgen_name("platform_enable_keepawake")
+private func platform_enable_keepawake() -> Int32
+
+@_silgen_name("platform_disable_keepawake")
+private func platform_disable_keepawake()
+
 private struct TestFrameView: View {
     private let image: CGImage?
 
@@ -196,6 +202,7 @@ struct ContentView: View {
             Button("Start \(selectedMode.title.lowercased())") {
                 launchMessage = "Starting \(selectedMode.title.lowercased())…"
                 didStart = true
+                _ = platform_enable_keepawake()
                 DispatchQueue.global(qos: .userInitiated).async {
                     _ = asciichat_ios_main(selectedMode.rawValue)
                 }
@@ -212,6 +219,9 @@ struct ContentView: View {
             }
         }
         .padding()
+        .onDisappear {
+            platform_disable_keepawake()
+        }
     }
 }
 
