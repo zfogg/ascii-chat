@@ -520,8 +520,8 @@ set(WEB_SRC_CLIENT
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/peer_crypto.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/session_host_adapter.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/discovery_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/session_host.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/discovery.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/host.c
     ${LIB_ROOT}/network/acip/server.c
     ${LIB_ROOT}/network/acip/settings.c

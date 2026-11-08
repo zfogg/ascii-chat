@@ -2,7 +2,7 @@
 #include "protocol_bytes.h"
 #include "byte_arrays.h"
 extern "C" {
-#include "../discovery_adapter.h"
+#include "../discovery.h"
 }
 #include <sodium.h>
 

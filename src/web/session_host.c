@@ -1,4 +1,4 @@
-#include "session_host_adapter.h"
+#include "session_host.h"
 /** Browser adapter for the same session host used by CLI discovery. */
 #include <emscripten.h>
 #include <emscripten/html5.h>

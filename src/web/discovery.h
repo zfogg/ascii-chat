@@ -1,4 +1,4 @@
-/** Browser-facing C interface implemented in discovery_adapter.c. */
+/** Browser-facing C interface implemented in discovery.c. */
 #pragma once
 
 #include <stdbool.h>

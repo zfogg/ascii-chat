@@ -1,7 +1,7 @@
 #include <emscripten/bind.h>
 #include "protocol_bytes.h"
 extern "C" {
-#include "../session_host_adapter.h"
+#include "../session_host.h"
 }
 #include <cstdint>
 #include <vector>
