@@ -102,7 +102,7 @@ def run(binary, evidence):
         assert names == {"render_file", "render_url", "render_webcam", "render_visualization", "device_list"}, names
         file_tool = next(tool for tool in listing["tools"] if tool["name"] == "render_file")
         fields = file_tool["inputSchema"]["properties"]["options"]["properties"]
-        assert fields["glyph-enhance"]["type"] == "boolean"
+        assert "glyph-enhance" not in fields
         checks.append("initialize and five advertised tools")
         local = successful(client.call({"path": str(image), "options": options}))
         text = ascii_text(local)
@@ -118,14 +118,14 @@ def run(binary, evidence):
         assert cli.returncode == 0, cli.stderr.decode(errors="replace")
         assert plain(text) == plain(cli.stdout.decode("utf-8")), "MCP and CLI ASCII differ"
         checks.append("path ASCII equals matching mirror CLI")
-        glyph_options = {**options, "renderer": "glyph", "glyph-enhance": True}
+        glyph_options = {**options, "renderer": "glyph"}
         glyph = successful(client.call({"path": str(image), "options": glyph_options}))
         glyph_command = cli_command(str(binary), "--log-level", "error", "mirror", "--file", str(image))
         for key, value in glyph_options.items():
             glyph_command.append(f"--{key}={str(value).lower() if isinstance(value, bool) else value}")
         glyph_cli = subprocess.run(glyph_command, cwd=evidence, env=env, capture_output=True, timeout=60, check=True)
-        assert plain(ascii_text(glyph)) == plain(glyph_cli.stdout.decode("utf-8")), "enhanced MCP and CLI differ"
-        checks.append("enhanced glyph output equals matching mirror CLI")
+        assert plain(ascii_text(glyph)) == plain(glyph_cli.stdout.decode("utf-8")), "glyph MCP and CLI differ"
+        checks.append("glyph output equals matching mirror CLI")
         encoded = successful(client.call({"data_base64": base64.b64encode(image.read_bytes()).decode(),
                                           "mime_type": "image/png", "options": options}))
         assert plain(ascii_text(encoded)) == plain(text), "base64 and path differ"

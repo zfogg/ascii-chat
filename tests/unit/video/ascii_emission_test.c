@@ -166,19 +166,11 @@ static void decode(const char *text, terminal_cell_t *cells, int width, int heig
   cr_assert_eq(bg, -1);
 }
 
-static char *test_render_glyph_enhanced(const image_t *image, ascii_color_t color, const simd_cells_t *ops,
-                                        const char *palette, bool background, bool enhance) {
-  const ascii_render_options_t options = {.kind = ASCII_RENDERER_GLYPH,
-                                          .color = color,
-                                          .backend = ops,
-                                          .palette = palette,
-                                          .background = background,
-                                          .enhance = enhance};
-  return ascii_render_image(image, &options);
-}
 static char *test_render_glyph_mode(const image_t *image, ascii_color_t color, const simd_cells_t *ops,
                                     const char *palette, bool background) {
-  return test_render_glyph_enhanced(image, color, ops, palette, background, false);
+  const ascii_render_options_t options = {
+      .kind = ASCII_RENDERER_GLYPH, .color = color, .backend = ops, .palette = palette, .background = background};
+  return ascii_render_image(image, &options);
 }
 static char *test_render_glyph(const image_t *image, ascii_color_t color, const simd_cells_t *ops,
                                const char *palette) {
@@ -803,22 +795,15 @@ Test(ascii_emission, glyph_indexed_dither_is_stable_and_spatial) {
   SAFE_FREE(second);
 }
 
-Test(ascii_emission, glyph_dark_detail_is_opt_in) {
+Test(ascii_emission, glyph_matching_lifts_dark_detail_by_default) {
   rgb_pixel_t pixels[64];
+  for (int i = 0; i < 64; ++i)
+    pixels[i] = (rgb_pixel_t){40, 40, 40};
   image_t image = {.w = 8, .h = 8, .pixels = pixels};
-  bool changed = false;
-  for (int level = 8; level < 100; ++level) {
-    for (int i = 0; i < 64; ++i)
-      pixels[i] = (rgb_pixel_t){level, level, level};
-    char *normal = test_render_glyph_enhanced(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL, false, false);
-    char *enhanced = test_render_glyph_enhanced(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL, false, true);
-    cr_assert_not_null(normal);
-    cr_assert_not_null(enhanced);
-    changed |= strcmp(normal, enhanced) != 0;
-    SAFE_FREE(normal);
-    SAFE_FREE(enhanced);
-  }
-  cr_assert(changed, "dark enhancement must affect glyph density");
+  char *output = test_render_glyph(&image, ASCII_COLOR_NONE, &simd_cells_scalar, NULL);
+  cr_assert_not_null(output);
+  cr_assert_eq(output[0], '~', "dark glyph density should reflect the automatic luminance lift");
+  SAFE_FREE(output);
 }
 
 Test(ascii_emission, optimized_glyph_scoring_matches_reference) {
@@ -840,6 +825,7 @@ Test(ascii_emission, optimized_glyph_scoring_matches_reference) {
       // The renderer averages each channel before computing luminance.
       int v = sums[i] / 4;
       luminance[i] = (77 * v + 150 * v + 29 * v) >> 8;
+      luminance[i] += (luminance[i] * (255 - luminance[i]) + 256) / 512;
     }
     int mean = 0;
     for (int i = 0; i < 16; ++i)

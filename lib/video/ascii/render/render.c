@@ -14,7 +14,7 @@ char *ascii_render_image(const image_t *image, const ascii_render_options_t *opt
     return ascii_luminance_render(image, options->palette, options->color, options->background, options->dither,
                                   backend);
   case ASCII_RENDERER_GLYPH:
-    return ascii_glyph_render(image, options->color, backend, options->palette, options->background, options->enhance);
+    return ascii_glyph_render(image, options->color, backend, options->palette, options->background);
   }
   SET_ERRNO(ERROR_INVALID_PARAM, "Unknown ASCII renderer");
   return NULL;

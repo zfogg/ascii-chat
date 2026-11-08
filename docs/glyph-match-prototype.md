@@ -12,8 +12,8 @@ in luminance background mode. Terminal color
 quantization happens after glyph selection. The default luminance renderer is
 unchanged.
 
-`--glyph-enhance` lifts dark luminance before glyph selection, while preserving
-the source colors. It is off by default and applies only to the glyph renderer.
+Glyph matching lifts dark luminance before glyph selection while preserving
+the source colors.
 For 16- and 256-color glyph output, a 4×4 ordered dither pattern is fixed to
 terminal cells to reduce banding without introducing frame-to-frame shimmer.
 

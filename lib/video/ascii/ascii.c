@@ -434,7 +434,6 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
   if (stabilizer) {
     uint64_t configuration = 1469598103934665603ULL;
     const unsigned values[] = {(unsigned)caps->text_renderer,
-                               (unsigned)caps->glyph_enhance,
                                (unsigned)caps->color_level,
                                (unsigned)caps->render_mode,
                                (unsigned)caps->color_filter,
@@ -477,8 +476,7 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
                                                 .color = glyph_color,
                                                 .palette = explicit_palette ? palette_chars : NULL,
                                                 .backend = simd_cells_backend(),
-                                                .background = caps->render_mode == RENDER_MODE_BACKGROUND,
-                                                .enhance = caps->glyph_enhance};
+                                                .background = caps->render_mode == RENDER_MODE_BACKGROUND};
   char *ascii = glyph_match ? ascii_render_image(resized, &glyph_options)
                             : image_print_with_capabilities(resized, caps, palette_chars);
   ascii_render_set_output_target(previous_output);

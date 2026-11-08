@@ -135,8 +135,8 @@ static uint32_t glyph_foreground(const glyph_candidate_t *glyph, const int16_t s
   return (channels[0] << 16) | (channels[1] << 8) | channels[2];
 }
 
-static int glyph_lift_luma(int luma, bool enhance) {
-  return enhance ? luma + (luma * (255 - luma) + 256) / 512 : luma;
+static int glyph_lift_luma(int luma) {
+  return luma + (luma * (255 - luma) + 256) / 512;
 }
 
 static uint32_t glyph_ordered_dither(uint32_t rgb, int x, int y, ascii_color_t mode) {
@@ -159,7 +159,7 @@ static uint32_t glyph_ordered_dither(uint32_t rgb, int x, int y, ascii_color_t m
 }
 
 char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_cells_t *ops, const char *palette,
-                         bool background, bool enhance) {
+                         bool background) {
   if (!image || !image->pixels || !ops || image->w <= 0 || image->h <= 0 || image->w % 8 || image->h % 8 ||
       mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid glyph matching input");
@@ -239,7 +239,7 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
           int red = (a.r + b.r + c.r + d.r) / 4;
           int green = (a.g + b.g + c.g + d.g) / 4;
           int blue = (a.b + b.b + c.b + d.b) / 4;
-          patch[i] = (uint8_t)glyph_lift_luma((77 * red + 150 * green + 29 * blue) >> 8, enhance);
+          patch[i] = (uint8_t)glyph_lift_luma((77 * red + 150 * green + 29 * blue) >> 8);
           samples[0][i] = (int16_t)red;
           samples[1][i] = (int16_t)green;
           samples[2][i] = (int16_t)blue;
@@ -331,7 +331,7 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
             const rgb_pixel_t *row = image->pixels + (size_t)(y * 8 + sy) * (size_t)image->w + (size_t)x * 8;
             for (int sx = 0; sx < 8; ++sx) {
               rgb_pixel_t p = row[sx];
-              int luma = glyph_lift_luma((77 * p.r + 150 * p.g + 29 * p.b) >> 8, enhance);
+              int luma = glyph_lift_luma((77 * p.r + 150 * p.g + 29 * p.b) >> 8);
               int delta = (luma - sample_mean) - ((int)glyphs[index].fine[sy * 8 + sx] - fine_mean);
               fine_error += (uint64_t)(delta * delta);
             }

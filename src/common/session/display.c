@@ -613,7 +613,6 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   caps_copy.render_mode = (render_mode_t)values->render_mode;
   caps_copy.text_renderer = values->renderer;
   caps_copy.stabilize = values->stabilize;
-  caps_copy.glyph_enhance = values->glyph_enhance;
   caps_copy.palette_explicit = values->palette_explicit;
   terminal_color_mode_t color_mode_opt = (terminal_color_mode_t)values->color_mode;
   const palette_def_t *builtin = get_builtin_palette(values->palette_type);

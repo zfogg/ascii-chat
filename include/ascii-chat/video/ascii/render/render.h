@@ -24,7 +24,6 @@ typedef struct {
   const simd_cells_t *backend; /**< Optional; NULL selects the current SIMD backend. */
   bool background;
   bool dither;
-  bool enhance;
 } ascii_render_options_t;
 
 /** Render an image using the chosen renderer. The caller frees the returned text. */
