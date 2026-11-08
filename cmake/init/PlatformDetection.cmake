@@ -75,7 +75,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         set(_is_homebrew_llvm TRUE)
     endif()
 
-    if(_is_homebrew_llvm AND NOT PLATFORM_IOS)
+    if(_is_homebrew_llvm AND NOT PLATFORM_IOS AND NOT CMAKE_OSX_SYSROOT MATCHES "iPhone(OS|Simulator)")
         # Homebrew LLVM is self-contained and finds system headers via its own driver.
         # CMAKE_OSX_SYSROOT (auto-set by CMake's project() from xcrun) adds a conflicting
         # -isysroot that breaks the include path ordering. Clear it.

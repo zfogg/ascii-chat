@@ -159,6 +159,15 @@ if(NOT EMSCRIPTEN)
     endif()
     target_link_libraries(asciichat-gotel-sqlite INTERFACE ${SQLITE3_LIBRARIES})
     set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING "Use ascii-chat's SQLite3 dependency" FORCE)
+    if(PLATFORM_IOS)
+        include(${CMAKE_SOURCE_DIR}/cmake/utils/Patching.cmake)
+        apply_patch(
+            TARGET_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel"
+            PATCH_FILE "${CMAKE_SOURCE_DIR}/cmake/deps/patches/gotel-0-ios-security-roots.patch"
+            PATCH_NUM 0
+            DESCRIPTION "Guard macOS-only Security root import on iOS"
+            ASSUME_UNCHANGED c/src/tls.c)
+    endif()
     set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         set(BUILD_SHARED_LIBS OFF)

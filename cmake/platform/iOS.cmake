@@ -38,14 +38,23 @@ if(BUILD_IOS OR BUILD_IOS_SIM)
     file(MAKE_DIRECTORY "${IOS_DEPS_CACHE_DIR}")
 
     if(BUILD_IOS_SIM)
-        set(CMAKE_OSX_SYSROOT "iphonesimulator")
+        execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path
+                        OUTPUT_VARIABLE _IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
+                        RESULT_VARIABLE _IOS_SDK_RESULT)
         set(IOS_BUILD_VARIANT "sim")
         message(STATUS "Platform: iOS Simulator (arm64)")
     else()
-        set(CMAKE_OSX_SYSROOT "iphoneos")
+        execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path
+                        OUTPUT_VARIABLE _IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
+                        RESULT_VARIABLE _IOS_SDK_RESULT)
         set(IOS_BUILD_VARIANT "device")
         message(STATUS "Platform: iOS Device (arm64)")
     endif()
+
+    if(NOT _IOS_SDK_RESULT EQUAL 0 OR NOT EXISTS "${_IOS_SDK_PATH}")
+        message(FATAL_ERROR "Unable to locate the selected iOS SDK")
+    endif()
+    set(CMAKE_OSX_SYSROOT "${_IOS_SDK_PATH}" CACHE PATH "iOS SDK path" FORCE)
 
     message(STATUS "iOS deps cache: ${IOS_DEPS_CACHE_DIR}")
 endif()

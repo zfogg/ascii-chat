@@ -360,7 +360,7 @@ function(configure_llvm_post_project)
     # For self-contained LLVM (Homebrew, git-built), clear CMAKE_OSX_SYSROOT.
     # CMake's project() auto-sets it via xcrun, but these compilers find system
     # headers on their own. The extra -isysroot breaks include ordering.
-    if(LLVM_SOURCE_NAME MATCHES "Homebrew" OR LLVM_SOURCE_NAME MATCHES "git-built")
+    if((LLVM_SOURCE_NAME MATCHES "Homebrew" OR LLVM_SOURCE_NAME MATCHES "git-built") AND NOT PLATFORM_IOS)
         if(CMAKE_OSX_SYSROOT)
             message(STATUS "${BoldGreen}Clearing${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} for self-contained ${LLVM_SOURCE_NAME} (was: ${CMAKE_OSX_SYSROOT})")
             unset(CMAKE_OSX_SYSROOT CACHE)

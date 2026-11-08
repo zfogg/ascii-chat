@@ -32,10 +32,10 @@ if(PLATFORM_IOS)
 
     # Determine iOS SDK path
     if(BUILD_IOS_SIM)
-        set(IOS_SDK_PATH "$(xcrun --sdk iphonesimulator --show-sdk-path)")
+        set(IOS_SDK_PATH "${CMAKE_OSX_SYSROOT}")
         set(IOS_SDK_NAME "iphonesimulator")
     else()
-        set(IOS_SDK_PATH "$(xcrun --sdk iphoneos --show-sdk-path)")
+        set(IOS_SDK_PATH "${CMAKE_OSX_SYSROOT}")
         set(IOS_SDK_NAME "iphoneos")
     endif()
 
@@ -57,7 +57,7 @@ if(PLATFORM_IOS)
                 --disable-shared
                 --with-pic
                 --host=arm-apple-darwin
-                CC=clang
+                CC=${CMAKE_C_COMPILER}
                 CFLAGS=-isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64\ -miphoneos-version-min=16.0
                 LD=ld
                 LDFLAGS=-isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64
