@@ -46,22 +46,37 @@ init-sql-tools:
 
 ensure-mmmbed: init-sql-tools
 	@mkdir -p "$(BIN_DIR)" "$(BUILD_DIR)"
-	@revision=""; if [ -e "$(SQL_MMMBED_DIR)/.git" ]; then revision=$$(git -C "$(SQL_MMMBED_DIR)" rev-parse HEAD) || exit 1; fi; \
-	  if [ -z "$${revision}" ] || [ ! -f "$(SQL_MMMBED)" ] || [ "$${revision}" != "$$(cat "$(BUILD_DIR)/mmmbed-revision" 2>/dev/null)" ]; then \
-	    go_command="$(GO)"; \
-	    if [ -z "$$("$${go_command}" env GOTOOLCHAIN 2>/dev/null)" ]; then \
+	@go_command="$(GO)"; \
+	  go_version=$$(sed -n 's/^go //p' "$(SQL_MMMBED_DIR)/go.mod"); \
+	  go_switch=$$("$${go_command}" env GOTOOLCHAIN 2>/dev/null); \
+	  installed=$$("$${go_command}" version | sed -n 's/^go version go\([0-9][0-9.]*\).*/\1/p'); \
+	  automatic=0; case "$${go_switch}" in auto|path|*+auto|*+path) automatic=1;; esac; \
+	  if [ -z "$${go_switch}" ] || { [ "$${automatic}" = 0 ] && \
+	    awk -v have="$${installed}" -v need="$${go_version}" 'BEGIN { split(have,h,"."); split(need,n,"."); for (i=1;i<=3;i++) { if (h[i]+0<n[i]+0) exit 0; if (h[i]+0>n[i]+0) exit 1 } exit 1 }'; }; then \
 	      go_bin=$$("$${go_command}" env GOBIN); \
 	      if [ -z "$${go_bin}" ]; then \
 	        go_bin=$$("$${go_command}" env GOPATH); \
 	        $(if $(filter Windows_NT,$(OS)),go_bin="$${go_bin%%;*}",go_bin="$${go_bin%%:*}"); \
 	        go_bin="$${go_bin}/bin"; \
 	      fi; \
-	      go_version=$$(sed -n 's/^go //p' "$(SQL_MMMBED_DIR)/go.mod"); \
 	      go_command="$${go_bin}/go$${go_version}$(SQL_EXEEXT)"; \
-	    fi; \
-	    cd "$(SQL_MMMBED_DIR)" && CGO_ENABLED=1 CC="$(SQL_CC)" "$${go_command}" build -o "$(SQL_MMMBED)" ./cmd/mmmbed && \
-	    printf '%s\n' "$${revision}" > "$(BUILD_DIR)/mmmbed-revision"; \
-	  fi
+	      go_switch=local; \
+	  fi; \
+	  host_os=$$(GOTOOLCHAIN="$${go_switch}" "$${go_command}" env GOHOSTOS) && \
+	    host_arch=$$(GOTOOLCHAIN="$${go_switch}" "$${go_command}" env GOHOSTARCH) || exit 1; \
+	  cache="$(abspath $(BUILD_DIR))/sql-tools/$${host_os}-$${host_arch}"; mkdir -p "$${cache}"; \
+	  revision=""; dirty=""; \
+	  if [ -e "$(SQL_MMMBED_DIR)/.git" ]; then \
+	    revision=$$(git -C "$(SQL_MMMBED_DIR)" rev-parse HEAD) || exit 1; \
+	    dirty=$$(git -C "$(SQL_MMMBED_DIR)" status --porcelain) || exit 1; \
+	  fi; \
+	  if [ -n "$${dirty}" ] || [ -z "$${revision}" ] || [ ! -f "$${cache}/mmmbed$(SQL_EXEEXT)" ] || \
+	     [ "$${revision}" != "$$(cat "$${cache}/revision" 2>/dev/null)" ]; then \
+	    cd "$(SQL_MMMBED_DIR)" && GOTOOLCHAIN="$${go_switch}" CGO_ENABLED=1 CC="$(SQL_CC)" GOOS="$${host_os}" GOARCH="$${host_arch}" \
+	      "$${go_command}" build -o "$${cache}/mmmbed$(SQL_EXEEXT)" ./cmd/mmmbed && \
+	    if [ -n "$${dirty}" ]; then printf 'dirty:%s\n' "$${revision}"; else printf '%s\n' "$${revision}"; fi > "$${cache}/revision" || exit 1; \
+	  fi; \
+	  cp "$${cache}/mmmbed$(SQL_EXEEXT)" "$(SQL_MMMBED)"
 
 sql-generate: $(SQL_TOOL_PREREQUISITE)
 	"$(MMMBED)" sql -l c --prefix database --format --dialect sqlite -i lib/discovery/sql -i lib/network/rate_limit/sql -o lib/discovery/queries_generated.h

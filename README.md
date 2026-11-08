@@ -150,8 +150,9 @@ make sql-check
 ```
 
 These targets initialize the pinned mmmbed submodule if needed and build
-`bin/mmmbed` (`bin/mmmbed.exe` on Windows) when missing or when the pinned
-revision changes. The generated header is `lib/discovery/queries_generated.h`;
+`bin/mmmbed` (`bin/mmmbed.exe` on Windows) when missing or when its source
+changes. Build caches are kept separately for each host OS and architecture.
+The generated header is `lib/discovery/queries_generated.h`;
 commit it with the SQL changes. The binary and intermediate build files are
 ignored by Git. Mmmbed uses its pinned Sequel Go dependency to format SQL, so
 contributors generate the same output without a separate Sequel executable.

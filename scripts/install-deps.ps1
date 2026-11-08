@@ -95,13 +95,17 @@ if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
     }
 }
 $GoVersion = & go version
-if ($GoVersion -match 'go(\d+)\.(\d+)' -and ([int]$Matches[1] -lt 1 -or ([int]$Matches[1] -eq 1 -and [int]$Matches[2] -lt 21))) {
+$GoToolVersion = ((Get-Content -LiteralPath $ModuleFile | Where-Object { $_ -match '^go ' }) -replace '^go\s+', '').Trim()
+if (-not $GoToolVersion) { throw "mmmbed/go.mod does not specify a Go version." }
+$GoSwitch = & go env GOTOOLCHAIN 2>$null
+$InstalledGo = if ($GoVersion -match 'go(\d+\.\d+(?:\.\d+)?)') { [version]$Matches[1] } else { [version]'0.0' }
+$GoAutomatic = $GoSwitch -match '^(auto|path|.+\+(auto|path))$'
+if (-not $GoSwitch -or (-not $GoAutomatic -and $InstalledGo -lt [version]$GoToolVersion)) {
     $GoToolDir = & go env GOBIN
     if (-not $GoToolDir) {
         $GoPaths = (& go env GOPATH) -split [IO.Path]::PathSeparator
         $GoToolDir = Join-Path $GoPaths[0] 'bin'
     }
-    $GoToolVersion = ((Get-Content -LiteralPath $ModuleFile | Where-Object { $_ -match '^go ' }) -replace '^go\s+', '').Trim()
     New-Item -ItemType Directory -Force -Path $GoToolDir | Out-Null
     $PreviousGoBin = $env:GOBIN
     try {

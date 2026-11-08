@@ -423,11 +423,14 @@ if [ ! -f "$mmmbed_go_mod" ]; then
   echo >&2 "ERROR: mmmbed source is missing; run git submodule update --init --checkout -- deps/ascii-chat-deps/mmmbed"
   exit 1
 fi
-go_version=$(go version)
-if [[ "$go_version" =~ go([0-9]+)\.([0-9]+) ]] &&
-   { (( BASH_REMATCH[1] < 1 )) || { (( BASH_REMATCH[1] == 1 )) && (( BASH_REMATCH[2] < 21 )); }; }; then
-  go_tool_version=$(sed -n 's/^go //p' "$mmmbed_go_mod")
-  [ -n "$go_tool_version" ] || { echo >&2 "ERROR: mmmbed/go.mod does not specify a Go version"; exit 1; }
+go_tool_version=$(sed -n 's/^go //p' "$mmmbed_go_mod")
+[ -n "$go_tool_version" ] || { echo >&2 "ERROR: mmmbed/go.mod does not specify a Go version"; exit 1; }
+go_installed=$(go version | sed -n 's/^go version go\([0-9][0-9.]*\).*/\1/p')
+go_switch=$(go env GOTOOLCHAIN 2>/dev/null || true)
+go_automatic=0
+case "$go_switch" in auto|path|*+auto|*+path) go_automatic=1;; esac
+if [ -z "$go_switch" ] || { [ "$go_automatic" = 0 ] &&
+  awk -v have="$go_installed" -v need="$go_tool_version" 'BEGIN { split(have,h,"."); split(need,n,"."); for (i=1;i<=3;i++) { if (h[i]+0<n[i]+0) exit 0; if (h[i]+0>n[i]+0) exit 1 } exit 1 }'; }; then
   go_bin=$(go env GOBIN)
   if [ -z "$go_bin" ]; then
     go_bin=$(go env GOPATH)
