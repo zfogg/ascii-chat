@@ -2,6 +2,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define NETWORK_HTTP_CLIENT_SIZE_TEXT_BUFFER_SIZE 32
 
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/util/url.h>
 /**
  * @file network/http_client.c
@@ -96,7 +97,7 @@ static char *extract_http_body(const char *response, size_t response_len) {
   // the headers are then a sequence of `<hex-size>\\r\\n<data>\\r\\n` chunks,
   // not the JSON document itself. Decode into a bounded buffer before handing
   // the body to JSON parsers.
-  char *body = SAFE_MALLOC(body_len + 1, char *);
+  SAFE_MALLOC_DEFER_FREE(body, body_len + 1, char *);
   size_t decoded_len = 0;
   const char *cursor = body_start;
   const char *end = response + response_len;
@@ -105,7 +106,6 @@ static char *extract_http_body(const char *response, size_t response_len) {
     const char *line_end = strstr(cursor, "\r\n");
     if (!line_end || line_end >= end) {
       log_error("Malformed chunked HTTP response: missing chunk size terminator");
-      SAFE_FREE(body);
       return NULL;
     }
 
@@ -117,7 +117,6 @@ static char *extract_http_body(const char *response, size_t response_len) {
     }
     if (size_text_len == 0 || size_text_len >= sizeof(size_text)) {
       log_error("Malformed chunked HTTP response: invalid chunk size");
-      SAFE_FREE(body);
       return NULL;
     }
     memcpy(size_text, cursor, size_text_len);
@@ -127,7 +126,6 @@ static char *extract_http_body(const char *response, size_t response_len) {
     unsigned long long chunk_size = strtoull(size_text, &size_end, 16);
     if (size_end == size_text || *size_end != '\0') {
       log_error("Malformed chunked HTTP response: invalid chunk size '%s'", size_text);
-      SAFE_FREE(body);
       return NULL;
     }
 
@@ -137,7 +135,6 @@ static char *extract_http_body(const char *response, size_t response_len) {
     }
     if (chunk_size > (unsigned long long)(end - cursor) || (size_t)chunk_size > body_len - decoded_len) {
       log_error("Malformed chunked HTTP response: chunk exceeds response body");
-      SAFE_FREE(body);
       return NULL;
     }
 
@@ -146,14 +143,15 @@ static char *extract_http_body(const char *response, size_t response_len) {
     cursor += (size_t)chunk_size;
     if (cursor + 2 > end || cursor[0] != '\r' || cursor[1] != '\n') {
       log_error("Malformed chunked HTTP response: missing chunk terminator");
-      SAFE_FREE(body);
       return NULL;
     }
     cursor += 2;
   }
 
   body[decoded_len] = '\0';
-  return body;
+  char *result = body;
+  body = NULL;
+  return result;
 }
 
 // Return the status code, or -1 for a malformed status line.

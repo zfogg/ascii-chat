@@ -1,3 +1,4 @@
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/audio/limits.h>
 #include "session/protocol.h"
 #include "session/frame_validation.h"
@@ -373,15 +374,13 @@ asciichat_error_t session_protocol_update_settings(terminal_size_t *advertised, 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Settings update requires state and a send callback");
   if (advertised->cols > 0 && advertised->rows > 0 && *advertised_revision == options_revision())
     return ASCIICHAT_OK;
-  options_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot), options_snapshot_t *);
+  SAFE_MALLOC_DEFER_FREE(snapshot, sizeof(options_snapshot_t), options_snapshot_t *);
   asciichat_error_t result = options_read_snapshot(snapshot);
   if (result != ASCIICHAT_OK) {
-    SAFE_FREE(snapshot);
     return result;
   }
   terminal_size_t size = {.cols = snapshot->values.width, .rows = snapshot->values.height};
   if (size.cols <= 0 || size.rows <= 0) {
-    SAFE_FREE(snapshot);
     return ASCIICHAT_OK;
   }
   if (snapshot->values.color_mode == TERM_COLOR_AUTO) {
@@ -393,6 +392,6 @@ asciichat_error_t session_protocol_update_settings(terminal_size_t *advertised, 
     *advertised = size;
     *advertised_revision = snapshot->revision;
   }
-  SAFE_FREE(snapshot);
+
   return result;
 }

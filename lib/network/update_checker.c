@@ -10,6 +10,7 @@
 #define NETWORK_UPDATE_CHECKER_SUGGESTION_BUFFER_SIZE 512
 
 #include <ascii-chat/network/update_checker.h>
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/network/http_client.h>
 #include <ascii-chat/network/dns.h>
 #include <ascii-chat/version.h>
@@ -102,19 +103,18 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
   if (!cache_path) {
     return SET_ERRNO(ERROR_FILE_OPERATION, "Could not determine cache file path");
   }
+  defer(SAFE_FREE(cache_path));
 
   FILE *f = platform_fopen("file_stream", cache_path, "r");
   if (!f) {
     const char *error_msg = file_read_error_message(cache_path);
-    SAFE_FREE(cache_path);
     return SET_ERRNO(ERROR_FILE_OPERATION, "%s", error_msg);
   }
+  defer(SAFE_FCLOSE(f));
 
   // Read line 1: timestamp
   char line[NETWORK_UPDATE_CHECKER_LINE_BUFFER_SIZE];
   if (!fgets(line, sizeof(line), f)) {
-    fclose(f);
-    SAFE_FREE(cache_path);
     return SET_ERRNO(ERROR_FILE_OPERATION, "Failed to read timestamp from cache");
   }
 
@@ -124,8 +124,6 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
   long long timestamp_ll = strtoll(line, &endptr, 10);
   if (errno != 0 || endptr == line) {
     log_error("Failed to parse timestamp from cache: invalid value '%s'", line);
-    fclose(f);
-    SAFE_FREE(cache_path);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid timestamp in cache file");
   }
   result->last_check_time = (time_t)timestamp_ll;
@@ -145,12 +143,11 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
   // Read line 4: release URL. This field is required in the current cache
   // format; an older or partially-written cache must be refreshed.
   if (!fgets(line, sizeof(line), f)) {
-    fclose(f);
+    SAFE_FCLOSE(f);
     // Treat a legacy cache exactly like a missing cache. Close the file before
     // removing it so this also works on Windows, where open files cannot be
     // deleted.
     (void)remove(cache_path);
-    SAFE_FREE(cache_path);
     return SET_ERRNO(ERROR_FORMAT, "Update cache format is obsolete");
   }
   trim_line_ending(line);
@@ -161,7 +158,7 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
     result->dismissed_until = (time_t)strtoll(line, NULL, 10);
   }
 
-  fclose(f);
+  SAFE_FCLOSE(f);
 
   // Fill in current version/SHA
   SAFE_STRNCPY(result->current_version, ASCII_CHAT_VERSION_STRING, sizeof(result->current_version));
@@ -183,12 +180,10 @@ asciichat_error_t update_check_load_cache(update_check_result_t *result) {
       if (remove(cache_path) != 0) {
         log_warn("Failed to delete corrupted cache file: %s", cache_path);
       }
-      SAFE_FREE(cache_path);
       return SET_ERRNO(ERROR_FORMAT, "Corrupted cache file deleted");
     }
   }
 
-  SAFE_FREE(cache_path);
   return ASCIICHAT_OK;
 }
 

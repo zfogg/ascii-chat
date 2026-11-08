@@ -11,6 +11,7 @@
 #define OPTIONS_MAX_INT_DEFAULTS 256
 #define OPTIONS_MAX_DOUBLE_DEFAULTS 1024
 
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/options/builder.h>
@@ -1761,7 +1762,7 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
   }
 
   // Separate positional and flag arguments while respecting order
-  char **positional_args = SAFE_MALLOC(argc * sizeof(char *), char **);
+  SAFE_MALLOC_DEFER_FREE(positional_args, argc * sizeof(char *), char **);
   if (!positional_args) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate positional args buffer");
   }
@@ -1795,7 +1796,6 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
     asciichat_error_t err =
         parse_single_flag_with_mode(config, argv, i, argc, options_struct, detected_mode, &consumed);
     if (err != ASCIICHAT_OK) {
-      SAFE_FREE(positional_args);
       return err;
     }
 
@@ -1825,7 +1825,6 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
       if (consumed < 0) {
         log_error("Error parsing positional argument '%s': %s", pos_arg->name, error_msg ? error_msg : arg);
         SAFE_FREE(error_msg);
-        SAFE_FREE(positional_args);
         return ERROR_USAGE;
       }
 
@@ -1835,7 +1834,6 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
     // Check for extra unconsumed positional arguments
     if (arg_index < positional_count) {
       log_error("Unexpected positional argument '%s'", positional_args[arg_index]);
-      SAFE_FREE(positional_args);
       return ERROR_USAGE;
     }
 
@@ -1847,18 +1845,15 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
         if (pos_arg->help_text) {
           log_error("  %s", pos_arg->help_text);
         }
-        SAFE_FREE(positional_args);
         return ERROR_USAGE;
       }
     }
   } else if (positional_count > 0) {
     // No positional args expected, but we got some
     log_error("Unexpected positional argument '%s'", positional_args[0]);
-    SAFE_FREE(positional_args);
     return ERROR_USAGE;
   }
 
-  SAFE_FREE(positional_args);
   return ASCIICHAT_OK;
 }
 
