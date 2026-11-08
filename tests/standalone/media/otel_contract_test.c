@@ -158,6 +158,25 @@ static void retained_budget(void) {
 static void catalog_contract(void) {
   gotel_host_t *h = start(1);
   sqlite3 *db = NULL;
+  // A legacy database may contain a key for a session deleted while foreign
+  // keys were disabled. Import must ignore it instead of aborting migration.
+  // Keep this setup connection unattached so fixture SQL is not traced.
+  CHECK(sqlite3_open(":memory:", &db) == SQLITE_OK);
+  CHECK(sqlite3_exec(db,
+                     "PRAGMA foreign_keys = ON; "
+                     "CREATE TABLE sessions (session_string TEXT PRIMARY KEY); "
+                     "CREATE TABLE session_key_policy (session_string TEXT PRIMARY KEY); "
+                     "CREATE TABLE session_identity_keys (session_string TEXT REFERENCES sessions(session_string), "
+                     "key_type TEXT, identity_pubkey BLOB, key_version INTEGER, added_at INTEGER, revoked INTEGER); "
+                     "CREATE TABLE session_keys (session_string TEXT REFERENCES sessions(session_string), "
+                     "identity_pubkey BLOB, key_version INTEGER, added_at INTEGER, revoked INTEGER); "
+                     "PRAGMA foreign_keys = OFF; "
+                     "INSERT INTO session_keys VALUES ('missing-session', zeroblob(32), 1, 123, 0); "
+                     "PRAGMA foreign_keys = ON;",
+                     NULL, NULL, NULL) == SQLITE_OK);
+  CHECK(sqlite3_exec(db, database_queries[DATABASE_QUERY_ImportLegacySessionKeys].sql, NULL, NULL, NULL) == SQLITE_OK);
+  CHECK(sqlite3_close(db) == SQLITE_OK);
+  db = NULL;
   CHECK(database_init(":memory:", &db) == ASCIICHAT_OK);
   CHECK(db != NULL);
   // Opening the real database checks schema/migration names and attachment

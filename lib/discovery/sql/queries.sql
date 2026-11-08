@@ -460,6 +460,7 @@ SELECT k.session_string, 'ed25519', k.identity_pubkey, k.key_version, k.added_at
 FROM session_keys k
 WHERE typeof(k.identity_pubkey) = 'blob'
   AND length(k.identity_pubkey) = 32
+  AND EXISTS (SELECT 1 FROM sessions s WHERE s.session_string = k.session_string)
   AND NOT EXISTS (SELECT 1 FROM session_key_policy p WHERE p.session_string = k.session_string);
 
 -- name: HasLegacySessionKeys
