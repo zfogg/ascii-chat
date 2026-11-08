@@ -2,7 +2,6 @@
 
 if(PLATFORM_IOS)
     set(AUDIO_SRCS
-        ${CMAKE_CURRENT_SOURCE_DIR}/ios_stub.c
         ${CMAKE_CURRENT_SOURCE_DIR}/audio.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test_pattern.c
         ${CMAKE_CURRENT_SOURCE_DIR}/recording.c

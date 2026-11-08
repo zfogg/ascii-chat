@@ -8,6 +8,7 @@
 struct PaStream {
   AVAudioEngine *engine;
   AVAudioPlayerNode *player;
+  AVAudioSourceNode *source;
   PaStreamCallback *callback;
   void *user_data;
   unsigned long frames_per_buffer;
@@ -16,6 +17,8 @@ struct PaStream {
   int output_channels;
   float *input_interleaved;
   size_t input_capacity_frames;
+  float *output_interleaved;
+  size_t output_capacity_frames;
   BOOL active;
   unsigned long queued_frames;
   NSLock *queue_lock;
@@ -84,6 +87,11 @@ PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const 
   if (opened->input_channels > 0)
     opened->input_interleaved =
         SAFE_CALLOC(opened->input_capacity_frames, (size_t)opened->input_channels * sizeof(float), float *);
+  if (opened->output_channels > 0 && callback) {
+    opened->output_capacity_frames = opened->frames_per_buffer ? opened->frames_per_buffer : 1024;
+    opened->output_interleaved =
+        SAFE_CALLOC(opened->output_capacity_frames, (size_t)opened->output_channels * sizeof(float), float *);
+  }
   opened->engine = [AVAudioEngine new];
   if (opened->output_channels > 0)
     opened->player = [AVAudioPlayerNode new];
@@ -146,6 +154,33 @@ PaError Pa_StartStream(PaStream *stream) {
     [stream->engine attachNode:stream->player];
     [stream->engine connect:stream->player to:stream->engine.mainMixerNode format:nil];
   }
+  if (stream->callback && stream->output_channels > 0) {
+    AVAudioFormat *format =
+        [[AVAudioFormat alloc] initStandardFormatWithSampleRate:stream->sample_rate
+                                                       channels:(AVAudioChannelCount)stream->output_channels];
+    stream->source = [[AVAudioSourceNode alloc]
+        initWithFormat:format
+           renderBlock:^OSStatus(BOOL *is_silence, const AudioTimeStamp *timestamp, AVAudioFrameCount frame_count,
+                                 AudioBufferList *output_data) {
+             (void)timestamp;
+             const size_t frames = MIN((size_t)frame_count, stream->output_capacity_frames);
+             PaStreamCallbackTimeInfo time_info = {0, 0, 0};
+             const int result =
+                 stream->callback(NULL, stream->output_interleaved, frames, &time_info, 0, stream->user_data);
+             for (UInt32 buffer_index = 0; buffer_index < output_data->mNumberBuffers; ++buffer_index) {
+               AudioBuffer *buffer = &output_data->mBuffers[buffer_index];
+               float *destination = buffer->mData;
+               const UInt32 channel = buffer_index;
+               for (size_t frame = 0; frame < frames; ++frame)
+                 destination[frame] = stream->output_interleaved[frame * (size_t)stream->output_channels + channel];
+               buffer->mDataByteSize = (UInt32)(frames * sizeof(float));
+             }
+             *is_silence = result == paComplete || result == paAbort;
+             return noErr;
+           }];
+    [stream->engine attachNode:stream->source];
+    [stream->engine connect:stream->source to:stream->engine.mainMixerNode format:format];
+  }
   NSError *error = nil;
   [stream->engine startAndReturnError:&error];
   if (error)
@@ -178,9 +213,11 @@ PaError Pa_CloseStream(PaStream *stream) {
   }
   stream->active = NO;
   stream->player = nil;
+  stream->source = nil;
   stream->engine = nil;
   stream->queue_lock = nil;
   SAFE_FREE(stream->input_interleaved);
+  SAFE_FREE(stream->output_interleaved);
   SAFE_FREE(stream);
   return paNoError;
 }
