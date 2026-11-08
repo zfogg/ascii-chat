@@ -175,6 +175,9 @@ private struct CameraAsciiView: View {
         }
         .padding()
         .onReceive(Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()) { _ in
+            if asciichat_ios_camera_authorized() == 0 && cameraMessage == "Camera permission requested" {
+                cameraMessage = "Camera access is still pending or denied"
+            }
             readFrame()
         }
         .onAppear {
