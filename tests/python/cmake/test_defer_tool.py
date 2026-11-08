@@ -487,7 +487,7 @@ def test_named_defer_rejects_unsafe_handles(
     assert not (tmp_path / "output.c").exists()
 
 
-@pytest.mark.parametrize("source", ["void f(void) { defer_named(h, (void)0); }", "void f(void) { defer_cancel(h); }"])
+@pytest.mark.parametrize("source", ["void f(void) { defer_named(h, (void)0); }", "void f(void) { defer_cancel(h); }", "void f(void) { USER_DEFER_WRAPPER(p); }"])
 def test_cmake_scanners_find_named_defer(
     tmp_path: Path, base_environment: dict[str, str], source: str
 ) -> None:

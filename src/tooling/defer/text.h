@@ -63,7 +63,7 @@ inline bool may_contain_defer(std::string_view source) {
     unspliced += source[i++];
   }
   source = unspliced;
-  if (source.find("SAFE_MALLOC_DEFER_FREE") != source.npos || source.find("SAFE_CALLOC_DEFER_FREE") != source.npos)
+  if (source.find("DEFER") != source.npos)
     return true;
   std::size_t search = 0;
   while ((search = source.find("defer", search)) != source.npos) {

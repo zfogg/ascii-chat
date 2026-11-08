@@ -14,7 +14,7 @@ def main() -> int:
     cast(io.TextIOWrapper, sys.stdin).reconfigure(encoding="utf-8")
     cast(io.TextIOWrapper, sys.stdout).reconfigure(encoding="utf-8")
     pattern = re.compile(
-        rb"(?<![A-Za-z0-9_])(?:defer(?:_named|_cancel)?|SAFE_(?:MALLOC|CALLOC)_DEFER_FREE)(?:[ \t\r\n]|/\*.*?\*/|//[^\r\n]*|\\\r?\n)*\(",
+        rb"(?<![A-Za-z0-9_])(?:defer(?:_named|_cancel)?|[A-Za-z_][A-Za-z0-9_]*DEFER[A-Za-z0-9_]*)(?:[ \t\r\n]|/\*.*?\*/|//[^\r\n]*|\\\r?\n)*\(",
         re.DOTALL,
     )
     for name in sys.stdin.read().splitlines():

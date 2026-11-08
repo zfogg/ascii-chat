@@ -18,6 +18,7 @@ int main() {
   CHECK(may_contain_defer("defer_cancel(handle);"));
   CHECK(may_contain_defer("SAFE_MALLOC_DEFER_FREE(p, 4, char *);"));
   CHECK(may_contain_defer("SAFE_CALLOC_DEFER_FREE(p, 1, 4, char *);"));
+  CHECK(may_contain_defer("USER_DEFER_WRAPPER(p);"));
   CHECK(may_contain_defer("defer // comment\n(cleanup());"));
   CHECK(may_contain_defer("defer \\\n(cleanup());"));
   CHECK(!may_contain_defer("not_defer(x); deferred(x);"));
