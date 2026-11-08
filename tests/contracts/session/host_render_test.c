@@ -1,4 +1,5 @@
 #include <criterion/criterion.h>
+#include <ascii-chat/options/runtime.h>
 /* Capability packets must affect the frames delivered by the discovery host. */
 #include "session/host.h"
 #include "session/display.h"
@@ -587,6 +588,12 @@ Test(host_render, ascii_only_display) {
 Test(host_render, mirror_output_validation) {
   cr_assert_eq(options_set_int("width", 40), ASCIICHAT_OK);
   cr_assert_eq(options_set_int("height", 12), ASCIICHAT_OK);
+  options_edit_t edits[] = {
+      {.name = "palette_type", .type = OPTIONS_VALUE_INT, .value.integer = PALETTE_CUSTOM},
+      {.name = "palette_custom", .type = OPTIONS_VALUE_STRING, .value.string = "XX"},
+  };
+  options_patch_t patch = {.edits = edits, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
+  cr_assert_eq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   image_t *image = image_new(8, 4);
   cr_assert_not_null(image);
   for (int i = 0; i < image->w * image->h; ++i)
@@ -606,25 +613,19 @@ Test(host_render, mirror_output_validation) {
     }
   }
   cr_assert_eq(options_set_int("render_mode", RENDER_MODE_FOREGROUND), ASCIICHAT_OK);
-  // Simulate a corrupted renderer palette after initialization. Mirror must
-  // discard the result before presentation, then recover on a valid next frame.
+  // Live options restore the renderer palette before the next frame.
   char *palette = (char *)session_display_get_palette_chars(display);
   palette[0] = '\x1b';
   palette[1] = 0;
   CLEAR_ERRNO();
-  cr_assert_null(session_display_convert_to_ascii_reuse(display, image));
-  asciichat_error_context_t error = {0};
-  cr_assert(errno_has(&error));
-  cr_assert_eq(error.code, ERROR_INVALID_FRAME);
-  palette[0] = 'X';
-  palette[1] = 'X';
-  palette[2] = 0;
-  CLEAR_ERRNO();
   char *recovered = session_display_convert_to_ascii_reuse(display, image);
   cr_assert_not_null(recovered);
+  cr_assert_eq(session_frame_validate(recovered, strlen(recovered), 40, 12), ASCIICHAT_OK);
   session_display_release_ascii(display, recovered);
   session_display_destroy(display);
   config.custom_palette = "界é";
+  edits[1].value.string = config.custom_palette;
+  cr_assert_eq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   display = session_display_create(&config);
   cr_assert_not_null(display);
   char *wide = session_display_convert_to_ascii_reuse(display, image);

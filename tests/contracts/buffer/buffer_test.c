@@ -374,6 +374,7 @@ static void websocket_control_reserve_contract(void) {
   crypto_context_t crypto, peer;
   cr_assert(crypto_init(&crypto) == CRYPTO_OK && crypto_init(&peer) == CRYPTO_OK);
   cr_assert_eq(crypto_set_peer_public_key(&crypto, peer.public_key), CRYPTO_OK);
+  crypto.handshake_complete = peer.handshake_complete = true;
   acip_transport_t transport = {.impl_data = &ws};
   cr_assert(buffer_control_domain());
   // An oversized miss trims idle media storage, so cached blocks cannot mask pressure.
