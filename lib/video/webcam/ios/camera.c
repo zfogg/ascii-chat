@@ -3,6 +3,8 @@
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/webcam/webcam.h>
 
+#include <stdint.h>
+
 static webcam_context_t *g_camera;
 
 int asciichat_ios_camera_start(unsigned short device_index) {
@@ -19,6 +21,8 @@ int asciichat_ios_camera_read(uint32_t *pixels, size_t capacity, size_t *width, 
   if (!frame || frame->w <= 0 || frame->h <= 0)
     return 0;
 
+  if ((size_t)frame->w > SIZE_MAX / (size_t)frame->h)
+    return 0;
   const size_t pixel_count = (size_t)frame->w * (size_t)frame->h;
   if (capacity < pixel_count)
     return 0;

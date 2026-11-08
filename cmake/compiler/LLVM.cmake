@@ -391,7 +391,7 @@ function(configure_llvm_post_project)
         message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for Release+SHARED_DEPS build (Homebrew libc++ for ABI compatibility)")
     endif()
 
-    if(_need_llvm_libs)
+    if(_need_llvm_libs AND NOT PLATFORM_IOS)
         set(DETECTED_LLVM_LINK_FLAGS "")
 
         # Check library layout: Homebrew uses subdirectories, git-built and others use flat lib/

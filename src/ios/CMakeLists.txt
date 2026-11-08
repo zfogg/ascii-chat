@@ -7,7 +7,6 @@ enable_language(Swift)
 add_executable(ascii-chat-ios-app
     AsciiChatApp.swift
     test_frame.c
-    lws_spawn_stub.c
     ${APP_SRCS}
     main.c
 )

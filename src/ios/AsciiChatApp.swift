@@ -55,7 +55,7 @@ private struct TestFrameView: View {
             bitsPerPixel: 32,
             bytesPerRow: width * 4,
             space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+            bitmapInfo: [.byteOrder32Little, CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)],
             provider: provider,
             decode: nil,
             shouldInterpolate: false,
@@ -95,7 +95,7 @@ private struct CameraAsciiView: View {
         guard let provider = CGDataProvider(data: data as CFData) else { return }
         image = CGImage(width: Int(width), height: Int(height), bitsPerComponent: 8, bitsPerPixel: 32,
                         bytesPerRow: Int(pitch), space: CGColorSpaceCreateDeviceRGB(),
-                        bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                        bitmapInfo: [.byteOrder32Little, CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)],
                         provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
     }
 

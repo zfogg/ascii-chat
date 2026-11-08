@@ -819,6 +819,31 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for CA cert loading");
   }
 
+  const char *env_ca_path = SAFE_GETENV("SSL_CERT_FILE");
+  if (env_ca_path && *env_ca_path) {
+    FILE *f = fopen(env_ca_path, "rb");
+    if (f) {
+      fseek(f, 0, SEEK_END);
+      long file_size = ftell(f);
+      fseek(f, 0, SEEK_SET);
+      if (file_size > 0 && file_size <= 10 * 1024 * 1024) {
+        char *pem_data = SAFE_MALLOC((size_t)file_size + 1, char *);
+        if (!pem_data) { fclose(f); return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for CA certificates"); }
+        size_t bytes_read = fread(pem_data, 1, (size_t)file_size, f);
+        fclose(f);
+        if (bytes_read == (size_t)file_size) {
+          pem_data[bytes_read] = '\0';
+          *pem_data_out = pem_data;
+          *pem_size_out = bytes_read;
+          return ASCIICHAT_OK;
+        }
+        SAFE_FREE(pem_data);
+      } else {
+        fclose(f);
+      }
+    }
+  }
+
   // Common CA certificate bundle paths (ordered by likelihood)
   // On macOS, prefer Homebrew ca-certificates if installed (more up-to-date than system)
   static const char *ca_paths[] = {

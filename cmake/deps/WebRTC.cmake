@@ -25,7 +25,7 @@ function(asciichat_build_aec3)
         # The archive's root CMakeLists.txt is patched before it is added below.
         )
     FetchContent_MakeAvailable(asciichat_aec3)
-    set(WEBRTC_AEC3_SOURCE_DIR "${asciichat_aec3_SOURCE_DIR}")
+set(WEBRTC_AEC3_SOURCE_DIR "${asciichat_aec3_SOURCE_DIR}" CACHE INTERNAL "WebRTC AEC3 source directory" FORCE)
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-webrtc-aec3-cmake.cmake")
     # Upstream uses private directory includes; publish the public audio API.
     target_include_directories(AudioProcess PUBLIC

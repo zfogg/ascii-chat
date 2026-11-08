@@ -76,6 +76,7 @@ if(PLATFORM_IOS)
                 --enable-protocol=file,http,https,rtsp,rtmp,hls \
                 --enable-demuxer=mov,matroska,avi,gif,image2,mp3,wav,flac,ogg,hls \
                 --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg,mp3,aac,flac,vorbis,opus,pcm_s16le \
+                --enable-videotoolbox \
                 --enable-encoder=hevc_videotoolbox \
                 --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video,aac,mpegaudio \
                 --enable-swscale \

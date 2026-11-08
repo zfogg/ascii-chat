@@ -39,8 +39,8 @@ set(AUDIO_SRCS ${AUDIO_SRCS} PARENT_SCOPE)
 
 if(PLATFORM_IOS AND TARGET AudioProcess)
     target_sources(AudioProcess PRIVATE
-        ${CMAKE_BINARY_DIR}/_deps/legacy/Debug/asciichat_aec3-src/audio_processing/resampler/sinc_resampler_sse.cc
-        ${CMAKE_BINARY_DIR}/_deps/legacy/Debug/asciichat_aec3-src/audio_processing/utility/ooura_fft_sse2.cc)
+        ${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/resampler/sinc_resampler_sse.cc
+        ${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/utility/ooura_fft_sse2.cc)
 endif()
 
 # Preserve non-finite input checks even in Release configurations using fast math.
