@@ -15,6 +15,7 @@
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/url.h>            // For url_is_valid(), url_parse()
@@ -64,7 +65,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
 
     if (looks_like_base64) {
       // Try to decode as SSH public key blob
-      uint8_t *blob = SAFE_MALLOC(input_len, uint8_t *);
+      SAFE_MALLOC_DEFER_FREE(blob, input_len, uint8_t *);
       size_t blob_len = 0;
 
       const char *end = NULL;
@@ -89,14 +90,12 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
                 memcpy(key_out->key, blob + 19, CRYPTO_PUBLIC_KEY_SIZE);
                 platform_strncpy(key_out->comment, sizeof(key_out->comment), "raw-base64",
                                  sizeof(key_out->comment) - 1);
-                SAFE_FREE(blob);
                 return ASCIICHAT_OK;
               }
             }
           }
         }
       }
-      SAFE_FREE(blob);
     }
   }
 
@@ -170,14 +169,15 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
 
   if (path_looks_like_path(input)) {
     char *normalized_path = NULL;
+    defer(SAFE_FREE(normalized_path));
     asciichat_error_t path_result = path_validate_user_path(input, PATH_ROLE_KEY_PUBLIC, &normalized_path);
     if (path_result != ASCIICHAT_OK) {
-      SAFE_FREE(normalized_path);
       return path_result;
     }
 
     FILE *f = platform_fopen("file_stream", normalized_path, "rb");
     if (f) {
+      defer(SAFE_FCLOSE(f));
       char line[BUFFER_SIZE_LARGE];
       if (fgets(line, sizeof(line), f)) {
         uint8_t first_packet = (uint8_t)line[0];
@@ -187,37 +187,27 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
         bool armored_gpg = strstr(line, "-----BEGIN PGP PUBLIC KEY BLOCK-----") != NULL;
         if (armored_gpg || packet_tag == 6u) {
           if (fseek(f, 0, SEEK_END) != 0) {
-            (void)fclose(f);
-            SAFE_FREE(normalized_path);
             return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to seek OpenPGP public key file: %s", input);
           }
           long file_size = ftell(f);
           if (file_size <= 0 || file_size > 1024 * 1024 || fseek(f, 0, SEEK_SET) != 0) {
-            (void)fclose(f);
-            SAFE_FREE(normalized_path);
             return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid OpenPGP public key file size: %ld bytes", file_size);
           }
-          uint8_t *file_content = SAFE_MALLOC((size_t)file_size, uint8_t *);
+          SAFE_MALLOC_DEFER_FREE(file_content, (size_t)file_size, uint8_t *);
           size_t content_read = fread(file_content, 1, (size_t)file_size, f);
-          (void)fclose(f);
-          SAFE_FREE(normalized_path);
+          SAFE_FCLOSE(f);
           if (content_read != (size_t)file_size) {
-            SAFE_FREE(file_content);
             return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read OpenPGP public key file: %s", input);
           }
           asciichat_error_t result = parse_gpg_key_binary(file_content, content_read, key_out);
-          SAFE_FREE(file_content);
           return result;
         }
-        (void)fclose(f);
-        SAFE_FREE(normalized_path);
+        SAFE_FCLOSE(f);
         // Remove newline
         line[strcspn(line, "\r\n")] = 0;
         return parse_public_key(line, key_out);
       }
-      (void)fclose(f);
     }
-    SAFE_FREE(normalized_path);
   }
 
   return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported key format: %s", input);
