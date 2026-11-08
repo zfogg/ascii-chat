@@ -14,8 +14,25 @@ For test selection, Criterion, Python integration, Windows Docker test commands,
 - Windows uses Scoop LLVM; macOS prefers Homebrew LLVM; test containers install LLVM and libraries through Linux package managers. Use Clang and Ninja. Verify the selected compiler and CMake cache when reusing a build.
 - Record the checkout, branch, SHA, dirty changes, OS, and architecture tested. A Docker source bind mount includes local edits; an SSH checkout does not. Transfer the intended commit or scoped patch explicitly and verify it arrived before interpreting results.
 - Preserve native `build/`, Docker `build_docker/`, dependency caches, and unrelated work. Reconfigure rather than deleting builds. Separate incompatible architectures, libc variants, and configurations into distinct build/cache trees.
+- All Unix devices use the same checkout path: `~/src/github.com/zfogg/ascii-chat`.
+
+## Windows native and remote access
+
+The Windows machine is reachable as `twopal`. From another host, enter the repository with:
+
+```sh
+ssh twopal 'cd src\\ascii-chat'
+```
+
+Use the Windows checkout as the main worktree, with Scoop/LLVM Clang, Ninja, the `default` CMake preset, and its shared `.deps-cache/`. Preserve uncommitted work and do not use the `twopal` host entry for the Mac checkout.
 
 ## Linux from PowerShell
+
+For Raspberry Pi 5 work, use the configured `pi5` host:
+
+```sh
+ssh pi5
+```
 
 Inspect `tests/Dockerfile`, `tests/Dockerfile.ubuntu`, `tests/docker-compose.yml`, and `tests/scripts/run-docker-tests.ps1` for development and tests. For packaging, inspect `tests/Dockerfile.debian`, `tests/Dockerfile.fedora`, and `tests/docker-compose.packages.yml`; for production images, inspect `docker/Dockerfile` and release CI. Select the environment for the task rather than assuming all images build the same configuration.
 
@@ -45,13 +62,13 @@ For Git worktrees, ensure the container can resolve `.git` and initialized submo
 
 ## macOS over Tailscale SSH
 
-From Windows, connect to the configured remote host with `ssh twopal 'cd src\\ascii-chat'` before running the remote build or inspection commands.
+The Mac is accessed through `zachbook-pro`:
 
-The user's Mac is normally available as `loomen@zachbook-pro`; Tailscale is normally kept running on all machines. Its checkout is `~/src/github.com/zfogg/ascii-chat`:
-
-```powershell
-ssh loomen@zachbook-pro 'cd ~/src/github.com/zfogg/ascii-chat && git status --short && git branch --show-current && git rev-parse HEAD && uname -m'
+```sh
+ssh zachbook-pro
 ```
+
+Its checkout is `~/src/github.com/zfogg/ascii-chat`.
 
 Prefer single-quoted PowerShell SSH payloads so remote variables and shell substitutions reach the Mac unchanged. SSH sessions may lack the interactive Homebrew PATH. Locate `brew` (including `/usr/local/bin/brew` on Intel or `/opt/homebrew/bin/brew` on Apple Silicon), use `brew --prefix llvm`, and prepend that prefix's `bin` directory to PATH. Set `CC=clang` and `CXX=clang++`; verify `command -v clang` and `clang --version`. Apple developer tools are the fallback if Homebrew LLVM is unavailable; report that difference.
 
