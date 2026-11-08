@@ -228,13 +228,19 @@ struct ContentView: View {
                 .font(.largeTitle.bold())
             Text("Choose a mode to start")
                 .foregroundStyle(.secondary)
-            Picker("Mode", selection: $selectedMode) {
+            HStack(spacing: 8) {
                 ForEach(IOSMode.allCases) { mode in
-                    Text(mode.title + (mode.isImplemented ? "" : " · Soon"))
-                        .tag(mode)
+                    Button {
+                        selectedMode = mode
+                    } label: {
+                        Text(mode.title + (mode.isImplemented ? "" : " · Soon"))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(selectedMode == mode ? .accentColor : .secondary)
+                    .disabled(!mode.isImplemented)
                 }
             }
-            .pickerStyle(.segmented)
             .accessibilityLabel("Session mode")
             .accessibilityHint("Choose mirror, client, or discovery mode")
             Text(selectedMode.availabilityLabel)
