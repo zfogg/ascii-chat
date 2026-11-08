@@ -352,14 +352,12 @@ static void common_handle_sigusr1(int sig) {
 }
 
 /**
- * @brief Common SIGUSR2 handler - triggers memory report in all modes
+ * @brief Common SIGUSR2 handler - requests a deferred memory report in all modes
  * @param sig The signal number (unused, required by signal handler signature)
  */
 static void common_handle_sigusr2(int sig) {
   (void)sig;
-  // Log to stderr directly since we're in signal context
-  // (avoid logging system which uses mutexes)
-  debug_memory_trigger_report();
+  debug_stats_trigger_memory_report();
 }
 #endif
 #endif
@@ -994,22 +992,6 @@ int main(int argc, char *argv[]) {
     FATAL(ERROR_PLATFORM_INIT, "Debug sync system initialization failed");
   }
   log_debug("Debug sync system initialized successfully");
-
-  // Initialize memory debug system
-  // TEMPORARILY DISABLED: these calls hang in non-interactive mode
-  // log_debug("Initializing memory debug system...");
-  // int debug_memory_result = debug_memory_thread_init();
-  // if (debug_memory_result != 0) {
-  //   LOG_ERRNO_IF_SET("Memory debug system initialization failed");
-  //   FATAL(ERROR_PLATFORM_INIT, "Memory debug system initialization failed");
-  // }
-  // log_debug("Memory debug system initialized successfully");
-
-  // Start memory debug (now just prints report directly)
-  // if (debug_memory_thread_start() != 0) {
-  //   LOG_ERRNO_IF_SET("Memory debug startup failed");
-  //   FATAL(ERROR_THREAD, "Memory debug startup failed");
-  // }
 
 #ifndef _WIN32
   // Unblock SIGUSR1 and SIGUSR2 at process level to ensure delivery

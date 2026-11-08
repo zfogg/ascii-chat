@@ -1,0 +1,4 @@
+interface:
+  display_name: ascii-chat C development
+  short_description: Develop and debug ascii-chat C code
+  default_prompt: Use $ascii-chat-c-development to implement or debug this ascii-chat C change.

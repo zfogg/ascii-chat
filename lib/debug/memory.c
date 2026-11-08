@@ -1358,93 +1358,10 @@ typedef struct {
 } debug_memory_request_t;
 
 static debug_memory_request_t g_debug_memory_request = {false, false, false, {0}, {0}, false};
-static asciichat_thread_t g_debug_memory_thread;
-
-/**
- * @brief Thread function for memory report printing
- *
- * Waits for SIGUSR2 signal or explicit trigger. When triggered,
- * prints the memory report on this thread rather than in signal context.
- */
-static void *debug_memory_thread_fn(void *arg) {
-  (void)arg;
-
-  while (!g_debug_memory_request.should_exit) {
-    mutex_lock(&g_debug_memory_request.mutex);
-
-    if ((g_debug_memory_request.should_run || g_debug_memory_request.signal_triggered) &&
-        !g_debug_memory_request.should_exit) {
-      mutex_unlock(&g_debug_memory_request.mutex);
-      debug_memory_report();
-      mutex_lock(&g_debug_memory_request.mutex);
-      g_debug_memory_request.should_run = false;
-      g_debug_memory_request.signal_triggered = false;
-    }
-
-    // Wait for work or signal, with 100ms timeout to check should_exit
-    if (!g_debug_memory_request.should_exit) {
-      cond_timedwait(&g_debug_memory_request.cond, &g_debug_memory_request.mutex, 100000000); // 100ms
-    }
-    mutex_unlock(&g_debug_memory_request.mutex);
-  }
-  return NULL;
-}
-
-/**
- * @brief Initialize memory debug thread resources
- */
-int debug_memory_thread_init(void) {
-  return 0;
-}
-
-/**
- * @brief Start the memory debug thread
- */
-int debug_memory_thread_start(void) {
-  if (!g_debug_memory_request.initialized) {
-    mutex_init(&g_debug_memory_request.mutex, "debug_memory_state");
-    cond_init(&g_debug_memory_request.cond, "debug_memory_signal");
-    g_debug_memory_request.initialized = true;
-  }
-
-  g_debug_memory_request.should_exit = false;
-  int err = acthread_create(&g_debug_memory_thread, "debug_memory", debug_memory_thread_fn, NULL);
-  return err;
-}
 
 /**
  * @brief Trigger memory report from SIGUSR2 handler
  */
-void debug_memory_trigger_report(void) {
-  g_debug_memory_request.signal_triggered = true;
-  cond_signal(&g_debug_memory_request.cond);
-}
-
-/**
- * @brief Stop the memory debug thread
- */
-void debug_memory_thread_cleanup(void) {
-  // Only join if thread was actually created
-  if (!g_debug_memory_request.initialized) {
-    return;
-  }
-
-  g_debug_memory_request.initialized = false; // Prevent double-join
-
-  // Set exit flag and signal thread - don't acquire mutex to avoid deadlock
-  // The thread reads should_exit without locking, and cond_signal is safe without mutex
-  g_debug_memory_request.should_exit = true;
-  cond_signal(&g_debug_memory_request.cond);
-
-  // Use timeout join to prevent indefinite hang if debug thread is stuck
-  // Matches pattern used in debug_stats_cleanup_thread() which has 1 second timeout
-  int join_result = thread_join_timeout(&g_debug_memory_thread, NULL, 1000000000ULL); // 1 second timeout
-  if (join_result != 0) {
-    // Thread didn't exit cleanly, but we still need to proceed with shutdown
-    // Log a warning if logging is still available
-  }
-}
-
 void debug_sync_symbolize_allocations(void) {
   // Allocation backtraces are symbolized when the memory report is rendered.
 }
@@ -1467,22 +1384,6 @@ void debug_memory_set_quiet_mode(bool quiet) {
 }
 
 void debug_memory_report(void) {
-  // No-op in release builds
-}
-
-int debug_memory_thread_init(void) {
-  return 0;
-}
-
-int debug_memory_thread_start(void) {
-  return 0;
-}
-
-void debug_memory_trigger_report(void) {
-  // No-op in release builds
-}
-
-void debug_memory_thread_cleanup(void) {
   // No-op in release builds
 }
 

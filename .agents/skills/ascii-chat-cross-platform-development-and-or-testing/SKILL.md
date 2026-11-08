@@ -45,6 +45,8 @@ For Git worktrees, ensure the container can resolve `.git` and initialized submo
 
 ## macOS over Tailscale SSH
 
+From Windows, connect to the configured remote host with `ssh twopal 'cd src\\ascii-chat'` before running the remote build or inspection commands.
+
 The user's Mac is normally available as `loomen@zachbook-pro`; Tailscale is normally kept running on all machines. Its checkout is `~/src/github.com/zfogg/ascii-chat`:
 
 ```powershell
