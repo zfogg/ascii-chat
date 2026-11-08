@@ -84,8 +84,10 @@ elseif(PLATFORM_POSIX)
             ${CMAKE_SOURCE_DIR}/lib/video/webcam/macos/webcam_avfoundation.m
         )
         if(PLATFORM_IOS)
+            list(REMOVE_ITEM PLATFORM_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/macos/filesystem.m)
             list(APPEND PLATFORM_SRCS
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/keepawake.m
+                ${CMAKE_CURRENT_SOURCE_DIR}/ios/filesystem.m
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/render_bridge.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/lws_spawn_stub.c)
         else()
