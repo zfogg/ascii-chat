@@ -1,7 +1,6 @@
 // TypeScript wrapper for Client WASM module
 // Provides type-safe interface to libasciichat client mode
 
-import type { DiscoverySnapshot, HandoffAction } from "../network/acdsProtocol";
 import type {
   RuntimeValues,
   ClientWasmBindings,
@@ -48,8 +47,6 @@ type ClientModule = ClientWasmBindings & {
   sendPacketCallback?: (rawPacket: Uint8Array) => void;
   hostPacketCallback?: (id: number, bytes: Uint8Array) => void;
   discoverySend?: (handle: number, type: number, payload: Uint8Array) => void;
-  discoveryResult?: DiscoverySnapshot;
-  handoffResult?: HandoffAction;
 };
 /** Publish the complete pending C error stack and throw at the JS boundary. */
 export function throwWasmError(result: number, fallback: string): never {

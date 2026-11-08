@@ -424,6 +424,32 @@ type ClientFrameResult = {
   bytes: Uint8Array;
 };
 
+type DiscoverySnapshotValue = {
+  state: number;
+  terminal: boolean;
+  error: string;
+  name: string;
+  joined: {
+    participantId: Uint8Array;
+    sessionId: Uint8Array;
+    hostId: Uint8Array;
+    turnUsername: string;
+    turnPassword: string;
+    serverAddress: string;
+    serverPort: number;
+    sessionType: number;
+    quicPort: number;
+    webtransportUrl: string;
+  };
+};
+
+type HandoffActionValue = {
+  kind: number;
+  participant: Uint8Array;
+  generation: number;
+  sequence: number;
+} | null;
+
 type ProtocolBytes = Uint8Array;
 
 type OptionalHandoffBytes = Uint8Array | null;
@@ -434,7 +460,7 @@ export interface DiscoveryBinding extends ClassHandle {
   enter(_0: boolean, _1: EmbindString, _2: ProtocolBytes): number;
   receive(_0: number, _1: ProtocolBytes): number;
   leave(): number;
-  snapshot(): void;
+  snapshot(): DiscoverySnapshotValue;
 }
 
 export interface HostPacketBinding extends ClassHandle {
@@ -566,7 +592,7 @@ interface EmbindModule {
     _6: number,
     _7: number,
   ): OptionalHandoffBytes;
-  handoffDecode(_0: ProtocolBytes): number;
+  handoffDecode(_0: ProtocolBytes): HandoffActionValue;
   browser_host_create(): number;
   browser_host_destroy(): void;
   browser_host_add_client(): number;

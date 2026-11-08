@@ -575,7 +575,7 @@ test("discovery protocol uses owned Embind sessions", async ({ page }) => {
   await expect(page).toHaveTitle("PASS: shared C discovery protocol", {
     timeout: 30000,
   });
-  await expect(page.locator("#results")).toContainText("8 tests passed");
+  await expect(page.locator("#results")).toContainText("9 tests passed");
 });
 
 test("renderer diagnostic pages use Embind", async ({ page }) => {

@@ -4,13 +4,12 @@ import {
   HANDOFF_PACKET,
 } from "../../src/network/HandoffProtocol";
 const module = vi.hoisted(() => ({
-  handoffResult: {
+  handoffDecode: () => ({
     kind: 6,
     participant: new Uint8Array(16),
     generation: 1,
     sequence: 1,
-  },
-  handoffDecode: () => 0,
+  }),
   handoffEncode: (
     kind: number,
     _session: Uint8Array,

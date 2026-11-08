@@ -63,9 +63,8 @@ export class HandoffProtocol {
       return true;
     const module = getClientModule();
     if (!module) throw new Error("Client WASM module is unavailable");
-    if (module.handoffDecode(bytes)) throw new Error("Invalid handoff frame");
-    const action = module.handoffResult;
-    if (!action) throw new Error("Missing handoff result");
+    const action = module.handoffDecode(bytes);
+    if (!action) throw new Error("Invalid handoff frame");
     if (action.generation < this.generation) return true;
     this.generation = action.generation;
     if (

@@ -6619,8 +6619,8 @@ async function ClientModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    3032048: () => Module.getRandomValue(),
-    3032084: () => {
+    3031730: () => Module.getRandomValue(),
+    3031766: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -6668,58 +6668,12 @@ async function ClientModule(moduleArg = {}) {
     const packetCopy = new Uint8Array(packetArray);
     Module.sendPacketCallback(packetCopy);
   }
-  function handoff_snapshot(kind, id, generation, sequence) {
-    Module.handoffResult = {
-      kind,
-      participant: (growMemViews(), HEAPU8).slice(id, id + 16),
-      generation,
-      sequence,
-    };
-  }
   function discovery_send(p, type, data, length) {
     Module.discoverySend(
       p,
       type,
       (growMemViews(), HEAPU8).slice(data, data + length),
     );
-  }
-  function discovery_snapshot(
-    state,
-    terminal,
-    error,
-    name,
-    participant,
-    session,
-    host,
-    user,
-    password,
-    address,
-    port,
-    session_type,
-    quic_port,
-    webtransport_url,
-  ) {
-    Module.discoveryResult = {
-      state,
-      terminal: !!terminal,
-      error: UTF8ToString(error),
-      name: UTF8ToString(name),
-      joined: {
-        participantId: (growMemViews(), HEAPU8).slice(
-          participant,
-          participant + 16,
-        ),
-        sessionId: (growMemViews(), HEAPU8).slice(session, session + 16),
-        hostId: (growMemViews(), HEAPU8).slice(host, host + 16),
-        turnUsername: UTF8ToString(user),
-        turnPassword: UTF8ToString(password),
-        serverAddress: UTF8ToString(address),
-        serverPort: port,
-        sessionType: session_type,
-        quicPort: quic_port,
-        webtransportUrl: UTF8ToString(webtransport_url),
-      },
-    };
   }
   function browser_host_send(client, data, length) {
     if (Module.hostPacketCallback)
@@ -7020,7 +6974,6 @@ async function ClientModule(moduleArg = {}) {
       browser_host_send,
       clock_time_get: _clock_time_get,
       discovery_send,
-      discovery_snapshot,
       emscripten_asm_const_int: _emscripten_asm_const_int,
       emscripten_check_blocking_allowed: _emscripten_check_blocking_allowed,
       emscripten_date_now: _emscripten_date_now,
@@ -7035,7 +6988,6 @@ async function ClientModule(moduleArg = {}) {
       fd_read: _fd_read,
       fd_seek: _fd_seek,
       fd_write: _fd_write,
-      handoff_snapshot,
       invoke_iii,
       invoke_iiii,
       invoke_iiiii,

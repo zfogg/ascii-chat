@@ -26,8 +26,7 @@ export class DiscoveryProtocol {
     module.discoverySend = this.forward;
   }
   private finish(result: number): DiscoverySnapshot {
-    this.getBinding().snapshot();
-    const snapshot = this.module.discoveryResult!;
+    const snapshot = this.getBinding().snapshot();
     if (result) {
       this.outgoing = [];
       throw snapshot.terminal
@@ -66,7 +65,6 @@ export class DiscoveryProtocol {
       this.binding = null;
       if (this.module.discoverySend === this.forward)
         delete this.module.discoverySend;
-      delete this.module.discoveryResult;
     }
   }
 }

@@ -25,10 +25,7 @@
         let packets = [];
         m.discoverySend = (handle, type, payload) =>
           packets.push({ type, payload });
-        const snap = (p) => {
-          p.snapshot();
-          return m.discoveryResult;
-        };
+        const snap = (p) => p.snapshot();
         const enter = (p, create, name, password) =>
           p.enter(create, name, new TextEncoder().encode(password));
         const receive = (p, type, bytes) => p.receive(type, bytes);
@@ -149,7 +146,37 @@
           assert(receive(p, 6007, new Uint8Array(80)) !== 0, "end");
           assert(snap(p).state === 7 && snap(p).terminal, "ended");
         });
-        results.textContent = lines.join("\n") + "\n\n8 tests passed";
+        test("handoff decode returns an owned action", () => {
+          const session = new Uint8Array(16).fill(1);
+          const participant = new Uint8Array(16).fill(2);
+          const encoded = m.handoffEncode(
+            3,
+            session,
+            participant,
+            7,
+            9,
+            2,
+            255,
+            0,
+          );
+          const action = m.handoffDecode(encoded);
+          assert(
+            action.kind === 3 &&
+              action.generation === 7 &&
+              action.sequence === 9,
+            "decoded fields",
+          );
+          assert(
+            action.participant.every((byte) => byte === 2),
+            "participant",
+          );
+          assert(m.handoffDecode(new Uint8Array(1)) === null, "invalid packet");
+          assert(
+            action.participant.every((byte) => byte === 2),
+            "owned result",
+          );
+        });
+        results.textContent = lines.join("\n") + "\n\n9 tests passed";
         document.title = "PASS: shared C discovery protocol";
       } catch (error) {
         results.textContent = lines.join("\n") + "\nFAIL " + error.stack;
