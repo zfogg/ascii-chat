@@ -165,7 +165,7 @@ def test_unsupported_control_flow_fails_closed(
     result = transform(tmp_path, compiler_environment, source)
     assert result.returncode != 0
     assert not (tmp_path / "output.c").exists()
-    assert "defer:" in result.stderr
+    assert "defer-tool:" in result.stderr
 
 
 def test_untransformed_defer_fails_compilation(

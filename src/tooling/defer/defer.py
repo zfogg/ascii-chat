@@ -666,7 +666,7 @@ def main() -> int:
         cindex.CompilationDatabaseError,
         OSError,
     ) as exc:
-        print(f"defer: {exc}", file=sys.stderr)
+        print(f"defer-tool: {exc}", file=sys.stderr)
         return 1
     return 0
 
