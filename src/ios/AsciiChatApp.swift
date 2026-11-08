@@ -189,6 +189,7 @@ private struct CameraAsciiView: View {
             } else {
                 cameraMessage = "Camera access granted"
                 cameraStarted = asciichat_ios_camera_start(0) != 0
+                if !cameraStarted { cameraMessage = "Camera capture unavailable" }
             }
             if asciichat_ios_audio_authorized() == 0 {
                 audioMessage = "Microphone permission requested"
