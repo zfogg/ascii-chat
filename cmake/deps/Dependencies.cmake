@@ -167,6 +167,10 @@ if(NOT EMSCRIPTEN)
     endif()
     add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                      ${CMAKE_BINARY_DIR}/gotel)
+    if(PLATFORM_IOS AND TARGET otlp_c)
+        target_compile_options(otlp_c PRIVATE
+            -include${CMAKE_SOURCE_DIR}/cmake/deps/gotel-ios-compat.h)
+    endif()
     if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
         # These dependencies use the standard C runtime APIs and compile with
         # upstream warning settings; keep their diagnostics scoped to them.
