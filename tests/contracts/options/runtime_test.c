@@ -91,9 +91,15 @@ static void test_transactions(void) {
   edits[1].value.integer = 30;
   options_patch_result_t result;
   cr_assert(options_apply_patch(&patch, &result) == ASCIICHAT_OK && result.changed && result.revision == before + 1);
+  cr_assert_eq(GET_OPTION(fps), 30);
+  edits[0].value.integer = 100;
+  edits[1].value.integer = 0;
+  cr_assert_eq(options_apply_patch(&patch, &result), ASCIICHAT_OK);
+  cr_assert(result.changed && result.revision == before + 2);
+  cr_assert(GET_OPTION(width) == 100 && GET_OPTION(fps) == 0);
   patch.expected_revision = before;
   edits[0].value.integer = 90;
-  cr_assert(options_apply_patch(&patch, NULL) == ERROR_INVALID_STATE && GET_OPTION(width) == 120);
+  cr_assert(options_apply_patch(&patch, NULL) == ERROR_INVALID_STATE && GET_OPTION(width) == 100);
   CLEAR_ERRNO();
   cr_assert_neq(options_set_double("speakers_volume", NAN), ASCIICHAT_OK);
   CLEAR_ERRNO();
@@ -103,7 +109,7 @@ static void test_transactions(void) {
   const char nul_key[] = "{\"width\\u0000hidden\":99}";
   cr_assert_neq(options_apply_json(nul_key, sizeof(nul_key) - 1, OPTIONS_REVISION_ANY, OPTIONS_ORIGIN_LOCAL, NULL),
                 ASCIICHAT_OK);
-  cr_assert_eq(GET_OPTION(width), 120);
+  cr_assert_eq(GET_OPTION(width), 100);
   CLEAR_ERRNO();
   cr_assert_eq(options_set_bool("flip_x", false), ASCIICHAT_OK);
   cr_assert_eq(options_set_bool("flip_y", false), ASCIICHAT_OK);

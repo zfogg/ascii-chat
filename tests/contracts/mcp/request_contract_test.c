@@ -170,6 +170,7 @@ Test(mcp_requests, accepted_sources_produce_bounded_cli_arguments_and_staged_upl
       {MCP_FILE, "{\"options\":{\"test-audio\":true}}", "--waveform=true"},
       {MCP_FILE, "{\"options\":{\"test-pattern\":true},\"timeout_ms\":1000}", "--test-pattern=0"},
       {MCP_FILE, "{\"options\":{\"test-pattern\":true,\"renderer\":\"glyph\"}}", "--renderer=glyph"},
+      {MCP_FILE, "{\"options\":{\"test-pattern\":true,\"fps\":0}}", "--fps=0"},
       {MCP_URL, "{\"url\":\"http://127.0.0.1/frame\"}", "--url=http://127.0.0.1/frame"},
       {MCP_URL, "{\"url\":\"https://localhost/frame\"}", "--url=https://localhost/frame"},
       {MCP_URL, "{\"url\":\"rtsp://localhost/frame\"}", "--url=rtsp://localhost/frame"},

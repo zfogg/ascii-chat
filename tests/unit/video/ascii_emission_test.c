@@ -838,19 +838,22 @@ Test(ascii_emission, glyph_indexed_dither_is_stable_and_spatial) {
   for (size_t i = 0; i < 32 * 32; ++i)
     pixels[i] = (rgb_pixel_t){100, 100, 100};
   image_t image = {.w = 32, .h = 32, .pixels = pixels};
-  char *first = test_render_glyph(&image, ASCII_COLOR_256, &simd_cells_scalar, "@");
-  char *second = test_render_glyph(&image, ASCII_COLOR_256, &simd_cells_scalar, "@");
-  cr_assert_not_null(first);
-  cr_assert_not_null(second);
-  cr_assert_str_eq(first, second, "stationary frames must use the same dither pattern");
-  terminal_cell_t cells[16] = {0};
-  decode(first, cells, 4, 4, true);
-  bool varied = false;
-  for (int i = 1; i < 16; ++i)
-    varied |= cells[i].fg != cells[0].fg;
-  cr_assert(varied, "ordered dithering must distribute quantization levels spatially");
-  SAFE_FREE(first);
-  SAFE_FREE(second);
+  const ascii_color_t modes[] = {ASCII_COLOR_16, ASCII_COLOR_256};
+  for (size_t m = 0; m < sizeof(modes) / sizeof(modes[0]); ++m) {
+    char *first = test_render_glyph(&image, modes[m], &simd_cells_scalar, "@");
+    char *second = test_render_glyph(&image, modes[m], &simd_cells_scalar, "@");
+    cr_assert_not_null(first);
+    cr_assert_not_null(second);
+    cr_assert_str_eq(first, second, "stationary frames must use the same dither pattern");
+    terminal_cell_t cells[16] = {0};
+    decode(first, cells, 4, 4, true);
+    bool varied = false;
+    for (int i = 1; i < 16; ++i)
+      varied |= cells[i].fg != cells[0].fg;
+    cr_assert(varied, "ordered dithering must distribute quantization levels spatially in mode %d", modes[m]);
+    SAFE_FREE(first);
+    SAFE_FREE(second);
+  }
 }
 
 Test(ascii_emission, glyph_matching_lifts_dark_detail_by_default) {
@@ -862,6 +865,15 @@ Test(ascii_emission, glyph_matching_lifts_dark_detail_by_default) {
   cr_assert_not_null(output);
   cr_assert_eq(output[0], '~', "dark glyph density should reflect the automatic luminance lift");
   SAFE_FREE(output);
+  for (int background = 0; background <= 1; ++background) {
+    output = test_render_glyph_mode(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "@", background);
+    cr_assert_not_null(output);
+    terminal_cell_t cell = {0};
+    decode(output, &cell, 1, 1, true);
+    cr_assert_eq(background ? cell.bg : cell.fg, background ? 0x282828 : 0x949494,
+                 "automatic luminance lift must preserve the renderer color calculation");
+    SAFE_FREE(output);
+  }
 }
 
 Test(ascii_emission, optimized_glyph_scoring_matches_reference) {
