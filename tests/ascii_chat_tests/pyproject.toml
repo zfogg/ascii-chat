@@ -27,7 +27,7 @@ dependencies = [
 [project.optional-dependencies]
 audio = ["scipy", "matplotlib", "sounddevice", "soundfile"]
 telemetry = [
-  "gotel @ git+https://github.com/zfogg/gotel.git@5aa6d97522ca11b5ccd4cf9f4ce481430ca4ef7a#subdirectory=python",
+  "gotel @ git+https://github.com/zfogg/gotel.git@v0.14.0#subdirectory=python",
 ]
 
 [tool.setuptools]
