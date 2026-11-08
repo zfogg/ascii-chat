@@ -10,7 +10,7 @@ function engine() {
   let revision = 1;
   let values = { fps: 30, flip_x: false };
   const module: RuntimeOptionsModule = {
-    wasm_options_revision: () => revision,
+    browser_options_revision: () => revision,
     readOptions: () => JSON.stringify({ revision, values }),
     patchOptions: (json, expected) => {
       if (typeof json !== "string") throw new Error("Expected JSON text");

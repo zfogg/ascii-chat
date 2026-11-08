@@ -5,7 +5,7 @@ export interface RuntimeOptionsModule extends Pick<
   MainModule,
   "readOptions" | "patchOptions"
 > {
-  wasm_options_revision(): number;
+  browser_options_revision(): number;
 }
 export type RuntimeValues = Readonly<Record<string, number | string | boolean>>;
 export interface RuntimeSnapshot {
@@ -21,7 +21,7 @@ export class RuntimeOptionsStore {
   constructor(readonly module: RuntimeOptionsModule) {}
 
   readonly getSnapshot = (): RuntimeSnapshot => {
-    const revision = this.module.wasm_options_revision();
+    const revision = this.module.browser_options_revision();
     if (this.snapshot?.revision === revision) return this.snapshot;
     const json = this.module.readOptions();
     if (json === undefined) throw new Error("Cannot read engine settings");

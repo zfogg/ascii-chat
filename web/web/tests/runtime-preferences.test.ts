@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { act, renderHook } from "@testing-library/react";
 import { useLayoutEffect } from "react";
-import { useEngineSettings } from "../src/hooks/useEngineSettings";
+import {
+  renderPreferences,
+  useEngineSettings,
+} from "../src/hooks/useEngineSettings";
 import { runtimeOptions } from "@ascii-chat/shared/wasm";
 import type { RuntimeOptionsModule } from "@ascii-chat/shared/wasm";
 import { DEFAULT_SETTINGS } from "../src/utils/defaultSettings";
@@ -27,7 +30,7 @@ function createEngine(initial: Record<string, string | boolean | number> = {}) {
   let values: Record<string, string | boolean | number> = { ...initial };
   const patches: Record<string, unknown>[] = [];
   engine.module = {
-    wasm_options_revision: () => revision,
+    browser_options_revision: () => revision,
     readOptions: () => JSON.stringify({ revision, values }),
     patchOptions: (json) => {
       if (typeof json !== "string") throw new Error("Expected JSON text");
@@ -53,6 +56,17 @@ function createEngine(initial: Record<string, string | boolean | number> = {}) {
 }
 
 describe("browser preference transactions", () => {
+  it.each(["client", "discovery"])(
+    "includes stabilization in %s viewer preferences",
+    () => {
+      createEngine({ stabilize: true, fps: 30, color_mode: 3 });
+      expect(renderPreferences(80, 24)).toMatchObject({
+        width: 80,
+        height: 24,
+        stabilize: true,
+      });
+    },
+  );
   it("logs rejected settings and keeps the hook usable for a subsequent edit", () => {
     vi.stubGlobal("requestAnimationFrame", () => 1);
     vi.stubGlobal("cancelAnimationFrame", () => {});

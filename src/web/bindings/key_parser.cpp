@@ -38,6 +38,14 @@ static KeyParseResult parse_key(int kind, bool binary, KeyInput input) {
     code = binary ? client_parse_gpg_public_key_binary(bytes.data(), length, output)
                   : client_parse_gpg_public_key(reinterpret_cast<const char *>(bytes.data()), output);
     break;
+  default:
+    code = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid key parser kind: %d", kind);
+    break;
+  }
+  if (code != 0 && kind >= 0 && kind <= 3) {
+    asciichat_error_context_t context;
+    if (!HAS_ERRNO(&context))
+      SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot parse browser key");
   }
   const size_t output_length = code == 0 ? (kind == 0 || kind == 2 ? 64 : 32) : 0;
   emscripten::val result_bytes = emscripten::val::global("Uint8Array").new_(output_length);
@@ -61,17 +69,17 @@ static std::string parser_error() {
 
 static ErrorFrameResult error_frame(size_t index) {
   emscripten::val result = emscripten::val::object();
-  result.set("code", wasm_error_code(index));
-  result.set("message", std::string(wasm_error_message(index)));
-  result.set("file", std::string(wasm_error_file(index)));
-  result.set("fullFile", std::string(wasm_error_full_file(index)));
-  result.set("function", std::string(wasm_error_function(index)));
-  result.set("line", wasm_error_line(index));
+  result.set("code", browser_error_code(index));
+  result.set("message", std::string(browser_error_message(index)));
+  result.set("file", std::string(browser_error_file(index)));
+  result.set("fullFile", std::string(browser_error_full_file(index)));
+  result.set("function", std::string(browser_error_function(index)));
+  result.set("line", browser_error_line(index));
   return ErrorFrameResult(result);
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_key_parser) {
-  emscripten::function("wasm_error_dismiss", &wasm_error_dismiss);
+  emscripten::function("browser_error_dismiss", &browser_error_dismiss);
   emscripten::register_type<KeyInput>("KeyInput", "Uint8Array");
   emscripten::register_type<KeyParseResult>("KeyParseResult", "{ code: number; bytes: Uint8Array }");
   emscripten::register_type<ErrorFrameResult>(
@@ -79,6 +87,6 @@ EMSCRIPTEN_BINDINGS(ascii_chat_key_parser) {
       "{ code: number; message: string; file: string; fullFile: string; function: string; line: number }");
   emscripten::function("parseKey", &parse_key);
   emscripten::function("keyParserError", &parser_error);
-  emscripten::function("errorSnapshot", &wasm_error_snapshot);
+  emscripten::function("errorSnapshot", &browser_error_snapshot);
   emscripten::function("errorFrame", &error_frame);
 }

@@ -17,15 +17,15 @@
 #include <ascii-chat/options/runtime.h>
 #include <ascii-chat/common.h>
 
-double wasm_options_revision(void) {
+double browser_options_revision(void) {
   return (double)options_revision();
 }
-asciichat_error_t wasm_options_patch(const char *json, double expected_revision) {
+asciichat_error_t browser_options_patch(const char *json, double expected_revision) {
   return options_apply_json(json, json ? strlen(json) : 0,
                             expected_revision < 0 ? OPTIONS_REVISION_ANY : (uint64_t)expected_revision,
                             OPTIONS_ORIGIN_LOCAL, NULL);
 }
-char *wasm_options_values(void) {
+char *browser_options_values(void) {
   options_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot), options_snapshot_t *);
   char *json = NULL;
   if (options_read_snapshot(snapshot) == ASCIICHAT_OK) {
@@ -40,7 +40,7 @@ char *wasm_options_values(void) {
   SAFE_FREE(snapshot);
   return json;
 }
-void wasm_options_release(char *json) {
+void browser_options_release(char *json) {
   SAFE_FREE(json);
 }
 

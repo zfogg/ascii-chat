@@ -19,13 +19,13 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(VisualizationSamples);
 class SessionUiBinding {
 public:
   SessionUiBinding() : SessionUiBinding(true) {}
-  explicit SessionUiBinding(bool capture_logs) : session_(wasm_ui_create()) {
+  explicit SessionUiBinding(bool capture_logs) : session_(browser_ui_create()) {
     if (session_ && capture_logs)
-      wasm_ui_capture_logs(session_);
+      browser_ui_capture_logs(session_);
   }
   ~SessionUiBinding() {
     if (session_)
-      wasm_ui_destroy(session_);
+      browser_ui_destroy(session_);
   }
 
   SessionUiBinding(const SessionUiBinding &) = delete;
@@ -35,29 +35,29 @@ public:
     return session_ != nullptr;
   }
   void resize(int cols, int rows) {
-    wasm_ui_resize(session_, cols, rows);
+    browser_ui_resize(session_, cols, rows);
   }
   void loading(bool loading, const std::string &message) {
-    wasm_ui_loading(session_, loading, message.c_str());
+    browser_ui_loading(session_, loading, message.c_str());
   }
   void log(const std::string &message) {
-    wasm_ui_log(session_, message.c_str());
+    browser_ui_log(session_, message.c_str());
   }
   int media(const std::string &text) {
-    return wasm_ui_media(session_, text.data(), text.size());
+    return browser_ui_media(session_, text.data(), text.size());
   }
   int key(int key) {
-    return wasm_ui_key(session_, key);
+    return browser_ui_key(session_, key);
   }
   std::optional<std::string> tick(double milliseconds) {
-    const char *frame = wasm_ui_tick(session_, milliseconds);
+    const char *frame = browser_ui_tick(session_, milliseconds);
     return frame ? std::optional<std::string>(frame) : std::nullopt;
   }
   void clear() {
-    wasm_ui_clear(session_);
+    browser_ui_clear(session_);
   }
   void redraw() {
-    wasm_ui_redraw(session_);
+    browser_ui_redraw(session_);
   }
 
 private:
@@ -70,14 +70,18 @@ class MirrorFrameBinding {
 public:
   std::optional<std::string> convert(RgbaBytes rgba, int width, int height, bool contain) {
     const size_t length = rgba["byteLength"].as<size_t>();
-    if (width <= 0 || height <= 0 || static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4 != length)
+    if (width <= 0 || height <= 0 || static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4 != length) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mirror image: %dx%d, %zu bytes", width, height, length);
       return std::nullopt;
+    }
     input_.resize(length);
     emscripten::val view = emscripten::val(emscripten::typed_memory_view(length, input_.data()));
     view.call<void>("set", rgba);
     char *frame = mirror_convert_frame(input_.data(), width, height, contain);
-    if (!frame)
+    if (!frame) {
+      SET_ERRNO(ERROR_DISPLAY, "Mirror frame conversion failed");
       return std::nullopt;
+    }
     std::string result(frame);
     mirror_free_string(frame);
     return result;
@@ -85,11 +89,11 @@ public:
   int transform(RgbaBytes rgba, int width, int height) {
     const size_t length = rgba["byteLength"].as<size_t>();
     if (width <= 0 || height <= 0 || static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4 != length)
-      return -1;
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid capture image: %dx%d, %zu bytes", width, height, length);
     input_.resize(length);
     emscripten::val view = emscripten::val(emscripten::typed_memory_view(length, input_.data()));
     view.call<void>("set", rgba);
-    const int result = wasm_capture_transform_rgba(input_.data(), width, height);
+    const int result = browser_capture_transform_rgba(input_.data(), width, height);
     if (!result) {
       emscripten::val result_view = emscripten::val(emscripten::typed_memory_view(length, input_.data()));
       rgba.call<void>("set", result_view);
@@ -97,6 +101,10 @@ public:
     return result;
   }
   void submitAudio(VisualizationSamples samples, int source) {
+    if (source != 0 && source != 1) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio visualization source: %d", source);
+      return;
+    }
     const size_t length = samples["length"].as<size_t>();
     if (!length)
       return;
@@ -112,9 +120,15 @@ public:
     }
   }
   std::optional<std::string> renderAudio(unsigned width, unsigned height, int source) {
-    char *frame = mirror_render_audio_visualization(width, height, source);
-    if (!frame)
+    if (!width || !height || (source != 0 && source != 1)) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio visualization dimensions or source");
       return std::nullopt;
+    }
+    char *frame = mirror_render_audio_visualization(width, height, source);
+    if (!frame) {
+      SET_ERRNO(ERROR_DISPLAY, "Audio visualization rendering failed");
+      return std::nullopt;
+    }
     std::string result(frame);
     mirror_free_string(frame);
     return result;
@@ -126,27 +140,38 @@ private:
 };
 
 static int init_mirror(const std::string &args) {
-  return mirror_init_with_args(args.c_str());
+  int result = mirror_init_with_args(args.c_str());
+  if (result)
+    SET_ERRNO(ERROR_INIT, "Browser mirror initialization failed");
+  return result;
 }
 static int patch_options(const std::string &json, double expected_revision) {
-  return wasm_options_patch(json.c_str(), expected_revision);
+  return browser_options_patch(json.c_str(), expected_revision);
 }
 static int set_palette_binding(const std::string &value) {
-  return set_palette(value.c_str());
+  const int result = set_palette(value.c_str());
+  if (result)
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid palette: %s", value.c_str());
+  return result;
 }
 static int set_palette_chars_binding(const std::string &value) {
-  return set_palette_chars(value.c_str());
+  const int result = set_palette_chars(value.c_str());
+  if (result)
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid palette characters");
+  return result;
 }
 static std::string get_palette_chars_binding() {
   const char *value = get_palette_chars();
   return value ? value : "";
 }
 static std::optional<std::string> read_options() {
-  char *json = wasm_options_values();
-  if (!json)
+  char *json = browser_options_values();
+  if (!json) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Cannot read browser options");
     return std::nullopt;
+  }
   std::string result(json);
-  wasm_options_release(json);
+  browser_options_release(json);
   return result;
 }
 static std::optional<std::string> option_help(int mode, const std::string &name) {
@@ -155,13 +180,14 @@ static std::optional<std::string> option_help(int mode, const std::string &name)
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_session_ui) {
-  emscripten::function("wasm_options_revision", &wasm_options_revision);
-  emscripten::function("wasm_ui_volume", &wasm_ui_volume);
-  emscripten::function("wasm_ui_fps", &wasm_ui_fps);
-  emscripten::function("wasm_ui_audio", +[](int value) { return static_cast<int>(wasm_ui_audio(value)); });
-  emscripten::function("wasm_capture_transform_required", &wasm_capture_transform_required);
+  emscripten::function("browser_options_revision", &browser_options_revision);
+  emscripten::function("browser_ui_volume", &browser_ui_volume);
+  emscripten::function("browser_ui_fps", &browser_ui_fps);
+  emscripten::function("browser_ui_audio", +[](int value) { return static_cast<int>(browser_ui_audio(value)); });
+  emscripten::function("browser_capture_transform_required", &browser_capture_transform_required);
   emscripten::function("mirror_cleanup", &mirror_cleanup);
-  emscripten::function("mirror_reset_stabilizer", &mirror_reset_stabilizer);
+  emscripten::function("sessionRenderResetStabilizer", &session_render_reset_stabilizer);
+  emscripten::function("sessionRenderCleanup", &session_render_cleanup);
   emscripten::function("set_width", &set_width);
   emscripten::function("get_width", &get_width);
   emscripten::function("set_height", &set_height);

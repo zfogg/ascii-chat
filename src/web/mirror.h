@@ -15,7 +15,8 @@ char *mirror_render_audio_visualization(unsigned int width, unsigned int height,
 
 void mirror_cleanup(void);
 
-void mirror_reset_stabilizer(void);
+void session_render_reset_stabilizer(void);
+void session_render_cleanup(void);
 
 #ifdef __cplusplus
 }

@@ -61,7 +61,7 @@ int mirror_init_with_args(const char *args_json) {
   // Parse space-separated arguments
   char *args_copy = NULL;
   char *argv[WASM_ARGV_CAPACITY] = {NULL};
-  int argc = wasm_parse_args(args_json, argv, WASM_ARGV_CAPACITY, &args_copy);
+  int argc = browser_parse_args(args_json, argv, WASM_ARGV_CAPACITY, &args_copy);
   if (argc < 0) {
     return -1;
   }
@@ -88,17 +88,23 @@ int mirror_init_with_args(const char *args_json) {
   return 0;
 }
 
-void mirror_reset_stabilizer(void) {
+void session_render_reset_stabilizer(void) {
   ascii_stabilizer_reset(&g_stabilizer);
 }
 
-void mirror_cleanup(void) {
-  ascii_stabilizer_reset(&g_stabilizer);
-  errno_destroy();
+void session_render_cleanup(void) {
+  session_render_reset_stabilizer();
   if (g_digital_rain) {
     digital_rain_destroy(g_digital_rain);
     g_digital_rain = NULL;
   }
+  g_last_rain_update_time = 0.0;
+  g_frame_count = 0;
+}
+
+void mirror_cleanup(void) {
+  session_render_cleanup();
+  errno_destroy();
   options_state_destroy();
   buffer_system_cleanup();
   platform_destroy();

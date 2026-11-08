@@ -15,10 +15,10 @@
 extern "C" {
 #endif
 
-double wasm_options_revision(void);
-asciichat_error_t wasm_options_patch(const char *json, double expected_revision);
-char *wasm_options_values(void);
-void wasm_options_release(char *json);
+double browser_options_revision(void);
+asciichat_error_t browser_options_patch(const char *json, double expected_revision);
+char *browser_options_values(void);
+void browser_options_release(char *json);
 
 // Dimension setters/getters
 int set_width(int value);

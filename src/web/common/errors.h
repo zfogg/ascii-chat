@@ -7,15 +7,15 @@
 extern "C" {
 #endif
 
-size_t wasm_error_snapshot(void);
-int wasm_error_code(size_t index);
-const char *wasm_error_message(size_t index);
-const char *wasm_error_file(size_t index);
-const char *wasm_error_full_file(size_t index);
-const char *wasm_error_function(size_t index);
-int wasm_error_line(size_t index);
+size_t browser_error_snapshot(void);
+int browser_error_code(size_t index);
+const char *browser_error_message(size_t index);
+const char *browser_error_file(size_t index);
+const char *browser_error_full_file(size_t index);
+const char *browser_error_function(size_t index);
+int browser_error_line(size_t index);
 
-void wasm_error_dismiss(void);
+void browser_error_dismiss(void);
 
 #ifdef __cplusplus
 }

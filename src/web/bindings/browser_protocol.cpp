@@ -81,8 +81,10 @@ static OptionalHandoffBytes handoff_encode(int kind, ProtocolBytes session, Prot
                                            int port) {
   auto session_id = protocol_input(session);
   auto participant_id = protocol_input(participant);
-  if (session_id.size() != 16 || participant_id.size() != 16)
+  if (session_id.size() != 16 || participant_id.size() != 16) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Handoff identifiers must be 16 bytes");
     return OptionalHandoffBytes(emscripten::val::null());
+  }
   uint8_t buffer[64];
   browser_handoff_encode(kind, session_id.data(), participant_id.data(), generation, sequence, capabilities, nat_tier,
                          port, buffer);

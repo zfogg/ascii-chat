@@ -564,7 +564,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
       const frame = { data: original, width: 2, height: 2 };
       const upload = orientUpload(canvas, frame);
       results.push({
-        required: module.wasm_capture_transform_required(),
+        required: module.browser_capture_transform_required(),
         pixels: Array.from(upload.data as Uint8Array),
         local: Array.from(frame.data),
         flip: store.getSnapshot().values["flip_x"],
@@ -617,7 +617,7 @@ test("C resolves source orientation and transforms upload pixels once while pres
         JSON.stringify(result.local) === JSON.stringify(proof.original),
     ),
   ).toBe(true);
-  expect(proof.invalid).toBe(-1);
+  expect(proof.invalid).toBe(86);
 });
 
 test("Mirror visualizes captured audio in waveform and FFT while its enabled speakers remain silent", async ({

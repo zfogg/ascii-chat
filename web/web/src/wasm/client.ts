@@ -72,7 +72,7 @@ export function throwWasmError(result: number, fallback: string): never {
     source: "C/WASM",
     title: `${fallback} (${result})`,
     frames: frames.length ? frames : [{ code: result, message: fallback }],
-    dismiss: () => module?.wasm_error_dismiss(),
+    dismiss: () => module?.browser_error_dismiss(),
   });
   const error = new Error(`${fallback} (${result})`);
   Object.defineProperty(error, "asciichatWasmReported", { value: true });

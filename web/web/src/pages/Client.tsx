@@ -22,6 +22,7 @@ import { readUrlValue } from "../utils/urlState";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useId,
   useMemo,
   useRef,
@@ -62,6 +63,7 @@ import {
   adoptMirrorWasmModule,
   getMirrorModule,
   resetAdoptedMirrorWasmModule,
+  resetRenderStabilizer,
   convertFrameToAscii,
   renderAudioVisualization,
   submitAudioVisualizationSamples,
@@ -675,6 +677,15 @@ export function ClientPage({
   });
   const { stop: stopFile, setSuspended: suspendFile } = fileMedia;
   const fileSelected = !!fileMedia.fileName;
+  useLayoutEffect(() => {
+    resetRenderStabilizer();
+  }, [
+    rendererReady,
+    fileSelected,
+    fileMedia.fileName,
+    displayInput,
+    isWebcamRunning,
+  ]);
   const screenRestore = useRef<{ file: boolean; webcam: boolean } | null>(null);
   const screenCapture = useDisplayCapture({
     setError,
@@ -780,7 +791,7 @@ export function ClientPage({
   );
 
   useEffect(() => {
-    getMirrorModule()?.wasm_ui_audio(
+    getMirrorModule()?.browser_ui_audio(
       Number(audioEnabled || micEnabled || displayInput),
     );
   }, [audioEnabled, micEnabled, displayInput, connectionState, rendererReady]);
@@ -838,7 +849,7 @@ export function ClientPage({
     try {
       const pipeline = ensureAudio();
       const ui = getMirrorModule();
-      if (ui) pipeline.setVolume(ui.wasm_ui_volume());
+      if (ui) pipeline.setVolume(ui.browser_ui_volume());
       if (speakers) await pipeline.enablePlayback();
       const client = clientRef.current;
       if (!client) throw new Error("Connect before starting the audio stream");
@@ -1709,7 +1720,7 @@ export function ClientPage({
                   event,
                   fileSelected ? fileVideoRef.current : videoRef.current,
                 );
-                audioRef.current?.setVolume(event.module.wasm_ui_volume());
+                audioRef.current?.setVolume(event.module.browser_ui_volume());
                 if (event.action === 3) disconnectMedia();
               }}
               zalgo={settings.zalgo ?? 0}

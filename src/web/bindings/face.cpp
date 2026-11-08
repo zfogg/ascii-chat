@@ -1,6 +1,7 @@
 #include <emscripten/bind.h>
 extern "C" {
 #include "../face_follow.h"
+#include <ascii-chat/asciichat_errno.h>
 }
 
 #include <cstddef>
@@ -11,7 +12,7 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(FaceValues);
 static int detect_face(FacePixels pixels, int width, int height, double now) {
   const size_t length = pixels["length"].as<size_t>();
   if (face_web_validate_input(width, height, length))
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid face detector image: %dx%d, %zu bytes", width, height, length);
   emscripten::val(emscripten::typed_memory_view(length, face_web_input())).call<void>("set", pixels);
   face_web_detect(width, height, now);
   return 0;

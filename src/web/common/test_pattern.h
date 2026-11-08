@@ -10,10 +10,10 @@ typedef struct test_pattern test_pattern_t;
 extern "C" {
 #endif
 
-test_pattern_t *wasm_test_pattern_create(int width, int height);
-const uint8_t *wasm_test_pattern_render_rgba(test_pattern_t *pattern, int width, int height, int index, double time_ms,
-                                             bool cadence);
-void wasm_test_pattern_destroy(test_pattern_t *pattern);
+test_pattern_t *browser_test_pattern_create(int width, int height);
+const uint8_t *browser_test_pattern_render_rgba(test_pattern_t *pattern, int width, int height, int index,
+                                                double time_ms, bool cadence);
+void browser_test_pattern_destroy(test_pattern_t *pattern);
 
 #ifdef __cplusplus
 }

@@ -543,6 +543,7 @@ add_executable(client-web
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/test_pattern.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/audio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/peer_crypto.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/network.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/key_parser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/client_api.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/browser_protocol.cpp

@@ -350,13 +350,14 @@ export interface TestPatternBinding extends ClassHandle {
 }
 
 interface EmbindModule {
-  wasm_options_revision(): number;
-  wasm_ui_volume(): number;
-  wasm_ui_fps(): number;
-  wasm_ui_audio(_0: number): number;
-  wasm_capture_transform_required(): number;
+  browser_options_revision(): number;
+  browser_ui_volume(): number;
+  browser_ui_fps(): number;
+  browser_ui_audio(_0: number): number;
+  browser_capture_transform_required(): number;
   mirror_cleanup(): void;
-  mirror_reset_stabilizer(): void;
+  sessionRenderResetStabilizer(): void;
+  sessionRenderCleanup(): void;
   set_width(_0: number): number;
   get_width(): number;
   set_height(_0: number): number;

@@ -7,9 +7,9 @@
 extern "C" {
 #endif
 
-int wasm_capture_transform_rgba(uint8_t *pixels, int width, int height);
+int browser_capture_transform_rgba(uint8_t *pixels, int width, int height);
 
-int wasm_capture_transform_required(void);
+int browser_capture_transform_required(void);
 
 #ifdef __cplusplus
 }

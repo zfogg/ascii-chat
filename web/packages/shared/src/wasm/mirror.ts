@@ -33,9 +33,10 @@ export interface MirrorModule
     SessionUiModule,
     Pick<
       MainModule,
-      | "wasm_capture_transform_required"
+      | "browser_capture_transform_required"
       | "mirror_cleanup"
-      | "mirror_reset_stabilizer"
+      | "sessionRenderResetStabilizer"
+      | "sessionRenderCleanup"
     > {
   canvas?: HTMLCanvasElement;
 }
@@ -74,6 +75,7 @@ export function adoptMirrorWasmModule(module: MirrorModule): void {
 /** Clear a client module reference before its owning client runtime is cleaned up. */
 export function resetAdoptedMirrorWasmModule(): void {
   releaseFrameBinding();
+  wasmModule?.sessionRenderCleanup();
   if (wasmModule) resetRuntimeOptions(wasmModule);
   wasmModule = null;
   cleanupOptions();
@@ -167,13 +169,20 @@ export function cleanupMirrorWasm(): void {
   releaseFrameBinding();
   if (wasmModule) {
     wasmModule.mirror_cleanup();
+    resetRuntimeOptions(wasmModule);
     wasmModule = null;
     cleanupOptions();
   }
 }
 
-export function resetMirrorStabilizer(): void {
-  wasmModule?.mirror_reset_stabilizer();
+export function resetRenderStabilizer(): void {
+  wasmModule?.sessionRenderResetStabilizer();
+}
+
+/** Release per-session rendering state while keeping the shared module alive. */
+export function cleanupRenderSession(): void {
+  releaseFrameBinding();
+  wasmModule?.sessionRenderCleanup();
 }
 
 /**

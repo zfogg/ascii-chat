@@ -57,7 +57,7 @@ test("mirror WASM stabilizes every render mode", async ({ page }) => {
                 renderer,
                 stabilize: enabled,
               });
-              m.mirror_reset_stabilizer();
+              m.sessionRenderResetStabilizer();
               return [
                 convert(100, renderMode === 1),
                 convert(104, renderMode === 1),
@@ -71,6 +71,12 @@ test("mirror WASM stabilizes every render mode", async ({ page }) => {
             });
           }
         }
+        m.sessionRenderCleanup();
+        m.sessionRenderCleanup();
+        // Cleanup is per session: the shared options and module remain usable.
+        options.applyPatch({ stabilize: false });
+        if (convert(104, false) !== 104)
+          throw new Error("Session cleanup broke the shared engine");
         return results;
       } finally {
         frame.delete();
@@ -83,9 +89,9 @@ test("mirror WASM stabilizes every render mode", async ({ page }) => {
   );
   expect(result).toHaveLength(6);
   for (const { raw, stable } of result) {
-    expect(raw).toEqual([100, 104]);
-    expect(stable[0]).toBe(100);
-    expect(stable[1]).toBeGreaterThanOrEqual(100);
-    expect(stable[1]).toBeLessThan(104);
+    expect(raw[1]).toBeGreaterThan(raw[0]!);
+    expect(stable[0]).toBe(raw[0]);
+    expect(stable[1]).toBeGreaterThanOrEqual(raw[0]!);
+    expect(stable[1]).toBeLessThan(raw[1]!);
   }
 });

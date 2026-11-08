@@ -79,19 +79,32 @@ static ClientPacketResult packet_result(int code, const uint8_t *data, size_t le
 }
 
 static int set_server_address(const std::string &host, int port) {
-  return client_set_server_address(host.c_str(), port);
+  if (host.empty() || port <= 0 || port > 65535)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client server address or port");
+  const int result = client_set_server_address(host.c_str(), port);
+  if (result)
+    SET_ERRNO(ERROR_INVALID_STATE, "Cannot set client server address");
+  return result;
 }
 static std::optional<std::string> client_public_key() {
   char *key = client_get_public_key_hex();
-  if (!key)
+  if (!key) {
+    SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot get client public key");
     return std::nullopt;
+  }
   std::string result(key);
   client_free_string(key);
   return result;
 }
 static int send_client_frame(ClientBytes rgba, int width, int height) {
+  const size_t length = rgba["length"].as<size_t>();
+  if (width <= 0 || height <= 0 || static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4 != length)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client video frame: %dx%d, %zu bytes", width, height, length);
   auto bytes = client_copy_input(rgba);
-  return client_send_video_frame(bytes.data(), width, height);
+  const int result = client_send_video_frame(bytes.data(), width, height);
+  if (result)
+    SET_ERRNO(ERROR_NETWORK, "Cannot send client video frame");
+  return result;
 }
 static int handle_handshake(int stage, ClientBytes packet) {
   auto bytes = client_copy_input(packet);
@@ -109,9 +122,14 @@ static int handle_handshake(int stage, ClientBytes packet) {
   case 3:
     result = client_handle_handshake_complete(bytes.data(), bytes.size());
     break;
+  default:
+    result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid handshake stage: %d", stage);
+    break;
   }
   if (!bytes.empty())
     sodium_memzero(bytes.data(), bytes.size());
+  if (result && stage >= 0 && stage <= 3)
+    SET_ERRNO(ERROR_CRYPTO_HANDSHAKE, "Client handshake stage %d failed", stage);
   return result;
 }
 static int receive_handshake(bool discovery, unsigned type, ClientBytes payload) {
@@ -140,18 +158,26 @@ static ClientPacketResult crypt_packet(bool encrypt, ClientBytes packet) {
 static std::optional<std::string> parse_packet(ClientBytes packet) {
   auto input = client_copy_input(packet);
   char *json = client_parse_packet(input.data(), input.size());
-  if (!json)
+  if (!json) {
+    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot parse client packet");
     return std::nullopt;
+  }
   std::string result(json);
   client_free_string(json);
   return result;
 }
 static ClientPacketResult serialize_packet(unsigned type, ClientBytes payload, unsigned client_id) {
+  if (type > UINT16_MAX) {
+    const int code = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client packet type: %u", type);
+    return packet_result(code, nullptr, 0);
+  }
   auto input = client_copy_input(payload);
   std::vector<uint8_t> output(input.size() + 256);
   size_t length = 0;
   const int code = client_serialize_packet(static_cast<uint16_t>(type), input.empty() ? nullptr : input.data(),
                                            input.size(), client_id, output.data(), &length);
+  if (code)
+    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot serialize client packet");
   return packet_result(code, output.data(), code == 0 ? length : 0);
 }
 static ClientSettingsResult receive_settings(ClientBytes payload) {
@@ -162,7 +188,7 @@ static ClientSettingsResult receive_settings(ClientBytes payload) {
   result.set("code", code);
   result.set("json", json ? emscripten::val(std::string(json)) : emscripten::val::null());
   if (json)
-    wasm_options_release(json);
+    browser_options_release(json);
   return ClientSettingsResult(result);
 }
 static std::optional<std::string> client_settings() {
@@ -170,7 +196,7 @@ static std::optional<std::string> client_settings() {
   if (!json)
     return std::nullopt;
   std::string result(json);
-  wasm_options_release(json);
+  browser_options_release(json);
   return result;
 }
 static ClientFrameResult validate_frame(ClientBytes encoded, unsigned width, unsigned height, unsigned checksum,
@@ -181,7 +207,7 @@ static ClientFrameResult validate_frame(ClientBytes encoded, unsigned width, uns
   if (!input_size || input_size > 16 * 1024 * 1024 || !original_size || original_size > 16 * 1024 * 1024 ||
       metadata_size > 275 || (!compressed && input_size != original_size)) {
     emscripten::val result = emscripten::val::object();
-    result.set("code", -1);
+    result.set("code", static_cast<int>(SET_ERRNO(ERROR_INVALID_PARAM, "Invalid encoded frame or metadata size")));
     result.set("decodeFailed", false);
     result.set("bytes", client_copy_output(nullptr, 0));
     return ClientFrameResult(result);

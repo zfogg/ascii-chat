@@ -374,14 +374,6 @@ type PeerBytes = Uint8Array;
 
 type NullablePeerBytes = Uint8Array | null;
 
-type QuicControlResult = {
-  code: number;
-  flow: number;
-  packet: Uint8Array | null;
-};
-
-type QuicPacketResult = { code: number; sequence: bigint; packet: Uint8Array };
-
 export interface PeerCryptoBinding extends ClassHandle {
   valid(): boolean;
   ready(): boolean;
@@ -403,6 +395,14 @@ export interface PeerCryptoBinding extends ClassHandle {
     _3: PeerBytes,
   ): QuicPacketResult;
 }
+
+type QuicControlResult = {
+  code: number;
+  flow: number;
+  packet: Uint8Array | null;
+};
+
+type QuicPacketResult = { code: number; sequence: bigint; packet: Uint8Array };
 
 type KeyInput = Uint8Array;
 
@@ -458,13 +458,14 @@ export interface HostPacketBinding extends ClassHandle {
 }
 
 interface EmbindModule {
-  wasm_options_revision(): number;
-  wasm_ui_volume(): number;
-  wasm_ui_fps(): number;
-  wasm_ui_audio(_0: number): number;
-  wasm_capture_transform_required(): number;
+  browser_options_revision(): number;
+  browser_ui_volume(): number;
+  browser_ui_fps(): number;
+  browser_ui_audio(_0: number): number;
+  browser_capture_transform_required(): number;
   mirror_cleanup(): void;
-  mirror_reset_stabilizer(): void;
+  sessionRenderResetStabilizer(): void;
+  sessionRenderCleanup(): void;
   set_width(_0: number): number;
   get_width(): number;
   set_height(_0: number): number;
@@ -531,6 +532,15 @@ interface EmbindModule {
     new (_0: number, _1: number, _2: number, _3: number): OpusCodecBinding;
   };
   configureCrypto(_0: PeerBytes, _1: PeerBytes, _2: PeerBytes): number;
+  PeerCryptoBinding: {
+    new (
+      _0: boolean,
+      _1: number,
+      _2: PeerBytes,
+      _3: PeerBytes,
+      _4: PeerBytes,
+    ): PeerCryptoBinding;
+  };
   clientQuicInit(): number;
   clientQuicTick(): number;
   clientQuicEpoch(): number;
@@ -541,16 +551,7 @@ interface EmbindModule {
     _2: number,
     _3: PeerBytes,
   ): QuicPacketResult;
-  PeerCryptoBinding: {
-    new (
-      _0: boolean,
-      _1: number,
-      _2: PeerBytes,
-      _3: PeerBytes,
-      _4: PeerBytes,
-    ): PeerCryptoBinding;
-  };
-  wasm_error_dismiss(): void;
+  browser_error_dismiss(): void;
   parseKey(_0: number, _1: boolean, _2: KeyInput): KeyParseResult;
   keyParserError(): string;
   errorSnapshot(): number;

@@ -15,22 +15,32 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(OpusBytes);
 EMSCRIPTEN_DECLARE_VAL_TYPE(NullableOpusBytes);
 EMSCRIPTEN_DECLARE_VAL_TYPE(NullablePcmSamples);
 
+static audio_processor_t *create_processor(int sample_rate, bool bypass, unsigned frame_samples, int channels) {
+  if (sample_rate <= 0 || frame_samples == 0 || (channels != 1 && channels != 2)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser audio processor configuration");
+    return nullptr;
+  }
+  return channels == 1 ? browser_audio_processor_create(sample_rate, bypass)
+                       : browser_audio_processor_create_stereo(sample_rate, bypass);
+}
+
 static int init_client(const std::string &args) {
-  return client_init_with_args(args.c_str());
+  int result = client_init_with_args(args.c_str());
+  if (result)
+    SET_ERRNO(ERROR_INIT, "Browser client initialization failed");
+  return result;
 }
 
 class AudioProcessorBinding {
 public:
   AudioProcessorBinding(int sample_rate, bool bypass, unsigned frame_samples)
-      : processor_(wasm_audio_processor_create_stereo(sample_rate, bypass)), scratch_(frame_samples) {}
+      : AudioProcessorBinding(sample_rate, bypass, frame_samples, 2) {}
   AudioProcessorBinding(int sample_rate, bool bypass, unsigned frame_samples, int channels)
-      : processor_(channels == 1   ? wasm_audio_processor_create(sample_rate, bypass)
-                   : channels == 2 ? wasm_audio_processor_create_stereo(sample_rate, bypass)
-                                   : nullptr),
-        scratch_(frame_samples) {}
+      : processor_(create_processor(sample_rate, bypass, frame_samples, channels)),
+        scratch_(processor_ ? frame_samples : 0) {}
   ~AudioProcessorBinding() {
     if (processor_)
-      wasm_audio_processor_destroy(processor_);
+      browser_audio_processor_destroy(processor_);
   }
 
   AudioProcessorBinding(const AudioProcessorBinding &) = delete;
@@ -41,11 +51,13 @@ public:
   }
   int process(AudioSamples input, AudioSamples output) {
     const size_t count = input["length"].as<size_t>();
-    if (!processor_ || count == 0 || count > scratch_.size() || output["length"].as<size_t>() != count)
-      return -1;
+    if (!processor_)
+      return SET_ERRNO(ERROR_INVALID_STATE, "Audio processor is not initialized");
+    if (count == 0 || count > scratch_.size() || output["length"].as<size_t>() != count)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio processor buffer size: %zu", count);
     emscripten::val view = emscripten::val(emscripten::typed_memory_view(count, scratch_.data()));
     view.call<void>("set", input);
-    int result = wasm_audio_processor_process(processor_, scratch_.data(), count);
+    int result = browser_audio_processor_process(processor_, scratch_.data(), count);
     if (result == 0) {
       // Processing may grow memory, so do not retain the previous JS view.
       emscripten::val result_view = emscripten::val(emscripten::typed_memory_view(count, scratch_.data()));
@@ -66,12 +78,21 @@ static bool opus_codec_in_use = false;
 class OpusCodecBinding {
 public:
   OpusCodecBinding(int sample_rate, int channels, int bitrate, unsigned max_packet) : channels_(channels) {
-    if (opus_codec_in_use || sample_rate <= 0 || sample_rate > 48000 || (channels != 1 && channels != 2) || !max_packet)
+    if (opus_codec_in_use) {
+      SET_ERRNO(ERROR_AUDIO_IN_USE, "Browser Opus codec is already in use");
       return;
-    if (client_opus_encoder_init(sample_rate, channels, bitrate) != 0)
+    }
+    if (sample_rate <= 0 || sample_rate > 48000 || (channels != 1 && channels != 2) || !max_packet) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Opus codec configuration");
       return;
+    }
+    if (client_opus_encoder_init(sample_rate, channels, bitrate) != 0) {
+      SET_ERRNO(ERROR_AUDIO, "Cannot initialize browser Opus encoder");
+      return;
+    }
     if (client_opus_decoder_init(sample_rate, channels) != 0) {
       client_opus_encoder_cleanup();
+      SET_ERRNO(ERROR_AUDIO, "Cannot initialize browser Opus decoder");
       return;
     }
     const size_t frame = (static_cast<size_t>(sample_rate) * 12 + 99) / 100;
@@ -96,28 +117,43 @@ public:
 
   NullableOpusBytes encode(PcmSamples samples) {
     const size_t count = samples["length"].as<size_t>();
-    if (!initialized_ || !count || count > pcm_.size() || count % channels_)
+    if (!initialized_) {
+      SET_ERRNO(ERROR_INVALID_STATE, "Opus codec is not initialized");
       return NullableOpusBytes(emscripten::val::null());
+    }
+    if (!count || count > pcm_.size() || count % channels_) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Opus input sample count: %zu", count);
+      return NullableOpusBytes(emscripten::val::null());
+    }
     emscripten::val view = emscripten::val(emscripten::typed_memory_view(count, pcm_.data()));
     view.call<void>("set", samples);
     const int size = client_opus_encode(pcm_.data(), static_cast<int>(count / channels_), encoded_.data(),
                                         static_cast<int>(encoded_.size()));
-    if (size < 0)
+    if (size < 0) {
+      SET_ERRNO(ERROR_AUDIO, "Browser Opus encoding failed");
       return NullableOpusBytes(emscripten::val::null());
+    }
     emscripten::val result = emscripten::val::global("Uint8Array").new_(size);
     result.call<void>("set", emscripten::val(emscripten::typed_memory_view(size, encoded_.data())));
     return NullableOpusBytes(result);
   }
   NullablePcmSamples decode(OpusBytes packet, int frame_size) {
     const size_t count = packet["length"].as<size_t>();
-    if (!initialized_ || count > input_.size() || frame_size <= 0 ||
-        static_cast<size_t>(frame_size) * channels_ > pcm_.size())
+    if (!initialized_) {
+      SET_ERRNO(ERROR_INVALID_STATE, "Opus codec is not initialized");
       return NullablePcmSamples(emscripten::val::null());
+    }
+    if (count > input_.size() || frame_size <= 0 || static_cast<size_t>(frame_size) * channels_ > pcm_.size()) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Opus packet or output frame size");
+      return NullablePcmSamples(emscripten::val::null());
+    }
     if (count)
       emscripten::val(emscripten::typed_memory_view(count, input_.data())).call<void>("set", packet);
     const int samples = client_opus_decode(input_.data(), static_cast<int>(count), pcm_.data(), frame_size, 0);
-    if (samples < 0)
+    if (samples < 0) {
+      SET_ERRNO(ERROR_AUDIO, "Browser Opus decoding failed");
       return NullablePcmSamples(emscripten::val::null());
+    }
     const size_t output_count = static_cast<size_t>(samples) * channels_;
     emscripten::val result = emscripten::val::global("Int16Array").new_(output_count);
     result.call<void>("set", emscripten::val(emscripten::typed_memory_view(output_count, pcm_.data())));

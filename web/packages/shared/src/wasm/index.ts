@@ -5,6 +5,8 @@ export {
   adoptMirrorWasmModule,
   resetAdoptedMirrorWasmModule,
   cleanupMirrorWasm,
+  cleanupRenderSession,
+  resetRenderStabilizer,
   convertFrameToAscii,
   transformCaptureRgba,
   submitAudioVisualizationSamples,
@@ -110,7 +112,7 @@ export type ClientWasmBindings = Pick<
 >;
 export type ClientScalarBindings = Pick<
   import("./generated/client-bindings").MainModule,
-  | "wasm_error_dismiss"
+  | "browser_error_dismiss"
   | "network_error_action"
   | "client_cleanup"
   | "client_generate_keypair"

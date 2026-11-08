@@ -126,7 +126,7 @@ unsigned int get_font_default_size(int selection) {
 /**
  * WASM transport that forwards complete ACIP packets to JavaScript
  */
-static asciichat_error_t wasm_transport_send(acip_transport_t *transport, const void *data, size_t len) {
+static asciichat_error_t browser_transport_send(acip_transport_t *transport, const void *data, size_t len) {
 
   // Forward complete packet (header + payload) to JavaScript WebSocket bridge
   js_send_raw_packet((const uint8_t *)data, len);
@@ -134,37 +134,38 @@ static asciichat_error_t wasm_transport_send(acip_transport_t *transport, const 
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t wasm_transport_recv(acip_transport_t *transport, void **buffer, size_t *out_len,
-                                             void **out_allocated_buffer) {
+static asciichat_error_t browser_transport_recv(acip_transport_t *transport, void **buffer, size_t *out_len,
+                                                void **out_allocated_buffer) {
   // Not used - packets arrive via JavaScript callbacks
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "recv not supported on WASM transport");
 }
 
-static asciichat_error_t wasm_transport_close(acip_transport_t *transport) {
+static asciichat_error_t browser_transport_close(acip_transport_t *transport) {
   return ASCIICHAT_OK; // Nothing to close
 }
 
-static acip_transport_type_t wasm_transport_get_type(acip_transport_t *transport) {
+static acip_transport_type_t browser_transport_get_type(acip_transport_t *transport) {
   return ACIP_TRANSPORT_WEBSOCKET; // Closest match
 }
 
-static socket_t wasm_transport_get_socket(acip_transport_t *transport) {
+static socket_t browser_transport_get_socket(acip_transport_t *transport) {
   return INVALID_SOCKET_VALUE;
 }
 
-static bool wasm_transport_is_connected(acip_transport_t *transport) {
+static bool browser_transport_is_connected(acip_transport_t *transport) {
   return true; // Always "connected" from WASM perspective
 }
 
-static const acip_transport_methods_t wasm_transport_methods = {.send = wasm_transport_send,
-                                                                .recv = wasm_transport_recv,
-                                                                .close = wasm_transport_close,
-                                                                .get_type = wasm_transport_get_type,
-                                                                .get_socket = wasm_transport_get_socket,
-                                                                .is_connected = wasm_transport_is_connected,
-                                                                .destroy_impl = NULL};
+static const acip_transport_methods_t browser_transport_methods = {.send = browser_transport_send,
+                                                                   .recv = browser_transport_recv,
+                                                                   .close = browser_transport_close,
+                                                                   .get_type = browser_transport_get_type,
+                                                                   .get_socket = browser_transport_get_socket,
+                                                                   .is_connected = browser_transport_is_connected,
+                                                                   .destroy_impl = NULL};
 
-static acip_transport_t g_wasm_transport = {.methods = &wasm_transport_methods, .crypto_ctx = NULL, .impl_data = NULL};
+static acip_transport_t g_wasm_transport = {
+    .methods = &browser_transport_methods, .crypto_ctx = NULL, .impl_data = NULL};
 
 // ============================================================================
 // Global State
@@ -401,7 +402,7 @@ int client_init_with_args(const char *args_json) {
   // Parse space-separated arguments
   char *args_copy = NULL;
   char *argv[WASM_ARGV_CAPACITY] = {NULL};
-  int argc = wasm_parse_args(args_json, argv, WASM_ARGV_CAPACITY, &args_copy);
+  int argc = browser_parse_args(args_json, argv, WASM_ARGV_CAPACITY, &args_copy);
   if (argc < 0) {
     return -1;
   }

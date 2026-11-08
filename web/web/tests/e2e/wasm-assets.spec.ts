@@ -7,6 +7,64 @@ const version = createHash("sha256")
   .digest("hex")
   .slice(0, 32);
 
+test("binding failures record actionable C errors", async ({ page }) => {
+  await page.goto("/client");
+  const errors = await page.evaluate(async () => {
+    const moduleUrl = "/src/wasm/client.ts";
+    const { initClientWasm, getClientWasmModule } = await import(
+      /* @vite-ignore */ moduleUrl
+    );
+    await initClientWasm();
+    const m =
+      getClientWasmModule() as unknown as import("../../../packages/shared/src/wasm/generated/client-bindings").MainModule;
+    const frame = new m.MirrorFrameBinding();
+    const processor = new m.AudioProcessorBinding(48000, true, 16);
+    const renderer = new m.TerminalRendererBinding(2, 2, 12, false, 0);
+    const snapshot = (run: () => unknown) => {
+      m.browser_error_dismiss();
+      run();
+      const count = m.errorSnapshot();
+      return count ? m.errorFrame(0) : null;
+    };
+    try {
+      return [
+        snapshot(() => frame.convert(new Uint8Array(1), 1, 1, false)),
+        snapshot(() => frame.transform(new Uint8Array(1), 1, 1)),
+        snapshot(() =>
+          processor.process(new Float32Array(4), new Float32Array(1)),
+        ),
+        snapshot(() => renderer.copyPixels(new Uint8ClampedArray(0))),
+        snapshot(() => m.faceDetect(new Uint8ClampedArray(1), 1, 1, 0)),
+        snapshot(() => m.sendClientFrame(new Uint8Array(1), 1, 1)),
+        snapshot(() => m.handleHandshake(99, new Uint8Array())),
+        snapshot(() => m.parseKey(99, false, new Uint8Array())),
+        snapshot(() =>
+          m.handoffEncode(
+            1,
+            new Uint8Array(1),
+            new Uint8Array(16),
+            0,
+            0,
+            0,
+            0,
+            0,
+          ),
+        ),
+      ];
+    } finally {
+      m.browser_error_dismiss();
+      renderer.delete();
+      processor.delete();
+      frame.delete();
+    }
+  });
+  expect(errors).toHaveLength(9);
+  for (const error of errors) {
+    expect(error?.code).toBe(86);
+    expect(error?.message).toBeTruthy();
+  }
+});
+
 test("Embind owns audio buffers and encrypted peer sessions", async ({
   page,
 }) => {
@@ -82,7 +140,7 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     );
     const invalidPeerError = invalidPeer.error();
     invalidPeer.delete();
-    module.wasm_error_dismiss();
+    module.browser_error_dismiss();
     const invalidConfig = module.configureCrypto(
       new Uint8Array(),
       new Uint8Array(3),
@@ -90,7 +148,7 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     );
     module.errorSnapshot();
     const invalidConfigError = module.errorFrame(0).message;
-    module.wasm_error_dismiss();
+    module.browser_error_dismiss();
 
     async function exercise(quic: boolean) {
       const toClient: Uint8Array[] = [],
@@ -202,7 +260,7 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     valid: true,
     status: 0,
     sample: 0.25,
-    bad: -1,
+    bad: 86,
   });
   expect(result.monoStatus).toBe(0);
   expect(result.monoSample).toBe(0.125);

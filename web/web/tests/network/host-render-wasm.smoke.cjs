@@ -76,14 +76,14 @@ const path = require("node:path");
       const selection = '{"waveform":true}';
       if (m.patchOptions(selection, -1))
         throw new Error("waveform selection failed");
-      const revision = m.wasm_options_revision();
+      const revision = m.browser_options_revision();
       const normalProbe = new m.TerminalRendererBinding(1, 1, 24, false, 1);
       const matrixProbe = new m.TerminalRendererBinding(1, 1, 24, true, 2);
       try {
         if (
           !normalProbe.valid() ||
           !matrixProbe.valid() ||
-          m.wasm_options_revision() !== revision
+          m.browser_options_revision() !== revision
         )
           throw new Error("font selection changed engine preferences");
       } finally {
@@ -355,6 +355,48 @@ const path = require("node:path");
       const halfBlock = output.splice(0).find((frame) => frame.id === ids[1]);
       if (!halfBlock || !/[░▒▓█]/u.test(halfBlock.text))
         throw new Error("Missing real monochrome half-block shade output");
+      for (const id of ids)
+        patch(id, {
+          color_mode: 3,
+          color_filter: 0,
+          render_mode: 0,
+          renderer: 0,
+          stabilize: true,
+        });
+      const stabilizedFrame = async (value) => {
+        for (let i = 24; i < image.length; i += 3) image.fill(value, i, i + 3);
+        send(ids[0], 3001, image);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        if (m.browser_host_render())
+          throw new Error("stabilization render failed");
+        return output.splice(0).map((frame) => ({
+          id: frame.id,
+          red: Number(frame.text.match(/\x1b\[38;2;(\d+);/)?.[1]),
+        }));
+      };
+      const baseline = await stabilizedFrame(100);
+      const smoothed = await stabilizedFrame(104);
+      for (const id of ids) {
+        const first = baseline.find((frame) => frame.id === id)?.red;
+        const second = smoothed.find((frame) => frame.id === id)?.red;
+        if (
+          first !== 100 ||
+          !Number.isFinite(second) ||
+          second < 100 ||
+          second >= 104
+        )
+          throw new Error(
+            `Stabilization failed for viewer ${id}: ${first}, ${second}`,
+          );
+      }
+      send(ids[0], 5006, new Uint8Array());
+      send(ids[0], 5005, new Uint8Array());
+      const restarted = await stabilizedFrame(104);
+      for (const id of ids)
+        if (restarted.find((frame) => frame.id === id)?.red !== 104)
+          throw new Error(
+            `Stabilizer history survived source restart for viewer ${id}`,
+          );
       let codec = new m.OpusCodecBinding(48000, 1, 24000, 1000);
       if (!codec.valid())
         throw new Error("Could not initialize test audio codecs");
