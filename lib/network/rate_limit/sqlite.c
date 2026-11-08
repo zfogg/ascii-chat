@@ -12,9 +12,7 @@
 #include <sqlite3.h>
 #include <string.h>
 
-#define RATE_LIMIT_QUERY(name, sql) static const char query_##name[] = sql;
-#include "queries.def"
-#undef RATE_LIMIT_QUERY
+#include "../../discovery/queries_generated.h"
 
 /**
  * @brief SQLite backend data
@@ -35,7 +33,7 @@ static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address
   uint64_t window_start_ns = now_ns - ((uint64_t)limit->window_secs * NS_PER_SEC_INT);
 
   // Count events in the time window
-  const char *sql = query_CountRateEvents;
+  const char *sql = database_queries[DATABASE_QUERY_CountRateEvents].sql;
 
   sqlite3_stmt *stmt = NULL;
   int rc = ascii_otel_sqlite_prepare(backend->db, sql, &stmt);
@@ -74,7 +72,7 @@ static asciichat_error_t sqlite_record(void *backend_data, const char *ip_addres
   uint64_t now_ns = time_get_realtime_ns();
 
   // Insert event
-  const char *sql = query_InsertRateEvent;
+  const char *sql = database_queries[DATABASE_QUERY_InsertRateEvent].sql;
 
   sqlite3_stmt *stmt = NULL;
   int rc = ascii_otel_sqlite_prepare(backend->db, sql, &stmt);
@@ -110,7 +108,7 @@ static asciichat_error_t sqlite_cleanup(void *backend_data, uint32_t max_age_sec
   uint64_t cutoff_ns = now_ns - ((uint64_t)max_age_secs * NS_PER_SEC_INT);
 
   // Delete old events
-  const char *sql = query_DeleteRateEvents;
+  const char *sql = database_queries[DATABASE_QUERY_DeleteRateEvents].sql;
 
   sqlite3_stmt *stmt = NULL;
   int rc = ascii_otel_sqlite_prepare(backend->db, sql, &stmt);

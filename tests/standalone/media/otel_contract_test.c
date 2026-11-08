@@ -163,13 +163,21 @@ static void catalog_contract(void) {
   // Opening the real database checks schema/migration names and attachment
   // uniqueness. Every prepared application query must compile in that schema.
   for (size_t i = 0; i < sizeof(database_queries) / sizeof(database_queries[0]); ++i) {
-    if (i == QUERY_ImportLegacySessionKeys)
+    if (i == DATABASE_QUERY_ImportLegacySessionKeys)
       continue; // The legacy table intentionally does not exist in a new DB.
     sqlite3_stmt *statement = NULL;
     CHECK(ascii_otel_sqlite_prepare(db, database_queries[i].sql, &statement) == SQLITE_OK);
     CHECK(statement != NULL);
     CHECK(sqlite3_finalize(statement) == SQLITE_OK);
   }
+  CHECK(database_queries[DATABASE_QUERY_LookupSessionString].access == DATABASE_READ);
+  CHECK(database_queries[DATABASE_QUERY_LookupSessionString].rows == DATABASE_ZERO_OR_ONE);
+  sqlite3_stmt *named = NULL;
+  CHECK(ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_LookupSessionString].sql, &named) == SQLITE_OK);
+  CHECK(sqlite3_bind_parameter_index(named, ":session_id") == 1);
+  CHECK(sqlite3_bind_null(named, 1) == SQLITE_OK);
+  CHECK(sqlite3_step(named) == SQLITE_DONE);
+  CHECK(sqlite3_finalize(named) == SQLITE_OK);
   rate_limiter_t *limiter = rate_limiter_create_sqlite(NULL);
   CHECK(limiter != NULL);
   rate_limiter_set_sqlite_db(limiter, db);
