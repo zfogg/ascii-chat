@@ -20,7 +20,7 @@
 #define PROTOCOL_VERSION_MAJOR 2
 
 /** @brief Minor protocol version number */
-#define PROTOCOL_VERSION_MINOR 2
+#define PROTOCOL_VERSION_MINOR 3
 
 /** @brief Patch protocol version number */
 #define PROTOCOL_VERSION_PATCH 1
