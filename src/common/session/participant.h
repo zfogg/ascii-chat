@@ -77,7 +77,7 @@
 typedef struct session_participant session_participant_t;
 
 /**
- * @brief Callback function prototypes for session participant events
+ * @brief Client-side event hooks for connection, media, settings, and errors.
  * @ingroup session
  */
 typedef struct {
@@ -132,7 +132,7 @@ typedef struct {
 } session_participant_callbacks_t;
 
 /**
- * @brief Configuration for session participant
+ * @brief Server address, security, media, transport, and callback settings for a participant.
  * @ingroup session
  */
 typedef struct {

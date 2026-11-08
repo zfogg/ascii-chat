@@ -45,7 +45,12 @@
  * ============================================================================ */
 
 /**
- * @brief Internal session participant structure
+ * @brief Client session state spanning connection, transport, media workers, and callbacks.
+ *
+ * The participant owns its copied address/password settings and worker handles,
+ * while the selected transport and network connection follow their explicit
+ * ownership fields. Audio/video lifecycle state prevents stale workers from
+ * using a connection during shutdown.
  *
  * Contains connection state, media stream state, and callback configuration.
  */

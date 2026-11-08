@@ -68,9 +68,12 @@ static bool playback_cancelled(void *data);
  * ============================================================================ */
 
 /**
- * @brief Internal session capture context structure
+ * @brief Runtime state for media loading, frame timing, and source switching.
  *
- * Contains all state for media capture including source, timing, and FPS tracking.
+ * The context owns the active and pending media sources, loader synchronization,
+ * frame workspaces, playlist state, pause/toggle flags, and FPS deadlines. It
+ * also retains the cancellation callback and borrowed audio source used during
+ * transitions; destruction stops the loader before releasing those resources.
  */
 struct session_capture_ctx {
   /** @brief Underlying media source (webcam, file, stdin, test) */

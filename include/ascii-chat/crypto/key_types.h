@@ -56,10 +56,11 @@ typedef enum {
 } key_type_t;
 
 /**
- * @brief Public key structure
+ * @brief The normalized public identity used by ascii-chat's crypto and key-management code.
  *
- * Simplified public key structure for all key types.
- * All keys are 32 bytes regardless of source (Ed25519, X25519, or GPG-derived).
+ * `type` records whether the key came from Ed25519, X25519, or GPG. `key`
+ * always holds the normalized 32-byte public value used by the protocol, and
+ * `comment` preserves the optional human-readable label from the source key.
  *
  * @note Key size: Always 32 bytes (simplifies protocol and key management)
  * @note Comment: Optional label for the key (max 256 chars including null terminator)

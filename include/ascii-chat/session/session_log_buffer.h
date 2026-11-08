@@ -31,7 +31,10 @@
 #define SESSION_LOG_LINE_MAX 1024
 
 /**
- * @brief Single log entry with sequence number for ordering
+ * @brief One formatted session log line and its monotonic history sequence.
+ *
+ * `message` contains the display-ready text, including any ANSI color codes;
+ * `sequence` lets readers order entries after the circular buffer wraps.
  */
 typedef struct {
   char message[SESSION_LOG_LINE_MAX]; ///< Formatted log message (may include ANSI colors)

@@ -23,7 +23,11 @@
 #include <string.h>
 
 /**
- * @brief Session consensus handle - wraps all consensus modules
+ * @brief Session adapter that owns consensus topology, coordination, and election state.
+ *
+ * The handle connects the generic consensus modules to mode-specific callbacks,
+ * retains the local participant identity and leadership role, and forwards
+ * packet, metrics, and election events through the caller's context.
  */
 typedef struct session_consensus {
   // Consensus modules
