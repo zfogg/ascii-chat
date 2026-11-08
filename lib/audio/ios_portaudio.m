@@ -3,7 +3,61 @@
 #include <ascii-chat/audio/ios_portaudio.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/memory.h>
+#include <stdio.h>
 #include <string.h>
+
+#define IOS_AUDIO_MAX_DEVICES 16
+
+typedef struct {
+  PaDeviceInfo info;
+  AVAudioSessionPortDescription *input_port;
+  AVAudioSessionPortDescription *output_port;
+  char name[128];
+} ios_audio_device_t;
+
+static ios_audio_device_t g_ios_devices[IOS_AUDIO_MAX_DEVICES];
+static int g_ios_device_count;
+static NSLock *g_ios_device_lock;
+static id g_ios_route_observer;
+
+static void ios_audio_refresh_devices(void) {
+  AVAudioSession *session = AVAudioSession.sharedInstance;
+  [session setCategory:AVAudioSessionCategoryPlayAndRecord
+                  mode:AVAudioSessionModeVideoChat
+               options:AVAudioSessionCategoryOptionAllowBluetooth | AVAudioSessionCategoryOptionAllowBluetoothA2DP
+                 error:NULL];
+  memset(g_ios_devices, 0, sizeof(g_ios_devices));
+  g_ios_device_count = 0;
+
+  NSArray<AVAudioSessionPortDescription *> *inputs = session.availableInputs;
+  for (AVAudioSessionPortDescription *input in inputs) {
+    if (g_ios_device_count >= IOS_AUDIO_MAX_DEVICES)
+      break;
+    ios_audio_device_t *device = &g_ios_devices[g_ios_device_count++];
+    device->input_port = input;
+    device->output_port = input.portType == AVAudioSessionPortBuiltInMic ? nil : input;
+    snprintf(device->name, sizeof(device->name), "%s", input.portName.UTF8String ?: "iOS Audio");
+    device->info = (PaDeviceInfo){.structVersion = 1,
+                                  .name = device->name,
+                                  .maxInputChannels = (int)input.channels.count,
+                                  .maxOutputChannels = input.portType == AVAudioSessionPortBuiltInMic ? 2 : 0,
+                                  .defaultLowInputLatency = 0.01,
+                                  .defaultLowOutputLatency = 0.01,
+                                  .defaultSampleRate = 48000.0};
+  }
+
+  if (g_ios_device_count == 0 && g_ios_device_count < IOS_AUDIO_MAX_DEVICES) {
+    ios_audio_device_t *device = &g_ios_devices[g_ios_device_count++];
+    snprintf(device->name, sizeof(device->name), "Apple Built-in Audio");
+    device->info = (PaDeviceInfo){.structVersion = 1,
+                                  .name = device->name,
+                                  .maxInputChannels = 2,
+                                  .maxOutputChannels = 2,
+                                  .defaultLowInputLatency = 0.01,
+                                  .defaultLowOutputLatency = 0.01,
+                                  .defaultSampleRate = 48000.0};
+  }
+}
 
 struct PaStream {
   AVAudioEngine *engine;
@@ -15,6 +69,7 @@ struct PaStream {
   double sample_rate;
   int input_channels;
   int output_channels;
+  PaDeviceIndex device_index;
   float *input_interleaved;
   size_t input_capacity_frames;
   float *output_interleaved;
@@ -35,20 +90,29 @@ void asciichat_ios_audio_request_access(void) {
   }];
 }
 
-static const PaDeviceInfo g_ios_device = {
-    .structVersion = 1,
-    .name = "iOS Audio",
-    .maxInputChannels = 2,
-    .maxOutputChannels = 2,
-    .defaultLowInputLatency = 0.01,
-    .defaultLowOutputLatency = 0.01,
-    .defaultSampleRate = 48000.0,
-};
-
 PaError Pa_Initialize(void) {
+  if (!g_ios_device_lock)
+    g_ios_device_lock = [NSLock new];
+  ios_audio_refresh_devices();
+  if (!g_ios_route_observer) {
+    g_ios_route_observer =
+        [[NSNotificationCenter defaultCenter] addObserverForName:AVAudioSessionRouteChangeNotification
+                                                          object:AVAudioSession.sharedInstance
+                                                           queue:nil
+                                                      usingBlock:^(NSNotification *note) {
+                                                        (void)note;
+                                                        [g_ios_device_lock lock];
+                                                        ios_audio_refresh_devices();
+                                                        [g_ios_device_lock unlock];
+                                                      }];
+  }
   return paNoError;
 }
 PaError Pa_Terminate(void) {
+  if (g_ios_route_observer) {
+    [[NSNotificationCenter defaultCenter] removeObserver:g_ios_route_observer];
+    g_ios_route_observer = nil;
+  }
   return paNoError;
 }
 const char *Pa_GetErrorText(PaError error) {
@@ -56,25 +120,29 @@ const char *Pa_GetErrorText(PaError error) {
   return "iOS audio backend";
 }
 PaDeviceIndex Pa_GetDefaultInputDevice(void) {
+  ios_audio_refresh_devices();
   return 0;
 }
 PaDeviceIndex Pa_GetDefaultOutputDevice(void) {
+  ios_audio_refresh_devices();
   return 0;
 }
 int Pa_GetDeviceCount(void) {
-  return 1;
+  ios_audio_refresh_devices();
+  return g_ios_device_count;
 }
 const PaDeviceInfo *Pa_GetDeviceInfo(PaDeviceIndex device) {
-  return device == 0 ? &g_ios_device : NULL;
+  ios_audio_refresh_devices();
+  return device >= 0 && device < g_ios_device_count ? &g_ios_devices[device].info : NULL;
 }
 
 PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const PaStreamParameters *output,
                       double sample_rate, unsigned long frames_per_buffer, unsigned long flags,
                       PaStreamCallback *callback, void *user_data) {
-  (void)input;
   (void)flags;
   if (!stream)
     return -1;
+  ios_audio_refresh_devices();
   PaStream *opened = SAFE_CALLOC(1, sizeof(*opened), PaStream *);
   opened->callback = callback;
   opened->user_data = user_data;
@@ -82,6 +150,11 @@ PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const 
   opened->sample_rate = sample_rate;
   opened->input_channels = input ? input->channelCount : 0;
   opened->output_channels = output ? output->channelCount : 0;
+  opened->device_index = input ? input->device : output ? output->device : 0;
+  if (opened->device_index < 0 || opened->device_index >= g_ios_device_count) {
+    SAFE_FREE(opened);
+    return paInvalidDevice;
+  }
   opened->input_capacity_frames = frames_per_buffer ? frames_per_buffer : 1024;
   opened->queue_lock = [NSLock new];
   if (opened->input_channels > 0)
@@ -105,7 +178,12 @@ PaError Pa_StartStream(PaStream *stream) {
   AVAudioSession *session = [AVAudioSession sharedInstance];
   [session setCategory:AVAudioSessionCategoryPlayAndRecord error:NULL];
   [session setMode:AVAudioSessionModeVideoChat error:NULL];
-  [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker error:NULL];
+  ios_audio_refresh_devices();
+  if (stream->device_index >= 0 && stream->device_index < g_ios_device_count) {
+    AVAudioSessionPortDescription *preferred = g_ios_devices[stream->device_index].input_port;
+    if (preferred)
+      [session setPreferredInput:preferred error:NULL];
+  }
   [session setActive:YES error:NULL];
   stream->interruption_observer = [[NSNotificationCenter defaultCenter]
       addObserverForName:AVAudioSessionInterruptionNotification

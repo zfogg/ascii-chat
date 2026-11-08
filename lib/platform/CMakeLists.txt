@@ -88,8 +88,10 @@ elseif(PLATFORM_POSIX)
             list(APPEND PLATFORM_SRCS
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/keepawake.m
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/filesystem.m
+                ${CMAKE_CURRENT_SOURCE_DIR}/ios/system.m
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/render_bridge.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/ios/lws_spawn_stub.c)
+            list(APPEND PLATFORM_LIBS Security)
         else()
             list(APPEND PLATFORM_SRCS
                 ${CMAKE_CURRENT_SOURCE_DIR}/macos/keepawake.c)
