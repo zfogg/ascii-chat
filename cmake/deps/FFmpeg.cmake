@@ -29,10 +29,12 @@ if(PLATFORM_IOS)
         execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
         set(IOS_SDK_NAME "iphonesimulator")
         set(FFMPEG_IOS_MIN_FLAG "-mios-simulator-version-min=16.0")
+        set(FFMPEG_IOS_TARGET "${FFMPEG_IOS_ARCH}-apple-ios16.0-simulator")
     else()
         execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
         set(IOS_SDK_NAME "iphoneos")
         set(FFMPEG_IOS_MIN_FLAG "-miphoneos-version-min=16.0")
+        set(FFMPEG_IOS_TARGET "${FFMPEG_IOS_ARCH}-apple-ios16.0")
     endif()
 
     if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.a" OR
@@ -55,10 +57,10 @@ if(PLATFORM_IOS)
                 --prefix=${FFMPEG_PREFIX} \
                 --enable-cross-compile \
                 --arch=${FFMPEG_IOS_ARCH} \
-                --cc=clang \
+                --cc=${CMAKE_C_COMPILER} \
                 --sysroot=${IOS_SDK_PATH} \
-                --extra-cflags=${FFMPEG_IOS_MIN_FLAG} \
-                --extra-ldflags=${FFMPEG_IOS_MIN_FLAG} \
+                --extra-cflags=--target=${FFMPEG_IOS_TARGET} \
+                --extra-ldflags=--target=${FFMPEG_IOS_TARGET} \
                 --enable-static \
                 --disable-shared \
                 --enable-pic \
