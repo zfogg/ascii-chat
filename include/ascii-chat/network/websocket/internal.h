@@ -16,7 +16,7 @@
 #include <ascii-chat/atomic.h>
 
 /**
- * @brief WebSocket message element (individual frame or fragment)
+ * @brief Owned WebSocket frame queued for sending or reassembly.
  *
  * Used for both send and receive queues. Each frame may be a complete message
  * or a fragment of a larger fragmented message. The receiver checks first/final
@@ -36,7 +36,12 @@ asciichat_error_t websocket_transport_send(acip_transport_t *transport, const vo
 typedef websocket_msg_t websocket_recv_msg_t;
 
 /**
- * @brief WebSocket transport implementation data
+ * @brief Private state for one libwebsockets-backed ACIP transport.
+ *
+ * It owns or borrows the libwebsockets handles according to `owns_context`,
+ * holds synchronized send/receive queues, tracks connection and service-thread
+ * state, and retains partial-fragment and in-flight-send buffers until their
+ * completion callbacks release them.
  */
 typedef struct {
   struct lws *wsi;             ///< libwebsockets instance (owned)

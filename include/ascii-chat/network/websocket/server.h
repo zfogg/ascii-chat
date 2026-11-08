@@ -75,7 +75,10 @@ typedef struct thread_pool thread_pool_t;
 typedef void *(*websocket_client_handler_fn)(void *arg);
 
 /**
- * @brief Context passed to client handler thread
+ * @brief Connection-specific values handed to a WebSocket client worker.
+ *
+ * The context identifies the ACIP transport and peer address, records whether
+ * TLS and authentication apply, and carries the server's borrowed user data.
  *
  * Contains all information needed to handle a WebSocket client connection.
  */
@@ -89,7 +92,7 @@ typedef struct {
 } websocket_client_context_t;
 
 /**
- * @brief WebSocket server configuration
+ * @brief Listener settings and callbacks used to create a WebSocket server.
  */
 typedef struct {
   int port;                                   ///< Port to listen on
@@ -100,7 +103,7 @@ typedef struct {
 } websocket_server_config_t;
 
 /**
- * @brief WebSocket server state
+ * @brief Runtime state for the WebSocket listener and its client-handler pool.
  */
 struct websocket_server {
   struct lws_context *context;         ///< libwebsockets context

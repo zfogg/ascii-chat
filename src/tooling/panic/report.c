@@ -59,10 +59,12 @@ typedef struct report_config {
 } report_config_t;
 
 /**
- * @brief Parsed instrumentation log record
+ * @brief Owned fields extracted from one instrumentation log line
  *
- * Represents a single line from an instrumentation log file with all
- * fields extracted and parsed.
+ * The record keeps process/thread identity, ordering, elapsed time, source
+ * location, and message text in separate fields so panic reporting can filter
+ * and format entries without reparsing the original line. String fields are
+ * allocated by the parser and released with the record.
  */
 typedef struct log_record {
   uint64_t pid;        ///< Process ID

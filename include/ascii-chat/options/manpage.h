@@ -33,7 +33,12 @@ typedef enum {
 } section_type_t;
 
 /**
- * @brief Parsed section information
+ * @brief Owned slice of a parsed roff man-page section
+ *
+ * The parser copies the section name and complete section text, records the
+ * source line range, and marks whether AUTO, MANUAL, or MERGE directives were
+ * found.  The section array and both allocated strings are released together
+ * by the man-page parser free function.
  */
 typedef struct {
   char *section_name;  ///< Section name (e.g., "ENVIRONMENT", "OPTIONS")

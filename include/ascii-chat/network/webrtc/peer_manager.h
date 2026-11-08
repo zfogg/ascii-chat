@@ -136,7 +136,7 @@ typedef asciichat_error_t (*webrtc_send_ice_callback_t)(const uint8_t session_id
                                                         const char *candidate, const char *mid, void *user_data);
 
 /**
- * @brief Signaling callbacks for sending SDP/ICE
+ * @brief Hooks that deliver local SDP offers/answers and ICE candidates to ACDS.
  */
 typedef struct {
   webrtc_send_sdp_callback_t send_sdp; ///< Send SDP via ACDS

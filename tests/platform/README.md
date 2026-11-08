@@ -29,7 +29,7 @@ never falling back to the raw command line. Title failures do not prevent a mode
 from starting. Windows
 console failures never fall back to writing title escapes into stdout.
 
-The formatter replaces values of `--password`, `--websocket-tls-key-password`,
+The formatter replaces values of `--password`, `--tls-key-password`,
 `--turn-credential`, and `--turn-secret` with `[redacted]`, supporting both separate
 and `--option=value` forms. It retains key file paths and GPG references: the native
 CLI does not accept inline private-key material. Armored private-key text is

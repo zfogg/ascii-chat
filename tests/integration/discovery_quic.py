@@ -53,14 +53,14 @@ def main():
                            server_options(tcp_port, ws_port) + discovery +
                            ["--discovery", "--webrtc", "--discovery-expose-ip", "--password", "route-test-password",
                             "--key", str(host_key), "--quic-bind-address", "127.0.0.1", "--quic-port", str(quic_port),
-                            "--quic-tls-cert", str(cert), "--quic-tls-key", str(key)], environment)
+                            "--tls-cert", str(cert), "--tls-key", str(key)], environment)
             host.wait_for("Session created:")
             match = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())
             assert match, host.text()[-8000:]
             session = match[1]
             for index in range(2):
                 client = Service(binary, directory, f"client-{index}", session,
-                                 discovery + ["--discovery-quic", "--quic-ca-file", str(cert),
+                                 discovery + ["--discovery-quic", "--tls-ca-file", str(cert),
                                               "--server-key", str(host_key) + ".pub", "--password", "route-test-password",
                                               "--quic-audio-datagrams", "--quic-visual-datagrams", "--test-pattern",
                                               "--audio=false", "--width", "40", "--height", "12",
@@ -86,7 +86,7 @@ def main():
                        XDG_CONFIG_HOME=str(directory), ASCII_CHAT_OTEL_ENABLED_TELEMETRY="none", **environment)
             result = subprocess.run([str(binary), "--no-check-update", "--log-file", str(negative_log),
                                      "--log-level", "debug", session, *discovery, "--discovery-quic",
-                                     "--quic-ca-file", str(other_cert), "--quic-fallback-port", str(tcp_port),
+                                     "--tls-ca-file", str(other_cert), "--quic-fallback-port", str(tcp_port),
                                      "--server-key", str(host_key) + ".pub", "--password", "route-test-password",
                                      "--test-pattern", "--audio=false", "--splash-screen=false"],
                                     cwd=directory, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -124,7 +124,7 @@ def main():
             assert match, host.text()[-8000:]
             session = match[1]
             client = Service(binary, directory, "fallback-client", session,
-                             discovery + ["--discovery-quic", "--quic-ca-file", str(cert),
+                             discovery + ["--discovery-quic", "--tls-ca-file", str(cert),
                                           "--quic-fallback-port", str(fallback_port),
                                           "--server-key", str(host_key) + ".pub", "--password", "route-test-password",
                                           "--test-pattern", "--audio=false", "--width", "40", "--height", "12",

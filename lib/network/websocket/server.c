@@ -53,9 +53,15 @@
 #include <ascii-chat/network/websocket/callback_timing.h>
 
 /**
- * @brief Per-connection user data
+ * @brief Libwebsockets callback state for one ACIP WebSocket connection
  *
- * Stored in libwebsockets per-session user data (wsi user pointer).
+ * Libwebsockets allocates one instance as the protocol's per-session user
+ * data and passes it back to every callback for that socket.  It ties the
+ * socket to the server and ACIP transport, records the handler thread and
+ * cleanup state, and keeps the partially-written outbound message until the
+ * next writable callback.  The callback counters are used to observe races
+ * during connection teardown; the transport and pending-send buffer are
+ * released by the WebSocket close path.
  */
 typedef struct {
   websocket_server_t *server;        ///< Back-reference to server

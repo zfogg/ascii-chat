@@ -187,7 +187,13 @@ static int looks_like_DER(const unsigned char *buf, size_t len) {
 typedef VECTOR(unsigned char) bvector;
 
 /**
- * @brief Parsed PEM object with name and data
+ * @brief One decoded PEM (Privacy-Enhanced Mail) block.
+ *
+ * PEM is the text armor used for objects such as `CERTIFICATE` and `PRIVATE
+ * KEY`: it wraps binary DER bytes in a labeled Base64 block. `name` stores the
+ * label from the BEGIN/END lines, while `data` and `data_len` own the decoded
+ * binary payload. The PEM parser frees all three fields when the object list
+ * is released, unless a consumer explicitly transfers the payload.
  */
 typedef struct {
   char *name;          ///< PEM object name (e.g., "CERTIFICATE", "PRIVATE KEY")

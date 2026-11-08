@@ -16,10 +16,12 @@
 #define FPS_WINDOW_SIZE 30 ///< Number of frames to average over
 
 /**
- * @brief FPS counter state
+ * @brief Per-renderer timing state for the on-screen FPS overlay
  *
- * Maintains a circular buffer of frame timestamps for rolling-window
- * FPS calculation.
+ * Tracks visibility, the frame currently being measured, write completion and
+ * failure state, plus monotonic timestamps used to calculate the rolling FPS
+ * value and periodically report render timing. The timestamp ring and this
+ * state belong to one renderer thread and are hidden behind fps_counter_t.
  */
 struct fps_counter_s {
   bool visible;

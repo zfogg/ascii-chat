@@ -1001,16 +1001,14 @@ typedef struct options_state {
   char address6[OPTIONS_BUFF_SIZE];           ///< IPv6 bind address (server only)
   int port;                                   ///< Server port number
   int websocket_port;                         ///< WebSocket server port (server/discovery-service only)
-  char websocket_tls_cert[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS certificate file path (server/discovery-service only)
-  char websocket_tls_key[OPTIONS_BUFF_SIZE];  ///< WebSocket TLS private key file path (server/discovery-service only)
-  char websocket_tls_key_password[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS key password (server/discovery-service only)
+  char tls_cert[OPTIONS_BUFF_SIZE]; ///< Shared TLS certificate file path for secure network listeners
+  char tls_key[OPTIONS_BUFF_SIZE];  ///< Shared TLS private key file path for secure network listeners
+  char tls_key_password[OPTIONS_BUFF_SIZE]; ///< Shared TLS private key password
   char webtransport_bind_address[OPTIONS_BUFF_SIZE];  ///< Browser HTTP/3 listener address.
   char webtransport_origin[OPTIONS_BUFF_SIZE];        ///< Allowed browser origin.
   char webtransport_path[OPTIONS_BUFF_SIZE];          ///< HTTP/3 CONNECT path.
   char quic_bind_address[OPTIONS_BUFF_SIZE];          ///< Concrete local QUIC listener address; empty disables QUIC.
-  char quic_tls_cert[OPTIONS_BUFF_SIZE];              ///< Native QUIC TLS certificate.
-  char quic_tls_key[OPTIONS_BUFF_SIZE];               ///< Native QUIC TLS private key.
-  char quic_ca_file[OPTIONS_BUFF_SIZE];               ///< Native QUIC client certificate trust anchors.
+  char tls_ca_file[OPTIONS_BUFF_SIZE];                ///< Shared TLS client trust anchors; empty uses system trust.
   bool quic_visual_datagrams;                         ///< Prefer negotiated visual datagrams.
   bool quic_audio_datagrams;                          ///< Prefer negotiated QUIC datagrams for audio.
   bool discovery_quic;                                ///< Use QUIC for a disclosed discovery host endpoint.

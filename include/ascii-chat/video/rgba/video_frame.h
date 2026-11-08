@@ -100,7 +100,7 @@
  */
 
 /**
- * @brief Video frame structure
+ * @brief One captured, decoded, or rendered video frame and its timing metadata.
  *
  * Represents a single video frame with data, dimensions, timing, and quality
  * metrics. Frame data points to pre-allocated buffers managed by the frame
@@ -145,7 +145,7 @@ typedef struct {
 } video_frame_t;
 
 /**
- * @brief Video frame buffer manager
+ * @brief Double-buffered frame storage shared by a producer and a renderer.
  *
  * Implements double-buffered frame management with atomic pointer swaps for
  * zero-copy frame transfer. Writer thread writes to back buffer while reader
@@ -225,7 +225,7 @@ typedef struct {
 } video_frame_buffer_t;
 
 /**
- * @brief Frame statistics structure
+ * @brief Counters and timing measurements used to monitor frame delivery and quality.
  *
  * Contains aggregated statistics for video frame quality monitoring.
  * Used for adaptive streaming quality control based on performance metrics.

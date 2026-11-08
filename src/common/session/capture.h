@@ -71,9 +71,12 @@
 typedef bool (*session_capture_should_exit_fn)(void *user_data);
 
 /**
- * @brief Configuration for session capture context
+ * @brief Media-source and loader settings used to create a session capture context.
  *
- * Specifies the media source type, path, and capture parameters.
+ * Selects webcam, file, URL, stdin, or test input; controls FPS, looping,
+ * network resizing, audio fallback, initial seeking, and cancellation. Paths,
+ * callbacks, and callback data remain borrowed for the lifetime of the capture
+ * operation.
  *
  * @ingroup session
  */

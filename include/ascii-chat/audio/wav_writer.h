@@ -18,7 +18,11 @@ extern "C" {
 #endif
 
 /**
- * @brief WAV file writer context
+ * @brief File handle and sample counters needed to finalize a WAV recording
+ *
+ * `file` is the owned output handle; `samples_written`, `sample_rate`, and
+ * `channels` let close-time code calculate RIFF and data sizes after samples
+ * have been appended.
  */
 typedef struct {
   FILE *file;
