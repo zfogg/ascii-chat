@@ -195,6 +195,7 @@ list(APPEND CORE_SRCS
 
 if(PLATFORM_IOS)
     list(APPEND CORE_SRCS ${LIB_DIR}/ios/camera.c)
+    list(APPEND CORE_SRCS ${CMAKE_SOURCE_DIR}/src/mirror/main.c)
 endif()
 
 # Additional debug sources only in non-Release builds
