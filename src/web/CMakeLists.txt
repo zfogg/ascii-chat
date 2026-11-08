@@ -250,7 +250,11 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/video/ascii/palette.c
     ${LIB_ROOT}/video/ascii/output_buffer.c
     ${LIB_ROOT}/video/ascii/sgr.c
-    ${LIB_ROOT}/video/ascii/render.c
+    ${LIB_ROOT}/video/ascii/render/render.c
+    ${LIB_ROOT}/video/ascii/render/common.c
+    ${LIB_ROOT}/video/ascii/render/luminance.c
+    ${LIB_ROOT}/video/ascii/render/glyph.c
+    ${LIB_ROOT}/video/ascii/stabilize.c
     ${LIB_ROOT}/video/ascii/simd/cells.c
     ${LIB_ROOT}/video/ascii/simd/dispatch.c
     ${LIB_ROOT}/platform/cpu.c

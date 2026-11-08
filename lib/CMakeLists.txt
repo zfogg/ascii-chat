@@ -532,7 +532,9 @@ set_source_files_properties(
 # Keep per-pixel rendering and frame validation responsive in Debug builds.
 # Debug information and sanitizer instrumentation remain enabled.
 set_property(SOURCE
-    "${CMAKE_SOURCE_DIR}/lib/video/ascii/render.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/render/common.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/render/luminance.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/render/glyph.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/output_buffer.c"
     "${CMAKE_SOURCE_DIR}/src/common/session/frame_validation.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/ascii.c"

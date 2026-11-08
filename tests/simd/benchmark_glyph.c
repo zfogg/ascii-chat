@@ -1,6 +1,6 @@
 /* Renderer-only benchmark; input is a 640x256 RGB24 image for an 80x32 viewport. */
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/render.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,7 +39,9 @@ int main(int argc, char **argv) {
     for (int i = 0; i < rounds + 5; ++i) {
       if (i == 5)
         begin = seconds();
-      char *out = variant ? ascii_render_glyph_match(&source, ASCII_COLOR_TRUE, ops, NULL)
+      char *out = variant ? ascii_render_image(&source, &(ascii_render_options_t){.kind = ASCII_RENDERER_GLYPH,
+                                                                                  .color = ASCII_COLOR_TRUE,
+                                                                                  .backend = ops})
                           : ascii_render(&baseline, "   ...',;:clodxkO0KXNWM", ASCII_COLOR_TRUE, false, false, ops);
       if (!out || !*out)
         return 3;

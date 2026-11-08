@@ -38,7 +38,7 @@
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/ascii.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/render.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/rle.h>
 #include <ascii-chat/util/string.h>
@@ -815,7 +815,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   bool glyph_match = caps_copy.text_renderer == ASCII_RENDERER_GLYPH &&
                      caps_copy.render_mode != RENDER_MODE_HALF_BLOCK && width > 0 && height > 0 &&
                      width <= IMAGE_MAX_WIDTH / 8 && height <= IMAGE_MAX_HEIGHT / 8 &&
-                     (!explicit_palette || ascii_glyph_palette_supported(palette_chars));
+                     (!explicit_palette || ascii_render_palette_supported(ASCII_RENDERER_GLYPH, palette_chars));
   if (result && !glyph_match && (size_t)utf8_display_width(palette_chars) != utf8_char_count(palette_chars)) {
     ascii_frame_source_t source = {.frame_data = result, .frame_size = strlen(result)};
     size_t normalized_size;

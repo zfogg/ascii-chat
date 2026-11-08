@@ -4,7 +4,7 @@
 #include "../simd/quantize.c"
 #include <ascii-chat/video/ascii/sve.h>
 #include <ascii-chat/video/ascii/common.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/common.h>
 
 char *render_ascii_cells_sve(const image_t *image, const char *palette, ascii_color_t mode, bool background) {
   ascii_frame_t frame;

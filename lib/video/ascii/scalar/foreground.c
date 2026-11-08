@@ -6,7 +6,7 @@
 #define VIDEO_ASCII_SCALAR_FOREGROUND_COLOR_CODE_BUFFER_SIZE 20
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/render.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
 
 char *image_print(const image_t *image, const char *palette) {

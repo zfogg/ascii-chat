@@ -2,7 +2,7 @@
 #define SIMD_CELL_NEON 1
 #define SIMD_CELL_ISA neon
 #include "../simd/pack.c"
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/common.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/video/ascii/neon.h>
 char *render_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride, ascii_color_t mode) {

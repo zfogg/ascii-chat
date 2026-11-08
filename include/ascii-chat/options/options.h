@@ -213,6 +213,7 @@
 #include <stdio.h>
 #include "../platform/terminal.h"
 #include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/video/ascii/render/render.h>
 #include "../discovery/strings.h"
 #include "explicit.h"
 
@@ -956,7 +957,6 @@ typedef enum {
  * All options from the scattered extern globals are now in a single struct.
  * This struct is immutable once published via RCU - modifications create a new copy.
  */
-typedef enum { ASCII_RENDERER_LUMINANCE = 0, ASCII_RENDERER_GLYPH = 1 } ascii_renderer_t;
 
 typedef struct options_state {
   // ============================================================================

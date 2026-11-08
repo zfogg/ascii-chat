@@ -7,7 +7,7 @@
 #define VIDEO_ASCII_SGR_BUF_BUFFER_SIZE 32
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/render.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/sgr.h>
 #include <ascii-chat/util/number.h>

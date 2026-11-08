@@ -2,7 +2,7 @@
 #define SIMD_CELL_SSE2 1
 #define SIMD_CELL_ISA sse2
 #include "../simd/pack.c"
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/common.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/video/ascii/sse2.h>
 char *render_halfblocks_sse2(const uint8_t *rgb, int width, int height, int stride, ascii_color_t mode) {

@@ -1,5 +1,5 @@
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/render.h>
 #include <ascii-chat/util/time.h>
 
 static size_t allocations;

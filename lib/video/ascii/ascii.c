@@ -1,7 +1,7 @@
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/render.h>
 /**
  * @file video/ascii.c
  * @ingroup video
@@ -310,7 +310,7 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
   // Preserve an 8x8 sample grid for each glyph in the experimental renderer.
   bool explicit_palette = caps->palette_explicit;
   if (caps->text_renderer == ASCII_RENDERER_GLYPH && explicit_palette &&
-      !ascii_glyph_palette_supported(palette_chars)) {
+      !ascii_render_palette_supported(ASCII_RENDERER_GLYPH, palette_chars)) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains characters without glyph masks");
     return NULL;
   }
@@ -473,9 +473,13 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
                               : caps->color_level == TERM_COLOR_256     ? ASCII_COLOR_256
                               : caps->color_level == TERM_COLOR_16      ? ASCII_COLOR_16
                                                                         : ASCII_COLOR_NONE;
-  char *ascii = glyph_match ? ascii_render_glyph_match_enhanced(
-                                  resized, glyph_color, simd_cells_backend(), explicit_palette ? palette_chars : NULL,
-                                  caps->render_mode == RENDER_MODE_BACKGROUND, caps->glyph_enhance)
+  const ascii_render_options_t glyph_options = {.kind = ASCII_RENDERER_GLYPH,
+                                                .color = glyph_color,
+                                                .palette = explicit_palette ? palette_chars : NULL,
+                                                .backend = simd_cells_backend(),
+                                                .background = caps->render_mode == RENDER_MODE_BACKGROUND,
+                                                .enhance = caps->glyph_enhance};
+  char *ascii = glyph_match ? ascii_render_image(resized, &glyph_options)
                             : image_print_with_capabilities(resized, caps, palette_chars);
   ascii_render_set_output_target(previous_output);
   ascii_stabilizer_set_target(previous_stabilizer);

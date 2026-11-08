@@ -19,7 +19,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii/ascii.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/render.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/palette.h>
@@ -287,7 +287,7 @@ validate_output:
     bool glyph_match = caps.text_renderer == ASCII_RENDERER_GLYPH && caps.render_mode != RENDER_MODE_HALF_BLOCK &&
                        dst_width > 0 && dst_height > 0 && dst_width <= IMAGE_MAX_WIDTH / 8 &&
                        dst_height <= IMAGE_MAX_HEIGHT / 8 &&
-                       (!caps.palette_explicit || ascii_glyph_palette_supported(palette_chars));
+                       (!caps.palette_explicit || ascii_render_palette_supported(ASCII_RENDERER_GLYPH, palette_chars));
     if (!glyph_match && (size_t)utf8_display_width(palette_chars) != utf8_char_count(palette_chars)) {
       ascii_frame_source_t source = {.frame_data = ascii_output, .frame_size = strlen(ascii_output)};
       size_t normalized_size;
