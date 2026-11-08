@@ -13,6 +13,15 @@ private func asciichat_ios_test_frame(
 @_silgen_name("asciichat_ios_main")
 private func asciichat_ios_main(_ mode: Int32) -> Int32
 
+@_silgen_name("ios_render_bridge_read_frame")
+private func ios_render_bridge_read_frame(
+    _ pixels: UnsafeMutablePointer<UInt8>,
+    _ capacity: Int,
+    _ width: UnsafeMutablePointer<Int32>,
+    _ height: UnsafeMutablePointer<Int32>,
+    _ pitch: UnsafeMutablePointer<Int32>
+) -> Int32
+
 private struct TestFrameView: View {
     private let image: CGImage?
 
@@ -67,14 +76,46 @@ private struct TestFrameView: View {
 }
 
 private struct CameraAsciiView: View {
+    @State private var image: CGImage?
+
+    private func readFrame() {
+        let capacity = 4096 * 2048 * 4
+        var pixels = [UInt8](repeating: 0, count: capacity)
+        var width: Int32 = 0
+        var height: Int32 = 0
+        var pitch: Int32 = 0
+        let emitted = pixels.withUnsafeMutableBufferPointer { buffer in
+            ios_render_bridge_read_frame(buffer.baseAddress!, capacity, &width, &height, &pitch)
+        }
+        guard emitted != 0, width > 0, height > 0, pitch >= width * 4 else { return }
+        let data = Data(pixels[0 ..< Int(pitch) * Int(height)])
+        guard let provider = CGDataProvider(data: data as CFData) else { return }
+        image = CGImage(width: Int(width), height: Int(height), bitsPerComponent: 8, bitsPerPixel: 32,
+                        bytesPerRow: Int(pitch), space: CGColorSpaceCreateDeviceRGB(),
+                        bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                        provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+    }
+
     var body: some View {
-        Text("Camera rendering is owned by the shared mirror pipeline.")
-            .padding()
-            .onAppear {
-                DispatchQueue.global(qos: .userInitiated).async {
-                    _ = asciichat_ios_main(0)
-                }
+        Group {
+            if let image {
+                Image(decorative: image, scale: 1)
+                    .interpolation(.none)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                Text("Starting shared mirror pipeline…")
             }
+        }
+        .padding()
+        .onReceive(Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()) { _ in
+            readFrame()
+        }
+        .onAppear {
+            DispatchQueue.global(qos: .userInitiated).async {
+                _ = asciichat_ios_main(0)
+            }
+        }
     }
 }
 

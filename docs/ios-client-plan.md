@@ -2,7 +2,7 @@
 
 # ascii-chat iOS Client - Implementation Plan (WIP)
 
-> **Status**: Simulator app milestone complete — the x86_64 iOS simulator bundle links with the shared C dispatcher, platform camera, TLS networking, QUIC dependencies, and audio boundary; render bridge remains the next milestone
+> **Status**: Render bridge milestone complete — the simulator app links and launches with C-side libvterm/FreeType frame capture exposed to SwiftUI; runtime mirror-frame verification remains next
 > **Last Updated**: 2026-11-08
 > **Goal**: Native iOS app in Swift that uses libasciichat (compiled for iOS) to support server, client, mirror, and discovery modes.
 
@@ -1360,7 +1360,7 @@ Intentionally minimal. The C library does the heavy lifting.
 - [x] Enable QUIC and WebSocket TLS on iOS, including the selected OpenSSL build
 - [ ] Create `lib/platform/ios/` directory with overrides:
     - [ ] `system.c` — `platform_write()` routes STDOUT to render bridge
-    - [ ] `render_bridge.c` — libvterm + term_renderer + frame callback
+    - [x] `render_bridge.c` — libvterm + term_renderer + frame callback
     - [ ] `terminal.c` — dimensions from options, truecolor, no TTY
     - [ ] `keyboard.c` — override `keyboard_init()`/`keyboard_destroy()` to skip TTY setup; reads from stdin_bridge queue
     - [x] `keepawake.m` — UIApplication.idleTimerDisabled
@@ -1395,7 +1395,7 @@ produces pixels on screen.
 - [ ] `FrameBufferView.swift` — display CGImage from callback
 - [ ] `ModeView.swift` — shared pixel display with gesture input
 - [ ] `MirrorView.swift` — options form + ModeView
-- [ ] Implement the C render bridge and Swift frame callback
+- [x] Implement the C render bridge and Swift frame polling bridge
 - [ ] Verify: mirror mode shows ASCII webcam output on device
 - [ ] Settings UI: color mode, palette, render mode, dimensions (passed as argv)
 

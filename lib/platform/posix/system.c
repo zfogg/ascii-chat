@@ -14,6 +14,9 @@
 #include "terminal.h"
 #include <ascii-chat/otel.h>
 #include <ascii-chat/platform/api.h>
+#ifdef PLATFORM_IOS
+#include <ascii-chat/platform/ios/render_bridge.h>
+#endif
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/internal.h>
 #include <ascii-chat/debug/named.h>
@@ -524,7 +527,11 @@ ssize_t platform_write(int fd, const void *buf, size_t count) {
   if (!buf || count == 0) {
     log_warn("Invalid parameters: fd=%d, buf=%p, count=%zu", fd, buf, count);
   }
+#ifdef PLATFORM_IOS
+  return ios_render_bridge_write(fd, buf, count);
+#else
   return write(fd, buf, count);
+#endif
 }
 
 /**
