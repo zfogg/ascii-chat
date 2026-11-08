@@ -151,7 +151,25 @@ ascii_chat_install() (
     gum=$candidate
   done
   [ -n "$gum" ] || fail 'Gum archive did not contain its executable.'
-  "$gum" style --border rounded --padding '1 2' --border-foreground 86 'ascii-chat' "Install for $os / $arch"
+  gum_panel() {
+    "$gum" style --border rounded --border-foreground 86 --background 236 --foreground 255 --padding '1 3' "$@"
+  }
+  gum_heading() {
+    "$gum" style --border double --border-foreground 39 --background 24 --foreground 231 --bold --padding '1 4' "$@"
+  }
+  gum_footer() {
+    "$gum" style --border normal --border-foreground 242 --background 235 --foreground 250 --italic --padding '1 2' \
+      'www.ascii-chat.com' 'Zachary Fogg <me@zfo.gg>'
+  }
+  gum_brand() {
+    "$gum" join horizontal \
+      "$("$gum" style --foreground 51 --bold 'ascii')" \
+      "$("$gum" style --foreground 141 --bold '-')" \
+      "$("$gum" style --foreground 43 --bold 'chat')"
+  }
+  gum_brand
+  gum_heading 'installer script' 'Video chat in your terminal' "Install for $os / $arch"
+  gum_panel 'Release assets are checksum-verified before installation.' 'Managed files are replaced atomically.'
 
   tag=${ASCII_CHAT_VERSION:-}
   if [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then tag="v$tag"; fi
@@ -162,7 +180,7 @@ ascii_chat_install() (
   case "$tag" in v[0-9]*) ;; *) fail "Invalid release tag: $tag" ;; esac
   case "$tag" in *[!a-zA-Z0-9._-]*) fail 'Invalid release tag characters.' ;; esac
   archive="ascii-chat-${tag#v}-${os}-${arch}.tar.gz"
-  printf 'Downloading %s\n' "$archive"
+  gum_panel --foreground 221 "Downloading $archive" 'Please wait while the release is verified.'
   download "https://github.com/zfogg/ascii-chat/releases/download/$tag/$archive" "$work/release.tar.gz"
   mkdir "$work/new"
   tar -xzf "$work/release.tar.gz" -C "$work/new"
@@ -292,9 +310,9 @@ ascii_chat_install() (
     esac
   fi
   if [ "$native_yt" = 1 ]; then
-    printf 'Using package-managed yt-dlp.\n'
+    gum_panel --foreground 114 'Using package-managed yt-dlp.' 'No duplicate download is required.'
   else
-    printf 'Installing upstream yt-dlp.\n'
+    gum_panel --foreground 221 'Installing upstream yt-dlp.' 'The downloaded tool will be checksum-verified.'
     # Install a verified upstream standalone yt-dlp alongside the release.
     case "$os/$arch" in
       Linux/amd64) if [ "$libc" = musl ]; then yt_asset=yt-dlp_musllinux; else yt_asset=yt-dlp_linux; fi ;;
@@ -345,8 +363,9 @@ ascii_chat_install() (
       fi
     fi
   done
-  "$gum" style --foreground 86 "Installed $tag → $link" 'Ready to chat: ascii-chat'
+  gum_heading --border-foreground 82 --background 22 --foreground 231 "Installed $tag → $link" 'Ready to chat: ascii-chat'
   ascii_chat_configure_path "$prefix/bin"
+  gum_footer
   printf '\nBinary: %s\n' "$link"
 )
 ascii_chat_install
