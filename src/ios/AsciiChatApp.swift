@@ -134,6 +134,10 @@ private struct CameraAsciiView: View {
     }
 
     private func readFrame() {
+        if !cameraStarted && asciichat_ios_camera_authorized() != 0 {
+            cameraStarted = asciichat_ios_camera_start(0) != 0
+            if cameraStarted { cameraMessage = "Camera capture running" }
+        }
         if cameraStarted && readCameraFrame() { return }
         let capacity = 4096 * 2048 * 4
         var pixels = [UInt8](repeating: 0, count: capacity)
