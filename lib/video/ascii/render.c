@@ -306,6 +306,15 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
   frame->luma = (uint8_t *)(frame->bg + frame->width);
   return ASCIICHAT_OK;
 }
+static uint32_t background_contrast(ascii_color_t mode, uint32_t color, uint8_t luma) {
+  if (mode == ASCII_COLOR_16) {
+    uint8_t r, g, b;
+    get_16color_rgb((uint8_t)color, &r, &g, &b);
+    return (77 * r + 150 * g + 29 * b) / 256 < 127 ? 15u : 0;
+  }
+  return luma < 128 ? (mode == ASCII_COLOR_TRUE ? 0xffffffu : 15u) : 0;
+}
+
 void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows,
                           const simd_cells_t *ops) {
   if (frame->stabilizer && !frame->temporal_preselected) {
@@ -361,12 +370,7 @@ void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool backgro
     if (mode == ASCII_COLOR_NONE)
       continue;
     uint32_t value = mode == ASCII_COLOR_TRUE ? frame->packed[x] : frame->index[x];
-    uint32_t contrast = frame->luma[x] < 128 ? (mode == ASCII_COLOR_TRUE ? 0xffffffu : 15u) : 0;
-    if (mode == ASCII_COLOR_16) {
-      uint8_t r, g, b;
-      get_16color_rgb((uint8_t)value, &r, &g, &b);
-      contrast = (77 * r + 150 * g + 29 * b) / 256 < 127 ? 15u : 0;
-    }
+    uint32_t contrast = background_contrast(mode, value, frame->luma[x]);
     frame->fg[x] = background ? contrast : value;
     frame->bg[x] = background ? value : UINT32_MAX;
   }
@@ -796,8 +800,7 @@ char *ascii_render_glyph_match_enhanced(const image_t *image, ascii_color_t mode
         }
       }
       uint32_t rgb = glyph_foreground(&glyphs[best], samples, sums);
-      uint32_t bg_rgb =
-          ((uint32_t)(sums[0] / 128) << 16) | ((uint32_t)(sums[1] / 128) << 8) | (uint32_t)(sums[2] / 128);
+      uint32_t bg_rgb = ((uint32_t)(sums[0] / 16) << 16) | ((uint32_t)(sums[1] / 16) << 8) | (uint32_t)(sums[2] / 16);
       uint32_t selected = glyphs[best].key;
       if (previous) {
         ascii_temporal_cell_t old = *previous;
@@ -834,7 +837,8 @@ char *ascii_render_glyph_match_enhanced(const image_t *image, ascii_color_t mode
       frame.glyph[x] = selected;
       frame.packed[x] = rgb;
       frame.index[x] = bg_rgb;
-      frame.luma[x] = (uint8_t)((77 * ((rgb >> 16) & 255) + 150 * ((rgb >> 8) & 255) + 29 * (rgb & 255)) >> 8);
+      uint32_t color = background ? bg_rgb : rgb;
+      frame.luma[x] = (uint8_t)((77 * ((color >> 16) & 255) + 150 * ((color >> 8) & 255) + 29 * (color & 255)) >> 8);
     }
     // Anchor the ordered pattern to terminal cells so stationary video does
     // not shimmer; truecolor and monochrome output remain unchanged.
@@ -847,12 +851,12 @@ char *ascii_render_glyph_match_enhanced(const image_t *image, ascii_color_t mode
     }
     if (background && mode != ASCII_COLOR_NONE) {
       if (mode == ASCII_COLOR_TRUE) {
-        memcpy(frame.fg, frame.packed, frame.width * sizeof(uint32_t));
         memcpy(frame.bg, frame.index, frame.width * sizeof(uint32_t));
       } else {
-        ops->quantize(frame.packed, frame.fg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
         ops->quantize(frame.index, frame.bg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
       }
+      for (size_t x = 0; x < frame.width; ++x)
+        frame.fg[x] = background_contrast(mode, frame.bg[x], frame.luma[x]);
       emit_prepared_row(&frame.output, mode, ops, frame.glyph, frame.fg, frame.bg, frame.width);
       emit_row_end(&frame.output, true, y + 1 < cells.h);
       ++frame.row;

@@ -7,7 +7,8 @@ edges against glyph masks. It refines a shortlist using 8×8 masks and source
 samples. It colors the selected character using a blend of its coverage-weighted
 average and representative median pixel, boosting dim
 colors to keep the ink visible. With `--render-mode=background`, the background
-receives a dark tint derived from the cell's average color. Terminal color
+uses the cell's average color and the glyph is black or white for contrast, as
+in luminance background mode. Terminal color
 quantization happens after glyph selection. The default luminance renderer is
 unchanged.
 

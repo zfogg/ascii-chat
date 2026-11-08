@@ -710,6 +710,35 @@ Test(ascii_emission, capability_conversion_stabilizes_all_render_modes) {
 }
 #endif
 
+Test(ascii_emission, glyph_background_matches_luminance_color_policy) {
+  const rgb_pixel_t colors[] = {{0, 0, 0}, {255, 255, 255}, {255, 0, 0}, {0, 255, 0}};
+  rgb_pixel_t coarse_pixels[4];
+  rgb_pixel_t fine_pixels[32 * 8];
+  for (int x = 0; x < 4; ++x)
+    coarse_pixels[x] = colors[x];
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 32; ++x)
+      fine_pixels[y * 32 + x] = colors[x / 8];
+  image_t coarse = {.w = 4, .h = 1, .pixels = coarse_pixels};
+  image_t fine = {.w = 32, .h = 8, .pixels = fine_pixels};
+  const ascii_color_t modes[] = {ASCII_COLOR_TRUE, ASCII_COLOR_256, ASCII_COLOR_16};
+  for (size_t m = 0; m < sizeof(modes) / sizeof(modes[0]); ++m) {
+    char *luminance = ascii_render(&coarse, "@", modes[m], true, false, &simd_cells_scalar);
+    char *glyph = ascii_render_glyph_match_mode(&fine, modes[m], &simd_cells_scalar, "@", true);
+    cr_assert_not_null(luminance);
+    cr_assert_not_null(glyph);
+    terminal_cell_t expected[4] = {0}, actual[4] = {0};
+    decode(luminance, expected, 4, 1, true);
+    decode(glyph, actual, 4, 1, true);
+    for (int i = 0; i < 4; ++i) {
+      cr_assert_eq(actual[i].bg, expected[i].bg, "background for color %d and mode %d", i, modes[m]);
+      cr_assert_eq(actual[i].fg, expected[i].fg, "foreground for color %d and mode %d", i, modes[m]);
+    }
+    SAFE_FREE(luminance);
+    SAFE_FREE(glyph);
+  }
+}
+
 Test(ascii_emission, glyph_indexed_dither_is_stable_and_spatial) {
   rgb_pixel_t pixels[32 * 32];
   for (size_t i = 0; i < 32 * 32; ++i)
@@ -1022,10 +1051,8 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   decode(flat_output, flat_cell, 1, 1, true);
   cr_assert_neq(flat_cell[0].glyph[0], 'B');
   cr_assert_neq(flat_cell[0].glyph[0], ' ');
-  cr_assert_eq(flat_cell[0].bg, 0x050a11);
-  cr_assert((flat_cell[0].fg & 255) >= 128);
-  cr_assert(((flat_cell[0].fg >> 16) & 255) < ((flat_cell[0].fg >> 8) & 255));
-  cr_assert(((flat_cell[0].fg >> 8) & 255) < (flat_cell[0].fg & 255));
+  cr_assert_eq(flat_cell[0].bg, 0x28508c);
+  cr_assert_eq(flat_cell[0].fg, 0xffffff);
   SAFE_FREE(flat_output);
   char *scalar_fitted = ascii_render_glyph_match_mode(&varied_image, ASCII_COLOR_TRUE, &simd_cells_scalar, NULL, true);
   cr_assert_not_null(scalar_fitted);
@@ -1054,7 +1081,7 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   cr_assert_not_null(next_fitted);
   terminal_cell_t stable_cell[1] = {0};
   decode(next_fitted, stable_cell, 1, 1, true);
-  cr_assert_eq(stable_cell[0].bg & 255, 12, "substantial color motion must not blend the old background");
+  cr_assert_eq(stable_cell[0].bg & 255, 97, "substantial color motion must not blend the old background");
   SAFE_FREE(next_fitted);
   ascii_stabilizer_set_target(old_target);
   ascii_stabilizer_reset(&fitted_history);
@@ -1072,9 +1099,9 @@ Test(ascii_emission, glyph_matching_uses_shape_and_rejects_invalid_sizes) {
   next_fitted = ascii_render_glyph_match_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "@", true);
   cr_assert_not_null(next_fitted);
   decode(next_fitted, stable_cell, 1, 1, true);
-  cr_assert_eq((stable_cell[0].fg >> 16) & 255, 0, "isoluminant color changes must not blend old ink");
+  cr_assert_eq(stable_cell[0].fg, 0xffffff, "dark backgrounds require white ink");
   cr_assert_eq((stable_cell[0].bg >> 16) & 255, 0, "isoluminant color changes must not blend old background");
-  cr_assert((stable_cell[0].fg & 0xff00) != 0);
+  cr_assert_eq((stable_cell[0].bg >> 8) & 255, 77);
   SAFE_FREE(next_fitted);
   ascii_stabilizer_set_target(old_target);
   ascii_stabilizer_reset(&fitted_history);
