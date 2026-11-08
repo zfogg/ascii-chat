@@ -25,7 +25,8 @@ jobs:
       - name: Install latest LLVM tools
         run: |
           # Official installer from https://apt.llvm.org/
-          bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+          wget -O llvm.sh https://apt.llvm.org/llvm.sh
+          sudo bash llvm.sh
           sudo apt-get update
           sudo apt-get install --yes cmake ninja-build clang-format
 
