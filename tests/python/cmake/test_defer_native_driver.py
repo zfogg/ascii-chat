@@ -24,6 +24,18 @@ def native_tool() -> Path:
     return path
 
 
+def test_plan_accepts_relative_build_and_bare_output(native_tool: Path, tmp_path: Path) -> None:
+    records = tmp_path / "records.txt"
+    records.write_text("app\t/source.c\t/output.c\t\n", encoding="utf-8")
+    result = subprocess.run(
+        [str(native_tool), "--plan-records", str(records), "--plan-stage", "production",
+         "--plan-output", "plan.cmake", "--build-dir", "build"],
+        cwd=tmp_path, capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / "build").as_posix() in (tmp_path / "plan.cmake").read_text(encoding="utf-8")
+
+
 def test_batch_compilation_database_dependencies_and_incremental_output(
     native_tool: Path, tmp_path: Path
 ) -> None:
@@ -164,9 +176,11 @@ def test_cmake_registers_and_runs_native_unit_tests(tmp_path: Path, cross: bool)
     if not cmake or not ctest or not clang or not clangxx or not shutil.which("ninja"):
         pytest.skip("CMake, CTest, Ninja, and Clang are required")
     project = tmp_path / "project"
-    native = project / "src" / "tooling" / "defer" / "native"
-    native.parent.mkdir(parents=True)
-    shutil.copytree(ROOT / "src" / "tooling" / "defer" / "native", native)
+    native = project / "src" / "tooling" / "defer"
+    native.mkdir(parents=True)
+    for pattern in ("*.cpp", "*.h", "CMakeLists.txt"):
+        for path in (ROOT / "src" / "tooling" / "defer").glob(pattern):
+            shutil.copy2(path, native / path.name)
     deps = project / "cmake" / "deps"
     deps.mkdir(parents=True)
     shutil.copy2(ROOT / "cmake" / "deps" / "LLVMDevelopment.cmake", deps)

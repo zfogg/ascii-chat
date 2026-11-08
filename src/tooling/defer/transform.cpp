@@ -61,6 +61,17 @@ std::string trim(std::string value) {
   return value;
 }
 
+bool has_external_case(CXCursor cursor) {
+  for (auto child : children(cursor)) {
+    const auto kind = clang_getCursorKind(child);
+    if (kind == CXCursor_CaseStmt || kind == CXCursor_DefaultStmt)
+      return true;
+    if (kind != CXCursor_SwitchStmt && has_external_case(child))
+      return true;
+  }
+  return false;
+}
+
 struct Action {
   unsigned start;
   unsigned action_start;
@@ -301,6 +312,16 @@ void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
         args += "(" + alias + "){0}";
       }
       return_type_ = "__typeof__(((" + function_type + ")0)(" + args + "))";
+      for (int i = 0; i < count; ++i) {
+        if (spelling(clang_Cursor_getArgument(cursor, static_cast<unsigned>(i))) == spelling(cursor)) {
+          const auto result = consume_string(clang_getTypeSpelling(clang_getCursorResultType(cursor)));
+          if (result.find("unnamed") != std::string::npos || result.find("anonymous") != std::string::npos)
+            fail("cannot name return type when parameter shadows function");
+          function_prelude_.clear();
+          return_type_ = "__typeof__((" + result + "){0})";
+          break;
+        }
+      }
     }
     for (auto child : children(cursor))
       visit(child, kind);
@@ -343,6 +364,8 @@ void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
     const auto &actions = scopes_.back().actions;
     if (!actions.empty() && parent == CXCursor_SwitchStmt)
       fail("defer directly in switch body is unsupported; use a case block");
+    if (!actions.empty() && has_external_case(cursor))
+      fail("switch dispatch can enter a defer scope");
     if (!actions.empty()) {
       std::string declarations;
       for (const auto &action : actions)

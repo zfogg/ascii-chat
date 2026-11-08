@@ -8,7 +8,7 @@ endif()
 
 if(NOT ASCIICHAT_LLVM_DEVELOPMENT_MODULE)
     get_filename_component(ASCIICHAT_LLVM_DEVELOPMENT_MODULE
-        "${CMAKE_CURRENT_LIST_DIR}/../../../../cmake/deps/LLVMDevelopment.cmake" ABSOLUTE)
+        "${CMAKE_CURRENT_LIST_DIR}/../../../cmake/deps/LLVMDevelopment.cmake" ABSOLUTE)
 endif()
 include("${ASCIICHAT_LLVM_DEVELOPMENT_MODULE}")
 ascii_find_llvm_development()
@@ -43,6 +43,11 @@ if((_ascii_defer_standalone AND BUILD_TESTING) OR (NOT _ascii_defer_standalone A
         endif()
         ascii_configure_llvm_host_tool("ascii-defer-${_test}-test")
         target_link_libraries("ascii-defer-${_test}-test" PRIVATE ascii-defer-core)
+        if(WIN32)
+            add_custom_command(TARGET "ascii-defer-${_test}-test" POST_BUILD
+                COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:ascii-libclang>" "$<TARGET_FILE_DIR:ascii-defer-${_test}-test>"
+                VERBATIM)
+        endif()
         add_test(NAME "ascii-defer-${_test}" COMMAND "ascii-defer-${_test}-test")
     endforeach()
 endif()

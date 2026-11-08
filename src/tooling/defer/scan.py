@@ -21,7 +21,7 @@ def main() -> int:
         if not name:
             continue
         path = Path(name)
-        if pattern.search(path.read_bytes()):
+        if pattern.search(re.sub(rb"\\\r?\n", b"", path.read_bytes())):
             print(path.as_posix())
     return 0
 

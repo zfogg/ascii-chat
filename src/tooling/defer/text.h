@@ -17,7 +17,9 @@ inline bool is_keyword_at(std::string_view source, std::size_t offset, std::stri
   if (offset > source.size() || source.substr(offset, keyword.size()) != keyword) {
     return false;
   }
-  const auto end = offset + keyword.size();
+  auto end = offset + keyword.size();
+  while (source.substr(end, 2) == "\\\n" || source.substr(end, 3) == "\\\r\n")
+    end += source[end + 1] == '\r' ? 3 : 2;
   return end == source.size() || !is_identifier_byte(static_cast<unsigned char>(source[end]));
 }
 
@@ -46,6 +48,14 @@ inline std::size_t after_semicolon(std::string_view source, std::size_t offset) 
 // Detect comment-separated invocations without interpreting C string literals.
 // False positives are safe: the libclang pass decides whether an expansion exists.
 inline bool may_contain_defer(std::string_view source) {
+  std::string unspliced;
+  unspliced.reserve(source.size());
+  for (std::size_t i = 0; i < source.size(); ++i) {
+    if (source.substr(i, 2) == "\\\n") { ++i; continue; }
+    if (source.substr(i, 3) == "\\\r\n") { i += 2; continue; }
+    unspliced += source[i];
+  }
+  source = unspliced;
   std::size_t search = 0;
   while ((search = source.find("defer", search)) != source.npos) {
     const auto start = search++;

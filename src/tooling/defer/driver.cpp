@@ -181,7 +181,8 @@ void verify_libclang(const fs::path &requested) {
 }
 
 void write_if_changed(const fs::path &path, const std::string &contents) {
-  fs::create_directories(path.parent_path());
+  if (!path.parent_path().empty())
+    fs::create_directories(path.parent_path());
   if (fs::exists(path) && read_file(path) == contents)
     return;
   const auto temporary =
@@ -190,6 +191,9 @@ void write_if_changed(const fs::path &path, const std::string &contents) {
     std::ofstream file(temporary, std::ios::binary | std::ios::trunc);
     if (!file || !file.write(contents.data(), static_cast<std::streamsize>(contents.size())))
       throw std::runtime_error("cannot write " + temporary.u8string());
+    file.close();
+    if (!file)
+      throw std::runtime_error("cannot close " + temporary.u8string());
   }
   if (auto error = llvm::sys::fs::rename(temporary.u8string(), path.u8string()))
     throw std::runtime_error("cannot replace output: " + error.message());
@@ -210,14 +214,16 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
   for (const auto &arg : arguments)
     raw.push_back(arg.c_str());
   auto content = read_file(source);
-  TranslationUnit unit(index.get(), source.u8string(), raw);
+  const auto source_name = source.u8string();
+  CXUnsavedFile unsaved{source_name.c_str(), content.data(), static_cast<unsigned long>(content.size())};
+  TranslationUnit unit(index.get(), source_name, raw, &unsaved, 1);
   auto transformed = transform(unit.get(), source.u8string(), content);
   FileDependencies dependencies{output, {source.u8string()}};
   clang_getInclusions(
       unit.get(),
       [](CXFile file, CXSourceLocation *, unsigned, CXClientData opaque) {
         auto *files = static_cast<std::set<std::string> *>(opaque);
-        files->insert(consume_string(clang_getFileName(file)));
+        files->insert(fs::absolute(fs::u8path(consume_string(clang_getFileName(file)))).lexically_normal().u8string());
       },
       &dependencies.inputs);
   write_if_changed(output, transformed);

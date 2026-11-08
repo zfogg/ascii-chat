@@ -17,10 +17,16 @@ CLANG = shutil.which("clang")
 
 
 @pytest.fixture
-def compiler_environment() -> dict[str, str]:
+def base_environment() -> dict[str, str]:
     if CLANG is None:
         pytest.skip("Clang is not installed")
-    env = os.environ.copy()
+    return os.environ.copy()
+
+
+@pytest.fixture
+def compiler_environment(base_environment: dict[str, str]) -> dict[str, str]:
+    env = base_environment.copy()
+    assert CLANG is not None
     if not env.get("LIBCLANG_LIBRARY_FILE"):
         compiler = Path(CLANG).resolve()
         result = subprocess.run(
@@ -60,13 +66,14 @@ def compiler_environment() -> dict[str, str]:
 
 @pytest.fixture(params=["python", "native"])
 def transform_environment(
-    compiler_environment: dict[str, str], request: pytest.FixtureRequest
+    base_environment: dict[str, str], request: pytest.FixtureRequest
 ) -> dict[str, str]:
-    env = compiler_environment.copy()
     if request.param == "native":
+        env = base_environment.copy()
         if not env.get("ASCIICHAT_DEFER_TEST_BINARY"):
             pytest.skip("native defer binary was not supplied")
     else:
+        env = request.getfixturevalue("compiler_environment").copy()
         env.pop("ASCIICHAT_DEFER_TEST_BINARY", None)
     return env
 
@@ -74,6 +81,91 @@ def transform_environment(
 def tool_command(env: dict[str, str]) -> list[str]:
     binary = env.get("ASCIICHAT_DEFER_TEST_BINARY")
     return [binary] if binary else [sys.executable, str(TOOL)]
+
+
+@pytest.mark.parametrize("alias", ["source", "output"])
+def test_depfile_cannot_replace_source_or_output(
+    tmp_path: Path, transform_environment: dict[str, str], alias: str
+) -> None:
+    source = tmp_path / "input.c"
+    output = tmp_path / "output.c"
+    original = "#define defer(...) do {} while (0)\nvoid f(void) { defer((void)0); }\n"
+    source.write_text(original, encoding="utf-8")
+    output.write_text("keep output", encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--depfile", str(source if alias == "source" else output),
+         str(source), str(output), "--", "-std=c17"],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert source.read_text(encoding="utf-8") == original
+    assert output.read_text(encoding="utf-8") == "keep output"
+
+
+def test_batch_depfile_cannot_replace_any_source(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    sources = [tmp_path / "a.c", tmp_path / "b.c"]
+    for source in sources:
+        source.write_text("void f(void) {}\n", encoding="utf-8")
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text(
+        "".join(f"{source}\t{tmp_path / (source.stem + '.out.c')}\n" for source in sources), encoding="utf-8"
+    )
+    command = [*tool_command(transform_environment), "--batch", str(manifest),
+               "--compilation-database", str(tmp_path), "--depfile", str(sources[1])]
+    if not transform_environment.get("ASCIICHAT_DEFER_TEST_BINARY"):
+        command.extend(["--libclang", transform_environment["LIBCLANG_LIBRARY_FILE"]])
+    result = subprocess.run(command, capture_output=True, text=True, env=transform_environment, check=False)
+    assert result.returncode != 0
+    assert all(source.read_text(encoding="utf-8") == "void f(void) {}\n" for source in sources)
+    assert not (tmp_path / "a.out.c").exists()
+
+
+def test_parameter_shadowing_function_name(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    result = transform(tmp_path, transform_environment, "int f(int f) { defer((void)0); return f; }\n")
+    assert result.returncode == 0, result.stderr
+    compiled = subprocess.run(
+        [str(CLANG), "-std=c17", "-fsyntax-only", str(tmp_path / "output.c")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert compiled.returncode == 0, compiled.stderr
+
+
+def test_switch_cannot_enter_defer_scope(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    result = transform(
+        tmp_path, transform_environment,
+        "void f(int n) { switch (n) { case 0: { defer((void)0); case 1: break; } } }\n",
+    )
+    assert result.returncode != 0
+    assert "switch dispatch" in result.stderr
+
+
+def test_spliced_defer_identifier(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    result = transform(tmp_path, transform_environment, "void f(void) { de\\\nfer((void)0); }\n")
+    assert result.returncode == 0, result.stderr
+    compiled = subprocess.run(
+        [str(CLANG), "-std=c17", "-fsyntax-only", str(tmp_path / "output.c")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert compiled.returncode == 0, compiled.stderr
+
+
+def test_spliced_macro_control_transfer_is_rejected(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    result = transform(
+        tmp_path, transform_environment,
+        "#define break_if(x) if (x) break\n"
+        "void f(void) { while (1) { defer((void)0); break\\\n_if(0); break; } }\n",
+    )
+    assert result.returncode != 0
 
 
 def transform(
@@ -230,7 +322,9 @@ def test_cmake_discovers_defer_and_tracks_headers(
     shutil.copy2(TOOL.parent / "plan.py", tool_dir / "plan.py")
     shutil.copytree(TOOL.parent / "vendor" / "clang", tool_dir / "vendor" / "clang")
     if backend != "PYTHON":
-        shutil.copytree(TOOL.parent / "native", tool_dir / "native")
+        for pattern in ("*.cpp", "*.h", "CMakeLists.txt"):
+            for path in TOOL.parent.glob(pattern):
+                shutil.copy2(path, tool_dir / path.name)
         dependencies = project / "cmake" / "deps"
         dependencies.mkdir(parents=True)
         shutil.copy2(ROOT / "cmake" / "deps" / "LLVMDevelopment.cmake", dependencies)
@@ -238,7 +332,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
     second.write_text(
         '#include "ascii-chat/tooling/defer/defer.h"\n'
         "#ifndef SECOND_REQUIRED\n#error missing source definition\n#endif\n"
-        "void second(void) { defer /* cleanup (LIFO) */ ((void)0); }\n",
+        "void second(void) { de\\\nfer /* cleanup (LIFO) */ ((void)0); }\n",
         encoding="utf-8",
     )
     main = source_dir / "main.c"

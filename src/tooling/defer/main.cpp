@@ -67,6 +67,7 @@ int main(int argc, char **argv) {
                                               : std::filesystem::absolute(std::filesystem::u8path(depfile.getValue()));
     defer_tool::ClangIndex index;
     std::vector<defer_tool::FileDependencies> dependencies;
+    std::vector<std::pair<std::filesystem::path, std::filesystem::path>> inputs;
     if (!batch.empty()) {
       if (!sources.empty())
         throw std::runtime_error("batch mode does not accept positional source files");
@@ -79,17 +80,37 @@ int main(int argc, char **argv) {
         auto separator = line.find('\t');
         if (separator == std::string::npos || line.find('\t', separator + 1) != std::string::npos)
           throw std::runtime_error("invalid source/output batch record");
-        dependencies.push_back(defer_tool::transform_file(index, std::filesystem::u8path(line.substr(0, separator)),
-                                                          std::filesystem::u8path(line.substr(separator + 1)),
-                                                          options));
+        inputs.emplace_back(std::filesystem::u8path(line.substr(0, separator)),
+                            std::filesystem::u8path(line.substr(separator + 1)));
       }
     } else {
       if (sources.size() < 2)
         throw std::runtime_error("expected source and output paths");
       options.clang_arguments.assign(sources.begin() + 2, sources.end());
-      dependencies.push_back(defer_tool::transform_file(index, std::filesystem::u8path(sources[0]),
-                                                        std::filesystem::u8path(sources[1]), options));
+      inputs.emplace_back(std::filesystem::u8path(sources[0]), std::filesystem::u8path(sources[1]));
     }
+    for (const auto &[source, output] : inputs) {
+      for (const auto &[other_source, other_output] : inputs) {
+        std::error_code error;
+        if (std::filesystem::weakly_canonical(output) == std::filesystem::weakly_canonical(other_source) ||
+            (std::filesystem::exists(output) && std::filesystem::exists(other_source) &&
+             std::filesystem::equivalent(output, other_source, error) && !error))
+          throw std::runtime_error("output must not overwrite an input source");
+      }
+    }
+    if (!depfile_path.empty()) {
+      for (const auto &[source, output] : inputs) {
+        for (const auto &protected_path : {source, output}) {
+          std::error_code error;
+          if (std::filesystem::weakly_canonical(depfile_path) == std::filesystem::weakly_canonical(protected_path) ||
+              (std::filesystem::exists(depfile_path) && std::filesystem::exists(protected_path) &&
+               std::filesystem::equivalent(depfile_path, protected_path, error) && !error))
+            throw std::runtime_error("depfile must not overwrite an input source or output");
+        }
+      }
+    }
+    for (const auto &[source, output] : inputs)
+      dependencies.push_back(defer_tool::transform_file(index, source, output, options));
     if (!depfile_path.empty())
       defer_tool::write_depfile(depfile_path, dependencies);
     return 0;

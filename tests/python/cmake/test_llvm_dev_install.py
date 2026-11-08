@@ -92,3 +92,15 @@ def test_rejects_incorrect_checksum_before_extraction(
     assert result.returncode != 0
     assert "SHA-256 mismatch" in result.stderr
     assert not (destination / MEMBERS[0]).exists()
+
+
+def test_rejects_reusing_a_different_architecture(archive: Path, tmp_path: Path) -> None:
+    destination = tmp_path / "llvm"
+    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+    result = run_installer(archive, destination, digest)
+    assert result.returncode == 0, result.stdout + result.stderr
+    identity = destination / ".ascii-chat-llvm-identity.json"
+    identity.write_text('{"version": "23.1.3", "architecture": "aarch64"}', encoding="utf-8")
+    result = run_installer(archive, destination, digest)
+    assert result.returncode != 0
+    assert "aarch64" in result.stderr

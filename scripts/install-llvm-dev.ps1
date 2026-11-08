@@ -23,6 +23,30 @@ $required = @('include/llvm/Support/CommandLine.h', 'include/llvm-c/DataTypes.h'
               'include/clang-c/Index.h', 'lib/LLVMSupport.lib', 'lib/LLVMDemangle.lib',
               'lib/libclang.lib', 'bin/libclang.dll')
 if (@($required | Where-Object { -not (Test-Path -LiteralPath (Join-Path $Destination $_)) }).Count -eq 0) {
+    $identityPath = Join-Path $Destination '.ascii-chat-llvm-identity.json'
+    if (Test-Path -LiteralPath $identityPath) {
+        $identity = Get-Content -Raw -LiteralPath $identityPath | ConvertFrom-Json
+        if ($identity.version -ne $Version -or $identity.architecture -ne $Architecture) {
+            throw "LLVM development destination contains $($identity.version) $($identity.architecture), requested $Version ${Architecture}: $Destination"
+        }
+    } else {
+        $config = Join-Path $Destination 'include/llvm/Config/llvm-config.h'
+        $dll = Join-Path $Destination 'bin/libclang.dll'
+        if (-not (Test-Path -LiteralPath $config) -or (Get-Content -Raw -LiteralPath $config) -notmatch "(?m)^#define LLVM_VERSION_STRING `"$([regex]::Escape($Version))`"\s*$") {
+            throw "Cannot verify LLVM version at $Destination; use a separate destination"
+        }
+        $stream = [System.IO.File]::OpenRead($dll)
+        try {
+            $reader = [System.IO.BinaryReader]::new($stream)
+            $stream.Position = 0x3c
+            $peOffset = $reader.ReadInt32()
+            $stream.Position = $peOffset
+            if ($reader.ReadUInt32() -ne 0x4550) { throw 'Invalid PE signature' }
+            $machine = $reader.ReadUInt16()
+            $expectedMachine = if ($Architecture -eq 'aarch64') { 0xaa64 } else { 0x8664 }
+            if ($machine -ne $expectedMachine) { throw "LLVM library architecture does not match $Architecture" }
+        } finally { $stream.Dispose() }
+    }
     Write-Host "LLVM development files already present: $Destination"
     return
 }
@@ -59,4 +83,5 @@ $archiveMembers = @($members | ForEach-Object { "$prefix/$_" })
 if ($LASTEXITCODE -ne 0) { throw "LLVM development archive extraction failed: $LASTEXITCODE" }
 $missing = @($required | Where-Object { -not (Test-Path -LiteralPath (Join-Path $Destination $_)) })
 if ($missing.Count) { throw "LLVM development archive is missing: $($missing -join ', ')" }
+@{ version = $Version; architecture = $Architecture } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Destination '.ascii-chat-llvm-identity.json') -Encoding utf8
 Write-Host "LLVM development files installed: $Destination"

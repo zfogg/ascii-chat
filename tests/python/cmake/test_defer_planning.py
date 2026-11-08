@@ -29,6 +29,7 @@ def run_scanner(paths: list[Path]) -> list[str]:
         (b"void f(void) { defer /* cleanup (LIFO) */ (cleanup()); }", True),
         (b"void f(void) { defer // cleanup\n (cleanup()); }", True),
         (b"void f(void) { defer \\\n (cleanup()); }", True),
+        (b"void f(void) { de\\\nfer(cleanup()); }", True),
         (b"void f(void) { not_defer(cleanup()); }", False),
         (b"void f(void) { deferred(cleanup()); }", False),
         (b"void f(void) {}", False),

@@ -37,8 +37,9 @@ std::vector<std::string> split(const std::string &value, char delimiter) {
 }
 } // namespace
 
-void plan_batches(const fs::path &records, const fs::path &build_directory, const std::string &stage,
+void plan_batches(const fs::path &records, const fs::path &build_path, const std::string &stage,
                   const fs::path &output) {
+  const auto build_directory = fs::absolute(build_path).lexically_normal();
   std::map<std::vector<std::string>, std::vector<Record>> batches;
   std::istringstream lines(read_file(records));
   std::string line;

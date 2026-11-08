@@ -18,7 +18,7 @@ function(ascii_defer_prepare_native)
         set_property(TARGET ascii-defer-native PROPERTY IMPORTED_LOCATION "${ASCIICHAT_DEFER_NATIVE_BINARY}")
         return()
     endif()
-    set(_native_dir "${CMAKE_SOURCE_DIR}/src/tooling/defer/native")
+    set(_native_dir "${CMAKE_SOURCE_DIR}/src/tooling/defer")
     if(NOT CMAKE_CROSSCOMPILING)
         add_subdirectory("${_native_dir}" "${CMAKE_BINARY_DIR}/defer-host" EXCLUDE_FROM_ALL)
     else()
@@ -26,6 +26,9 @@ function(ascii_defer_prepare_native)
         # separate host tool during the build, not during project configuration.
         include(ExternalProject)
         find_program(ASCIICHAT_DEFER_HOST_CXX NAMES clang++ NO_CMAKE_FIND_ROOT_PATH REQUIRED)
+        find_program(ASCIICHAT_DEFER_HOST_NINJA NAMES ninja NO_CMAKE_FIND_ROOT_PATH REQUIRED)
+        include("${CMAKE_SOURCE_DIR}/cmake/deps/LLVMDevelopment.cmake")
+        ascii_find_llvm_development()
         if(CMAKE_HOST_WIN32)
             set(_suffix ".exe")
         else()
@@ -42,6 +45,7 @@ function(ascii_defer_prepare_native)
             SOURCE_DIR "${_native_dir}" BINARY_DIR "${_host_build}"
             CMAKE_GENERATOR Ninja
             CMAKE_ARGS "-DCMAKE_CXX_COMPILER=${ASCIICHAT_DEFER_HOST_CXX}"
+                "-DCMAKE_MAKE_PROGRAM=${ASCIICHAT_DEFER_HOST_NINJA}"
                 "-DCMAKE_CXX_FLAGS:STRING=" "-DCMAKE_BUILD_TYPE=Release" "-DBUILD_TESTING=${_host_testing}"
                 "-DASCIICHAT_LLVM_DEV_ROOT=${ASCIICHAT_LLVM_DEV_ROOT}"
                 "-DASCIICHAT_LLVM_DEVELOPMENT_MODULE=${CMAKE_SOURCE_DIR}/cmake/deps/LLVMDevelopment.cmake"
@@ -204,6 +208,7 @@ function(ascii_defer_scan_targets out_var)
         set(_defer_sources "")
         foreach(_source IN LISTS _scan_files)
             file(READ "${_source}" _contents)
+            string(REGEX REPLACE "\\\\\r?\n" "" _contents "${_contents}")
             if(_contents MATCHES "(^|[^a-zA-Z0-9_])defer([^a-zA-Z0-9_]|$)")
                 list(APPEND _defer_sources "${_source}")
             endif()

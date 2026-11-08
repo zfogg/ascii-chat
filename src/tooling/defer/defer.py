@@ -22,6 +22,15 @@ class TransformError(Exception):
     """The source cannot be transformed without changing its behavior."""
 
 
+def has_external_case(cursor: cindex.Cursor) -> bool:
+    for child in cursor.get_children():
+        if child.kind in (cindex.CursorKind.CASE_STMT, cindex.CursorKind.DEFAULT_STMT):
+            return True
+        if child.kind != cindex.CursorKind.SWITCH_STMT and has_external_case(child):
+            return True
+    return False
+
+
 @dataclass
 class DeferredAction:
     start: int
@@ -235,7 +244,7 @@ class Transformer:
 
     def require_keyword(self, offset: int, keyword: bytes) -> None:
         """Reject macro expansions whose spelling is not a standalone keyword."""
-        suffix = self.source[offset + len(keyword) : offset + len(keyword) + 1]
+        suffix = re.sub(rb"^(?:\\\r?\n)+", b"", self.source[offset + len(keyword) :])[:1]
         if self.source[offset : offset + len(keyword)] != keyword or (
             suffix and (suffix.isalnum() or suffix == b"_" or suffix[0] >= 128)
         ):
@@ -297,6 +306,12 @@ class Transformer:
                 self.return_capture_type = (
                     f"__typeof__((({fn_type})0)({arguments}))".encode()
                 )
+                if any(p.spelling == cursor.spelling for p in cursor.get_arguments()):
+                    result_type = cursor.result_type.spelling
+                    if "unnamed" in result_type or "anonymous" in result_type:
+                        raise TransformError("cannot name return type when parameter shadows function")
+                    self.function_prelude = b""
+                    self.return_capture_type = f"__typeof__(({result_type}){{0}})".encode()
             for child in cursor.get_children():
                 self.visit(child, kind)
             return
@@ -350,6 +365,8 @@ class Transformer:
                 raise TransformError(
                     f"defer directly in switch body is unsupported (byte {start}); use a case block"
                 )
+            if actions and has_external_case(cursor):
+                raise TransformError("switch dispatch can enter a defer scope")
             if actions:
                 declarations = b" ".join(
                     b"int " + item.flag + b" = 0;" for item in actions
@@ -546,6 +563,12 @@ def compilation_arguments(directory: Path, generated: Path, source: Path) -> lis
     return result
 
 
+def paths_alias(first: Path, second: Path) -> bool:
+    return first.resolve() == second.resolve() or (
+        first.exists() and second.exists() and os.path.samefile(first, second)
+    )
+
+
 def batch_main() -> int:
     """Transform a CMake batch in one interpreter and emit one combined depfile."""
     parser = argparse.ArgumentParser()
@@ -563,8 +586,17 @@ def batch_main() -> int:
     dependencies: list[str] = []
     primary = ""
     try:
-        for line in manifest.read_text(encoding="utf-8").splitlines():
-            source, output = line.split("\t")
+        records = [line.split("\t") for line in manifest.read_text(encoding="utf-8").splitlines()]
+        if any(len(record) != 2 for record in records):
+            raise TransformError("invalid source/output batch record")
+        sources = [Path(record[0]) for record in records]
+        outputs = [Path(record[1]) for record in records]
+        if any(paths_alias(output, source) for output in outputs for source in sources):
+            raise TransformError("output must not overwrite an input source")
+        for candidate in [depfile, *(Path(str(output) + ".d") for output in outputs)]:
+            if any(paths_alias(candidate, protected) for protected in [*sources, *outputs]):
+                raise TransformError("depfile must not overwrite an input source or output")
+        for source, output in records:
             part = Path(output + ".d")
             sys.argv = [
                 original_argv[0],
@@ -586,6 +618,9 @@ def batch_main() -> int:
             primary + ": " + " ".join(dependencies) + "\n", encoding="utf-8"
         )
         return 0
+    except (TransformError, OSError) as exc:
+        print(f"defer-tool: {exc}", file=sys.stderr)
+        return 1
     finally:
         sys.argv = original_argv
         os.chdir(original_cwd)
@@ -614,12 +649,10 @@ def main() -> int:
         args.output = args.output.resolve()
         if args.depfile:
             args.depfile = args.depfile.resolve()
-        if args.output == args.source or (
-            args.source.exists()
-            and args.output.exists()
-            and os.path.samefile(args.source, args.output)
-        ):
+        if paths_alias(args.output, args.source):
             raise TransformError("output must not overwrite the input source")
+        if args.depfile and any(paths_alias(args.depfile, p) for p in (args.source, args.output)):
+            raise TransformError("depfile must not overwrite an input source or output")
         if args.compilation_database:
             clang_args = compilation_arguments(
                 args.compilation_database, args.output, args.source
@@ -633,6 +666,7 @@ def main() -> int:
         tu = cindex.Index.create().parse(
             str(args.source.resolve()),
             args=clang_args,
+            unsaved_files=[(str(args.source), source)],
             options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
         )
         output = Transformer(args.source, source, tu).transform()
