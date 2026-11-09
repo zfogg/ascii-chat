@@ -158,10 +158,16 @@ const char *Pa_GetErrorText(PaError error) {
 }
 PaDeviceIndex Pa_GetDefaultInputDevice(void) {
   ios_audio_refresh_devices();
+  for (int index = 0; index < g_ios_device_count; ++index)
+    if (g_ios_devices[index].info.maxInputChannels > 0)
+      return index;
   return 0;
 }
 PaDeviceIndex Pa_GetDefaultOutputDevice(void) {
   ios_audio_refresh_devices();
+  for (int index = 0; index < g_ios_device_count; ++index)
+    if (g_ios_devices[index].info.maxOutputChannels > 0)
+      return index;
   return 0;
 }
 int Pa_GetDeviceCount(void) {
