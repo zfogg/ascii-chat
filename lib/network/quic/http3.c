@@ -140,7 +140,8 @@ static asciichat_error_t http3_submit_response(void *context, unsigned status, c
 static int maybe_respond(acip_http3_server_t *server) {
   if (!server->headers_done || !server->settings_received || server->responded)
     return 0;
-  if (server->http_server)
+  bool webtransport_connect = server->http_server && strcmp(server->method_text, "CONNECT") == 0 && server->protocol;
+  if (server->http_server && !webtransport_connect)
     return 0;
   bool accepted = !server->malformed;
   accepted = accepted && server->method && server->scheme && server->authority;
@@ -164,6 +165,8 @@ static int dispatch_generic_request(acip_http3_server_t *server) {
   if (!server->http_server || !server->headers_done || !server->settings_received || !server->request_end_stream ||
       server->responded)
     return 0;
+  if (strcmp(server->method_text, "CONNECT") == 0 && server->protocol)
+    return maybe_respond(server);
   asciichat_error_t result = http_server_dispatch_http3(
       server->http_server, server->method_text, server->request_target, server->headers, server->header_count,
       server->request_body, server->request_body_length, NULL, http3_submit_response, server);
