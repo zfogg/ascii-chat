@@ -569,7 +569,11 @@ static int client_initialize_devices(void) {
       asciichat_error_t update_result = options_set_bool("test_pattern", true);
       if (update_result != ASCIICHAT_OK) {
         log_error("Failed to update options for test pattern fallback");
+#ifdef PLATFORM_IOS
+        return init_result;
+#else
         FATAL(init_result, "%s", asciichat_error_string(init_result));
+#endif
       }
 
       // Retry initialization with test pattern enabled
@@ -577,7 +581,11 @@ static int client_initialize_devices(void) {
       if (init_result != 0) {
         log_error("Failed to initialize even with test pattern fallback");
         webcam_print_init_error_help(init_result);
+#ifdef PLATFORM_IOS
+        return init_result;
+#else
         FATAL(init_result, "%s", asciichat_error_string(init_result));
+#endif
       }
       log_debug("Successfully initialized with test pattern fallback");
 
@@ -590,7 +598,11 @@ static int client_initialize_devices(void) {
       // Release builds or other errors: print help and exit
       if (init_result == ERROR_WEBCAM || init_result == ERROR_WEBCAM_IN_USE || init_result == ERROR_WEBCAM_PERMISSION) {
         webcam_print_init_error_help(init_result);
+#ifdef PLATFORM_IOS
+        return init_result;
+#else
         FATAL(init_result, "%s", asciichat_error_string(init_result));
+#endif
       }
       // For other errors, just exit with the error code
       return init_result;
