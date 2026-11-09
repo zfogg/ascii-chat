@@ -109,7 +109,9 @@ void keyboard_destroy(void) {
 
 static keyboard_key_t console_key(KEY_EVENT_RECORD key) {
   keyboard_key_t special = KEY_NONE;
-  if (key.wVirtualKeyCode == VK_RETURN && (key.dwControlKeyState & SHIFT_PRESSED))
+  if (key.wVirtualKeyCode == VK_ESCAPE && (key.dwControlKeyState & SHIFT_PRESSED))
+    special = KEY_SHIFT_ESCAPE;
+  else if (key.wVirtualKeyCode == VK_RETURN && (key.dwControlKeyState & SHIFT_PRESSED))
     special = KEY_SHIFT_ENTER;
   else if (key.uChar.UnicodeChar)
     return keyboard_text_utf16(&g_pending_high, (uint16_t)key.uChar.UnicodeChar);

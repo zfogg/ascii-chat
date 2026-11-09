@@ -326,6 +326,7 @@ void ui_controller_frame_acquired_at(uint64_t started_ns) {
 static atomic_t g_blocked = {0};
 static atomic_t g_live = {0};
 static _Thread_local fps_counter_t *g_fps;
+static _Thread_local bool g_help_sync_open;
 static _Thread_local bool g_stats_media, g_stats_failed;
 static _Thread_local uint64_t g_stats_write_ns, g_stats_writes, g_stats_max_chunk_ns, g_stats_chunks;
 static void stats_media_begin(bool media) {
@@ -412,7 +413,10 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   uint64_t stats_start = g_stats_media ? time_get_ns() : 0;
   // Terminals supporting synchronized output present the art and its overlays
   // together, even when a large UTF-8 frame requires several writes.
-  bool synchronized = g_render_snapshot != NULL;
+  bool help_media_overlay = ui_controller_current_screen() == UI_SCREEN_HELP &&
+                            keyboard_help_parent_screen() == UI_SCREEN_MEDIA;
+  bool synchronized = g_render_snapshot != NULL || help_media_overlay;
+  g_help_sync_open = help_media_overlay;
   bool started = !synchronized || write_output_chunk(fd, "\033[?2026h", 8) == 8;
   uint64_t sync_started_ns = g_stats_media && synchronized ? time_get_ns() : 0;
   size_t written = 0;
@@ -457,7 +461,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (probe)
     g_probe_requested_ns = time_get_ns();
   size_t end_length = probe ? sizeof(end_with_query) - 1 : 8;
-  bool ended = !synchronized || write_output_chunk(fd, end_with_query, end_length) == end_length;
+  bool ended = g_help_sync_open || !synchronized || write_output_chunk(fd, end_with_query, end_length) == end_length;
   if (!ended)
     g_probe_requested_ns = 0;
   // Switching screens intentionally cancels the remainder of an old media frame.
@@ -663,9 +667,20 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
     layer->render(size, layer->snapshot);
     g_render_snapshot = previous_snapshot;
   }
-  view->fresh = fps_counter_frame_begin_id(
-      g_fps, view->active == UI_SCREEN_MEDIA && !view->errors ? view->screen->owned->frame_id : 0);
-  fps_counter_render(g_fps, view->screen->fd, size.cols, true);
+  uint64_t media_frame_id = 0;
+  if (!view->errors) {
+    for (size_t i = 0; i < view->layer_count; ++i) {
+      if (view->layers[i].render == render_text && view->layers[i].owned) {
+        media_frame_id = view->layers[i].owned->frame_id;
+        break;
+      }
+    }
+  }
+  // Measure the media layer wherever it is rendered, including beneath an
+  // interactive TUI overlay. The active screen is not sufficient here:
+  // keyboard help, stats, and other screens can still compose and print the
+  // current ASCII frame.
+  view->fresh = fps_counter_frame_begin_id(g_fps, media_frame_id);
   if (view->errors && view->active != UI_SCREEN_HELP)
     ui_error_popup_render(output, size);
   if (view->errors && terminal_screen_logs_help_open() &&
@@ -1026,10 +1041,14 @@ static void *presentation_main(void *unused) {
         redraw = true;
       volume_was_visible = volume_visible;
       last_volume_until = volume_until;
-      bool show_fps = active == UI_SCREEN_MEDIA && GET_OPTION(fps_counter);
+      int fps_screen = active == UI_SCREEN_HELP ? keyboard_help_parent_screen() : active;
+      bool show_fps = fps_screen == UI_SCREEN_MEDIA && GET_OPTION(fps_counter);
       redraw |= fps_counter_set_visible(g_fps, show_fps);
       bool was_covered = ui_session_is_covered(g_session);
-      if (changed || was_covered)
+      // Opening keyboard help does not stop the media layer underneath it.
+      // Preserve its measured FPS instead of resetting the overlay to zero
+      // merely because the active presentation screen changed to HELP.
+      if ((changed && fps_screen != UI_SCREEN_MEDIA) || was_covered)
         fps_counter_reset(g_fps);
       g_render_fd = screen->fd;
       frame_buffer_set_screen_output_fd(screen->fd);
@@ -1186,8 +1205,14 @@ static void *presentation_main(void *unused) {
         if (context.drew && !awaiting_reply)
           fps_counter_frame_end(g_fps, time_get_ns());
       }
-      if (!covered && !context.drew)
-        fps_counter_render(g_fps, screen->fd, size.cols, context.drew);
+      // The FPS meter is the final overlay: draw it once after the complete
+      // ASCII/TUI composition has been written, without clearing anything.
+      if (!covered && show_fps)
+        fps_counter_render(g_fps, screen->fd, size.cols, active == UI_SCREEN_HELP);
+      if (g_help_sync_open) {
+        (void)write_output_chunk(screen->fd, "\033[?2026l", 8);
+        g_help_sync_open = false;
+      }
     }
   frame_complete:
     g_render_fd = -1;

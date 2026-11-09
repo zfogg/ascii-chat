@@ -262,6 +262,8 @@ static keyboard_key_t keyboard_stream_read_unlocked(int (*read_byte)(void)) {
       key = (keyboard_key_t)27;
     else if (!strcmp(sequence, "\033[13;2u") || !strcmp(sequence, "\033[27;2;13~"))
       key = KEY_SHIFT_ENTER;
+    else if (!strcmp(sequence, "\033[27;2u") || !strcmp(sequence, "\033[27;2;27~"))
+      key = KEY_SHIFT_ESCAPE;
     else if (!strcmp(sequence, "\033[27u"))
       key = KEY_ESCAPE;
     else if (!strcmp(sequence, "\033[13u"))

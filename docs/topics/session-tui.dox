@@ -75,6 +75,13 @@
  * while hidden and appear only after `]`. `?` switches to keyboard help; `]` switches back. Escape cancels a search
  * first, then closes the overlay. Covered media continues and its newest frame is
  * restored on close. The keyboard help lists the shortcut.
+ * The live session accepts `q` or Escape for the normal coordinated shutdown
+ * path (equivalent to Ctrl+C). Shift-Q or Shift-Escape performs immediate
+ * process termination without cleanup (equivalent to a second Ctrl+C during
+ * shutdown) and should be reserved for a hung or otherwise non-responsive
+ * shutdown.
+ * Panic-exit keys are handled before modal input dispatch, so they remain
+ * available while help, logs, prompts, notices, or diagnostic TUIs are open.
  *
  * `session_status.c` contains the server's four-line bordered header and the shared
  * `terminal_screen_compose()` implementation, extracted from `ui/status.c` and

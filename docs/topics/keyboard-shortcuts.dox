@@ -18,6 +18,8 @@
  * | `` ` `` | Open errno-stack diagnostics | Diagnostic UI builds |
  * | `F12` | Open the version update checker | Native builds |
  * | `o`, `O`, `Ctrl-O` | Open media from a path or URL | Client/media screens |
+ * | `q` / `Esc` | Quit ascii-chat normally | Interactive screens |
+ * | `Shift-q` / `Shift-Esc` | Panic exit without cleanup | Interactive screens |
  *
  * @section shortcuts_media Media controls
  *
