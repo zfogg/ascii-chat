@@ -37,6 +37,7 @@ export function getHelpText(
       return null;
     }
 
+    if (typeof module.optionHelp !== "function") return null;
     return module.optionHelp(mode, optionName) || null;
   } catch (error) {
     console.error(`Failed to get help text for ${optionName}:`, error);
