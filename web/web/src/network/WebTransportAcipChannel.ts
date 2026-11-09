@@ -3,12 +3,11 @@ import {
   tickPacketSecurity,
   processSecurePacket,
   serializePacket,
-  getClientModule,
-  getConnectionState,
+  beginClientHandshake,
+  receiveClientHandshake,
   registerSendPacketCallback,
   resolveCryptoPolicy,
   parsePacket,
-  throwWasmError,
   ConnectionState,
 } from "../wasm/client";
 import { AcipQuicProtocol } from "./AcipQuicProtocol";
@@ -98,15 +97,12 @@ export class WebTransportAcipChannel {
   async connectWithWasmHandshake(): Promise<void> {
     if (this.automaticHandshake || this.closed)
       throw new Error("QUIC handshake already started");
-    const module = getClientModule();
-    if (!module) throw new Error("WASM client is not initialized");
     resolveCryptoPolicy(this.url, true);
     this.automaticHandshake = true;
     registerSendPacketCallback((packet) => this.sendHandshake(packet));
     try {
       await this.bridge.connect();
-      const result = module.client_handshake_begin();
-      if (result) throwWasmError(result, "Could not begin QUIC ACIP handshake");
+      beginClientHandshake(false);
     } catch (error) {
       this.close();
       throw error;
@@ -114,13 +110,10 @@ export class WebTransportAcipChannel {
   }
 
   private receiveHandshake(packet: Uint8Array): void {
-    const module = getClientModule();
-    if (!module) throw new Error("WASM client is not initialized");
     const parsed = parsePacket(packet);
     const payload = packet.subarray(22);
-    const result = module.receiveHandshake(false, parsed.type, payload);
-    if (result) throwWasmError(result, "QUIC ACIP handshake rejected");
-    if (getConnectionState() === ConnectionState.CONNECTED)
+    const next = receiveClientHandshake(false, parsed.type, payload);
+    if (next === ConnectionState.CONNECTED)
       this.authenticated();
   }
 

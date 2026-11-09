@@ -501,16 +501,12 @@ export async function generateKeypair(): Promise<string> {
   }
 
   console.log("[Client WASM] Generating keypair...");
-  const result = wasmModule.client_generate_keypair();
-  if (result !== 0) {
-    throwWasmError(result, "Failed to generate keypair");
-  }
-
-  // Get the public key as hex string
-  const publicKeyHex = wasmModule.clientPublicKey();
-  if (publicKeyHex === undefined) {
-    throw new Error("Failed to retrieve public key");
-  }
+  const result = checkClientEvent(
+    processClientEvent({ type: "generate-keypair" }),
+    "Failed to generate keypair",
+  );
+  const publicKeyHex = result.publicKey;
+  if (!publicKeyHex) throw new Error("Failed to retrieve public key");
 
   console.log(
     `[Client WASM] Keypair generated, pubkey=${publicKeyHex.substring(0, 16)}...`,
@@ -522,18 +518,13 @@ export async function generateKeypair(): Promise<string> {
  * Set server address for known_hosts verification
  */
 export function setServerAddress(serverHost: string, serverPort: number): void {
-  if (!wasmModule) {
-    throw new Error(
-      "WASM module not initialized. Call initClientWasm() first.",
-    );
-  }
-
   console.log(
     `[Client WASM] Setting server address: ${serverHost}:${serverPort}`,
   );
-
-  const result = wasmModule.setServerAddress(serverHost, serverPort);
-  if (result !== 0) throwWasmError(result, "Failed to set server address");
+  checkClientEvent(
+    processClientEvent({ type: "set-server", host: serverHost, port: serverPort }),
+    "Failed to set server address",
+  );
 }
 
 function handleHandshake(
@@ -541,9 +532,59 @@ function handleHandshake(
   rawPacket: Uint8Array,
   description: string,
 ): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  const result = wasmModule.handleHandshake(stage, rawPacket);
-  if (result !== 0) throwWasmError(result, `Failed to handle ${description}`);
+  const result = processClientEvent({
+    type: "handle-handshake-stage",
+    stage,
+    packet: rawPacket,
+  });
+  if (result.code !== 0) throwWasmError(result.code, `Failed to handle ${description}`);
+}
+
+type ClientEventResult = {
+  code: number;
+  state: ConnectionState;
+  bytes?: Uint8Array;
+  packet?: ParsedPacket;
+  outputs?: { flow: 0 | 1 | 2; packet: Uint8Array }[];
+  epoch?: number;
+  sequence?: bigint;
+  publicKey?: string;
+  mode?: number;
+};
+
+function processClientEvent(event: Record<string, unknown>): ClientEventResult {
+  if (!clientSession || !clientInitialized)
+    throw new Error("WASM client session is not initialized");
+  return clientSession.process(event) as ClientEventResult;
+}
+
+function checkClientEvent(result: ClientEventResult, fallback: string): ClientEventResult {
+  if (result.code) throwWasmError(result.code, fallback);
+  return result;
+}
+
+export function beginClientHandshake(discovery = false, mode = 0): void {
+  checkClientEvent(
+    processClientEvent({ type: "begin-handshake", discovery, mode }),
+    "Could not begin security negotiation",
+  );
+}
+
+export function receiveClientHandshake(
+  discovery: boolean,
+  packetType: number,
+  payload: Uint8Array,
+): ConnectionState {
+  const result = checkClientEvent(
+    processClientEvent({
+      type: "receive-handshake",
+      discovery,
+      packetType,
+      payload,
+    }),
+    "Security handshake rejected",
+  );
+  return result.state;
 }
 
 export function handleCryptoParameters(rawPacket: Uint8Array): void {
@@ -575,13 +616,11 @@ export function registerSendPacketCallback(
 
 /** Encrypt a complete packet or decrypt an encrypted payload. */
 function cryptPacket(encrypt: boolean, packet: Uint8Array): Uint8Array {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  const result = wasmModule.cryptPacket(encrypt, packet);
-  if (result.code)
-    throwWasmError(
-      result.code,
-      encrypt ? "Encryption failed" : "Decryption failed",
-    );
+  const result = checkClientEvent(
+    processClientEvent({ type: "crypt", encrypt, packet }),
+    encrypt ? "Encryption failed" : "Decryption failed",
+  );
+  if (!result.bytes) throw new Error("WASM crypt operation returned no bytes");
   return result.bytes;
 }
 export function encryptPacket(plaintext: Uint8Array): Uint8Array {
@@ -592,14 +631,14 @@ export function decryptPacket(ciphertext: Uint8Array): Uint8Array {
 }
 /** Initialize per-connection QUIC security after the authenticated handshake. */
 export function initPacketSecurity(): void {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  const result = wasmModule.clientQuicInit();
-  if (result !== 0)
-    throwWasmError(result, "QUIC security initialization failed");
+  checkClientEvent(
+    processClientEvent({ type: "quic-init" }),
+    "QUIC security initialization failed",
+  );
 }
 
 export function getSecurityEpoch(): number {
-  return wasmModule?.clientQuicEpoch() ?? -1;
+  return clientInitialized ? (processClientEvent({ type: "quic-state" }).epoch ?? -1) : -1;
 }
 
 /** Runs the shared C rekey coordinator and drains its bounded reliable output. */
@@ -607,19 +646,11 @@ export function tickPacketSecurity(): {
   flow: 0 | 1 | 2;
   packet: Uint8Array;
 }[] {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  const result = wasmModule.clientQuicTick();
-  if (result) throwWasmError(result, "QUIC rekey failed");
-  const packets: { flow: 0 | 1 | 2; packet: Uint8Array }[] = [];
-  for (let i = 0; i <= 16; ++i) {
-    const output = wasmModule.clientQuicOutput();
-    if (output.code) throwWasmError(output.code, "QUIC rekey output failed");
-    if (!output.packet) return packets;
-    if (output.flow < 0 || output.flow > 2)
-      throw new Error("Invalid QUIC rekey flow");
-    packets.push({ flow: output.flow as 0 | 1 | 2, packet: output.packet });
-  }
-  throw new Error("QUIC rekey output exceeded its bound");
+  const result = checkClientEvent(
+    processClientEvent({ type: "quic-tick" }),
+    "QUIC rekey failed",
+  );
+  return result.outputs ?? [];
 }
 
 /** Authenticate a complete packet and its QUIC flow and delivery metadata. */
@@ -630,26 +661,30 @@ export function processSecurePacket(
   packet: Uint8Array,
   quietFailure = false,
 ): { packet: Uint8Array; sequence: bigint } {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  const result = wasmModule.clientQuicPacket(
-    operation === "seal",
+  const result = processClientEvent({
+    type: "quic-packet",
+    operation,
     flow,
     delivery,
     packet,
-  );
+  });
   if (result.code !== 0) {
     if (quietFailure && operation === "open" && delivery === 1)
       throw new Error(`QUIC packet ${operation} failed (${result.code})`);
     throwWasmError(result.code, `QUIC packet ${operation} failed`);
   }
+  if (!result.packet || result.sequence === undefined)
+    throw new Error("QUIC packet operation returned incomplete output");
   return { packet: result.packet, sequence: result.sequence };
 }
 /** Parse a validated packet and copy its metadata into JavaScript. */
 export function parsePacket(rawPacket: Uint8Array): ParsedPacket {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  const json = wasmModule.parsePacketJson(rawPacket);
-  if (json === undefined) throw new Error("Failed to parse packet");
-  return JSON.parse(json) as ParsedPacket;
+  const result = checkClientEvent(
+    processClientEvent({ type: "parse", packet: rawPacket }),
+    "Failed to parse packet",
+  );
+  if (!result.packet) throw new Error("Failed to parse packet");
+  return result.packet;
 }
 
 /** Serialize a packet to a JavaScript-owned array. */
@@ -658,19 +693,19 @@ export function serializePacket(
   payload: Uint8Array,
   clientId: number,
 ): Uint8Array {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  const result = wasmModule.serializePacket(packetType, payload, clientId);
-  if (result.code) throwWasmError(result.code, "Serialization failed");
+  const result = checkClientEvent(
+    processClientEvent({ type: "serialize", packetType, payload, clientId }),
+    "Serialization failed",
+  );
+  if (!result.bytes) throw new Error("Serialization returned no bytes");
   return result.bytes;
 }
 /**
  * Get current connection state
  */
 export function getConnectionState(): ConnectionState {
-  if (!wasmModule) {
-    throw new Error("WASM module not initialized");
-  }
-  return wasmModule.client_get_connection_state();
+  if (!clientInitialized) throw new Error("WASM module not initialized");
+  return processClientEvent({ type: "state" }).state;
 }
 
 /**
@@ -693,12 +728,16 @@ export function resolveCryptoPolicy(
   encryption?: boolean,
 ): number {
   if (!wasmModule) throw new Error("WASM client is not initialized");
-  const mode = wasmModule.client_resolve_crypto_policy(
-    new URL(serverUrl).protocol === "wss:",
-    encryption === undefined ? -1 : encryption ? 1 : 0,
+  const result = checkClientEvent(
+    processClientEvent({
+      type: "resolve-crypto-policy",
+      wss: new URL(serverUrl).protocol === "wss:",
+      encryption: encryption === undefined ? -1 : encryption ? 1 : 0,
+    }),
+    "Invalid crypto policy",
   );
-  if (mode < 0) throw new Error("Invalid crypto policy");
-  return mode;
+  if (result.mode === undefined) throw new Error("Invalid crypto policy");
+  return result.mode;
 }
 
 /** Separate ACIP context for one media peer; signaling retains its own context. */

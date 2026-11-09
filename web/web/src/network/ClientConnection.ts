@@ -9,7 +9,8 @@ import { serializeClientInitialization } from "./ClientInitialization";
 import { SocketBridge } from "./SocketBridge";
 import type { PacketTransport } from "./Transport";
 import {
-  getClientModule,
+  beginClientHandshake,
+  receiveClientHandshake,
   resolveCryptoPolicy,
   initClientWasm,
   cleanupClientWasm,
@@ -298,13 +299,7 @@ export class ClientConnection {
     if (this.isUserDisconnecting || !this.socket?.isConnected()) return;
 
     try {
-      const module = getClientModule();
-      if (!module) throw new Error("WASM client unavailable");
-      const result = this.options.discoveryHandshake
-        ? module.client_acds_handshake_begin(this.cryptoMode)
-        : module.client_handshake_begin();
-      if (result)
-        throwWasmError(result, "Could not begin security negotiation");
+      beginClientHandshake(this.options.discoveryHandshake, this.cryptoMode);
     } catch (error) {
       if (isReportedWasmError(error)) forwardJavaScriptError(error);
       else reportJavaScriptError(error);
@@ -356,14 +351,11 @@ export class ClientConnection {
       }
 
       if (this.transportState !== ConnectionState.CONNECTED) {
-        const module = getClientModule()!;
-        const result = module.receiveHandshake(
+        const next = receiveClientHandshake(
           Boolean(this.options.discoveryHandshake),
           parsed.type,
           payload,
         );
-        if (result) throwWasmError(result, "Security handshake rejected");
-        const next = getConnectionState();
         if (next === ConnectionState.CONNECTED) {
           this.wasEverConnected = true;
           this.transportState = ConnectionState.CONNECTED;

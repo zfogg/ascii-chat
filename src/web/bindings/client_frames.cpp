@@ -36,6 +36,7 @@ static ClientFrameResult validate_frame(ClientBytes encoded, unsigned width, uns
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_client_frames) {
+  emscripten::register_type<ClientBytes>("ClientBytes", "Uint8Array");
   emscripten::register_type<ClientFrameResult>("ClientFrameResult",
                                                "{ code: number; decodeFailed: boolean; bytes: Uint8Array }");
   emscripten::function("validateFrame", &validate_frame);

@@ -541,7 +541,6 @@ add_executable(client-web
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/networking.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/key_parser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/av_state.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/bindings/protocol.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/client_frames.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/discovery.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/session_host.cpp

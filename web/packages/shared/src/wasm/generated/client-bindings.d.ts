@@ -380,6 +380,7 @@ export interface PeerCryptoBinding extends ClassHandle {
 export interface ClientSessionBinding extends ClassHandle {
   valid(): boolean;
   error(): number;
+  process(_0: Record<string, unknown>): Record<string, unknown>;
 }
 
 type QuicControlResult = {
@@ -540,24 +541,7 @@ interface EmbindModule {
   ClientSessionBinding: {
     new (_0: OptionsPatch): ClientSessionBinding;
   };
-  client_cleanup(): void;
-  client_generate_keypair(): number;
-  client_get_connection_state(): number;
-  client_resolve_crypto_policy(_0: boolean, _1: number): number;
-  client_handshake_begin(): number;
-  client_acds_handshake_begin(_0: number): number;
   network_error_action(_0: number): number;
-  setServerAddress(_0: EmbindString, _1: number): number;
-  clientQuicInit(): number;
-  clientQuicTick(): number;
-  clientQuicEpoch(): number;
-  clientQuicOutput(): QuicControlResult;
-  clientQuicPacket(
-    _0: boolean,
-    _1: number,
-    _2: number,
-    _3: PeerBytes,
-  ): QuicPacketResult;
   browser_error_dismiss(): void;
   parseKey(_0: number, _1: boolean, _2: KeyInput): KeyParseResult;
   keyParserError(): string;
@@ -567,10 +551,6 @@ interface EmbindModule {
     new (): AVStateBinding;
   };
   receiveSettings(_0: ClientBytes): ClientSettingsResult;
-  handleHandshake(_0: number, _1: ClientBytes): number;
-  receiveHandshake(_0: boolean, _1: number, _2: ClientBytes): number;
-  cryptPacket(_0: boolean, _1: ClientBytes): ClientPacketResult;
-  serializePacket(_0: number, _1: ClientBytes, _2: number): ClientPacketResult;
   validateFrame(
     _0: ClientBytes,
     _1: number,
@@ -606,8 +586,6 @@ interface EmbindModule {
   };
   browser_options_revision(): number;
   clientSettings(): string | undefined;
-  clientPublicKey(): string | undefined;
-  parsePacketJson(_0: ClientBytes): string | undefined;
   initMirror(_0: OptionsPatch): number;
   initClient(_0: OptionsPatch): number;
   patchOptions(_0: OptionsPatch, _1: number): number;
