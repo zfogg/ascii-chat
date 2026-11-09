@@ -784,6 +784,10 @@ def compilation_arguments(directory: Path, generated: Path, source: Path) -> lis
     compiler = arguments.pop(0)
     os.chdir(command.directory)
     result = ["-iquote", str(source.resolve().parent)]
+    compiler_dir = Path(compiler).resolve().parent
+    emscripten_sysroot = compiler_dir / "cache" / "sysroot" / "include"
+    if emscripten_sysroot.is_dir():
+        result.extend(["-isystem", str(emscripten_sysroot)])
     index = 0
     while index < len(arguments):
         value = arguments[index]
@@ -797,6 +801,10 @@ def compilation_arguments(directory: Path, generated: Path, source: Path) -> lis
         if value in ("-o", "-MF", "-MT", "-MQ"):
             index += 2
             continue
+        # Emscripten's -s settings are consumed by emcc, not by libclang.
+        if value.startswith("-s"):
+            index += 1
+            continue
         if (
             value in ("--", "-c", "-MD", "-MMD", "-MP")
             or Path(value).resolve() == generated.resolve()
@@ -805,6 +813,8 @@ def compilation_arguments(directory: Path, generated: Path, source: Path) -> lis
             continue
         result.append(value)
         index += 1
+    if not any(value == "-target" for value in result):
+        result.extend(["-target", "wasm32-unknown-emscripten"])
     if not any(value.startswith("-resource-dir") for value in result):
         process = subprocess.run(
             [compiler, "-print-resource-dir"],

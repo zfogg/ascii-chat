@@ -723,3 +723,51 @@ apply_sanitizers_to_target(renderer-web)
 
 target_sources(mirror-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/bindings/frame.cpp)
 target_sources(client-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${CMAKE_CURRENT_SOURCE_DIR}/bindings/frame.cpp)
+
+# The WASM project is configured as its own Emscripten CMake project, so it
+# does not pass through the parent project's defer finalization hook. Apply
+# the same source transformation here before the nested targets compile; the
+# shared crypto/session C sources now intentionally reject untransformed
+# defer() calls.
+if(EMSCRIPTEN)
+    set(_ascii_defer_nested_source_dir "${CMAKE_SOURCE_DIR}")
+    set(CMAKE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+    include(${_cmake_dir}/tooling/Defer.cmake)
+    # The nested Emscripten project does not inherit the parent project's
+    # defer setup. Use the Python backend here: the WASM toolchain provides
+    # clang and libclang.dll, but not LLVM's C++ development headers needed
+    # by the native transformer.
+    set(ASCIICHAT_DEFER_BACKEND PYTHON CACHE STRING "Defer transformer backend" FORCE)
+    set(_ascii_defer_batch_stage web)
+    set(_ascii_defer_plan_records "${CMAKE_BINARY_DIR}/defer-records-${_ascii_defer_batch_stage}.txt")
+    file(WRITE "${_ascii_defer_plan_records}" "")
+    find_program(ASCIICHAT_DEFER_UV_EXECUTABLE NAMES uv REQUIRED)
+    set(ASCIICHAT_DEFER_PYTHON_COMMAND
+        "${CMAKE_COMMAND};-E;env;UV_PROJECT_ENVIRONMENT=${CMAKE_BINARY_DIR}/defer-python-venv;${ASCIICHAT_DEFER_UV_EXECUTABLE};run;--project;${CMAKE_SOURCE_DIR}/src/tooling/defer;--frozen;--managed-python;python"
+        CACHE INTERNAL "uv command for the Python defer backend" FORCE)
+    if(NOT ASCIICHAT_LIBCLANG_PATH)
+        get_filename_component(_ascii_defer_compiler_dir "${CMAKE_C_COMPILER}" DIRECTORY)
+        find_file(_ascii_defer_libclang NAMES libclang.dll
+            HINTS "${_ascii_defer_compiler_dir}" "${_ascii_defer_compiler_dir}/../lib"
+            NO_CACHE)
+        if(NOT _ascii_defer_libclang)
+            message(FATAL_ERROR "defer requires LLVM 19 or newer libclang; set ASCIICHAT_LIBCLANG_PATH")
+        endif()
+        set(ASCIICHAT_LIBCLANG_PATH "${_ascii_defer_libclang}" CACHE FILEPATH "LLVM 19 or newer libclang shared library" FORCE)
+    endif()
+    execute_process(
+        COMMAND ${ASCIICHAT_DEFER_PYTHON_COMMAND} -c
+            "import sys; assert sys.version_info >= (3, 10), 'Python 3.10 or newer is required'; sys.path.insert(0, sys.argv[1]); from clang import cindex; cindex.Config.set_compatibility_check(False); cindex.Config.set_library_file(sys.argv[2]); print(cindex.conf.get_clang_version())"
+            "${CMAKE_SOURCE_DIR}/src/tooling/defer/vendor" "${ASCIICHAT_LIBCLANG_PATH}"
+        RESULT_VARIABLE _ascii_defer_clang_check_result OUTPUT_VARIABLE _ascii_defer_clang_check_output ERROR_VARIABLE _ascii_defer_clang_check_error
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if(NOT _ascii_defer_clang_check_result EQUAL 0)
+        message(FATAL_ERROR "defer libclang check failed: ${_ascii_defer_clang_check_output} ${_ascii_defer_clang_check_error}")
+    endif()
+    ascii_defer_scan_targets(_defer_sources wasm-common mirror-web client-web renderer-web)
+    foreach(_ascii_defer_target wasm-common mirror-web client-web renderer-web)
+        ascii_defer_apply_target("${_ascii_defer_target}")
+    endforeach()
+    ascii_defer_finish_batches()
+    set(CMAKE_SOURCE_DIR "${_ascii_defer_nested_source_dir}")
+endif()
