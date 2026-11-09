@@ -813,11 +813,12 @@ private struct IOSAllOptionsView: View {
                         Text(Self.displayValue(number.doubleValue, for: key))
                             .font(.caption.monospacedDigit())
                         Slider(value: Binding(
-                            get: { (values[key] as? NSNumber)?.doubleValue ?? number.doubleValue },
+                            get: { Self.sliderValue(number: (values[key] as? NSNumber)?.doubleValue ?? number.doubleValue, for: key) },
                             set: {
-                                values[key] = $0
+                                let storedValue = Self.storedSliderValue($0, for: key)
+                                values[key] = storedValue
                                 changed = true
-                                applyJSON([key: $0])
+                                applyJSON([key: storedValue])
                                 if key == "render_font_size" {
                                     renderFontSizeChanged($0)
                                 }
@@ -882,6 +883,8 @@ private struct IOSAllOptionsView: View {
 
     private static func displayValue(_ value: Double, for key: String) -> String {
         switch key {
+        case "webrtc_ice_timeout":
+            return String(format: "%.1f s", value / 1000.0)
         case "width", "height", "zalgo", "fps", "compression_level", "reconnect_attempts", "webrtc_reconnect_attempts":
             return String(Int(value.rounded()))
         case "microphone_volume", "speakers_volume", "volume", "microphone_sensitivity":
@@ -889,6 +892,14 @@ private struct IOSAllOptionsView: View {
         default:
             return String(format: "%.1f", value)
         }
+    }
+
+    private static func sliderValue(number: Double, for key: String) -> Double {
+        key == "webrtc_ice_timeout" ? number / 1000.0 : number
+    }
+
+    private static func storedSliderValue(_ value: Double, for key: String) -> Any {
+        key == "webrtc_ice_timeout" ? Int((value * 1000.0).rounded()) : value
     }
 
     private static func enumValues(for key: String) -> [String]? {
