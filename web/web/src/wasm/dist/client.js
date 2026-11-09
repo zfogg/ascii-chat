@@ -5073,47 +5073,6 @@ async function ClientModule(moduleArg = {}) {
       destructorFunction: null,
     });
   };
-  var __embind_register_function = (
-    name,
-    argCount,
-    rawArgTypesAddr,
-    signature,
-    rawInvoker,
-    fn,
-    isAsync,
-    isNonnullReturn,
-  ) => {
-    var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
-    name = AsciiToString(name);
-    name = getFunctionName(name);
-    rawInvoker = embind__requireFunction(signature, rawInvoker, isAsync);
-    exposePublicSymbol(
-      name,
-      function () {
-        throwUnboundTypeError(
-          `Cannot call ${name} due to unbound types`,
-          argTypes,
-        );
-      },
-      argCount - 1,
-    );
-    whenDependentTypesAreResolved([], argTypes, (argTypes) => {
-      var invokerArgsArray = [argTypes[0], null].concat(argTypes.slice(1));
-      replacePublicSymbol(
-        name,
-        craftInvokerFunction(
-          name,
-          invokerArgsArray,
-          null,
-          rawInvoker,
-          fn,
-          isAsync,
-        ),
-        argCount - 1,
-      );
-      return [];
-    });
-  };
   var __embind_register_integer = (
     primitiveType,
     name,
@@ -6686,8 +6645,8 @@ async function ClientModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    3033730: () => Module.getRandomValue(),
-    3033766: () => {
+    3033778: () => Module.getRandomValue(),
+    3033814: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -7007,7 +6966,6 @@ async function ClientModule(moduleArg = {}) {
       _embind_register_class_function: __embind_register_class_function,
       _embind_register_emval: __embind_register_emval,
       _embind_register_float: __embind_register_float,
-      _embind_register_function: __embind_register_function,
       _embind_register_integer: __embind_register_integer,
       _embind_register_memory_view: __embind_register_memory_view,
       _embind_register_optional: __embind_register_optional,

@@ -52,10 +52,10 @@ export function throwWasmError(result: number, fallback: string): never {
   const module = wasmModule;
   const frames: BrowserErrorFrame[] = [];
   if (module) {
-    const total = module.errorSnapshot();
+    const total = module.ErrorBinding.snapshot();
     const count = Math.min(total, 64);
     for (let index = 0; index < count; index++) {
-      const frame = module.errorFrame(index);
+      const frame = module.ErrorBinding.frame(index);
       frames.push({ ...frame, message: frame.message || fallback });
     }
   }
@@ -63,7 +63,7 @@ export function throwWasmError(result: number, fallback: string): never {
     source: "C/WASM",
     title: `${fallback} (${result})`,
     frames: frames.length ? frames : [{ code: result, message: fallback }],
-    dismiss: () => module?.browser_error_dismiss(),
+    dismiss: () => module?.ErrorBinding.dismiss(),
   });
   const error = new Error(`${fallback} (${result})`);
   Object.defineProperty(error, "asciichatWasmReported", { value: true });

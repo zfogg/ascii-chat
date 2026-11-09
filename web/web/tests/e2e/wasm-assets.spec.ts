@@ -69,14 +69,14 @@ test("binding failures record actionable C errors", async ({ page }) => {
       throw new Error("Client session did not return a structured error");
     }
     const snapshot = (run: () => unknown) => {
-      m.browser_error_dismiss();
+      m.ErrorBinding.dismiss();
       try {
         run();
       } catch {
         // The public TypeScript helper may throw after recording the C error.
       }
-      const count = m.errorSnapshot();
-      return count ? m.errorFrame(0) : null;
+      const count = m.ErrorBinding.snapshot();
+      return count ? m.ErrorBinding.frame(0) : null;
     };
     try {
       return [
@@ -121,7 +121,7 @@ test("binding failures record actionable C errors", async ({ page }) => {
         }),
       ].filter(Boolean);
     } finally {
-      m.browser_error_dismiss();
+      m.ErrorBinding.dismiss();
       renderer.delete();
       session.delete();
       processor.delete();
@@ -191,20 +191,20 @@ test("key parsing preserves unrelated errors and returns only its own frames", a
     );
     await initClientWasm();
     const module = getClientWasmModule();
-    module.browser_error_dismiss();
+    module.ErrorBinding.dismiss();
     const session = new module.ClientSessionBinding({});
     session.process({
       type: "receive-handshake-packet",
       payload: new Uint8Array(),
     });
-    const beforeCount = module.errorSnapshot();
-    const before = module.errorFrame(0);
+    const beforeCount = module.ErrorBinding.snapshot();
+    const before = module.ErrorBinding.frame(0);
     const parsed = module.KeyParserBinding.parse(3, true, new Uint8Array());
-    const afterCount = module.errorSnapshot();
+    const afterCount = module.ErrorBinding.snapshot();
     const pending = Array.from({ length: afterCount }, (_, i) =>
-      module.errorFrame(i),
+      module.ErrorBinding.frame(i),
     );
-    module.browser_error_dismiss();
+    module.ErrorBinding.dismiss();
     session.delete();
     return { beforeCount, before, parsed, pending };
   });
@@ -485,16 +485,16 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     );
     const invalidPeerError = invalidPeer.error();
     invalidPeer.delete();
-    module.browser_error_dismiss();
+    module.ErrorBinding.dismiss();
     const invalidConfig = processClientEvent({
       type: "configure-crypto",
       password: new Uint8Array(),
       identity: new Uint8Array(3),
       expected: new Uint8Array(),
     });
-    module.errorSnapshot();
-    const invalidConfigError = module.errorFrame(0).message;
-    module.browser_error_dismiss();
+    module.ErrorBinding.snapshot();
+    const invalidConfigError = module.ErrorBinding.frame(0).message;
+    module.ErrorBinding.dismiss();
 
     async function exercise(quic: boolean) {
       const toClient: Uint8Array[] = [],
@@ -783,8 +783,7 @@ test("client runtime initializes after its versioned module loads", async ({
     await initClientWasm({ width: 80, height: 24 });
     const wasm = getClientWasmModule() as Record<string, unknown>;
     const diagnostics = {
-      errorSnapshot: typeof wasm["errorSnapshot"],
-      errorFrame: typeof wasm["errorFrame"],
+      errorBinding: typeof (wasm["ErrorBinding"] as { snapshot?: unknown }),
       legacy: Object.keys(wasm).filter((name) =>
         /^_(?:errno|asciichat_errno|client_|mirror_|browser_|wasm_|set_|get_|term_renderer|peer_)/.test(
           name,
@@ -795,8 +794,7 @@ test("client runtime initializes after its versioned module loads", async ({
     return diagnostics;
   });
   expect(diagnostics).toEqual({
-    errorSnapshot: "function",
-    errorFrame: "function",
+    errorBinding: "function",
     legacy: [],
   });
 });

@@ -99,7 +99,11 @@ public:
   }
 };
 
-static ErrorFrameResult error_frame(size_t index) {
+class ErrorBinding {
+public:
+  static void dismiss() { browser_error_dismiss(); }
+  static unsigned snapshot() { return browser_error_snapshot(); }
+  static ErrorFrameResult frame(size_t index) {
   emscripten::val result = emscripten::val::object();
   result.set("code", browser_error_code(index));
   result.set("message", std::string(browser_error_message(index)));
@@ -107,11 +111,11 @@ static ErrorFrameResult error_frame(size_t index) {
   result.set("fullFile", std::string(browser_error_full_file(index)));
   result.set("function", std::string(browser_error_function(index)));
   result.set("line", browser_error_line(index));
-  return ErrorFrameResult(result);
-}
+    return ErrorFrameResult(result);
+  }
+};
 
 EMSCRIPTEN_BINDINGS(ascii_chat_key_parser) {
-  emscripten::function("browser_error_dismiss", &browser_error_dismiss);
   emscripten::register_type<KeyInput>("KeyInput", "Uint8Array");
   emscripten::register_type<KeyParseResult>("KeyParseResult",
                                             "{ code: number; bytes: Uint8Array; frames: ErrorFrameResult[] }");
@@ -121,6 +125,8 @@ EMSCRIPTEN_BINDINGS(ascii_chat_key_parser) {
   emscripten::class_<KeyParserBinding>("KeyParserBinding")
       .class_function("parse", &KeyParserBinding::parse)
       .class_function("error", &KeyParserBinding::error);
-  emscripten::function("errorSnapshot", &browser_error_snapshot);
-  emscripten::function("errorFrame", &error_frame);
+  emscripten::class_<ErrorBinding>("ErrorBinding")
+      .class_function("dismiss", &ErrorBinding::dismiss)
+      .class_function("snapshot", &ErrorBinding::snapshot)
+      .class_function("frame", &ErrorBinding::frame);
 }
