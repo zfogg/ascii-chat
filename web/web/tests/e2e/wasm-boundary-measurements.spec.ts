@@ -203,12 +203,28 @@ test.describe("WASM browser boundary measurements", () => {
     );
     const main = readFileSync(mainManifest, "utf8");
     const feature = readFileSync(featureManifest, "utf8");
+    const files = ["client.js", "client.wasm", "mirror.js", "mirror.wasm"] as const;
+    const sizes = Object.fromEntries(
+      files.map((file) => [
+        file,
+        {
+          main: readFileSync(resolve(mainRoot!, "web/web/src/wasm/dist", file)).byteLength,
+          feature: readFileSync(resolve(process.cwd(), "src/wasm/dist", file)).byteLength,
+        },
+      ]),
+    );
     expect({
-      mainBytes: Buffer.byteLength(main),
-      featureBytes: Buffer.byteLength(feature),
+      manifest: { main: Buffer.byteLength(main), feature: Buffer.byteLength(feature) },
+      sizes,
     }).toEqual({
-      mainBytes: expect.any(Number),
-      featureBytes: expect.any(Number),
+      manifest: { main: expect.any(Number), feature: expect.any(Number) },
+      sizes: Object.fromEntries(
+        files.map((file) => [file, { main: expect.any(Number), feature: expect.any(Number) }]),
+      ),
     });
+    for (const file of files) {
+      expect(sizes[file].main).toBeGreaterThan(0);
+      expect(sizes[file].feature).toBeGreaterThan(0);
+    }
   });
 });
