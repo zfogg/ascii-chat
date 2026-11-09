@@ -1,6 +1,11 @@
 # C/C++/Objctive-C source
 /lib/
 /src/
+!/src/
+!/src/web/
+!/src/web/renderer/
+!/src/web/renderer/src/
+!/src/web/renderer/src/index.ts
 /include/
 
 # Build artifacts
