@@ -7,7 +7,6 @@
 #include <ascii-chat/asciichat_errno.h>
 
 typedef struct browser_session browser_session_t;
-typedef struct crypto_context_t crypto_context_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,7 +28,6 @@ size_t browser_session_output_size(browser_session_t *peer);
 void browser_session_output_pop(browser_session_t *peer);
 const void *browser_session_received_data(browser_session_t *peer);
 size_t browser_session_received_size(browser_session_t *peer);
-crypto_context_t *browser_session_security_context(browser_session_t *peer);
 asciichat_error_t browser_session_tick(browser_session_t *peer);
 asciichat_error_t browser_session_quic_begin(browser_session_t *peer);
 asciichat_error_t browser_session_security_init(browser_session_t *peer);

@@ -203,10 +203,6 @@ asciichat_error_t browser_session_receive(browser_session_t *peer, const void *d
   return result;
 }
 
-crypto_context_t *browser_session_security_context(browser_session_t *peer) {
-  return peer ? &peer->security.handshake.crypto_ctx : NULL;
-}
-
 asciichat_error_t browser_session_tick(browser_session_t *peer) {
   if (!peer)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer security state");

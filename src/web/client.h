@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
 
-typedef struct crypto_context_t crypto_context_t;
 typedef struct browser_transport browser_transport_t;
 
 #ifdef __cplusplus
