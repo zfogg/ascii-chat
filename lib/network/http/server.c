@@ -49,6 +49,7 @@ struct http_response {
   size_t header_count;
   char *body;
   size_t body_length;
+  size_t max_body_length;
   bool finished;
   bool deferred;
   bool retained;
@@ -263,6 +264,7 @@ asciichat_error_t http_response_retain(http_response_t *r, http_response_t **ret
   copy->client = r->client;
   copy->http2_stream_id = r->http2_stream_id;
   copy->protocol = r->protocol;
+  copy->max_body_length = r->max_body_length;
   copy->status = r->status;
   copy->header_count = r->header_count;
   memcpy(copy->headers, r->headers, r->header_count * sizeof(r->headers[0]));
@@ -290,6 +292,8 @@ asciichat_error_t http_response_set_header(http_response_t *r, const char *n, co
 asciichat_error_t http_response_write(http_response_t *r, const void *d, size_t n) {
   if (!r || (!d && n) || r->finished)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response is not writable");
+  if (n > r->max_body_length || r->body_length > r->max_body_length - n)
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "HTTP response body exceeds configured limit");
   char *p = SAFE_REALLOC(r->body, r->body_length + n + 1, char *);
   if (!p)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP response body");
@@ -385,6 +389,7 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
                                .client = client,
                                .http2_stream_id = view->stream_id,
                                .protocol = HTTP_PROTOCOL_2,
+                               .max_body_length = client->server->config.max_request_body_bytes,
                                .status = 429};
     return http_response_finish(&limited);
   }
@@ -393,6 +398,7 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
                               .client = client,
                               .http2_stream_id = view->stream_id,
                               .protocol = HTTP_PROTOCOL_2,
+                              .max_body_length = client->server->config.max_request_body_bytes,
                               .status = 200};
   client->server->config.on_request(&request, &response, client->server->config.user_data);
   if (!response.finished && !response.deferred)
@@ -447,13 +453,19 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
                          &c->server->request_rate_limit, &allowed) != ASCIICHAT_OK ||
       !allowed) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
-    http_response_t limited = {.stream = s, .protocol = r.info.protocol, .status = 429};
+    http_response_t limited = {.stream = s,
+                               .protocol = r.info.protocol,
+                               .max_body_length = c->server->config.max_request_body_bytes,
+                               .status = 429};
     http_response_finish(&limited);
     uv_read_stop(s);
     return;
   }
   rate_limiter_record(c->server->rate_limiter, c->peer_address, RATE_EVENT_HTTP_REQUEST);
-  http_response_t resp = {.stream = s, .protocol = r.info.protocol, .status = 200};
+  http_response_t resp = {.stream = s,
+                          .protocol = r.info.protocol,
+                          .max_body_length = c->server->config.max_request_body_bytes,
+                          .status = 200};
   uint64_t request_start = time_get_ns();
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 1);
