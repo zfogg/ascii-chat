@@ -372,6 +372,8 @@ test("client session exposes lifecycle snapshots and transport events", async ({
       { type: "transport-connected" },
       { type: "snapshot" },
     ]);
+    session.close();
+    const closedBatch = session.processBatch([]);
     session.process({ type: "transport-closed" });
     session.delete();
     return {
@@ -389,6 +391,7 @@ test("client session exposes lifecycle snapshots and transport events", async ({
         state: entry.state,
         ready: entry.ready ?? false,
       })),
+      closedBatchCode: closedBatch[0]?.code,
     };
   });
   expect(result).toEqual({
@@ -403,6 +406,7 @@ test("client session exposes lifecycle snapshots and transport events", async ({
       { state: 3, ready: false },
       { state: 3, ready: true },
     ],
+    closedBatchCode: expect.any(Number),
   });
 });
 

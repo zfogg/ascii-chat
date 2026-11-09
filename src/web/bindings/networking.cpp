@@ -338,8 +338,11 @@ public:
     return response;
   }
   emscripten::val processBatch(emscripten::val events) {
-    if (!owned_)
-      return emscripten::val::array();
+    if (!owned_) {
+      emscripten::val batch = emscripten::val::array();
+      batch.call<void>("push", result(SET_ERRNO(ERROR_INVALID_STATE, "Client session is not initialized")));
+      return batch;
+    }
     const unsigned count = events["length"].as<unsigned>();
     if (count > 256) {
       emscripten::val batch = emscripten::val::array();
