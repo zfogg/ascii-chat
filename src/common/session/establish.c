@@ -39,7 +39,10 @@ asciichat_error_t session_connection_establish(const char *name, const char *add
                                            .connect = config,
                                            .password = password[0] ? password : NULL,
                                            .protocol = NETWORK_PROTOCOL_MEDIA,
-                                           .authenticate = !GET_OPTION(no_auth),
+                                           // Authentication is resolved by the shared security initializer in
+                                           // the prepare callback. Do not force it for unauthenticated defaults;
+                                           // discovery participants use this same establishment path.
+                                           .authenticate = false,
                                            .prepare = prepare,
                                            .context = context};
     network_establish_result_t attempt;
