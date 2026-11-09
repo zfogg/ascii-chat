@@ -559,7 +559,7 @@ asciichat_error_t http_response_finish(http_response_t *r) {
       http_request_release(r->server);
       r->inflight_accounted = false;
     }
-    return SET_ERRNO(ERROR_CANCELLED, "HTTP response was cancelled");
+    return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response was cancelled");
   }
   asciichat_error_t result;
   if (r->http3_submit)
