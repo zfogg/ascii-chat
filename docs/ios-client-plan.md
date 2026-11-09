@@ -2,7 +2,7 @@
 
 # ascii-chat iOS Client - Implementation Plan (WIP)
 
-> **Status**: Simulator app, shared render bridge, mode selector, camera permission flow, TLS/QUIC dependency wiring, and platform review fixes are implemented; native mode lifecycle and AVAudioEngine remain next
+> **Status**: Simulator app, shared render bridge, mode selector, live native settings, camera/audio routing, TLS/QUIC dependency wiring, native mirror lifecycle, and device/XCFramework packaging are implemented; client/discovery integration and physical-device validation remain next
 > **Last Updated**: 2026-11-08
 > **Goal**: Native iOS app in Swift that uses libasciichat (compiled for iOS) to support server, client, mirror, and discovery modes.
 
@@ -137,11 +137,11 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 - [x] Tear down camera capture state when the preview disappears.
 - [x] Validate simulator architecture and device SDK inputs in build helpers.
 - [x] Expose canonical native mode names from the C entry-point API.
-- [ ] Keep native mode execution alive after startup and report C lifecycle errors to SwiftUI.
+- [x] Keep native mode execution alive after startup and report C lifecycle errors to SwiftUI.
 - [x] Replace the PortAudio compatibility surface with an AVAudioEngine-backed stream.
 - [x] Recover AVAudioEngine streams after iOS audio interruptions.
 - [x] Handle foreground/background transitions for active native sessions.
-- [ ] Produce and validate an arm64 device archive and XCFramework.
+- [x] Produce and validate an arm64 device archive and XCFramework.
 
 ### 1. Compile libasciichat for iOS
 
@@ -1413,7 +1413,7 @@ Intentionally minimal. The C library does the heavy lifting.
 - [x] Write PortAudio → AVAudioEngine shim (`lib/audio/ios/portaudio_shim.m`)
 - [x] Cross-compile the currently selected dependency set for the iOS simulator
 - [x] Link and validate the Swift iOS simulator app bundle (`ascii-chat-ios-app.app`)
-- [x] Build `libasciichat.a` for arm64 + arm64-simulator
+- [x] Build `libasciichat.a` for arm64 device + x86_64 simulator on the Intel host
 - [x] Add reproducible `.xcframework` packaging command
 - [x] Configure iOS terminal capabilities without TTY syscalls.
 - [x] Complete device configure/build using the Ninja generator and arm64 OpenSSL target.
