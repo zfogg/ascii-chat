@@ -486,17 +486,22 @@ echo ""
 echo "Dependencies installed successfully!"
 echo "You can now run: cmake --build --preset debug"
 
-# Vite+ supplies Oxfmt and the Node.js toolchain used by formatting targets.
-if ! command -v vp >/dev/null 2>&1; then
-  curl -fsSL https://vite.plus | bash
-  export PATH="$HOME/.vite-plus/bin:$PATH"
-fi
-if command -v vp >/dev/null 2>&1; then
-  (cd "$(dirname "$0")/.." && vp install --ignore-scripts)
-  (cd "$(dirname "$0")/../web" && vp install --ignore-scripts)
+# Vite+ installs the workspace's selected package manager and Node toolchain.
+if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
+  if ! sudo -H -u "$SUDO_USER" bash -c '[ -r "$HOME/.config/vite-plus/env" ] && . "$HOME/.config/vite-plus/env"; command -v vp >/dev/null'; then
+    sudo -H -u "$SUDO_USER" bash -c 'curl -fsSL https://vite.plus | bash'
+  fi
+  run_vp() {
+    sudo -H -u "$SUDO_USER" bash -c '[ -r "$HOME/.config/vite-plus/env" ] && . "$HOME/.config/vite-plus/env"; exec vp "$@"' _ "$@"
+  }
 else
-  echo >&2 "Vite+ installed; open a new shell and run vp install in the repository and web directories."
+  if ! command -v vp >/dev/null 2>&1; then
+    curl -fsSL https://vite.plus | bash
+  fi
+  if [ -r "$HOME/.config/vite-plus/env" ]; then
+    . "$HOME/.config/vite-plus/env"
+  fi
+  run_vp() { vp "$@"; }
 fi
-
-corepack enable
-pnpm install --frozen-lockfile
+(cd "$(dirname "$0")/.." && run_vp install --ignore-scripts)
+(cd "$(dirname "$0")/../web" && run_vp install --ignore-scripts)

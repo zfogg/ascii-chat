@@ -36,7 +36,7 @@ asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet
   }
 
   *out = (packet_envelope_t){0};
-  if (!acip_transport_is_connected(transport))
+  if (!acip_transport_is_connected(transport) && !acip_transport_has_pending_data(transport))
     return SET_ERRNO(ERROR_NETWORK, "Transport not connected");
   return packet_receive_via_transport(transport, &out->type, &out->data, &out->len, &out->allocated_buffer);
 }

@@ -113,6 +113,7 @@ typedef struct {
   uint8_t reply[ACIP_SETTINGS_MAX_SIZE];
   size_t reply_length;
   unsigned callbacks;
+  bool fail_send;
 } settings_roundtrip_t;
 
 static bool mock_transport_is_connected(acip_transport_t *transport) {
@@ -121,11 +122,13 @@ static bool mock_transport_is_connected(acip_transport_t *transport) {
 }
 
 static asciichat_error_t settings_send(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
+  settings_roundtrip_t *test = transport->impl_data;
+  if (test->fail_send)
+    return ERROR_NETWORK;
   cr_assert_eq(count, 2);
   packet_header_t packet;
   memcpy(&packet, buffers[0].data, sizeof(packet));
   cr_assert_eq(NET_TO_HOST_U16(packet.type), PACKET_TYPE_ACIP_SETTINGS_SYNC);
-  settings_roundtrip_t *test = transport->impl_data;
   return acip_settings_request(&test->host, buffers[1].data, buffers[1].len, test->reply, sizeof(test->reply),
                                &test->reply_length);
 }
@@ -154,6 +157,9 @@ static void test_participant_settings(void) {
   cr_assert_eq(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
   cr_assert_eq(session_participant_request_settings(participant, &requested), ASCIICHAT_OK);
   cr_assert(test.host.width == 80 && test.callbacks == 0);
+  test.fail_send = true;
+  cr_assert_eq(session_participant_request_settings(participant, &requested), ERROR_NETWORK);
+  test.fail_send = false;
   cr_assert_eq(session_participant_receive_settings(participant, test.reply, test.reply_length), ASCIICHAT_OK);
   cr_assert_eq(test.callbacks, 1);
   requested.width = 55;

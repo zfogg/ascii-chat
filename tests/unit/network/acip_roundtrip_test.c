@@ -44,12 +44,18 @@ static asciichat_error_t recv_wire(acip_transport_t *transport, void **data, siz
 static bool connected(acip_transport_t *transport) {
   return ((wire_t *)transport->user_data)->connected;
 }
+static bool pending(acip_transport_t *transport) {
+  return ((wire_t *)transport->user_data)->length != 0;
+}
 static socket_t no_socket(acip_transport_t *transport) {
   (void)transport;
   return INVALID_SOCKET_VALUE;
 }
-static const acip_transport_methods_t methods = {
-    .send = send_wire, .recv = recv_wire, .is_connected = connected, .get_socket = no_socket};
+static const acip_transport_methods_t methods = {.send = send_wire,
+                                                 .recv = recv_wire,
+                                                 .is_connected = connected,
+                                                 .has_pending_data = pending,
+                                                 .get_socket = no_socket};
 
 static void client_ping(void *context) {
   ((wire_t *)context)->callbacks++;
@@ -175,6 +181,17 @@ Test(acip_roundtrip, client_receive_returns_owned_payload_and_dispatches_after_r
   acip_client_callbacks_t callbacks = {.on_ping = client_ping, .app_ctx = &wire};
   cr_assert_eq(acip_client_receive_and_dispatch(&transport, &callbacks), ASCIICHAT_OK);
   cr_assert_eq(wire.callbacks, 1);
+}
+
+Test(acip_roundtrip, client_drains_queued_packet_after_disconnect) {
+  wire_t wire = {.connected = true};
+  acip_transport_t transport = {.methods = &methods, .user_data = &wire};
+  cr_assert_eq(packet_send_via_transport(&transport, PACKET_TYPE_PING, NULL, 0, 0), ASCIICHAT_OK);
+  wire.connected = false;
+  packet_envelope_t envelope;
+  cr_assert_eq(acip_client_receive_packet(&transport, &envelope), ASCIICHAT_OK);
+  cr_assert_eq(envelope.type, PACKET_TYPE_PING);
+  buffer_release(envelope.allocated_buffer);
 }
 
 Test(acip_roundtrip, incomplete_headers_and_inconsistent_lengths_never_dispatch) {

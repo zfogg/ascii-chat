@@ -109,6 +109,7 @@ typedef struct session_participant {
   session_settings_t settings;
   mutex_t settings_mutex;
   uint32_t settings_request;
+  uint32_t settings_applied_request;
 
   /** @brief Video capture context (for webcam/file media) */
   session_capture_ctx_t *video_capture;
@@ -292,6 +293,7 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
 
   mutex_lock(&p->settings_mutex);
   p->settings_request = 0;
+  p->settings_applied_request = 0;
   p->settings.version = 0;
   mutex_unlock(&p->settings_mutex);
   p->connected = true;
@@ -748,6 +750,7 @@ asciichat_error_t session_participant_set_transport(session_participant_t *p, ac
   p->transport = transport;
   mutex_lock(&p->settings_mutex);
   p->settings_request = 0;
+  p->settings_applied_request = 0;
   p->settings.version = 0;
   mutex_unlock(&p->settings_mutex);
   p->transport_ownership = transport ? ownership : ACIP_TRANSPORT_BORROWED;
@@ -822,7 +825,8 @@ asciichat_error_t session_participant_receive_settings(session_participant_t *p,
   if (result != ASCIICHAT_OK)
     return result;
   mutex_lock(&p->settings_mutex);
-  if ((header.request && header.request != p->settings_request) || header.revision < p->settings.version) {
+  if ((header.request && (header.request > p->settings_request || header.request < p->settings_applied_request)) ||
+      header.revision < p->settings.version) {
     mutex_unlock(&p->settings_mutex);
     return ASCIICHAT_OK;
   }
@@ -833,6 +837,8 @@ asciichat_error_t session_participant_receive_settings(session_participant_t *p,
   if (result == ASCIICHAT_OK) {
     session_settings_from_values(candidate, &p->settings);
     p->settings.version = header.revision;
+    if (header.request)
+      p->settings_applied_request = header.request;
   }
   session_settings_t effective = p->settings;
   SAFE_FREE(current);
