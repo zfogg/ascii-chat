@@ -413,8 +413,8 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   uint64_t stats_start = g_stats_media ? time_get_ns() : 0;
   // Terminals supporting synchronized output present the art and its overlays
   // together, even when a large UTF-8 frame requires several writes.
-  bool help_media_overlay = ui_controller_current_screen() == UI_SCREEN_HELP &&
-                            keyboard_help_parent_screen() == UI_SCREEN_MEDIA;
+  bool help_media_overlay =
+      ui_controller_current_screen() == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_MEDIA;
   bool synchronized = g_render_snapshot != NULL || help_media_overlay;
   g_help_sync_open = help_media_overlay;
   bool started = !synchronized || write_output_chunk(fd, "\033[?2026h", 8) == 8;
