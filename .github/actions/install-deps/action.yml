@@ -343,9 +343,7 @@ runs:
         # the package installation above runs as root, discard that root-owned
         # project venv so the following runner-user uv sync can recreate it
         # against the runner user's uv-managed Python.
-        if [ -d tests/ascii_chat_tests/.venv ]; then
-          sudo rm -rf tests/ascii_chat_tests/.venv
-        fi
+        sudo rm -rf tests/ascii_chat_tests/.venv tests/ascii_chat_tests/*.egg-info
 
         # Install any extra packages requested by the workflow
         extra="${{ inputs.extra-packages }}"
