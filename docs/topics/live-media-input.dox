@@ -21,7 +21,8 @@
  * the left and right arrow keys seek, and **[** switches between media and the webcam.
  * **<** and **>** open the previous/next artifact from the beginning. At the ends of
  * the list they do nothing. Finishing an artifact automatically opens the next;
- * **--loop** repeats the complete playlist after the final artifact.
+ * **--loop** repeats a file-only playlist after the final artifact. Network
+ * URLs cannot be looped because the resolver treats them as live sources.
  *
  * Drop additional files into the open prompt to append quoted paths on separate
  * lines. Explorer's trailing separator space is removed, leaving the cursor directly
@@ -46,6 +47,22 @@
  *
  * ```powershell
  * ascii-chat mirror --file "first video.mp4" --url "https://example.com/second.webm" --file "third.mp4"
+ * ```
+ *
+ * More useful playlist shapes:
+ *
+ * ```powershell
+ * # Start with a local clip, then continue with a live stream.
+ * ascii-chat mirror --file "intro.mp4" --url "https://example.com/live.m3u8"
+ *
+ * # A quoted Windows path and a file:// URI are both treated as local media.
+ * ascii-chat mirror --file 'C:\Videos\team demo.mp4' --file 'file:///tmp/outro.webm'
+ *
+ * # Read one media stream from a pipe. Stdin must be the only playlist item.
+ * ffmpeg -i camera.mkv -f matroska - | ascii-chat mirror --file -
+ *
+ * # Keep the complete playlist cycling after the final item.
+ * ascii-chat mirror --file intro.mp4 --file main.mp4 --file credits.mp4 --loop
  * ```
  *
  * A playlist supports up to 64 artifacts, each up to 255 UTF-8 bytes; the interactive
