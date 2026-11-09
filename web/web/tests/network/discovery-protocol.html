@@ -24,18 +24,30 @@
         const client = new m.ClientSessionBinding({});
         assert(client.valid(), "init");
         let packets = [];
-        m.discoverySend = (handle, type, payload) =>
-          packets.push({ type, payload });
+        const collect = (p) =>
+          packets.push(
+            ...p.drainOutputs().map(({ type, payload }) => ({ type, payload })),
+          );
         const snap = (p) => p.process({ type: "snapshot" });
-        const enter = (p, create, name, password) =>
-          p.process({
+        const enter = (p, create, name, password) => {
+          const result = p.process({
             type: "enter",
             create,
             name,
             password: new TextEncoder().encode(password),
-          }).code;
-        const receive = (p, type, bytes) =>
-          p.process({ type: "receive", packetType: type, packet: bytes }).code;
+          });
+          collect(p);
+          return result.code;
+        };
+        const receive = (p, type, bytes) => {
+          const result = p.process({
+            type: "receive",
+            packetType: type,
+            packet: bytes,
+          });
+          collect(p);
+          return result.code;
+        };
         const test = (name, fn) => {
           packets = [];
           const p = new m.DiscoveryBinding();
@@ -135,6 +147,7 @@
           assert(!receive(p, 6005, joined), "joined");
           assert(snap(p).state === 6 && snap(p).joined.hostId[0] === 2, "host");
           assert(!p.process({ type: "leave" }).code, "leave");
+          collect(p);
           assert(
             packets[2].type === 6006 && packets[2].payload.length === 32,
             "leave wire",

@@ -63,8 +63,12 @@ export class HandoffProtocol {
       !this.joined.sessionId.every((value, i) => value === bytes[4 + i])
     )
       return true;
-    const actionResult = processClientEvent({ type: "handoff-decode", packet: bytes });
-    if (actionResult.code) throw new Error(`Invalid handoff frame (${actionResult.code})`);
+    const actionResult = processClientEvent({
+      type: "handoff-decode",
+      packet: bytes,
+    });
+    if (actionResult.code)
+      throw new Error(`Invalid handoff frame (${actionResult.code})`);
     const action = actionResult.action as {
       kind: number;
       participant: Uint8Array;
@@ -87,7 +91,7 @@ export class HandoffProtocol {
       this.prepared = host.valid();
       this.send(
         HANDOFF_PACKET,
-        this.frame(result ? 7 : 4, action.generation, action.sequence),
+        this.frame(4, action.generation, action.sequence),
       );
     } else if (action.kind === 5) {
       this.progress?.(

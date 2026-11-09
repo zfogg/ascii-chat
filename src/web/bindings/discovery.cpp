@@ -5,7 +5,6 @@ extern "C" {
 #include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/common.h>
 }
-#include <emscripten.h>
 #include <sodium.h>
 
 #include <cstddef>
@@ -13,14 +12,10 @@ extern "C" {
 #include <string>
 #include <vector>
 
-EM_JS(void, discovery_send, (acds_protocol_t * p, int type, const void *data, size_t length),
-      { Module.discoverySend(p, type, HEAPU8.slice(data, data + length)); });
-static asciichat_error_t browser_send(void *p, packet_type_t type, const void *payload, size_t length) {
-  discovery_send(static_cast<acds_protocol_t *>(p), type, payload, length);
-  return ASCIICHAT_OK;
-}
-
 EMSCRIPTEN_DECLARE_VAL_TYPE(DiscoverySnapshotValue);
+
+class DiscoveryBinding;
+static asciichat_error_t browser_send(void *user_data, packet_type_t type, const void *payload, size_t length);
 
 static std::vector<uint8_t> protocol_input(ProtocolBytes input, bool terminate = false) {
   auto bytes = binding_copy_input(input);
@@ -32,7 +27,7 @@ static std::vector<uint8_t> protocol_input(ProtocolBytes input, bool terminate =
 class DiscoveryBinding {
 public:
   DiscoveryBinding() : session_(new acds_protocol_t{}) {
-    acds_protocol_init(session_, browser_send, session_);
+    acds_protocol_init(session_, browser_send, this);
   }
   ~DiscoveryBinding() {
     close();
@@ -44,9 +39,6 @@ public:
   }
   int error() const {
     return session_ ? 0 : static_cast<int>(ERROR_INVALID_STATE);
-  }
-  uintptr_t callbackToken() const {
-    return reinterpret_cast<uintptr_t>(session_);
   }
   void close() {
     if (!session_)
@@ -102,6 +94,21 @@ public:
   int leave() {
     return acds_protocol_leave(session_);
   }
+  emscripten::val drainOutputs() {
+    emscripten::val outputs = emscripten::val::array();
+    for (const auto &output : outgoing_) {
+      emscripten::val item = emscripten::val::object();
+      item.set("type", static_cast<unsigned>(output.first));
+      item.set("payload", binding_copy_output(output.second.data(), output.second.size()));
+      outputs.call<void>("push", item);
+    }
+    outgoing_.clear();
+    return outputs;
+  }
+  void enqueue(packet_type_t type, const void *payload, size_t length) {
+    const auto *bytes = static_cast<const uint8_t *>(payload);
+    outgoing_.emplace_back(type, std::vector<uint8_t>(bytes, bytes + length));
+  }
   DiscoverySnapshotValue snapshot() {
     const auto &joined = session_->joined;
     emscripten::val member = emscripten::val::object();
@@ -135,7 +142,14 @@ public:
 
 private:
   acds_protocol_t *session_;
+  std::vector<std::pair<packet_type_t, std::vector<uint8_t>>> outgoing_;
 };
+
+static asciichat_error_t browser_send(void *user_data, packet_type_t type, const void *payload, size_t length) {
+  auto *binding = static_cast<DiscoveryBinding *>(user_data);
+  binding->enqueue(type, payload, length);
+  return ASCIICHAT_OK;
+}
 
 EMSCRIPTEN_BINDINGS(ascii_chat_discovery) {
   emscripten::register_type<DiscoverySnapshotValue>(
@@ -148,8 +162,8 @@ EMSCRIPTEN_BINDINGS(ascii_chat_discovery) {
       .constructor<>()
       .function("valid", &DiscoveryBinding::valid)
       .function("error", &DiscoveryBinding::error)
-      .function("callbackToken", &DiscoveryBinding::callbackToken)
       .function("close", &DiscoveryBinding::close)
       .function("process", &DiscoveryBinding::process)
-      .function("processBatch", &DiscoveryBinding::processBatch);
+      .function("processBatch", &DiscoveryBinding::processBatch)
+      .function("drainOutputs", &DiscoveryBinding::drainOutputs);
 }

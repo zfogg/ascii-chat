@@ -42,9 +42,7 @@ export async function readCryptoKeyFile(file: File): Promise<string> {
   return `${BINARY_OPENPGP_KEY_PREFIX}${btoa(binary)}`;
 }
 
-type ClientModule = ClientWasmBindings & {
-  discoverySend?: (handle: number, type: number, payload: Uint8Array) => void;
-};
+type ClientModule = ClientWasmBindings & {};
 /** Publish the complete pending C error stack and throw at the JS boundary. */
 export function throwWasmError(result: number, fallback: string): never {
   const module = wasmModule;

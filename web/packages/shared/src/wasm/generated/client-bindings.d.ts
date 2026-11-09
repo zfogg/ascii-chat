@@ -466,10 +466,10 @@ type ProtocolBytes = Uint8Array;
 export interface DiscoveryBinding extends ClassHandle {
   valid(): boolean;
   error(): number;
-  callbackToken(): number;
   close(): void;
   process(_0: any): any;
   processBatch(_0: any): any;
+  drainOutputs(): any;
 }
 
 export interface BrowserHostBinding extends ClassHandle {
