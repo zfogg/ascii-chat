@@ -91,7 +91,7 @@ option(ASCIICHAT_SKIP_HARDENING_VALIDATION "Skip security hardening validation f
 
 # Build type (matches Makefile modes)
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type: Debug, Dev, Release, RelWithDebInfo" FORCE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type: Debug, Dev, Release, RelWithDebInfo")
 endif()
 
 # Valid build types (matching Makefile)

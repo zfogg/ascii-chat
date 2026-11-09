@@ -1,4 +1,10 @@
 cmake_minimum_required(VERSION 3.30)
+
+# The project has intentionally forced cache assignments for platform and
+# dependency setup. Keep those assignments from making every Ninja build
+# re-run CMake; reconfigure explicitly with the selected preset.
+set(CMAKE_SUPPRESS_REGENERATION ON)
+
 if(POLICY CMP0174)
     cmake_policy(SET CMP0174 NEW)
 endif()
