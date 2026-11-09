@@ -653,6 +653,8 @@ std::string transform(CXTranslationUnit unit, const std::string &path, const std
 }
 
 std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &path, const std::string &source) {
+  // Index all visible definitions: a wrapper can reach defer through other
+  // macros, including definitions from headers and conditional redefinitions.
   std::map<std::string, std::vector<CXCursor>> definitions;
   auto root = children(clang_getTranslationUnitCursor(unit));
   for (auto cursor : root)
@@ -661,6 +663,8 @@ std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &pat
   const std::set<std::string> markers = {"defer", "defer_named", "defer_cancel"};
   std::map<std::string, bool> memo;
   std::set<std::string> visiting;
+  // Cycles are not memoized as negative results: a different path through the
+  // same cycle may still reach a defer marker.
   std::function<std::pair<bool, bool>(const std::string &)> reaches =
       [&](const std::string &name) -> std::pair<bool, bool> {
     if (markers.count(name))
@@ -691,6 +695,8 @@ std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &pat
   };
   std::vector<Edit> edits;
   const auto canonical = std::filesystem::weakly_canonical(std::filesystem::absolute(std::filesystem::u8path(path)));
+  // Only expand invocations whose definition or arguments can contain defer;
+  // unrelated macros retain the preprocessor's ordinary behavior.
   for (auto cursor : root) {
     if (clang_getCursorKind(cursor) != CXCursor_MacroExpansion || markers.count(spelling(cursor)))
       continue;
@@ -728,6 +734,8 @@ std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &pat
     if (parts.empty())
       throw wrapper_error("cannot read macro containing defer: " + spelling(cursor));
     const bool function = clang_Cursor_isMacroFunctionLike(definition);
+    // Restrict expansion to parameter substitution that can be reconstructed
+    // without changing preprocessing semantics; reject ambiguous constructs.
     std::size_t body = 1;
     std::vector<std::string> parameters;
     bool variadic = false;
@@ -766,6 +774,7 @@ std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &pat
       if (invocation.size() < 3 || invocation[1].text != "(")
         throw wrapper_error("cannot parse defer wrapper invocation");
       unsigned argument_start = invocation[1].finish;
+      // Commas nested in parentheses, brackets, or braces belong to an argument.
       int depth = 0;
       for (std::size_t i = 2; i < invocation.size(); ++i) {
         const auto &token = invocation[i];
@@ -811,6 +820,8 @@ std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &pat
   }
   std::sort(edits.begin(), edits.end(),
             [](const Edit &a, const Edit &b) { return a.start != b.start ? a.start < b.start : a.finish > b.finish; });
+  // Expand only the outermost invocation in this pass. A later pass handles
+  // nested wrappers after their enclosing macro has been substituted.
   std::vector<Edit> outermost;
   for (const auto &edit : edits) {
     if (!outermost.empty() && edit.start < outermost.back().finish) {
