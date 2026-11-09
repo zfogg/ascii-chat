@@ -231,6 +231,19 @@ public:
       response.set("mode", mode);
       return response;
     }
+    if (type == "configure-browser-capabilities") {
+      browser_capabilities_.webtransport = event["webtransport"].isUndefined() ? false : event["webtransport"].as<bool>();
+      browser_capabilities_.datagrams = event["datagrams"].isUndefined() ? false : event["datagrams"].as<bool>();
+      browser_capabilities_.hevc = event["hevc"].isUndefined() ? false : event["hevc"].as<bool>();
+      browser_capabilities_.webrtc = event["webrtc"].isUndefined() ? false : event["webrtc"].as<bool>();
+      emscripten::val response = result(0);
+      response.set("capabilities", emscripten::val::object());
+      response["capabilities"].set("webtransport", browser_capabilities_.webtransport);
+      response["capabilities"].set("datagrams", browser_capabilities_.datagrams);
+      response["capabilities"].set("hevc", browser_capabilities_.hevc);
+      response["capabilities"].set("webrtc", browser_capabilities_.webrtc);
+      return response;
+    }
     if (type == "receive-handshake-packet") {
       auto bytes = binding_copy_input(event["payload"]);
       const bool discovery = !event["discovery"].isUndefined() && event["discovery"].as<bool>();
@@ -445,6 +458,12 @@ private:
   }
   std::unique_ptr<browser_transport_t, decltype(&browser_transport_destroy)> transport_{nullptr,
                                                                                          &browser_transport_destroy};
+  struct {
+    bool webtransport = false;
+    bool datagrams = false;
+    bool hevc = false;
+    bool webrtc = false;
+  } browser_capabilities_;
   bool owned_ = false;
   int result_ = 0;
 };

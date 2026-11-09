@@ -68,6 +68,30 @@ test("native packet intake returns protocol classification", async ({ page }) =>
   expect(result.encrypted).toBe(false);
 });
 
+test("browser capabilities are accepted by the native session", async ({ page }) => {
+  await page.goto("/client");
+  const result = await page.evaluate(async () => {
+    const { initClientWasm, getClientWasmModule, configureBrowserCapabilities } =
+      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    await initClientWasm();
+    const value = configureBrowserCapabilities({
+      webtransport: true,
+      datagrams: true,
+      hevc: false,
+      webrtc: true,
+    });
+    getClientWasmModule();
+    return value;
+  });
+  expect(result.ok).toBe(true);
+  expect(result.capabilities).toEqual({
+    webtransport: true,
+    datagrams: true,
+    hevc: false,
+    webrtc: true,
+  });
+});
+
 test("binding failures record actionable C errors", async ({ page }) => {
   await page.goto("/client");
   const errors = await page.evaluate(async () => {

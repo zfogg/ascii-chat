@@ -543,6 +543,12 @@ export type ClientEventResult = {
   sequence?: bigint;
   publicKey?: string;
   mode?: number;
+  capabilities?: {
+    webtransport: boolean;
+    datagrams: boolean;
+    hevc: boolean;
+    webrtc: boolean;
+  };
   ready?: boolean;
   queuedBytes?: number;
   writable?: boolean;
@@ -561,6 +567,19 @@ export function processClientEvent(
   if (!clientSession || !clientInitialized)
     throw new Error("WASM client session is not initialized");
   return clientSession.process(event) as ClientEventResult;
+}
+
+/** Pass browser-detected facts to the native session policy layer. */
+export function configureBrowserCapabilities(capabilities: {
+  webtransport: boolean;
+  datagrams: boolean;
+  hevc: boolean;
+  webrtc: boolean;
+}): ClientEventResult {
+  return processClientEvent({
+    type: "configure-browser-capabilities",
+    ...capabilities,
+  });
 }
 
 /** Process a bounded burst of browser events in one native session call. */

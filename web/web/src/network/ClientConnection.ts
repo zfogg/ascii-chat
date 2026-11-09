@@ -9,6 +9,7 @@ import { SocketBridge } from "./SocketBridge";
 import type { PacketTransport } from "./Transport";
 import {
   processClientEvent,
+  configureBrowserCapabilities,
   drainClientOutputs,
   initClientWasm,
   cleanupClientWasm,
@@ -150,6 +151,12 @@ export class ClientConnection {
       cleanupClientWasm();
       return false;
     }
+    configureBrowserCapabilities({
+      webtransport: typeof WebTransport !== "undefined",
+      datagrams: typeof WebTransport !== "undefined" && "datagrams" in WebTransport.prototype,
+      hevc: typeof VideoDecoder !== "undefined" && VideoDecoder.isConfigSupported !== undefined,
+      webrtc: typeof RTCPeerConnection !== "undefined",
+    });
     const policy = processClientEvent({
       type: "resolve-crypto-policy",
       wss: new URL(this.options.serverUrl).protocol === "wss:",
