@@ -3,6 +3,7 @@
 
 set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/http/server.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/http/http2.c
     # Core network files
     ${CMAKE_CURRENT_SOURCE_DIR}/network.c
     ${CMAKE_CURRENT_SOURCE_DIR}/frame_validator.c
