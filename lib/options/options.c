@@ -77,6 +77,7 @@
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/systemd.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
@@ -558,6 +559,13 @@ options_t options_t_new(void) {
   opts.enable_keepawake = OPT_ENABLE_KEEPAWAKE_DEFAULT;
   opts.disable_keepawake = OPT_DISABLE_KEEPAWAKE_DEFAULT;
   opts.no_check_update = OPT_NO_CHECK_UPDATE_DEFAULT;
+  if (platform_systemd_is_managed()) {
+    opts.splash_screen = false;
+    opts.status_screen = false;
+    opts.no_check_update = true;
+    SAFE_STRNCPY(opts.log_file, "/dev/null", sizeof(opts.log_file));
+    opts.otel_endpoint[0] = '\0';
+  }
 
   // ============================================================================
   // LOGGING CATEGORY - Binary-level logging and output control options
@@ -591,6 +599,8 @@ options_t options_t_new(void) {
   opts.force_utf8 = OPT_FORCE_UTF8_DEFAULT;
   opts.strip_ansi = OPT_STRIP_ANSI_DEFAULT;
   opts.color = OPT_COLOR_DEFAULT;
+  if (platform_systemd_is_managed())
+    opts.color = COLOR_SETTING_FALSE;
 
   // ============================================================================
   // DISPLAY CATEGORY - Display and rendering options
@@ -1156,10 +1166,14 @@ static asciichat_error_t validate_binary_option_position(int argc, char **argv, 
 
 static void initialize_binary_options(options_t *opts, asciichat_mode_t detected_mode,
                                       const binary_actions_t *actions) {
-  opts->no_check_update = actions->no_check_update_flag_seen;
+  opts->no_check_update = actions->no_check_update_flag_seen || platform_systemd_is_managed();
   opts->detected_mode = detected_mode;
-  char *log_filename = options_get_log_filepath(detected_mode, (*opts));
-  SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
+  if (!platform_systemd_is_managed()) {
+    char *log_filename = options_get_log_filepath(detected_mode, (*opts));
+    SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
+  } else {
+    SAFE_STRNCPY(opts->log_file, "/dev/null", sizeof(opts->log_file));
+  }
   // Note: log_init() is called earlier in asciichat_shared_init() and will be
   // reconfigured with the actual log level and file in main.c after options are fully parsed
   // NOTE: --color detection now happens in src/main.c BEFORE asciichat_shared_init()
@@ -1177,7 +1191,7 @@ static void initialize_binary_options(options_t *opts, asciichat_mode_t detected
   if (actions->color_setting_found) {
     opts->color = actions->parsed_color_setting;
   } else {
-    opts->color = OPT_COLOR_DEFAULT; // Apply default
+    opts->color = platform_systemd_is_managed() ? COLOR_SETTING_FALSE : OPT_COLOR_DEFAULT;
   }
 }
 

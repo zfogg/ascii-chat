@@ -10,7 +10,8 @@ extern int sd_watchdog_enabled(int unset_environment, uint64_t *usec) __attribut
 #endif
 bool platform_systemd_is_managed(void) {
 #ifdef HAVE_LIBSYSTEMD
-  return sd_booted != NULL && sd_notify != NULL && getenv("NOTIFY_SOCKET") != NULL;
+  return sd_booted != NULL && sd_notify != NULL &&
+         (getenv("INVOCATION_ID") != NULL || getenv("NOTIFY_SOCKET") != NULL);
 #else
   return false;
 #endif

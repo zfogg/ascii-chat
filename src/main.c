@@ -716,7 +716,7 @@ int main(int argc, char *argv[]) {
   }
   generate_default_log_path(detected_mode, default_log_path, sizeof(default_log_path));
 
-  const char *log_file = default_log_path;
+  const char *log_file = platform_systemd_is_managed() ? "/dev/null" : default_log_path;
   int max_search = (mode_position > 0) ? mode_position : argc;
   for (int i = 1; i < max_search - 1; i++) {
     if ((strcmp(argv[i], "--log-file") == 0 || strcmp(argv[i], "-L") == 0)) {

@@ -6,11 +6,11 @@ for unit in "${units[@]}"; do
   file="$root/share/systemd/$unit.service"
   test -s "$file"
   grep -q '^Type=notify$' "$file"
-  grep -q -- '--log-file=/dev/null' "$file"
   grep -q 'StandardOutput=journal' "$file"
   grep -q '^WatchdogSec=' "$file"
   grep -q "^SyslogIdentifier=ascii-chat-$unit$" "$file"
-  grep -Eq '^ExecStart=/usr/bin/ascii-chat --.* (server|acds|mcp-server)( |$)' "$file"
+  ! grep -Eq -- '--(color|splash-screen|no-check-update|otel-endpoint|log-file)' "$file"
+  grep -Eq '^ExecStart=/usr/bin/ascii-chat (server|acds|mcp-server)( |$)' "$file"
 done
 test -x "$root/scripts/install-systemd-confs.sh"
 "$root/scripts/install-systemd-confs.sh" --help >/dev/null
