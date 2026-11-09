@@ -571,6 +571,13 @@ export function processClientEvents(
   return clientSession.processBatch(events) as ClientEventResult[];
 }
 
+/** Drain pending native transport output without synthesizing a browser event. */
+export function drainClientOutputs(): ClientEventResult {
+  if (!clientSession || !clientInitialized)
+    throw new Error("WASM client session is not initialized");
+  return clientSession.drainOutputs() as ClientEventResult;
+}
+
 function checkClientEvent(
   result: ClientEventResult,
   fallback: string,

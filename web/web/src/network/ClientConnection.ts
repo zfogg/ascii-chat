@@ -9,6 +9,7 @@ import { SocketBridge } from "./SocketBridge";
 import type { PacketTransport } from "./Transport";
 import {
   processClientEvent,
+  drainClientOutputs,
   initClientWasm,
   cleanupClientWasm,
   generateKeypair,
@@ -258,7 +259,7 @@ export class ClientConnection {
       )
         return;
       try {
-        const result = processClientEvent({ type: "quic-tick" });
+        const result = drainClientOutputs();
         if (result.code) throw new Error(`QUIC rekey failed (${result.code})`);
         for (const { packet } of result.outputs ?? [])
           this.socket?.send(packet);

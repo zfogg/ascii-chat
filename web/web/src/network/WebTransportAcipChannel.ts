@@ -1,5 +1,6 @@
 import {
   processClientEvent,
+  drainClientOutputs,
   getClientModule,
   ConnectionState,
 } from "../wasm/client";
@@ -47,7 +48,7 @@ export class WebTransportAcipChannel {
             );
         },
         tick: () => {
-          const result = processClientEvent({ type: "quic-tick" });
+          const result = drainClientOutputs();
           if (result.code)
             throw new Error(`QUIC rekey failed (${result.code})`);
           return result.outputs ?? [];
