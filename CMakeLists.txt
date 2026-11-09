@@ -296,6 +296,14 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslDep.cmake)
 # Dependencies.cmake orchestrates including them all
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
 
+# The defer parser runs from its own custom command and cannot see target-level
+# include propagation.  Keep the musl FFmpeg headers available to that parser
+# in the top-level scope used when the command is generated.
+if(USE_MUSL)
+    set(ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
+        "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include")
+endif()
+
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)
 configure_tomlc17()
 
