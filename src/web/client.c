@@ -735,7 +735,3 @@ asciichat_error_t client_decode_frame_data(const void *encoded, size_t encoded_l
   return decompress_data_exact(encoded, encoded_length, output, output_length);
 }
 
-crypto_context_t *client_security_context(browser_transport_t *transport) {
-  client_state_t *state = client_state(transport);
-  return state && state->handshake_complete ? &state->crypto_handshake_ctx.crypto_ctx : NULL;
-}

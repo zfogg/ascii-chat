@@ -38,7 +38,6 @@ int client_parse_gpg_public_key(const char *armored_key, uint8_t *public_key_out
 int client_parse_gpg_private_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *secret_key_out);
 int client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *public_key_out);
 int client_get_crypto_error_message(char *output, size_t output_size);
-crypto_context_t *client_security_context(browser_transport_t *transport);
 int client_configure_crypto_options(browser_transport_t *transport, const char *password, const uint8_t *identity_secret_key,
                                     const uint8_t *expected_server_public_key);
 
