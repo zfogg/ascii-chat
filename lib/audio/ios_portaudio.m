@@ -25,6 +25,10 @@ static BOOL ios_audio_device_supports_input(PaDeviceIndex index) {
   return index >= 0 && index < g_ios_device_count && g_ios_devices[index].info.maxInputChannels > 0;
 }
 
+static BOOL ios_audio_device_supports_output(PaDeviceIndex index) {
+  return index >= 0 && index < g_ios_device_count && g_ios_devices[index].info.maxOutputChannels > 0;
+}
+
 static void ios_audio_refresh_devices(void) {
   AVAudioSession *session = AVAudioSession.sharedInstance;
   [session setCategory:AVAudioSessionCategoryPlayAndRecord
@@ -200,9 +204,19 @@ PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const 
   opened->sample_rate = sample_rate;
   opened->input_channels = input ? input->channelCount : 0;
   opened->output_channels = output ? output->channelCount : 0;
-  opened->device_index = ios_audio_device_supports_input(g_ios_selected_device)    ? g_ios_selected_device
-                         : input && ios_audio_device_supports_input(input->device) ? input->device
-                                                                                   : Pa_GetDefaultInputDevice();
+  const BOOL needs_input = input && input->channelCount > 0;
+  const BOOL needs_output = output && output->channelCount > 0;
+  const BOOL selected_supports_io = (!needs_input || ios_audio_device_supports_input(g_ios_selected_device)) &&
+                                    (!needs_output || ios_audio_device_supports_output(g_ios_selected_device));
+  const BOOL input_supports_io = input && (!needs_input || ios_audio_device_supports_input(input->device)) &&
+                                 (!needs_output || ios_audio_device_supports_output(input->device));
+  const BOOL output_supports_io = output && (!needs_input || ios_audio_device_supports_input(output->device)) &&
+                                  (!needs_output || ios_audio_device_supports_output(output->device));
+  opened->device_index = selected_supports_io      ? g_ios_selected_device
+                         : input_supports_io        ? input->device
+                         : output_supports_io       ? output->device
+                         : needs_input              ? Pa_GetDefaultInputDevice()
+                                                    : Pa_GetDefaultOutputDevice();
   if (opened->device_index < 0 || opened->device_index >= g_ios_device_count) {
     SAFE_FREE(opened);
     return paInvalidDevice;
@@ -367,6 +381,15 @@ int asciichat_ios_audio_select_device(int index) {
   if (index < 0 || index >= g_ios_device_count)
     return -1;
   g_ios_selected_device = index;
+  AVAudioSession *session = AVAudioSession.sharedInstance;
+  AVAudioSessionPortDescription *preferred = g_ios_devices[index].input_port;
+  if (preferred)
+    [session setPreferredInput:preferred error:NULL];
+  // AVAudioSession applies a preferred input to the active route. Re-activate
+  // it here so changing the picker while a session is running takes effect
+  // without requiring the C audio pipeline to be torn down and rebuilt.
+  if (session.isOtherAudioPlaying || session.isInputAvailable)
+    [session setActive:YES error:NULL];
   return 0;
 }
 
