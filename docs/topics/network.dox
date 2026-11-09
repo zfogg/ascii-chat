@@ -38,6 +38,26 @@
  * `http_server_adopt_socket()` before start, avoiding a duplicate bind.  An
  * explicitly enabled HTTP version is never silently downgraded.
  *
+ * The protocol mapping is deliberate:
+ *
+ * | HTTP version | Entry point | Notes |
+ * | --- | --- | --- |
+ * | HTTP/1.0 | libuv TCP listener | Request/response completion is connection-oriented; keep-alive is not assumed. |
+ * | HTTP/1.1 | libuv TCP listener | Persistent connections, `Content-Length`, chunked bodies, and trailers are supported. |
+ * | HTTP/2 | libuv TCP listener or negotiated TLS endpoint | nghttp2 streams use the shared request/response handler and output backpressure. |
+ * | HTTP/3 | QUIC endpoint | nghttp3 streams use the same handler contract; WebTransport CONNECT remains the ACIP path. |
+ *
+ * HTTP/2 and HTTP/3 are optional at build and runtime. A listener configured
+ * for a specific protocol reports setup or negotiation failure instead of
+ * silently changing endpoint semantics. HTTP/3 attaches to the existing QUIC
+ * endpoint: it does not create a second UDP listener or authentication path.
+ *
+ * Request bodies, headers, connections, in-flight requests, and responses are
+ * bounded by the shared server policy. Handlers may retain a response for
+ * asynchronous work, but must release it after completion; cancellation
+ * invalidates retained responses and prevents late writes after a stream or
+ * connection closes. Wakeups and graceful shutdown remain server-owned.
+ *
  * @section network_connection_layer Connections
  *
  * `network_connection_t` moves through `NETWORK_NEGOTIATING`,
