@@ -19,6 +19,7 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/crypto/crypto.h>
@@ -117,6 +118,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
     log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Failed to allocate output buffer");
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate H.265 output buffer: %zu bytes", output_buffer_size);
   }
+  defer(buffer_release(output_buffer));
 
   // Admission expiry can invalidate a previously accepted reference chain.
 #ifndef __EMSCRIPTEN__
@@ -131,14 +133,12 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
 
   if (encode_result != ASCIICHAT_OK) {
     log_error("H.265 encoding failed: %s", asciichat_error_format(NULL, encode_result));
-    buffer_release(output_buffer);
     return encode_result;
   }
 
   // h265_encode includes flags, dimensions, and the encoded picture already.
   size_t total_size = encoded_size;
   if (!total_size) {
-    buffer_release(output_buffer);
     return ASCIICHAT_OK;
   }
 
@@ -150,7 +150,6 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
       packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
   log_dev("[ACIP_SEND_H265_6] packet_send_via_transport returned: %d", result);
 
-  buffer_release(output_buffer);
   return result;
 }
 

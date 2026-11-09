@@ -1,6 +1,7 @@
 #include <criterion/criterion.h>
 #include "session/render.h"
 #include <ascii-chat/options/rcu.h>
+#include <ascii-chat/options/runtime.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/video/ascii/common.h>
@@ -32,6 +33,12 @@ static void setup(void) {
   cr_assert_eq(options_set_bool("stretch", true), ASCIICHAT_OK);
   cr_assert_eq(options_set_bool("palette_explicit", true), ASCIICHAT_OK);
   cr_assert_eq(options_set_int("render_mode", RENDER_MODE_FOREGROUND), ASCIICHAT_OK);
+  options_edit_t palette_edits[] = {
+      {.name = "palette_type", .type = OPTIONS_VALUE_INT, .value.integer = PALETTE_CUSTOM},
+      {.name = "palette_custom", .type = OPTIONS_VALUE_STRING, .value.string = "XX"},
+  };
+  options_patch_t palette_patch = {.edits = palette_edits, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
+  cr_assert_eq(options_apply_patch(&palette_patch, NULL), ASCIICHAT_OK);
   ascii_simd_init();
   output = platform_tmpfile();
   cr_assert_not_null(output);

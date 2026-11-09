@@ -22,6 +22,8 @@ function(asciichat_build_aec3)
         BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_aec3"
         URL https://github.com/zhixingheyixsh/webrtc_AEC3/archive/c1dbdb9924f59d9b3c09189673286665d55f6a5e.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        # Populate first; configure the patched root explicitly below.
+        SOURCE_SUBDIR ascii-chat-patched-manual
         )
     # Populate without adding the project, even if a parent supplied the first
     # declaration without SOURCE_SUBDIR. Its CMake files must be patched first.
@@ -44,6 +46,7 @@ function(asciichat_build_aec3)
     target_include_directories(AudioProcess PUBLIC
         "${asciichat_aec3_SOURCE_DIR}"
         "${asciichat_aec3_SOURCE_DIR}/base"
+        "${asciichat_aec3_SOURCE_DIR}/base/abseil"
         "${asciichat_aec3_SOURCE_DIR}/api"
         "${asciichat_aec3_SOURCE_DIR}/audio_processing/include")
     if(WIN32)

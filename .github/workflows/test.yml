@@ -235,7 +235,7 @@ jobs:
 
       - name: Build test suite
         run: |
-          cmake --build build
+          cmake --build build --target all tests
 
           echo "Test executables built:"
           ls -la build/bin/test_* 2>/dev/null || echo "No test executables found in build/bin/"

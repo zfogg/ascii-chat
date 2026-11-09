@@ -1198,11 +1198,9 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
       // So we need to format the error message ourselves here
       char error_buffer[BUFFER_SIZE_MEDIUM];
       safe_snprintf(error_buffer, sizeof(error_buffer), "Failed to parse config file '%s': %s", display_path, errmsg);
-      toml_free(result); // Explicit cleanup before return (defer transformation not applied)
       return SET_ERRNO(ERROR_CONFIG, "%s", error_buffer);
     }
     CONFIG_WARN("Failed to parse config file '%s': %s (skipping)", display_path, errmsg);
-    toml_free(result);   // Explicit cleanup before return (defer transformation not applied)
     return ASCIICHAT_OK; // Non-fatal error
   }
 
@@ -1211,7 +1209,6 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   asciichat_error_t schema_result = config_apply_schema(result.toptab, detected_mode, opts, strict);
 
   if (schema_result != ASCIICHAT_OK && strict) {
-    toml_free(result); // Explicit cleanup before return (defer transformation not applied)
     return schema_result;
   }
   if (strict && schema_result == ASCIICHAT_OK)
@@ -1240,7 +1237,6 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   }
   errno_scope_end(rcu_scope, ASCIICHAT_ERRNO_DISMISSED);
 
-  toml_free(result); // Explicit cleanup before return (defer transformation not applied)
   return ASCIICHAT_OK;
 }
 
@@ -1632,7 +1628,6 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
 
   if (search_result != ASCIICHAT_OK) {
     CONFIG_DEBUG("Failed to search for config files: %d", search_result);
-    config_file_list_destroy(&config_files);
     return search_result;
   }
 
@@ -1673,6 +1668,5 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
     }
   }
 
-  config_file_list_destroy(&config_files);
   return result;
 }

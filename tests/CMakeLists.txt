@@ -74,6 +74,18 @@ if(BUILD_TESTS)
     endfunction()
     asciichat_add_pytest(python-cmake cmake)
     set_tests_properties(python-cmake PROPERTIES LABELS "unit;python;build")
+    if(TARGET ascii-defer-native)
+        set_property(TEST python-cmake APPEND PROPERTY ENVIRONMENT
+            "ASCIICHAT_DEFER_TEST_BINARY=$<TARGET_FILE:ascii-defer-native>")
+        if(TARGET ascii-libclang)
+            set_property(TEST python-cmake APPEND PROPERTY ENVIRONMENT
+                "LIBCLANG_LIBRARY_FILE=$<TARGET_FILE:ascii-libclang>")
+        endif()
+        if(ASCIICHAT_LLVM_DEV_ROOT)
+            set_property(TEST python-cmake APPEND PROPERTY ENVIRONMENT
+                "ASCIICHAT_LLVM_DEV_ROOT=${ASCIICHAT_LLVM_DEV_ROOT}")
+        endif()
+    endif()
     asciichat_add_pytest(python-unit unit)
     set_tests_properties(python-unit PROPERTIES LABELS "unit;python")
 

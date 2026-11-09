@@ -398,6 +398,15 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
         set(_OPENSSL_IMPORTED_TYPE STATIC)
     endif()
 
+    # Shared dependency caches can be configured by more than one build tree.
+    # Keep extraction and configuration of this cached source tree serialized.
+    file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
+    file(LOCK "${OPENSSL_BUILD_DIR}/.ascii-chat-configure.lock" GUARD FILE TIMEOUT 1200
+        RESULT_VARIABLE _OPENSSL_LOCK_RESULT)
+    if(NOT _OPENSSL_LOCK_RESULT STREQUAL "0")
+        message(FATAL_ERROR "Cannot lock OpenSSL build cache: ${_OPENSSL_LOCK_RESULT}")
+    endif()
+
     # If cached OpenSSL was generated for a different target, wipe and re-extract.
     set(_OPENSSL_RECONFIGURE_REQUIRED FALSE)
     if(EXISTS "${OPENSSL_TARGET_STAMP}")
