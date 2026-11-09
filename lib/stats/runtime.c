@@ -563,7 +563,12 @@ asciichat_error_t stats_runtime_start(const char *mode, unsigned interval_second
     memset(&caps, 0, sizeof(caps));
     for (unsigned i = STATS_COUNTER_MCP_REQUESTS; i <= STATS_COUNTER_MCP_HTTP_RESPONSES; i++)
       caps.counters[i] = true;
+    for (unsigned i = STATS_COUNTER_HTTP_REQUESTS; i <= STATS_COUNTER_HTTP_BYTES_SENT; i++)
+      caps.counters[i] = true;
+    caps.gauges[STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE] = true;
+    caps.gauges[STATS_GAUGE_HTTP_STREAMS_ACTIVE] = true;
     caps.durations[STATS_DURATION_MCP_RENDER] = true;
+    caps.durations[STATS_DURATION_HTTP_REQUEST] = true;
   }
   asciichat_error_t result = stats_scope_create(&caps, &g_scope);
   if (result != ASCIICHAT_OK)

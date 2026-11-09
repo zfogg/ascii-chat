@@ -802,10 +802,11 @@ endif()
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
 find_path(ASCIICHAT_NGHTTP2_INCLUDE_DIR nghttp2/nghttp2.h)
 find_library(ASCIICHAT_NGHTTP2_LIBRARY NAMES nghttp2 nghttp2_static)
-if(ASCIICHAT_NGHTTP2_INCLUDE_DIR AND ASCIICHAT_NGHTTP2_LIBRARY)
-    target_include_directories(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_INCLUDE_DIR})
-    target_link_libraries(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_LIBRARY})
+if(NOT ASCIICHAT_NGHTTP2_INCLUDE_DIR OR NOT ASCIICHAT_NGHTTP2_LIBRARY)
+    message(FATAL_ERROR "nghttp2 development files are required for the shared HTTP/2 server")
 endif()
+target_include_directories(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_INCLUDE_DIR})
+target_link_libraries(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_LIBRARY})
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-network PRIVATE asciichat-quic)
 endif()
@@ -1173,6 +1174,7 @@ add_library(ascii-chat-shared SHARED
     # which don't automatically bring in their module dependencies
     target_link_libraries(ascii-chat-shared PRIVATE
         asciichat-icu
+        ${ASCIICHAT_NGHTTP2_LIBRARY}
         ${LIBSODIUM_LIBRARIES}
         zstd::libzstd
         ${OPUS_LIBRARIES}
@@ -1635,6 +1637,7 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
 add_library(ascii-chat-static-lib-deps INTERFACE)
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${UTF8PROC_LIBRARIES} asciichat-icu)
+target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${ASCIICHAT_NGHTTP2_LIBRARY})
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-static-lib-deps INTERFACE asciichat-quic)
 endif()

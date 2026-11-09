@@ -24,7 +24,7 @@ typedef asciichat_error_t (*http2_request_fn)(http2_connection_t *connection, co
                                               void *user_data);
 
 asciichat_error_t http2_connection_create(http2_connection_t **connection, http2_request_fn on_request, void *user_data,
-                                          size_t max_body_length);
+                                          size_t max_request_body_length, size_t max_response_body_length);
 void http2_connection_destroy(http2_connection_t **connection);
 asciichat_error_t http2_connection_receive(http2_connection_t *connection, const void *data, size_t length);
 asciichat_error_t http2_connection_next_output(http2_connection_t *connection, const uint8_t **data, size_t *length);

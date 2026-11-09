@@ -25,6 +25,7 @@ static inline yyjson_val *mcp_get(yyjson_val *obj, const char *name) {
 
 #define MCP_MAX_INPUT (24u * 1024u * 1024u)
 #define MCP_MAX_OUTPUT (8u * 1024u * 1024u)
+#define MCP_MAX_DOWNLOAD (64u * 1024u * 1024u)
 #define MCP_SESSION_ID_LENGTH 32
 
 typedef enum { MCP_FILE, MCP_URL, MCP_WEBCAM, MCP_VISUALIZATION } mcp_tool_t;

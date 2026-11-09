@@ -88,6 +88,7 @@ struct http_client {
   uv_tcp_t tcp;
   http_server_t *server;
   char *buffer;
+  size_t capacity;
   size_t length;
   http_client_t *next;
   http_client_t *previous;
@@ -96,6 +97,10 @@ struct http_client {
   bool admitted;
   char peer_address[64];
 };
+static size_t http_max_response_body(const http_server_t *server) {
+  return server->config.max_response_body_bytes ? server->config.max_response_body_bytes
+                                                : server->config.max_request_body_bytes;
+}
 static void stop_async_cb(uv_async_t *async);
 static void wake_async_cb(uv_async_t *async) {
   http_server_t *s = async->data;
@@ -142,7 +147,7 @@ static void client_freed(uv_handle_t *handle) {
   if (c->admitted)
     stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE, c->server->connections);
   if (c->admitted && c->server->config.on_connection)
-    c->server->config.on_connection("", false, c->server->config.user_data);
+    c->server->config.on_connection(c->peer_address, false, c->server->config.user_data);
   http2_connection_destroy(&c->http2);
   SAFE_FREE(c->buffer);
   SAFE_FREE(c);
@@ -170,21 +175,55 @@ static void alloc_buffer(uv_handle_t *h, size_t n, uv_buf_t *b) {
   b->base = SAFE_MALLOC(n, char *);
   b->len = (unsigned)n;
 }
+static bool decode_chunked_body(http_client_t *c, size_t offset, size_t *body_length) {
+  size_t cursor = offset;
+  size_t output = offset;
+  while (cursor < c->length) {
+    char *line_end = strstr(c->buffer + cursor, "\r\n");
+    if (!line_end)
+      return false;
+    char *number_end = NULL;
+    unsigned long long chunk = strtoull(c->buffer + cursor, &number_end, 16);
+    if (number_end == c->buffer + cursor || number_end != line_end || chunk > SIZE_MAX)
+      return false;
+    cursor = (size_t)(line_end - c->buffer) + 2;
+    if (chunk == 0) {
+      if (c->length < cursor + 2 || memcmp(c->buffer + cursor, "\r\n", 2) != 0)
+        return false;
+      *body_length = output - offset;
+      return true;
+    }
+    if (output - offset > c->server->config.max_request_body_bytes ||
+        chunk > c->server->config.max_request_body_bytes - (output - offset) ||
+        c->length < cursor + (size_t)chunk + 2 || memcmp(c->buffer + cursor + (size_t)chunk, "\r\n", 2) != 0)
+      return false;
+    memmove(c->buffer + output, c->buffer + cursor, (size_t)chunk);
+    output += (size_t)chunk;
+    cursor += (size_t)chunk + 2;
+  }
+  return false;
+}
 static bool parse_request(http_client_t *c, http_request_t *r) {
   char *end = strstr(c->buffer, "\r\n\r\n");
   if (!end)
     return false;
   size_t head = (size_t)(end - c->buffer) + 4;
   size_t body = 0;
+  bool chunked = false;
   for (char *scan = strstr(c->buffer, "\r\n") + 2; scan < end;) {
     char *next = strstr(scan, "\r\n");
     if (!next)
       return false;
     if (platform_strncasecmp(scan, "Content-Length:", 15) == 0)
       body = (size_t)strtoull(scan + 15, NULL, 10);
+    if (platform_strncasecmp(scan, "Transfer-Encoding:", 18) == 0 && strstr(scan + 18, "chunked"))
+      chunked = true;
     scan = next + 2;
   }
-  if (body > c->server->config.max_request_body_bytes || c->length < head + body)
+  if (chunked) {
+    if (!decode_chunked_body(c, head, &body))
+      return false;
+  } else if (body > c->server->config.max_request_body_bytes || c->length < head + body)
     return false;
   char *line = c->buffer;
   char *nl = strstr(line, "\r\n");
@@ -393,6 +432,9 @@ asciichat_error_t http_response_write(http_response_t *r, const void *d, size_t 
   p[r->body_length] = 0;
   return ASCIICHAT_OK;
 }
+size_t http_response_body_length(const http_response_t *r) {
+  return r ? r->body_length : 0;
+}
 asciichat_error_t http_response_finish(http_response_t *r) {
   if (!r || r->finished)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response already finished");
@@ -494,7 +536,7 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
     http_response_t limited = {.server = server,
                                .protocol = HTTP_PROTOCOL_3,
                                .status = 429,
-                               .max_body_length = server->config.max_request_body_bytes,
+                               .max_body_length = http_max_response_body(server),
                                .http3_submit = submit,
                                .http3_context = submit_context};
     return http_response_finish(&limited);
@@ -507,7 +549,7 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
     http_response_t limited = {.server = server,
                                .protocol = HTTP_PROTOCOL_3,
                                .status = 429,
-                               .max_body_length = server->config.max_request_body_bytes,
+                               .max_body_length = http_max_response_body(server),
                                .http3_submit = submit,
                                .http3_context = submit_context};
     return http_response_finish(&limited);
@@ -515,7 +557,7 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
   http_response_t response = {.server = server,
                               .protocol = HTTP_PROTOCOL_3,
                               .status = 200,
-                              .max_body_length = server->config.max_request_body_bytes,
+                              .max_body_length = http_max_response_body(server),
                               .inflight_accounted = true,
                               .http3_submit = submit,
                               .http3_context = submit_context};
@@ -561,6 +603,8 @@ bool http_response_is_cancelled(const http_response_t *r) {
 asciichat_error_t http_request_cancel(http_request_t *r) {
   if (!r)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing HTTP request");
+  if (!r->cancelled)
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_CANCELLED, 1);
   r->cancelled = true;
   return ASCIICHAT_OK;
 }
@@ -600,7 +644,7 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
                                .client = client,
                                .http2_stream_id = view->stream_id,
                                .protocol = HTTP_PROTOCOL_2,
-                               .max_body_length = client->server->config.max_request_body_bytes,
+                               .max_body_length = http_max_response_body(client->server),
                                .status = 429};
     asciichat_error_t result = http_response_finish(&limited);
     SAFE_FREE(limited.body);
@@ -615,7 +659,7 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
                                .client = client,
                                .http2_stream_id = view->stream_id,
                                .protocol = HTTP_PROTOCOL_2,
-                               .max_body_length = client->server->config.max_request_body_bytes,
+                               .max_body_length = http_max_response_body(client->server),
                                .status = 429};
     asciichat_error_t result = http_response_finish(&limited);
     SAFE_FREE(limited.body);
@@ -627,7 +671,7 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
                               .client = client,
                               .http2_stream_id = view->stream_id,
                               .protocol = HTTP_PROTOCOL_2,
-                              .max_body_length = client->server->config.max_request_body_bytes,
+                              .max_body_length = http_max_response_body(client->server),
                               .inflight_accounted = true,
                               .status = 200};
   client->server->config.on_request(&request, &response, client->server->config.user_data);
@@ -653,10 +697,32 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
     client_close(c);
     return;
   }
-  if (c->length + (size_t)n >= HTTP_READ_CAPACITY) {
-    SAFE_FREE(base);
-    client_close(c);
-    return;
+  size_t required = c->length + (size_t)n + 1;
+  if (required > c->capacity) {
+    size_t limit = c->server->config.max_request_body_bytes > SIZE_MAX - HTTP_READ_CAPACITY
+                       ? SIZE_MAX
+                       : c->server->config.max_request_body_bytes + HTTP_READ_CAPACITY;
+    if (required > limit) {
+      SAFE_FREE(base);
+      client_close(c);
+      return;
+    }
+    size_t capacity = c->capacity;
+    while (capacity < required) {
+      if (capacity > limit / 2) {
+        capacity = limit;
+        break;
+      }
+      capacity *= 2;
+    }
+    char *expanded = SAFE_REALLOC(c->buffer, capacity, char *);
+    if (!expanded) {
+      SAFE_FREE(base);
+      client_close(c);
+      return;
+    }
+    c->buffer = expanded;
+    c->capacity = capacity;
   }
   memcpy(c->buffer + c->length, base, (size_t)n);
   c->length += (size_t)n;
@@ -667,10 +733,9 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   if (!c->http2_mode && c->server->config.enable_http2 && c->length >= sizeof(h2_preface) - 1 &&
       memcmp(c->buffer, h2_preface, sizeof(h2_preface) - 1) == 0) {
     c->http2_mode = true;
-    if (http2_connection_create(&c->http2, http2_request_cb, c, c->server->config.max_request_body_bytes) !=
-            ASCIICHAT_OK ||
-        http2_connection_receive(c->http2, c->buffer + sizeof(h2_preface) - 1, c->length - (sizeof(h2_preface) - 1)) !=
-            ASCIICHAT_OK) {
+    if (http2_connection_create(&c->http2, http2_request_cb, c, c->server->config.max_request_body_bytes,
+                                http_max_response_body(c->server)) != ASCIICHAT_OK ||
+        http2_connection_receive(c->http2, c->buffer, c->length) != ASCIICHAT_OK) {
       client_close(c);
       return;
     }
@@ -688,6 +753,10 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   http_request_t r = {0};
   if (!parse_request(c, &r))
     return;
+  if (!c->server->config.enable_http1) {
+    client_close(c);
+    return;
+  }
   bool allowed = false;
   if (rate_limiter_check(c->server->rate_limiter, c->peer_address, RATE_EVENT_HTTP_REQUEST,
                          &c->server->request_rate_limit, &allowed) != ASCIICHAT_OK ||
@@ -696,7 +765,7 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
     http_response_t limited = {.server = c->server,
                                .stream = s,
                                .protocol = r.info.protocol,
-                               .max_body_length = c->server->config.max_request_body_bytes,
+                               .max_body_length = http_max_response_body(c->server),
                                .status = 429};
     http_response_finish(&limited);
     uv_read_stop(s);
@@ -707,7 +776,7 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
     http_response_t limited = {.server = c->server,
                                .stream = s,
                                .protocol = r.info.protocol,
-                               .max_body_length = c->server->config.max_request_body_bytes,
+                               .max_body_length = http_max_response_body(c->server),
                                .status = 429};
     http_response_finish(&limited);
     uv_read_stop(s);
@@ -716,7 +785,7 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   http_response_t resp = {.server = c->server,
                           .stream = s,
                           .protocol = r.info.protocol,
-                          .max_body_length = c->server->config.max_request_body_bytes,
+                          .max_body_length = http_max_response_body(c->server),
                           .inflight_accounted = true,
                           .status = 200};
   uint64_t request_start = time_get_ns();
@@ -758,7 +827,8 @@ static void connection_cb(uv_stream_t *l, int status) {
       return;
     }
     rate_limiter_record(s->rate_limiter, c->peer_address, RATE_EVENT_CONNECTION);
-    c->buffer = SAFE_CALLOC(HTTP_READ_CAPACITY, 1, char *);
+    c->capacity = HTTP_READ_CAPACITY;
+    c->buffer = SAFE_CALLOC(c->capacity, 1, char *);
     if (!c->buffer) {
       client_close(c);
       return;

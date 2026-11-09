@@ -61,6 +61,8 @@ typedef struct {
   /** Maximum concurrently dispatched requests; zero derives a safe bound from max_connections. */
   size_t max_inflight_requests;
   size_t max_request_body_bytes;
+  /** Maximum buffered response body; zero uses max_request_body_bytes. */
+  size_t max_response_body_bytes;
   /** Maximum requests per peer during the configured rate window; zero uses the safe default. */
   size_t max_requests_per_peer;
   /** Request rate window in seconds; zero uses the safe default. */
@@ -96,4 +98,6 @@ asciichat_error_t http_response_retain(http_response_t *response, http_response_
 void http_response_release(http_response_t **response);
 asciichat_error_t http_response_set_header(http_response_t *response, const char *name, const char *value);
 asciichat_error_t http_response_write(http_response_t *response, const void *data, size_t length);
+/** Return the number of bytes buffered for the response body. */
+size_t http_response_body_length(const http_response_t *response);
 asciichat_error_t http_response_finish(http_response_t *response);
