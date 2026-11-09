@@ -6,6 +6,7 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/string.h>
 #include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/otel.h>
 #include <ascii-chat/network/rate_limit/rate_limit.h>
 #include <ascii-chat/util/time.h>
 #include <uv.h>
@@ -13,6 +14,21 @@
 
 #define HTTP_READ_CAPACITY (1024u * 1024u)
 #define HTTP_HEADER_CAPACITY 64u
+
+static const char *http_protocol_name(http_protocol_t protocol) {
+  switch (protocol) {
+  case HTTP_PROTOCOL_10:
+    return "1.0";
+  case HTTP_PROTOCOL_11:
+    return "1.1";
+  case HTTP_PROTOCOL_2:
+    return "2";
+  case HTTP_PROTOCOL_3:
+    return "3";
+  default:
+    return "unknown";
+  }
+}
 
 typedef struct http_client http_client_t;
 static asciichat_error_t http2_request_cb(http2_connection_t *connection, const http2_request_view_t *view,
@@ -396,9 +412,16 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
                               .max_body_length = server->config.max_request_body_bytes,
                               .http3_submit = submit,
                               .http3_context = submit_context};
+  ASCII_OTEL_SCOPE(HTTP);
+  ASCII_OTEL_ATTR_STRING("http.method", method);
+  ASCII_OTEL_ATTR_STRING("http.route", request.info.path);
+  ASCII_OTEL_ATTR_STRING("http.protocol", "3");
+  ASCII_OTEL_ATTR_STRING("http.backend", "quic-ngtcp2-nghttp3");
   server->config.on_request(&request, &response, server->config.user_data);
   if (!response.finished && !response.deferred) {
     asciichat_error_t result = http_response_finish(&response);
+    ASCII_OTEL_ATTR_INT("http.status", response.status);
+    ASCII_OTEL_ATTR_INT("http.response_bytes", (int64_t)response.body_length);
     SAFE_FREE(response.body);
     return result;
   }
@@ -432,6 +455,11 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 1);
   http_request_t request = {0};
+  ASCII_OTEL_SCOPE(HTTP);
+  ASCII_OTEL_ATTR_STRING("http.method", view->method);
+  ASCII_OTEL_ATTR_STRING("http.route", view->path);
+  ASCII_OTEL_ATTR_STRING("http.protocol", "2");
+  ASCII_OTEL_ATTR_STRING("http.backend", "libuv-nghttp2");
   request.info.method = view->method;
   request.info.path = view->path;
   request.info.query = view->query;
@@ -473,6 +501,8 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
   client->server->config.on_request(&request, &response, client->server->config.user_data);
   if (!response.finished && !response.deferred) {
     asciichat_error_t result = http_response_finish(&response);
+    ASCII_OTEL_ATTR_INT("http.status", response.status);
+    ASCII_OTEL_ATTR_INT("http.response_bytes", (int64_t)response.body_length);
     SAFE_FREE(response.body);
     stats_duration_record(stats_runtime_scope(), STATS_DURATION_HTTP_REQUEST, time_get_ns() - request_start);
     stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 0);
@@ -545,11 +575,18 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
                           .max_body_length = c->server->config.max_request_body_bytes,
                           .status = 200};
   uint64_t request_start = time_get_ns();
+  ASCII_OTEL_SCOPE(HTTP);
+  ASCII_OTEL_ATTR_STRING("http.method", r.info.method);
+  ASCII_OTEL_ATTR_STRING("http.route", r.info.path);
+  ASCII_OTEL_ATTR_STRING("http.protocol", http_protocol_name(r.info.protocol));
+  ASCII_OTEL_ATTR_STRING("http.backend", "libuv");
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 1);
   c->server->config.on_request(&r, &resp, c->server->config.user_data);
   if (!resp.finished && !resp.deferred)
     http_response_finish(&resp);
+  ASCII_OTEL_ATTR_INT("http.status", resp.status);
+  ASCII_OTEL_ATTR_INT("http.response_bytes", (int64_t)resp.body_length);
   SAFE_FREE(resp.body);
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_HTTP_REQUEST, time_get_ns() - request_start);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 0);
