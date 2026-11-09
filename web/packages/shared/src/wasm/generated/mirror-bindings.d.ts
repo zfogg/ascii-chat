@@ -366,12 +366,12 @@ export interface MirrorFrameBinding extends ClassHandle {
 }
 
 interface EmbindModule {
-  browser_ui_audio(_0: number): number;
-  browser_ui_fps(): number;
-  browser_ui_volume(): number;
   SessionUiBinding: {
     new (): SessionUiBinding;
     new (_0: boolean): SessionUiBinding;
+    setAudio(_0: number): number;
+    fps(): number;
+    volume(): number;
   };
   MirrorSessionBinding: {
     new (_0: OptionsPatch): MirrorSessionBinding;

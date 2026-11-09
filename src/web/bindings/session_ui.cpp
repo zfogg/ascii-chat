@@ -25,6 +25,11 @@ extern "C" void ui_controller_redraw(void) {
 // The C session owns the frame returned by tick. Copy it before the next call.
 class SessionUiBinding {
 public:
+  static int setAudio(int value) {
+    return static_cast<int>(options_set_bool("audio_enabled", value != 0));
+  }
+  static int fps() { return static_cast<int>(GET_OPTION(fps_counter)); }
+  static double volume() { return static_cast<double>(GET_OPTION(speakers_volume)); }
   SessionUiBinding() : SessionUiBinding(true) {}
   explicit SessionUiBinding(bool capture_logs) : session_(ui_session_create()) {
     if (session_ && capture_logs)
@@ -99,10 +104,6 @@ private:
 };
 
 EMSCRIPTEN_BINDINGS(ascii_chat_session_ui) {
-  emscripten::function(
-      "browser_ui_audio", +[](int value) { return static_cast<int>(options_set_bool("audio_enabled", value != 0)); });
-  emscripten::function("browser_ui_fps", +[]() { return static_cast<int>(GET_OPTION(fps_counter)); });
-  emscripten::function("browser_ui_volume", +[]() { return static_cast<double>(GET_OPTION(speakers_volume)); });
   emscripten::class_<SessionUiBinding>("SessionUiBinding")
       .constructor<>()
       .constructor<bool>()
@@ -116,5 +117,8 @@ EMSCRIPTEN_BINDINGS(ascii_chat_session_ui) {
       .function("key", &SessionUiBinding::key)
       .function("tick", &SessionUiBinding::tick)
       .function("clear", &SessionUiBinding::clear)
-      .function("redraw", &SessionUiBinding::redraw);
+      .function("redraw", &SessionUiBinding::redraw)
+      .class_function("setAudio", &SessionUiBinding::setAudio)
+      .class_function("fps", &SessionUiBinding::fps)
+      .class_function("volume", &SessionUiBinding::volume);
 }
