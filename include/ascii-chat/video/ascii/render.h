@@ -18,6 +18,14 @@
 typedef enum { ASCII_COLOR_NONE, ASCII_COLOR_16, ASCII_COLOR_256, ASCII_COLOR_TRUE } ascii_color_t;
 
 /** A renderer-owned history; one instance must not be shared by independent streams. */
+/**
+ * @struct ascii_stabilizer_t
+ * @brief For ascii stabilizer, this is the live record that ties `cells`, `width`, `height`, `configuration` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ */
+/**
+ * @struct ascii_temporal_cell_t
+ * @brief ascii temporal cell keeps the values that move through the subsystem: `glyph`, `color`, `background`, `source_owner`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
 typedef struct {
   uint8_t samples[16];
   uint8_t rgb_samples[3][16];
@@ -60,6 +68,10 @@ char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int str
                               const simd_cells_t *ops);
 
 /** Prepared row storage shared by ISA-owned processing loops. No pixel work occurs here. */
+/**
+ * @struct ascii_frame_t
+ * @brief When code needs to work with ascii frame, it keeps `output`, `output_target`, `width`, `source_height` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ */
 typedef struct {
   outbuf_t output;
   outbuf_t *output_target;
