@@ -189,6 +189,11 @@ function(ascii_defer_finish_batches)
             if(_prerequisites)
                 add_dependencies("ascii-defer-${_id}" ${_prerequisites})
             endif()
+            if(USE_MUSL AND TARGET ffmpeg-musl)
+                # FFmpeg headers are installed by an ExternalProject and must
+                # exist before libclang parses video sources for defer.
+                add_dependencies("ascii-defer-${_id}" ffmpeg-musl)
+            endif()
             list(REMOVE_DUPLICATES _targets)
             foreach(_target IN LISTS _targets)
                 add_dependencies("${_target}" "ascii-defer-${_id}")
