@@ -602,7 +602,11 @@ terminal_size_t ui_controller_size(void) {
     terminal_size_t detected = {0};
     asciichat_errno_scope_t scope = errno_scope_begin();
     int fd = atomic_load(&g_default_fd);
-    if (platform_isatty(fd) && terminal_get_size_fd(fd, &detected) == ASCIICHAT_OK && detected.cols > 0 &&
+    bool can_query_geometry = platform_isatty(fd);
+#ifdef PLATFORM_IOS
+    can_query_geometry = true;
+#endif
+    if (can_query_geometry && terminal_get_size_fd(fd, &detected) == ASCIICHAT_OK && detected.cols > 0 &&
         detected.rows > 0)
       size = detected;
     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
