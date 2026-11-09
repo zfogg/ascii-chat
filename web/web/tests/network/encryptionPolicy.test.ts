@@ -46,13 +46,14 @@ vi.mock("../../src/wasm/client", async (importOriginal) => ({
   initClientWasm: vi.fn().mockResolvedValue(undefined),
   cleanupClientWasm: vi.fn(),
   configureClientCrypto: vi.fn().mockResolvedValue(undefined),
+  configureBrowserCapabilities: vi.fn(),
   generateKeypair: vi.fn().mockResolvedValue("public-key"),
   processClientEvent: vi.fn((event: Record<string, unknown>) => {
     if (event["type"] === "begin-handshake") {
       const code = beginHandshake(event["mode"]);
       return { code, state: ConnectionState.HANDSHAKE };
     }
-    if (event["type"] === "serialize") {
+    if (event["type"] === "encode-packet") {
       const payload = event["payload"] as Uint8Array;
       const bytes = new Uint8Array(22 + payload.length);
       new DataView(bytes.buffer).setUint16(
@@ -64,6 +65,12 @@ vi.mock("../../src/wasm/client", async (importOriginal) => ({
       return { code: 0, state: ConnectionState.CONNECTED, bytes };
     }
     if (event["type"] === "crypt")
+      return {
+        code: 0,
+        state: ConnectionState.CONNECTED,
+        bytes: event["packet"],
+      };
+    if (event["type"] === "secure-packet")
       return {
         code: 0,
         state: ConnectionState.CONNECTED,
@@ -109,7 +116,8 @@ describe("WebSocket encryption defaults", () => {
       vi
         .mocked(processClientEvent)
         .mock.calls.filter(
-          ([event]) => event["type"] === "crypt" && event["encrypt"] === true,
+          ([event]) =>
+            event["type"] === "secure-packet" && event["encrypt"] === true,
         ),
     ).toHaveLength(encrypted ? 1 : 0);
     expect(new DataView(sockets.sent[0]!.buffer).getUint16(8, false)).toBe(
@@ -130,7 +138,8 @@ describe("WebSocket encryption defaults", () => {
       vi
         .mocked(processClientEvent)
         .mock.calls.filter(
-          ([event]) => event["type"] === "crypt" && event["encrypt"] === true,
+          ([event]) =>
+            event["type"] === "secure-packet" && event["encrypt"] === true,
         ),
     ).toHaveLength(1);
     connection.disconnect();
@@ -287,7 +296,8 @@ describe("authentication without payload encryption", () => {
       vi
         .mocked(processClientEvent)
         .mock.calls.filter(
-          ([event]) => event["type"] === "crypt" && event["encrypt"] === true,
+          ([event]) =>
+            event["type"] === "secure-packet" && event["encrypt"] === true,
         ),
     ).toHaveLength(0);
     connection.disconnect();

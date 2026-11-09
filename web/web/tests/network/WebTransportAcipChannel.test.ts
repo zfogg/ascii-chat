@@ -21,17 +21,16 @@ const state = vi.hoisted(() => ({
         return { code: 0, mode: 1, state: 1 };
       if (event.type === "quic-init") return { code: 0, state: 1 };
       if (event.type === "quic-tick") return { code: 0, outputs: [], state: 1 };
-      if (event.type === "quic-packet")
+      if (event.type === "quic-packet") {
+        const opened = event.packet!.slice(22);
         return {
           code: 0,
-          bytes:
-            event.operation === "seal"
-              ? wrap(event.packet!)
-              : event.packet!.slice(22),
+          bytes: event.operation === "seal" ? wrap(event.packet!) : opened,
           sequence: 1n,
           state: 1,
         };
-      if (event.type === "serialize")
+      }
+      if (event.type === "encode-packet")
         return {
           code: 0,
           bytes: packet(
