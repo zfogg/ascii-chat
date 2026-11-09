@@ -97,6 +97,12 @@ struct http_client {
   bool http2_mode;
   bool admitted;
   bool request_too_large;
+  bool chunked_initialized;
+  bool chunk_trailers;
+  size_t chunk_size;
+  size_t chunk_decoded_length;
+  size_t chunk_decoded_capacity;
+  uint8_t *chunk_decoded;
   char peer_address[64];
 };
 static size_t http_max_response_body(const http_server_t *server) {
@@ -194,53 +200,98 @@ static void alloc_buffer(uv_handle_t *h, size_t n, uv_buf_t *b) {
   b->len = (unsigned)n;
 }
 static bool decode_chunked_body(http_client_t *c, size_t offset, size_t *body_length) {
-  size_t cursor = offset;
-  size_t decoded_length = 0;
-  uint8_t *decoded = SAFE_MALLOC(c->server->config.max_request_body_bytes, uint8_t *);
-  if (!decoded)
-    return false;
-  while (cursor < c->length) {
-    char *line_end = strstr(c->buffer + cursor, "\r\n");
-    if (!line_end)
-      goto incomplete;
-    char *number_end = NULL;
-    unsigned long long chunk = strtoull(c->buffer + cursor, &number_end, 16);
-    if (number_end == c->buffer + cursor || chunk > SIZE_MAX || (number_end != line_end && *number_end != ';'))
-      goto invalid;
-    cursor = (size_t)(line_end - c->buffer) + 2;
-    if (chunk == 0) {
-      while (true) {
-        char *trailer_end = strstr(c->buffer + cursor, "\r\n");
-        if (!trailer_end)
-          goto incomplete;
-        if (trailer_end == c->buffer + cursor) {
-          *body_length = decoded_length;
-          if (decoded_length)
-            memcpy(c->buffer + offset, decoded, decoded_length);
-          SAFE_FREE(decoded);
-          return true;
+  size_t limit = c->server->config.max_request_body_bytes;
+  if (!c->chunked_initialized) {
+    c->chunked_initialized = true;
+    c->chunk_size = 0;
+    c->chunk_trailers = false;
+    c->chunk_decoded_length = 0;
+    c->chunk_decoded_capacity = 0;
+    c->chunk_decoded = NULL;
+  }
+  for (;;) {
+    if (c->chunk_size) {
+      size_t available = c->length - offset;
+      size_t take = available < c->chunk_size ? available : c->chunk_size;
+      if (take) {
+        if (c->chunk_decoded_length > limit - take) {
+          c->request_too_large = true;
+          goto invalid;
         }
-        cursor = (size_t)(trailer_end - c->buffer) + 2;
+        size_t required = c->chunk_decoded_length + take;
+        if (required > c->chunk_decoded_capacity) {
+          size_t capacity = c->chunk_decoded_capacity ? c->chunk_decoded_capacity : 4096;
+          while (capacity < required) {
+            if (capacity > limit / 2) {
+              capacity = limit;
+              break;
+            }
+            capacity *= 2;
+          }
+          uint8_t *decoded = SAFE_REALLOC(c->chunk_decoded, capacity, uint8_t *);
+          if (!decoded)
+            goto invalid;
+          c->chunk_decoded = decoded;
+          c->chunk_decoded_capacity = capacity;
+        }
+        memcpy(c->chunk_decoded + c->chunk_decoded_length, c->buffer + offset, take);
+        c->chunk_decoded_length += take;
+        c->chunk_size -= take;
+        memmove(c->buffer + offset, c->buffer + offset + take, available - take);
+        c->length -= take;
+        c->buffer[c->length] = 0;
       }
+      if (c->chunk_size)
+        return false;
+      if (c->length - offset < sizeof("\r\n") - 1)
+        return false;
+      if (memcmp(c->buffer + offset, "\r\n", sizeof("\r\n") - 1) != 0)
+        goto invalid;
+      memmove(c->buffer + offset, c->buffer + offset + 2, c->length - offset - 2);
+      c->length -= 2;
+      c->buffer[c->length] = 0;
     }
-    if (chunk > c->server->config.max_request_body_bytes ||
-        decoded_length > c->server->config.max_request_body_bytes - (size_t)chunk) {
+    char *line_end = strstr(c->buffer + offset, "\r\n");
+    if (!line_end)
+      return false;
+    if (line_end == c->buffer + offset) {
+      *body_length = c->chunk_decoded_length;
+      if (*body_length)
+        memcpy(c->buffer + offset, c->chunk_decoded, *body_length);
+      c->length = offset + *body_length;
+      c->buffer[c->length] = 0;
+      SAFE_FREE(c->chunk_decoded);
+      c->chunked_initialized = false;
+      return true;
+    }
+    if (c->chunk_trailers) {
+      size_t line_length = (size_t)(line_end - (c->buffer + offset)) + 2;
+      memmove(c->buffer + offset, c->buffer + offset + line_length, c->length - offset - line_length);
+      c->length -= line_length;
+      c->buffer[c->length] = 0;
+      continue;
+    }
+    char *number_end = NULL;
+    unsigned long long chunk = strtoull(c->buffer + offset, &number_end, 16);
+    if (number_end == c->buffer + offset || chunk > SIZE_MAX || (number_end != line_end && *number_end != ';'))
+      goto invalid;
+    size_t line_length = (size_t)(line_end - (c->buffer + offset)) + 2;
+    memmove(c->buffer + offset, c->buffer + offset + line_length, c->length - offset - line_length);
+    c->length -= line_length;
+    c->buffer[c->length] = 0;
+    if (chunk > limit || c->chunk_decoded_length > limit - (size_t)chunk) {
       c->request_too_large = true;
       goto invalid;
     }
-    if (c->length < cursor + (size_t)chunk + sizeof("\r\n") - 1)
-      goto incomplete;
-    if (memcmp(c->buffer + cursor + (size_t)chunk, "\r\n", sizeof("\r\n") - 1) != 0)
-      goto invalid;
-    memcpy(decoded + decoded_length, c->buffer + cursor, (size_t)chunk);
-    decoded_length += (size_t)chunk;
-    cursor += (size_t)chunk + sizeof("\r\n") - 1;
+    if (chunk == 0) {
+      c->chunk_trailers = true;
+      continue;
+    }
+    c->chunk_size = (size_t)chunk;
   }
-incomplete:
-  SAFE_FREE(decoded);
-  return false;
 invalid:
-  SAFE_FREE(decoded);
+  SAFE_FREE(c->chunk_decoded);
+  c->chunked_initialized = false;
   return false;
 }
 static bool parse_request(http_client_t *c, http_request_t *r) {
