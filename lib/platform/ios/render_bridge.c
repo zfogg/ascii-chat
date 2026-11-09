@@ -67,6 +67,13 @@ void ios_render_bridge_configure(int cols, int rows, double font_size_pt) {
   mutex_unlock(&g_renderer_mutex);
 }
 
+void ios_render_bridge_get_dimensions(int *cols, int *rows) {
+  if (cols)
+    *cols = g_requested_cols;
+  if (rows)
+    *rows = g_requested_rows;
+}
+
 ssize_t ios_render_bridge_write(int fd, const void *data, size_t length) {
   if (!data || length == 0)
     return 0;
@@ -144,9 +151,6 @@ void ios_render_bridge_reset(void) {
   }
   g_renderer_initialized = false;
   g_pending_frame_length = 0;
-  g_requested_cols = 40;
-  g_requested_rows = 48;
-  g_requested_font_size_pt = 6.0;
   atomic_store_explicit(&g_render_sequence, 0, memory_order_release);
   mutex_unlock(&g_renderer_mutex);
 }

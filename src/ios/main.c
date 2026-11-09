@@ -1,7 +1,10 @@
 #include "main.h"
+
+#include <ascii-chat/platform/ios/render_bridge.h>
 #include "../main.h"
 #include <ascii-chat/platform/ios/stdin_bridge.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdatomic.h>
 
 extern int asciichat_main(int argc, char **argv);
@@ -21,8 +24,13 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   static char splash[] = "--splash-screen=true";
   static char color[] = "--color-mode=truecolor";
   static char fps[] = "--fps=60";
-  static char width[] = "--width=40";
-  static char height[] = "--height=48";
+  int render_cols = 40;
+  int render_rows = 48;
+  ios_render_bridge_get_dimensions(&render_cols, &render_rows);
+  static char width[32];
+  static char height[32];
+  snprintf(width, sizeof(width), "--width=%d", render_cols);
+  snprintf(height, sizeof(height), "--height=%d", render_rows);
 #ifdef ASCIICHAT_IOS_SIMULATOR
   static char test_pattern[] = "--test-pattern=0";
 #else

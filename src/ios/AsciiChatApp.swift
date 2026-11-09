@@ -6,6 +6,10 @@ import MetalKit
 import SwiftUI
 import UIKit
 
+private extension Notification.Name {
+    static let iosStopSession = Notification.Name("ascii-chat.ios.stop-session")
+}
+
 @_silgen_name("asciichat_ios_test_frame")
 private func asciichat_ios_test_frame(
     _ pixels: UnsafeMutablePointer<UInt32>,
@@ -192,8 +196,11 @@ private final class CRenderView: MTKView {
         // The bundled terminal font is rendered at 96 DPI. Match the OS
         // display scale so the C bitmap is generated at native pixel density.
         let fontSizePt = 6.0 * Double(scale)
-        let cols = max(1, Int(ceil(Double(pixelWidth) / (10.0 * Double(scale)))))
-        let rows = max(1, Int(ceil(Double(pixelHeight) / (20.0 * Double(scale)))))
+        // At this point size the bundled font's glyph cell is approximately
+        // 6x12 pixels per scale unit. Use the physical pixel dimensions so
+        // the bitmap itself fills the display instead of being enlarged.
+        let cols = max(1, Int(ceil(Double(pixelWidth) / (3.2 * Double(scale)))))
+        let rows = max(1, Int(ceil(Double(pixelHeight) / (12.0 * Double(scale)))))
         ios_render_bridge_configure(Int32(cols), Int32(rows), fontSizePt)
         layer.contentsScale = scale
     }
@@ -224,8 +231,19 @@ private final class CRenderView: MTKView {
               let commandBuffer = commandQueue?.makeCommandBuffer(),
               let ciContext else { return }
         let image = CIImage(cgImage: frame)
-        ciContext.render(image, to: drawable.texture, commandBuffer: commandBuffer,
-                         bounds: image.extent, colorSpace: CGColorSpaceCreateDeviceRGB())
+        let drawableWidth = CGFloat(drawable.texture.width)
+        let drawableHeight = CGFloat(drawable.texture.height)
+        // Fill the physical display; crop the terminal grid when its aspect
+        // ratio differs from the phone display.
+        let scale = max(drawableWidth / image.extent.width,
+                        drawableHeight / image.extent.height)
+        let scaled = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let x = (drawableWidth - scaled.extent.width) * 0.5 - scaled.extent.minX
+        let y = (drawableHeight - scaled.extent.height) * 0.5 - scaled.extent.minY
+        let fitted = scaled.transformed(by: CGAffineTransform(translationX: x, y: y))
+        ciContext.render(fitted, to: drawable.texture, commandBuffer: commandBuffer,
+                         bounds: CGRect(x: 0, y: 0, width: drawableWidth, height: drawableHeight),
+                         colorSpace: CGColorSpaceCreateDeviceRGB())
         commandBuffer.present(drawable)
         commandBuffer.commit()
         lastSequence = sequence
@@ -257,7 +275,7 @@ private final class DisplayCloseOverlay: UIView {
 
         let targetWindow = UIWindow(windowScene: scene)
         targetWindow.frame = hostWindow.bounds
-        targetWindow.windowLevel = .statusBar + 1
+        targetWindow.windowLevel = .normal + 1
         targetWindow.backgroundColor = .clear
         let controller = UIViewController()
         controller.view.backgroundColor = .clear
@@ -277,7 +295,7 @@ private final class DisplayCloseOverlay: UIView {
             // The overlay window sits above the status bar. Position the
             // control immediately below the Dynamic Island/battery area in
             // the scene's point coordinate space.
-            closeButton.topAnchor.constraint(equalTo: controller.view.topAnchor, constant: 64),
+            closeButton.topAnchor.constraint(equalTo: controller.view.safeAreaLayoutGuide.topAnchor, constant: 4),
             closeButton.trailingAnchor.constraint(equalTo: controller.view.trailingAnchor, constant: -8),
             closeButton.widthAnchor.constraint(equalToConstant: 56),
             closeButton.heightAnchor.constraint(equalToConstant: 56),
@@ -333,13 +351,29 @@ private struct WindowFillViewRepresentable: UIViewRepresentable {
 }
 
 private struct CameraAsciiView: View {
+    let onStop: () -> Void
+
     var body: some View {
-        CRenderRepresentable()
-            .background(Color.black)
-            .ignoresSafeArea()
-        .onAppear {
-            requestMediaPermissions()
+        GeometryReader { proxy in
+            ZStack(alignment: .topTrailing) {
+                CRenderRepresentable()
+                    .background(Color.black)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .ignoresSafeArea()
+            Button(action: onStop) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.red.opacity(0.5))
+                    .frame(width: 56, height: 56)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Stop session")
+            .accessibilityHint("Stops rendering and returns to mode and device settings")
+            .padding(.top, proxy.safeAreaInsets.top + 4)
+            .padding(.trailing, 8)
+            }
         }
+        .onAppear { requestMediaPermissions() }
     }
 
     private func requestMediaPermissions() {
@@ -425,9 +459,7 @@ struct ContentView: View {
 
     private var sessionView: some View {
         GeometryReader { proxy in
-            ZStack {
-                CameraAsciiView()
-            }
+            CameraAsciiView(onStop: stopSelectedSession)
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -521,51 +553,29 @@ struct ContentView: View {
     }
 
     var body: some View {
-        GeometryReader { _ in
+        GeometryReader { proxy in
             ZStack {
                 IOSTheme.background.ignoresSafeArea()
-                Group {
-            if sessionStarted || sessionStopping {
-                sessionView
-            } else {
-                settingsView
+                    if sessionStarted || sessionStopping {
+                        sessionView
+                    } else {
+                        settingsView
+                    }
+                    if didStart && !sessionStarted && !sessionStopping {
+                        HStack {
+                            TextField("Send command or answer", text: $commandLine)
+                                .textFieldStyle(.roundedBorder)
+                            Button("Send") {
+                                let text = commandLine + "\n"
+                                text.withCString { pointer in
+                                    _ = ios_stdin_bridge_push(pointer, text.utf8.count)
+                                }
+                                commandLine = ""
             }
-            if didStart && !sessionStarted && !sessionStopping {
-                HStack {
-                    TextField("Send command or answer", text: $commandLine)
-                        .textFieldStyle(.roundedBorder)
-                    Button("Send") {
-                        let text = commandLine + "\n"
-                        text.withCString { pointer in
-                            _ = ios_stdin_bridge_push(pointer, text.utf8.count)
-                        }
-                        commandLine = ""
                     }
                 }
             }
-            if sessionStarted || sessionStopping {
-                VStack {
-                    HStack {
-                        Spacer()
-                        Button(action: stopSelectedSession) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(.red.opacity(0.5))
-                                .frame(width: 56, height: 56)
-                                .contentShape(Rectangle())
-                        }
-                        .disabled(sessionStopping)
-                        .accessibilityLabel("Stop session")
-                        .accessibilityHint("Stops rendering and returns to mode and device settings")
-                        .padding(.trailing, 8)
-                    }
-                    .padding(.top, 8)
-                    Spacer()
-                }
-            }
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .ignoresSafeArea()
         .onAppear {
@@ -611,6 +621,9 @@ struct ContentView: View {
             platform_disable_keepawake()
         }
         .preferredColorScheme(.dark)
+        .onReceive(NotificationCenter.default.publisher(for: .iosStopSession)) { _ in
+            stopSelectedSession()
+        }
     }
 }
 
@@ -623,16 +636,55 @@ final class AsciiChatAppDelegate: UIResponder, UIApplicationDelegate {
     }
 }
 
+private final class IOSRootViewController: UIViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.insetsLayoutMarginsFromSafeArea = false
+
+        let closeButton = UIButton(type: .system)
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        closeButton.setImage(UIImage(systemName: "xmark"), for: .normal)
+        closeButton.tintColor = UIColor.red.withAlphaComponent(0.5)
+        closeButton.accessibilityLabel = "Stop session"
+        closeButton.addAction(UIAction { _ in
+            NotificationCenter.default.post(name: .iosStopSession, object: nil)
+        }, for: .primaryActionTriggered)
+        view.addSubview(closeButton)
+        NSLayoutConstraint.activate([
+            closeButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 8),
+            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+            closeButton.widthAnchor.constraint(equalToConstant: 56),
+            closeButton.heightAnchor.constraint(equalToConstant: 56),
+        ])
+    }
+}
+
 final class AsciiChatSceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
         let window = UIWindow(windowScene: windowScene)
+        window.frame = windowScene.screen.bounds
+        window.bounds = windowScene.screen.bounds
         window.backgroundColor = UIColor(red: 0.035, green: 0.047, blue: 0.10, alpha: 1)
         let hosting = UIHostingController(rootView: ContentView())
         hosting.view.backgroundColor = window.backgroundColor
-        window.rootViewController = hosting
+        let root = IOSRootViewController()
+        root.view.backgroundColor = window.backgroundColor
+        root.addChild(hosting)
+        hosting.view.translatesAutoresizingMaskIntoConstraints = false
+        hosting.edgesForExtendedLayout = [.top, .bottom, .left, .right]
+        hosting.additionalSafeAreaInsets = .zero
+        root.view.addSubview(hosting.view)
+        NSLayoutConstraint.activate([
+            hosting.view.leadingAnchor.constraint(equalTo: root.view.leadingAnchor),
+            hosting.view.trailingAnchor.constraint(equalTo: root.view.trailingAnchor),
+            hosting.view.topAnchor.constraint(equalTo: root.view.topAnchor),
+            hosting.view.bottomAnchor.constraint(equalTo: root.view.bottomAnchor),
+        ])
+        hosting.didMove(toParent: root)
+        window.rootViewController = root
         self.window = window
         window.makeKeyAndVisible()
     }
