@@ -863,14 +863,27 @@ private struct IOSAllOptionsView: View {
                         Text(key.replacingOccurrences(of: "_", with: " ").capitalized)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(IOSTheme.muted)
-                        TextField("Value", text: Binding(
-                            get: { String(describing: values[key] ?? "") },
-                            set: {
-                                let next = Self.coerce($0, like: currentValue)
-                                values[key] = next
-                                changed = true
-                                applyJSON([key: next])
-                            }))
+                        Group {
+                            if Self.isSensitiveOption(key) {
+                                SecureField("Value", text: Binding(
+                                    get: { String(describing: values[key] ?? "") },
+                                    set: {
+                                        let next = Self.coerce($0, like: currentValue)
+                                        values[key] = next
+                                        changed = true
+                                        applyJSON([key: next])
+                                    }))
+                            } else {
+                                TextField("Value", text: Binding(
+                                    get: { String(describing: values[key] ?? "") },
+                                    set: {
+                                        let next = Self.coerce($0, like: currentValue)
+                                        values[key] = next
+                                        changed = true
+                                        applyJSON([key: next])
+                                    }))
+                            }
+                        }
                         .textFieldStyle(.roundedBorder)
                     }
                 }
@@ -892,6 +905,11 @@ private struct IOSAllOptionsView: View {
         if value is Double { return Double(text) ?? 0 }
         if value is NSNumber { return Double(text) ?? 0 }
         return text
+    }
+
+    private static func isSensitiveOption(_ key: String) -> Bool {
+        ["password", "turn_credential", "turn_secret", "encrypt_key", "encrypt_keyfile",
+         "server_key", "client_keys", "discovery_service_key"].contains(key)
     }
 
     private static func sliderRange(for key: String) -> (lowerBound: Double, upperBound: Double, step: Double)? {
