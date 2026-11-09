@@ -10,7 +10,8 @@ extern "C" {
 
 class AsciiRendererBinding {
 public:
-  AsciiRendererBinding(int cols, int rows, double font_size, bool matrix, int selection) {
+  AsciiRendererBinding(int cols, int rows, double font_size, bool matrix, int selection)
+      : output_(emscripten::val::undefined()) {
     term_renderer_config_t config{};
     config.cols = cols;
     config.rows = rows;
@@ -65,23 +66,25 @@ public:
       SET_ERRNO(ERROR_INVALID_STATE, "Terminal renderer has invalid pixel storage");
       return emscripten::val::null();
     }
-    emscripten::val output = emscripten::val::global("Uint8ClampedArray").new_(static_cast<size_t>(w) * h * 4);
+    if (output_.isUndefined() || output_["length"].as<size_t>() != static_cast<size_t>(w) * h * 4)
+      output_ = emscripten::val::global("Uint8ClampedArray").new_(static_cast<size_t>(w) * h * 4);
     const size_t row_bytes = static_cast<size_t>(w) * 4;
     if (static_cast<size_t>(pitch) == row_bytes) {
-      output.call<void>("set", emscripten::val(emscripten::typed_memory_view(row_bytes * h, pixels)));
+      output_.call<void>("set", emscripten::val(emscripten::typed_memory_view(row_bytes * h, pixels)));
     } else {
       for (int row = 0; row < h; ++row) {
-        output.call<void>(
+        output_.call<void>(
             "set", emscripten::val(emscripten::typed_memory_view(row_bytes, pixels + static_cast<size_t>(row) * pitch)),
             row * row_bytes);
       }
     }
-    return output;
+    return output_;
   }
 
 private:
   terminal_renderer_s *renderer_ = nullptr;
   int result_;
+  emscripten::val output_;
 };
 
 EMSCRIPTEN_BINDINGS(ascii_chat_terminal_renderer) {
