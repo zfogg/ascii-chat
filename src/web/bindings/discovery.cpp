@@ -35,9 +35,7 @@ public:
     acds_protocol_init(session_, browser_send, session_);
   }
   ~DiscoveryBinding() {
-    if (session_)
-      acds_protocol_destroy(session_);
-    delete session_;
+    close();
   }
   DiscoveryBinding(const DiscoveryBinding &) = delete;
   DiscoveryBinding &operator=(const DiscoveryBinding &) = delete;
@@ -47,7 +45,16 @@ public:
   uintptr_t callbackToken() const {
     return reinterpret_cast<uintptr_t>(session_);
   }
+  void close() {
+    if (!session_)
+      return;
+    acds_protocol_destroy(session_);
+    delete session_;
+    session_ = nullptr;
+  }
   emscripten::val process(emscripten::val event) {
+    if (!session_)
+      return result(SET_ERRNO(ERROR_INVALID_STATE, "Discovery session is closed"));
     const std::string type = event["type"].as<std::string>();
     if (type == "enter")
       return result(enter(event["create"].as<bool>(), event["name"].as<std::string>(), ProtocolBytes(event["password"])));
@@ -121,5 +128,6 @@ EMSCRIPTEN_BINDINGS(ascii_chat_discovery) {
       .constructor<>()
       .function("valid", &DiscoveryBinding::valid)
       .function("callbackToken", &DiscoveryBinding::callbackToken)
+      .function("close", &DiscoveryBinding::close)
       .function("process", &DiscoveryBinding::process);
 }

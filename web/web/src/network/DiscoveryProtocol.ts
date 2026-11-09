@@ -76,6 +76,7 @@ export class DiscoveryProtocol {
     try {
       this.finish(binding.process({ type: "leave" })["code"] as number);
     } finally {
+      binding.close();
       binding.delete();
       this.binding = null;
       if (this.module.discoverySend === this.forward)
