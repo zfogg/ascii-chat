@@ -513,10 +513,21 @@ if ! command -v vp >/dev/null 2>&1; then
   if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then
     . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"
   fi
+  export PATH="$HOME/.vite-plus/bin:$HOME/.local/share/vite-plus/bin:$PATH"
 fi
 if command -v vp >/dev/null 2>&1; then
   (cd "$(dirname "$0")/.." && vp install --ignore-scripts)
   (cd "$(dirname "$0")/../web" && vp install --ignore-scripts)
 else
   echo >&2 "Vite+ installed; open a new shell and run vp install in the repository and web directories."
+fi
+
+if command -v corepack >/dev/null 2>&1; then
+  corepack enable
+fi
+if command -v pnpm >/dev/null 2>&1; then
+  pnpm install --frozen-lockfile
+else
+  echo >&2 "pnpm is unavailable after dependency setup"
+  exit 1
 fi
