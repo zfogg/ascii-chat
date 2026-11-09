@@ -353,12 +353,16 @@ type NullablePcmSamples = Int16Array | null;
 
 export interface AudioProcessorBinding extends ClassHandle {
   valid(): boolean;
+  error(): number;
+  close(): void;
   process(_0: AudioSamples, _1: AudioSamples): number;
   processBatch(_0: any, _1: any): number;
 }
 
 export interface OpusCodecBinding extends ClassHandle {
   valid(): boolean;
+  error(): number;
+  close(): void;
   encode(_0: PcmSamples): NullableOpusBytes;
   decode(_0: OpusBytes, _1: number): NullablePcmSamples;
 }

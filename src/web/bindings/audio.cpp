@@ -39,8 +39,7 @@ public:
       : processor_(create_processor(sample_rate, bypass, frame_samples, channels)),
         scratch_(processor_ ? frame_samples : 0) {}
   ~AudioProcessorBinding() {
-    if (processor_)
-      audio_processor_destroy(processor_);
+    close();
   }
 
   AudioProcessorBinding(const AudioProcessorBinding &) = delete;
@@ -48,6 +47,16 @@ public:
 
   bool valid() const {
     return processor_ != nullptr;
+  }
+  int error() const {
+    return processor_ ? 0 : ERROR_INIT;
+  }
+  void close() {
+    if (!processor_)
+      return;
+    audio_processor_destroy(processor_);
+    processor_ = nullptr;
+    scratch_.clear();
   }
   int process(AudioSamples input, AudioSamples output) {
     const size_t count = input["length"].as<size_t>();
@@ -117,15 +126,27 @@ public:
     initialized_ = true;
   }
   ~OpusCodecBinding() {
-    if (encoder_)
-      opus_encoder_destroy(encoder_);
-    if (decoder_)
-      opus_decoder_destroy(decoder_);
+    close();
   }
   OpusCodecBinding(const OpusCodecBinding &) = delete;
   OpusCodecBinding &operator=(const OpusCodecBinding &) = delete;
   bool valid() const {
     return initialized_;
+  }
+  int error() const {
+    return initialized_ ? 0 : ERROR_INIT;
+  }
+  void close() {
+    if (encoder_)
+      opus_encoder_destroy(encoder_);
+    if (decoder_)
+      opus_decoder_destroy(decoder_);
+    encoder_ = nullptr;
+    decoder_ = nullptr;
+    initialized_ = false;
+    pcm_.clear();
+    encoded_.clear();
+    input_.clear();
   }
 
   NullableOpusBytes encode(PcmSamples samples) {
@@ -192,11 +213,15 @@ EMSCRIPTEN_BINDINGS(ascii_chat_audio) {
       .constructor<int, bool, unsigned>()
       .constructor<int, bool, unsigned, int>()
       .function("valid", &AudioProcessorBinding::valid)
+      .function("error", &AudioProcessorBinding::error)
+      .function("close", &AudioProcessorBinding::close)
       .function("process", &AudioProcessorBinding::process)
       .function("processBatch", &AudioProcessorBinding::processBatch);
   emscripten::class_<OpusCodecBinding>("OpusCodecBinding")
       .constructor<int, int, int, unsigned>()
       .function("valid", &OpusCodecBinding::valid)
+      .function("error", &OpusCodecBinding::error)
+      .function("close", &OpusCodecBinding::close)
       .function("encode", &OpusCodecBinding::encode)
       .function("decode", &OpusCodecBinding::decode);
 }
