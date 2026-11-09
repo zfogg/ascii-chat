@@ -4,7 +4,18 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/memory.h>
+#include <limits.h>
 #include <string.h>
+
+const char *platform_system_ca_certs_path(void) {
+  static char path[PATH_MAX];
+  NSURL *url = [[NSBundle mainBundle] URLForResource:@"ca-certificates" withExtension:@"pem"];
+  if (!url || !url.path || url.path.length == 0 || url.path.length >= sizeof(path))
+    return NULL;
+  if (![url.path getFileSystemRepresentation:path maxLength:sizeof(path)])
+    return NULL;
+  return path;
+}
 
 asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
   if (!pem_data_out || !pem_size_out)

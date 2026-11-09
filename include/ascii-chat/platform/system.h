@@ -668,6 +668,11 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
  */
 asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out);
 
+#if defined(PLATFORM_IOS)
+/** Return the bundled PEM CA bundle path for libraries that require a file path. */
+const char *platform_system_ca_certs_path(void);
+#endif
+
 // ============================================================================
 // Subprocess Execution
 // ============================================================================

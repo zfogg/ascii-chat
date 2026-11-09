@@ -664,6 +664,13 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   }
   if (*o->otel_ca_file)
     config.tls_ca_file = o->otel_ca_file;
+#if defined(PLATFORM_IOS)
+  else {
+    const char *ios_ca_path = platform_system_ca_certs_path();
+    if (ios_ca_path)
+      config.tls_ca_file = ios_ca_path;
+  }
+#endif
   if (env_status != ASCIICHAT_OK || !config.signals || !config.exporter.endpoint) {
     gotel_command_args_destroy(&command_args);
     return env_status;
