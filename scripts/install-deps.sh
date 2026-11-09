@@ -224,7 +224,16 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     # INFO: DO THIS - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     #brew install yyjson
 
-    curl -fsSL https://bun.com/install | bash
+    for attempt in 1 2 3; do
+      if curl --retry 3 --retry-delay 5 --retry-all-errors -fsSL https://bun.com/install | bash; then
+        break
+      fi
+      if [ "$attempt" -eq 3 ]; then
+        echo >&2 "Failed to install bun after ${attempt} attempts"
+        exit 1
+      fi
+      sleep $((attempt * 10))
+    done
 
     # The source transformer requires LLVM 19 or newer libclang.
     LLVM_VERSIONS="23 22 21 20 19"
@@ -384,7 +393,16 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       rpm-build \
       libvterm-devel freetype-devel fontconfig-devel libicu-devel
 
-    curl -fsSL https://bun.com/install | bash
+    for attempt in 1 2 3; do
+      if curl --retry 3 --retry-delay 5 --retry-all-errors -fsSL https://bun.com/install | bash; then
+        break
+      fi
+      if [ "$attempt" -eq 3 ]; then
+        echo >&2 "Failed to install bun after ${attempt} attempts"
+        exit 1
+      fi
+      sleep $((attempt * 10))
+    done
 
   elif command -v pacman &>/dev/null; then
     echo "Detected pacman package manager"
