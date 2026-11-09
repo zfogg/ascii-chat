@@ -322,6 +322,9 @@ type FacePixels = Uint8ClampedArray;
 type FaceValues = Float32Array;
 
 export interface FaceFollowBinding extends ClassHandle {
+  valid(): boolean;
+  error(): number;
+  close(): void;
   reset(): void;
   detect(_0: FacePixels, _1: number, _2: number, _3: number): number;
   tick(_0: number, _1: boolean): FaceValues;
@@ -331,6 +334,8 @@ type PatternPixels = Uint8ClampedArray;
 
 export interface TestPatternBinding extends ClassHandle {
   valid(): boolean;
+  error(): number;
+  close(): void;
   render(
     _0: number,
     _1: number,

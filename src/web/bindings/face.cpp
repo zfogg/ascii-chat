@@ -12,11 +12,16 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(FaceValues);
 class FaceFollowBinding {
 public:
   FaceFollowBinding() { reset(); }
+  bool valid() const { return !closed_; }
+  int error() const { return valid() ? 0 : ERROR_INVALID_STATE; }
+  void close() { closed_ = true; }
   void reset() {
+    closed_ = false;
     face_follow_init(&state_);
     face_count_ = 0;
   }
   int detect(FacePixels pixels, int width, int height, double now) {
+    if (!valid()) return SET_ERRNO(ERROR_INVALID_STATE, "Face tracker is closed");
     const size_t length = pixels["length"].as<size_t>();
     if (width <= 0 || height <= 0 || width > FACE_FOLLOW_DETECT_WIDTH || height > FACE_FOLLOW_DETECT_HEIGHT ||
         length != static_cast<size_t>(width) * height * 4)
@@ -33,6 +38,7 @@ public:
     return 0;
   }
   FaceValues tick(double now, bool enabled) {
+    if (!valid()) return FaceValues(emscripten::val::global("Float32Array").new_(11));
     face_follow_tick(&state_, now, enabled);
     const std::array<float, 11> values = {
         state_.crop.x, state_.crop.y, state_.crop.w, state_.crop.h,
@@ -46,6 +52,7 @@ public:
   }
 
 private:
+  bool closed_ = false;
   face_follow_state_t state_{};
   std::array<unsigned char, FACE_FOLLOW_DETECT_WIDTH * FACE_FOLLOW_DETECT_HEIGHT * 4> rgba_{};
   std::array<unsigned char, FACE_FOLLOW_DETECT_WIDTH * FACE_FOLLOW_DETECT_HEIGHT * 3> bgr_{};
@@ -58,6 +65,9 @@ EMSCRIPTEN_BINDINGS(ascii_chat_face_follow) {
   emscripten::register_type<FaceValues>("FaceValues", "Float32Array");
   emscripten::class_<FaceFollowBinding>("FaceFollowBinding")
       .constructor<>()
+      .function("valid", &FaceFollowBinding::valid)
+      .function("error", &FaceFollowBinding::error)
+      .function("close", &FaceFollowBinding::close)
       .function("reset", &FaceFollowBinding::reset)
       .function("detect", &FaceFollowBinding::detect)
       .function("tick", &FaceFollowBinding::tick);

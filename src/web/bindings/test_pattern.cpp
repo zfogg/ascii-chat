@@ -16,13 +16,18 @@ public:
       pattern_ = nullptr;
   }
   ~TestPatternBinding() {
-    if (pattern_)
-      test_pattern_destroy(pattern_);
+    close();
   }
   TestPatternBinding(const TestPatternBinding &) = delete;
   TestPatternBinding &operator=(const TestPatternBinding &) = delete;
   bool valid() const {
     return pattern_ != nullptr;
+  }
+  int error() const { return valid() ? 0 : ERROR_INIT; }
+  void close() {
+    if (!pattern_) return;
+    test_pattern_destroy(pattern_);
+    pattern_ = nullptr;
   }
   bool render(int width, int height, int index, double time, bool cadence, PatternPixels output) {
     if (!pattern_) {
@@ -53,5 +58,7 @@ EMSCRIPTEN_BINDINGS(ascii_chat_test_pattern) {
   emscripten::class_<TestPatternBinding>("TestPatternBinding")
       .constructor<int, int>()
       .function("valid", &TestPatternBinding::valid)
+      .function("error", &TestPatternBinding::error)
+      .function("close", &TestPatternBinding::close)
       .function("render", &TestPatternBinding::render);
 }
