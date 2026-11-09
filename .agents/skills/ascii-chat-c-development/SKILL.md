@@ -44,7 +44,8 @@ Keep reusable, platform-independent helpers in the appropriate `lib/` module, es
   `SAFE_CALLOC_DEFER_FREE(name, count, size, pointer_type)`; set the local
   pointer to `NULL` after transferring ownership. Preserve resource release
   ordering, synchronization lifetimes, and allocator families.
-- Do not use defer in header function bodies or inline assembly in a function
+- Do not use defer in `.c` files included by other source files, in header
+  function bodies, or with inline assembly in a function
   with defer. Unsupported control flow and macro forms must fail the build;
   do not work around a diagnostic by silently skipping cleanup. See
   `docs/topics/defer.dox` for restrictions, macro wrappers, `--explain`,

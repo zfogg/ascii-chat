@@ -90,7 +90,9 @@
  * require a compilation database and a single-config Ninja or Unix Makefiles
  * generator. Their generated C and fail-closed behavior are checked together.
  * Directly compiling an untransformed source containing defer fails rather than
- * turning cleanup into a no-op. Panic instrumentation cannot currently be used
+ * turning cleanup into a no-op. A `.c` file included by another source file is
+ * also compiled without its own transformation; avoid defer in such files.
+ * Panic instrumentation cannot currently be used
  * with defer transformation.
  *
  * To inspect an exit without writing a generated file, pass its source line and

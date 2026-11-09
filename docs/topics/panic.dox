@@ -116,6 +116,10 @@
  *
  * @subsection panic_build Building with Panic Instrumentation
  *
+ * @warning Panic instrumentation cannot currently be combined with the defer
+ * source transformation used by this branch. Configuring with
+ * `ASCIICHAT_BUILD_WITH_PANIC=ON` fails until the two pipelines are integrated.
+ *
  * @code{.bash}
  * # Build with panic instrumentation
  * cmake -B build -DASCIICHAT_BUILD_WITH_PANIC=ON

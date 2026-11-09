@@ -109,7 +109,7 @@
  * | `BUILD_TESTS=ON` | Build native test targets |
  * | `ASCIICHAT_ENABLE_COVERAGE=ON` | Add coverage instrumentation |
  * | `ASCIICHAT_ENABLE_ANALYZERS=ON` | Enable configured Clang-tidy/cppcheck analysis |
- * | `ASCIICHAT_BUILD_WITH_PANIC=ON` | Build panic/source instrumentation |
+ * | `ASCIICHAT_BUILD_WITH_PANIC=ON` | Request panic/source instrumentation (currently incompatible with defer) |
  * | `ASCIICHAT_USE_PCH=OFF` | Disable precompiled headers |
  * | `ASCIICHAT_ENABLE_UNITY_BUILDS=ON` | Batch sources for faster builds |
  * | `USE_MUSL=ON` | Select the Linux musl path |
