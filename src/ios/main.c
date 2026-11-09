@@ -120,7 +120,9 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
     argv[argc++] = simulator_discovery_port;
     argv[argc++] = simulator_discovery_insecure;
   }
-  if (mode == ASCIICHAT_IOS_MODE_MIRROR) {
+  // The simulator has no camera device. Use the shared synthetic source for
+  // client transport tests; device builds always use the native camera path.
+  if (mode == ASCIICHAT_IOS_MODE_MIRROR || mode == ASCIICHAT_IOS_MODE_CLIENT) {
     argv[argc++] = test_pattern;
   }
 #endif
