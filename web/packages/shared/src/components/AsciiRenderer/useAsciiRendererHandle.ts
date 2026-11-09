@@ -127,6 +127,7 @@ export function useAsciiRendererHandle({
     const module = moduleRef.current;
     if (!module || !setupDoneRef.current) return null;
     if (uiModuleRef.current !== module || !uiRef.current) {
+      uiRef.current?.close();
       uiRef.current?.delete();
       uiRef.current = null;
       uiModuleRef.current = null;
@@ -300,6 +301,7 @@ export function useAsciiRendererHandle({
   }, [ensureUi, paintFrame, resizeTimeoutRef]);
   useEffect(
     () => () => {
+      uiRef.current?.close();
       uiRef.current?.delete();
       uiRef.current = null;
       uiModuleRef.current = null;

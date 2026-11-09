@@ -14,6 +14,7 @@ class TestSessionUi {
   loading() {}
   log() {}
   redraw() {}
+  close() {}
   delete() {}
   media(text: string) {
     this.frame = text;
@@ -195,6 +196,7 @@ it("releases an invalid UI binding immediately", () => {
           valid() {
             return false;
           }
+          close() {}
           delete = dispose;
         },
       },
