@@ -820,7 +820,7 @@ struct ContentView: View {
         guard sessionStarted, !sessionStopping else { return }
         sessionStopping = true
         sessionModel.stopRequested()
-        launchMessage = "Stopping (selectedMode.title.lowercased())…"
+        launchMessage = "Stopping \(selectedMode.title.lowercased())…"
         asciichat_ios_request_stop()
         platform_disable_keepawake()
     }
