@@ -260,7 +260,9 @@ asciichat_error_t quic_accept(acip_quic_endpoint_t *endpoint, acip_transport_t *
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC listener");
   mutex_lock(&endpoint->lane);
   endpoint_transport_t *item = endpoint->transports;
-  while (item && (item->claimed || (endpoint->tls->webtransport && !quic_connection_accept_ready(item->connection))))
+  bool generic_http3 = endpoint->tls->http3 && !endpoint->tls->webtransport;
+  while (item && (item->claimed || generic_http3 ||
+                  (endpoint->tls->webtransport && !quic_connection_accept_ready(item->connection))))
     item = item->next;
   asciichat_error_t result = ASCIICHAT_OK;
   if (item) {

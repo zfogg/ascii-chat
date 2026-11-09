@@ -2,11 +2,11 @@
 
 #include <ascii-chat/network/acip/transport.h>
 
-/** QUIC endpoint for native ACIP and optional HTTP/3 WebTransport. A listener
- * @brief When code needs to work with acip quic config, it keeps `alpn`, `certificate_file`, `private_key_file`,
- * `ca_file` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown
- * must release any allocation, lock, thread, or callback context recorded in those fields. can negotiate both wire
- * protocols by ALPN on one UDP socket. Requires the platform socket subsystem to be initialized. */
+/** QUIC endpoint for native ACIP and optional HTTP/3/WebTransport. Native
+ * ACIP transports are returned by quic_accept(); generic HTTP/3 request
+ * connections are consumed by the configured http_server and are never
+ * exposed as ACIP transports. A listener negotiates the selected ALPN on one
+ * UDP socket and requires the platform socket subsystem to be initialized. */
 typedef struct acip_quic_endpoint acip_quic_endpoint_t;
 typedef struct http_server http_server_t;
 
