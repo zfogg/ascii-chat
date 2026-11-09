@@ -214,6 +214,24 @@ def test_batch_depfile_cannot_replace_any_source(
     assert not (tmp_path / "a.out.c").exists()
 
 
+def test_incremental_cache_cannot_replace_source(tmp_path: Path, base_environment: dict[str, str]) -> None:
+    binary = base_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    if not binary:
+        pytest.skip("native defer binary was not supplied")
+    source = tmp_path / "generated.cache"
+    source.write_text("void f(void) {}\n", encoding="utf-8")
+    output = tmp_path / "generated" / "output.c"
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text(f"{source}\t{output}\n", encoding="utf-8")
+    result = subprocess.run(
+        [binary, "--batch", str(manifest), "--compilation-database", str(tmp_path), "--dependency-stamps", "--incremental"],
+        capture_output=True, text=True, env=base_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert "incremental cache must not overwrite" in result.stderr
+    assert source.read_text(encoding="utf-8") == "void f(void) {}\n"
+
+
 def test_parameter_shadowing_function_name(
     tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
@@ -1164,6 +1182,8 @@ def test_cmake_discovers_defer_and_tracks_headers(
     assert "Transforming defer source batch" in output
     assert second_object.stat().st_mtime_ns == second_mtime
     assert main_object.stat().st_mtime_ns > main_mtime
+    if backend != "PYTHON":
+        assert "defer-tool: transformed 1 of " in output
     run(str(executable))
     output = run(cmake, "--build", str(build))
     assert "Re-running CMake" not in output
@@ -1236,6 +1256,15 @@ def test_cmake_discovers_defer_and_tracks_headers(
     assert other_generated.stat().st_mtime_ns == other_before
     assert other_object.stat().st_mtime_ns == object_before
     assert "Transforming defer source batch" not in run(cmake, "--build", str(build))
+    original_main = main.read_text(encoding="utf-8")
+    time.sleep(1.1)
+    main.write_text(original_main + "\nvoid invalid(void) { defer(return); }\n", encoding="utf-8")
+    failed = subprocess.run([cmake, "--build", str(build)], capture_output=True, text=True, env=compiler_environment)
+    assert failed.returncode != 0
+    assert "defer-tool:" in failed.stdout + failed.stderr
+    main.write_text(original_main, encoding="utf-8")
+    run(cmake, "--build", str(build))
+    run(str(executable))
 
 
 @pytest.mark.parametrize("alias_kind", ["same", "hardlink", "symlink"])

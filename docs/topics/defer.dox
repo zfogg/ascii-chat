@@ -84,6 +84,10 @@
  * `ASCIICHAT_DEFER_NATIVE_BINARY` can instead point to a prebuilt host tool.
  * The native tool transforms batch files concurrently using available CPU
  * threads. Pass `--jobs=N` when invoking it directly to set a smaller limit.
+ * During incremental native builds, the batch reuses transformations whose
+ * source, recorded included files, and build context are unchanged; it reports
+ * how many files it transformed. Changes to the compilation database or tool
+ * invalidate the cached transformations.
  * Each generated translation unit has its own directory, and the original
  * source directory remains on Clang's quoted-include search path. Relative
  * includes therefore resolve from the original source tree, including nested
