@@ -72,9 +72,12 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/WebRTC.cmake)
 
 # OpenSSL - SSL/TLS library (required by libdatachannel, libwebsockets, and TURN credentials)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/OpenSSL.cmake)
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND ASCIICHAT_ENABLE_QUIC)
     include(${CMAKE_SOURCE_DIR}/cmake/deps/Quic.cmake)
     asciichat_configure_quic()
+elseif(NOT EMSCRIPTEN)
+    add_library(asciichat-quic INTERFACE)
+    message(STATUS "Native QUIC transport disabled (ASCIICHAT_ENABLE_QUIC=OFF)")
 endif()
 
 # BearSSL - SSL/TLS library for HTTPS key fetching

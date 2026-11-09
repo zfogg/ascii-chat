@@ -154,6 +154,7 @@ option(ASCIICHAT_FORMAT_ONLY "Configure only the source-formatting target withou
 # When ON: src/web/ is added as a CMake subdirectory
 #
 option(BUILD_WEB "Build web components (WASM, browser targets)" OFF)
+option(ASCIICHAT_ENABLE_QUIC "Build the native QUIC transport dependencies" ON)
 
 # =============================================================================
 # Executable Build Configuration
