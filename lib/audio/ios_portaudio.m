@@ -150,6 +150,9 @@ PaError Pa_Terminate(void) {
     [[NSNotificationCenter defaultCenter] removeObserver:g_ios_route_observer];
     g_ios_route_observer = nil;
   }
+  g_ios_selected_device = -1;
+  g_ios_device_count = 0;
+  memset(g_ios_devices, 0, sizeof(g_ios_devices));
   return paNoError;
 }
 const char *Pa_GetErrorText(PaError error) {
