@@ -290,6 +290,24 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslDep.cmake)
 # Dependencies.cmake orchestrates including them all
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
 
+# Homebrew packages can export a different OpenSSL include directory from the
+# one linked by the project. Ensure our selected headers precede those paths;
+# imported targets otherwise mark their includes as system directories, which
+# compilers search after ordinary -I paths regardless of CMake ordering.
+if(APPLE AND OPENSSL_INCLUDE_DIR)
+    foreach(_openssl_target OpenSSL::SSL OpenSSL::Crypto)
+        if(TARGET ${_openssl_target})
+            get_target_property(_openssl_aliased ${_openssl_target} ALIASED_TARGET)
+            if(_openssl_aliased)
+                set_property(TARGET ${_openssl_aliased} PROPERTY SYSTEM FALSE)
+            else()
+                set_property(TARGET ${_openssl_target} PROPERTY SYSTEM FALSE)
+            endif()
+        endif()
+    endforeach()
+    include_directories(BEFORE "${OPENSSL_INCLUDE_DIR}")
+endif()
+
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)
 configure_tomlc17()
 
