@@ -31,8 +31,10 @@ if(PLATFORM_IOS)
         # Get iOS SDK path
         if(BUILD_IOS_SIM)
             execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+            set(LIBSODIUM_BCRYPT_IOS_MIN_FLAG "-mios-simulator-version-min=16.0")
         else()
             execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+            set(LIBSODIUM_BCRYPT_IOS_MIN_FLAG "-miphoneos-version-min=16.0")
         endif()
 
         set(DEP_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf")
@@ -43,7 +45,7 @@ if(PLATFORM_IOS)
                     CC='${CMAKE_C_COMPILER}' \
                     AR='${CMAKE_AR}' \
                     OBJCOPY='${ASCIICHAT_OBJCOPY_EXECUTABLE}' \
-                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0' \
+                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch ${IOS_TARGET_ARCH} ${LIBSODIUM_BCRYPT_IOS_MIN_FLAG}' \
                     HAVE_EXPLICIT_BZERO=0 \
                     make lib CC='${CMAKE_C_COMPILER}' AR='${CMAKE_AR}' OBJCOPY='${ASCIICHAT_OBJCOPY_EXECUTABLE}' && \
                     mkdir -p '${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/lib' '${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/include' && \

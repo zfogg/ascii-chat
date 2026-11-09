@@ -34,8 +34,10 @@ if(PLATFORM_IOS)
         # Get iOS SDK path
         if(BUILD_IOS_SIM)
             execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+            set(BZIP2_IOS_MIN_FLAG "-mios-simulator-version-min=16.0")
         else()
             execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+            set(BZIP2_IOS_MIN_FLAG "-miphoneos-version-min=16.0")
         endif()
 
         message(STATUS "  Downloading bzip2 1.0.8...")
@@ -61,7 +63,7 @@ if(PLATFORM_IOS)
         execute_process(
             COMMAND bash -c "cd '${BZIP2_BUILD_DIR}/bzip2-1.0.8' && \
                     env CC=clang \
-                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0' \
+                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch ${IOS_TARGET_ARCH} ${BZIP2_IOS_MIN_FLAG}' \
                     make -j && \
                     mkdir -p '${BZIP2_PREFIX}/lib' '${BZIP2_PREFIX}/include' && \
                     cp libbz2.a '${BZIP2_PREFIX}/lib/' && \
