@@ -309,7 +309,8 @@ private final class CRenderView: MTKView {
         let pixelHeight = max(1, Int(ceil(bounds.height)))
         // The bundled terminal font is rendered at 96 DPI. Match the OS
         // display scale so the C bitmap is generated at native pixel density.
-        let fontSizePt = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double ?? 6.0
+        let configuredFontSize = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double ?? 0
+        let fontSizePt = configuredFontSize > 0 ? configuredFontSize : 6.0
         // The terminal renderer uses a cell height of approximately twice its
         // glyph advance. Choose rows from the drawable aspect ratio so the C
         // bitmap is scaled uniformly by Metal instead of squeezing glyphs.
@@ -476,7 +477,7 @@ private struct IOSSettingsView: View {
     @State private var reconnectAttempts = 3.0
     @State private var webrtcReconnectAttempts = 3.0
     @State private var webrtcIceTimeout = 10.0
-    @State private var renderFontSize = 6.0
+    @State private var renderFontSize = 0.0
     @State private var renderWidth = 0.0
     @State private var renderHeight = 0.0
     @State private var zalgo = 0.0
@@ -575,8 +576,8 @@ private struct IOSSettingsView: View {
                             }
                     }
                     VStack(alignment: .leading) {
-                        Text("Font size: \(renderFontSize, specifier: "%.1f") pt")
-                        Slider(value: $renderFontSize, in: 3...18, step: 0.5)
+                        Text(renderFontSize <= 0 ? "Font size: Auto" : String(format: "Font size: %.1f pt", renderFontSize))
+                        Slider(value: $renderFontSize, in: 0...18, step: 0.5)
                             .onChange(of: renderFontSize) { _, value in
                                 applyJSON(["render_font_size": value])
                                 renderFontSizeChanged(value)
@@ -1207,9 +1208,10 @@ struct ContentView: View {
         let scale = screen.nativeScale
         let width = max(1, Int(ceil(screen.bounds.width * scale)))
         let height = max(1, Int(ceil(screen.bounds.height * scale)))
-        let cols = max(1, Int(ceil(Double(width) / (fontSize * 0.8333))))
+        let effectiveFontSize = fontSize > 0 ? fontSize : 6.0
+        let cols = max(1, Int(ceil(Double(width) / (effectiveFontSize * 0.8333))))
         let rows = max(1, Int(ceil(Double(cols) * Double(height) / Double(width) * 0.5)))
-        ios_render_bridge_configure(Int32(cols), Int32(rows), fontSize)
+        ios_render_bridge_configure(Int32(cols), Int32(rows), effectiveFontSize)
     }
 
     private func startSelectedSession() {
@@ -1226,7 +1228,7 @@ struct ContentView: View {
             setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1", 1)
         }
 #endif
-        let fontSizePt = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double ?? 6.0
+        let fontSizePt = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double ?? 0
         configureRenderBridge(fontSize: fontSizePt)
         #if targetEnvironment(simulator)
         // The simulator cannot always resolve the Mac's loopback interface as
