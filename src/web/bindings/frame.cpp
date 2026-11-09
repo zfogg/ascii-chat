@@ -17,9 +17,13 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(VisualizationSamples);
 // remain owned by JavaScript. No heap view escapes this synchronous call.
 class MirrorFrameBinding {
 public:
+  MirrorFrameBinding() : context_(mirror_render_context_create()) {}
+  ~MirrorFrameBinding() { mirror_render_context_destroy(context_); }
+  MirrorFrameBinding(const MirrorFrameBinding &) = delete;
+  MirrorFrameBinding &operator=(const MirrorFrameBinding &) = delete;
   static int transformRequired() { return browser_capture_transform_required(); }
   void reset() {
-    session_render_reset_stabilizer();
+    mirror_render_context_reset(context_);
   }
   std::optional<std::string> convert(RgbaBytes rgba, int width, int height, bool contain) {
     const size_t length = rgba["byteLength"].as<size_t>();
@@ -30,7 +34,7 @@ public:
     input_.resize(length);
     emscripten::val view = emscripten::val(emscripten::typed_memory_view(length, input_.data()));
     view.call<void>("set", rgba);
-    char *frame = mirror_convert_frame(input_.data(), width, height, contain);
+    char *frame = mirror_convert_frame(context_, input_.data(), width, height, contain);
     if (!frame) {
       SET_ERRNO(ERROR_DISPLAY, "Mirror frame conversion failed");
       return std::nullopt;
@@ -68,7 +72,7 @@ public:
       emscripten::val part = samples.call<emscripten::val>("subarray", offset, offset + count);
       emscripten::val view = emscripten::val(emscripten::typed_memory_view(count, audio_.data()));
       view.call<void>("set", part);
-      mirror_submit_audio_samples(audio_.data(), static_cast<int>(count), source);
+      mirror_submit_audio_samples(context_, audio_.data(), static_cast<int>(count), source);
       offset += count;
     }
   }
@@ -77,7 +81,7 @@ public:
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio visualization dimensions or source");
       return std::nullopt;
     }
-    char *frame = mirror_render_audio_visualization(width, height, source);
+    char *frame = mirror_render_audio_visualization(context_, width, height, source);
     if (!frame) {
       SET_ERRNO(ERROR_DISPLAY, "Audio visualization rendering failed");
       return std::nullopt;
@@ -88,6 +92,7 @@ public:
   }
 
 private:
+  mirror_render_context_t *context_;
   std::vector<uint8_t> input_;
   std::vector<float> audio_;
 };

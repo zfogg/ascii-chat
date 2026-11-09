@@ -30,8 +30,8 @@ public:
   bool valid() const { return owned_; }
   int error() const { return result_; }
   void resetRender() {
-    if (owned_)
-      session_render_cleanup();
+    // Render state belongs to each MirrorFrameBinding. Session teardown only
+    // owns the shared options/platform lifetime.
   }
   void close() {
     if (!owned_)
