@@ -86,7 +86,10 @@ export interface ClientCryptoOptions {
 /** Commit the peer's effective settings in C before notifying browser observers. */
 export function acceptRemoteRenderSettings(payload: Uint8Array): RuntimeValues {
   if (!wasmModule) throw new Error("Client engine is unavailable");
-  const result = wasmModule.receiveSettings(payload);
+  const settingsBinding = wasmModule.ClientSettingsBinding as unknown as {
+    receive(bytes: Uint8Array): { code: number; json: string | null };
+  };
+  const result = settingsBinding.receive(payload);
   if (result.code) throwWasmError(result.code, "Invalid remote settings");
   if (result.json === null)
     throw new Error("Cannot read effective remote settings");

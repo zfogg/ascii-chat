@@ -511,7 +511,7 @@ const path = require("node:path");
       ackView.setUint32(0, 1);
       ackView.setUint32(12, 90);
       ack.set(acknowledged, 20);
-      const ackResult = m.receiveSettings(ack).code;
+      const ackResult = m.ClientSettingsBinding.receive(ack).code;
       if (ackResult) throw new Error("settings ACK failed: " + ackResult);
       const paletteContract = new Uint8Array(21);
       const paletteView = new DataView(paletteContract.buffer);

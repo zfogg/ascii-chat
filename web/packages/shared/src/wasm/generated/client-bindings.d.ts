@@ -364,6 +364,8 @@ export interface OpusCodecBinding extends ClassHandle {
 
 type ClientSettingsResult = { code: number; json: string | null };
 
+export interface ClientSettingsBinding extends ClassHandle {}
+
 type PeerBytes = Uint8Array;
 
 type NullablePeerBytes = Uint8Array | null;
@@ -529,6 +531,10 @@ interface EmbindModule {
   OpusCodecBinding: {
     new (_0: number, _1: number, _2: number, _3: number): OpusCodecBinding;
   };
+  ClientSettingsBinding: {
+    receive(_0: ClientBytes): ClientSettingsResult;
+    values(): string | undefined;
+  };
   BrowserSessionBinding: {
     new (
       _0: boolean,
@@ -549,7 +555,6 @@ interface EmbindModule {
   AVStateBinding: {
     new (): AVStateBinding;
   };
-  receiveSettings(_0: ClientBytes): ClientSettingsResult;
   ClientFrameBinding: {
     validate(
       _0: ClientBytes,
@@ -570,7 +575,6 @@ interface EmbindModule {
   HostPacketBinding: {
     new (_0: BrowserHostBinding): HostPacketBinding;
   };
-  clientSettings(): string | undefined;
   OptionsBinding: {
     revision(): number;
     patch(_0: OptionsPatch, _1: number): number;

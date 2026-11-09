@@ -30,7 +30,7 @@ const effective = (page: Page) =>
     const { getClientModule } = await import(url);
     const module = getClientModule();
     if (!module) return {};
-    const json = module.clientSettings();
+    const json = module.ClientSettingsBinding.values();
     return json ? JSON.parse(json) : {};
   });
 
