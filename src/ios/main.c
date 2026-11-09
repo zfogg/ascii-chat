@@ -46,6 +46,9 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   // Zero lets a real camera keep its negotiated delivery rate. Synthetic
   // sources select the 60 FPS default in the shared capture pipeline.
   static char fps[] = "--fps=0";
+#ifdef ASCIICHAT_IOS_SIMULATOR
+  static char simulator_audio[] = "--audio=false";
+#endif
   int render_cols = 0;
   int render_rows = 0;
   ios_render_bridge_get_dimensions(&render_cols, &render_rows);
@@ -67,6 +70,7 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   char *argv[] = {program, mode_name, splash, color, fps, width, height, NULL, NULL, NULL};
   int argc = 7;
 #ifdef ASCIICHAT_IOS_SIMULATOR
+  argv[argc++] = simulator_audio;
   if (mode == ASCIICHAT_IOS_MODE_MIRROR) {
     argv[7] = test_pattern;
     argc = 8;

@@ -367,7 +367,13 @@ private struct CameraAsciiView: View {
 #if !targetEnvironment(simulator)
         if asciichat_ios_camera_authorized() == 0 { asciichat_ios_camera_request_access() }
 #endif
-        if asciichat_ios_audio_authorized() == 0 { asciichat_ios_audio_request_access() }
+        // Automated simulator sessions use the synthetic mirror source and do
+        // not need to interrupt the shared TUI test with an AVAudioSession
+        // permission sheet. Interactive/device sessions still request access.
+        if !ProcessInfo.processInfo.arguments.contains("--auto-start-mirror") &&
+            asciichat_ios_audio_authorized() == 0 {
+            asciichat_ios_audio_request_access()
+        }
     }
 }
 
