@@ -9,15 +9,18 @@
 #define HTTP_READ_CAPACITY (1024u * 1024u)
 #define HTTP_HEADER_CAPACITY 64u
 
+typedef struct http_client http_client_t;
+
 struct http_server {
   http_server_config_t config;
   uv_loop_t loop;
   uv_tcp_t listener;
   uv_async_t stop_async;
   bool running;
-  bool loop_started;
+  bool thread_started;
   asciichat_thread_t thread;
   size_t connections;
+  http_client_t *clients;
 };
 struct http_request {
   http_request_info_t info;
@@ -37,16 +40,24 @@ struct http_response {
   size_t body_length;
   bool finished;
 };
-typedef struct {
+struct http_client {
   uv_tcp_t tcp;
   http_server_t *server;
   char *buffer;
   size_t length;
-} http_client_t;
+  http_client_t *next;
+  http_client_t *previous;
+};
 static void stop_async_cb(uv_async_t *async);
 
 static void client_freed(uv_handle_t *handle) {
   http_client_t *c = handle->data;
+  if (c->previous)
+    c->previous->next = c->next;
+  else
+    c->server->clients = c->next;
+  if (c->next)
+    c->next->previous = c->previous;
   if (c->server->connections)
     c->server->connections--;
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE, c->server->connections);
@@ -276,6 +287,10 @@ static void connection_cb(uv_stream_t *l, int status) {
   uv_tcp_init(&s->loop, &c->tcp);
   c->tcp.data = c;
   if (uv_accept(l, (uv_stream_t *)&c->tcp) == 0) {
+    c->next = s->clients;
+    if (s->clients)
+      s->clients->previous = c;
+    s->clients = c;
     s->connections++;
     stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE, s->connections);
     uv_read_start((uv_stream_t *)&c->tcp, alloc_buffer, read_cb);
@@ -286,12 +301,13 @@ static void stop_async_cb(uv_async_t *async) {
   http_server_t *s = async->data;
   if (!uv_is_closing((uv_handle_t *)&s->listener))
     uv_close((uv_handle_t *)&s->listener, NULL);
+  for (http_client_t *c = s->clients; c; c = c->next)
+    client_close(c);
   uv_close((uv_handle_t *)async, NULL);
   uv_stop(&s->loop);
 }
 static void *http_loop_thread(void *arg) {
   http_server_t *s = arg;
-  s->loop_started = true;
   uv_run(&s->loop, UV_RUN_DEFAULT);
   uv_run(&s->loop, UV_RUN_DEFAULT);
   return NULL;
@@ -326,9 +342,12 @@ asciichat_error_t http_server_start(http_server_t *s) {
   if (uv_listen((uv_stream_t *)&s->listener, (int)s->config.max_connections, connection_cb) != 0)
     return SET_ERRNO(ERROR_NETWORK, "Cannot listen for HTTP connections");
   s->running = true;
-  return acthread_create(&s->thread, "http_io", http_loop_thread, s) == 0
-             ? ASCIICHAT_OK
-             : SET_ERRNO(ERROR_THREAD, "Cannot create HTTP event-loop thread");
+  if (acthread_create(&s->thread, "http_io", http_loop_thread, s) != 0) {
+    s->running = false;
+    return SET_ERRNO(ERROR_THREAD, "Cannot create HTTP event-loop thread");
+  }
+  s->thread_started = true;
+  return ASCIICHAT_OK;
 }
 asciichat_error_t http_server_run(http_server_t *s) {
   if (!s || !s->running)
@@ -337,19 +356,26 @@ asciichat_error_t http_server_run(http_server_t *s) {
   return ASCIICHAT_OK;
 }
 void http_server_stop(http_server_t *s) {
-  if (!s)
+  if (!s || !s->running)
     return;
   s->running = false;
-  uv_close((uv_handle_t *)&s->listener, NULL);
-  uv_async_send(&s->stop_async);
-  if (s->loop_started)
+  if (s->thread_started) {
+    uv_async_send(&s->stop_async);
     thread_join(&s->thread, NULL);
+    s->thread_started = false;
+  } else {
+    stop_async_cb(&s->stop_async);
+    while (uv_run(&s->loop, UV_RUN_NOWAIT) != 0)
+      ;
+  }
 }
 void http_server_destroy(http_server_t **p) {
   if (!p || !*p)
     return;
   http_server_t *s = *p;
   http_server_stop(s);
+  while (uv_run(&s->loop, UV_RUN_NOWAIT) != 0)
+    ;
   uv_loop_close(&s->loop);
   SAFE_FREE(s);
   *p = NULL;
