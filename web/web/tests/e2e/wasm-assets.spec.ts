@@ -345,7 +345,9 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
           while (toClient.length) client.receive(toClient.shift()!);
         }
         if (!client.ready || !server.ready)
-          throw new Error("Peer handshake did not finish");
+          throw new Error(
+            `Peer handshake did not finish: client=${client.ready} server=${server.ready} c2s=${toServer.length} s2c=${toClient.length}`,
+          );
         const original = serializePacket(PacketType.PING, new Uint8Array(8), 0);
         let decoded: Uint8Array | null = null;
         let sequence = "";
