@@ -64,8 +64,7 @@ static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_
     protocol_version_packet_t version;
     memcpy(&version, payload, sizeof(version));
     uint8_t mode = version.supports_encryption;
-    if (mode > ACIP_CRYPTO_FULL ||
-        NET_TO_HOST_U16(version.protocol_version) != PROTOCOL_VERSION_MAJOR ||
+    if (mode > ACIP_CRYPTO_FULL || NET_TO_HOST_U16(version.protocol_version) != PROTOCOL_VERSION_MAJOR ||
         NET_TO_HOST_U16(version.protocol_revision) != PROTOCOL_VERSION_MINOR ||
         NET_TO_HOST_U16(version.protocol_patch) != PROTOCOL_VERSION_PATCH)
       return SET_ERRNO(ERROR_CRYPTO, "Unsupported crypto mode or protocol version");
@@ -312,8 +311,7 @@ static asciichat_error_t client_negotiate(acip_transport_t *transport, crypto_ha
       memcpy(&version, payload, sizeof(version));
       if (NET_TO_HOST_U16(version.protocol_version) != PROTOCOL_VERSION_MAJOR ||
           NET_TO_HOST_U16(version.protocol_revision) != PROTOCOL_VERSION_MINOR ||
-          NET_TO_HOST_U16(version.protocol_patch) != PROTOCOL_VERSION_PATCH ||
-          version.supports_encryption != mode)
+          NET_TO_HOST_U16(version.protocol_patch) != PROTOCOL_VERSION_PATCH || version.supports_encryption != mode)
         result = SET_ERRNO(ERROR_CRYPTO_AUTH, "Peer changed requested security mode");
     }
   }
