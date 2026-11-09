@@ -81,3 +81,11 @@ def test_panic_and_defer_build_and_rebuild(tmp_path: Path, backend: str) -> None
         run = subprocess.run([str(executable)], capture_output=True, text=True, check=False)
         assert run.returncode == 0, run.stderr
         assert source.read_text(encoding="utf-8") == original + suffix
+
+    # Neither backend may silently accept an exit whose control flow is unsafe.
+    unsafe = original + '\nstatic void unsafe(void) { __asm__ volatile("nop"); defer((void)0); }\n'
+    source.write_text(unsafe, encoding="utf-8")
+    rejected = subprocess.run([cmake, "--build", str(build)], capture_output=True, text=True, check=False)
+    assert rejected.returncode != 0
+    assert "inline assembly" in rejected.stdout + rejected.stderr
+    assert source.read_text(encoding="utf-8") == unsafe
