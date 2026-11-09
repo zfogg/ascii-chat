@@ -2,7 +2,7 @@
 
 # ascii-chat iOS Client - Implementation Plan (WIP)
 
-> **Status**: Simulator app, shared render bridge, mode selector, live native settings, camera/audio routing, TLS/QUIC dependency wiring, native mirror lifecycle, and device/XCFramework packaging are implemented; client/discovery integration and physical-device validation remain next
+> **Status**: Simulator app, shared render bridge, mode selector, live native settings, camera/audio routing, TLS/QUIC dependency wiring, native mirror/client/discovery dispatch, session-string sharing, and device/XCFramework packaging are implemented; physical-device camera/audio validation and successful live host/ACDS sessions remain open
 > **Last Updated**: 2026-11-08
 > **Goal**: Native iOS app in Swift that uses libasciichat (compiled for iOS) to support server, client, mirror, and discovery modes.
 
@@ -1443,10 +1443,10 @@ produces pixels on screen.
 Because the C code runs unmodified, each mode is just a new options form that
 calls `asciichat_main()` with different argv. The display is the same ModeView.
 
-- [ ] `ClientView.swift` — host/port/password form → starts client_main
-- [ ] `ServerView.swift` — port/max-clients form → starts server_main
-- [ ] `DiscoveryView.swift` — session string entry → starts discovery_main
-- [ ] `KeyboardHandler.swift` — on-screen keyboard → ios_stdin_push()
+- [x] Unified SwiftUI settings/mode view — host/port/session settings → starts the shared native dispatcher
+- [ ] `ServerView.swift` — port/max-clients form → starts server_main (server mode is intentionally not exposed by the iOS selector)
+- [x] Unified Discovery settings — session string entry and ShareLink → starts discovery_main
+- [x] `IOSKeyboardHandler.swift` — hardware and control keys → ios_stdin_push()
 - [ ] `GestureHandler.swift` — tap/swipe → key sequences
 - [ ] Verify: connect iOS client to desktop server, see ASCII video
 - [ ] Verify: run server on iOS, connect desktop client
@@ -1456,13 +1456,13 @@ calls `asciichat_main()` with different argv. The display is the same ModeView.
 
 - [x] App icon, launch screen (bundled in the iOS app target; launch storyboard verified in the simulator build)
 - [x] iPad layout (adaptive SwiftUI root, iPad bundle family, and landscape orientations)
-- [ ] External keyboard support (physical keyboards send to stdin bridge)
-- [ ] Share sheet (share session string)
+- [x] External keyboard support (physical keyboards send to stdin bridge)
+- [x] Share sheet (share session string)
 - [ ] TestFlight distribution
 - [ ] Performance profiling: CGImage vs CALayer vs Metal for pixel display
 - [ ] Battery optimization: ensure render loop FPS matches C-side frame rate
-- [ ] Accessibility
-- [ ] Handle iOS audio interruptions in AVAudioEngine shim (phone calls, etc.)
+- [x] Accessibility labels and hints for startup, settings, TUI, and session controls
+- [x] Handle iOS audio interruptions in AVAudioEngine shim (phone calls, etc.)
 
 ---
 
