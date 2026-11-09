@@ -2,6 +2,7 @@ import { test as base, expect, type Page } from "@playwright/test";
 
 export type BoundaryMeasurement = {
   elapsedMs: number;
+  calls: number;
   resultBytes: number;
   stableResultIdentity: boolean;
 };
@@ -22,6 +23,7 @@ export async function measure(page: Page, expression: string, repeats = 32) {
       }
       return {
         elapsedMs: performance.now() - start,
+        calls: repeats,
         resultBytes,
         stableResultIdentity: first === last,
       } satisfies BoundaryMeasurement;

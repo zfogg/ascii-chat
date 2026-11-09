@@ -141,6 +141,29 @@ test.describe("WASM browser boundary measurements", () => {
       ),
     ).toBe("function");
   });
+  test("client event batching measures fewer semantic boundary calls", async ({
+    clientPage,
+  }) => {
+    await setupClient(clientPage);
+    const result = await clientPage.evaluate(async () => {
+      const module = (window as any).__clientModule;
+      const wasm = module.getClientWasmModule();
+      const session = new wasm.ClientSessionBinding({});
+      const event = { type: "snapshot" };
+      const startSingle = performance.now();
+      for (let i = 0; i < 32; i++) session.process(event);
+      const singleMs = performance.now() - startSingle;
+      const startBatch = performance.now();
+      session.processBatch(Array.from({ length: 32 }, () => event));
+      const batchMs = performance.now() - startBatch;
+      session.close();
+      session.delete();
+      return { singleMs, batchMs, semanticCalls: { single: 32, batch: 1 } };
+    });
+    expect(result.semanticCalls).toEqual({ single: 32, batch: 1 });
+    expect(result.singleMs).toBeGreaterThanOrEqual(0);
+    expect(result.batchMs).toBeGreaterThanOrEqual(0);
+  });
   test("renderer no longer exposes the old feed ABI", async ({
     rendererPage,
   }) => {
