@@ -275,7 +275,7 @@ char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int str
 
 asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, const char *palette) {
   ASCII_OTEL_SCOPE(ASCII_FRAME_INIT);
-  outbuf_t *target = ascii_render_set_output_target(NULL);
+  outbuf_t *target = g_output_target;
   memset(frame, 0, sizeof(*frame));
   if (!image || !image->pixels || image->w <= 0 || image->h <= 0 || !palette || !palette[0])
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid image or palette");
@@ -386,7 +386,7 @@ char *ascii_frame_finish(ascii_frame_t *frame) {
 asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride,
                                         ascii_color_t mode) {
   ASCII_OTEL_SCOPE(ASCII_HALF_FRAME_INIT);
-  outbuf_t *target = ascii_render_set_output_target(NULL);
+  outbuf_t *target = g_output_target;
   memset(frame, 0, sizeof(*frame));
   size_t row_bytes, extent, bytes, capacity;
   if (!rgb || width <= 0 || height <= 0 || mode < ASCII_COLOR_NONE || mode > ASCII_COLOR_TRUE ||

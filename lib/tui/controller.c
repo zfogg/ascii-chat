@@ -5,7 +5,7 @@
 #define TUI_CONTROLLER_BUFFER_BUFFER_SIZE 16384
 
 /* Existing buffer budgets in bytes, including NUL for text storage. */
-#define TUI_MEDIA_SNAPSHOT_CAPACITY 3
+#define TUI_MEDIA_SNAPSHOT_CAPACITY 8
 #define TUI_LAYER_CAPACITY 3
 
 #include <ascii-chat/otel.h>
