@@ -340,10 +340,11 @@ runs:
         sudo bash scripts/install-deps.sh --dangerously-delete-conflicts
 
         # install-deps.sh also prepares the Python environment with uv. Since
-        # the package installation above runs as root, return ownership of the
-        # project environment to the GitHub runner before later uv commands.
+        # the package installation above runs as root, discard that root-owned
+        # project venv so the following runner-user uv sync can recreate it
+        # against the runner user's uv-managed Python.
         if [ -d tests/ascii_chat_tests/.venv ]; then
-          sudo chown -R "$(id -u):$(id -g)" tests/ascii_chat_tests/.venv
+          sudo rm -rf tests/ascii_chat_tests/.venv
         fi
 
         # Install any extra packages requested by the workflow
