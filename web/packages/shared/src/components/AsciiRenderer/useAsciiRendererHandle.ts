@@ -76,7 +76,6 @@ export function useAsciiRendererHandle({
   const presentedFrameTimesRef = useRef<number[]>([]);
   const lastReportedFpsRef = useRef<number | null>(null);
   const fpsDisplayRef = useRef<HTMLDivElement>(null);
-  const imageDataRef = useRef<ImageData | null>(null);
   const lastFrameChangedRef = useRef(false);
   const lastContentRef = useRef("");
 

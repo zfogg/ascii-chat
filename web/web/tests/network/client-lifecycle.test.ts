@@ -24,7 +24,7 @@ vi.mock("../../src/wasm/client", async (original) => ({
   cleanupClientWasm: harness.cleanup,
   setServerAddress: harness.address,
   registerSendPacketCallback: harness.callback,
-  getClientModule: () => ({ client_handshake_begin: harness.begin }),
+  beginClientHandshake: harness.begin,
 }));
 vi.mock("../../src/network/SocketBridge", () => ({
   SocketBridge: class {

@@ -43,7 +43,7 @@ async function observe(page: Page) {
         );
       return patch(values, revision);
     };
-    const renderer = m.TerminalRendererBinding.prototype;
+    const renderer = m.AsciiRendererBinding.prototype;
     const feed = renderer.feed;
     window.__sessionUiFrames = [];
     renderer.feed = function (this: unknown, value: string) {
@@ -328,7 +328,7 @@ test("connected web client shows its C network logs", async ({ page }) => {
   await page.evaluate(async (url) => {
     const { getMirrorModule } = await import(url);
     const m = getMirrorModule();
-    const renderer = m.TerminalRendererBinding.prototype;
+    const renderer = m.AsciiRendererBinding.prototype;
     const feed = renderer.feed;
     window.__sessionUiFrames = [];
     renderer.feed = function (this: unknown, value: string) {

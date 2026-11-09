@@ -522,7 +522,11 @@ export function setServerAddress(serverHost: string, serverPort: number): void {
     `[Client WASM] Setting server address: ${serverHost}:${serverPort}`,
   );
   checkClientEvent(
-    processClientEvent({ type: "set-server", host: serverHost, port: serverPort }),
+    processClientEvent({
+      type: "set-server",
+      host: serverHost,
+      port: serverPort,
+    }),
     "Failed to set server address",
   );
 }
@@ -537,7 +541,8 @@ function handleHandshake(
     stage,
     packet: rawPacket,
   });
-  if (result.code !== 0) throwWasmError(result.code, `Failed to handle ${description}`);
+  if (result.code !== 0)
+    throwWasmError(result.code, `Failed to handle ${description}`);
 }
 
 type ClientEventResult = {
@@ -558,7 +563,10 @@ function processClientEvent(event: Record<string, unknown>): ClientEventResult {
   return clientSession.process(event) as ClientEventResult;
 }
 
-function checkClientEvent(result: ClientEventResult, fallback: string): ClientEventResult {
+function checkClientEvent(
+  result: ClientEventResult,
+  fallback: string,
+): ClientEventResult {
   if (result.code) throwWasmError(result.code, fallback);
   return result;
 }
@@ -638,7 +646,9 @@ export function initPacketSecurity(): void {
 }
 
 export function getSecurityEpoch(): number {
-  return clientInitialized ? (processClientEvent({ type: "quic-state" }).epoch ?? -1) : -1;
+  return clientInitialized
+    ? (processClientEvent({ type: "quic-state" }).epoch ?? -1)
+    : -1;
 }
 
 /** Runs the shared C rekey coordinator and drains its bounded reliable output. */
@@ -673,9 +683,9 @@ export function processSecurePacket(
       throw new Error(`QUIC packet ${operation} failed (${result.code})`);
     throwWasmError(result.code, `QUIC packet ${operation} failed`);
   }
-  if (!result.packet || result.sequence === undefined)
+  if (!result.bytes || result.sequence === undefined)
     throw new Error("QUIC packet operation returned incomplete output");
-  return { packet: result.packet, sequence: result.sequence };
+  return { packet: result.bytes, sequence: result.sequence };
 }
 /** Parse a validated packet and copy its metadata into JavaScript. */
 export function parsePacket(rawPacket: Uint8Array): ParsedPacket {

@@ -21,7 +21,6 @@ import {
   decryptPacket,
   parsePacket,
   serializePacket,
-  getConnectionState,
   configureClientCrypto,
   ConnectionState,
   PacketType,
@@ -30,7 +29,6 @@ import {
   type ClientInitOptions,
   type ClientCryptoOptions,
   isReportedWasmError,
-  throwWasmError,
 } from "../wasm/client";
 import {
   forwardJavaScriptError,

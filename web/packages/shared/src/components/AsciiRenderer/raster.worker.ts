@@ -10,10 +10,12 @@ async function initialize(
 ): Promise<TerminalRendererModule> {
   const module = await createWasmModule<TerminalRendererModule>(clientLikeKind);
   const initializeOptions =
-    clientLikeKind === "mirror" ? module.initMirror : module.initClient;
+    clientLikeKind === "mirror"
+      ? module.initMirror
+      : module.initializeClientOptions;
   if (!initializeOptions)
     throw new Error(`Missing ${clientLikeKind} raster worker initializer`);
-  if (initializeOptions(clientLikeKind))
+  if (initializeOptions({}))
     throw new Error("Cannot initialize raster worker options");
   return module;
 }

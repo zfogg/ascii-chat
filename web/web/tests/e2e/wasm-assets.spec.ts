@@ -11,15 +11,18 @@ test("binding failures record actionable C errors", async ({ page }) => {
   await page.goto("/client");
   const errors = await page.evaluate(async () => {
     const moduleUrl = "/src/wasm/client.ts";
-    const { initClientWasm, getClientWasmModule } = await import(
-      /* @vite-ignore */ moduleUrl
-    );
+    const {
+      initClientWasm,
+      getClientWasmModule,
+      handleHandshakeComplete,
+      parsePacket,
+    } = await import(/* @vite-ignore */ moduleUrl);
     await initClientWasm();
     const m =
       getClientWasmModule() as unknown as import("../../../packages/shared/src/wasm/generated/client-bindings").MainModule;
     const frame = new m.MirrorFrameBinding();
     const processor = new m.AudioProcessorBinding(48000, true, 16);
-    const renderer = new m.TerminalRendererBinding(2, 2, 12, false, 0);
+    const renderer = new m.AsciiRendererBinding(2, 2, 12, false, 0);
     const snapshot = (run: () => unknown) => {
       m.browser_error_dismiss();
       run();
@@ -33,13 +36,10 @@ test("binding failures record actionable C errors", async ({ page }) => {
         snapshot(() =>
           processor.process(new Float32Array(4), new Float32Array(1)),
         ),
-        snapshot(() => renderer.copyPixels(new Uint8ClampedArray(0))),
+        snapshot(() => renderer.render("", 0)),
         snapshot(() => m.faceDetect(new Uint8ClampedArray(1), 1, 1, 0)),
-        snapshot(() => m.handleHandshake(99, new Uint8Array())),
-        ...[0, 1, 2, 3].map((stage) =>
-          snapshot(() => m.handleHandshake(stage, new Uint8Array(1))),
-        ),
-        snapshot(() => m.parsePacketJson(new Uint8Array())),
+        snapshot(() => handleHandshakeComplete(new Uint8Array(1))),
+        snapshot(() => parsePacket(new Uint8Array())),
         snapshot(() => m.parseKey(99, false, new Uint8Array())),
         snapshot(() =>
           m.handoffEncode(
@@ -492,25 +492,20 @@ test("renderer copies stay valid across WASM memory growth", async ({
     frame.submitAudio(samples.subarray(8192), 1);
     const largeAudio = frame.renderAudio(40, 12, 0);
     const chunkedAudio = frame.renderAudio(40, 12, 1);
-    const renderer = new m.TerminalRendererBinding(20, 10, 16, false, 1);
+    const renderer = new m.AsciiRendererBinding(20, 10, 16, false, 1);
     if (!renderer.valid())
       throw new Error(`renderer creation failed: ${renderer.error()}`);
     try {
-      if (renderer.feed("memory growth test"))
-        throw new Error("renderer feed failed");
-      const pixels = new Uint8ClampedArray(
-        renderer.width() * renderer.height() * 4,
-      );
-      if (!renderer.copyPixels(pixels)) throw new Error("pixel copy failed");
+      const pixels = renderer.render("memory growth test", 0);
+      if (!pixels) throw new Error("pixel render failed");
       const snapshot = Array.from(pixels);
       const before = m.HEAPU8.byteLength;
       const largeFrame = new Uint8Array(before);
       if (frame.transform(largeFrame, before / 4, 1))
         throw new Error("could not force memory growth");
       const after = m.HEAPU8.byteLength;
-      const next = new Uint8ClampedArray(pixels.length);
-      if (!renderer.copyPixels(next))
-        throw new Error("pixel copy after growth failed");
+      const next = renderer.render("memory growth test", 0);
+      if (!next) throw new Error("pixel render after growth failed");
       return {
         before,
         after,

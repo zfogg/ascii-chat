@@ -6,5 +6,5 @@ export interface TerminalRendererModule extends Pick<
   MirrorBindings,
   "AsciiRendererBinding" | "initMirror" | "patchOptions"
 > {
-  initClient?: ClientBindings["initClient"];
+  initializeClientOptions?: ClientBindings["initializeClientOptions"];
 }

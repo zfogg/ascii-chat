@@ -8,7 +8,7 @@ const state = vi.hoisted(() => ({
   init: vi.fn(),
   close: vi.fn(),
   begin: vi.fn(() => 0),
-  receive: vi.fn(() => 0),
+  receive: vi.fn(() => 3),
   cryptoPolicy: vi.fn(() => 1),
   sendCallback: null as ((packet: Uint8Array) => void) | null,
 }));
@@ -24,11 +24,8 @@ function wrap(inner: Uint8Array): Uint8Array {
 vi.mock("../../src/wasm/client", () => ({
   initPacketSecurity: state.init,
   tickPacketSecurity: () => [],
-  getClientModule: () => ({
-    client_handshake_begin: state.begin,
-    receiveHandshake: state.receive,
-  }),
-  getConnectionState: () => 3,
+  beginClientHandshake: state.begin,
+  receiveClientHandshake: state.receive,
   ConnectionState: { CONNECTED: 3 },
   registerSendPacketCallback: (callback: (packet: Uint8Array) => void) => {
     state.sendCallback = callback;

@@ -77,8 +77,8 @@ const path = require("node:path");
       if (m.patchOptions(selection, -1))
         throw new Error("waveform selection failed");
       const revision = m.browser_options_revision();
-      const normalProbe = new m.TerminalRendererBinding(1, 1, 24, false, 1);
-      const matrixProbe = new m.TerminalRendererBinding(1, 1, 24, true, 2);
+      const normalProbe = new m.AsciiRendererBinding(1, 1, 24, false, 1);
+      const matrixProbe = new m.AsciiRendererBinding(1, 1, 24, true, 2);
       try {
         if (
           !normalProbe.valid() ||
@@ -91,17 +91,12 @@ const path = require("node:path");
         matrixProbe.delete();
       }
       // The bundled font omits Braille; all eight positions must still render.
-      const brailleRenderer = new m.TerminalRendererBinding(1, 1, 24, false, 1);
+      const brailleRenderer = new m.AsciiRendererBinding(1, 1, 24, false, 1);
       if (!brailleRenderer.valid())
         throw new Error("Braille terminal creation failed");
       const pixelsFor = (text) => {
-        if (brailleRenderer.feed("\x1b[H" + text))
-          throw new Error("Braille terminal feed failed");
-        const pixels = new Uint8ClampedArray(
-          brailleRenderer.width() * brailleRenderer.height() * 4,
-        );
-        if (!brailleRenderer.copyPixels(pixels))
-          throw new Error("Braille copy failed");
+        const pixels = brailleRenderer.render("\x1b[H" + text, 0);
+        if (!pixels) throw new Error("Braille render failed");
         return Array.from(pixels);
       };
       try {
@@ -265,18 +260,15 @@ const path = require("node:path");
       };
       let rendered = false;
       const paint = (text) => {
-        const renderer = new m.TerminalRendererBinding(40, 12, 12, false, 0);
+        const renderer = new m.AsciiRendererBinding(40, 12, 12, false, 0);
         try {
-          if (!renderer.valid() || renderer.feed(text))
-            throw new Error("C terminal render failed");
+          if (!renderer.valid()) throw new Error("C terminal render failed");
           const canvas = document.getElementById("frame");
-          canvas.width = renderer.width();
-          canvas.height = renderer.height();
-          const pixels = new Uint8ClampedArray(
-            canvas.width * canvas.height * 4,
-          );
-          if (!renderer.copyPixels(pixels))
-            throw new Error("C terminal copy failed");
+          const dimensions = renderer.dimensions();
+          canvas.width = dimensions.width;
+          canvas.height = dimensions.height;
+          const pixels = renderer.render(text, 0);
+          if (!pixels) throw new Error("C terminal render failed");
           if (!pixels.some((value, i) => i % 4 !== 3 && value > 0))
             throw new Error("No visible pixels from real frame");
           canvas

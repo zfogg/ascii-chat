@@ -26,6 +26,10 @@ static int init_client(OptionsPatch options) {
   return result ? result : initial_options(options);
 }
 
+static int initialize_client_options(OptionsPatch options) {
+  return init_client(options);
+}
+
 // One JS-owned lifetime controls the module-global client handshake state.
 class ClientSessionBinding {
 public:
@@ -199,7 +203,7 @@ public:
                                                event["delivery"].as<unsigned>(), input.data(), input.size(),
                                                output.data(), output.size(), &length, &sequence);
       emscripten::val response = result(code);
-      response.set("packet", binding_copy_output(output.data(), code ? 0 : length));
+      response.set("bytes", binding_copy_output(output.data(), code ? 0 : length));
       response.set("sequence", emscripten::val::global("BigInt")(std::to_string(sequence)));
       return response;
     }
@@ -296,6 +300,8 @@ EMSCRIPTEN_BINDINGS(ascii_chat_network) {
       .function("valid", &ClientSessionBinding::valid)
       .function("error", &ClientSessionBinding::error)
       .function("process", &ClientSessionBinding::process);
+
+  emscripten::function("initializeClientOptions", &initialize_client_options);
 
   emscripten::function(
       "network_error_action",
