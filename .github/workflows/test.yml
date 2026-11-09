@@ -55,7 +55,7 @@ on:
       - ".github/actions/publish-test-results/**"
 
 permissions:
-  contents: read
+  contents: write
   issues: read
   checks: write
   pull-requests: write
@@ -242,6 +242,17 @@ jobs:
           echo "All files in build/bin:"
           ls -la build/bin/ 2>/dev/null || echo "build/bin/ directory not found"
 
+      - name: Upload Linux release binary for manpage generation
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && matrix.os == 'ubuntu-latest' && matrix.build_type == 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: manpage-linux-release-binary
+          path: |
+            build/bin/ascii-chat
+            build/share/man/man1/ascii-chat.1.in
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Run unit tests
         run: |
           echo "Running tests with build type: ${{ matrix.build_type }}"
@@ -331,6 +342,13 @@ jobs:
             build/Testing/python-*.xml
             build/Testing/criterion-xml/*.xml
           retention-days: 7
+
+  regenerate-manpage:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && needs.unit-tests.result == 'success'
+    needs: unit-tests
+    uses: ./.github/workflows/regenerate-manpage.yml
+    with:
+      binary-artifact: manpage-linux-release-binary
 
   integration-tests:
     needs: preflight

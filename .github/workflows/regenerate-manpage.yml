@@ -1,0 +1,50 @@
+name: Regenerate manpage
+
+on:
+  workflow_call:
+    inputs:
+      binary-artifact:
+        description: Artifact containing the already-built Linux ascii-chat binary
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  regenerate:
+    name: Regenerate and publish manpage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: master
+
+      - name: Download release binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.binary-artifact }}
+          path: .
+
+      - name: Generate manpage
+        env:
+          ASCII_CHAT_QUESTION_PROMPT_RESPONSE: y
+          ASCIICHAT_RESOURCE_DIR: ${{ github.workspace }}/build
+        run: |
+          build/bin/ascii-chat --man-page-create share/man/man1/ascii-chat.1
+          test -s share/man/man1/ascii-chat.1
+
+      - name: Commit and push manpage
+        run: |
+          if git diff --quiet -- share/man/man1/ascii-chat.1 && git ls-files --error-unmatch share/man/man1/ascii-chat.1 >/dev/null 2>&1; then
+            echo "Manpage is unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add share/man/man1/ascii-chat.1
+          git commit -m "docs: regenerate manpage"
+          git push origin HEAD:master
