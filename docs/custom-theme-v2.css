@@ -14,31 +14,124 @@ html {
 }
 
 /*
+ * Doxygen 1.18 includes a prefers-color-scheme block in doxygen.css.  It is
+ * useful for an untouched Doxygen site, but it also treats `html:not(.dark-mode)`
+ * as dark when the operating system prefers dark mode.  That makes the site's
+ * explicit light theme inherit black surfaces and pale navigation text.  Keep
+ * the light choice self-contained and readable regardless of the OS setting.
+ */
+html:not(.dark-mode) {
+  color-scheme: light;
+
+  --page-background-color: #f8fafc;
+  --page-foreground-color: #172033;
+  --page-link-color: #b3176d;
+  --page-visited-link-color: #8f1558;
+  --page-external-link-color: #9d185f;
+  --header-background-color: #f8fafc;
+  --header-separator-color: #d7deea;
+  --title-background-color: #f8fafc;
+  --title-separator-color: #d7deea;
+  --nav-background-color: #eef2f7;
+  --nav-foreground-color: #24324a;
+  --nav-border-color: #d7deea;
+  --nav-text-normal-color: #334155;
+  --nav-menu-button-color: #24324a;
+  --nav-menu-background-color: #f8fafc;
+  --nav-menu-foreground-color: #334155;
+  --nav-menu-active-bg: #e2e8f0;
+  --nav-menu-active-color: #8f1558;
+  --search-background-color: #05070b;
+  --search-foreground-color: #e5e7eb;
+  --search-active-color: #ffffff;
+  --search-box-border-color: #e91e8c;
+  --fragment-background-color: #eef2f7;
+  --fragment-foreground-color: #172033;
+  --fragment-border-color: #d7deea;
+  --fragment-lineno-background-color: #e2e8f0;
+  --fragment-lineno-foreground-color: #475569;
+  --code-background: #eef2f7;
+}
+
+html:not(.dark-mode) body,
+html:not(.dark-mode) #container,
+html:not(.dark-mode) #doc-content,
+html:not(.dark-mode) .contents,
+html:not(.dark-mode) .PageDoc,
+html:not(.dark-mode) #titlearea {
+  background-color: var(--page-background-color) !important;
+  color: var(--page-foreground-color) !important;
+}
+
+html:not(.dark-mode) #side-nav,
+html:not(.dark-mode) #nav-tree,
+html:not(.dark-mode) #nav-tree-contents {
+  background-color: var(--nav-background-color) !important;
+  color: var(--nav-foreground-color) !important;
+}
+
+html:not(.dark-mode) #projectname,
+html:not(.dark-mode) #projectbrief,
+html:not(.dark-mode) #projectnumber,
+html:not(.dark-mode) #side-nav a,
+html:not(.dark-mode) #nav-tree a {
+  color: var(--nav-text-normal-color) !important;
+}
+
+html:not(.dark-mode) #side-nav a:hover,
+html:not(.dark-mode) #nav-tree a:hover,
+html:not(.dark-mode) #side-nav .selected,
+html:not(.dark-mode) #nav-tree .selected {
+  color: var(--nav-menu-active-color) !important;
+}
+
+html:not(.dark-mode) #MSearchBox {
+  background: var(--search-background-color) !important;
+  color: var(--search-foreground-color) !important;
+  border-color: var(--search-box-border-color) !important;
+}
+
+html:not(.dark-mode) #MSearchField,
+html:not(.dark-mode) #MSearchField::placeholder {
+  color: var(--search-foreground-color) !important;
+}
+
+/*
  * The sidebar-only theme leaves the generated contents wrapper shrink-wrapped
  * at some desktop widths. Let documentation use the whole area to the right
  * of the fixed navigation rail instead of centering a narrow column in it.
  */
 /* Keep the fixed-sidebar layout active at browser zoom levels too. */
-@media screen and (min-width: 600px) {
+@media screen {
   /* Give the sidebar header its own vertical stack: search first, then the
    * project logo/name. The sidebar-only theme's 31px header height otherwise
    * lets the search row paint over the project row. */
   #top {
-    height: 150px !important;
-    margin-bottom: -150px !important;
+    height: 185px !important;
+    margin-bottom: -185px !important;
     display: block !important;
   }
 
   #titlearea {
-    padding-top: 78px;
+    padding-top: 112px;
     padding-left: calc(var(--spacing-large) + 4px);
     padding-right: calc(var(--spacing-large) + 4px);
   }
 
   #MSearchBox {
     position: absolute;
+    top: 46px;
+    left: var(--spacing-medium);
+  }
+
+  /* The dark-mode script appends its toggle beside #MSearchBox. Keep the
+   * toggle in its own row above the search field instead of letting the two
+   * controls occupy the same coordinates. */
+  doxygen-awesome-dark-mode-toggle {
+    position: absolute;
     top: 10px;
     left: var(--spacing-medium);
+    z-index: 2;
   }
 
   #doc-content > div,
@@ -81,4 +174,3 @@ html {
     margin-right: var(--spacing-medium);
   }
 }
-

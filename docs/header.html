@@ -48,7 +48,28 @@
       src="$relpath^doxygen-awesome-interactive-toc.js"
     ></script>
     <script type="text/javascript">
-      DoxygenAwesomeDarkModeToggle.init();
+      // Doxygen 1.18 no longer emits jquery.js, while the upstream toggle
+      // still uses its ready/resize wrapper. Initialize the same control with
+      // native DOM events so the theme switch remains usable.
+      document.addEventListener("DOMContentLoaded", function () {
+        function addThemeToggle() {
+          var searchBox = document.getElementById("MSearchBox");
+          if (
+            !searchBox ||
+            document.querySelector("doxygen-awesome-dark-mode-toggle")
+          ) {
+            return;
+          }
+          var toggleButton = document.createElement(
+            "doxygen-awesome-dark-mode-toggle",
+          );
+          toggleButton.title = DoxygenAwesomeDarkModeToggle.title;
+          toggleButton.updateIcon();
+          searchBox.parentNode.appendChild(toggleButton);
+        }
+        addThemeToggle();
+        window.addEventListener("resize", addThemeToggle);
+      });
       DoxygenAwesomeFragmentCopyButton.init();
       DoxygenAwesomeParagraphLink.init();
       DoxygenAwesomeInteractiveToc.init();
@@ -59,7 +80,10 @@
       document.addEventListener("DOMContentLoaded", function () {
         function addTopicCategories() {
           var nav = document.querySelector("#nav-tree-contents ul");
-          if (!nav || nav.querySelector('a[href="group__topic__categories.html"]')) {
+          if (
+            !nav ||
+            nav.querySelector('a[href="group__topic__categories.html"]')
+          ) {
             return !!nav;
           }
 
@@ -72,7 +96,10 @@
           item.className = topics.parentElement.parentElement.className;
           item.innerHTML =
             '<a class="el" href="group__topic__categories.html">Topic Categories</a>';
-          topics.parentElement.parentElement.insertAdjacentElement("afterend", item);
+          topics.parentElement.parentElement.insertAdjacentElement(
+            "afterend",
+            item,
+          );
           return true;
         }
 

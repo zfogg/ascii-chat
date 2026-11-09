@@ -36,6 +36,23 @@
  * ascii-chat client localhost --file music.wav --audio-capture-source both --render-file call.mp4
  * ```
  *
+ * A few practical variations:
+ *
+ * ```sh
+ * # Record a local webcam preview with the default audio policy.
+ * ascii-chat mirror --render-file webcam-session.mp4
+ *
+ * # Record a test pattern without camera or microphone hardware.
+ * ascii-chat mirror --test-pattern --audio=false --render-file pattern.mp4
+ *
+ * # Record a remote call while also playing a local media source.
+ * ascii-chat client localhost --file backing-track.mp3 --audio-capture-source both \
+ *   --render-file call-with-track.mp4
+ *
+ * # Produce a terminal-readable snapshot instead of a video file.
+ * ascii-chat mirror --file clip.mp4 --snapshot --snapshot-delay 0 > first-frame.txt
+ * ```
+ *
  * Video containers such as MP4 and WebM support audio. Still images and GIF do not.
  *
  * Use `--render-font default`, `--render-font matrix`, or an absolute font-file path

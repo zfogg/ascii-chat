@@ -14,6 +14,20 @@
  * ascii-chat client localhost --test-pattern=0
  * ```
  *
+ * Test patterns are useful for checking the whole display path without a
+ * camera or media file:
+ *
+ * ```sh
+ * # Check a narrow terminal and force a predictable renderer.
+ * ascii-chat mirror --test-pattern --width 80 --height 24 --color-mode 16
+ *
+ * # Capture one frame for a regression fixture.
+ * ascii-chat mirror --test-pattern 1 --snapshot --snapshot-delay 0 > pattern.txt
+ *
+ * # Exercise a remote session's receive and render path with synthetic video.
+ * ascii-chat client localhost --test-pattern --audio=false --fps 10
+ * ```
+ *
  * `WEBCAM_DISABLED=1` remains a boolean enable switch; with default configuration it enables pattern zero. Existing boolean `[webcam] test_pattern = true/false` configuration remains supported; integer `0` or `1` enables the selected animation. CLI selection overrides configuration/environment values.
  *
  * The browser maps `?test` to pattern zero and `?test2` to pattern one. `?test2&testCadence` explicitly enables the full-height Gray-code diagnostic overlay; ordinary `?test2` now shows its stripes and circle.

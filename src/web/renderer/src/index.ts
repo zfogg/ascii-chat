@@ -4,13 +4,7 @@ import type {
   AsciiRendererBinding as RasterBinding,
   TestPatternBinding as PatternBinding,
 } from "@ascii-chat/shared/wasm/generated/mirror-bindings";
-import {
-  Options,
-  ColorMode,
-  paletteName,
-  defaultPalettes,
-  type OptionValues,
-} from "./options.js";
+import { Options, type OptionValues } from "./options.js";
 export {
   Options,
   ColorMode,
@@ -69,68 +63,6 @@ export interface RendererInit {
   moduleUrl?: string | URL;
 }
 const sourceId = (source: AudioSource) => (source === "microphone" ? 0 : 1);
-
-// ANSI truecolor cells are delimited by literal ESC control characters.
-// oxlint-disable-next-line no-control-regex
-const TRUECOLOR_CELL = /\x1b\[38;2;(\d+);(\d+);(\d+)m([^\x1b\n])\x1b\[0m/g;
-
-function paletteCharacter(
-  red: number,
-  green: number,
-  blue: number,
-  characters: string[],
-): string {
-  const luminance = (red * 0.2126 + green * 0.7152 + blue * 0.0722) / 255;
-  return (
-    characters[
-      Math.min(
-        characters.length - 1,
-        Math.round(luminance * (characters.length - 1)),
-      )
-    ] ?? " "
-  );
-}
-
-function ansi16Color(red: number, green: number, blue: number): number {
-  const bright = Math.max(red, green, blue) > 191 ? 60 : 0;
-  const bits =
-    (red > 127 ? 1 : 0) | (green > 127 ? 2 : 0) | (blue > 127 ? 4 : 0);
-  return 30 + bits + bright;
-}
-
-function ansi256Color(red: number, green: number, blue: number): number {
-  const component = (value: number) => Math.round((value / 255) * 5);
-  return 16 + 36 * component(red) + 6 * component(green) + component(blue);
-}
-
-/** Apply browser color-mode and palette settings to one generated audio frame. */
-function formatAudioFrame(frame: string, values: OptionValues): string {
-  const colorMode = Number(values["color_mode"]);
-  const palette = paletteName(Number(values["palette_type"]));
-  const chars =
-    palette === "custom"
-      ? String(values["palette_custom"] ?? "")
-      : defaultPalettes[palette];
-  const characters = Array.from(chars || defaultPalettes.standard);
-  return frame.replace(
-    TRUECOLOR_CELL,
-    (_match, redText, greenText, blueText) => {
-      const red = Number(redText);
-      const green = Number(greenText);
-      const blue = Number(blueText);
-      const character = paletteCharacter(red, green, blue, characters);
-
-      if (colorMode === ColorMode.None) return character;
-      if (colorMode === ColorMode.Ansi16) {
-        return `\x1b[${ansi16Color(red, green, blue)}m${character}\x1b[0m`;
-      }
-      if (colorMode === ColorMode.Ansi256) {
-        return `\x1b[38;5;${ansi256Color(red, green, blue)}m${character}\x1b[0m`;
-      }
-      return `\x1b[38;2;${red};${green};${blue}m${character}\x1b[0m`;
-    },
-  );
-}
 
 /** Each instance creates an independent WASM module and owns all its state. */
 export class AsciiRenderer {
@@ -213,11 +145,7 @@ export class AsciiRenderer {
     this.check();
     const text = this.frame.renderAudio(width, height, sourceId(source));
     if (text === undefined) throw new Error("Audio visualization failed");
-    return this.formatAudioFrame(text);
-  }
-  formatAudioFrame(frame: string): string {
-    this.check();
-    return formatAudioFrame(frame, this.options.read().values);
+    return text;
   }
   reset(): void {
     this.check();
@@ -313,4 +241,5 @@ export class AsciiRenderer {
     if (this.disposed) throw new Error("Renderer has been disposed");
   }
 }
-export const createRenderer = AsciiRenderer.create;
+export const createRenderer = (init?: RendererInit) =>
+  AsciiRenderer.create(init);

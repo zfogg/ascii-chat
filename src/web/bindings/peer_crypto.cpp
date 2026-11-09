@@ -2,6 +2,7 @@
 extern "C" {
 #include "../peer_crypto.h"
 #include "../client.h"
+#include "../security.h"
 }
 #include "networking.h"
 #include <sodium.h>
@@ -82,26 +83,26 @@ public:
     } else if (type == "tick") {
       result.set("code", peer_crypto_tick(peer_.get()));
     } else if (type == "quic-begin") {
-      result.set("code", network_peer_quic_begin(peer_.get()));
+      result.set("code", peer_crypto_quic_begin(peer_.get()));
     } else if (type == "quic-init") {
-      result.set("code", network_peer_quic_init(peer_.get()));
+      result.set("code", browser_security_init(peer_security_context(peer_.get())));
     } else if (type == "quic-tick") {
-      result.set("code", network_peer_quic_tick(peer_.get()));
-      result.set("epoch", network_peer_quic_epoch(peer_.get()));
+      result.set("code", browser_security_tick(peer_security_context(peer_.get())));
+      result.set("epoch", browser_security_epoch(peer_security_context(peer_.get())));
       emscripten::val quic_outputs = emscripten::val::array();
       for (unsigned i = 0; i < 16; ++i) {
-        auto output = network_peer_quic_output(peer_.get());
+        auto output = network_quic_output(peer_security_context(peer_.get()));
         if (output["packet"].isNull()) break;
         quic_outputs.call<void>("push", output);
       }
       result.set("quicOutputs", quic_outputs);
     } else if (type == "quic-epoch") {
-      result.set("epoch", network_peer_quic_epoch(peer_.get()));
+      result.set("epoch", browser_security_epoch(peer_security_context(peer_.get())));
     } else if (type == "quic-packet") {
       auto packet = binding_copy_input(event["packet"]);
       const bool seal = event["seal"].as<bool>();
-      auto packet_result = network_peer_quic_packet(peer_.get(), seal, event["flow"].as<unsigned>(),
-                                                    event["delivery"].as<unsigned>(), event["packet"]);
+      auto packet_result = network_quic_packet(peer_security_context(peer_.get()), seal, event["flow"].as<unsigned>(),
+                                               event["delivery"].as<unsigned>(), event["packet"]);
       emscripten::val packet_value = packet_result;
       result.set("code", packet_value["code"]);
       result.set("packet", packet_value["packet"]);

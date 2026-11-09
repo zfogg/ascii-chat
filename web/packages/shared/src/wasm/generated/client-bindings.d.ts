@@ -378,7 +378,11 @@ type QuicPacketResult = { code: number; sequence: bigint; packet: Uint8Array };
 
 type KeyInput = Uint8Array;
 
-type KeyParseResult = { code: number; bytes: Uint8Array };
+type KeyParseResult = {
+  code: number;
+  bytes: Uint8Array;
+  frames: ErrorFrameResult[];
+};
 
 type ErrorFrameResult = {
   code: number;

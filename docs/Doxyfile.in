@@ -153,6 +153,11 @@ FILE_PATTERNS          = *.c \
                          *.dox \
                          *.md
 
+# .dox files contain C-style documentation blocks. Explicitly map the
+# extension so the distro Doxygen used by GitHub Actions parses @page and
+# @ingroup commands instead of emitting only source-file pages.
+EXTENSION_MAPPING      = dox=C
+
 RECURSIVE              = YES
 
 EXCLUDE_SYMLINKS       = NO

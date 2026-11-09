@@ -68,6 +68,45 @@ test("binding failures record actionable C errors", async ({ page }) => {
   }
 });
 
+test("key parsing preserves unrelated errors and returns only its own frames", async ({
+  page,
+}) => {
+  await page.goto("/client");
+  const result = await page.evaluate(async () => {
+    const moduleUrl = "/src/wasm/client.ts";
+    const { initClientWasm, getClientWasmModule } = await import(
+      /* @vite-ignore */ moduleUrl
+    );
+    await initClientWasm();
+    const module = getClientWasmModule();
+    module.browser_error_dismiss();
+    module.handleHandshake(99, new Uint8Array());
+    const beforeCount = module.errorSnapshot();
+    const before = module.errorFrame(0);
+    const parsed = module.parseKey(3, true, new Uint8Array());
+    const afterCount = module.errorSnapshot();
+    const pending = Array.from({ length: afterCount }, (_, i) =>
+      module.errorFrame(i),
+    );
+    module.browser_error_dismiss();
+    return { beforeCount, before, parsed, pending };
+  });
+  expect(result.beforeCount).toBeGreaterThan(0);
+  expect(result.parsed.code).not.toBe(0);
+  expect(result.parsed.frames.length).toBeGreaterThan(0);
+  expect(result.parsed.frames[0]?.message).toContain(
+    "binary OpenPGP public key",
+  );
+  expect(
+    result.parsed.frames.some(
+      (frame: { message: string }) => frame.message === result.before.message,
+    ),
+  ).toBe(false);
+  expect(
+    result.pending.some((frame) => frame.message === result.before.message),
+  ).toBe(true);
+});
+
 test("face tracking and client public keys use the native bindings", async ({
   page,
 }) => {
@@ -99,7 +138,7 @@ test("face tracking and client public keys use the native bindings", async ({
   expect(result.face[9]).toBe(0);
   expect(result.keyStatus).toBe(0);
   expect(result.key).toMatch(/^[0-9a-f]{64}$/);
-  expect(result.parseError).toContain("Cannot parse browser key");
+  expect(result.parseError).toContain("Invalid binary OpenPGP public key");
 });
 
 test("client session ownership rejects overlap and supports reinitialization", async ({

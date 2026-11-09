@@ -243,7 +243,7 @@ private:
 };
 bool ClientSessionBinding::active_ = false;
 
-static QuicControlResult take_quic_output(crypto_context_t *context) {
+QuicControlResult network_quic_output(crypto_context_t *context) {
   uint8_t data[256];
   size_t length = 0;
   uint32_t flow = 0;
@@ -255,8 +255,8 @@ static QuicControlResult take_quic_output(crypto_context_t *context) {
   return QuicControlResult(result);
 }
 
-static QuicPacketResult process_quic_packet(crypto_context_t *context, bool seal, unsigned flow, unsigned delivery,
-                                            PeerBytes packet) {
+QuicPacketResult network_quic_packet(crypto_context_t *context, bool seal, unsigned flow, unsigned delivery,
+                                     PeerBytes packet) {
   auto input_data = binding_copy_input(packet);
   std::vector<uint8_t> output(input_data.size() + (seal ? 94 : 0));
   size_t length = 0;
@@ -274,24 +274,20 @@ static QuicPacketResult process_quic_packet(crypto_context_t *context, bool seal
   return QuicPacketResult(result);
 }
 
-int network_peer_quic_begin(browser_peer_crypto_t *peer) {
-  return peer_crypto_quic_begin(peer);
+static int client_quic_init() {
+  return browser_security_init(client_security_context());
 }
-int network_peer_quic_init(browser_peer_crypto_t *peer) {
-  return browser_security_init(peer_security_context(peer));
+static int client_quic_tick() {
+  return browser_security_tick(client_security_context());
 }
-int network_peer_quic_tick(browser_peer_crypto_t *peer) {
-  return browser_security_tick(peer_security_context(peer));
+static double client_quic_epoch() {
+  return browser_security_epoch(client_security_context());
 }
-double network_peer_quic_epoch(browser_peer_crypto_t *peer) {
-  return browser_security_epoch(peer_security_context(peer));
+static QuicControlResult client_quic_output() {
+  return network_quic_output(client_security_context());
 }
-QuicControlResult network_peer_quic_output(browser_peer_crypto_t *peer) {
-  return take_quic_output(peer_security_context(peer));
-}
-QuicPacketResult network_peer_quic_packet(browser_peer_crypto_t *peer, bool seal, unsigned flow, unsigned delivery,
-                                          PeerBytes packet) {
-  return process_quic_packet(peer_security_context(peer), seal, flow, delivery, packet);
+static QuicPacketResult client_quic_packet(bool seal, unsigned flow, unsigned delivery, PeerBytes packet) {
+  return network_quic_packet(client_security_context(), seal, flow, delivery, packet);
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_network) {

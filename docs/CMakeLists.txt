@@ -82,6 +82,8 @@ configure_file(
 
 add_custom_target(docs-html
     COMMAND "${DOXYGEN_EXECUTABLE}" "${DOXYFILE_HTML}"
+    COMMAND "${CMAKE_COMMAND}" -DDOC_OUTPUT_DIR=${ASCII_CHAT_BINARY_DIR}/share/doc/html
+            -P "${ASCII_CHAT_SOURCE_DIR}/docs/compatibility-page-aliases.cmake"
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     COMMENT "Generating HTML documentation with Doxygen"
     VERBATIM
