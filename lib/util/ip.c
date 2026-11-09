@@ -48,7 +48,12 @@ int is_valid_ipv4(const char *ip) {
     return 0; // Invalid
   }
 
-  // inet_pton accepts only dotted-decimal IPv4 addresses and rejects leading zeros.
+  // Some platforms accept octets with leading zeros; reject ambiguous forms
+  // consistently before using the system parser for the remaining validation.
+  for (const char *p = ip; *p; ++p) {
+    if ((p == ip || p[-1] == '.') && p[0] == '0' && p[1] >= '0' && p[1] <= '9')
+      return 0;
+  }
   struct in_addr address;
   return inet_pton(AF_INET, ip, &address) == 1;
 }
