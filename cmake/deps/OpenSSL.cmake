@@ -203,7 +203,6 @@ if(USE_MUSL)
         message(STATUS "  This may take a few minutes on first build...")
 
         file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
-        file(MAKE_DIRECTORY "${OPENSSL_SOURCE_DIR}")
 
         set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-${OPENSSL_VERSION}.tar.gz")
         if(NOT EXISTS "${OPENSSL_TARBALL}")
