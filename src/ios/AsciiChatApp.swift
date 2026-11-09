@@ -926,14 +926,14 @@ private struct IOSAllOptionsView: View {
         case "microphone_sensitivity": return (0, 2, 0.05)
         case "compression_level": return (0, 9, 1)
         case "reconnect_attempts", "webrtc_reconnect_attempts": return (0, 20, 1)
-        case "webrtc_ice_timeout": return (0, 60, 1)
+        case "webrtc_ice_timeout", "webrtc_ice_timeout_ms": return (0, 60, 1)
         default: return nil
         }
     }
 
     private static func displayValue(_ value: Double, for key: String) -> String {
         switch key {
-        case "webrtc_ice_timeout":
+        case "webrtc_ice_timeout", "webrtc_ice_timeout_ms":
             return String(format: "%.1f s", value / 1000.0)
         case "width", "height", "zalgo", "fps", "compression_level", "reconnect_attempts", "webrtc_reconnect_attempts":
             return String(Int(value.rounded()))
@@ -945,11 +945,11 @@ private struct IOSAllOptionsView: View {
     }
 
     private static func sliderValue(number: Double, for key: String) -> Double {
-        key == "webrtc_ice_timeout" ? number / 1000.0 : number
+        key == "webrtc_ice_timeout" || key == "webrtc_ice_timeout_ms" ? number / 1000.0 : number
     }
 
     private static func storedSliderValue(_ value: Double, for key: String) -> Any {
-        key == "webrtc_ice_timeout" ? Int((value * 1000.0).rounded()) : value
+        key == "webrtc_ice_timeout" || key == "webrtc_ice_timeout_ms" ? Int((value * 1000.0).rounded()) : value
     }
 
     private static func enumValues(for key: String) -> [String]? {
