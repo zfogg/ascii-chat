@@ -103,6 +103,11 @@ public:
     };
     for (const auto &[name, type] : packet_types)
       info["packetTypes"].set(name, static_cast<unsigned>(type));
+    info.set("browserCapabilities", emscripten::val::object());
+    info["browserCapabilities"].set("webtransport", browser_capabilities_.webtransport);
+    info["browserCapabilities"].set("datagrams", browser_capabilities_.datagrams);
+    info["browserCapabilities"].set("hevc", browser_capabilities_.hevc);
+    info["browserCapabilities"].set("webrtc", browser_capabilities_.webrtc);
     return info;
   }
   int error() const {

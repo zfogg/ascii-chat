@@ -71,19 +71,22 @@ test("native packet intake returns protocol classification", async ({ page }) =>
 test("browser capabilities are accepted by the native session", async ({ page }) => {
   await page.goto("/client");
   const result = await page.evaluate(async () => {
-    const { initClientWasm, getClientWasmModule, configureBrowserCapabilities } =
+    const { initClientWasm, getClientWasmModule } =
       await import(/* @vite-ignore */ "/src/wasm/client.ts");
     await initClientWasm();
-    const value = configureBrowserCapabilities({
+    const session = new (getClientWasmModule()!).ClientSessionBinding({});
+    const value = session.process({ type: "configure-browser-capabilities",
       webtransport: true,
       datagrams: true,
       hevc: false,
       webrtc: true,
     });
-    getClientWasmModule();
-    return value;
+    const info = session.protocolInfo();
+    session.close();
+    session.delete();
+    return { value, capabilities: info.browserCapabilities };
   });
-  expect(result.ok).toBe(true);
+  expect(result.value.ok).toBe(true);
   expect(result.capabilities).toEqual({
     webtransport: true,
     datagrams: true,
