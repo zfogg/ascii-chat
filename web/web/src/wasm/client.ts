@@ -85,7 +85,8 @@ export interface ClientCryptoOptions {
 
 /** Commit the peer's effective settings in C before notifying browser observers. */
 export function acceptRemoteRenderSettings(payload: Uint8Array): RuntimeValues {
-  if (!wasmModule || !clientSession) throw new Error("Client engine is unavailable");
+  if (!wasmModule || !clientSession)
+    throw new Error("Client engine is unavailable");
   const result = clientSession.settingsReceive(payload);
   if (result.code) throwWasmError(result.code, "Invalid remote settings");
   if (result.json === null)
@@ -637,6 +638,7 @@ export class BrowserSession {
   private constructor(
     private binding: BrowserSessionBinding | null,
     private send: (packet: Uint8Array) => void,
+    private pendingOutputs: Uint8Array[] = [],
   ) {}
 
   private getBinding(): BrowserSessionBinding {
@@ -645,7 +647,9 @@ export class BrowserSession {
   }
 
   /** Submit a bounded burst of transport events through one native call. */
-  processBatch(events: readonly Record<string, unknown>[]): Record<string, unknown>[] {
+  processBatch(
+    events: readonly Record<string, unknown>[],
+  ): Record<string, unknown>[] {
     return this.getBinding().processBatch(events) as Record<string, unknown>[];
   }
 
@@ -681,16 +685,16 @@ export class BrowserSession {
           code: number;
           outputs?: Uint8Array[];
         };
-        for (const packet of startedResult.outputs ?? []) {
-          send(packet);
-        }
+        const initialOutputs = startedResult.outputs ?? [];
         const started = startedResult.code;
         if (started) {
           const message = binding.error();
           binding.delete();
           throwWasmError(started, message);
         }
-        return new BrowserSession(binding, send);
+        // Keep startup packets inside the session until its owner has wired
+        // the browser transport and explicitly flushes it.
+        return new BrowserSession(binding, send, initialOutputs);
       },
     );
   }
@@ -777,6 +781,7 @@ export class BrowserSession {
       }, 100);
     }
     if (this.binding) {
+      for (const packet of this.pendingOutputs.splice(0)) this.send(packet);
       const result = this.binding.process({ type: "tick" }) as {
         code: number;
         outputs?: Uint8Array[];
@@ -838,7 +843,8 @@ export function validateReceivedFrame(
   const compressed = (flags & 2) !== 0;
   if (!compressed && bytes.length !== originalSize)
     throw new Error("Uncompressed frame size mismatch");
-  if (!wasmModule || !clientSession) throw new Error("Client frame validator is unavailable");
+  if (!wasmModule || !clientSession)
+    throw new Error("Client frame validator is unavailable");
   const result = clientSession.validateFrame(
     bytes,
     width,
