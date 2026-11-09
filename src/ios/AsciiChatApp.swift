@@ -1137,7 +1137,9 @@ struct ContentView: View {
                     }
                     if let value = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--auto-tui=") })?.split(separator: "=", maxSplits: 1).last,
                        let item = TUISwitcherItem(rawValue: String(value)) {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        // Wait for the first native media submission so the shared
+                        // controller has a live media screen to cover.
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
                             selectTUI(item)
                         }
                     }

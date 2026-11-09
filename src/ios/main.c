@@ -18,7 +18,9 @@ static char g_ios_session_string[128];
 
 /* Native controls use the same shared help renderer as the terminal shortcut. */
 void asciichat_ios_toggle_help(void) {
-  keyboard_help_toggle_terminal(ui_controller_active_fd());
+  int fd = ui_controller_active_fd();
+  os_log(OS_LOG_DEFAULT, "iOS shared help requested screen=%d fd=%d", ui_controller_current_screen(), fd);
+  keyboard_help_toggle_terminal(fd);
 }
 
 void asciichat_ios_set_session_string(const char *session_string) {

@@ -270,6 +270,13 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
                      strcmp(stdout_output, "-") == 0 || strcmp(stdout_output, "pipe:") == 0;
   if (owns_stdout)
     ctx->has_tty = false;
+#if defined(PLATFORM_IOS)
+  // iOS owns stdout through the render bridge; render-file's normal pipe
+  // detection must not divert native sessions around the shared UI controller.
+  ctx->has_tty = true;
+  ctx->tty_info.fd = STDOUT_FILENO;
+  ctx->tty_info.owns_fd = false;
+#endif
   if (ctx->has_tty) {
     // Retain the terminal before decoder/audio workers redirect process stdio
     // through LOG_IO. The first media submission must remain interactive too.
