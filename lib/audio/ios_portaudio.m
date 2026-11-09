@@ -110,13 +110,21 @@ struct PaStream {
 };
 
 int asciichat_ios_audio_authorized(void) {
+#if TARGET_OS_SIMULATOR
+  return 1;
+#else
   return [AVAudioSession.sharedInstance recordPermission] == AVAudioSessionRecordPermissionGranted;
+#endif
 }
 
 void asciichat_ios_audio_request_access(void) {
+#if TARGET_OS_SIMULATOR
+  return;
+#else
   [AVAudioSession.sharedInstance requestRecordPermission:^(BOOL granted) {
     (void)granted;
   }];
+#endif
 }
 
 PaError Pa_Initialize(void) {
