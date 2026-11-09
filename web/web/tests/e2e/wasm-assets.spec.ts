@@ -46,6 +46,11 @@ test("client protocol metadata comes from the native session binding", async ({ 
   expect(info.cryptoModes.none).toBe(0);
   expect(info.cryptoModes.encrypt).toBeGreaterThan(0);
   expect(info.packetTypes.PROTOCOL_VERSION).toBe(1);
+  expect(info.packetTypes.QUIC_READY).toBe(1110);
+  expect(info.packetTypes.QUIC_KEYFRAME_REQUEST).toBe(1111);
+  expect(info.packetTypes.CRYPTO_EPOCH_MARKER).toBe(1112);
+  expect(info.packetTypes.CRYPTO_REKEY_NEEDED).toBe(1113);
+  expect(info.packetTypes.CRYPTO_EPOCH_ACK).toBe(1114);
   expect(info.packetTypes.IMAGE_FRAME_H264).toBe(3003);
   expect(info.packetTypes.SERVER_STATE).toBe(5008);
 });
