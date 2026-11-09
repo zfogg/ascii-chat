@@ -23,7 +23,7 @@ typedef enum {
   ACDS_FAILED
 } acds_protocol_state_t;
 
-typedef struct {
+typedef struct acds_protocol {
   acds_protocol_send_fn send;
   void *user_data;
   acds_protocol_state_t state;

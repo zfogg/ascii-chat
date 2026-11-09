@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { fileURLToPath } from "node:url";
 import base from "./playwright.config";
 
 // Keep hardware, native-server, and performance diagnostics out of PR checks.
@@ -24,8 +25,23 @@ export default defineConfig({
   retries: 0,
   reporter: [
     ["list"],
-    ["html", { open: "never" }],
-    ["junit", { outputFile: "test-results/playwright.xml" }],
+    [
+      "html",
+      {
+        open: "never",
+        outputFolder: fileURLToPath(
+          new URL("./playwright-report", import.meta.url),
+        ),
+      },
+    ],
+    [
+      "junit",
+      {
+        outputFile: fileURLToPath(
+          new URL("./test-results/playwright.xml", import.meta.url),
+        ),
+      },
+    ],
   ],
   use: {
     ...base.use,

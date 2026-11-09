@@ -1,5 +1,272 @@
 # ascii-chat Development Guide for Claude
 
+> **Current repository guidance (updated 2026-11-08)**
+>
+> This guide retains the detailed subsystem notes below, but the repository has
+> changed substantially since the original version was written. The current
+> source of truth for a workflow is the checked-in CMake preset, workflow,
+> topic page, or skill named in the relevant section. If this guide conflicts
+> with those files, inspect the current implementation and update this guide
+> as part of the same change.
+
+## Current State and Recent Direction
+
+The recent development cycle has broadened ascii-chat from a TCP/WebSocket-
+centric terminal application into a shared native/browser transport stack.
+The major changes visible in the last six months are:
+
+- The ACIP transport layer now supports native QUIC and browser WebTransport
+  in addition to TCP, WebSocket, and WebRTC paths. Native QUIC and HTTP/3
+  WebTransport share the server's UDP endpoint and the same ACIP session
+  machinery; do not implement a second protocol path for browser behavior.
+- QUIC transport security is layered. TLS 1.3 authenticates the transport
+  endpoint, while ACIP authentication protects the application session and
+  media metadata. Stream traffic and negotiated DATAGRAM traffic have separate
+  readiness, routing, and failure handling. Transport readiness alone is not
+  enough to send media.
+- Negotiated QUIC DATAGRAM support carries audio and visual media when the peer
+  permits it. Datagram loss is expected: use the bounded reassembly and video
+  recovery paths rather than assuming ordered delivery. Reliable ACIP streams
+  remain the fallback for peers without usable datagrams.
+- Discovery can advertise native QUIC and browser WebTransport endpoints,
+  preserve the authoritative discovery host during handoff, and rotate
+  authenticated application-key epochs while media is live. Discovery and
+  direct transport code must use the shared authenticated-record and rekey
+  abstractions.
+- The wire compatibility marker is currently protocol `2.3.0`. Change the
+  protocol constants deliberately and update the compatibility tests and
+  release annotation when changing packet layouts, negotiation, or encoded
+  media contracts.
+- The MCP server is a first-class mode and can render media, serve temporary
+  hosted downloads, and expose browser/native-compatible output formats. Keep
+  MCP cancellation, bind validation, credential-bearing URL redaction, and
+  output cleanup on the existing ownership paths.
+- Native rendering now includes selectable renderers, temporal stabilization,
+  motion-aware per-cell history, improved glyph and braille coverage, and
+  browser/native parity work. Rendering hot paths must remain allocation-free,
+  deterministic under tests, and independent of logging or blocking I/O.
+- Python test support has migrated to `uv` and pytest. Native Python drivers,
+  extractor tests, WebRTC smoke coverage, and many integration tests now use
+  the project test environment rather than a manually managed virtualenv.
+- SQL discovery queries are embedded from the pinned Sequel/mmmbed toolchain.
+  Generated catalogs must remain consistent across platforms, and the native
+  mmmbed binaries are selected for the host, including Windows ARM64.
+- Documentation has a standalone CMake/Doxygen project, curated topic
+  categories, and a Pages deployment workflow. Documentation is welcome and
+  encouraged, but do not create random Markdown files under `docs/`: files
+  that are not part of the rendered Doxygen navigation are easy to miss and
+  never appear in the browser. Put durable architecture, subsystem, workflow,
+  and task documentation in `docs/topics/*.dox`, and update the curated Topic
+  Categories page at `docs/topics/index.dox` when a topic belongs in its
+  navigation. Modify existing rendered documentation freely when it improves
+  the site; keep every new page connected to the Doxygen topic structure.
+
+## Repository Rules That Are Easy to Miss
+
+### Preserve the working tree
+
+Before changing anything, run `git status --short --branch`. Existing edits
+belong to the user unless they are clearly part of the requested task. Stage
+named files only; never use `git add .` or `git add -A` while unrelated work is
+present. Do not remove `build/`, dependency caches, generated browser output,
+or another task's worktree just to obtain a clean build.
+
+### Use the repository's skills and current authorities
+
+The repository's `.agents/skills/` guidance is part of the development
+contract. For native C work, read `ascii-chat-c-development/SKILL.md`; for
+tests, read `ascii-chat-testing/SKILL.md`; for Python tooling, read
+`ascii-chat-python-development/SKILL.md`; and for cross-platform builds, read
+`ascii-chat-cross-platform-development-and-testing/SKILL.md`. For public API,
+transport, subsystem, option, or workflow changes, read
+`ascii-chat-documentation/SKILL.md` and update the relevant docs in the same
+change.
+
+When the task is a release, use the CLI release skill. CLI tags (`vX.Y.Z`) and
+library tags (`lib/vX.Y.Z`) are independent. Release tags are annotated and
+immutable: never move, delete, force-push, or reuse a tag after publishing it.
+
+### Prefer abstractions over new parallel paths
+
+Network features belong in the shared transport, ACIP, negotiation, packet,
+crypto, and media pipelines. Native QUIC, WebTransport, WebRTC, WebSocket,
+and TCP adapters must satisfy the same transport contract. Do not add a
+browser-only packet format, a second media queue, or a mode-specific crypto
+handshake when the shared layer already owns that concern.
+
+Public structures and packet fields have three documentation surfaces: the
+header/Doxygen comments, the curated topic pages, and the data-structure
+reference. Keep names, ownership, byte widths, optionality, and lifecycle
+claims consistent across all three. The generated data-structure summaries
+describe ownership; they are not permission to expose private implementation
+details as public API.
+
+## Current Build and Test Workflow
+
+The native build uses Clang, Ninja, and the checked-in CMake presets. On
+Windows use the native PowerShell environment and the `default` preset; do not
+substitute MSVC or GCC. Reconfigure an existing build rather than deleting it.
+
+```bash
+# Standard sanitized debug build
+cmake --preset default -B build
+cmake --build build
+
+# Faster debug build without sanitizer instrumentation
+cmake --preset debug-fast
+cmake --build build-fast-debug
+
+# Configure, build, and run the complete native test preset
+cmake --preset tests
+cmake --build --preset tests
+ctest --preset all
+
+# Narrow test groups
+ctest --preset unit
+ctest --preset integration
+ctest --preset performance
+```
+
+The preset names and binary directories in `CMakePresets.json` are authoritative.
+The `default` preset intentionally has `BUILD_TESTS=OFF`; use `tests` or
+`github` when tests are required. `release`, `release-musl`, `static`,
+`shared`, `windows-release`, `docker`, `coverage`, `panic`, and the web/iOS
+configurations have different dependency and instrumentation contracts; do
+not infer one preset's behavior from another.
+
+Python commands must use the locked `uv` environment:
+
+```bash
+uv sync --project tests/ascii_chat_tests --frozen
+uv run --project tests/ascii_chat_tests --frozen pytest tests/python/...
+uv run --project tests/ascii_chat_tests --frozen python tests/standalone/...
+```
+
+Set `Python3_EXECUTABLE` to the interpreter returned by the test environment
+when configuring CMake if CMake or CTest will invoke Python. Do not use
+`python -m pip`, a system Python, or a hand-created virtualenv. Change Python
+dependencies in the appropriate `pyproject.toml` and lockfile.
+
+For migrated tests, prefer pytest selection and fixtures over invoking old
+standalone drivers directly. Use the current test layout under
+`tests/python/`, `tests/standalone/`, and `tests/scripts/`; inspect the test's
+README or `pyproject.toml` when a command is unclear. Python lint/type checks
+use the locked tooling and are part of the CI contract.
+
+### Documentation and formatting checks
+
+The documentation project can be verified without configuring the native
+application:
+
+```bash
+cmake -S docs -B build_docs -DASCII_CHAT_SOURCE_DIR="$PWD"
+cmake --build build_docs --target docs
+```
+
+The formatter workflow has a dependency-free standalone configuration. Changed
+C/C++ files are checked with clang-format in CI, and pushes to master may
+produce a metadata-only formatting commit. Avoid editing generated HTML or
+browser artifacts by hand; regenerate them through the documented build.
+
+## Transport and Protocol Notes
+
+Read `docs/topics/network.dox`, `docs/topics/quic.dox`, `docs/topics/handshake.dox`,
+`docs/topics/client_protocol.dox` before
+changing connection setup. Read `docs/acip-preparation.md` before changing
+wire formats. The protocol version constants live in
+`include/ascii-chat/common/protocol_constants.h`.
+
+The connection lifecycle is intentionally staged:
+
+1. The adapter establishes transport connectivity and reports transport state.
+2. QUIC/WebTransport waits for TLS, endpoint trust, and application security
+   readiness; these are distinct from a socket being connected.
+3. ACIP negotiation exchanges protocol/version and capability information.
+4. Reliable control and media streams are routed through the shared packet
+   scheduler; optional datagrams are enabled only after capability negotiation.
+5. Discovery, handoff, and key rotation update shared authenticated records,
+   then media resumes through the normal readiness gates.
+
+When adding or changing a packet:
+
+- update packet type registration, length validation, serialization, parsing,
+  logging names, and all transport adapters;
+- preserve packed wire widths independently of application storage widths;
+- validate received counts and lengths before indexing, allocating, or
+  serializing;
+- cover native, browser/WASM, and fallback transports where the packet is
+  supported;
+- update protocol topics and tests before changing the compatibility marker.
+
+Do not silently fall back from an explicitly requested `quic://` endpoint to a
+different transport. Endpoint URL selection is part of the current browser and
+native transport contract. WebTransport uses an advertised HTTPS origin and
+HTTP/3, while native QUIC uses the explicit QUIC listener. Both still carry
+ACIP traffic and must preserve authentication and cancellation semantics.
+
+## Current Media, Audio, and Rendering Notes
+
+Audio capture, preview, mixing, encoding, transport delivery, and playback are
+separate ownership domains. The audio callback must not perform telemetry,
+blocking I/O, allocation, or logging. Device changes keep capture alive where
+possible and use the existing fallback/error-scope behavior. Audio batches may
+use negotiated datagrams but must retain a reliable path for peers without
+that capability.
+
+Video frames carry acquisition and telemetry metadata through the shared frame
+pipeline. Render selection, palette, glyph support, stabilization history, and
+browser/native output are negotiated or configured through existing options;
+do not hard-code a renderer in a transport or mode. Temporal stabilization and
+motion-aware cell history are stateful: reset them on media, dimension, or
+source changes and test both fresh-frame and transition behavior.
+
+For media URLs, preserve the direct FFmpeg path, yt-dlp extraction path,
+credential redaction, cancellation, and audio-first stream handling. Use fake
+yt-dlp fixtures for tests that should not contact a real service. Keep cached
+stream metadata scoped by URL and extraction options, and do not log secrets
+embedded in URLs or headers.
+
+## Current Tooling and Deployment Notes
+
+The MCP server has native and hosted workflows. Validate bind addresses and
+download handles, keep temporary artifacts bounded and cancellable, and make
+HTTP status/error handling use the shared parser. MCP rendering should reuse
+the same media and renderer pipeline as the native application. Hosted download
+routes are temporary and must not be treated as permanent public storage.
+
+The query and panic tools are development tools, not production dependencies.
+The query tool uses the host's LLDB/LLVM facilities and the panic tool builds
+instrumented source-print variants. Their build files must remain isolated from
+the normal application target and must not silently add required runtime
+dependencies to the main binary.
+
+SQL generation is pinned and reproducible. Use the repository's embedded
+mmmbed/Sequel toolchain and host-specific binaries; do not regenerate catalogs
+with an arbitrary Go installation. Keep generated SQL stable under formatting,
+use named bindings, and update all platform catalogs together.
+
+## Six-Month History Review Checklist
+
+The recent history added many follow-up fixes to large feature branches. When
+reviewing or extending one of those systems, inspect the whole feature family,
+not only the first `feat:` commit. In particular, search history for:
+
+- `QUIC`, `WebTransport`, `ACIP`, `rekey`, `datagram`, `discovery`, and
+  `handshake` before modifying network behavior;
+- `pytest`, `uv`, `extractor`, `WebRTC`, and `sanitizer` before changing tests;
+- `renderer`, `stabilization`, `glyph`, `braille`, and `terminal` before
+  changing display behavior;
+- `MCP`, `download`, `bind`, `telemetry`, and `cancellation` before changing
+  the MCP server;
+- `mmmbed`, `Sequel`, `SQL catalog`, and `Windows ARM64` before changing
+  discovery query generation;
+- `Doxygen`, `Pages`, `formatter`, and `standalone` before changing CI or docs.
+
+Use `git log --since='6 months ago' -- <path>` and inspect the relevant diffs,
+including follow-up fixes and tests. Commit messages are useful orientation,
+not proof of behavior; verify the current source and tests before documenting
+an assertion.
+
 ## Repository Information
 
 - **Repository Owner**: zfogg (GitHub username)
@@ -55,6 +322,99 @@ ctest --test-dir build --output-on-failure --parallel 0
 Get full options with: `./build/bin/ascii-chat <mode> --help`
 
 ## Help System & Debug Options
+
+### Complete current flag inventory
+
+The lists below were refreshed from the current generated `--help` output on
+2026-11-08. They are intentionally broader than the abbreviated descriptions
+later in this file. Always confirm mode availability and defaults with
+`ascii-chat [mode] --help`; binary-level options can be placed before the mode.
+Every value-taking option also maps to `ASCII_CHAT_<UPPERCASE_NAME>` with
+hyphens changed to underscores.
+
+Common and logging flags:
+
+- `-h`, `--help`, `-v`, `--version`, `--splash-screen`
+- `--keepawake`, `--no-keepawake`, `--check-update`, `--no-check-update`
+- `-L`, `--log-file FILE`, `--log-level LEVEL`, `-V`, `--verbose [VALUE]`,
+  `-q`, `--quiet`, `--grep PATTERN`
+- `--color-scheme NAME`, `--json`, `--log-template TEMPLATE`,
+  `--log-format-console`
+- `--otel-log-level LEVEL`, `--otel-endpoint URL`, `--otel-ca-file FILE`,
+  `--otel-enabled-telemetry LIST`, `--otel-realtime-sample-rate VALUE`,
+  `--otel-realtime-max-per-second INTEGER`, `--otel-metrics-interval MS`,
+  `--otel-timeout MS`, `--otel-queue-capacity INTEGER`
+
+Terminal, configuration, and display flags:
+
+- `-x`, `--width INTEGER`, `-y`, `--height INTEGER`, `--color-mode VALUE`,
+  `--show-capabilities`, `--utf8 BOOLEAN`, `--strip-ansi`, `--color BOOLEAN`
+- `--config FILE`, `--config-create [FILE]`, `--completions SHELL [FILE]`,
+  `--man-page-create [FILE]`
+- `--zalgo [LEVEL]`, `--waveform`, `--fft`, `--color-filter VALUE`,
+  `-M`, `--render-mode VALUE`, `-P`, `--palette VALUE`, `-C`,
+  `--palette-chars STRING`, `--renderer luminance|glyph`, `--stabilize`,
+  `--stretch`, `--fps INTEGER`, `--fps-counter`, `-S`, `--snapshot`,
+  `-D`, `--snapshot-delay SECONDS`, `--matrix`, `--face-follow`,
+  `--face-follow-debug`, `--flip-x`, `--flip-y`
+
+Webcam and audio flags:
+
+- `-c`, `--webcam-index INTEGER`, `--test-pattern [0|1]`, `--list-webcams`
+- `--test-audio`, `--audio-spectral-agc`, `--audio-pitch-correct`,
+  `--spectral-audio`, `--audio-spectral-gate`, `--audio-multiband`,
+  `--audio-adaptive-eq`, `--audio-fft-size INTEGER`, `-A`, `--audio`,
+  `--microphone-channels INTEGER`, `--microphone-channel INTEGER`,
+  `--microphone-index INTEGER`, `--speakers-index INTEGER`,
+  `--microphone-volume VALUE`, `--ivolume VALUE`,
+  `--speakers-volume VALUE`, `--volume VALUE`, `--audio-source VALUE`,
+  `--audio-capture-source VALUE`, `--audio-analysis`,
+  `--no-audio-playback`, `--encode-audio`, `--no-encode-audio`,
+  `--list-microphones`, `--list-speakers`
+
+Media and output flags:
+
+- `-f`, `--file FILE`, `-u`, `--url URL`, `-l`, `--loop`, `--pause`,
+  `-s`, `--seek TIMESTAMP`, `--yt-dlp-options STRING`
+- `--render-kitty`, `--render-file PATH`, `--render-theme THEME`,
+  `--render-font FONT`, `--render-font-size SIZE`
+
+Network and discovery flags:
+
+- `-p`, `--port PORT`, `--reconnect-attempts INTEGER`, `--port-forwarding`,
+  `--scan`, `--compression-level INTEGER`, `--no-compress`
+- `--discovery-service HOST`, `--discovery-service-port PORT`,
+  `--discovery-service-url URL`, `--discovery-expose-ip`, `--discovery`,
+  `--webrtc-bind-address ADDRESS`, `--webrtc`, `--no-webrtc`,
+  `--prefer-webrtc`, `--webrtc-relay-only`, `--webrtc-skip-stun`,
+  `--webrtc-disable-turn`, `--webrtc-skip-host`,
+  `--webrtc-ice-timeout MS`, `--webrtc-reconnect-attempts INTEGER`,
+  `--stun-servers LIST`, `--turn-servers LIST`, `--turn-username NAME`,
+  `--turn-credential VALUE`, `--turn-secret VALUE`
+- Server-only listener flags include `--websocket-port PORT`,
+  `--websocket-tls-cert FILE`, `--websocket-tls-key FILE`,
+  `--websocket-tls-key-password VALUE`, `--max-clients INTEGER`,
+  `--status-screen`, `--stats-interval SECONDS`, and `--no-audio-mixer`.
+- MCP server flags include `--server`, `--transport http|stdio`,
+  `--http-origin ORIGIN`, `--address ADDRESS`, `--address6 ADDRESS`,
+  `--http-tls-cert FILE`, `--http-tls-key FILE`,
+  `--http-tls-key-password VALUE`, and `--max-clients INTEGER`.
+
+Security and diagnostics flags:
+
+- `-E`, `--encrypt`, `-K`, `--key KEY`, `--password PASSWORD`,
+  `--no-encrypt`, `--no-auth`, `--server-key KEY`, `--client-keys LIST`,
+  `--discovery-insecure`, `--discovery-service-key KEY`
+- `--sync-state TIME`, `--errno-stacks TIME`, `--backtrace TIME`,
+  `--memory-report TIME`
+
+Several flags are aliases or paired booleans. In particular, `--ivolume` is
+an alias for `--microphone-volume`, `--volume` aliases
+`--speakers-volume`, and `--no-*` forms explicitly disable defaults that are
+otherwise enabled. Options that accept an optional value, such as
+`--config-create`, `--man-page-create`, `--test-pattern`, and `--zalgo`, must
+be parsed according to the generated help rather than assumed to require a
+following token.
 
 **Mode Legend:** S=server, C=client, M=mirror, DS=discovery-service, D=discovery
 

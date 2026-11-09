@@ -1,0 +1,9 @@
+.git
+**/node_modules
+.deps-cache
+build
+build-*
+**/test-results
+**/playwright-report
+.env
+**/.env

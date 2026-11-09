@@ -91,7 +91,7 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-cli-") as temporary:
     udp_port = free_port(socket.SOCK_DGRAM)
     command = [binary, "server", "127.0.0.1", "--port", str(tcp_port),
                "--quic-bind-address", "127.0.0.1", "--quic-port", str(udp_port),
-               "--quic-tls-cert", str(certificate), "--quic-tls-key", str(key),
+               "--tls-cert", str(certificate), "--tls-key", str(key),
                "--quic-audio-datagrams", "--quic-visual-datagrams",
                "--websocket-port", str(websocket_port), "--password", "test-password", "--status-screen=false"]
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
@@ -126,7 +126,7 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-cli-") as temporary:
                 raise SystemExit(result.returncode)
             client_log = root / "client.log"
             client = subprocess.run(
-                [binary, "--log-file", str(client_log), "client", f"quic://localhost:{udp_port}", "--quic-ca-file", str(certificate),
+                [binary, "--log-file", str(client_log), "client", f"quic://localhost:{udp_port}", "--tls-ca-file", str(certificate),
                  "--password", "test-password", "--test-pattern", "--audio=false", "--snapshot",
                  "--snapshot-delay", "0", "--splash-screen=false", "--color-mode", "none",
                  "--reconnect-attempts", "0"],
@@ -150,7 +150,7 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-cli-") as temporary:
                     error = (root / f"participant-{index}.err").open("wb")
                     process = subprocess.Popen(
                         [binary, "--log-file", str(participant_log), "client", f"quic://localhost:{udp_port}",
-                         "--quic-ca-file", str(certificate), "--password", "test-password", "--test-pattern",
+                         "--tls-ca-file", str(certificate), "--password", "test-password", "--test-pattern",
                          "--audio=false", "--quic-audio-datagrams", "--quic-visual-datagrams", "--video-codec", "raw", "--snapshot", "--snapshot-delay", "8", "--splash-screen=false",
                          "--color-mode", "none", "--reconnect-attempts", "0"],
                         stdout=output, stderr=error, creationflags=flags, env=probe_env,
@@ -211,7 +211,7 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-cli-") as temporary:
                 with (root / "rebinding-client.out").open("wb") as output, (root / "rebinding-client.err").open("wb") as error:
                     rebinding_client = subprocess.Popen(
                         [binary, "--log-file", str(client_log), "client", f"quic://localhost:{proxy_port}",
-                         "--quic-ca-file", str(certificate), "--password", "test-password", "--test-pattern",
+                         "--tls-ca-file", str(certificate), "--password", "test-password", "--test-pattern",
                          "--audio=false", "--video-codec", "raw", "--width", "40", "--height", "20",
                          "--snapshot", "--snapshot-delay", "12", "--splash-screen=false", "--color-mode", "none",
                          "--reconnect-attempts", "0"], stdout=output, stderr=error, creationflags=flags, env=probe_env,
@@ -267,7 +267,7 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-cli-") as temporary:
             rejected_log = root / "rejected-client.log"
             rejected = subprocess.run(
                 [binary, "--log-file", str(rejected_log), "client", f"quic://localhost:{udp_port}",
-                 "--quic-ca-file", str(other_cert), "--password", "test-password", "--test-pattern",
+                 "--tls-ca-file", str(other_cert), "--password", "test-password", "--test-pattern",
                  "--audio=false", "--snapshot", "--snapshot-delay", "0", "--splash-screen=false",
                  "--reconnect-attempts", "0"],
                 timeout=30, creationflags=flags, check=False, capture_output=True, text=True, errors="replace",

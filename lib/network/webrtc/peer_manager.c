@@ -32,7 +32,12 @@
 #include <string.h>
 
 /**
- * @brief Per-peer connection state
+ * @brief Hash-table record for one negotiated WebRTC participant
+ *
+ * The record is keyed by `participant_id` and owns the peer's libdatachannel
+ * objects, security handoff, pending transport, and signaling state.  The
+ * manager protects records with `peers_mutex`; callbacks receive the record
+ * as their user pointer and it is freed only after the peer is removed.
  */
 typedef struct {
   uint8_t participant_id[SESSION_ID_SIZE]; ///< Remote participant UUID (hash key)

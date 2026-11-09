@@ -52,7 +52,7 @@ jobs:
           sudo apt-get install -y doxygen graphviz cmake
 
       - name: Configure documentation-only CMake project
-        run: cmake -S docs -B build_docs -DASCII_CHAT_SOURCE_DIR="$GITHUB_WORKSPACE"
+        run: cmake -S docs -B build_docs -DASCII_CHAT_SOURCE_DIR="$GITHUB_WORKSPACE" -DASCII_CHAT_DOC_SHA="${{ github.sha }}"
 
       - name: Build documentation
         run: cmake --build build_docs --target docs

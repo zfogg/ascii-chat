@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "declaration": true,
+    "outDir": "dist",
+    "rootDir": "../../..",
+    "skipLibCheck": true,
+    "paths": {
+      "@ascii-chat/shared/wasm/options": [
+        "../../../web/packages/shared/src/wasm/options.ts"
+      ],
+      "@ascii-chat/shared/wasm/generated/*": [
+        "../../../web/packages/shared/src/wasm/generated/*"
+      ]
+    }
+  },
+  "include": ["src/**/*.ts", "../../../web/packages/shared/src/wasm/options.ts"]
+}

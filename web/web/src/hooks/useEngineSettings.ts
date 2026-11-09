@@ -6,6 +6,9 @@ import {
 } from "react";
 import {
   getMirrorModule,
+  ColorMode,
+  TextRenderer,
+  paletteName,
   runtimeOptions,
   type RuntimeSnapshot,
   type RuntimeValues,
@@ -66,21 +69,13 @@ export function useEngineSettings(
       values[name] !== undefined && (!old || old.values[name] !== values[name]);
     if (store) acknowledgeEngineSettings(store, values, changed);
     const numeric = (name: string) => Number(values[name]);
-    const colors: BinarySettingsConfig["colorMode"][] = [
-      "none",
-      "16",
-      "256",
-      "truecolor",
-    ];
-    const palettes: BinarySettingsConfig["palette"][] = [
-      "standard",
-      "standard",
-      "blocks",
-      "digital",
-      "minimal",
-      "cool",
-      "custom",
-    ];
+    const colors: Record<number, BinarySettingsConfig["colorMode"]> = {
+      [ColorMode.Auto]: "auto",
+      [ColorMode.None]: "none",
+      [ColorMode.Ansi16]: "16",
+      [ColorMode.Ansi256]: "256",
+      [ColorMode.Truecolor]: "truecolor",
+    };
     const filters: BinarySettingsConfig["colorFilter"][] = [
       "none",
       "black",
@@ -108,10 +103,11 @@ export function useEngineSettings(
       next.colorFilter = filters[numeric("color_filter")] ?? "none";
     if (changed("render_mode")) next.renderMode = numeric("render_mode");
     if (changed("renderer"))
-      next.renderer = numeric("renderer") === 1 ? "glyph" : "luminance";
+      next.renderer =
+        numeric("renderer") === TextRenderer.Glyph ? "glyph" : "luminance";
     if (changed("stabilize")) next.stabilize = !!values["stabilize"];
     if (changed("palette_type"))
-      next.palette = palettes[numeric("palette_type")] ?? "standard";
+      next.palette = paletteName(numeric("palette_type"));
     if (changed("palette_explicit"))
       next.paletteExplicit = !!values["palette_explicit"];
     if (changed("palette_custom"))
@@ -154,7 +150,10 @@ export function renderPreferences(cols: number, rows: number): RuntimeValues {
     width: cols,
     height: rows,
     fps: values["fps"]!,
-    color_mode: values["color_mode"] === -1 ? 3 : values["color_mode"]!,
+    color_mode:
+      values["color_mode"] === ColorMode.Auto
+        ? ColorMode.Truecolor
+        : values["color_mode"]!,
     color_filter: values["color_filter"]!,
     render_mode: values["render_mode"]!,
     renderer: values["renderer"]!,

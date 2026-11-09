@@ -13,36 +13,28 @@ import { reportCameraTrack } from "@ascii-chat/shared/capture/cameraRate";
 import { useCameraExposure } from "@ascii-chat/shared/hooks/useCameraExposure";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  getMirrorModule,
+  runtimeOptions,
+  paletteTypes,
+  defaultBrowserSettings,
+  colorModeValues,
+  colorFilterValues,
   initMirrorWasm,
   cleanupMirrorWasm,
   convertFrameToAscii,
   isWasmReady,
-  setDimensions,
-  setFlipX,
-  setFlipY,
-  setColorMode,
-  setColorFilter,
-  setRenderMode,
-  setPalette,
-  setPaletteChars,
-  setMatrixRain,
-  setWaveform,
-  setFft,
   renderAudioVisualization,
   submitAudioVisualizationSamples,
-  setTargetFps,
-  ColorMode,
-  ColorFilter,
-  RenderMode,
 } from "@ascii-chat/shared/wasm";
 import type { EmscriptenModuleFactory } from "@ascii-chat/shared/wasm";
+import { AudioSource } from "@ascii-chat/shared/wasm/options";
 import {
   captureVisualizationAudio,
   useCanvasCapture,
 } from "@ascii-chat/shared/hooks";
 import {
   Heading,
-  AsciiRenderer,
+  AsciiCanvas,
   type AsciiRendererHandle,
 } from "@ascii-chat/shared/components";
 import { MediaSourceType, type MediaSource } from "@ascii-chat/shared/utils";
@@ -71,55 +63,47 @@ function formatPlaybackTime(seconds: number): string {
 
 let lastMatrixRain = false;
 
+function activeDemoOptions() {
+  const module = getMirrorModule();
+  if (!module) throw new Error("WASM renderer is not initialized");
+  return runtimeOptions(module);
+}
 function applyDemoOption(
   option: DemoOption,
   sourceFlipX: boolean,
   onMatrixRainChange?: (matrixMode: boolean) => void,
   onSetMatrixMode?: (mode: boolean) => void,
 ): void {
-  const s = option.settings;
-  // Reset all options to defaults first, then apply preset overrides.
-  // This prevents stale state from a previous demo leaking through.
-  // The browser renderer has a known truecolor capability; the state API
-  // rejects AUTO because browser terminal detection is not available here.
-  setColorMode(s.colorMode ?? ColorMode.TRUECOLOR);
-  setColorFilter(s.colorFilter ?? ColorFilter.NONE);
-  setRenderMode(s.renderMode ?? RenderMode.FOREGROUND);
-  setPalette(s.palette ?? "standard");
-  const matrixRainNow = s.matrixRain ?? false;
-  console.log("[applyDemoOption]", {
-    option: option.label,
-    matrixRainNow,
-    lastMatrixRain,
+  const settings = option.settings;
+  const matrixRainNow = settings.matrixRain ?? false;
+  const fft = settings.fft ?? false;
+  const waveform = !fft && (settings.waveform ?? false);
+  activeDemoOptions().applyPatch({
+    color_mode:
+      settings.colorMode ?? colorModeValues[defaultBrowserSettings.colorMode],
+    color_filter:
+      settings.colorFilter ??
+      colorFilterValues[defaultBrowserSettings.colorFilter],
+    render_mode: settings.renderMode ?? defaultBrowserSettings.renderMode,
+    palette_type:
+      settings.paletteChars !== undefined
+        ? paletteTypes.custom
+        : paletteTypes[settings.palette ?? defaultBrowserSettings.palette],
+    ...(settings.paletteChars !== undefined
+      ? { palette_custom: settings.paletteChars }
+      : {}),
+    matrix_rain: matrixRainNow && !fft && !waveform,
+    waveform,
+    fft,
+    flip_x: settings.flipX ?? sourceFlipX,
+    flip_y: settings.flipY ?? false,
+    ...(settings.targetFps !== undefined ? { fps: settings.targetFps } : {}),
   });
-  // Set matrix flag first so C side knows about it before renderer recreation
-  setMatrixRain(false);
-  setWaveform(false);
-  setFft(false);
-  setMatrixRain(matrixRainNow);
-  setWaveform(s.waveform ?? false);
-  setFft(s.fft ?? false);
-  // Update matrix mode state for renderer prop
   onSetMatrixMode?.(matrixRainNow);
-  // Trigger renderer recreation if matrix rain changed (after C side is updated)
   if (matrixRainNow !== lastMatrixRain) {
     lastMatrixRain = matrixRainNow;
-    console.log("[applyDemoOption] matrix mode changed, triggering recreate");
     onMatrixRainChange?.(matrixRainNow);
   }
-  setFlipX(s.flipX !== undefined ? s.flipX : sourceFlipX);
-  setFlipY(s.flipY ?? false);
-  if (s.paletteChars !== undefined) {
-    console.log(
-      "[PALETTE] Setting paletteChars:",
-      Array.from(s.paletteChars).map(
-        (c, i) =>
-          `${i}: U+${c.charCodeAt(0).toString(16).padStart(4, "0")} "${c}"`,
-      ),
-    );
-    setPaletteChars(s.paletteChars);
-  }
-  if (s.targetFps !== undefined) setTargetFps(s.targetFps);
 }
 
 export default function MirrorDemoWidget({
@@ -206,22 +190,22 @@ export default function MirrorDemoWidget({
     const wasmBaseUrl = window.location.origin;
     addDebugLog(`Loading WASM from ${wasmBaseUrl}/wasm/`);
 
-    // Build initial args from the first demo option's settings
-    const initialArgs: string[] = [];
+    // Build the initial options from the first demo option's settings.
+    const initialOptions: Record<string, number | boolean> = {};
     const initialOption = selectedOption ?? demoOptions?.[defaultOptionIndex];
     if (initialOption?.settings?.matrixRain) {
-      initialArgs.push("--matrix");
+      initialOptions["matrix_rain"] = true;
     }
     if (initialOption?.settings?.waveform || initialOption?.settings?.fft) {
-      initialArgs.push("--audio-source", "media");
+      initialOptions["audio_source"] = AudioSource.Media;
     }
-    if (initialOption?.settings?.waveform) initialArgs.push("--waveform");
-    if (initialOption?.settings?.fft) initialArgs.push("--fft");
+    if (initialOption?.settings?.waveform) initialOptions["waveform"] = true;
+    if (initialOption?.settings?.fft) initialOptions["fft"] = true;
 
     await initMirrorWasm(factory as EmscriptenModuleFactory, {
       locateFile: (path: string) => `${wasmBaseUrl}/wasm/${path}`,
       mainScriptUrlOrBlob: `${wasmBaseUrl}/wasm/mirror.js`,
-      initialArgs,
+      initialOptions,
       pthreadPoolSize: 0,
     });
 
@@ -313,12 +297,14 @@ export default function MirrorDemoWidget({
       }
 
       const sourceFlipX = true;
-      setFlipX(sourceFlipX);
-      setFlipY(false);
+      activeDemoOptions().applyPatch({ flip_x: sourceFlipX, flip_y: false });
       applySelectedOption(sourceFlipX);
 
       if (termDims.cols > 0 && termDims.rows > 0) {
-        setDimensions(termDims.cols, termDims.rows);
+        activeDemoOptions().applyPatch({
+          width: termDims.cols,
+          height: termDims.rows,
+        });
       }
 
       sourceRef.current = MediaSourceType.WEBCAM;
@@ -417,7 +403,10 @@ export default function MirrorDemoWidget({
       microphoneSourceRef.current.connect(audioInputRef.current!);
       applySelectedOption(false);
       if (termDims.cols > 0 && termDims.rows > 0) {
-        setDimensions(termDims.cols, termDims.rows);
+        activeDemoOptions().applyPatch({
+          width: termDims.cols,
+          height: termDims.rows,
+        });
       }
       sourceRef.current = MediaSourceType.MICROPHONE;
       setSource(MediaSourceType.MICROPHONE);
@@ -531,14 +520,16 @@ export default function MirrorDemoWidget({
       }
 
       const sourceFlipX = false;
-      setFlipX(sourceFlipX);
-      setFlipY(false);
+      activeDemoOptions().applyPatch({ flip_x: sourceFlipX, flip_y: false });
       applySelectedOption(sourceFlipX);
 
       // Re-sync terminal dimensions now that the video is playing,
       // in case xterm measured dimensions before the layout settled
       if (termDims.cols > 0 && termDims.rows > 0) {
-        setDimensions(termDims.cols, termDims.rows);
+        activeDemoOptions().applyPatch({
+          width: termDims.cols,
+          height: termDims.rows,
+        });
       }
 
       sourceRef.current = MediaSourceType.FILE;
@@ -642,7 +633,10 @@ export default function MirrorDemoWidget({
   useEffect(() => {
     if (wasmReady && termDims.cols > 0 && termDims.rows > 0) {
       try {
-        setDimensions(termDims.cols, termDims.rows);
+        activeDemoOptions().applyPatch({
+          width: termDims.cols,
+          height: termDims.rows,
+        });
       } catch (err) {
         console.error("[MirrorDemoWidget] Failed to sync dimensions:", err);
       }
@@ -865,13 +859,12 @@ export default function MirrorDemoWidget({
         }
       >
         <div className="demo-widget-inner">
-          <AsciiRenderer
+          <AsciiCanvas
             clientLikeKind="mirror"
             ref={rendererRef}
             contentFit={contentFit}
             {...(columns === undefined ? {} : { columns })}
             {...(rows === undefined ? {} : { rows })}
-            initializeOptions={false}
             keyboardEnabled={false}
             splashEnabled={false}
             onDimensionsChange={handleDimensionsChange}

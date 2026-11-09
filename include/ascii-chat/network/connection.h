@@ -99,7 +99,7 @@ typedef struct {
   uint32_t timeout_ms;
   bool (*should_exit_callback)(void *);
   void *callback_data;
-  const char *quic_ca_file;   /**< Optional trust anchors for an explicit quic:// connection. */
+  const char *tls_ca_file;    /**< Optional trust anchors for secure network connections. */
   bool quic_visual_datagrams; /**< Prefer negotiated visual datagrams. */
   bool quic_audio_datagrams;  /**< Prefer datagrams for audio when supported by the peer. */
 } network_connect_config_t;

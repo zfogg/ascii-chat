@@ -379,11 +379,12 @@ void ringbuffer_clear(ringbuffer_t *rb);
  */
 
 /**
- * @brief Frame structure that stores both data and actual size
+ * @brief One variable-length payload in the video ring buffer
  *
- * Stores frame data along with its actual size, eliminating the need for
- * fixed-size buffers and null-terminator scanning. Uses magic number
- * validation for corruption detection.
+ * `data` contains the payload and `size` tells consumers exactly how many
+ * bytes are valid. `magic` lets the ring-buffer code distinguish a live slot
+ * from a corrupted or released one; frame data is owned by the containing
+ * buffer and is not NUL-terminated text.
  *
  * @ingroup ringbuffer
  */
@@ -433,10 +434,11 @@ typedef struct {
 /** @} */
 
 /**
- * @brief Frame buffer structure for managing video frames
+ * @brief Mutex-protected ring buffer used to exchange video frames
  *
- * Wraps a ring buffer with mutex protection for thread-safe frame management.
- * Used for both single-source and multi-source frame scenarios.
+ * `rb` owns the queued frame storage while `mutex` serializes producers and
+ * consumers. The wrapper is used by the older frame-buffer path when capture,
+ * network receive, and rendering can run on different threads.
  *
  * @ingroup ringbuffer
  */

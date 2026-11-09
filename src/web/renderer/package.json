@@ -1,0 +1,43 @@
+{
+  "name": "ascii-chat",
+  "version": "0.1.0",
+  "description": "ASCII art rendering with libasciichat and WebAssembly",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zfogg/ascii-chat.git",
+    "directory": "src/web/renderer"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./renderer.wasm": "./dist/renderer.wasm",
+    "./renderer.js": "./dist/renderer.js",
+    "./options": {
+      "types": "./dist/options.d.ts",
+      "import": "./dist/options.js"
+    },
+    "./bindings": {
+      "types": "./dist/renderer-bindings.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json && vp pack src/index.ts src/options.ts --dts --platform browser && node build.mjs",
+    "prepack": "npm run build",
+    "test": "playwright test",
+    "pretest": "npm run build",
+    "test:package": "node tests/package-consumer.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^25.9.9",
+    "typescript": "^5.9.3"
+  }
+}

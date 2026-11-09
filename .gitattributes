@@ -1,5 +1,7 @@
 * whitespace=trailing-space,space-before-tab,cr-at-eol
 *.patch text eol=lf
+*.sql text eol=lf
+lib/discovery/queries_generated.h text eol=lf
 
 # Preserve upstream diff context, including whitespace, in the vendored ICU port.
 vcpkg-overlay/icu/*.patch -whitespace

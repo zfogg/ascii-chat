@@ -52,14 +52,14 @@ def main():
             host = Service(binary, directory, "host", "--test-pattern", common +
                            ["--port", str(hp), "--key", str(host_key), "--discovery-expose-ip",
                             "--quic-bind-address", "127.0.0.1", "--quic-port", str(qp),
-                            "--quic-tls-cert", str(cert), "--quic-tls-key", str(key)], environment)
+                            "--tls-cert", str(cert), "--tls-key", str(key)], environment)
             services.append(host)
             host.wait_for("Session created:", timeout=30)
             match = re.search(r"Session created: ([a-z]+-[a-z]+-[a-z]+)", host.text())
             assert match, host.text()[-8000:]
             name = match[1]
             client = Service(binary, directory, "client", name, common +
-                             ["--test-pattern", "--discovery-quic", "--quic-ca-file", str(cert),
+                             ["--test-pattern", "--discovery-quic", "--tls-ca-file", str(cert),
                               "--server-key", str(host_key) + ".pub"], environment)
             services.append(client)
             host.wait_for(f"Native QUIC listener initialized on 127.0.0.1 UDP port {qp}", timeout=40)

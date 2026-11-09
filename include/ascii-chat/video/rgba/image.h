@@ -109,7 +109,7 @@ typedef struct {
 } ALIGNED_ATTR(16) rgb_pixel_simd_t;
 
 /**
- * @brief Image structure
+ * @brief An owned RGB image with dimensions and row-major pixel storage
  *
  * Complete image structure containing dimensions and pixel data.
  * Pixel data is stored as a contiguous array of RGB pixels in row-major

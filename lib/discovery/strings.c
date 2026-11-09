@@ -35,7 +35,10 @@
 // ============================================================================
 
 /**
- * @brief Hashtable entry for cached word lookups
+ * @brief One owned word in the adjective or noun validation hash table.
+ *
+ * `word` is the hash key and heap-allocated copy; `hh` links the entry into
+ * uthash. The cache frees both the word and entry during shared shutdown.
  */
 typedef struct {
   char *word;        ///< The word string (key)

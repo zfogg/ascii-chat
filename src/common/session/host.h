@@ -74,7 +74,7 @@
 typedef struct session_host session_host_t;
 
 /**
- * @brief Client information structure
+ * @brief Snapshot of the address, identity, activity, and connection time for one host client.
  *
  * Contains basic information about a connected client.
  *
@@ -101,7 +101,7 @@ typedef struct {
 } session_host_client_info_t;
 
 /**
- * @brief Callback function prototypes for session host events
+ * @brief Host-side event hooks for joins, departures, media, and errors.
  * @ingroup session
  */
 typedef struct {
@@ -151,7 +151,7 @@ typedef struct {
 } session_host_callbacks_t;
 
 /**
- * @brief Configuration for session host
+ * @brief Listener, capacity, security, and callback settings for a session host.
  * @ingroup session
  */
 typedef struct {

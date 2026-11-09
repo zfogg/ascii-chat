@@ -83,9 +83,11 @@ typedef struct thread_pool thread_pool_t;
 typedef struct thread_pool_entry thread_pool_entry_t;
 
 /**
- * @brief Work queue entry for task-based thread pools
+ * @brief One queued function call waiting for a thread-pool worker
  *
- * Represents a single unit of work to be executed by a pool worker.
+ * The pool stores the callback, its opaque argument, and the link to the
+ * next queued task.  Queue ownership transfers to the pool when a task is
+ * submitted; workers remove and free entries after invoking the callback.
  */
 typedef struct thread_pool_work_entry {
   void *(*work_func)(void *);          ///< Work function to execute
@@ -94,10 +96,11 @@ typedef struct thread_pool_work_entry {
 } thread_pool_work_entry_t;
 
 /**
- * @brief Thread pool entry (internal linked list node)
+ * @brief Thread handle and shutdown metadata for one pool-owned thread
  *
- * Tracks individual threads in the pool. Threads are maintained in a
- * sorted linked list by stop_id for ordered cleanup.
+ * Each node holds the native thread handle, its start routine and argument,
+ * a diagnostic name, and the stop-order value used when the pool shuts down.
+ * Nodes are linked from the pool and are freed with the pool's thread list.
  */
 struct thread_pool_entry {
   asciichat_thread_t thread;               ///< Thread handle

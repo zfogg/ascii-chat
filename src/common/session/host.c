@@ -72,7 +72,12 @@
  * ============================================================================ */
 
 /**
- * @brief Internal client record structure
+ * @brief Host-owned live record for one connected participant.
+ *
+ * It ties the participant ID and network transport to rendering dimensions,
+ * media activity, decoded video/audio buffers, codec state, and the next render
+ * deadline. The host owns this record and joins/releases its worker resources
+ * before freeing it.
  */
 typedef struct {
   participant_type_t participant_type; // NETWORK or MEMORY

@@ -10,25 +10,25 @@ const COLOR_MODE_OPTIONS: DemoOption[] = [
     id: "none",
     label: "Monochrome",
     description: "--color-mode none",
-    settings: { colorMode: ColorMode.NONE },
+    settings: { colorMode: ColorMode.None },
   },
   {
     id: "16",
     label: "16-color",
     description: "--color-mode 16",
-    settings: { colorMode: ColorMode.COLOR_16 },
+    settings: { colorMode: ColorMode.Ansi16 },
   },
   {
     id: "256",
     label: "256-color",
     description: "--color-mode 256",
-    settings: { colorMode: ColorMode.COLOR_256 },
+    settings: { colorMode: ColorMode.Ansi256 },
   },
   {
     id: "truecolor",
     label: "Truecolor",
     description: "--color-mode truecolor",
-    settings: { colorMode: ColorMode.TRUECOLOR },
+    settings: { colorMode: ColorMode.Truecolor },
   },
 ];
 

@@ -14,17 +14,17 @@
  * certificate, and private key:
  * @code{.sh}
  * ascii-chat server --quic-bind-address 0.0.0.0 --quic-port 27224 \
- *   --quic-tls-cert server.crt --quic-tls-key server.key
+ *   --tls-cert server.crt --tls-key server.key
  * @endcode
  *
  * A native client connects explicitly and may provide a private CA:
  * @code{.sh}
- * ascii-chat client quic://chat.example:27224 --quic-ca-file CA.pem
+ * ascii-chat client quic://chat.example:27224 --tls-ca-file CA.pem
  * @endcode
  *
  * `--quic-port 0` uses the TCP server port for the listener. TCP remains
  * available. A certificate must match the hostname or IP used by the client;
- * clients use the system trust store unless `--quic-ca-file` is supplied.
+ * clients use the system trust store unless `--tls-ca-file` is supplied.
  *
  * @section quic_layers Transport and security
  *
@@ -90,8 +90,7 @@
  *
  * @section quic_testing Testing and limitations
  *
- * The detailed protocol record and browser test commands remain in
- * @ref md_docs_2quic.html. QUIC tests cover native streams, negotiated
+ * This topic covers the QUIC implementation. QUIC tests cover native streams, negotiated
  * datagrams, TLS/identity failures, discovery advertisements, WebTransport,
  * and path migration. The private UDP driver is experimental and must not be
  * exposed directly to untrusted networks; production admission and the shared
@@ -99,5 +98,4 @@
  *
  * @see topic_network
  * @see md_docs_2transport-backpressure.html
- * @see md_docs_2quic.html
  */

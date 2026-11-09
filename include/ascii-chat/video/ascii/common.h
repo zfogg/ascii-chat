@@ -147,7 +147,12 @@ extern char g_default_luminance_palette[ASCII_LUMINANCE_LEVELS];
 void init_default_luminance_palette(void);
 
 /**
- * @brief Dynamic string buffer structure
+ * @brief Growable NUL-terminated buffer used while assembling ASCII output
+ *
+ * `data` points to the owned allocation, `len` counts the bytes currently in
+ * use (not including the final NUL), and `cap` is the allocation size.  Video
+ * formatting helpers append to this buffer and grow it when a rendered row
+ * or frame does not fit.
  *
  * @ingroup video
  */

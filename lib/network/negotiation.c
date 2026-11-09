@@ -4,6 +4,7 @@
 #include <ascii-chat/network/acip/acds_protocol.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/security.h>
+#include <ascii-chat/common/protocol_constants.h>
 #ifndef __EMSCRIPTEN__
 #include <ascii-chat/network/acip/quic.h>
 #endif
@@ -95,8 +96,7 @@ static asciichat_error_t media_receive(network_negotiation_t *n, acip_transport_
     ctx->require_client_auth = n->require_identity;
     ctx->client_whitelist = n->whitelist;
     ctx->num_whitelisted_clients = n->whitelist_count;
-    version.protocol_version = HOST_TO_NET_U16(1);
-    version.protocol_revision = 0;
+    protocol_version_packet_init(&version, version.supports_encryption);
     version.compression_algorithms = 0;
     version.compression_threshold = 0;
     version.feature_flags = HOST_TO_NET_U16(PROTOCOL_FEATURE_RECOVERABLE_ERRORS | PROTOCOL_FEATURE_IDENTITY_SET);
@@ -290,9 +290,9 @@ static asciichat_error_t negotiation_read(acip_transport_t *transport, uint64_t 
 }
 static asciichat_error_t client_negotiate(acip_transport_t *transport, crypto_handshake_context_t *ctx, uint8_t mode) {
   const uint64_t deadline = time_get_ns() + 30 * NS_PER_SEC_INT;
-  protocol_version_packet_t version = {.protocol_version = HOST_TO_NET_U16(1),
-                                       .supports_encryption = mode,
-                                       .feature_flags = HOST_TO_NET_U16(PROTOCOL_FEATURE_RECOVERABLE_ERRORS)};
+  protocol_version_packet_t version;
+  protocol_version_packet_init(&version, mode);
+  version.feature_flags = HOST_TO_NET_U16(PROTOCOL_FEATURE_RECOVERABLE_ERRORS);
   asciichat_error_t result =
       packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
   packet_type_t type = 0;

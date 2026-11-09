@@ -1233,7 +1233,7 @@ static asciichat_error_t discovery_handoff_sample(discovery_session_t *session) 
   mutex_unlock(&session->nat_quality_mutex);
   if ((GET_OPTION(quic_bind_address)[0] ||
        (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0])) &&
-      GET_OPTION(quic_tls_cert)[0] && GET_OPTION(quic_tls_key)[0])
+      GET_OPTION(tls_cert)[0] && GET_OPTION(tls_key)[0])
     message.capabilities |= 1; // A configured native listener can prepare a direct successor.
   memcpy(message.session, session->session_id, SESSION_ID_SIZE);
   memcpy(message.participant, session->participant_id, SESSION_ID_SIZE);
@@ -1945,7 +1945,7 @@ static asciichat_error_t discovery_session_connect_tcp(discovery_session_t *sess
                                            .encryption_enabled = true,
                                            .password = session->password,
                                            .server_key = GET_OPTION(server_key),
-                                           .quic_ca_file = GET_OPTION(quic_ca_file),
+                                           .tls_ca_file = GET_OPTION(tls_ca_file),
                                            .quic_audio_datagrams = GET_OPTION(quic_audio_datagrams),
                                            .quic_visual_datagrams = GET_OPTION(quic_visual_datagrams)};
     session->participant_ctx = session_participant_create(&config);

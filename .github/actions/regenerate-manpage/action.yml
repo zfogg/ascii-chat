@@ -1,0 +1,47 @@
+name: Regenerate manpage
+description: Generate, commit, and push the repository manpage using the current build directory
+inputs:
+  commit:
+    description: Commit and push the generated manpage
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Generate manpage
+      shell: bash
+      env:
+        ASCII_CHAT_QUESTION_PROMPT_RESPONSE: y
+      run: |
+        chmod +x build/bin/ascii-chat
+        mkdir -p share/man/man1
+        build/bin/ascii-chat --man-page-create share/man/man1/ascii-chat.1
+        test -s share/man/man1/ascii-chat.1
+
+    - name: Regenerate hosted HTML manpages
+      shell: bash
+      run: bash web/www/scripts/manpage-build.sh
+
+    - name: Commit and push manpage
+      if: inputs.commit == 'true'
+      shell: bash
+      run: |
+        if git diff --quiet -- share/man/man1/ascii-chat.1 web/www/public && git ls-files --error-unmatch share/man/man1/ascii-chat.1 >/dev/null 2>&1; then
+          echo "Manpage is unchanged"
+          exit 0
+        fi
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add share/man/man1/ascii-chat.1 web/www/public
+        git commit -m "docs: regenerate manpage"
+        for attempt in 1 2 3 4 5; do
+          if git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}"; then
+            exit 0
+          fi
+          git rebase --abort 2>/dev/null || true
+          if [ "$attempt" -lt 5 ]; then
+            sleep $((attempt * 5))
+          fi
+        done
+        echo "Failed to publish generated manpages after 5 attempts"
+        exit 1

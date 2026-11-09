@@ -336,6 +336,12 @@ runs:
         # only when CI=true (set by GitHub Actions).
         sudo bash scripts/install-deps.sh --dangerously-delete-conflicts
 
+        # install-deps.sh also prepares the Python environment with uv. Since
+        # the package installation above runs as root, discard that root-owned
+        # project venv so the following runner-user uv sync can recreate it
+        # against the runner user's uv-managed Python.
+        sudo rm -rf tests/ascii_chat_tests/.venv tests/ascii_chat_tests/*.egg-info
+
         # Install any extra packages requested by the workflow
         extra="${{ inputs.extra-packages }}"
         if [ -n "$extra" ]; then
@@ -343,6 +349,14 @@ runs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends $extra
         fi
+
+    - name: Export uv path (Unix)
+      if: inputs.os != 'windows'
+      shell: bash
+      run: |
+        uv_path=$(command -v uv)
+        echo "$(dirname "$uv_path")" >> "$GITHUB_PATH"
+        uv --version
 
     # NOTE: vcpkg global cache removed - manifest mode installs packages to
     # ${CMAKE_BINARY_DIR}/vcpkg_installed/ which is included in build directory cache

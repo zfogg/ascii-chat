@@ -9,6 +9,7 @@
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/thread.h>
@@ -30,6 +31,16 @@
 #include <string.h>
 
 // Network timeout constants are defined in packet_types.h
+
+void protocol_version_packet_init(protocol_version_packet_t *version, uint8_t supports_encryption) {
+  if (!version)
+    return;
+  memset(version, 0, sizeof(*version));
+  version->protocol_version = HOST_TO_NET_U16(PROTOCOL_VERSION_MAJOR);
+  version->protocol_revision = HOST_TO_NET_U16(PROTOCOL_VERSION_MINOR);
+  version->protocol_patch = HOST_TO_NET_U16(PROTOCOL_VERSION_PATCH);
+  version->supports_encryption = supports_encryption;
+}
 
 asciichat_error_t packet_header_build(packet_header_t *header, packet_type_t type, const socket_buffer_t *payload,
                                       size_t count, uint32_t client_id) {

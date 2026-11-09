@@ -191,14 +191,14 @@ class Protocol(unittest.TestCase):
         self.assertIn("mcp-server", top.stdout)
         mode = subprocess.run([str(self.binary), "mcp-server", "--help"], capture_output=True, text=True, timeout=10)
         self.assertEqual(mode.returncode, 0)
-        for flag in ("--transport", "--server", "--http-origin", "--http-tls-cert", "--http-tls-key", "--http-tls-key-password", "--port", "--address", "--stats-interval"):
+        for flag in ("--transport", "--server", "--http-origin", "--tls-cert", "--tls-key", "--tls-key-password", "--port", "--address", "--stats-interval"):
             self.assertIn(flag, mode.stdout)
         self.assertRegex(mode.stdout, r"--max-clients INTEGER\s+Maximum concurrent clients\. \(default: available CPUs\)")
-        self.assertNotIn("--websocket-tls-cert", mode.stdout)
-        missing_key = subprocess.run([str(self.binary), "mcp-server", "--transport", "http", "--http-tls-cert", "missing.pem"],
+        self.assertNotIn("--http-tls-cert", mode.stdout)
+        missing_key = subprocess.run([str(self.binary), "mcp-server", "--transport", "http", "--tls-cert", "missing.pem"],
                                      capture_output=True, text=True, timeout=10)
         self.assertNotEqual(missing_key.returncode, 0)
-        self.assertIn("--http-tls-key", missing_key.stdout + missing_key.stderr)
+        self.assertIn("--tls-key", missing_key.stdout + missing_key.stderr)
         invalid_transport = subprocess.run([str(self.binary), "mcp-server", "--transport", "udp"],
                                            capture_output=True, text=True, timeout=10)
         self.assertNotEqual(invalid_transport.returncode, 0)

@@ -25,7 +25,20 @@ function(asciichat_build_aec3)
         # Populate first; configure the patched root explicitly below.
         SOURCE_SUBDIR ascii-chat-patched-manual
         )
-    FetchContent_MakeAvailable(asciichat_aec3)
+    # Populate without adding the project, even if a parent supplied the first
+    # declaration without SOURCE_SUBDIR. Its CMake files must be patched first.
+    FetchContent_GetProperties(asciichat_aec3)
+    if(TARGET AudioProcess OR TARGET aec3 OR TARGET api OR TARGET base)
+        message(FATAL_ERROR "AEC3 targets already exist; ascii-chat must patch AEC3 before it is added")
+    endif()
+    if(NOT asciichat_aec3_POPULATED)
+        cmake_policy(PUSH)
+        if(POLICY CMP0169)
+            cmake_policy(SET CMP0169 OLD)
+        endif()
+        FetchContent_Populate(asciichat_aec3)
+        cmake_policy(POP)
+    endif()
     set(WEBRTC_AEC3_SOURCE_DIR "${asciichat_aec3_SOURCE_DIR}")
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-webrtc-aec3-cmake.cmake")
     add_subdirectory("${asciichat_aec3_SOURCE_DIR}" "${asciichat_aec3_BINARY_DIR}")

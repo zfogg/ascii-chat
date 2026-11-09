@@ -5,6 +5,7 @@
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include "session/host.h"
 #include "session/protocol.h"
@@ -125,9 +126,8 @@ static void *discovery_session_server(void *data) {
   cr_assert_worker((((protocol_version_packet_t *)payload)->supports_encryption) == (ACIP_CRYPTO_FULL));
   buffer_release(payload);
   payload = NULL;
-  protocol_version_packet_t version = {.protocol_version = HOST_TO_NET_U16(1),
-                                       .supports_encryption =
-                                           server->scenario == 3 ? ACIP_CRYPTO_NONE : ACIP_CRYPTO_FULL};
+  protocol_version_packet_t version;
+  protocol_version_packet_init(&version, server->scenario == 3 ? ACIP_CRYPTO_NONE : ACIP_CRYPTO_FULL);
   packet_type_t response_type = server->scenario == 1 ? PACKET_TYPE_PONG : PACKET_TYPE_PROTOCOL_VERSION;
   size_t response_size = server->scenario == 2 ? 1 : sizeof(version);
   cr_assert_worker((packet_send(socket, response_type, &version, response_size)) == (ASCIICHAT_OK));

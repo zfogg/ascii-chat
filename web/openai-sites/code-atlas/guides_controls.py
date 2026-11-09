@@ -26,7 +26,7 @@ G('settings','Change controls & settings','Control & recovery','CLI + browser','
  P(W+'utils/urlState.ts',None,'Serialize shareable state','The utility omits default scalar values and handles dedicated fragment fields for private values. Inspect it before changing invitation links.')),
  C('apply','Apply live settings','React values become C options through explicit adapters.',
  P(W+'components/shared/BinarySettings.tsx',None,'Render available controls','Browser controls expose binary-style values. The UI layer describes values while settings adapters apply them.'),
- P(W+'hooks/useWasmOptions.ts',None,'Call C-facing setters','UI values and dimensions are translated into module settings. Initialization gates prevent writes before a usable module exists.','src/web/common/options.c'),
+ P(W+'hooks/useWasmOptions.ts',None,'Call C-facing setters','UI values and dimensions are translated into module settings. Initialization gates prevent writes before a usable module exists.','src/web/common/opts.cpp'),
  P(L+'options/rcu.c',None,'Publish consistent options','The shared options store serves runtime readers and writers. A cached React value differs from the published option state consumed by C.')),
  C('actions','Route live actions','Local presentation and host-generated output require different update paths.',
  P(S+'keyboard_handler.c','session_handle_keyboard_input','Apply native actions','Mute, pause, help, and display actions route through session controls/options rather than raw terminal text.',L+'ui/session_input.c'),
