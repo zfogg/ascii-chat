@@ -9,6 +9,21 @@ let package = Package(
         .target(
             name: "AsciiChatIOSModel",
             path: ".",
+            exclude: [
+                "AsciiChatApp.swift",
+                "CMakeLists.txt",
+                "Info.plist",
+                "LaunchScreen.storyboard",
+                "AppIcon.png",
+                "AppIcon.NOTICE",
+                "IOSKeyboardHandler.swift",
+                "main.c",
+                "main.h",
+                "mirror.h",
+                "test_frame.c",
+                "test_frame.h",
+                "Tests"
+            ],
             sources: ["IOSSessionModel.swift"]
         ),
         .testTarget(
