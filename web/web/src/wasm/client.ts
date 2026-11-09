@@ -605,6 +605,13 @@ export function drainClientOutputs(): ClientEventResult {
   return clientSession.drainOutputs() as ClientEventResult;
 }
 
+/** Read native session state without manufacturing a browser event. */
+export function snapshotClientSession(): ClientEventResult {
+  if (!clientSession || !clientInitialized)
+    throw new Error("WASM client session is not initialized");
+  return clientSession.snapshot() as ClientEventResult;
+}
+
 function checkClientEvent(
   result: ClientEventResult,
   fallback: string,
