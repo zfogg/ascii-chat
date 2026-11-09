@@ -23,6 +23,7 @@ markers = [
   "network: loopback networking tests",
   "native: native library checks requiring isolated interpreters",
   "media: media processing tests",
+  "performance: performance and frame-rate regression tests",
   "terminal: PTY and terminal behavior",
   "mcp: MCP protocol tests",
 ]

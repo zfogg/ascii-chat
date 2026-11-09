@@ -8,6 +8,17 @@
 /** Maximum complete frame size accepted by the presenter, including cursor controls. */
 #define UI_CONTROLLER_MAX_FRAME_BYTES (16 * 1024 * 1024)
 
+/**
+ * @brief Decide whether the next fresh media frame should probe terminal ACK support.
+ *
+ * ACK probing is a startup capability check. Once support is known or the
+ * terminal has timed out, media frames must not be paced by that optional
+ * protocol exchange.
+ */
+static inline bool ui_controller_should_probe_terminal_ack(bool fresh, bool drew, int reply_support) {
+  return fresh && drew && reply_support == 0;
+}
+
 /** Rendering priority, from background to modal. */
 typedef enum {
   UI_SCREEN_STATUS,
