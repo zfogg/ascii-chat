@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2live-media-input Open media during a session
+ * @ingroup module_client
  *
  * Migrated from docs/live-media-input.md into the rendered Doxygen topic set.
  *

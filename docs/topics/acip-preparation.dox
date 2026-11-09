@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2acip-preparation ACIP packet preparation validation
+ * @ingroup module_network
  *
  * Migrated from docs/acip-preparation.md into the rendered Doxygen topic set.
  *

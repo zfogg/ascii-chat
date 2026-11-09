@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2mcp MCP rendering server
+ * @ingroup module_development
  *
  * Migrated from docs/mcp.md into the rendered Doxygen topic set.
  *

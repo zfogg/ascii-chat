@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2terminal-ui Terminal presentation
+ * @ingroup module_ui
  *
  * Migrated from docs/terminal-ui.md into the rendered Doxygen topic set.
  *

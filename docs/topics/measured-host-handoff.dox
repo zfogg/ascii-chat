@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2measured-host-handoff Measured host selection and handoff
+ * @ingroup module_network
  *
  * Migrated from docs/measured-host-handoff.md into the rendered Doxygen topic set.
  *

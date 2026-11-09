@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2sync-tui Sync primitive inspector
+ * @ingroup module_development
  *
  * Migrated from docs/sync-tui.md into the rendered Doxygen topic set.
  *

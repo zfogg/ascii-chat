@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2simd Portable SIMD builds
+ * @ingroup module_development
  *
  * Migrated from docs/simd.md into the rendered Doxygen topic set.
  *

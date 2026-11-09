@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2network-copy-reduction Network copy reduction
+ * @ingroup module_network
  *
  * Migrated from docs/network-copy-reduction.md into the rendered Doxygen topic set.
  *

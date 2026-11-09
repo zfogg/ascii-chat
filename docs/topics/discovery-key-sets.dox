@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2discovery-key-sets Discovery session authentication keys
+ * @ingroup module_network
  *
  * Migrated from docs/discovery-key-sets.md into the rendered Doxygen topic set.
  *

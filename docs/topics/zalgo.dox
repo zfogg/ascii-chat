@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2zalgo Zalgo terminal effect
+ * @ingroup module_ui
  *
  * Migrated from docs/zalgo.md into the rendered Doxygen topic set.
  *

@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2keyboard-input Keyboard input
+ * @ingroup module_ui
  *
  * Migrated from docs/keyboard-input.md into the rendered Doxygen topic set.
  *

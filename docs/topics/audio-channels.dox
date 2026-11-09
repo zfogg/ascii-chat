@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2audio-channels Audio channels
+ * @ingroup module_audio
  *
  * Migrated from docs/audio-channels.md into the rendered Doxygen topic set.
  *

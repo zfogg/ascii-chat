@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2event-driven-io Native event-driven I/O
+ * @ingroup module_network
  *
  * Migrated from docs/event-driven-io.md into the rendered Doxygen topic set.
  *

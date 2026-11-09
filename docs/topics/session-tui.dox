@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2session-tui Shared session TUI
+ * @ingroup module_ui
  *
  * Migrated from docs/session-tui.md into the rendered Doxygen topic set.
  *

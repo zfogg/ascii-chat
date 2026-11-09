@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2keymask Keymask public-key art
+ * @ingroup module_ui
  *
  * Migrated from docs/keymask.md into the rendered Doxygen topic set.
  *

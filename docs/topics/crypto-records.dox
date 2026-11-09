@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2crypto-records Authenticated packet records and rotation
+ * @ingroup module_crypto
  * @ingroup topics
  *
  * Migrated from docs/crypto-records.md into the rendered Doxygen topic set.

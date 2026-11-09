@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2audio-spectral FFTW spectral audio processing
+ * @ingroup module_audio
  *
  * Migrated from docs/audio-spectral.md into the rendered Doxygen topic set.
  *

@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2telemetry OpenTelemetry
+ * @ingroup module_development
  *
  * Migrated from docs/telemetry.md into the rendered Doxygen topic set.
  *

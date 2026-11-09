@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2test-patterns Shared native and browser test patterns
+ * @ingroup module_development
  *
  * Migrated from docs/test-patterns.md into the rendered Doxygen topic set.
  *

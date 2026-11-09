@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2runtime-settings Runtime settings
+ * @ingroup module_core
  *
  * Migrated from docs/runtime-settings.md into the rendered Doxygen topic set.
  *

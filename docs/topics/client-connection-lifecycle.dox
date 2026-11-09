@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2client-connection-lifecycle Shared connection ownership
+ * @ingroup module_client
  *
  * Migrated from docs/client-connection-lifecycle.md into the rendered Doxygen topic set.
  *

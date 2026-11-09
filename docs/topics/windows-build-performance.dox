@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2windows-build-performance Windows build performance
+ * @ingroup module_development
  *
  * Migrated from docs/windows-build-performance.md into the rendered Doxygen topic set.
  *

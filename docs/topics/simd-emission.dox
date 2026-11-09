@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2simd-emission Shared ASCII terminal emission
+ * @ingroup module_ui
  *
  * Migrated from docs/simd-emission.md into the rendered Doxygen topic set.
  *

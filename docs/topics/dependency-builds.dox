@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2dependency-builds Dependency builds
+ * @ingroup module_development
  *
  * Migrated from docs/dependency-builds.md into the rendered Doxygen topic set.
  *

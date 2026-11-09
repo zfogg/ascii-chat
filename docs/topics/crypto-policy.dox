@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2crypto-policy Connection security policy
+ * @ingroup module_crypto
  *
  * Migrated from docs/crypto-policy.md into the rendered Doxygen topic set.
  *

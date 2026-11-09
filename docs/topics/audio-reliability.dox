@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2audio-reliability Audio reliability and validation
+ * @ingroup module_audio
  *
  * Migrated from docs/audio-reliability.md into the rendered Doxygen topic set.
  *

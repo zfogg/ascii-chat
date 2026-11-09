@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2sync-activity Sync inspector activity
+ * @ingroup module_development
  *
  * Migrated from docs/sync-activity.md into the rendered Doxygen topic set.
  *

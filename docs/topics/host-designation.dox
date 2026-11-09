@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2host-designation Discovery host designation
+ * @ingroup module_network
  *
  * Migrated from docs/host-designation.md into the rendered Doxygen topic set.
  *

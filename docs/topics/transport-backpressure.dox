@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2transport-backpressure Transport backpressure and media admission
+ * @ingroup module_network
  *
  * Migrated from docs/transport-backpressure.md into the rendered Doxygen topic set.
  *

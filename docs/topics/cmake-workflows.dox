@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2cmake-workflows CMake workflows
+ * @ingroup module_development
  *
  * Migrated from docs/cmake-workflows.md into the rendered Doxygen topic set.
  *

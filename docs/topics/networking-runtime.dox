@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2networking-runtime Connection ownership and execution
+ * @ingroup module_network
  *
  * Migrated from docs/networking-runtime.md into the rendered Doxygen topic set.
  *

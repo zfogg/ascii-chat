@@ -1,5 +1,6 @@
 /**
  * @page md_docs_2ci Continuous integration
+ * @ingroup module_development
  *
  * Migrated from docs/ci.md into the rendered Doxygen topic set.
  *
