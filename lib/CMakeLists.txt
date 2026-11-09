@@ -572,8 +572,12 @@ create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
 # search path explicit instead of relying only on the project interface target.
 target_include_directories(ascii-chat-video BEFORE PRIVATE ${FFMPEG_INCLUDE_DIRS})
 if(USE_MUSL)
-    target_include_directories(ascii-chat-video BEFORE PRIVATE
-        "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include")
+    set(_musl_ffmpeg_include_dir "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include")
+    target_include_directories(ascii-chat-video BEFORE PRIVATE "${_musl_ffmpeg_include_dir}")
+    # Defer copies source properties to transformed sources; target-only include
+    # directories are not present when defer parses the original compilation DB.
+    set_source_files_properties(${VIDEO_SRCS} PROPERTIES
+        INCLUDE_DIRECTORIES "${_musl_ffmpeg_include_dir}")
 endif()
 include(${CMAKE_SOURCE_DIR}/cmake/deps/FaceDetection.cmake)
 ascii_chat_add_face_detector(ascii-chat-video)
