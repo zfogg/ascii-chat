@@ -76,7 +76,11 @@ function(build_llvm_tool)
     # ==========================================================================
     # Cache Directory Setup
     # ==========================================================================
-    set(_cache_dir "${CMAKE_SOURCE_DIR}/.deps-cache/${_TOOL_CACHE_DIR_NAME}")
+    if(ASCIICHAT_DEPS_CACHE_ROOT)
+        set(_cache_dir "${ASCIICHAT_DEPS_CACHE_ROOT}/${_TOOL_CACHE_DIR_NAME}")
+    else()
+        set(_cache_dir "${CMAKE_SOURCE_DIR}/.deps-cache/${_TOOL_CACHE_DIR_NAME}")
+    endif()
     set(_cached_exe "${_cache_dir}/${_TOOL_OUTPUT_EXECUTABLE}${CMAKE_EXECUTABLE_SUFFIX}")
     set(_tool_exe "")
     set(_tool_depends "")

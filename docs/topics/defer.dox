@@ -92,8 +92,7 @@
  * Directly compiling an untransformed source containing defer fails rather than
  * turning cleanup into a no-op. A `.c` file included by another source file is
  * also compiled without its own transformation; avoid defer in such files.
- * Panic instrumentation cannot currently be used
- * with defer transformation.
+ * When panic instrumentation is enabled, it runs before defer transformation.
  *
  * To inspect an exit without writing a generated file, pass its source line and
  * the C compilation arguments to either implementation:
