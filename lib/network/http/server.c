@@ -192,7 +192,8 @@ asciichat_error_t http_response_finish(http_response_t *r) {
   for (size_t i = 0; i < r->header_count; i++)
     n += safe_snprintf(out + n, cap - (size_t)n, "%s: %s\r\n", r->headers[i].name, r->headers[i].value);
   n += safe_snprintf(out + n, cap - (size_t)n, "\r\n");
-  memcpy(out + n, r->body, r->body_length);
+  if (r->body_length)
+    memcpy(out + n, r->body, r->body_length);
   n += (int)r->body_length;
   uv_write_t *w = SAFE_CALLOC(1, sizeof(*w), uv_write_t *);
   http_write_t *write = SAFE_CALLOC(1, sizeof(*write), http_write_t *);
