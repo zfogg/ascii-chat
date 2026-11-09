@@ -944,7 +944,7 @@ private struct IOSAllOptionsView: View {
         case "height": return (20, 240, 1)
         case "zalgo": return (1, 10, 1)
         case "fps": return (0, 144, 1)
-        case "render_font_size": return (3, 18, 0.5)
+        case "render_font_size": return (0, 18, 0.5)
         case "snapshot_delay": return (0, 60, 0.5)
         case "microphone_channels": return (1, 2, 1)
         case "microphone_channel": return (-1, 63, 1)
@@ -965,6 +965,8 @@ private struct IOSAllOptionsView: View {
             return String(Int(value.rounded()))
         case "microphone_volume", "speakers_volume", "volume", "microphone_sensitivity":
             return String(format: "%.2f", value)
+        case "render_font_size":
+            return value <= 0 ? "Auto" : String(format: "%.1f pt", value)
         default:
             return String(format: "%.1f", value)
         }
