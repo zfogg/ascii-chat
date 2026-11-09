@@ -32,7 +32,7 @@ def test_glyph_match(binary, test_environment):
             return lines
 
         default = capture([])
-        assert default == capture(["--renderer=luminance"]), "default must be luminance"
+        assert default == capture(["--renderer=glyph"]), "default must be glyph"
         glyph = capture(["--renderer=glyph"])
         assert glyph != default, "glyph mode did not change the frame"
         background_args = [arg for arg in common if arg != "--color-mode=none"]

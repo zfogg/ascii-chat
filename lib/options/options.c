@@ -597,7 +597,9 @@ options_t options_t_new(void) {
   // ============================================================================
   opts.color_filter = OPT_COLOR_FILTER_DEFAULT;
   opts.render_mode = OPT_RENDER_MODE_DEFAULT;
-  opts.renderer = ASCII_RENDERER_LUMINANCE;
+  opts.renderer = ASCII_RENDERER_DEFAULT;
+  opts.stabilize = true;
+  opts.stabilize_explicit = false;
   opts.palette_type = OPT_PALETTE_TYPE_DEFAULT;
   // palette_custom is already zeroed by memset
   opts.palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT;
@@ -1704,6 +1706,18 @@ static void record_explicit_fps(options_t *opts, int mode_argc, char **mode_argv
   opts->fps_explicitly_set = fps_set_by_config || fps_set_by_cli || (fps_env && fps_env[0] != '\0');
 }
 
+static void record_explicit_stabilize(options_t *opts, int mode_argc, char **mode_argv) {
+  if (!opts) return;
+  for (int i = 0; i < mode_argc; ++i) {
+    if (mode_argv[i] && (!strcmp(mode_argv[i], "--stabilize") || !strncmp(mode_argv[i], "--stabilize=", 12))) {
+      opts->stabilize_explicit = true;
+      return;
+    }
+  }
+  const char *env = SAFE_GETENV("ASCII_CHAT_STABILIZE");
+  opts->stabilize_explicit = env && env[0] != '\0';
+}
+
 static asciichat_error_t publish_options_for_validation(options_t *opts) {
   // Publish options to RCU as soon as they're parsed
   // This ensures GET_OPTION() works during cleanup even if validation fails
@@ -2411,6 +2425,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     goto cleanup;
   }
   record_explicit_screen_and_debug_options(&opts, mode_args.argc, mode_args.argv);
+  record_explicit_stabilize(&opts, mode_args.argc, mode_args.argv);
   apply_screen_defaults(&opts, mode_args.argc, mode_args.argv);
   result = validate_option_strings(&opts);
   if (result != ASCIICHAT_OK) {

@@ -69,7 +69,8 @@ export const defaultBrowserSettings = {
   colorMode: "truecolor",
   colorFilter: "none",
   palette: "standard",
-  renderer: "luminance",
+  renderer: "glyph",
+  stabilize: true,
   renderMode: RenderMode.Foreground,
   paletteChars: defaultPalettes.standard,
 } as const;
