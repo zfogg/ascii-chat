@@ -366,6 +366,11 @@ test("client session exposes lifecycle snapshots and transport events", async ({
     const opening = session.process({ type: "transport-open" });
     const connected = session.process({ type: "transport-connected" });
     const ready = session.process({ type: "snapshot" });
+    const batch = session.processBatch([
+      { type: "transport-open" },
+      { type: "transport-connected" },
+      { type: "snapshot" },
+    ]);
     session.process({ type: "transport-closed" });
     session.delete();
     return {
@@ -374,6 +379,10 @@ test("client session exposes lifecycle snapshots and transport events", async ({
       connected: connected.state,
       ready: ready.ready,
       writable: ready.writable,
+      batch: batch.map((entry: { state: number; ready?: boolean }) => ({
+        state: entry.state,
+        ready: entry.ready ?? false,
+      })),
     };
   });
   expect(result).toEqual({
@@ -382,6 +391,11 @@ test("client session exposes lifecycle snapshots and transport events", async ({
     connected: 3,
     ready: true,
     writable: true,
+    batch: [
+      { state: 1, ready: false },
+      { state: 3, ready: false },
+      { state: 3, ready: true },
+    ],
   });
 });
 

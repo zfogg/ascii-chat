@@ -393,6 +393,7 @@ export interface ClientSessionBinding extends ClassHandle {
   ): any;
   close(): void;
   process(_0: any): any;
+  processBatch(_0: any): any;
 }
 
 type KeyInput = Uint8Array;

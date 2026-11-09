@@ -331,6 +331,20 @@ public:
     }
     return result(SET_ERRNO(ERROR_INVALID_PARAM, "Unknown browser client event: %s", type.c_str()));
   }
+  emscripten::val processBatch(emscripten::val events) {
+    if (!owned_)
+      return emscripten::val::array();
+    const unsigned count = events["length"].as<unsigned>();
+    if (count > 256) {
+      emscripten::val batch = emscripten::val::array();
+      batch.call<void>("push", result(SET_ERRNO(ERROR_INVALID_PARAM, "Client event batch exceeds 256 events")));
+      return batch;
+    }
+    emscripten::val batch = emscripten::val::array();
+    for (unsigned index = 0; index < count; ++index)
+      batch.call<void>("push", process(events[index]));
+    return batch;
+  }
 
 private:
   emscripten::val result(int code) const {
@@ -384,6 +398,7 @@ EMSCRIPTEN_BINDINGS(ascii_chat_network) {
       .function("settingsValues", &ClientSessionBinding::settingsValues)
       .function("validateFrame", &ClientSessionBinding::validateFrame)
       .function("close", &ClientSessionBinding::close)
-      .function("process", &ClientSessionBinding::process);
+      .function("process", &ClientSessionBinding::process)
+      .function("processBatch", &ClientSessionBinding::processBatch);
 
 }
