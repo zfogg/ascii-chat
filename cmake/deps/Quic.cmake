@@ -10,7 +10,10 @@ function(asciichat_check_quic_tls)
     endif()
 
     cmake_push_check_state(RESET)
-    set(CMAKE_REQUIRED_LIBRARIES OpenSSL::SSL ${CMAKE_DL_LIBS})
+    # OpenSSL::SSL may not propagate its crypto dependency while CMake is
+    # probing a static QUIC link. Require both selected targets explicitly so
+    # the probe validates the same libraries used by the final executable.
+    set(CMAKE_REQUIRED_LIBRARIES OpenSSL::SSL OpenSSL::Crypto ${CMAKE_DL_LIBS})
     if(TARGET Threads::Threads)
         list(APPEND CMAKE_REQUIRED_LIBRARIES Threads::Threads)
     endif()

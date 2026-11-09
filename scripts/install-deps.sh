@@ -448,7 +448,7 @@ echo "You can now run: cmake --build --preset debug"
 # Vite+ supplies Oxfmt and the Node.js toolchain used by formatting targets.
 if ! command -v vp >/dev/null 2>&1; then
   curl -fsSL https://vite.plus | bash
-  export PATH="$HOME/.vite-plus/bin:$PATH"
+  export PATH="$HOME/.vite-plus/bin:$HOME/.local/share/vite-plus/bin:$PATH"
 fi
 if command -v vp >/dev/null 2>&1; then
   (cd "$(dirname "$0")/.." && vp install --ignore-scripts)
@@ -457,5 +457,12 @@ else
   echo >&2 "Vite+ installed; open a new shell and run vp install in the repository and web directories."
 fi
 
-corepack enable
-pnpm install --frozen-lockfile
+if command -v corepack >/dev/null 2>&1; then
+  corepack enable
+fi
+if command -v pnpm >/dev/null 2>&1; then
+  pnpm install --frozen-lockfile
+else
+  echo >&2 "pnpm is unavailable after dependency setup"
+  exit 1
+fi
