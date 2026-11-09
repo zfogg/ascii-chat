@@ -19,7 +19,6 @@ static char g_ios_session_string[128];
 /* Native controls use the same shared help renderer as the terminal shortcut. */
 void asciichat_ios_toggle_help(void) {
   int fd = ui_controller_active_fd();
-  os_log(OS_LOG_DEFAULT, "iOS shared help requested screen=%d fd=%d", ui_controller_current_screen(), fd);
   keyboard_help_toggle_terminal(fd);
 }
 
@@ -72,8 +71,7 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
 #ifdef ASCIICHAT_IOS_SIMULATOR
   argv[argc++] = simulator_audio;
   if (mode == ASCIICHAT_IOS_MODE_MIRROR) {
-    argv[7] = test_pattern;
-    argc = 8;
+    argv[argc++] = test_pattern;
   }
 #endif
   if (mode == ASCIICHAT_IOS_MODE_DISCOVERY && g_ios_session_string[0] != '\0') {
