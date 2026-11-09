@@ -313,6 +313,7 @@ export interface MirrorSessionBinding extends ClassHandle {
 export interface AsciiRendererBinding extends ClassHandle {
   valid(): boolean;
   error(): number;
+  close(): void;
   dimensions(): any;
   render(_0: EmbindString, _1: number): any;
 }
@@ -431,6 +432,7 @@ export interface ErrorBinding extends ClassHandle {}
 
 export interface AVStateBinding extends ClassHandle {
   valid(): boolean;
+  close(): void;
   generation(): number;
   begin(): number;
   complete(_0: number): boolean;

@@ -7,13 +7,17 @@ class AVStateBinding {
 public:
   AVStateBinding() : state_(session_av_state_create()) {}
   ~AVStateBinding() {
-    if (state_)
-      session_av_state_destroy(state_);
+    close();
   }
   AVStateBinding(const AVStateBinding &) = delete;
   AVStateBinding &operator=(const AVStateBinding &) = delete;
   bool valid() const {
     return state_ != nullptr;
+  }
+  void close() {
+    if (!state_) return;
+    session_av_state_destroy(state_);
+    state_ = nullptr;
   }
   unsigned generation() const {
     return session_av_state_generation(state_);
@@ -45,6 +49,7 @@ EMSCRIPTEN_BINDINGS(ascii_chat_av_state) {
   emscripten::class_<AVStateBinding>("AVStateBinding")
       .constructor<>()
       .function("valid", &AVStateBinding::valid)
+      .function("close", &AVStateBinding::close)
       .function("generation", &AVStateBinding::generation)
       .function("begin", &AVStateBinding::begin)
       .function("complete", &AVStateBinding::complete)

@@ -24,8 +24,7 @@ public:
     result_ = term_renderer_create(&config, &renderer_);
   }
   ~AsciiRendererBinding() {
-    if (renderer_)
-      term_renderer_destroy(renderer_);
+    close();
   }
   AsciiRendererBinding(const AsciiRendererBinding &) = delete;
   AsciiRendererBinding &operator=(const AsciiRendererBinding &) = delete;
@@ -35,6 +34,12 @@ public:
   }
   int error() const {
     return render_error_ ? render_error_ : result_;
+  }
+  void close() {
+    if (!renderer_) return;
+    term_renderer_destroy(renderer_);
+    renderer_ = nullptr;
+    output_ = emscripten::val::undefined();
   }
   emscripten::val dimensions() const {
     emscripten::val result = emscripten::val::object();
@@ -94,6 +99,7 @@ EMSCRIPTEN_BINDINGS(ascii_chat_terminal_renderer) {
       .constructor<int, int, double, bool, int>()
       .function("valid", &AsciiRendererBinding::valid)
       .function("error", &AsciiRendererBinding::error)
+      .function("close", &AsciiRendererBinding::close)
       .function("dimensions", &AsciiRendererBinding::dimensions)
       .function("render", &AsciiRendererBinding::render);
 }
