@@ -1316,9 +1316,11 @@ typedef struct {
   char path[URL_BUFFER_SIZE];
   int port;
   bool use_ssl;
-/**
- * @brief This is the handoff point for websocket endpoint. Callers fill `port`, `use_ssl` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
- */
+  /**
+   * @brief This is the handoff point for websocket endpoint. Callers fill `port`, `use_ssl` before passing it on;
+   * consumers read the values during the operation and return ownership only where the member contract explicitly says
+   * they do.
+   */
 } websocket_endpoint_t;
 
 /**
@@ -1437,7 +1439,9 @@ void acip_websocket_runtime_destroy(acip_websocket_runtime_t **runtime) {
 }
 
 /**
- * @brief When code needs to work with acip websocket runtime, it keeps `context` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ * @brief When code needs to work with acip websocket runtime, it keeps `context` here instead of scattering it across
+ * globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or
+ * callback context recorded in those fields.
  * @brief Allocate client transport storage and synchronization primitives with staged failure cleanup.
  */
 static acip_transport_t *websocket_allocate_client_transport(const char *name) {

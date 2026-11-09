@@ -24,7 +24,9 @@
 #include <string.h>
 
 /**
- * @brief When code needs to work with session consensus, it keeps `topology`, `coordinator`, `send_packet`, `on_election` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ * @brief When code needs to work with session consensus, it keeps `topology`, `coordinator`, `send_packet`,
+ * `on_election` here instead of scattering it across globals. Initialization establishes the handles and sizes;
+ * teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * @brief Session adapter that owns consensus topology, coordination, and election state.
  *
  * The handle connects the generic consensus modules to mode-specific callbacks,

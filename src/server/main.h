@@ -207,7 +207,9 @@ typedef struct server_context_t {
 } server_context_t;
 
 /**
- * @brief server context keeps the values that move through the subsystem: `network_server`, `rate_limiter`, `client_manager`, `client_manager_rwlock`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief server context keeps the values that move through the subsystem: `network_server`, `rate_limiter`,
+ * `client_manager`, `client_manager_rwlock`. Some members are pointers into caller- or subsystem-owned memory, so
+ * lifetime follows the API that populated them rather than the struct copy itself.
  * @brief Server mode entry point for unified binary
  *
  * This function implements the complete server lifecycle including:

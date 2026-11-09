@@ -33,13 +33,17 @@ typedef struct {
   asciichat_error_context_t context;
   int next;
   bool used;
-/**
- * @brief error frame is intentionally a small, concrete record. Fields such as `context`, `next`, `used` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
- */
+  /**
+   * @brief error frame is intentionally a small, concrete record. Fields such as `context`, `next`, `used` give callers
+   * the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not
+   * independently managed.
+   */
 } error_frame_t;
 
 /**
- * @brief For error thread, this is the live record that ties `id`, `generation`, `top`, `depth` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief For error thread, this is the live record that ties `id`, `generation`, `top`, `depth` together. The owning
+ * code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the
+ * record.
  */
 typedef struct error_thread {
   uint64_t id;

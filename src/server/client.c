@@ -506,9 +506,10 @@ error_cleanup_transport:
 typedef struct {
   client_info_t *client;
   char display_name[MAX_DISPLAY_NAME_LEN];
-/**
- * @brief For server client removal, this is the live record that ties `client` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
- */
+  /**
+   * @brief For server client removal, this is the live record that ties `client` together. The owning code creates it,
+   * updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+   */
 } server_client_removal_t;
 
 static asciichat_error_t server_client_begin_removal(server_context_t *server_ctx, const char *client_id,

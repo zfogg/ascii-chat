@@ -67,12 +67,14 @@ typedef struct {
   int line;
   unsigned waiters;
   bool cycle, wait_known;
-/**
- */
+  /**
+   */
 } sync_row_t;
 
 /**
- * @brief sync row keeps the values that move through the subsystem: `key`, `owner`, `waiter`, `generation`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief sync row keeps the values that move through the subsystem: `key`, `owner`, `waiter`, `generation`. Some
+ * members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather
+ * than the struct copy itself.
  */
 typedef struct {
   atomic_flag busy;
@@ -80,9 +82,11 @@ typedef struct {
   size_t count, capacity;
   uint64_t sampled_ns;
   bool waits_complete, limited;
-/**
- * @brief This is the handoff point for sync sample. Callers fill `busy`, `rows`, `count`, `capacity` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
- */
+  /**
+   * @brief This is the handoff point for sync sample. Callers fill `busy`, `rows`, `count`, `capacity` before passing
+   * it on; consumers read the values during the operation and return ownership only where the member contract
+   * explicitly says they do.
+   */
 } sync_sample_t;
 
 static sync_sample_t g_sync_samples[3] = {

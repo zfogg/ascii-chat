@@ -10,7 +10,9 @@
 #include <string.h>
 
 /**
- * @brief test pattern is intentionally a small, concrete record. Fields such as `image`, `rgba` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ * @brief test pattern is intentionally a small, concrete record. Fields such as `image`, `rgba` give callers the
+ * identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not
+ * independently managed.
  */
 struct test_pattern {
   image_t *image;

@@ -14,7 +14,9 @@
 #include "../video/anim/visualization_internal.h"
 
 /**
- * @brief waveform color stop keeps the values that move through the subsystem: `frequency`, `red`, `green`, `blue`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief waveform color stop keeps the values that move through the subsystem: `frequency`, `red`, `green`, `blue`.
+ * Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them
+ * rather than the struct copy itself.
  */
 typedef struct {
   float frequency;

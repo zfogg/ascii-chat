@@ -46,9 +46,11 @@ typedef struct {
   _Atomic unsigned state; // 0 free, 1 owned, 2 ready
   ascii_otel_metric_t metric;
   double value;
-/**
- * @brief audio rt metric is intentionally a small, concrete record. Fields such as `state`, `metric`, `value` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
- */
+  /**
+   * @brief audio rt metric is intentionally a small, concrete record. Fields such as `state`, `metric`, `value` give
+   * callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding
+   * subsystem—not independently managed.
+   */
 } audio_rt_metric_t;
 static audio_rt_metric_t g_audio_rt_metrics[AUDIO_RT_METRIC_SLOTS];
 static _Atomic unsigned g_audio_rt_next;

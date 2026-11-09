@@ -62,9 +62,11 @@ terminal_size_t tui_stats_minimum(const stats_view_t *view) {
 typedef struct {
   const stats_view_t *view;
   char text[TUI_STATS_TEXT_BUFFER_SIZE];
-/**
- * @brief When code needs to work with stats table context, it keeps `view` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
- */
+  /**
+   * @brief When code needs to work with stats table context, it keeps `view` here instead of scattering it across
+   * globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or
+   * callback context recorded in those fields.
+   */
 } stats_table_context_t;
 static void stats_cells(size_t row, const char **cells, size_t count, void *data) {
   (void)count;

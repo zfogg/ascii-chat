@@ -1,5 +1,7 @@
 /**
- * @brief For terminal fd reader, this is the live record that ties `fp`, `frame_height`, `frame_width`, `line_buffer` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief For terminal fd reader, this is the live record that ties `fp`, `frame_height`, `frame_width`, `line_buffer`
+ * together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to
+ * storage before freeing the record.
  * @file terminal/fd/reader.c
  * @ingroup terminal_fd
  * @brief Read ANSI ASCII frames from file descriptor, chunked by height

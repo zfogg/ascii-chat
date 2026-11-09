@@ -158,9 +158,11 @@ typedef struct {
   char *data;
   size_t length;
   size_t capacity;
-/**
- * @brief For title writer, this is the live record that ties `data`, `length`, `capacity` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
- */
+  /**
+   * @brief For title writer, this is the live record that ties `data`, `length`, `capacity` together. The owning code
+   * creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the
+   * record.
+   */
 } title_writer_t;
 
 static void title_append(title_writer_t *writer, const char *text) {

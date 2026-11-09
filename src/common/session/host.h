@@ -188,9 +188,9 @@ typedef struct {
   void *user_data;
 
   /** @brief Display context for local frame rendering (optional, can be NULL) */
-/**
- * @brief Listener, capacity, security, and callback settings for a session host
- */
+  /**
+   * @brief Listener, capacity, security, and callback settings for a session host
+   */
   struct session_display_ctx *display_context;
 } session_host_config_t;
 
@@ -431,7 +431,9 @@ asciichat_error_t session_host_set_display(session_host_t *host, struct session_
 
 /** Rendering inputs for a local display backend. Palette is borrowed during the render cycle. */
 /**
- * @brief When code needs to work with session host render config, it keeps `caps`, `palette`, `width`, `height` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ * @brief When code needs to work with session host render config, it keeps `caps`, `palette`, `width`, `height` here
+ * instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any
+ * allocation, lock, thread, or callback context recorded in those fields.
  */
 typedef struct {
   terminal_capabilities_t caps;
@@ -441,8 +443,9 @@ typedef struct {
 } session_host_render_config_t;
 
 /** Local output can use a registered client's capabilities/transport, or a display backend.
- * @brief session host render target is intentionally a small, concrete record. Fields such as `client_id`, `context` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
- * Callbacks execute under the host client lock and must not call host APIs.
+ * @brief session host render target is intentionally a small, concrete record. Fields such as `client_id`, `context`
+ * give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding
+ * subsystem—not independently managed. Callbacks execute under the host client lock and must not call host APIs.
  */
 typedef struct {
   uint32_t client_id;

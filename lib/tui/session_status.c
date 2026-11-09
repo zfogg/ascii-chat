@@ -133,9 +133,11 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
 typedef struct {
   size_t entry;
   int row;
-/**
- * @brief When code needs to work with log row ref, it keeps `entry`, `row` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
- */
+  /**
+   * @brief When code needs to work with log row ref, it keeps `entry`, `row` here instead of scattering it across
+   * globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or
+   * callback context recorded in those fields.
+   */
 } log_row_ref_t;
 
 static const char *startup_log_summary(const char *message, char *buffer, size_t buffer_size) {

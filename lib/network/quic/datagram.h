@@ -22,20 +22,24 @@ typedef struct {
   uint32_t total;
   uint16_t unit, count, received_count;
   acip_traffic_class_t traffic_class;
-/**
- */
+  /**
+   */
 } acip_quic_datagram_slot_t;
 
 /**
- * @brief acip quic datagram slot keeps the values that move through the subsystem: `data`, `received`, `cost`, `id`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief acip quic datagram slot keeps the values that move through the subsystem: `data`, `received`, `cost`, `id`.
+ * Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them
+ * rather than the struct copy itself.
  */
 typedef struct {
   acip_quic_datagram_slot_t slots[ACIP_QUIC_DATAGRAM_SLOTS];
   size_t bytes;
   uint64_t last_time_ns;
-/**
- * @brief For acip quic datagram reader, this is the live record that ties `bytes`, `last_time_ns` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
- */
+  /**
+   * @brief For acip quic datagram reader, this is the live record that ties `bytes`, `last_time_ns` together. The
+   * owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before
+   * freeing the record.
+   */
 } acip_quic_datagram_reader_t;
 
 /* unit is the payload capacity of every non-final fragment. IDs must be

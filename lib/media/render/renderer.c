@@ -24,7 +24,9 @@
 #define RENDER_AUTO_MIN_FONT_SIZE_PT 3.0
 
 /**
- * @brief For render file ctx, this is the live record that ties `progress`, `error`, `renderer`, `encoder` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief For render file ctx, this is the live record that ties `progress`, `error`, `renderer`, `encoder` together.
+ * The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before
+ * freeing the record.
  */
 struct render_file_ctx_s {
   render_progress_t *progress;

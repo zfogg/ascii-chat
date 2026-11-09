@@ -533,9 +533,11 @@ typedef struct {
   options_value_type_t type;
   size_t offset, size;
   const char *cli;
-/**
- * @brief For runtime field, this is the live record that ties `name`, `type`, `offset`, `size` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
- */
+  /**
+   * @brief For runtime field, this is the live record that ties `name`, `type`, `offset`, `size` together. The owning
+   * code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing
+   * the record.
+   */
 } runtime_field_t;
 #define FIELD(name, type, cli) {#name, type, offsetof(options_t, name), sizeof(((options_t *)0)->name), cli}
 static const runtime_field_t runtime_fields[] = {

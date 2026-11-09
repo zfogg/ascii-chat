@@ -171,9 +171,11 @@ typedef struct {
   size_t length, cursor;
   uint64_t deadline;
   bool active, submitted, pasted;
-/**
- * @brief This is the handoff point for input editor. Callers fill `length`, `cursor`, `deadline`, `active` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
- */
+  /**
+   * @brief This is the handoff point for input editor. Callers fill `length`, `cursor`, `deadline`, `active` before
+   * passing it on; consumers read the values during the operation and return ownership only where the member contract
+   * explicitly says they do.
+   */
 } input_editor_t;
 static input_editor_t g_media_editor;
 

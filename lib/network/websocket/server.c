@@ -77,8 +77,8 @@ typedef struct {
   bool has_pending_send;             ///< True if there's an in-progress message
   atomic_t receive_callback_count;   ///< RECEIVE callbacks for this connection
   atomic_t writeable_callback_count; ///< WRITEABLE callbacks for this connection
-/**
- */
+  /**
+   */
 } websocket_connection_data_t;
 
 // Forward declaration for websocket_protocols (defined later in file)

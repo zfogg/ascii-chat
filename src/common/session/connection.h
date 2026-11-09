@@ -20,21 +20,24 @@ typedef struct {
   void (*interrupt)(void *context);
   asciichat_error_t (*join)(void *context);
   void (*release)(void *context);
-/**
- */
+  /**
+   */
 } session_connection_ops_t;
 
 /**
- * @brief Groups the callbacks and caller data for session connection ops. The owner invokes these function pointers at lifecycle boundaries, so the referenced context must remain alive until registration is removed.
+ * @brief Groups the callbacks and caller data for session connection ops. The owner invokes these function pointers at
+ * lifecycle boundaries, so the referenced context must remain alive until registration is removed.
  */
 typedef struct {
   atomic_t state;
   thread_id_t owner_thread;
   session_connection_ops_t ops;
   void *context;
-/**
- * @brief The useful part of session connection is in `state`, `owner_thread`, `ops`, `context`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
- */
+  /**
+   * @brief The useful part of session connection is in `state`, `owner_thread`, `ops`, `context`: together they
+   * describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and
+   * use the parent cleanup path.
+   */
 } session_connection_t;
 
 void session_connection_init(session_connection_t *connection, session_connection_ops_t ops, void *context);

@@ -144,8 +144,8 @@ typedef struct {
   unsigned generation;
   int count;
   ui_mdns_server_t servers[MDNS_LIVE_CAPACITY];
-/**
- */
+  /**
+   */
 } mdns_refresh_t;
 
 static int compare_mdns_servers(const void *left, const void *right) {
@@ -429,7 +429,9 @@ int ui_mdns_select_live(const ui_mdns_server_t *servers, int count, uint64_t dea
 }
 
 /**
- * @brief This is the handoff point for mdns refresh. Callers fill `mutex`, `stop`, `thread`, `running` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief This is the handoff point for mdns refresh. Callers fill `mutex`, `stop`, `thread`, `running` before passing
+ * it on; consumers read the values during the operation and return ownership only where the member contract explicitly
+ * says they do.
  * @brief Get best address for a server
  */
 const char *ui_mdns_get_best_address(const ui_mdns_server_t *server) {

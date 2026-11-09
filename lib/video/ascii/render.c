@@ -521,9 +521,11 @@ typedef struct {
   int16_t centered[16];
   int sum, tone, energy;
   uint32_t key;
-/**
- * @brief For glyph candidate, this is the live record that ties `sum`, `tone`, `energy`, `key` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
- */
+  /**
+   * @brief For glyph candidate, this is the live record that ties `sum`, `tone`, `energy`, `key` together. The owning
+   * code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing
+   * the record.
+   */
 } glyph_candidate_t;
 
 // Preserve hue while keeping visible ink against the dark canvas. Color is

@@ -43,8 +43,8 @@ typedef struct {
   int depth;
   atomic_t guard;
   mutex_wait_snapshot_t telemetry;
-/**
- */
+  /**
+   */
 } thread_lock_stack_t;
 
 static void stack_lock(thread_lock_stack_t *stack) {
@@ -60,13 +60,15 @@ static void stack_unlock(thread_lock_stack_t *stack) {
 // Global registry of all threads that have used mutexes
 #define MAX_THREADS 256
 /**
- * @brief thread lock stack keeps the values that move through the subsystem: `depth`, `guard`, `telemetry`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief thread lock stack keeps the values that move through the subsystem: `depth`, `guard`, `telemetry`. Some
+ * members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather
+ * than the struct copy itself.
  */
 typedef struct {
   thread_id_t thread_id;
   thread_lock_stack_t *stack; // Heap-allocated stack per thread
-/**
- */
+  /**
+   */
 } thread_registry_entry_t;
 
 static thread_registry_entry_t g_thread_registry[MAX_THREADS] = {0};
@@ -97,9 +99,10 @@ static atomic_t g_shutting_down = {0};
 typedef struct {
   uintptr_t mutexes[MAX_CYCLE_MUTEXES];
   int count;
-/**
- * @brief The useful part of thread registry entry is in `thread_id`, `stack`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
- */
+  /**
+   * @brief The useful part of thread registry entry is in `thread_id`, `stack`: together they describe what is pending,
+   * who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+   */
 } deadlock_state_t;
 static deadlock_state_t g_last_deadlock = {0};
 
@@ -752,7 +755,9 @@ void mutex_stack_detect_deadlocks(void) {
 static _Atomic uint64_t g_next_cond_check_ns;
 
 /**
- * @brief deadlock state is intentionally a small, concrete record. Fields such as `count` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ * @brief deadlock state is intentionally a small, concrete record. Fields such as `count` give callers the identity and
+ * current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently
+ * managed.
  */
 typedef struct {
   uint64_t waiting_count;
@@ -763,8 +768,8 @@ typedef struct {
   int last_wait_line;
   const char *last_wait_func;
   const mutex_t *last_wait_mutex;
-/**
- */
+  /**
+   */
 } cond_deadlock_snapshot_t;
 
 static void copy_cond_deadlock_state(uintptr_t key, void *data) {
@@ -781,7 +786,9 @@ static void copy_cond_deadlock_state(uintptr_t key, void *data) {
 }
 
 /**
- * @brief cond deadlock snapshot is intentionally a small, concrete record. Fields such as `waiting_count`, `last_wait_time_ns`, `last_signal_time_ns`, `last_waiting_key` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ * @brief cond deadlock snapshot is intentionally a small, concrete record. Fields such as `waiting_count`,
+ * `last_wait_time_ns`, `last_signal_time_ns`, `last_waiting_key` give callers the identity and current value they need.
+ * It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * @brief Check copied condition state after releasing the registry lock
  * @param cond Protected copy of the condition state
  * @param name Human-readable name of the primitive
@@ -834,18 +841,20 @@ extern bool debug_sync_is_cleanup_in_progress(void);
 typedef struct {
   cond_deadlock_snapshot_t state;
   char name[DEBUG_MUTEX_NAME_BUFFER_SIZE];
-/**
- */
+  /**
+   */
 } cond_deadlock_entry_t;
 
 /**
- * @brief When code needs to work with cond deadlock entry, it keeps `state` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ * @brief When code needs to work with cond deadlock entry, it keeps `state` here instead of scattering it across
+ * globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or
+ * callback context recorded in those fields.
  */
 typedef struct {
   cond_deadlock_entry_t *entries;
   size_t count;
-/**
- */
+  /**
+   */
 } cond_deadlock_batch_t;
 
 static void copy_cond_deadlock_entry(uintptr_t key, uint64_t generation, const char *name, const char *type,
@@ -862,7 +871,8 @@ static void copy_cond_deadlock_entry(uintptr_t key, uint64_t generation, const c
 }
 
 /**
- * @brief The useful part of cond deadlock batch is in `entries`, `count`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ * @brief The useful part of cond deadlock batch is in `entries`, `count`: together they describe what is pending, who
+ * owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * @brief Check all condition variables for deadlocks
  *
  * Scans all registered condition variables and logs warnings for any that

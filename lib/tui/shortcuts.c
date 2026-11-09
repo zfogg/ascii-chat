@@ -9,9 +9,10 @@ typedef struct {
   tui_shortcut_t action;
   const char *label, *description;
   bool native, media;
-/**
- * @brief Groups the callbacks and caller data for binding. The owner invokes these function pointers at lifecycle boundaries, so the referenced context must remain alive until registration is removed.
- */
+  /**
+   * @brief Groups the callbacks and caller data for binding. The owner invokes these function pointers at lifecycle
+   * boundaries, so the referenced context must remain alive until registration is removed.
+   */
 } binding_t;
 static const binding_t bindings[] = {
     {{KEY_QUESTION}, TUI_SHORTCUT_HELP, "?", "Toggle this help screen TUI", false, false},

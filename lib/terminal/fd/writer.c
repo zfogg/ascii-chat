@@ -1,5 +1,7 @@
 /**
- * @brief terminal fd writer keeps the values that move through the subsystem: `fp`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief terminal fd writer keeps the values that move through the subsystem: `fp`. Some members are pointers into
+ * caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy
+ * itself.
  * @file terminal/fd/writer.c
  * @ingroup terminal_fd
  * @brief Write ANSI ASCII frames to file descriptor

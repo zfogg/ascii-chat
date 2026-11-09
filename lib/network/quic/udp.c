@@ -15,8 +15,12 @@
 #define QUIC_RETRY_TOKEN_LIFETIME (10ULL * 1000000000ULL)
 
 /**
- * @brief acip quic udp endpoint is intentionally a small, concrete record. Fields such as `socket`, `local`, `local_length`, `server_tls` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
- * @brief The useful part of udp peer is in `next`, `connection`, `pending_path`, `pending_length`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ * @brief acip quic udp endpoint is intentionally a small, concrete record. Fields such as `socket`, `local`,
+ * `local_length`, `server_tls` give callers the identity and current value they need. It is normally borrowed from, or
+ * owned by, the surrounding subsystem—not independently managed.
+ * @brief The useful part of udp peer is in `next`, `connection`, `pending_path`, `pending_length`: together they
+ * describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use
+ * the parent cleanup path.
  */
 typedef struct udp_peer {
   struct udp_peer *next;

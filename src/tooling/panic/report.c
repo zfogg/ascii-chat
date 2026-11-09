@@ -550,9 +550,11 @@ typedef struct {
   const report_config_t *config;
   thread_entry_t **entries;
   bool success;
-/**
- * @brief collect ctx is intentionally a small, concrete record. Fields such as `config`, `entries`, `success` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
- */
+  /**
+   * @brief collect ctx is intentionally a small, concrete record. Fields such as `config`, `entries`, `success` give
+   * callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding
+   * subsystem—not independently managed.
+   */
 } collect_ctx_t;
 
 static bool collect_entry_cb(const platform_dir_entry_t *entry, void *user_data) {

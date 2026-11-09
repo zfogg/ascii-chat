@@ -50,8 +50,12 @@ struct network_server {
 };
 
 /**
- * @brief network server is intentionally a small, concrete record. Fields such as `config`, `listener`, `websocket`, `websocket_thread` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
- * @brief network connection keeps the values that move through the subsystem: `server`, `callbacks`, `callback_context`, `policy`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief network server is intentionally a small, concrete record. Fields such as `config`, `listener`, `websocket`,
+ * `websocket_thread` give callers the identity and current value they need. It is normally borrowed from, or owned by,
+ * the surrounding subsystem—not independently managed.
+ * @brief network connection keeps the values that move through the subsystem: `server`, `callbacks`,
+ * `callback_context`, `policy`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows
+ * the API that populated them rather than the struct copy itself.
  */
 struct network_connection {
   network_server_t *server;

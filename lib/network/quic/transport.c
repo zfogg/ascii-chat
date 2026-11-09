@@ -37,10 +37,14 @@ typedef struct {
   atomic_t request_h264, request_h265;
   asciichat_error_t failure;
   bool connected;
-/**
- * @brief The useful part of received packet is in `next`, `data`, `length`, `cost`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
- * @brief For quic transport, this is the live record that ties `connection`, `lane`, `received`, `security_changed` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
- */
+  /**
+   * @brief The useful part of received packet is in `next`, `data`, `length`, `cost`: together they describe what is
+   * pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent
+   * cleanup path.
+   * @brief For quic transport, this is the live record that ties `connection`, `lane`, `received`, `security_changed`
+   * together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to
+   * storage before freeing the record.
+   */
 } quic_transport_t;
 
 static const acip_transport_methods_t quic_methods;

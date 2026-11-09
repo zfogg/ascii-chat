@@ -53,11 +53,13 @@ typedef struct {
   uint64_t group_timestamp;
   asciichat_errno_outcome_t outcome;
   bool historical;
-/**
- */
+  /**
+   */
 } errno_tui_row_t;
 /**
- * @brief The useful part of errno tui row is in `context`, `resolved_ns`, `group_id`, `group_timestamp`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ * @brief The useful part of errno tui row is in `context`, `resolved_ns`, `group_id`, `group_timestamp`: together they
+ * describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use
+ * the parent cleanup path.
  */
 typedef struct {
   bool visible;
@@ -69,9 +71,11 @@ typedef struct {
   int output_fd;
   asciichat_error_context_t selected_context;
   bool selected_current;
-/**
- * @brief When code needs to work with errno tui state, it keeps `visible`, `stack_sort`, `tab`, `list` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
- */
+  /**
+   * @brief When code needs to work with errno tui state, it keeps `visible`, `stack_sort`, `tab`, `list` here instead
+   * of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any
+   * allocation, lock, thread, or callback context recorded in those fields.
+   */
 } errno_tui_state_t;
 
 static errno_tui_state_t g_state;

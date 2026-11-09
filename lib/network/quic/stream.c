@@ -21,9 +21,11 @@ typedef struct {
   acip_quic_stream_reader_t *reader;
   acip_quic_stream_emit_fn emit;
   void *context;
-/**
- * @brief emit context keeps the values that move through the subsystem: `reader`, `emit`, `context`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
- */
+  /**
+   * @brief emit context keeps the values that move through the subsystem: `reader`, `emit`, `context`. Some members are
+   * pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the
+   * struct copy itself.
+   */
 } emit_context_t;
 
 static asciichat_error_t emit_packet(const void *packet, size_t size, void *arg) {

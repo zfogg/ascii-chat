@@ -7,7 +7,9 @@
 #include <string.h>
 
 /**
- * @brief For audio processor, this is the live record that ties `config`, `spectral_left`, `spectral_right`, `compressor` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief For audio processor, this is the live record that ties `config`, `spectral_left`, `spectral_right`,
+ * `compressor` together. The owning code creates it, updates it while work is active, and releases its handles and
+ * pointed-to storage before freeing the record.
  */
 struct audio_processor {
   audio_processor_config_t config;

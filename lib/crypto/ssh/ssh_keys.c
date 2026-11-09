@@ -228,9 +228,11 @@ typedef struct {
   char ciphername[CRYPTO_SSH_SSH_KEYS_CIPHERNAME_BUFFER_SIZE];
   uint8_t bcrypt_salt[SSH_BCRYPT_SALT_SIZE];
   uint8_t ed25519_pubkey[ED25519_PUBLIC_KEY_SIZE];
-/**
- * @brief The useful part of ssh private key parse is in `file_content`, `key_blob`, `key_blob_len`, `offset`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
- */
+  /**
+   * @brief The useful part of ssh private key parse is in `file_content`, `key_blob`, `key_blob_len`, `offset`:
+   * together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent
+   * operation and use the parent cleanup path.
+   */
 } ssh_private_key_parse_t;
 
 static void ssh_private_key_clear_password(ssh_private_key_parse_t *state) {

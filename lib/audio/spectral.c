@@ -9,7 +9,9 @@
 #define SPECTRAL_MAX_BINS (SPECTRAL_MAX_SIZE / 2 + 1)
 
 /**
- * @brief spectral processor keeps the values that move through the subsystem: `config`, `forward`, `inverse`, `pitch_hz`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief spectral processor keeps the values that move through the subsystem: `config`, `forward`, `inverse`,
+ * `pitch_hz`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that
+ * populated them rather than the struct copy itself.
  */
 struct spectral_processor {
   spectral_config_t config;

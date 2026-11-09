@@ -479,8 +479,8 @@ typedef struct {
   int otel_metrics_interval;
   int otel_timeout;
   int otel_queue_capacity;
-/**
- */
+  /**
+   */
 } binary_level_opts_t;
 
 static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
@@ -903,21 +903,25 @@ typedef struct {
   bool color_setting_found;
   bool check_update_flag_seen;
   bool no_check_update_flag_seen;
-/**
- */
+  /**
+   */
 } binary_actions_t;
 
 // argv entries borrow the original strings; only the pointer array is owned.
 /**
- * @brief The useful part of binary actions is in `show_version`, `create_config`, `create_manpage`, `has_action`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ * @brief The useful part of binary actions is in `show_version`, `create_config`, `create_manpage`, `has_action`:
+ * together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent
+ * operation and use the parent cleanup path.
  */
 typedef struct {
   int argc;
   char **argv;
   char **allocated;
-/**
- * @brief When code needs to work with mode arguments, it keeps `argc`, `argv`, `allocated` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
- */
+  /**
+   * @brief When code needs to work with mode arguments, it keeps `argc`, `argv`, `allocated` here instead of scattering
+   * it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock,
+   * thread, or callback context recorded in those fields.
+   */
 } mode_arguments_t;
 
 static asciichat_error_t validate_options_argv(int argc, char **argv) {

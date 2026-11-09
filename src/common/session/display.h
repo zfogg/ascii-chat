@@ -112,7 +112,9 @@ typedef struct {
  * ============================================================================ */
 
 /**
- * @brief session display config is intentionally a small, concrete record. Fields such as `snapshot_mode`, `palette_type`, `custom_palette`, `color_mode` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ * @brief session display config is intentionally a small, concrete record. Fields such as `snapshot_mode`,
+ * `palette_type`, `custom_palette`, `color_mode` give callers the identity and current value they need. It is normally
+ * borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * @brief Opaque session display context handle
  *
  * Manages TTY state, terminal capabilities, palette, and rendering state.

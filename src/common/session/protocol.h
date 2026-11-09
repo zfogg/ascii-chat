@@ -16,12 +16,14 @@ typedef struct {
   void *context;
   bool terminal_output;                // Drop valid obsolete geometry during terminal/settings resize transitions.
   buffer_workspace_t *frame_workspace; // Optional; receive worker owns it through callback completion.
-/**
- */
+  /**
+   */
 } session_protocol_media_t;
 
 /**
- * @brief session protocol media keeps the values that move through the subsystem: `context`, `terminal_output`, `frame_workspace`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief session protocol media keeps the values that move through the subsystem: `context`, `terminal_output`,
+ * `frame_workspace`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that
+ * populated them rather than the struct copy itself.
  */
 typedef struct {
   acip_transport_t *transport; // Borrowed until the receive worker joins.
@@ -39,9 +41,11 @@ typedef struct {
   uint32_t settings_revision;
   uint32_t settings_status;
   acip_render_settings_t effective_render_settings;
-/**
- * @brief This is the handoff point for session protocol. Callers fill `transport`, `media`, `control`, `callback_result` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
- */
+  /**
+   * @brief This is the handoff point for session protocol. Callers fill `transport`, `media`, `control`,
+   * `callback_result` before passing it on; consumers read the values during the operation and return ownership only
+   * where the member contract explicitly says they do.
+   */
 } session_protocol_t;
 
 void session_protocol_init(session_protocol_t *protocol, acip_transport_t *transport, session_protocol_media_t media,

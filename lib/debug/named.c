@@ -104,8 +104,8 @@ typedef struct {
   uintptr_t key;
   bool valid;
   named_metadata_t metadata;
-/**
- */
+  /**
+   */
 } named_metadata_entry_t;
 
 typedef struct {
@@ -113,9 +113,11 @@ typedef struct {
   size_t count;
   size_t capacity;
   named_metadata_entry_t *entries;
-/**
- * @brief This is the handoff point for named metadata entry. Callers fill `key`, `valid`, `metadata` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
- */
+  /**
+   * @brief This is the handoff point for named metadata entry. Callers fill `key`, `valid`, `metadata` before passing
+   * it on; consumers read the values during the operation and return ownership only where the member contract
+   * explicitly says they do.
+   */
 } named_metadata_cache_t;
 static _Thread_local named_metadata_cache_t *g_thread_metadata;
 
@@ -284,7 +286,9 @@ void named_destroy(void) {
 }
 
 /**
- * @brief Owns the temporary storage used by named metadata cache. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
+ * @brief Owns the temporary storage used by named metadata cache. The data pointers and size or cursor fields describe
+ * the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer
+ * needed.
  * @brief Lock-free atomic counters for unique naming
  */
 static uint64_t mutex_counter = 0;
@@ -587,9 +591,11 @@ const char *named_describe_thread(void *thread) {
 typedef struct {
   uintptr_t key;
   char name[MAX_NAME_LEN];
-/**
- * @brief named iter entry keeps the values that move through the subsystem: `key`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
- */
+  /**
+   * @brief named iter entry keeps the values that move through the subsystem: `key`. Some members are pointers into
+   * caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy
+   * itself.
+   */
 } named_iter_entry_t;
 
 asciichat_error_t named_registry_for_each(named_iter_callback_t callback, void *user_data, bool *completed) {

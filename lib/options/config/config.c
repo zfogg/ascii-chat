@@ -45,7 +45,9 @@
 #include <sys/stat.h>
 
 /**
- * @brief Incremental writer for generated configuration text. `buffer`, `size`, and `capacity` describe the owned output allocation, while `overflow` records an overrun; callers finish by taking the built buffer through the builder API.
+ * @brief Incremental writer for generated configuration text. `buffer`, `size`, and `capacity` describe the owned
+ * output allocation, while `overflow` records an overrun; callers finish by taking the built buffer through the builder
+ * API.
  * @brief Function table for extracting, validating, storing, and formatting one TOML option type
  * @name Internal Macros
  * @{

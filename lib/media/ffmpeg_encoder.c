@@ -29,7 +29,9 @@
 #include <libswresample/swresample.h>
 
 /**
- * @brief This is the handoff point for ffmpeg encoder. Callers fill `codec_ctx`, `stream`, `frame`, `frame_encoded` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief This is the handoff point for ffmpeg encoder. Callers fill `codec_ctx`, `stream`, `frame`, `frame_encoded`
+ * before passing it on; consumers read the values during the operation and return ownership only where the member
+ * contract explicitly says they do.
  */
 struct ffmpeg_encoder_s {
   // Video stream

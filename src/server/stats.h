@@ -53,9 +53,9 @@ typedef struct {
   uint64_t bytes_sent;
   double avg_capture_fps;
   double avg_send_fps;
-/**
- * @brief Counters and rates describing the server's media pipeline
- */
+  /**
+   * @brief Counters and rates describing the server's media pipeline
+   */
 } server_stats_t;
 
 // Statistics thread function

@@ -12,8 +12,8 @@
 typedef struct {
   platform_event_task_fn fn;
   void *arg;
-/**
- */
+  /**
+   */
 } event_command_t;
 
 /**
@@ -33,8 +33,12 @@ struct platform_event_loop {
 };
 
 /**
- * @brief The useful part of event write is in `request`, `stream`, `done`, `arg`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
- * @brief When code needs to work with platform event loop, it keeps `uv`, `wake`, `tick`, `tick_fn` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ * @brief The useful part of event write is in `request`, `stream`, `done`, `arg`: together they describe what is
+ * pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent
+ * cleanup path.
+ * @brief When code needs to work with platform event loop, it keeps `uv`, `wake`, `tick`, `tick_fn` here instead of
+ * scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation,
+ * lock, thread, or callback context recorded in those fields.
  */
 struct platform_event_stream {
   bool listener;
@@ -65,7 +69,9 @@ struct platform_event_stream {
 };
 
 /**
- * @brief platform event stream is intentionally a small, concrete record. Fields such as `listener`, `owner`, `tcp`, `timer` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ * @brief platform event stream is intentionally a small, concrete record. Fields such as `listener`, `owner`, `tcp`,
+ * `timer` give callers the identity and current value they need. It is normally borrowed from, or owned by, the
+ * surrounding subsystem—not independently managed.
  */
 struct platform_event_listener {
   bool listener;
@@ -716,7 +722,9 @@ void platform_event_stream_observe_queue(platform_event_stream_t *stream, platfo
 }
 
 /**
- * @brief event command keeps the values that move through the subsystem: `fn`, `arg`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief event command keeps the values that move through the subsystem: `fn`, `arg`. Some members are pointers into
+ * caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy
+ * itself.
  */
 typedef struct {
   uv_work_t work;
@@ -724,21 +732,27 @@ typedef struct {
   platform_event_work_fn run;
   platform_event_work_done_fn done;
   void *arg;
-/**
- * @brief The useful part of platform event listener is in `listener`, `tcp`, `accept`, `arg`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
- */
+  /**
+   * @brief The useful part of platform event listener is in `listener`, `tcp`, `accept`, `arg`: together they describe
+   * what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the
+   * parent cleanup path.
+   */
 } event_work_t;
 
 /**
- * @brief This is the handoff point for event work. Callers fill `work`, `stream`, `run`, `done` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief This is the handoff point for event work. Callers fill `work`, `stream`, `run`, `done` before passing it on;
+ * consumers read the values during the operation and return ownership only where the member contract explicitly says
+ * they do.
  */
 typedef struct {
   uv_work_t request;
   platform_event_task_fn work, done;
   void *arg;
-/**
- * @brief For loop work, this is the live record that ties `request`, `work`, `done`, `arg` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
- */
+  /**
+   * @brief For loop work, this is the live record that ties `request`, `work`, `done`, `arg` together. The owning code
+   * creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the
+   * record.
+   */
 } loop_work_t;
 
 static void loop_work_run(uv_work_t *request) {

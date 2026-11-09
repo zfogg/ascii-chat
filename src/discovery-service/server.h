@@ -71,12 +71,14 @@ typedef struct {
 
   // Protocol state
   bool session_established; ///< True after SESSION_CREATE/SESSION_JOIN completes; handler exits loop
-/**
- */
+  /**
+   */
 } acds_client_data_t;
 
 /**
- * @brief For acds client data, this is the live record that ties `joined_session`, `negotiation`, `create_transport_length`, `create_keys` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief For acds client data, this is the live record that ties `joined_session`, `negotiation`,
+ * `create_transport_length`, `create_keys` together. The owning code creates it, updates it while work is active, and
+ * releases its handles and pointed-to storage before freeing the record.
  * @brief Network statistics for both TCP and WebSocket connections
  */
 typedef struct {
@@ -119,12 +121,14 @@ typedef struct {
   // Configuration
   acds_config_t config;           ///< Runtime configuration
   bool handoff_mutex_initialized; ///< Whether shutdown owns the handoff mutex
-/**
- */
+  /**
+   */
 } acds_server_t;
 
 /**
- * @brief acds server is intentionally a small, concrete record. Fields such as `network_server`, `handoff_mutex`, `handoffs`, `db` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ * @brief acds server is intentionally a small, concrete record. Fields such as `network_server`, `handoff_mutex`,
+ * `handoffs`, `db` give callers the identity and current value they need. It is normally borrowed from, or owned by,
+ * the surrounding subsystem—not independently managed.
  * @brief Initialize discovery server
  *
  * Loads or generates identity keys, opens database, creates session

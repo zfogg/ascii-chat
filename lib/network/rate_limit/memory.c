@@ -22,7 +22,8 @@
 #include <string.h>
 
 /**
- * @brief The useful part of memory backend is in `events`, `lock`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ * @brief The useful part of memory backend is in `events`, `lock`: together they describe what is pending, who owns it,
+ * and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * @brief Per-address, per-event timestamp ring used by the in-memory limiter
  * @brief Per-address, per-event timestamp ring used by the in-memory limiter.
  *
