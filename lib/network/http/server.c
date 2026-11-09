@@ -1,4 +1,5 @@
 #include <ascii-chat/network/http/server.h>
+#include "http2.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/stats/runtime.h>
@@ -10,6 +11,9 @@
 #define HTTP_HEADER_CAPACITY 64u
 
 typedef struct http_client http_client_t;
+static asciichat_error_t http2_request_cb(http2_connection_t *connection, const http2_request_view_t *view,
+                                          void *user_data);
+static asciichat_error_t http2_flush(http_client_t *client);
 
 struct http_server {
   http_server_config_t config;
@@ -33,6 +37,8 @@ struct http_request {
 };
 struct http_response {
   uv_stream_t *stream;
+  http_client_t *client;
+  int32_t http2_stream_id;
   unsigned status;
   http_header_t headers[HTTP_HEADER_CAPACITY];
   size_t header_count;
@@ -47,6 +53,8 @@ struct http_client {
   size_t length;
   http_client_t *next;
   http_client_t *previous;
+  http2_connection_t *http2;
+  bool http2_mode;
 };
 static void stop_async_cb(uv_async_t *async);
 
@@ -61,6 +69,7 @@ static void client_freed(uv_handle_t *handle) {
   if (c->server->connections)
     c->server->connections--;
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE, c->server->connections);
+  http2_connection_destroy(&c->http2);
   SAFE_FREE(c->buffer);
   SAFE_FREE(c);
 }
@@ -139,17 +148,51 @@ typedef struct {
   char *bytes;
   size_t length;
   uv_stream_t *stream;
+  bool close_on_done;
 } http_write_t;
 
 static void write_done(uv_write_t *req, int status) {
   http_write_t *write = req->data;
-  if (!uv_is_closing((uv_handle_t *)write->stream))
+  if (write->close_on_done && !uv_is_closing((uv_handle_t *)write->stream))
     uv_close((uv_handle_t *)write->stream, client_freed);
   SAFE_FREE(write->bytes);
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_BYTES_SENT, write->length);
   SAFE_FREE(write);
   SAFE_FREE(req);
   (void)status;
+}
+static asciichat_error_t http2_flush(http_client_t *client) {
+  const uint8_t *data = NULL;
+  size_t length = 0;
+  asciichat_error_t result = http2_connection_next_output(client->http2, &data, &length);
+  if (result != ASCIICHAT_OK || !length)
+    return result;
+  uv_write_t *request = SAFE_CALLOC(1, sizeof(*request), uv_write_t *);
+  http_write_t *write = SAFE_CALLOC(1, sizeof(*write), http_write_t *);
+  if (!request || !write) {
+    SAFE_FREE(request);
+    SAFE_FREE(write);
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP/2 write state");
+  }
+  write->bytes = SAFE_MALLOC(length, char *);
+  if (!write->bytes) {
+    SAFE_FREE(request);
+    SAFE_FREE(write);
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP/2 output");
+  }
+  memcpy(write->bytes, data, length);
+  write->length = length;
+  write->stream = (uv_stream_t *)&client->tcp;
+  write->close_on_done = false;
+  request->data = write;
+  uv_buf_t buffer = uv_buf_init(write->bytes, (unsigned)length);
+  if (uv_write(request, write->stream, &buffer, 1, write_done) != 0) {
+    SAFE_FREE(write->bytes);
+    SAFE_FREE(write);
+    SAFE_FREE(request);
+    return SET_ERRNO(ERROR_NETWORK, "Cannot write HTTP/2 response");
+  }
+  return ASCIICHAT_OK;
 }
 static const char *reason(unsigned s) {
   switch (s) {
@@ -197,6 +240,13 @@ asciichat_error_t http_response_finish(http_response_t *r) {
   if (!r || r->finished)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response already finished");
   r->finished = true;
+  if (r->client && r->client->http2_mode) {
+    asciichat_error_t result = http2_connection_submit_response(r->client->http2, r->http2_stream_id, r->status,
+                                                                  r->body, r->body_length);
+    if (result != ASCIICHAT_OK)
+      return result;
+    return http2_flush(r->client);
+  }
   size_t cap = 256 + r->body_length;
   for (size_t i = 0; i < r->header_count; i++)
     cap += strlen(r->headers[i].name) + strlen(r->headers[i].value) + 4;
@@ -243,6 +293,30 @@ asciichat_error_t http_request_cancel(http_request_t *r) {
   r->cancelled = true;
   return ASCIICHAT_OK;
 }
+static asciichat_error_t http2_request_cb(http2_connection_t *connection, const http2_request_view_t *view,
+                                          void *user_data) {
+  http_client_t *client = user_data;
+  http_request_t request = {0};
+  request.info.method = view->method;
+  request.info.path = view->path;
+  request.info.query = view->query;
+  request.info.protocol = HTTP_PROTOCOL_2;
+  request.info.peer_address = "";
+  request.info.user_data = client->server->config.user_data;
+  request.storage = (char *)view->body;
+  request.body_offset = 0;
+  request.body_length = view->body_length;
+  request.info.user_data = client->server->config.user_data;
+  http_response_t response = {.stream = (uv_stream_t *)&client->tcp,
+                              .client = client,
+                              .http2_stream_id = view->stream_id,
+                              .status = 200};
+  client->server->config.on_request(&request, &response, client->server->config.user_data);
+  if (!response.finished)
+    return http_response_finish(&response);
+  (void)connection;
+  return ASCIICHAT_OK;
+}
 static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   http_client_t *c = s->data;
   char *base = (char *)b->base;
@@ -258,8 +332,30 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   }
   memcpy(c->buffer + c->length, base, (size_t)n);
   c->length += (size_t)n;
+  c->buffer[c->length] = 0;
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_BYTES_RECEIVED, (size_t)n);
   SAFE_FREE(base);
+  static const char h2_preface[] = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
+  if (!c->http2_mode && c->server->config.enable_http2 && c->length >= sizeof(h2_preface) - 1 &&
+      memcmp(c->buffer, h2_preface, sizeof(h2_preface) - 1) == 0) {
+    c->http2_mode = true;
+    if (http2_connection_create(&c->http2, http2_request_cb, c) != ASCIICHAT_OK ||
+        http2_connection_receive(c->http2, c->buffer + sizeof(h2_preface) - 1,
+                                 c->length - (sizeof(h2_preface) - 1)) != ASCIICHAT_OK) {
+      client_close(c);
+      return;
+    }
+    c->length = 0;
+    if (http2_flush(c) != ASCIICHAT_OK)
+      client_close(c);
+    return;
+  }
+  if (c->http2_mode) {
+    if (http2_connection_receive(c->http2, c->buffer, c->length) != ASCIICHAT_OK || http2_flush(c) != ASCIICHAT_OK)
+      client_close(c);
+    c->length = 0;
+    return;
+  }
   http_request_t r = {0};
   if (!parse_request(c, &r))
     return;
@@ -313,12 +409,12 @@ static void *http_loop_thread(void *arg) {
   return NULL;
 }
 asciichat_error_t http_server_init(http_server_t **out, const http_server_config_t *cfg) {
-  if (!out || !cfg || !cfg->on_request || !cfg->enable_http1)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP/1.1 and a request handler are required");
+  if (!out || !cfg || !cfg->on_request || (!cfg->enable_http1 && !cfg->enable_http2))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "At least one HTTP protocol and a request handler are required");
   if (cfg->max_connections == 0 || cfg->max_request_body_bytes == 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP limits must be non-zero");
-  if (cfg->enable_http2 || cfg->enable_http3 || cfg->tls_certificate || cfg->tls_private_key)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Requested HTTP protocol or TLS backend is not enabled");
+  if (cfg->enable_http3 || cfg->tls_certificate || cfg->tls_private_key)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Requested HTTP/3 or TLS backend is not enabled");
   http_server_t *s = SAFE_CALLOC(1, sizeof(*s), http_server_t *);
   s->config = *cfg;
   if (uv_loop_init(&s->loop) != 0) {
