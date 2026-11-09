@@ -29,9 +29,11 @@ add_executable(ascii-chat-ios-app
     main.c
     "${IOS_CA_CERTIFICATE_RESOURCE}"
     AppIcon.png
+    LaunchScreen.storyboard
 )
 set_source_files_properties("${IOS_CA_CERTIFICATE_RESOURCE}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 set_source_files_properties(AppIcon.png PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+set_source_files_properties(LaunchScreen.storyboard PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 
 target_include_directories(ascii-chat-ios-app PRIVATE
     ${CMAKE_SOURCE_DIR}/src

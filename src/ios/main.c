@@ -24,9 +24,13 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   static char splash[] = "--splash-screen=true";
   static char color[] = "--color-mode=truecolor";
   static char fps[] = "--fps=60";
-  int render_cols = 40;
-  int render_rows = 48;
+  int render_cols = 0;
+  int render_rows = 0;
   ios_render_bridge_get_dimensions(&render_cols, &render_rows);
+  if (render_cols <= 0 || render_rows <= 0) {
+    g_ios_last_result = -1;
+    return -1;
+  }
   static char width[32];
   static char height[32];
   snprintf(width, sizeof(width), "--width=%d", render_cols);

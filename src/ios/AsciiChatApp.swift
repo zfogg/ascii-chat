@@ -8,6 +8,8 @@ import UIKit
 
 private extension Notification.Name {
     static let iosStopSession = Notification.Name("ascii-chat.ios.stop-session")
+    static let iosSessionStarted = Notification.Name("ascii-chat.ios.session-started")
+    static let iosSessionEnded = Notification.Name("ascii-chat.ios.session-ended")
 }
 
 @_silgen_name("asciichat_ios_test_frame")
@@ -195,7 +197,7 @@ private final class CRenderView: MTKView {
         let pixelHeight = max(1, Int(ceil(bounds.height * scale)))
         // The bundled terminal font is rendered at 96 DPI. Match the OS
         // display scale so the C bitmap is generated at native pixel density.
-        let fontSizePt = 6.0 * Double(scale)
+        let fontSizePt = 6.0
         // At this point size the bundled font's glyph cell is approximately
         // 6x12 pixels per scale unit. Use the physical pixel dimensions so
         // the bitmap itself fills the display instead of being enlarged.
@@ -216,6 +218,9 @@ private final class CRenderView: MTKView {
             ios_render_bridge_read_frame(buffer.baseAddress!, capacity, &width, &height, &pitch)
         }
         guard emitted != 0, width > 0, height > 0, pitch >= width * 4 else { return }
+        NSLog("iOS render frame width=%d height=%d pitch=%d drawable=%lu×%lu",
+              width, height, pitch, currentDrawable?.texture.width ?? 0,
+              currentDrawable?.texture.height ?? 0)
         let byteCount = Int(pitch) * Int(height)
         let data = Data(renderPixels[0 ..< byteCount])
         guard let provider = CGDataProvider(data: data as CFData),
@@ -233,14 +238,16 @@ private final class CRenderView: MTKView {
         let image = CIImage(cgImage: frame)
         let drawableWidth = CGFloat(drawable.texture.width)
         let drawableHeight = CGFloat(drawable.texture.height)
-        // Fill the physical display; crop the terminal grid when its aspect
-        // ratio differs from the phone display.
-        let scale = max(drawableWidth / image.extent.width,
-                        drawableHeight / image.extent.height)
-        let scaled = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        let x = (drawableWidth - scaled.extent.width) * 0.5 - scaled.extent.minX
-        let y = (drawableHeight - scaled.extent.height) * 0.5 - scaled.extent.minY
-        let fitted = scaled.transformed(by: CGAffineTransform(translationX: x, y: y))
+        // Map the complete C canvas onto the complete display. Terminal cell
+        // proportions are already accounted for when the grid is generated;
+        // preserving the bitmap's raw aspect ratio here creates unused bars.
+        let fitted = image.transformed(by: CGAffineTransform(
+            a: drawableWidth / image.extent.width,
+            b: 0,
+            c: 0,
+            d: drawableHeight / image.extent.height,
+            tx: -image.extent.minX * drawableWidth / image.extent.width,
+            ty: -image.extent.minY * drawableHeight / image.extent.height))
         ciContext.render(fitted, to: drawable.texture, commandBuffer: commandBuffer,
                          bounds: CGRect(x: 0, y: 0, width: drawableWidth, height: drawableHeight),
                          colorSpace: CGColorSpaceCreateDeviceRGB())
@@ -260,110 +267,12 @@ private struct CRenderRepresentable: UIViewRepresentable {
     func updateUIView(_ view: CRenderView, context: Context) {}
 }
 
-private final class DisplayCloseOverlay: UIView {
-    private static var activeWindow: UIWindow?
-    var onStop: (() -> Void)?
-    private var overlayWindow: UIWindow?
-
-    override func didMoveToWindow() {
-        super.didMoveToWindow()
-        Self.activeWindow?.isHidden = true
-        Self.activeWindow = nil
-        guard let hostWindow = window,
-              let scene = hostWindow.windowScene,
-              scene.session.role == .windowApplication else { return }
-
-        let targetWindow = UIWindow(windowScene: scene)
-        targetWindow.frame = hostWindow.bounds
-        targetWindow.windowLevel = .normal + 1
-        targetWindow.backgroundColor = .clear
-        let controller = UIViewController()
-        controller.view.backgroundColor = .clear
-        targetWindow.rootViewController = controller
-        controller.view.frame = targetWindow.bounds
-        controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-
-        let closeButton = UIButton(type: .system)
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
-        closeButton.setImage(UIImage(systemName: "xmark"), for: .normal)
-        closeButton.tintColor = UIColor.red.withAlphaComponent(0.5)
-        closeButton.accessibilityLabel = "Stop session"
-        closeButton.imageView?.contentMode = .scaleAspectFit
-        closeButton.addAction(UIAction { [weak self] _ in self?.onStop?() }, for: .primaryActionTriggered)
-        controller.view.addSubview(closeButton)
-        NSLayoutConstraint.activate([
-            // The overlay window sits above the status bar. Position the
-            // control immediately below the Dynamic Island/battery area in
-            // the scene's point coordinate space.
-            closeButton.topAnchor.constraint(equalTo: controller.view.safeAreaLayoutGuide.topAnchor, constant: 4),
-            closeButton.trailingAnchor.constraint(equalTo: controller.view.trailingAnchor, constant: -8),
-            closeButton.widthAnchor.constraint(equalToConstant: 56),
-            closeButton.heightAnchor.constraint(equalToConstant: 56),
-        ])
-        targetWindow.isHidden = false
-        Self.activeWindow = targetWindow
-        overlayWindow = targetWindow
-    }
-
-    override func removeFromSuperview() {
-        Self.activeWindow?.isHidden = true
-        Self.activeWindow = nil
-        super.removeFromSuperview()
-    }
-}
-
-private struct DisplayCloseOverlayRepresentable: UIViewRepresentable {
-    let onStop: () -> Void
-
-    func makeUIView(context: Context) -> DisplayCloseOverlay {
-        let view = DisplayCloseOverlay(frame: .zero)
-        view.backgroundColor = .clear
-        view.isUserInteractionEnabled = false
-        view.onStop = onStop
-        return view
-    }
-
-    func updateUIView(_ view: DisplayCloseOverlay, context: Context) {
-        view.onStop = onStop
-    }
-}
-
-private final class WindowFillView: UIView {
-    override func didMoveToWindow() {
-        super.didMoveToWindow()
-        guard let scene = window?.windowScene else { return }
-        let background = UIColor(red: 0.035, green: 0.047, blue: 0.10, alpha: 1)
-        scene.windows.forEach {
-            let sceneWindow = $0
-            sceneWindow.backgroundColor = background
-            sceneWindow.rootViewController?.view.backgroundColor = background
-            DispatchQueue.main.async {
-                sceneWindow.frame = scene.screen.bounds
-                sceneWindow.rootViewController?.view.frame = sceneWindow.bounds
-            }
-        }
-    }
-}
-
-private struct WindowFillViewRepresentable: UIViewRepresentable {
-    func makeUIView(context: Context) -> WindowFillView { WindowFillView(frame: .zero) }
-    func updateUIView(_ view: WindowFillView, context: Context) {}
-}
-
 private struct CameraAsciiView: View {
-    let onStop: () -> Void
-
     var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .topTrailing) {
-                CRenderRepresentable()
-                    .background(Color.black)
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-                    .ignoresSafeArea()
-                DisplayCloseOverlayRepresentable(onStop: onStop)
-                    .frame(width: 1, height: 1)
-            }
-        }
+        CRenderRepresentable()
+            .background(Color.black)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
         .onAppear { requestMediaPermissions() }
     }
 
@@ -422,7 +331,15 @@ struct ContentView: View {
     @State private var commandLine = ""
 
     private func startSelectedSession() {
+        let screen = UIScreen.main
+        let scale = screen.nativeScale
+        let width = max(1, Int(ceil(screen.bounds.width * scale)))
+        let height = max(1, Int(ceil(screen.bounds.height * scale)))
+        let cols = max(1, Int(ceil(Double(width) / (3.2 * Double(scale)))))
+        let rows = max(1, Int(ceil(Double(height) / (12.0 * Double(scale)))))
+            ios_render_bridge_configure(Int32(cols), Int32(rows), 6.0)
         sessionModel.start(mode: selectedMode)
+        NotificationCenter.default.post(name: .iosSessionStarted, object: nil)
         launchMessage = "Starting \(selectedMode.title.lowercased())…"
         didStart = true
         sessionStarted = true
@@ -433,6 +350,7 @@ struct ContentView: View {
             let result = asciichat_ios_main(selectedMode.rawValue)
             DispatchQueue.main.async {
                 sessionModel.finish(result: Int32(result))
+                NotificationCenter.default.post(name: .iosSessionEnded, object: nil)
                 launchMessage = result == 0 ? "Session ended" : "Session failed (\(result))"
                 sessionStarted = false
             }
@@ -450,7 +368,7 @@ struct ContentView: View {
 
     private var sessionView: some View {
         GeometryReader { proxy in
-            CameraAsciiView(onStop: stopSelectedSession)
+            CameraAsciiView()
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -572,7 +490,12 @@ struct ContentView: View {
         .onAppear {
             if ProcessInfo.processInfo.arguments.contains("--auto-start-mirror") && !didStart {
                 selectedMode = .mirror
-                startSelectedSession()
+                // Let the Metal view complete its first layout pass so the C
+                // terminal receives the actual drawable grid dimensions.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    guard !didStart else { return }
+                    startSelectedSession()
+                }
             }
         }
         .task {
@@ -593,9 +516,11 @@ struct ContentView: View {
                 sessionStarted = false
                 didStart = false
                 launchMessage = ""
+                NotificationCenter.default.post(name: .iosSessionEnded, object: nil)
             } else if sessionStarted && asciichat_ios_is_running() == 0 {
                 sessionStarted = false
                 launchMessage = "Session ended"
+                NotificationCenter.default.post(name: .iosSessionEnded, object: nil)
             }
         }
         .onChange(of: scenePhase) { phase in
@@ -628,25 +553,31 @@ final class AsciiChatAppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 private final class IOSRootViewController: UIViewController {
+    weak var closeButton: UIButton?
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.insetsLayoutMarginsFromSafeArea = false
+        NotificationCenter.default.addObserver(forName: .iosSessionStarted, object: nil, queue: .main) { [weak self] _ in
+            self?.closeButton?.isHidden = false
+        }
+        NotificationCenter.default.addObserver(forName: .iosSessionEnded, object: nil, queue: .main) { [weak self] _ in
+            self?.closeButton?.isHidden = true
+        }
+    }
 
-        let closeButton = UIButton(type: .system)
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
-        closeButton.setImage(UIImage(systemName: "xmark"), for: .normal)
-        closeButton.tintColor = UIColor.red.withAlphaComponent(0.5)
-        closeButton.accessibilityLabel = "Stop session"
-        closeButton.addAction(UIAction { _ in
-            NotificationCenter.default.post(name: .iosStopSession, object: nil)
-        }, for: .primaryActionTriggered)
-        view.addSubview(closeButton)
-        NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 8),
-            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
-            closeButton.widthAnchor.constraint(equalToConstant: 56),
-            closeButton.heightAnchor.constraint(equalToConstant: 56),
-        ])
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        if let closeButton {
+            let statusHeight = view.window?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0
+            closeButton.frame = CGRect(x: view.bounds.maxX - 64,
+                                        y: statusHeight + 4,
+                                        width: 56,
+                                        height: 56)
+            NSLog("iOS root bounds=(%.1f,%.1f) safeArea=(%.1f,%.1f,%.1f,%.1f) close=(%.1f,%.1f,%.1f,%.1f)",
+                  view.bounds.width, view.bounds.height, view.safeAreaInsets.top, view.safeAreaInsets.left,
+                  view.safeAreaInsets.bottom, view.safeAreaInsets.right, closeButton.frame.origin.x,
+                  closeButton.frame.origin.y, closeButton.frame.width, closeButton.frame.height)
+        }
     }
 }
 
@@ -656,13 +587,21 @@ final class AsciiChatSceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
         let window = UIWindow(windowScene: windowScene)
-        window.frame = windowScene.screen.bounds
-        window.bounds = windowScene.screen.bounds
+        NSLog("iOS scene coordinate=(%.1f,%.1f) screen=(%.1f,%.1f) native=(%.1f,%.1f) scale=%.2f idiom=%ld",
+              windowScene.coordinateSpace.bounds.width, windowScene.coordinateSpace.bounds.height,
+              windowScene.screen.bounds.width, windowScene.screen.bounds.height,
+              windowScene.screen.nativeBounds.width, windowScene.screen.nativeBounds.height,
+              windowScene.screen.scale,
+              windowScene.traitCollection.userInterfaceIdiom.rawValue)
         window.backgroundColor = UIColor(red: 0.035, green: 0.047, blue: 0.10, alpha: 1)
-        let hosting = UIHostingController(rootView: ContentView())
-        hosting.view.backgroundColor = window.backgroundColor
         let root = IOSRootViewController()
         root.view.backgroundColor = window.backgroundColor
+        window.rootViewController = root
+        self.window = window
+        window.makeKeyAndVisible()
+
+        let hosting = UIHostingController(rootView: ContentView())
+        hosting.view.backgroundColor = window.backgroundColor
         root.addChild(hosting)
         hosting.view.translatesAutoresizingMaskIntoConstraints = false
         hosting.edgesForExtendedLayout = [.top, .bottom, .left, .right]
@@ -675,8 +614,27 @@ final class AsciiChatSceneDelegate: UIResponder, UIWindowSceneDelegate {
             hosting.view.bottomAnchor.constraint(equalTo: root.view.bottomAnchor),
         ])
         hosting.didMove(toParent: root)
-        window.rootViewController = root
-        self.window = window
-        window.makeKeyAndVisible()
+
+        let closeButton = UIButton(type: .system)
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        closeButton.setImage(UIImage(systemName: "xmark"), for: .normal)
+        closeButton.tintColor = UIColor.red.withAlphaComponent(0.5)
+        closeButton.isHidden = true
+        closeButton.accessibilityLabel = "Stop session"
+        closeButton.addAction(UIAction { _ in
+            NotificationCenter.default.post(name: .iosStopSession, object: nil)
+        }, for: .primaryActionTriggered)
+        window.addSubview(closeButton)
+        root.closeButton = closeButton
+        NSLayoutConstraint.activate([
+            closeButton.topAnchor.constraint(equalTo: window.safeAreaLayoutGuide.topAnchor, constant: 4),
+            closeButton.trailingAnchor.constraint(equalTo: window.trailingAnchor, constant: -8),
+            closeButton.widthAnchor.constraint(equalToConstant: 56),
+            closeButton.heightAnchor.constraint(equalToConstant: 56),
+        ])
+        window.setNeedsLayout()
+        NSLog("iOS final window frame=(%.1f,%.1f,%.1f,%.1f) root frame=(%.1f,%.1f,%.1f,%.1f)",
+              window.frame.origin.x, window.frame.origin.y, window.frame.width, window.frame.height,
+              root.view.frame.origin.x, root.view.frame.origin.y, root.view.frame.width, root.view.frame.height)
     }
 }

@@ -18,8 +18,10 @@ static atomic_uint_fast64_t g_render_sequence;
 #define IOS_RENDER_PENDING_CAPACITY (256U * 1024U)
 static char g_pending_frame[IOS_RENDER_PENDING_CAPACITY];
 static size_t g_pending_frame_length;
-static int g_requested_cols = 40;
-static int g_requested_rows = 48;
+// The native app must configure the bridge from the actual drawable before
+// starting a C mode. There is no valid fallback grid for a device display.
+static int g_requested_cols;
+static int g_requested_rows;
 static double g_requested_font_size_pt = 6.0;
 
 static bool ios_render_bridge_init(void) {
@@ -50,8 +52,13 @@ static bool ios_render_bridge_init(void) {
 }
 
 void ios_render_bridge_configure(int cols, int rows, double font_size_pt) {
-  if (cols <= 0 || rows <= 0 || font_size_pt <= 0.0 || !ios_render_bridge_init())
+  if (cols <= 0 || rows <= 0 || font_size_pt <= 0.0)
     return;
+  if (!g_renderer_mutex_initialized) {
+    if (mutex_init(&g_renderer_mutex, "ios_render_bridge") != 0)
+      return;
+    g_renderer_mutex_initialized = true;
+  }
   mutex_lock(&g_renderer_mutex);
   if (g_requested_cols != cols || g_requested_rows != rows || g_requested_font_size_pt != font_size_pt) {
     g_requested_cols = cols;
@@ -65,6 +72,7 @@ void ios_render_bridge_configure(int cols, int rows, double font_size_pt) {
     atomic_store_explicit(&g_render_sequence, 0, memory_order_release);
   }
   mutex_unlock(&g_renderer_mutex);
+  (void)ios_render_bridge_init();
 }
 
 void ios_render_bridge_get_dimensions(int *cols, int *rows) {
