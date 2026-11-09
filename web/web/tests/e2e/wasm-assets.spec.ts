@@ -50,6 +50,24 @@ test("client protocol metadata comes from the native session binding", async ({ 
   expect(info.packetTypes.SERVER_STATE).toBe(5008);
 });
 
+test("native packet intake returns protocol classification", async ({ page }) => {
+  await page.goto("/client");
+  const result = await page.evaluate(async () => {
+    const { initClientWasm, getClientWasmModule } =
+      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    await initClientWasm();
+    const session = new (getClientWasmModule()!).ClientSessionBinding({});
+    const encoded = session.process({ type: "encode-packet", packetType: 5001, payload: new Uint8Array() });
+    const parsed = session.process({ type: "receive-packet", packet: encoded.bytes });
+    session.close();
+    session.delete();
+    return parsed;
+  });
+  expect(result.ok).toBe(true);
+  expect(result.kind).toBe("control");
+  expect(result.encrypted).toBe(false);
+});
+
 test("binding failures record actionable C errors", async ({ page }) => {
   await page.goto("/client");
   const errors = await page.evaluate(async () => {

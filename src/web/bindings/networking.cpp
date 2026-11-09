@@ -11,6 +11,7 @@ extern "C" {
 #include "client_bytes.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/acip/messages.h>
 #include <ascii-chat/util/endian.h>
 #include <sodium.h>
 #include <array>
@@ -289,11 +290,18 @@ public:
                            : packet_validate(input.data(), input.size(), 0, &header);
       emscripten::val response = result(code);
       if (!code) {
+        const uint16_t type = NET_TO_HOST_U16(header.type);
         response.set("packet", emscripten::val::object());
-        response["packet"].set("type", NET_TO_HOST_U16(header.type));
+        response["packet"].set("type", type);
         response["packet"].set("length", NET_TO_HOST_U32(header.length));
         response["packet"].set("client_id", NET_TO_HOST_U32(header.client_id));
         response["packet"].set("crc32", NET_TO_HOST_U32(header.crc32));
+        response.set("encrypted", type == PACKET_TYPE_ENCRYPTED);
+        response.set("kind", acip_is_media_packet(type)   ? "media"
+                                  : acip_is_control_packet(type) ? "control"
+                                  : packet_is_handshake_type(static_cast<packet_type_t>(type)) ? "crypto"
+                                  : acip_is_message_packet(type) ? "message"
+                                                                 : "unknown");
       }
       return response;
     }

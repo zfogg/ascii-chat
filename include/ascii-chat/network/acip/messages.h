@@ -63,7 +63,7 @@ static inline bool acip_is_control_packet(uint16_t type) {
  * @return true if packet is part of crypto handshake
  */
 static inline bool acip_is_crypto_packet(uint16_t type) {
-  return packet_is_handshake_type(type);
+  return packet_is_handshake_type((packet_type_t)type);
 }
 
 /**
