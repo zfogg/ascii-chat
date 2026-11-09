@@ -18,6 +18,7 @@
 #include <iterator>
 #include <limits>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <set>
 #include <stdexcept>
@@ -189,31 +190,41 @@ int main(int argc, char **argv) {
       options.clang_arguments.assign(sources.begin() + 2, sources.end());
       inputs.emplace_back(std::filesystem::u8path(sources[0]), std::filesystem::u8path(sources[1]));
     }
+    struct PathIdentity {
+      std::filesystem::path canonical;
+      std::optional<llvm::sys::fs::UniqueID> id;
+    };
+    std::map<std::filesystem::path, PathIdentity> identities;
+    const auto identify = [&](const std::filesystem::path &path) -> const PathIdentity & {
+      auto found = identities.find(path);
+      if (found != identities.end())
+        return found->second;
+      PathIdentity identity{std::filesystem::weakly_canonical(path), std::nullopt};
+      llvm::sys::fs::UniqueID id;
+      if (!llvm::sys::fs::getUniqueID(path.u8string(), id))
+        identity.id = id;
+      return identities.emplace(path, std::move(identity)).first->second;
+    };
+    const auto aliases = [&](const std::filesystem::path &a, const std::filesystem::path &b) {
+      const auto &left = identify(a);
+      const auto &right = identify(b);
+      return left.canonical == right.canonical || (left.id && right.id && *left.id == *right.id);
+    };
     for (const auto &[source, output] : inputs) {
       for (const auto &[other_source, other_output] : inputs) {
-        std::error_code error;
-        if (std::filesystem::weakly_canonical(output) == std::filesystem::weakly_canonical(other_source) ||
-            (std::filesystem::exists(output) && std::filesystem::exists(other_source) &&
-             std::filesystem::equivalent(output, other_source, error) && !error))
+        if (aliases(output, other_source))
           throw std::runtime_error("output must not overwrite an input source");
       }
     }
     for (std::size_t i = 0; i < inputs.size(); ++i)
       for (std::size_t j = 0; j < i; ++j) {
-        std::error_code error;
-        if (std::filesystem::weakly_canonical(inputs[i].second) ==
-                std::filesystem::weakly_canonical(inputs[j].second) ||
-            (std::filesystem::exists(inputs[i].second) && std::filesystem::exists(inputs[j].second) &&
-             std::filesystem::equivalent(inputs[i].second, inputs[j].second, error) && !error))
+        if (aliases(inputs[i].second, inputs[j].second))
           throw std::runtime_error("batch output paths must be unique");
       }
     if (!depfile_path.empty()) {
       for (const auto &[source, output] : inputs) {
         for (const auto &protected_path : {source, output}) {
-          std::error_code error;
-          if (std::filesystem::weakly_canonical(depfile_path) == std::filesystem::weakly_canonical(protected_path) ||
-              (std::filesystem::exists(depfile_path) && std::filesystem::exists(protected_path) &&
-               std::filesystem::equivalent(depfile_path, protected_path, error) && !error))
+          if (aliases(depfile_path, protected_path))
             throw std::runtime_error("depfile must not overwrite an input source or output");
         }
       }
@@ -222,17 +233,13 @@ int main(int argc, char **argv) {
       std::set<std::filesystem::path> stamps;
       for (const auto &[source, output] : inputs) {
         const auto stamp = std::filesystem::u8path(output.parent_path().u8string() + ".deps");
-        if (!stamps.insert(std::filesystem::weakly_canonical(stamp)).second)
+        if (!stamps.insert(identify(stamp).canonical).second)
           throw std::runtime_error("dependency stamp paths must be unique");
-        if (!depfile_path.empty() &&
-            std::filesystem::weakly_canonical(stamp) == std::filesystem::weakly_canonical(depfile_path))
+        if (!depfile_path.empty() && aliases(stamp, depfile_path))
           throw std::runtime_error("dependency stamp must not overwrite the depfile");
         for (const auto &[protected_source, protected_output] : inputs) {
           for (const auto &protected_path : {protected_source, protected_output}) {
-            std::error_code error;
-            if (std::filesystem::weakly_canonical(stamp) == std::filesystem::weakly_canonical(protected_path) ||
-                (std::filesystem::exists(stamp) && std::filesystem::exists(protected_path) &&
-                 std::filesystem::equivalent(stamp, protected_path, error) && !error))
+            if (aliases(stamp, protected_path))
               throw std::runtime_error("dependency stamp must not overwrite an input source or output");
           }
         }
@@ -250,10 +257,7 @@ int main(int argc, char **argv) {
           for (const auto &protected_path : {other_source, other_output, other_stamp, depfile_path}) {
             if (protected_path.empty())
               continue;
-            std::error_code error;
-            if (std::filesystem::weakly_canonical(cache) == std::filesystem::weakly_canonical(protected_path) ||
-                (std::filesystem::exists(cache) && std::filesystem::exists(protected_path) &&
-                 std::filesystem::equivalent(cache, protected_path, error) && !error))
+            if (aliases(cache, protected_path))
               throw std::runtime_error("incremental cache must not overwrite an input, output, stamp, or depfile");
           }
         }
@@ -314,9 +318,7 @@ int main(int argc, char **argv) {
             const auto cache = std::filesystem::u8path(inputs[i].second.parent_path().u8string() + ".cache");
             for (const auto &name : dependencies[i].inputs) {
               const auto input = std::filesystem::u8path(name);
-              std::error_code error;
-              if (std::filesystem::weakly_canonical(cache) == std::filesystem::weakly_canonical(input) ||
-                  (std::filesystem::exists(cache) && std::filesystem::equivalent(cache, input, error) && !error))
+              if (aliases(cache, input))
                 throw std::runtime_error("incremental cache must not overwrite an included file");
             }
             defer_tool::write_if_changed(cache, context);
