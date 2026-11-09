@@ -351,6 +351,11 @@ static void connection_work(void *arg) {
     if (!packet_decoder_pending(&c->decoder))
       c->partial_since = 0;
   }
+  if (c->result != ASCIICHAT_OK) {
+    asciichat_error_context_t error_context;
+    log_error("Connection %s packet processing failed: %s", c->peer,
+              HAS_ERRNO(&error_context) ? error_context.context_message : asciichat_error_format(NULL, c->result));
+  }
   if (c->result != ASCIICHAT_OK && c->server && c->stream)
     connection_notify_error(c, c->result);
 }
