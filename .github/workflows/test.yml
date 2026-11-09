@@ -83,6 +83,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+        with:
+          cache-dependency-glob: tests/ascii_chat_tests/{pyproject.toml,uv.lock}
       - name: Configure Windows linker environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
@@ -96,6 +98,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+        with:
+          cache-dependency-glob: '{pyproject.toml,uv.lock}'
       - run: uv python install 3.15
       - run: uv sync --frozen
       - run: uv run --frozen python .github/scripts/test_generate_coverage.py
@@ -138,6 +142,12 @@ jobs:
       # Use the repository-managed Python for ctypes hosts while keeping leak
       # checks enabled.
       - uses: astral-sh/setup-uv@v6
+        with:
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+            tests/ascii_chat_tests/pyproject.toml
+            tests/ascii_chat_tests/uv.lock
 
       - name: Install Python test dependencies
         run: uv python install 3.15 && uv sync --project tests/ascii_chat_tests --frozen
@@ -385,6 +395,12 @@ jobs:
           rm -rf build/bin/test_* build/bin/ascii-chat build/bin/ascii-chat.dSYM build/lib/libasciichat*
 
       - uses: astral-sh/setup-uv@v6
+        with:
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+            tests/ascii_chat_tests/pyproject.toml
+            tests/ascii_chat_tests/uv.lock
 
       - name: Install terminal test dependencies
         run: uv python install 3.15 && uv sync --project tests/ascii_chat_tests --frozen
@@ -560,6 +576,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: astral-sh/setup-uv@v6
+        with:
+          cache-dependency-glob: '{pyproject.toml,uv.lock}'
 
       - name: Cache build, dependencies, and ccache
         id: cache-build
