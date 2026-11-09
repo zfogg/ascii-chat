@@ -360,17 +360,8 @@ private struct CameraAsciiView: View {
                     .background(Color.black)
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .ignoresSafeArea()
-            Button(action: onStop) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.red.opacity(0.5))
-                    .frame(width: 56, height: 56)
-                    .contentShape(Rectangle())
-            }
-            .accessibilityLabel("Stop session")
-            .accessibilityHint("Stops rendering and returns to mode and device settings")
-            .padding(.top, proxy.safeAreaInsets.top + 4)
-            .padding(.trailing, 8)
+                DisplayCloseOverlayRepresentable(onStop: onStop)
+                    .frame(width: 1, height: 1)
             }
         }
         .onAppear { requestMediaPermissions() }
