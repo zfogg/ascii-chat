@@ -223,6 +223,35 @@ def test_dependency_stamp_cannot_overwrite_batch_input(native_tool: Path, tmp_pa
     assert source.read_text(encoding="utf-8") == "int preserve;\n"
 
 
+def test_batch_uses_extra_include_directories(native_tool: Path, tmp_path: Path) -> None:
+    clang = shutil.which("clang")
+    if not clang:
+        pytest.skip("Clang is required")
+    extra = tmp_path / "extra"
+    extra.mkdir()
+    (extra / "extra.h").write_text("#define EXTRA_VALUE 7\n", encoding="utf-8")
+    source = tmp_path / "input.c"
+    source.write_text(
+        '#include "extra.h"\n#include <ascii-chat/tooling/defer/defer.h>\n'
+        'int f(void) { int n = EXTRA_VALUE; defer(n++); return n; }\n', encoding="utf-8",
+    )
+    output = tmp_path / "generated.c"
+    (tmp_path / "compile_commands.json").write_text(json.dumps([{
+        "directory": str(tmp_path), "file": str(output),
+        "arguments": [clang, "-std=c17", "-I", str(ROOT / "include"), "-c", str(output)],
+    }]), encoding="utf-8")
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text(f"{source}\t{output}\n", encoding="utf-8")
+    env = os.environ.copy()
+    env["ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS"] = str(extra)
+    result = subprocess.run(
+        [str(native_tool), "--batch", str(manifest), "--compilation-database", str(tmp_path)],
+        capture_output=True, text=True, env=env, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert output.is_file()
+
+
 def test_parallel_batch_reports_transform_failures(native_tool: Path, tmp_path: Path) -> None:
     clang = shutil.which("clang")
     if not clang:
