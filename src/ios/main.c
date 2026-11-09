@@ -1,4 +1,5 @@
 #include "main.h"
+#include "../main.h"
 #include <ascii-chat/platform/ios/stdin_bridge.h>
 #include <stddef.h>
 #include <stdatomic.h>
@@ -17,9 +18,11 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   static char mirror[] = "mirror";
   static char client[] = "client";
   static char discovery[] = "discovery";
-  static char splash[] = "--splash-screen=false";
-  static char color[] = "--color-mode=none";
+  static char splash[] = "--splash-screen=true";
+  static char color[] = "--color-mode=truecolor";
   static char fps[] = "--fps=60";
+  static char width[] = "--width=40";
+  static char height[] = "--height=48";
 #ifdef ASCIICHAT_IOS_SIMULATOR
   static char test_pattern[] = "--test-pattern=0";
 #else
@@ -29,11 +32,11 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
                     : mode == ASCIICHAT_IOS_MODE_DISCOVERY ? discovery
                                                            : mirror;
   /* Keep only options accepted by mirror; status-screen is server-only. */
-  char *argv[] = {program, splash, color, fps, test_pattern, mode_name, NULL};
+  char *argv[] = {program, mode_name, splash, color, fps, width, height, test_pattern, NULL};
   ios_stdin_bridge_reset();
   atomic_store_explicit(&g_ios_running, 1, memory_order_release);
   atomic_store_explicit(&g_ios_last_result, 0, memory_order_release);
-  int result = asciichat_main(6, argv);
+  int result = asciichat_main(8, argv);
   atomic_store_explicit(&g_ios_last_result, result, memory_order_release);
   atomic_store_explicit(&g_ios_running, 0, memory_order_release);
   ios_stdin_bridge_reset();
@@ -62,4 +65,8 @@ int asciichat_ios_is_running(void) {
 }
 int asciichat_ios_last_result(void) {
   return atomic_load_explicit(&g_ios_last_result, memory_order_acquire);
+}
+
+void asciichat_ios_request_stop(void) {
+  signal_exit();
 }

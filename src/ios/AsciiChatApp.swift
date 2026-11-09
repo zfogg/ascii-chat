@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import SwiftUI
+import UIKit
 
 @_silgen_name("asciichat_ios_test_frame")
 private func asciichat_ios_test_frame(
@@ -22,6 +23,9 @@ private func asciichat_ios_is_running() -> Int32
 @_silgen_name("asciichat_ios_last_result")
 private func asciichat_ios_last_result() -> Int32
 
+@_silgen_name("asciichat_ios_request_stop")
+private func asciichat_ios_request_stop()
+
 @_silgen_name("ios_render_bridge_read_frame")
 private func ios_render_bridge_read_frame(
     _ pixels: UnsafeMutablePointer<UInt8>,
@@ -36,6 +40,9 @@ private func ios_render_bridge_write(_ fd: Int32, _ data: UnsafeRawPointer, _ le
 
 @_silgen_name("ios_render_bridge_reset")
 private func ios_render_bridge_reset()
+
+@_silgen_name("ios_render_bridge_configure")
+private func ios_render_bridge_configure(_ cols: Int32, _ rows: Int32, _ fontSizePt: Double)
 
 @_silgen_name("ios_render_bridge_sequence")
 private func ios_render_bridge_sequence() -> UInt64
@@ -134,20 +141,41 @@ private struct TestFrameView: View {
     }
 }
 
-private struct CameraAsciiView: View {
-    @State private var image: CGImage?
-    @State private var cameraMessage = "Waiting for C renderer…"
-    @State private var audioMessage = "Checking microphone access…"
-    @State private var renderPixels = [UInt8](repeating: 0, count: 4096 * 2048 * 4)
-    @State private var lastRenderSequence: UInt64 = 0
-    @State private var renderedFrames = 0
-    @State private var measuredFPS = 0
-    @State private var fpsWindowStart = Date()
+private final class CRenderView: UIView {
+    private var renderPixels = [UInt8](repeating: 0, count: 4096 * 2048 * 4)
+    private var lastSequence: UInt64 = 0
+    private var displayLink: CADisplayLink?
 
-    private func readFrame() {
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        displayLink?.invalidate()
+        displayLink = nil
+        guard window != nil else { return }
+        let link = CADisplayLink(target: self, selector: #selector(displayFrame))
+        link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 60, preferred: 60)
+        link.add(to: .main, forMode: .common)
+        displayLink = link
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard let screen = window?.screen ?? window?.windowScene?.screen else { return }
+        let scale = screen.nativeScale
+        let pixelWidth = max(1, Int(ceil(bounds.width * scale)))
+        let pixelHeight = max(1, Int(ceil(bounds.height * scale)))
+        // The bundled terminal font is rendered at 96 DPI. Match the OS
+        // display scale so the C bitmap is generated at native pixel density.
+        let fontSizePt = 6.0 * Double(scale)
+        let cols = max(1, Int(ceil(Double(pixelWidth) / (10.0 * Double(scale)))))
+        let rows = max(1, Int(ceil(Double(pixelHeight) / (20.0 * Double(scale)))))
+        ios_render_bridge_configure(Int32(cols), Int32(rows), fontSizePt)
+        layer.contentsScale = scale
+    }
+
+    @objc private func displayFrame() {
         let sequence = ios_render_bridge_sequence()
-        if sequence == lastRenderSequence { return }
-        let capacity = 4096 * 2048 * 4
+        guard sequence != lastSequence else { return }
+        let capacity = renderPixels.count
         var width: Int32 = 0
         var height: Int32 = 0
         var pitch: Int32 = 0
@@ -155,64 +183,134 @@ private struct CameraAsciiView: View {
             ios_render_bridge_read_frame(buffer.baseAddress!, capacity, &width, &height, &pitch)
         }
         guard emitted != 0, width > 0, height > 0, pitch >= width * 4 else { return }
-        let data = Data(renderPixels[0 ..< Int(pitch) * Int(height)])
-        guard let provider = CGDataProvider(data: data as CFData) else { return }
-        image = CGImage(width: Int(width), height: Int(height), bitsPerComponent: 8, bitsPerPixel: 32,
-                        bytesPerRow: Int(pitch), space: CGColorSpaceCreateDeviceRGB(),
-                        bitmapInfo: [.byteOrder32Little, CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)],
-                        provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
-        lastRenderSequence = sequence
-        renderedFrames += 1
+        let byteCount = Int(pitch) * Int(height)
+        let data = Data(renderPixels[0 ..< byteCount])
+        guard let provider = CGDataProvider(data: data as CFData),
+              let frame = CGImage(width: Int(width), height: Int(height), bitsPerComponent: 8,
+                                  bitsPerPixel: 32, bytesPerRow: Int(pitch),
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: [.byteOrder32Little,
+                                               CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)],
+                                  provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+        else { return }
+
+        layer.contents = frame
+        layer.contentsGravity = .resize
+        layer.magnificationFilter = .nearest
+        layer.minificationFilter = .nearest
+        lastSequence = sequence
+    }
+}
+
+private struct CRenderRepresentable: UIViewRepresentable {
+    func makeUIView(context: Context) -> CRenderView {
+        let view = CRenderView()
+        view.backgroundColor = .black
+        return view
     }
 
+    func updateUIView(_ view: CRenderView, context: Context) {}
+}
+
+private final class DisplayCloseOverlay: UIView {
+    private static var activeWindow: UIWindow?
+    var onStop: (() -> Void)?
+    private var overlayWindow: UIWindow?
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        Self.activeWindow?.isHidden = true
+        Self.activeWindow = nil
+        guard let hostWindow = window,
+              let scene = hostWindow.windowScene,
+              scene.session.role == .windowApplication else { return }
+
+        let targetWindow = UIWindow(windowScene: scene)
+        targetWindow.frame = scene.screen.bounds
+        targetWindow.windowLevel = .normal + 1
+        targetWindow.backgroundColor = .clear
+        let controller = UIViewController()
+        controller.view.backgroundColor = .clear
+        targetWindow.rootViewController = controller
+
+        let closeButton = UIButton(type: .system)
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        closeButton.setImage(UIImage(systemName: "xmark"), for: .normal)
+        closeButton.tintColor = UIColor.red.withAlphaComponent(0.5)
+        closeButton.imageView?.contentMode = .scaleAspectFit
+        closeButton.addAction(UIAction { [weak self] _ in self?.onStop?() }, for: .primaryActionTriggered)
+        controller.view.addSubview(closeButton)
+        NSLayoutConstraint.activate([
+            closeButton.topAnchor.constraint(equalTo: targetWindow.safeAreaLayoutGuide.topAnchor, constant: 4),
+            closeButton.trailingAnchor.constraint(equalTo: targetWindow.safeAreaLayoutGuide.trailingAnchor, constant: -8),
+            closeButton.widthAnchor.constraint(equalToConstant: 56),
+            closeButton.heightAnchor.constraint(equalToConstant: 56),
+        ])
+        targetWindow.isHidden = false
+        Self.activeWindow = targetWindow
+        overlayWindow = targetWindow
+    }
+
+    override func removeFromSuperview() {
+        Self.activeWindow?.isHidden = true
+        Self.activeWindow = nil
+        super.removeFromSuperview()
+    }
+}
+
+private struct DisplayCloseOverlayRepresentable: UIViewRepresentable {
+    let onStop: () -> Void
+
+    func makeUIView(context: Context) -> DisplayCloseOverlay {
+        let view = DisplayCloseOverlay(frame: .zero)
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        view.onStop = onStop
+        return view
+    }
+
+    func updateUIView(_ view: DisplayCloseOverlay, context: Context) {
+        view.onStop = onStop
+    }
+}
+
+private final class WindowFillView: UIView {
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard let scene = window?.windowScene else { return }
+        let background = UIColor(red: 0.035, green: 0.047, blue: 0.10, alpha: 1)
+        scene.windows.forEach {
+            let sceneWindow = $0
+            sceneWindow.backgroundColor = background
+            sceneWindow.rootViewController?.view.backgroundColor = background
+            DispatchQueue.main.async {
+                sceneWindow.frame = scene.screen.bounds
+                sceneWindow.rootViewController?.view.frame = sceneWindow.bounds
+            }
+        }
+    }
+}
+
+private struct WindowFillViewRepresentable: UIViewRepresentable {
+    func makeUIView(context: Context) -> WindowFillView { WindowFillView(frame: .zero) }
+    func updateUIView(_ view: WindowFillView, context: Context) {}
+}
+
+private struct CameraAsciiView: View {
     var body: some View {
-        Group {
-            if let image {
-                Image(decorative: image, scale: 1)
-                    .interpolation(.none)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-            } else {
-                VStack {
-                    Text("Starting shared mirror pipeline…")
-                    Text(cameraMessage).font(.caption).foregroundStyle(.secondary)
-                    Text(audioMessage).font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            Text("C render: \(measuredFPS) FPS")
-                .font(.caption2.monospacedDigit())
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-        .onReceive(Timer.publish(every: 1.0 / 60.0, on: .main, in: .common).autoconnect()) { _ in
-            readFrame()
-            let now = Date()
-            let elapsed = now.timeIntervalSince(fpsWindowStart)
-            if elapsed >= 1.0 {
-                measuredFPS = Int(Double(renderedFrames) / elapsed)
-                renderedFrames = 0
-                fpsWindowStart = now
-            }
-        }
+        CRenderRepresentable()
+            .background(Color.black)
+            .ignoresSafeArea()
         .onAppear {
-            if asciichat_ios_camera_authorized() == 0 {
-                cameraMessage = "Camera permission requested"
-                asciichat_ios_camera_request_access()
-            } else {
-                cameraMessage = "C mirror pipeline owns camera capture"
-            }
-            if asciichat_ios_audio_authorized() == 0 {
-                audioMessage = "Microphone permission requested"
-                asciichat_ios_audio_request_access()
-            } else {
-                audioMessage = "Microphone access granted"
-            }
-            let smokeText = "\u{1b}[2J\u{1b}[H\u{1b}[1;36mascii-chat iOS render bridge\u{1b}[0m\n\nC output is reaching SwiftUI through libvterm + FreeType."
-            smokeText.withCString { text in
-                _ = ios_render_bridge_write(1, text, smokeText.utf8.count)
-            }
+            requestMediaPermissions()
         }
-        .onDisappear {}
+    }
+
+    private func requestMediaPermissions() {
+#if !targetEnvironment(simulator)
+        if asciichat_ios_camera_authorized() == 0 { asciichat_ios_camera_request_access() }
+#endif
+        if asciichat_ios_audio_authorized() == 0 { asciichat_ios_audio_request_access() }
     }
 }
 
@@ -232,21 +330,179 @@ private enum IOSMode: Int32, CaseIterable, Identifiable {
 
     var isImplemented: Bool { asciichat_ios_mode_available(rawValue) != 0 }
 
-    var availabilityLabel: String {
-        isImplemented ? "Available" : "Coming soon"
+}
+
+private enum IOSTheme {
+    static let background = Color(red: 0.035, green: 0.047, blue: 0.10)
+    static let panel = Color(red: 0.075, green: 0.08, blue: 0.16)
+    static let cyan = Color(red: 0.13, green: 0.83, blue: 0.93)
+    static let websiteCyan = Color(red: 0.133, green: 0.827, blue: 0.933) // Tailwind cyan-400 (#22d3ee)
+    static let websiteGray = Color(red: 0.420, green: 0.447, blue: 0.502) // Tailwind gray-500 (#6b7280)
+    static let websiteTeal = Color(red: 0.176, green: 0.831, blue: 0.749) // Tailwind teal-400 (#2dd4bf)
+    static let purple = Color(red: 0.77, green: 0.45, blue: 0.98)
+    static let teal = Color(red: 0.30, green: 0.90, blue: 0.78)
+    static let pink = Color(red: 0.96, green: 0.45, blue: 0.82)
+    static let muted = Color(red: 0.68, green: 0.71, blue: 0.80)
+}
+
+private struct IOSModeButtonStyle: ButtonStyle {
+    let selected: Bool
+    let enabled: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(enabled ? (selected ? Color.white : IOSTheme.muted) : IOSTheme.muted.opacity(0.38))
+            .background {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(selected ? AnyShapeStyle(LinearGradient(colors: [IOSTheme.cyan, IOSTheme.purple], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(IOSTheme.panel))
+            }
+            .overlay { RoundedRectangle(cornerRadius: 12).stroke(selected ? IOSTheme.cyan.opacity(0.8) : Color.white.opacity(0.08), lineWidth: 1) }
+            .opacity(configuration.isPressed ? 0.72 : 1)
     }
 }
 
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedMode: IOSMode = .mirror
-    @State private var launchMessage = "Ready"
+    @State private var launchMessage = ""
     @State private var didStart = false
     @State private var sessionStarted = false
+    @State private var sessionStopping = false
     @State private var lifecycleTick = 0
     @State private var audioDevices: [String] = []
     @State private var selectedAudioDevice: Int32 = 0
     @State private var commandLine = ""
+
+    private func startSelectedSession() {
+        launchMessage = "Starting \(selectedMode.title.lowercased())…"
+        didStart = true
+        sessionStarted = true
+        sessionStopping = false
+        ios_render_bridge_reset()
+        _ = platform_enable_keepawake()
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = asciichat_ios_main(selectedMode.rawValue)
+            DispatchQueue.main.async {
+                launchMessage = result == 0 ? "Session ended" : "Session failed (\(result))"
+                sessionStarted = false
+            }
+        }
+    }
+
+    private func stopSelectedSession() {
+        guard sessionStarted, !sessionStopping else { return }
+        sessionStopping = true
+        launchMessage = "Stopping (selectedMode.title.lowercased())…"
+        asciichat_ios_request_stop()
+        platform_disable_keepawake()
+    }
+
+    private var sessionView: some View {
+        GeometryReader { proxy in
+            ZStack {
+                CameraAsciiView()
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button(action: stopSelectedSession) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(.red.opacity(0.5))
+                                .frame(width: 56, height: 56)
+                                .contentShape(Rectangle())
+                        }
+                        .disabled(sessionStopping)
+                        .accessibilityLabel("Stop session")
+                        .accessibilityHint("Stops rendering and returns to mode and device settings")
+                        .padding(.trailing, 8)
+                    }
+                    .padding(.top, 8)
+                    Spacer()
+                }
+                .offset(y: -45)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black)
+        .ignoresSafeArea()
+    }
+
+    private var settingsView: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                Text("ascii").foregroundStyle(IOSTheme.websiteCyan)
+                Text("-").foregroundStyle(IOSTheme.websiteGray)
+                Text("chat").foregroundStyle(IOSTheme.websiteTeal)
+            }
+            .font(.system(size: 48, weight: .black, design: .rounded))
+            .shadow(color: IOSTheme.websiteCyan.opacity(0.22), radius: 12)
+            Text("Video chat in your terminal")
+                .font(.system(size: 18, weight: .medium, design: .rounded))
+                .foregroundStyle(IOSTheme.muted)
+                .padding(.top, 8)
+            Text("Choose a mode to start")
+                .font(.headline)
+                .foregroundStyle(Color.white)
+                .padding(.top, 30)
+                .padding(.bottom, 14)
+            HStack(spacing: 6) {
+                ForEach(IOSMode.allCases) { mode in
+                    Button { selectedMode = mode } label: {
+                        Text(mode.title)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(IOSModeButtonStyle(selected: selectedMode == mode, enabled: mode.isImplemented))
+                    .disabled(!mode.isImplemented)
+                }
+            }
+            .accessibilityLabel("Session mode")
+            .accessibilityHint("Choose mirror, client, or discovery mode")
+            if !audioDevices.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Microphone")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(IOSTheme.muted)
+                    Picker("Audio route", selection: $selectedAudioDevice) {
+                        ForEach(audioDevices.indices, id: \.self) { index in
+                            Text(audioDevices[index].hasPrefix("Microphone") ? String(audioDevices[index].dropFirst("Microphone".count)) : audioDevices[index])
+                                .tag(Int32(index))
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .tint(IOSTheme.cyan)
+                    .onChange(of: selectedAudioDevice) { device in _ = asciichat_ios_audio_select_device(device) }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 18)
+            }
+            Button("Start \(selectedMode.title.lowercased())") { startSelectedSession() }
+                .font(.headline)
+                .foregroundStyle(Color.white)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(LinearGradient(colors: [IOSTheme.teal, IOSTheme.cyan, IOSTheme.purple], startPoint: .leading, endPoint: .trailing), in: RoundedRectangle(cornerRadius: 14))
+                .disabled(!selectedMode.isImplemented || sessionStarted || sessionStopping)
+                .padding(.top, 22)
+            if !launchMessage.isEmpty {
+                Text(launchMessage)
+                    .font(.caption)
+                    .foregroundStyle(IOSTheme.muted)
+                    .padding(.top, 10)
+            }
+            if didStart {
+                Text(asciichat_ios_is_running() != 0 ? "Native session running" : "Native session stopped (\(asciichat_ios_last_result()))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .id(lifecycleTick)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 28)
+    }
 
     private func refreshAudioDevices() {
         let count = max(0, Int(asciichat_ios_audio_device_count()))
@@ -258,67 +514,16 @@ struct ContentView: View {
     }
 
     var body: some View {
-        VStack {
-            Text("ascii-chat")
-                .font(.largeTitle.bold())
-            Text("Choose a mode to start")
-                .foregroundStyle(.secondary)
-            HStack(spacing: 8) {
-                ForEach(IOSMode.allCases) { mode in
-                    Button {
-                        selectedMode = mode
-                    } label: {
-                        Text(mode.title + (mode.isImplemented ? "" : " · Soon"))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(selectedMode == mode ? .accentColor : .secondary)
-                    .disabled(!mode.isImplemented)
-                }
+        GeometryReader { _ in
+            ZStack {
+                IOSTheme.background.ignoresSafeArea()
+                Group {
+            if sessionStarted || sessionStopping {
+                sessionView
+            } else {
+                settingsView
             }
-            .accessibilityLabel("Session mode")
-            .accessibilityHint("Choose mirror, client, or discovery mode")
-            Text(selectedMode.availabilityLabel)
-                .font(.caption)
-                .foregroundStyle(selectedMode.isImplemented ? .green : .secondary)
-            if !audioDevices.isEmpty {
-                Picker("Audio route", selection: $selectedAudioDevice) {
-                    ForEach(audioDevices.indices, id: \.self) { index in
-                        Text(audioDevices[index]).tag(Int32(index))
-                    }
-                }
-                .pickerStyle(.menu)
-                .onChange(of: selectedAudioDevice) { device in
-                    _ = asciichat_ios_audio_select_device(device)
-                }
-            }
-            Button("Start \(selectedMode.title.lowercased())") {
-                launchMessage = "Starting \(selectedMode.title.lowercased())…"
-                didStart = true
-                sessionStarted = true
-                ios_render_bridge_reset()
-                _ = platform_enable_keepawake()
-                DispatchQueue.global(qos: .userInitiated).async {
-                    let result = asciichat_ios_main(selectedMode.rawValue)
-                    DispatchQueue.main.async {
-                        launchMessage = result == 0 ? "Session ended" : "Session failed (\(result))"
-                        sessionStarted = false
-                    }
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(!selectedMode.isImplemented || sessionStarted)
-            .accessibilityHint(selectedMode.isImplemented ? "Starts the selected native mode" : "This mode is not implemented yet")
-            Text(launchMessage)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            if didStart {
-                Text(asciichat_ios_is_running() != 0 ? "Native session running" : "Native session stopped (\(asciichat_ios_last_result()))")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .id(lifecycleTick)
-            }
-            if didStart {
+            if didStart && !sessionStarted && !sessionStopping {
                 HStack {
                     TextField("Send command or answer", text: $commandLine)
                         .textFieldStyle(.roundedBorder)
@@ -330,16 +535,27 @@ struct ContentView: View {
                         commandLine = ""
                     }
                 }
-                Divider()
-                TestFrameView()
-                CameraAsciiView()
+            }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .ignoresSafeArea()
+        .onAppear {
+            if ProcessInfo.processInfo.arguments.contains("--auto-start-mirror") && !didStart {
+                selectedMode = .mirror
+                startSelectedSession()
             }
         }
-        .padding()
         .onReceive(Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()) { _ in
             lifecycleTick &+= 1
             refreshAudioDevices()
-            if sessionStarted && asciichat_ios_is_running() == 0 {
+            if sessionStopping && asciichat_ios_is_running() == 0 {
+                sessionStopping = false
+                sessionStarted = false
+                didStart = false
+                launchMessage = ""
+            } else if sessionStarted && asciichat_ios_is_running() == 0 {
                 sessionStarted = false
                 launchMessage = "Session ended"
             }
@@ -357,14 +573,30 @@ struct ContentView: View {
         .onDisappear {
             platform_disable_keepawake()
         }
+        .preferredColorScheme(.dark)
     }
 }
 
 @main
-struct AsciiChatApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+final class AsciiChatAppDelegate: UIResponder, UIApplicationDelegate {
+    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        let configuration = UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+        configuration.delegateClass = AsciiChatSceneDelegate.self
+        return configuration
+    }
+}
+
+final class AsciiChatSceneDelegate: UIResponder, UIWindowSceneDelegate {
+    var window: UIWindow?
+
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        guard let windowScene = scene as? UIWindowScene else { return }
+        let window = UIWindow(windowScene: windowScene)
+        window.backgroundColor = UIColor(red: 0.035, green: 0.047, blue: 0.10, alpha: 1)
+        let hosting = UIHostingController(rootView: ContentView())
+        hosting.view.backgroundColor = window.backgroundColor
+        window.rootViewController = hosting
+        self.window = window
+        window.makeKeyAndVisible()
     }
 }

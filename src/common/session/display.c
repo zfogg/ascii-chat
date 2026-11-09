@@ -35,6 +35,9 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/frame_flush.h>
+#ifdef PLATFORM_IOS
+#include <ascii-chat/platform/ios/render_bridge.h>
+#endif
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/video/ascii/palette.h>
@@ -1067,6 +1070,17 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     return;
   }
 
+#ifdef PLATFORM_IOS
+  // The shared C capture and ASCII conversion pipeline remains authoritative on
+  // iOS. Present the completed ANSI frame directly to the platform renderer so
+  // desktop TTY composition cannot throttle the native display bridge.
+  static const char cursor_home[] = "\033[H";
+  (void)ios_render_bridge_write(STDOUT_FILENO, cursor_home, sizeof(cursor_home) - 1);
+  (void)ios_render_bridge_write(STDOUT_FILENO, display_frame, frame_len);
+  ios_render_bridge_flush();
+  goto cleanup_frame;
+#endif
+
   // Output routing logic
   bool use_tty_control = ctx->has_tty && (!ctx->snapshot_mode || terminal_is_interactive());
 
@@ -1179,6 +1193,11 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
   }
 
 cleanup_frame:
+  // Live iOS frames need an explicit bridge boundary after the complete ASCII
+  // frame has been written. Snapshot paths flush at their existing boundaries.
+  if (!ctx->snapshot_mode)
+    (void)platform_frame_flush(STDOUT_FILENO);
+
   log_dev_every(3 * US_PER_SEC_INT, "FRAME_WRITE: Published in %.2f ms",
                 (double)(time_get_ns() - frame_write_started_ns) / NS_PER_MS_INT);
 

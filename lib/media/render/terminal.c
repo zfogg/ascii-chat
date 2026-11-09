@@ -365,8 +365,10 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   log_debug("Loaded font '%s' using FreeType format %s", cfg->font_spec, font_format ? font_format : "unknown");
 
   // Detect if this is the matrix font (needs character mapping to Private Use Area)
-  r->is_matrix_font = (strstr(cfg->font_spec, "matrix") != NULL || strstr(cfg->font_spec, "Matrix") != NULL) ||
-                      (cfg->font_data != NULL && GET_OPTION(matrix_rain));
+  // Matrix rain is an output effect, not evidence that the selected font is a
+  // Matrix PUA font. The bundled/default font must keep ordinary ASCII glyphs
+  // even when the effect is enabled.
+  r->is_matrix_font = strstr(cfg->font_spec, "matrix") != NULL || strstr(cfg->font_spec, "Matrix") != NULL;
   if (r->is_matrix_font) {
     log_debug("Detected matrix font - will use Private Use Area character mapping");
   }
