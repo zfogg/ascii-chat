@@ -739,6 +739,9 @@ runs:
         $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
         New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
         $PSNativeCommandUseErrorActionPreference = $false
+        # The prebuilt artifact is optional. Bound the GitHub API download so
+        # a transient GitHub/network stall falls back to the source build.
+        $env:GH_HTTP_TIMEOUT = "30s"
         gh release download build-tools --pattern "bearssls.Windows.amd64.lib" --dir $bearsslDir
         if ($LASTEXITCODE -eq 0) {
           Move-Item -LiteralPath (Join-Path $bearsslDir "bearssls.Windows.amd64.lib") -Destination (Join-Path $bearsslDir "bearssls.lib") -Force
