@@ -16,6 +16,7 @@ static _Atomic int g_ios_running;
 static _Atomic int g_ios_last_result;
 static char g_ios_session_string[128];
 static char g_ios_server_address[256];
+static char g_ios_password[256];
 
 /* Native controls use the same shared help renderer as the terminal shortcut. */
 void asciichat_ios_toggle_help(void) {
@@ -37,6 +38,14 @@ void asciichat_ios_set_server_address(const char *address) {
     return;
   }
   snprintf(g_ios_server_address, sizeof(g_ios_server_address), "%s", address);
+}
+
+void asciichat_ios_set_password(const char *password) {
+  if (!password) {
+    g_ios_password[0] = '\0';
+    return;
+  }
+  snprintf(g_ios_password, sizeof(g_ios_password), "%s", password);
 }
 
 int asciichat_ios_main(asciichat_ios_mode_t mode) {
@@ -87,6 +96,11 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
     argv[argc++] = g_ios_session_string;
   } else if (mode == ASCIICHAT_IOS_MODE_CLIENT && g_ios_server_address[0] != '\0') {
     argv[argc++] = g_ios_server_address;
+  }
+  static char password_arg[320];
+  if (mode == ASCIICHAT_IOS_MODE_CLIENT && g_ios_password[0] != '\0') {
+    snprintf(password_arg, sizeof(password_arg), "--password=%s", g_ios_password);
+    argv[argc++] = password_arg;
   }
   ios_stdin_bridge_reset();
   atomic_store_explicit(&g_ios_running, 1, memory_order_release);

@@ -31,6 +31,8 @@ private func asciichat_ios_main(_ mode: Int32) -> Int32
 private func asciichat_ios_set_session_string(_ sessionString: UnsafePointer<CChar>?)
 @_silgen_name("asciichat_ios_set_server_address")
 private func asciichat_ios_set_server_address(_ address: UnsafePointer<CChar>?)
+@_silgen_name("asciichat_ios_set_password")
+private func asciichat_ios_set_password(_ password: UnsafePointer<CChar>?)
 
 @_silgen_name("asciichat_ios_mode_available")
 private func asciichat_ios_mode_available(_ mode: Int32) -> Int32
@@ -1215,6 +1217,9 @@ struct ContentView: View {
         let serverPort = launchPort ?? ((persistedValues?["port"] as? NSNumber)?.intValue ?? 27224)
         let endpoint = serverAddress.isEmpty ? "" : "\(serverAddress):\(serverPort)"
         endpoint.withCString { asciichat_ios_set_server_address($0) }
+        let launchPassword = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--ios-password=") })
+            .map { String($0.dropFirst("--ios-password=".count)) } ?? ""
+        launchPassword.withCString { asciichat_ios_set_password($0) }
         sessionModel.start(mode: selectedMode)
         let sessionString = (UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
             .flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any])?["session_string"] as? String ?? ""
