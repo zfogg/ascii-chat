@@ -365,6 +365,9 @@ asciichat_error_t http_request_cancel(http_request_t *r) {
 static asciichat_error_t http2_request_cb(http2_connection_t *connection, const http2_request_view_t *view,
                                           void *user_data) {
   http_client_t *client = user_data;
+  uint64_t request_start = time_get_ns();
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 1);
   http_request_t request = {0};
   request.info.method = view->method;
   request.info.path = view->path;
@@ -391,7 +394,10 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
                                .protocol = HTTP_PROTOCOL_2,
                                .max_body_length = client->server->config.max_request_body_bytes,
                                .status = 429};
-    return http_response_finish(&limited);
+    asciichat_error_t result = http_response_finish(&limited);
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_HTTP_REQUEST, time_get_ns() - request_start);
+    stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 0);
+    return result;
   }
   rate_limiter_record(client->server->rate_limiter, client->peer_address, RATE_EVENT_HTTP_REQUEST);
   http_response_t response = {.stream = (uv_stream_t *)&client->tcp,
@@ -401,8 +407,14 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
                               .max_body_length = client->server->config.max_request_body_bytes,
                               .status = 200};
   client->server->config.on_request(&request, &response, client->server->config.user_data);
-  if (!response.finished && !response.deferred)
-    return http_response_finish(&response);
+  if (!response.finished && !response.deferred) {
+    asciichat_error_t result = http_response_finish(&response);
+    stats_duration_record(stats_runtime_scope(), STATS_DURATION_HTTP_REQUEST, time_get_ns() - request_start);
+    stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 0);
+    return result;
+  }
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_HTTP_REQUEST, time_get_ns() - request_start);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 0);
   (void)connection;
   return ASCIICHAT_OK;
 }
