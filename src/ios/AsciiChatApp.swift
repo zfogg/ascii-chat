@@ -921,6 +921,9 @@ private struct IOSAllOptionsView: View {
         .background(IOSTheme.background)
         .navigationTitle("All options")
         .task { loadSnapshot() }
+        .onReceive(NotificationCenter.default.publisher(for: .iosOptionsChanged)) { _ in
+            loadSnapshot()
+        }
     }
 
     private static func coerce(_ text: String, like value: Any) -> Any {
