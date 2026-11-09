@@ -11,6 +11,8 @@ services:
       platforms:
         - linux/amd64
 
+    working_dir: /app
+
     # Mount source code and cache volumes
     volumes:
       # Source code (read-write needed for Docker to create nested mount points)
@@ -81,6 +83,7 @@ services:
   # Use this on Apple Silicon Macs or ARM64 Linux
   ascii-chat-tests-ubuntu:
     image: zfogg/ascii-chat-tests-ubuntu:latest
+    working_dir: /app
     build:
       context: ..
       dockerfile: tests/Dockerfile.ubuntu
