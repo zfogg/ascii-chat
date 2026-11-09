@@ -31,6 +31,9 @@
 #include <ascii-chat/common/shutdown.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/frame_flush.h>
+#ifdef PLATFORM_IOS
+#include <ascii-chat/platform/ios/render_bridge.h>
+#endif
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/cond.h>
 #include <stdatomic.h>
@@ -345,7 +348,14 @@ static size_t write_output_chunk(int fd, const void *data, size_t length) {
   // another thread. Non-owner logging must remain nonblocking here.
   if (g_owner)
     ui_controller_packet_begin();
-  size_t written = platform_write_all(fd, data, length);
+  size_t written;
+#ifdef PLATFORM_IOS
+  (void)fd;
+  ssize_t bridged = ios_render_bridge_write(STDOUT_FILENO, data, length);
+  written = bridged > 0 ? (size_t)bridged : 0;
+#else
+  written = platform_write_all(fd, data, length);
+#endif
   if (g_owner)
     ui_controller_packet_end();
   if (g_stats_media) {
@@ -1370,7 +1380,11 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     }
   }
   // Batch output and finite snapshots retain their synchronous output semantics.
-  if ((!live && !retained_terminal && !platform_isatty(fd)) ||
+  bool native_ui_output = false;
+#ifdef PLATFORM_IOS
+  native_ui_output = true;
+#endif
+  if ((!live && !retained_terminal && !platform_isatty(fd) && !native_ui_output) ||
       (GET_OPTION(snapshot_mode) && screen != UI_SCREEN_RENDER_PROGRESS)) {
     bool previous_owner = g_owner;
     int previous_fd = g_render_fd;

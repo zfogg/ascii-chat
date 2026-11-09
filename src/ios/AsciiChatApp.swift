@@ -40,6 +40,9 @@ private func asciichat_ios_last_result() -> Int32
 @_silgen_name("asciichat_ios_request_stop")
 private func asciichat_ios_request_stop()
 
+@_silgen_name("asciichat_ios_toggle_help")
+private func asciichat_ios_toggle_help()
+
 @_silgen_name("ios_render_bridge_read_frame")
 private func ios_render_bridge_read_frame(
     _ pixels: UnsafeMutablePointer<UInt8>,
@@ -951,7 +954,10 @@ struct ContentView: View {
 
     private func selectTUI(_ item: TUISwitcherItem) {
         activeTUI = item
-        let bytes = Array(item.keyBytes.utf8)
+        if item == .help {
+            asciichat_ios_toggle_help()
+        }
+        let bytes = item == .help ? [] : Array(item.keyBytes.utf8)
         bytes.withUnsafeBytes { rawBuffer in
             guard let baseAddress = rawBuffer.baseAddress, !bytes.isEmpty else { return }
             _ = ios_stdin_bridge_push(baseAddress, bytes.count)

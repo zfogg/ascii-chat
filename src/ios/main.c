@@ -3,6 +3,8 @@
 #include <ascii-chat/platform/ios/render_bridge.h>
 #include "../main.h"
 #include <ascii-chat/platform/ios/stdin_bridge.h>
+#include <ascii-chat/tui/keyboard_help.h>
+#include <ascii-chat/tui/controller.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdatomic.h>
@@ -13,6 +15,11 @@ extern int asciichat_main(int argc, char **argv);
 static _Atomic int g_ios_running;
 static _Atomic int g_ios_last_result;
 static char g_ios_session_string[128];
+
+/* Native controls use the same shared help renderer as the terminal shortcut. */
+void asciichat_ios_toggle_help(void) {
+  keyboard_help_toggle_terminal(ui_controller_active_fd());
+}
 
 void asciichat_ios_set_session_string(const char *session_string) {
   if (!session_string) {

@@ -1073,17 +1073,6 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     return;
   }
 
-#ifdef PLATFORM_IOS
-  // The shared C capture and ASCII conversion pipeline remains authoritative on
-  // iOS. Present the completed ANSI frame directly to the platform renderer so
-  // desktop TTY composition cannot throttle the native display bridge.
-  static const char cursor_home[] = "\033[H";
-  (void)ios_render_bridge_write(STDOUT_FILENO, cursor_home, sizeof(cursor_home) - 1);
-  (void)ios_render_bridge_write(STDOUT_FILENO, display_frame, frame_len);
-  ios_render_bridge_flush();
-  goto cleanup_frame;
-#endif
-
   // Output routing logic
   bool use_tty_control = ctx->has_tty && (!ctx->snapshot_mode || terminal_is_interactive());
 
