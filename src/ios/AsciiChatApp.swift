@@ -13,6 +13,7 @@ private extension Notification.Name {
     static let iosSessionEnded = Notification.Name("ascii-chat.ios.session-ended")
     static let iosRenderFontSizeChanged = Notification.Name("ascii-chat.ios.render-font-size-changed")
     static let iosRenderFPSChanged = Notification.Name("ascii-chat.ios.render-fps-changed")
+    static let iosOptionsChanged = Notification.Name("ascii-chat.ios.options-changed")
 }
 
 @_silgen_name("asciichat_ios_test_frame")
@@ -200,6 +201,8 @@ private final class CRenderView: MTKView {
                                                name: .iosRenderFontSizeChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(renderFPSChanged),
                                                name: .iosRenderFPSChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(optionsChanged),
+                                               name: .iosOptionsChanged, object: nil)
     }
 
     required init(coder: NSCoder) {
@@ -216,6 +219,8 @@ private final class CRenderView: MTKView {
                                                name: .iosRenderFontSizeChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(renderFPSChanged),
                                                name: .iosRenderFPSChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(optionsChanged),
+                                               name: .iosOptionsChanged, object: nil)
     }
 
     deinit {
@@ -231,6 +236,11 @@ private final class CRenderView: MTKView {
     @objc private func renderFPSChanged() {
         displayLink?.preferredFrameRateRange = CAFrameRateRange(minimum: 1, maximum: 120,
                                                                 preferred: Self.configuredDisplayFPS())
+    }
+
+    @objc private func optionsChanged() {
+        setNeedsLayout()
+        layoutIfNeeded()
     }
 
     private func configureMetalPipeline(device: MTLDevice?) {
@@ -302,8 +312,16 @@ private final class CRenderView: MTKView {
         // The bundled font's measured advance is about 0.83 pixels per point
         // at the renderer's 96-DPI FreeType setup. Keep the cell advance large
         // enough that glyphs remain legible on the native-resolution drawable.
-        let cols = max(1, Int(ceil(Double(pixelWidth) / (fontSizePt * 0.8333))))
-        let rows = max(1, Int(ceil(Double(cols) * Double(pixelHeight) / Double(pixelWidth) * 0.5)))
+        let persisted = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        let configuredWidth = (persisted["width"] as? NSNumber)?.intValue ?? 0
+        let configuredHeight = (persisted["height"] as? NSNumber)?.intValue ?? 0
+        let cols = configuredWidth > 0
+            ? configuredWidth
+            : max(1, Int(ceil(Double(pixelWidth) / (fontSizePt * 0.8333))))
+        let rows = configuredHeight > 0
+            ? configuredHeight
+            : max(1, Int(ceil(Double(cols) * Double(pixelHeight) / Double(pixelWidth) * 0.5)))
         ios_render_bridge_configure(Int32(cols), Int32(rows), fontSizePt)
         layer.contentsScale = scale
     }
@@ -1053,6 +1071,7 @@ struct ContentView: View {
             return
         }
         UserDefaults.standard.set(data, forKey: "ascii-chat.ios.options.patch")
+        NotificationCenter.default.post(name: .iosOptionsChanged, object: nil)
         if values["fps"] != nil {
             NotificationCenter.default.post(name: .iosRenderFPSChanged, object: nil)
         }
