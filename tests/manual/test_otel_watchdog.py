@@ -1,5 +1,5 @@
 """Focused native watchdog smoke: actual mutex cycle, no camera or network peers.
-Run: python tests/manual/test_otel_watchdog.py build/bin/asciichat.dll
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/manual/test_otel_watchdog.py build/bin/asciichat.dll
 Uses oversized aligned opaque mutex storage to exercise the exported platform API.
 """
 

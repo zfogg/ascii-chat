@@ -5,6 +5,11 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
 
+/**
+ * @brief For acip quic worker, this is the live record that ties `endpoint`, `lane`, `failure`, `context` together. The
+ * owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before
+ * freeing the record.
+ */
 struct acip_quic_worker {
   acip_quic_udp_endpoint_t *endpoint;
   mutex_t *lane;
@@ -96,20 +101,19 @@ static asciichat_error_t worker_start(acip_quic_udp_endpoint_t *endpoint, mutex_
 }
 
 asciichat_error_t quic_worker_start(acip_quic_udp_endpoint_t *endpoint, mutex_t *lane,
-                                         acip_quic_worker_failure_fn failure, void *context, acip_quic_worker_t **out) {
+                                    acip_quic_worker_failure_fn failure, void *context, acip_quic_worker_t **out) {
   return worker_start(endpoint, lane, failure, context, false, out);
 }
 
 asciichat_error_t quic_worker_start_locked_failure(acip_quic_udp_endpoint_t *endpoint, mutex_t *lane,
-                                                        acip_quic_worker_failure_fn failure, void *context,
-                                                        acip_quic_worker_t **out) {
+                                                   acip_quic_worker_failure_fn failure, void *context,
+                                                   acip_quic_worker_t **out) {
   return worker_start(endpoint, lane, failure, context, true, out);
 }
 
 void quic_worker_wake(void *arg) {
   acip_quic_worker_t *worker = arg;
-  if (worker && atomic_exchange_u64(&worker->wake_pending, 1) == 0 &&
-      quic_udp_wake(worker->endpoint) != ASCIICHAT_OK)
+  if (worker && atomic_exchange_u64(&worker->wake_pending, 1) == 0 && quic_udp_wake(worker->endpoint) != ASCIICHAT_OK)
     atomic_store_u64(&worker->wake_pending, 0);
 }
 

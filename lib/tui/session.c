@@ -20,6 +20,11 @@
 #include <string.h>
 #include <stdio.h>
 
+/**
+ * @brief This is the handoff point for ui session. Callers fill `size`, `frame`, `media`, `logs` before passing it on;
+ * consumers read the values during the operation and return ownership only where the member contract explicitly says
+ * they do.
+ */
 struct ui_session {
   terminal_size_t size;
   frame_buffer_t *frame;

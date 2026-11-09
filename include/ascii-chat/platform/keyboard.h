@@ -32,6 +32,7 @@
  * ============================================================================ */
 
 /**
+ * @brief Options for interactive line editing
  * @brief Unified keyboard key code enumeration
  *
  * Maps keyboard input to unified key codes. Arrow keys and special keys
@@ -69,6 +70,7 @@ typedef enum {
   KEY_PAGEUP = 0x11000d,
   KEY_PAGEDOWN = 0x11000e,
   KEY_SHIFT_ENTER = 0x11000f, ///< Shift+Enter (insert a newline in multiline prompts)
+  KEY_SHIFT_ESCAPE = 0x110010, ///< Shift+Escape (immediate exit)
   KEY_MINUS = '-',            ///< '-' key - toggle FPS counter
   KEY_0 = '0',                ///< '0' key - toggle sync debug screen
   KEY_1 = '1',                ///< '1' key - toggle matrix rain effect

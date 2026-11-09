@@ -77,7 +77,7 @@
 typedef struct session_participant session_participant_t;
 
 /**
- * @brief Callback function prototypes for session participant events
+ * @brief Client-side event hooks for connection, media, settings, and errors.
  * @ingroup session
  */
 typedef struct {
@@ -132,7 +132,8 @@ typedef struct {
 } session_participant_callbacks_t;
 
 /**
- * @brief Configuration for session participant
+ * @brief Client-side event hooks for connection, media, settings, and errors
+ * @brief Server address, security, media, transport, and callback settings for a participant.
  * @ingroup session
  */
 typedef struct {
@@ -152,7 +153,7 @@ typedef struct {
   const char *server_key;
 
   /** QUIC trust anchors and negotiated media preferences. */
-  const char *quic_ca_file;
+  const char *tls_ca_file;
   bool quic_audio_datagrams;
   bool quic_visual_datagrams;
 
@@ -175,6 +176,7 @@ typedef struct {
  */
 
 /**
+ * @brief Server address, security, media, transport, and callback settings for a participant
  * @brief Create a new session participant
  * @param config Participant configuration (must not be NULL)
  * @return Pointer to participant handle, or NULL on failure

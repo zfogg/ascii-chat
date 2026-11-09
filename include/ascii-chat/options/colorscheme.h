@@ -53,6 +53,8 @@ extern "C" {
  * ============================================================================ */
 
 /**
+ * @brief Color scheme definition
+ * @brief Compiled ANSI escape codes for a color scheme
  * @brief Terminal theme detection result
  *
  * Represents the detected or selected terminal theme (color background preference).

@@ -14,6 +14,12 @@ extern "C" {
 #endif
 
 /** Normalized coordinates in the original, unmirrored source. */
+/**
+ * @brief When code needs to work with face follow detection, it keeps `box`, `confidence` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ */
+/**
+ * @brief For face follow rect, this is the live record that ties `x`, `y`, `w`, `h` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ */
 typedef struct {
   float x, y, w, h;
 } face_follow_rect_t;
@@ -24,6 +30,9 @@ typedef struct {
 } face_follow_detection_t;
 
 /** One instance per capture source; times are monotonic seconds. */
+/**
+ * @brief face follow state keeps the values that move through the subsystem: `crop`, `target`, `face`, `last_tick`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
 typedef struct {
   face_follow_rect_t crop, target, face;
   double last_tick, last_seen;

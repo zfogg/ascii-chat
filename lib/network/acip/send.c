@@ -25,6 +25,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/audio/audio.h>
 #include <string.h>
@@ -74,6 +75,7 @@ static asciichat_error_t backend_sendv_impl(acip_transport_t *transport, const s
   uint8_t *packet = buffer_alloc(domain, total);
   if (!packet)
     return SET_ERRNO(ERROR_MEMORY, "Cannot assemble transport packet");
+  defer(buffer_release(packet));
   size_t offset = 0;
   for (size_t i = 0; i < count; ++i) {
     if (buffers[i].len)
@@ -81,11 +83,9 @@ static asciichat_error_t backend_sendv_impl(acip_transport_t *transport, const s
     offset += buffers[i].len;
   }
   if (!transport->methods->send) {
-    buffer_release(packet);
     return SET_ERRNO(ERROR_NOT_SUPPORTED, "Transport has no send method");
   }
   asciichat_error_t result = transport->methods->send(transport, packet, total);
-  buffer_release(packet);
   return result;
 }
 
@@ -313,14 +313,16 @@ asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float
       num_samples <= OPUS_FRAME_SAMPLES ? inline_samples : buffer_alloc(NULL, (size_t)num_samples * sizeof(uint32_t));
   if (!wire)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate PCM batch samples");
+  defer({
+    if (wire != inline_samples)
+      buffer_release(wire);
+  });
   _Static_assert(sizeof(float) == sizeof(uint32_t), "ACIP audio requires 32-bit floats");
   for (uint32_t i = 0; i < num_samples; ++i) {
     // Inspect the exponent before arithmetic, including builds that assume finite floats.
     uint32_t sample_bits;
     memcpy(&sample_bits, &samples[i], sizeof(sample_bits));
     if ((sample_bits & UINT32_C(0x7f800000)) == UINT32_C(0x7f800000)) {
-      if (wire != inline_samples)
-        buffer_release(wire);
       return SET_ERRNO(ERROR_INVALID_PARAM, "PCM samples must be finite");
     }
     double sample = fmax(-1.0, fmin(1.0, samples[i]));
@@ -329,8 +331,6 @@ asciichat_error_t acip_send_audio_batch(acip_transport_t *transport, const float
   }
   socket_buffer_t slices[] = {{&header, sizeof(header)}, {wire, (size_t)num_samples * sizeof(uint32_t)}};
   asciichat_error_t result = packet_send_via_transportv(transport, PACKET_TYPE_AUDIO_BATCH, slices, 2, 0);
-  if (wire != inline_samples)
-    buffer_release(wire);
   return result;
 }
 

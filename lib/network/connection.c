@@ -34,6 +34,8 @@
 
 #define NETWORK_CONNECTION_LIMIT 512
 
+/**
+ */
 struct network_server {
   network_server_config_t config;
   tcp_server_t listener;
@@ -47,6 +49,14 @@ struct network_server {
   bool listener_initialized, websocket_initialized, websocket_started, quic_failed, webtransport_failed;
 };
 
+/**
+ * @brief network server is intentionally a small, concrete record. Fields such as `config`, `listener`, `websocket`,
+ * `websocket_thread` give callers the identity and current value they need. It is normally borrowed from, or owned by,
+ * the surrounding subsystem—not independently managed.
+ * @brief network connection keeps the values that move through the subsystem: `server`, `callbacks`,
+ * `callback_context`, `policy`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows
+ * the API that populated them rather than the struct copy itself.
+ */
 struct network_connection {
   network_server_t *server;
   network_connection_callbacks_t callbacks;
@@ -742,7 +752,7 @@ static asciichat_error_t connection_open_quic(const connection_endpoint_t *endpo
     ((struct sockaddr_in6 *)&local)->sin6_port = 0;
   else
     return SET_ERRNO(ERROR_NETWORK, "Unsupported QUIC local route");
-  acip_quic_config_t config = {.ca_file = settings ? settings->quic_ca_file : NULL,
+  acip_quic_config_t config = {.ca_file = settings ? settings->tls_ca_file : NULL,
                                .enable_datagrams = true,
                                .prefer_audio_datagrams = settings && settings->quic_audio_datagrams,
                                .prefer_visual_datagrams = settings && settings->quic_visual_datagrams};

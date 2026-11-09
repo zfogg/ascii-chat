@@ -16,10 +16,13 @@
 #define FPS_WINDOW_SIZE 30 ///< Number of frames to average over
 
 /**
- * @brief FPS counter state
+ * @brief Per-renderer timing state for the on-screen FPS overlay
+ * @brief Per-renderer timing state for the on-screen FPS overlay
  *
- * Maintains a circular buffer of frame timestamps for rolling-window
- * FPS calculation.
+ * Tracks visibility, the frame currently being measured, write completion and
+ * failure state, plus monotonic timestamps used to calculate the rolling FPS
+ * value and periodically report render timing. The timestamp ring and this
+ * state belong to one renderer thread and are hidden behind fps_counter_t.
  */
 struct fps_counter_s {
   bool visible;
@@ -193,7 +196,12 @@ void fps_counter_render(fps_counter_t *counter, int fd, int columns, bool redraw
     return;
   uint64_t now = time_get_ns();
   float measured = fps_counter_get_at(counter, now);
+  // A UI overlay can repaint for longer than the media counter's inactivity
+  // window. Keep the last visible value during a forced overlay redraw so
+  // opening keyboard help does not make an otherwise-live stream display 0.
   int value = measured >= 999.0f ? 999 : (int)(measured + 0.5f);
+  if (redrawn && value == 0 && counter->last_fps > 0)
+    value = counter->last_fps;
   if (counter->visible && columns >= 7 && (redrawn || value != counter->last_fps)) {
     // Restore the cursor so the right-margin overlay cannot wrap the next write.
     if (ui_output_printf(fd, "\0337\033[1;%dH\033[0;7mFPS:%3d\033[0m\0338", columns - 6, value) == ASCIICHAT_OK)

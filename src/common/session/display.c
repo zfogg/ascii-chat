@@ -69,10 +69,12 @@
  * ============================================================================ */
 
 /**
- * @brief Internal session display context structure
+ * @brief Runtime terminal state and reusable workspaces for ASCII rendering
+ * @brief Runtime terminal state and reusable workspaces for ASCII rendering.
  *
- * Contains all state for terminal display including TTY info, capabilities,
- * palette, and rendering state.
+ * It owns TTY capability data, palette lookup tables, stabilizers, output and
+ * resize buffers, render-file timing, and the flags that stop output after the
+ * consumer disappears. Audio context pointers remain borrowed from the caller.
  */
 typedef struct session_display_ctx {
   /** @brief TTY information (file descriptor, path, ownership) */
@@ -612,14 +614,11 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   }
 
   // Read the renderer and palette from the same committed options revision.
-  options_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot), options_snapshot_t *);
-  if (!snapshot)
-    return NULL;
-  if (options_read_snapshot(snapshot) != ASCIICHAT_OK) {
-    SAFE_FREE(snapshot);
+  options_snapshot_t snapshot;
+  if (options_read_snapshot(&snapshot) != ASCIICHAT_OK) {
     return NULL;
   }
-  const options_t *values = &snapshot->values;
+  const options_t *values = &snapshot.values;
   unsigned short int width = values->width;
   unsigned short int height = values->height;
   bool stretch = values->stretch;
@@ -635,7 +634,6 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
                                                                         : ctx->palette_chars;
   char palette_chars[ASCII_PALETTE_BUFFER_SIZE];
   SAFE_STRNCPY(palette_chars, selected_palette, sizeof(palette_chars));
-  SAFE_FREE(snapshot);
   bool preserve_aspect_ratio = !stretch;
 
   // Determine if we should apply flip_x and flip_y

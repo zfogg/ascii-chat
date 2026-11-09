@@ -481,24 +481,15 @@ configure_file(
     endif()
 
     # HEAD contains a symbolic ref on a branch; commits update that ref, not HEAD.
+    # Track Git's ref storage rather than resolving only the current branch:
+    # refs may move between loose files and packed-refs during maintenance.
     if(EXISTS "${_GIT_DIR}/HEAD")
-        execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --symbolic-full-name HEAD
-            WORKING_DIRECTORY "${ASCIICHAT_SOURCE_DIR}"
-            OUTPUT_VARIABLE _git_ref OUTPUT_STRIP_TRAILING_WHITESPACE)
-        if(_git_ref MATCHES "^refs/")
-            execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --path-format=absolute --git-path "${_git_ref}"
-                WORKING_DIRECTORY "${ASCIICHAT_SOURCE_DIR}"
-                OUTPUT_VARIABLE _git_ref_path OUTPUT_STRIP_TRAILING_WHITESPACE)
-            # Loose refs can disappear when Git packs refs, and reappear on
-            # the next commit. Have Ninja reconfigure when that happens before
-            # it evaluates the version header's file dependencies.
-            file(GLOB _git_loose_ref CONFIGURE_DEPENDS "${_git_ref_path}")
-            list(APPEND VERSION_DEPENDENCIES ${_git_loose_ref})
-            execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --path-format=absolute --git-path packed-refs
-                WORKING_DIRECTORY "${ASCIICHAT_SOURCE_DIR}"
-                OUTPUT_VARIABLE _git_packed_refs_path OUTPUT_STRIP_TRAILING_WHITESPACE)
-            file(GLOB _git_packed_refs CONFIGURE_DEPENDS "${_git_packed_refs_path}")
-            list(APPEND VERSION_DEPENDENCIES ${_git_packed_refs})
+        file(GLOB _git_loose_refs CONFIGURE_DEPENDS
+            "${_GIT_DIR}/refs/heads/*"
+            "${_GIT_DIR}/refs/tags/*")
+        list(APPEND VERSION_DEPENDENCIES ${_git_loose_refs})
+        if(EXISTS "${_GIT_DIR}/packed-refs")
+            list(APPEND VERSION_DEPENDENCIES "${_GIT_DIR}/packed-refs")
         endif()
         set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_GIT_DIR}/HEAD")
     endif()

@@ -21,6 +21,7 @@ extern "C" {
 
 /**
  * @brief Metadata for a mode
+ * @brief Metadata for a mode
  *
  * Describes a mode including its name, user-friendly description,
  * and category grouping (server-like or client-like).

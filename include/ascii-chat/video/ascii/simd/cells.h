@@ -3,6 +3,7 @@
 #include <ascii-chat/video/ascii/output_buffer.h>
 
 /** SIMD stages operate on complete rows of host-order packed RGB and UTF-8 keys.
+ * @brief The useful part of simd cells is in `luminance`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * Row callbacks read/write exactly count elements. Glyph correlation reads 16 samples.
  * Only short row tails use scalar code.
  */

@@ -17,6 +17,9 @@ typedef enum {
 } ascii_otel_metric_t;
 #ifndef __EMSCRIPTEN__
 #include <gotel/gotel.h>
+/**
+ * @brief ascii otel scope is intentionally a small, concrete record. Fields such as `scope`, `retained`, `previous` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 typedef struct ascii_otel_scope {
   gotel_scope_t scope;
   bool retained;
@@ -53,6 +56,8 @@ void ascii_otel_pipeline_progress(unsigned stage, unsigned expected);
 void ascii_otel_http(ascii_otel_scope_t *scope, const char *hostname, const char *path);
 void ascii_otel_http_status(ascii_otel_scope_t *scope, int status);
 void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count);
+/** The catalog accessor and its context must remain valid until the DB closes. */
+void ascii_otel_sqlite_catalog(sqlite3 *db, const gotel_query_catalog_t *catalog);
 
 /** Prepare NUL-terminated SQL using the attached Gotel policy and SQLite result
  * codes. Unattached databases use ordinary SQLite preparation. */

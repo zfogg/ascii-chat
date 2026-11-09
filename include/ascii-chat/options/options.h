@@ -226,6 +226,7 @@
 #define COLOR_MODE_TRUECOLOR TERM_COLOR_TRUECOLOR ///< 24-bit truecolor mode
 
 /**
+ * @brief For options state, this is the live record that ties `detected_mode`, `mode_arg_index`, `help`, `version` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  * @brief Color output setting (--color flag values)
  *
  * Enumeration for the --color option which controls color output behavior:
@@ -957,7 +958,18 @@ typedef enum {
  * This struct is immutable once published via RCU - modifications create a new copy.
  */
 typedef enum { ASCII_RENDERER_LUMINANCE = 0, ASCII_RENDERER_GLYPH = 1 } ascii_renderer_t;
+#define ASCII_RENDERER_DEFAULT ASCII_RENDERER_GLYPH
 
+/**
+ * @brief Immutable, RCU-published snapshot of the application's runtime configuration.
+ *
+ * The fields cover mode selection, terminal and media rendering, audio,
+ * network and discovery endpoints, authentication and encryption policy,
+ * logging, and the explicit-value markers used while merging defaults. Readers
+ * borrow the current snapshot through `options_get()`; updates allocate and
+ * publish a replacement instead of mutating a snapshot that another thread may
+ * still be using.
+ */
 typedef struct options_state {
   // ============================================================================
   // Mode Detection (auto-detected during options_init)
@@ -990,16 +1002,14 @@ typedef struct options_state {
   char address6[OPTIONS_BUFF_SIZE];           ///< IPv6 bind address (server only)
   int port;                                   ///< Server port number
   int websocket_port;                         ///< WebSocket server port (server/discovery-service only)
-  char websocket_tls_cert[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS certificate file path (server/discovery-service only)
-  char websocket_tls_key[OPTIONS_BUFF_SIZE];  ///< WebSocket TLS private key file path (server/discovery-service only)
-  char websocket_tls_key_password[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS key password (server/discovery-service only)
+  char tls_cert[OPTIONS_BUFF_SIZE]; ///< Shared TLS certificate file path for secure network listeners
+  char tls_key[OPTIONS_BUFF_SIZE];  ///< Shared TLS private key file path for secure network listeners
+  char tls_key_password[OPTIONS_BUFF_SIZE]; ///< Shared TLS private key password
   char webtransport_bind_address[OPTIONS_BUFF_SIZE];  ///< Browser HTTP/3 listener address.
   char webtransport_origin[OPTIONS_BUFF_SIZE];        ///< Allowed browser origin.
   char webtransport_path[OPTIONS_BUFF_SIZE];          ///< HTTP/3 CONNECT path.
   char quic_bind_address[OPTIONS_BUFF_SIZE];          ///< Concrete local QUIC listener address; empty disables QUIC.
-  char quic_tls_cert[OPTIONS_BUFF_SIZE];              ///< Native QUIC TLS certificate.
-  char quic_tls_key[OPTIONS_BUFF_SIZE];               ///< Native QUIC TLS private key.
-  char quic_ca_file[OPTIONS_BUFF_SIZE];               ///< Native QUIC client certificate trust anchors.
+  char tls_ca_file[OPTIONS_BUFF_SIZE];                ///< Shared TLS client trust anchors; empty uses system trust.
   bool quic_visual_datagrams;                         ///< Prefer negotiated visual datagrams.
   bool quic_audio_datagrams;                          ///< Prefer negotiated QUIC datagrams for audio.
   bool discovery_quic;                                ///< Use QUIC for a disclosed discovery host endpoint.
@@ -1021,9 +1031,6 @@ typedef struct options_state {
   char mcp_downloads_url_prefix[OPTIONS_BUFF_SIZE]; ///< Public HTTP origin for download links
   char mcp_transport[OPTIONS_BUFF_SIZE];            ///< MCP transport: stdio or http
   char http_origin[OPTIONS_BUFF_SIZE];              ///< Allowed HTTP Origin
-  char http_tls_cert[OPTIONS_BUFF_SIZE];            ///< HTTP TLS certificate path
-  char http_tls_key[OPTIONS_BUFF_SIZE];             ///< HTTP TLS key path
-  char http_tls_key_password[OPTIONS_BUFF_SIZE];    ///< HTTP TLS key password
   int discovery_port;                               ///< discovery server port (default: 27225)
   char discovery_service_url[OPTIONS_BUFF_SIZE];    ///< discovery server WebSocket URL (ws:// or wss://, mutually
                                                     ///< exclusive with discovery_port)
@@ -1122,6 +1129,7 @@ typedef struct options_state {
   // Image Options
   // ============================================================================
   bool stabilize;                                    ///< Reduce frame-to-frame character flicker
+  bool stabilize_explicit;                           ///< Runtime preference was explicitly changed
   ascii_renderer_t renderer;                         ///< Character selection algorithm
   bool stretch;                                      ///< Allow aspect ratio distortion
   char video_codec[OPTIONS_VIDEO_CODEC_BUFFER_SIZE]; ///< Video codec (auto, hevc, h264, raw) - default: auto

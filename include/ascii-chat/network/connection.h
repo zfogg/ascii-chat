@@ -17,6 +17,7 @@ typedef enum {
 } network_connection_state_t;
 
 /** All hooks run serially for a connection, outside backend event loops.
+ * @brief Callbacks and operations used by network connection callbacks.
  * Packet payloads are borrowed until return. closing stops application producers;
  * closed releases application state after the transport and callbacks have drained.
  * An open failure still receives closing/closed, including partial application init.
@@ -93,13 +94,17 @@ asciichat_error_t network_connection_adopt_negotiating(acip_transport_t *, const
                                                        network_connection_t **);
 
 /** Shared outbound establishment. Native TCP is adopted into the event backend;
+ * @brief For network connect config, this is the live record that ties `timeout_ms`, `callback_data`, `tls_ca_file`, `quic_visual_datagrams` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  * WebSocket establishes its library-managed transport. Returns one owned object.
+ */
+/**
+ * @brief For network server config, this is the live record that ties `port`, `ipv4_address`, `ipv6_address`, `bind_ipv4` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  */
 typedef struct {
   uint32_t timeout_ms;
   bool (*should_exit_callback)(void *);
   void *callback_data;
-  const char *quic_ca_file;   /**< Optional trust anchors for an explicit quic:// connection. */
+  const char *tls_ca_file;    /**< Optional trust anchors for secure network connections. */
   bool quic_visual_datagrams; /**< Prefer negotiated visual datagrams. */
   bool quic_audio_datagrams;  /**< Prefer datagrams for audio when supported by the peer. */
 } network_connect_config_t;

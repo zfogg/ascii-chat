@@ -25,6 +25,8 @@
 #define BUFFER_MIN_CAPACITY 64u
 #define BUFFER_MAX_CACHED ((size_t)4 * 1024 * 1024)
 
+/**
+ */
 typedef struct buffer_header {
   struct buffer_header *next;
   buffer_domain_t *domain;
@@ -39,6 +41,14 @@ typedef struct buffer_header {
   unsigned bin;
 } buffer_header_t;
 
+/**
+ * @brief The useful part of buffer header is in `next`, `domain`, `allocation`, `data`: together they describe what is
+ * pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent
+ * cleanup path.
+ * @brief Owns the temporary storage used by buffer domain. The data pointers and size or cursor fields describe the
+ * live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer
+ * needed.
+ */
 struct buffer_domain {
   mutex_t mutex;
   buffer_domain_config_t config;

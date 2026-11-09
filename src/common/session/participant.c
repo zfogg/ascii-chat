@@ -45,7 +45,13 @@
  * ============================================================================ */
 
 /**
- * @brief Internal session participant structure
+ * @brief Client session state spanning connection, transport, media workers, and callbacks
+ * @brief Client session state spanning connection, transport, media workers, and callbacks.
+ *
+ * The participant owns its copied address/password settings and worker handles,
+ * while the selected transport and network connection follow their explicit
+ * ownership fields. Audio/video lifecycle state prevents stale workers from
+ * using a connection during shutdown.
  *
  * Contains connection state, media stream state, and callback configuration.
  */
@@ -66,7 +72,7 @@ typedef struct session_participant {
   /** @brief Server key for verification (if any) */
   char server_key[BUFFER_SIZE_MEDIUM];
 
-  char quic_ca_file[OPTIONS_BUFF_SIZE];
+  char tls_ca_file[OPTIONS_BUFF_SIZE];
   bool quic_audio_datagrams, quic_visual_datagrams;
 
   /** @brief Audio enabled */
@@ -178,8 +184,8 @@ session_participant_t *session_participant_create(const session_participant_conf
   if (config->server_key) {
     SAFE_STRNCPY(p->server_key, config->server_key, sizeof(p->server_key));
   }
-  if (config->quic_ca_file)
-    SAFE_STRNCPY(p->quic_ca_file, config->quic_ca_file, sizeof(p->quic_ca_file));
+  if (config->tls_ca_file)
+    SAFE_STRNCPY(p->tls_ca_file, config->tls_ca_file, sizeof(p->tls_ca_file));
   p->quic_audio_datagrams = config->quic_audio_datagrams;
   p->quic_visual_datagrams = config->quic_visual_datagrams;
 
@@ -266,7 +272,7 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
   char password[PASSWORD_BUFFER_SIZE] = {0};
   SAFE_STRNCPY(password, p->password, sizeof(password));
   network_connect_config_t quic_config = {.timeout_ms = 10000,
-                                          .quic_ca_file = p->quic_ca_file[0] ? p->quic_ca_file : NULL,
+                                          .tls_ca_file = p->tls_ca_file[0] ? p->tls_ca_file : NULL,
                                           .quic_audio_datagrams = p->quic_audio_datagrams,
                                           .quic_visual_datagrams = p->quic_visual_datagrams};
   const network_connect_config_t *connect_config = strncmp(p->address, "quic://", 7) == 0 ? &quic_config : NULL;
@@ -394,6 +400,8 @@ asciichat_error_t session_participant_request_settings(session_participant_t *p,
 
   options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
   session_settings_to_options(settings, values);
+  if (values->fps == 0)
+    values->fps = DEFAULT_MAX_FPS;
   if (values->color_mode == TERM_COLOR_AUTO) {
     terminal_capabilities_t caps = detect_terminal_capabilities();
     values->color_mode = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;

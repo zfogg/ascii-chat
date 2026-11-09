@@ -1,1150 +1,241 @@
 /**
  * @defgroup build Build System
  * @ingroup module_development
- * @brief 🔨 Compile human-readable code into machine-executable code
+ * @brief Configure, build, test, package, and document ascii-chat
  */
 
 /**
- * @page topic_build CMake Compile README
+ * @page topic_build CMake Build System
  * @ingroup build
- * @brief CMake-based build system with cross-platform support and modular architecture
+ * @brief The current CMake workflow for desktop, documentation-only, CI, and iOS builds.
  *
  * @section build_overview Overview
  *
- * ascii-chat uses a highly modular CMake build system designed for cross-platform
- * development across Linux, macOS, and Windows. The build system automatically
- * handles platform differences, dependency management, caching, and optimization
- * for both development and release builds.
+ * ascii-chat uses CMake with Ninja as its normal generator. The root project
+ * configures the native library, executable, dependencies, tests, packaging,
+ * and optional web build. Use a separate build directory for each materially
+ * different compiler, ABI, SDK, or static/shared dependency configuration.
  *
- * **Key Features**:
- * - Modular CMake architecture (30+ specialized modules)
- * - Cross-platform support (Linux, macOS, Windows)
- * - Automatic dependency caching (ccache, FetchContent)
- * - Multiple build types (Debug, Dev, Release, RelWithDebInfo)
- * - Coverage instrumentation option (combinable with any build type)
- * - Static release builds with musl (Linux only)
- * - High-performance allocator (mimalloc) for release builds
- * - CMake presets for common configurations
- * - Windows build script for convenience
+ * The source tree is modular: `cmake/init/` establishes options and platform
+ * detection; `cmake/compiler/` owns Clang/LLVM flags and instrumentation;
+ * `cmake/deps/` finds or builds third-party libraries; `cmake/targets/` assembles
+ * targets; `cmake/install/` owns installation and packaging; and
+ * `docs/CMakeLists.txt` is the independent Doxygen project.
  *
+ * @section build_quickstart Desktop quick start
  *
- * @section build_quickstart Quick Start
- *
- * Build and install ascii-chat:
+ * Configure once, then build as often as needed:
  *
  * @code{.bash}
- * make CMAKE_BUILD_TYPE=RelWithDebInfo && sudo make install
- * @endcode
- *
- * **Or use CMake directly with presets**:
- *
- * @code{.bash}
- * # List available presets
- * cmake --list-presets
- *
- * # Build with a preset (configure + build in one command)
- * cmake --build --preset release
- * cmake --build --preset debug
+ * cmake --preset dev
  * cmake --build --preset dev
+ *
+ * cmake --preset debug
+ * cmake --build --preset debug
+ *
+ * cmake --preset release
+ * cmake --build --preset release
  * @endcode
  *
- * **Or configure manually**:
+ * A build preset does not replace the initial configure step. Manual configuration
+ * is useful for one-off combinations:
  *
  * @code{.bash}
- * cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
- * cmake --build build
- * sudo cmake --install build
+ * cmake -S . -B build-custom -G Ninja \
+ *   -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTS=OFF
+ * cmake --build build-custom
  * @endcode
  *
- * See @ref build_presets for all available presets and @ref build_options for
- * configuration options.
+ * @section build_presets Presets
  *
- * @section build_philosophy Compilation Philosophy
+ * Inspect the repository's current preset names:
+ * @code{.bash}
+ * cmake --list-presets
+ * cmake --list-presets=build
+ * cmake --list-presets=test
+ * @endcode
  *
- * ascii-chat has a few goals to satisfy, and the build system reflects them all.
+ * | Preset | Intended use |
+ * | --- | --- |
+ * | `default` | Debug baseline with tests off |
+ * | `debug` | Debug with the normal diagnostic configuration |
+ * | `debug-fast` | Debug symbols without sanitizer overhead |
+ * | `dev` | Fast daily iteration |
+ * | `tests` | Debug configuration with native tests enabled |
+ * | `relwithdebinfo` | Optimized build retaining symbols |
+ * | `release` | Distribution-oriented optimized build |
+ * | `release-musl` | Explicit Linux musl build |
+ * | `coverage` | Debug build with coverage instrumentation |
+ * | `windows-debug`, `windows-release` | Windows/vcpkg configurations |
  *
- * @subsection build_philosophy_dev Development Builds (Dynamic)
+ * @section build_platforms Toolchains and platforms
  *
- * First, I need to actually *develop* ascii-chat for it to exist. Development builds
- * use dynamic linking because it's faster—shared libraries reduce link time, sanitizers
- * work better, and I can rebuild only what changed. That's why the CMake configuration
- * is complex: it handles both fast development builds and production-ready releases.
+ * Clang/LLVM and Ninja are the supported native toolchain. Windows development
+ * normally uses PowerShell with LLVM and the repository presets. Linux and macOS
+ * use the platform's Clang or the configured LLVM installation. Keep separate
+ * build directories when switching compiler installations or sanitizer runtimes.
+ * The native defer tool requires LLVM 19 or newer, its C++ development headers
+ * and libraries, and libclang. The dependency installers provision these;
+ * `ASCIICHAT_LLVM_DEV_ROOT` selects an existing compatible development archive.
+ * On Windows the installer uses the verified LLVM 23.1.3 archive by default.
+ * The optional Python defer backend locates libclang automatically, or accepts
+ * `ASCIICHAT_LIBCLANG_PATH` when it cannot be discovered.
  *
- * **Development linking**:
- * - **Windows**: Dynamic vcpkg DLLs (x64-windows triplet)
- * - **Linux**: Dynamic .so files against glibc
- * - **macOS**: Dynamic .dylib against system frameworks
+ * Linux release builds can use `USE_MUSL=ON`; that path is Linux-only and needs
+ * musl-gcc, GCC as its underlying compiler, and LLD. macOS uses Clang, Apple
+ * frameworks, and the configured Homebrew/system dependencies. Windows release
+ * builds use the vcpkg configuration and static triplet selected by the preset.
  *
- * **Build modes**:
- * - **Debug**: Maximum debugging with AddressSanitizer enabled
- * - **Dev**: Fast builds without sanitizer overhead
+ * @section build_dependencies Dependencies and cache
  *
- * @subsection build_philosophy_lib The Library (libasciichat)
+ * The root configure step may find system packages, use vcpkg on Windows, or
+ * build dependencies through the repository's CMake modules. The main cache
+ * controls are `ASCIICHAT_DEPS_CACHE_ROOT`, `ASCIICHAT_DEPS_CACHE_DIR`, and the
+ * derived `FETCHCONTENT_BASE_DIR`. Keep caches outside disposable build trees.
+ * Do not reuse dependency artifacts across incompatible SDKs, architectures,
+ * compilers, or musl/glibc configurations.
  *
- * I'm proud of libasciichat and made it available for others to use. That's why we
- * build and distribute a library—so you can link against it in your own
- * projects.
+ * Git submodules are not required by the documentation-only project. Native
+ * configuration may initialize declared submodules when a dependency or feature
+ * needs them. If initialization reports that a submodule directory is non-empty,
+ * repair that specific partial checkout before retrying.
  *
- * **Release artifacts include**:
- * - `libasciichat.so` / `asciichat.dll` / `libasciichat.dylib` - Dynamic library
- * - `libasciichat.a` / `asciichat.lib` - Static library
+ * See @ref topic_dependencies for the dependency inventory and platform notes.
  *
- * We distribute *both* dynamic and static libraries so you have options. Use the dynamic
- * library for normal development, or use the static library to build your own portable
- * releases.
+ * @section build_options Important options
  *
- * @subsection build_philosophy_static Static Releases (Portability is Awesome)
+ * | Option | Effect |
+ * | --- | --- |
+ * | `BUILD_TESTS=ON` | Build native test targets |
+ * | `ASCIICHAT_ENABLE_COVERAGE=ON` | Add coverage instrumentation |
+ * | `ASCIICHAT_ENABLE_ANALYZERS=ON` | Enable configured Clang-tidy/cppcheck analysis |
+ * | `ASCIICHAT_BUILD_WITH_PANIC=ON` | Build panic/source instrumentation |
+ * | `ASCIICHAT_USE_PCH=OFF` | Disable precompiled headers |
+ * | `ASCIICHAT_ENABLE_UNITY_BUILDS=ON` | Batch sources for faster builds |
+ * | `USE_MUSL=ON` | Select the Linux musl path |
+ * | `ASCIICHAT_ENFORCE_STATIC_RELEASE=OFF` | Permit a non-static release configuration |
+ * | `ASCIICHAT_FORMAT_ONLY=ON` | Configure only formatting-related paths |
+ * | `USE_CPACK=ON` | Enable package generation |
  *
- * Static linking follows the same philosophy as musl and many musl-based projects:
- * **portability is awesome**.
+ * Compiler, ABI, dependency, and target-platform options belong in a fresh build
+ * directory rather than being toggled in place.
  *
- * I compile Linux releases in a VM or Docker container running a distro that
- * end users might not be running—and the executables still work everywhere.
- * That's cool from both perspectives: as a developer, I can build anywhere;
- * as a user, you can run it anywhere.
- *
- * **Why static?**
- * - **One file**: With a static executable, ascii-chat is *one file*. That's an
- *   amazing thing to be able to say about your project in the world of software,
- *   especially if it's complex at all.
- * - **No dependency hell**: No DLLs, no .so files, no .dylibs—they're extra files
- *   to worry about, version, and distribute. Static linking eliminates all of that.
- * - **True portability**: Works on any Linux distribution, any glibc version,
- *   any system configuration.
- *
- * **Platform linking**:
- * - **Linux**: Static musl libc with static-PIE (fully self-contained)
- * - **Windows**: Static vcpkg libraries (x64-windows-static triplet)
- * - **macOS**: Currently dynamic (static planned for future releases)
- *
- * @subsection build_philosophy_for_you For Your Projects
- *
- * We distribute a static library (`libasciichat.a` / `asciichat.lib`) alongside the
- * dynamic library so that *you too* can make portable static releases of your project
- * with libasciichat. If you're building something that uses ascii-chat's library and
- * you want a single portable binary, link against the static lib.
- *
- * @subsection build_philosophy_releases Release Distribution
- *
- * **Download binaries**: Grab ascii-chat from the [GitHub Releases page](https://github.com/zfogg/ascii-chat/releases).
- * Each release ships ready-to-run binaries, installers, and SDK artifacts for Linux, macOS, and Windows.
- *
- * **Build from source**: Clone the repository, install the dependencies documented in
- * @ref topic_dependencies and the project README, then run `make CMAKE_BUILD_TYPE=RelWithDebInfo`
- * to produce a working copy in `build/bin/`.
- *
- * @subsection build_philosophy_summary Summary
- *
- * | Platform | Development | Production | Release Artifacts |
- * |----------|-------------|------------|-------------------|
- * | **Windows** | DLL (x64-windows) | Static (x64-windows-static) | .exe, .dll, .lib, .msi installer |
- * | **Linux** | .so (glibc) | Static (musl) | binary, .so, .a, .deb/.rpm |
- * | **macOS** | .dylib | Static (planned) | binary, .dylib, .a, .pkg |
- *
- * | Build Mode | Optimization | Debug Info | Sanitizers | C Runtime |
- * |------------|--------------|------------|------------|-----------|
- * | **Debug** | -O0 | Full | ASan,UBSan | glibc/UCRT/libSystem |
- * | **Dev** | -O0 | Full | None | glibc/UCRT/libSystem |
- * | **Release** | -O3 | None | None | musl/UCRT(static)/libSystem |
- * | **RelWithDebInfo** | -O3 | Full | None | musl/UCRT/libSystem |
- *
- * @section build_requirements Build Tool Requirements
- *
- * This section documents tools needed to build ascii-chat. For library dependencies
- * (zstd, libsodium, PortAudio, etc.), see @ref topic_dependencies.
- *
- * @subsection build_requirements_required Required Tools
- *
- * These tools are needed for **all** builds on **all** platforms:
- *
- * | Tool | Version | Purpose |
- * |------|---------|---------|
- * | **cmake** | 3.30+ | Build system generator |
- * | **clang** | 18+ | C compiler |
- * | **clang++** | 18+ | C++ compiler (for defer/panic tools) |
- * | **llvm-config** | 18+ | Query LLVM paths (for defer/panic tools) |
- * | **llvm-ar** | 18+ | Static library archiver |
- * | **llvm-ranlib** | 18+ | Static library indexer |
- * | **ninja** | Any | Build system (Ninja is required) |
- * | **git** | Any | Version detection, dependency patching |
- *
- * **Platform-specific required tools**:
- *
- * | Platform | Additional Required Tools | Purpose |
- * |----------|---------------------------|---------|
- * | **Linux** | pkg-config | Dependency detection |
- * | **macOS** | pkg-config (Homebrew), xcrun | Dependency detection, SDK tools |
- * | **Windows** | clang-cl, llvm-lib, nmake | BearSSL build (MSVC-compatible tooling) |
- *
- * @note ascii-chat is a **Clang-only** project. GCC and MSVC are not supported.
- * @note **llvm-lib** is the LLVM equivalent of Microsoft's lib.exe for creating static libraries.
- * @note **clang-cl** is Clang's MSVC-compatible driver for Windows builds.
- * @note **nmake** is Microsoft's make tool, required for building BearSSL on Windows.
- *
- * @subsection build_requirements_optional Optional Build Tools
- *
- * These tools improve the build experience but aren't required:
- *
- * | Tool | Purpose | When Useful |
- * |------|---------|-------------|
- * | **ccache** | Compiler cache | 5-10x faster rebuilds |
- * | **clang-format** | Code formatting | `format` target |
- * | **clang-tidy** | Static analysis | Required when ASCIICHAT_ENABLE_ANALYZERS=ON |
- * | **cppcheck** | Static analysis | Additional code checking |
- * | **doxygen** | Generate documentation | Release packages |
- * | **bash** | Shell scripting | Required when ASCIICHAT_BUILD_WITH_PANIC=ON |
- * | **python3** | Build scripts | Optional scripting support |
- * | **lld** | LLVM linker | Faster linking, required for USE_MUSL builds |
- * | **scan-build** | Static analyzer | Clang static analyzer wrapper |
- *
- * @note Debugging tools (lldb, llvm-symbolizer, addr2line, valgrind, leaks) are documented
- *       in @ref topic_debug "Debugging" - they are not build tools.
- *
- * @subsection build_requirements_by_build Build Type Additions
- *
- * All build types share the same required tools. Each type adds specific needs:
- *
- * | Build Type | Additional Tools | Purpose |
- * |------------|------------------|---------|
- * | **Debug** | (none) | Uses same tools as other builds |
- * | **Dev** | (none) | Fast builds without sanitizers |
- * | **Release** | doxygen (optional) | Documentation for packages |
- * | **Coverage** (option) | llvm-profdata, llvm-cov | Generate coverage reports (use -DASCIICHAT_ENABLE_COVERAGE=ON) |
- *
- * **Linux static builds** (USE_MUSL=ON) additionally require:
- * - **lld** - LLVM linker for static-PIE linking
- * - **musl-gcc** - musl C compiler wrapper
- * - **gcc** - used by musl-gcc via REALGCC environment variable
- *
- * @subsection build_requirements_packaging Package Generators
- *
- * CPack auto-detects available package generators. All are optional:
- *
- * | Platform | Tool | Package Format |
- * |----------|------|----------------|
- * | Linux | dpkg-deb | .deb (Debian/Ubuntu) |
- * | Linux | rpmbuild | .rpm (Fedora/RHEL) |
- * | macOS | productbuild | .pkg |
- * | Windows | wix | .msi (WiX Toolset v4+) |
- * | Windows | makensis | .exe installer (NSIS) |
- * | All | tar/zip | .tar.gz, .zip |
- *
- * @subsection build_requirements_verify Verifying Your Setup
- *
- * Quick check that all required tools are available:
+ * @section build_tests Tests and CI
  *
  * @code{.bash}
- * # Check LLVM toolchain
- * clang --version && clang++ --version && llvm-config --version
- *
- * # Check build tools
- * cmake --version && ninja --version
- *
- * # Check archiver tools
- * llvm-ar --version && llvm-ranlib --version
+ * cmake --preset tests
+ * cmake --build --preset tests
+ * ctest --preset unit
+ * ctest --preset integration
+ * ctest --preset all
  * @endcode
  *
- * If any tool is missing, the CMake configure step will fail with a clear error
- * message explaining what to install.
+ * GitHub Actions uses dedicated CI presets and workflows. Diagnose failures from
+ * the job log instead of copying every CI cache flag into a local build.
  *
- * @subsection build_requirements_docs Building Documentation
+ * @section build_documentation Documentation builds
+ *
+ * Documentation is a separate CMake project. It does not configure the native
+ * application, compile OpenSSL, initialize the full native dependency graph,
+ * or require all submodules. The Doxygen theme submodule is the relevant HTML
+ * styling input.
  *
  * @code{.bash}
- * # Build docs (requires doxygen)
- * cmake --build build --target docs
- *
- * # Documentation output
- * ls build/docs/html/       # HTML documentation
- * ls build/docs/man/man3/   # Unix manpages
- *
- * # Build release package (includes documentation)
- * cmake --build build --target package
+ * cmake -S docs -B build/docs-standalone \
+ *   -DASCII_CHAT_SOURCE_DIR=$PWD
+ * cmake --build build/docs-standalone --target docs
  * @endcode
  *
- * @subsection build_requirements_windows Windows Notes
+ * HTML is written to `build/docs-standalone/share/doc/html/index.html`. The root
+ * project can import the same target with `cmake --build <native-build> --target
+ * docs-html`; the standalone project is preferred for docs-only work and CI.
  *
- * Windows requires **bash** (from Git Bash, WSL, or MSYS2) for test scripts and
- * the panic tool. Git Bash is recommended - it's bundled with Git for Windows
- * and automatically detected by CMake.
+ * @section build_ios iOS prototype and Apple targets
  *
- * The preferred way to build on Windows is using the PowerShell script:
+ * Pull request [#626](https://github.com/zfogg/ascii-chat/pull/626) adds the
+ * current iOS simulator/device prototype. It is an in-progress platform target,
+ * not a desktop executable. CMake builds a static `libasciichat.a`-based app and
+ * keeps desktop-only executables, tests, TTY setup, and unsupported QUIC paths
+ * out of the iOS SDK build.
  *
- * @code{.powershell}
- * ./build.ps1                  # Default build
- * ./build.ps1 -Clean           # Clean rebuild
- * ./build.ps1 -Config Release  # Release build
+ * The prototype includes iOS platform detection, arm64 device and configurable
+ * simulator builds, a SwiftUI target named `ascii-chat-ios-app`, an AVFoundation
+ * camera bridge, an AVAudioEngine-backed PortAudio-compatible audio shim, a C
+ * render bridge, native mode/lifecycle state, background audio handling, and an
+ * XCFramework packaging helper. The Intel simulator has no camera; physical
+ * camera and microphone validation remains device work.
+ *
+ * @subsection build_ios_simulator Simulator
+ *
+ * Run on macOS with Xcode and the iOS simulator SDK:
+ * @code{.bash}
+ * ./scripts/build-ios-simulator.sh build-ios-sim
+ * IOS_SIM_ARCH=arm64 ./scripts/build-ios-simulator.sh build-ios-sim-arm64
  * @endcode
  *
- * Windows Debug builds need the ASan DLL, import library, and runtime thunk
- * from the selected Clang installation. With multiple LLVM installations,
- * select the compiler explicitly rather than copying runtimes between them.
- * For example, to use Scoop LLVM in a separate build directory:
+ * The helper validates `IOS_SIM_ARCH` (`x86_64` or `arm64`), configures
+ * `BUILD_IOS_SIM=ON`, and builds `ascii-chat-ios-app`.
  *
- * @code{.powershell}
- * $llvmBin = "$env:USERPROFILE/scoop/apps/llvm/current/bin"
- * cmake --preset default -B build_asan "-DCMAKE_C_COMPILER=$llvmBin/clang.exe" "-DCMAKE_CXX_COMPILER=$llvmBin/clang++.exe"
- * cmake --build build_asan
- * $env:ASAN_SYMBOLIZER_PATH = "$llvmBin/llvm-symbolizer.exe"
- * ./build_asan/bin/ascii-chat.exe --version
+ * @subsection build_ios_device Device
+ *
+ * A device build requires the iPhoneOS SDK and a fresh build directory:
+ * @code{.bash}
+ * ./scripts/build-ios-device.sh build-ios
  * @endcode
  *
- * Check configuration output for the ASan import library and copied runtime
- * DLL. CMake caches compiler selection, so use a separate build directory when
- * switching toolchains. A Debug label alone does not prove ASan is enabled.
+ * The helper checks `xcrun --sdk iphoneos --show-sdk-path` and rejects a directory
+ * previously configured for the simulator.
  *
- * @section build_modularity CMakeLists.txt Modularity
+ * @subsection build_ios_xcframework XCFramework
  *
- * @subsection build_modularity_structure Modular Architecture
+ * Build both archives and package them with public headers:
+ * @code{.bash}
+ * ./scripts/build-ios-simulator.sh build-ios-sim
+ * ./scripts/build-ios-device.sh build-ios
+ * ./scripts/package-ios-xcframework.sh \
+ *   build-ios/lib/libasciichat.a \
+ *   build-ios-sim/lib/libasciichat.a \
+ *   build/asciichat.xcframework
+ * @endcode
  *
- * The main `CMakeLists.txt` is organized as a modular system, with each major
- * aspect handled by a dedicated module in the `cmake/` directory:
+ * The packager refuses to overwrite an existing output, stages public headers plus
+ * the required Sokol headers, and invokes `xcodebuild -create-xcframework`.
  *
- * @note All file paths listed below are relative to the **cmake/** directory.
+ * @section build_targets Useful targets
  *
- * **Root-level Modules**:
- * - `ProjectConstants.cmake` - Project metadata (name, author, URLs, license)
+ * | Target | Purpose |
+ * | --- | --- |
+ * | `ascii-chat` | Desktop executable |
+ * | `ascii-chat-static-lib` | Static native library |
+ * | `ascii-chat-ios-app` | SwiftUI iOS prototype app |
+ * | `tests` | Native test aggregation target |
+ * | `docs-html` | Generate HTML documentation |
+ * | `docs-open` | Generate docs and print the local index path |
+ * | `format` | Format configured sources |
+ * | `package` | Generate available CPack packages |
  *
- * **Core Configuration Modules** (`init/`):
- * - `init/Init.cmake` - Initial setup and paths
- * - `init/FindPrograms.cmake` - Centralized program discovery (clang, llvm-config, etc.)
- * - `init/BuildTypes.cmake` - Build type configuration (Debug, Release, etc.)
- * - `init/Options.cmake` - Build options (mimalloc, musl, tests, etc.)
- * - `init/BuildConfiguration.cmake` - Build configuration helpers
- * - `init/PlatformDetection.cmake` - Platform-specific variables (Linux, macOS, Windows)
- *
- * **Compiler Configuration** (`compiler/`):
- * - `compiler/CompilerDetection.cmake` - Compiler detection and configuration
- * - `compiler/CompilerFlags.cmake` - Base compiler flags and standards
- * - `compiler/CCache.cmake` - Compiler cache configuration
- * - `compiler/SIMD.cmake` - SIMD instruction detection
- * - `compiler/CRC32.cmake` - Hardware-accelerated CRC32 detection
- * - `compiler/PCH.cmake` - Precompiled headers
- * - `compiler/LLVM.cmake` - LLVM toolchain configuration
- * - `compiler/HeaderChecks.cmake` - Header availability checks
- * - `compiler/ToolchainChecks.cmake` - Toolchain validation
- *
- * **Platform Configuration** (`platform/`):
- * - `platform/WindowsWorkarounds.cmake` - Windows-specific fixes
- * - `platform/CodeSigning.cmake` - macOS code signing for Gatekeeper compatibility
- * - `platform/Sanitizers.cmake` - Sanitizer configuration (ASan, UBSan, etc.)
- * - `platform/Musl.cmake` - musl libc configuration (Linux only)
- *
- * **Dependencies** (`dependencies/`):
- * - `dependencies/Dependencies.cmake` - External dependency finding (main entry point)
- * - `dependencies/Vcpkg.cmake` - vcpkg package manager integration
- * - `dependencies/BearSSL.cmake` - BearSSL TLS library
- * - `dependencies/Criterion.cmake` - Criterion test framework
- * - `dependencies/Libsodium.cmake` - libsodium cryptography library
- * - `dependencies/Mimalloc.cmake` - mimalloc memory allocator
- * - `dependencies/MuslDependencies.cmake` - Static dependency building for musl
- * - `dependencies/Portaudio.cmake` - PortAudio audio library
- * - `dependencies/Zstd.cmake` - Zstandard compression library
- *
- * **Build Targets** (`targets/`):
- * - `targets/SourceFiles.cmake` - Source file collection
- * - `targets/Libraries.cmake` - Library linking
- * - `targets/Executables.cmake` - Executable targets
- * - `targets/Tests.cmake` - Test framework configuration
- *
- * **Installation and Packaging** (`install/`):
- * - `install/Install.cmake` - Installation rules and CPack package generation
- * - `install/Archive.cmake` - Archive package configuration (ZIP, TGZ)
- * - `install/Deb.cmake` - Debian package configuration
- * - `install/Rpm.cmake` - RPM package configuration
- * - `install/Version.cmake` - Version generation
- * - `install/Documentation.cmake` - Doxygen documentation
- *
- * **Testing** (`test/`):
- * - `test/TestFramework.cmake` - Test framework setup
- *
- * **Tooling and Instrumentation** (`tooling/`):
- * - `tooling/Panic.cmake` - Panic instrumentation (per-statement logging for crash debugging)
- * - `tooling/Defer.cmake` - Defer transformation (Go/Zig-style defer statements)
- * - `tooling/ToolingRuntime.cmake` - Builds the runtime that the panic tool needs to work, and also the panic-report tool.
- *
- * **Utilities** (`utils/`):
- * - `utils/Include.cmake` - Include directory configuration
- * - `utils/PostBuild.cmake` - Post-build processing
- * - `utils/StatusMessages.cmake` - Build status output
- * - `targets/CustomTargets.cmake` - Custom build targets (format, clang-tidy, etc.)
- *
- * @section build_presets CMake Presets (Preferred)
- *
- * CMake Presets are the **preferred way to configure builds**. They provide
- * standardized configurations with all the right flags for each build type.
- *
- * @subsection build_presets_overview Quick Start
+ * @section build_install Packaging and installation
  *
  * @code{.bash}
- * # Configure and build (one command)
- * cmake --build --preset debug      # Debug with sanitizers
- * cmake --build --preset dev        # Fast iteration, no sanitizers
- * cmake --build --preset release    # Optimized for distribution
- * cmake --build --preset coverage   # Code coverage analysis
+ * cmake --build build/dev
+ * cmake --install build/dev --prefix $HOME/.local
+ * cmake --build build/dev --target package
  * @endcode
  *
- * @subsection build_presets_list Available Presets
+ * CPack output depends on host tools available during configuration. Inspect the
+ * configure summary instead of assuming every host produces DEB, RPM, PKG, or NSIS.
  *
- * | Preset | Build Type | Use Case |
- * |--------|------------|----------|
- * | `default` / `debug` | Debug | Bug hunting with sanitizers |
- * | `debug-musl` | Debug | Static musl debug (Linux only) |
- * | `dev` | Dev | Fast daily development |
- * | `release` | Release | Production builds (static on Linux/Windows) |
- * | `release-musl` | Release | Force musl static (Linux only) |
- * | `relwithdebinfo` | RelWithDebInfo | Optimized with debug symbols |
- * | `coverage` | Debug + Coverage | Debug build with coverage instrumentation |
+ * @section build_troubleshooting Troubleshooting
  *
- * @subsection build_presets_ide IDE Integration
+ * - **Wrong compiler or SDK:** start with a fresh build directory and inspect `CMakeCache.txt`.
+ * - **Submodule failure:** repair the reported partial submodule checkout specifically.
+ * - **Unexpected dependency rebuild:** check cache root and target ABI/SDK.
+ * - **iOS probes target the host:** use the iOS helper so FFmpeg and ICU probes receive the selected SDK.
+ * - **Swift receives Clang flags:** keep language-specific options scoped to C/C++ targets.
  *
- * Presets are defined in `CMakePresets.json` and work with VS Code, CLion,
- * and other CMake-aware IDEs. Select a preset from your IDE's configuration
- * dropdown to get consistent builds across your team.
- *
- * @subsection build_presets_custom Custom Presets
- *
- * Create custom presets by editing `CMakePresets.json`:
- *
- * @code{.json}
- * {
- *   "name": "my-custom",
- *   "displayName": "My Custom Build",
- *   "inherits": "base",
- *   "cacheVariables": {
- *     "CMAKE_BUILD_TYPE": "Debug",
- *     "USE_MIMALLOC": "OFF",
- *     "BUILD_TESTS": "ON"
- *   }
- * }
- * @endcode
- *
- *
- * @section build_types Build Types
- *
- * @subsection build_types_debug Debug Build
- *
- * **Purpose**: Finding bugs, memory issues, undefined behavior
- *
- * **Configuration**:
- * @code{.bash}
- * cmake -B build -DCMAKE_BUILD_TYPE=Debug
- * cmake --build build
- * @endcode
- *
- * **Features**:
- * - **Optimization**: `-O0` (no optimization)
- * - **Debug Symbols**: Yes (full backtraces)
- * - **Sanitizers**: ASan, UBSan, LSan, Integer, Nullability
- * - **mimalloc**: Disabled by default (better debugging)
- * - **musl**: Disabled on Linux (use glibc for debugging)
- *
- * **When to Use**:
- * - Finding crashes
- * - Memory leak detection
- * - Undefined behavior detection
- * - Debugging production issues
- *
- * @subsection build_types_dev Dev Build
- *
- * **Purpose**: Fast compilation, daily development
- *
- * **Configuration**:
- * @code{.bash}
- * cmake -B build -DCMAKE_BUILD_TYPE=Dev
- * cmake --build build
- * @endcode
- *
- * **Features**:
- * - **Optimization**: `-O0` (no optimization)
- * - **Debug Symbols**: Yes (full backtraces)
- * - **Sanitizers**: None (faster runtime)
- * - **mimalloc**: Disabled by default
- * - **musl**: Disabled on Linux
- *
- * **When to Use**:
- * - Fast edit-compile-test cycles
- * - Daily development
- * - When sanitizer overhead is too slow
- *
- * @subsection build_types_release Release Build
- *
- * **Purpose**: Production deployment, performance testing
- *
- * **Configuration**:
- * @code{.bash}
- * # Standard Release (dynamic glibc on Linux)
- * cmake -B build -DCMAKE_BUILD_TYPE=Release
- * cmake --build build
- *
- * # Static musl Release (Linux only)
- * cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON
- * cmake --build build
- * @endcode
- *
- * **Features**:
- * - **Optimization**: `-O3` (maximum optimization)
- * - **Debug Symbols**: No (smaller binaries)
- * - **Sanitizers**: None (maximum performance)
- * - **mimalloc**: Enabled by default
- * - **musl**: Enabled on Linux (for Release/RelWithDebInfo)
-* - **Stack Protection**: `-fstack-protector-strong` kept enabled on Unix
-* - **PIE / ASLR**: Enabled on all platforms (Linux static-PIE, macOS `-Wl,-pie`, Windows `/dynamicbase` + `/highentropyva`)
-* - **Control-Flow Guard (Windows)**: `/guard:cf` and `/nxcompat` enforced when using clang-cl
-* - **Dead Dylib Stripping (macOS)**: `-Wl,-dead_strip_dylibs` removes unused framework deps
-* - **Interprocedural Optimization**: Automatically enabled when the toolchain supports IPO/LTO
- *
-* **Security & Portability Philosophy**:
-* - Release artefacts must run everywhere: we default to a **portable CPU baseline** (`-march=x86-64` or `-march=armv8-a`) so a build from a modern workstation still runs on older hosts. Opt-in profiles let you trade reach for throughput when you know your deployment target.
-* - Harden first, tune second: stack protectors, NX, ASLR, and CFG stay enabled even when chasing size or perf. They are cheap insurance, so we only let you dial them back after an explicit, auditable choice.
-* - Keep crash forensics viable: frame pointers remain on by default, unwind tables are preserved, and we build symbol bundles so answering “why did it crash?” never requires reproducing the exact build tree.
-* - Cross-module performance is intentional: interprocedural optimization (IPO/LTO) now spans the shared library, static SDK archive, and main executable so users linking against the SDK get the same scalar/SIMD inlining the app does. The build automatically falls back when IPO is unsupported.
-*
-* **Configurable Release Knobs**:
-* - `-DASCIICHAT_RELEASE_CPU_TUNE=portable|x86-64-v2|x86-64-v3|native|custom`
-*   - Controls the CPU baseline used for Release compilation.
-*   - `portable` (default) prioritizes broad compatibility.
-*   - `x86-64-v2`/`x86-64-v3` target newer Intel/AMD micro-architectures.
-*   - `native` mirrors the build host for lab benchmarking (not portable).
-*   - `custom` consumes additional switches from `ASCIICHAT_RELEASE_CPU_CUSTOM_FLAGS`.
-* - `-DASCIICHAT_RELEASE_CPU_CUSTOM_FLAGS="-msse4.2 ..."`
-*   - Additional compiler switches applied when `ASCIICHAT_RELEASE_CPU_TUNE=custom`.
-*   - Space-separated flags are supported; quote the whole string for the shell.
-* - `-DASCIICHAT_RELEASE_ENABLE_FAST_MATH=ON`
-*   - Opt-in for the aggressive fast-math bundle (reciprocal approximations, associative FP, etc.).
-*   - Default is `OFF` to keep IEEE semantics for audio mixing and crypto code; toggle only after profiling the hot loops you own.
-* - `-DASCIICHAT_RELEASE_KEEP_FRAME_POINTERS=OFF`
-*   - Lets you trade unwindable stacks for slightly smaller/faster code.
-*   - Default `ON` keeps frame pointers so postmortem tooling (Crashpad, addr2line, symbolicators) can reconstruct stacks from field crashes.
-* - `-DASCIICHAT_CODESIGNING=ON|OFF` (macOS only)
-*   - Enable or disable code signing for Gatekeeper compatibility.
-*   - Default `ON` in Release mode, `OFF` in all other build types.
-*   - Requires `CODESIGNING_IDENTITY` to be set (via CMake variable or environment).
-*
-* The release toolchain prints the resolved choices during configuration. For CI/CD, pin them in your preset so the resulting artefacts are reproducible and reviewers can tell which trade-offs you made.
-*
- * **When to Use**:
- * - Production deployments
- * - Performance benchmarking
- * - Creating releases
- * - Distributing binaries
- *
- * @subsection build_types_relwithdebinfo RelWithDebInfo Build
- *
- * **Purpose**: Optimized build with debug symbols for debugging production issues
- *
- * **Configuration**:
- * @code{.bash}
- * cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
- * cmake --build build
- * @endcode
- *
- * **Features**:
- * - **Optimization**: `-O3` (maximum optimization)
- * - **Debug Symbols**: Yes (full backtraces)
- * - **Sanitizers**: None (performance-critical)
- * - **mimalloc**: Enabled by default
- * - **musl**: Enabled on Linux (for Release/RelWithDebInfo)
- * - **Errno Backtraces**: Enabled (for debugging)
- * - **PDB Generation** (Windows): Enabled with Clang
- *
- * **When to Use**:
- * - Debugging performance issues
- * - Profiling optimized code
- * - Production debugging (with symbols)
- * - Analyzing crashes from optimized builds
- *
- * **Debug Symbols in Production**:
- * - Debug symbols included but not stripped
- * - Can be stripped later: `strip build/bin/ascii-chat`
- * - Separate debug info can be generated (Linux: `.debug` file)
- *
- * **Windows PDB Files**:
- * - PDB (Program Database) files generated with Clang on Windows
- * - Enable source-level debugging of optimized code
- * - Generated in `build/bin/` directory
- *
- * @subsection build_types_coverage Coverage Instrumentation (Option)
- *
- * **Purpose**: Code coverage analysis
- *
- * Coverage is an **option** (`ASCIICHAT_ENABLE_COVERAGE`) that can be combined
- * with any build type, not a separate build type. This allows you to get coverage
- * data from Debug, Release, or any other build configuration.
- *
- * **Configuration**:
- * @code{.bash}
- * # Debug build with coverage (recommended for CI)
- * cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_ENABLE_COVERAGE=ON
- * cmake --build build
- *
- * # Or use the coverage preset (Debug + coverage)
- * cmake --preset coverage
- * cmake --build build
- *
- * # Release build with coverage (for performance profiling)
- * cmake -B build -DCMAKE_BUILD_TYPE=Release -DASCIICHAT_ENABLE_COVERAGE=ON
- * cmake --build build
- * @endcode
- *
- * **Features**:
- * - **Coverage Flags**: `--coverage -fprofile-arcs -ftest-coverage`
- * - **Combinable**: Works with Debug, Dev, Release, RelWithDebInfo
- * - **CI Default**: GitHub CI preset enables coverage automatically
- *
- * **Generating Coverage Reports**:
- * @code{.bash}
- * # Build with coverage
- * cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_ENABLE_COVERAGE=ON
- * cmake --build build
- *
- * # Run tests (generates .gcda files)
- * ctest --test-dir build --output-on-failure
- *
- * # Generate report (clang)
- * llvm-cov gcov src/*.c lib/**/*.c
- * llvm-cov show --format=html --output-dir=coverage-report
- * @endcode
- *
- * **When to Use**:
- * - Measuring test coverage
- * - Finding untested code paths
- * - Continuous integration coverage reporting
- *
- * @section build_options CMake Configuration Options
- *
- * This section documents all CMake cache variables and options that control
- * the build behavior. Options are set via `-D<OPTION>=<VALUE>` on the command line.
- *
- * @subsection build_options_core Core Build Options
- *
- * **Build Type and Testing**:
- *
- * | Option | Type | Default | Description |
- * |--------|------|---------|-------------|
- * | `CMAKE_BUILD_TYPE` | STRING | Debug | Build configuration (Debug, Dev, Release, RelWithDebInfo) |
- * | `ASCIICHAT_ENABLE_COVERAGE` | BOOL | OFF | Enable coverage instrumentation (can combine with any build type) |
- * | `BUILD_TESTS` | BOOL | ON | Build the Criterion test suite |
- *
- * @subsection build_options_allocator Memory Allocator Options
- *
- * | Option | Type | Default | Description |
- * |--------|------|---------|-------------|
- * | `USE_MIMALLOC` | BOOL | Auto | Enable mimalloc allocator (ON for Release/RelWithDebInfo, OFF otherwise) |
- *
- * @subsection build_options_libc C Library Options (Linux Only)
- *
- * | Option | Type | Default | Description |
- * |--------|------|---------|-------------|
- * | `USE_MUSL` | BOOL | Auto | Use musl libc for static linking (ON for Release/RelWithDebInfo on Linux) |
- *
- * @subsection build_options_tooling Tooling and Instrumentation Options
- *
- * These options enable source-to-source transformations using Clang libTooling.
- * **These are debugging tools** - use them when you have a crash or bug to investigate.
- *
- * | Option | Type | Default | Description |
- * |--------|------|---------|-------------|
- * | `ASCIICHAT_BUILD_WITH_PANIC` | BOOL | OFF | Enable panic instrumentation (per-statement logging for crash debugging) |
- * | `ASCIICHAT_PANIC_TOOL` | PATH | "" | Path to pre-built ascii-instr-panic tool (skips tool rebuild) |
- * | `ASCIICHAT_DEFER_TOOL` | PATH | "" | Path to pre-built ascii-instr-defer tool (skips tool rebuild) |
- *
- * **Note**: Defer transformation is **automatic** when source files contain `defer()` calls.
- * There is no option to enable/disable it - the build system detects `defer()` usage automatically.
- *
- * @subsubsection build_options_panic Panic Instrumentation (Crash Debugging)
- *
- * Panic instrumentation enables per-statement logging for debugging crashes.
- * When the program crashes, **the last line printed is the crashing line**.
- *
- * @code{.bash}
- * # Build with panic instrumentation
- * cmake -B build -DASCIICHAT_BUILD_WITH_PANIC=ON
- * cmake --build build
- *
- * # Run the program
- * export ASCII_PANIC_OUTPUT_DIR=/tmp/crash-logs
- * ./build/bin/ascii-chat server
- *
- * # Find crash location
- * tail -n1 /tmp/crash-logs/ascii-instr-*.log
- * @endcode
- *
- * **For complete documentation**, including usage workflows, environment variable
- * filtering, multi-threaded debugging, the `ascii-panic-report` tool, and the
- * background on why this technique works, see @ref topic_panic "Panic Instrumentation".
- *
- * @subsubsection build_options_defer Defer Transformation (Automatic)
- *
- * **Defer Transformation**:
- * - Enables Go/Zig-style `defer` statements in C code
- * - Automatically runs cleanup code at function exit
- * - **Automatic**: Enabled when source files contain `defer()` - no option needed
- * - Outputs transformed sources to `build/defer_transformed/`
- * - See @ref topic_defer "Defer Statements" for detailed documentation
- *
- * **Usage Example**:
- * @code{.bash}
- * # Build with panic instrumentation (for debugging crashes)
- * cmake -B build -DASCIICHAT_BUILD_WITH_PANIC=ON
- * cmake --build build
- *
- * # Defer transformation is automatic - just build normally
- * cmake -B build
- * cmake --build build
- * # If any source files contain defer(), they are automatically transformed
- *
- * # Use pre-built tools (faster rebuilds)
- * cmake -B build -DASCIICHAT_BUILD_WITH_PANIC=ON \
- *   -DASCIICHAT_PANIC_TOOL=/path/to/ascii-instr-panic
- * @endcode
- *
- * @subsection build_options_compiler Compiler and Build Options
- *
- * | Option | Type | Default | Description |
- * |--------|------|---------|-------------|
- * | `USE_CCACHE` | BOOL | ON | Enable ccache compiler cache (auto-disabled for musl) |
- * | `ASCIICHAT_USE_PCH` | BOOL | ON | Enable precompiled headers for faster builds |
- * | `ASCIICHAT_ENABLE_UNITY_BUILDS` | BOOL | OFF | Enable unity builds (single TU compilation) |
- * | `ASCIICHAT_ENABLE_ANALYZERS` | BOOL | Auto | Enable static analyzers (ON for Release, OFF otherwise) |
- *
- * @subsection build_options_release Release Build Options
- *
- * These options control Release build behavior:
- *
- * | Option | Type | Default | Description |
- * |--------|------|---------|-------------|
- * | `ASCIICHAT_ENFORCE_STATIC_RELEASE` | BOOL | ON | Enforce static linking for Release builds |
- * | `ASCIICHAT_RELEASE_CPU_TUNE` | STRING | portable | CPU baseline (portable, x86-64-v2, x86-64-v3, native, custom) |
- * | `ASCIICHAT_RELEASE_CPU_CUSTOM_FLAGS` | STRING | "" | Custom CPU flags when CPU_TUNE=custom |
- * | `ASCIICHAT_RELEASE_ENABLE_FAST_MATH` | BOOL | OFF | Enable aggressive fast-math optimizations |
- * | `ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS` | BOOL | ON | Keep frame pointers for crash debugging |
- *
- * @subsection build_options_packaging Packaging and Installation Options
- *
- * | Option | Type | Default | Description |
- * |--------|------|---------|-------------|
- * | `USE_CPACK` | BOOL | ON | Enable CPack package generation |
- * | `ASCIICHAT_CODESIGNING` | BOOL | Auto | Enable macOS code signing (ON for Release on macOS) |
- * | `CODESIGNING_IDENTITY` | STRING | "" | macOS code signing identity (from env or CMake) |
- *
- * @subsection build_options_testing Testing Options
- *
- * | Option | Type | Default | Description |
- * |--------|------|---------|-------------|
- * | `ASCIICHAT_ENABLE_CTEST_DASHBOARD` | BOOL | OFF | Enable CTest dashboard submission |
- *
- * @subsection build_options_deps Dependency Cache Options
- *
- * | Option | Type | Default | Description |
- * |--------|------|---------|-------------|
- * | `ASCIICHAT_DEPS_CACHE_ROOT` | PATH | "${CMAKE_SOURCE_DIR}/.deps-cache" | Root directory for dependency caches |
- * | `ASCIICHAT_DEPS_CACHE_DIR` | PATH | Auto | Build-type specific cache directory |
- *
- * **Cache Directory Structure**:
- * - Debug/Dev: `${ASCIICHAT_DEPS_CACHE_ROOT}/debug/`
- * - Release: `${ASCIICHAT_DEPS_CACHE_ROOT}/release/`
- * - musl: `${ASCIICHAT_DEPS_CACHE_ROOT}/musl/`
- *
- * @subsection build_options_summary Options Summary
- *
- * **Common Configurations**:
- *
- * @code{.bash}
- * # Debug build (default)
- * cmake -B build -DCMAKE_BUILD_TYPE=Debug
- *
- * # Release build with defaults
- * cmake -B build -DCMAKE_BUILD_TYPE=Release
- *
- * # Release with specific CPU tuning
- * cmake -B build -DCMAKE_BUILD_TYPE=Release \
- *   -DASCIICHAT_RELEASE_CPU_TUNE=x86-64-v3
- *
- * # Debug with panic instrumentation
- * cmake -B build -DCMAKE_BUILD_TYPE=Debug \
- *   -DASCIICHAT_BUILD_WITH_PANIC=ON
- *
- * # Disable tests for faster builds
- * cmake -B build -DBUILD_TESTS=OFF
- *
- * # Custom dependency cache location
- * cmake -B build -DASCIICHAT_DEPS_CACHE_ROOT=/path/to/cache
- * @endcode
- *
- * @section build_caches Dependency Caches
- *
- * @subsection build_caches_overview Cache Overview
- *
- * The build system uses multiple caching mechanisms to speed up builds and
- * persist dependencies across build directory deletions:
- *
- * **Cache Types**:
- * - **ccache**: Compiler cache (speeds up recompilation)
- * - **FetchContent**: Dependency caching (persists across builds)
- * - **CMake Cache**: Configuration cache (persists in `CMakeCache.txt`)
- *
- * @subsection build_caches_ccache Compiler Cache (ccache)
- *
- * **Purpose**: Cache compilation results to speed up rebuilds
- *
- * **Automatic Detection**:
- * - ccache automatically detected if available
- * - Enabled by default (`USE_CCACHE=ON`)
- * - Disabled automatically for musl builds (incompatible)
- *
- * **Configuration**:
- * - **Max Size**: 2GB (configurable)
- * - **Compression**: Enabled (level 6)
- * - **Cache Location**: System default (usually `~/.ccache/`)
- *
- * **Manual Configuration**:
- * @code{.bash}
- * # Set cache size
- * ccache --set-config max_size=4G
- *
- * # Show cache statistics
- * ccache --show-stats
- *
- * # Clear cache
- * ccache --clear
- * @endcode
- *
- * **Disabling ccache**:
- * @code{.bash}
- * # Disable for specific build
- * cmake -B build -DUSE_CCACHE=OFF -DCMAKE_BUILD_TYPE=Debug
- *
- * # Disable globally (environment variable)
- * export USE_CCACHE=OFF
- * cmake -B build -DCMAKE_BUILD_TYPE=Debug
- * @endcode
- *
- * **Performance Impact**:
- * - First build: No benefit (cache population)
- * - Subsequent builds: 5-10x faster compilation
- * - Cache hit rate: Typically 70-90% for incremental builds
- *
- * @subsection build_caches_deps Dependency Cache (.deps-cache/)
- *
- * **Purpose**: Cache built dependencies to survive `build/` directory deletion
- *
- * ascii-chat uses a centralized dependency cache system with build-type separation.
- * This is controlled by `ASCIICHAT_DEPS_CACHE_*` CMake variables, which also configure
- * `FETCHCONTENT_BASE_DIR` automatically.
- *
- * **Cache Structure**:
- * @code{.txt}
- * .deps-cache/
- * ├── Debug/                    # Debug build dependencies
- * │   ├── mimalloc/             # mimalloc with debug checks
- * │   ├── bearssl/              # BearSSL library
- * │   ├── musl/                 # (if USE_MUSL=ON)
- * │   └── ...                   # Other FetchContent deps
- * ├── Release/                  # Release build dependencies
- * │   ├── mimalloc/             # mimalloc optimized
- * │   ├── bearssl/              # BearSSL library
- * │   ├── musl/                 # (if USE_MUSL=ON)
- * │   └── ...
- * └── Dev/                      # Dev build dependencies
- *     └── ...
- * @endcode
- *
- * **CMake Variables**:
- * | Variable | Description |
- * |----------|-------------|
- * | `ASCIICHAT_DEPS_CACHE_ROOT` | Root directory (default: `.deps-cache/`) |
- * | `ASCIICHAT_DEPS_CACHE_DIR` | Build-type specific (e.g., `.deps-cache/Debug/`) |
- * | `ASCIICHAT_DEPS_CACHE_MUSL` | Musl deps (e.g., `.deps-cache/Release/musl/`) |
- *
- * **Custom Cache Location**:
- * @code{.bash}
- * # Set custom cache root
- * cmake -B build -DCMAKE_BUILD_TYPE=Release \
- *     -DASCIICHAT_DEPS_CACHE_ROOT="$HOME/.cache/ascii-chat-deps"
- * @endcode
- *
- * **Cache Management**:
- * @code{.bash}
- * # View cache size
- * du -sh .deps-cache
- *
- * # Clear all cached dependencies (full rebuild)
- * rm -rf .deps-cache
- *
- * # Clear only Debug dependencies
- * rm -rf .deps-cache/Debug
- *
- * # Force dependency rebuild without clearing cache
- * rm -rf build && cmake -B build -DCMAKE_BUILD_TYPE=Debug
- * @endcode
- *
- * **Benefits**:
- * - Dependencies survive `rm -rf build` (3-4x faster clean rebuilds)
- * - Separate caches per build type (Debug vs Release optimizations)
- * - Shared across multiple build directories
- * - Docker builds use `.deps-cache/<DOCKER_OS>/` for isolation
- *
- * @subsection build_caches_musl_deps musl Dependency Cache
- *
- * **Purpose**: Cache statically built dependencies for musl builds
- *
- * **Cache Location**:
- * - Default: `.deps-cache/<BuildType>/musl/` (e.g., `.deps-cache/Release/musl/`)
- * - CMake variable: `ASCIICHAT_DEPS_CACHE_MUSL`
- * - Prefix: `MUSL_PREFIX` variable (set to cache location)
- *
- * **Cached Dependencies**:
- * - **zstd**: Static library built with musl toolchain
- * - **libsodium**: Static library built with musl toolchain
- * - **PortAudio**: Static library built with musl toolchain
- * - **BearSSL**: Static library built with musl toolchain
- * - **Kernel Headers**: Copied to `$MUSL_PREFIX/kernel-headers/`
- *
- * **Building Dependencies**:
- * - Dependencies built from source during first musl build
- * - Build results cached in `MUSL_PREFIX` (same as `ASCIICHAT_DEPS_CACHE_MUSL`)
- * - Subsequent musl builds reuse cached dependencies
- *
- * **Cache Structure**:
- * @code{.txt}
- * .deps-cache/Release/musl/
- * ├── bin/                  # Compiled tools (if any)
- * ├── include/              # Header files
- * ├── lib/                  # Static libraries (.a files)
- * ├── kernel-headers/       # Linux kernel headers
- * │   ├── linux/
- * │   ├── asm/
- * │   └── asm-generic/
- * └── share/                # Other files
- * @endcode
- *
- * @section build_windows_script Windows Build Script
- *
- * @subsection build_windows_script_overview Script Overview
- *
- * The `build.ps1` PowerShell script simplifies Windows builds by:
- * - Automatically detecting and configuring the best compiler
- * - Using CMake presets for common configurations
- * - Handling MSVC library detection
- * - Managing build directories
- * - Copying outputs to `bin/` directory
- * - Killing conflicting processes before building
- *
- * **Script Location**: `build.ps1` in project root
- *
- * **Usage**:
- * @code{.powershell}
- * # Default Debug build
- * .\build.ps1
- *
- * # Release build
- * .\build.ps1 -Config Release
- *
- * # Dev build (no sanitizers)
- * .\build.ps1 -Config Dev
- *
- * # Debug build with coverage
- * .\build.ps1 -Config Debug -CFlags "--coverage"
- *
- * # Clean rebuild
- * .\build.ps1 -Clean
- *
- * # Custom compiler flags (disables presets)
- * .\build.ps1 -CFlags "-DDEBUG_THREADS","-DDEBUG_MEMORY"
- *
- * # Disable mimalloc
- * .\build.ps1 -NoMimalloc
- *
- * # Use Visual Studio generator with Clang
- * .\build.ps1 -VSWithClang
- *
- * # Custom build directory
- * .\build.ps1 -BuildDir mybuild
- * @endcode
- *
- * @subsection build_windows_script_features Key Features
- *
- * **Automatic Compiler Detection**:
- * - Prefers Clang (gcc untested and unsupported)
- * - Respects `CC` environment variable
- *
- * **CMake Preset Integration**:
- * - Uses CMake presets when possible
- * - Falls back to custom configuration when flags don't match presets
- * - Automatic preset selection based on `-Config` parameter
- *
- * **Process Management**:
- * - Kills running ascii-chat processes before building
- * - Prevents build failures from locked files
- * - Waits for processes to terminate
- *
- * **Output Management**:
- * - Copies build outputs to `bin/` directory
- * - Creates `bin/` directory if it doesn't exist
- * - Preserves directory structure
- *
- * **Configuration Detection**:
- * - Only configures if build directory doesn't exist
- * - Skips configuration on subsequent builds (faster)
- * - `-Clean` flag forces reconfiguration
- *
- * @section build_installation Installation and Packaging
- *
- * @subsection build_installation_overview Installation Overview
- *
- * The `Install.cmake` module configures installation rules and CPack package generation
- * for distributing ascii-chat across different platforms.
- *
- * **Installation Components**:
- * - **Runtime**: Binary executable (`ascii-chat`)
- * - **Documentation**: README, LICENSE, CHANGELOG (if available)
- * - **Manpages**: Unix manual pages generated by Doxygen (if built)
- *
- * **Platform-Specific Installation**:
- * - **Linux**: Follows FHS (Filesystem Hierarchy Standard)
- * - **macOS**: Follows macOS conventions
- * - **Windows**: Follows Windows conventions
- *
- * @subsection build_installation_usage Basic Installation
- *
- * **Standard Installation**:
- * @code{.bash}
- * # Build the project first
- * cmake --build build
- *
- * # Install to default location (/usr/local on Unix, Program Files on Windows)
- * cmake --install build
- *
- * # Install to custom prefix
- * cmake --install build --prefix /custom/install/path
- * @endcode
- *
- * **Component-Based Installation**:
- * @code{.bash}
- * # Install only the binary
- * cmake --install build --component Runtime
- *
- * # Install binary and documentation
- * cmake --install build --component Runtime --component Documentation
- *
- * # Install everything (default)
- * cmake --install build
- * @endcode
- *
- * @subsection build_installation_manpages Manpage Installation
- *
- * Manpages are automatically generated by Doxygen and installed if available:
- *
- * **Generating Manpages**:
- * @code{.bash}
- * # Build documentation (generates manpages)
- * cmake --build build --target docs
- *
- * # Install (manpages will be included automatically)
- * cmake --install build
- * @endcode
- *
- * **Manpage Location**:
- * - Installed to: `share/man/man3/`
- * - Format: `ascii-chat-<function>.3`
- * - View with: `man ascii-chat-<function>`
- *
- * @subsection build_installation_cpack CPack Package Generation
- *
- * CPack is configured to generate platform-specific packages for distribution.
- *
- * **Supported Package Formats**:
- * - **Linux**: TGZ (always), DEB (if `dpkg-buildpackage` found), RPM (if `rpmbuild` found)
- * - **macOS**: TGZ (always), PKG (if `productbuild` available)
- * - **Windows**: ZIP (always), NSIS/EXE (if `makensis` found)
- *
- * **Generating Packages**:
- * @code{.bash}
- * # Build the project first
- * cmake --build build
- *
- * # Generate packages (all available formats for your platform)
- * cmake --build build --target package
- *
- * # Packages are created in build/packages/
- * ls build/packages/
- * @endcode
- *
- * **Disable CPack**:
- * @code{.bash}
- * # Disable package generation
- * cmake -B build -DUSE_CPACK=OFF
- * @endcode
- *
- * **Package Contents**:
- * - Binary executable (Runtime component)
- * - Documentation files (README, LICENSE, CHANGELOG)
- * - Manpages (if generated via `docs` target)
- *
- * **Platform-Specific Package Details**:
- *
- * **Linux DEB Packages**:
- * - Architecture: Automatically detected (amd64, arm64)
- * - Maintainer: From `DEBEMAIL` environment variable or default
- * - Section: `net`
- * - Dependencies: None (statically linked)
- *
- * **Linux RPM Packages**:
- * - Architecture: Automatically detected (x86_64, aarch64)
- * - Vendor: From `RPM_VENDOR` environment variable or default
- * - Group: `Applications/Networking`
- * - License: MIT
- *
- * **macOS PKG Packages**:
- * - Format: Flat package installer
- * - Installer ID: `com.zfogg.ascii-chat`
- * - Installs to: `/usr/local/bin/`
- *
- * **Windows NSIS Installers**:
- * - Adds executable to PATH automatically
- * - Uninstall support
- * - Optional: Custom installer icon
- *
- * **Source Packages**:
- * @code{.bash}
- * # Generate source distribution package
- * cmake --build build --target package_source
- * @endcode
- *
- * Source packages exclude:
- * - Build directories (`build/`, `build_release/`)
- * - Dependency caches (`.deps-cache/`)
- * - Git directory (`.git/`)
- * - IDE files (`.vscode/`, `.idea/`)
- * - Build artifacts (`.ninja_log`, `compile_commands.json`)
- *
- * @subsection build_installation_configuration Installation Configuration
- *
- * **Installation Paths**:
- * - **Binary**: `bin/` (relative to install prefix)
- * - **Documentation**: `share/doc/ascii-chat/`
- * - **Manpages**: `share/man/man3/`
- *
- * **Custom Installation Prefix**:
- * @code{.bash}
- * # Install to custom location
- * cmake --install build --prefix /opt/ascii-chat
- *
- * # Verify installation
- * ls /opt/ascii-chat/bin/ascii-chat
- * ls /opt/ascii-chat/share/doc/ascii-chat/
- * ls /opt/ascii-chat/share/man/man3/
- * @endcode
- *
- * **Installation Components**:
- * - **Runtime**: Required component (binary)
- * - **Documentation**: Optional (README, LICENSE, CHANGELOG)
- * - **Manpages**: Optional (requires `docs` target to be built)
- *
- * @see cmake/Install.cmake
  * @see CMakeLists.txt
- * @see cmake/
  * @see CMakePresets.json
- * @see build.ps1
- * @see release.sh
+ * @see docs/CMakeLists.txt
+ * @see topic_dependencies
+ * @see topic_testing
  */

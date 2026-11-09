@@ -158,6 +158,11 @@ typedef struct {
   char *data;
   size_t length;
   size_t capacity;
+  /**
+   * @brief For title writer, this is the live record that ties `data`, `length`, `capacity` together. The owning code
+   * creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the
+   * record.
+   */
 } title_writer_t;
 
 static void title_append(title_writer_t *writer, const char *text) {
@@ -201,7 +206,7 @@ static void title_append_argument(title_writer_t *writer, const char *argument) 
 }
 
 static size_t title_secret_option_length(const char *argument) {
-  static const char *const secret_options[] = {"--password", "--websocket-tls-key-password", "--turn-credential",
+  static const char *const secret_options[] = {"--password", "--tls-key-password", "--turn-credential",
                                                "--turn-secret"};
   for (size_t i = 0; i < sizeof(secret_options) / sizeof(secret_options[0]); ++i) {
     size_t length = strlen(secret_options[i]);

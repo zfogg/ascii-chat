@@ -30,6 +30,7 @@
 #include <stdbool.h>
 
 /**
+ * @brief The normalized public identity used by ascii-chat's crypto and key-management code
  * @name Key Type Definitions
  * @{
  */
@@ -56,10 +57,11 @@ typedef enum {
 } key_type_t;
 
 /**
- * @brief Public key structure
+ * @brief The normalized public identity used by ascii-chat's crypto and key-management code.
  *
- * Simplified public key structure for all key types.
- * All keys are 32 bytes regardless of source (Ed25519, X25519, or GPG-derived).
+ * `type` records whether the key came from Ed25519, X25519, or GPG. `key`
+ * always holds the normalized 32-byte public value used by the protocol, and
+ * `comment` preserves the optional human-readable label from the source key.
  *
  * @note Key size: Always 32 bytes (simplifies protocol and key management)
  * @note Comment: Optional label for the key (max 256 chars including null terminator)
@@ -74,10 +76,13 @@ typedef struct {
 } public_key_t;
 
 /**
- * @brief Private key structure (for server --ssh-key)
+ * @brief Private identity-key material used for server authentication and signing.
  *
- * Private key structure supporting both Ed25519 and X25519 keys.
- * Includes agent support flags and metadata for signing operations.
+ * Supports Ed25519 signing keys and X25519 private scalars, along with the
+ * public key and labels needed when a key is loaded from a file or delegated
+ * to an SSH/GPG agent. The server currently receives identity keys through the
+ * configured `--key` option; this type itself is not tied to a command-line
+ * flag.
  *
  * @note Ed25519 keys: 64 bytes (32-byte seed + 32-byte public key)
  * @note X25519 keys: 32 bytes (private scalar)
@@ -100,6 +105,9 @@ typedef struct {
   uint8_t public_key[CRYPTO_PUBLIC_KEY_SIZE];  /**< Ed25519 public key (for agent mode or verification) */
   char key_comment[MAX_COMMENT_LEN];           /**< SSH key comment (for agent identification) */
   char gpg_keygrip[MAX_GPG_KEYGRIP_LEN];       /**< GPG keygrip (40 hex chars + null) for gpg-agent signing */
+/**
+ * @brief Private identity-key material used for server authentication and signing
+ */
 } private_key_t;
 
 /** @} */

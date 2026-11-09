@@ -37,6 +37,10 @@
 #endif
 
 /**
+ * @brief Owned fields extracted from one instrumentation log line
+ * @brief Configuration for panic report generation
+ * @brief Dynamic array of thread IDs for filtering instrumentation logs
+ * @brief Hash table entry for thread-local last log record
  * @brief Dynamic array of thread IDs for filtering instrumentation logs
  */
 typedef struct thread_filter_list {
@@ -59,10 +63,12 @@ typedef struct report_config {
 } report_config_t;
 
 /**
- * @brief Parsed instrumentation log record
+ * @brief Owned fields extracted from one instrumentation log line
  *
- * Represents a single line from an instrumentation log file with all
- * fields extracted and parsed.
+ * The record keeps process/thread identity, ordering, elapsed time, source
+ * location, and message text in separate fields so panic reporting can filter
+ * and format entries without reparsing the original line. String fields are
+ * allocated by the parser and released with the record.
  */
 typedef struct log_record {
   uint64_t pid;        ///< Process ID
@@ -544,6 +550,11 @@ typedef struct {
   const report_config_t *config;
   thread_entry_t **entries;
   bool success;
+  /**
+   * @brief collect ctx is intentionally a small, concrete record. Fields such as `config`, `entries`, `success` give
+   * callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding
+   * subsystem—not independently managed.
+   */
 } collect_ctx_t;
 
 static bool collect_entry_cb(const platform_dir_entry_t *entry, void *user_data) {

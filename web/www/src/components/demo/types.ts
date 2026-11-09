@@ -3,12 +3,15 @@ import type {
   ColorFilter,
   RenderMode,
   Palette,
+  TextRenderer,
 } from "@ascii-chat/shared/wasm";
 
 export interface DemoSettings {
   colorMode?: ColorMode;
   colorFilter?: ColorFilter;
   renderMode?: RenderMode;
+  renderer?: TextRenderer;
+  stabilize?: boolean;
   palette?: Palette;
   paletteChars?: string;
   matrixRain?: boolean;

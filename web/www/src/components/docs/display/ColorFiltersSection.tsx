@@ -8,28 +8,28 @@ const COLOR_FILTER_OPTIONS: DemoOption[] = [
   {
     id: "rainbow",
     label: "Rainbow",
-    settings: { colorFilter: ColorFilter.RAINBOW },
+    settings: { colorFilter: ColorFilter.Rainbow },
   },
-  { id: "green", label: "Green", settings: { colorFilter: ColorFilter.GREEN } },
-  { id: "cyan", label: "Cyan", settings: { colorFilter: ColorFilter.CYAN } },
+  { id: "green", label: "Green", settings: { colorFilter: ColorFilter.Green } },
+  { id: "cyan", label: "Cyan", settings: { colorFilter: ColorFilter.Cyan } },
   {
     id: "magenta",
     label: "Magenta",
-    settings: { colorFilter: ColorFilter.MAGENTA },
+    settings: { colorFilter: ColorFilter.Magenta },
   },
   {
     id: "orange",
     label: "Orange",
-    settings: { colorFilter: ColorFilter.ORANGE },
+    settings: { colorFilter: ColorFilter.Orange },
   },
   {
     id: "yellow",
     label: "Yellow",
-    settings: { colorFilter: ColorFilter.YELLOW },
+    settings: { colorFilter: ColorFilter.Yellow },
   },
-  { id: "pink", label: "Pink", settings: { colorFilter: ColorFilter.PINK } },
-  { id: "red", label: "Red", settings: { colorFilter: ColorFilter.RED } },
-  { id: "teal", label: "Teal", settings: { colorFilter: ColorFilter.TEAL } },
+  { id: "pink", label: "Pink", settings: { colorFilter: ColorFilter.Pink } },
+  { id: "red", label: "Red", settings: { colorFilter: ColorFilter.Red } },
+  { id: "teal", label: "Teal", settings: { colorFilter: ColorFilter.Teal } },
 ];
 
 export default function ColorFiltersSection() {

@@ -21,6 +21,8 @@
 #define ACIP_QUIC_DATAGRAM_OVERHEAD 128U
 #define ACIP_HTTP3_PEER_UNI_STREAMS 6U
 
+/**
+ */
 typedef struct send_chunk {
   struct send_chunk *next;
   uint8_t *data;
@@ -33,6 +35,17 @@ typedef struct {
   uint64_t queued_offset, acked_offset;
   send_chunk_t *head, *tail;
   bool initialized, fin_requested, fin_submitted;
+  /**
+   * @brief When code needs to work with datagram send, it keeps `next`, `data`, `length`, `cost` here instead of
+   * scattering it across globals. Initialization establishes the handles and sizes; teardown must release any
+   * allocation, lock, thread, or callback context recorded in those fields.
+   * @brief http3 receive stream is intentionally a small, concrete record. Fields such as `id`, `offset`,
+   * `prefix_used`, `prefix_length` give callers the identity and current value they need. It is normally borrowed from,
+   * or owned by, the surrounding subsystem—not independently managed.
+   * @brief When code needs to work with send chunk, it keeps `next`, `data`, `length`, `submitted` here instead of
+   * scattering it across globals. Initialization establishes the handles and sizes; teardown must release any
+   * allocation, lock, thread, or callback context recorded in those fields.
+   */
 } send_stream_t;
 
 typedef struct {
@@ -40,6 +53,11 @@ typedef struct {
   uint64_t received_offset;
   acip_quic_stream_reader_t reader;
   bool active, registered;
+  /**
+   * @brief send stream is intentionally a small, concrete record. Fields such as `id`, `queued_offset`, `acked_offset`,
+   * `head` give callers the identity and current value they need. It is normally borrowed from, or owned by, the
+   * surrounding subsystem—not independently managed.
+   */
 } receive_stream_t;
 
 typedef struct {
@@ -59,6 +77,11 @@ typedef struct datagram_send {
   uint16_t unit, index, count;
 } datagram_send_t;
 
+/**
+ * @brief This is the handoff point for receive stream. Callers fill `id`, `received_offset`, `reader`, `active` before
+ * passing it on; consumers read the values during the operation and return ownership only where the member contract
+ * explicitly says they do.
+ */
 struct acip_quic_connection {
   ngtcp2_conn *conn;
   ngtcp2_crypto_conn_ref reference;
@@ -285,6 +308,14 @@ static int acknowledged_stream_data(ngtcp2_conn *conn, int64_t stream_id, uint64
 typedef struct {
   acip_quic_connection_t *connection;
   receive_stream_t *stream;
+  /**
+   * @brief acip quic connection is intentionally a small, concrete record. Fields such as `conn`, `reference`,
+   * `crypto`, `ssl` give callers the identity and current value they need. It is normally borrowed from, or owned by,
+   * the surrounding subsystem—not independently managed.
+   * @brief receive context keeps the values that move through the subsystem: `connection`, `stream`. Some members are
+   * pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the
+   * struct copy itself.
+   */
 } receive_context_t;
 
 static asciichat_error_t register_receive_class(receive_context_t *context) {
@@ -633,9 +664,10 @@ static int path_validation(ngtcp2_conn *conn, uint32_t flags, const ngtcp2_path 
   (void)user_data;
   if (result == NGTCP2_PATH_VALIDATION_RESULT_SUCCESS && path && path->remote.addr) {
     unsigned port = 0;
-    if (path->remote.addr->sa_family == AF_INET && path->remote.addrlen >= sizeof(struct sockaddr_in))
+    if (path->remote.addr->sa_family == AF_INET && path->remote.addrlen >= (ngtcp2_socklen)sizeof(struct sockaddr_in))
       port = NET_TO_HOST_U16(((const struct sockaddr_in *)path->remote.addr)->sin_port);
-    else if (path->remote.addr->sa_family == AF_INET6 && path->remote.addrlen >= sizeof(struct sockaddr_in6))
+    else if (path->remote.addr->sa_family == AF_INET6 &&
+             path->remote.addrlen >= (ngtcp2_socklen)sizeof(struct sockaddr_in6))
       port = NET_TO_HOST_U16(((const struct sockaddr_in6 *)path->remote.addr)->sin6_port);
     log_info("QUIC peer path validated: port=%u", port);
   }
@@ -824,7 +856,7 @@ static asciichat_error_t update_readiness(acip_quic_connection_t *connection) {
     connection->tls_ready = true;
   }
   if (connection->tls_ready && connection->webtransport && !connection->http3) {
-    int64_t control, encoder, decoder;
+    int64_t control = 0, encoder = 0, decoder = 0;
     int rc = ngtcp2_conn_open_uni_stream(connection->conn, &control, NULL);
     if (!rc)
       rc = ngtcp2_conn_open_uni_stream(connection->conn, &encoder, NULL);

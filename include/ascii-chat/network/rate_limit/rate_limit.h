@@ -41,6 +41,8 @@
 #include <stdint.h>
 
 /**
+ * @brief One sliding-window rate-limit policy
+ * @brief Backend callbacks implementing rate-limit checks, recording, cleanup, and destruction
  * @brief Rate limit event types
  */
 typedef enum {
@@ -61,7 +63,11 @@ typedef enum {
 } rate_event_type_t;
 
 /**
- * @brief Rate limit configuration
+ * @brief One sliding-window rate-limit policy.
+ *
+ * A caller may allow at most `max_events` occurrences of one event type during
+ * `window_secs`; both the memory and SQLite backends use this pair when
+ * deciding whether an address may proceed.
  */
 typedef struct {
   uint32_t max_events;  ///< Maximum events allowed
@@ -76,9 +82,11 @@ typedef struct {
 typedef struct rate_limiter_s rate_limiter_t;
 
 /**
- * @brief Backend operations vtable
+ * @brief Backend callbacks implementing rate-limit checks, recording, cleanup, and destruction.
  *
- * Each backend (memory, sqlite) implements these operations.
+ * The public limiter keeps this table alongside opaque backend data, so the
+ * same API can use the in-memory hash table or the SQLite event store without
+ * exposing either implementation's state.
  */
 typedef struct {
   asciichat_error_t (*check)(void *backend_data, const char *ip_address, rate_event_type_t event_type,

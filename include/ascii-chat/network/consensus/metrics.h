@@ -28,6 +28,7 @@
 
 /**
  * @brief Network quality metrics for a single participant
+ * @brief Network quality metrics for a single participant
  *
  * Used for host selection in consensus algorithm. Includes NAT classification,
  * bandwidth estimates, latency, and probe success rates.

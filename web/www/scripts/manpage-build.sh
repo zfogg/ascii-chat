@@ -71,7 +71,7 @@ if [ -d "$REPO_ROOT" ]; then
         "$staging_dir"
     )
 
-    BUILD_DIR="$BUILD_DIR" MAN3_HTML_DIR="$staging_dir" python3 scripts/generate_man3.py
+    BUILD_DIR="$BUILD_DIR" MAN3_HTML_DIR="$staging_dir" uv run --project ../../../tests/ascii_chat_tests --frozen python scripts/generate_man3.py
 
     # Replace only generated pages after conversion and indexing succeed.
     for old_page in public/man3/ascii-chat-*.html; do

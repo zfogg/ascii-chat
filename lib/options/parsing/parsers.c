@@ -38,6 +38,7 @@ static void to_lower(const char *src, char *dst, size_t max_len) {
 
 /**
  * @brief Lookup table for setting string-to-enum mapping
+ * @brief Lookup table for setting string-to-enum mapping
  */
 typedef struct {
   const char *match; ///< Setting string (lowercased)

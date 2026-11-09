@@ -9,6 +9,8 @@
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/tooling/defer/defer.h>
+#include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/thread.h>
@@ -30,6 +32,16 @@
 #include <string.h>
 
 // Network timeout constants are defined in packet_types.h
+
+void protocol_version_packet_init(protocol_version_packet_t *version, uint8_t supports_encryption) {
+  if (!version)
+    return;
+  memset(version, 0, sizeof(*version));
+  version->protocol_version = HOST_TO_NET_U16(PROTOCOL_VERSION_MAJOR);
+  version->protocol_revision = HOST_TO_NET_U16(PROTOCOL_VERSION_MINOR);
+  version->protocol_patch = HOST_TO_NET_U16(PROTOCOL_VERSION_PATCH);
+  version->supports_encryption = supports_encryption;
+}
 
 asciichat_error_t packet_header_build(packet_header_t *header, packet_type_t type, const socket_buffer_t *payload,
                                       size_t count, uint32_t client_id) {
@@ -427,6 +439,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
 
   // Allocate buffer for payload
   void *payload = NULL;
+  defer_named(release_payload, buffer_release(payload));
   if (pkt_len > 0) {
     payload = buffer_alloc(
         packet_is_handshake_type(pkt_type) || pkt_type == PACKET_TYPE_ERROR_MESSAGE ? buffer_control_domain() : NULL,
@@ -438,17 +451,14 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
     uint64_t recv_timeout = packet_send_timeout_ns(pkt_len);
     received = recv_with_timeout(sockfd, payload, pkt_len, recv_timeout);
     if (received < 0) {
-      buffer_release(payload);
       return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to receive packet payload");
     }
     if (received != (ssize_t)pkt_len) {
-      buffer_release(payload);
       return SET_ERRNO(ERROR_NETWORK, "Partial packet payload received: %zd/%u bytes", received, pkt_len);
     }
 
     // Validate CRC32
     if (packet_validate_crc32(payload, pkt_len, expected_crc) != ASCIICHAT_OK) {
-      buffer_release(payload);
       // Error context is already set by packet_validate_crc32
       return ERROR_NETWORK_PROTOCOL;
     }
@@ -457,6 +467,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
   // Return results
   *type = (packet_type_t)pkt_type;
   *data = payload;
+  defer_cancel(release_payload);
   *len = pkt_len;
 
   return ASCIICHAT_OK;
@@ -1128,6 +1139,9 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
       recv_with_timeout(sockfd, packet + sizeof(header), payload_length,
                         MAX(timeout_ns, packet_send_timeout_ns(payload_length))) != (ssize_t)payload_length) {
     buffer_release(packet);
+    // The header has already been consumed, so even an idle payload timeout
+    // leaves the byte stream out of sync and must close the connection.
+    SET_ERRNO(ERROR_NETWORK, "Incomplete packet payload after receiving header");
     return PACKET_RECV_ERROR;
   }
   asciichat_error_t result = packet_validate(packet, length, MAX_PACKET_SIZE, NULL);

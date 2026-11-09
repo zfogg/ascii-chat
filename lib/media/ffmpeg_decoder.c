@@ -36,8 +36,13 @@
  * ============================================================================ */
 
 /**
- * Silent logging callback for FFmpeg - discards all log messages
- * This prevents FFmpeg from printing "stdout: " prefixed messages
+ * @brief FFmpeg decoder state for video and audio decoding
+ * @brief Owns the temporary storage used by stdin buffer. The data pointers and size or cursor fields describe the live
+ * portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
+ * @brief Owns the temporary storage used by stdin buffer reader. The data pointers and size or cursor fields describe
+ * the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer
+ * needed. Silent logging callback for FFmpeg - discards all log messages This prevents FFmpeg from printing "stdout: "
+ * prefixed messages
  */
 static void ffmpeg_silent_log_callback(void *avcl, int level, const char *fmt, va_list vl) {
   (void)avcl;  // unused

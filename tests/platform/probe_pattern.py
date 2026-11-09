@@ -1,6 +1,6 @@
 """Native CLI and shared-library checks, including deterministic source PNGs.
 
-python tests/platform/probe_pattern.py --binary build/bin/ascii-chat.exe --library build/bin/asciichat.dll
+uv run --project tests/ascii_chat_tests --frozen python tests/platform/probe_pattern.py --binary build/bin/ascii-chat.exe --library build/bin/asciichat.dll
 """
 
 # Apply the shared test policy before importing helpers or starting native children.

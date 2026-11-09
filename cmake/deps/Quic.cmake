@@ -1,7 +1,7 @@
 # ngtcp2's OpenSSL QUIC TLS backend requires the mainline QUIC TLS API. Probe
 # the selected headers and linked SSL library, not the version of an openssl
 # executable that might come from a different installation.
-include(CheckCSourceCompiles)
+include(CheckSymbolExists)
 include(CMakePushCheckState)
 
 function(asciichat_check_quic_tls)
@@ -23,20 +23,16 @@ function(asciichat_check_quic_tls)
     set(CMAKE_EXE_LINKER_FLAGS_RELEASE "")
     set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "")
     set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "")
+    # OpenSSL::SSL may not propagate its crypto dependency while CMake is
+    # probing a static QUIC link. Require both selected targets explicitly so
+    # the probe validates the same libraries used by the final executable.
+    set(CMAKE_REQUIRED_LIBRARIES OpenSSL::SSL OpenSSL::Crypto ${CMAKE_DL_LIBS})
     if(TARGET Threads::Threads)
         list(APPEND CMAKE_REQUIRED_LIBRARIES Threads::Threads)
     endif()
-    # Compile and link: a static-library try-compile would not detect a header
-    # and library from different OpenSSL installations.
-    set(CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE)
+    set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
     unset(ASCIICHAT_OPENSSL_QUIC_TLS_LINKS CACHE)
-    check_c_source_compiles("\
-#include <openssl/ssl.h>
-#if OPENSSL_VERSION_NUMBER < 0x30600000L
-#error ascii-chat requires OpenSSL 3.6.0 or newer
-#endif
-int main(void) { return SSL_set_quic_tls_cbs((SSL *)0, (const OSSL_DISPATCH *)0, 0); }
-" ASCIICHAT_OPENSSL_QUIC_TLS_LINKS)
+    check_symbol_exists(SSL_set_quic_tls_cbs "openssl/ssl.h" ASCIICHAT_OPENSSL_QUIC_TLS_LINKS)
     cmake_pop_check_state()
 
     if(NOT ASCIICHAT_OPENSSL_QUIC_TLS_LINKS)

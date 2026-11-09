@@ -1,96 +1,35 @@
 /**
- * @defgroup client_audio Audio Processing
+ * @page topic_client_audio Client Audio
  * @ingroup module_client
- * @brief 🔊 Audio capture, playback, and sample processing
- */
-
-/**
- * @page topic_client_audio Audio Processing
- * @ingroup client_audio
+ * @brief Capture, encode, transmit, and play audio through the shared pipeline.
  *
- * @section client_audio_overview Overview
+ * Client audio uses the common audio and ACIP layers. Capture produces PCM or
+ * encoded audio batches; playback consumes received batches through audio
+ * ring/jitter buffers and the platform output backend.
  *
- * The client audio subsystem manages PortAudio initialization, audio capture
- * from microphone, transmission to server, and playback of received audio samples
- * with jitter buffering.
+ * @section client_audio_capture Capture and send
  *
- * **Implementation**: src/client/audio.c, src/client/audio.h
+ * The capture path negotiates sample format, rate, and channels with the active
+ * backend. It sends with `acip_send_audio_batch()`, the Opus helpers, or another
+ * type-specific ACIP API through `network_connection_transport()`. It does not
+ * call the removed `send_packet_to_server()` API.
  *
- * @section client_audio_config Configuration
+ * @section client_audio_playback Playback
  *
- * **Audio Parameters**:
- * - Sample rate: 44100 Hz
- * - Channels: 1 (mono)
- * - Format: 32-bit float
- * - Batch size: 256 samples (~5.8ms @ 44.1kHz)
- * - Ring buffer: 8192 samples (~185ms jitter buffer)
+ * Incoming audio is validated by ACIP handlers, converted to the local channel
+ * layout when necessary, and written to a bounded ring buffer. The output
+ * callback reads from that buffer and fills underruns with silence. Realtime
+ * callbacks must not allocate, log, block, or perform network work.
  *
- * @section client_audio_capture Audio Capture Thread
+ * @section client_audio_visualization Visualizations
+ * The shared visualization encoder applies the configured palette, color mode,
+ * and foreground, background, or half-block rendering before frames reach the browser.
  *
- * @code{.c}
- * static void *audio_capture_thread_func(void *arg)
- * {
- *   (void)arg;
+ * Waveform and FFT visualizations consume the selected audio source and are
+ * controlled by TUI shortcuts. They are presentation consumers, not a second
+ * capture or transport path.
  *
- *   float capture_buffer[AUDIO_BATCH_SIZE];
- *
- *   while (!should_exit() && server_connection_is_active()) {
- *     // Capture audio samples from microphone
- *     int samples_captured = audio_capture_samples(capture_buffer, AUDIO_BATCH_SIZE);
- *
- *     if (samples_captured > 0) {
- *       // Send to server
- *       send_packet_to_server(PACKET_TYPE_AUDIO, capture_buffer,
- *                            samples_captured * sizeof(float),
- *                            server_connection_get_client_id());
- *     }
- *
- *     // Small sleep to avoid busy loop
- *     platform_sleep_usec(1000);  // 1ms
- *   }
- *
- *   atomic_store(&g_audio_thread_exited, true);
- *   return NULL;
- * }
- * @endcode
- *
- * @section client_audio_playback Audio Playback
- *
- * @subsection client_audio_jitter Jitter Buffering
- *
- * @code{.c}
- * void audio_process_received_samples(const float *samples, int num_samples)
- * {
- *   // Write to ring buffer for jitter compensation
- *   audio_ringbuffer_write(&g_playback_ringbuffer, samples, num_samples);
- *
- *   // PortAudio callback reads from ring buffer
- * }
- *
- * static int audio_playback_callback(const void *input, void *output,
- *                                    unsigned long frameCount,
- *                                    const PaStreamCallbackTimeInfo *timeInfo,
- *                                    PaStreamCallbackFlags statusFlags,
- *                                    void *userData)
- * {
- *   (void)input; (void)timeInfo; (void)statusFlags; (void)userData;
- *
- *   float *out = (float *)output;
- *
- *   // Read from ring buffer
- *   int samples_read = audio_ringbuffer_read(&g_playback_ringbuffer, out, frameCount);
- *
- *   // Fill remaining with silence if underrun
- *   if (samples_read < (int)frameCount) {
- *     memset(&out[samples_read], 0, (frameCount - samples_read) * sizeof(float));
- *   }
- *
- *   return paContinue;
- * }
- * @endcode
- *
- * @see src/client/audio.c
- * @see src/client/audio.h
- * @see lib/audio.h
- * @see @ref topic_client "Client Overview"
+ * @see topic_audio
+ * @see topic_mixer
+ * @see topic_client_connection
  */

@@ -6,6 +6,11 @@
 typedef struct {
   network_negotiation_t negotiation;
   atomic_ptr_t client;
+  /**
+   * @brief For server connection state, this is the live record that ties `negotiation`, `client` together. The owning
+   * code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing
+   * the record.
+   */
 } server_connection_state_t;
 extern const network_connection_callbacks_t server_network_callbacks;
 asciichat_error_t server_dispatch_packet(client_info_t *, packet_type_t, const void *, size_t);

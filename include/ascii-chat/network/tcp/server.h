@@ -24,8 +24,14 @@ typedef struct {
   void (*tick_fn)(void *user_data);       ///< Optional periodic callback on the tcp_server_run thread
   void *tick_user_data;
   void *user_data; ///< User data passed to each client handler
+/**
+ * @brief When code needs to work with tcp server config, it keeps `port`, `ipv4_address`, `ipv6_address`, `bind_ipv4` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ */
 } tcp_server_config_t;
 
+/**
+ * @brief The useful part of tcp server is in `event_loop`, `listen_socket`, `listen_socket6`, `running`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 struct tcp_server {
   platform_event_loop_t *event_loop; ///< Owned while the asynchronous server runs
   socket_t listen_socket;            ///< IPv4 listen socket

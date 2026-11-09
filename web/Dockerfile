@@ -14,7 +14,7 @@ FROM node:22-slim AS base
 ARG SOURCE_COMMIT
 
 # Install bash, curl, git, wget, and pnpm
-RUN apt-get update && apt-get install -y --no-install-recommends bash curl git wget ca-certificates && npm install -g pnpm@10.32.1 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends bash curl git wget ca-certificates && npm install -g pnpm@10.33.0 && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL "https://vite.plus" | bash && cp ~/.vite-plus/bin/vp /usr/local/bin/vp
 
@@ -24,10 +24,8 @@ WORKDIR /app
 COPY pnpm-lock.yaml pnpm-lock.yaml
 COPY pnpm-workspace.yaml pnpm-workspace.yaml
 COPY package.json ./
-COPY discovery/package.json discovery/
-COPY web/package.json web/
-COPY www/package.json www/
-COPY packages packages
+COPY web/ web/
+COPY src/web/renderer/package.json src/web/renderer/package.json
 
 # Clean install dependencies
 RUN pnpm install --frozen-lockfile
@@ -52,10 +50,10 @@ ENV GPG_PUBLIC_KEY=${GPG_PUBLIC_KEY}
 ENV ASCII_CHAT_WASM_USE_PREBUILT=1
 
 # Run all checks
-RUN vp check
+RUN cd web && vp check
 
 # Build all sites
-RUN pnpm build
+RUN cd web && vp run build:websites
 
 # ============================================
 # Production stage - serve all apps with Caddy
@@ -68,22 +66,22 @@ ARG NODE_ENV=development
 
 ENV NODE_ENV=${NODE_ENV}
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl && npm install -g pnpm@10.32.1 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends curl && npm install -g pnpm@10.33.0 && rm -rf /var/lib/apt/lists/*
 
 COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 
 WORKDIR /app/web
 
 # Copy built apps
-COPY --from=builder /app/www ./www
-COPY --from=builder /app/discovery ./discovery
-COPY --from=builder /app/web ./web
+COPY --from=builder /app/web/www ./www
+COPY --from=builder /app/web/discovery ./discovery
+COPY --from=builder /app/web/web ./web
 
 # Copy node_modules for www API server runtime deps
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/node_modules /app/node_modules
 
 # Copy unified Caddyfile
-COPY Caddyfile /etc/caddy/Caddyfile
+COPY web/Caddyfile /etc/caddy/Caddyfile
 
 # Expose port 80 (Caddy serving all three apps)
 EXPOSE 80

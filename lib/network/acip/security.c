@@ -1,6 +1,8 @@
 #include <ascii-chat/network/acip/security.h>
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/crypto/session.h>
 #include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/util/endian.h>
@@ -22,9 +24,8 @@ asciichat_error_t acip_security_start(acip_security_t *security, acip_transport_
   security->handshake.crypto_ctx.encrypt_data = ACIP_CRYPTO_HAS_ENCRYPT(security->mode);
   if (security->handshake.is_server)
     return ASCIICHAT_OK;
-  protocol_version_packet_t version = {0};
-  version.protocol_version = HOST_TO_NET_U16(1);
-  version.supports_encryption = security->mode;
+  protocol_version_packet_t version;
+  protocol_version_packet_init(&version, security->mode);
   return packet_send_via_transport(transport, PACKET_TYPE_PROTOCOL_VERSION, &version, sizeof(version), 0);
 }
 
@@ -40,7 +41,9 @@ asciichat_error_t acip_security_receive(acip_security_t *security, acip_transpor
     protocol_version_packet_t version;
     memcpy(&version, payload, sizeof(version));
     uint8_t mode = version.supports_encryption;
-    if (NET_TO_HOST_U16(version.protocol_version) != 1 || mode > ACIP_CRYPTO_FULL)
+    if (NET_TO_HOST_U16(version.protocol_version) != PROTOCOL_VERSION_MAJOR ||
+        NET_TO_HOST_U16(version.protocol_revision) != PROTOCOL_VERSION_MINOR ||
+        NET_TO_HOST_U16(version.protocol_patch) != PROTOCOL_VERSION_PATCH || mode > ACIP_CRYPTO_FULL)
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unsupported peer security protocol");
     if (ctx->is_server) {
       // Match secure WebSocket policy: defaults do not override a client's explicit no-encrypt.
@@ -226,6 +229,7 @@ asciichat_error_t acip_security_next_control(crypto_context_t *crypto, acip_traf
   asciichat_error_t result = crypto_session_lock(crypto, &session);
   if (result != ASCIICHAT_OK)
     return result;
+  defer(crypto_session_unlock(session));
   result = crypto_session_tick(session, time_get_ns());
   if (result == ASCIICHAT_OK && session->count) {
     crypto_session_message_t *message = &session->messages[session->head];
@@ -238,7 +242,6 @@ asciichat_error_t acip_security_next_control(crypto_context_t *crypto, acip_traf
       --session->count;
     }
   }
-  crypto_session_unlock(session);
   return result;
 }
 
@@ -252,6 +255,7 @@ asciichat_error_t acip_security_flush(acip_transport_t *transport) {
     asciichat_error_t result = acip_security_next_control(transport->crypto_ctx, &channel, &wire, &length);
     if (result != ASCIICHAT_OK || !wire)
       return result;
+    defer(buffer_release(wire));
     socket_buffer_t slice = {wire, length};
     acip_send_options_t options = {.traffic_class = channel, .delivery = ACIP_DELIVERY_RELIABLE};
     if (transport->methods->sendv_ex)
@@ -260,7 +264,6 @@ asciichat_error_t acip_security_flush(acip_transport_t *transport) {
       result = transport->methods->sendv(transport, &slice, 1);
     else
       result = transport->methods->send(transport, wire, length);
-    buffer_release(wire);
     if (result != ASCIICHAT_OK)
       return result;
   }

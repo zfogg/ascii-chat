@@ -72,7 +72,18 @@
  * ============================================================================ */
 
 /**
- * @brief Internal client record structure
+ * @brief Keeps the host-side rendering history used to compare successive frames and stabilize output for connected
+ * participants. Its buffers and dimensions belong to the host render target and must be reset when the source or
+ * terminal geometry changes.
+ * @brief The useful part of session host is in `frame_workspace`, `render_histories`, `port`, `max_clients`: together
+ * they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and
+ * use the parent cleanup path.
+ * @brief Host-owned live record for one connected participant.
+ *
+ * It ties the participant ID and network transport to rendering dimensions,
+ * media activity, decoded video/audio buffers, codec state, and the next render
+ * deadline. The host owns this record and joins/releases its worker resources
+ * before freeing it.
  */
 typedef struct {
   participant_type_t participant_type; // NETWORK or MEMORY
@@ -129,7 +140,9 @@ static void host_client_release_transport(session_host_client_t *client) {
  * ============================================================================ */
 
 /**
- * @brief Internal session host structure
+ * @brief Owns the server-side session state, including connected participants, host callbacks, render history, and
+ * shutdown coordination. The session host creates it once, keeps it alive for the session lifetime, and releases its
+ * child resources during teardown.
  *
  * Contains server state, client list, and callback configuration.
  */
@@ -937,6 +950,11 @@ typedef struct {
   uint32_t client_id;
   network_negotiation_t negotiation;
   private_key_t identity;
+  /**
+   * @brief The useful part of host connection is in `client_id`, `negotiation`, `identity`: together they describe what
+   * is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent
+   * cleanup path.
+   */
 } host_connection_t;
 static asciichat_error_t host_connection_open(network_connection_t *connection, void *arg) {
   session_host_t *host = arg;

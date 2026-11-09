@@ -31,6 +31,7 @@ extern "C" {
 
 /**
  * @defgroup ansi ANSI Utilities
+ * @ingroup module_abstractions
  * @{
  */
 
@@ -51,12 +52,17 @@ typedef struct {
   uint8_t last_r;
   uint8_t last_g;
   uint8_t last_b;
+/**
+ */
 } ansi_rle_context_t;
 
 /* ===== ANSI Timing ===== */
 typedef struct {
   uint64_t start_ns;
   uint64_t end_ns;
+/**
+ * @brief When code needs to work with ansi rle context, it keeps `buffer`, `capacity`, `length`, `mode` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ */
 } ansi_timing_t;
 
 /* ===== RGB Error for Dithering ===== */
@@ -64,11 +70,15 @@ typedef struct {
   int r;
   int g;
   int b;
+/**
+ * @brief ansi timing is intentionally a small, concrete record. Fields such as `start_ns`, `end_ns` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 } rgb_error_t;
 
 /* ===== Basic ANSI Utilities ===== */
 
 /**
+ * @brief When code needs to work with rgb error, it keeps `r`, `g`, `b` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * @brief Strip all ANSI escape sequences from a string
  *
  * Removes all ANSI CSI sequences (ESC [ ... final_byte) from the input,

@@ -1,0 +1,101 @@
+/**
+ * @page topic_quic QUIC and WebTransport
+ * @ingroup module_network
+ * @brief Native QUIC and browser WebTransport on the shared ACIP transport layer.
+ *
+ * QUIC is an optional UDP transport for ACIP. It is selected explicitly with a
+ * `quic://` endpoint on native clients; it does not replace TCP, WebSocket, or
+ * WebRTC. Browser clients reach the same listener through HTTP/3 WebTransport.
+ * Both paths still run the normal ACIP handshake and application authentication.
+ *
+ * @section quic_endpoints Endpoints and configuration
+ *
+ * A native server enables QUIC with a concrete bind address, UDP port, TLS
+ * certificate, and private key:
+ * @code{.sh}
+ * ascii-chat server --quic-bind-address 0.0.0.0 --quic-port 27224 \
+ *   --tls-cert server.crt --tls-key server.key
+ * @endcode
+ *
+ * A native client connects explicitly and may provide a private CA:
+ * @code{.sh}
+ * ascii-chat client quic://chat.example:27224 --tls-ca-file CA.pem
+ * @endcode
+ *
+ * `--quic-port 0` uses the TCP server port for the listener. TCP remains
+ * available. A certificate must match the hostname or IP used by the client;
+ * clients use the system trust store unless `--tls-ca-file` is supplied.
+ *
+ * @section quic_layers Transport and security
+ *
+ * `include/ascii-chat/network/acip/quic.h` owns the endpoint and transport
+ * lifecycle. The resulting `acip_transport_t` is consumed by the same
+ * connection, negotiation, ACIP dispatch, and outbound scheduler used by other
+ * backends. Callers must not create a second QUIC receive loop or bypass the
+ * transport abstraction.
+ *
+ * QUIC TLS requires TLS 1.3 and authenticates the transport endpoint. It does
+ * not replace ACIP authentication, identity pinning, or the encrypted-record
+ * policy. The transport is not ready for media until TLS and the ACIP security
+ * handshake have both completed; `quic_transport_allow_media()` enforces that
+ * barrier.
+ *
+ * @section quic_delivery Streams and datagrams
+ *
+ * Reliable ACIP traffic is split into independent control, audio, and visual
+ * streams. Each stream begins with an `ACQS` class preamble, followed by the
+ * existing ACIP packet headers and payloads. Packet length and CRC remain ACIP
+ * responsibilities. Ordering is guaranteed within a stream, not across all
+ * streams, so control transitions are acknowledged before dependent media is
+ * admitted.
+ *
+ * QUIC DATAGRAM is optional and negotiated. Audio and visual datagrams are
+ * preferences, not guarantees: if the peer or path does not support them, the
+ * scheduler uses reliable streams. A datagram that expires or is rejected for
+ * congestion is not silently retried as reliable media. Fragmented media uses
+ * bounded reassembly and can request a keyframe after loss.
+ *
+ * @section quic_flow_control Backpressure and ownership
+ *
+ * Reliable sends are retained until ngtcp2 acknowledges their bytes and count
+ * against a bounded per-connection queue. The shared scheduler prioritizes
+ * control, then audio, then visual traffic, and returns an explicit error when
+ * admission is impossible. Receive callbacks borrow packet data only until the
+ * callback returns; consumers that retain it must copy it.
+ *
+ * Stop producers, join transport users, interrupt pending I/O, and then release
+ * the transport and endpoint. A failed join leaves live dependencies intact so
+ * shutdown can be retried safely.
+ *
+ * @section quic_webtransport WebTransport
+ *
+ * The optional HTTP/3 listener shares the QUIC UDP endpoint. ALPN selects raw
+ * `acip/1` or `h3`; WebTransport validates the configured HTTPS origin and
+ * `/acip` path before mapping streams and HTTP datagrams into ACIP flows. ACDS
+ * may advertise a native QUIC port and a public WebTransport URL independently.
+ * ACDS signaling remains on its existing authenticated connection; peer media
+ * uses the independently established QUIC/WebTransport ACIP session.
+ *
+ * @section quic_migration Migration and fallback
+ *
+ * The native endpoint can migrate a confirmed connection to another local
+ * address in the same address family. Producers must be paused during the
+ * operation; TLS, ACIP keys, stream positions, and replay state remain attached
+ * to the connection. A failed bind preserves the old socket.
+ *
+ * Native fallback to TCP is opt-in with `--quic-fallback-port` and requires
+ * ACIP encryption plus the pinned `--server-key`. Certificate, authentication,
+ * protocol, and cancellation failures do not trigger fallback, and an explicit
+ * QUIC URL does not silently switch transports.
+ *
+ * @section quic_testing Testing and limitations
+ *
+ * This topic covers the QUIC implementation. QUIC tests cover native streams, negotiated
+ * datagrams, TLS/identity failures, discovery advertisements, WebTransport,
+ * and path migration. The private UDP driver is experimental and must not be
+ * exposed directly to untrusted networks; production admission and the shared
+ * connection lifecycle remain the supported integration path.
+ *
+ * @see topic_network
+ * @see md_docs_2transport-backpressure.html
+ */

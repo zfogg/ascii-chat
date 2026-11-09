@@ -105,6 +105,7 @@ def main() -> None:
         clang=args.clang,
         clang_args=analysis_arguments(entry),
         executors=tuple(CExecutor(name, 1) for name in EXECUTORS),
+        catalog_types=("database_query",),
     )
     report = check_c(sources, config)
     report.raise_for_issues()

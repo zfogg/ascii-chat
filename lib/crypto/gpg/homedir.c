@@ -4,6 +4,7 @@
  * @brief Temporary GPG homedir management implementation
  */
 
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/crypto/gpg/homedir.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
@@ -12,15 +13,16 @@
 #include <stdlib.h>
 
 /**
- * @struct gpg_homedir
- * @brief Internal structure for temporary GPG homedir
+ * @brief Describes a temporary GnuPG home directory used to isolate key parsing from the user's real keyring. It holds
+ * the created path and cleanup bookkeeping; callers release it through the matching helper so the directory and files
+ * are removed.
  */
 struct gpg_homedir {
   char path[PLATFORM_MAX_PATH_LENGTH];
 };
 
 gpg_homedir_t *gpg_homedir_create(void) {
-  gpg_homedir_t *homedir = SAFE_MALLOC(sizeof(gpg_homedir_t), gpg_homedir_t *);
+  SAFE_MALLOC_DEFER_FREE(homedir, sizeof(gpg_homedir_t), gpg_homedir_t *);
   if (!homedir) {
     log_error("Failed to allocate memory for GPG homedir handle");
     return NULL;
@@ -29,20 +31,22 @@ gpg_homedir_t *gpg_homedir_create(void) {
   /* Create temporary directory using platform abstraction */
   if (platform_mkdtemp(homedir->path, sizeof(homedir->path), "ascii-chat-gpg") != 0) {
     log_error("Failed to create temporary GPG homedir");
-    SAFE_FREE(homedir);
     return NULL;
   }
+
+  defer_named(temp_directory, platform_rmdir_recursive(homedir->path));
 
   /* Restrict permissions to owner only (mode 0700) using platform abstraction */
   if (platform_chmod(homedir->path, 0700) != 0) {
     log_warn("Failed to set permissions on GPG homedir, attempting cleanup");
-    platform_rmdir_recursive(homedir->path);
-    SAFE_FREE(homedir);
     return NULL;
   }
 
   log_debug("Created temporary GPG homedir: %s", homedir->path);
-  return homedir;
+  defer_cancel(temp_directory);
+  gpg_homedir_t *result = homedir;
+  homedir = NULL;
+  return result;
 }
 
 const char *gpg_homedir_path(const gpg_homedir_t *homedir) {

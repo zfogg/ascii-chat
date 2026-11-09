@@ -39,7 +39,7 @@ static const char *renderer_values[] = {"luminance", "glyph", NULL};
 static const int renderer_integers[] = {ASCII_RENDERER_LUMINANCE, ASCII_RENDERER_GLYPH};
 static const char *renderer_descriptions[] = {"Map brightness to the selected palette",
                                               "Experimental glyph shape matching", NULL};
-static const ascii_renderer_t default_renderer = ASCII_RENDERER_LUMINANCE;
+static const ascii_renderer_t default_renderer = ASCII_RENDERER_DEFAULT;
 
 static bool parse_explicit_palette(const char *arg, void *dest, char **error_msg) {
   if (!parse_palette_type(arg, dest, error_msg))
@@ -67,6 +67,7 @@ static bool parse_ascii_renderer(const char *arg, void *dest, char **error_msg) 
 // DISPLAY CATEGORY - Display layout options
 // ============================================================================
 static const bool default_face_follow_value = false;
+static const bool default_stabilize_value = true;
 
 const registry_entry_t g_display_entries[] = {
     {.long_name = "zalgo",
@@ -210,7 +211,7 @@ const registry_entry_t g_display_entries[] = {
      .offset = offsetof(options_t, renderer),
      .default_value = &default_renderer,
      .default_value_size = sizeof(ascii_renderer_t),
-     .help_text = "Character selection: luminance (default) or experimental glyph matching. Glyph supports printable "
+     .help_text = "Character selection: glyph (default) or luminance matching. Glyph supports printable "
                   "ASCII and Unicode block elements; unsupported palette characters are rejected.",
      .group = "DISPLAY",
      .arg_placeholder = "luminance|glyph",
@@ -224,7 +225,7 @@ const registry_entry_t g_display_entries[] = {
     {.long_name = "stabilize",
      .type = OPTION_TYPE_BOOL,
      .offset = offsetof(options_t, stabilize),
-     .default_value = &default_face_follow_value,
+     .default_value = &default_stabilize_value,
      .default_value_size = sizeof(bool),
      .help_text = "Reduce character and color flicker between video frames in all render modes.",
      .group = "DISPLAY",

@@ -1,56 +1,46 @@
 import { getClientModule } from "./client";
+import type { AVStateBinding } from "@ascii-chat/shared/wasm";
 
 /** Device APIs stay in the host; stream state and cancellation live in shared C. */
 export class AVState {
-  private module: ReturnType<typeof getClientModule> = null;
-  private handle = 0;
+  private binding: AVStateBinding | null = null;
 
   begin(): number {
-    if (!this.handle) {
-      this.module = getClientModule();
-      if (!this.module) throw new Error("Initialize the client before capture");
-      this.handle = this.module._session_av_state_create();
-      if (!this.handle) throw new Error("Unable to allocate audio/video state");
+    if (!this.binding) {
+      const module = getClientModule();
+      if (!module) throw new Error("Initialize the client before capture");
+      const binding = new module.AVStateBinding();
+      if (!binding.valid()) {
+        binding.delete();
+        throw new Error("Unable to allocate audio/video state");
+      }
+      this.binding = binding;
     }
-    return this.module!._session_av_state_begin(this.handle);
+    return this.binding.begin();
   }
 
   get generation(): number {
-    return this.handle
-      ? this.module!._session_av_state_generation(this.handle)
-      : 0;
+    return this.binding?.generation() ?? 0;
   }
-
   current(generation: number): boolean {
-    return (
-      !!this.handle &&
-      !!this.module!._session_av_state_is_current(this.handle, generation)
-    );
+    return this.binding?.current(generation) ?? false;
   }
-
   complete(generation: number): boolean {
-    return (
-      !!this.handle &&
-      !!this.module!._session_av_state_complete(this.handle, generation)
-    );
+    return this.binding?.complete(generation) ?? false;
   }
-
   get active(): boolean {
-    return (
-      !!this.handle && !!this.module!._session_av_state_is_active(this.handle)
-    );
+    return this.binding?.active() ?? false;
   }
 
   stop(release: () => void): void {
-    if (this.handle) this.module!._session_av_state_begin_stop(this.handle);
+    this.binding?.beginStop();
     release();
-    if (this.handle) this.module!._session_av_state_finish_stop(this.handle);
+    this.binding?.finishStop();
   }
 
   /** Call only after pending host startup has settled and resources are stopped. */
   dispose(): void {
-    if (this.handle) this.module!._session_av_state_destroy(this.handle);
-    this.handle = 0;
-    this.module = null;
+    this.binding?.delete();
+    this.binding = null;
   }
 }

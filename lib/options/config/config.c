@@ -46,6 +46,10 @@
 #include <sys/stat.h>
 
 /**
+ * @brief Incremental writer for generated configuration text. `buffer`, `size`, and `capacity` describe the owned
+ * output allocation, while `overflow` records an overrun; callers finish by taking the built buffer through the builder
+ * API.
+ * @brief Function table for extracting, validating, storing, and formatting one TOML option type
  * @name Internal Macros
  * @{
  */
@@ -129,7 +133,12 @@ static const char *get_toml_string_validated(toml_datum_t datum) {
 // type-specific logic and special case handling.
 
 /**
- * @brief Union holding all possible parsed option values
+ * @brief Scratch storage for the scalar value produced while parsing one option.
+ *
+ * The active member is selected by the option type: strings use the bounded
+ * `str_value` array, numeric options use an integer or floating-point member,
+ * and boolean flags use `bool_value`. The config parser copies the selected
+ * value into `options_t`; this union is never retained after that write.
  */
 typedef union {
   char str_value[OPTIONS_BUFF_SIZE]; // STRING type
@@ -140,7 +149,7 @@ typedef union {
 } option_parsed_value_t;
 
 /**
- * @brief Type handler - encapsulates all 4 operations for one option type
+ * @brief Function table for extracting, validating, storing, and formatting one TOML option type.
  *
  * Each operation is a stage in the config parsing pipeline:
  * 1. Extract: TOML datum → intermediate (value_str, int_val, etc)
@@ -1194,11 +1203,9 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
       // So we need to format the error message ourselves here
       char error_buffer[BUFFER_SIZE_MEDIUM];
       safe_snprintf(error_buffer, sizeof(error_buffer), "Failed to parse config file '%s': %s", display_path, errmsg);
-      toml_free(result); // Explicit cleanup before return (defer transformation not applied)
       return SET_ERRNO(ERROR_CONFIG, "%s", error_buffer);
     }
     CONFIG_WARN("Failed to parse config file '%s': %s (skipping)", display_path, errmsg);
-    toml_free(result);   // Explicit cleanup before return (defer transformation not applied)
     return ASCIICHAT_OK; // Non-fatal error
   }
 
@@ -1207,7 +1214,6 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   asciichat_error_t schema_result = config_apply_schema(result.toptab, detected_mode, opts, strict);
 
   if (schema_result != ASCIICHAT_OK && strict) {
-    toml_free(result); // Explicit cleanup before return (defer transformation not applied)
     return schema_result;
   }
   if (strict && schema_result == ASCIICHAT_OK)
@@ -1236,7 +1242,6 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   }
   errno_scope_end(rcu_scope, ASCIICHAT_ERRNO_DISMISSED);
 
-  toml_free(result); // Explicit cleanup before return (defer transformation not applied)
   return ASCIICHAT_OK;
 }
 
@@ -1628,7 +1633,6 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
 
   if (search_result != ASCIICHAT_OK) {
     CONFIG_DEBUG("Failed to search for config files: %d", search_result);
-    config_file_list_destroy(&config_files);
     return search_result;
   }
 
@@ -1669,6 +1673,5 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
     }
   }
 
-  config_file_list_destroy(&config_files);
   return result;
 }

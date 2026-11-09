@@ -3,6 +3,9 @@
 #include <stdbool.h>
 
 /** Shared cursor and viewport state for selectable terminal lists. */
+/**
+ * @brief ui selectable list keeps the values that move through the subsystem: `selected`, `first_visible`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
 typedef struct {
   int selected;
   int first_visible;

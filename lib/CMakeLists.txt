@@ -578,6 +578,18 @@ create_ascii_chat_module(ascii-chat-simd "${SIMD_SRCS}")
 # the same version as the linked libraries.
 
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
+# The defer transformer parses video sources from the compilation database
+# before external FFmpeg headers are installed; keep this target's include
+# search path explicit instead of relying only on the project interface target.
+target_include_directories(ascii-chat-video BEFORE PRIVATE ${FFMPEG_INCLUDE_DIRS})
+if(USE_MUSL)
+    set(_musl_ffmpeg_include_dir "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include")
+    target_include_directories(ascii-chat-video BEFORE PRIVATE "${_musl_ffmpeg_include_dir}")
+    # Defer copies source properties to transformed sources; target-only include
+    # directories are not present when defer parses the original compilation DB.
+    set_source_files_properties(${VIDEO_SRCS} PROPERTIES
+        INCLUDE_DIRECTORIES "${_musl_ffmpeg_include_dir}")
+endif()
 include(${CMAKE_SOURCE_DIR}/cmake/deps/FaceDetection.cmake)
 ascii_chat_add_face_detector(ascii-chat-video)
 
@@ -1435,18 +1447,6 @@ endif()
 # Apply sanitizers to shared library
 apply_sanitizers_to_target(ascii-chat-shared)
 
-# Add build timing for ascii-chat-shared library
-add_custom_command(TARGET ascii-chat-shared PRE_LINK
-    COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT "Starting ascii-chat-shared timer"
-    VERBATIM
-)
-add_custom_command(TARGET ascii-chat-shared POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT "Finishing ascii-chat-shared timer"
-    VERBATIM
-)
-
 # =============================================================================
 # macOS dSYM Generation for Shared Library (Debug/Dev builds only)
 # =============================================================================
@@ -1834,18 +1834,14 @@ if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
 
     # User-friendly 'static-lib' target - builds AND validates the static library
     add_custom_target(static-lib
-        COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        COMMAND_ECHO NONE
-        DEPENDS ${STATIC_LIB_OUTPUT}.validated build-timer-start
+        DEPENDS ${STATIC_LIB_OUTPUT}.validated
         VERBATIM
     )
 else()
     message(STATUS "Symbol validation: ${BoldYellow}disabled${ColorReset} (llvm-nm not found)")
     # User-friendly 'static-lib' target - builds the static library (no validation)
     add_custom_target(static-lib
-        COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        COMMAND_ECHO NONE
-        DEPENDS ${STATIC_LIB_OUTPUT} build-timer-start
+        DEPENDS ${STATIC_LIB_OUTPUT}
         VERBATIM
     )
 endif()

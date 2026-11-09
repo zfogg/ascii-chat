@@ -27,7 +27,7 @@
  */
 
 /**
- * @defgroup module_video video
+ * @defgroup module_video Video
  * @brief 📹 Video capture, ASCII conversion, and frame layout
  *
  * Video frame management, image-to-ASCII conversion with SIMD, grid layout, and palettes.
@@ -55,6 +55,12 @@
  */
 
 /**
+ * @defgroup acip ACIP
+ * @ingroup module_network
+ * @brief ascii-chat's binary packet protocol and transport-facing message layer.
+ */
+
+/**
  * @defgroup module_client Application: Client
  * @brief 💻 Client application for connecting to servers and streaming media
  *
@@ -77,7 +83,7 @@
  */
 
 /**
- * @page topic_categories Topic Categories
+ * @defgroup topic_categories Topic Categories
  * @brief 📚 Detailed documentation for major subsystems
  *
  * This page provides detailed information about the major subsystems in ascii-chat.
@@ -86,13 +92,13 @@
  *
  * @tableofcontents
  *
- * @section topics_utilities 🛠️ Utilities
+ * @section categories_utilities 🛠️ Utilities
  *
  * @copybrief module_utilities
  *
  * - @ref topic_util "Utility Functions" - String, path, IP, UTF-8, CRC32, formatting utilities
  *
- * @section topics_data 📦 Data Structures
+ * @section categories_data 📦 Data Structures
  *
  * @copybrief module_data_structures
  *
@@ -101,7 +107,7 @@
  * - @ref topic_packet_queue "Packet Queue" - Thread-safe per-client packet queues
  * - @ref uthash library "Hash Table" - High-performance client ID lookup
  *
- * @section topics_platform 🔌 Platform Abstraction
+ * @section categories_platform 🔌 Platform Abstraction
  *
  * @copybrief module_abstractions
  *
@@ -110,15 +116,16 @@
  *   (Windows/Linux/macOS)
  * - @ref topic_webcam "Webcam Capture" - Cross-platform webcam capture functionality
  *
- * @section topics_crypto 🔐 Cryptography
+ * @section categories_crypto 🔐 Cryptography
  *
  * @copybrief module_crypto
  *
  * - @ref topic_crypto "Cryptography" - Encryption architecture and security details
+ * - [Authenticated packet records and rotation](md_docs_2crypto-records.html) - Packet authentication, replay protection, and key rotation
  * - @ref topic_handshake "Handshake Protocol" - Secure connection establishment
  * - @ref topic_keys "Keys Module" - SSH/GPG key parsing and validation
  *
- * @section topics_video 📹 Video to ASCII Conversion
+ * @section categories_video 📹 Video to ASCII Conversion
  *
  * @copybrief module_video
  *
@@ -127,34 +134,43 @@
  * - @ref topic_grid_layout "Grid Layout System" - Multi-frame layout for multi-user video
  * - @ref topic_palette "Palette Management" - ASCII character palettes with UTF-8 support
  *
- * @section topics_audio 🔊 Audio Processing
+ * @section categories_audio 🔊 Audio Processing
  *
  * @copybrief module_audio
  *
  * - @ref topic_audio "Audio System" - Audio capture and playback with PortAudio
  * - @ref topic_mixer "Audio Mixer" - Multi-client audio mixing with ducking
  *
- * @section topics_core ⚙️ Core Infrastructure
+ * @section categories_core ⚙️ Core Infrastructure
  *
  * @copybrief module_core
  *
  * - @ref topic_main "main()" - Unified binary dispatcher routing to server or client mode
  * - @ref topic_common "Common Definitions" - Core utilities, macros, memory debugging, constants
- * - @ref topic_errno "Error Handling System" - Typed error codes, error context, thread-safe errors
+ * - @ref errno "Error Handling System" - Typed error codes, error context, thread-safe errors
  * - @ref topic_logging "Logging System" - Level-based logging, rate limiting, file output
  * - @ref topic_options "Options and Configuration" - Command-line parsing and TOML config
  * - @ref topic_config "Configuration" - TOML configuration file management
  *
- * @section topics_network 🌐 Network
+ * @section categories_ui 🖥️ User Interface
+ *
+ * @copybrief module_ui
+ *
+ * - @ref topic_ui "UI Architecture" - Snapshot-driven terminal presentation and input routing
+ * - @ref topic_tui "Terminal UI (TUI)" - Interactive screens, resizing, diagnostics, and testing
+ * - @ref topic_keyboard_shortcuts "Keyboard Shortcuts" - Current global, media, prompt, and modal bindings
+ *
+ * @section categories_network 🌐 Network
  *
  * @copybrief module_network
  *
  * - @ref topic_network "Network I/O" - Socket operations, timeouts, connections, packet protocol
+ * - @ref topic_quic "QUIC and WebTransport" - Native QUIC, HTTP/3, datagrams, trust, and migration
  * - @ref topic_compression "Network Compression" - zstd compression utilities for network payload optimization
  * - @ref topic_packet_types "Packet Types" - Network packet structures and definitions
  * - @ref topic_av "Audio/Video Networking" - Network APIs for audio/video streaming
  *
- * @section topics_client 💻 Client Application
+ * @section categories_client 💻 Client Application
  *
  * @copybrief module_client
  *
@@ -168,7 +184,7 @@
  * - @ref topic_client_keepalive "Connection Keepalive" - Ping/pong and timeout detection
  * - @ref topic_client_crypto "Cryptographic Operations" - Handshake and key management
  *
- * @section topics_server 🖥️ Server
+ * @section categories_server 🖥️ Server
  *
  * @copybrief module_server
  *
@@ -181,7 +197,7 @@
  * - @ref topic_server_stats "Statistics and Monitoring" - Performance monitoring and resource utilization tracking
  * - @ref topic_server_crypto "Cryptographic Operations" - Per-client cryptographic handshake and session encryption management
  *
- * @section topics_acds 🔍 Discovery Service (ACDS)
+ * @section categories_acds 🔍 Discovery Service (ACDS)
  *
  * @copybrief module_acds
  *
@@ -192,7 +208,7 @@
  * - @ref acds_identity "Identity Management" - Ed25519 identity keys for ACDS
  * - @ref acds_strings "Session Strings" - Human-friendly session identifiers
  *
- * @section topics_development 🔧 Development & Debugging
+ * @section categories_development 🔧 Development & Debugging
  *
  * @copybrief module_development
  *
@@ -200,14 +216,73 @@
  * - @ref topic_build "Build System" - CMake configuration, cross-platform compilation, build types
  * - @ref topic_testing "Testing" - Test framework, test runner, Docker testing, coverage reporting
  * - @ref topic_debug "Debugging Utilities" - Error tracking, memory leak detection, diagnostics
- * - @ref topic_errno "Error Handling System" - Typed error codes, error context, thread-safe errors
+ * - @ref errno "Error Handling System" - Typed error codes, error context, thread-safe errors
  * - @ref exit_codes "Exit Codes" - Exit code categories and error descriptions from asciichat_error_t
  * - @ref topic_lock_debug "Lock Debugging" - Lock tracking, deadlock detection, contention analysis
  *
- * @subsection topics_tooling 🧰 Tooling
+ * @subsection categories_tooling 🧰 Tooling
  *
  * 🧰 Source-to-source transformation tools for debugging and code quality.
  *
- * - @ref topic_defer "Defer Statements" - 🔄 Go/Zig-style defer statements for automatic cleanup
+ * - @ref topic_defer "Defer Tool" - 🔄 Go/Zig-style defer statements for automatic cleanup
  * - @ref topic_panic "Panic Instrumentation" - 🚨 Per-statement logging for crash debugging
+ *
+ * @section authored_documentation Authored Documentation
+ *
+ * Focused documentation that supplements the source-level topics is organized below by
+ * purpose. These links intentionally live in Topic Categories rather than in a flat
+ * Pages sidebar.
+ *
+ * @subsection authored_architecture Architecture and runtime behavior
+ *
+ * - [Connection ownership and execution](md_docs_2networking-runtime.html)
+ * - [Native event-driven I/O](md_docs_2event-driven-io.html)
+ * - @ref topic_quic "ACIP over QUIC"
+ * - [Transport backpressure and media admission](md_docs_2transport-backpressure.html)
+ * - [Runtime settings](md_docs_2runtime-settings.html)
+ * - [Recording session audio and ASCII video](md_docs_2recording.html)
+ * - [Open media during a session](md_docs_2live-media-input.html)
+ * - [Connection security policy](md_docs_2crypto-policy.html)
+ * - [Discovery session authentication keys](md_docs_2discovery-key-sets.html)
+ * - [Discovery host designation](md_docs_2host-designation.html)
+ * - [Network copy reduction](md_docs_2network-copy-reduction.html)
+ * - [Measured host selection and handoff](md_docs_2measured-host-handoff.html)
+ * - [Shared connection ownership](md_docs_2client-connection-lifecycle.html)
+ * - [Shared session TUI](md_docs_2session-tui.html)
+ * - [Shared statistics collection](md_docs_2stats.html)
+ *
+ * @subsection authored_operations Build, release, and operations
+ *
+ * - [CMake workflows](md_docs_2cmake-workflows.html)
+ * - [Dependency builds](md_docs_2dependency-builds.html)
+ * - [Continuous integration](md_docs_2ci.html)
+ * - [MCP rendering server](md_docs_2mcp.html)
+ * - [Windows build performance](md_docs_2windows-build-performance.html)
+ * - [Portable SIMD builds](md_docs_2simd.html)
+ * - [Shared ASCII terminal emission](md_docs_2simd-emission.html)
+ *
+ * @subsection authored_development Development and debugging
+ *
+ * - [Keyboard input](md_docs_2keyboard-input.html)
+ * - [Terminal presentation](md_docs_2terminal-ui.html)
+ * - [Important terminal notices](md_docs_2terminal-notices.html)
+ * - [Keymask public-key art](md_docs_2keymask.html)
+ * - [Zalgo terminal effect](md_docs_2zalgo.html)
+ * - [OpenTelemetry](md_docs_2telemetry.html)
+ * - [Sync inspector activity](md_docs_2sync-activity.html)
+ * - [Sync primitive inspector](md_docs_2sync-tui.html)
+ *
+ * @subsection authored_testing Testing and validation
+ *
+ * - [Shared native and browser test patterns](md_docs_2test-patterns.html)
+ * - [ACIP packet preparation validation](md_docs_2acip-preparation.html)
+ * - [Audio channels](md_docs_2audio-channels.html)
+ * - [Audio reliability and validation](md_docs_2audio-reliability.html)
+ * - [FFTW spectral audio processing](md_docs_2audio-spectral.html)
+ * - [Browser WASM bindings and standalone renderer](md_docs_2wasm-interop.html)
+ * - [Face Follow](md_docs_2face-follow.html)
+ *
+ * @subsection authored_tooling Tooling
+ *
+ * - [Defer Tool](group__defer.html) - Go/Zig-style defer transformation for C
  */

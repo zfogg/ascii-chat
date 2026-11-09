@@ -52,6 +52,7 @@ typedef enum {
 } lifecycle_sync_type_t;
 
 /**
+ * @brief When code needs to work with lifecycle, it keeps `[union].sync`, `state`, `sync_type`, `sync` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * Lock-free module lifecycle state machine with optional sync primitive.
  * Combines init/shutdown state with mutex or rwlock initialization.
  */
@@ -223,6 +224,7 @@ void lifecycle_destroy_commit(lifecycle_t *lc);
 
 /**
  * @defgroup lifecycle_sync Lifecycle with Sync Primitives
+ * @ingroup module_core
  * @brief Combined lifecycle + sync primitive initialization and shutdown.
  *
  * When lifecycle_t.sync_type is set (e.g., LIFECYCLE_SYNC_MUTEX), the lifecycle

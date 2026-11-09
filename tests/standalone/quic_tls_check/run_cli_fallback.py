@@ -46,8 +46,8 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-fallback-", dir=tempora
     with server_log.open("wb") as output:
         server = subprocess.Popen(
             [binary, "server", "127.0.0.1", "--port", str(tcp_port), "--websocket-port", str(websocket_port),
-             "--quic-bind-address", "127.0.0.1", "--quic-port", str(udp_port), "--quic-tls-cert", str(cert),
-             "--quic-tls-key", str(tls_key), "--key", str(key), "--password", "test-password",
+             "--quic-bind-address", "127.0.0.1", "--quic-port", str(udp_port), "--tls-cert", str(cert),
+             "--tls-key", str(tls_key), "--key", str(key), "--password", "test-password",
              "--status-screen=false"], stdout=output, stderr=subprocess.STDOUT, creationflags=flags, env=env,
         )
         try:
@@ -64,7 +64,7 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-fallback-", dir=tempora
             def client(name, port, trust, identity=None, extra=()):
                 log = root / f"{name}.log"
                 command = [binary, "--log-file", str(log), "client", f"quic://localhost:{port}",
-                           "--quic-ca-file", str(trust), "--quic-fallback-port", str(tcp_port),
+                           "--tls-ca-file", str(trust), "--quic-fallback-port", str(tcp_port),
                            "--password", "test-password", "--test-pattern", "--audio=false", "--snapshot",
                            "--snapshot-delay", "0", "--splash-screen=false", "--color-mode", "none",
                            "--reconnect-attempts", "0"]

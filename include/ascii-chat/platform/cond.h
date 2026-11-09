@@ -56,10 +56,13 @@ typedef struct {
   _Atomic(uint64_t) signal_count;           ///< Total signal calls
   _Atomic(uint64_t) broadcast_count;        ///< Total broadcast calls
 #endif
+/**
+ */
 } cond_t;
 #else
 #include <pthread.h>
 /**
+ * @brief Condition variable type (POSIX: pthread_cond_t with debug tracking)
  * @brief Condition variable type (POSIX: pthread_cond_t with debug tracking)
  * @ingroup platform
  */

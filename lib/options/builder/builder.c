@@ -11,6 +11,7 @@
 #define OPTIONS_MAX_INT_DEFAULTS 256
 #define OPTIONS_MAX_DOUBLE_DEFAULTS 1024
 
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/options/enums.h>
 #include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/options/builder.h>
@@ -1603,7 +1604,8 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   }
   char *long_opt_value = NULL;
   char *equals = NULL;
-  char *arg_copy = NULL;            // Copy of arg for safe parsing without modifying original
+  char *arg_copy = NULL; // Copy of arg for safe parsing without modifying original
+  defer(SAFE_FREE(arg_copy));
   const char *arg_for_lookup = arg; // What to use for option lookup
 
   // Handle long options with `=` (e.g., --port=8080)
@@ -1631,7 +1633,6 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   if (!desc) {
     // Try to suggest a similar option
     const char *suggestion = find_similar_option_with_mode(arg_for_lookup, config, mode_bitmask);
-    SAFE_FREE(arg_copy);
     if (suggestion) {
       return SET_ERRNO(ERROR_USAGE, "Unknown option: %s. %s", arg_for_lookup, suggestion);
     } else {
@@ -1648,7 +1649,6 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
     if (!(desc->mode_bitmask & mode_bitmask)) {
       // Option not available in current mode - show where it IS available
       const char *available_modes = format_available_modes(desc->mode_bitmask);
-      SAFE_FREE(arg_copy);
       return SET_ERRNO(ERROR_USAGE, "Option %s is not available in this mode. Available in modes: %s", arg,
                        available_modes);
     }
@@ -1713,30 +1713,25 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
       // Boolean flags: pass value if provided (--flag=true/false), otherwise NULL to toggle
       asciichat_error_t result = handler->apply_cli(field, opt_value, desc);
       if (result != ASCIICHAT_OK) {
-        SAFE_FREE(arg_copy);
         return result;
       }
     } else if (desc->type == OPTION_TYPE_ACTION) {
       // Action flags don't take values
       asciichat_error_t result = handler->apply_cli(field, NULL, desc);
       if (result != ASCIICHAT_OK) {
-        SAFE_FREE(arg_copy);
         return result;
       }
     } else {
       // Other types need a value (INT, STRING, DOUBLE, CALLBACK)
       asciichat_error_t result = handler->apply_cli(field, opt_value, desc);
       if (result != ASCIICHAT_OK) {
-        SAFE_FREE(arg_copy);
         return result;
       }
     }
   } else {
-    SAFE_FREE(arg_copy);
     return SET_ERRNO(ERROR_USAGE, "Invalid option type for %s", arg);
   }
 
-  SAFE_FREE(arg_copy);
   return ASCIICHAT_OK;
 }
 
@@ -1761,7 +1756,7 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
   }
 
   // Separate positional and flag arguments while respecting order
-  char **positional_args = SAFE_MALLOC(argc * sizeof(char *), char **);
+  SAFE_MALLOC_DEFER_FREE(positional_args, argc * sizeof(char *), char **);
   if (!positional_args) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate positional args buffer");
   }
@@ -1795,7 +1790,6 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
     asciichat_error_t err =
         parse_single_flag_with_mode(config, argv, i, argc, options_struct, detected_mode, &consumed);
     if (err != ASCIICHAT_OK) {
-      SAFE_FREE(positional_args);
       return err;
     }
 
@@ -1825,7 +1819,6 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
       if (consumed < 0) {
         log_error("Error parsing positional argument '%s': %s", pos_arg->name, error_msg ? error_msg : arg);
         SAFE_FREE(error_msg);
-        SAFE_FREE(positional_args);
         return ERROR_USAGE;
       }
 
@@ -1835,7 +1828,6 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
     // Check for extra unconsumed positional arguments
     if (arg_index < positional_count) {
       log_error("Unexpected positional argument '%s'", positional_args[arg_index]);
-      SAFE_FREE(positional_args);
       return ERROR_USAGE;
     }
 
@@ -1847,18 +1839,15 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
         if (pos_arg->help_text) {
           log_error("  %s", pos_arg->help_text);
         }
-        SAFE_FREE(positional_args);
         return ERROR_USAGE;
       }
     }
   } else if (positional_count > 0) {
     // No positional args expected, but we got some
     log_error("Unexpected positional argument '%s'", positional_args[0]);
-    SAFE_FREE(positional_args);
     return ERROR_USAGE;
   }
 
-  SAFE_FREE(positional_args);
   return ASCIICHAT_OK;
 }
 

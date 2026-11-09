@@ -39,6 +39,9 @@ typedef struct {
   bool font_is_path;                        // true = file path, false = name or bundled data
   const uint8_t *font_data;                 // non-NULL → load from memory
   size_t font_data_size;
+/**
+ * @brief For term renderer config, this is the live record that ties `cols`, `rows`, `font_size_pt`, `theme` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ */
 } term_renderer_config_t;
 
 // Implemented in lib/media/render/terminal.c using FreeType on all platforms.
@@ -51,6 +54,8 @@ const uint8_t *term_renderer_pixels(terminal_renderer_t *r);
 int term_renderer_width_px(terminal_renderer_t *r);
 int term_renderer_height_px(terminal_renderer_t *r);
 int term_renderer_pitch(terminal_renderer_t *r);
+int term_renderer_get_cols(terminal_renderer_t *r);
+int term_renderer_get_rows(terminal_renderer_t *r);
 void term_renderer_destroy(terminal_renderer_t *r);
 
 // ── Render-file orchestrator ──────────────────────────────────────────────

@@ -15,11 +15,12 @@ typedef enum {
 } session_av_state_phase_t;
 
 /**
- * @brief Shared run state for a native or asynchronous host audio/video stream.
+ * @brief Generation-guarded lifecycle state for one session audio or video stream.
  *
  * Zero initialization represents an idle stream with no startup token.
  * The owner serializes transitions and generation access; workers may query
- * the atomic phase through session_av_state_should_run().
+ * `phase` is queried atomically by workers; `generation` changes at each start
+ * so delayed asynchronous completions cannot revive an older stream.
  */
 typedef struct {
   atomic_t phase;      ///< Current session_av_state_phase_t, queried atomically by workers.
@@ -27,6 +28,7 @@ typedef struct {
 } session_av_state_t;
 
 /**
+ * @brief Generation-guarded lifecycle state for one session audio or video stream
  * @brief Allocate an idle audio/video state for callers that need a separate handle.
  * @return Owned state, or NULL on allocation failure. Embedded states may still use zero initialization.
  */

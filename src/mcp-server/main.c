@@ -27,9 +27,9 @@ int mcp_server_main(void) {
                              .address6 = GET_OPTION(address6),
                              .port = GET_OPTION(port),
                              .origin = GET_OPTION(http_origin),
-                             .tls_cert = GET_OPTION(http_tls_cert),
-                             .tls_key = GET_OPTION(http_tls_key),
-                             .tls_password = GET_OPTION(http_tls_key_password),
+                             .tls_cert = GET_OPTION(tls_cert),
+                             .tls_key = GET_OPTION(tls_key),
+                             .tls_password = GET_OPTION(tls_key_password),
                              .max_jobs = (unsigned)GET_OPTION(max_clients),
                              .downloads_url_prefix = GET_OPTION(mcp_downloads_url_prefix)};
   if (s->policy.restricted && s->policy.hosted && s->policy.downloads_url_prefix && *s->policy.downloads_url_prefix) {
@@ -78,8 +78,8 @@ int mcp_server_main(void) {
   if (!s->policy.max_jobs || s->policy.max_jobs > available_cpus)
     s->policy.max_jobs = available_cpus;
   if (s->policy.hosted && (!!s->policy.tls_cert[0] != !!s->policy.tls_key[0])) {
-    asciichat_error_t err = SET_ERRNO(ERROR_CONFIG, "MCP HTTPS requires both --http-tls-cert and --http-tls-key");
-    log_error("MCP HTTPS requires both --http-tls-cert and --http-tls-key");
+    asciichat_error_t err = SET_ERRNO(ERROR_CONFIG, "MCP HTTPS requires both --tls-cert and --tls-key");
+    log_error("MCP HTTPS requires both --tls-cert and --tls-key");
     SAFE_FREE(s);
     return err;
   }

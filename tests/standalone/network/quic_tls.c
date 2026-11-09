@@ -1,4 +1,5 @@
 #include <ascii-chat/common.h>
+#include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/quic.h>
 #include <ascii-chat/network/acip/send.h>
@@ -1085,8 +1086,8 @@ static void quic_public_endpoint_test(const char *certificate, const char *priva
                                               .password = "test-password",
                                               .require_auth = true,
                                               .require_encryption = true};
-  protocol_version_packet_t insecure_version = {.protocol_version = HOST_TO_NET_U16(1),
-                                                .supports_encryption = ACIP_CRYPTO_NONE};
+  protocol_version_packet_t insecure_version;
+  protocol_version_packet_init(&insecure_version, ACIP_CRYPTO_NONE);
   CHECK(network_negotiation_receive(&server_negotiation, inbound, PACKET_TYPE_PROTOCOL_VERSION, &insecure_version,
                                     sizeof(insecure_version)) == ERROR_CRYPTO);
   CHECK(!server_negotiation.ready && server_negotiation.step == 0);

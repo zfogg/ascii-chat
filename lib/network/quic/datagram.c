@@ -43,8 +43,8 @@ static uint64_t get64(const uint8_t *p) {
 }
 
 asciichat_error_t quic_datagram_fragment(acip_traffic_class_t flow, uint64_t id, const void *packet, size_t length,
-                                              uint16_t unit, uint16_t index, void *out, size_t capacity,
-                                              size_t *out_length) {
+                                         uint16_t unit, uint16_t index, void *out, size_t capacity,
+                                         size_t *out_length) {
   if (!out_length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC datagram output length");
   *out_length = 0;
@@ -102,8 +102,8 @@ void quic_datagram_reset(acip_quic_datagram_reader_t *reader) {
 }
 
 asciichat_error_t quic_datagram_read(acip_quic_datagram_reader_t *reader, const void *data, size_t length,
-                                          uint64_t now_ns, acip_traffic_class_t *flow_out, uint8_t **out,
-                                          size_t *out_length) {
+                                     uint64_t now_ns, acip_traffic_class_t *flow_out, uint8_t **out,
+                                     size_t *out_length) {
   if (!out || !out_length || !flow_out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC datagram output");
   *out = NULL;

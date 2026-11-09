@@ -20,6 +20,9 @@ typedef struct {
   uint32_t state[5];
   uint64_t count;
   unsigned char buffer[SHA1_BLOCK_LENGTH];
+/**
+ * @brief SHA1 CTX is intentionally a small, concrete record. Fields such as `count` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ */
 } SHA1_CTX;
 
 void SHA1Init(SHA1_CTX *context);

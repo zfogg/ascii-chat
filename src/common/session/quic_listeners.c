@@ -12,21 +12,21 @@ asciichat_error_t session_quic_listeners_open(int port, acip_quic_endpoint_t **n
   const char *browser_address = GET_OPTION(webtransport_bind_address);
   const char *origin = GET_OPTION(webtransport_origin);
   const char *path = GET_OPTION(webtransport_path);
-  const char *certificate = GET_OPTION(quic_tls_cert);
-  const char *key = GET_OPTION(quic_tls_key);
+  const char *certificate = GET_OPTION(tls_cert);
+  const char *key = GET_OPTION(tls_key);
   int quic_port = GET_OPTION(quic_port);
   bool browser = *browser_address || *origin;
   bool requested = *native_address || browser || quic_port;
   if (!requested) {
     if (*certificate || *key)
-      return SET_ERRNO(ERROR_USAGE, "QUIC TLS credentials require a QUIC listener");
+      return SET_ERRNO(ERROR_USAGE, "TLS credentials require a secure network listener");
     return ASCIICHAT_OK;
   }
   if (quic_port < 0 || quic_port > UINT16_MAX)
     return SET_ERRNO(ERROR_USAGE, "QUIC port must be between 0 and 65535");
   const char *address = *native_address ? native_address : browser_address;
   if (!*address || !*certificate || !*key)
-    return SET_ERRNO(ERROR_USAGE, "QUIC requires a bind address, --quic-tls-cert, and --quic-tls-key");
+    return SET_ERRNO(ERROR_USAGE, "QUIC requires a bind address, --tls-cert, and --tls-key");
   if (browser && (!*origin || !*path))
     return SET_ERRNO(ERROR_USAGE, "WebTransport requires --webtransport-origin and --webtransport-path");
   if (*native_address && *browser_address && strcmp(native_address, browser_address))

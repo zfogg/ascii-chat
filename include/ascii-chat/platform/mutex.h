@@ -32,6 +32,7 @@
 #ifdef _WIN32
 #include "windows_compat.h"
 /**
+ * @brief Mutex type (POSIX: pthread_mutex_t with debug tracking)
  * @brief Mutex type (Windows: CRITICAL_SECTION with debug tracking)
  * @ingroup platform
  */

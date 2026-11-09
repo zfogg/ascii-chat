@@ -15,6 +15,8 @@
 #define OUTBOUND_MAX_STREAMS 64
 #define WIRE_OVERHEAD (sizeof(packet_header_t) + 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE)
 
+/**
+ */
 typedef struct outbound_packet {
   struct outbound_packet *next;
   uint8_t *data;
@@ -32,6 +34,16 @@ typedef struct {
   uint16_t type;
   uint32_t stream;
   _Atomic(bool) needs_keyframe;
+  /**
+   * @brief acip outbound keeps the values that move through the subsystem: `transport`, `mutex`, `changed`, `worker`.
+   * Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them
+   * rather than the struct copy itself.
+   * @brief This is the handoff point for outbound packet. Callers fill `next`, `data`, `size`, `cost` before passing it
+   * on; consumers read the values during the operation and return ownership only where the member contract explicitly
+   * says they do.
+   * @brief The useful part of outbound stream is in `type`, `stream`: together they describe what is pending, who owns
+   * it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+   */
 } outbound_stream_t;
 
 struct acip_outbound {

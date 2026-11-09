@@ -33,6 +33,7 @@
 // ============================================================================
 
 /**
+ * @brief Deferred free list for old options structs
  * @brief Global atomic pointer to current options
  *
  * This is the heart of the RCU pattern:
@@ -189,8 +190,9 @@ static const options_t g_default_options = (options_t){
     .webcam_index = OPT_WEBCAM_INDEX_DEFAULT,
     .test_pattern = OPT_TEST_PATTERN_DEFAULT,
     .no_audio_mixer = OPT_NO_AUDIO_MIXER_DEFAULT,
-    .stabilize = false,
-    .renderer = ASCII_RENDERER_LUMINANCE,
+    .stabilize = true,
+    .stabilize_explicit = false,
+    .renderer = ASCII_RENDERER_DEFAULT,
     .stretch = OPT_STRETCH_DEFAULT,
     .flip_x = OPT_FLIP_X_DEFAULT,
     .flip_y = OPT_FLIP_Y_DEFAULT,
@@ -532,6 +534,11 @@ typedef struct {
   options_value_type_t type;
   size_t offset, size;
   const char *cli;
+  /**
+   * @brief For runtime field, this is the live record that ties `name`, `type`, `offset`, `size` together. The owning
+   * code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing
+   * the record.
+   */
 } runtime_field_t;
 #define FIELD(name, type, cli) {#name, type, offsetof(options_t, name), sizeof(((options_t *)0)->name), cli}
 static const runtime_field_t runtime_fields[] = {
@@ -603,6 +610,7 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(splash_screen, OPTIONS_VALUE_BOOL, "splash-screen"),
     FIELD(status_screen, OPTIONS_VALUE_BOOL, "status-screen"),
     FIELD(matrix_rain, OPTIONS_VALUE_BOOL, "matrix-rain"),
+    FIELD(audio_source, OPTIONS_VALUE_INT, "audio-source"),
     FIELD(waveform, OPTIONS_VALUE_BOOL, "waveform"),
     FIELD(fft, OPTIONS_VALUE_BOOL, "fft"),
     FIELD(fps_counter, OPTIONS_VALUE_BOOL, "fps-counter"),
@@ -665,6 +673,9 @@ bool options_remote_render_field(const char *name) {
 }
 
 static asciichat_error_t validate_field(const runtime_field_t *field, const options_t *candidate) {
+  if (!strcmp(field->name, "audio_source") &&
+      (candidate->audio_source < AUDIO_SOURCE_ALL || candidate->audio_source > AUDIO_SOURCE_MEDIA))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid option 'audio_source'");
   const registry_entry_t *entry = registry_find_entry_by_name(field->cli);
   const char *ptr = (const char *)candidate + field->offset;
   if (entry && entry->validate_fn && !entry->validate_fn(candidate))
@@ -790,6 +801,17 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
     if (error != ASCIICHAT_OK)
       return error;
   }
+  bool animation_changed = false;
+  bool stabilize_changed = false;
+  for (size_t i = 0; i < patch->count; ++i) {
+    const char *name = patch->edits[i].name;
+    animation_changed |= !strcmp(name, "matrix_rain") || !strcmp(name, "waveform") || !strcmp(name, "fft");
+    stabilize_changed |= !strcmp(name, "stabilize");
+  }
+  if (stabilize_changed)
+    candidate->stabilize_explicit = true;
+  else if (animation_changed && !candidate->stabilize_explicit)
+    candidate->stabilize = !(candidate->waveform || candidate->fft);
   for (size_t i = 0; i < patch->count; ++i) {
     asciichat_error_t error = validate_field(find_field(patch->edits[i].name), candidate);
     if (error != ASCIICHAT_OK)
@@ -988,11 +1010,12 @@ char *options_values_json(const options_t *values, bool remote_only) {
   for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i) {
     const runtime_field_t *field = &runtime_fields[i];
     bool exposed = options_remote_render_field(field->name);
-    if (!remote_only && (!strcmp(field->name, "flip_x") || !strcmp(field->name, "flip_x_explicit") ||
-                         !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") ||
-                         !strcmp(field->name, "waveform") || !strcmp(field->name, "fft") ||
-                         !strcmp(field->name, "fps_counter") || !strcmp(field->name, "speakers_volume") ||
-                         !strcmp(field->name, "microphone_sensitivity") || !strcmp(field->name, "audio_enabled")))
+    if (!remote_only &&
+        (!strcmp(field->name, "flip_x") || !strcmp(field->name, "flip_x_explicit") ||
+         !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") || !strcmp(field->name, "waveform") ||
+         !strcmp(field->name, "fft") || !strcmp(field->name, "fps_counter") || !strcmp(field->name, "audio_source") ||
+         !strcmp(field->name, "speakers_volume") || !strcmp(field->name, "microphone_sensitivity") ||
+         !strcmp(field->name, "audio_enabled")))
       exposed = true;
     if (!exposed)
       continue;

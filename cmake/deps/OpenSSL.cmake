@@ -77,7 +77,7 @@ if(PLATFORM_IOS)
         if(NOT EXISTS "${OPENSSL_TARBALL}")
             message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
+                "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
                 "${OPENSSL_TARBALL}"
                 EXPECTED_HASH "SHA256=${ASCIICHAT_OPENSSL_SOURCE_SHA256}"
                 STATUS DOWNLOAD_STATUS
@@ -208,7 +208,7 @@ if(USE_MUSL)
         set(OPENSSL_TARGET "linux-generic64")
     endif()
     set(OPENSSL_LIBDIR "lib")
-    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};version=${OPENSSL_VERSION};shared=OFF;zlib=OFF;cflags=${MUSL_KERNEL_CFLAGS}")
+    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};version=${OPENSSL_VERSION};shared=OFF;quic=ON;zlib=OFF;cflags=${MUSL_KERNEL_CFLAGS}")
     set(OPENSSL_CONFIG_STAMP "${OPENSSL_BUILD_DIR}/.config-signature")
 
     # The musl release build does not provide zlib. Keep OpenSSL's optional
@@ -233,13 +233,13 @@ if(USE_MUSL)
         message(STATUS "  This may take a few minutes on first build...")
 
         file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
-        file(MAKE_DIRECTORY "${OPENSSL_SOURCE_DIR}")
+        file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}/src")
 
         set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-${OPENSSL_VERSION}.tar.gz")
         if(NOT EXISTS "${OPENSSL_TARBALL}")
             message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
+                "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
                 "${OPENSSL_TARBALL}"
                 EXPECTED_HASH "SHA256=${ASCIICHAT_OPENSSL_SOURCE_SHA256}"
                 STATUS DOWNLOAD_STATUS
@@ -279,6 +279,7 @@ if(USE_MUSL)
                 --prefix=${OPENSSL_PREFIX}
                 --libdir=lib
                 no-shared
+                enable-quic
                 no-zlib
                 no-tests
                 no-ui-console
@@ -427,6 +428,15 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
         set(_OPENSSL_IMPORTED_TYPE STATIC)
     endif()
 
+    # Shared dependency caches can be configured by more than one build tree.
+    # Keep extraction and configuration of this cached source tree serialized.
+    file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
+    file(LOCK "${OPENSSL_BUILD_DIR}/.ascii-chat-configure.lock" GUARD FILE TIMEOUT 1200
+        RESULT_VARIABLE _OPENSSL_LOCK_RESULT)
+    if(NOT _OPENSSL_LOCK_RESULT STREQUAL "0")
+        message(FATAL_ERROR "Cannot lock OpenSSL build cache: ${_OPENSSL_LOCK_RESULT}")
+    endif()
+
     # If cached OpenSSL was generated for a different target, wipe and re-extract.
     set(_OPENSSL_RECONFIGURE_REQUIRED FALSE)
     if(EXISTS "${OPENSSL_TARGET_STAMP}")
@@ -459,7 +469,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
         if(NOT EXISTS "${OPENSSL_TARBALL}")
             message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/${OPENSSL_DOWNLOAD_TAG}/openssl-${OPENSSL_VERSION}.tar.gz"
+                "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
                 "${OPENSSL_TARBALL}"
                 EXPECTED_HASH "${OPENSSL_EXPECTED_HASH}"
                 SHOW_PROGRESS

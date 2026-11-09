@@ -533,9 +533,9 @@ static const gotel_command_rule_t command_argument_rules[] = {
     {"--port", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"-p", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--websocket-port", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
-    {"--websocket-tls-cert", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
-    {"--websocket-tls-key", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
-    {"--websocket-tls-key-password", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--tls-cert", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--tls-key", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
+    {"--tls-key-password", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--discovery-service", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--discovery-service-port", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--discovery-service-url", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
@@ -853,6 +853,19 @@ void ascii_otel_sqlite(sqlite3 *db, const gotel_query_t *queries, size_t count) 
   sequel_analysis_options_t analysis = {.format = true};
   gotel_sqlite_options_t options = {.analysis = &analysis};
   if (otel_status(gotel_sqlite_attach_with_options(h, db, "ascii-chat.storage", queries, count, &options, &a),
+                  "Attach SQLite telemetry") != ASCIICHAT_OK)
+    log_warn("Could not attach SQLite telemetry");
+  release();
+}
+
+void ascii_otel_sqlite_catalog(sqlite3 *db, const gotel_query_catalog_t *catalog) {
+  gotel_host_t *h = retain();
+  if (!h)
+    return;
+  gotel_sqlite_t *a = NULL;
+  sequel_analysis_options_t analysis = {.format = true};
+  gotel_sqlite_options_t options = {.analysis = &analysis};
+  if (otel_status(gotel_sqlite_attach_catalog_with_options(h, db, "ascii-chat.storage", catalog, &options, &a),
                   "Attach SQLite telemetry") != ASCIICHAT_OK)
     log_warn("Could not attach SQLite telemetry");
   release();

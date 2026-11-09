@@ -171,9 +171,12 @@
 static atomic_t g_previous_active_video_count = {0};
 
 /**
- * @brief Image source structure for multi-client video mixing
+ * @brief One client's video input as seen by the compositor
  *
- * Represents a single video source (client) in the video mixing pipeline.
+ * Holds the current buffer-backed image, the stable client identifier used for
+ * layout labels, and whether that client is actively sending video. The image
+ * pointer is borrowed from the client's frame-buffer system; this record does
+ * not free the pixels.
  * This structure is used to collect video frames from all active clients
  * before creating composite layouts for multi-user display.
  * ============
@@ -243,6 +246,9 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
 
   // Snapshot fields while holding the manager read lock so removal cannot
   // invalidate a frame-buffer pointer between this scan and its copy.
+  /**
+   * @brief One client's video input as seen by the compositor
+   */
   typedef struct {
     char client_id[MAX_CLIENT_ID_LEN];
     bool is_active;

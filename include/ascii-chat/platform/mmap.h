@@ -38,6 +38,7 @@ extern "C" {
 #endif
 
 /**
+ * @brief For platform mmap, this is the live record that ties `addr`, `size`, `fd` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  * @brief Memory-mapped file handle
  *
  * Contains platform-specific handles and mapping information.

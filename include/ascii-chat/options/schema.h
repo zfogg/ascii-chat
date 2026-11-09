@@ -81,6 +81,9 @@ typedef struct {
   // Mode-aware default getter (for options with mode-specific defaults)
   const void *(*mode_default_getter)(
       asciichat_mode_t mode); ///< Get mode-specific default value (NULL if not mode-aware)
+/**
+ * @brief Option metadata for config file parsing
+ */
 } config_option_metadata_t;
 
 /**

@@ -32,6 +32,7 @@
 #include "../common.h"
 
 /**
+ * @brief update check result keeps the values that move through the subsystem: `update_available`, `last_check_time`, `dismissed_until`, `check_succeeded`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  * @brief Update check result data
  */
 typedef struct {

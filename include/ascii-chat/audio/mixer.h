@@ -163,9 +163,10 @@ typedef struct {
 } compressor_t;
 
 /**
- * @brief Noise gate settings and state
+ * @brief This is the handoff point for compressor. Callers fill `threshold_dB`, `knee_dB`, `ratio`, `attack_ns` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief Noise-gate thresholds, smoothing coefficients, and live open/closed state.
  *
- * Implements noise gate to suppress background noise below threshold.
+ * This object suppresses microphone or mixed-audio samples below `threshold`.
  * Uses hysteresis to prevent gate chatter (rapid opening/closing).
  *
  * GATE BEHAVIOR:
@@ -202,6 +203,7 @@ typedef struct {
 } noise_gate_t;
 
 /**
+ * @brief noise gate keeps the values that move through the subsystem: `threshold`, `attack_ns`, `release_ns`, `hysteresis`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  * @brief High-pass filter settings and state
  *
  * Implements first-order IIR high-pass filter to remove low-frequency
@@ -232,6 +234,8 @@ typedef struct {
 } highpass_filter_t;
 
 /**
+ * @brief This is the handoff point for highpass filter. Callers fill `cutoff_hz`, `sample_rate`, `alpha`, `prev_input` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
+ * @brief lowpass filter keeps the values that move through the subsystem: `cutoff_hz`, `sample_rate`, `alpha`, `prev_output`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  * @brief Low-pass filter state
  *
  * First-order IIR low-pass filter for removing high-frequency noise
@@ -293,6 +297,7 @@ typedef struct {
 } ducking_t;
 
 /**
+ * @brief For ducking, this is the live record that ties `threshold_dB`, `leader_margin_dB`, `atten_dB`, `attack_ns` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  * @brief Main mixer structure for multi-source audio processing
  *
  * Manages multiple audio sources (clients) and processes them through

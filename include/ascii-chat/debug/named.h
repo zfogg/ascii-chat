@@ -3,8 +3,8 @@
 /**
  * @file debug/named.h
  * @brief Named object registry for debugging — log identifiable resource names
- * @ingroup debug_named
- * @addtogroup debug_named
+ * @ingroup debug_util
+ * @addtogroup debug_util
  * @{
  *
  * This module provides a centralized registry for naming any addressable resource:
@@ -64,7 +64,7 @@ extern "C" {
 /**
  * @brief Initialize the named object registry
  * @return 0 on success, non-zero on error
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Must be called once at startup before any named_register() calls.
  * Typically called from lock_debug_init().
@@ -73,7 +73,7 @@ asciichat_error_t named_init(void);
 
 /**
  * @brief Destroy the named object registry
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Cleans up all registered names and internal structures.
  * Typically called from lock_debug_destroy().
@@ -89,7 +89,7 @@ void named_destroy(void);
  * @param line Source line where registration occurred (typically __LINE__)
  * @param func Function where registration occurred (typically __func__)
  * @return Pointer to the full registered name (e.g., "recv.7"), valid until unregister
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * The returned name string is stored in the registry and remains valid until
  * named_unregister(key) is called. Do not modify or free the returned pointer.
@@ -114,7 +114,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
  * @param fmt Printf-style format string
  * @param ... Format arguments
  * @return Pointer to the full registered name
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Allows full control over the registered name. The format string and arguments
  * are printed to create the name (e.g., "client.%u" with args "17" → "client.17").
@@ -131,7 +131,7 @@ const char *named_register_fmt(uintptr_t key, const char *type, const char *form
 /**
  * @brief Unregister a resource by key
  * @param key The same uintptr_t passed to named_register
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Removes the resource from the registry. Safe to call multiple times for the
  * same key (idempotent).
@@ -143,7 +143,7 @@ void named_unregister(uintptr_t key);
  * @param key The resource key
  * @param new_base_name New base name (will be auto-suffixed with counter)
  * @return Updated name string, or NULL if key not found
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Updates an existing registration with a new base name. The new name will be
  * auto-suffixed with a counter to make it unique (e.g., "client_123.0").
@@ -157,7 +157,7 @@ const char *named_update_name(uintptr_t key, const char *new_base_name);
  * @brief Look up the registered name for a resource
  * @param key The resource key
  * @return Registered name string, or NULL if not registered
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Returns the name string registered with named_register() or named_register_fmt(),
  * or NULL if the key is not in the registry.
@@ -167,6 +167,9 @@ const char *named_update_name(uintptr_t key, const char *new_base_name);
 const char *named_get(uintptr_t key);
 
 /** Copied display metadata; never contains pointers into a live registry entry. */
+/**
+ * @brief The useful part of named metadata is in its fields: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 typedef struct {
   char name[DEBUG_NAMED_NAME_BUFFER_SIZE];
   char type[DEBUG_NAMED_TYPE_BUFFER_SIZE];
@@ -187,7 +190,7 @@ bool named_packet_metadata_copy(int packet_type, named_metadata_t *output);
  * @brief Look up the registered type for a resource
  * @param key The resource key
  * @return Registered type string, or NULL if not registered
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Returns the type string registered with named_register() or named_register_fmt(),
  * or NULL if the key is not in the registry.
@@ -203,7 +206,7 @@ bool named_registry_has_type(const char *type, size_t length);
  * @brief Get the format specifier for a registered named object
  * @param key The resource key
  * @return Format specifier string (e.g., "0x%tx"), or NULL if not registered
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Returns the format specifier registered with named_register(), or NULL if
  * the key is not in the registry.
@@ -219,7 +222,7 @@ const char *named_get_format_spec(uintptr_t key);
  * @param line Source line where registration occurred
  * @param func Function where registration occurred
  * @return Registered name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Registers an FD with a key that includes type namespace to avoid collisions
  * with packet types or other numeric values. If name is non-NULL, uses "name (fd=N)"
@@ -232,7 +235,7 @@ const char *named_register_fd(int fd, const char *name, const char *file, int li
  * @brief Look up a registered file descriptor
  * @param fd File descriptor value
  * @return Registered name string, or NULL if not registered
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Looks up an FD using the same namespace encoding as named_register_fd().
  * In release builds (NDEBUG), this always returns NULL.
@@ -243,7 +246,7 @@ const char *named_get_fd(int fd);
  * @brief Get the format specifier for a registered file descriptor
  * @param fd File descriptor value
  * @return Format specifier string (e.g., "%d"), or NULL if not registered
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 const char *named_get_fd_format_spec(int fd);
 
@@ -254,7 +257,7 @@ const char *named_get_fd_format_spec(int fd);
  * @param line Source line where registration occurred
  * @param func Function where registration occurred
  * @return Registered name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Registers a packet type with a key that includes type namespace to avoid collisions
  * with FDs or other numeric values. Name is auto-generated as "PACKET_TYPE=%d".
@@ -266,7 +269,7 @@ const char *named_register_packet_type(int pkt_type, const char *file, int line,
  * @brief Look up a registered packet type
  * @param pkt_type Packet type value
  * @return Registered name string, or NULL if not registered
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Looks up a packet type using the same namespace encoding as named_register_packet_type().
  * In release builds (NDEBUG), this always returns NULL.
@@ -277,7 +280,7 @@ const char *named_get_packet_type(int pkt_type);
  * @brief Get the format specifier for a registered packet type
  * @param pkt_type Packet type value
  * @return Format specifier string (e.g., "%d"), or NULL if not registered
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 const char *named_get_packet_type_format_spec(int pkt_type);
 
@@ -287,7 +290,7 @@ const char *named_get_packet_type_format_spec(int pkt_type);
  * @param type_len Length of type name
  * @param id Integer ID value to look up
  * @return Registered name string, or NULL if not found
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Searches the registry for entries matching the given type and integer ID.
  * Enables formatting of patterns like "socket 12" → "socket/server_listener (socket=12)".
@@ -300,7 +303,7 @@ const char *named_get_by_type_and_id(const char *type_name, size_t type_len, int
  * @param key The resource key
  * @param type_hint A type label (e.g., "mutex", "socket", "thread")
  * @return Description string in format "type_hint: name (0xKEY)" or type_hint if not registered
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Returns a per-thread static buffer suitable for a single log call. The buffer
  * is overwritten on the next call to this function within the same thread.
@@ -315,7 +318,7 @@ const char *named_describe(uintptr_t key, const char *type_hint);
  * @brief Convert a thread handle to a registry key
  * @param thread Thread handle (asciichat_thread_t)
  * @return uintptr_t suitable for registry lookups
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Platform-specific conversion. On POSIX, pthread_t is cast directly.
  * On Windows, HANDLE is cast directly.
@@ -334,7 +337,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @param name Base name string
  * @param type Data type label (e.g., "mutex", "socket")
  * @param fmt Format specifier for printing (e.g., "0x%tx")
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * In debug builds, automatically captures __FILE__, __LINE__, and __func__ for location info.
  * In release builds (NDEBUG), this is a no-op.
@@ -350,7 +353,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @param fmt_spec Format specifier for printing (e.g., "0x%tx")
  * @param fmt Printf-style format string for name
  * @param ... Format arguments
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * In debug builds, automatically captures __FILE__, __LINE__, and __func__ for location info.
  * In release builds (NDEBUG), this is a no-op.
@@ -362,14 +365,14 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
 /**
  * @brief Unregister a pointer
  * @param ptr Object pointer
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_UNREGISTER(ptr) named_unregister((uintptr_t)(const void *)(ptr))
 
 /**
  * @brief Look up registered name for a pointer
  * @param ptr Object pointer
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_GET(ptr) named_get((uintptr_t)(const void *)(ptr))
 
@@ -377,7 +380,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Describe a pointer in log format
  * @param ptr Object pointer
  * @param hint Type hint string (e.g., "mutex")
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_DESCRIBE(ptr, hint) named_describe((uintptr_t)(const void *)(ptr), (hint))
 
@@ -390,7 +393,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @param id Integer handle (socket_t, int, etc.)
  * @param name Base name string
  * @param type Data type label (e.g., "socket", "fd")
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * In debug builds, automatically captures __FILE__, __LINE__, and __func__ for location info.
  * In release builds (NDEBUG), this is a no-op.
@@ -402,7 +405,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
 /**
  * @brief Unregister an integer handle
  * @param id Integer handle
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_UNREGISTER_ID(id) named_unregister((uintptr_t)(intptr_t)(id))
 
@@ -410,7 +413,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Describe an integer handle in log format
  * @param id Integer handle
  * @param hint Type hint string (e.g., "socket")
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_DESCRIBE_ID(id, hint) named_describe((uintptr_t)(intptr_t)(id), (hint))
 
@@ -422,7 +425,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a mutex with automatic format specifier
  * @param mutex Mutex pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for mutex addresses.
  */
@@ -434,7 +437,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register an rwlock with automatic format specifier
  * @param lock RWLock pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for rwlock addresses.
  */
@@ -450,7 +453,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a condition variable with automatic format specifier
  * @param cond Condition variable pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for cond addresses.
  */
@@ -462,7 +465,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a socket with automatic format specifier
  * @param socket Socket pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for socket addresses.
  */
@@ -475,7 +478,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a WebSocket connection with automatic format specifier
  * @param websocket WebSocket pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for websocket addresses.
  */
@@ -487,7 +490,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a data channel with automatic format specifier
  * @param datachannel Data channel pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for datachannel addresses.
  */
@@ -499,7 +502,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a thread pool work item with automatic format specifier
  * @param work Work item pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for work item addresses.
  */
@@ -511,7 +514,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a client connection with automatic format specifier
  * @param client Client pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for client addresses.
  */
@@ -523,7 +526,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a crypto context with automatic format specifier
  * @param ctx Crypto context pointer
  * @param name Base name string (typically "crypto_client_<id>")
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for crypto context addresses.
  */
@@ -535,7 +538,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a transport with automatic format specifier
  * @param transport Transport pointer
  * @param name Base name string (typically "transport_client_<id>" or "transport_tcp_<id>")
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for transport addresses.
  */
@@ -547,7 +550,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a frame buffer with automatic format specifier
  * @param buf Frame buffer pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for frame buffer addresses.
  */
@@ -559,7 +562,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a packet queue with automatic format specifier
  * @param queue Packet queue pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for packet queue addresses.
  */
@@ -571,7 +574,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register an audio ring buffer with automatic format specifier
  * @param buf Audio ring buffer pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for ring buffer addresses.
  */
@@ -583,7 +586,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register an audio mixer with automatic format specifier
  * @param mixer Mixer pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for mixer addresses.
  */
@@ -595,7 +598,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register an audio codec with automatic format specifier
  * @param codec Audio codec pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for audio codec addresses.
  */
@@ -607,7 +610,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a video encoder with automatic format specifier
  * @param encoder Video encoder pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for video encoder addresses.
  */
@@ -619,7 +622,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a buffer domain with automatic format specifier
  * @param pool buffer domain pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for buffer domain addresses.
  */
@@ -631,7 +634,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register an FFmpeg decoder with automatic format specifier
  * @param decoder FFmpeg decoder pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for decoder addresses.
  */
@@ -644,7 +647,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @param encoder FFmpeg encoder pointer
  * @param name Base name string
  * @param parent_ptr Parent context pointer (uintptr_t cast)
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for encoder addresses.
  */
@@ -657,7 +660,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @param encoder H.265 encoder pointer
  * @param name Base name string
  * @param parent_ptr Parent context pointer (uintptr_t cast)
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for H.265 encoder addresses.
  */
@@ -670,7 +673,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @param decoder H.265 decoder pointer
  * @param name Base name string
  * @param parent_ptr Parent context pointer (uintptr_t cast)
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for H.265 decoder addresses.
  */
@@ -682,7 +685,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register an audio context with automatic format specifier
  * @param ctx Audio context pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for audio context addresses.
  */
@@ -694,7 +697,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a rate limiter with automatic format specifier
  * @param limiter Rate limiter pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for rate limiter addresses.
  */
@@ -706,7 +709,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a WAV writer with automatic format specifier
  * @param writer WAV writer pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for WAV writer addresses.
  */
@@ -718,7 +721,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a media source with automatic format specifier
  * @param source Media source pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for media source addresses.
  */
@@ -732,7 +735,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @param name Debug name for the file descriptor
  * @param flags Open flags (O_RDONLY, O_WRONLY, etc.)
  * @param ... Optional mode argument for O_CREAT
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that opens a file and registers the returned FD.
  * Automatically uses "%d" format specifier for file descriptor integers.
@@ -758,7 +761,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
 /**
  * @brief Unregister a file descriptor
  * @param fd File descriptor to unregister
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Call this before closing a named file descriptor.
  */
@@ -768,7 +771,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register an existing file descriptor
  * @param fd File descriptor (must be >= 0)
  * @param name Human-readable name for the fd (e.g., "inhibit"), or NULL for auto-generated
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro for registering file descriptors that are already open.
  * If name is non-NULL, registers as "name (fd=N)"; otherwise uses "fd=N".
@@ -780,7 +783,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register an atomic_t with automatic format specifier
  * @param a Pointer to atomic_t
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for atomic addresses.
  */
@@ -792,7 +795,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register an _Atomic(void *) with automatic format specifier
  * @param a Pointer to _Atomic(void *)
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for atomic_ptr addresses.
  */
@@ -808,7 +811,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Register a thread handle with name and automatic format specifier
  * @param thread asciichat_thread_t handle (NOT a pointer)
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for thread addresses.
  * In debug builds, automatically captures __FILE__, __LINE__, and __func__ for location info.
@@ -822,7 +825,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
 /**
  * @brief Unregister a thread handle
  * @param thread asciichat_thread_t handle (NOT a pointer)
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_UNREGISTER_THREAD(thread) named_unregister(thread_to_key((thread)))
 
@@ -841,28 +844,28 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
 /**
  * @brief Describe a mutex_t for logging
  * @param m Pointer to mutex_t
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAME_DESCRIBE_MUTEX(m) named_describe((uintptr_t)(const void *)(m), "mutex")
 
 /**
  * @brief Describe an rwlock_t for logging
  * @param l Pointer to rwlock_t
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAME_DESCRIBE_RWLOCK(l) named_describe((uintptr_t)(const void *)(l), "rwlock")
 
 /**
  * @brief Describe a cond_t for logging
  * @param c Pointer to cond_t
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAME_DESCRIBE_COND(c) named_describe((uintptr_t)(const void *)(c), "cond")
 
 /**
  * @brief Describe a thread for logging
  * @param t asciichat_thread_t handle
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Uses named_describe_thread() function to handle platform-specific conversion.
  */
@@ -871,21 +874,21 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
 /**
  * @brief Describe a transport for logging
  * @param tr Pointer to acip_transport_t
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAME_DESCRIBE_TRANSPORT(tr) named_describe((uintptr_t)(const void *)(tr), "transport")
 
 /**
  * @brief Describe a socket for logging
  * @param fd socket_t file descriptor
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAME_DESCRIBE_SOCKET(fd) named_describe((uintptr_t)(intptr_t)(fd), "socket")
 
 /**
  * @brief Describe a ring buffer for logging
  * @param rb Pointer to ringbuffer_t
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAME_DESCRIBE_RINGBUF(rb) named_describe((uintptr_t)(const void *)(rb), "ringbuf")
 
@@ -899,7 +902,7 @@ uintptr_t thread_to_key(asciichat_thread_t thread);
  * @brief Describe a thread for logging (function wrapper)
  * @param thread asciichat_thread_t handle
  * @return Description string "thread: name (0xID)"
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * This is a function (not a macro) to handle the opaque asciichat_thread_t type
  * properly, converting it through thread_to_key().
@@ -915,7 +918,7 @@ const char *named_describe_thread(void *thread);
  * @param key The registered key (uintptr_t)
  * @param name The registered name string
  * @param user_data User-provided context pointer
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Called for each entry in the registry. The callback should not modify
  * the registry during iteration.
@@ -926,7 +929,7 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @brief Register a TCP client with automatic format specifier
  * @param client TCP client pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_REGISTER_TCP_CLIENT(client, name, parent_ptr)                                                            \
   named_register((uintptr_t)(const void *)(client), (name), "tcp_client", "0x%tx", __FILE__, __LINE__, __func__,       \
@@ -936,7 +939,7 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @brief Register a WebSocket client with automatic format specifier
  * @param client WebSocket client pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_REGISTER_WEBSOCKET_CLIENT(client, name, parent_ptr)                                                      \
   named_register((uintptr_t)(const void *)(client), (name), "websocket_client", "0x%tx", __FILE__, __LINE__, __func__, \
@@ -946,7 +949,7 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @brief Register an app client with automatic format specifier
  * @param client App client pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_REGISTER_APP_CLIENT(client, name, parent_ptr)                                                            \
   named_register((uintptr_t)(const void *)(client), (name), "app_client", "0x%tx", __FILE__, __LINE__, __func__,       \
@@ -956,7 +959,7 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @brief Register a video frame buffer with automatic format specifier
  * @param buf Video frame buffer pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_REGISTER_VIDEO_FRAME_BUFFER(buf, name, parent_ptr)                                                       \
   named_register((uintptr_t)(const void *)(buf), (name), "video_frame_buffer", "0x%tx", __FILE__, __LINE__, __func__,  \
@@ -966,7 +969,7 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @brief Register a thread pool with automatic format specifier
  * @param pool Thread pool pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_REGISTER_THREAD_POOL(pool, name, parent_ptr)                                                             \
   named_register((uintptr_t)(const void *)(pool), (name), "thread_pool", "0x%tx", __FILE__, __LINE__, __func__,        \
@@ -976,7 +979,7 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @brief Register an options builder with automatic format specifier
  * @param builder Options builder pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_REGISTER_OPTIONS_BUILDER(builder, name, parent_ptr)                                                      \
   named_register((uintptr_t)(const void *)(builder), (name), "options_builder", "0x%tx", __FILE__, __LINE__, __func__, \
@@ -986,7 +989,7 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @brief Register a simple frame swap with automatic format specifier
  * @param swap Simple frame swap pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_REGISTER_SIMPLE_FRAME_SWAP(swap, name, parent_ptr)                                                       \
   named_register((uintptr_t)(const void *)(swap), (name), "simple_frame_swap", "0x%tx", __FILE__, __LINE__, __func__,  \
@@ -996,7 +999,7 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @brief Register a client audio pipeline with automatic format specifier
  * @param pipeline Client audio pipeline pointer
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  */
 #define NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(pipeline, name, parent_ptr)                                               \
   named_register((uintptr_t)(const void *)(pipeline), (name), "client_audio_pipeline", "0x%tx", __FILE__, __LINE__,    \
@@ -1012,7 +1015,7 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
 
 /**
  * @brief Register all packet types from packet_type_t enum
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Registers all packet type enum values in the named registry using keys
  * in the format "PACKET_TYPE=%d" where %d is the enum value.
@@ -1025,7 +1028,7 @@ void named_registry_register_packet_types(void);
  * @brief Iterate through all registered entries
  * @param callback Function to call for each entry
  * @param user_data Opaque context passed to callback
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Copies all names and keys, then invokes callbacks outside the registry lock.
  * Tries the registry lock without waiting. Sets *completed to false on
@@ -1058,7 +1061,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
  * @brief Register a libwebsockets context with automatic format specifier
  * @param context LWS context pointer (struct lws_context *)
  * @param name Base name string (e.g., "ws_server" or "ws_client")
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro for naming libwebsockets contexts. Automatically uses "0x%tx" format.
  * Usage: NAMED_REGISTER_LWS_CONTEXT(lws_ctx, "ws_server");
@@ -1071,7 +1074,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
  * @brief Register an FFmpeg decoder context with automatic format specifier
  * @param context FFmpeg context pointer (AVFormatContext * or similar)
  * @param name Base name string (e.g., "ffmpeg_decoder")
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro for naming FFmpeg contexts. Automatically uses "0x%tx" format.
  * Usage: NAMED_REGISTER_FFMPEG_CONTEXT(avctx, "ffmpeg_input");
@@ -1085,7 +1088,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
  * @param context Any context pointer
  * @param context_type Type string (e.g., "ssl_context", "decoder_context")
  * @param name Base name string
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Convenience macro for naming any opaque context. Automatically uses "0x%tx" format.
  * Usage: NAMED_REGISTER_CONTEXT(ctx, "ssl_context", "tls_server");
@@ -1099,7 +1102,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
  * @param key The uintptr_t key to look up
  * @param buffer Output buffer for the result
  * @param size Size of the output buffer
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Tries to look up the registered name for the key. If found, copies it to buffer.
  * If not found, formats the key as "0x%tx" (hexadecimal address).
@@ -1128,7 +1131,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
  * @param id The integer ID to look up (e.g., thread ID, FD, packet type)
  * @param buffer Output buffer for the result
  * @param size Size of the output buffer
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Tries to look up the registered name for an integer ID. If found, copies it to buffer.
  * If not found, formats the ID as "0x%lx" (hexadecimal).
@@ -1155,7 +1158,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
  * @param str The string to copy (may be NULL)
  * @param buffer Output buffer
  * @param size Size of the output buffer
- * @ingroup debug_named
+ * @ingroup debug_util
  *
  * Safe string copy that handles NULL inputs and ensures null termination.
  * Useful for formatting optional or variable string fields.

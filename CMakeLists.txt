@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.30)
+
+# The project has intentionally forced cache assignments for platform and
+# dependency setup. Keep those assignments from making every Ninja build
+# re-run CMake; reconfigure explicitly with the selected preset.
+set(CMAKE_SUPPRESS_REGENERATION ON)
+
 if(POLICY CMP0174)
     cmake_policy(SET CMP0174 NEW)
 endif()
-
-# =============================================================================
-# Git Submodule Initialization (must come FIRST, before any dependencies are accessed)
-# =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/init/SubmoduleCheck.cmake)
 
 # =============================================================================
 # CMake Build Types
@@ -39,8 +40,8 @@ if(NOT DEFINED ASCIICHAT_DEPS_CACHE_ROOT OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "
 endif()
 
 # Build-type-specific cache directory
-# Note: Only compute if not already passed from parent build (e.g., temp build for defer tool)
-# This allows the defer tool's temp cmake build to use the same cache as the parent
+# Note: Only compute if not already passed from parent build (e.g., auxiliary build)
+# This allows the auxiliary CMake build to use the same cache as the parent
 if(NOT DEFINED ASCIICHAT_DEPS_CACHE_DIR OR ASCIICHAT_DEPS_CACHE_DIR STREQUAL "")
     set(ASCIICHAT_DEPS_CACHE_DIR "${CMAKE_BINARY_DIR}/_deps/legacy/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type" FORCE)
 endif()
@@ -89,6 +90,15 @@ message(STATUS "Using dependency cache: ${BoldCyan}${ASCIICHAT_DEPS_CACHE_DIR}${
 include(${CMAKE_SOURCE_DIR}/cmake/ProjectConstants.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/Options.cmake)
+
+if(ASCIICHAT_FORMAT_ONLY)
+    set(CMAKE_PROJECT_NAME ascii-chat-format CACHE INTERNAL "Format-only project name")
+    include(${CMAKE_SOURCE_DIR}/cmake/tools/CustomTargets.cmake)
+    return()
+endif()
+
+include(${CMAKE_SOURCE_DIR}/cmake/init/SubmoduleCheck.cmake)
+
 include(${CMAKE_SOURCE_DIR}/cmake/install/Version.cmake)
 version_detect()          # Sets PROJECT_VERSION_FROM_GIT and PROJECT_VERSION_DATE
 library_version_detect()  # Sets ASCIICHAT_LIB_VERSION (library version from lib/v* tags)
@@ -114,7 +124,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/platform/iOS.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
 configure_llvm_pre_project()
 
-# Always enable C++ for Clang tooling (defer() and source instrumentation)
+# Enable C++ for project dependencies and source instrumentation
 if(APPLE)
     set(PROJECT_LANGUAGES C CXX OBJC)
 else()
@@ -214,6 +224,11 @@ message(STATUS "Generated paths.h with ASCIICHAT_INSTALL_PREFIX=${BoldYellow}${C
 include(${PROJECT_SOURCE_DIR}/cmake/utils/SourceRoot.cmake)
 asciichat_configure_source_root("${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
 
+if(ASCIICHAT_FORMAT_ONLY)
+    include(${CMAKE_SOURCE_DIR}/cmake/tools/CustomTargets.cmake)
+    return()
+endif()
+
 # Only Ninja generator is supported - enforce this requirement
 #if(NOT CMAKE_GENERATOR MATCHES "Ninja")
 #    message(FATAL_ERROR
@@ -280,6 +295,14 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslDep.cmake)
 # All dependencies are now modularized into individual .cmake files in cmake/deps/
 # Dependencies.cmake orchestrates including them all
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
+
+# The defer parser runs from its own custom command and cannot see target-level
+# include propagation.  Keep the musl FFmpeg headers available to that parser
+# in the top-level scope used when the command is generated.
+if(USE_MUSL)
+    set(ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS
+        "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include")
+endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)
 configure_tomlc17()
@@ -384,25 +407,13 @@ foreach(_package_manager HOMEBREW SCOOP AUR)
     endif()
 endforeach()
 
-if(false)
-    include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
-endif()
+include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
-# IMPORTANT: Defer must run BEFORE panic so that:
-# 1. Defer analyzes clean original sources (correct scope analysis)
-# 2. Panic then transforms defer's output (just adds logging)
-# Skip defer tool for musl builds (C++ header compatibility issues with musl libc++)
-if(false)
-    if(NOT USE_MUSL)
-        ascii_defer_prepare()
-    endif()
-endif()
 ascii_panic_prepare()
 # Query tool is independent of defer/panic - it doesn't do source transformation
 ascii_query_prepare()
 
-include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 
 # Build panic runtime after Libraries.cmake creates ascii-chat-panic target
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/ToolingRuntime.cmake)
@@ -414,17 +425,17 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
 if(PLATFORM_IOS)
     add_subdirectory(${CMAKE_SOURCE_DIR}/src/ios ${CMAKE_BINARY_DIR}/src/ios)
 endif()
+# Defer transformation consumes the compile database during the build. Apply
+# project include/link settings before it captures commands for native sources;
+# the deferred pass below still covers targets declared later (notably tests).
+asciichat_finalize_project_settings()
+ascii_defer_prepare()
 enable_testing()
 if(TARGET ascii-chat)
     add_test(NAME ascii-chat-version COMMAND $<TARGET_FILE:ascii-chat> --version)
     set_tests_properties(ascii-chat-version PROPERTIES LABELS smoke TIMEOUT 15)
 endif()
 ascii_panic_finalize()
-if(false)
-    if(NOT USE_MUSL)
-        ascii_defer_finalize()
-    endif()
-endif()
 ascii_query_finalize()
 
 # =============================================================================
@@ -436,6 +447,7 @@ if(BUILD_WEB)
     # (Emscripten build is handled separately with correct toolchain below)
     if(NOT EMSCRIPTEN_TOOLCHAIN_FILE)
         add_subdirectory(${CMAKE_SOURCE_DIR}/src/web ${CMAKE_BINARY_DIR}/web)
+        ascii_defer_prepare_web()
     endif()
 else()
     message(STATUS "Web components ${BoldYellow}disabled${ColorReset} (BUILD_WEB=OFF)")
@@ -502,6 +514,15 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)
     enable_testing()
   endif()
   add_subdirectory(${CMAKE_SOURCE_DIR}/tests ${CMAKE_BINARY_DIR}/tests)
+  ascii_defer_prepare_tests()
+  if(BUILD_TESTS AND TARGET tests AND TARGET ascii-defer-native)
+    add_dependencies(tests ascii-defer-native)
+    foreach(_defer_test text clang transform)
+      if(TARGET ascii-defer-${_defer_test}-test)
+        add_dependencies(tests ascii-defer-${_defer_test}-test)
+      endif()
+    endforeach()
+  endif()
 endif()
 
 # Explicit local telemetry probe; never built or run by the test suite.

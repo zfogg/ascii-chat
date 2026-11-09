@@ -1,0 +1,5 @@
+# Package artifacts are produced locally and included only in npm packs.
+dist/
+node_modules/
+*.tgz
+!licenses/*.txt

@@ -8,6 +8,11 @@
 #define RECORDING_RATE 48000ULL
 #define RECORDING_CAPACITY (RECORDING_RATE * 30)
 
+/**
+ * @brief The useful part of audio recording is in `mix`, `channels`, `epoch_ns`, `read_position`: together they
+ * describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use
+ * the parent cleanup path.
+ */
 struct audio_recording {
   float *mix;
   unsigned channels;

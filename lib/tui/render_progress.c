@@ -33,8 +33,18 @@ typedef struct {
   size_t destination_length;
   // The NUL-terminated destination follows the NUL-terminated preview.
   char frame[];
+  /**
+   * @brief This is the handoff point for progress snapshot. Callers fill `started_ns`, `completed`, `total`,
+   * `total_known` before passing it on; consumers read the values during the operation and return ownership only where
+   * the member contract explicitly says they do.
+   */
 } progress_snapshot_t;
 
+/**
+ * @brief render progress keeps the values that move through the subsystem: `mutex`, `snapshot`, `fd`,
+ * `last_preview_ns`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that
+ * populated them rather than the struct copy itself.
+ */
 struct render_progress {
   mutex_t mutex;
   progress_snapshot_t *snapshot;

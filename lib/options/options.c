@@ -479,6 +479,8 @@ typedef struct {
   int otel_metrics_interval;
   int otel_timeout;
   int otel_queue_capacity;
+  /**
+   */
 } binary_level_opts_t;
 
 static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
@@ -595,7 +597,9 @@ options_t options_t_new(void) {
   // ============================================================================
   opts.color_filter = OPT_COLOR_FILTER_DEFAULT;
   opts.render_mode = OPT_RENDER_MODE_DEFAULT;
-  opts.renderer = ASCII_RENDERER_LUMINANCE;
+  opts.renderer = ASCII_RENDERER_DEFAULT;
+  opts.stabilize = true;
+  opts.stabilize_explicit = false;
   opts.palette_type = OPT_PALETTE_TYPE_DEFAULT;
   // palette_custom is already zeroed by memset
   opts.palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT;
@@ -731,6 +735,7 @@ options_t options_t_new(void) {
 }
 
 /**
+ * @brief Create a new options_t struct with all defaults set
  * @brief Create new options struct, preserving binary-level fields from source
  *
  * This version of options_t_new() extracts binary-level options from a source
@@ -900,13 +905,25 @@ typedef struct {
   bool color_setting_found;
   bool check_update_flag_seen;
   bool no_check_update_flag_seen;
+  /**
+   */
 } binary_actions_t;
 
 // argv entries borrow the original strings; only the pointer array is owned.
+/**
+ * @brief The useful part of binary actions is in `show_version`, `create_config`, `create_manpage`, `has_action`:
+ * together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent
+ * operation and use the parent cleanup path.
+ */
 typedef struct {
   int argc;
   char **argv;
   char **allocated;
+  /**
+   * @brief When code needs to work with mode arguments, it keeps `argc`, `argv`, `allocated` here instead of scattering
+   * it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock,
+   * thread, or callback context recorded in those fields.
+   */
 } mode_arguments_t;
 
 static asciichat_error_t validate_options_argv(int argc, char **argv) {
@@ -1689,6 +1706,19 @@ static void record_explicit_fps(options_t *opts, int mode_argc, char **mode_argv
   opts->fps_explicitly_set = fps_set_by_config || fps_set_by_cli || (fps_env && fps_env[0] != '\0');
 }
 
+static void record_explicit_stabilize(options_t *opts, int mode_argc, char **mode_argv) {
+  if (!opts)
+    return;
+  for (int i = 0; i < mode_argc; ++i) {
+    if (mode_argv[i] && (!strcmp(mode_argv[i], "--stabilize") || !strncmp(mode_argv[i], "--stabilize=", 12))) {
+      opts->stabilize_explicit = true;
+      return;
+    }
+  }
+  const char *env = SAFE_GETENV("ASCII_CHAT_STABILIZE");
+  opts->stabilize_explicit = env && env[0] != '\0';
+}
+
 static asciichat_error_t publish_options_for_validation(options_t *opts) {
   // Publish options to RCU as soon as they're parsed
   // This ensures GET_OPTION() works during cleanup even if validation fails
@@ -2396,6 +2426,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     goto cleanup;
   }
   record_explicit_screen_and_debug_options(&opts, mode_args.argc, mode_args.argv);
+  record_explicit_stabilize(&opts, mode_args.argc, mode_args.argv);
   apply_screen_defaults(&opts, mode_args.argc, mode_args.argv);
   result = validate_option_strings(&opts);
   if (result != ASCIICHAT_OK) {

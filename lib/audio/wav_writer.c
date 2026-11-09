@@ -14,7 +14,10 @@
 // WAV file header structures
 #pragma pack(push, 1)
 /**
- * @brief WAV RIFF header (first 12 bytes of WAV file)
+ * @brief Packed RIFF/WAVE container header written before the format and data chunks
+ * @brief Packed fmt chunk describing PCM/float encoding, channels, rate, and sample width
+ * @brief Packed data chunk header giving the byte count of the following samples
+ * @brief Packed RIFF/WAVE container header written before the format and data chunks.
  */
 typedef struct {
   char riff[4];       ///< "RIFF" identifier
@@ -23,7 +26,7 @@ typedef struct {
 } wav_riff_header_t;
 
 /**
- * @brief WAV format chunk describing audio format parameters
+ * @brief Packed `fmt ` chunk describing PCM/float encoding, channels, rate, and sample width.
  */
 typedef struct {
   char fmt[4];              ///< "fmt " chunk identifier
@@ -37,7 +40,7 @@ typedef struct {
 } wav_fmt_chunk_t;
 
 /**
- * @brief WAV data chunk header preceding audio samples
+ * @brief Packed `data` chunk header giving the byte count of the following samples.
  */
 typedef struct {
   char data[4];       ///< "data" chunk identifier

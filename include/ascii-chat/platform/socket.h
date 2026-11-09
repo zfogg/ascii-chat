@@ -473,6 +473,7 @@ int socket_connect(socket_t sock, const struct sockaddr *addr, socklen_t addrlen
 #define SOCKET_IOV_MAX 16
 #define SOCKET_ZEROCOPY_THRESHOLD (64 * 1024)
 /** Requested kernel send buffer for latency-sensitive ACIP connections.
+ * @brief Owns the temporary storage used by socket buffer. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  * Linux may report twice this value for bookkeeping; reserve that upper bound. */
 #define SOCKET_STREAM_SEND_BUFFER (64U * 1024U)
 #define SOCKET_STREAM_SEND_RESERVE (2U * SOCKET_STREAM_SEND_BUFFER)
@@ -504,6 +505,7 @@ socket_io_stats_t socket_io_stats_get(void);
 void socket_io_stats_reset(void);
 
 /** Owned send storage. Large Linux allocations use private mappings: unmapping
+ * @brief Owns the temporary storage used by socket send buffer. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  * after cancellation cannot recycle pages still pinned by the network stack.
  * Other platforms and small allocations use owned buffers. All storage is budgeted.
  */

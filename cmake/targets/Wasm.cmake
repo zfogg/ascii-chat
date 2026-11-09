@@ -2,7 +2,7 @@ include_guard(GLOBAL)
 
 # Parent targets share one lock because they all write the same nested Ninja state.
 function(asciichat_add_wasm_targets WASM_BUILD_DIR)
-    foreach(_target mirror-web client-web web)
+    foreach(_target mirror-web client-web renderer-web web)
         if(TARGET ${_target})
             continue()
         endif()

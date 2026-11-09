@@ -6,6 +6,14 @@
 
 #define ACIP_QUIC_ENDPOINT_MAX_TRANSPORTS 64
 
+/**
+ * @brief This is the handoff point for acip quic endpoint. Callers fill `lane`, `tls`, `udp`, `worker` before passing
+ * it on; consumers read the values during the operation and return ownership only where the member contract explicitly
+ * says they do.
+ * @brief This is the handoff point for endpoint transport. Callers fill `next`, `connection`, `transport`, `claimed`
+ * before passing it on; consumers read the values during the operation and return ownership only where the member
+ * contract explicitly says they do.
+ */
 typedef struct endpoint_transport {
   struct endpoint_transport *next;
   acip_quic_connection_t *connection;
@@ -121,7 +129,7 @@ static bool connection_failed(acip_quic_connection_t *connection, asciichat_erro
 }
 
 asciichat_error_t quic_endpoint_open(const struct sockaddr *address, socklen_t length, bool listener,
-                                          const acip_quic_config_t *config, acip_quic_endpoint_t **out) {
+                                     const acip_quic_config_t *config, acip_quic_endpoint_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC endpoint output");
   *out = NULL;
@@ -170,13 +178,12 @@ asciichat_error_t quic_endpoint_open(const struct sockaddr *address, socklen_t l
     endpoint->prefer_audio_datagrams = config->prefer_audio_datagrams;
     endpoint->prefer_visual_datagrams = config->prefer_visual_datagrams;
     endpoint->listener = listener;
-    result =
-        quic_udp_endpoint_create(address, length, listener ? endpoint->tls : NULL,
+    result = quic_udp_endpoint_create(address, length, listener ? endpoint->tls : NULL,
                                       listener ? accept_connection : NULL, listener ? endpoint : NULL, &endpoint->udp);
   }
   if (result == ASCIICHAT_OK)
     result = quic_worker_start_locked_failure(endpoint->udp, &endpoint->lane, connection_failed, endpoint,
-                                                   &endpoint->worker);
+                                              &endpoint->worker);
   if (result != ASCIICHAT_OK) {
     quic_udp_endpoint_destroy(&endpoint->udp);
     quic_tls_destroy(&endpoint->tls);
@@ -189,7 +196,7 @@ asciichat_error_t quic_endpoint_open(const struct sockaddr *address, socklen_t l
 }
 
 asciichat_error_t quic_endpoint_address(acip_quic_endpoint_t *endpoint, struct sockaddr_storage *address,
-                                             socklen_t *length) {
+                                        socklen_t *length) {
   if (!endpoint)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC endpoint");
   mutex_lock(&endpoint->lane);
@@ -198,8 +205,8 @@ asciichat_error_t quic_endpoint_address(acip_quic_endpoint_t *endpoint, struct s
   return result;
 }
 
-asciichat_error_t quic_connect(acip_quic_endpoint_t *endpoint, const struct sockaddr *remote,
-                                    socklen_t remote_length, const char *server_name, acip_transport_t **out) {
+asciichat_error_t quic_connect(acip_quic_endpoint_t *endpoint, const struct sockaddr *remote, socklen_t remote_length,
+                               const char *server_name, acip_transport_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing QUIC transport output");
   *out = NULL;
@@ -211,8 +218,8 @@ asciichat_error_t quic_connect(acip_quic_endpoint_t *endpoint, const struct sock
                              : endpoint->terminal_error ? SET_ERRNO(endpoint->terminal_error, "QUIC endpoint failed")
                              : endpoint->count >= ACIP_QUIC_ENDPOINT_MAX_TRANSPORTS
                                  ? SET_ERRNO(ERROR_BUFFER_FULL, "QUIC endpoint transport limit reached")
-                                 : quic_udp_connect(endpoint->udp, endpoint->tls, server_name, remote,
-                                                         remote_length, time_get_ns(), &connection);
+                                 : quic_udp_connect(endpoint->udp, endpoint->tls, server_name, remote, remote_length,
+                                                    time_get_ns(), &connection);
   if (result == ASCIICHAT_OK) {
     result = attach(endpoint, connection, true, out);
     if (result != ASCIICHAT_OK)
@@ -232,8 +239,7 @@ asciichat_error_t quic_accept(acip_quic_endpoint_t *endpoint, acip_transport_t *
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC listener");
   mutex_lock(&endpoint->lane);
   endpoint_transport_t *item = endpoint->transports;
-  while (item &&
-         (item->claimed || (endpoint->tls->webtransport && !quic_connection_accept_ready(item->connection))))
+  while (item && (item->claimed || (endpoint->tls->webtransport && !quic_connection_accept_ready(item->connection))))
     item = item->next;
   asciichat_error_t result = ASCIICHAT_OK;
   if (item) {
@@ -335,7 +341,7 @@ asciichat_error_t quic_endpoint_destroy(acip_quic_endpoint_t **endpoint) {
 }
 
 asciichat_error_t quic_endpoint_migrate(acip_quic_endpoint_t *endpoint, const struct sockaddr *local_address,
-                                             socklen_t length) {
+                                        socklen_t length) {
   if (!endpoint || endpoint->listener || !local_address)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC client endpoint migration");
   mutex_lock(&endpoint->lane);
@@ -349,8 +355,8 @@ asciichat_error_t quic_endpoint_migrate(acip_quic_endpoint_t *endpoint, const st
     return result;
   mutex_lock(&endpoint->lane);
   result = quic_udp_migrate(endpoint->udp, local_address, length, time_get_ns());
-  asciichat_error_t restart = quic_worker_start_locked_failure(endpoint->udp, &endpoint->lane, connection_failed,
-                                                                    endpoint, &endpoint->worker);
+  asciichat_error_t restart =
+      quic_worker_start_locked_failure(endpoint->udp, &endpoint->lane, connection_failed, endpoint, &endpoint->worker);
   if (restart != ASCIICHAT_OK)
     (void)connection_failed(NULL, restart, endpoint);
   mutex_unlock(&endpoint->lane);

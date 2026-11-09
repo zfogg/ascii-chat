@@ -3,7 +3,7 @@ name = "default"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.15"
 dependencies = [
   "dotenv>=0.9.9",
   "gcovr>=8.8",
@@ -23,6 +23,7 @@ markers = [
   "network: loopback networking tests",
   "native: native library checks requiring isolated interpreters",
   "media: media processing tests",
+  "performance: performance and frame-rate regression tests",
   "terminal: PTY and terminal behavior",
   "mcp: MCP protocol tests",
 ]

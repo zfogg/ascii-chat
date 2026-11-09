@@ -10,6 +10,7 @@
 #include <string.h>
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 
 static void compression_measure(size_t input, size_t output, bool compressing) {
@@ -59,16 +60,17 @@ asciichat_error_t compress_data(const void *input, size_t input_size, void **out
   if (!compressed_data) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate compressed data buffer");
   }
+  defer_named(release_compressed, buffer_release(compressed_data));
 
   // Compress using zstd with user-specified compression level
   size_t ret = ZSTD_compress(compressed_data, compressed_size, input, input_size, compression_level);
 
   if (ZSTD_isError(ret)) {
-    buffer_release(compressed_data);
     return SET_ERRNO(ERROR_GENERAL, "zstd compression failed: %s", ZSTD_getErrorName(ret));
   }
 
   *output = compressed_data;
+  defer_cancel(release_compressed);
   *output_size = ret;
   ASCII_OTEL_ATTR_INT("compression.output.size", (int64_t)ret);
   ASCII_OTEL_ATTR_INT("compression.ratio.permille", (int64_t)(1000.0 * (double)ret / (double)input_size));

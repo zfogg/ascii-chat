@@ -1,4 +1,11 @@
 import type { ClientLikeKind } from "../../wasm/assetUrl";
+import type { MirrorModule } from "../../wasm/mirror";
+
+export interface SessionUiEvent {
+  action: number;
+  key: string;
+  module: MirrorModule;
+}
 
 export interface AsciiRendererHandle {
   /** The presented C/WASM raster; null until painted and during resize replacement. */
@@ -27,7 +34,7 @@ export interface AsciiRendererProps {
   splashEnabled?: boolean;
   uiLoading?: boolean;
   uiMessage?: string;
-  onUiAction?: (event: import("../../wasm/sessionUi").SessionUiEvent) => void;
+  onUiAction?: (event: SessionUiEvent) => void;
   onDimensionsChange?: (dims: { cols: number; rows: number }) => void;
   onFpsChange?: (fps: number) => void;
   error?: string;
@@ -35,7 +42,6 @@ export interface AsciiRendererProps {
   showFps?: boolean;
   connectionState?: number;
   wasmModuleReady?: boolean;
-  initializeOptions?: boolean;
   matrixMode?: boolean;
   /** Zero disables Zalgo; 1-10 selects its intensity. */
   zalgo?: number;

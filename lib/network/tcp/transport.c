@@ -25,6 +25,9 @@
 #include <ascii-chat/options/options.h>
 
 /**
+ * @brief tcp transport data is intentionally a small, concrete record. Fields such as `sockfd`, `owns_socket`,
+ * `is_connected`, `zerocopy_disabled` give callers the identity and current value they need. It is normally borrowed
+ * from, or owned by, the surrounding subsystem—not independently managed.
  * @brief TCP transport implementation data
  */
 typedef struct {

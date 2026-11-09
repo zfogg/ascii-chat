@@ -53,9 +53,15 @@
 #include <ascii-chat/network/websocket/callback_timing.h>
 
 /**
- * @brief Per-connection user data
+ * @brief Libwebsockets callback state for one ACIP WebSocket connection
  *
- * Stored in libwebsockets per-session user data (wsi user pointer).
+ * Libwebsockets allocates one instance as the protocol's per-session user
+ * data and passes it back to every callback for that socket.  It ties the
+ * socket to the server and ACIP transport, records the handler thread and
+ * cleanup state, and keeps the partially-written outbound message until the
+ * next writable callback.  The callback counters are used to observe races
+ * during connection teardown; the transport and pending-send buffer are
+ * released by the WebSocket close path.
  */
 typedef struct {
   websocket_server_t *server;        ///< Back-reference to server
@@ -65,12 +71,14 @@ typedef struct {
   bool cleaning_up;                  ///< True if cleanup is in progress (prevents race with remove_client)
 
   // Pending message send state (for LWS_CALLBACK_SERVER_WRITEABLE)
-  uint8_t *pending_send_data; ///< Current message being sent
-  size_t pending_send_len;    ///< Total length of message being sent
-  size_t pending_send_offset; ///< Current offset in message (bytes already sent)
-  bool has_pending_send;      ///< True if there's an in-progress message
-  atomic_t receive_callback_count; ///< RECEIVE callbacks for this connection
+  uint8_t *pending_send_data;        ///< Current message being sent
+  size_t pending_send_len;           ///< Total length of message being sent
+  size_t pending_send_offset;        ///< Current offset in message (bytes already sent)
+  bool has_pending_send;             ///< True if there's an in-progress message
+  atomic_t receive_callback_count;   ///< RECEIVE callbacks for this connection
   atomic_t writeable_callback_count; ///< WRITEABLE callbacks for this connection
+  /**
+   */
 } websocket_connection_data_t;
 
 // Forward declaration for websocket_protocols (defined later in file)
@@ -456,7 +464,7 @@ static asciichat_error_t websocket_receive_fragment(struct lws *wsi, websocket_c
   // interferes with fragmented frame processing in libwebsockets)
 
   log_dev("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
-            (unsigned long long)atomic_load_u64(&conn_data->receive_callback_count));
+          (unsigned long long)atomic_load_u64(&conn_data->receive_callback_count));
 
   // Record timing for this callback
   websocket_callback_timing_record(&g_ws_callback_timing.receive, callback_enter_ns, websocket_callback_timing_start());
@@ -607,6 +615,7 @@ static asciichat_error_t websocket_request_writable_callbacks(struct lws *wsi) {
 }
 
 /**
+ * @brief Libwebsockets callback state for one ACIP WebSocket connection
  * @brief libwebsockets callback for ACIP protocol
  *
  * Handles connection lifecycle events for WebSocket clients.

@@ -61,7 +61,12 @@ const rate_limit_config_t DEFAULT_RATE_LIMITS[RATE_EVENT_MAX] = {
 // ============================================================================
 
 /**
- * @brief Rate limiter structure
+ * @brief Private dispatch object joining a rate-limit backend to its operations table
+ * @brief Private dispatch object joining a rate-limit backend to its operations table.
+ *
+ * `ops` selects the backend implementation and `backend_data` points to its
+ * private state. The public API owns this wrapper and calls the backend's
+ * destroy callback before freeing it.
  */
 struct rate_limiter_s {
   const rate_limiter_backend_ops_t *ops; ///< Backend operations

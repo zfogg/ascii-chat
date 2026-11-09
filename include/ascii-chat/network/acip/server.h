@@ -66,6 +66,9 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
  * @return ASCIICHAT_OK on success, error code on failure
  */
 /** Reuse across synchronous sends from one worker (or under its existing send lock). */
+/**
+ * @brief Send ASCII frame to client (server → client)
+ */
 typedef struct {
   compression_workspace_t compression;
 } acip_frame_workspace_t;

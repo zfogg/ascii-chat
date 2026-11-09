@@ -110,9 +110,12 @@ typedef struct {
   // Error details
   asciichat_error_t error;                                              ///< Error code if !success
   char error_message[NETWORK_MDNS_DISCOVERY_ERROR_MESSAGE_BUFFER_SIZE]; ///< Human-readable error (if !success)
+/**
+ */
 } discovery_result_t;
 
 /**
+ * @brief Result from session discovery
  * @brief Session discovery configuration
  */
 typedef struct {

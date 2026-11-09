@@ -1,3 +1,4 @@
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/mutex.h>
@@ -5,11 +6,20 @@
 #include <ascii-chat/network/crc32.h>
 #include <string.h>
 
+/**
+ */
 typedef struct packet_node {
   queued_packet_t packet;
   struct packet_node *next;
 } packet_node_t;
 
+/**
+ * @brief For packet node, this is the live record that ties `packet`, `next` together. The owning code creates it,
+ * updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ * @brief packet queue keeps the values that move through the subsystem: `mutex`, `head`, `tail`, `domain`. Some members
+ * are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the
+ * struct copy itself.
+ */
 struct packet_queue {
   mutex_t mutex;
   packet_node_t *head;
@@ -30,19 +40,20 @@ packet_queue_t *packet_queue_create_config(const packet_queue_config_t *config) 
     SET_ERRNO(ERROR_INVALID_PARAM, "Queue needs a byte limit and a valid overflow policy");
     return NULL;
   }
-  packet_queue_t *queue = SAFE_CALLOC(1, sizeof(*queue), packet_queue_t *);
+  SAFE_CALLOC_DEFER_FREE(queue, 1, sizeof(packet_queue_t), packet_queue_t *);
   queue->config = *config;
   if (mutex_init(&queue->mutex, "packet_queue") != 0) {
-    SAFE_FREE(queue);
     return NULL;
   }
+  defer_named(queue_mutex, mutex_destroy(&queue->mutex));
   buffer_domain_config_t memory = {64 * 1024 * 1024, 8 * 1024 * 1024, 5000000000ULL, false};
   if (buffer_domain_create(&memory, &queue->domain) != ASCIICHAT_OK) {
-    mutex_destroy(&queue->mutex);
-    SAFE_FREE(queue);
     return NULL;
   }
-  return queue;
+  defer_cancel(queue_mutex);
+  packet_queue_t *result = queue;
+  queue = NULL;
+  return result;
 }
 
 packet_queue_t *packet_queue_create(size_t max_packets) {

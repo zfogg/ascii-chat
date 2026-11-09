@@ -3,6 +3,9 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/memory.h>
+#include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/video/terminal/ansi.h>
+#include <ascii-chat/util/utf8.h>
 
 #include <math.h>
 #include <stdio.h>
@@ -10,6 +13,11 @@
 
 #include "../video/anim/visualization_internal.h"
 
+/**
+ * @brief waveform color stop keeps the values that move through the subsystem: `frequency`, `red`, `green`, `blue`.
+ * Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them
+ * rather than the struct copy itself.
+ */
 typedef struct {
   float frequency;
   unsigned char red;
@@ -128,11 +136,45 @@ void audio_visualization_read(audio_visualization_source_t source, float *sample
     samples[i] = fmaxf(-1.0f, fminf(1.0f, samples[i]));
 }
 
+static char *visualization_color(char *out, const unsigned char *color, bool background, int color_mode) {
+  if (color_mode == COLOR_MODE_16) {
+    uint8_t index = rgb_to_16color(color[0], color[1], color[2]);
+    return background ? append_16color_bg(out, index) : append_16color_fg(out, index);
+  }
+  if (color_mode == COLOR_MODE_256) {
+    uint8_t index = rgb_to_256color(color[0], color[1], color[2]);
+    return background ? append_256color_bg(out, index) : append_256color_fg(out, index);
+  }
+  return background ? append_truecolor_bg(out, color[0], color[1], color[2])
+                    : append_truecolor_fg(out, color[0], color[1], color[2]);
+}
+
 /* Encode the same visualization grid for native terminals and browser rasterization.
  * Half-block grids have two vertical samples per terminal row. */
 char *visualization_encode(const char *cells, const unsigned char *colors, bool column_colors, unsigned int width,
                            unsigned int height, bool use_color, bool flip_x, bool flip_y) {
   int mode = GET_OPTION(render_mode);
+  int color_mode = GET_OPTION(color_mode);
+  if (color_mode == COLOR_MODE_AUTO)
+    color_mode = COLOR_MODE_TRUECOLOR;
+  use_color = use_color && color_mode != COLOR_MODE_NONE;
+  palette_type_t palette_type = (palette_type_t)GET_OPTION(palette_type);
+  const palette_def_t *builtin = get_builtin_palette(palette_type);
+  const char *palette =
+      palette_type == PALETTE_CUSTOM ? GET_OPTION(palette_custom) : (builtin ? builtin->chars : PALETTE_CHARS_STANDARD);
+  if (!palette || !*palette)
+    palette = PALETTE_CHARS_STANDARD;
+  const char *characters[256];
+  size_t lengths[256], count = 0;
+  for (const char *p = palette; *p && count < 256;) {
+    uint32_t codepoint;
+    int length = utf8_decode((const uint8_t *)p, &codepoint);
+    if (length <= 0)
+      break;
+    characters[count] = p;
+    lengths[count++] = (size_t)length;
+    p += length;
+  }
   bool half = mode == RENDER_MODE_HALF_BLOCK;
   unsigned int rows = half ? height / 2 : height;
   size_t capacity = (size_t)width * rows * 64 + rows + 1;
@@ -154,20 +196,36 @@ char *visualization_encode(const char *cells, const unsigned char *colors, bool 
         const unsigned char *lower_color = colors + (column_colors ? sx : lower) * 3;
         bool upper_on = ch != ' ', lower_on = cells[lower] != ' ';
         if (use_color) {
-          used += (size_t)snprintf(frame + used, capacity - used, "\033[38;2;%u;%u;%um\033[48;2;%u;%u;%um▀\033[0m",
-                                   upper_on ? color[0] : 0, upper_on ? color[1] : 0, upper_on ? color[2] : 0,
-                                   lower_on ? lower_color[0] : 0, lower_on ? lower_color[1] : 0,
-                                   lower_on ? lower_color[2] : 0);
+          const unsigned char black[3] = {0};
+          char *out = visualization_color(frame + used, upper_on ? color : black, false, color_mode);
+          out = visualization_color(out, lower_on ? lower_color : black, true, color_mode);
+          memcpy(out, "▀\033[0m", sizeof("▀\033[0m") - 1);
+          used = (size_t)(out - frame) + sizeof("▀\033[0m") - 1;
         } else {
           const char *glyph = upper_on ? (lower_on ? "█" : "▀") : (lower_on ? "▄" : " ");
           size_t length = strlen(glyph);
           memcpy(frame + used, glyph, length);
           used += length;
         }
-      } else if (use_color && ch != ' ') {
-        used += (size_t)snprintf(frame + used, capacity - used, "\033[%d;2;%u;%u;%um%c\033[0m",
-                                 mode == RENDER_MODE_BACKGROUND ? 48 : 38, color[0], color[1], color[2],
-                                 mode == RENDER_MODE_BACKGROUND ? ' ' : ch);
+      } else if (ch != ' ') {
+        char *out = frame + used;
+        if (use_color)
+          out = visualization_color(out, color, mode == RENDER_MODE_BACKGROUND, color_mode);
+        if (mode == RENDER_MODE_BACKGROUND && use_color) {
+          *out++ = ' ';
+        } else if (count) {
+          unsigned int luminance = 2126u * color[0] + 7152u * color[1] + 722u * color[2];
+          size_t index = (luminance * (count - 1) + 1275000u) / 2550000u;
+          memcpy(out, characters[index], lengths[index]);
+          out += lengths[index];
+        } else {
+          *out++ = ch;
+        }
+        if (use_color) {
+          memcpy(out, "\033[0m", 4);
+          out += 4;
+        }
+        used = (size_t)(out - frame);
       } else {
         frame[used++] = ch;
       }

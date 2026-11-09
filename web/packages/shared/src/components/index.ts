@@ -1,4 +1,4 @@
-export { AsciiRenderer } from "./AsciiRenderer";
+export { AsciiCanvas } from "./AsciiRenderer";
 export type {
   AsciiRendererHandle,
   AsciiRendererProps,

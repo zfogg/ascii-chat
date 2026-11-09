@@ -85,9 +85,12 @@ typedef struct {
   _Atomic(uint64_t) cas_success_count;
   _Atomic(uint64_t) fetch_count;
 #endif
+/**
+ */
 } atomic_t;
 
 /**
+ * @brief Atomic value wrapper for integral/boolean types
  * @brief Atomic pointer wrapper
  * @ingroup util
  *
@@ -116,6 +119,8 @@ typedef struct {
   _Atomic(uint64_t) cas_success_count;
   _Atomic(uint64_t) exchange_count;
 #endif
+/**
+ */
 } atomic_ptr_t;
 
 // ============================================================================
@@ -123,6 +128,7 @@ typedef struct {
 // ============================================================================
 
 /**
+ * @brief Atomic pointer wrapper
  * @brief Atomically load a boolean value
  * @param a Pointer to atomic_t
  * @return Current boolean value

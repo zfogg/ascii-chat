@@ -24,6 +24,8 @@
 typedef struct {
   double cpu_seconds;
   uint64_t resident_bytes, threads;
+/**
+ */
 } platform_process_stats_t;
 /* Snapshot of this process; unsupported fields remain zero. */
 asciichat_error_t platform_process_stats(platform_process_stats_t *out);
@@ -34,6 +36,7 @@ asciichat_error_t platform_process_stats(platform_process_stats_t *out);
 
 #ifdef _WIN32
 /**
+ * @brief platform process stats keeps the values that move through the subsystem: `cpu_seconds`, `resident_bytes`, `threads`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
  * @brief Process ID type (Windows)
  *
  * Windows _getpid() returns int, so we typedef pid_t to int for compatibility

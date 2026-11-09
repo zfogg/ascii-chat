@@ -157,6 +157,11 @@ typedef struct {
   bool stdin_render_mode;
   bool should_init_audio;
   uint64_t audio_failed_revision;
+  /**
+   * @brief This is the handoff point for client like state. Callers fill `capture`, `display`, `audio_ctx`,
+   * `probe_source` before passing it on; consumers read the values during the operation and return ownership only where
+   * the member contract explicitly says they do.
+   */
 } client_like_state_t;
 
 static void client_like_setup_terminal_logging(void) {

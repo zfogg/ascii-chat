@@ -1,148 +1,39 @@
 /**
- * @defgroup client_main Client Main Entry Point
+ * @page topic_client_main Client Lifecycle
  * @ingroup module_client
- * @brief 🚀 Main entry point and lifecycle orchestration for the client application
- */
-
-/**
- * @page topic_client_main Client Main Entry Point
- * @ingroup client_main
+ * @brief Client startup, session orchestration, reconnect, and teardown.
  *
- * @section client_main_overview Overview
+ * The client entry point assembles options, platform/media subsystems, the
+ * presentation layer, and one shared network connection. It coordinates these
+ * owners; packet framing and backend I/O belong to the network runtime.
  *
- * The client main entry point orchestrates the complete client lifecycle including
- * initialization, connection management, reconnection logic, and graceful shutdown.
+ * @section client_main_start Startup
  *
- * **Implementation**: src/client/main.c, src/client/main.h
+ * Startup parses options, initializes logging and platform services, prepares
+ * capture/audio as requested, starts terminal presentation when interactive,
+ * and establishes the endpoint. `network_connection_establish()` performs
+ * backend selection and ACIP negotiation before producers publish.
  *
- * @section client_main_responsibilities Responsibilities
+ * @section client_main_running Running session
  *
- * - Command-line argument parsing
- * - Platform and subsystem initialization (display, audio, webcam)
- * - Connection establishment with exponential backoff
- * - Signal handling (SIGINT/Ctrl+C)
- * - Main event loop and thread coordination
- * - Reconnection orchestration on connection loss
- * - Cleanup and resource deallocation
+ * Capture, audio, keepalive, and UI producers run independently. They publish
+ * through subsystem APIs and the connection's `acip_transport_t`; they do not
+ * coordinate by sharing a raw socket. The TUI consumes snapshots separately.
  *
- * @section client_main_lifecycle Application Lifecycle
+ * @section client_main_reconnect Reconnect
  *
- * @subsection client_main_init Initialization
+ * A recoverable transport loss stops producers, drains the old connection, and
+ * creates a new connection with fresh transport and security state. Fatal
+ * configuration, authentication, protocol, or cancellation errors exit instead
+ * of being silently retried.
  *
- * @code{.c}
- * // 1. Parse command-line options
- * options_init(argc, argv, MODE_CLIENT);
+ * @section client_main_shutdown Shutdown
  *
- * // 2. Initialize platform subsystems
- * platform_init();
- * display_init();
- * if (opt_audio_enabled) audio_client_init();
- * capture_init();
+ * SIGINT only requests exit. The owner stops producers, joins workers, retires
+ * live TUI screens, restores the terminal, destroys the connection, and releases
+ * media/platform resources in dependency order.
  *
- * // 3. Setup signal handlers
- * signal(SIGINT, sigint_handler);
- * @endcode
- *
- * @subsection client_main_connection Connection Loop
- *
- * @code{.c}
- * int reconnect_attempt = 0;
- * bool first_connection = true;
- *
- * while (!should_exit()) {
- *   // Attempt connection with exponential backoff
- *   int result = server_connection_establish(opt_address, opt_port,
- *                                            reconnect_attempt, first_connection,
- *                                            has_ever_connected);
- *
- *   if (result == 0 || result == CONNECTION_WARNING_NO_CLIENT_AUTH) {
- *     // Connection successful - start threads
- *     protocol_start_connection();
- *     keepalive_start_thread();
- *     capture_start_thread();
- *     if (opt_audio_enabled) audio_start_thread();
- *
- *     first_connection = false;
- *     has_ever_connected = true;
- *     reconnect_attempt = 0;
- *
- *     // Wait for connection loss or exit signal
- *     while (!should_exit() && server_connection_is_active()) {
- *       if (protocol_connection_lost()) break;
- *       platform_sleep_usec(100000);  // 100ms poll
- *     }
- *
- *     // Stop all threads
- *     capture_stop_thread();
- *     if (opt_audio_enabled) audio_stop_thread();
- *     keepalive_stop_thread();
- *     protocol_stop_connection();
- *
- *     // Wait for threads to exit
- *     while (!capture_thread_exited() || !keepalive_thread_exited() ||
- *            (opt_audio_enabled && !audio_thread_exited())) {
- *       platform_sleep_usec(10000);  // 10ms poll
- *     }
- *
- *     // Close connection
- *     server_connection_close();
- *
- *     if (should_exit()) break;  // User requested exit
- *
- *     // Connection lost - prepare for reconnection
- *     log_info("Connection lost - will attempt reconnection");
- *     display_reset_for_new_connection();
- *   }
- *   else if (result == CONNECTION_ERROR_AUTH_FAILED ||
- *            result == CONNECTION_ERROR_HOST_KEY_FAILED) {
- *     // Fatal auth errors - no retry
- *     break;
- *   }
- *
- *   // Exponential backoff with cap at 5 seconds
- *   int delay_ms = 10 + (200 * reconnect_attempt);
- *   if (delay_ms > 5000) delay_ms = 5000;
- *   platform_sleep_usec(delay_ms * 1000);
- *   reconnect_attempt++;
- * }
- * @endcode
- *
- * @subsection client_main_cleanup Cleanup
- *
- * @code{.c}
- * // Cleanup in reverse initialization order
- * capture_cleanup();
- * if (opt_audio_enabled) audio_cleanup();
- * display_cleanup();
- * platform_cleanup();
- *
- * return exit_code;
- * @endcode
- *
- * @section client_main_signals Signal Handling
- *
- * @subsection client_main_sigint SIGINT Handler
- *
- * @code{.c}
- * static void sigint_handler(int sig) {
- *   (void)sig;
- *   signal_exit();  // Sets g_should_exit atomically
- * }
- * @endcode
- *
- * **Signal Safety**:
- * - Only sets atomic flag - no complex operations
- * - Main loop detects flag and performs graceful shutdown
- * - No mutex operations or malloc/free in handler
- *
- * @section client_main_exit_codes Exit Codes
- *
- * - `0`: Success (clean exit or snapshot completed)
- * - `1`: Configuration/initialization error
- * - `2`: Connection error (fatal auth failure or max retries)
- * - `130`: SIGINT received (Ctrl+C)
- *
- * @see src/client/main.c
- * @see src/client/main.h
- * @see @ref topic_client "Client Overview"
+ * @see topic_client_connection
+ * @see topic_tui
+ * @see topic_network
  */

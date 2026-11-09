@@ -100,7 +100,8 @@
  */
 
 /**
- * @brief Video frame structure
+ * @brief When code needs to work with simple frame swap, it keeps `current_frame`, `frame_a`, `frame_b`, `use_frame_a` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
+ * @brief One captured, decoded, or rendered video frame and its timing metadata.
  *
  * Represents a single video frame with data, dimensions, timing, and quality
  * metrics. Frame data points to pre-allocated buffers managed by the frame
@@ -145,7 +146,8 @@ typedef struct {
 } video_frame_t;
 
 /**
- * @brief Video frame buffer manager
+ * @brief One captured, decoded, or rendered video frame and its timing metadata
+ * @brief Double-buffered frame storage shared by a producer and a renderer.
  *
  * Implements double-buffered frame management with atomic pointer swaps for
  * zero-copy frame transfer. Writer thread writes to back buffer while reader
@@ -173,6 +175,9 @@ typedef struct {
  * @note Thread-safe: Writer and reader can operate concurrently.
  *
  * @ingroup video_frame
+ */
+/**
+ * @brief Double-buffered frame storage shared by a producer and a renderer
  */
 typedef struct {
   /** @name Double Buffering
@@ -225,7 +230,7 @@ typedef struct {
 } video_frame_buffer_t;
 
 /**
- * @brief Frame statistics structure
+ * @brief Counters and timing measurements used to monitor frame delivery and quality.
  *
  * Contains aggregated statistics for video frame quality monitoring.
  * Used for adaptive streaming quality control based on performance metrics.
@@ -246,6 +251,7 @@ typedef struct {
 } video_frame_stats_t;
 
 /**
+ * @brief Counters and timing measurements used to monitor frame delivery and quality
  * @brief Simple atomic frame swap structure
  *
  * Simplified frame management for basic use cases that don't need statistics.

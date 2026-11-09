@@ -1,7 +1,7 @@
 """Verify keyboard-controlled audio visualizations through a real terminal.
 
 Requires ffmpeg and the terminal_ui.py dependencies, plus an audio output device.
-Run: python tests/integration/audio_visualization_keys.py --binary build/bin/ascii-chat.exe
+Run: uv run --project tests/ascii_chat_tests --frozen python tests/integration/audio_visualization_keys.py --binary build/bin/ascii-chat.exe
 """
 
 # Apply the shared test policy before importing helpers or starting native children.

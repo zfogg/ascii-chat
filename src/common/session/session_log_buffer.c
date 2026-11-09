@@ -11,7 +11,13 @@
 #include <ascii-chat/atomic.h>
 
 /**
- * @brief Internal circular buffer structure
+ * @brief Thread-safe fixed-size history ring for session-screen log lines
+ * @brief Thread-safe fixed-size history ring for session-screen log lines.
+ *
+ * `entries` stores formatted messages, while the atomic write position and
+ * sequence counter preserve ordering as new lines overwrite old ones. The
+ * mutex protects snapshots and clearing; the buffer owns its synchronization
+ * state until destruction.
  */
 typedef struct session_log_buffer {
   session_log_entry_t entries[SESSION_LOG_BUFFER_SIZE];

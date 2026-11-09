@@ -44,8 +44,16 @@
 // ============================================================================
 
 /**
- * Cached glyph bitmap with metadata.
- * Stores pre-rendered FreeType bitmap to avoid rasterization on every frame.
+ * @brief Owns the temporary storage used by glyph cache entry. The data pointers and size or cursor fields describe the
+ * live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer
+ * needed.
+ * @brief The useful part of rendered cell is in `character`, `foreground`, `background`, `pixels`: together they
+ * describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use
+ * the parent cleanup path.
+ * @brief This is the handoff point for terminal renderer. Callers fill `vt`, `vts`, `cols`, `rows` before passing it
+ * on; consumers read the values during the operation and return ownership only where the member contract explicitly
+ * says they do. Cached glyph bitmap with metadata. Stores pre-rendered FreeType bitmap to avoid rasterization on every
+ * frame.
  */
 typedef struct {
   uint32_t codepoint;  // Hash key (character code)

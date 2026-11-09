@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Exercise generated zsh completions in a real tmux terminal.
 
-Usage: python3 tests/integration/zsh_completions.py /path/to/generated.zsh
+Usage: uv run --project tests/ascii_chat_tests --frozen python tests/integration/zsh_completions.py /path/to/generated.zsh
 Requires zsh and tmux. Device enumeration uses deterministic CLI output fixtures.
 """
 

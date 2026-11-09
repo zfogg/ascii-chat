@@ -50,9 +50,12 @@ typedef struct {
   bool same_line;           /**< If true, answer on same line after prompt; if false, answer on next line */
   char mask_char;           /**< Character to display instead of input when echo=false (0 for no mask, '*' typical) */
   ui_prompt_kind_t kind;     /**< Fixed purpose; never derived from user input. */
+/**
+ */
 } prompt_opts_t;
 
 /**
+ * @brief The useful part of prompt opts is in `timeout_seconds`, `echo`, `same_line`, `mask_char`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * @brief Default prompt options (echo enabled, answer on next line)
  */
 #define PROMPT_OPTS_DEFAULT (prompt_opts_t){.echo = true, .same_line = false, .mask_char = 0}

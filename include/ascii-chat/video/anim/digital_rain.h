@@ -52,6 +52,8 @@
  * ============================================================================ */
 
 /**
+ * @brief digital rain column keeps the values that move through the subsystem: `time_offset`, `speed_multiplier`, `phase_offset`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ * @brief For digital rain, this is the live record that ties `animation`, `animation_timestamp_ns`, `columns`, `num_columns` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
  * @brief Digital rain column state
  *
  * Tracks the state of a single column in the digital rain effect.

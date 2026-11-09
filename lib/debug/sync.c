@@ -1,6 +1,6 @@
 /**
  * @file sync.c
- * @ingroup debug_sync
+ * @ingroup debug_util
  * @brief 🔒 Synchronization primitive debugging with dynamic state inspection
  * @date February 2026
  *
@@ -241,6 +241,11 @@ typedef struct {
   size_t buffer_size;
   size_t offset;
   bool truncated;
+  /**
+   * @brief Owns the temporary storage used by sync buffer. The data pointers and size or cursor fields describe the
+   * live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer
+   * needed.
+   */
 } sync_buffer_t;
 
 static void sync_buffer_append(sync_buffer_t *buf, const char *format, ...) {

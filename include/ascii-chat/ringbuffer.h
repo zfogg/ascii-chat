@@ -79,6 +79,7 @@
 #include "util/magic.h"
 
 /**
+ * @brief Audio ring buffer for real-time audio streaming
  * @brief Lock-free ring buffer structure
  *
  * Implements a lock-free circular buffer using atomic operations for
@@ -111,6 +112,7 @@ typedef struct {
  */
 
 /**
+ * @brief Owns the temporary storage used by ringbuffer. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  * @name Audio Ring Buffer Constants
  * @ingroup ringbuffer
  * @{
@@ -379,11 +381,12 @@ void ringbuffer_clear(ringbuffer_t *rb);
  */
 
 /**
- * @brief Frame structure that stores both data and actual size
+ * @brief One variable-length payload in the video ring buffer
  *
- * Stores frame data along with its actual size, eliminating the need for
- * fixed-size buffers and null-terminator scanning. Uses magic number
- * validation for corruption detection.
+ * `data` contains the payload and `size` tells consumers exactly how many
+ * bytes are valid. `magic` lets the ring-buffer code distinguish a live slot
+ * from a corrupted or released one; frame data is owned by the containing
+ * buffer and is not NUL-terminated text.
  *
  * @ingroup ringbuffer
  */
@@ -397,6 +400,8 @@ typedef struct {
 } frame_t;
 
 /**
+ * @brief One variable-length payload in the video ring buffer
+ * @brief Queue record for a frame assembled from multiple media sources. `frame_sequence`, `timestamp`, `size`, and `data` identify the payload and its lifetime; the producer owns the data until the consumer finishes processing the record.
  * @brief Multi-source frame structure for multi-user support
  *
  * Tracks which client sent the frame along with metadata including
@@ -433,10 +438,11 @@ typedef struct {
 /** @} */
 
 /**
- * @brief Frame buffer structure for managing video frames
+ * @brief Mutex-protected ring buffer used to exchange video frames
  *
- * Wraps a ring buffer with mutex protection for thread-safe frame management.
- * Used for both single-source and multi-source frame scenarios.
+ * `rb` owns the queued frame storage while `mutex` serializes producers and
+ * consumers. The wrapper is used by the older frame-buffer path when capture,
+ * network receive, and rendering can run on different threads.
  *
  * @ingroup ringbuffer
  */
@@ -448,6 +454,7 @@ typedef struct {
 } framebuffer_t;
 
 /**
+ * @brief Mutex-protected ring buffer used to exchange video frames
  * @brief Create a frame buffer for ASCII frames
  * @param capacity Number of frames to buffer
  * @return Frame buffer or NULL on failure

@@ -1204,6 +1204,8 @@ static server_context_t g_server_ctx;
 typedef struct {
   stats_view_t *view;
   unsigned active, queued;
+  /**
+   */
 } server_stats_visit_t;
 static void server_stats_connection(network_connection_t *connection, void *arg) {
   server_stats_visit_t *visit = arg;
@@ -1259,17 +1261,33 @@ static void server_status_fn(void *user_data, ui_status_t *out_status) {
 /* ============================================================================
  * Mode-specific initialization callback
  * ============================================================================ */
+/**
+ * @brief server stats visit is intentionally a small, concrete record. Fields such as `view`, `active`, `queued` give
+ * callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding
+ * subsystem—not independently managed.
+ */
 typedef struct {
   const char *password;
   bool has_password;
   bool has_identity;
   bool explicit_expose;
   bool expose_ip;
+  /**
+   */
 } server_discovery_policy_t;
 
+/**
+ * @brief This is the handoff point for server discovery policy. Callers fill `password`, `has_password`,
+ * `has_identity`, `explicit_expose` before passing it on; consumers read the values during the operation and return
+ * ownership only where the member contract explicitly says they do.
+ */
 typedef struct {
   char session_string[SERVER_MAIN_SESSION_STRING_BUFFER_SIZE];
   bool mdns_only;
+  /**
+   * @brief The useful part of server discovery startup is in `mdns_only`: together they describe what is pending, who
+   * owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+   */
 } server_discovery_startup_t;
 
 static asciichat_error_t server_init_client_manager_lock(void) {
@@ -1481,7 +1499,8 @@ static void server_prepare_discovery_request(acds_session_create_params_t *param
     SAFE_STRNCPY(params->server_address, bind_addr, sizeof(params->server_address));
   }
   params->server_port = port;
-  if (GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
+  if (GET_OPTION(quic_bind_address)[0] ||
+      (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
     params->quic_port = (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : port);
   if ((GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
     SAFE_STRNCPY(params->webtransport_url, GET_OPTION(webtransport_public_url), sizeof(params->webtransport_url));

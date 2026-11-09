@@ -14,6 +14,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
 
@@ -22,7 +23,12 @@
 #define CONSENSUS_COLLECTION_DEADLINE_NS (30ULL * NS_PER_SEC_INT) /* 30 seconds */
 
 /**
- * @brief Internal coordinator structure
+ * @brief Coordinates consensus work for a session: it tracks the participant topology, election state, callbacks, and
+ * messages waiting to be processed. The session owns the coordinator and tears down its queues and synchronization
+ * objects with it.
+ * @brief Coordinates consensus work for a session: it tracks the participant topology, election state, callbacks, and
+ * messages waiting to be processed. The session owns the coordinator and tears down its queues and synchronization
+ * objects with it.
  */
 typedef struct consensus_coordinator {
   uint8_t my_id[SESSION_ID_SIZE];
@@ -62,6 +68,7 @@ asciichat_error_t consensus_coordinator_create(const uint8_t my_id[SESSION_ID_SI
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate coordinator");
   }
 
+  defer_named(release_coordinator, SAFE_FREE(coordinator));
   memset(coordinator, 0, sizeof(*coordinator));
   memcpy(coordinator->my_id, my_id, SESSION_ID_SIZE);
   coordinator->topology = topology;
@@ -71,7 +78,6 @@ asciichat_error_t consensus_coordinator_create(const uint8_t my_id[SESSION_ID_SI
   /* Initialize state machine */
   asciichat_error_t err = consensus_state_create(my_id, topology, &coordinator->state);
   if (err != ASCIICHAT_OK) {
-    SAFE_FREE(coordinator);
     return err;
   }
 
@@ -91,6 +97,7 @@ asciichat_error_t consensus_coordinator_create(const uint8_t my_id[SESSION_ID_SI
   log_debug("Coordinator created for node %u, first round in 5 minutes", my_id[0]);
 
   *out_coordinator = coordinator;
+  defer_cancel(release_coordinator);
   return ASCIICHAT_OK;
 }
 

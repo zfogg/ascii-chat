@@ -85,6 +85,8 @@ typedef struct {
   char *buf;  ///< Buffer pointer (allocated, owned by caller, must be freed)
   size_t len; ///< Current length in bytes (excluding null terminator)
   size_t cap; ///< Buffer capacity in bytes (maximum length before reallocation)
+/**
+ */
 } outbuf_t;
 
 /* ============================================================================
@@ -93,6 +95,7 @@ typedef struct {
  */
 
 /**
+ * @brief Dynamic output buffer (auto-expanding)
  * @brief Reserve buffer space for upcoming writes
  * @param ob Output buffer structure (must not be NULL)
  * @param need Minimum bytes needed (zero initializes an unallocated buffer)

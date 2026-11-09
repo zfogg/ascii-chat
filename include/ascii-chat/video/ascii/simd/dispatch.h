@@ -6,6 +6,9 @@
 
 /** RGB24 to rounded BT.601 luminance. Exactly count pixels are read/written. */
 typedef void (*simd_luminance_fn)(const uint8_t *rgb, uint8_t *out, size_t count);
+/**
+ * @brief simd backend keeps the values that move through the subsystem: `name`, `required_features`, `luminance`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
 typedef struct {
   const char *name;
   uint32_t required_features;

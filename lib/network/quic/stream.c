@@ -7,7 +7,7 @@
 static const uint8_t stream_magic[4] = {'A', 'C', 'Q', 'S'};
 
 asciichat_error_t quic_stream_preamble(acip_traffic_class_t traffic_class,
-                                            uint8_t output[ACIP_QUIC_STREAM_PREAMBLE_SIZE]) {
+                                       uint8_t output[ACIP_QUIC_STREAM_PREAMBLE_SIZE]) {
   if (!output || (unsigned)traffic_class > ACIP_TRAFFIC_VISUAL)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC stream traffic class");
   memcpy(output, stream_magic, sizeof(stream_magic));
@@ -21,6 +21,11 @@ typedef struct {
   acip_quic_stream_reader_t *reader;
   acip_quic_stream_emit_fn emit;
   void *context;
+  /**
+   * @brief emit context keeps the values that move through the subsystem: `reader`, `emit`, `context`. Some members are
+   * pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the
+   * struct copy itself.
+   */
 } emit_context_t;
 
 static asciichat_error_t emit_packet(const void *packet, size_t size, void *arg) {
@@ -36,7 +41,7 @@ static asciichat_error_t emit_packet(const void *packet, size_t size, void *arg)
 }
 
 asciichat_error_t quic_stream_read(acip_quic_stream_reader_t *reader, const void *bytes, size_t length,
-                                        acip_quic_stream_emit_fn emit, void *context) {
+                                   acip_quic_stream_emit_fn emit, void *context) {
   if (!reader || (!bytes && length) || !emit || reader->failed || reader->finished)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid QUIC stream input");
   const uint8_t *input = bytes;

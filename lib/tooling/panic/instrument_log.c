@@ -93,6 +93,11 @@ typedef enum asciichat_instr_selector_type {
 
 /**
  * @brief Selector for filtering instrumentation output by file, function, or module
+ * @brief Dynamic array of instrumentation selectors for filtering output
+ * @brief asciichat instr runtime keeps the values that move through the subsystem: `fd`, `pid`, `thread_id`,
+ * `sequence`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that
+ * populated them rather than the struct copy itself.
+ * @brief Selector for filtering instrumentation output by file, function, or module
  */
 typedef struct asciichat_instr_only_selector {
   asciichat_instr_selector_type_t type; ///< Type of selector (file substring, glob, function glob, or module)
@@ -289,6 +294,12 @@ void asciichat_instr_runtime_global_destroy(void) {
 
 void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const char *function_name,
                               const char *snippet, uint8_t is_macro_expansion) {
+  // Initialization calls project helpers that may themselves be instrumented.
+  if (g_logging_reentry_guard) {
+    return;
+  }
+  g_logging_reentry_guard = true;
+
   // Instrumentation is enabled by default when the binary is built with Source Print.
   // Set ASCII_INSTR_SOURCE_PRINT_ENABLE=0 to disable tracing at runtime.
   if (!g_instrumentation_enabled_checked) {
@@ -303,18 +314,12 @@ void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const
   }
 
   if (!g_instrumentation_enabled) {
-    return;
+    goto cleanup;
   }
 
   if (g_disable_write) {
-    return;
+    goto cleanup;
   }
-
-  if (g_logging_reentry_guard) {
-    return;
-  }
-
-  g_logging_reentry_guard = true;
 
   asciichat_instr_runtime_t *runtime = asciichat_instr_runtime_get();
   if (runtime == NULL) {

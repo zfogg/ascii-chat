@@ -6,6 +6,7 @@
 #include <ascii-chat/network/acip/transport.h>
 
 /** Per-peer, event-driven negotiation. The caller owns and configures handshake.
+ * @brief acip security is intentionally a small, concrete record. Fields such as `handshake`, `mode`, `forbid_encryption`, `require_encryption` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * Callers serialize receive/start and keep the transport alive until cleanup.
  * Media must wait for ready, including authentication-only connections.
  */

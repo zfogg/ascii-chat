@@ -39,6 +39,7 @@ extern "C" {
 #endif
 
 /**
+ * @brief Mode-specific hooks used by the session consensus adapter
  * @brief Opaque session consensus handle
  */
 typedef struct session_consensus session_consensus_t;
@@ -120,10 +121,11 @@ typedef asciichat_error_t (*session_consensus_election_fn)(void *context, const 
                                                            int num_metrics, int *out_best_index, int *out_backup_index);
 
 /**
- * @brief Callbacks for consensus operations
+ * @brief Mode-specific hooks used by the session consensus adapter.
  *
- * Modes provide these to integrate consensus with their specific transport
- * and metric collection mechanisms.
+ * The adapter uses these functions to send protocol packets, publish election
+ * results, gather participant metrics, and optionally replace the default
+ * election algorithm. `context` is passed unchanged to every callback.
  */
 typedef struct {
   session_consensus_send_packet_fn send_packet; ///< Send packet callback

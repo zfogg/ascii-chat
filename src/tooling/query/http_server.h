@@ -33,6 +33,8 @@ namespace ascii_query {
 
 /**
  * @brief Parsed HTTP request
+ * @brief HTTP response builder
+ * @brief Parsed HTTP request
  */
 struct HttpRequest {
   std::string method;                                   ///< GET, POST, etc.

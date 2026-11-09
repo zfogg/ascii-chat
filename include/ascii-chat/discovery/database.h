@@ -279,6 +279,9 @@ asciichat_error_t database_stats_session_count(sqlite3 *db, int64_t *count_out);
 asciichat_error_t database_stats_unique_clients(sqlite3 *db, int64_t *count_out);
 
 /** Active-session snapshot for statistics; rows are copied and truncated to capacity. */
+/**
+ * @brief The useful part of database session stats is in `participants`, `host_ready`, `migrating`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 typedef struct {
   char session_string[DISCOVERY_DATABASE_SESSION_STRING_BUFFER_SIZE];
   uint32_t participants;

@@ -1,6 +1,7 @@
 #pragma once
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/buffer.h>
 #include <limits.h>
 
 #define CRYPTO_RECORD_CHANNELS 3
@@ -9,6 +10,7 @@
 #define CRYPTO_RECORD_ANY_CHANNEL UINT_MAX
 
 /** Authenticated records over independent ordered channels and unordered delivery.
+ * @brief When code needs to work with crypto record, it keeps `crypto`, `key_epoch`, `last_receive_epoch`, `previous_crypto` here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * The caller serializes operations and keeps the borrowed crypto context alive.
  * One previous receive epoch survives until each channel crosses its marker. */
 typedef struct crypto_record {
@@ -29,6 +31,8 @@ asciichat_error_t crypto_record_init(crypto_record_t *, crypto_context_t *, bool
 /** Output buffers belong to the buffer library. No packet headers or CRCs are added here. */
 asciichat_error_t crypto_record_seal_into(crypto_record_t *, unsigned channel, unsigned delivery, const void *, size_t,
                                           uint8_t *, size_t, size_t *);
+asciichat_error_t crypto_record_seal_into_domain(crypto_record_t *, unsigned channel, unsigned delivery, const void *,
+                                                 size_t, uint8_t *, size_t, size_t *, buffer_domain_t *);
 asciichat_error_t crypto_record_open_sequence(crypto_record_t *, unsigned channel, unsigned delivery, const void *,
                                               size_t, uint8_t **, size_t *, uint64_t *, crypto_record_validate_fn,
                                               void *);

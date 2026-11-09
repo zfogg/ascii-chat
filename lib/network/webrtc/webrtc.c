@@ -13,6 +13,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define WEBRTC_TURN_URL_BUFFER_SIZE 1024
 
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file networking/webrtc/webrtc.c
@@ -50,6 +51,7 @@
 // ============================================================================
 
 /**
+ * @brief WebRTC data channel for sending/receiving messages
  * @brief WebRTC peer connection state
  *
  * Represents a WebRTC peer-to-peer connection using libdatachannel.
@@ -70,6 +72,9 @@ struct webrtc_peer_connection {
 };
 
 /**
+ * @brief When code needs to work with webrtc peer connection, it keeps `mapping`, `port_reservation`, `mapping_thread`,
+ * `mapping_stop` here instead of scattering it across globals. Initialization establishes the handles and sizes;
+ * teardown must release any allocation, lock, thread, or callback context recorded in those fields.
  * @brief WebRTC data channel for sending/receiving messages
  *
  * Bidirectional communication channel over a WebRTC peer connection.
@@ -561,7 +566,7 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   }
 
   // Allocate peer connection wrapper
-  webrtc_peer_connection_t *pc = SAFE_CALLOC(1, sizeof(webrtc_peer_connection_t), webrtc_peer_connection_t *);
+  SAFE_CALLOC_DEFER_FREE(pc, 1, sizeof(webrtc_peer_connection_t), webrtc_peer_connection_t *);
   if (!pc) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate peer connection");
   }
@@ -573,14 +578,15 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
 
   // Build ICE server list for libdatachannel
   const char **ice_servers = NULL;
+  defer(SAFE_FREE(ice_servers));
   size_t ice_count = 0;
   char *turn_urls = NULL;
+  defer(SAFE_FREE(turn_urls));
 
   if (config->stun_count > 0 || config->turn_count > 0) {
     ice_count = config->stun_count + config->turn_count;
     ice_servers = SAFE_MALLOC(ice_count * sizeof(char *), const char **);
     if (!ice_servers) {
-      SAFE_FREE(pc);
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ICE server list");
     }
 
@@ -593,8 +599,6 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
     if (config->turn_count > 0) {
       turn_urls = SAFE_CALLOC(config->turn_count, WEBRTC_TURN_URL_BUFFER_SIZE, char *);
       if (!turn_urls) {
-        SAFE_FREE(ice_servers);
-        SAFE_FREE(pc);
         return SET_ERRNO(ERROR_MEMORY, "Failed to allocate authenticated TURN URLs");
       }
     }
@@ -634,15 +638,10 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   // Create peer connection
   int pc_id = rtcCreatePeerConnection(&rtc_config);
   SAFE_FREE(turn_urls);
-
-  // Free ICE server list (libdatachannel makes a copy)
-  if (ice_servers) {
-    SAFE_FREE(ice_servers);
-  }
+  SAFE_FREE(ice_servers);
 
   if (pc_id < 0) {
     webrtc_mapping_close(pc);
-    SAFE_FREE(pc);
     return SET_ERRNO(ERROR_NETWORK, "Failed to create peer connection (rtc error %d)", pc_id);
   }
 
@@ -666,6 +665,7 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   NAMED_REGISTER(pc, pc_name, "webrtc_peer_connection_t", "0x%tx", NULL);
 
   *pc_out = pc;
+  pc = NULL;
   log_debug("Created WebRTC peer connection (id=%d)", pc_id);
   return ASCIICHAT_OK;
 }

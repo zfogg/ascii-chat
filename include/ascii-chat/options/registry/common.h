@@ -15,6 +15,7 @@
 #include <stddef.h>
 
 /**
+ * @brief Temporary builder for a help/category index. `name` identifies the category and `entries` points at the entries accumulated for it; the builder is discarded after the final index is emitted.
  * @brief Mode-aware default value getter function type
  *
  * Returns the default value for an option based on the current mode.
@@ -48,9 +49,12 @@ typedef struct {
   option_metadata_t metadata; ///< Enum values, numeric ranges, examples
   mode_default_getter_fn
       mode_default_getter; ///< Mode-aware default getter (NULL if using default_value) - LAST for backward compat
+/**
+ */
 } registry_entry_t;
 
 /**
+ * @brief Registry entry - stores option definition with mode bitmask and metadata
  * @brief Category builder structure - maps categories to their entry arrays
  */
 typedef struct {

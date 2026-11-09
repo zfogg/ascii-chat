@@ -9,6 +9,7 @@
 #include <stdbool.h>
 
 /**
+ * @brief action args is intentionally a small, concrete record. Fields such as `output_path`, `shell_name` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * @brief Action type enumeration
  *
  * Defines all possible deferred actions that can be executed after

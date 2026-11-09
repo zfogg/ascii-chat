@@ -20,6 +20,8 @@
  * ============================================================================ */
 
 /**
+ * @brief One literal or conversion token in a compiled log format
+ * @brief Compiled log format ready for use in log_template_apply()
  * @brief Types of format specifiers that can appear in a format string
  */
 typedef enum {
@@ -48,7 +50,11 @@ typedef enum {
  * ============================================================================ */
 
 /**
- * @brief A single parsed format specifier
+ * @brief One literal or conversion token in a compiled log format
+ *
+ * `type` tells the formatter which runtime value to insert. Literal and time
+ * tokens use the heap-owned `literal` text and its byte length; the containing
+ * compiled format releases those strings with the specifier array.
  */
 typedef struct {
   log_template_type_t type; /* Type of specifier */

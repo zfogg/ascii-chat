@@ -10,6 +10,8 @@
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/video/anim/controller.h>
 
+/**
+ */
 /** Host-independent session views. Hosts own scheduling, input and side effects. */
 typedef struct {
   bool enabled;
@@ -43,7 +45,9 @@ typedef enum {
   UI_ACTION_VOLUME,
   UI_ACTION_DEBUG,
   UI_ACTION_LOGS,
-  UI_ACTION_TOGGLE_MEDIA
+  UI_ACTION_TOGGLE_MEDIA,
+  UI_ACTION_QUIT,
+  UI_ACTION_FORCE_QUIT
 } ui_session_action_t;
 
 /** Mutates shared options for settings keys; returns an action for the host. */
@@ -52,6 +56,8 @@ ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume);
 typedef struct ui_session ui_session_t;
 terminal_size_t ui_session_size(const ui_session_t *session);
 /** A borrowed view, valid for the duration of ui_session_render(). Hosts retain
+ * @brief The useful part of ui session view is in `screen`, `minimum`, `dirty`, `clear`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ * @brief The useful part of ui session view is in `screen`, `minimum`, `dirty`, `clear`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * snapshots and serialize access to a session; callbacks must not recurse into
  * its renderer. The runtime owns selection policy, transitions and animation.
  */

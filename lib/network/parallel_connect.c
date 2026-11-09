@@ -28,6 +28,7 @@
 
 /**
  * @brief Per-thread connection attempt state for parallel IPv4/IPv6 racing
+ * @brief Per-thread connection attempt state for parallel IPv4/IPv6 racing
  */
 typedef struct {
   socket_t socket;                                      ///< Socket for this attempt

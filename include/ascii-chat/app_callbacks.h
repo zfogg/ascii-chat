@@ -24,9 +24,12 @@ typedef struct {
 
   // Audio
   void (*audio_stop_thread)(void);
+/**
+ */
 } app_callbacks_t;
 
 /**
+ * @brief Callbacks and operations used by app callbacks.
  * Register application callbacks
  */
 void app_callbacks_register(const app_callbacks_t *callbacks);

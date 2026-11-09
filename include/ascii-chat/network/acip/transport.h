@@ -14,8 +14,8 @@
  * - **TCP** (acip_tcp_transport_create): Raw TCP sockets, binary packet streaming
  * - **WebSocket** (acip_websocket_client_transport_create): HTTP upgrade, frame-based
  * - **WebRTC** (acip_webrtc_transport_create): P2P data channels, encryption at transport
- * - **HTTP** (future): Long-polling, REST-style
- * - **QUIC** (future): UDP with congestion control
+ * - **HTTP** (reserved): Long-polling, REST-style transport slot
+ * - **QUIC**: UDP-based transport with congestion control and optional datagrams
  *
  * ## Design Principles
  * 1. Protocol code never calls socket()/send()/recv() directly
@@ -32,12 +32,11 @@
  * ## Version Information
  * - **Transport API Version**: 1.0 (stable)
  * - **Supported ACIP Version**: 1.0
- * - **Release Date**: January 2026
  *
  * DESIGN GOALS:
  * =============
  * 1. Protocol code never calls socket()/send()/recv() directly
- * 2. Same ACIP handlers work with TCP, WebSocket, or any future transport
+ * 2. Same ACIP handlers work with TCP, WebSocket, WebRTC, QUIC, or another backend
  * 3. Transport implementations handle their own connection state
  * 4. Clean separation between protocol logic and transport logic
  *
@@ -89,6 +88,8 @@
 #include <stdbool.h>
 
 /**
+ * @brief Transport method table (virtual function table)
+ * @brief This is the handoff point for acip transport. Callers fill `outbound`, `stats_peer`, `methods`, `crypto_ctx` before passing it on; consumers read the values during the operation and return ownership only where the member contract explicitly says they do.
  * @brief Transport type enumeration
  *
  * Identifies which transport implementation is being used.
@@ -111,6 +112,7 @@ typedef enum {
 typedef struct acip_transport acip_transport_t;
 
 /** Snapshot of negotiated transport features. Datagram payload is the maximum
+ * @brief The useful part of acip transport capabilities is in `independent_streams`, `datagrams`, `max_datagram_payload`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * application data in one QUIC DATAGRAM frame on the current path, including
  * any transport-specific envelope. Query again after path changes. */
 typedef struct {
@@ -354,7 +356,7 @@ static inline asciichat_error_t acip_transport_close(acip_transport_t *transport
  */
 static inline acip_transport_type_t acip_transport_get_type(acip_transport_t *transport) {
   if (!transport || !transport->methods || !transport->methods->get_type) {
-    return 0;
+    return (acip_transport_type_t)0;
   }
   return transport->methods->get_type(transport);
 }

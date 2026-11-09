@@ -30,6 +30,7 @@ asciichat_error_t acip_packet_plan(crypto_context_t *crypto, const socket_buffer
                                    acip_packet_plan_t *plan);
 
 /**
+ * @brief The useful part of acip packet plan is in `buffers`, `count`, `plaintext_size`, `ciphertext_capacity`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
  * Encrypt a successful encrypted plan into caller-owned ciphertext storage and
  * construct its wire header. The caller chooses contiguous or vectored delivery,
  * and must release storage only after delivery has consumed/copied it. This helper

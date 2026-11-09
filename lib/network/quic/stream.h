@@ -22,14 +22,19 @@ typedef struct {
   packet_decoder_t packets;
   bool failed;
   bool finished;
+  /**
+   * @brief The useful part of acip quic stream reader is in `preamble_used`, `traffic_class`, `packets`, `failed`:
+   * together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent
+   * operation and use the parent cleanup path.
+   */
 } acip_quic_stream_reader_t;
 
 asciichat_error_t quic_stream_preamble(acip_traffic_class_t traffic_class,
-                                            uint8_t output[ACIP_QUIC_STREAM_PREAMBLE_SIZE]);
+                                       uint8_t output[ACIP_QUIC_STREAM_PREAMBLE_SIZE]);
 /** Feed on the connection's serialized receive lane. The callback borrows each
  * complete packet until it returns. Errors are terminal until reset. */
 asciichat_error_t quic_stream_read(acip_quic_stream_reader_t *reader, const void *bytes, size_t length,
-                                        acip_quic_stream_emit_fn emit, void *context);
+                                   acip_quic_stream_emit_fn emit, void *context);
 /** Accept a clean FIN only at a packet boundary after a complete preamble. */
 asciichat_error_t quic_stream_finish(acip_quic_stream_reader_t *reader);
 void quic_stream_reset(acip_quic_stream_reader_t *reader);

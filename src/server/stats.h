@@ -16,10 +16,12 @@
 #include <ascii-chat/platform/mutex.h>
 
 /**
- * @brief Server performance statistics structure
+ * @brief Counters and rates describing the server's media pipeline
  *
- * Tracks comprehensive performance metrics for the ascii-chat server including
- * frame processing rates, bandwidth usage, and performance counters.
+ * The counters cover captured, delivered, and dropped frames plus total
+ * outbound bytes.  The two rates are rolling capture and send FPS values used
+ * by the logger and status reporting; callers read and update the global
+ * instance while holding `g_stats_mutex`.
  *
  * STATISTICS TRACKED:
  * ===================
@@ -51,6 +53,9 @@ typedef struct {
   uint64_t bytes_sent;
   double avg_capture_fps;
   double avg_send_fps;
+  /**
+   * @brief Counters and rates describing the server's media pipeline
+   */
 } server_stats_t;
 
 // Statistics thread function

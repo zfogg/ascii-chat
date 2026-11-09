@@ -199,12 +199,12 @@ int main(int argc, char **argv) {
         environment = dict(os.environ, TITLE_TEST_ORIGINAL="environment-preserved",
                            TITLE_TEST_CHANGED="original", TITLE_TEST_REMOVED="remove")
         arguments = ["argument-preserved", "--port", "27224", "--password", "split-secret",
-                     "--password=inline-secret", "--websocket-tls-key-password", "tls-secret",
+                     "--password=inline-secret", "--tls-key-password", "tls-secret",
                      "--turn-credential=turn-secret", "--turn-secret", "shared-secret",
                      "--key", "/keys/id_ed25519", "--key", "-----BEGIN OPENSSH PRIVATE KEY-----",
                      "two words", "", "line\nbreak"]
         expected_args = ('argument-preserved --port 27224 --password [redacted] '
-                         '--password=[redacted] --websocket-tls-key-password [redacted] '
+                         '--password=[redacted] --tls-key-password [redacted] '
                          '--turn-credential=[redacted] --turn-secret [redacted] '
                          '--key /keys/id_ed25519 --key [redacted] "two words" "" "line\\x0abreak"')
         for mode in ("server", "client", "mirror", "discovery-service", "discovery"):

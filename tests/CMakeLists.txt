@@ -74,6 +74,18 @@ if(BUILD_TESTS)
     endfunction()
     asciichat_add_pytest(python-cmake cmake)
     set_tests_properties(python-cmake PROPERTIES LABELS "unit;python;build")
+    if(TARGET ascii-defer-native)
+        set_property(TEST python-cmake APPEND PROPERTY ENVIRONMENT
+            "ASCIICHAT_DEFER_TEST_BINARY=$<TARGET_FILE:ascii-defer-native>")
+        if(TARGET ascii-libclang)
+            set_property(TEST python-cmake APPEND PROPERTY ENVIRONMENT
+                "LIBCLANG_LIBRARY_FILE=$<TARGET_FILE:ascii-libclang>")
+        endif()
+        if(ASCIICHAT_LLVM_DEV_ROOT)
+            set_property(TEST python-cmake APPEND PROPERTY ENVIRONMENT
+                "ASCIICHAT_LLVM_DEV_ROOT=${ASCIICHAT_LLVM_DEV_ROOT}")
+        endif()
+    endif()
     asciichat_add_pytest(python-unit unit)
     set_tests_properties(python-unit PROPERTIES LABELS "unit;python")
 
@@ -1312,6 +1324,8 @@ if(BUILD_TESTS AND TARGET ascii-chat)
     set_tests_properties(python-media PROPERTIES LABELS "integration;python;media")
     asciichat_add_pytest(python-glyph-performance performance/glyph -n 0 --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-glyph-performance PROPERTIES LABELS "performance;python;media" RUN_SERIAL TRUE)
+    asciichat_add_pytest(python-fps-performance performance/fps -n 0 --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
+    set_tests_properties(python-fps-performance PROPERTIES LABELS "performance;python;media" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-discovery integration/discovery --ascii-chat-binary=$<TARGET_FILE:ascii-chat>
         --ignore=${CMAKE_SOURCE_DIR}/tests/python/integration/discovery/test_discovery_webrtc.py)
     set_tests_properties(python-discovery PROPERTIES LABELS "integration;python;network" RUN_SERIAL TRUE)

@@ -4,6 +4,9 @@
 #include <stdint.h>
 
 /** Map a live device's 100 ns sample clock to monotonic arrival times. */
+/**
+ * @brief The useful part of webcam frame clock is in `sample`, `previous`, `wall`, `initialized`: together they describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
+ */
 typedef struct {
   int64_t sample, previous;
   uint64_t wall;

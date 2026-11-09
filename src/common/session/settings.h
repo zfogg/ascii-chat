@@ -7,6 +7,11 @@
 #include <ascii-chat/asciichat_errno.h>
 
 /** A participant's rendering preferences/effective values. Security is session policy. */
+/**
+ * @brief When code needs to work with session settings, it keeps `version`, `width`, `height`, `color_mode` here
+ * instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must release any
+ * allocation, lock, thread, or callback context recorded in those fields.
+ */
 typedef struct {
   uint32_t version;
   int16_t width, height;

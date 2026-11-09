@@ -1,6 +1,10 @@
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /**
+ * @brief When code needs to work with h265 decoder, it keeps `codec_ctx`, `frame`, `packet`, `parser` here instead of
+ * scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation,
+ * lock, thread, or callback context recorded in those fields.
  * @file video/h265/decoder.c
  * @brief FFmpeg HEVC decoder for ASCII art frames
  */
@@ -39,18 +43,18 @@ h265_decoder_t *h265_decoder_create(void) {
     return NULL;
   }
 
+  defer_named(cleanup, h265_decoder_destroy(dec));
+
   // Find HEVC decoder
   const AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
   if (!codec) {
     SET_ERRNO(ERROR_MEDIA_INIT, "HEVC decoder not found");
-    SAFE_FREE(dec);
     return NULL;
   }
 
   dec->codec_ctx = avcodec_alloc_context3(codec);
   if (!dec->codec_ctx) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate codec context");
-    SAFE_FREE(dec);
     return NULL;
   }
 
@@ -60,8 +64,6 @@ h265_decoder_t *h265_decoder_create(void) {
 
   if (codec_open_result < 0) {
     SET_ERRNO(ERROR_MEDIA_INIT, "Failed to open HEVC decoder");
-    avcodec_free_context(&dec->codec_ctx);
-    SAFE_FREE(dec);
     return NULL;
   }
 
@@ -72,14 +74,6 @@ h265_decoder_t *h265_decoder_create(void) {
 
   if (!dec->frame || !dec->packet || !dec->parser) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate frame/packet/parser");
-    if (dec->frame)
-      av_frame_free(&dec->frame);
-    if (dec->packet)
-      av_packet_free(&dec->packet);
-    if (dec->parser)
-      av_parser_close(dec->parser);
-    avcodec_free_context(&dec->codec_ctx);
-    SAFE_FREE(dec);
     return NULL;
   }
 
@@ -88,6 +82,7 @@ h265_decoder_t *h265_decoder_create(void) {
   // Register decoder for debugging
   NAMED_REGISTER_H265_DECODER(dec, "h265_decoder", NULL);
 
+  defer_cancel(cleanup);
   return dec;
 }
 

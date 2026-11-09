@@ -9,8 +9,14 @@ typedef struct {
   crypto_rekey_message_t type;
   size_t length;
   uint8_t payload[CRYPTO_PUBLIC_KEY_SIZE];
+/**
+ * @brief crypto session message keeps the values that move through the subsystem: `channel`, `type`, `length`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that populated them rather than the struct copy itself.
+ */
 } crypto_session_message_t;
 
+/**
+ * @brief For crypto session, this is the live record that ties `owner`, `mutex`, `records`, `rotation` together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the record.
+ */
 typedef struct crypto_session {
   crypto_context_t *owner;
   mutex_t mutex;

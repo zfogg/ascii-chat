@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 <#
 .SYNOPSIS
     Install dependencies for ascii-chat using vcpkg
@@ -47,7 +47,7 @@ if ($Release) {
 if (-not $Architecture) {
     $Architecture = if ([Environment]::Is64BitOperatingSystem) {
         # Check if running on ARM64
-        $ProcessorArch = $env:PROCESSOR_ARCHITECTURE
+        $ProcessorArch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
         if ($ProcessorArch -eq "ARM64") {
             "arm64"
         } else {
@@ -66,12 +66,101 @@ if (-not $Architecture) {
 }
 
 $ErrorActionPreference = "Stop"
+$RunningOnWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
 
 Write-Host "`n=== ascii-chat Dependency Installer ===`n" -ForegroundColor Cyan
 
-Write-Host "Getting submodules" -ForegroundColor Yellow
-& git submodule init
-& git submodule update --recursive
+$ModuleFile = Join-Path $PSScriptRoot '../deps/ascii-chat-deps/mmmbed/go.mod'
+if (Test-Path -LiteralPath (Join-Path $PSScriptRoot '../.git')) {
+    Write-Host "Getting submodules" -ForegroundColor Yellow
+    & git submodule update --init --recursive
+    if ($LASTEXITCODE -ne 0) { throw "Submodule initialization failed." }
+    & git submodule update --init --checkout -- deps/ascii-chat-deps/mmmbed
+    if ($LASTEXITCODE -ne 0) { throw "mmmbed submodule initialization failed." }
+}
+if (-not (Test-Path -LiteralPath $ModuleFile)) { throw "mmmbed source is missing ($ModuleFile)." }
+
+# SQL catalog generation builds mmmbed from its pinned Go sources.
+if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        throw "Go is required. Install Go or winget and rerun this script."
+    }
+    & winget install --id GoLang.Go --exact --accept-package-agreements --accept-source-agreements
+    if ($LASTEXITCODE -ne 0) { throw "Go installation failed." }
+    $MachinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $env:Path = "$MachinePath;$UserPath;$env:Path"
+    if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
+        throw "Go was installed but is not on PATH. Open a new shell and rerun this script."
+    }
+}
+$GoVersion = & go version
+$GoToolVersion = ((Get-Content -LiteralPath $ModuleFile | Where-Object { $_ -match '^go ' }) -replace '^go\s+', '').Trim()
+if (-not $GoToolVersion) { throw "mmmbed/go.mod does not specify a Go version." }
+$GoSwitch = & go env GOTOOLCHAIN 2>$null
+$InstalledGo = if ($GoVersion -match 'go(\d+\.\d+(?:\.\d+)?)') { [version]$Matches[1] } else { [version]'0.0' }
+$GoAutomatic = $GoSwitch -match '^(auto|path|.+\+(auto|path))$'
+if (-not $GoSwitch -or (-not $GoAutomatic -and $InstalledGo -lt [version]$GoToolVersion)) {
+    $GoToolDir = & go env GOBIN
+    if (-not $GoToolDir) {
+        $GoPaths = (& go env GOPATH) -split [IO.Path]::PathSeparator
+        $GoToolDir = Join-Path $GoPaths[0] 'bin'
+    }
+    New-Item -ItemType Directory -Force -Path $GoToolDir | Out-Null
+    $PreviousGoBin = $env:GOBIN
+    try {
+        $env:GOBIN = $GoToolDir
+        & go install "golang.org/dl/go$GoToolVersion@latest"
+        if ($LASTEXITCODE -ne 0) { throw "Could not install the Go toolchain launcher." }
+        & (Join-Path $GoToolDir "go$GoToolVersion.exe") download
+        if ($LASTEXITCODE -ne 0) { throw "Could not download the Go toolchain." }
+    } finally {
+        $env:GOBIN = $PreviousGoBin
+    }
+}
+
+if ($RunningOnWindows -and $Architecture -eq 'arm64' -and -not (Get-Command aarch64-w64-mingw32-clang -ErrorAction SilentlyContinue)) {
+    $MsysRoot = $env:MSYS2_ROOT
+    if (-not $MsysRoot) { $MsysRoot = Join-Path $env:LOCALAPPDATA 'Programs/ascii-chat-msys2' }
+    $MsysBash = Join-Path $MsysRoot 'usr/bin/bash.exe'
+    if (-not (Test-Path -LiteralPath $MsysBash)) {
+        if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+            throw "MSYS2 is required for the ARM64 CGo compiler. Install MSYS2 or winget and rerun this script."
+        }
+        & winget install --id MSYS2.MSYS2 --exact --location $MsysRoot --accept-package-agreements --accept-source-agreements
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $MsysBash)) {
+            throw "MSYS2 installation failed. Set MSYS2_ROOT to an existing installation and rerun this script."
+        }
+    }
+    & $MsysBash -lc 'pacman -S --needed --noconfirm mingw-w64-clang-aarch64-toolchain'
+    if ($LASTEXITCODE -ne 0) { throw "ARM64 MinGW toolchain installation failed." }
+    $CompilerDir = Join-Path $MsysRoot 'clangarm64/bin'
+    if (-not (Test-Path -LiteralPath (Join-Path $CompilerDir 'aarch64-w64-mingw32-clang.exe'))) {
+        throw "ARM64 MinGW compiler was not found in $CompilerDir."
+    }
+    $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if (($UserPath -split ';') -notcontains $CompilerDir) {
+        [Environment]::SetEnvironmentVariable('Path', "$UserPath;$CompilerDir", 'User')
+    }
+    $env:Path = "$CompilerDir;$env:Path"
+}
+
+if ($RunningOnWindows -and $Architecture -ne 'arm64' -and -not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        throw "MinGW GCC is required for CGo. Install it or winget and rerun this script."
+    }
+    if ($Architecture -ne 'x64') {
+        throw "Install a native MinGW GCC toolchain for $Architecture and rerun this script."
+    }
+    & winget install --id BrechtSanders.WinLibs.POSIX.UCRT --exact --accept-package-agreements --accept-source-agreements
+    if ($LASTEXITCODE -ne 0) { throw "MinGW GCC installation failed." }
+    $MachinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $env:Path = "$MachinePath;$UserPath;$env:Path"
+    if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+        throw "MinGW GCC was installed but is not on PATH. Open a new shell and rerun this script."
+    }
+}
 
 # Check for Visual Studio Build Tools (provides nmake for BearSSL)
 $VsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -101,8 +190,8 @@ if (-not $env:VCPKG_ROOT) {
 $VcpkgRoot = $env:VCPKG_ROOT
 
 # Detect platform and set vcpkg executable name
-# PowerShell Core provides $IsWindows, $IsLinux, $IsMacOS automatically
-if ($IsWindows) {
+# Windows PowerShell 5.1 does not define the PowerShell Core platform variables.
+if ($RunningOnWindows) {
     $VcpkgExe = Join-Path $VcpkgRoot "vcpkg.exe"
     $BootstrapCmd = ".\bootstrap-vcpkg.bat"
     $Platform = "windows"
@@ -134,7 +223,7 @@ if (-not $Triplet) {
     $BaseTriplet = "$Architecture-$Platform"
     # Only Windows uses -static suffix for Release builds
     # Linux/macOS use regular triplets (vcpkg defaults to static linking on Unix)
-    if ($IsWindows -and $Config -eq "Release") {
+    if ($RunningOnWindows -and $Config -eq "Release") {
         $Triplet = "$BaseTriplet-static"
     } else {
         $Triplet = $BaseTriplet
@@ -146,7 +235,7 @@ Write-Host "Using triplet: $Triplet" -ForegroundColor Green
 Write-Host "Build configuration: $Config" -ForegroundColor Green
 
 # Show what type of libraries will be installed
-if ($IsWindows) {
+if ($RunningOnWindows) {
     if ($Triplet -like "*-static") {
         Write-Host "Installing STATIC libraries (no DLLs required)" -ForegroundColor Cyan
     } else {
@@ -231,32 +320,48 @@ foreach ($Package in $RequiredPackages) {
 
 Write-Host ""
 
-# Install yt-dlp for YouTube support
-Write-Host "`nInstalling yt-dlp for YouTube URL support..." -ForegroundColor Cyan
-$PipCmd = if (Get-Command pip3 -ErrorAction SilentlyContinue) {
-    "pip3"
-} elseif (Get-Command pip -ErrorAction SilentlyContinue) {
-    "pip"
-} else {
-    $null
+# Install uv-managed Python and yt-dlp for YouTube support.
+Write-Host "`nInstalling uv-managed Python and yt-dlp..." -ForegroundColor Cyan
+if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    Write-Host "  Installing uv" -ForegroundColor Gray
+    irm https://astral.sh/uv/install.ps1 | iex
+    $env:Path = "$env:USERPROFILE\.local\bin;$env:Path"
 }
-
-if ($PipCmd) {
-    Write-Host "  Running: $PipCmd install --user --upgrade yt-dlp" -ForegroundColor Gray
-    try {
-        & $PipCmd install --user --quiet --upgrade yt-dlp 2>$null
-        Write-Host "  ✓ yt-dlp installed successfully" -ForegroundColor Green
-    } catch {
-        Write-Host "  ! WARNING: Failed to install yt-dlp via pip" -ForegroundColor Yellow
-        Write-Host "  You can install it manually with: $PipCmd install yt-dlp" -ForegroundColor Yellow
-    }
-} else {
-    Write-Host "  ! WARNING: Python/pip not found" -ForegroundColor Yellow
-    Write-Host "  Install Python from https://www.python.org/downloads/ and then run:" -ForegroundColor Yellow
-    Write-Host "  pip install yt-dlp" -ForegroundColor Yellow
+if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    throw "uv installation failed"
 }
+uv python install 3.15
+uv python pin 3.15
+uv tool install --upgrade "yt-dlp[default]"
+uv sync --project "$PSScriptRoot\..\tests\ascii_chat_tests" --frozen --python 3.15 --managed-python
+if ($LASTEXITCODE -ne 0) { throw "Failed to sync the Python test project" }
+uv sync --project "$PSScriptRoot\..\src\tooling\defer" --frozen --python 3.15 --managed-python
+if ($LASTEXITCODE -ne 0) { throw "Failed to sync the defer Python project" }
 
 Write-Host ""
+$clangCommand = Get-Command clang.exe -ErrorAction SilentlyContinue
+if (-not $clangCommand) {
+    Write-Host "LLVM 19 or newer is required; install LLVM with clang.exe and libclang.dll on PATH." -ForegroundColor Red
+    $AllInstalled = $false
+} else {
+    $clangVersion = (& $clangCommand.Source --version | Select-Object -First 1)
+    $resourceDir = (& $clangCommand.Source -print-resource-dir | Select-Object -First 1)
+    $llvmRoot = Split-Path (Split-Path (Split-Path $resourceDir -Parent) -Parent) -Parent
+    $libclang = Join-Path $llvmRoot "bin/libclang.dll"
+    if ($clangVersion -notmatch 'clang version (\d+)\.' -or [int]$Matches[1] -lt 19 -or -not (Test-Path -LiteralPath $libclang)) {
+        Write-Host "LLVM 19 or newer and its matching libclang.dll are required (clang: $clangVersion; libclang: $libclang)." -ForegroundColor Red
+        $AllInstalled = $false
+    }
+}
+if ($AllInstalled -and $IsWindows) {
+    if (-not $env:ASCIICHAT_LLVM_DEV_ROOT) {
+        & (Join-Path $PSScriptRoot 'install-llvm-dev.ps1')
+        $suffix = if ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64') { '-aarch64' } else { '' }
+        $env:ASCIICHAT_LLVM_DEV_ROOT = Join-Path (Split-Path $PSScriptRoot -Parent) ".deps-cache/llvm-dev-23.1.3$suffix"
+    }
+    $env:PATH = "$(Join-Path $env:ASCIICHAT_LLVM_DEV_ROOT 'bin');$env:PATH"
+    Write-Host "LLVM development root: $env:ASCIICHAT_LLVM_DEV_ROOT"
+}
 if ($AllInstalled) {
     Write-Host "All dependencies installed successfully!" -ForegroundColor Green
     Write-Host ""

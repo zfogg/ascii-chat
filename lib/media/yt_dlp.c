@@ -35,12 +35,15 @@
  * ============================================================================ */
 
 /**
- * @brief Cache entry for extracted stream URLs
+ * @brief Cached yt-dlp result for one media source and its audio/video requests
+ * @brief Cached yt-dlp result for one media source and its audio/video requests.
  *
  * Avoids calling yt-dlp multiple times for the same URL during
  * initialization (FPS detection, audio probing, playback setup).
  *
- * Cache entry is valid for 30 seconds (typical stream URL duration).
+ * The original URL and yt-dlp options identify the lookup; the extracted video
+ * and audio URLs are reused until `extracted_time` expires or `valid` is false.
+ * The process-wide cache is protected by its static mutex.
  */
 typedef struct {
   char url[MEDIA_URL_CACHE_SIZE];                               // Original URL

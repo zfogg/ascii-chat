@@ -60,7 +60,7 @@ MEAN_COLOR=$(identify -format "%[fx:mean.r*255],%[fx:mean.g*255],%[fx:mean.b*255
 echo "  Mean RGB: $MEAN_COLOR"
 
 # Check if all black (R,G,B all close to 0)
-IS_BLACK=$(python3 << 'EOF'
+IS_BLACK=$(uv run --project "$(dirname "$0")/../tests/ascii_chat_tests" --frozen python - << 'EOF'
 import re
 try:
     colors = "$MEAN_COLOR"

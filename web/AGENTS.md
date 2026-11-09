@@ -28,7 +28,9 @@ All three are React/TypeScript apps and share components and utilities through
   QA screenshots, dependency caches, `cloudflare-dist/`, and `.sites-checkout/`.
   Do not ignore the entire `dist/` directory: it contains authored frontend code.
 - From the atlas directory run `vp install --ignore-scripts`,
-  `python generate.py`, `python package.py`, and `python prepare_cloudflare.py`.
+  `uv run --project tests/ascii_chat_tests --frozen python generate.py`,
+  `uv run --project tests/ascii_chat_tests --frozen python package.py`, and
+  `uv run --project tests/ascii_chat_tests --frozen python prepare_cloudflare.py`.
   Packaging parses complete references, validates every guide checkpoint against
   current source, highlights code, and creates the standalone bundle. Compression
   verifies a lossless round trip for the hosting payload. These are the atlas's

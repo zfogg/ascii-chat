@@ -8,6 +8,11 @@
 #define H3_MAX_PATH 512U
 #define H3_SETTINGS_BUFFER 96U
 
+/**
+ * @brief For acip http3 server, this is the live record that ties `http`, `control`, `request`, `settings_length`
+ * together. The owning code creates it, updates it while work is active, and releases its handles and pointed-to
+ * storage before freeing the record.
+ */
 struct acip_http3_server {
   nghttp3_conn *http;
   int64_t control, request;

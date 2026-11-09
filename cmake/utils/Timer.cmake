@@ -14,6 +14,7 @@
 
 # Import color definitions from Colors.cmake
 include(${SOURCE_DIR}/cmake/utils/Colors.cmake)
+find_package(Python3 QUIET COMPONENTS Interpreter)
 
 # Time file path
 set(TIME_FILE "${CMAKE_BINARY_DIR}/.build_time_${TARGET_NAME}.txt")
@@ -21,8 +22,8 @@ set(TIME_FILE "${CMAKE_BINARY_DIR}/.build_time_${TARGET_NAME}.txt")
 # =============================================================================
 # Function: get_timestamp_ms
 # Gets current timestamp in milliseconds since epoch
-# Uses python3 for actual millisecond precision on Unix
-# Falls back to CMake-only approach (second precision) if python3 unavailable
+# Uses the configured Python interpreter for actual millisecond precision when
+# the platform-native timestamp commands are unavailable.
 # Sets the output variable to the timestamp value
 # =============================================================================
 function(get_timestamp_ms OUTPUT_VAR)
@@ -30,7 +31,7 @@ function(get_timestamp_ms OUTPUT_VAR)
         # Windows: Git Bash and WSL both corrupt terminal cursor position
         # Python is fast, has milliseconds, and doesn't corrupt terminal
         execute_process(
-            COMMAND python -c "import time; print(int(time.time() * 1000))"
+            COMMAND ${Python3_EXECUTABLE} -c "import time; print(int(time.time() * 1000))"
             OUTPUT_VARIABLE TIMESTAMP
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
@@ -89,9 +90,9 @@ function(get_timestamp_ms OUTPUT_VAR)
             if(DATE_RESULT EQUAL 0 AND NOT TIMESTAMP STREQUAL "")
                 set(TIMESTAMP_OK TRUE)
             else()
-                # Fallback to python3
+                # Fall back to the configured Python interpreter.
                 execute_process(
-                    COMMAND python3 -c "import time; print(int(time.time() * 1000))"
+                    COMMAND ${Python3_EXECUTABLE} -c "import time; print(int(time.time() * 1000))"
                     OUTPUT_VARIABLE TIMESTAMP
                     OUTPUT_STRIP_TRAILING_WHITESPACE
                     ERROR_QUIET
@@ -102,9 +103,9 @@ function(get_timestamp_ms OUTPUT_VAR)
                 endif()
             endif()
         else()
-            # Other Unix (BSDs, etc.): Try python3 first (BSD date doesn't support %N)
+            # Other Unix (BSDs, etc.): Python avoids BSD date's lack of %N.
             execute_process(
-                COMMAND python3 -c "import time; print(int(time.time() * 1000))"
+                COMMAND ${Python3_EXECUTABLE} -c "import time; print(int(time.time() * 1000))"
                 OUTPUT_VARIABLE TIMESTAMP
                 OUTPUT_STRIP_TRAILING_WHITESPACE
                 ERROR_QUIET
