@@ -72,6 +72,8 @@ typedef struct {
 
 asciichat_error_t http_server_init(http_server_t **server, const http_server_config_t *config);
 asciichat_error_t http_server_start(http_server_t *server);
+/** Adopt an already-listening native socket before starting the server. */
+asciichat_error_t http_server_adopt_socket(http_server_t *server, intptr_t socket_handle);
 /** Wake the private event loop from a worker thread. */
 asciichat_error_t http_server_wakeup(http_server_t *server);
 void http_server_stop(http_server_t *server);

@@ -26,6 +26,7 @@ struct http_server {
   uv_async_t stop_async;
   uv_async_t wake_async;
   bool running;
+  bool adopted_socket;
   bool thread_started;
   asciichat_thread_t thread;
   size_t connections;
@@ -647,20 +648,22 @@ asciichat_error_t http_server_start(http_server_t *s) {
   if (s->config.enable_http3 &&
       quic_endpoint_set_http_server((acip_quic_endpoint_t *)s->config.http3_endpoint, s) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_NETWORK, "Cannot attach shared HTTP/3 handler");
-  const char *bind_address = s->config.bind_address ? s->config.bind_address : "0.0.0.0";
-  struct sockaddr_storage address;
-  int rc;
-  if (strchr(bind_address, ':')) {
-    struct sockaddr_in6 ipv6;
-    rc = uv_ip6_addr(bind_address, s->config.port, &ipv6);
-    memcpy(&address, &ipv6, sizeof(ipv6));
-  } else {
-    struct sockaddr_in ipv4;
-    rc = uv_ip4_addr(bind_address, s->config.port, &ipv4);
-    memcpy(&address, &ipv4, sizeof(ipv4));
+  if (!s->adopted_socket) {
+    const char *bind_address = s->config.bind_address ? s->config.bind_address : "0.0.0.0";
+    struct sockaddr_storage address;
+    int rc;
+    if (strchr(bind_address, ':')) {
+      struct sockaddr_in6 ipv6;
+      rc = uv_ip6_addr(bind_address, s->config.port, &ipv6);
+      memcpy(&address, &ipv6, sizeof(ipv6));
+    } else {
+      struct sockaddr_in ipv4;
+      rc = uv_ip4_addr(bind_address, s->config.port, &ipv4);
+      memcpy(&address, &ipv4, sizeof(ipv4));
+    }
+    if (rc || uv_tcp_bind(&s->listener, (const struct sockaddr *)&address, 0) != 0)
+      return SET_ERRNO(ERROR_NETWORK, "Cannot bind HTTP listener");
   }
-  if (rc || uv_tcp_bind(&s->listener, (const struct sockaddr *)&address, 0) != 0)
-    return SET_ERRNO(ERROR_NETWORK, "Cannot bind HTTP listener");
   if (uv_listen((uv_stream_t *)&s->listener, (int)s->config.max_connections, connection_cb) != 0)
     return SET_ERRNO(ERROR_NETWORK, "Cannot listen for HTTP connections");
   s->running = true;
@@ -669,6 +672,14 @@ asciichat_error_t http_server_start(http_server_t *s) {
     return SET_ERRNO(ERROR_THREAD, "Cannot create HTTP event-loop thread");
   }
   s->thread_started = true;
+  return ASCIICHAT_OK;
+}
+asciichat_error_t http_server_adopt_socket(http_server_t *s, intptr_t socket_handle) {
+  if (!s || s->running || s->adopted_socket || socket_handle < 0)
+    return SET_ERRNO(ERROR_INVALID_STATE, "HTTP listener cannot adopt this socket");
+  if (uv_tcp_open(&s->listener, (uv_os_sock_t)socket_handle) != 0)
+    return SET_ERRNO(ERROR_NETWORK, "Cannot adopt HTTP listener socket");
+  s->adopted_socket = true;
   return ASCIICHAT_OK;
 }
 asciichat_error_t http_server_run(http_server_t *s) {
