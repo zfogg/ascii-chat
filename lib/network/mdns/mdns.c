@@ -48,7 +48,7 @@ typedef struct {
 } bonjour_resolver_t;
 #endif
 
-/** @brief Internal mDNS context structure */
+/** @brief Owns one mDNS browse or advertisement session, including its socket, event-loop registration, discovered records, and shutdown state. */
 struct asciichat_mdns_t {
   int socket_fd;                                 /**< UDP socket for mDNS */
   asciichat_mdns_discovery_callback_fn callback; /**< Discovery callback */

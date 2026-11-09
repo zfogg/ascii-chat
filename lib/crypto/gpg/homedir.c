@@ -13,7 +13,7 @@
 
 /**
  * @struct gpg_homedir
- * @brief Internal structure for temporary GPG homedir
+ * @brief Describes a temporary GnuPG home directory used to isolate key parsing from the user's real keyring. It holds the created path and cleanup bookkeeping; callers release it through the matching helper so the directory and files are removed.
  */
 struct gpg_homedir {
   char path[PLATFORM_MAX_PATH_LENGTH];
