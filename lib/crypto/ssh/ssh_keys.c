@@ -14,6 +14,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define SSH_BCRYPT_SALT_SIZE 16
 
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
@@ -81,14 +82,14 @@ static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_bl
   const size_t iv_size = 16;
   const size_t derived_size = key_size + iv_size;
 
-  uint8_t *derived = SAFE_MALLOC(derived_size, uint8_t *);
+  SAFE_MALLOC_DEFER_FREE(derived, derived_size, uint8_t *);
   if (!derived) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for key derivation");
   }
+  defer(sodium_memzero(derived, derived_size));
 
   // Use libsodium-bcrypt-pbkdf (OpenBSD implementation)
   if (sodium_bcrypt_pbkdf(passphrase, strlen(passphrase), salt, salt_len, derived, derived_size, rounds) != 0) {
-    SAFE_FREE(derived);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to derive decryption key with sodium_bcrypt_pbkdf");
   }
 
@@ -96,10 +97,8 @@ static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_bl
   const uint8_t *derived_iv = derived + key_size;
 
   // Decrypt using BearSSL
-  uint8_t *decrypted = SAFE_MALLOC(blob_len, uint8_t *);
+  SAFE_MALLOC_DEFER_FREE(decrypted, blob_len, uint8_t *);
   if (!decrypted) {
-    sodium_memzero(derived, derived_size);
-    SAFE_FREE(derived);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for decryption");
   }
 
@@ -131,17 +130,11 @@ static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_bl
     memcpy(decrypted, encrypted_blob, blob_len);
     br_aes_ct_cbcdec_run(&aes_ctx, working_iv, decrypted, blob_len);
   } else {
-    sodium_memzero(derived, derived_size);
-    SAFE_FREE(derived);
-    SAFE_FREE(decrypted);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported cipher: %s", cipher_name);
   }
 
-  // Clean up sensitive data
-  sodium_memzero(derived, derived_size);
-  SAFE_FREE(derived);
-
   *decrypted_out = decrypted;
+  decrypted = NULL;
   *decrypted_len = blob_len;
 
   return ASCIICHAT_OK;
@@ -186,18 +179,17 @@ asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[ED
     return SET_ERRNO(ERROR_CRYPTO_KEY, "SSH key line does not match expected format");
   }
 
+  defer(SAFE_FREE(base64_key));
+  defer(SAFE_FREE(comment));
+
   // Base64 decode
   uint8_t *blob;
   size_t blob_len;
   if (base64_decode_ssh_key(base64_key, strlen(base64_key), &blob, &blob_len) != 0) {
-    SAFE_FREE(base64_key);
-    SAFE_FREE(comment);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to decode SSH key base64 data");
   }
 
-  // Clean up regex-extracted strings
-  SAFE_FREE(base64_key);
-  SAFE_FREE(comment);
+  defer(SAFE_FREE(blob));
 
   // Parse SSH key blob structure:
   // [4 bytes: length of "ssh-ed25519"]
@@ -206,14 +198,12 @@ asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[ED
   // [32 bytes: Ed25519 public key]
 
   if (blob_len < SSH_KEY_HEADER_SIZE) {
-    SAFE_FREE(blob);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "SSH key blob too small: %zu bytes (expected at least %d)", blob_len,
                      SSH_KEY_HEADER_SIZE);
   }
 
   // Extract Ed25519 public key (last 32 bytes)
   memcpy(ed25519_pk, blob + blob_len - ED25519_PUBLIC_KEY_SIZE, ED25519_PUBLIC_KEY_SIZE);
-  SAFE_FREE(blob);
 
   return ASCIICHAT_OK;
 }
@@ -266,6 +256,7 @@ static bool ssh_private_key_from_agent(const char *key_path, private_key_t *key_
 
   FILE *pub_f = platform_fopen("file_stream", pub_key_path, "r");
   if (pub_f) {
+    defer(SAFE_FCLOSE(pub_f));
     char pub_line[BUFFER_SIZE_LARGE];
     if (fgets(pub_line, sizeof(pub_line), pub_f)) {
       public_key_t pub_key = {0};
@@ -274,7 +265,6 @@ static bool ssh_private_key_from_agent(const char *key_path, private_key_t *key_
       if (parse_ssh_ed25519_line(pub_line, pub_key.key) == ASCIICHAT_OK) {
         // Check if this key is in ssh-agent
         if (ssh_agent_has_key(&pub_key)) {
-          fclose(pub_f);
           log_dev("Key found in ssh-agent - using cached key (no password required)");
           // Key is in agent, we can use it
           memset(key_out, 0, sizeof(*key_out));
@@ -289,7 +279,6 @@ static bool ssh_private_key_from_agent(const char *key_path, private_key_t *key_
         }
       }
     }
-    fclose(pub_f);
   }
   return false;
 }
@@ -309,6 +298,8 @@ static asciichat_error_t ssh_private_key_read_file(ssh_private_key_parse_t *stat
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot read private key file: %s", key_path);
   }
 
+  defer(SAFE_FCLOSE(f));
+
   // Read the entire file
   state->file_content = NULL;
   size_t file_size = 0;
@@ -318,13 +309,11 @@ static asciichat_error_t ssh_private_key_read_file(ssh_private_key_parse_t *stat
   while ((bytes_read = fread(buffer, 1, sizeof(buffer), f)) > 0) {
     state->file_content = SAFE_REALLOC(state->file_content, file_size + bytes_read + 1, char *);
     if (!state->file_content) {
-      (void)fclose(f);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Out of memory reading private key file");
     }
     memcpy(state->file_content + file_size, buffer, bytes_read);
     file_size += bytes_read;
   }
-  (void)fclose(f);
 
   if (file_size == 0) {
     ssh_private_key_cleanup(state);
@@ -1031,6 +1020,8 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key_path=%p", key_path);
   }
 
+  char *normalized_path = NULL;
+  defer(SAFE_FREE(normalized_path));
 #ifdef EMSCRIPTEN_BUILD
   // Browser callers stage imported key text at this private virtual-FS path;
   // native path expansion and whitelist checks do not apply to that sandbox.
@@ -1039,16 +1030,13 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid browser SSH key path");
   }
   const char *validated_path = key_path;
-  char *normalized_path = NULL;
 #else
   if (!path_looks_like_path(key_path)) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid SSH key path: %s", key_path);
   }
 
-  char *normalized_path = NULL;
   asciichat_error_t path_result = path_validate_user_path(key_path, PATH_ROLE_KEY_PRIVATE, &normalized_path);
   if (path_result != ASCIICHAT_OK) {
-    SAFE_FREE(normalized_path);
     return path_result;
   }
   const char *validated_path = normalized_path;
@@ -1057,7 +1045,6 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
   // Check if file exists and is readable
   FILE *test_file = platform_fopen("file_stream", validated_path, "rb");
   if (test_file == NULL) {
-    SAFE_FREE(normalized_path);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot read key file: %s", key_path);
   }
 
@@ -1082,7 +1069,6 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
   (void)fclose(test_file);
 
   if (!is_valid_key_file) {
-    SAFE_FREE(normalized_path);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "File is not a valid SSH or GPG key: %s", key_path);
   }
 
@@ -1094,13 +1080,11 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
       NOTICE(DANGER, "UNSAFE PRIVATE KEY PERMISSIONS",
              "SSH key file %s has overly permissive permissions: %o.\nRun chmod 600 on this key file before retrying.",
              key_path, st.st_mode & 0777);
-      SAFE_FREE(normalized_path);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "SSH key file has overly permissive permissions: %s", key_path);
     }
   }
 #endif
 
-  SAFE_FREE(normalized_path);
   return ASCIICHAT_OK;
 }
 

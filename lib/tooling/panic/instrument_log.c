@@ -289,6 +289,12 @@ void asciichat_instr_runtime_global_destroy(void) {
 
 void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const char *function_name,
                               const char *snippet, uint8_t is_macro_expansion) {
+  // Initialization calls project helpers that may themselves be instrumented.
+  if (g_logging_reentry_guard) {
+    return;
+  }
+  g_logging_reentry_guard = true;
+
   // Instrumentation is enabled by default when the binary is built with Source Print.
   // Set ASCII_INSTR_SOURCE_PRINT_ENABLE=0 to disable tracing at runtime.
   if (!g_instrumentation_enabled_checked) {
@@ -303,18 +309,12 @@ void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const
   }
 
   if (!g_instrumentation_enabled) {
-    return;
+    goto cleanup;
   }
 
   if (g_disable_write) {
-    return;
+    goto cleanup;
   }
-
-  if (g_logging_reentry_guard) {
-    return;
-  }
-
-  g_logging_reentry_guard = true;
 
   asciichat_instr_runtime_t *runtime = asciichat_instr_runtime_get();
   if (runtime == NULL) {

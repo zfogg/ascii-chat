@@ -769,8 +769,8 @@ endif()
 #
 # Required for ALL builds:
 #   - clang: C compiler (ascii-chat is Clang-only)
-#   - clang++: C++ compiler (for defer/panic tools)
-#   - llvm-config: queries LLVM paths (required by defer tool)
+#   - clang++: C++ compiler for project dependencies and tooling
+#   - llvm-config: identifies LLVM paths on Unix
 #   - llvm-ar: static library archiver
 #   - llvm-ranlib: static library indexer
 #
@@ -795,19 +795,18 @@ if(NOT ASCIICHAT_CLANG_EXECUTABLE)
         "  Linux:   sudo apt install clang  OR  sudo pacman -S clang")
 endif()
 
-# clang++ is required for building the defer tool (defer() is used in codebase)
+# clang++ is required for C++ dependencies and tooling
 if(NOT ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
-    message(FATAL_ERROR "clang++ not found. Required for building defer tool. Install LLVM/Clang:\n"
+    message(FATAL_ERROR "clang++ not found. Required for C++ dependencies and tooling. Install LLVM/Clang:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
         "  Linux:   sudo apt install clang  OR  sudo pacman -S clang")
 endif()
 
-# llvm-config is required for defer tool to find LLVM libraries (Unix only)
-# On Windows, the official pre-built LLVM binaries don't include llvm-config.exe
-# The defer tool detects LLVM paths directly on Windows instead
+# llvm-config identifies the LLVM installation on Unix. Windows binaries can
+# be located from the compiler path when llvm-config.exe is unavailable.
 if(NOT WIN32 AND NOT ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
-    message(FATAL_ERROR "llvm-config not found. Required for building defer tool. Install LLVM:\n"
+    message(FATAL_ERROR "llvm-config not found. Required to identify LLVM on Unix. Install LLVM:\n"
         "  macOS:   brew install llvm\n"
         "  Linux:   sudo apt install llvm  OR  sudo pacman -S llvm")
 endif()

@@ -73,6 +73,11 @@ static cl::opt<std::string>
 
 static cl::opt<std::string> BuildPath("p", cl::desc("Build path (directory containing compile_commands.json)"),
                                       cl::Optional, cl::cat(ToolCategory));
+static cl::opt<std::string> CompileSourceOption("compile-source",
+                                                cl::desc("Compilation database source corresponding to the input"),
+                                                cl::init(""), cl::cat(ToolCategory));
+static cl::opt<std::string> ResourceDirOption("resource-dir", cl::desc("Clang builtin headers directory"), cl::init(""),
+                                              cl::cat(ToolCategory));
 static cl::opt<bool> LogMacroExpansionsOption("log-macro-expansions",
                                               cl::desc("Instrument statements originating from macro expansions"),
                                               cl::init(false), cl::cat(ToolCategory));
@@ -103,16 +108,38 @@ static cl::opt<std::string>
 static cl::list<std::string> SourcePaths(cl::Positional, cl::desc("<source0> [... <sourceN>]"), cl::cat(ToolCategory));
 
 static cl::opt<std::string> SignalHandlerAnnotation(
-    "signal-handler-annotation",
-    cl::desc(
-        "Annotation string used to mark functions that should be skipped (default: ASCII_INSTR_PANIC_SIGNAL_HANDLER)"),
-    cl::value_desc("annotation"), cl::init("ASCII_INSTR_PANIC_SIGNAL_HANDLER"), cl::cat(ToolCategory));
+    "signal-handler-annotation", cl::desc("Annotation string used to mark functions that should be skipped"),
+    cl::value_desc("annotation"), cl::init("ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER"), cl::cat(ToolCategory));
 
 constexpr unsigned kMacroFlagNone = 0U;
 constexpr unsigned kMacroFlagExpansion = 1U;
 constexpr unsigned kMacroFlagInvocation = 2U;
 
 namespace {
+
+// The compiled file can be a generated source; parse the original using that
+// target's exact compile command, while retaining the original file's context.
+class MappedCompilationDatabase final : public tooling::CompilationDatabase {
+public:
+  MappedCompilationDatabase(const tooling::CompilationDatabase &base, std::string compiled)
+      : base_(base), compiled_(std::move(compiled)) {}
+
+  std::vector<tooling::CompileCommand> getCompileCommands(StringRef input) const override {
+    auto commands = base_.getCompileCommands(compiled_);
+    for (auto &command : commands) {
+      for (auto &arg : command.CommandLine) {
+        if ((fs::path(command.Directory) / fs::path(arg)).lexically_normal() == fs::path(compiled_).lexically_normal())
+          arg = input.str();
+      }
+      command.Filename = input.str();
+    }
+    return commands;
+  }
+
+private:
+  const tooling::CompilationDatabase &base_;
+  std::string compiled_;
+};
 
 class InstrumentationVisitor : public clang::RecursiveASTVisitor<InstrumentationVisitor> {
 public:
@@ -255,7 +282,7 @@ public:
     std::string escapedSnippet = escapeSnippet(snippet);
     std::string instrumentationLine;
     instrumentationLine.reserve(escapedSnippet.size() + 256);
-    instrumentationLine.append("ascii_instr_log_line(\"");
+    instrumentationLine.append("asciichat_instr_log_line(\"");
     instrumentationLine.append(relativePath);
     instrumentationLine.append("\", ");
     instrumentationLine.append(std::to_string(lineNumber));
@@ -563,7 +590,9 @@ public:
       return;
     }
 
-    if (fs::exists(destinationPath)) {
+    std::error_code sameFileError;
+    const bool sameFile = fs::equivalent(originalPath, destinationPath, sameFileError);
+    if (fs::exists(destinationPath) && (CompileSourceOption.empty() || (!sameFileError && sameFile))) {
       llvm::errs() << "Refusing to overwrite existing file: " << destinationPath.c_str() << "\n";
       unregisterOutputPath(destinationString);
       hadWriteError_ = true;
@@ -630,12 +659,12 @@ private:
     clang::SourceManager &sourceManager = rewriter_.getSourceMgr();
     const clang::FileID fileId = sourceManager.getMainFileID();
     const llvm::StringRef bufferData = sourceManager.getBufferData(fileId);
-    if (bufferData.contains("#include \"tooling/panic/instrument_log.h\"")) {
+    if (bufferData.contains("#include <ascii-chat/tooling/panic/instrument_log.h>")) {
       return;
     }
 
     clang::SourceLocation insertionLocation = sourceManager.getLocForStartOfFile(fileId);
-    rewriter_.InsertText(insertionLocation, "#include \"tooling/panic/instrument_log.h\"\n", false, true);
+    rewriter_.InsertText(insertionLocation, "#include <ascii-chat/tooling/panic/instrument_log.h>\n", false, true);
   }
 
   clang::Rewriter rewriter_;
@@ -777,7 +806,35 @@ int main(int argc, const char **argv) {
     return 1;
   }
 
-  clang::tooling::ClangTool tool(*compilations, sourcePaths);
+  std::unique_ptr<MappedCompilationDatabase> mapped;
+  if (!CompileSourceOption.empty()) {
+    if (sourcePaths.size() != 1) {
+      llvm::errs() << "--compile-source requires exactly one input\n";
+      return 1;
+    }
+    mapped = std::make_unique<MappedCompilationDatabase>(*compilations, CompileSourceOption.getValue());
+  }
+  clang::tooling::ClangTool tool(mapped ? static_cast<const tooling::CompilationDatabase &>(*mapped) : *compilations,
+                                 sourcePaths);
+
+  if (!ResourceDirOption.empty()) {
+    const std::string resourceDir = ResourceDirOption.getValue();
+    tool.appendArgumentsAdjuster([resourceDir](const tooling::CommandLineArguments &args, StringRef) {
+      auto adjusted = args;
+      adjusted.push_back("-resource-dir");
+      adjusted.push_back(resourceDir);
+      return adjusted;
+    });
+  }
+  if (mapped) {
+    tool.appendArgumentsAdjuster([](const tooling::CommandLineArguments &args, StringRef input) {
+      auto adjusted = args;
+      adjusted.push_back("-DASCIICHAT_DEFER_PARSING=1");
+      adjusted.push_back("-iquote");
+      adjusted.push_back(fs::path(input.str()).parent_path().string());
+      return adjusted;
+    });
+  }
 
   if (!extraCompilerArgs.empty()) {
     const std::vector<std::string> extraArgsCopy(extraCompilerArgs.begin(), extraCompilerArgs.end());

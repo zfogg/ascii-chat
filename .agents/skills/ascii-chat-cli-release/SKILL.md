@@ -5,7 +5,7 @@ description: Prepare, publish, repair, and verify ascii-chat CLI releases throug
 
 # ascii-chat CLI release
 
-Read [references/build-and-verify.md](references/build-and-verify.md) before building. Reinspect `.github/workflows/release.yml`, `.github/actions/install-deps/action.yml`, `CMakePresets.json`, and dependency modules before copying commands: they are the current configuration authority.
+Read [references/build-and-verify.md](references/build-and-verify.md) before building. Reinspect `.github/workflows/release.yml`, `.github/actions/install-deps/action.yml`, `CMakePresets.json`, `scripts/version.sh`, and dependency modules before copying commands: they are the current configuration authority. Use `scripts/version.sh` to calculate candidate versions and inspect its current bump semantics before selecting a tag.
 
 ## Release contract
 

@@ -1,3 +1,4 @@
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/crypto/record.h>
 
 #include <ascii-chat/buffer.h>
@@ -31,6 +32,13 @@ asciichat_error_t crypto_record_init(crypto_record_t *state, crypto_context_t *c
 asciichat_error_t crypto_record_seal_into(crypto_record_t *state, unsigned traffic_class, unsigned delivery,
                                           const void *packet, size_t length, uint8_t *wire, size_t capacity,
                                           size_t *out_length) {
+  return crypto_record_seal_into_domain(state, traffic_class, delivery, packet, length, wire, capacity, out_length,
+                                        NULL);
+}
+
+asciichat_error_t crypto_record_seal_into_domain(crypto_record_t *state, unsigned traffic_class, unsigned delivery,
+                                                 const void *packet, size_t length, uint8_t *wire, size_t capacity,
+                                                 size_t *out_length, buffer_domain_t *domain) {
   if (!wire || !out_length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing Record encrypted packet output");
   *out_length = 0;
@@ -45,7 +53,7 @@ asciichat_error_t crypto_record_seal_into(crypto_record_t *state, unsigned traff
   size_t cipher_capacity = plain_length + state->crypto->nonce_size + state->crypto->mac_size;
   if (capacity < CRYPTO_RECORD_EPOCH_SIZE + cipher_capacity)
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Record ciphertext output is too small");
-  uint8_t *plain = buffer_alloc(NULL, plain_length);
+  uint8_t *plain = buffer_alloc(domain, plain_length);
   if (!plain) {
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate Record packet");
   }
@@ -123,24 +131,22 @@ asciichat_error_t crypto_record_open_sequence(crypto_record_t *state, unsigned t
       sodium_memzero(&pending_crypto, sizeof(pending_crypto));
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate record decrypted packet");
   }
+  defer(if (plain) buffer_release(plain));
   size_t plain_length = 0;
   crypto_result_t crypto_result =
       crypto_decrypt(decrypt_crypto, cipher, cipher_length, plain, cipher_length, &plain_length);
   if (pending)
     sodium_memzero(&pending_crypto, sizeof(pending_crypto));
   if (crypto_result != CRYPTO_OK) {
-    buffer_release(plain);
     return SET_ERRNO(ERROR_CRYPTO, "Cannot authenticate Record packet");
   }
   if (plain_length < CRYPTO_RECORD_PREFIX_SIZE || memcmp(plain, "ACR1", 4) || plain[4] != (state->server ? 0 : 1) ||
       (traffic_class != CRYPTO_RECORD_ANY_CHANNEL && plain[5] != traffic_class) || plain[5] >= CRYPTO_RECORD_CHANNELS ||
       plain[6] != (uint8_t)delivery || plain[7] || memcmp(plain + 16, &network_epoch, sizeof(network_epoch))) {
-    buffer_release(plain);
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid authenticated record flow metadata");
   }
   traffic_class = plain[5];
   if (epoch == state->previous_epoch && state->previous_valid && !state->previous_allowed[traffic_class]) {
-    buffer_release(plain);
     return SET_ERRNO(ERROR_CRYPTO, "Retired record channel epoch");
   }
   uint64_t network_sequence;
@@ -151,7 +157,6 @@ asciichat_error_t crypto_record_open_sequence(crypto_record_t *state, unsigned t
   if (!sequence || (delivery == CRYPTO_RECORD_RELIABLE && sequence <= high) ||
       (delivery == CRYPTO_RECORD_DATAGRAM && sequence <= high &&
        (high - sequence >= 64 || (seen & (UINT64_C(1) << (high - sequence)))))) {
-    buffer_release(plain);
     return SET_ERRNO(ERROR_CRYPTO, "Replayed or stale Record packet");
   }
   size_t inner_length = plain_length - CRYPTO_RECORD_PREFIX_SIZE;
@@ -159,13 +164,11 @@ asciichat_error_t crypto_record_open_sequence(crypto_record_t *state, unsigned t
       validate ? validate(context, traffic_class, delivery, plain + CRYPTO_RECORD_PREFIX_SIZE, inner_length)
                : ASCIICHAT_OK;
   if (result != ASCIICHAT_OK) {
-    buffer_release(plain);
     return result;
   }
   if (pending) {
     result = crypto_record_commit_epoch(state);
     if (result != ASCIICHAT_OK) {
-      buffer_release(plain);
       return result;
     }
   }
@@ -187,6 +190,7 @@ asciichat_error_t crypto_record_open_sequence(crypto_record_t *state, unsigned t
   state->last_receive_delivery = delivery;
   memmove(plain, plain + CRYPTO_RECORD_PREFIX_SIZE, inner_length);
   *out = plain;
+  plain = NULL;
   *out_length = inner_length;
   if (sequence_out)
     *sequence_out = sequence;

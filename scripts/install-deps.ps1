@@ -333,9 +333,35 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 uv python install 3.15
 uv python pin 3.15
 uv tool install --upgrade "yt-dlp[default]"
-uv sync --project "$PSScriptRoot\..\tests\ascii_chat_tests" --frozen
+uv sync --project "$PSScriptRoot\..\tests\ascii_chat_tests" --frozen --python 3.15 --managed-python
+if ($LASTEXITCODE -ne 0) { throw "Failed to sync the Python test project" }
+uv sync --project "$PSScriptRoot\..\src\tooling\defer" --frozen --python 3.15 --managed-python
+if ($LASTEXITCODE -ne 0) { throw "Failed to sync the defer Python project" }
 
 Write-Host ""
+$clangCommand = Get-Command clang.exe -ErrorAction SilentlyContinue
+if (-not $clangCommand) {
+    Write-Host "LLVM 19 or newer is required; install LLVM with clang.exe and libclang.dll on PATH." -ForegroundColor Red
+    $AllInstalled = $false
+} else {
+    $clangVersion = (& $clangCommand.Source --version | Select-Object -First 1)
+    $resourceDir = (& $clangCommand.Source -print-resource-dir | Select-Object -First 1)
+    $llvmRoot = Split-Path (Split-Path (Split-Path $resourceDir -Parent) -Parent) -Parent
+    $libclang = Join-Path $llvmRoot "bin/libclang.dll"
+    if ($clangVersion -notmatch 'clang version (\d+)\.' -or [int]$Matches[1] -lt 19 -or -not (Test-Path -LiteralPath $libclang)) {
+        Write-Host "LLVM 19 or newer and its matching libclang.dll are required (clang: $clangVersion; libclang: $libclang)." -ForegroundColor Red
+        $AllInstalled = $false
+    }
+}
+if ($AllInstalled -and $IsWindows) {
+    if (-not $env:ASCIICHAT_LLVM_DEV_ROOT) {
+        & (Join-Path $PSScriptRoot 'install-llvm-dev.ps1')
+        $suffix = if ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64') { '-aarch64' } else { '' }
+        $env:ASCIICHAT_LLVM_DEV_ROOT = Join-Path (Split-Path $PSScriptRoot -Parent) ".deps-cache/llvm-dev-23.1.3$suffix"
+    }
+    $env:PATH = "$(Join-Path $env:ASCIICHAT_LLVM_DEV_ROOT 'bin');$env:PATH"
+    Write-Host "LLVM development root: $env:ASCIICHAT_LLVM_DEV_ROOT"
+}
 if ($AllInstalled) {
     Write-Host "All dependencies installed successfully!" -ForegroundColor Green
     Write-Host ""

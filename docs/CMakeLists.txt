@@ -26,13 +26,25 @@ find_package(Doxygen REQUIRED)
 
 if(NOT DEFINED ASCII_CHAT_VERSION OR ASCII_CHAT_VERSION STREQUAL "")
     execute_process(
-        COMMAND git -C "${ASCII_CHAT_SOURCE_DIR}" describe --tags --always --dirty
+        COMMAND git -C "${ASCII_CHAT_SOURCE_DIR}" describe --tags --long --always --dirty --match "v[0-9]*"
         OUTPUT_VARIABLE ASCII_CHAT_VERSION
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET
     )
     if(ASCII_CHAT_VERSION STREQUAL "")
         set(ASCII_CHAT_VERSION "development")
+    endif()
+endif()
+
+if(NOT DEFINED ASCII_CHAT_LIBRARY_VERSION OR ASCII_CHAT_LIBRARY_VERSION STREQUAL "")
+    execute_process(
+        COMMAND git -C "${ASCII_CHAT_SOURCE_DIR}" describe --tags --long --always --dirty --match "lib/v[0-9]*"
+        OUTPUT_VARIABLE ASCII_CHAT_LIBRARY_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(ASCII_CHAT_LIBRARY_VERSION STREQUAL "")
+        set(ASCII_CHAT_LIBRARY_VERSION "unreleased")
     endif()
 endif()
 
@@ -57,6 +69,7 @@ set(DOXYFILE_HTML "${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.html")
 set(GENERATE_HTML "YES")
 set(GENERATE_MAN "NO")
 set(CUSTOM_THEME_FILENAME "${CMAKE_CURRENT_BINARY_DIR}/custom-theme-${ASCII_CHAT_DOC_SHA}.css")
+set(DOC_HEADER_OUT "${CMAKE_CURRENT_BINARY_DIR}/header.html")
 
 file(MAKE_DIRECTORY
     "${ASCII_CHAT_BINARY_DIR}/share/doc/html"
@@ -67,6 +80,12 @@ configure_file(
     "${ASCII_CHAT_SOURCE_DIR}/docs/custom-theme-v2.css"
     "${CUSTOM_THEME_FILENAME}"
     COPYONLY
+)
+
+configure_file(
+    "${ASCII_CHAT_SOURCE_DIR}/docs/header.html"
+    "${DOC_HEADER_OUT}"
+    @ONLY
 )
 
 configure_file(

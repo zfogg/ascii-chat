@@ -8,6 +8,7 @@
  */
 
 #include "ascii-chat/asciichat_errno.h"
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/crypto/regex.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/pcre2.h>
@@ -117,6 +118,14 @@ static int crypto_regex_match(pcre2_code *regex, PCRE2_SPTR subject, PCRE2_SIZE 
   return result;
 }
 
+static void crypto_regex_free_code(pcre2_code *regex) {
+  pcre2_code_free(regex);
+}
+
+static void crypto_regex_free_match_data(pcre2_match_data *match_data) {
+  pcre2_match_data_free(match_data);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * PUBLIC API IMPLEMENTATION
  * ═══════════════════════════════════════════════════════════════════════════ */
@@ -134,17 +143,16 @@ bool crypto_regex_match_known_hosts(const char *line, char **ip_port_out, char *
     return false;
   }
 
+  defer(crypto_regex_free_code(regex));
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
-    pcre2_code_free(regex);
     return false;
   }
 
+  defer(crypto_regex_free_match_data(match_data));
   int rc = crypto_regex_match(regex, (PCRE2_SPTR)line, strlen(line), match_data);
 
   if (rc < 0) {
-    pcre2_match_data_free(match_data);
-    pcre2_code_free(regex);
     return false;
   }
 
@@ -153,9 +161,6 @@ bool crypto_regex_match_known_hosts(const char *line, char **ip_port_out, char *
   *key_type_out = asciichat_pcre2_extract_named_group(regex, match_data, "key_type", line);
   *hex_key_out = asciichat_pcre2_extract_named_group(regex, match_data, "hex_key", line);
   *comment_out = asciichat_pcre2_extract_named_group(regex, match_data, "comment", line);
-
-  pcre2_match_data_free(match_data);
-  pcre2_code_free(regex);
 
   /* Verify we got required fields */
   if (!*ip_port_out || !*key_type_out) {
@@ -181,26 +186,22 @@ bool crypto_regex_match_public_key(const char *line, char **base64_key_out, char
     return false;
   }
 
+  defer(crypto_regex_free_code(regex));
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
-    pcre2_code_free(regex);
     return false;
   }
 
+  defer(crypto_regex_free_match_data(match_data));
   int rc = crypto_regex_match(regex, (PCRE2_SPTR)line, strlen(line), match_data);
 
   if (rc < 0) {
-    pcre2_match_data_free(match_data);
-    pcre2_code_free(regex);
     return false;
   }
 
   /* Extract named groups */
   *base64_key_out = asciichat_pcre2_extract_named_group(regex, match_data, "base64_key", line);
   *comment_out = asciichat_pcre2_extract_named_group(regex, match_data, "comment", line);
-
-  pcre2_match_data_free(match_data);
-  pcre2_code_free(regex);
 
   /* Verify we got required field */
   if (!*base64_key_out) {
@@ -224,25 +225,21 @@ bool crypto_regex_extract_pem_base64(const char *file_content, char **base64_dat
     return false;
   }
 
+  defer(crypto_regex_free_code(regex));
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
-    pcre2_code_free(regex);
     return false;
   }
 
+  defer(crypto_regex_free_match_data(match_data));
   int rc = crypto_regex_match(regex, (PCRE2_SPTR)file_content, strlen(file_content), match_data);
 
   if (rc < 0) {
-    pcre2_match_data_free(match_data);
-    pcre2_code_free(regex);
     return false;
   }
 
   /* Extract base64 data */
   *base64_data_out = asciichat_pcre2_extract_named_group(regex, match_data, "base64_data", file_content);
-
-  pcre2_match_data_free(match_data);
-  pcre2_code_free(regex);
 
   return *base64_data_out != NULL;
 }
@@ -259,25 +256,21 @@ bool crypto_regex_extract_gpg_keygrip(const char *line, char **keygrip_out) {
     return false;
   }
 
+  defer(crypto_regex_free_code(regex));
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
   if (!match_data) {
-    pcre2_code_free(regex);
     return false;
   }
 
+  defer(crypto_regex_free_match_data(match_data));
   int rc = crypto_regex_match(regex, (PCRE2_SPTR)line, strlen(line), match_data);
 
   if (rc < 0) {
-    pcre2_match_data_free(match_data);
-    pcre2_code_free(regex);
     return false;
   }
 
   /* Extract keygrip from named group */
   *keygrip_out = asciichat_pcre2_extract_named_group(regex, match_data, "keygrip", line);
-
-  pcre2_match_data_free(match_data);
-  pcre2_code_free(regex);
 
   return *keygrip_out != NULL;
 }

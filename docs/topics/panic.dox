@@ -116,6 +116,9 @@
  *
  * @subsection panic_build Building with Panic Instrumentation
  *
+ * Panic instrumentation runs before the defer transformation. Both tools
+ * operate on generated copies; edit the original sources as usual.
+ *
  * @code{.bash}
  * # Build with panic instrumentation
  * cmake -B build -DASCIICHAT_BUILD_WITH_PANIC=ON

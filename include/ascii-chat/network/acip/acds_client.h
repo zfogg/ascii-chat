@@ -14,12 +14,15 @@
  * @brief ACIP client-side protocol library and ACDS client connection API
  * @ingroup acip
  * @addtogroup acds_client
+ * @ingroup module_acds
  * @{
  *
- * Client-side ACIP (ascii-chat IP Protocol) implementation for:
- * - Session discovery and management (create, lookup, join, leave)
- * - WebRTC signaling relay (SDP, ICE candidates)
- * - String reservation (future feature)
+ * If you are writing a client, this is the moment where a human-readable
+ * session name becomes a real connection. The client opens one authenticated
+ * ACIP connection to ACDS, asks what a session means, and—after the user has
+ * proved they are allowed to join—receives the endpoint information needed to
+ * connect to the host. ACDS coordinates that hand-off; it never carries the
+ * video or audio itself.
  *
  * # ACDS Client Protocol
  *
@@ -27,8 +30,8 @@
  * - **Transport**: TCP (default port 27225, configurable)
  * - **Protocol**: ACIP binary protocol (not HTTP/JSON)
  * - **Packet Format**: packet_header_t + payload (see network/acip/protocol.h)
- * - **Authentication**: Ed25519 digital signatures (ECDSA alternative available)
- * - **Encryption**: Optional TLS or application-level encryption via crypto_context_t
+ * - **Authentication**: Ed25519 identity signatures and the configured crypto policy
+ * - **Encryption**: ACIP session protection negotiated on the discovery connection
  * - **Validation**: CRC32 checksum on every packet payload
  *
  * ## Session Lifecycle (Client Perspective)
@@ -73,6 +76,22 @@
  * - Server port (default: 27225)
  * - Timeout (connection timeout in milliseconds)
  * - Optional callback for graceful shutdown
+ *
+ * A minimal lookup-and-join flow looks like this:
+ * @code{.c}
+ * acds_client_t client = {0};
+ * acds_client_config_t config;
+ * acds_client_config_init_defaults(&config);
+ *
+ * if (acds_client_connect(&client, &config) == ASCIICHAT_OK) {
+ *   acds_session_lookup_result_t info = {0};
+ *   if (acds_session_lookup(&client, "happy-sunset-ocean", &info) == ASCIICHAT_OK && info.found) {
+ *     // Fill acds_session_join_params_t with the participant identity/password.
+ *     // The successful join result contains the host endpoint and session type.
+ *   }
+ *   acds_client_disconnect(&client);
+ * }
+ * @endcode
  *
  * **ACIP Protocol Overview:**
  * - Binary TCP protocol (not HTTP/JSON)

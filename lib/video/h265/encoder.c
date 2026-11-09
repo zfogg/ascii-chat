@@ -1,3 +1,4 @@
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /**
@@ -81,12 +82,13 @@ h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_
     return NULL;
   }
 
+  defer_named(cleanup, h265_encoder_destroy(enc));
+
   const AVCodec *codec = avcodec_find_encoder_by_name(codec_type == VIDEO_CODEC_H264 ? "libx264" : "libx265");
   if (!codec)
     codec = avcodec_find_encoder(codec_type == VIDEO_CODEC_H264 ? AV_CODEC_ID_H264 : AV_CODEC_ID_HEVC);
   if (!codec) {
     SET_ERRNO(ERROR_MEDIA_INIT, "%s encoder not found", codec_type == VIDEO_CODEC_H264 ? "H.264" : "HEVC");
-    SAFE_FREE(enc);
     return NULL;
   }
   enc->codec = codec;
@@ -94,7 +96,6 @@ h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_
   enc->codec_ctx = avcodec_alloc_context3(codec);
   if (!enc->codec_ctx) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate codec context");
-    SAFE_FREE(enc);
     return NULL;
   }
 
@@ -127,12 +128,6 @@ h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_
 
   if (!enc->frame || !enc->packet) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate frame/packet");
-    if (enc->frame)
-      av_frame_free(&enc->frame);
-    if (enc->packet)
-      av_packet_free(&enc->packet);
-    avcodec_free_context(&enc->codec_ctx);
-    SAFE_FREE(enc);
     return NULL;
   }
 
@@ -145,10 +140,6 @@ h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_
   enc->yuv_buf = SAFE_MALLOC(enc->yuv_buf_size, uint8_t *);
   if (!enc->yuv_buf) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate YUV buffer");
-    av_frame_free(&enc->frame);
-    av_packet_free(&enc->packet);
-    avcodec_free_context(&enc->codec_ctx);
-    SAFE_FREE(enc);
     return NULL;
   }
 
@@ -157,6 +148,7 @@ h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_
   // Register encoder for debugging
   NAMED_REGISTER_H265_ENCODER(enc, "h265_encoder", NULL);
 
+  defer_cancel(cleanup);
   return enc;
 }
 

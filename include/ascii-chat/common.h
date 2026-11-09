@@ -381,6 +381,14 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
     }                                                                                                                  \
   } while (0)
 
+/* These block declarations require the defer header and source transformer. */
+#define SAFE_MALLOC_DEFER_FREE(name, size, cast)                                                                       \
+  cast name = SAFE_MALLOC(size, cast);                                                                                 \
+  defer(SAFE_FREE(name))
+#define SAFE_CALLOC_DEFER_FREE(name, count, size, cast)                                                                \
+  cast name = SAFE_CALLOC(count, size, cast);                                                                          \
+  defer(SAFE_FREE(name))
+
 /* Safe fclose that nulls the pointer - for use with defer() */
 /* Usage: defer(SAFE_FCLOSE(fp)); */
 #define SAFE_FCLOSE(fp)                                                                                                \
