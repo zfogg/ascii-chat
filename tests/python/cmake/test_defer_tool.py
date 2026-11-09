@@ -937,7 +937,19 @@ def test_defer_in_included_header_fails_before_writing(
     result = transform(tmp_path, transform_environment, '#include "inline.h"\nint main(void) { return 0; }\n')
     assert result.returncode != 0
     assert "inline.h:1:" in result.stderr.replace("\\", "/")
-    assert "defer in included headers is not supported" in result.stderr
+    assert "defer in included files is not supported" in result.stderr
+    assert not (tmp_path / "output.c").exists()
+
+
+@pytest.mark.parametrize("extension", ["c", "cpp", "m", "mm"])
+def test_defer_in_included_source_fails_before_writing(
+    tmp_path: Path, transform_environment: dict[str, str], extension: str
+) -> None:
+    included = tmp_path / f"included.{extension}"
+    included.write_text("static void f(void) { defer((void)0); }\n", encoding="utf-8")
+    result = transform(tmp_path, transform_environment, f'#include "{included.name}"\nint main(void) {{ return 0; }}\n')
+    assert result.returncode != 0
+    assert "defer in included files is not supported" in result.stderr
     assert not (tmp_path / "output.c").exists()
 
 
@@ -949,7 +961,7 @@ def test_wrapped_defer_in_included_header_fails_before_writing(
     )
     result = transform(tmp_path, transform_environment, '#include "inline.h"\nint main(void) { return 0; }\n')
     assert result.returncode != 0
-    assert "defer wrapper in included headers is not supported" in result.stderr
+    assert "defer wrapper in included files is not supported" in result.stderr
     assert not (tmp_path / "output.c").exists()
 
 
@@ -1034,6 +1046,17 @@ def test_cmake_discovers_defer_and_tracks_headers(
     main.write_text("int main(void) { return 0; }\n", encoding="utf-8")
     header = source_dir / "value.h"
     header.write_text("#define VALUE 1\n", encoding="utf-8")
+    nested = source_dir / "nested"
+    nested.mkdir()
+    (nested / "value_wrapper.h").write_text('#include "../value.h"\n', encoding="utf-8")
+    (source_dir / "included.c").write_text(
+        '#include "nested/value_wrapper.h"\nstatic int included_value(void) { return VALUE; }\n',
+        encoding="utf-8",
+    )
+    for extension in ("cpp", "m", "mm"):
+        (source_dir / f"included.{extension}").write_text(
+            f"static int included_{extension}(void) {{ return 0; }}\n", encoding="utf-8"
+        )
     (project / "ready.in").write_text("#define READY 1\n", encoding="utf-8")
     include_dir = (ROOT / "include").as_posix()
     module = (ROOT / "cmake" / "tooling" / "Defer.cmake").as_posix()
@@ -1105,19 +1128,23 @@ def test_cmake_discovers_defer_and_tracks_headers(
     time.sleep(1.1)
     late_header.write_text('#include "ascii-chat/tooling/defer/defer.h"\n#define LATE(action) defer(action)\n', encoding="utf-8")
     main.write_text(
-        '#include "ascii-chat/tooling/defer/defer.h"\n#include "value.h"\n#include "ready.h"\n'
+        '#include "ascii-chat/tooling/defer/defer.h"\n#include "included.c"\n'
+        '#include "included.cpp"\n#include "included.m"\n#include "included.mm"\n#include "ready.h"\n'
         "static int n; static void f(void) { defer\n (n = VALUE); }\n"
-        "int main(void) { f(); return n != VALUE; }\n",
+        "int main(void) { f(); return n != included_value() || included_cpp() || included_m() || included_mm(); }\n",
         encoding="utf-8",
     )
+    collision = build / "defer_transformed" / "ascii-chat-probe" / "src" / "included.c"
+    collision.parent.mkdir(parents=True, exist_ok=True)
+    collision.write_text('#error generated-directory include shadowed the source file\n', encoding="utf-8")
     (build / "ready.h").unlink()
     output = run(cmake, "--build", str(build))
     assert output.count("Transforming defer source batch") == 1
     assert (
-        build / "defer_transformed" / "ascii-chat-probe" / "src" / "second.c"
+        build / "defer_transformed" / "ascii-chat-probe" / "src" / "second.c.defer" / "second.c"
     ).is_file()
-    assert (build / "defer_transformed" / "ascii-chat-probe" / "src" / "late.c").is_file()
-    generated = build / "defer_transformed" / "ascii-chat-probe" / "src" / "main.c"
+    assert (build / "defer_transformed" / "ascii-chat-probe" / "src" / "late.c.defer" / "late.c").is_file()
+    generated = build / "defer_transformed" / "ascii-chat-probe" / "src" / "main.c.defer" / "main.c"
     assert generated.is_file()
     assert "defer\n (n = VALUE)" in main.read_text(encoding="utf-8")
     assert "defer\n (n = VALUE)" not in generated.read_text(encoding="utf-8")
@@ -1128,7 +1155,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
     )
     run(str(executable))
     other_generated = (
-        build / "defer_transformed" / "ascii-chat-probe" / "src" / "second.c"
+        build / "defer_transformed" / "ascii-chat-probe" / "src" / "second.c.defer" / "second.c"
     )
     objects = list(
         (build / "src" / "CMakeFiles" / "ascii-chat-probe.dir").rglob(
@@ -1136,9 +1163,11 @@ def test_cmake_discovers_defer_and_tracks_headers(
         )
     )
     other_object = next(path for path in objects if "second.c" in path.name)
+    main_object = next(path for path in objects if "main.c" in path.name)
     before = generated.stat().st_mtime_ns
     other_before = other_generated.stat().st_mtime_ns
     object_before = other_object.stat().st_mtime_ns
+    main_object_before = main_object.stat().st_mtime_ns
     # Some filesystems have coarse timestamp resolution.
     time.sleep(1.1)
     header.write_text("#define VALUE 2\n", encoding="utf-8")
@@ -1146,6 +1175,7 @@ def test_cmake_discovers_defer_and_tracks_headers(
     assert generated.stat().st_mtime_ns == before
     assert other_generated.stat().st_mtime_ns == other_before
     assert other_object.stat().st_mtime_ns == object_before
+    assert main_object.stat().st_mtime_ns > main_object_before
     run(str(executable))
     time.sleep(1.1)
     main.write_text(

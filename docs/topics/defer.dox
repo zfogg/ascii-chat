@@ -84,6 +84,12 @@
  * `ASCIICHAT_DEFER_NATIVE_BINARY` can instead point to a prebuilt host tool.
  * The native tool transforms batch files concurrently using available CPU
  * threads. Pass `--jobs=N` when invoking it directly to set a smaller limit.
+ * Each generated translation unit has its own directory, and the original
+ * source directory remains on Clang's quoted-include search path. Relative
+ * includes therefore resolve from the original source tree, including nested
+ * includes; included files are tracked as build dependencies. Per-source
+ * dependency stamps cause only affected objects to rebuild when an included
+ * file changes, even if the transformed C text itself stays unchanged.
  *
  * Set `ASCIICHAT_DEFER_BACKEND=PYTHON` to select the retained Python backend.
  * It runs through the defer uv project and requires uv-managed Python 3.10 or
@@ -92,8 +98,10 @@
  * require a compilation database and a single-config Ninja or Unix Makefiles
  * generator. Their generated C and fail-closed behavior are checked together.
  * Directly compiling an untransformed source containing defer fails rather than
- * turning cleanup into a no-op. A `.c` file included by another source file is
- * also compiled without its own transformation; avoid defer in such files.
+ * turning cleanup into a no-op. Included files are compiled as part of their
+ * including translation unit; defer inside an included header or source file
+ * is unsupported and fails the build. The CMake integration transforms C
+ * translation units, not C++, Objective-C, or Objective-C++ translation units.
  * When panic instrumentation is enabled, it runs before defer transformation.
  *
  * To inspect an exit without writing a generated file, pass its source line and

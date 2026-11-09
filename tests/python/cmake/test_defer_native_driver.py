@@ -178,13 +178,21 @@ def test_parallel_batch_matches_serial_with_distinct_compile_directories(
     (tmp_path / "compile_commands.json").write_text(json.dumps(database), encoding="utf-8")
     manifest = tmp_path / "batch.txt"
     manifest.write_text("".join(records), encoding="utf-8")
-    command = [str(native_tool), "--batch", str(manifest), "--compilation-database", str(tmp_path)]
+    command = [str(native_tool), "--batch", str(manifest), "--compilation-database", str(tmp_path),
+               "--dependency-stamps"]
     serial = subprocess.run([*command, "--jobs=1"], capture_output=True, text=True, check=False)
     assert serial.returncode == 0, serial.stderr
     expected = [(tmp_path / f"unit-{i}" / "generated.c").read_bytes() for i in range(4)]
     parallel = subprocess.run([*command, "--jobs=4"], capture_output=True, text=True, check=False)
     assert parallel.returncode == 0, parallel.stderr
     assert [(tmp_path / f"unit-{i}" / "generated.c").read_bytes() for i in range(4)] == expected
+    stamps = [tmp_path / f"unit-{i}.deps" for i in range(4)]
+    stamp_contents = [stamp.read_bytes() for stamp in stamps]
+    (tmp_path / "unit-1" / "local.h").write_text("#define VALUE 200\n", encoding="utf-8")
+    changed = subprocess.run([*command, "--jobs=4"], capture_output=True, text=True, check=False)
+    assert changed.returncode == 0, changed.stderr
+    assert stamps[1].read_bytes() != stamp_contents[1]
+    assert all(stamps[i].read_bytes() == stamp_contents[i] for i in (0, 2, 3))
 
 
 def test_parallel_batch_rejects_duplicate_outputs(native_tool: Path, tmp_path: Path) -> None:
@@ -198,6 +206,21 @@ def test_parallel_batch_rejects_duplicate_outputs(native_tool: Path, tmp_path: P
     assert result.returncode != 0
     assert "output paths must be unique" in result.stderr
     assert not output.exists()
+
+
+def test_dependency_stamp_cannot_overwrite_batch_input(native_tool: Path, tmp_path: Path) -> None:
+    source = tmp_path / "unit.deps"
+    source.write_text("int preserve;\n", encoding="utf-8")
+    output = tmp_path / "unit" / "output.c"
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text(f"{source}\t{output}\n", encoding="utf-8")
+    result = subprocess.run(
+        [str(native_tool), "--batch", str(manifest), "--dependency-stamps"],
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode != 0
+    assert "dependency stamp must not overwrite" in result.stderr
+    assert source.read_text(encoding="utf-8") == "int preserve;\n"
 
 
 def test_parallel_batch_reports_transform_failures(native_tool: Path, tmp_path: Path) -> None:

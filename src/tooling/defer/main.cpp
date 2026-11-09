@@ -18,6 +18,7 @@
 #include <iterator>
 #include <limits>
 #include <sstream>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -32,6 +33,7 @@ llvm::cl::opt<std::string> build_directory("build-dir", llvm::cl::desc("Build di
 llvm::cl::list<std::string> sources(llvm::cl::Positional, llvm::cl::desc("<source files>"), llvm::cl::ZeroOrMore);
 llvm::cl::opt<std::string> compilation_database("compilation-database", llvm::cl::desc("CMake compilation database"));
 llvm::cl::opt<std::string> depfile("depfile", llvm::cl::desc("Write header dependencies"));
+llvm::cl::opt<bool> dependency_stamps("dependency-stamps", llvm::cl::desc("Write per-output dependency stamps"));
 llvm::cl::opt<std::string> batch("batch", llvm::cl::desc("Transform source/output pairs from a manifest"));
 llvm::cl::opt<unsigned> jobs("jobs", llvm::cl::desc("Maximum concurrent transformations (default: available cores)"),
                              llvm::cl::init(0));
@@ -147,6 +149,26 @@ int main(int argc, char **argv) {
         }
       }
     }
+    if (dependency_stamps) {
+      std::set<std::filesystem::path> stamps;
+      for (const auto &[source, output] : inputs) {
+        const auto stamp = std::filesystem::u8path(output.parent_path().u8string() + ".deps");
+        if (!stamps.insert(std::filesystem::weakly_canonical(stamp)).second)
+          throw std::runtime_error("dependency stamp paths must be unique");
+        if (!depfile_path.empty() &&
+            std::filesystem::weakly_canonical(stamp) == std::filesystem::weakly_canonical(depfile_path))
+          throw std::runtime_error("dependency stamp must not overwrite the depfile");
+        for (const auto &[protected_source, protected_output] : inputs) {
+          for (const auto &protected_path : {protected_source, protected_output}) {
+            std::error_code error;
+            if (std::filesystem::weakly_canonical(stamp) == std::filesystem::weakly_canonical(protected_path) ||
+                (std::filesystem::exists(stamp) && std::filesystem::exists(protected_path) &&
+                 std::filesystem::equivalent(stamp, protected_path, error) && !error))
+              throw std::runtime_error("dependency stamp must not overwrite an input source or output");
+          }
+        }
+      }
+    }
     if (jobs.getNumOccurrences() && jobs == 0)
       throw std::runtime_error("--jobs must be at least 1");
     dependencies.resize(inputs.size());
@@ -188,6 +210,9 @@ int main(int argc, char **argv) {
     for (const auto &error : errors)
       if (error)
         std::rethrow_exception(error);
+    if (dependency_stamps)
+      for (const auto &file : dependencies)
+        defer_tool::write_dependency_stamp(file);
     if (!depfile_path.empty())
       defer_tool::write_depfile(depfile_path, dependencies);
     return 0;

@@ -48,13 +48,14 @@ def main() -> int:
         write_if_changed(manifest, content)
         sources = " ".join(cmake_literal(source) for _, source, _ in entries)
         outputs = " ".join(cmake_literal(output) for _, _, output in entries)
+        stamps = " ".join(cmake_literal(Path(output).parent.as_posix() + ".deps") for _, _, output in entries)
         targets = sorted({target for target, _, _ in entries})
         name = cmake_literal(f"ascii-defer-{batch_id}")
         rules.append(f"""add_custom_command(
-    OUTPUT {outputs}
+    OUTPUT {outputs} {stamps}
     COMMAND ${{ASCIICHAT_DEFER_PYTHON_COMMAND}} "${{CMAKE_SOURCE_DIR}}/src/tooling/defer/defer.py"
         --batch {cmake_literal(manifest.as_posix())} --libclang "${{ASCIICHAT_LIBCLANG_PATH}}"
-        --compilation-database "${{CMAKE_BINARY_DIR}}" --depfile {cmake_literal(depfile.as_posix())}
+        --compilation-database "${{CMAKE_BINARY_DIR}}" --depfile {cmake_literal(depfile.as_posix())} --dependency-stamps
     DEPENDS {sources} {cmake_literal(manifest.as_posix())}
         "${{CMAKE_SOURCE_DIR}}/src/tooling/defer/defer.py"
         "${{CMAKE_SOURCE_DIR}}/src/tooling/defer/pyproject.toml"
@@ -63,7 +64,7 @@ def main() -> int:
         "${{CMAKE_BINARY_DIR}}/compile_commands.json"
     DEPFILE {cmake_literal(depfile.as_posix())}
     COMMENT "Transforming defer source batch" VERBATIM)
-add_custom_target({name} DEPENDS {outputs})
+add_custom_target({name} DEPENDS {outputs} {stamps})
 """)
         if prerequisites:
             required = " ".join(cmake_literal(item) for item in prerequisites)

@@ -271,4 +271,26 @@ void write_depfile(const fs::path &path, const std::vector<FileDependencies> &fi
   write_if_changed(path, result);
 }
 
+void write_dependency_stamp(const FileDependencies &file) {
+  const auto stamp = fs::u8path(file.output.parent_path().u8string() + ".deps");
+  std::string contents;
+  for (const auto &name : file.inputs) {
+    const auto path = fs::u8path(name);
+    std::error_code error;
+    if (fs::weakly_canonical(stamp) == fs::weakly_canonical(path) ||
+        (fs::exists(stamp) && fs::equivalent(stamp, path, error) && !error))
+      throw std::runtime_error("dependency stamp must not overwrite an included file");
+    error.clear();
+    const auto modified = fs::last_write_time(path, error);
+    if (error)
+      throw std::runtime_error("cannot stat dependency " + name + ": " + error.message());
+    const auto size = fs::file_size(path, error);
+    if (error)
+      throw std::runtime_error("cannot stat dependency " + name + ": " + error.message());
+    contents += name + "\t" + std::to_string(static_cast<long long>(modified.time_since_epoch().count())) + "\t" +
+                std::to_string(size) + "\n";
+  }
+  write_if_changed(stamp, contents);
+}
+
 } // namespace defer_tool

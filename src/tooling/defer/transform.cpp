@@ -131,7 +131,7 @@ public:
           clang_getExpansionLocation(clang_getCursorLocation(cursor), &file, &line, &column, nullptr);
           if (file)
             fail(consume_string(clang_getFileName(file)) + ":" + std::to_string(line) + ":" + std::to_string(column) +
-                 ": defer in included headers is not supported; move the function into a C source file");
+                 ": defer in included files is not supported; move the function into a C source file");
         } else {
           macros_.emplace(begin(cursor), cursor);
         }
@@ -560,7 +560,7 @@ std::string Transformer::run() {
   std::function<void(CXCursor)> collect_markers = [&](CXCursor cursor) {
     if (clang_getCursorKind(cursor) == CXCursor_CallExpr && spelling(cursor) == "__ascii_defer_marker") {
       if (!in_file(cursor))
-        fail("defer in included headers is not supported; move the function into a C source file");
+        fail("defer in included files is not supported; move the function into a C source file");
       marker_offsets.push_back(begin(cursor));
     }
     for (auto child : children(cursor))
@@ -726,7 +726,7 @@ std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &pat
     }
     if (std::filesystem::weakly_canonical(
             std::filesystem::absolute(std::filesystem::u8path(consume_string(clang_getFileName(file))))) != canonical)
-      throw wrapper_error("defer wrapper in included headers is not supported; move the function into a C source file");
+      throw wrapper_error("defer wrapper in included files is not supported; move the function into a C source file");
     const auto definition = clang_getCursorReferenced(cursor);
     if (clang_Cursor_isNull(definition))
       throw wrapper_error("cannot resolve macro containing defer: " + spelling(cursor));

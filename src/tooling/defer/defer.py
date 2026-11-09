@@ -101,7 +101,7 @@ def parse_wrapped(index: cindex.Index, path: Path, arguments: list[str], source:
                     and not macro_reaches_defer(token.spelling, definitions, memo, visiting, markers)[0]):
                     raise wrapper_error("defer wrapper arguments containing macros cannot be expanded safely; use a local value")
             if Path(node.location.file.name).resolve() != path:
-                raise wrapper_error("defer wrapper in included headers is not supported; move the function into a C source file")
+                raise wrapper_error("defer wrapper in included files is not supported; move the function into a C source file")
             definition = node.referenced
             if definition is None:
                 raise wrapper_error(f"cannot resolve macro containing defer: {node.spelling}")
@@ -239,7 +239,7 @@ class Transformer:
                 elif cursor.location.file:
                     raise TransformError(
                         f"{cursor.location.file}:{cursor.location.line}:{cursor.location.column}: "
-                        "defer in included headers is not supported; move the function into a C source file"
+                        "defer in included files is not supported; move the function into a C source file"
                     )
         if self.macros and re.search(rb"(?m)^[ \t]*#[ \t]*(?:line\b|[0-9])", source):
             raise TransformError(
@@ -731,7 +731,7 @@ class Transformer:
         def collect_markers(cursor: cindex.Cursor) -> None:
             if cursor.kind == cindex.CursorKind.CALL_EXPR and cursor.spelling == "__ascii_defer_marker":
                 if not self.in_file(cursor):
-                    raise TransformError("defer in included headers is not supported; move the function into a C source file")
+                    raise TransformError("defer in included files is not supported; move the function into a C source file")
                 marker_offsets.append(cursor.extent.start.offset)
             for child in cursor.get_children():
                 collect_markers(child)
@@ -833,6 +833,7 @@ def batch_main() -> int:
     parser.add_argument("--libclang", type=Path, required=True)
     parser.add_argument("--compilation-database", type=Path, required=True)
     parser.add_argument("--depfile", type=Path, required=True)
+    parser.add_argument("--dependency-stamps", action="store_true")
     args = parser.parse_args()
     cindex.Config.set_library_file(str(args.libclang.resolve()))
     manifest = args.batch.resolve()
@@ -850,17 +851,26 @@ def batch_main() -> int:
         outputs = [Path(record[1]) for record in records]
         if any(paths_alias(output, source) for output in outputs for source in sources):
             raise TransformError("output must not overwrite an input source")
-        for candidate in [depfile, *(Path(str(output) + ".d") for output in outputs)]:
+        stamp_paths = [Path(str(output.parent) + ".deps") for output in outputs] if args.dependency_stamps else []
+        if len({stamp.resolve() for stamp in stamp_paths}) != len(stamp_paths):
+            raise TransformError("dependency stamp paths must be unique")
+        if any(paths_alias(stamp, depfile) for stamp in stamp_paths):
+            raise TransformError("dependency stamp must not overwrite the depfile")
+        part_paths = [Path(str(output.parent) + ".depfile") for output in outputs]
+        if any(paths_alias(part, depfile) for part in part_paths):
+            raise TransformError("batch depfile must not overwrite a per-file depfile")
+        for candidate in [depfile, *part_paths, *stamp_paths]:
             if any(paths_alias(candidate, protected) for protected in [*sources, *outputs]):
                 raise TransformError("depfile must not overwrite an input source or output")
         for source, output in records:
-            part = Path(output + ".d")
+            part = Path(str(Path(output).parent) + ".depfile")
             sys.argv = [
                 original_argv[0],
                 "--compilation-database",
                 str(database),
                 "--depfile",
                 str(part),
+                *(["--dependency-stamp", str(Path(output).parent) + ".deps"] if args.dependency_stamps else []),
                 source,
                 output,
             ]
@@ -889,6 +899,7 @@ def main() -> int:
     parser.add_argument("--show-transformed", metavar="SOURCE:LINE", help="show the transformed function")
     parser.add_argument("--compilation-database", type=Path)
     parser.add_argument("--depfile", type=Path)
+    parser.add_argument("--dependency-stamp", type=Path)
     parser.add_argument("source", type=Path, nargs="?")
     parser.add_argument("output", type=Path, nargs="?")
     parser.add_argument(
@@ -942,10 +953,16 @@ def main() -> int:
         args.output = args.output.resolve()
         if args.depfile:
             args.depfile = args.depfile.resolve()
+        if args.dependency_stamp:
+            args.dependency_stamp = args.dependency_stamp.resolve()
         if paths_alias(args.output, args.source):
             raise TransformError("output must not overwrite the input source")
         if args.depfile and any(paths_alias(args.depfile, p) for p in (args.source, args.output)):
             raise TransformError("depfile must not overwrite an input source or output")
+        if args.dependency_stamp and any(paths_alias(args.dependency_stamp, p) for p in (args.source, args.output)):
+            raise TransformError("dependency stamp must not overwrite an input source or output")
+        if args.dependency_stamp and args.depfile and paths_alias(args.dependency_stamp, args.depfile):
+            raise TransformError("dependency stamp must not overwrite the depfile")
         if args.compilation_database:
             clang_args = compilation_arguments(
                 args.compilation_database, args.output, args.source
@@ -971,7 +988,7 @@ def main() -> int:
             temporary = args.output.with_name(args.output.name + f".{os.getpid()}.tmp")
             temporary.write_bytes(output)
             temporary.replace(args.output)
-        if args.depfile:
+        if args.depfile or args.dependency_stamp:
 
             def escape(path: str) -> str:
                 return (
@@ -986,13 +1003,23 @@ def main() -> int:
             includes.update(
                 str(inc.include) for inc in tu.get_includes() if inc.include is not None
             )
-            depfile = (
-                escape(str(args.output))
-                + ": "
-                + " ".join(escape(path) for path in sorted(includes))
-                + "\n"
-            )
-            args.depfile.write_text(depfile, encoding="utf-8")
+            if args.depfile:
+                depfile = (
+                    escape(str(args.output))
+                    + ": "
+                    + " ".join(escape(path) for path in sorted(includes))
+                    + "\n"
+                )
+                args.depfile.write_text(depfile, encoding="utf-8")
+            if args.dependency_stamp:
+                if any(paths_alias(args.dependency_stamp, Path(path)) for path in includes):
+                    raise TransformError("dependency stamp must not overwrite an included file")
+                stamp = "".join(
+                    f"{path}\t{Path(path).stat().st_mtime_ns}\t{Path(path).stat().st_size}\n"
+                    for path in sorted(includes)
+                )
+                if not args.dependency_stamp.exists() or args.dependency_stamp.read_text(encoding="utf-8") != stamp:
+                    args.dependency_stamp.write_text(stamp, encoding="utf-8")
     except (
         TransformError,
         cindex.LibclangError,

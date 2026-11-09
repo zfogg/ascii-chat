@@ -26,5 +26,6 @@ FileDependencies transform_file(ClangIndex &index, const std::filesystem::path &
 std::string inspect_file(ClangIndex &index, const std::filesystem::path &source, unsigned line,
                          const DriverOptions &options, bool show_transformed);
 void write_depfile(const std::filesystem::path &path, const std::vector<FileDependencies> &files);
+void write_dependency_stamp(const FileDependencies &file);
 
 } // namespace defer_tool
