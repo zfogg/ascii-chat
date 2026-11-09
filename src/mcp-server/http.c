@@ -448,6 +448,7 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
     return;
   }
   size_t encoded_length = 0;
+  bool has_reply = reply != NULL;
   char *encoded = reply ? yyjson_mut_write(reply, 0, &encoded_length) : NULL;
   if (reply)
     yyjson_mut_doc_free(reply);
@@ -457,7 +458,7 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
   }
   if (issue_session)
     (void)http_response_set_header(response, "MCP-Session-Id", session_id);
-  (void)http_response_set_status(response, reply ? 200 : 202);
+  (void)http_response_set_status(response, has_reply ? 200 : 202);
   (void)http_response_finish(response);
 }
 
