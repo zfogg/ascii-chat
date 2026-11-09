@@ -21,8 +21,8 @@
           printErr: () => {},
           getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
         });
-        assert(m.initializeClientOptions({}) === 0, "init");
         const client = new m.ClientSessionBinding({});
+        assert(client.valid(), "init");
         let packets = [];
         m.discoverySend = (handle, type, payload) =>
           packets.push({ type, payload });

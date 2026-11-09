@@ -9,14 +9,21 @@ async function initialize(
   clientLikeKind: ClientLikeKind,
 ): Promise<TerminalRendererModule> {
   const module = await createWasmModule<TerminalRendererModule>(clientLikeKind);
-  const initializeOptions =
-    clientLikeKind === "mirror"
-      ? module.initMirror
-      : module.initializeClientOptions;
-  if (!initializeOptions)
-    throw new Error(`Missing ${clientLikeKind} raster worker initializer`);
-  if (initializeOptions({}))
-    throw new Error("Cannot initialize raster worker options");
+  if (clientLikeKind === "mirror") {
+    if (module.initMirror({}))
+      throw new Error("Cannot initialize raster worker options");
+  } else {
+    if (!module.ClientSessionBinding)
+      throw new Error("Missing client session binding");
+    const session = new module.ClientSessionBinding({});
+    if (!session.valid()) {
+      const code = session.error();
+      session.delete();
+      throw new Error(`Cannot initialize raster worker options (${code})`);
+    }
+    session.close();
+    session.delete();
+  }
   return module;
 }
 let initialized: Promise<TerminalRendererModule> | undefined;

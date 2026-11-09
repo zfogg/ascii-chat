@@ -20,20 +20,6 @@ extern "C" {
 #include <optional>
 #include <vector>
 
-static int initialize_client_options(OptionsPatch options) {
-  std::unique_ptr<browser_transport_t, decltype(&browser_transport_destroy)> transport(browser_transport_create(),
-                                                                                       &browser_transport_destroy);
-  if (!transport)
-    return SET_ERRNO(ERROR_MEMORY, "Browser transport allocation failed");
-  int result = client_init(transport.get());
-  if (!result)
-    result = initial_options(options);
-  else
-    SET_ERRNO(ERROR_INIT, "Browser client initialization failed");
-  client_cleanup(transport.get());
-  return result;
-}
-
 class ClientSessionBinding {
 public:
   explicit ClientSessionBinding(OptionsPatch options) {
@@ -346,8 +332,6 @@ EMSCRIPTEN_BINDINGS(ascii_chat_network) {
       .function("error", &ClientSessionBinding::error)
       .function("close", &ClientSessionBinding::close)
       .function("process", &ClientSessionBinding::process);
-
-  emscripten::function("initializeClientOptions", &initialize_client_options);
 
   emscripten::function(
       "network_error_action",

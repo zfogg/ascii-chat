@@ -544,7 +544,6 @@ interface EmbindModule {
   browser_options_revision(): number;
   clientSettings(): string | undefined;
   initMirror(_0: OptionsPatch): number;
-  initializeClientOptions(_0: OptionsPatch): number;
   patchOptions(_0: OptionsPatch, _1: number): number;
   readOptions(): OptionsSnapshot;
   optionHelp(_0: number, _1: EmbindString): string | undefined;
