@@ -425,7 +425,7 @@ export class WebRTCSession implements ClientSession {
             const decoded = this.peerCrypto!.receive(bytes);
             if (!decoded) return;
             bytes = decoded;
-            const parsed = processClientEvent({ type: "parse", packet: bytes });
+            const parsed = processClientEvent({ type: "receive-packet", packet: bytes });
             if (parsed.code || !parsed.packet)
               throw new Error(`Peer packet parsing failed (${parsed.code})`);
             const packet = parsed.packet;

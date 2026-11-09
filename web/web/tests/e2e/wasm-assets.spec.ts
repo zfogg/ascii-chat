@@ -100,7 +100,7 @@ test("binding failures record actionable C errors", async ({ page }) => {
         ),
         snapshot(() => {
           const result = processClientEvent({
-            type: "parse",
+            type: "receive-packet",
             packet: new Uint8Array(),
           });
           if (result.code)

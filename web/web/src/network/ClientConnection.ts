@@ -352,7 +352,7 @@ export class ClientConnection {
     try {
       // Parse packet header
       const parsedResult = processClientEvent({
-        type: "parse",
+        type: "receive-packet",
         packet: rawPacket,
       });
       if (parsedResult.code || !parsedResult.packet)
@@ -425,7 +425,7 @@ export class ClientConnection {
 
           // Parse the inner packet header
           const innerParsedResult = processClientEvent({
-            type: "parse",
+            type: "receive-packet",
             packet: plaintext,
           });
           if (innerParsedResult.code || !innerParsedResult.packet)

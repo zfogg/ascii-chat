@@ -281,7 +281,7 @@ public:
         sodium_memzero(output.data(), output.size());
       return response;
     }
-    if (type == "parse") {
+    if (type == "receive-packet") {
       auto input = binding_copy_input(event["packet"]);
       packet_header_t header{};
       const int code = input.size() < sizeof(packet_header_t)
