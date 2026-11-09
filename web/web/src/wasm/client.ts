@@ -562,6 +562,15 @@ export function processClientEvent(
   return clientSession.process(event) as ClientEventResult;
 }
 
+/** Process a bounded burst of browser events in one native session call. */
+export function processClientEvents(
+  events: readonly Record<string, unknown>[],
+): ClientEventResult[] {
+  if (!clientSession || !clientInitialized)
+    throw new Error("WASM client session is not initialized");
+  return clientSession.processBatch(events) as ClientEventResult[];
+}
+
 function checkClientEvent(
   result: ClientEventResult,
   fallback: string,
