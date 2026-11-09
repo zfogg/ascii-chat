@@ -90,6 +90,11 @@
  * includes; included files are tracked as build dependencies. Per-source
  * dependency stamps cause only affected objects to rebuild when an included
  * file changes, even if the transformed C text itself stays unchanged.
+ * With Ninja, a lightweight eligibility scan runs on each build. Editing an
+ * ordinary source does not reconfigure CMake; adding or removing its first
+ * defer call changes the source set and automatically regenerates the build
+ * graph before compilation. Unix Makefiles use conservative reconfiguration
+ * on C source changes to ensure the same correctness.
  *
  * Set `ASCIICHAT_DEFER_BACKEND=PYTHON` to select the retained Python backend.
  * It runs through the defer uv project and requires uv-managed Python 3.10 or

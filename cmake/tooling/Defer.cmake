@@ -1,4 +1,5 @@
 include_guard(GLOBAL)
+set(_ASCII_DEFER_SCAN_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/ScanDefer.cmake")
 
 # Configure after targets are created so source replacement affects the actual targets.
 set(ASCIICHAT_LIBCLANG_PATH "" CACHE FILEPATH "LLVM 19 or newer libclang shared library")
@@ -86,8 +87,11 @@ function(ascii_defer_apply_target target)
             list(APPEND _new_sources "${_source}")
             continue()
         endif()
-        # Rescan on source changes, including when the first defer is added.
-        set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_absolute}")
+        # Makefile generators cannot run the eligibility scan before their
+        # build-system check. Keep their existing conservative behavior.
+        if(NOT CMAKE_GENERATOR STREQUAL "Ninja")
+            set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_absolute}")
+        endif()
         if(NOT _absolute IN_LIST _defer_sources)
             set(_panic_output "${CMAKE_BINARY_DIR}/panic_transformed/${target}/${_relative}")
             set(_instrumented "${_absolute}")
@@ -294,10 +298,35 @@ function(ascii_defer_scan_targets out_var)
     list(REMOVE_DUPLICATES _scan_files)
     set(_scan_input "${CMAKE_BINARY_DIR}/defer-scan-${_batch_stage}.txt")
     string(REPLACE ";" "\n" _scan_content "${_scan_files}")
-    file(WRITE "${_scan_input}" "${_scan_content}\n")
+    file(CONFIGURE OUTPUT "${_scan_input}" CONTENT "${_scan_content}\n" @ONLY)
     set(_wrapper_file "${CMAKE_BINARY_DIR}/defer-wrappers-${_batch_stage}.txt")
     string(REPLACE ";" "\n" _wrapper_content "${_defer_wrappers}")
-    file(WRITE "${_wrapper_file}" "${_wrapper_content}\n")
+    file(CONFIGURE OUTPUT "${_wrapper_file}" CONTENT "${_wrapper_content}\n" @ONLY)
+    if(CMAKE_GENERATOR STREQUAL "Ninja")
+        set(_state "${CMAKE_BINARY_DIR}/defer-eligibility-${_batch_stage}.txt")
+        set(_force "${CMAKE_BINARY_DIR}/defer-scan-${_batch_stage}.force")
+        set(_scan_command "${CMAKE_COMMAND}"
+            "-DDEFER_SCAN_INPUT=${_scan_input}" "-DDEFER_SCAN_WRAPPERS=${_wrapper_file}"
+            "-DDEFER_SCAN_OUTPUT=${_state}" -P "${_ASCII_DEFER_SCAN_SCRIPT}")
+        execute_process(COMMAND ${_scan_command} RESULT_VARIABLE _scan_result ERROR_VARIABLE _scan_error)
+        if(NOT _scan_result EQUAL 0)
+            message(FATAL_ERROR "defer source scan failed: ${_scan_error}")
+        endif()
+        set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+            "${_state}" "${_ASCII_DEFER_SCAN_SCRIPT}")
+        # Ninja evaluates build.ninja dependencies before compiling. The
+        # symbolic input makes the scan run even on no-op builds, while restat
+        # prevents reconfiguration if eligibility is unchanged.
+        set_source_files_properties("${_force}" PROPERTIES SYMBOLIC TRUE)
+        add_custom_command(OUTPUT "${_force}" COMMAND "${CMAKE_COMMAND}" -E true VERBATIM)
+        add_custom_command(OUTPUT "${_state}" COMMAND ${_scan_command}
+            DEPENDS "${_force}" "${_scan_input}" "${_wrapper_file}" "${_ASCII_DEFER_SCAN_SCRIPT}"
+            COMMENT "Checking defer source eligibility" VERBATIM)
+        add_custom_target("ascii-defer-scan-${_batch_stage}" DEPENDS "${_state}")
+        file(STRINGS "${_state}" _scan_output ENCODING UTF-8)
+        set(${out_var} "${_scan_output}" PARENT_SCOPE)
+        return()
+    endif()
     if(ASCIICHAT_DEFER_BACKEND STREQUAL "NATIVE")
         set(_defer_sources "")
         foreach(_source IN LISTS _scan_files)

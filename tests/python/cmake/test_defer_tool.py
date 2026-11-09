@@ -1125,6 +1125,56 @@ def test_cmake_discovers_defer_and_tracks_headers(
             "the native tool must be built during the build, not configuration"
         )
     run(cmake, "--build", str(build))
+    second_objects = list(build.rglob("*second.c.obj")) + list(build.rglob("*second.c.o"))
+    assert len(second_objects) == 1
+    second_object = second_objects[0]
+    second_mtime = second_object.stat().st_mtime_ns
+    time.sleep(1.1)
+    main.write_text("int main(void) { return 0; } /* ordinary edit */\n", encoding="utf-8")
+    output = run(cmake, "--build", str(build))
+    assert "Re-running CMake" not in output
+    assert "Configuring done" not in output
+    assert "Transforming defer source batch" not in output
+    assert "Building C object" in output
+    assert second_object.stat().st_mtime_ns == second_mtime
+
+    time.sleep(1.1)
+    main.write_text(
+        '#include "ascii-chat/tooling/defer/defer.h"\n'
+        'static int cleaned; static void f(void) { defer(cleaned = 1); }\n'
+        'int main(void) { f(); return cleaned != 1; }\n', encoding="utf-8"
+    )
+    output = run(cmake, "--build", str(build))
+    assert "Re-running CMake" in output
+    assert "Transforming defer source batch" in output
+    executable = build / "src" / ("ascii-chat-probe.exe" if sys.platform == "win32" else "ascii-chat-probe")
+    run(str(executable))
+    assert second_object.stat().st_mtime_ns == second_mtime
+    generated_main = build / "defer_transformed" / "ascii-chat-probe" / "src" / "main.c.defer" / "main.c"
+    assert generated_main.is_file()
+    main_objects = list(build.rglob("*main.c.obj")) + list(build.rglob("*main.c.o"))
+    assert len(main_objects) == 1
+    main_object = main_objects[0]
+    main_mtime = main_object.stat().st_mtime_ns
+    time.sleep(1.1)
+    main.write_text(main.read_text(encoding="utf-8") + "/* transformed edit */\n", encoding="utf-8")
+    output = run(cmake, "--build", str(build))
+    assert "Re-running CMake" not in output
+    assert "Configuring done" not in output
+    assert "Transforming defer source batch" in output
+    assert second_object.stat().st_mtime_ns == second_mtime
+    assert main_object.stat().st_mtime_ns > main_mtime
+    run(str(executable))
+    output = run(cmake, "--build", str(build))
+    assert "Re-running CMake" not in output
+    assert "Transforming defer source batch" not in output
+    assert second_object.stat().st_mtime_ns == second_mtime
+    time.sleep(1.1)
+    main.write_text("int main(void) { return 0; }\n", encoding="utf-8")
+    output = run(cmake, "--build", str(build))
+    assert "Re-running CMake" in output
+    assert second_object.stat().st_mtime_ns == second_mtime
+    run(str(executable))
     time.sleep(1.1)
     late_header.write_text('#include "ascii-chat/tooling/defer/defer.h"\n#define LATE(action) defer(action)\n', encoding="utf-8")
     main.write_text(
