@@ -245,16 +245,36 @@ static bool parse_request(http_client_t *c, http_request_t *r) {
   size_t head = (size_t)(end - c->buffer) + 4;
   size_t body = 0;
   bool chunked = false;
+  bool transfer_encoding = false;
   for (char *scan = strstr(c->buffer, "\r\n") + 2; scan < end;) {
     char *next = strstr(scan, "\r\n");
     if (!next)
       return false;
     if (platform_strncasecmp(scan, "Content-Length:", 15) == 0)
       body = (size_t)strtoull(scan + 15, NULL, 10);
-    if (platform_strncasecmp(scan, "Transfer-Encoding:", 18) == 0 && strstr(scan + 18, "chunked"))
-      chunked = true;
+    if (platform_strncasecmp(scan, "Transfer-Encoding:", 18) == 0) {
+      transfer_encoding = true;
+      const char *value = scan + 18;
+      while (*value && *value != '\r' && *value != '\n') {
+        while (*value == ' ' || *value == '\t' || *value == ',')
+          value++;
+        const char *token = value;
+        while (*value && *value != ',' && *value != ';' && *value != '\r' && *value != '\n' && *value != ' ' &&
+               *value != '\t')
+          value++;
+        size_t token_length = (size_t)(value - token);
+        if (token_length == sizeof("chunked") - 1 && platform_strncasecmp(token, "chunked", token_length) == 0)
+          chunked = true;
+        else if (token_length)
+          return false;
+        while (*value == ' ' || *value == '\t' || *value == ';')
+          value++;
+      }
+    }
     scan = next + 2;
   }
+  if (transfer_encoding && !chunked)
+    return false;
   if (chunked) {
     if (!decode_chunked_body(c, head, &body))
       return false;
