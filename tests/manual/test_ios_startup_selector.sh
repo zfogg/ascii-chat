@@ -12,6 +12,7 @@ grep -q 'asciichat_ios_camera_start' "$(cd "$(dirname "$0")/../.." && pwd)/src/i
 grep -q 'platform_enable_keepawake' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/AsciiChatApp.swift"
 grep -q 'asciichat_ios_audio_device_count' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/AsciiChatApp.swift"
 grep -q 'asciichat_ios_audio_select_device' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/AsciiChatApp.swift"
+grep -q 'ios_stdin_bridge_available' "$(cd "$(dirname "$0")/../.." && pwd)/lib/platform/posix/keyboard.c"
 grep -q 'AVAudioSessionRouteChangeNotification' "$(cd "$(dirname "$0")/../.." && pwd)/lib/audio/ios_portaudio.m"
 grep -q 'ios_render_bridge_reset' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/AsciiChatApp.swift"
 grep -q 'preferredFrameRateRange' "$(cd "$(dirname "$0")/../.." && pwd)/src/ios/AsciiChatApp.swift"

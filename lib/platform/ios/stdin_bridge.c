@@ -55,6 +55,15 @@ ssize_t ios_stdin_bridge_read(void *buffer, size_t count) {
   return (ssize_t)copied;
 }
 
+size_t ios_stdin_bridge_available(void) {
+  if (!g_stdin_initialized)
+    return 0;
+  mutex_lock(&g_stdin_mutex);
+  size_t available = g_stdin_size;
+  mutex_unlock(&g_stdin_mutex);
+  return available;
+}
+
 void ios_stdin_bridge_reset(void) {
   if (!g_stdin_initialized)
     return;

@@ -12,6 +12,9 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/lifecycle.h>
+#ifdef PLATFORM_IOS
+#include <ascii-chat/platform/ios/stdin_bridge.h>
+#endif
 // utf8.h no longer needed - keyboard thread handles raw bytes
 
 #include <termios.h>
@@ -198,6 +201,12 @@ void keyboard_destroy(void) {
 }
 
 static int keyboard_raw_read(void) {
+#ifdef PLATFORM_IOS
+  unsigned char byte;
+  if (ios_stdin_bridge_available() == 0)
+    return 0;
+  return ios_stdin_bridge_read(&byte, 1) == 1 ? byte : 0;
+#else
   int fd = g_tty_fd >= 0 ? g_tty_fd : STDIN_FILENO;
   // A cancellable child may temporarily own the foreground terminal. Avoid
   // stopping the entire application if ownership changes while we poll.
@@ -220,6 +229,7 @@ static int keyboard_raw_read(void) {
 done:
   pthread_sigmask(SIG_SETMASK, &previous, NULL);
   return result;
+#endif
 }
 
 bool keyboard_is_initialized(void) {
