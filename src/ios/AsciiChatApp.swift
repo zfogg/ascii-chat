@@ -534,14 +534,23 @@ private struct IOSSettingsView: View {
                 }
                 Section("Audio") {
                     if !audioDevices.isEmpty {
-                        Picker("Audio route", selection: $selectedAudioDevice) {
-                            ForEach(audioDevices.indices, id: \.self) { index in
-                                Text(audioDevices[index]).tag(Int32(index))
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Audio route")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(IOSTheme.muted)
+                            Picker("Audio route", selection: $selectedAudioDevice) {
+                                ForEach(audioDevices.indices, id: \.self) { index in
+                                    Text(audioDevices[index]).tag(Int32(index))
+                                }
                             }
-                        }
-                        .onChange(of: selectedAudioDevice) { _, device in
-                            guard asciichat_ios_audio_select_device(device) == 0 else { return }
-                            UserDefaults.standard.set(Int(device), forKey: "ascii-chat.ios.audio-device-index")
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .tint(IOSTheme.cyan)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .onChange(of: selectedAudioDevice) { _, device in
+                                guard asciichat_ios_audio_select_device(device) == 0 else { return }
+                                UserDefaults.standard.set(Int(device), forKey: "ascii-chat.ios.audio-device-index")
+                            }
                         }
                         Button {
                             refreshAudioDevices()
