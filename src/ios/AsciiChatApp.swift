@@ -1041,6 +1041,10 @@ private struct IOSAllOptionsView: View {
             return [("Luminance", 0), ("Glyph", 1)]
         case "audio_fft_size":
             return [("512", 512), ("1024", 1024), ("2048", 2048)]
+        case "audio_source":
+            return [("All", 0), ("Call", 1), ("Microphone", 2), ("Media", 3)]
+        case "log_level":
+            return [("Dev", 0), ("Debug", 1), ("Info", 2), ("Warn", 3), ("Error", 4), ("Fatal", 5)]
         default:
             return nil
         }
