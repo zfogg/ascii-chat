@@ -588,6 +588,13 @@ struct ContentView: View {
                 startSelectedSession()
             }
         }
+        .task {
+            for await status in sessionModel.events() {
+                if case .finished = status {
+                    lifecycleTick &+= 1
+                }
+            }
+        }
         .onReceive(Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()) { _ in
             lifecycleTick &+= 1
             refreshAudioDevices()

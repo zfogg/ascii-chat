@@ -1,9 +1,8 @@
 import Foundation
-import Observation
+import Combine
 
 @MainActor
-@Observable
-final class IOSSessionModel {
+final class IOSSessionModel: ObservableObject {
     enum Status: Equatable {
         case idle
         case starting
@@ -12,9 +11,23 @@ final class IOSSessionModel {
         case finished(Int32)
     }
 
-    var status: Status = .idle
-    var message = ""
-    var renderSequence: UInt64 = 0
+    @Published var status: Status = .idle
+    @Published var message = ""
+    @Published var renderSequence: UInt64 = 0
+    private var statusContinuation: AsyncStream<Status>.Continuation?
+
+    func events() -> AsyncStream<Status> {
+        AsyncStream { continuation in
+            statusContinuation = continuation
+            continuation.yield(status)
+        }
+    }
+
+    private func publish(_ newStatus: Status, message: String) {
+        status = newStatus
+        self.message = message
+        statusContinuation?.yield(newStatus)
+    }
 
     var isActive: Bool {
         switch status {
@@ -24,23 +37,19 @@ final class IOSSessionModel {
     }
 
     func start(mode: IOSMode) {
-        status = .starting
-        message = "Starting \(mode.title.lowercased())…"
+        publish(.starting, message: "Starting \(mode.title.lowercased())…")
     }
 
     func markRunning() {
-        status = .running
-        message = "Native session running"
+        publish(.running, message: "Native session running")
     }
 
     func stopRequested() {
-        status = .stopping
-        message = "Stopping…"
+        publish(.stopping, message: "Stopping…")
     }
 
     func finish(result: Int32) {
-        status = .finished(result)
-        message = result == 0 ? "Session ended" : "Session failed (\(result))"
+        publish(.finished(result), message: result == 0 ? "Session ended" : "Session failed (\(result))")
     }
 }
 
