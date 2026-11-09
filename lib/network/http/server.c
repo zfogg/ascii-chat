@@ -204,8 +204,7 @@ static bool decode_chunked_body(http_client_t *c, size_t offset, size_t *body_le
       return false;
     cursor = (size_t)(line_end - c->buffer) + 2;
     if (chunk == 0) {
-      if (c->length < cursor + sizeof("\r\n") - 1 ||
-          memcmp(c->buffer + cursor, "\r\n", sizeof("\r\n") - 1) != 0)
+      if (c->length < cursor + sizeof("\r\n") - 1 || memcmp(c->buffer + cursor, "\r\n", sizeof("\r\n") - 1) != 0)
         return false;
       *body_length = output - offset;
       return true;
