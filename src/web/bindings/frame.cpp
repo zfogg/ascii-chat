@@ -17,6 +17,7 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(VisualizationSamples);
 // remain owned by JavaScript. No heap view escapes this synchronous call.
 class MirrorFrameBinding {
 public:
+  static int transformRequired() { return browser_capture_transform_required(); }
   void reset() {
     session_render_reset_stabilizer();
   }
@@ -92,7 +93,6 @@ private:
 };
 
 EMSCRIPTEN_BINDINGS(ascii_chat_frame) {
-  emscripten::function("browser_capture_transform_required", &browser_capture_transform_required);
   emscripten::register_type<RgbaBytes>("RgbaBytes", "Uint8Array | Uint8ClampedArray");
   emscripten::register_type<VisualizationSamples>("VisualizationSamples", "Float32Array");
   emscripten::class_<MirrorFrameBinding>("MirrorFrameBinding")
@@ -101,5 +101,6 @@ EMSCRIPTEN_BINDINGS(ascii_chat_frame) {
       .function("convert", &MirrorFrameBinding::convert)
       .function("transform", &MirrorFrameBinding::transform)
       .function("submitAudio", &MirrorFrameBinding::submitAudio)
-      .function("renderAudio", &MirrorFrameBinding::renderAudio);
+      .function("renderAudio", &MirrorFrameBinding::renderAudio)
+      .class_function("transformRequired", &MirrorFrameBinding::transformRequired);
 }

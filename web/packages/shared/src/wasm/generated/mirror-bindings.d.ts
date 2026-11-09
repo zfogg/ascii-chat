@@ -395,9 +395,9 @@ interface EmbindModule {
   patchOptions(_0: OptionsPatch, _1: number): number;
   readOptions(): OptionsSnapshot;
   optionHelp(_0: number, _1: EmbindString): string | undefined;
-  browser_capture_transform_required(): number;
   MirrorFrameBinding: {
     new (): MirrorFrameBinding;
+    transformRequired(): number;
   };
 }
 
