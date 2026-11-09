@@ -403,6 +403,8 @@ type ErrorFrameResult = {
   line: number;
 };
 
+export interface KeyParserBinding extends ClassHandle {}
+
 export interface AVStateBinding extends ClassHandle {
   valid(): boolean;
   generation(): number;
@@ -548,8 +550,10 @@ interface EmbindModule {
     new (_0: OptionsPatch): ClientSessionBinding;
   };
   browser_error_dismiss(): void;
-  parseKey(_0: number, _1: boolean, _2: KeyInput): KeyParseResult;
-  keyParserError(): string;
+  KeyParserBinding: {
+    parse(_0: number, _1: boolean, _2: KeyInput): KeyParseResult;
+    error(): string;
+  };
   errorSnapshot(): number;
   errorFrame(_0: number): ErrorFrameResult;
   AVStateBinding: {

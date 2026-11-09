@@ -6686,8 +6686,8 @@ async function ClientModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    3033618: () => Module.getRandomValue(),
-    3033654: () => {
+    3033730: () => Module.getRandomValue(),
+    3033766: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;

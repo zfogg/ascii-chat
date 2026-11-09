@@ -30,7 +30,9 @@ static emscripten::val frame_value(const asciichat_error_context_t &frame) {
   return result;
 }
 
-static KeyParseResult parse_key(int kind, bool binary, KeyInput input) {
+class KeyParserBinding {
+public:
+  static KeyParseResult parse(int kind, bool binary, KeyInput input) {
   const asciichat_errno_scope_t checkpoint = errno_checkpoint();
   const size_t length = input["length"].as<size_t>();
   std::vector<uint8_t> bytes(length + 1, 0);
@@ -86,15 +88,16 @@ static KeyParseResult parse_key(int kind, bool binary, KeyInput input) {
   }
   result.set("frames", frames);
   return KeyParseResult(result);
-}
+  }
 
-static std::string parser_error() {
+  static std::string error() {
   char buffer[1024] = {0};
   const int status = client_get_crypto_error_message(buffer, sizeof(buffer));
   std::string result = status == 0 ? buffer : "Invalid SSH key";
   sodium_memzero(buffer, sizeof(buffer));
   return result;
-}
+  }
+};
 
 static ErrorFrameResult error_frame(size_t index) {
   emscripten::val result = emscripten::val::object();
@@ -115,8 +118,9 @@ EMSCRIPTEN_BINDINGS(ascii_chat_key_parser) {
   emscripten::register_type<ErrorFrameResult>(
       "ErrorFrameResult",
       "{ code: number; message: string; file: string; fullFile: string; function: string; line: number }");
-  emscripten::function("parseKey", &parse_key);
-  emscripten::function("keyParserError", &parser_error);
+  emscripten::class_<KeyParserBinding>("KeyParserBinding")
+      .class_function("parse", &KeyParserBinding::parse)
+      .class_function("error", &KeyParserBinding::error);
   emscripten::function("errorSnapshot", &browser_error_snapshot);
   emscripten::function("errorFrame", &error_frame);
 }

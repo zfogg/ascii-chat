@@ -103,7 +103,7 @@ test("binding failures record actionable C errors", async ({ page }) => {
           if (result.code)
             throw new Error(`Packet parse failed (${result.code})`);
         }),
-        snapshot(() => m.parseKey(99, false, new Uint8Array())),
+        snapshot(() => m.KeyParserBinding.parse(99, false, new Uint8Array())),
         snapshot(() => {
           const result = processClientEvent({
             type: "handoff-encode",
@@ -199,7 +199,7 @@ test("key parsing preserves unrelated errors and returns only its own frames", a
     });
     const beforeCount = module.errorSnapshot();
     const before = module.errorFrame(0);
-    const parsed = module.parseKey(3, true, new Uint8Array());
+    const parsed = module.KeyParserBinding.parse(3, true, new Uint8Array());
     const afterCount = module.errorSnapshot();
     const pending = Array.from({ length: afterCount }, (_, i) =>
       module.errorFrame(i),
@@ -244,9 +244,9 @@ test("face tracking and client public keys use the native bindings", async ({
     );
     const faceValues = Array.from(face.tick(1, true));
     const key = await generateKeypair();
-    module.parseKey(99, false, new Uint8Array());
-    module.parseKey(3, true, new Uint8Array());
-    const parseError = module.keyParserError();
+    module.KeyParserBinding.parse(99, false, new Uint8Array());
+    module.KeyParserBinding.parse(3, true, new Uint8Array());
+    const parseError = module.KeyParserBinding.error();
     return { faceStatus, face: faceValues, key, parseError };
   });
   expect(result.faceStatus).toBe(0);
