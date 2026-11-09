@@ -4,9 +4,9 @@ import type { MainModule } from "../generated/mirror-bindings";
 /** Each C/WASM instance owns its state. Observers run on the browser thread. */
 export interface RuntimeOptionsModule extends Pick<
   MainModule,
-  "readOptions" | "patchOptions"
+  never
 > {
-  browser_options_revision(): number;
+  OptionsBinding: MainModule["OptionsBinding"];
 }
 export type RuntimeValues = Readonly<Record<string, number | string | boolean>>;
 export interface RuntimeSnapshot {
@@ -22,7 +22,7 @@ export class RuntimeOptionsStore {
   constructor(readonly module: RuntimeOptionsModule) {}
 
   readonly getSnapshot = (): RuntimeSnapshot => {
-    const revision = this.module.browser_options_revision();
+    const revision = this.module.OptionsBinding.revision();
     if (this.snapshot?.revision === revision) return this.snapshot;
     const decoded = new Options(this.module).read();
     this.snapshot = {

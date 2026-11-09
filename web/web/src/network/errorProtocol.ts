@@ -19,7 +19,10 @@ export function presentRemoteError(
 ): RemoteErrorAction {
   try {
     const error = decodeRemoteError(payload);
-    const action = getClientModule()!.ClientSessionBinding.errorAction(error.code);
+    const binding = getClientModule()!.ClientSessionBinding as unknown as {
+      errorAction(code: number): number;
+    };
+    const action = binding.errorAction(error.code);
     reportProtocolError(error.code, error.message, origin);
     return action;
   } catch (error) {

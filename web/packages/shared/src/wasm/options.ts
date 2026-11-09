@@ -83,9 +83,11 @@ export interface OptionsSnapshot {
 }
 /** Shared Embind options interface, implemented by each browser WASM module. */
 export interface OptionsBindings {
-  browser_options_revision(): number;
-  readOptions(): OptionsSnapshot | null;
-  patchOptions(values: OptionValues, expectedRevision: number): number;
+  OptionsBinding: {
+    revision(): number;
+    read(): OptionsSnapshot | null;
+    patch(values: OptionValues, expectedRevision: number): number;
+  };
 }
 export const paletteTypes = {
   standard: 1,
@@ -144,14 +146,14 @@ export function validateOptions(values: OptionValues): void {
 export class Options {
   constructor(private readonly bindings: OptionsBindings) {}
   read(): OptionsSnapshot {
-    const snapshot = this.bindings.readOptions();
+    const snapshot = this.bindings.OptionsBinding.read();
     if (snapshot === null) throw new Error("Unable to read renderer options");
     validateOptions(snapshot.values);
     return snapshot;
   }
   patch(values: OptionValues, expectedRevision = -1): OptionsSnapshot {
     validateOptions(values);
-    const code = this.bindings.patchOptions(values, expectedRevision);
+    const code = this.bindings.OptionsBinding.patch(values, expectedRevision);
     if (code !== 0)
       throw new Error(
         `Settings update rejected (${code}); refresh the settings and retry.`,

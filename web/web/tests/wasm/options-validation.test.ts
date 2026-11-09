@@ -12,9 +12,11 @@ describe("shared options validation", () => {
   function setup() {
     const patchOptions = vi.fn(() => 0);
     const options = new Options({
-      browser_options_revision: () => 1,
-      readOptions: () => snapshot,
-      patchOptions,
+      OptionsBinding: {
+        revision: () => 1,
+        read: () => snapshot,
+        patch: patchOptions,
+      },
     });
     return { options, patchOptions };
   }

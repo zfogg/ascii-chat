@@ -71,14 +71,14 @@ const path = require("node:path");
         printErr: () => {},
         getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
       });
-      const revision = m.browser_options_revision();
+      const revision = m.OptionsBinding.revision();
       const normalProbe = new m.AsciiRendererBinding(1, 1, 24, false, 1);
       const matrixProbe = new m.AsciiRendererBinding(1, 1, 24, true, 2);
       try {
         if (
           !normalProbe.valid() ||
           !matrixProbe.valid() ||
-          m.browser_options_revision() !== revision
+          m.OptionsBinding.revision() !== revision
         )
           throw new Error("font selection changed engine preferences");
       } finally {
@@ -572,7 +572,7 @@ const path = require("node:path");
                 render_mode: mode,
                 color_mode: color,
               };
-              const patched = mirror.patchOptions(json, -1);
+              const patched = mirror.OptionsBinding.patch(json, -1);
               if (patched) throw new Error("mirror settings failed");
               const output = mirrorFrame.convert(rgba, 8, 4, false);
               if (!output)
@@ -597,7 +597,7 @@ const path = require("node:path");
             }
         for (const fft of [false, true]) {
           const json = { fft };
-          const result = mirror.patchOptions(json, -1);
+          const result = mirror.OptionsBinding.patch(json, -1);
           if (result) throw new Error("mirror audio settings failed");
           const frame = mirrorFrame.renderAudio(40, 12, 0);
           if (!frame)

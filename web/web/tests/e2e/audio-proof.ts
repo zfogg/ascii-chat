@@ -57,7 +57,7 @@ export async function observeAudioVisualization(page: Page) {
       const frame = render.call(this, width, height, source);
       if (frame !== undefined) {
         proof.lastFrame = frame;
-        proof.lastMode = module.readOptions()?.values.fft ? "fft" : "waveform";
+        proof.lastMode = module.OptionsBinding.read()?.values.fft ? "fft" : "waveform";
         proof.renders++;
       }
       return frame;

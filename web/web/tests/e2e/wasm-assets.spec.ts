@@ -273,7 +273,7 @@ test("client sessions own independent state and support reinitialization", async
       first: first.valid(),
     overlap: overlap.valid(),
       close: typeof first.close,
-      width: module.readOptions()?.values.width,
+      width: module.OptionsBinding.read()?.values.width,
       key: -1,
       secondKey: -1,
       secondAfterClose: -1,
@@ -382,7 +382,7 @@ test("mirror initialization applies and validates an options object", async ({
       waveform: true,
     });
     const accepted = acceptedSession.valid() ? 0 : acceptedSession.error();
-    const values = m.readOptions()?.values;
+    const values = m.OptionsBinding.read()?.values;
     acceptedSession.close();
     acceptedSession.delete();
     return {

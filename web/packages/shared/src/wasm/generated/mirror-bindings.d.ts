@@ -348,6 +348,8 @@ type OptionsSnapshot = {
   values: Record<string, number | string | boolean>;
 } | null;
 
+export interface OptionsBinding extends ClassHandle {}
+
 type RgbaBytes = Uint8Array | Uint8ClampedArray;
 
 type VisualizationSamples = Float32Array;
@@ -391,10 +393,12 @@ interface EmbindModule {
   TestPatternBinding: {
     new (_0: number, _1: number): TestPatternBinding;
   };
-  browser_options_revision(): number;
-  patchOptions(_0: OptionsPatch, _1: number): number;
-  readOptions(): OptionsSnapshot;
-  optionHelp(_0: number, _1: EmbindString): string | undefined;
+  OptionsBinding: {
+    revision(): number;
+    patch(_0: OptionsPatch, _1: number): number;
+    read(): OptionsSnapshot;
+    help(_0: number, _1: EmbindString): string | undefined;
+  };
   MirrorFrameBinding: {
     new (): MirrorFrameBinding;
     transformRequired(): number;

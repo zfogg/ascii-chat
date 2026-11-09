@@ -30,9 +30,9 @@ async function observe(page: Page) {
   await page.evaluate(async (url) => {
     const { getMirrorModule } = await import(url);
     const m = getMirrorModule();
-    const patch = m.patchOptions;
+    const patch = m.OptionsBinding.patch;
     window.__sessionSettingsPatches = [];
-    m.patchOptions = (
+    m.OptionsBinding.patch = (
       values: Record<string, number | string | boolean>,
       revision: number,
     ) => {
@@ -376,7 +376,7 @@ test("C owns automatic horizontal orientation and the browser echoes it without 
     page.evaluate(async (url) => {
       const { getMirrorModule } = await import(url);
       const m = getMirrorModule();
-      return m.readOptions().values;
+      return m.OptionsBinding.read().values;
     }, moduleUrl);
   const orientation = async (flip: boolean, explicit = false) => {
     await expect(horizontal).toHaveAttribute("aria-pressed", String(flip));
@@ -452,7 +452,7 @@ for (const mode of ["client", "discovery"]) {
         const { getMirrorModule } = await import(url);
         const m = getMirrorModule();
         if (!m) return null;
-        const values = m.readOptions().values;
+        const values = m.OptionsBinding.read().values;
         return [values.flip_x, values.flip_x_explicit];
       }, moduleUrl);
     await expect(horizontal).toHaveAttribute("aria-pressed", "true");
@@ -488,7 +488,7 @@ test("horizontal orientation startup commits saved choices before reading C", as
         const { getMirrorModule } = await import(url);
         const m = getMirrorModule();
         if (!m) return null;
-        const values = m.readOptions().values;
+        const values = m.OptionsBinding.read().values;
         return [values.flip_x, values.flip_x_explicit];
       }, moduleUrl);
     await expect.poll(state).toEqual([flip, true]);

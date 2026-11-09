@@ -37,8 +37,8 @@ export function getHelpText(
       return null;
     }
 
-    if (typeof module.optionHelp !== "function") return null;
-    return module.optionHelp(mode, optionName) || null;
+    if (typeof module.OptionsBinding?.help !== "function") return null;
+    return module.OptionsBinding.help(mode, optionName) || null;
   } catch (error) {
     console.error(`Failed to get help text for ${optionName}:`, error);
     return null;

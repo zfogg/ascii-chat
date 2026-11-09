@@ -29,13 +29,15 @@ function createEngine(initial: Record<string, string | boolean | number> = {}) {
   let values: Record<string, string | boolean | number> = { ...initial };
   const patches: Record<string, unknown>[] = [];
   engine.module = {
-    browser_options_revision: () => revision,
-    readOptions: () => ({ revision, values: { ...values } }),
-    patchOptions: (patch) => {
+    OptionsBinding: {
+      revision: () => revision,
+      read: () => ({ revision, values: { ...values } }),
+      patch: (patch) => {
       patches.push(patch);
       values = { ...values, ...patch };
       revision++;
       return 0;
+      },
     },
   };
   return {

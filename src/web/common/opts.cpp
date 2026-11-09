@@ -66,13 +66,22 @@ static std::optional<std::string> option_help(int mode, const std::string &name)
   return text ? std::optional<std::string>(text) : std::nullopt;
 }
 
+class OptionsBinding {
+public:
+  static double revision() { return static_cast<double>(options_revision()); }
+  static int patch(OptionsPatch values, double expected_revision) { return patch_options(values, expected_revision); }
+  static OptionsSnapshot read() { return read_options(); }
+  static std::optional<std::string> help(int mode, const std::string &name) { return option_help(mode, name); }
+};
+
 EMSCRIPTEN_BINDINGS(ascii_chat_options) {
-  emscripten::function("browser_options_revision", +[]() { return static_cast<double>(options_revision()); });
   emscripten::register_optional<std::string>();
   emscripten::register_type<OptionsPatch>("OptionsPatch", "Record<string, number | string | boolean>");
   emscripten::register_type<OptionsSnapshot>(
       "OptionsSnapshot", "{ revision: number; values: Record<string, number | string | boolean> } | null");
-  emscripten::function("patchOptions", &patch_options);
-  emscripten::function("readOptions", &read_options);
-  emscripten::function("optionHelp", &option_help);
+  emscripten::class_<OptionsBinding>("OptionsBinding")
+      .class_function("revision", &OptionsBinding::revision)
+      .class_function("patch", &OptionsBinding::patch)
+      .class_function("read", &OptionsBinding::read)
+      .class_function("help", &OptionsBinding::help);
 }

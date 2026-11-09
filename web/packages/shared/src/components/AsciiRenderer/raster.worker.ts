@@ -47,7 +47,7 @@ self.onmessage = (event: MessageEvent<RasterWorkerRequest>) => {
       const nextSignature = `${cols}:${rows}:${matrix}`;
       const changed = text !== previousText || nextSignature !== signature;
       if (signature !== nextSignature) {
-        if (module.patchOptions({ matrix_rain: matrix }, -1) !== 0)
+        if (module.OptionsBinding.patch({ matrix_rain: matrix }, -1) !== 0)
           throw new Error("Cannot select raster worker font");
         const replacement = new module.AsciiRendererBinding(
           cols,

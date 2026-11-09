@@ -552,7 +552,7 @@ test("a 33 FPS camera aligns C FPS, conversion and presentation with actual capt
     .poll(() =>
       page.evaluate(
         async (url) =>
-          (await import(url)).getMirrorModule()?.readOptions()?.values.fps,
+          (await import(url)).getMirrorModule()?.OptionsBinding.read()?.values.fps,
         mirrorModuleUrl,
       ),
     )
