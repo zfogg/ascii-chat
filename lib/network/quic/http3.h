@@ -12,7 +12,7 @@ typedef struct acip_http3_server acip_http3_server_t;
 
 asciichat_error_t acip_http3_server_create(const char *origin, const char *path, int64_t control_stream,
                                            int64_t encoder_stream, int64_t decoder_stream, http_server_t *http_server,
-                                           acip_http3_server_t **out);
+                                           const char *peer_address, acip_http3_server_t **out);
 asciichat_error_t acip_http3_server_read(acip_http3_server_t *server, int64_t stream_id, const uint8_t *data,
                                          size_t length, bool fin, uint64_t now_ns, size_t *consumed);
 /* Vectors remain owned by the codec until acknowledged. The caller must call

@@ -8,6 +8,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/ip.h>
 #include <ngtcp2/ngtcp2_crypto_ossl.h>
 #include <sodium.h>
 #include <string.h>
@@ -866,9 +867,14 @@ static asciichat_error_t update_readiness(acip_quic_connection_t *connection) {
       connection->failed = true;
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot open HTTP/3 control streams: %s", ngtcp2_strerror(rc));
     }
+    char peer_address[64] = "unknown";
+    struct sockaddr_storage peer;
+    socklen_t peer_length = sizeof(peer);
+    if (quic_connection_peer_address(connection, &peer, &peer_length) == ASCIICHAT_OK)
+      (void)format_ip_address(peer.ss_family, (const struct sockaddr *)&peer, peer_address, sizeof(peer_address));
     asciichat_error_t result =
         acip_http3_server_create(connection->tls->webtransport_origin, connection->tls->webtransport_path, control,
-                                 encoder, decoder, connection->tls->http_server, &connection->http3);
+                                 encoder, decoder, connection->tls->http_server, peer_address, &connection->http3);
     if (result != ASCIICHAT_OK) {
       connection->failed = true;
       return result;

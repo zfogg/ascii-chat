@@ -30,6 +30,7 @@ struct acip_http3_server {
   bool settings_received, headers_done, responded, accepted, malformed;
   bool method, scheme, authority, protocol, request_path, request_origin;
   http_server_t *http_server;
+  char peer_address[64];
   char method_text[32], request_target[H3_MAX_TEXT];
   char header_names[H3_MAX_HEADERS][H3_MAX_TEXT], header_values[H3_MAX_HEADERS][H3_MAX_TEXT];
   http_header_t headers[H3_MAX_HEADERS];
@@ -193,9 +194,9 @@ static int dispatch_generic_request(acip_http3_server_t *server, http3_stream_st
     return 0;
   if (strcmp(state->method_text, "CONNECT") == 0 && state->protocol)
     return 0;
-  asciichat_error_t result = http_server_dispatch_http3(server->http_server, state->method_text, state->request_target,
-                                                        state->headers, state->header_count, state->request_body,
-                                                        state->request_body_length, NULL, http3_submit_response, state);
+  asciichat_error_t result = http_server_dispatch_http3(
+      server->http_server, state->method_text, state->request_target, state->headers, state->header_count,
+      state->request_body, state->request_body_length, server->peer_address, http3_submit_response, state);
   return result == ASCIICHAT_OK ? 0 : NGHTTP3_ERR_CALLBACK_FAILURE;
 }
 
@@ -399,7 +400,8 @@ static int close_stream(nghttp3_conn *conn, int64_t stream_id, uint64_t app_erro
 }
 
 asciichat_error_t acip_http3_server_create(const char *origin, const char *path, int64_t control, int64_t encoder,
-                                           int64_t decoder, http_server_t *http_server, acip_http3_server_t **out) {
+                                           int64_t decoder, http_server_t *http_server, const char *peer_address,
+                                           acip_http3_server_t **out) {
   if (!out)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing HTTP/3 server output");
   *out = NULL;
@@ -419,6 +421,7 @@ asciichat_error_t acip_http3_server_create(const char *origin, const char *path,
     memcpy(server->path, path, strlen(path) + (size_t)1);
   server->control = control;
   server->http_server = http_server;
+  safe_snprintf(server->peer_address, sizeof(server->peer_address), "%s", peer_address ? peer_address : "unknown");
   server->request = -1;
   make_settings(server);
   nghttp3_callbacks callbacks = {.stream_close = close_stream,
