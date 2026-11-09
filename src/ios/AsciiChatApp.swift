@@ -759,6 +759,9 @@ private struct IOSAllOptionsView: View {
 
     private static func sliderRange(for key: String) -> (lowerBound: Double, upperBound: Double, step: Double)? {
         switch key {
+        case "width": return (40, 400, 1)
+        case "height": return (20, 240, 1)
+        case "zalgo": return (1, 10, 1)
         case "fps": return (0, 144, 1)
         case "render_font_size": return (3, 18, 0.5)
         case "snapshot_delay": return (0, 60, 0.5)
@@ -775,7 +778,7 @@ private struct IOSAllOptionsView: View {
 
     private static func displayValue(_ value: Double, for key: String) -> String {
         switch key {
-        case "fps", "compression_level", "reconnect_attempts", "webrtc_reconnect_attempts":
+        case "width", "height", "zalgo", "fps", "compression_level", "reconnect_attempts", "webrtc_reconnect_attempts":
             return String(Int(value.rounded()))
         case "microphone_volume", "speakers_volume", "volume", "microphone_sensitivity":
             return String(format: "%.2f", value)
