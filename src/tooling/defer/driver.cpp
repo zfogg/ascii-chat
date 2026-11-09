@@ -10,6 +10,7 @@
 #include <llvm/Support/Program.h>
 #include <llvm/Support/SHA256.h>
 #include <algorithm>
+#include <cstdlib>
 #include <fstream>
 #include <iterator>
 #include <map>
@@ -125,6 +126,21 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
   if (std::none_of(result.begin(), result.end(), [](const auto &arg) { return arg.rfind("-resource-dir", 0) == 0; })) {
     result.push_back("-resource-dir");
     result.push_back(compiler_resource_dir(compiler));
+  }
+  if (const auto *extra = std::getenv("ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS")) {
+    std::string value(extra);
+    std::size_t start = 0;
+    while (start <= value.size()) {
+      const auto end = value.find(';', start);
+      const auto directory = value.substr(start, end == std::string::npos ? std::string::npos : end - start);
+      if (!directory.empty()) {
+        result.push_back("-I");
+        result.push_back(directory);
+      }
+      if (end == std::string::npos)
+        break;
+      start = end + 1;
+    }
   }
   return result;
 }

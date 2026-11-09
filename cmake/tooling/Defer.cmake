@@ -171,7 +171,9 @@ function(ascii_defer_finish_batches)
             endforeach()
             file(GENERATE OUTPUT "${_manifest}" CONTENT "${_content}")
             add_custom_command(OUTPUT ${_outputs}
-                COMMAND "$<TARGET_FILE:ascii-defer-native>" --batch "${_manifest}"
+                COMMAND ${CMAKE_COMMAND} -E env
+                    "ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS=${ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS}"
+                    "$<TARGET_FILE:ascii-defer-native>" --batch "${_manifest}"
                     --compilation-database "${CMAKE_BINARY_DIR}" --depfile "${_depfile}"
                 DEPENDS ${_sources} "${_manifest}" ascii-defer-native "${CMAKE_BINARY_DIR}/compile_commands.json"
                 DEPFILE "${_depfile}" COMMENT "Transforming defer source batch" VERBATIM)
