@@ -4,6 +4,7 @@ set(_ASCII_DEFER_SCAN_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/ScanDefer.cmake")
 # Configure after targets are created so source replacement affects the actual targets.
 set(ASCIICHAT_LIBCLANG_PATH "" CACHE FILEPATH "LLVM 19 or newer libclang shared library")
 set(ASCIICHAT_DEFER_BACKEND "NATIVE" CACHE STRING "Defer transformer backend: NATIVE or PYTHON")
+set(ASCIICHAT_DEFER_SHARED_CACHE "" CACHE PATH "Optional shared native defer transformation cache")
 set_property(CACHE ASCIICHAT_DEFER_BACKEND PROPERTY STRINGS NATIVE PYTHON)
 set(ASCIICHAT_DEFER_NATIVE_BINARY "" CACHE FILEPATH "Prebuilt native defer host executable")
 set(ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS "" CACHE STRING "Additional directories containing defer wrapper macros")
@@ -187,6 +188,7 @@ function(ascii_defer_finish_batches)
                     "ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS=${ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS}"
                     "$<TARGET_FILE:ascii-defer-native>" --batch "${_manifest}"
                     --compilation-database "${CMAKE_BINARY_DIR}" --depfile "${_depfile}" --dependency-stamps --incremental
+                    --shared-cache "${ASCIICHAT_DEFER_SHARED_CACHE}"
                 DEPENDS ${_sources} "${_manifest}" ascii-defer-native "${CMAKE_BINARY_DIR}/compile_commands.json"
                 DEPFILE "${_depfile}" COMMENT "Transforming defer source batch" VERBATIM)
             add_custom_target("ascii-defer-${_id}" DEPENDS ${_outputs} ${_stamps})

@@ -11,6 +11,7 @@ namespace defer_tool {
 struct DriverOptions {
   std::filesystem::path compilation_database;
   std::vector<std::string> clang_arguments;
+  bool preamble = false;
 };
 
 struct FileDependencies {
@@ -19,7 +20,11 @@ struct FileDependencies {
 };
 
 std::string read_file(const std::filesystem::path &path);
+std::vector<std::string> compilation_arguments(const std::filesystem::path &database,
+                                               const std::filesystem::path &output,
+                                               const std::filesystem::path &source);
 void write_if_changed(const std::filesystem::path &path, const std::string &contents);
+std::filesystem::path loaded_libclang_path();
 void verify_libclang(const std::filesystem::path &requested);
 FileDependencies transform_file(ClangIndex &index, const std::filesystem::path &source,
                                 const std::filesystem::path &output, const DriverOptions &options);

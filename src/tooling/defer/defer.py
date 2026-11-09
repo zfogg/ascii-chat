@@ -826,6 +826,26 @@ def paths_alias(first: Path, second: Path) -> bool:
     )
 
 
+def is_cpp_source(source: Path, arguments: list[str]) -> bool:
+    for index in range(len(arguments) - 2, -1, -1):
+        if arguments[index] == "-x":
+            return arguments[index + 1] in ("c++", "c++-header")
+    if source.suffix in (".cpp", ".cc", ".cxx", ".C", ".hpp", ".hh", ".hxx"):
+        return True
+    return any(
+        argument.startswith(("-std=c++", "-std=gnu++"))
+        or argument == "/TP"
+        for argument in arguments
+    )
+
+
+def is_objc_source(source: Path, arguments: list[str]) -> bool:
+    for index in range(len(arguments) - 2, -1, -1):
+        if arguments[index] == "-x":
+            return arguments[index + 1].startswith("objective-c")
+    return source.suffix in (".m", ".mm")
+
+
 def batch_main() -> int:
     """Transform a CMake batch in one interpreter and emit one combined depfile."""
     parser = argparse.ArgumentParser()
@@ -930,6 +950,10 @@ def main() -> int:
             if args.source or args.output or args.depfile or args.compilation_database:
                 raise TransformError("inspection accepts only explicit Clang arguments")
             source_path = Path(path).resolve()
+            if is_objc_source(source_path, clang_args):
+                raise TransformError("Objective-C defer inspection is not supported")
+            if is_cpp_source(source_path, clang_args):
+                raise TransformError("C++ defer inspection is not supported; C++ uses native scope guards")
             source = source_path.read_bytes()
             clang_args.append("-DASCIICHAT_DEFER_PARSING=1")
             index = cindex.Index.create()
@@ -967,6 +991,8 @@ def main() -> int:
             clang_args = compilation_arguments(
                 args.compilation_database, args.output, args.source
             )
+        if is_objc_source(args.source, clang_args):
+            raise TransformError("Objective-C defer transformation is not supported; cleanup during exceptions cannot be guaranteed")
         source = args.source.read_bytes()
         clang_args.append("-DASCIICHAT_DEFER_PARSING=1")
         version = cindex.conf.get_clang_version()
@@ -974,15 +1000,24 @@ def main() -> int:
         if not match or int(match.group(1)) < 19:
             raise TransformError(f"LLVM 19 or newer libclang required, found {version}")
         index = cindex.Index.create()
-        tu, source = parse_wrapped(index, args.source, clang_args, source)
-        output = Transformer(args.source, source, tu).transform()
-        validation = index.parse(
-            str(args.source), args=clang_args, unsaved_files=[(str(args.source), output)],
-            options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
-        )
-        errors = [generated_diagnostic(item) for item in validation.diagnostics if item.severity >= cindex.Diagnostic.Error]
-        if errors:
-            raise TransformError(f"generated C is invalid: {errors[0]}")
+        if is_cpp_source(args.source, clang_args):
+            tu = index.parse(str(args.source), args=clang_args, unsaved_files=[(str(args.source), source)])
+            errors = [generated_diagnostic(item) for item in tu.diagnostics if item.severity >= cindex.Diagnostic.Error]
+            if errors:
+                raise TransformError(f"Clang could not parse C++ source: {errors[0]}")
+            escaped = str(args.source).replace("\\", "\\\\").replace('"', '\\"')
+            directive = f'\n#line 1 "{escaped}"\n'.encode()
+            output = source[:3] + directive + source[3:] if source.startswith(b"\xef\xbb\xbf") else directive + source
+        else:
+            tu, source = parse_wrapped(index, args.source, clang_args, source)
+            output = Transformer(args.source, source, tu).transform()
+            validation = index.parse(
+                str(args.source), args=clang_args, unsaved_files=[(str(args.source), output)],
+                options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
+            )
+            errors = [generated_diagnostic(item) for item in validation.diagnostics if item.severity >= cindex.Diagnostic.Error]
+            if errors:
+                raise TransformError(f"generated C is invalid: {errors[0]}")
         args.output.parent.mkdir(parents=True, exist_ok=True)
         if not args.output.exists() or args.output.read_bytes() != output:
             temporary = args.output.with_name(args.output.name + f".{os.getpid()}.tmp")

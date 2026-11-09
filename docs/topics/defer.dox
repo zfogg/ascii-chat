@@ -1,7 +1,7 @@
 /**
  * @defgroup defer Defer Statements
  * @ingroup module_development
- * @brief Block-scoped cleanup statements for C
+ * @brief Block-scoped cleanup statements for C and C++
  */
 
 /**
@@ -11,6 +11,11 @@
  * Include `<ascii-chat/tooling/defer/defer.h>` and place `defer(action);` in a
  * compound statement. The action runs when execution leaves that block. A
  * block action can be written as `defer({ statements; });`.
+ * C++11 and later use a native scope guard rather than build-time rewriting.
+ * Its cleanup runs on exception unwinding as well as normal block exit;
+ * cleanup must not throw because the guard destructor is `noexcept`.
+ * Both backends accept C++ source files and preserve them for native C++
+ * compilation. C++ scopes follow the language's normal object lifetime rules.
  *
  * @code{.c}
  * FILE *file = fopen(path, "r");
@@ -31,7 +36,7 @@
  * if (!populate(items, count)) return ERROR;
  * @endcode
  *
- * Ordinary macros may wrap `defer()` through multiple levels. The transformer
+ * In C, ordinary macros may wrap `defer()` through multiple levels. The transformer
  * expands those wrappers before analyzing cleanup. Wrapper definitions that
  * use stringification, token pasting, `__VA_OPT__`, `_Pragma`, or `__COUNTER__`
  * are rejected, as are multiline invocations and arguments containing non-defer
@@ -86,8 +91,18 @@
  * threads. Pass `--jobs=N` when invoking it directly to set a smaller limit.
  * During incremental native builds, the batch reuses transformations whose
  * source, recorded included files, and build context are unchanged; it reports
- * how many files it transformed. Changes to the compilation database or tool
- * invalidate the cached transformations.
+ * how many files it transformed. A file is reprocessed when its own compiler
+ * arguments, dependencies, libclang version, or the tool binary change.
+ * `ASCIICHAT_DEFER_SHARED_CACHE` optionally sets a shared cache directory,
+ * such as `ASCIICHAT_DEPS_CACHE_ROOT/defer`. It can reuse results across build
+ * directories for the same source tree, after checking dependency contents
+ * and the current include graph. Files using time-dependent macros or
+ * `__has_include` are transformed normally instead of being shared.
+ * It is disabled by default because checking a cache can cost more than a
+ * fresh transformation. Direct tool users can
+ * select the cache with `--shared-cache` together with `--incremental`.
+ * `--preamble` enables experimental Clang preamble reuse for direct tool
+ * invocations; it is not enabled by CMake because measurements may be slower.
  * Each generated translation unit has its own directory, and the original
  * source directory remains on Clang's quoted-include search path. Relative
  * includes therefore resolve from the original source tree, including nested
@@ -106,11 +121,12 @@
  * `ASCIICHAT_LIBCLANG_PATH` if its shared library cannot be found. Both backends
  * require a compilation database and a single-config Ninja or Unix Makefiles
  * generator. Their generated C and fail-closed behavior are checked together.
- * Directly compiling an untransformed source containing defer fails rather than
- * turning cleanup into a no-op. Included files are compiled as part of their
- * including translation unit; defer inside an included header or source file
- * is unsupported and fails the build. The CMake integration transforms C
- * translation units, not C++, Objective-C, or Objective-C++ translation units.
+ * Directly compiling an untransformed C source containing defer fails rather
+ * than turning cleanup into a no-op. For C, defer inside an included header or
+ * source file is unsupported and fails the build. The CMake integration
+ * transforms C translation units; C++ uses native scope guards directly.
+ * Objective-C and Objective-C++ exception behavior is not supported by the
+ * integration and has not been verified.
  * When panic instrumentation is enabled, it runs before defer transformation.
  *
  * To inspect an exit without writing a generated file, pass its source line and

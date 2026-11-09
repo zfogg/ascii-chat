@@ -232,6 +232,319 @@ def test_incremental_cache_cannot_replace_source(tmp_path: Path, base_environmen
     assert source.read_text(encoding="utf-8") == "void f(void) {}\n"
 
 
+def test_shared_cache_reuses_across_build_directories(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
+    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    if not binary or CLANG is None:
+        pytest.skip("native defer binary and Clang are required")
+    source = tmp_path / "source.c"
+    source.write_text(
+        '#include "generated.h"\n#include <ascii-chat/tooling/defer/defer.h>\n'
+        'int value; void f(void) { defer(value = VALUE); }\n', encoding="utf-8"
+    )
+    shared = tmp_path / "shared"
+    early = tmp_path / "early"
+    early.mkdir()
+
+    def prepare(name: str, value: int) -> tuple[Path, Path, Path]:
+        build = tmp_path / name
+        build.mkdir()
+        (build / "generated.h").write_text(f"#define VALUE {value}\n", encoding="utf-8")
+        output = build / "generated" / "source.c"
+        manifest = build / "batch.txt"
+        manifest.write_text(f"{source}\t{output}\n", encoding="utf-8")
+        commands = [{"directory": str(tmp_path), "file": str(output), "arguments": [
+            CLANG, "-I", str(early), "-I", str(ROOT / "include"), "-I", str(build), "-c", str(output), "-o", str(build / "source.o")
+        ]}]
+        (build / "compile_commands.json").write_text(json.dumps(commands), encoding="utf-8")
+        return build, output, manifest
+
+    def run(build: Path, manifest: Path) -> str:
+        result = subprocess.run(
+            [binary, "--batch", str(manifest), "--compilation-database", str(build), "--dependency-stamps",
+             "--incremental", "--shared-cache", str(shared)],
+            capture_output=True, text=True, env=compiler_environment, check=False,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        return result.stderr
+
+    first, first_output, first_manifest = prepare("first", 1)
+    second, second_output, second_manifest = prepare("second", 1)
+    assert "transformed 1 of 1" in run(first, first_manifest)
+    assert "transformed 0 of 1 files (1 restored" in run(second, second_manifest)
+    assert first_output.read_text(encoding="utf-8") == second_output.read_text(encoding="utf-8")
+    (early / "generated.h").write_text("#define VALUE 3\n", encoding="utf-8")
+    shadowed, _, shadowed_manifest = prepare("shadowed", 1)
+    assert "transformed 1 of 1" in run(shadowed, shadowed_manifest)
+    (early / "generated.h").unlink()
+    cache_data = next(path for path in shared.glob("*.c") if path.read_text(encoding="utf-8") == first_output.read_text(encoding="utf-8"))
+    cache_data.unlink()
+    os.link(source, cache_data)
+    original_source = source.read_text(encoding="utf-8")
+    hardlinked, _, hardlinked_manifest = prepare("hardlinked", 1)
+    assert "transformed 1 of 1" in run(hardlinked, hardlinked_manifest)
+    assert source.read_text(encoding="utf-8") == original_source
+    cache_data.unlink()
+    third, _, third_manifest = prepare("third", 2)
+    assert "transformed 1 of 1" in run(third, third_manifest)
+    database = second / "compile_commands.json"
+    commands = json.loads(database.read_text(encoding="utf-8"))
+    commands[0]["arguments"].insert(1, "-DCHANGED_FLAG=1")
+    database.write_text(json.dumps(commands), encoding="utf-8")
+    assert "transformed 1 of 1" in run(second, second_manifest)
+    for cache_file in shared.glob("*.c"):
+        cache_file.write_text("corrupt", encoding="utf-8")
+    fourth, _, fourth_manifest = prepare("fourth", 1)
+    assert "transformed 1 of 1" in run(fourth, fourth_manifest)
+    source.write_text(source.read_text(encoding="utf-8") + "/* __TIME__ */\n", encoding="utf-8")
+    volatile_first, _, volatile_first_manifest = prepare("volatile-first", 1)
+    volatile_second, _, volatile_second_manifest = prepare("volatile-second", 1)
+    assert "transformed 1 of 1" in run(volatile_first, volatile_first_manifest)
+    assert "transformed 1 of 1" in run(volatile_second, volatile_second_manifest)
+    source.write_text(source.read_text(encoding="utf-8").replace("__TIME__", "__has_include"), encoding="utf-8")
+    probe_first, _, probe_first_manifest = prepare("probe-first", 1)
+    probe_second, _, probe_second_manifest = prepare("probe-second", 1)
+    assert "transformed 1 of 1" in run(probe_first, probe_first_manifest)
+    assert "transformed 1 of 1" in run(probe_second, probe_second_manifest)
+
+
+def test_preamble_mode_matches_and_rejects_invalid_code(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
+    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    if not binary:
+        pytest.skip("native defer binary was not supplied")
+    source = tmp_path / "source.c"
+    source.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'int value; void f(void) { defer(value = 1); }\n', encoding="utf-8"
+    )
+    outputs = [tmp_path / "default.c", tmp_path / "preamble.c"]
+    for output, extra in zip(outputs, [[], ["--preamble"]], strict=True):
+        result = subprocess.run(
+            [binary, *extra, str(source), str(output), "--", "-I", str(ROOT / "include")],
+            capture_output=True, text=True, env=compiler_environment, check=False,
+        )
+        assert result.returncode == 0, result.stderr
+    assert outputs[0].read_text(encoding="utf-8") == outputs[1].read_text(encoding="utf-8")
+    source.write_text('void f(void) { defer(return); }\n', encoding="utf-8")
+    result = subprocess.run(
+        [binary, "--preamble", str(source), str(tmp_path / "invalid.c"), "--", "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=compiler_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert not (tmp_path / "invalid.c").exists()
+
+
+def test_cmake_shared_cache_across_build_directories(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
+    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    cmake = shutil.which("cmake")
+    clangxx = shutil.which("clang++")
+    if not binary or not cmake or not clangxx or not CLANG or not shutil.which("ninja"):
+        pytest.skip("native defer binary, CMake, Ninja, and Clang are required")
+    source_dir = tmp_path / "src"
+    source_dir.mkdir()
+    (source_dir / "main.c").write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'int cpp_test(void); int main(void) { int result = 0; { defer(result = 1); } '
+        'return result != 1 || !cpp_test(); }\n', encoding="utf-8"
+    )
+    (source_dir / "other.cpp").write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'extern "C" int cpp_test() { int value = 0; { defer(value = 1); } return value == 1; }\n',
+        encoding="utf-8",
+    )
+    module = (ROOT / "cmake" / "tooling" / "Defer.cmake").as_posix()
+    (tmp_path / "CMakeLists.txt").write_text(
+        'cmake_minimum_required(VERSION 3.30)\nproject(defer_cache C CXX)\n'
+        'set(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n'
+        f'include("{module}")\nadd_subdirectory(src)\nascii_defer_prepare()\n', encoding="utf-8"
+    )
+    (source_dir / "CMakeLists.txt").write_text(
+        'add_executable(ascii-chat-probe main.c other.cpp)\n'
+        f'target_include_directories(ascii-chat-probe PRIVATE "{(ROOT / "include").as_posix()}")\n',
+        encoding="utf-8",
+    )
+    for name, expected in [("one", "transformed 1 of 1"), ("two", "transformed 0 of 1 files (1 restored")]:
+        build = tmp_path / name
+        selected_binary = compiler_environment.get("ASCIICHAT_DEFER_SECOND_BINARY", binary) if name == "two" else binary
+        configured = subprocess.run(
+            [cmake, "-S", str(tmp_path), "-B", str(build), "-G", "Ninja", f"-DCMAKE_C_COMPILER={CLANG}",
+             f"-DCMAKE_CXX_COMPILER={clangxx}", f"-DASCIICHAT_DEFER_NATIVE_BINARY={selected_binary}",
+             f"-DASCIICHAT_DEFER_SHARED_CACHE={tmp_path / 'shared'}"],
+            capture_output=True, text=True, env=compiler_environment, check=False,
+        )
+        assert configured.returncode == 0, configured.stdout + configured.stderr
+        built = subprocess.run([cmake, "--build", str(build)], capture_output=True, text=True,
+                               env=compiler_environment, check=False)
+        assert built.returncode == 0, built.stdout + built.stderr
+        assert expected in built.stdout + built.stderr
+        exe = build / "src" / ("ascii-chat-probe.exe" if sys.platform == "win32" else "ascii-chat-probe")
+        assert subprocess.run([str(exe)], check=False).returncode == 0
+
+
+def test_incremental_cache_tracks_each_compile_command(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
+    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    if not binary or not CLANG:
+        pytest.skip("native defer binary and Clang are required")
+    commands = []
+    records = []
+    for name in ("first", "second"):
+        source = tmp_path / f"{name}.c"
+        output = tmp_path / "generated" / name / f"{name}.c"
+        source.write_text(
+            '#include <ascii-chat/tooling/defer/defer.h>\n'
+            f'void {name}(void) {{ defer((void)0); }}\n', encoding="utf-8"
+        )
+        commands.append({"directory": str(tmp_path), "file": str(output), "arguments": [
+            CLANG, "-I", str(ROOT / "include"), "-c", str(output), "-o", str(tmp_path / f"{name}.o")
+        ]})
+        records.append(f"{source}\t{output}\n")
+    database = tmp_path / "compile_commands.json"
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text("".join(records), encoding="utf-8")
+
+    def run() -> str:
+        database.write_text(json.dumps(commands), encoding="utf-8")
+        result = subprocess.run(
+            [binary, "--batch", str(manifest), "--compilation-database", str(tmp_path), "--dependency-stamps",
+             "--incremental"], capture_output=True, text=True, env=compiler_environment, check=False
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        return result.stderr
+
+    assert "transformed 2 of 2" in run()
+    assert "transformed 0 of 2" in run()
+    arguments = commands[0]["arguments"]
+    assert isinstance(arguments, list)
+    arguments.insert(1, "-DONLY_FIRST=1")
+    assert "transformed 1 of 2" in run()
+
+
+def test_cpp_defer_handles_scope_exceptions_and_cancellation(tmp_path: Path) -> None:
+    compiler = shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("Clang C++ compiler is required")
+    source = tmp_path / "program.cpp"
+    source.write_text(
+        'extern "C" {\n#include <ascii-chat/tooling/defer/defer.h>\n}\n'
+        'static int trace;\n'
+        'struct Test { int run() { defer(trace = trace * 10 + 1); '
+        '{ defer(trace = trace * 10 + 2); defer_named(skip, trace = 9); defer_cancel(skip); } '
+        'return trace; } };\n'
+        'int main() { Test t; if (t.run() != 2 || trace != 21) return 1; '
+        'try { defer(trace = trace * 10 + 3); throw 1; } catch (...) {} '
+        'return trace != 213; }\n', encoding="utf-8"
+    )
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run(
+        [compiler, "-std=c++11", "-I", str(ROOT / "include"), str(source), "-o", str(executable)],
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+@pytest.mark.parametrize("extension", ["cpp", "hpp", "h"])
+def test_cpp_tool_output_preserves_exception_cleanup(
+    tmp_path: Path, transform_environment: dict[str, str], extension: str
+) -> None:
+    compiler = shutil.which("clang++")
+    if not compiler:
+        pytest.skip("Clang C++ compiler is required")
+    source = tmp_path / f"input.{extension}"
+    source.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'static int value; struct A { void run() { defer(value = 4); throw 1; } };\n'
+        'int main() { try { A().run(); } catch (...) {} return value != 4; }\n', encoding="utf-8"
+    )
+    output = tmp_path / f"output.{extension}"
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", "-x", "c++", "-std=c++11", "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run(
+        [compiler, "-x", "c++", "-std=c++11", "-I", str(ROOT / "include"), str(output), "-o", str(executable)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+def test_cpp_tool_rejects_invalid_defer(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source = tmp_path / "input.cpp"
+    output = tmp_path / "output.cpp"
+    source.write_text('#include <ascii-chat/tooling/defer/defer.h>\nvoid f() { defer(unknown()); }\n', encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", "-std=c++11", "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert "unknown" in result.stderr
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("extension", ["h", "hpp"])
+def test_cpp_defer_in_included_header(tmp_path: Path, extension: str) -> None:
+    compiler = shutil.which("clang++")
+    if not compiler:
+        pytest.skip("Clang C++ compiler is required")
+    header = tmp_path / f"helper.{extension}"
+    header.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'inline void clean(int &value) { defer(value = 7); throw 1; }\n', encoding="utf-8"
+    )
+    source = tmp_path / "main.cpp"
+    source.write_text(
+        f'#include "{header.name}"\n'
+        'int main() { int value = 0; try { clean(value); } catch (...) {} return value != 7; }\n', encoding="utf-8"
+    )
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    result = subprocess.run(
+        [compiler, "-std=c++11", "-I", str(ROOT / "include"), str(source), "-o", str(executable)],
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+@pytest.mark.parametrize("extension", ["h", "hpp"])
+def test_c_header_as_direct_tool_input(
+    tmp_path: Path, transform_environment: dict[str, str], extension: str
+) -> None:
+    source = tmp_path / f"input.{extension}"
+    output = tmp_path / f"output.{extension}"
+    source.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'static inline void clean(int *value) { defer(*value = 7); }\n', encoding="utf-8"
+    )
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", "-x", "c", "-std=c17", "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    program = tmp_path / "main.c"
+    program.write_text(f'#include "{output.name}"\nint main(void) {{ int n = 0; clean(&n); return n != 7; }}\n', encoding="utf-8")
+    executable = tmp_path / ("program.exe" if sys.platform == "win32" else "program")
+    compiled = subprocess.run([str(CLANG), "-std=c17", "-I", str(ROOT / "include"), str(program), "-o", str(executable)],
+                              capture_output=True, text=True, check=False)
+    assert compiled.returncode == 0, compiled.stderr
+    assert subprocess.run([str(executable)], check=False).returncode == 0
+
+
+@pytest.mark.parametrize("extension", ["m", "mm"])
+def test_objc_tool_fails_closed(tmp_path: Path, transform_environment: dict[str, str], extension: str) -> None:
+    source = tmp_path / f"source.{extension}"
+    output = tmp_path / f"output.{extension}"
+    source.write_text('void f(void) { defer((void)0); }\n', encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert "Objective-C" in result.stderr
+    assert not output.exists()
+
+
 def test_parameter_shadowing_function_name(
     tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
@@ -1189,6 +1502,13 @@ def test_cmake_discovers_defer_and_tracks_headers(
     assert "Re-running CMake" not in output
     assert "Transforming defer source batch" not in output
     assert second_object.stat().st_mtime_ns == second_mtime
+    if backend != "PYTHON":
+        database = build / "compile_commands.json"
+        time.sleep(1.1)
+        database.write_text(database.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        output = run(cmake, "--build", str(build))
+        assert "defer-tool: transformed 0 of " in output
+        assert second_object.stat().st_mtime_ns == second_mtime
     time.sleep(1.1)
     main.write_text("int main(void) { return 0; }\n", encoding="utf-8")
     output = run(cmake, "--build", str(build))

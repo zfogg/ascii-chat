@@ -36,10 +36,15 @@ private:
 class TranslationUnit {
 public:
   TranslationUnit(CXIndex index, const std::string &file, const std::vector<const char *> &arguments,
-                  CXUnsavedFile *unsaved = nullptr, unsigned unsaved_count = 0, bool detailed = true) {
-    const auto error = clang_parseTranslationUnit2(
-        index, file.c_str(), arguments.data(), static_cast<int>(arguments.size()), unsaved, unsaved_count,
-        detailed ? CXTranslationUnit_DetailedPreprocessingRecord : 0, &value_);
+                  CXUnsavedFile *unsaved = nullptr, unsigned unsaved_count = 0, bool detailed = true,
+                  bool preamble = false, bool skip_bodies = false) {
+    const unsigned options =
+        (detailed ? CXTranslationUnit_DetailedPreprocessingRecord : 0) |
+        (preamble ? CXTranslationUnit_PrecompiledPreamble | CXTranslationUnit_CreatePreambleOnFirstParse : 0) |
+        (skip_bodies ? CXTranslationUnit_SkipFunctionBodies : 0);
+    const auto error =
+        clang_parseTranslationUnit2(index, file.c_str(), arguments.data(), static_cast<int>(arguments.size()), unsaved,
+                                    unsaved_count, options, &value_);
     if (error != CXError_Success || !value_)
       throw std::runtime_error("libclang could not parse " + file);
   }
@@ -50,6 +55,11 @@ public:
   TranslationUnit &operator=(const TranslationUnit &) = delete;
   CXTranslationUnit get() const {
     return value_;
+  }
+  void reparse(const std::string &file, const std::string &content) {
+    CXUnsavedFile unsaved{file.c_str(), content.data(), static_cast<unsigned long>(content.size())};
+    if (clang_reparseTranslationUnit(value_, 1, &unsaved, clang_defaultReparseOptions(value_)))
+      throw std::runtime_error("libclang could not reparse " + file);
   }
   std::vector<std::string> errors() const {
     std::vector<std::string> result;

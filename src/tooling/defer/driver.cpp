@@ -142,6 +142,37 @@ std::vector<std::string> compile_arguments(const fs::path &database, const fs::p
 
 } // namespace
 
+std::vector<std::string> compilation_arguments(const fs::path &database, const fs::path &output,
+                                               const fs::path &source) {
+  return compile_arguments(database, fs::weakly_canonical(fs::absolute(output)),
+                           fs::weakly_canonical(fs::absolute(source)));
+}
+
+static bool is_cpp_source(const fs::path &source, const std::vector<std::string> &arguments) {
+  for (std::size_t i = arguments.size(); i > 1; --i)
+    if (arguments[i - 2] == "-x")
+      return arguments[i - 1] == "c++" || arguments[i - 1] == "c++-header";
+  const auto extension = source.extension().u8string();
+  if (extension == ".cpp" || extension == ".cc" || extension == ".cxx" || extension == ".C" || extension == ".hpp" ||
+      extension == ".hh" || extension == ".hxx")
+    return true;
+  for (std::size_t i = 0; i < arguments.size(); ++i) {
+    const auto &arg = arguments[i];
+    if (arg.rfind("-std=c++", 0) == 0 || arg.rfind("-std=gnu++", 0) == 0 || arg == "/TP")
+      return true;
+  }
+  return false;
+}
+
+static bool is_objc_source(const fs::path &source, const std::vector<std::string> &arguments) {
+  for (std::size_t i = arguments.size(); i > 1; --i)
+    if (arguments[i - 2] == "-x")
+      return arguments[i - 1].rfind("objective-c", 0) == 0;
+  if (source.extension() == ".m" || source.extension() == ".mm")
+    return true;
+  return false;
+}
+
 std::string read_file(const fs::path &path) {
   std::ifstream input(path, std::ios::binary);
   if (!input)
@@ -149,9 +180,7 @@ std::string read_file(const fs::path &path) {
   return {std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
 }
 
-void verify_libclang(const fs::path &requested) {
-  if (!fs::is_regular_file(requested))
-    throw std::runtime_error("libclang not found: " + requested.u8string());
+fs::path loaded_libclang_path() {
   fs::path loaded;
 #ifdef _WIN32
   HMODULE module = nullptr;
@@ -170,6 +199,13 @@ void verify_libclang(const fs::path &requested) {
     throw std::runtime_error("cannot determine the loaded libclang path");
   loaded = fs::u8path(info.dli_fname);
 #endif
+  return loaded;
+}
+
+void verify_libclang(const fs::path &requested) {
+  if (!fs::is_regular_file(requested))
+    throw std::runtime_error("libclang not found: " + requested.u8string());
+  const auto loaded = loaded_libclang_path();
   std::error_code error;
   if (fs::equivalent(requested, loaded, error) && !error)
     return;
@@ -212,11 +248,11 @@ void write_if_changed(const fs::path &path, const std::string &contents) {
 }
 
 static std::unique_ptr<TranslationUnit> parse_wrapped(CXIndex index, const std::string &source_name,
-                                                      const std::vector<const char *> &arguments,
-                                                      std::string &content) {
+                                                      const std::vector<const char *> &arguments, std::string &content,
+                                                      bool preamble = false) {
   for (unsigned pass = 0; pass < 64; ++pass) {
     CXUnsavedFile unsaved{source_name.c_str(), content.data(), static_cast<unsigned long>(content.size())};
-    auto unit = std::make_unique<TranslationUnit>(index, source_name, arguments, &unsaved, 1);
+    auto unit = std::make_unique<TranslationUnit>(index, source_name, arguments, &unsaved, 1, true, preamble);
     auto expanded = expand_defer_wrappers(unit->get(), source_name, content);
     if (expanded == content)
       return unit;
@@ -234,15 +270,46 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
   auto arguments = options.compilation_database.empty()
                        ? options.clang_arguments
                        : compile_arguments(options.compilation_database, output, source);
+  if (is_objc_source(source, arguments))
+    throw std::runtime_error(
+        "Objective-C defer transformation is not supported; cleanup during exceptions cannot be guaranteed");
   arguments.push_back("-DASCIICHAT_DEFER_PARSING=1");
   std::vector<const char *> raw;
   for (const auto &arg : arguments)
     raw.push_back(arg.c_str());
   auto content = read_file(source);
   const auto source_name = source.u8string();
-  auto unit = parse_wrapped(index.get(), source_name, raw, content);
+  if (is_cpp_source(source, arguments)) {
+    CXUnsavedFile unsaved{source_name.c_str(), content.data(), static_cast<unsigned long>(content.size())};
+    TranslationUnit unit(index.get(), source_name, raw, &unsaved, 1, false);
+    const auto diagnostics = unit.errors();
+    if (!diagnostics.empty())
+      throw std::runtime_error("Clang could not parse C++ source: " + diagnostics.front());
+    FileDependencies dependencies{output, {source_name}};
+    clang_getInclusions(
+        unit.get(),
+        [](CXFile file, CXSourceLocation *, unsigned, CXClientData opaque) {
+          auto *files = static_cast<std::set<std::string> *>(opaque);
+          files->insert(
+              fs::absolute(fs::u8path(consume_string(clang_getFileName(file)))).lexically_normal().u8string());
+        },
+        &dependencies.inputs);
+    std::string escaped;
+    for (char c : source_name) {
+      if (c == '\\' || c == '"')
+        escaped += '\\';
+      escaped += c;
+    }
+    const auto directive = "\n#line 1 \"" + escaped + "\"\n";
+    if (content.compare(0, 3, "\xef\xbb\xbf") == 0)
+      content = content.substr(0, 3) + directive + content.substr(3);
+    else
+      content = directive + content;
+    write_if_changed(output, content);
+    return dependencies;
+  }
+  auto unit = parse_wrapped(index.get(), source_name, raw, content, options.preamble);
   auto transformed = transform(unit->get(), source.u8string(), content);
-  validate_generated(index.get(), source_name, raw, transformed);
   FileDependencies dependencies{output, {source.u8string()}};
   clang_getInclusions(
       unit->get(),
@@ -251,6 +318,14 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
         files->insert(fs::absolute(fs::u8path(consume_string(clang_getFileName(file)))).lexically_normal().u8string());
       },
       &dependencies.inputs);
+  if (options.preamble) {
+    unit->reparse(source_name, transformed);
+    const auto diagnostics = unit->errors();
+    if (!diagnostics.empty())
+      throw std::runtime_error("generated C is invalid: " + diagnostics.front());
+  } else {
+    validate_generated(index.get(), source_name, raw, transformed);
+  }
   write_if_changed(output, transformed);
   return dependencies;
 }
@@ -261,6 +336,10 @@ std::string inspect_file(ClangIndex &index, const fs::path &source_path, unsigne
     throw std::runtime_error("inspection requires explicit Clang arguments rather than a compilation database");
   const auto source = fs::weakly_canonical(fs::absolute(source_path));
   auto arguments = options.clang_arguments;
+  if (is_objc_source(source, arguments))
+    throw std::runtime_error("Objective-C defer inspection is not supported");
+  if (is_cpp_source(source, arguments))
+    throw std::runtime_error("C++ defer inspection is not supported; C++ uses native scope guards");
   arguments.push_back("-DASCIICHAT_DEFER_PARSING=1");
   std::vector<const char *> raw;
   for (const auto &arg : arguments)
