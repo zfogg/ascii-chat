@@ -1443,6 +1443,8 @@ produces pixels on screen.
 - [x] Keep native mode startup behind an explicit SwiftUI control
 - [x] Verify: mirror mode shows simulator ASCII output from the shared synthetic source
 - [x] Settings UI: color mode, palette, render mode, dimensions, and live C options snapshot/apply
+- [x] Shared TUI rendering: Help and native TUI controls remain visible over the Metal ASCII surface
+      after activation, with simulator screenshot verification through `simctl`
 
 #### Phase 3: Client + Server + Discovery Modes (1-2 weeks)
 
