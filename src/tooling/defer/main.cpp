@@ -17,6 +17,7 @@
 #include <fstream>
 #include <iterator>
 #include <limits>
+#include <map>
 #include <sstream>
 #include <set>
 #include <stdexcept>
@@ -34,6 +35,7 @@ llvm::cl::list<std::string> sources(llvm::cl::Positional, llvm::cl::desc("<sourc
 llvm::cl::opt<std::string> compilation_database("compilation-database", llvm::cl::desc("CMake compilation database"));
 llvm::cl::opt<std::string> depfile("depfile", llvm::cl::desc("Write header dependencies"));
 llvm::cl::opt<bool> dependency_stamps("dependency-stamps", llvm::cl::desc("Write per-output dependency stamps"));
+llvm::cl::opt<bool> incremental("incremental", llvm::cl::desc("Reuse unchanged batch transformations"));
 llvm::cl::opt<std::string> batch("batch", llvm::cl::desc("Transform source/output pairs from a manifest"));
 llvm::cl::opt<unsigned> jobs("jobs", llvm::cl::desc("Maximum concurrent transformations (default: available cores)"),
                              llvm::cl::init(0));
@@ -41,6 +43,73 @@ llvm::cl::opt<std::string> libclang("libclang", llvm::cl::desc("Path to the libc
 llvm::cl::opt<std::string> explain_location("explain", llvm::cl::desc("Explain cleanup at source:line"));
 llvm::cl::opt<std::string> show_location("show-transformed",
                                          llvm::cl::desc("Show the transformed function at source:line"));
+
+using FileMetadata = std::pair<long long, std::uintmax_t>;
+
+bool metadata(const std::filesystem::path &path, FileMetadata &result) {
+  std::error_code error;
+  const auto modified = std::filesystem::last_write_time(path, error);
+  if (error)
+    return false;
+  const auto size = std::filesystem::file_size(path, error);
+  if (error)
+    return false;
+  result = {static_cast<long long>(modified.time_since_epoch().count()), size};
+  return true;
+}
+
+std::string cache_context(const std::filesystem::path &database, const char *program) {
+  std::string context = "defer-cache-v1\n";
+  for (const auto &path : {database / "compile_commands.json", std::filesystem::u8path(program)}) {
+    FileMetadata info;
+    if (!metadata(path, info))
+      return {};
+    context += std::filesystem::absolute(path).u8string() + "\t" + std::to_string(info.first) + "\t" +
+               std::to_string(info.second) + "\n";
+  }
+  context += defer_tool::consume_string(clang_getClangVersion()) + "\n";
+  for (const char *name : {"ASCIICHAT_DEFER_EXTRA_INCLUDE_DIRS", "CPATH", "C_INCLUDE_PATH", "SDKROOT", "INCLUDE"})
+    context += std::string(name) + "=" + llvm::sys::Process::GetEnv(name).value_or("") + "\n";
+  return context;
+}
+
+bool cached_dependencies(const std::filesystem::path &source, const std::filesystem::path &output,
+                         const std::string &context, std::map<std::string, FileMetadata> &metadata_cache,
+                         defer_tool::FileDependencies &result) {
+  namespace fs = std::filesystem;
+  const auto stamp = fs::u8path(output.parent_path().u8string() + ".deps");
+  const auto cache = fs::u8path(output.parent_path().u8string() + ".cache");
+  try {
+    if (context.empty() || defer_tool::read_file(cache) != context || !fs::is_regular_file(output) ||
+        fs::last_write_time(output) > fs::last_write_time(stamp))
+      return false;
+    std::istringstream lines(defer_tool::read_file(stamp));
+    std::string line;
+    result = {output, {}};
+    while (std::getline(lines, line)) {
+      const auto last = line.rfind('\t');
+      const auto first = last == std::string::npos ? last : line.rfind('\t', last - 1);
+      if (first == std::string::npos || last == std::string::npos)
+        return false;
+      const auto name = line.substr(0, first);
+      const FileMetadata expected{std::stoll(line.substr(first + 1, last - first - 1)),
+                                  std::stoull(line.substr(last + 1))};
+      auto found = metadata_cache.find(name);
+      if (found == metadata_cache.end()) {
+        FileMetadata actual;
+        if (!metadata(fs::u8path(name), actual))
+          return false;
+        found = metadata_cache.emplace(name, actual).first;
+      }
+      if (found->second != expected)
+        return false;
+      result.inputs.insert(name);
+    }
+    return result.inputs.count(fs::weakly_canonical(fs::absolute(source)).u8string()) != 0;
+  } catch (const std::exception &) {
+    return false;
+  }
+}
 
 } // namespace
 
@@ -171,7 +240,32 @@ int main(int argc, char **argv) {
     }
     if (jobs.getNumOccurrences() && jobs == 0)
       throw std::runtime_error("--jobs must be at least 1");
+    if (incremental && (batch.empty() || !dependency_stamps || options.compilation_database.empty()))
+      throw std::runtime_error("--incremental requires --batch, --dependency-stamps, and --compilation-database");
+    if (incremental) {
+      for (const auto &[source, output] : inputs) {
+        const auto cache = std::filesystem::u8path(output.parent_path().u8string() + ".cache");
+        for (const auto &[other_source, other_output] : inputs) {
+          const auto other_stamp = std::filesystem::u8path(other_output.parent_path().u8string() + ".deps");
+          for (const auto &protected_path : {other_source, other_output, other_stamp, depfile_path}) {
+            if (protected_path.empty())
+              continue;
+            std::error_code error;
+            if (std::filesystem::weakly_canonical(cache) == std::filesystem::weakly_canonical(protected_path) ||
+                (std::filesystem::exists(cache) && std::filesystem::exists(protected_path) &&
+                 std::filesystem::equivalent(cache, protected_path, error) && !error))
+              throw std::runtime_error("incremental cache must not overwrite an input, output, stamp, or depfile");
+          }
+        }
+      }
+    }
     dependencies.resize(inputs.size());
+    const auto context = incremental ? cache_context(options.compilation_database, argv[0]) : std::string{};
+    std::vector<bool> cached(inputs.size(), false);
+    std::map<std::string, FileMetadata> metadata_cache;
+    if (incremental)
+      for (std::size_t i = 0; i < inputs.size(); ++i)
+        cached[i] = cached_dependencies(inputs[i].first, inputs[i].second, context, metadata_cache, dependencies[i]);
     std::vector<std::exception_ptr> errors(inputs.size());
     std::atomic<std::size_t> next{0};
     const auto worker = [&]() {
@@ -181,6 +275,8 @@ int main(int argc, char **argv) {
           const auto i = next.fetch_add(1);
           if (i >= inputs.size())
             break;
+          if (cached[i])
+            continue;
           try {
             dependencies[i] = defer_tool::transform_file(worker_index, inputs[i].first, inputs[i].second, options);
           } catch (...) {
@@ -211,10 +307,26 @@ int main(int argc, char **argv) {
       if (error)
         std::rethrow_exception(error);
     if (dependency_stamps)
-      for (const auto &file : dependencies)
-        defer_tool::write_dependency_stamp(file);
+      for (std::size_t i = 0; i < dependencies.size(); ++i)
+        if (!cached[i]) {
+          defer_tool::write_dependency_stamp(dependencies[i]);
+          if (incremental && !context.empty()) {
+            const auto cache = std::filesystem::u8path(inputs[i].second.parent_path().u8string() + ".cache");
+            for (const auto &name : dependencies[i].inputs) {
+              const auto input = std::filesystem::u8path(name);
+              std::error_code error;
+              if (std::filesystem::weakly_canonical(cache) == std::filesystem::weakly_canonical(input) ||
+                  (std::filesystem::exists(cache) && std::filesystem::equivalent(cache, input, error) && !error))
+                throw std::runtime_error("incremental cache must not overwrite an included file");
+            }
+            defer_tool::write_if_changed(cache, context);
+          }
+        }
     if (!depfile_path.empty())
       defer_tool::write_depfile(depfile_path, dependencies);
+    if (incremental)
+      llvm::errs() << "defer-tool: transformed " << std::count(cached.begin(), cached.end(), false) << " of "
+                   << inputs.size() << " files\n";
     return 0;
   } catch (const std::exception &error) {
     llvm::errs() << "defer-tool: " << error.what() << '\n';

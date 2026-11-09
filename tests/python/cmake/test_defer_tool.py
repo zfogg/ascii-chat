@@ -214,6 +214,24 @@ def test_batch_depfile_cannot_replace_any_source(
     assert not (tmp_path / "a.out.c").exists()
 
 
+def test_incremental_cache_cannot_replace_source(tmp_path: Path, base_environment: dict[str, str]) -> None:
+    binary = base_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    if not binary:
+        pytest.skip("native defer binary was not supplied")
+    source = tmp_path / "generated.cache"
+    source.write_text("void f(void) {}\n", encoding="utf-8")
+    output = tmp_path / "generated" / "output.c"
+    manifest = tmp_path / "batch.txt"
+    manifest.write_text(f"{source}\t{output}\n", encoding="utf-8")
+    result = subprocess.run(
+        [binary, "--batch", str(manifest), "--compilation-database", str(tmp_path), "--dependency-stamps", "--incremental"],
+        capture_output=True, text=True, env=base_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert "incremental cache must not overwrite" in result.stderr
+    assert source.read_text(encoding="utf-8") == "void f(void) {}\n"
+
+
 def test_parameter_shadowing_function_name(
     tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
@@ -1125,6 +1143,58 @@ def test_cmake_discovers_defer_and_tracks_headers(
             "the native tool must be built during the build, not configuration"
         )
     run(cmake, "--build", str(build))
+    second_objects = list(build.rglob("*second.c.obj")) + list(build.rglob("*second.c.o"))
+    assert len(second_objects) == 1
+    second_object = second_objects[0]
+    second_mtime = second_object.stat().st_mtime_ns
+    time.sleep(1.1)
+    main.write_text("int main(void) { return 0; } /* ordinary edit */\n", encoding="utf-8")
+    output = run(cmake, "--build", str(build))
+    assert "Re-running CMake" not in output
+    assert "Configuring done" not in output
+    assert "Transforming defer source batch" not in output
+    assert "Building C object" in output
+    assert second_object.stat().st_mtime_ns == second_mtime
+
+    time.sleep(1.1)
+    main.write_text(
+        '#include "ascii-chat/tooling/defer/defer.h"\n'
+        'static int cleaned; static void f(void) { defer(cleaned = 1); }\n'
+        'int main(void) { f(); return cleaned != 1; }\n', encoding="utf-8"
+    )
+    output = run(cmake, "--build", str(build))
+    assert "Re-running CMake" in output
+    assert "Transforming defer source batch" in output
+    executable = build / "src" / ("ascii-chat-probe.exe" if sys.platform == "win32" else "ascii-chat-probe")
+    run(str(executable))
+    assert second_object.stat().st_mtime_ns == second_mtime
+    generated_main = build / "defer_transformed" / "ascii-chat-probe" / "src" / "main.c.defer" / "main.c"
+    assert generated_main.is_file()
+    main_objects = list(build.rglob("*main.c.obj")) + list(build.rglob("*main.c.o"))
+    assert len(main_objects) == 1
+    main_object = main_objects[0]
+    main_mtime = main_object.stat().st_mtime_ns
+    time.sleep(1.1)
+    main.write_text(main.read_text(encoding="utf-8") + "/* transformed edit */\n", encoding="utf-8")
+    output = run(cmake, "--build", str(build))
+    assert "Re-running CMake" not in output
+    assert "Configuring done" not in output
+    assert "Transforming defer source batch" in output
+    assert second_object.stat().st_mtime_ns == second_mtime
+    assert main_object.stat().st_mtime_ns > main_mtime
+    if backend != "PYTHON":
+        assert "defer-tool: transformed 1 of " in output
+    run(str(executable))
+    output = run(cmake, "--build", str(build))
+    assert "Re-running CMake" not in output
+    assert "Transforming defer source batch" not in output
+    assert second_object.stat().st_mtime_ns == second_mtime
+    time.sleep(1.1)
+    main.write_text("int main(void) { return 0; }\n", encoding="utf-8")
+    output = run(cmake, "--build", str(build))
+    assert "Re-running CMake" in output
+    assert second_object.stat().st_mtime_ns == second_mtime
+    run(str(executable))
     time.sleep(1.1)
     late_header.write_text('#include "ascii-chat/tooling/defer/defer.h"\n#define LATE(action) defer(action)\n', encoding="utf-8")
     main.write_text(
@@ -1186,6 +1256,15 @@ def test_cmake_discovers_defer_and_tracks_headers(
     assert other_generated.stat().st_mtime_ns == other_before
     assert other_object.stat().st_mtime_ns == object_before
     assert "Transforming defer source batch" not in run(cmake, "--build", str(build))
+    original_main = main.read_text(encoding="utf-8")
+    time.sleep(1.1)
+    main.write_text(original_main + "\nvoid invalid(void) { defer(return); }\n", encoding="utf-8")
+    failed = subprocess.run([cmake, "--build", str(build)], capture_output=True, text=True, env=compiler_environment)
+    assert failed.returncode != 0
+    assert "defer-tool:" in failed.stdout + failed.stderr
+    main.write_text(original_main, encoding="utf-8")
+    run(cmake, "--build", str(build))
+    run(str(executable))
 
 
 @pytest.mark.parametrize("alias_kind", ["same", "hardlink", "symlink"])
