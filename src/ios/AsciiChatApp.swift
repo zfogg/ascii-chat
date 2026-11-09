@@ -458,9 +458,13 @@ private struct IOSSettingsView: View {
             Form {
                 Section("Display") {
                     Picker("Palette", selection: $palette) { ForEach(palettes, id: \.self, content: Text.init) }
+                        .onChange(of: palette) { _, value in applyJSON(["palette": value]) }
                     Picker("Color filter", selection: $colorFilter) { ForEach(filters, id: \.self, content: Text.init) }
+                        .onChange(of: colorFilter) { _, value in applyJSON(["color_filter": value]) }
                     Picker("Render mode", selection: $renderMode) { ForEach(renderModes, id: \.self, content: Text.init) }
+                        .onChange(of: renderMode) { _, value in applyJSON(["render_mode": value]) }
                     Picker("Color mode", selection: $colorMode) { ForEach(colorModes, id: \.self, content: Text.init) }
+                        .onChange(of: colorMode) { _, value in applyJSON(["color_mode": value]) }
                     Toggle("Stretch to fill", isOn: $stretch)
                         .onChange(of: stretch) { _, value in applyJSON(["stretch": value]) }
                     Toggle("Stabilize frames", isOn: $stabilize)
