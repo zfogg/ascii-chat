@@ -46,6 +46,7 @@ if(WIN32)
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/font.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/backtrace.c
         ${CMAKE_SOURCE_DIR}/lib/video/webcam/windows/webcam_mediafoundation.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/systemd_stub.c
     )
     # Link psapi for EnumProcessModules (used in backtrace symbol resolution)
     set(PLATFORM_LIBS psapi user32 shell32)
@@ -83,6 +84,7 @@ elseif(PLATFORM_POSIX)
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/font.c
             ${CMAKE_CURRENT_SOURCE_DIR}/macos/filesystem.m
             ${CMAKE_SOURCE_DIR}/lib/video/webcam/macos/webcam_avfoundation.m
+            ${CMAKE_CURRENT_SOURCE_DIR}/systemd_stub.c
         )
     elseif(PLATFORM_LINUX)
         list(APPEND PLATFORM_SRCS
