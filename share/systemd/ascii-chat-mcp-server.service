@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=notify
-ExecStart=/usr/bin/ascii-chat mcp-server --transport=http --address=127.0.0.1
+ExecStart=/usr/bin/ascii-chat mcp-server --transport=http --address=127.0.0.1 --address6=::
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=yes
