@@ -830,7 +830,11 @@ int asciichat_main(int argc, char *argv[]) {
     options_state_destroy();
     options_cleanup_schema();
 
+#ifdef PLATFORM_IOS
+    return options_result;
+#else
     exit(options_result);
+#endif
   }
 
   // Get parsed options
@@ -1109,7 +1113,11 @@ int asciichat_main(int argc, char *argv[]) {
   // (called via atexit handler), which runs AFTER the memory report
 
   if (exit_code == ERROR_USAGE) {
+#ifdef PLATFORM_IOS
+    return exit_code;
+#else
     exit(ERROR_USAGE);
+#endif
   }
 
   return exit_code;
