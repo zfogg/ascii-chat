@@ -229,8 +229,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
         break
       fi
       if [ "$attempt" -eq 3 ]; then
-        echo >&2 "Failed to install bun after ${attempt} attempts"
-        exit 1
+        echo >&2 "WARNING: Failed to install bun after ${attempt} attempts; continuing without it"
       fi
       sleep $((attempt * 10))
     done
@@ -398,8 +397,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
         break
       fi
       if [ "$attempt" -eq 3 ]; then
-        echo >&2 "Failed to install bun after ${attempt} attempts"
-        exit 1
+        echo >&2 "WARNING: Failed to install bun after ${attempt} attempts; continuing without it"
       fi
       sleep $((attempt * 10))
     done
