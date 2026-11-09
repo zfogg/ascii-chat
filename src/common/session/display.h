@@ -66,9 +66,11 @@
 typedef bool (*session_display_should_exit_fn)(void *user_data);
 
 /**
- * @brief Configuration for session display context
+ * @brief Terminal-rendering and snapshot settings used to create a display context.
  *
- * Specifies display parameters including snapshot mode, palette, and color mode.
+ * Selects palette and color behavior, optional audio playback, render-file FPS,
+ * and deferred encoder creation. The palette and callback strings/data are
+ * borrowed; the display context copies the terminal-facing state it needs.
  *
  * @ingroup session
  */

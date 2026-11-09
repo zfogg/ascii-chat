@@ -23,7 +23,12 @@
 #include <stdarg.h>
 
 /**
- * @brief Frame buffer structure
+ * @brief Growable byte buffer for assembling one complete terminal frame
+ *
+ * `data` owns the accumulated ANSI and text bytes, `len` is the number ready
+ * to write, and `capacity` is the allocation size. Rendering code appends to
+ * the buffer and flushes it in one write to avoid terminal flicker; reset keeps
+ * the allocation so the next frame can reuse it.
  */
 struct frame_buffer {
   char *data;      ///< Allocated buffer

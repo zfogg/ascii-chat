@@ -36,6 +36,18 @@ if(NOT DEFINED ASCII_CHAT_VERSION OR ASCII_CHAT_VERSION STREQUAL "")
     endif()
 endif()
 
+if(NOT DEFINED ASCII_CHAT_DOC_SHA OR ASCII_CHAT_DOC_SHA STREQUAL "")
+    execute_process(
+        COMMAND git -C "${ASCII_CHAT_SOURCE_DIR}" rev-parse --short=12 HEAD
+        OUTPUT_VARIABLE ASCII_CHAT_DOC_SHA
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(ASCII_CHAT_DOC_SHA STREQUAL "")
+        set(ASCII_CHAT_DOC_SHA "development")
+    endif()
+endif()
+
 set(PROJECT_VERSION "${ASCII_CHAT_VERSION}")
 set(PROJECT_NAME_FULL "ascii-chat")
 set(PROJECT_BUNDLE_ID "com.zfo.gg.ascii-chat")
@@ -44,10 +56,17 @@ set(DOXYLAYOUTFILE_OUT "${CMAKE_CURRENT_BINARY_DIR}/DoxygenLayout.xml")
 set(DOXYFILE_HTML "${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.html")
 set(GENERATE_HTML "YES")
 set(GENERATE_MAN "NO")
+set(CUSTOM_THEME_FILENAME "${CMAKE_CURRENT_BINARY_DIR}/custom-theme-${ASCII_CHAT_DOC_SHA}.css")
 
 file(MAKE_DIRECTORY
     "${ASCII_CHAT_BINARY_DIR}/share/doc/html"
     "${ASCII_CHAT_BINARY_DIR}/docs"
+)
+
+configure_file(
+    "${ASCII_CHAT_SOURCE_DIR}/docs/custom-theme-v2.css"
+    "${CUSTOM_THEME_FILENAME}"
+    COPYONLY
 )
 
 configure_file(

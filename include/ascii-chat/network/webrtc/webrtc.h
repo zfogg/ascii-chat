@@ -124,7 +124,12 @@ typedef void (*webrtc_datachannel_message_callback_t)(webrtc_data_channel_t *dc,
 typedef void (*webrtc_datachannel_error_callback_t)(webrtc_data_channel_t *dc, const char *error, void *user_data);
 
 /**
- * @brief WebRTC configuration
+ * @brief ICE, signaling, DataChannel, and callback settings for a WebRTC peer.
+ *
+ * The configuration supplies optional STUN/TURN servers and credentials,
+ * relay-only and port-forwarding policy, and callbacks for ICE, SDP, state,
+ * and DataChannel events. Server lists and `user_data` are borrowed by the
+ * peer while it is alive.
  */
 typedef struct {
   const char *bind_address;    ///< Optional local interface address for ICE sockets
@@ -319,7 +324,7 @@ void webrtc_datachannel_set_open_state(webrtc_data_channel_t *dc, bool is_open);
 const char *webrtc_datachannel_get_label(webrtc_data_channel_t *dc);
 
 /**
- * @brief DataChannel callback structure
+ * @brief Event hooks and caller context for one WebRTC DataChannel.
  *
  * Callbacks for DataChannel events (open, close, error, message).
  * Used with webrtc_datachannel_set_callbacks() to register per-channel callbacks.

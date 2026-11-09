@@ -62,5 +62,17 @@ For test selection, Criterion/JUnit/coverage, or test diagnosis, also load [`asc
 
 When the task is complete, the code is merged into the main worktree, and the changes are pushed, remove obsolete build directories and temporary git worktrees created during the task. Verify the target paths first; preserve the main worktree, its active `build/`, uncommitted user work, and any worktree still needed by another task.
 
+## Documentation synchronization
+
+When implementation work changes a public API, option, transport, subsystem,
+screen, keyboard binding, platform path, test workflow, or user-visible
+behavior, update or create the relevant Doxygen topic or authored guide in the
+same change. Do not leave documentation as follow-up work. Load and follow
+[`ascii-chat-documentation`](../ascii-chat-documentation/SKILL.md) for topic
+placement, navigation, stale-content review, and docs-only verification.
+Keep public-header Doxygen comments and the higher-level topic page consistent;
+document the current abstraction and ownership model rather than copying an
+old implementation detail.
+
 When changing a public header, option, packet, or exported WASM function, search for generated documentation, bindings, serialization, tests, and platform stubs before finishing. Keep Doxygen comments and generated interfaces synchronized.
 

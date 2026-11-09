@@ -29,7 +29,12 @@
 #define SESSION_AUDIO_MAX_SOURCES MAX_SESSION_PARTICIPANTS
 
 /**
- * @brief Per-source audio buffer info for mixing
+ * @brief One participant's audio input in the host mixer.
+ *
+ * `source_id` identifies the participant, `active` controls whether its ring
+ * buffer contributes to a mix, and `buffer` holds the samples supplied by the
+ * receive path. The session audio context owns the array; each ring buffer is
+ * created and released with the source lifecycle.
  */
 typedef struct {
   uint32_t source_id;
@@ -38,10 +43,12 @@ typedef struct {
 } session_audio_source_t;
 
 /**
- * @brief Internal session audio context structure
+ * @brief Session-owned audio capture, playback, and host-mixing state.
  *
- * Contains the underlying audio context plus optional mixing state
- * for host mode.
+ * It owns the underlying device context and processing pipeline, tracks start
+ * and initialization state, and, for hosts, maintains participant sources and
+ * a reusable mix buffer. Callers use the session audio API rather than
+ * accessing the device fields directly.
  */
 struct session_audio_ctx {
   /** @brief Underlying audio context from lib/audio */

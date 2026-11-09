@@ -48,9 +48,13 @@ typedef struct {
 } host_lost_candidate_t;
 
 /**
- * @brief Session entry data structure
+ * @brief Persisted discovery-session record used to admit and route participants.
  *
- * Contains all session metadata. Stored in SQLite database.
+ * It stores the human-readable session string and UUID, host identity,
+ * capabilities and participant counts, password and IP-disclosure policy,
+ * session type, and creation/activity expiry timestamps. The database owns the
+ * durable record; callers use it as a validated value when loading or updating
+ * a session.
  */
 typedef struct session_entry {
   char session_string[SESSION_STRING_BUFFER_SIZE]; ///< e.g., "affectionate-acquaintance-acquaintance"

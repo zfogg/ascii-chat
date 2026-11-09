@@ -3,15 +3,16 @@
  * @ingroup module_network
  * @ingroup network
  *
- * @brief How ACIP packets travel through TCP, WebSocket, WebRTC, QUIC, and WebTransport.
+ * @brief How connections, transports, ACIP, and media admission fit together.
  *
  * @section network_overview Overview
  *
- * ascii-chat separates network work into two layers. Connections own lifecycle,
+ * ascii-chat separates network work into three layers. Connections own lifecycle,
  * callbacks, deadlines, security state, and packet delivery. Transports own the
  * details of delivery: framing, readiness, backpressure, optional datagrams,
- * and backend resources. ACIP handlers sit above both layers, so the same
- * protocol code works across native and browser-facing transports.
+ * and backend resources. ACIP owns packet types, negotiation, authentication,
+ * encryption, compression, and dispatch above both. The same protocol handlers
+ * therefore work across native and browser-facing transports.
  *
  * The main boundaries are:
  * - `include/ascii-chat/network/connection.h` — connection and server lifecycle
@@ -19,6 +20,7 @@
  * - `include/ascii-chat/network/acip/protocol.h` — ACIP dispatch and callbacks
  * - `include/ascii-chat/network/packet/packet.h` — packet encoding and decoding
  * - `include/ascii-chat/network/negotiation.h` — connection establishment
+ * - `include/ascii-chat/network/acip/send.h` — shared outbound scheduling
  *
  * @section network_connection_layer Connections
  *
@@ -127,6 +129,14 @@
  * implementations. They are not the public protocol boundary. Add new behavior
  * to the connection or transport abstraction first, then use platform helpers
  * only inside the backend that needs them.
+ *
+ * @section network_discovery Discovery and peer connections
+ *
+ * ACDS is a signaling and session-discovery service, not a second media
+ * protocol. The client uses the shared connection and ACIP runtime to
+ * authenticate with ACDS, exchange session metadata, and relay WebRTC SDP/ICE.
+ * After peer establishment, media and control packets use the negotiated peer
+ * transport; the ACDS connection is not in the media path.
  *
  * @see topic_av
  * @see topic_packet_types

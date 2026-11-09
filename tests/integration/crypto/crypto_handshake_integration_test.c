@@ -20,6 +20,7 @@
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/tests/logging.h>
 
@@ -96,10 +97,8 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
   buffer_release(payload);
 
   // Send server's PROTOCOL_VERSION
-  protocol_version_packet_t server_version = {0};
-  server_version.protocol_version = htons(1);
-  server_version.protocol_revision = htons(0);
-  server_version.supports_encryption = 1;
+  protocol_version_packet_t server_version;
+  protocol_version_packet_init(&server_version, ACIP_CRYPTO_FULL);
   if (send_protocol_version_packet(server_fd, &server_version) != 0)
     return -1;
 
@@ -139,10 +138,8 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
   size_t payload_len = 0;
 
   // Send client's PROTOCOL_VERSION
-  protocol_version_packet_t client_version = {0};
-  client_version.protocol_version = htons(1);
-  client_version.protocol_revision = htons(0);
-  client_version.supports_encryption = 1;
+  protocol_version_packet_t client_version;
+  protocol_version_packet_init(&client_version, ACIP_CRYPTO_FULL);
   if (send_protocol_version_packet(client_fd, &client_version) != 0)
     return -1;
 

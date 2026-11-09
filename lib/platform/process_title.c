@@ -201,7 +201,7 @@ static void title_append_argument(title_writer_t *writer, const char *argument) 
 }
 
 static size_t title_secret_option_length(const char *argument) {
-  static const char *const secret_options[] = {"--password", "--websocket-tls-key-password", "--turn-credential",
+  static const char *const secret_options[] = {"--password", "--tls-key-password", "--turn-credential",
                                                "--turn-secret"};
   for (size_t i = 0; i < sizeof(secret_options) / sizeof(secret_options[0]); ++i) {
     size_t length = strlen(secret_options[i]);

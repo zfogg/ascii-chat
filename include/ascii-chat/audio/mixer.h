@@ -163,9 +163,9 @@ typedef struct {
 } compressor_t;
 
 /**
- * @brief Noise gate settings and state
+ * @brief Noise-gate thresholds, smoothing coefficients, and live open/closed state.
  *
- * Implements noise gate to suppress background noise below threshold.
+ * This object suppresses microphone or mixed-audio samples below `threshold`.
  * Uses hysteresis to prevent gate chatter (rapid opening/closing).
  *
  * GATE BEHAVIOR:

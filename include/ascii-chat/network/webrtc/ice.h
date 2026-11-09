@@ -158,7 +158,11 @@ typedef asciichat_error_t (*ice_send_candidate_callback_t)(const ice_candidate_t
                                                            void *user_data);
 
 /**
- * @brief ICE gathering configuration
+ * @brief Credentials and callback used while gathering ICE candidates
+ *
+ * The ICE agent borrows the offer's username fragment and password, then calls
+ * `send_callback` for each candidate it discovers. The opaque `user_data` is
+ * passed back unchanged to the callback.
  */
 typedef struct {
   const char *ufrag;                           ///< Username fragment for ICE (from offer)

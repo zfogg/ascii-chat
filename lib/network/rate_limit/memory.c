@@ -21,7 +21,11 @@
 #include <string.h>
 
 /**
- * @brief Rate event record in memory
+ * @brief Per-address, per-event timestamp ring used by the in-memory limiter.
+ *
+ * `key` combines the client address and event type; `timestamps` stores the
+ * recent event times, while `count`, `capacity`, and `head` manage the
+ * circular window. The hash handle lets the backend find this record quickly.
  */
 typedef struct rate_event_s {
   char key[NETWORK_RATE_LIMIT_MEMORY_KEY_BUFFER_SIZE]; ///< Hash key: "ip_address:event_type"

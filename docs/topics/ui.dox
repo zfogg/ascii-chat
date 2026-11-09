@@ -1,0 +1,65 @@
+/**
+ * @defgroup module_ui User Interface
+ * @ingroup module_core
+ * @brief Terminal presentation, input routing, widgets, and interactive screens.
+ */
+
+/**
+ * @page topic_ui User Interface Architecture
+ * @ingroup module_ui
+ * @brief How ascii-chat presents live state and routes interaction.
+ *
+ * The UI is split into reusable widgets, the TUI screen/controller layer, and
+ * the platform keyboard decoder. Producers publish snapshots; they do not
+ * write directly to the terminal or own keyboard policy.
+ *
+ * @section ui_boundaries Boundaries
+ *
+ * - `lib/ui/` and `include/ascii-chat/ui/` contain reusable widgets.
+ * - `lib/tui/` and `include/ascii-chat/tui/` contain complete screens, snapshots,
+ *   input routing, and the controller.
+ * - `lib/platform/keyboard.c` normalizes POSIX escape sequences, Windows console
+ *   events, UTF-8, and UTF-16 into `keyboard_key_t`.
+ * - `lib/platform/terminal.c` owns terminal geometry, capabilities, raw mode,
+ *   and restoration.
+ *
+ * @section ui_controller Controller and screens
+ *
+ * `ui_controller_submit()` copies a screen snapshot and selects the highest
+ * priority live screen. Covered screens remain registered, so dismissing a
+ * prompt or help overlay restores the previous owner. Rendering callbacks run
+ * without the controller mutex; producers must not hold a lock required by a
+ * callback while removing its screen.
+ *
+ * The controller owns the output sink. Live screen output goes through
+ * `ui_controller_write()` or `ui_controller_present()` so logs, prompts, and
+ * media cannot paint over one another. `ui_controller_finish()` retires live
+ * screens before synchronous final output.
+ *
+ * @section ui_screens Screen model
+ *
+ * The runtime includes status, media, splash, progress, logs, error stacks,
+ * help, statistics, sync diagnostics, mDNS selection, update, notice, prompt,
+ * and error screens. Screens declare a minimum terminal size. When the terminal
+ * is too small, `tui/too_small.h` is presented and the underlying screen is
+ * restored after resize.
+ *
+ * @section ui_input Input routing
+ *
+ * `lib/tui/input.c` reads decoded events and routes them according to the
+ * active screen. Modal prompts consume editing keys; covered screens do not
+ * receive shortcuts. Bracketed paste is validated as a complete event and is
+ * never interpreted as a sequence of application shortcuts. See
+ * @ref topic_keyboard_shortcuts for the current bindings.
+ *
+ * @section ui_threading Threading and shutdown
+ *
+ * Producers may publish snapshots from worker threads. The controller copies
+ * owned snapshot data and callbacks execute on the presentation thread. Shutdown
+ * stops producers, retires screens, joins presentation, restores the terminal,
+ * then tears down keyboard and logging state.
+ *
+ * @see topic_tui
+ * @see topic_keyboard_shortcuts
+ * @see md_docs_2terminal-ui.html
+ */

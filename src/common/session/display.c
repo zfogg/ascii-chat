@@ -65,10 +65,11 @@
  * ============================================================================ */
 
 /**
- * @brief Internal session display context structure
+ * @brief Runtime terminal state and reusable workspaces for ASCII rendering.
  *
- * Contains all state for terminal display including TTY info, capabilities,
- * palette, and rendering state.
+ * It owns TTY capability data, palette lookup tables, stabilizers, output and
+ * resize buffers, render-file timing, and the flags that stop output after the
+ * consumer disappears. Audio context pointers remain borrowed from the caller.
  */
 typedef struct session_display_ctx {
   /** @brief TTY information (file descriptor, path, ownership) */

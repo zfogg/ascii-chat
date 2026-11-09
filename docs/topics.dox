@@ -23,6 +23,7 @@
  * @copybrief module_utilities
  *
  * - @ref topic_util "Utility Functions"
+ * - @ref md_docs_2mcp "MCP rendering server"
  *
  * @section topics_data_structures 📦 Data Structures
  *
@@ -39,6 +40,9 @@
  *
  * - @ref topic_platform "Platform Abstraction Layer"
  * - @ref topic_webcam "Webcam Capture"
+ * - @ref md_docs_2keyboard-input "Keyboard input"
+ * - @ref md_docs_2terminal-ui "Terminal presentation"
+ * - @ref md_docs_2terminal-notices "Important terminal notices"
  *
  * @section topics_crypto 🔐 Cryptography
  *
@@ -47,12 +51,15 @@
  * - @ref topic_crypto "Cryptography"
  * - @ref topic_handshake "Handshake Protocol"
  * - @ref topic_keys "Key Management"
+ * - @ref md_docs_2crypto-policy "Connection security policy"
+ * - @ref md_docs_2crypto-records "Authenticated packet records and rotation"
  *
  * @section topics_video 📹 Video
  *
  * @copybrief module_video
  *
  * - @ref topic_video "Video"
+ * - @ref md_docs_2face-follow "Face Follow"
  * - @ref topic_video_frame "Video Frames"
  * - @ref topic_grid_layout "Grid Layout"
  * - @ref topic_palette "Palettes"
@@ -62,6 +69,9 @@
  * @copybrief module_audio
  *
  * - @ref topic_audio "Audio"
+ * - @ref md_docs_2audio-channels "Audio channels"
+ * - @ref md_docs_2audio-reliability "Audio reliability and validation"
+ * - @ref md_docs_2audio-spectral "FFTW spectral audio processing"
  * - @ref topic_mixer "Mixer"
  *
  * @section topics_core ⚙️ Core Infrastructure
@@ -74,15 +84,33 @@
  * - @ref topic_logging "Logging"
  * - @ref topic_options "Options"
  * - @ref topic_config "Configuration"
+ * - @ref md_docs_2runtime-settings "Runtime settings"
+ * - @ref md_docs_2telemetry "OpenTelemetry"
+ * - @ref md_docs_2stats "Shared statistics collection"
+ *
+ * @section topics_ui 🖥️ User Interface
+ *
+ * @copybrief module_ui
+ *
+ * - @ref topic_ui "UI Architecture"
+ * - @ref topic_tui "Terminal UI (TUI)"
+ * - @ref topic_keyboard_shortcuts "Keyboard Shortcuts"
  *
  * @section topics_network 🌐 Network
  *
  * @copybrief module_network
  *
  * - @ref topic_network "Network"
+ * - @ref md_docs_2networking-runtime "Connection ownership and execution"
+ * - @ref md_docs_2event-driven-io "Native event-driven I/O"
+ * - @ref md_docs_2transport-backpressure "Transport backpressure and media admission"
+ * - @ref md_docs_2network-copy-reduction "Network copy reduction"
+ * - @ref md_docs_2measured-host-handoff "Measured host selection and handoff"
+ * - @ref topic_quic "ACIP over QUIC"
+ * - @ref topic_quic "QUIC and WebTransport"
  * - [Network runtime and connection ownership](md_docs_2networking-runtime.html)
  * - [Event-driven I/O](md_docs_2event-driven-io.html)
- * - [ACIP over QUIC](md_docs_2quic.html)
+ * - @ref topic_quic "ACIP over QUIC"
  * - [Transport backpressure](md_docs_2transport-backpressure.html)
  * - @ref topic_compression "Compression"
  * - @ref topic_packet_types "Packet Types"
@@ -93,6 +121,9 @@
  * @copybrief module_client
  *
  * - @ref topic_client "Client"
+ * - @ref md_docs_2client-connection-lifecycle "Shared connection ownership"
+ * - @ref md_docs_2live-media-input "Open media during a session"
+ * - @ref md_docs_2session-tui "Shared session TUI"
  * - @ref topic_client_main "Client Main"
  * - @ref topic_client_connection "Client Connection"
  * - @ref topic_client_protocol "Client Protocol"
@@ -107,6 +138,7 @@
  * @copybrief module_server
  *
  * - @ref topic_server "Server"
+ * - @ref md_docs_2recording "Recording session audio and ASCII video"
  * - @ref topic_server_main "Server Main"
  * - @ref topic_server_client "Server Client"
  * - @ref topic_server_protocol "Server Protocol"
@@ -123,6 +155,21 @@
  * - @ref topic_build "Build System"
  * - @ref topic_testing "Testing"
  * - @ref topic_debug "Debugging"
+ * - @ref md_docs_2keymask "Keymask public-key art"
+ * - @ref md_docs_2zalgo "Zalgo terminal effect"
+ * - @ref md_docs_2sync-activity "Sync inspector activity"
+ * - @ref md_docs_2sync-tui "Sync primitive inspector"
+ * - @ref md_docs_2simd "Portable SIMD builds"
+ * - @ref md_docs_2simd-emission "Shared ASCII terminal emission"
+ * - @ref md_docs_2cmake-workflows "CMake workflows"
+ * - @ref md_docs_2dependency-builds "Dependency builds"
+ * - @ref md_docs_2ci "Continuous integration"
+ * - @ref md_docs_2windows-build-performance "Windows build performance"
+ * - @ref md_docs_2test-patterns "Shared native and browser test patterns"
+ * - @ref md_docs_2wasm-interop "Browser WASM bindings and standalone renderer"
+ * - @ref md_docs_2acip-preparation "ACIP packet preparation validation"
+ * - @ref md_docs_2discovery-key-sets "Discovery session authentication keys"
+ * - @ref md_docs_2host-designation "Discovery host designation"
  * - @ref topic_lock_debug "Lock Debugging"
  *
  * @subsection topics_tooling 🧰 Tooling

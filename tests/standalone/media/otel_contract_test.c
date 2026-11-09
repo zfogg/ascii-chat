@@ -219,6 +219,21 @@ static void catalog_contract(void) {
   acip_session_joined_t joined = {0};
   CHECK(database_session_join(db, &join, &config, &joined) == ASCIICHAT_OK);
   CHECK(joined.success);
+  // A bind that exceeds SQLite's length limit must fail before changing the row.
+  char oversized[8192];
+  memset(oversized, 'x', sizeof(oversized) - 1);
+  oversized[sizeof(oversized) - 1] = '\0';
+  int previous_limit = sqlite3_limit(db, SQLITE_LIMIT_LENGTH, 4096);
+  sqlite3_stmt *oversized_stmt = NULL;
+  CHECK(ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_UpdateHost].sql, &oversized_stmt) == SQLITE_OK);
+  CHECK(sqlite3_bind_text(oversized_stmt, sqlite3_bind_parameter_index(oversized_stmt, ":host_address"), oversized, -1,
+                          SQLITE_STATIC) == SQLITE_TOOBIG);
+  CHECK(sqlite3_finalize(oversized_stmt) == SQLITE_OK);
+  CHECK(database_session_update_host(db, joined.session_id, joined.participant_id, oversized, 1234, 1) != ASCIICHAT_OK);
+  sqlite3_limit(db, SQLITE_LIMIT_LENGTH, previous_limit);
+  session_entry_t *session = database_session_find_by_id(db, joined.session_id);
+  CHECK(session != NULL && !session->host_established);
+  session_entry_destroy(session);
   CHECK(database_session_leave(db, joined.session_id, joined.participant_id) == ASCIICHAT_OK);
 
   rate_limiter_t *limiter = rate_limiter_create_sqlite(NULL);
@@ -226,6 +241,10 @@ static void catalog_contract(void) {
   rate_limiter_set_sqlite_db(limiter, db);
   rate_limit_config_t limit = {.max_events = 1, .window_secs = 60};
   bool allowed = false;
+  previous_limit = sqlite3_limit(db, SQLITE_LIMIT_LENGTH, 4096);
+  CHECK(rate_limiter_record(limiter, oversized, RATE_EVENT_SESSION_CREATE) != ASCIICHAT_OK);
+  CHECK(rate_limiter_check(limiter, oversized, RATE_EVENT_SESSION_CREATE, &limit, &allowed) != ASCIICHAT_OK);
+  sqlite3_limit(db, SQLITE_LIMIT_LENGTH, previous_limit);
   CHECK(rate_limiter_check(limiter, "192.0.2.44", RATE_EVENT_SESSION_CREATE, &limit, &allowed) == ASCIICHAT_OK);
   CHECK(allowed);
   CHECK(rate_limiter_record(limiter, "192.0.2.44", RATE_EVENT_SESSION_CREATE) == ASCIICHAT_OK);
