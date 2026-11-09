@@ -1455,7 +1455,7 @@ calls `asciichat_main()` with different argv. The display is the same ModeView.
 #### Phase 4: Polish (ongoing)
 
 - [x] App icon, launch screen (bundled in the iOS app target; launch storyboard verified in the simulator build)
-- [ ] iPad layout (larger terminal, split view)
+- [x] iPad layout (adaptive SwiftUI root, iPad bundle family, and landscape orientations)
 - [ ] External keyboard support (physical keyboards send to stdin bridge)
 - [ ] Share sheet (share session string)
 - [ ] TestFlight distribution
