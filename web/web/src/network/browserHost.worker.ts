@@ -1,7 +1,7 @@
 import { initClientWasm, getClientModule, PacketType } from "../wasm/client";
 import { buildImageFramePayload } from "./packetBuilders";
 import { BrowserVideoDecoder } from "./BrowserVideoDecoder";
-import type { BrowserHostBinding, HostPacketBinding } from "@ascii-chat/shared/wasm";
+import type { BrowserHostBinding } from "@ascii-chat/shared/wasm";
 
 const post = self.postMessage as unknown as (
   message: unknown,
@@ -9,7 +9,6 @@ const post = self.postMessage as unknown as (
 ) => void;
 let module: NonNullable<ReturnType<typeof getClientModule>>;
 let host: BrowserHostBinding;
-let hostInput: HostPacketBinding;
 const clients = new Map<number, number>();
 const decoders = new Map<number, BrowserVideoDecoder>();
 const videoGenerations = new Map<number, number>();
@@ -83,7 +82,7 @@ function receivePacket(id: number, type: number, bytes: Uint8Array) {
     decoder.receive(type, bytes);
     return;
   }
-  if (hostInput.receive(client, type, bytes))
+  if (host.receive(client, type, bytes))
     throw new Error("C host rejected packet.");
 }
 function render() {
@@ -152,7 +151,6 @@ self.onmessage = (event) => {
         host = new module.BrowserHostBinding();
         if (!host.valid())
           throw new Error("Could not initialize C host worker.");
-        hostInput = new module.HostPacketBinding(host);
         module.hostPacketCallback = (actual, bytes) => {
           if (
             pendingBatches >= 2 &&

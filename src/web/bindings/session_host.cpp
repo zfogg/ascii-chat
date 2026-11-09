@@ -128,14 +128,6 @@ int BrowserHostBinding::receive(uint32_t id, uint32_t typeValue, ProtocolBytes p
   return static_cast<int>(session_host_receive_packet(host_, id, static_cast<packet_type_t>(typeValue), input.data(), length));
 }
 
-class HostPacketBinding {
-public:
-  explicit HostPacketBinding(BrowserHostBinding &host) : host_(&host) {}
-  int receive(unsigned id, unsigned type, ProtocolBytes packet) { return host_ ? host_->receive(id, type, packet) : static_cast<int>(ERROR_INVALID_STATE); }
-private:
-  BrowserHostBinding *host_;
-};
-
 EMSCRIPTEN_BINDINGS(ascii_chat_session_host) {
   emscripten::class_<BrowserHostBinding>("BrowserHostBinding")
       .constructor<>()
@@ -146,8 +138,6 @@ EMSCRIPTEN_BINDINGS(ascii_chat_session_host) {
       .function("removeClient", &BrowserHostBinding::removeClient)
       .function("setLocalClient", &BrowserHostBinding::setLocalClient)
       .function("render", &BrowserHostBinding::render)
-      .function("renderAudio", &BrowserHostBinding::renderAudio);
-  emscripten::class_<HostPacketBinding>("HostPacketBinding")
-      .constructor<BrowserHostBinding &>()
-      .function("receive", &HostPacketBinding::receive);
+      .function("renderAudio", &BrowserHostBinding::renderAudio)
+      .function("receive", &BrowserHostBinding::receive);
 }

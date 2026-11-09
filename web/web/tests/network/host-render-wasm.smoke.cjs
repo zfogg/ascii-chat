@@ -131,9 +131,8 @@ const path = require("node:path");
       const ids = [host.addClient(), host.addClient()];
       if (host.setLocalClient(ids[0]))
         throw new Error("local target failed");
-      let hostInput = new m.HostPacketBinding(host);
       const send = (id, type, bytes) => {
-        const result = hostInput.receive(id, type, bytes);
+        const result = host.receive(id, type, bytes);
         if (result) throw new Error(`receive ${type}: ${result}`);
       };
       const caps = (color, custom) => {
@@ -461,11 +460,9 @@ const path = require("node:path");
           throw new Error("sender hears its own microphone");
         // A second, independent (silent) input stream must not contaminate
         // the first stream's decoder or the listener's predictive encoder.
-        hostInput.delete();
         host.close();
         host = new m.BrowserHostBinding();
         if (!host.valid()) throw new Error("second host failed");
-        hostInput = new m.HostPacketBinding(host);
         ids[0] = host.addClient();
         ids[1] = host.addClient();
         const concurrent = [];
@@ -495,7 +492,6 @@ const path = require("node:path");
           );
       } finally {
         codec.delete();
-        hostInput.delete();
         host.close();
       }
       // A frame may carry an older palette, but may not contradict its acknowledged revision.

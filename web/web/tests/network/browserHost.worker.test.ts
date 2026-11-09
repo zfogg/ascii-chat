@@ -10,12 +10,9 @@ const wasm = vi.hoisted(() => ({
     setLocalClient = vi.fn(() => 0);
     render = vi.fn(() => 0);
     renderAudio = vi.fn(() => 0);
-  },
-  host: undefined as any,
-  HostPacketBinding: class {
-    constructor(_host: unknown) {}
     receive = vi.fn(() => 0);
   },
+  host: undefined as any,
 }));
 vi.mock("../../src/wasm/client", () => ({
   initClientWasm: async () => {},

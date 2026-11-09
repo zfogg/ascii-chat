@@ -47,7 +47,6 @@ export type {
   BrowserSessionBinding,
   DiscoveryBinding,
   BrowserHostBinding,
-  HostPacketBinding,
   AVStateBinding,
 } from "./generated/client-bindings";
 export type { MainModule as ClientWasmBindings } from "./generated/client-bindings";
