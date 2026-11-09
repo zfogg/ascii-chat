@@ -609,6 +609,14 @@ private struct IOSAllOptionsView: View {
                         ForEach(choices, id: \.self, content: Text.init)
                     }
                 } else if let number = values[key] as? NSNumber,
+                          let choices = Self.enumValues(for: key) {
+                    Picker(key.replacingOccurrences(of: "_", with: " ").capitalized,
+                           selection: Binding(
+                               get: { String((values[key] as? NSNumber)?.intValue ?? number.intValue) },
+                               set: { values[key] = Int($0) ?? number.intValue; changed = true })) {
+                        ForEach(choices, id: \.self, content: Text.init)
+                    }
+                } else if let number = values[key] as? NSNumber,
                           let range = Self.sliderRange(for: key) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(key.replacingOccurrences(of: "_", with: " ").capitalized)
@@ -655,9 +663,12 @@ private struct IOSAllOptionsView: View {
 
     private static func sliderRange(for key: String) -> (lowerBound: Double, upperBound: Double, step: Double)? {
         switch key {
-        case "fps": return (1, 144, 1)
+        case "fps": return (0, 144, 1)
         case "render_font_size": return (3, 18, 0.5)
-        case "microphone_volume", "speakers_volume", "volume": return (0, 2, 0.05)
+        case "snapshot_delay": return (0, 60, 0.5)
+        case "microphone_channels": return (1, 2, 1)
+        case "microphone_channel": return (-1, 63, 1)
+        case "microphone_volume", "speakers_volume", "volume": return (0, 1, 0.05)
         case "compression_level": return (0, 9, 1)
         case "reconnect_attempts", "webrtc_reconnect_attempts": return (0, 20, 1)
         case "webrtc_ice_timeout": return (0, 60, 1)
@@ -674,6 +685,7 @@ private struct IOSAllOptionsView: View {
         case "renderer": return ["luminance", "glyph"]
         case "audio_source": return ["microphone", "file", "url", "test"]
         case "audio_capture_source": return ["microphone", "file", "url", "test"]
+        case "audio_fft_size": return ["512", "1024", "2048"]
         case "log_level": return ["DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"]
         case "render_theme": return ["none", "dark", "light"]
         default: return nil
