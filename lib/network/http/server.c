@@ -3,6 +3,7 @@
 #include "server_internal.h"
 #include "http2.h"
 #include <ascii-chat/common.h>
+#include <ascii-chat/atomic.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/string.h>
 #include <ascii-chat/stats/runtime.h>
@@ -46,6 +47,7 @@ struct http_server {
   bool thread_started;
   asciichat_thread_t thread;
   size_t connections;
+  atomic_t inflight_requests;
   http_client_t *clients;
   rate_limiter_t *rate_limiter;
   rate_limit_config_t request_rate_limit;
@@ -60,6 +62,7 @@ struct http_request {
   size_t body_offset;
   size_t body_length;
   bool cancelled;
+  bool inflight_accounted;
 };
 struct http_response {
   uv_stream_t *stream;
@@ -98,6 +101,24 @@ static void wake_async_cb(uv_async_t *async) {
   http_server_t *s = async->data;
   if (s->config.on_wakeup)
     s->config.on_wakeup(s->config.user_data);
+}
+static size_t http_max_inflight(const http_server_t *server) {
+  if (server->config.max_inflight_requests)
+    return server->config.max_inflight_requests;
+  return server->config.max_connections > SIZE_MAX / 4 ? SIZE_MAX : server->config.max_connections * 4;
+}
+static bool http_request_admit(http_server_t *server) {
+  int current = atomic_fetch_add_int(&server->inflight_requests, 1);
+  size_t max = http_max_inflight(server);
+  if (current < 0 || (size_t)current >= max) {
+    atomic_fetch_sub_int(&server->inflight_requests, 1);
+    return false;
+  }
+  return true;
+}
+static void http_request_release(http_server_t *server) {
+  if (server)
+    atomic_fetch_sub_int(&server->inflight_requests, 1);
 }
 
 static void client_freed(uv_handle_t *handle) {
@@ -292,7 +313,7 @@ asciichat_error_t http_response_set_status(http_response_t *r, unsigned s) {
   return ASCIICHAT_OK;
 }
 asciichat_error_t http_response_retain(http_response_t *r, http_response_t **retained) {
-  if (!r || !retained || r->finished || r->retained)
+  if (!r || !retained || !r->server || r->finished || r->retained)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response cannot be retained");
   http_response_t *copy = SAFE_CALLOC(1, sizeof(*copy), http_response_t *);
   if (!copy)
@@ -305,6 +326,7 @@ asciichat_error_t http_response_retain(http_response_t *r, http_response_t **ret
   copy->http3_submit = r->http3_submit;
   copy->http3_context = r->http3_context;
   copy->server = r->server;
+  copy->inflight_accounted = r->inflight_accounted;
   copy->status = r->status;
   copy->header_count = r->header_count;
   memcpy(copy->headers, r->headers, r->header_count * sizeof(r->headers[0]));
@@ -324,6 +346,7 @@ asciichat_error_t http_response_retain(http_response_t *r, http_response_t **ret
   mutex_unlock(&r->server->response_mutex);
   r->deferred = true;
   r->retained = true;
+  r->inflight_accounted = false;
   *retained = copy;
   return ASCIICHAT_OK;
 }
@@ -332,6 +355,10 @@ void http_response_release(http_response_t **response) {
     return;
   if ((*response)->retained) {
     http_server_t *server = (*response)->server;
+    if ((*response)->inflight_accounted) {
+      http_request_release(server);
+      (*response)->inflight_accounted = false;
+    }
     if (server) {
       mutex_lock(&server->response_mutex);
       http_response_t **cursor = &server->retained_responses;
@@ -370,45 +397,51 @@ asciichat_error_t http_response_finish(http_response_t *r) {
   if (!r || r->finished)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response already finished");
   r->finished = true;
+  asciichat_error_t result;
   if (r->http3_submit)
-    return r->http3_submit(r->http3_context, r->status, r->headers, r->header_count, r->body, r->body_length);
-  if (r->client && r->client->http2_mode) {
-    asciichat_error_t result = http2_connection_submit_response(r->client->http2, r->http2_stream_id, r->status,
-                                                                r->headers, r->header_count, r->body, r->body_length);
-    if (result != ASCIICHAT_OK)
-      return result;
-    return http2_flush(r->client);
+    result = r->http3_submit(r->http3_context, r->status, r->headers, r->header_count, r->body, r->body_length);
+  else if (r->client && r->client->http2_mode) {
+    result = http2_connection_submit_response(r->client->http2, r->http2_stream_id, r->status, r->headers,
+                                              r->header_count, r->body, r->body_length);
+    if (result == ASCIICHAT_OK)
+      result = http2_flush(r->client);
+  } else {
+    size_t cap = 256 + r->body_length;
+    for (size_t i = 0; i < r->header_count; i++)
+      cap += strlen(r->headers[i].name) + strlen(r->headers[i].value) + 4;
+    char *out = SAFE_MALLOC(cap, char *);
+    if (!out)
+      return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP response");
+    const char *version = r->protocol == HTTP_PROTOCOL_10 ? "HTTP/1.0" : "HTTP/1.1";
+    int n = safe_snprintf(out, cap, "%s %u %s\r\nContent-Length: %zu\r\nConnection: close\r\n", version, r->status,
+                          reason(r->status), r->body_length);
+    for (size_t i = 0; i < r->header_count; i++)
+      n += safe_snprintf(out + n, cap - (size_t)n, "%s: %s\r\n", r->headers[i].name, r->headers[i].value);
+    n += safe_snprintf(out + n, cap - (size_t)n, "\r\n");
+    if (r->body_length)
+      memcpy(out + n, r->body, r->body_length);
+    n += (int)r->body_length;
+    uv_write_t *w = SAFE_CALLOC(1, sizeof(*w), uv_write_t *);
+    http_write_t *write = SAFE_CALLOC(1, sizeof(*write), http_write_t *);
+    if (!write) {
+      SAFE_FREE(out);
+      SAFE_FREE(w);
+      return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP write state");
+    }
+    write->bytes = out;
+    write->length = (size_t)n;
+    write->stream = r->stream;
+    write->close_on_done = true;
+    w->data = write;
+    uv_buf_t b = uv_buf_init(out, n);
+    result = uv_write(w, r->stream, &b, 1, write_done) == 0 ? ASCIICHAT_OK
+                                                            : SET_ERRNO(ERROR_NETWORK, "Cannot write HTTP response");
   }
-  size_t cap = 256 + r->body_length;
-  for (size_t i = 0; i < r->header_count; i++)
-    cap += strlen(r->headers[i].name) + strlen(r->headers[i].value) + 4;
-  char *out = SAFE_MALLOC(cap, char *);
-  if (!out)
-    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP response");
-  const char *version = r->protocol == HTTP_PROTOCOL_10 ? "HTTP/1.0" : "HTTP/1.1";
-  int n = safe_snprintf(out, cap, "%s %u %s\r\nContent-Length: %zu\r\nConnection: close\r\n", version, r->status,
-                        reason(r->status), r->body_length);
-  for (size_t i = 0; i < r->header_count; i++)
-    n += safe_snprintf(out + n, cap - (size_t)n, "%s: %s\r\n", r->headers[i].name, r->headers[i].value);
-  n += safe_snprintf(out + n, cap - (size_t)n, "\r\n");
-  if (r->body_length)
-    memcpy(out + n, r->body, r->body_length);
-  n += (int)r->body_length;
-  uv_write_t *w = SAFE_CALLOC(1, sizeof(*w), uv_write_t *);
-  http_write_t *write = SAFE_CALLOC(1, sizeof(*write), http_write_t *);
-  if (!write) {
-    SAFE_FREE(out);
-    SAFE_FREE(w);
-    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP write state");
+  if (r->inflight_accounted && !r->deferred) {
+    http_request_release(r->server);
+    r->inflight_accounted = false;
   }
-  write->bytes = out;
-  write->length = (size_t)n;
-  write->stream = r->stream;
-  write->close_on_done = true;
-  w->data = write;
-  uv_buf_t b = uv_buf_init(out, n);
-  return uv_write(w, r->stream, &b, 1, write_done) == 0 ? ASCIICHAT_OK
-                                                        : SET_ERRNO(ERROR_NETWORK, "Cannot write HTTP response");
+  return result;
 }
 
 asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *method, const char *path,
@@ -436,9 +469,32 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
                                        .user_data = server->config.user_data};
   request.storage = (char *)body;
   request.body_length = body_length;
+  const char *peer = peer_address ? peer_address : "unknown";
+  bool allowed = false;
+  if (rate_limiter_check(server->rate_limiter, peer, RATE_EVENT_HTTP_REQUEST, &server->request_rate_limit, &allowed) !=
+          ASCIICHAT_OK ||
+      !allowed) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
+    http_response_t limited = {.server = server,
+                               .status = 429,
+                               .max_body_length = server->config.max_request_body_bytes,
+                               .http3_submit = submit,
+                               .http3_context = submit_context};
+    return http_response_finish(&limited);
+  }
+  rate_limiter_record(server->rate_limiter, peer, RATE_EVENT_HTTP_REQUEST);
+  if (!http_request_admit(server)) {
+    http_response_t limited = {.server = server,
+                               .status = 429,
+                               .max_body_length = server->config.max_request_body_bytes,
+                               .http3_submit = submit,
+                               .http3_context = submit_context};
+    return http_response_finish(&limited);
+  }
   http_response_t response = {.server = server,
                               .status = 200,
                               .max_body_length = server->config.max_request_body_bytes,
+                              .inflight_accounted = true,
                               .http3_submit = submit,
                               .http3_context = submit_context};
   ASCII_OTEL_SCOPE(HTTP);
@@ -525,12 +581,26 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
     return result;
   }
   rate_limiter_record(client->server->rate_limiter, client->peer_address, RATE_EVENT_HTTP_REQUEST);
+  if (!http_request_admit(client->server)) {
+    http_response_t limited = {.server = client->server,
+                               .stream = (uv_stream_t *)&client->tcp,
+                               .client = client,
+                               .http2_stream_id = view->stream_id,
+                               .protocol = HTTP_PROTOCOL_2,
+                               .max_body_length = client->server->config.max_request_body_bytes,
+                               .status = 429};
+    asciichat_error_t result = http_response_finish(&limited);
+    SAFE_FREE(limited.body);
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
+    return result;
+  }
   http_response_t response = {.server = client->server,
                               .stream = (uv_stream_t *)&client->tcp,
                               .client = client,
                               .http2_stream_id = view->stream_id,
                               .protocol = HTTP_PROTOCOL_2,
                               .max_body_length = client->server->config.max_request_body_bytes,
+                              .inflight_accounted = true,
                               .status = 200};
   client->server->config.on_request(&request, &response, client->server->config.user_data);
   if (!response.finished && !response.deferred) {
@@ -605,10 +675,21 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
     return;
   }
   rate_limiter_record(c->server->rate_limiter, c->peer_address, RATE_EVENT_HTTP_REQUEST);
+  if (!http_request_admit(c->server)) {
+    http_response_t limited = {.server = c->server,
+                               .stream = s,
+                               .protocol = r.info.protocol,
+                               .max_body_length = c->server->config.max_request_body_bytes,
+                               .status = 429};
+    http_response_finish(&limited);
+    uv_read_stop(s);
+    return;
+  }
   http_response_t resp = {.server = c->server,
                           .stream = s,
                           .protocol = r.info.protocol,
                           .max_body_length = c->server->config.max_request_body_bytes,
+                          .inflight_accounted = true,
                           .status = 200};
   uint64_t request_start = time_get_ns();
   ASCII_OTEL_SCOPE(HTTP);

@@ -58,6 +58,8 @@ typedef struct {
   /** Optional pre-opened QUIC HTTP/3 endpoint; ownership remains with caller. */
   void *http3_endpoint;
   size_t max_connections;
+  /** Maximum concurrently dispatched requests; zero derives a safe bound from max_connections. */
+  size_t max_inflight_requests;
   size_t max_request_body_bytes;
   /** Maximum requests per peer during the configured rate window; zero uses the safe default. */
   size_t max_requests_per_peer;
