@@ -395,7 +395,11 @@ private struct IOSSettingsView: View {
     @State private var renderMode = "foreground"
     @State private var colorMode = "truecolor"
     @State private var fps = 0.0
+    @State private var fpsCounter = false
+    @State private var matrix = false
+    @State private var faceFollow = false
     @State private var audioEnabled = true
+    @State private var audioFFTSize = "1024"
     @State private var stretch = true
     @State private var stabilize = false
     @State private var address = "localhost"
@@ -427,7 +431,11 @@ private struct IOSSettingsView: View {
         if let value = values["color_filter"] as? String { colorFilter = value }
         if let value = values["render_mode"] as? String { renderMode = value }
         if let value = values["color_mode"] as? String { colorMode = value }
+        if let value = values["fps_counter"] as? Bool { fpsCounter = value }
+        if let value = values["matrix"] as? Bool { matrix = value }
+        if let value = values["face_follow"] as? Bool { faceFollow = value }
         if let value = values["audio_enabled"] as? Bool { audioEnabled = value }
+        if let value = values["audio_fft_size"] as? NSNumber { audioFFTSize = value.stringValue }
         if let value = values["stretch"] as? Bool { stretch = value }
         if let value = values["stabilize"] as? Bool { stabilize = value }
         if let value = values["address"] as? String { address = value }
@@ -454,7 +462,15 @@ private struct IOSSettingsView: View {
                     Picker("Render mode", selection: $renderMode) { ForEach(renderModes, id: \.self, content: Text.init) }
                     Picker("Color mode", selection: $colorMode) { ForEach(colorModes, id: \.self, content: Text.init) }
                     Toggle("Stretch to fill", isOn: $stretch)
+                        .onChange(of: stretch) { _, value in applyJSON(["stretch": value]) }
                     Toggle("Stabilize frames", isOn: $stabilize)
+                        .onChange(of: stabilize) { _, value in applyJSON(["stabilize": value]) }
+                    Toggle("FPS counter", isOn: $fpsCounter)
+                        .onChange(of: fpsCounter) { _, value in applyJSON(["fps_counter": value]) }
+                    Toggle("Matrix effect", isOn: $matrix)
+                        .onChange(of: matrix) { _, value in applyJSON(["matrix": value]) }
+                    Toggle("Follow face", isOn: $faceFollow)
+                        .onChange(of: faceFollow) { _, value in applyJSON(["face_follow": value]) }
                     VStack(alignment: .leading) {
                         Text(fps == 0 ? "Frame rate: Auto (camera)" : "Frame rate: \(Int(fps)) FPS")
                         Slider(value: $fps, in: 0...144, step: 1)
@@ -474,6 +490,11 @@ private struct IOSSettingsView: View {
                 }
                 Section("Audio") {
                     Toggle("Audio", isOn: $audioEnabled)
+                        .onChange(of: audioEnabled) { _, value in applyJSON(["audio_enabled": value]) }
+                    Picker("FFT size", selection: $audioFFTSize) {
+                        ForEach(["512", "1024", "2048"], id: \.self, content: Text.init)
+                    }
+                    .onChange(of: audioFFTSize) { _, value in applyJSON(["audio_fft_size": Int(value) ?? 1024]) }
                     LabeledContent("Microphone index") {
                         TextField("Index", text: $microphoneIndex).keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
@@ -485,7 +506,7 @@ private struct IOSSettingsView: View {
                     VStack(alignment: .leading) {
                         Text("Microphone volume: \(microphoneVolume, specifier: "%.2f")")
                         Slider(value: $microphoneVolume, in: 0...1, step: 0.05)
-                            .onChange(of: microphoneVolume) { _, value in
+                        .onChange(of: microphoneVolume) { _, value in
                                 applyJSON(["microphone_volume": value])
                             }
                     }
@@ -551,7 +572,9 @@ private struct IOSSettingsView: View {
                     Button("Apply settings") {
                         applyJSON(["palette": palette, "color_filter": colorFilter, "render_mode": renderMode,
                                    "color_mode": colorMode, "fps": Int(fps), "stretch": stretch,
-                                   "stabilize": stabilize, "audio_enabled": audioEnabled,
+                                   "stabilize": stabilize, "fps_counter": fpsCounter,
+                                   "matrix": matrix, "face_follow": faceFollow,
+                                   "audio_enabled": audioEnabled, "audio_fft_size": Int(audioFFTSize) ?? 1024,
                                    "address": address, "port": Int(port) ?? 27224,
                                    "discovery_service_url": discoveryServiceURL,
                                    "session_string": sessionString,
