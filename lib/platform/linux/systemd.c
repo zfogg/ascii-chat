@@ -79,12 +79,13 @@ void platform_systemd_journal_log(int level, const char *message, const char *fi
 #ifndef NDEBUG
   (void)sd_journal_send("MESSAGE=%s", message, "PRIORITY=%d", priority, "CODE_FILE=%s", file ? file : "",
                         "CODE_LINE=%d", line, "CODE_FUNC=%s", function ? function : "", "SYSLOG_IDENTIFIER=%s",
-                        "ascii-chat");
+                        "ascii-chat", NULL);
 #else
   (void)file;
   (void)line;
   (void)function;
-  (void)sd_journal_send("MESSAGE=%s", message, "PRIORITY=%d", priority, "SYSLOG_IDENTIFIER=%s", "ascii-chat");
+  (void)sd_journal_send("MESSAGE=%s", message, "PRIORITY=%d", priority, "SYSLOG_IDENTIFIER=%s", "ascii-chat",
+                        NULL);
 #endif
 #else
   (void)level;
