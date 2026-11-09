@@ -188,7 +188,7 @@ static void test_participant_settings(void) {
   cr_assert_eq(session_participant_receive_settings(participant, test.reply, test.reply_length), ASCIICHAT_OK);
   session_settings_t effective;
   cr_assert_eq(session_participant_get_settings(participant, &effective), ASCIICHAT_OK);
-  cr_assert(effective.color_mode == expected_color && test.callbacks == 4);
+  cr_assert(effective.color_mode == expected_color && effective.fps == 60 && test.callbacks == 4);
   cr_assert_eq(session_participant_set_transport(participant, NULL, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
   session_participant_destroy(participant);
   options_state_destroy();

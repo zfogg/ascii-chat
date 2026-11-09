@@ -32,6 +32,14 @@ static void setup(void) {
   cr_assert_eq(options_set_bool("stretch", true), ASCIICHAT_OK);
   cr_assert_eq(options_set_bool("palette_explicit", true), ASCIICHAT_OK);
   cr_assert_eq(options_set_int("render_mode", RENDER_MODE_FOREGROUND), ASCIICHAT_OK);
+  options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
+  cr_assert_not_null(values);
+  *values = *options_get();
+  values->palette_type = PALETTE_CUSTOM;
+  values->palette_custom_set = true;
+  SAFE_STRNCPY(values->palette_custom, "XX", sizeof(values->palette_custom));
+  cr_assert_eq(options_state_set(values), ASCIICHAT_OK);
+  SAFE_FREE(values);
   ascii_simd_init();
   output = platform_tmpfile();
   cr_assert_not_null(output);

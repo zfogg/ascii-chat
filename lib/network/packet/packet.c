@@ -1139,6 +1139,8 @@ packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *c
       recv_with_timeout(sockfd, packet + sizeof(header), payload_length,
                         MAX(timeout_ns, packet_send_timeout_ns(payload_length))) != (ssize_t)payload_length) {
     buffer_release(packet);
+    // The header was consumed, so a timeout here cannot be retried as a new packet.
+    SET_ERRNO(ERROR_NETWORK, "Incomplete packet payload");
     return PACKET_RECV_ERROR;
   }
   asciichat_error_t result = packet_validate(packet, length, MAX_PACKET_SIZE, NULL);
