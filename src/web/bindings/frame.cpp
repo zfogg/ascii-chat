@@ -54,6 +54,8 @@ public:
   emscripten::val processFrame(RgbaBytes rgba, int width, int height, bool contain) {
     emscripten::val result = emscripten::val::object();
     const auto text = convert(rgba, width, height, contain);
+    result.set("ok", text.has_value());
+    result.set("code", text ? 0 : error());
     result.set("text", text ? emscripten::val(*text) : emscripten::val::null());
     result.set("width", width);
     result.set("height", height);
