@@ -130,6 +130,7 @@ INPUT                  = @ASCII_CHAT_SOURCE_DIR@/lib \
                          @ASCII_CHAT_SOURCE_DIR@/docs
 
 EXCLUDE                = @ASCII_CHAT_SOURCE_DIR@/tests \
+                         @ASCII_CHAT_SOURCE_DIR@/docs/archive \
                          @ASCII_CHAT_SOURCE_DIR@/lib/platform/posix \
                          @ASCII_CHAT_SOURCE_DIR@/lib/platform/windows \
                          @ASCII_CHAT_SOURCE_DIR@/deps \

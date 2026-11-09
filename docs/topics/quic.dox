@@ -90,8 +90,7 @@
  *
  * @section quic_testing Testing and limitations
  *
- * The detailed protocol record and browser test commands remain in
- * @ref md_docs_2quic.html. QUIC tests cover native streams, negotiated
+ * This topic covers the QUIC implementation. QUIC tests cover native streams, negotiated
  * datagrams, TLS/identity failures, discovery advertisements, WebTransport,
  * and path migration. The private UDP driver is experimental and must not be
  * exposed directly to untrusted networks; production admission and the shared
@@ -99,5 +98,4 @@
  *
  * @see topic_network
  * @see md_docs_2transport-backpressure.html
- * @see md_docs_2quic.html
  */
