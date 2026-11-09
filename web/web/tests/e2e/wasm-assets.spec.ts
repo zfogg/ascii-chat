@@ -152,6 +152,25 @@ test("browser session close makes later processing safe and structured", async (
   expect(result.writable).toBe(false);
 });
 
+test("session UI binding close is idempotent and clears ownership", async ({ page }) => {
+  await page.goto("/client");
+  const result = await page.evaluate(async () => {
+    const { initClientWasm, getClientWasmModule } =
+      await import(/* @vite-ignore */ "/src/wasm/client.ts");
+    await initClientWasm();
+    const ui = new (getClientWasmModule()!).SessionUiBinding(false);
+    const before = { valid: ui.valid(), error: ui.error() };
+    ui.close();
+    ui.close();
+    const after = { valid: ui.valid(), error: ui.error() };
+    ui.delete();
+    return { before, after };
+  });
+  expect(result.before).toEqual({ valid: true, error: 0 });
+  expect(result.after.valid).toBe(false);
+  expect(result.after.error).not.toBe(0);
+});
+
 test("key parsing preserves unrelated errors and returns only its own frames", async ({
   page,
 }) => {
