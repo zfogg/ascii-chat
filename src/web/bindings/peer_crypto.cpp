@@ -2,6 +2,7 @@
 extern "C" {
 #include "../peer_crypto.h"
 #include "../client.h"
+#include "../security.h"
 }
 #include "networking.h"
 #include <sodium.h>
@@ -80,16 +81,16 @@ public:
     return peer_crypto_tick(peer_.get());
   }
   int beginQuic() {
-    return network_peer_quic_begin(peer_.get());
+    return peer_crypto_quic_begin(peer_.get());
   }
   int initQuic() {
-    return network_peer_quic_init(peer_.get());
+    return browser_security_init(peer_security_context(peer_.get()));
   }
   int tickQuic() {
-    return network_peer_quic_tick(peer_.get());
+    return browser_security_tick(peer_security_context(peer_.get()));
   }
   double quicEpoch() {
-    return network_peer_quic_epoch(peer_.get());
+    return browser_security_epoch(peer_security_context(peer_.get()));
   }
 
   NullablePeerBytes takeOutput() {
@@ -106,10 +107,10 @@ public:
     return NullablePeerBytes(data && length ? binding_copy_output(data, length) : emscripten::val::null());
   }
   QuicControlResult takeQuicOutput() {
-    return network_peer_quic_output(peer_.get());
+    return network_quic_output(peer_security_context(peer_.get()));
   }
   QuicPacketResult quicPacket(bool seal, unsigned flow, unsigned delivery, PeerBytes packet) {
-    return network_peer_quic_packet(peer_.get(), seal, flow, delivery, packet);
+    return network_quic_packet(peer_security_context(peer_.get()), seal, flow, delivery, packet);
   }
 
 private:

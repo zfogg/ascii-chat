@@ -35,7 +35,7 @@
  */
 /**
  * @struct yt_dlp_request_options_t
- * @brief Configuration values used by yt dlp request options.
+ * @brief Defines the inputs for yt dlp request options. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 +/**
  * @struct wav_writer_t
@@ -43,15 +43,15 @@
  */
 /**
  * @struct waveform_color_stop_t
- * @brief Working data used by waveform color stop.
+ * @brief Stores one waveform color stop for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct webcam_device_info_t
- * @brief Webcam device information structure
+ * @brief Describes the data used by webcam device info. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct webcam_frame_clock_t
- * @brief Working data used by webcam frame clock.
+ * @brief Stores one webcam frame clock for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct webrtc_config_t
@@ -67,15 +67,15 @@
  */
 /**
  * @struct webrtc_peer_connection
- * @brief WebRTC peer connection state
+ * @brief Keeps the live state for webrtc peer connection. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct webrtc_peer_manager
- * @brief WebRTC peer manager structure
+ * @brief Stores one webrtc peer manager for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct webrtc_peer_manager_config_t
- * @brief Peer manager configuration
+ * @brief Defines the inputs for webrtc peer manager config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct webrtc_recv_msg_t
@@ -87,7 +87,7 @@
  */
 /**
  * @struct webrtc_transport_data_t
- * @brief WebRTC transport implementation data
+ * @brief Keeps the live state for webrtc transport data. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct WebRTCAec3Wrapper
@@ -111,7 +111,7 @@
  */
 /**
  * @struct websocket_endpoint_t
- * @brief Working data used by websocket endpoint.
+ * @brief Describes the data used by websocket endpoint. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct websocket_msg_t
@@ -123,27 +123,27 @@
  */
 /**
  * @struct ui_table_column_t
- * @brief Working data used by ui table column.
+ * @brief Stores one ui table column for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct ui_table_t
- * @brief Working data used by ui table.
+ * @brief Describes the data used by ui table. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct ui_viewport_range_t
- * @brief Working data used by ui viewport range.
+ * @brief Keeps the live state for ui viewport range. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct ui_viewport_t
- * @brief Working data used by ui viewport.
+ * @brief Keeps the live state for ui viewport. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct update_check_result_t
- * @brief Update check result data
+ * @brief Describes the data used by update check result. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct update_child_result_t
- * @brief Working data used by update child result.
+ * @brief Describes the data used by update child result. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct url_parts_t
@@ -155,19 +155,19 @@
  */
 /**
  * @struct utf8_capabilities_t
- * @brief UTF-8 capability detection structure
+ * @brief Describes the data used by utf8 capabilities. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct utf8_char_info_t
- * @brief UTF-8 character information structure
+ * @brief Stores one utf8 char info for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct utf8_char_t
- * @brief Working data used by utf8 char.
+ * @brief Stores one utf8 char for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct utf8_palette_cache
- * @brief Working data used by utf8 palette cache.
+ * @brief Owns the temporary storage used by utf8 palette cache. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct utf8_palette_t
@@ -199,15 +199,15 @@
  */
 +/**
  * @struct title_writer_t
- * @brief Working data used by title writer.
+ * @brief Describes the data used by title writer. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct tty_info_t
- * @brief TTY detection and management structure
+ * @brief Describes the data used by tty info. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct tui_input_events_t
- * @brief Working data used by tui input events.
+ * @brief Describes the data used by tui input events. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct turn_credentials_t
@@ -215,31 +215,31 @@
  */
 /**
  * @struct udp_peer
- * @brief Working data used by udp peer.
+ * @brief Stores one udp peer for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct ui_button_t
- * @brief Working data used by ui button.
+ * @brief Describes the data used by ui button. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct ui_buttons_t
- * @brief Working data used by ui buttons.
+ * @brief Describes the data used by ui buttons. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct ui_discovery_view_t
- * @brief Working data used by ui discovery view.
+ * @brief Keeps the live state for ui discovery view. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct ui_help_entry_t
- * @brief Working data used by ui help entry.
+ * @brief Stores one ui help entry for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct ui_help_menu_t
- * @brief Working data used by ui help menu.
+ * @brief Describes the data used by ui help menu. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct ui_layout_t
- * @brief Working data used by ui layout.
+ * @brief Describes the data used by ui layout. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct ui_mdns_config_t
@@ -251,31 +251,31 @@
  */
 /**
  * @struct ui_popup_t
- * @brief Working data used by ui popup.
+ * @brief Describes the data used by ui popup. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct ui_presentation_state_t
- * @brief Runtime state held by ui presentation state.
+ * @brief Keeps the live state for ui presentation state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct ui_scrollbar_geometry_t
- * @brief Working data used by ui scrollbar geometry.
+ * @brief Describes the data used by ui scrollbar geometry. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct ui_selectable_list_t
- * @brief Working data used by ui selectable list.
+ * @brief Describes the data used by ui selectable list. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct ui_session
- * @brief Runtime state held by ui session.
+ * @brief Keeps the live state for ui session. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct ui_session_view_t
- * @brief Runtime state held by ui session view.
+ * @brief Keeps the live state for ui session view. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct ui_splash_view_t
- * @brief Working data used by ui splash view.
+ * @brief Keeps the live state for ui splash view. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 +/**
  * @struct terminal_capabilities_packet_t
@@ -283,7 +283,7 @@
  */
 /**
  * @struct terminal_capabilities_t
- * @brief Complete terminal capabilities structure
+ * @brief Describes the data used by terminal capabilities. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct terminal_capability_t
@@ -291,11 +291,11 @@
  */
 /**
  * @struct terminal_fd_reader_s
- * @brief Working data used by terminal fd reader.
+ * @brief Describes the data used by terminal fd reader. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct terminal_fd_writer_s
- * @brief Working data used by terminal fd writer.
+ * @brief Describes the data used by terminal fd writer. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct terminal_format_params_t
@@ -303,11 +303,11 @@
  */
 /**
  * @struct terminal_renderer_s
- * @brief Working data used by terminal renderer.
+ * @brief Keeps the live state for terminal renderer. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct terminal_resize_watcher_t
- * @brief Working data used by terminal resize watcher.
+ * @brief Describes the data used by terminal resize watcher. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct terminal_screen_config_t
@@ -315,15 +315,15 @@
  */
 /**
  * @struct terminal_size_t
- * @brief Terminal size structure
+ * @brief Describes the data used by terminal size. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct test_pattern
- * @brief Working data used by test pattern.
+ * @brief Describes the data used by test pattern. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct text_snapshot_t
- * @brief Runtime state held by text snapshot.
+ * @brief Collects the counters and timestamps for text snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct thread_entry
@@ -335,11 +335,11 @@
  */
 /**
  * @struct thread_lock_stack_t
- * @brief Working data used by thread lock stack.
+ * @brief Describes the data used by thread lock stack. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct thread_pool
- * @brief Thread pool structure
+ * @brief Describes the data used by thread pool. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct thread_pool_entry
@@ -351,7 +351,7 @@
  */
 /**
  * @struct thread_registry_entry_t
- * @brief Working data used by thread registry entry.
+ * @brief Stores one thread registry entry for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct timer_record
@@ -359,43 +359,43 @@
  */
 +/**
  * @struct stats_peer
- * @brief Measurements tracked by stats peer.
+ * @brief Collects the counters and timestamps for stats peer. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct stats_rates_t
- * @brief Measurements tracked by stats rates.
+ * @brief Collects the counters and timestamps for stats rates. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct stats_sampler
- * @brief Measurements tracked by stats sampler.
+ * @brief Collects the counters and timestamps for stats sampler. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct stats_sampler_config_t
- * @brief Configuration values used by stats sampler config.
+ * @brief Defines the inputs for stats sampler config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct stats_scope
- * @brief Measurements tracked by stats scope.
+ * @brief Collects the counters and timestamps for stats scope. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct stats_snapshot_t
- * @brief Runtime state held by stats snapshot.
+ * @brief Collects the counters and timestamps for stats snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct stats_table_context_t
- * @brief Runtime state held by stats table context.
+ * @brief Collects the counters and timestamps for stats table context. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct stats_view_t
- * @brief Measurements tracked by stats view.
+ * @brief Collects the counters and timestamps for stats view. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct stdin_buffer_reader_t
- * @brief Storage used by stdin buffer reader.
+ * @brief Owns the temporary storage used by stdin buffer reader. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct stdin_buffer_t
- * @brief Storage used by stdin buffer.
+ * @brief Owns the temporary storage used by stdin buffer. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct Str
@@ -403,7 +403,7 @@
  */
 /**
  * @struct stream_header_t
- * @brief Stream header packet structure
+ * @brief Carries the fields exchanged for stream header. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct symbol_entry_t
@@ -411,47 +411,47 @@
  */
 /**
  * @struct sync_buffer_t
- * @brief Storage used by sync buffer.
+ * @brief Owns the temporary storage used by sync buffer. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct sync_row_t
- * @brief Working data used by sync row.
+ * @brief Describes the data used by sync row. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct sync_sample_t
- * @brief Working data used by sync sample.
+ * @brief Stores one sync sample for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct tcp_server
- * @brief Working data used by tcp server.
+ * @brief Keeps the live state for tcp server. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct tcp_server_config_t
- * @brief Configuration values used by tcp server config.
+ * @brief Defines the inputs for tcp server config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct tcp_transport_data_t
- * @brief TCP transport implementation data
+ * @brief Keeps the live state for tcp transport data. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct term_renderer_config_t
- * @brief Configuration values used by term renderer config.
+ * @brief Defines the inputs for term renderer config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 +/**
  * @struct simd_backend_t
- * @brief Working data used by simd backend.
+ * @brief Describes the data used by simd backend. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct simd_benchmark_t
- * @brief SIMD benchmark results structure
+ * @brief Describes the data used by simd benchmark. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct simd_cells_t
- * @brief Working data used by simd cells.
+ * @brief Stores one simd cells for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct simple_frame_swap_t
- * @brief Simple atomic frame swap structure
+ * @brief Stores one simple frame swap for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct size_packet_t
@@ -459,31 +459,31 @@
  */
 /**
  * @struct socket_buffer_t
- * @brief Storage used by socket buffer.
+ * @brief Owns the temporary storage used by socket buffer. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct socket_io_stats_t
- * @brief Measurements tracked by socket io stats.
+ * @brief Collects the counters and timestamps for socket io stats. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct socket_send_buffer_t
- * @brief Storage used by socket send buffer.
+ * @brief Owns the temporary storage used by socket send buffer. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct spectral_config_t
- * @brief Configuration values used by spectral config.
+ * @brief Defines the inputs for spectral config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct spectral_processor
- * @brief Working data used by spectral processor.
+ * @brief Keeps the live state for spectral processor. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct sqlite_backend_t
- * @brief SQLite backend data
+ * @brief Describes the data used by sqlite backend. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct ssh_private_key_parse_t
- * @brief Working data used by ssh private key parse.
+ * @brief Describes the data used by ssh private key parse. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct static_cond_t
@@ -499,27 +499,27 @@
  */
 /**
  * @struct stats_capabilities_t
- * @brief Measurements tracked by stats capabilities.
+ * @brief Collects the counters and timestamps for stats capabilities. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct stats_descriptor_t
- * @brief Measurements tracked by stats descriptor.
+ * @brief Defines the inputs for stats descriptor. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct stats_duration_cell_t
- * @brief Measurements tracked by stats duration cell.
+ * @brief Collects the counters and timestamps for stats duration cell. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct stats_duration_shard_t
- * @brief Measurements tracked by stats duration shard.
+ * @brief Collects the counters and timestamps for stats duration shard. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct stats_duration_snapshot_t
- * @brief Runtime state held by stats duration snapshot.
+ * @brief Collects the counters and timestamps for stats duration snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 +/**
  * @struct session_host
- * @brief Runtime state held by session host.
+ * @brief Keeps the live state for session host. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct session_host_callbacks_t
@@ -539,11 +539,11 @@
  */
 /**
  * @struct session_host_render_config_t
- * @brief Configuration values used by session host render config.
+ * @brief Defines the inputs for session host render config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct session_host_render_target_t
- * @brief Runtime state held by session host render target.
+ * @brief Keeps the live state for session host render target. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct session_log_buffer
@@ -567,23 +567,23 @@
  */
 /**
  * @struct session_pipeline_s
- * @brief Runtime state held by session pipeline.
+ * @brief Keeps the live state for session pipeline. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct session_protocol_media_t
- * @brief Runtime state held by session protocol media.
+ * @brief Keeps the live state for session protocol media. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct session_protocol_t
- * @brief Runtime state held by session protocol.
+ * @brief Keeps the live state for session protocol. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct session_server_like_config
- * @brief Configuration values used by session server like config.
+ * @brief Defines the inputs for session server like config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct session_settings_t
- * @brief Configuration values used by session settings.
+ * @brief Defines the inputs for session settings. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct setting_map_entry_t
@@ -595,27 +595,27 @@
  */
 /**
  * @struct SHA1_CTX
- * @brief Working data used by SHA1 CTX.
+ * @brief Describes the data used by sha1 ctx. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 +/**
  * @struct server_connection_state_t
- * @brief Runtime state held by server connection state.
+ * @brief Keeps the live state for server connection state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct server_context_t
- * @brief Server context - encapsulates all server state
+ * @brief Keeps the live state for server context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct server_discovery_policy_t
- * @brief Working data used by server discovery policy.
+ * @brief Defines the inputs for server discovery policy. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct server_discovery_startup_t
- * @brief Working data used by server discovery startup.
+ * @brief Keeps the live state for server discovery startup. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct server_state_packet_t
- * @brief Server state packet structure
+ * @brief Carries the fields exchanged for server state packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct server_stats_t
@@ -623,11 +623,11 @@
  */
 /**
  * @struct server_stats_visit_t
- * @brief Measurements tracked by server stats visit.
+ * @brief Collects the counters and timestamps for server stats visit. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct session_audio_ctx
- * @brief Session-owned audio capture, playback, and host-mixing state
+ * @brief Keeps the live state for session audio ctx. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct session_audio_source_t
@@ -639,7 +639,7 @@
  */
 /**
  * @struct session_capture_config_t
- * @brief Media-source and loader settings used to create a session capture context
+ * @brief Defines the inputs for session capture config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct session_capture_ctx
@@ -647,19 +647,19 @@
  */
 /**
  * @struct session_client_like_config
- * @brief Configuration values used by session client like config.
+ * @brief Defines the inputs for session client like config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct session_connection_ops_t
- * @brief Runtime state held by session connection ops.
+ * @brief Groups the callbacks and caller data for session connection ops. The owner invokes these function pointers at lifecycle boundaries, so the referenced context must remain alive until registration is removed.
  */
 /**
  * @struct session_connection_t
- * @brief Runtime state held by session connection.
+ * @brief Keeps the live state for session connection. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct session_consensus
- * @brief Session adapter that owns consensus topology, coordination, and election state
+ * @brief Keeps the live state for session consensus. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct session_consensus_callbacks_t
@@ -667,7 +667,7 @@
  */
 /**
  * @struct session_display_config_t
- * @brief Terminal-rendering and snapshot settings used to create a display context
+ * @brief Defines the inputs for session display config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct session_display_ctx
@@ -679,19 +679,19 @@
  */
 +/**
  * @struct render_file_ctx_s
- * @brief Working data used by render file ctx.
+ * @brief Describes the data used by render file ctx. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct render_progress
- * @brief Working data used by render progress.
+ * @brief Describes the data used by render progress. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct render_worker_t
- * @brief Working data used by render worker.
+ * @brief Keeps the live state for render worker. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct rendered_cell_t
- * @brief Working data used by rendered cell.
+ * @brief Stores one rendered cell for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct report_config
@@ -703,7 +703,7 @@
  */
 /**
  * @struct rgb_error_t
- * @brief Working data used by rgb error.
+ * @brief Describes the data used by rgb error. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct rgb_pixel_simd_t
@@ -711,11 +711,11 @@
  */
 /**
  * @struct rgb_pixel_t
- * @brief RGB pixel structure
+ * @brief Stores one rgb pixel for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct ringbuffer_t
- * @brief Lock-free ring buffer structure
+ * @brief Owns the temporary storage used by ringbuffer. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct RLEState
@@ -723,7 +723,7 @@
  */
 /**
  * @struct runtime_field_t
- * @brief Working data used by runtime field.
+ * @brief Describes the data used by runtime field. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct rwlock_t
@@ -731,15 +731,15 @@
  */
 /**
  * @struct screen
- * @brief Working data used by screen.
+ * @brief Keeps the live state for screen. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct screen_snapshot_t
- * @brief Runtime state held by screen snapshot.
+ * @brief Collects the counters and timestamps for screen snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct screen_terminal_t
- * @brief Working data used by screen terminal.
+ * @brief Keeps the live state for screen terminal. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct sdp_session_t
@@ -747,15 +747,15 @@
  */
 /**
  * @struct send_chunk
- * @brief Working data used by send chunk.
+ * @brief Carries the fields exchanged for send chunk. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct send_stream_t
- * @brief Working data used by send stream.
+ * @brief Describes the data used by send stream. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct server_client_removal_t
- * @brief Working data used by server client removal.
+ * @brief Keeps the live state for server client removal. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 +/**
  * @struct platform_stderr_redirect_handle_t
@@ -763,7 +763,7 @@
  */
 /**
  * @struct platform_wakeup
- * @brief Working data used by platform wakeup.
+ * @brief Describes the data used by platform wakeup. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct positional_arg_descriptor_t
@@ -775,15 +775,15 @@
  */
 /**
  * @struct progress_snapshot_t
- * @brief Runtime state held by progress snapshot.
+ * @brief Collects the counters and timestamps for progress snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct prompt_opts_t
- * @brief Working data used by prompt opts.
+ * @brief Describes the data used by prompt opts. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct prompt_snapshot_t
- * @brief Runtime state held by prompt snapshot.
+ * @brief Collects the counters and timestamps for prompt snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct protocol_version_packet_t
@@ -795,11 +795,11 @@
  */
 /**
  * @struct queued_packet_t
- * @brief Wire or message data used by queued packet.
+ * @brief Carries the fields exchanged for queued packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct quic_transport_t
- * @brief Working data used by quic transport.
+ * @brief Keeps the live state for quic transport. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct rate_event_s
@@ -819,15 +819,15 @@
  */
 /**
  * @struct receive_context_t
- * @brief Runtime state held by receive context.
+ * @brief Keeps the live state for receive context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct receive_stream_t
- * @brief Working data used by receive stream.
+ * @brief Describes the data used by receive stream. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct received_packet
- * @brief Wire or message data used by received packet.
+ * @brief Carries the fields exchanged for received packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct registry_entry_t
@@ -843,7 +843,7 @@
  */
 /**
  * @struct parallel_connect_config_t
- * @brief Configuration values used by parallel connect config.
+ * @brief Defines the inputs for parallel connect config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct parsed_section_t
@@ -859,7 +859,7 @@
  */
 /**
  * @struct peer_output
- * @brief Working data used by peer output.
+ * @brief Stores one peer output for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct pem_object_t
@@ -867,11 +867,11 @@
  */
 /**
  * @struct pending_ice_candidate
- * @brief Working data used by pending ice candidate.
+ * @brief Stores one pending ice candidate for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct pipeline_frame_t
- * @brief Working data used by pipeline frame.
+ * @brief Keeps the live state for pipeline frame. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct platform_binary_match_t
@@ -887,27 +887,27 @@
  */
 /**
  * @struct platform_directory_list_t
- * @brief Working data used by platform directory list.
+ * @brief Stores one platform directory list for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct platform_event_listener
- * @brief Working data used by platform event listener.
+ * @brief Describes the data used by platform event listener. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct platform_event_loop
- * @brief Working data used by platform event loop.
+ * @brief Describes the data used by platform event loop. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct platform_event_stream
- * @brief Working data used by platform event stream.
+ * @brief Describes the data used by platform event stream. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct platform_mmap
- * @brief Memory-mapped file handle
+ * @brief Describes the data used by platform mmap. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct platform_process_stats_t
- * @brief Measurements tracked by platform process stats.
+ * @brief Collects the counters and timestamps for platform process stats. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct platform_signal_handler_t
@@ -931,27 +931,27 @@
  */
 /**
  * @struct options_edit_t
- * @brief Configuration values used by options edit.
+ * @brief Defines the inputs for options edit. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct options_patch_result_t
- * @brief Configuration values used by options patch result.
+ * @brief Defines the inputs for options patch result. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct options_patch_t
- * @brief Configuration values used by options patch.
+ * @brief Defines the inputs for options patch. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct options_snapshot_t
- * @brief Configuration values used by options snapshot.
+ * @brief Defines the inputs for options snapshot. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct options_state
- * @brief Configuration values used by options state.
+ * @brief Defines the inputs for options state. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct options_t
- * @brief Immutable, RCU-published snapshot of the application's runtime configuration
+ * @brief Defines the inputs for options. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct opus_codec_t
@@ -963,11 +963,11 @@
  */
 /**
  * @struct outbound_packet
- * @brief Wire or message data used by outbound packet.
+ * @brief Carries the fields exchanged for outbound packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct outbound_stream_t
- * @brief Working data used by outbound stream.
+ * @brief Describes the data used by outbound stream. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct outbuf_t
@@ -975,11 +975,11 @@
  */
 /**
  * @struct packet_decoder_t
- * @brief Wire or message data used by packet decoder.
+ * @brief Carries the fields exchanged for packet decoder. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct packet_envelope_t
- * @brief Packet envelope containing received packet data
+ * @brief Carries the fields exchanged for packet envelope. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct packet_header_t
@@ -987,35 +987,35 @@
  */
 /**
  * @struct packet_node
- * @brief Wire or message data used by packet node.
+ * @brief Carries the fields exchanged for packet node. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct packet_queue
- * @brief Wire or message data used by packet queue.
+ * @brief Carries the fields exchanged for packet queue. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct packet_queue_config_t
- * @brief Configuration values used by packet queue config.
+ * @brief Defines the inputs for packet queue config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 +/**
  * @struct nat_upnp_context
- * @brief Handle to UPnP context
+ * @brief Keeps the live state for nat upnp context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct native_view_t
- * @brief Working data used by native view.
+ * @brief Keeps the live state for native view. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct negotiate_ctx_t
- * @brief Host negotiation context
+ * @brief Describes the data used by negotiate ctx. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct network_connect_config_t
- * @brief Configuration values used by network connect config.
+ * @brief Defines the inputs for network connect config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct network_connection
- * @brief Working data used by network connection.
+ * @brief Keeps the live state for network connection. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct network_connection_callbacks_t
@@ -1023,31 +1023,31 @@
  */
 /**
  * @struct network_establish_config_t
- * @brief Configuration values used by network establish config.
+ * @brief Defines the inputs for network establish config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct network_establish_result_t
- * @brief Working data used by network establish result.
+ * @brief Describes the data used by network establish result. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct network_negotiation_t
- * @brief Working data used by network negotiation.
+ * @brief Describes the data used by network negotiation. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct network_server
- * @brief Working data used by network server.
+ * @brief Keeps the live state for network server. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct network_server_config_t
- * @brief Configuration values used by network server config.
+ * @brief Defines the inputs for network server config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct noise_gate_t
- * @brief Noise-gate thresholds, smoothing coefficients, and live open/closed state
+ * @brief Describes the data used by noise gate. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct notice_snapshot_t
- * @brief Runtime state held by notice snapshot.
+ * @brief Collects the counters and timestamps for notice snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct openpgp_packet_header_t
@@ -1083,11 +1083,11 @@
  */
 /**
  * @struct memory_backend_t
- * @brief Memory backend data
+ * @brief Describes the data used by memory backend. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct mixer_listener_buffer
- * @brief Storage used by mixer listener buffer.
+ * @brief Owns the temporary storage used by mixer listener buffer. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct mixer_t
@@ -1095,7 +1095,7 @@
  */
 /**
  * @struct mode_arguments_t
- * @brief Working data used by mode arguments.
+ * @brief Defines the inputs for mode arguments. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct mode_bit_name_t
@@ -1119,7 +1119,7 @@
  */
 /**
  * @struct mutex_stack_entry_t
- * @brief Working data used by mutex stack entry.
+ * @brief Stores one mutex stack entry for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct mutex_t
@@ -1127,7 +1127,7 @@
  */
 /**
  * @struct mutex_wait_snapshot_t
- * @brief Runtime state held by mutex wait snapshot.
+ * @brief Collects the counters and timestamps for mutex wait snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct named_entry
@@ -1135,19 +1135,19 @@
  */
 /**
  * @struct named_iter_entry_t
- * @brief Working data used by named iter entry.
+ * @brief Stores one named iter entry for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct named_metadata_cache_t
- * @brief Working data used by named metadata cache.
+ * @brief Owns the temporary storage used by named metadata cache. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct named_metadata_entry_t
- * @brief Working data used by named metadata entry.
+ * @brief Stores one named metadata entry for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct named_metadata_t
- * @brief Working data used by named metadata.
+ * @brief Describes the data used by named metadata. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct named_registry_t
@@ -1163,11 +1163,11 @@
  */
 /**
  * @struct log_row_ref_t
- * @brief Working data used by log row ref.
+ * @brief Describes the data used by log row ref. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct log_search_state_t
- * @brief Runtime state held by log search state.
+ * @brief Keeps the live state for log search state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct log_template_t
@@ -1175,11 +1175,11 @@
  */
 /**
  * @struct loop_work_t
- * @brief Working data used by loop work.
+ * @brief Describes the data used by loop work. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct lowpass_filter_t
- * @brief Low-pass filter state
+ * @brief Describes the data used by lowpass filter. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct lws_callback_stats_t
@@ -1187,7 +1187,7 @@
  */
 /**
  * @struct manpage_merge_state_t
- * @brief Runtime state held by manpage merge state.
+ * @brief Keeps the live state for manpage merge state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct manpage_resources_t
@@ -1195,23 +1195,23 @@
  */
 /**
  * @struct mcp_job
- * @brief Working data used by mcp job.
+ * @brief Describes the data used by mcp job. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct mcp_policy_t
- * @brief Working data used by mcp policy.
+ * @brief Defines the inputs for mcp policy. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct mcp_render_request_t
- * @brief Wire or message data used by mcp render request.
+ * @brief Describes the data used by mcp render request. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct mcp_render_result_t
- * @brief Working data used by mcp render result.
+ * @brief Describes the data used by mcp render result. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct mcp_server
- * @brief Working data used by mcp server.
+ * @brief Keeps the live state for mcp server. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct mdns_query_state_t
@@ -1219,7 +1219,7 @@
  */
 /**
  * @struct mdns_refresh_t
- * @brief Working data used by mdns refresh.
+ * @brief Describes the data used by mdns refresh. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct mdns_snapshot_t
@@ -1231,11 +1231,11 @@
  */
 /**
  * @struct media_playlist_t
- * @brief Working data used by media playlist.
+ * @brief Describes the data used by media playlist. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct media_snapshot_slot
- * @brief Runtime state held by media snapshot slot.
+ * @brief Collects the counters and timestamps for media snapshot slot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 +/**
  * @struct host_lost_candidate_t
@@ -1243,19 +1243,19 @@
  */
 /**
  * @struct host_render_history
- * @brief Internal session host structure
+ * @brief Keeps the host-side rendering history used to compare successive frames and stabilize output for connected participants. Its buffers and dimensions belong to the host render target and must be reset when the source or terminal geometry changes.
  */
 /**
  * @struct http3_receive_stream_t
- * @brief Working data used by http3 receive stream.
+ * @brief Describes the data used by http3 receive stream. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct http_pulse_t
- * @brief Working data used by http pulse.
+ * @brief Describes the data used by http pulse. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct http_session_t
- * @brief Runtime state held by http session.
+ * @brief Keeps the live state for http session. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct ice_candidate_t
@@ -1283,7 +1283,7 @@
  */
 /**
  * @struct input_editor_t
- * @brief Working data used by input editor.
+ * @brief Describes the data used by input editor. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct keyboard_line_edit_opts_t
@@ -1291,15 +1291,15 @@
  */
 /**
  * @struct keyboard_text_decoder_t
- * @brief Working data used by keyboard text decoder.
+ * @brief Describes the data used by keyboard text decoder. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct lifecycle_t
- * @brief Working data used by lifecycle.
+ * @brief Keeps the live state for lifecycle. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct linux_binary_lookup_t
- * @brief Working data used by linux binary lookup.
+ * @brief Describes the data used by linux binary lookup. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct log_buffer_entry_t
@@ -1331,15 +1331,15 @@
  */
 /**
  * @struct glyph_cache_entry_t
- * @brief Working data used by glyph cache entry.
+ * @brief Owns the temporary storage used by glyph cache entry. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct glyph_candidate_t
- * @brief Working data used by glyph candidate.
+ * @brief Stores one glyph candidate for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct gpg_homedir
- * @brief Internal structure for temporary GPG homedir
+ * @brief Describes a temporary GnuPG home directory used to isolate key parsing from the user's real keyring. It holds the created path and cleanup bookkeeping; callers must release it through the matching helper so the directory and files are removed.
  */
 /**
  * @struct gpg_homedir_t
@@ -1351,31 +1351,31 @@
  */
 /**
  * @struct grep_pattern_t
- * @brief Compiled filter entry used to match logs and print context
+ * @brief Describes the data used by grep pattern. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct h265_client_context
- * @brief Runtime state held by h265 client context.
+ * @brief Keeps the live state for h265 client context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct h265_client_decoder_t
- * @brief Working data used by h265 client decoder.
+ * @brief Keeps the live state for h265 client decoder. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct h265_decoder
- * @brief Working data used by h265 decoder.
+ * @brief Describes the data used by h265 decoder. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct h265_encoder
- * @brief Working data used by h265 encoder.
+ * @brief Describes the data used by h265 encoder. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct h265_packet_header_t
- * @brief Wire or message data used by h265 packet header.
+ * @brief Carries the fields exchanged for h265 packet header. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct h265_server_context
- * @brief Runtime state held by h265 server context.
+ * @brief Keeps the live state for h265 server context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct handler_hash_entry_t
@@ -1387,19 +1387,19 @@
  */
 /**
  * @struct highpass_filter_t
- * @brief High-pass filter settings and state
+ * @brief Describes the data used by highpass filter. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct host_connection_t
- * @brief Working data used by host connection.
+ * @brief Keeps the live state for host connection. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct host_liveness_t
- * @brief Host liveness detection state
+ * @brief Describes the data used by host liveness. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 +/**
  * @struct error_frame_t
- * @brief Working data used by error frame.
+ * @brief Stores one error frame for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct error_packet_t
@@ -1407,19 +1407,19 @@
  */
 /**
  * @struct error_thread
- * @brief Working data used by error thread.
+ * @brief Describes the data used by error thread. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct event_command_t
- * @brief Working data used by event command.
+ * @brief Describes the data used by event command. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct event_work_t
- * @brief Working data used by event work.
+ * @brief Describes the data used by event work. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct event_write
- * @brief Working data used by event write.
+ * @brief Describes the data used by event write. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct example_descriptor_t
@@ -1427,19 +1427,19 @@
  */
 /**
  * @struct face_follow_detection_t
- * @brief Working data used by face follow detection.
+ * @brief Describes the data used by face follow detection. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct face_follow_image
- * @brief Working data used by face follow image.
+ * @brief Stores one face follow image for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct face_follow_rect_t
- * @brief Working data used by face follow rect.
+ * @brief Stores one face follow rect for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct face_follow_state_t
- * @brief Runtime state held by face follow state.
+ * @brief Keeps the live state for face follow state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct ffmpeg_decoder_t
@@ -1447,7 +1447,7 @@
  */
 /**
  * @struct ffmpeg_encoder_s
- * @brief Working data used by ffmpeg encoder.
+ * @brief Describes the data used by ffmpeg encoder. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct find_client_context_t
@@ -1455,7 +1455,7 @@
  */
 /**
  * @struct flow_control_debounce_t
- * @brief Working data used by flow control debounce.
+ * @brief Describes the data used by flow control debounce. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct fps_counter_s
@@ -1471,15 +1471,15 @@
  */
 /**
  * @struct frame_queue_s
- * @brief Storage used by frame queue.
+ * @brief Owns the temporary storage used by frame queue. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct frame_slot_s
- * @brief Working data used by frame slot.
+ * @brief Stores one frame slot for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 +/**
  * @struct deadlock_state_t
- * @brief Runtime state held by deadlock state.
+ * @brief Keeps the live state for deadlock state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct dec3_t
@@ -1487,11 +1487,11 @@
  */
 /**
  * @struct digital_rain
- * @brief Digital rain effect context
+ * @brief Describes the data used by digital rain. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct digital_rain_column_t
- * @brief Digital rain column state
+ * @brief Stores one digital rain column for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct discovery_config_t
@@ -1499,7 +1499,7 @@
  */
 /**
  * @struct discovery_host_audio_capture_t
- * @brief Working data used by discovery host audio capture.
+ * @brief Describes the data used by discovery host audio capture. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct discovery_result_t
@@ -1507,7 +1507,7 @@
  */
 /**
  * @struct discovery_session_t
- * @brief Discovery session context
+ * @brief Keeps the live state for discovery session. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct discovery_thread_state_t
@@ -1515,15 +1515,15 @@
  */
 /**
  * @struct discovery_ui_state_t
- * @brief Runtime state held by discovery ui state.
+ * @brief Keeps the live state for discovery ui state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct discovery_video_receiver_t
- * @brief Working data used by discovery video receiver.
+ * @brief Describes the data used by discovery video receiver. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct ducking_t
- * @brief Ducking system settings and state
+ * @brief Describes the data used by ducking. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct election_result_t
@@ -1531,11 +1531,11 @@
  */
 /**
  * @struct emit_context_t
- * @brief Runtime state held by emit context.
+ * @brief Keeps the live state for emit context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct endpoint_transport
- * @brief Working data used by endpoint transport.
+ * @brief Keeps the live state for endpoint transport. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct enum_descriptor_t
@@ -1551,27 +1551,27 @@
  */
 /**
  * @struct errno_tui_row_t
- * @brief Working data used by errno tui row.
+ * @brief Describes the data used by errno tui row. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct errno_tui_state_t
- * @brief Runtime state held by errno tui state.
+ * @brief Keeps the live state for errno tui state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 +/**
  * @struct consensus_coordinator
- * @brief Internal coordinator structure
+ * @brief Coordinates consensus work for a session: it tracks the participant topology, election state, callbacks, and messages waiting to be processed. The session owns the coordinator and tears down its queues and synchronization objects with it.
  */
 /**
  * @struct consensus_handoff_message_t
- * @brief Wire or message data used by consensus handoff message.
+ * @brief Carries the fields exchanged for consensus handoff message. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct consensus_handoff_peer_t
- * @brief Working data used by consensus handoff peer.
+ * @brief Stores one consensus handoff peer for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct consensus_handoff_t
- * @brief Working data used by consensus handoff.
+ * @brief Describes the data used by consensus handoff. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct consensus_metrics_collection
@@ -1595,7 +1595,7 @@
  */
 /**
  * @struct crypto_handshake_context_t
- * @brief Cryptographic handshake context structure
+ * @brief Keeps the live state for crypto handshake context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct crypto_parameters_packet_t
@@ -1603,23 +1603,23 @@
  */
 /**
  * @struct crypto_policy_t
- * @brief Working data used by crypto policy.
+ * @brief Defines the inputs for crypto policy. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct crypto_record
- * @brief Working data used by crypto record.
+ * @brief Stores one crypto record for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct crypto_rekey_session_t
- * @brief Runtime state held by crypto rekey session.
+ * @brief Keeps the live state for crypto rekey session. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct crypto_session
- * @brief Runtime state held by crypto session.
+ * @brief Keeps the live state for crypto session. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct crypto_session_message_t
- * @brief Runtime state held by crypto session message.
+ * @brief Carries the fields exchanged for crypto session message. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct custom_section_descriptor_t
@@ -1627,15 +1627,15 @@
  */
 /**
  * @struct database_query
- * @brief Working data used by database query.
+ * @brief Describes the data used by database query. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct database_session_stats_t
- * @brief Runtime state held by database session stats.
+ * @brief Collects the counters and timestamps for database session stats. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct datagram_send
- * @brief Working data used by datagram send.
+ * @brief Describes the data used by datagram send. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 +/**
  * @struct client_list_packet_t
@@ -1651,11 +1651,11 @@
  */
 /**
  * @struct collect_ctx_t
- * @brief Working data used by collect ctx.
+ * @brief Describes the data used by collect ctx. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct color_filter_def_t
- * @brief Color filter metadata structure
+ * @brief Stores one color filter def for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct color_scheme_t
@@ -1663,7 +1663,7 @@
  */
 /**
  * @struct colorscheme_palette_t
- * @brief Working data used by colorscheme palette.
+ * @brief Stores one colorscheme palette for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct compiled_color_scheme_t
@@ -1671,23 +1671,23 @@
  */
 /**
  * @struct compression_workspace_t
- * @brief Storage used by compression workspace.
+ * @brief Owns the temporary storage used by compression workspace. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct compressor_t
- * @brief Dynamic range compressor settings and state
+ * @brief Describes the data used by compressor. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct cond_deadlock_batch_t
- * @brief Working data used by cond deadlock batch.
+ * @brief Describes the data used by cond deadlock batch. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct cond_deadlock_entry_t
- * @brief Working data used by cond deadlock entry.
+ * @brief Stores one cond deadlock entry for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct cond_deadlock_snapshot_t
- * @brief Runtime state held by cond deadlock snapshot.
+ * @brief Collects the counters and timestamps for cond deadlock snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct cond_t
@@ -1715,7 +1715,7 @@
  */
 /**
  * @struct connection_endpoint_t
- * @brief Working data used by connection endpoint.
+ * @brief Keeps the live state for connection endpoint. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 +/**
  * @struct binary_level_opts_t
@@ -1723,7 +1723,7 @@
  */
 /**
  * @struct binding_t
- * @brief Working data used by binding.
+ * @brief Groups the callbacks and caller data for binding. The owner invokes these function pointers at lifecycle boundaries, so the referenced context must remain alive until registration is removed.
  */
 /**
  * @struct broadcast_context_t
@@ -1731,31 +1731,31 @@
  */
 /**
  * @struct browser_peer_crypto_t
- * @brief Working data used by browser peer crypto.
+ * @brief Stores one browser peer crypto for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct buffer_budget_t
- * @brief Storage used by buffer budget.
+ * @brief Owns the temporary storage used by buffer budget. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct buffer_domain
- * @brief Storage used by buffer domain.
+ * @brief Owns the temporary storage used by buffer domain. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct buffer_domain_config_t
- * @brief Configuration values used by buffer domain config.
+ * @brief Defines the inputs for buffer domain config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct buffer_header
- * @brief Wire or message data used by buffer header.
+ * @brief Carries the fields exchanged for buffer header. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct buffer_stats_t
- * @brief Storage used by buffer stats.
+ * @brief Owns the temporary storage used by buffer stats. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct buffer_workspace_t
- * @brief Storage used by buffer workspace.
+ * @brief Owns the temporary storage used by buffer workspace. The data pointers and size or cursor fields describe the live portion of the allocation; callers must use the type's cleanup path when the buffer or queue is no longer needed.
  */
 /**
  * @struct bvector
@@ -1775,11 +1775,11 @@
  */
 /**
  * @struct client_audio_pipeline_t
- * @brief Client audio pipeline state
+ * @brief Keeps the live state for client audio pipeline. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct client_connection
- * @brief Working data used by client connection.
+ * @brief Keeps the live state for client connection. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct client_dispatch_entry_t
@@ -1787,15 +1787,15 @@
  */
 /**
  * @struct client_info
- * @brief Working data used by client info.
+ * @brief Keeps the live state for client info. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct client_info_packet_t
- * @brief Client information packet structure
+ * @brief Carries the fields exchanged for client info packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct client_like_state_t
- * @brief Runtime state held by client like state.
+ * @brief Keeps the live state for client like state. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 +/**
  * @struct atomic_t
@@ -1807,7 +1807,7 @@
  */
 /**
  * @struct audio_batch_info_t
- * @brief Parsed audio batch packet header information
+ * @brief Describes the data used by audio batch info. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct audio_batch_packet_t
@@ -1819,31 +1819,31 @@
  */
 /**
  * @struct audio_device_info_t
- * @brief Audio device information structure
+ * @brief Describes the data used by audio device info. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct audio_frame_t
- * @brief Working data used by audio frame.
+ * @brief Stores one audio frame for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct audio_processor
- * @brief Working data used by audio processor.
+ * @brief Keeps the live state for audio processor. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct audio_processor_config_t
- * @brief Configuration values used by audio processor config.
+ * @brief Defines the inputs for audio processor config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct audio_processor_flags_t
- * @brief Working data used by audio processor flags.
+ * @brief Keeps the live state for audio processor flags. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct audio_recording
- * @brief Working data used by audio recording.
+ * @brief Stores one audio recording for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct audio_resampler_t
- * @brief Working data used by audio resampler.
+ * @brief Stores one audio resampler for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct audio_ring_buffer
@@ -1851,19 +1851,19 @@
  */
 /**
  * @struct audio_rt_metric_t
- * @brief Measurements tracked by audio rt metric.
+ * @brief Collects the counters and timestamps for audio rt metric. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct audio_send_packet_t
- * @brief Wire or message data used by audio send packet.
+ * @brief Carries the fields exchanged for audio send packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct auth_failure_packet_t
- * @brief Authentication failure packet structure
+ * @brief Carries the fields exchanged for auth failure packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct backtrace_t
- * @brief Working data used by backtrace.
+ * @brief Describes the data used by backtrace. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct backtrace_text_t
@@ -1875,7 +1875,7 @@
  */
 /**
  * @struct binary_actions_t
- * @brief Working data used by binary actions.
+ * @brief Describes the data used by binary actions. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 +/**
  * @struct ascii_frame_source_t
@@ -1883,39 +1883,39 @@
  */
 /**
  * @struct ascii_frame_t
- * @brief Working data used by ascii frame.
+ * @brief Stores one ascii frame for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct ascii_otel_scope
- * @brief Working data used by ascii otel scope.
+ * @brief Describes the data used by ascii otel scope. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct ascii_stabilizer_t
- * @brief Working data used by ascii stabilizer.
+ * @brief Describes the data used by ascii stabilizer. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct ascii_temporal_cell_t
- * @brief Working data used by ascii temporal cell.
+ * @brief Stores one ascii temporal cell for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct asciichat_errno_history_t
- * @brief Working data used by asciichat errno history.
+ * @brief Describes the data used by asciichat errno history. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct asciichat_errno_scope_t
- * @brief Working data used by asciichat errno scope.
+ * @brief Describes the data used by asciichat errno scope. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct asciichat_errno_snapshot_t
- * @brief Runtime state held by asciichat errno snapshot.
+ * @brief Collects the counters and timestamps for asciichat errno snapshot. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct asciichat_error_context_t
- * @brief Runtime state held by asciichat error context.
+ * @brief Keeps the live state for asciichat error context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct asciichat_error_stats_t
- * @brief Measurements tracked by asciichat error stats.
+ * @brief Collects the counters and timestamps for asciichat error stats. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct asciichat_instr_only_list
@@ -1927,11 +1927,11 @@
  */
 /**
  * @struct asciichat_instr_runtime
- * @brief Per-thread instrumentation runtime state
+ * @brief Describes the data used by asciichat instr runtime. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct asciichat_mdns_discovery_t
- * @brief Discovered service information
+ * @brief Describes the data used by asciichat mdns discovery. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct asciichat_mdns_service_t
@@ -1939,7 +1939,7 @@
  */
 /**
  * @struct asciichat_mdns_t
- * @brief Internal mDNS context structure
+ * @brief Owns one mDNS browse or advertisement session, including its socket, event-loop registration, discovered records, and shutdown state. The context keeps those resources together until the platform mDNS operation is stopped.
  */
 /**
  * @struct asciichat_thread_wrapper_t
@@ -1947,11 +1947,11 @@
  */
 /**
  * @struct async_packet
- * @brief Wire or message data used by async packet.
+ * @brief Carries the fields exchanged for async packet. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct async_tcp_t
- * @brief Working data used by async tcp.
+ * @brief Describes the data used by async tcp. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct atomic_ptr_t
@@ -1959,11 +1959,11 @@
  */
 +/**
  * @struct acip_security
- * @brief Working data used by acip security.
+ * @brief Describes the data used by acip security. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct acip_send_options_t
- * @brief Configuration values used by acip send options.
+ * @brief Defines the inputs for acip send options. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct acip_server_callbacks_t
@@ -1971,15 +1971,15 @@
  */
 /**
  * @struct acip_settings_header_t
- * @brief Configuration values used by acip settings header.
+ * @brief Defines the inputs for acip settings header. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct acip_transport
- * @brief Transport instance structure
+ * @brief Keeps the live state for acip transport. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct acip_transport_capabilities_t
- * @brief Working data used by acip transport capabilities.
+ * @brief Keeps the live state for acip transport capabilities. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct acip_transport_methods_t
@@ -1987,11 +1987,11 @@
  */
 /**
  * @struct acip_websocket_runtime
- * @brief Working data used by acip websocket runtime.
+ * @brief Describes the data used by acip websocket runtime. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct action_args_t
- * @brief Action argument structure
+ * @brief Describes the data used by action args. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct adaptive_sleep_config_t
@@ -2007,27 +2007,27 @@
  */
 /**
  * @struct animation_config_t
- * @brief Configuration values used by animation config.
+ * @brief Defines the inputs for animation config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct animation_sample_t
- * @brief Working data used by animation sample.
+ * @brief Stores one animation sample for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct animation_t
- * @brief Working data used by animation.
+ * @brief Describes the data used by animation. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct animation_target_t
- * @brief Working data used by animation target.
+ * @brief Stores one animation target for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct ansi_rle_context_t
- * @brief Runtime state held by ansi rle context.
+ * @brief Keeps the live state for ansi rle context. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct ansi_timing_t
- * @brief Working data used by ansi timing.
+ * @brief Describes the data used by ansi timing. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct app_callbacks_t
@@ -2063,59 +2063,59 @@
  */
 /**
  * @struct acip_http3_server
- * @brief Working data used by acip http3 server.
+ * @brief Keeps the live state for acip http3 server. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct acip_outbound
- * @brief Working data used by acip outbound.
+ * @brief Describes the data used by acip outbound. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct acip_outbound_stats_t
- * @brief Measurements tracked by acip outbound stats.
+ * @brief Collects the counters and timestamps for acip outbound stats. Producers update the fields while work is running, and readers take a consistent snapshot or visit the values instead of changing them directly.
  */
 /**
  * @struct acip_packet_plan_t
- * @brief Wire or message data used by acip packet plan.
+ * @brief Carries the fields exchanged for acip packet plan. Its members are laid out for parsing or serialization, so lengths, counts, and optional payload pointers must stay consistent with the bytes they describe.
  */
 /**
  * @struct acip_quic_config_t
- * @brief Configuration values used by acip quic config.
+ * @brief Defines the inputs for acip quic config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct acip_quic_connection
- * @brief Working data used by acip quic connection.
+ * @brief Keeps the live state for acip quic connection. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct acip_quic_datagram_reader_t
- * @brief Working data used by acip quic datagram reader.
+ * @brief Describes the data used by acip quic datagram reader. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct acip_quic_datagram_slot_t
- * @brief Working data used by acip quic datagram slot.
+ * @brief Describes the data used by acip quic datagram slot. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct acip_quic_endpoint
- * @brief Working data used by acip quic endpoint.
+ * @brief Describes the data used by acip quic endpoint. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct acip_quic_stream_reader_t
- * @brief Working data used by acip quic stream reader.
+ * @brief Describes the data used by acip quic stream reader. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct acip_quic_tls_t
- * @brief Working data used by acip quic tls.
+ * @brief Describes the data used by acip quic tls. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct acip_quic_udp_endpoint
- * @brief Working data used by acip quic udp endpoint.
+ * @brief Describes the data used by acip quic udp endpoint. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct acip_quic_worker
- * @brief Working data used by acip quic worker.
+ * @brief Keeps the live state for acip quic worker. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct acip_render_settings_t
- * @brief Configuration values used by acip render settings.
+ * @brief Defines the inputs for acip render settings. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 +/**
  * @struct HttpRequest
@@ -2127,11 +2127,11 @@
  */
 /**
  * @struct ThreadInfo
- * @brief Thread information
+ * @brief Describes the data used by threadinfo. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct FrameInfo
- * @brief Stack frame information
+ * @brief Stores one frameinfo for the subsystem that owns it. Members describe the value and any associated length, identity, or linkage; callers normally keep it inside the owning collection rather than copying it blindly.
  */
 /**
  * @struct VariableInfo
@@ -2139,7 +2139,7 @@
  */
 /**
  * @struct BreakpointInfo
- * @brief Breakpoint information
+ * @brief Describes the data used by breakpointinfo. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct __attribute__
@@ -2147,23 +2147,23 @@
  */
 /**
  * @struct acds_client_config_t
- * @brief ACDS client connection configuration
+ * @brief Defines the inputs for acds client config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct acds_client_data_t
- * @brief Per-client connection data
+ * @brief Keeps the live state for acds client data. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct acds_client_t
- * @brief ACDS client connection handle
+ * @brief Keeps the live state for acds client. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct acds_config_t
- * @brief Discovery server configuration
+ * @brief Defines the inputs for acds config. Callers fill in its scalar settings, callbacks, and referenced resources before handing it to the owning subsystem; the subsystem reads it during initialization rather than treating it as mutable live state.
  */
 /**
  * @struct acds_create_key_set_t
- * @brief Working data used by acds create key set.
+ * @brief Describes the data used by acds create key set. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct acds_handoff_entry
@@ -2175,11 +2175,11 @@
  */
 /**
  * @struct acds_protocol_t
- * @brief Working data used by acds protocol.
+ * @brief Describes the data used by acds protocol. Its fields are read and updated by the owning subsystem, and any pointed-to storage follows the ownership and cleanup rules documented with those members.
  */
 /**
  * @struct acds_server_t
- * @brief Discovery server state
+ * @brief Keeps the live state for acds server. Its fields hold handles, buffers, counters, and synchronization state used across the operation; initialize it through the owning API and release its resources before the object itself goes away.
  */
 /**
  * @struct acds_session_create_params_t

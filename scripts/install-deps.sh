@@ -482,19 +482,16 @@ if [ -z "$go_switch" ] || { [ "$go_automatic" = 0 ] &&
   GOBIN="$go_bin" go install "golang.org/dl/go${go_tool_version}@latest"
   "$go_bin/go${go_tool_version}" download
 fi
-echo ""
-echo "Dependencies installed successfully!"
-echo "You can now run: cmake --build --preset debug"
-
 # Vite+ installs the workspace's selected package manager and Node toolchain.
 if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
-  if ! sudo -H -u "$SUDO_USER" bash -c '[ -r "$HOME/.config/vite-plus/env" ] && . "$HOME/.config/vite-plus/env"; command -v vp >/dev/null'; then
+  if ! sudo -H -u "$SUDO_USER" bash -c 'export PATH="$HOME/.vite-plus/bin:$HOME/.local/share/vite-plus/bin:$PATH"; [ -r "$HOME/.config/vite-plus/env" ] && . "$HOME/.config/vite-plus/env"; command -v vp >/dev/null'; then
     sudo -H -u "$SUDO_USER" bash -c 'curl -fsSL https://vite.plus | bash'
   fi
   run_vp() {
-    sudo -H -u "$SUDO_USER" bash -c '[ -r "$HOME/.config/vite-plus/env" ] && . "$HOME/.config/vite-plus/env"; exec vp "$@"' _ "$@"
+    sudo -H -u "$SUDO_USER" bash -c 'export PATH="$HOME/.vite-plus/bin:$HOME/.local/share/vite-plus/bin:$PATH"; [ -r "$HOME/.config/vite-plus/env" ] && . "$HOME/.config/vite-plus/env"; exec vp "$@"' _ "$@"
   }
 else
+  export PATH="$HOME/.vite-plus/bin:$HOME/.local/share/vite-plus/bin:$PATH"
   if ! command -v vp >/dev/null 2>&1; then
     curl -fsSL https://vite.plus | bash
   fi
@@ -503,5 +500,9 @@ else
   fi
   run_vp() { vp "$@"; }
 fi
-(cd "$(dirname "$0")/.." && run_vp install --ignore-scripts)
-(cd "$(dirname "$0")/../web" && run_vp install --ignore-scripts)
+(cd "$(dirname "$0")/.." && run_vp install --frozen-lockfile --ignore-scripts)
+(cd "$(dirname "$0")/../web" && run_vp install --frozen-lockfile --ignore-scripts)
+
+echo ""
+echo "Dependencies installed successfully!"
+echo "You can now run: cmake --build --preset debug"

@@ -12,7 +12,6 @@ export {
   submitAudioVisualizationSamples,
   submitAudioSamples,
   renderAudioVisualization,
-  formatAudioVisualizationFrame,
   renderAudioVisualizationFrame,
   isWasmReady,
   getMirrorModule,

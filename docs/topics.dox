@@ -52,7 +52,7 @@
  * - @ref topic_handshake "Handshake Protocol"
  * - @ref topic_keys "Key Management"
  * - @ref md_docs_2crypto-policy "Connection security policy"
- * - @ref md_docs_2crypto-records "Authenticated packet records and rotation"
+ * - [Authenticated packet records and rotation](md_docs_2crypto-records.html) - Packet authentication, replay protection, and key rotation
  *
  * @section topics_video 📹 Video
  *
