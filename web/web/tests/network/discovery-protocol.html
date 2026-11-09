@@ -48,6 +48,14 @@
           }
           results.textContent = lines.join("\n");
         };
+        test("batch processing preserves event order", (p) => {
+          const batch = p.processBatch([
+            { type: "snapshot" },
+            { type: "leave" },
+          ]);
+          assert(batch.length === 2, "batch length");
+          assert(batch[0] && batch[1], "batch results");
+        });
         test("invalid name is rejected before transport sends", (p) => {
           assert(enter(p, false, "bad name", "") !== 0, "reject");
           assert(!packets.length, "no send");
@@ -195,7 +203,7 @@
           );
         });
         client.delete();
-        results.textContent = lines.join("\n") + "\n\n9 tests passed";
+        results.textContent = lines.join("\n") + "\n\n10 tests passed";
         document.title = "PASS: shared C discovery protocol";
       } catch (error) {
         results.textContent = lines.join("\n") + "\nFAIL " + error.stack;

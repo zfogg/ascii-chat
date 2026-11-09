@@ -456,6 +456,7 @@ export interface DiscoveryBinding extends ClassHandle {
   callbackToken(): number;
   close(): void;
   process(_0: any): any;
+  processBatch(_0: any): any;
 }
 
 export interface BrowserHostBinding extends ClassHandle {

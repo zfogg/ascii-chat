@@ -66,6 +66,21 @@ public:
       return snapshot();
     return result(SET_ERRNO(ERROR_INVALID_PARAM, "Unknown discovery event"));
   }
+  emscripten::val processBatch(emscripten::val events) {
+    emscripten::val batch = emscripten::val::array();
+    if (!session_) {
+      batch.call<void>("push", result(SET_ERRNO(ERROR_INVALID_STATE, "Discovery session is closed")));
+      return batch;
+    }
+    const unsigned count = events["length"].as<unsigned>();
+    if (count > 128) {
+      batch.call<void>("push", result(SET_ERRNO(ERROR_INVALID_PARAM, "Discovery event batch exceeds 128 events")));
+      return batch;
+    }
+    for (unsigned index = 0; index < count; ++index)
+      batch.call<void>("push", process(events[index]));
+    return batch;
+  }
   int enter(bool create, const std::string &name, ProtocolBytes password) {
     auto secret = protocol_input(password, true);
     int result = acds_protocol_enter(session_, create, name.c_str(), reinterpret_cast<const char *>(secret.data()));
@@ -129,5 +144,6 @@ EMSCRIPTEN_BINDINGS(ascii_chat_discovery) {
       .function("valid", &DiscoveryBinding::valid)
       .function("callbackToken", &DiscoveryBinding::callbackToken)
       .function("close", &DiscoveryBinding::close)
-      .function("process", &DiscoveryBinding::process);
+      .function("process", &DiscoveryBinding::process)
+      .function("processBatch", &DiscoveryBinding::processBatch);
 }
