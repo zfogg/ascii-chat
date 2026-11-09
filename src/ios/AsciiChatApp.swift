@@ -364,6 +364,7 @@ private enum IOSTheme {
     static let purple = Color(red: 0.77, green: 0.45, blue: 0.98)
     static let teal = Color(red: 0.30, green: 0.90, blue: 0.78)
     static let pink = Color(red: 0.96, green: 0.45, blue: 0.82)
+    static let red = Color(red: 0.95, green: 0.22, blue: 0.28)
     static let muted = Color(red: 0.68, green: 0.71, blue: 0.80)
 }
 
@@ -418,6 +419,9 @@ private struct IOSSettingsView: View {
                     VStack(alignment: .leading) {
                         Text(fps == 0 ? "Frame rate: Auto (camera)" : "Frame rate: \(Int(fps)) FPS")
                         Slider(value: $fps, in: 0...144, step: 1)
+                            .onChange(of: fps) { _, value in
+                                applyJSON(["fps": Int(value)])
+                            }
                     }
                     VStack(alignment: .leading) {
                         Text("Font size: \(renderFontSize, specifier: "%.1f") pt")
@@ -430,15 +434,24 @@ private struct IOSSettingsView: View {
                 }
                 Section("Audio") {
                     Toggle("Audio", isOn: $audioEnabled)
-                    TextField("Microphone index", text: $microphoneIndex).keyboardType(.numberPad)
-                    TextField("Speakers index", text: $speakersIndex).keyboardType(.numberPad)
+                    LabeledContent("Microphone index") {
+                        TextField("Index", text: $microphoneIndex).keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    LabeledContent("Speakers index") {
+                        TextField("Index", text: $speakersIndex).keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                    }
                     VStack(alignment: .leading) {
                         Text("Microphone volume: \(microphoneVolume, specifier: "%.2f")")
                         Slider(value: $microphoneVolume, in: 0...2, step: 0.05)
                     }
                 }
                 Section("Camera") {
-                    TextField("Webcam index", text: $webcamIndex).keyboardType(.numberPad)
+                    LabeledContent("Webcam index") {
+                        TextField("Index", text: $webcamIndex).keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                    }
                 }
                 Section("Connection") {
                     TextField("Server address", text: $address)
@@ -596,6 +609,124 @@ private struct IOSModeButtonStyle: ButtonStyle {
     }
 }
 
+private enum TUISwitcherItem: String, CaseIterable, Identifiable {
+    case help, logs, stats, sync, errors, update, media
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .help: return "Help"
+        case .logs: return "Live logs"
+        case .stats: return "Statistics"
+        case .sync: return "Sync state"
+        case .errors: return "Error stacks"
+        case .update: return "Check updates"
+        case .media: return "Open media"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .help: return "Keyboard shortcuts"
+        case .logs: return "Search live output"
+        case .stats: return "Runtime metrics"
+        case .sync: return "C synchronization"
+        case .errors: return "Diagnostic stacks"
+        case .update: return "Version checker"
+        case .media: return "Path or URL"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .help: return "questionmark.circle.fill"
+        case .logs: return "text.alignleft"
+        case .stats: return "chart.xyaxis.line"
+        case .sync: return "arrow.triangle.2.circlepath"
+        case .errors: return "exclamationmark.triangle.fill"
+        case .update: return "arrow.down.circle.fill"
+        case .media: return "play.rectangle.fill"
+        }
+    }
+
+    var keyBytes: String {
+        switch self {
+        case .help: return "?"
+        case .logs: return "]"
+        case .stats: return "="
+        case .sync: return "0"
+        case .errors: return "`"
+        case .update: return "\u{1b}[24~"
+        case .media: return "o"
+        }
+    }
+}
+
+private struct TUISwitcher: View {
+    let onSelect: (TUISwitcherItem) -> Void
+    let onClose: () -> Void
+
+    private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Choose a TUI")
+                            .font(.system(size: 30, weight: .black, design: .rounded))
+                            .foregroundStyle(Color.white)
+                        Text("Open a native terminal view without leaving your session.")
+                            .font(.subheadline)
+                            .foregroundStyle(IOSTheme.muted)
+                    }
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(TUISwitcherItem.allCases) { item in
+                            Button { onSelect(item) } label: {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Image(systemName: item.symbol)
+                                        .font(.system(size: 22, weight: .semibold))
+                                        .foregroundStyle(item == .errors ? IOSTheme.red : IOSTheme.websiteCyan)
+                                    Text(item.title)
+                                        .font(.headline.weight(.bold))
+                                        .foregroundStyle(Color.white)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.75)
+                                    Text(item.subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(IOSTheme.muted)
+                                        .lineLimit(1)
+                                    Spacer(minLength: 0)
+                                    Text(item.keyBytes == "\u{1b}[24~" ? "F12" : item.keyBytes)
+                                        .font(.system(.caption, design: .monospaced).weight(.semibold))
+                                        .foregroundStyle(IOSTheme.websiteTeal)
+                                }
+                                .frame(maxWidth: .infinity, minHeight: 116, alignment: .leading)
+                                .padding(14)
+                                .background(IOSTheme.panel, in: RoundedRectangle(cornerRadius: 16))
+                                .overlay { RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1) }
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Open \(item.title) TUI")
+                            .accessibilityHint("Keyboard shortcut \(item.keyBytes == "\u{1b}[24~" ? "F12" : item.keyBytes)")
+                        }
+                    }
+                }
+                .padding(20)
+            }
+            .scrollContentBackground(.hidden)
+            .background(IOSTheme.background)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done", action: onClose).tint(IOSTheme.websiteTeal)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
 struct ContentView: View {
     @State private var sessionModel = IOSSessionModel()
     @Environment(\.scenePhase) private var scenePhase
@@ -609,6 +740,8 @@ struct ContentView: View {
     @State private var selectedAudioDevice: Int32 = 0
     @State private var commandLine = ""
     @State private var showSettings = false
+    @State private var showTUISwitcher = false
+    @State private var activeTUI: TUISwitcherItem?
 
     private func applySettings(_ values: [String: Any]) {
         var merged = (UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
@@ -676,10 +809,49 @@ struct ContentView: View {
         platform_disable_keepawake()
     }
 
+    private func selectTUI(_ item: TUISwitcherItem) {
+        activeTUI = item
+        let bytes = Array(item.keyBytes.utf8)
+        bytes.withUnsafeBytes { rawBuffer in
+            guard let baseAddress = rawBuffer.baseAddress, !bytes.isEmpty else { return }
+            _ = ios_stdin_bridge_push(baseAddress, bytes.count)
+        }
+        // Let the native input loop consume the shortcut and publish its first
+        // frame before removing the selector from above the render bridge.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            showTUISwitcher = false
+        }
+    }
+
+    private func disableTUI() {
+        let escape = "\u{1b}"
+        escape.withCString { pointer in _ = ios_stdin_bridge_push(pointer, escape.utf8.count) }
+        activeTUI = nil
+    }
+
     private var sessionView: some View {
         GeometryReader { proxy in
-            CameraAsciiView()
-            .frame(width: proxy.size.width, height: proxy.size.height)
+            ZStack {
+                CameraAsciiView()
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                if let activeTUI {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button("Disable TUI") { disableTUI() }
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(Color.white)
+                                .padding(.horizontal, 14)
+                                .frame(height: 42)
+                                .background(IOSTheme.red, in: Capsule())
+                                .accessibilityLabel("Disable \(activeTUI.title) TUI")
+                        }
+                        .padding(.top, 62)
+                        .padding(.horizontal, 14)
+                        Spacer()
+                    }
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
@@ -812,6 +984,17 @@ struct ContentView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                     guard !didStart else { return }
                     startSelectedSession()
+                    if ProcessInfo.processInfo.arguments.contains("--auto-open-tui") {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            showTUISwitcher = true
+                        }
+                    }
+                    if let value = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--auto-tui=") })?.split(separator: "=", maxSplits: 1).last,
+                       let item = TUISwitcherItem(rawValue: String(value)) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                            selectTUI(item)
+                        }
+                    }
                 }
             }
         }
@@ -858,14 +1041,26 @@ struct ContentView: View {
             stopSelectedSession()
         }
         .overlay(alignment: .topLeading) {
-            Button { showSettings = true } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(IOSTheme.websiteCyan.opacity(0.9))
-                    .frame(width: 56, height: 56)
-                    .contentShape(Rectangle())
+            HStack(spacing: 4) {
+                Button { showSettings = true } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(IOSTheme.websiteCyan.opacity(0.9))
+                        .frame(width: 56, height: 56)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Settings")
+                if sessionStarted {
+                    Button { showTUISwitcher = true } label: {
+                        Image(systemName: "rectangle.3.group.fill")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(IOSTheme.websiteTeal.opacity(0.95))
+                            .frame(width: 56, height: 56)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("TUI switcher")
+                }
             }
-            .accessibilityLabel("Settings")
             .padding(.top, 8)
             .padding(.leading, 8)
         }
@@ -874,6 +1069,9 @@ struct ContentView: View {
                 UserDefaults.standard.set(fontSize, forKey: "ascii-chat.ios.render-font-size")
                 configureRenderBridge(fontSize: fontSize)
             }
+        }
+        .sheet(isPresented: $showTUISwitcher) {
+            TUISwitcher(onSelect: selectTUI, onClose: { showTUISwitcher = false })
         }
     }
 }
