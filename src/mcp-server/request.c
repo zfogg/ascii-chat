@@ -10,7 +10,6 @@
 #define MCP_REQUEST_RESERVED_ARGS 6
 
 #include "mcp.h"
-#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/options/json.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/registry/core.h>
@@ -331,19 +330,22 @@ static asciichat_error_t source_file(const mcp_policy_t *p, yyjson_val *a, mcp_r
   char file[PLATFORM_MAX_PATH_LENGTH];
   SAFE_SNPRINTF(file, sizeof(file), "%s/media", r->upload_dir);
   size_t cap = yyjson_get_len(data) / 4 * 3 + 3, len = 0;
-  SAFE_MALLOC_DEFER_FREE(bytes, cap, unsigned char *);
+  unsigned char *bytes = SAFE_MALLOC(cap, unsigned char *);
   int rc = sodium_base642bin(bytes, cap, yyjson_get_str(data), yyjson_get_len(data), "\r\n\t ", &len, NULL,
                              sodium_base64_VARIANT_ORIGINAL);
   if (rc || !len || len > 16 * 1024 * 1024) {
+    SAFE_FREE(bytes);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid base64 or media exceeds 16 MiB");
   }
   FILE *f = platform_fopen("mcp-upload", file, "wb");
   if (!f) {
+    SAFE_FREE(bytes);
     return SET_ERRNO(ERROR_FILE_OPERATION, "Cannot stage uploaded media");
   }
   bool wrote = fwrite(bytes, 1, len, f) == len;
   if (fclose(f) != 0)
     wrote = false;
+  SAFE_FREE(bytes);
   if (!wrote)
     return SET_ERRNO(ERROR_FILE_OPERATION, "Cannot write uploaded media");
   return option(r, "file", file);

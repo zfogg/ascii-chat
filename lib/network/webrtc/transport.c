@@ -1,4 +1,3 @@
-#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/network/acip/backpressure.h>
 /**
  * @file network/acip/transport_webrtc.c
@@ -786,15 +785,16 @@ static acip_transport_t *webrtc_transport_create(webrtc_peer_connection_t *peer_
   }
 
   // Allocate transport structure
-  SAFE_CALLOC_DEFER_FREE(transport, 1, sizeof(acip_transport_t), acip_transport_t *);
+  acip_transport_t *transport = SAFE_CALLOC(1, sizeof(acip_transport_t), acip_transport_t *);
   if (!transport) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebRTC transport");
     return NULL;
   }
 
   // Allocate WebRTC-specific data
-  SAFE_CALLOC_DEFER_FREE(wrtc_data, 1, sizeof(webrtc_transport_data_t), webrtc_transport_data_t *);
+  webrtc_transport_data_t *wrtc_data = SAFE_CALLOC(1, sizeof(webrtc_transport_data_t), webrtc_transport_data_t *);
   if (!wrtc_data) {
+    SAFE_FREE(transport);
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebRTC transport data");
     return NULL;
   }
@@ -802,40 +802,50 @@ static acip_transport_t *webrtc_transport_create(webrtc_peer_connection_t *peer_
   // Create receive queue
   wrtc_data->recv_queue = ringbuffer_create(sizeof(webrtc_recv_msg_t), WEBRTC_RECV_QUEUE_SIZE);
   if (!wrtc_data->recv_queue) {
+    SAFE_FREE(wrtc_data);
+    SAFE_FREE(transport);
     SET_ERRNO(ERROR_MEMORY, "Failed to create receive queue");
     return NULL;
   }
 
-  defer_named(recv_queue, ringbuffer_destroy(wrtc_data->recv_queue));
-
   // Initialize synchronization primitives
   if (mutex_init(&wrtc_data->queue_mutex, "webrtc_queue") != 0) {
+    ringbuffer_destroy(wrtc_data->recv_queue);
+    SAFE_FREE(wrtc_data);
+    SAFE_FREE(transport);
     SET_ERRNO(ERROR_INTERNAL, "Failed to initialize queue mutex");
     return NULL;
   }
 
-  defer_named(queue_mutex, mutex_destroy(&wrtc_data->queue_mutex));
-
   if (cond_init(&wrtc_data->queue_cond, "queue") != 0) {
+    mutex_destroy(&wrtc_data->queue_mutex);
+    ringbuffer_destroy(wrtc_data->recv_queue);
+    SAFE_FREE(wrtc_data);
+    SAFE_FREE(transport);
     SET_ERRNO(ERROR_INTERNAL, "Failed to initialize queue condition variable");
     return NULL;
   }
 
-  defer_named(queue_cond, cond_destroy(&wrtc_data->queue_cond));
-
   if (mutex_init(&wrtc_data->state_mutex, "webrtc_state") != 0) {
+    cond_destroy(&wrtc_data->queue_cond);
+    mutex_destroy(&wrtc_data->queue_mutex);
+    ringbuffer_destroy(wrtc_data->recv_queue);
+    SAFE_FREE(wrtc_data);
+    SAFE_FREE(transport);
     SET_ERRNO(ERROR_INTERNAL, "Failed to initialize state mutex");
     return NULL;
   }
 
-  defer_named(state_mutex, mutex_destroy(&wrtc_data->state_mutex));
-
   if (mutex_init(&wrtc_data->send_mutex, "webrtc_send") != 0) {
+    mutex_destroy(&wrtc_data->state_mutex);
+    cond_destroy(&wrtc_data->queue_cond);
+    mutex_destroy(&wrtc_data->queue_mutex);
+    ringbuffer_destroy(wrtc_data->recv_queue);
+    SAFE_FREE(wrtc_data);
+    SAFE_FREE(transport);
     SET_ERRNO(ERROR_INTERNAL, "Failed to initialize send mutex");
     return NULL;
   }
-
-  defer_named(send_mutex, mutex_destroy(&wrtc_data->send_mutex));
 
   // Initialize WebRTC data
   wrtc_data->peer_conn = peer_conn;
@@ -865,6 +875,13 @@ static acip_transport_t *webrtc_transport_create(webrtc_peer_connection_t *peer_
 
   asciichat_error_t result = webrtc_datachannel_set_callbacks(data_channel, &callbacks);
   if (result != ASCIICHAT_OK) {
+    mutex_destroy(&wrtc_data->send_mutex);
+    mutex_destroy(&wrtc_data->state_mutex);
+    cond_destroy(&wrtc_data->queue_cond);
+    mutex_destroy(&wrtc_data->queue_mutex);
+    ringbuffer_destroy(wrtc_data->recv_queue);
+    SAFE_FREE(wrtc_data);
+    SAFE_FREE(transport);
     SET_ERRNO(ERROR_INTERNAL, "Failed to set DataChannel callbacks");
     return NULL;
   }
@@ -880,20 +897,11 @@ static acip_transport_t *webrtc_transport_create(webrtc_peer_connection_t *peer_
   // Register WebRTC transport implementation data with transport as parent
   NAMED_REGISTER(wrtc_data, "impl", "webrtc_impl", "0x%tx", (uintptr_t)(const void *)(transport));
 
-  // The transport now owns its queue and synchronization primitives.
-  defer_cancel(send_mutex);
-  defer_cancel(state_mutex);
-  defer_cancel(queue_cond);
-  defer_cancel(queue_mutex);
-  defer_cancel(recv_queue);
-  acip_transport_t *owned_transport = transport;
-  transport = NULL;
-  wrtc_data = NULL;
-  if (acip_outbound_create(owned_transport) != ASCIICHAT_OK) {
-    acip_transport_destroy(owned_transport);
+  if (acip_outbound_create(transport) != ASCIICHAT_OK) {
+    acip_transport_destroy(transport);
     return NULL;
   }
-  return owned_transport;
+  return transport;
 }
 
 acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_conn, webrtc_data_channel_t *data_channel,
