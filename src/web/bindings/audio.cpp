@@ -65,6 +65,19 @@ public:
     }
     return result;
   }
+  int processBatch(emscripten::val inputs, emscripten::val outputs) {
+    if (!processor_)
+      return SET_ERRNO(ERROR_INVALID_STATE, "Audio processor is not initialized");
+    const unsigned count = inputs["length"].as<unsigned>();
+    if (count > 128 || outputs["length"].as<unsigned>() != count)
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio processor batch size: %u", count);
+    for (unsigned index = 0; index < count; ++index) {
+      const int result = process(AudioSamples(inputs[index]), AudioSamples(outputs[index]));
+      if (result)
+        return result;
+    }
+    return 0;
+  }
 
 private:
   audio_processor *processor_;
@@ -179,7 +192,8 @@ EMSCRIPTEN_BINDINGS(ascii_chat_audio) {
       .constructor<int, bool, unsigned>()
       .constructor<int, bool, unsigned, int>()
       .function("valid", &AudioProcessorBinding::valid)
-      .function("process", &AudioProcessorBinding::process);
+      .function("process", &AudioProcessorBinding::process)
+      .function("processBatch", &AudioProcessorBinding::processBatch);
   emscripten::class_<OpusCodecBinding>("OpusCodecBinding")
       .constructor<int, int, int, unsigned>()
       .function("valid", &OpusCodecBinding::valid)

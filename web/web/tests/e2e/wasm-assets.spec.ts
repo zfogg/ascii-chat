@@ -481,6 +481,10 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
       status: dsp.process(input, output),
       sample: output[0],
       bad: dsp.process(input, new Float32Array(1)),
+      batch: dsp.processBatch(
+        [input, input],
+        [new Float32Array(input.length), new Float32Array(input.length)],
+      ),
     };
     dsp.delete();
     const mono = new module.AudioProcessorBinding(48000, true, 960, 1);
@@ -658,6 +662,7 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     status: 0,
     sample: 0.25,
     bad: 86,
+    batch: 0,
   });
   expect(result.monoStatus).toBe(0);
   expect(result.monoSample).toBe(0.125);
