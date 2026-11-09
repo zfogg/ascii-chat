@@ -20,7 +20,6 @@ runs:
       shell: bash
       env:
         ASCII_CHAT_QUESTION_PROMPT_RESPONSE: y
-        ASCIICHAT_RESOURCE_DIR: ${{ github.workspace }}/build
       run: |
         chmod +x build/bin/ascii-chat
         mkdir -p share/man/man1
