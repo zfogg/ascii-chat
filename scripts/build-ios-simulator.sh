@@ -11,7 +11,7 @@ if [[ -f "$build_dir/CMakeCache.txt" ]] && ! grep -q "^CMAKE_OSX_ARCHITECTURES:S
   echo "$build_dir is configured for a different simulator architecture; choose a fresh build directory" >&2
   exit 2
 fi
-cmake -S . -B "$build_dir" \
+cmake -S . -B "$build_dir" -G Ninja \
   -DBUILD_IOS_SIM=ON \
   -DCMAKE_OSX_ARCHITECTURES="$sim_arch"
 cmake --build "$build_dir" --target ascii-chat-ios-app -j"${JOBS:-4}"
