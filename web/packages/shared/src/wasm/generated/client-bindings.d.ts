@@ -536,8 +536,8 @@ interface EmbindModule {
   };
   ClientSessionBinding: {
     new (_0: OptionsPatch): ClientSessionBinding;
+    errorAction(_0: number): number;
   };
-  network_error_action(_0: number): number;
   browser_error_dismiss(): void;
   parseKey(_0: number, _1: boolean, _2: KeyInput): KeyParseResult;
   keyParserError(): string;

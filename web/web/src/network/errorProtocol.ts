@@ -19,7 +19,7 @@ export function presentRemoteError(
 ): RemoteErrorAction {
   try {
     const error = decodeRemoteError(payload);
-    const action = getClientModule()!.network_error_action(error.code);
+    const action = getClientModule()!.ClientSessionBinding.errorAction(error.code);
     reportProtocolError(error.code, error.message, origin);
     return action;
   } catch (error) {

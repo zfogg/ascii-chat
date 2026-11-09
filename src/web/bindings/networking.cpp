@@ -22,6 +22,9 @@ extern "C" {
 
 class ClientSessionBinding {
 public:
+  static int errorAction(int code) {
+    return static_cast<int>(network_error_action(static_cast<asciichat_error_t>(code)));
+  }
   explicit ClientSessionBinding(OptionsPatch options) {
     transport_.reset(browser_transport_create());
     if (transport_) {
@@ -332,9 +335,5 @@ EMSCRIPTEN_BINDINGS(ascii_chat_network) {
       .function("error", &ClientSessionBinding::error)
       .function("close", &ClientSessionBinding::close)
       .function("process", &ClientSessionBinding::process);
-
-  emscripten::function(
-      "network_error_action",
-      +[](int code) { return static_cast<int>(network_error_action(static_cast<asciichat_error_t>(code))); });
 
 }

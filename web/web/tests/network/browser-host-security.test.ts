@@ -7,7 +7,7 @@ const harness = vi.hoisted(() => ({
   packet: (_packet: { type: number }, _payload: Uint8Array) => {},
   disconnected: vi.fn(),
   module: {
-    network_error_action: () => 1,
+    ClientSessionBinding: { errorAction: () => 1 },
     hostPacketCallback: undefined as
       | undefined
       | ((id: number, bytes: Uint8Array) => void),
