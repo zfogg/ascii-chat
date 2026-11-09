@@ -36,10 +36,10 @@ private:
 class TranslationUnit {
 public:
   TranslationUnit(CXIndex index, const std::string &file, const std::vector<const char *> &arguments,
-                  CXUnsavedFile *unsaved = nullptr, unsigned unsaved_count = 0) {
-    const auto error =
-        clang_parseTranslationUnit2(index, file.c_str(), arguments.data(), static_cast<int>(arguments.size()), unsaved,
-                                    unsaved_count, CXTranslationUnit_DetailedPreprocessingRecord, &value_);
+                  CXUnsavedFile *unsaved = nullptr, unsigned unsaved_count = 0, bool detailed = true) {
+    const auto error = clang_parseTranslationUnit2(
+        index, file.c_str(), arguments.data(), static_cast<int>(arguments.size()), unsaved, unsaved_count,
+        detailed ? CXTranslationUnit_DetailedPreprocessingRecord : 0, &value_);
     if (error != CXError_Success || !value_)
       throw std::runtime_error("libclang could not parse " + file);
   }
@@ -75,7 +75,7 @@ private:
 inline void validate_generated(CXIndex index, const std::string &file, const std::vector<const char *> &arguments,
                                const std::string &content) {
   CXUnsavedFile generated{file.c_str(), content.data(), static_cast<unsigned long>(content.size())};
-  TranslationUnit validation(index, file, arguments, &generated, 1);
+  TranslationUnit validation(index, file, arguments, &generated, 1, false);
   const auto diagnostics = validation.errors();
   if (!diagnostics.empty())
     throw std::runtime_error("generated C is invalid: " + diagnostics.front());
