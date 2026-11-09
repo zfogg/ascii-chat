@@ -54,6 +54,10 @@ typedef struct {
   const char *tls_private_key;
   size_t max_connections;
   size_t max_request_body_bytes;
+  /** Maximum requests per peer during the configured rate window; zero uses the safe default. */
+  size_t max_requests_per_peer;
+  /** Request rate window in seconds; zero uses the safe default. */
+  uint32_t request_rate_window_seconds;
   http_request_fn on_request;
   http_connection_fn on_connection;
   http_error_fn on_error;

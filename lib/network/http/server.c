@@ -28,6 +28,7 @@ struct http_server {
   size_t connections;
   http_client_t *clients;
   rate_limiter_t *rate_limiter;
+  rate_limit_config_t request_rate_limit;
 };
 struct http_request {
   http_request_info_t info;
@@ -337,8 +338,8 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
   request.body_length = view->body_length;
   request.info.user_data = client->server->config.user_data;
   bool allowed = false;
-  if (rate_limiter_check(client->server->rate_limiter, client->peer_address, RATE_EVENT_HTTP_REQUEST, NULL, &allowed) !=
-          ASCIICHAT_OK ||
+  if (rate_limiter_check(client->server->rate_limiter, client->peer_address, RATE_EVENT_HTTP_REQUEST,
+                         &client->server->request_rate_limit, &allowed) != ASCIICHAT_OK ||
       !allowed) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
     http_response_t limited = {
@@ -397,8 +398,8 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   if (!parse_request(c, &r))
     return;
   bool allowed = false;
-  if (rate_limiter_check(c->server->rate_limiter, c->peer_address, RATE_EVENT_HTTP_REQUEST, NULL, &allowed) !=
-          ASCIICHAT_OK ||
+  if (rate_limiter_check(c->server->rate_limiter, c->peer_address, RATE_EVENT_HTTP_REQUEST,
+                         &c->server->request_rate_limit, &allowed) != ASCIICHAT_OK ||
       !allowed) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
     http_response_t limited = {.stream = s, .status = 429};
@@ -475,6 +476,13 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
     return SET_ERRNO(ERROR_MEMORY, "Cannot initialize HTTP rate limiter");
   }
   s->config = *cfg;
+  s->request_rate_limit.max_events =
+      cfg->max_requests_per_peer
+          ? (uint32_t)(cfg->max_requests_per_peer > UINT32_MAX ? UINT32_MAX : cfg->max_requests_per_peer)
+          : DEFAULT_RATE_LIMITS[RATE_EVENT_HTTP_REQUEST].max_events;
+  s->request_rate_limit.window_secs = cfg->request_rate_window_seconds
+                                          ? cfg->request_rate_window_seconds
+                                          : DEFAULT_RATE_LIMITS[RATE_EVENT_HTTP_REQUEST].window_secs;
   if (uv_loop_init(&s->loop) != 0) {
     rate_limiter_destroy(s->rate_limiter);
     SAFE_FREE(s);
