@@ -45,6 +45,7 @@ RUN pacman -S --noconfirm --needed \
   which \
   openssh \
   gnupg \
+  patch \
   libc++ \
   libc++abi \
   python-pyte \

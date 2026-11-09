@@ -105,7 +105,11 @@ function(apply_patch)
     # Log what we're doing
     message(STATUS "Applying ${DEP_NAME} patch #${PATCH_PATCH_NUM}: ${PATCH_DESCRIPTION}...")
 
-    # Check if patch can be applied
+    # Check if patch can be applied.  Dependency sources mounted from a
+    # Windows worktree may contain submodule .git pointer files whose paths
+    # are not meaningful inside a Linux container.  In that case git apply
+    # fails before it examines the patch, so use patch(1), which only needs
+    # the source files themselves.
     execute_process(
         COMMAND git apply --check "${PATCH_PATCH_FILE}"
         WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
@@ -114,14 +118,48 @@ function(apply_patch)
         ERROR_VARIABLE PATCH_CHECK_ERROR
     )
 
+    set(PATCH_USE_GIT TRUE)
+    execute_process(
+        COMMAND git rev-parse --is-inside-work-tree
+        WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
+        RESULT_VARIABLE PATCH_GIT_RESULT
+        OUTPUT_QUIET
+        ERROR_QUIET
+    )
+    if(NOT PATCH_GIT_RESULT EQUAL 0)
+        find_program(PATCH_EXECUTABLE patch)
+        if(NOT PATCH_EXECUTABLE)
+            message(FATAL_ERROR
+                "Cannot apply ${DEP_NAME} patch: dependency has no usable Git metadata "
+                "and patch(1) is unavailable")
+        endif()
+        set(PATCH_USE_GIT FALSE)
+        execute_process(
+            COMMAND "${PATCH_EXECUTABLE}" --dry-run -p1 -i "${PATCH_PATCH_FILE}"
+            WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
+            RESULT_VARIABLE PATCH_CHECK_RESULT
+            OUTPUT_QUIET
+            ERROR_VARIABLE PATCH_CHECK_ERROR
+        )
+    endif()
+
     if(PATCH_CHECK_RESULT EQUAL 0)
         # Patch can be applied cleanly
-        execute_process(
-            COMMAND git apply "${PATCH_PATCH_FILE}"
-            WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
-            RESULT_VARIABLE PATCH_APPLY_RESULT
-            ERROR_VARIABLE PATCH_ERROR
-        )
+        if(PATCH_USE_GIT)
+            execute_process(
+                COMMAND git apply "${PATCH_PATCH_FILE}"
+                WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
+                RESULT_VARIABLE PATCH_APPLY_RESULT
+                ERROR_VARIABLE PATCH_ERROR
+            )
+        else()
+            execute_process(
+                COMMAND "${PATCH_EXECUTABLE}" -p1 -i "${PATCH_PATCH_FILE}"
+                WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
+                RESULT_VARIABLE PATCH_APPLY_RESULT
+                ERROR_VARIABLE PATCH_ERROR
+            )
+        endif()
 
         if(PATCH_APPLY_RESULT EQUAL 0)
             message(STATUS "  ${DEP_NAME} patch #${PATCH_PATCH_NUM} applied successfully")
