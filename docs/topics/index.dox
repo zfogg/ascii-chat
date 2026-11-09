@@ -238,6 +238,12 @@
  * - [Connection security policy](md_docs_2crypto-policy.html)
  * - [Discovery session authentication keys](md_docs_2discovery-key-sets.html)
  * - [Discovery host designation](md_docs_2host-designation.html)
+ * - [Authenticated packet records and rotation](md_docs_2crypto-records.html)
+ * - [Network copy reduction](md_docs_2network-copy-reduction.html)
+ * - [Measured host selection and handoff](md_docs_2measured-host-handoff.html)
+ * - [Shared connection ownership](md_docs_2client-connection-lifecycle.html)
+ * - [Shared session TUI](md_docs_2session-tui.html)
+ * - [Shared statistics collection](md_docs_2stats.html)
  *
  * @subsection authored_operations Build, release, and operations
  *
@@ -257,6 +263,8 @@
  * - [Keymask public-key art](md_docs_2keymask.html)
  * - [Zalgo terminal effect](md_docs_2zalgo.html)
  * - [OpenTelemetry](md_docs_2telemetry.html)
+ * - [Sync inspector activity](md_docs_2sync-activity.html)
+ * - [Sync primitive inspector](md_docs_2sync-tui.html)
  *
  * @subsection authored_testing Testing and validation
  *
@@ -266,16 +274,6 @@
  * - [Audio reliability and validation](md_docs_2audio-reliability.html)
  * - [FFTW spectral audio processing](md_docs_2audio-spectral.html)
  * - [Face Follow](md_docs_2face-follow.html)
- *
- * @subsection authored_research Research and design records
- *
- * - [Network copy reduction](md_docs_2network-copy-reduction.html)
- * - [Measured host selection and handoff](md_docs_2measured-host-handoff.html)
- * - [Shared connection ownership](md_docs_2client-connection-lifecycle.html)
- * - [Shared session TUI](md_docs_2session-tui.html)
- * - [Sync inspector activity](md_docs_2sync-activity.html)
- * - [Sync primitive inspector](md_docs_2sync-tui.html)
- * - [Shared statistics collection](md_docs_2stats.html)
  *
  * @subsection authored_tooling Tooling
  *
