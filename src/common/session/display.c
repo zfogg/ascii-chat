@@ -617,9 +617,10 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   caps_copy.palette_explicit = values->palette_explicit;
   terminal_color_mode_t color_mode_opt = (terminal_color_mode_t)values->color_mode;
   const palette_def_t *builtin = get_builtin_palette(values->palette_type);
-  const char *selected_palette = values->palette_type == PALETTE_CUSTOM ? values->palette_custom
-                                 : builtin                              ? builtin->chars
-                                                                        : ctx->palette_chars;
+  const char *selected_palette = !values->palette_explicit                ? ctx->palette_chars
+                                 : values->palette_type == PALETTE_CUSTOM ? values->palette_custom
+                                 : builtin                                ? builtin->chars
+                                                                          : ctx->palette_chars;
   char palette_chars[ASCII_PALETTE_BUFFER_SIZE];
   SAFE_STRNCPY(palette_chars, selected_palette, sizeof(palette_chars));
   SAFE_FREE(snapshot);

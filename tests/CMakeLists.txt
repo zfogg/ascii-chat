@@ -165,6 +165,9 @@ set(ALL_TIMED_TEST_TARGETS "" CACHE INTERNAL "All test targets for timing")
 
 # White-box contract suites retain explicit production link dependencies.
 function(asciichat_configure_contract target)
+    if(TARGET tests-timer-start)
+        add_dependencies(${target} tests-timer-start)
+    endif()
     set_property(TARGET ${target} PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
     target_link_libraries(${target} PRIVATE ${CRITERION_LIBRARIES})
     target_link_directories(${target} PRIVATE ${CRITERION_LIBRARY_DIRS} ${FFMPEG_LIBRARY_DIRS})

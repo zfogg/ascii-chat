@@ -394,25 +394,49 @@ elif [[ "$PLATFORM" == "linux" ]]; then
   # when system packages are installed through sudo.
   if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
     python_env="$(dirname "$0")/../tests/ascii_chat_tests/.venv"
-    if [ -d "$python_env" ] && [ ! -L "$python_env" ] && [ "$(stat -c %u "$python_env")" -eq 0 ]; then
-      chown -R "$SUDO_USER" "$python_env"
+    if [ -d "$python_env" ] && [ ! -L "$python_env" ]; then
+      # Only repair root-owned entries in this known project environment; do
+      # not follow symlinks into user-managed Python installations.
+      find -P "$python_env" -xdev -user 0 -exec chown -h "$SUDO_USER" {} +
+    fi
+    if [ -n "${UV_PROJECT_ENVIRONMENT:-}" ]; then
+      case "$UV_PROJECT_ENVIRONMENT" in
+        /*) configured_python_env="$UV_PROJECT_ENVIRONMENT" ;;
+        *) configured_python_env="$(dirname "$0")/../tests/ascii_chat_tests/$UV_PROJECT_ENVIRONMENT" ;;
+      esac
+      if [ -e "$configured_python_env" ] && ! sudo -H -u "$SUDO_USER" test -w "$configured_python_env"; then
+        echo >&2 "ERROR: UV_PROJECT_ENVIRONMENT is not writable by $SUDO_USER: $configured_python_env"
+        exit 1
+      fi
+    fi
+    uv_executable="$(command -v uv)"
+    if ! sudo -H -u "$SUDO_USER" test -x "$uv_executable"; then
+      echo "Installing a shared uv executable to /usr/local/bin..."
+      curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
+      uv_executable=/usr/local/bin/uv
     fi
   fi
   run_uv() {
     if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
-      uv_settings=()
-      for name in UV_INDEX_URL UV_EXTRA_INDEX_URL UV_INDEX UV_DEFAULT_INDEX UV_INSECURE_HOST UV_NATIVE_TLS UV_SYSTEM_CERTS; do
-        if [ "${!name+x}" ]; then uv_settings+=("$name=${!name}"); fi
+      # Preserve index configuration and named-index credentials without
+      # placing their values in the process argument list.
+      uv_preserve=UV_INDEX_URL,UV_EXTRA_INDEX_URL,UV_INDEX,UV_DEFAULT_INDEX,UV_INSECURE_HOST,UV_NATIVE_TLS,UV_SYSTEM_CERTS,UV_PROJECT_ENVIRONMENT
+      for name in "${!UV_INDEX_@}"; do
+        uv_preserve+=",$name"
       done
-      sudo -H -u "$SUDO_USER" env "${uv_settings[@]}" "$(command -v uv)" "$@"
+      sudo -H -u "$SUDO_USER" --preserve-env="$uv_preserve" "$uv_executable" "$@"
     else
       uv "$@"
     fi
   }
   run_uv python install 3.15
-  run_uv python pin 3.15
+  if [ "$(id -u)" -ne 0 ] || [ -z "${SUDO_USER:-}" ] || sudo -H -u "$SUDO_USER" test -w "$PWD"; then
+    run_uv python pin 3.15
+  else
+    echo "Skipping Python pin in the non-writable working directory."
+  fi
   uv tool install --upgrade "yt-dlp[default]"
-  run_uv sync --project "$(dirname "$0")/../tests/ascii_chat_tests" --frozen
+  run_uv sync --project "$(dirname "$0")/../tests/ascii_chat_tests" --python 3.15 --frozen
 
 # Windows: Direct to PowerShell script
 elif [[ "$PLATFORM" == "windows" ]]; then
