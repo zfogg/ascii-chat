@@ -1087,7 +1087,10 @@ struct ContentView: View {
                     .labelsHidden()
                     .pickerStyle(.menu)
                     .tint(IOSTheme.cyan)
-                    .onChange(of: selectedAudioDevice) { device in _ = asciichat_ios_audio_select_device(device) }
+                    .onChange(of: selectedAudioDevice) { device in
+                        guard asciichat_ios_audio_select_device(device) == 0 else { return }
+                        UserDefaults.standard.set(Int(device), forKey: "ascii-chat.ios.audio-device-index")
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 18)
@@ -1122,7 +1125,12 @@ struct ContentView: View {
             guard let pointer = asciichat_ios_audio_device_name(Int32(index)) else { return nil }
             return String(cString: pointer)
         }
-        if selectedAudioDevice >= Int32(audioDevices.count) { selectedAudioDevice = 0 }
+        let savedIndex = Int32(UserDefaults.standard.integer(forKey: "ascii-chat.ios.audio-device-index"))
+        let nextIndex = audioDevices.isEmpty ? 0 : min(max(savedIndex, 0), Int32(audioDevices.count - 1))
+        if selectedAudioDevice != nextIndex {
+            selectedAudioDevice = nextIndex
+        }
+        _ = asciichat_ios_audio_select_device(nextIndex)
     }
 
     var body: some View {
