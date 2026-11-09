@@ -536,6 +536,12 @@ private struct IOSSettingsView: View {
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                     TextField("Discovery session string (optional)", text: $sessionString)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    if !sessionString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        ShareLink(item: sessionString) {
+                            Label("Share session string", systemImage: "square.and.arrow.up")
+                        }
+                        .tint(IOSTheme.websiteCyan)
+                    }
                     VStack(alignment: .leading) {
                         Text("Reconnect attempts: \(Int(reconnectAttempts))")
                         Slider(value: $reconnectAttempts, in: 0...20, step: 1)
