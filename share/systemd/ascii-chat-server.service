@@ -9,7 +9,7 @@ Wants=network-online.target
 
 [Service]
 Type=notify
-ExecStart=/usr/bin/ascii-chat server 0.0.0.0 :: --color=false --splash-screen=false --no-check-update --otel-endpoint= --log-file=/dev/null
+ExecStart=/usr/bin/ascii-chat --color=false --splash-screen=false --no-check-update --otel-endpoint= --log-file=/dev/null server 0.0.0.0 ::
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=5

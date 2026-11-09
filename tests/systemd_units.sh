@@ -9,6 +9,8 @@ for unit in "${units[@]}"; do
   grep -q -- '--log-file=/dev/null' "$file"
   grep -q 'StandardOutput=journal' "$file"
   grep -q '^WatchdogSec=' "$file"
+  grep -q "^SyslogIdentifier=ascii-chat-$unit$" "$file"
+  grep -Eq '^ExecStart=/usr/bin/ascii-chat --.* (server|acds|mcp-server)( |$)' "$file"
 done
 test -x "$root/scripts/install-systemd-confs.sh"
 "$root/scripts/install-systemd-confs.sh" --help >/dev/null

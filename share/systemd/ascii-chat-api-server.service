@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=notify
-ExecStart=/usr/bin/ascii-chat server 0.0.0.0 :: --color=false --splash-screen=false --no-check-update --otel-endpoint= --log-file=/dev/null
+ExecStart=/usr/bin/ascii-chat --color=false --splash-screen=false --no-check-update --otel-endpoint= --log-file=/dev/null server 0.0.0.0 ::
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=yes
@@ -15,7 +15,7 @@ ProtectSystem=strict
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=ascii-chat-api
+SyslogIdentifier=ascii-chat-api-server
 WatchdogSec=30s
 
 [Install]

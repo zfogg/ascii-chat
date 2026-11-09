@@ -5,6 +5,7 @@
 #include <sodium.h>
 #include <uv.h>
 #include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/platform/systemd.h>
 #include <uv.h>
 
 static void mcp_stats_view(stats_view_t *view, void *data) {
@@ -97,6 +98,10 @@ int mcp_server_main(void) {
   }
   log_info("MCP server started (%s, %s capabilities, %u render jobs)", s->policy.hosted ? "HTTP" : "stdio",
            s->policy.restricted ? "restricted" : "local", s->policy.max_jobs);
+  if (s->policy.hosted) {
+    platform_systemd_notify_status("MCP HTTP listener started");
+    platform_systemd_notify_ready();
+  }
   stats_runtime_set_provider(mcp_stats_view, s);
   asciichat_error_t err = s->policy.hosted ? mcp_http_run(s) : mcp_stdio_run(s);
   stats_runtime_set_provider(NULL, NULL);

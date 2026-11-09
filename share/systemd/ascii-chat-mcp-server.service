@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=notify
-ExecStart=/usr/bin/ascii-chat mcp-server --transport=http --address=127.0.0.1 --port=27228 --color=false --splash-screen=false --no-check-update --otel-endpoint= --log-file=/dev/null
+ExecStart=/usr/bin/ascii-chat --color=false --splash-screen=false --no-check-update --otel-endpoint= --log-file=/dev/null mcp-server --transport=http --address=127.0.0.1 --port=27228
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=yes
@@ -15,7 +15,7 @@ ProtectSystem=strict
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=ascii-chat-mcp
+SyslogIdentifier=ascii-chat-mcp-server
 WatchdogSec=30s
 
 [Install]

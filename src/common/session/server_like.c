@@ -28,6 +28,7 @@
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/systemd.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/terminal.h>
@@ -376,6 +377,8 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
     result = network_server_start(g_network_server);
     if (result != ASCIICHAT_OK)
       goto cleanup;
+    platform_systemd_notify_status("Listener started");
+    platform_systemd_notify_ready();
   } else {
     goto cleanup;
   }

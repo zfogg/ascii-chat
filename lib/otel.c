@@ -557,6 +557,8 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
     return ASCIICHAT_OK;
   const options_t *o = options_get();
   const char *endpoint = o->otel_endpoint;
+  if (!endpoint || endpoint[0] == '\0')
+    return ASCIICHAT_OK;
   bool endpoint_cli = false, timeout_cli = false;
   for (int i = 1; i < argc; ++i) {
     endpoint_cli |= !strcmp(argv[i], "--otel-endpoint") || !strncmp(argv[i], "--otel-endpoint=", 16);

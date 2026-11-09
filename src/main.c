@@ -277,6 +277,8 @@ static void handle_sigterm(int sig) {
     size_t used = strlen(log_out);
     safe_snprintf(log_out + used, sizeof(log_out) - used, " - shutting down");
   }
+  if (sig == SIGHUP)
+    platform_systemd_notify_reloading();
   // log_console() is async-signal-safe - uses atomic ops and platform_write_all()
   log_console(LOG_INFO, log_out);
 
@@ -840,9 +842,6 @@ int main(int argc, char *argv[]) {
     log_error("Options not initialized");
     return 1;
   }
-
-  platform_systemd_notify_status("Options loaded; starting ascii-chat");
-  platform_systemd_notify_ready();
 
   // Apply the parsed level after the early logger has initialized.
   log_set_level(opts->log_level);

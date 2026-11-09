@@ -32,6 +32,14 @@ void platform_systemd_notify_reloading(void) {
   if (platform_systemd_is_managed()) (void)sd_notify(0, "RELOADING=1");
 #endif
 }
+void platform_systemd_notify_watchdog(void) {
+#ifdef HAVE_LIBSYSTEMD
+  if (platform_systemd_is_managed() && sd_watchdog_enabled != NULL) {
+    uint64_t usec = 0;
+    if (sd_watchdog_enabled(0, &usec) > 0) (void)sd_notify(0, "WATCHDOG=1");
+  }
+#endif
+}
 bool platform_systemd_watchdog_enabled(unsigned long long *usec) {
 #ifdef HAVE_LIBSYSTEMD
   uint64_t value = 0;

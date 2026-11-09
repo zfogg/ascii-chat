@@ -17,7 +17,10 @@ if [[ "$user" -eq 0 && "$EUID" -ne 0 ]]; then
 fi
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ "$user" -eq 1 ]]; then dest="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"; ctl=(systemctl --user); else dest="/etc/systemd/system"; ctl=(systemctl); fi
-units=(ascii-chat-server ascii-chat-discovery-service ascii-chat-mcp-server ascii-chat-api-server)
+units=(ascii-chat-server ascii-chat-mcp-server ascii-chat-api-server)
+if [[ "$user" -eq 0 ]]; then
+  units+=(ascii-chat-discovery-service)
+fi
 mkdir -p "$dest"
 for unit in "${units[@]}"; do
   target="$dest/$unit.service"
