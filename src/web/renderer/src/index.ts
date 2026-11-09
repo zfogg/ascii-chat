@@ -132,9 +132,9 @@ export class AsciiRenderer {
     contain = false,
   ): string {
     this.check();
-    const text = this.frame.convert(pixels, width, height, contain);
-    if (text === undefined) throw new Error("ASCII frame conversion failed");
-    return text;
+    const result = this.frame.processFrame(pixels, width, height, contain);
+    if (result.text === null) throw new Error("ASCII frame conversion failed");
+    return result.text;
   }
   transform(
     pixels: Uint8Array | Uint8ClampedArray,

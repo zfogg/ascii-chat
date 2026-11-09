@@ -51,6 +51,15 @@ public:
     mirror_free_string(frame);
     return result;
   }
+  emscripten::val processFrame(RgbaBytes rgba, int width, int height, bool contain) {
+    emscripten::val result = emscripten::val::object();
+    const auto text = convert(rgba, width, height, contain);
+    result.set("text", text ? emscripten::val(*text) : emscripten::val::null());
+    result.set("width", width);
+    result.set("height", height);
+    result.set("changed", text.has_value());
+    return result;
+  }
   int transform(RgbaBytes rgba, int width, int height) {
     if (!context_) return error();
     const size_t length = rgba["byteLength"].as<size_t>();
@@ -121,6 +130,7 @@ EMSCRIPTEN_BINDINGS(ascii_chat_frame) {
       .function("close", &MirrorFrameBinding::close)
       .function("reset", &MirrorFrameBinding::reset)
       .function("convert", &MirrorFrameBinding::convert)
+      .function("processFrame", &MirrorFrameBinding::processFrame)
       .function("transform", &MirrorFrameBinding::transform)
       .function("submitAudio", &MirrorFrameBinding::submitAudio)
       .function("renderAudio", &MirrorFrameBinding::renderAudio)
