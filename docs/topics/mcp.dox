@@ -95,6 +95,7 @@
  * ```
  *
  * Results contain `content` text plus `structuredContent` with `ascii`, `elapsed_ms`, and `saved_files`. Decoder/render errors use `isError: true`; JSON-RPC errors cover malformed protocol requests. Each render is isolated in a child mirror process with an explicit environment and no user/system configuration. The parent handles deadlines, output limits, and local cancellation while keeping its transport responsive.
+ * Plaintext hosted MCP uses the shared libuv HTTP service, including its HTTP/1.x and HTTP/2 request limits, wakeups, and asynchronous response lifecycle. The legacy libwebsockets path remains only for TLS or dual-stack compatibility until the shared TLS listener is available.
  *
  * ## Hosted isolation
  *
