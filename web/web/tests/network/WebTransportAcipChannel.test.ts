@@ -53,14 +53,17 @@ const state = vi.hoisted(() => ({
         };
       if (event.type === "begin-handshake") {
         state.begin(event["mode"]);
-        return { code: 0, state: 2 };
+        return {
+          code: 0,
+          state: 2,
+          outputs: [{ flow: 0, packet: packet(1, new Uint8Array()) }],
+        };
       }
-      if (event.type === "receive-handshake-packet") return { code: 0, state: 3 };
+      if (event.type === "receive-handshake-packet")
+        return { code: 0, state: 3 };
       return { code: 0, state: 1 };
     },
   ),
-  sendCallback: null as ((packet: Uint8Array) => void) | null,
-  module: { sendPacketCallback: undefined as ((packet: Uint8Array) => void) | undefined },
 }));
 function packet(type: number, payload: Uint8Array): Uint8Array {
   const result = new Uint8Array(22 + payload.length);
@@ -74,7 +77,6 @@ function wrap(inner: Uint8Array): Uint8Array {
 vi.mock("../../src/wasm/client", () => ({
   processClientEvent: state.process,
   ConnectionState: { CONNECTED: 3 },
-  getClientModule: () => state.module,
   throwWasmError: () => {
     throw new Error("WASM failure");
   },
@@ -122,7 +124,6 @@ describe("WebTransport ACIP channel", () => {
       encryption: 1,
     });
     expect(state.begin).toHaveBeenCalledOnce();
-    state.module.sendPacketCallback!(packet(1, new Uint8Array()));
     expect(state.sent.at(-1)).toMatchObject({ flow: 0, delivery: "reliable" });
     state.onPacket!({
       flow: 0,

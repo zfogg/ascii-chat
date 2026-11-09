@@ -9,12 +9,6 @@ import {
 } from "../../src/wasm/client";
 
 const beginHandshake = vi.hoisted(() => vi.fn((_mode?: unknown) => 0));
-const wasmModule = vi.hoisted(() => ({
-  client_acds_handshake_begin: beginHandshake,
-  client_handshake_begin: beginHandshake,
-  sendPacketCallback: undefined as ((packet: Uint8Array) => void) | undefined,
-}));
-
 const sockets = vi.hoisted(() => ({
   sent: [] as Uint8Array[],
   instances: [] as Array<{
@@ -53,7 +47,6 @@ vi.mock("../../src/wasm/client", async (importOriginal) => ({
   cleanupClientWasm: vi.fn(),
   configureClientCrypto: vi.fn().mockResolvedValue(undefined),
   generateKeypair: vi.fn().mockResolvedValue("public-key"),
-  getClientModule: () => wasmModule,
   processClientEvent: vi.fn((event: Record<string, unknown>) => {
     if (event["type"] === "begin-handshake") {
       const code = beginHandshake(event["mode"]);
@@ -99,7 +92,6 @@ describe("WebSocket encryption defaults", () => {
   beforeEach(() => {
     sockets.sent = [];
     sockets.instances = [];
-    wasmModule.sendPacketCallback = undefined;
     vi.clearAllMocks();
     beginHandshake.mockReturnValue(0);
   });
@@ -196,9 +188,6 @@ describe("WebSocket encryption defaults", () => {
     await vi.waitFor(() => expect(beginHandshake).toHaveBeenCalledTimes(2));
     expect(configureClientCrypto).toHaveBeenCalledTimes(2);
     expect(beginHandshake).toHaveBeenLastCalledWith(1);
-    const rawPacket = new Uint8Array([1, 2, 3]);
-    wasmModule.sendPacketCallback?.(rawPacket);
-    expect(sockets.sent).toEqual([rawPacket]);
     connection.disconnect();
   });
   it("waits for crypto configuration before opening the socket", async () => {

@@ -9,7 +9,6 @@ const harness = vi.hoisted(() => ({
   cleanup: vi.fn(),
   address: vi.fn(),
   callback: vi.fn(),
-  module: { sendPacketCallback: undefined as ((packet: Uint8Array) => void) | undefined },
   begin: vi.fn(() => 0),
   sockets: [] as {
     close: ReturnType<typeof vi.fn>;
@@ -22,7 +21,6 @@ vi.mock("../../src/wasm/client", async (original) => ({
   configureClientCrypto: harness.crypto,
   generateKeypair: harness.key,
   cleanupClientWasm: harness.cleanup,
-  getClientModule: () => harness.module,
   processClientEvent: vi.fn((event: Record<string, unknown>) =>
     event["type"] === "begin-handshake"
       ? { code: harness.begin(), state: ConnectionState.HANDSHAKE }
@@ -31,7 +29,7 @@ vi.mock("../../src/wasm/client", async (original) => ({
         : event["type"] === "set-server"
           ? (harness.address(event["host"], event["port"]),
             { code: 0, state: ConnectionState.CONNECTED })
-        : { code: 0, state: ConnectionState.CONNECTED },
+          : { code: 0, state: ConnectionState.CONNECTED },
   ),
 }));
 vi.mock("../../src/network/SocketBridge", () => ({
@@ -56,7 +54,6 @@ beforeEach(() => {
   harness.init.mockImplementation(async () => {});
   harness.crypto.mockImplementation(async () => {});
   harness.key.mockImplementation(async () => "public-key");
-  harness.module.sendPacketCallback = undefined;
 });
 const create = () =>
   new ClientConnection({
@@ -114,7 +111,6 @@ describe("client startup ownership", () => {
       ["localhost", 8443],
       ["localhost", 8443],
     ]);
-    expect(harness.module.sendPacketCallback).toEqual(expect.any(Function));
     client.disconnect();
     expect(harness.sockets[0]!.close).toHaveBeenCalledTimes(1);
   });

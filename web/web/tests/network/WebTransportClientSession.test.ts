@@ -16,7 +16,6 @@ const state = vi.hoisted(() => ({
   configure: vi.fn(async () => {}),
   keypair: vi.fn(async () => "client-key"),
   address: vi.fn(),
-  module: { sendPacketCallback: undefined as ((packet: Uint8Array) => void) | undefined },
   endpoint: "",
   process: vi.fn((event: { type: string; [key: string]: any }) => {
     if (event.type === "serialize") {
@@ -27,7 +26,15 @@ const state = vi.hoisted(() => ({
       return { code: 0, bytes: result, state: 1 };
     }
     if (event.type === "parse")
-      return { code: 0, packet: { type: new DataView((event["packet"] as Uint8Array).buffer).getUint16(8) }, state: 1 };
+      return {
+        code: 0,
+        packet: {
+          type: new DataView((event["packet"] as Uint8Array).buffer).getUint16(
+            8,
+          ),
+        },
+        state: 1,
+      };
     if (event.type === "quic-state") return { code: 0, epoch: 0, state: 1 };
     return { code: 0, state: 1 };
   }),
@@ -50,7 +57,6 @@ vi.mock("../../src/wasm/client", () => ({
   initClientWasm: state.init,
   configureClientCrypto: state.configure,
   generateKeypair: state.keypair,
-  getClientModule: () => state.module,
   processClientEvent: (event: { type: string; [key: string]: unknown }) => {
     if (event.type === "set-server") {
       state.address(event["host"], event["port"]);
@@ -66,7 +72,11 @@ vi.mock("../../src/wasm/client", () => ({
       return {
         code: 0,
         state: 1,
-        packet: { type: new DataView((event["packet"] as Uint8Array).buffer).getUint16(8) },
+        packet: {
+          type: new DataView((event["packet"] as Uint8Array).buffer).getUint16(
+            8,
+          ),
+        },
       };
     return { code: 0, state: 1, mode: 1 };
   },
