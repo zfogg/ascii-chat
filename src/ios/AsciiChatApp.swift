@@ -850,10 +850,14 @@ struct ContentView: View {
         guard JSONSerialization.isValidJSONObject(merged),
               let data = try? JSONSerialization.data(withJSONObject: merged),
               let json = String(data: data, encoding: .utf8) else { return }
-        UserDefaults.standard.set(data, forKey: "ascii-chat.ios.options.patch")
-        json.withCString { pointer in
-            _ = options_apply_json(pointer, json.utf8.count, UInt64.max, 0, nil)
+        let result = json.withCString { pointer in
+            options_apply_json(pointer, json.utf8.count, UInt64.max, 0, nil)
         }
+        guard result == 0 else {
+            launchMessage = "That setting could not be applied (error \(result))."
+            return
+        }
+        UserDefaults.standard.set(data, forKey: "ascii-chat.ios.options.patch")
     }
 
     private func configureRenderBridge(fontSize: Double) {
