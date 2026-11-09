@@ -1,7 +1,7 @@
 /**
  * @defgroup defer Defer Statements
  * @ingroup module_development
- * @brief Block-scoped cleanup statements for C and C++
+ * @brief Block-scoped cleanup statements for C, Objective-C, and C++
  */
 
 /**
@@ -16,6 +16,9 @@
  * cleanup must not throw because the guard destructor is `noexcept`.
  * Both backends accept C++ source files and preserve them for native C++
  * compilation. C++ scopes follow the language's normal object lifetime rules.
+ * Objective-C (`.m`) is transformed using `@try`/`@finally`, so registered
+ * actions also run while Objective-C exceptions unwind. This works in C
+ * functions, Objective-C methods, and block literals.
  *
  * @code{.c}
  * FILE *file = fopen(path, "r");
@@ -66,7 +69,8 @@
  *   defer_cancel(release_buffer);
  * @endcode
  *
- * Defer is supported in project `.c` files, not inline function bodies in headers.
+ * Defer is supported in project `.c` and `.m` files and supported inline
+ * function bodies in included headers.
  * Each defer must be a direct statement of a `{ ... }` block. Add braces around
  * an if or loop body before using defer there. Put a defer inside braces under a
  * switch case; a defer directly in a switch body is rejected. Inline assembly
@@ -127,17 +131,25 @@
  * defer in project headers; `ON` forces this path and `OFF` disables it.
  * Add external header roots to `ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS`, or use
  * `ON` when headers are outside the scanned roots. The first activation
- * analyzes all eligible project C sources and disables target precompiled
+ * analyzes all eligible project C and Objective-C sources and disables target precompiled
  * headers; later builds use native per-file incremental caching. The shared
  * cache is not used while header overlays are active. Multiple active
  * instantiations of the same header function in one translation unit are
  * rejected. Defer in an included C
  * source file remains unsupported. C++ uses native scope guards directly.
- * Objective-C++ requires an Objective-C runtime advertising zero-cost
- * exceptions, with exception handling enabled. Apple exception unwinding has
- * been verified; the legacy GNU Objective-C runtime does not support this
- * contract and is rejected. Plain Objective-C (`.m`) defer is not yet supported.
- * When panic instrumentation is enabled, it runs before defer transformation.
+ * Objective-C and Objective-C++ require an Objective-C runtime advertising
+ * zero-cost exceptions, with exception handling enabled. CMake adds
+ * `-fobjc-exceptions` when transforming `.m` sources. Direct tool users must
+ * pass it in the actual compilation arguments and compile with the same flags.
+ * A CMake project compiling `.m` files must enable its `OBJC` language; the
+ * ascii-chat project already enables it on Apple platforms. On Linux, provide
+ * a modern GNUstep libobjc2 runtime, select it with an appropriate
+ * `-fobjc-runtime=gnustep-2.0` compiler option, and link that runtime.
+ * Apple exception unwinding has been verified; the legacy GNU Objective-C
+ * runtime does not support this contract and is rejected. Objective-C jumps
+ * into a generated protected region are rejected by Clang validation.
+ * For C sources, panic instrumentation runs before defer transformation when
+ * enabled. Objective-C sources are not instrumented by the panic tool.
  *
  * To inspect an exit without writing a generated file, pass its source line and
  * the C compilation arguments to either implementation:

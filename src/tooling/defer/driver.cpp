@@ -186,6 +186,18 @@ static bool is_objc_source(const fs::path &source, const std::vector<std::string
   return false;
 }
 
+static void require_objc_exceptions(const std::vector<std::string> &arguments) {
+  bool enabled = false;
+  for (const auto &arg : arguments) {
+    if (arg == "-fobjc-exceptions")
+      enabled = true;
+    if (arg == "-fno-objc-exceptions" || arg == "-fno-exceptions")
+      enabled = false;
+  }
+  if (!enabled)
+    throw std::runtime_error("Objective-C defer requires -fobjc-exceptions in the actual compilation arguments");
+}
+
 std::string read_file(const fs::path &path) {
   std::ifstream input(path, std::ios::binary);
   if (!input)
@@ -337,7 +349,7 @@ bool validate_header_overlay(const fs::path &overlay, const FileDependencies &fi
 static FileDependencies transform_with_header_overlay(ClangIndex &index, const fs::path &source, const fs::path &output,
                                                       const std::vector<const char *> &arguments,
                                                       const fs::path &overlay,
-                                                      const std::vector<fs::path> &protected_paths) {
+                                                      const std::vector<fs::path> &protected_paths, bool objc) {
   const auto source_name = source.u8string();
   const auto source_identity = fs::weakly_canonical(source);
   std::map<std::string, std::string> contents{{source_name, read_file(source)}};
@@ -448,7 +460,7 @@ static FileDependencies transform_with_header_overlay(ClangIndex &index, const f
   std::map<std::string, std::string> transformed;
   for (const auto &[name, text] : contents) {
     const auto display = name == source_name ? source_name : header_display_paths.at(name);
-    transformed.emplace(name, transform_translation_unit_file(unit->get(), name, text, display));
+    transformed.emplace(name, transform_translation_unit_file(unit->get(), name, text, display, objc));
   }
   std::vector<CXUnsavedFile> unsaved;
   for (const auto &[name, text] : transformed)
@@ -457,7 +469,8 @@ static FileDependencies transform_with_header_overlay(ClangIndex &index, const f
                              false);
   const auto diagnostics = validation.errors();
   if (!diagnostics.empty())
-    throw std::runtime_error("generated C is invalid: " + diagnostics.front());
+    throw std::runtime_error(std::string(objc ? "generated Objective-C is invalid: " : "generated C is invalid: ") +
+                             diagnostics.front());
 
   const auto conflicts = [&](const fs::path &candidate) {
     std::error_code error;
@@ -519,9 +532,9 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
   auto arguments = options.compilation_database.empty()
                        ? options.clang_arguments
                        : compile_arguments(options.compilation_database, output, source);
-  if (is_objc_source(source, arguments))
-    throw std::runtime_error(
-        "Objective-C defer transformation is not supported; cleanup during exceptions cannot be guaranteed");
+  const bool objc = is_objc_source(source, arguments);
+  if (objc)
+    require_objc_exceptions(arguments);
   arguments.push_back("-DASCIICHAT_DEFER_PARSING=1");
   std::vector<const char *> raw;
   for (const auto &arg : arguments)
@@ -561,9 +574,10 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
     return dependencies;
   }
   if (!options.header_overlay.empty())
-    return transform_with_header_overlay(index, source, output, raw, options.header_overlay, options.protected_paths);
+    return transform_with_header_overlay(index, source, output, raw, options.header_overlay, options.protected_paths,
+                                         objc);
   auto unit = parse_wrapped(index.get(), source_name, raw, content, options.preamble);
-  auto transformed = transform(unit->get(), source.u8string(), content);
+  auto transformed = transform(unit->get(), source.u8string(), content, objc);
   FileDependencies dependencies{output, {source.u8string()}};
   clang_getInclusions(
       unit->get(),
@@ -577,9 +591,10 @@ FileDependencies transform_file(ClangIndex &index, const fs::path &source_path, 
     unit->reparse(source_name, transformed);
     const auto diagnostics = unit->errors();
     if (!diagnostics.empty())
-      throw std::runtime_error("generated C is invalid: " + diagnostics.front());
+      throw std::runtime_error(std::string(objc ? "generated Objective-C is invalid: " : "generated C is invalid: ") +
+                               diagnostics.front());
   } else {
-    validate_generated(index.get(), source_name, raw, transformed);
+    validate_generated(index.get(), source_name, raw, transformed, objc);
   }
   write_if_changed(output, transformed);
   return dependencies;
@@ -591,8 +606,9 @@ std::string inspect_file(ClangIndex &index, const fs::path &source_path, unsigne
     throw std::runtime_error("inspection requires explicit Clang arguments rather than a compilation database");
   const auto source = fs::weakly_canonical(fs::absolute(source_path));
   auto arguments = options.clang_arguments;
-  if (is_objc_source(source, arguments))
-    throw std::runtime_error("Objective-C defer inspection is not supported");
+  const bool objc = is_objc_source(source, arguments);
+  if (objc)
+    require_objc_exceptions(arguments);
   if (is_cpp_source(source, arguments))
     throw std::runtime_error("C++ defer inspection is not supported; C++ uses native scope guards");
   arguments.push_back("-DASCIICHAT_DEFER_PARSING=1");
@@ -602,9 +618,9 @@ std::string inspect_file(ClangIndex &index, const fs::path &source_path, unsigne
   auto content = read_file(source);
   const auto source_name = source.u8string();
   auto unit = parse_wrapped(index.get(), source_name, raw, content);
-  validate_generated(index.get(), source_name, raw, transform(unit->get(), source_name, content));
-  return show ? show_transformed(unit->get(), source_name, content, line)
-              : explain(unit->get(), source_name, content, line);
+  validate_generated(index.get(), source_name, raw, transform(unit->get(), source_name, content, objc), objc);
+  return show ? show_transformed(unit->get(), source_name, content, line, objc)
+              : explain(unit->get(), source_name, content, line, objc);
 }
 
 void write_depfile(const fs::path &path, const std::vector<FileDependencies> &files) {

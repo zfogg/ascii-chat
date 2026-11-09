@@ -30,15 +30,19 @@ Keep reusable, platform-independent helpers in the appropriate `lib/` module, es
 ### Block-scoped cleanup with defer
 
 - Include `<ascii-chat/tooling/defer/defer.h>` where defer is used. CMake
-  transforms C sources and supported C header function bodies before compilation; generated files under
+  transforms C and Objective-C sources and supported header function bodies before compilation; generated files under
   `build/defer_transformed/` are build artifacts and must not be edited.
 - C header support uses per-translation-unit overlays. CMake automatically
   detects defer in project headers; register external header roots with
   `ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS` or set `ASCIICHAT_DEFER_HEADER_OVERLAYS=ON`.
-  The initial activation processes all eligible C files and disables target
+  The initial activation processes all eligible C and Objective-C files and disables target
   precompiled headers. C++11 and later use native scope guards, including in
-  header functions. Objective-C++ requires a zero-cost exception runtime and
-  enabled Objective-C exception handling; plain Objective-C is unsupported.
+  header functions. Objective-C and Objective-C++ require a zero-cost exception
+  runtime and enabled Objective-C exception handling. CMake adds
+  `-fobjc-exceptions` for transformed `.m` files; direct tool users must pass it
+  for both transformation and compilation. Objective-C cleanup runs on
+  exception unwinding, including in methods and block literals. Clang rejects
+  jumps into the generated protected region.
 - `defer(action);` registers cleanup when execution reaches it. Actions run in
   reverse registration order at block exit, including return, break, continue,
   and supported goto exits; their expressions use values at cleanup time. Return

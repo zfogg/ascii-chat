@@ -3,8 +3,8 @@
  * @brief Marker for build-time block-scoped cleanup statements.
  *
  * defer(expression) and defer({ statements; }) run when the enclosing block
- * exits, in reverse registration order. C sources are transformed before
- * compilation; C++ sources use a scope guard and need no transformation.
+ * exits, in reverse registration order. C and Objective-C sources are transformed
+ * before compilation; C++ sources use a scope guard and need no transformation.
  * defer_named(handle, action) registers cancellable cleanup; defer_cancel(handle)
  * cancels the action associated with that lexical name.
  */
@@ -44,17 +44,7 @@ template <typename F> guard<F> make_guard(F action) {
   auto ASCII_DEFER_JOIN(__ascii_defer_guard_, __COUNTER__) = ::ascii_defer_detail::make_guard([&]() { __VA_ARGS__; })
 #define defer_named(name, ...) auto name = ::ascii_defer_detail::make_guard([&]() { __VA_ARGS__; })
 #define defer_cancel(name) (name).cancel()
-#elif defined(__OBJC__)
-#ifdef __cplusplus
-#define ASCII_DEFER_OBJC_UNSUPPORTED                                                                                   \
-  static_assert(false, "defer() requires Objective-C++ zero-cost exceptions to be supported and enabled")
-#else
-#define ASCII_DEFER_OBJC_UNSUPPORTED _Static_assert(0, "defer() is not supported in Objective-C yet")
-#endif
-#define defer(...) ASCII_DEFER_OBJC_UNSUPPORTED
-#define defer_named(name, ...) ASCII_DEFER_OBJC_UNSUPPORTED
-#define defer_cancel(name) ASCII_DEFER_OBJC_UNSUPPORTED
-#elif defined(ASCIICHAT_DEFER_PARSING)
+#elif defined(ASCIICHAT_DEFER_PARSING) && !defined(__cplusplus)
 void __ascii_defer_marker(void);
 #define defer(...)                                                                                                     \
   do {                                                                                                                 \
@@ -68,6 +58,16 @@ void __ascii_defer_marker(void);
   do {                                                                                                                 \
     __ascii_defer_marker();                                                                                            \
   } while (0)
+#elif defined(__OBJC__)
+#ifdef __cplusplus
+#define ASCII_DEFER_OBJC_UNSUPPORTED                                                                                   \
+  static_assert(false, "defer() requires Objective-C++ zero-cost exceptions to be supported and enabled")
+#else
+#define ASCII_DEFER_OBJC_UNSUPPORTED _Static_assert(0, "defer() requires the source transformation")
+#endif
+#define defer(...) ASCII_DEFER_OBJC_UNSUPPORTED
+#define defer_named(name, ...) ASCII_DEFER_OBJC_UNSUPPORTED
+#define defer_cancel(name) ASCII_DEFER_OBJC_UNSUPPORTED
 #else
 #define defer(...) _Static_assert(0, "defer() requires the source transformation")
 #define defer_named(name, ...) _Static_assert(0, "defer_named() requires the source transformation")

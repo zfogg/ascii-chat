@@ -85,6 +85,10 @@ def tool_command(env: dict[str, str]) -> list[str]:
     return [binary] if binary else [sys.executable, str(TOOL)]
 
 
+def objc_syntax_runtime() -> list[str]:
+    return [] if sys.platform == "darwin" else ["-fobjc-runtime=gnustep-2.0"]
+
+
 def test_explain_reports_nested_cleanup_without_writing(
     tmp_path: Path, transform_environment: dict[str, str]
 ) -> None:
@@ -232,7 +236,7 @@ def test_incremental_cache_cannot_replace_source(tmp_path: Path, base_environmen
     assert source.read_text(encoding="utf-8") == "void f(void) {}\n"
 
 
-@pytest.mark.parametrize("extension", ["c", "cpp", "mm"])
+@pytest.mark.parametrize("extension", ["c", "cpp", "m", "mm"])
 def test_shared_cache_reuses_across_build_directories(
     tmp_path: Path, compiler_environment: dict[str, str], extension: str
 ) -> None:
@@ -256,7 +260,7 @@ def test_shared_cache_reuses_across_build_directories(
         manifest = build / "batch.txt"
         manifest.write_text(f"{source}\t{output}\n", encoding="utf-8")
         commands = [{"directory": str(tmp_path), "file": str(output), "arguments": [
-            CLANG, *(["-fobjc-runtime=gnustep-2.0", "-fobjc-exceptions"] if extension == "mm" else []),
+            CLANG, *(["-fobjc-exceptions", *objc_syntax_runtime()] if extension in ("m", "mm") else []),
             "-I", str(early), "-I", str(ROOT / "include"), "-I", str(build), "-c", str(output), "-o", str(build / "source.o")
         ]}]
         (build / "compile_commands.json").write_text(json.dumps(commands), encoding="utf-8")
@@ -1026,18 +1030,281 @@ def test_cmake_header_detection_ignores_non_code(tmp_path: Path, contents: str, 
     assert f"found={'TRUE' if expected else 'FALSE'}" in result.stderr
 
 
-@pytest.mark.parametrize("extension", ["m"])
-def test_objc_tool_fails_closed(tmp_path: Path, transform_environment: dict[str, str], extension: str) -> None:
-    source = tmp_path / f"source.{extension}"
-    output = tmp_path / f"output.{extension}"
+@pytest.mark.parametrize("flags", [[], ["-fobjc-exceptions", "-fno-objc-exceptions"], ["-fobjc-exceptions", "-fno-exceptions"]])
+def test_objc_tool_requires_exception_support(tmp_path: Path, transform_environment: dict[str, str], flags: list[str]) -> None:
+    source = tmp_path / "source.m"
+    output = tmp_path / "output.m"
     source.write_text('void f(void) { defer((void)0); }\n', encoding="utf-8")
     result = subprocess.run(
-        [*tool_command(transform_environment), str(source), str(output)],
+        [*tool_command(transform_environment), str(source), str(output), "--", *flags],
         capture_output=True, text=True, env=transform_environment, check=False,
     )
     assert result.returncode != 0
-    assert "Objective-C" in result.stderr
+    assert "-fobjc-exceptions" in result.stderr
     assert not output.exists()
+
+
+def test_objc_tool_rejects_legacy_exception_runtime(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source = tmp_path / "source.m"
+    output = tmp_path / "output.m"
+    source.write_text('#include <ascii-chat/tooling/defer/defer.h>\nvoid f(void) { defer((void)0); }\n', encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", "-fobjc-exceptions",
+         "-fobjc-runtime=gcc", "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert "zero-cost exceptions" in result.stderr
+    assert not output.exists()
+
+
+def test_objc_functions_and_methods_transform(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source = tmp_path / "source.m"
+    output = tmp_path / "output.m"
+    source.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'int value; int f(int x) { defer(value += x); { defer_named(handle, value += 2); '
+        'if (x) defer_cancel(handle); if (x > 2) return x++; } return x; }\n'
+        '__attribute__((objc_root_class)) @interface Root\n- (int)method:(int)x;\n@end\n'
+        '@implementation Root\n- (int)method:(int)x { defer(value += x); return x; }\n@end\n',
+        encoding="utf-8",
+    )
+    flags = ["-fobjc-exceptions", *objc_syntax_runtime(), "-I", str(ROOT / "include")]
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", *flags],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    generated = output.read_text(encoding="utf-8")
+    assert generated.count("@finally") == 3
+    result = subprocess.run([str(CLANG), "-fsyntax-only", *flags, str(output)], capture_output=True, text=True,
+                            env=transform_environment, check=False)
+    assert result.returncode == 0, result.stderr
+
+
+def test_objc_block_defer_is_scoped_to_invocation(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source = tmp_path / "source.m"
+    output = tmp_path / "output.m"
+    source.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        'int value; void f(void) { defer(value += 1); void (^block)(void) = ^{ defer(value += 2); return; }; block(); }\n',
+        encoding="utf-8",
+    )
+    flags = ["-fobjc-exceptions", *objc_syntax_runtime(), "-fblocks", "-I", str(ROOT / "include")]
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", *flags],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert output.read_text(encoding="utf-8").count("@finally") == 2
+
+
+def test_objc_returned_block_has_its_own_defer(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source, output = tmp_path / "source.m", tmp_path / "output.m"
+    source.write_text('#include <ascii-chat/tooling/defer/defer.h>\n'
+                      'int value; void (^f(void))(void) { return ^{ defer(value++); }; }\n', encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", "-fobjc-exceptions", "-fblocks",
+         *objc_syntax_runtime(), "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "@finally" in output.read_text(encoding="utf-8")
+
+
+def test_objc_global_block_has_its_own_defer(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source, output = tmp_path / "source.m", tmp_path / "output.m"
+    source.write_text('#include <ascii-chat/tooling/defer/defer.h>\n'
+                      'int value; void (^block)(void) = ^{ defer(value++); };\n', encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", "-fobjc-exceptions", "-fblocks",
+         *objc_syntax_runtime(), "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "@finally" in output.read_text(encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--show-transformed", f"{source}:2", "--", "-fobjc-exceptions",
+         "-fblocks", *objc_syntax_runtime(), "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "@finally" in result.stdout
+
+
+@pytest.mark.parametrize("inspection", ["--explain", "--show-transformed"])
+def test_objc_method_inspection(tmp_path: Path, transform_environment: dict[str, str], inspection: str) -> None:
+    source = tmp_path / "source.m"
+    source.write_text(
+        '#include <ascii-chat/tooling/defer/defer.h>\n'
+        '__attribute__((objc_root_class)) @interface Root\n- (int)run;\n@end\n'
+        '@implementation Root\n- (int)run {\n  defer((void)0);\n  return 3;\n}\n@end\n', encoding="utf-8"
+    )
+    result = subprocess.run(
+        [*tool_command(transform_environment), inspection, f"{source}:8", "--", "-fobjc-exceptions",
+         *objc_syntax_runtime(), "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "(void)0" in result.stdout
+    if inspection == "--show-transformed":
+        assert "@finally" in result.stdout
+
+
+def test_objc_header_overlay(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    header = tmp_path / "cleanup.h"
+    header.write_text('#include <ascii-chat/tooling/defer/defer.h>\n'
+                      'static inline void cleanup(int *n) { defer(*n = 4); }\n', encoding="utf-8")
+    source = tmp_path / "source.m"
+    source.write_text('#include "cleanup.h"\nvoid f(int *n) { cleanup(n); }\n', encoding="utf-8")
+    output, overlay = tmp_path / "output.m", tmp_path / "overlay.json"
+    result = subprocess.run(
+        [*tool_command(transform_environment), "--header-overlay", str(overlay), str(source), str(output), "--",
+         "-fobjc-exceptions", *objc_syntax_runtime(), "-I", str(ROOT / "include"), "-I", str(tmp_path)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "@finally" in next((tmp_path / "overlay.json.headers").iterdir()).read_text(encoding="utf-8")
+
+
+def test_objc_goto_into_protected_region_fails_closed(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source, output = tmp_path / "source.m", tmp_path / "output.m"
+    source.write_text('#include <ascii-chat/tooling/defer/defer.h>\n'
+                      'void f(int n) { if (n) goto target; defer((void)0); target: return; }\n', encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", "-fobjc-exceptions",
+         *objc_syntax_runtime(), "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode != 0
+    assert "generated Objective-C is invalid" in result.stderr
+    assert not output.exists()
+
+
+def test_objc_fast_enumeration_cleanup(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source, output = tmp_path / "source.m", tmp_path / "output.m"
+    source.write_text('#include <ascii-chat/tooling/defer/defer.h>\n'
+                      'void f(id collection) { for (id item in collection) { '
+                      'defer((void)item); if (item) break; continue; } }\n', encoding="utf-8")
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", "-fobjc-exceptions",
+         *objc_syntax_runtime(), "-I", str(ROOT / "include")],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "@finally" in output.read_text(encoding="utf-8")
+
+
+def test_objc_native_and_python_outputs_match(tmp_path: Path, compiler_environment: dict[str, str]) -> None:
+    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    if not binary:
+        pytest.skip("native defer binary was not supplied")
+    source = tmp_path / "source.m"
+    source.write_text('#include <ascii-chat/tooling/defer/defer.h>\n'
+                      'int v; int f(int n) { defer(v++); '
+                      'void (^block)(void) = ^{ defer(v += 2); }; block(); return n; }\n', encoding="utf-8")
+    outputs = []
+    for command in ([binary], [sys.executable, str(TOOL)]):
+        output = tmp_path / f"output{len(outputs)}.m"
+        result = subprocess.run(
+            [*command, str(source), str(output), "--", "-fobjc-exceptions", "-fblocks",
+             *objc_syntax_runtime(), "-I", str(ROOT / "include")],
+            capture_output=True, text=True, env=compiler_environment, check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        outputs.append(output.read_bytes())
+    assert outputs[0] == outputs[1]
+
+
+@pytest.mark.skipif(sys.platform not in ("darwin", "linux"), reason="requires an Objective-C runtime")
+def test_objc_runtime_cleanup(tmp_path: Path, transform_environment: dict[str, str]) -> None:
+    source = ROOT / "tests" / "standalone" / "defer_objc_runtime.m"
+    output = tmp_path / "transformed.m"
+    resource_dir = subprocess.run([str(CLANG), "-print-resource-dir"], capture_output=True, text=True, check=True).stdout.strip()
+    flags = ["-fobjc-exceptions", "-fblocks", "-I", str(ROOT / "include"), "-resource-dir", resource_dir]
+    if sys.platform == "linux":
+        runtime_root = transform_environment.get("ASCIICHAT_TEST_OBJC2_ROOT")
+        if not runtime_root:
+            pytest.skip("set ASCIICHAT_TEST_OBJC2_ROOT to a GNUstep libobjc2 installation")
+        flags += ["-fobjc-runtime=gnustep-2.0", "-DASCIICHAT_TEST_GNUSTEP_OBJC", "-I", str(Path(runtime_root) / "include")]
+        link_flags = ["-L", str(Path(runtime_root) / "lib"), f"-Wl,-rpath,{Path(runtime_root) / 'lib'}", "-lobjc"]
+    else:
+        link_flags = ["-framework", "Foundation"]
+    result = subprocess.run(
+        [*tool_command(transform_environment), str(source), str(output), "--", *flags],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    executable = tmp_path / "objc-runtime-test"
+    result = subprocess.run(
+        [str(CLANG), *flags, str(output), *link_flags, "-o", str(executable)],
+        capture_output=True, text=True, env=transform_environment, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    result = subprocess.run([str(executable)], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, f"exit {result.returncode}: {result.stderr}"
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="requires the macOS Objective-C runtime")
+@pytest.mark.parametrize("backend", ["NATIVE", "PYTHON"])
+@pytest.mark.parametrize("header_mode", [False, True])
+def test_cmake_objc_incremental(tmp_path: Path, compiler_environment: dict[str, str], backend: str, header_mode: bool) -> None:
+    binary = compiler_environment.get("ASCIICHAT_DEFER_TEST_BINARY")
+    cmake = shutil.which("cmake")
+    clangxx = shutil.which("clang++")
+    if not binary or not cmake or not CLANG or not clangxx or not shutil.which("ninja"):
+        pytest.skip("native defer binary, CMake, Ninja, and Clang are required")
+    src = tmp_path / "src"
+    src.mkdir()
+    if backend == "PYTHON":
+        tool_dir = src / "tooling" / "defer"
+        tool_dir.mkdir(parents=True)
+        for name in ("defer.py", "plan.py", "scan.py", "pyproject.toml", "uv.lock"):
+            shutil.copy2(TOOL.parent / name, tool_dir / name)
+        shutil.copytree(TOOL.parent / "vendor" / "clang", tool_dir / "vendor" / "clang")
+    source = src / "main.m"
+    header = src / "cleanup.h"
+    if header_mode:
+        header.write_text('static inline void clean(int *v) { *v = 8; }\n', encoding="utf-8")
+        source.write_text('#include "cleanup.h"\nstatic int v; static int f(void) { clean(&v); return 1; }\n'
+                          'int main(void) { return f() != 1 || v != 8; }\n', encoding="utf-8")
+    else:
+        source.write_text('int main(void) { return 0; }\n', encoding="utf-8")
+    module = (ROOT / "cmake" / "tooling" / "Defer.cmake").as_posix()
+    (tmp_path / "CMakeLists.txt").write_text(
+        'cmake_minimum_required(VERSION 3.30)\nproject(defer_objc C OBJC CXX)\nset(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n'
+        f'include("{module}")\nadd_subdirectory(src)\nascii_defer_prepare()\n', encoding="utf-8"
+    )
+    (src / "CMakeLists.txt").write_text(
+        'add_executable(ascii-chat-probe main.m)\n'
+        f'target_include_directories(ascii-chat-probe PRIVATE "{(ROOT / "include").as_posix()}")\n'
+        'target_link_libraries(ascii-chat-probe PRIVATE "-framework Foundation")\n', encoding="utf-8"
+    )
+    build = tmp_path / "out"
+
+    def run(*command: str) -> str:
+        result = subprocess.run(command, capture_output=True, text=True, env=compiler_environment, check=False)
+        assert result.returncode == 0, result.stdout + result.stderr
+        return result.stdout + result.stderr
+
+    run(cmake, "-S", str(tmp_path), "-B", str(build), "-G", "Ninja", f"-DCMAKE_C_COMPILER={CLANG}",
+        f"-DCMAKE_OBJC_COMPILER={CLANG}", f"-DCMAKE_CXX_COMPILER={clangxx}",
+        f"-DASCIICHAT_DEFER_NATIVE_BINARY={binary}", f"-DASCIICHAT_DEFER_BACKEND={backend}",
+        f"-DASCIICHAT_LIBCLANG_PATH={compiler_environment['LIBCLANG_LIBRARY_FILE']}")
+    assert "Transforming defer source batch" not in run(cmake, "--build", str(build))
+    if header_mode:
+        header.write_text('#include <ascii-chat/tooling/defer/defer.h>\n'
+                          'static inline void clean(int *v) { defer(*v = 8); }\n', encoding="utf-8")
+    else:
+        source.write_text(
+            '#include <ascii-chat/tooling/defer/defer.h>\n'
+            'static int v; static int f(void) { defer(v = 8); return 1; }\n'
+            'int main(void) { return f() != 1 || v != 8; }\n', encoding="utf-8"
+        )
+    output = run(cmake, "--build", str(build))
+    assert "Transforming defer source batch" in output
+    run(str(build / "src" / "ascii-chat-probe"))
+    assert "Transforming defer source batch" not in run(cmake, "--build", str(build))
 
 
 def test_objcpp_tool_accepts_exception_cleanup(tmp_path: Path, transform_environment: dict[str, str]) -> None:

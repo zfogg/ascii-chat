@@ -51,6 +51,27 @@ int main() {
   CHECK(output.find("n ++") != std::string::npos);
   output = transform_source(prefix + "int f(int (*)(int)) { defer((void)0); return 7; }\n");
   CHECK(output.find("__ascii_defer_argument_") != std::string::npos);
+  {
+    defer_tool::ClangIndex index;
+    std::vector<const char *> args = {"-x", "objective-c", "-fobjc-exceptions", "-fblocks"};
+#ifndef __APPLE__
+    args.push_back("-fobjc-runtime=gnustep-2.0");
+#endif
+    const auto source =
+        prefix +
+        "int value; __attribute__((objc_root_class)) @interface Root\n"
+        "- (int)run;\n@end\n@implementation Root\n"
+        "- (int)run { defer(value++); void (^block)(void) = ^{ defer(value += 2); }; block(); return 3; }\n@end\n";
+    CXUnsavedFile file = {"memory.m", source.c_str(), static_cast<unsigned long>(source.size())};
+    defer_tool::TranslationUnit unit(index.get(), "memory.m", args, &file, 1);
+    auto transformed = defer_tool::transform(unit.get(), "memory.m", source, true);
+    CHECK(transformed.find("@finally") != std::string::npos);
+    CHECK(transformed.find("value += 2") != std::string::npos);
+    CHECK(transformed.find("zero-cost exceptions") != std::string::npos);
+    CXUnsavedFile rewritten = {"memory.m", transformed.c_str(), static_cast<unsigned long>(transformed.size())};
+    defer_tool::TranslationUnit validation(index.get(), "memory.m", args, &rewritten, 1);
+    CHECK(validation.errors().empty());
+  }
   for (const auto &source : std::vector<std::string>{
            "void f(int x) { again: defer(x++); if (x) goto again; }\n", "void f(int x) { if (x) defer(x++); }\n",
            "void f(int x) { defer({ if (x) return; }); }\n", "void f(void) { defer_cancel(missing); }\n",

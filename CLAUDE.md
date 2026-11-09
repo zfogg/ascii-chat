@@ -278,7 +278,7 @@ an assertion.
 ### C cleanup with defer
 
 Include `<ascii-chat/tooling/defer/defer.h>` and use `defer(action);` for
-block-scoped cleanup. CMake transforms C sources and supported header functions;
+block-scoped cleanup. CMake transforms C and Objective-C sources and supported header functions;
 C++ uses scope guards. Use the C development skill and `docs/topics/defer.dox`
 for scope, header discovery, restrictions, diagnostics, and build requirements.
 Do not assume cleanup runs on `longjmp` or process termination.

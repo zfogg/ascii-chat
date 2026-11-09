@@ -110,11 +110,11 @@ bool prefix(const std::vector<unsigned> &whole, const std::vector<unsigned> &par
 class Transformer {
 public:
   Transformer(CXTranslationUnit unit, std::string path, std::string source, bool allow_other_files = false,
-              std::string display_path = {})
+              std::string display_path = {}, bool objc = false)
       : unit_(unit), path_(std::filesystem::weakly_canonical(std::filesystem::absolute(std::filesystem::u8path(path)))
                                .generic_u8string()),
         source_(std::move(source)), allow_other_files_(allow_other_files),
-        display_path_(display_path.empty() ? path_ : std::move(display_path)) {
+        display_path_(display_path.empty() ? path_ : std::move(display_path)), objc_(objc) {
     if (source_.find("__ascii_defer_") != std::string::npos)
       fail("reserved identifier prefix __ascii_defer_ occurs in input");
     const std::regex directive(
@@ -200,6 +200,7 @@ private:
   std::string source_;
   bool allow_other_files_;
   std::string display_path_;
+  bool objc_;
   std::vector<Edit> edits_;
   std::map<unsigned, CXCursor> macros_;
   std::map<std::string, std::vector<CXCursor>> macro_definitions_;
@@ -302,6 +303,8 @@ std::string Transformer::cleanup(std::size_t first, std::size_t last, unsigned p
 
 void Transformer::index_control_flow(CXCursor cursor, std::vector<unsigned> scopes, unsigned limit) {
   const auto kind = clang_getCursorKind(cursor);
+  if (objc_ && kind == CXCursor_BlockExpr)
+    return;
   const auto start = begin(cursor);
   if (kind == CXCursor_DoStmt && macros_.count(start)) {
     if (!scopes.empty())
@@ -310,7 +313,7 @@ void Transformer::index_control_flow(CXCursor cursor, std::vector<unsigned> scop
   }
   if (kind == CXCursor_CompoundStmt)
     scopes.push_back(start);
-  if (kind == CXCursor_ForStmt)
+  if (kind == CXCursor_ForStmt || (objc_ && kind == CXCursor_ObjCForCollectionStmt))
     limit = std::min(limit, end(cursor));
   if (kind == CXCursor_LabelStmt)
     labels_[spelling(cursor)] = {start, scopes};
@@ -328,7 +331,7 @@ void Transformer::visit_function(CXCursor cursor) {
   function_void_ = clang_getCursorResultType(cursor).kind == CXType_Void;
   function_prelude_.clear();
   return_type_.clear();
-  if (!function_void_) {
+  if (!function_void_ && !objc_) {
     const auto function_type = "__ascii_defer_function_" + std::to_string(start);
     function_prelude_ = "typedef __typeof__(&" + spelling(cursor) + ") " + function_type + ";";
     std::string args;
@@ -428,7 +431,8 @@ void Transformer::visit_defer(CXCursor cursor, CXCursorKind parent) {
       parts.begin() + std::min(name == "defer" ? std::size_t(1) : argument + 2, parts.size()), parts.end());
   auto flag = "__ascii_defer_active_" + std::to_string(start);
   scopes_.back().actions.push_back({start, action_start, flag, action, expanded_identifiers(action_tokens), handle});
-  edits_.push_back({start, static_cast<unsigned>(after_semicolon(source_, macro_end)), flag + " = 1;"});
+  edits_.push_back(
+      {start, static_cast<unsigned>(after_semicolon(source_, macro_end)), flag + (objc_ ? " = 1; @try {" : " = 1;")});
   seen_.insert(start);
 }
 
@@ -451,7 +455,16 @@ void Transformer::visit_block(CXCursor cursor, CXCursorKind parent) {
     for (const auto &action : actions)
       declarations += "int " + action.flag + " = 0; ";
     edits_.push_back({start + 1, start + 1, declarations});
-    edits_.push_back({finish - 1, finish - 1, cleanup(scopes_.size() - 1, scopes_.size(), finish)});
+    auto normal_cleanup = cleanup(scopes_.size() - 1, scopes_.size(), finish);
+    if (objc_) {
+      std::string finalizers;
+      for (auto action = actions.rbegin(); action != actions.rend(); ++action)
+        finalizers += "} @finally { if (" + action->flag + ") { " + line_directive(action->action_start) +
+                      action->text + "\n; } } ";
+      edits_.push_back({finish - 1, finish - 1, finalizers});
+    } else {
+      edits_.push_back({finish - 1, finish - 1, normal_cleanup});
+    }
   }
   scopes_.pop_back();
 }
@@ -460,8 +473,39 @@ void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
   // A transfer unwinds only scopes between the current node and its target.
   const auto kind = clang_getCursorKind(cursor);
   const auto start = begin(cursor), finish = end(cursor);
-  if (kind == CXCursor_FunctionDecl && clang_isCursorDefinition(cursor) && in_file(cursor)) {
+  if ((kind == CXCursor_FunctionDecl ||
+       (objc_ && (kind == CXCursor_ObjCInstanceMethodDecl || kind == CXCursor_ObjCClassMethodDecl))) &&
+      clang_isCursorDefinition(cursor) && in_file(cursor)) {
     visit_function(cursor);
+    return;
+  }
+  if (objc_ && kind == CXCursor_BlockExpr) {
+    auto outer_scopes = std::move(scopes_);
+    auto outer_controls = std::move(controls_);
+    auto outer_labels = std::move(labels_);
+    auto outer_defer_scopes = std::move(defer_scopes_);
+    auto outer_declarations = std::move(declarations_);
+    scopes_.clear();
+    controls_.clear();
+    labels_.clear();
+    defer_scopes_.clear();
+    declarations_.clear();
+    std::function<void(CXCursor)> process_block = [&](CXCursor child) {
+      if (clang_getCursorKind(child) == CXCursor_CompoundStmt) {
+        index_control_flow(child);
+        visit(child, kind);
+      } else {
+        for (auto grandchild : children(child))
+          process_block(grandchild);
+      }
+    };
+    for (auto child : children(cursor))
+      process_block(child);
+    scopes_ = std::move(outer_scopes);
+    controls_ = std::move(outer_controls);
+    labels_ = std::move(outer_labels);
+    defer_scopes_ = std::move(outer_defer_scopes);
+    declarations_ = std::move(outer_declarations);
     return;
   }
   if (scopes_.empty() && kind != CXCursor_CompoundStmt)
@@ -500,7 +544,7 @@ void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
             std::find(target.second.begin(), target.second.end(), owner) != target.second.end())
           fail_at(start, "backward goto can register defer repeatedly");
     auto actions = cleanup(common, scopes_.size(), start);
-    if (!actions.empty()) {
+    if (!actions.empty() && !objc_) {
       require_keyword(start, "goto");
       const auto stop = static_cast<unsigned>(after_semicolon(source_, finish));
       edits_.push_back({start, stop, "{ " + actions + source_.substr(start, stop - start) + " }"});
@@ -509,7 +553,7 @@ void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
   }
   if (kind == CXCursor_ReturnStmt) {
     auto actions = cleanup(0, scopes_.size(), start);
-    if (!actions.empty()) {
+    if (!actions.empty() && !objc_) {
       require_keyword(start, "return");
       const auto stop = static_cast<unsigned>(after_semicolon(source_, finish));
       auto raw = source_.substr(start + 6, finish - start - 6);
@@ -526,6 +570,9 @@ void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
         replacement = "{ " + actions + "return; }";
       edits_.push_back({start, stop, replacement});
     }
+    if (objc_)
+      for (auto child : children(cursor))
+        visit(child, kind);
     return;
   }
   if (kind == CXCursor_BreakStmt || kind == CXCursor_ContinueStmt) {
@@ -535,7 +582,7 @@ void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
     if (target == controls_.rend())
       fail_at(start, "cannot determine control-flow target");
     auto actions = cleanup(target->second, scopes_.size(), start);
-    if (!actions.empty()) {
+    if (!actions.empty() && !objc_) {
       require_keyword(start, kind == CXCursor_BreakStmt ? "break" : "continue");
       const auto stop = static_cast<unsigned>(after_semicolon(source_, finish));
       edits_.push_back({start, stop, "{ " + actions + source_.substr(start, stop - start) + " }"});
@@ -544,7 +591,8 @@ void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
   }
   if (kind == CXCursor_GCCAsmStmt || kind == CXCursor_MSAsmStmt)
     fail_at(start, "inline assembly in a function with defer is unsupported; move it to another function");
-  const bool loop = kind == CXCursor_ForStmt || kind == CXCursor_WhileStmt || kind == CXCursor_DoStmt;
+  const bool loop = kind == CXCursor_ForStmt || kind == CXCursor_WhileStmt || kind == CXCursor_DoStmt ||
+                    (objc_ && kind == CXCursor_ObjCForCollectionStmt);
   const bool control = loop || kind == CXCursor_SwitchStmt;
   if (control)
     controls_.push_back({loop, scopes_.size()});
@@ -575,11 +623,39 @@ std::string Transformer::run() {
       collect_markers(child);
   };
   std::set<std::pair<unsigned, unsigned>> processed_functions;
-  for (auto cursor : children(clang_getTranslationUnitCursor(unit_))) {
-    if (clang_getCursorKind(cursor) == CXCursor_FunctionDecl && clang_isCursorDefinition(cursor))
+  std::set<std::pair<unsigned, unsigned>> processed_global_blocks;
+  std::function<void(CXCursor)> find_global_blocks = [&](CXCursor cursor) {
+    if (clang_getCursorKind(cursor) == CXCursor_BlockExpr) {
       collect_markers(cursor);
-    if (clang_getCursorKind(cursor) != CXCursor_FunctionDecl || !clang_isCursorDefinition(cursor) || !in_file(cursor))
-      continue;
+      if (std::none_of(macros_.begin(), macros_.end(),
+                       [&](const auto &entry) { return begin(cursor) <= entry.first && entry.first < end(cursor); }))
+        return;
+      if (!processed_global_blocks.insert({begin(cursor), end(cursor)}).second)
+        fail_at(begin(cursor), "header block with defer is instantiated multiple times in one translation unit");
+      visit(cursor);
+      return;
+    }
+    for (auto child : children(cursor))
+      find_global_blocks(child);
+  };
+  std::function<void(CXCursor)> process = [&](CXCursor cursor) {
+    const auto kind = clang_getCursorKind(cursor);
+    if (objc_ && kind == CXCursor_VarDecl && in_file(cursor)) {
+      find_global_blocks(cursor);
+      return;
+    }
+    const bool callable = kind == CXCursor_FunctionDecl ||
+                          (objc_ && (kind == CXCursor_ObjCInstanceMethodDecl || kind == CXCursor_ObjCClassMethodDecl));
+    if (!callable || !clang_isCursorDefinition(cursor)) {
+      if (kind == CXCursor_TranslationUnit ||
+          (objc_ && (kind == CXCursor_ObjCImplementationDecl || kind == CXCursor_ObjCCategoryImplDecl)))
+        for (auto child : children(cursor))
+          process(child);
+      return;
+    }
+    collect_markers(cursor);
+    if (!in_file(cursor))
+      return;
     bool has_defer = false;
     for (const auto &[position, ignored] : macros_)
       if (begin(cursor) <= position && position < end(cursor)) {
@@ -587,7 +663,7 @@ std::string Transformer::run() {
         break;
       }
     if (!has_defer)
-      continue;
+      return;
     if (allow_other_files_ && !processed_functions.insert({begin(cursor), end(cursor)}).second)
       fail_at(begin(cursor), "header function with defer is instantiated multiple times in one translation unit");
     labels_.clear();
@@ -595,7 +671,8 @@ std::string Transformer::run() {
     declarations_.clear();
     index_control_flow(cursor);
     visit(cursor);
-  }
+  };
+  process(clang_getTranslationUnitCursor(unit_));
   for (const auto &[position, ignored] : macros_)
     if (!seen_.count(position))
       fail_at(position, "unhandled defer macro expansion; use defer as a direct statement inside a function block");
@@ -608,9 +685,14 @@ std::string Transformer::run() {
   auto output = source_;
   for (const auto &edit : edits_)
     output.replace(edit.start, edit.finish - edit.start, edit.replacement + line_directive(edit.finish));
+  const std::string runtime_check =
+      objc_ && !macros_.empty()
+          ? "\n#if !defined(OBJC_ZEROCOST_EXCEPTIONS) || !OBJC_ZEROCOST_EXCEPTIONS\n"
+            "#error \"defer() requires an Objective-C runtime with zero-cost exceptions\"\n#endif\n"
+          : "";
   if (output.compare(0, 3, "\xef\xbb\xbf") == 0)
-    return output.substr(0, 3) + line_directive(0) + output.substr(3);
-  return line_directive(0) + output;
+    return output.substr(0, 3) + runtime_check + line_directive(0) + output.substr(3);
+  return runtime_check + line_directive(0) + output;
 }
 
 std::string Transformer::explain(unsigned line) {
@@ -639,14 +721,34 @@ std::string Transformer::explain(unsigned line) {
 std::string Transformer::show_transformed(unsigned line) {
   run();
   std::vector<CXCursor> matches;
-  for (auto cursor : children(clang_getTranslationUnitCursor(unit_))) {
-    if (clang_getCursorKind(cursor) != CXCursor_FunctionDecl || !clang_isCursorDefinition(cursor) || !in_file(cursor))
-      continue;
+  std::function<void(CXCursor)> find_callable = [&](CXCursor cursor) {
+    const auto kind = clang_getCursorKind(cursor);
+    if (kind == CXCursor_TranslationUnit ||
+        (objc_ && (kind == CXCursor_ObjCImplementationDecl || kind == CXCursor_ObjCCategoryImplDecl))) {
+      for (auto child : children(cursor))
+        find_callable(child);
+      return;
+    }
+    if (objc_ && kind == CXCursor_VarDecl && in_file(cursor)) {
+      const auto first = begin(cursor), last = end(cursor);
+      const auto start_line = 1 + std::count(source_.begin(), source_.begin() + first, '\n');
+      const auto end_line = 1 + std::count(source_.begin(), source_.begin() + last, '\n');
+      if (start_line <= line && line <= end_line && std::any_of(macros_.begin(), macros_.end(), [&](const auto &entry) {
+            return first <= entry.first && entry.first < last;
+          }))
+        matches.push_back(cursor);
+      return;
+    }
+    if ((kind != CXCursor_FunctionDecl &&
+         (!objc_ || (kind != CXCursor_ObjCInstanceMethodDecl && kind != CXCursor_ObjCClassMethodDecl))) ||
+        !clang_isCursorDefinition(cursor) || !in_file(cursor))
+      return;
     const auto start_line = 1 + std::count(source_.begin(), source_.begin() + begin(cursor), '\n');
     const auto end_line = 1 + std::count(source_.begin(), source_.begin() + end(cursor), '\n');
     if (start_line <= line && line <= end_line)
       matches.push_back(cursor);
-  }
+  };
+  find_callable(clang_getTranslationUnitCursor(unit_));
   if (matches.size() != 1)
     fail("expected one function at " + path_ + ":" + std::to_string(line));
   const auto first = begin(matches.front()), last = end(matches.front());
@@ -659,13 +761,13 @@ std::string Transformer::show_transformed(unsigned line) {
 
 } // namespace
 
-std::string transform(CXTranslationUnit unit, const std::string &path, const std::string &source) {
-  return Transformer(unit, path, source).run();
+std::string transform(CXTranslationUnit unit, const std::string &path, const std::string &source, bool objc) {
+  return Transformer(unit, path, source, false, {}, objc).run();
 }
 
 std::string transform_translation_unit_file(CXTranslationUnit unit, const std::string &path, const std::string &source,
-                                            const std::string &display_path) {
-  return Transformer(unit, path, source, true, display_path).run();
+                                            const std::string &display_path, bool objc) {
+  return Transformer(unit, path, source, true, display_path, objc).run();
 }
 
 std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &path, const std::string &source,
@@ -857,13 +959,14 @@ std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &pat
   return result;
 }
 
-std::string explain(CXTranslationUnit unit, const std::string &path, const std::string &source, unsigned line) {
-  return Transformer(unit, path, source).explain(line);
+std::string explain(CXTranslationUnit unit, const std::string &path, const std::string &source, unsigned line,
+                    bool objc) {
+  return Transformer(unit, path, source, false, {}, objc).explain(line);
 }
 
-std::string show_transformed(CXTranslationUnit unit, const std::string &path, const std::string &source,
-                             unsigned line) {
-  return Transformer(unit, path, source).show_transformed(line);
+std::string show_transformed(CXTranslationUnit unit, const std::string &path, const std::string &source, unsigned line,
+                             bool objc) {
+  return Transformer(unit, path, source, false, {}, objc).show_transformed(line);
 }
 
 } // namespace defer_tool

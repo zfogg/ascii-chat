@@ -214,12 +214,13 @@ class Scope:
 
 class Transformer:
     def __init__(self, path: Path, source: bytes, tu: cindex.TranslationUnit, allow_other_files: bool = False,
-                 display_path: str | None = None) -> None:
+                 display_path: str | None = None, objc: bool = False) -> None:
         self.path = path.resolve()
         self.display_path = display_path or self.path.as_posix()
         self.source = source
         self.tu = tu
         self.allow_other_files = allow_other_files
+        self.objc = objc
         self.edits: list[tuple[int, int, bytes]] = []
         self.exits: list[tuple[int, list[tuple[int, bytes]]]] = []
         self.macros: dict[int, cindex.Cursor] = {}
@@ -416,12 +417,27 @@ class Transformer:
         if root is None:
             raise TransformError("Clang returned no translation unit cursor")
         matches = []
-        for cursor in root.get_children():
-            if cursor.kind != cindex.CursorKind.FUNCTION_DECL or not cursor.is_definition() or not self.in_file(cursor):
-                continue
+        def find_callable(cursor: cindex.Cursor) -> None:
+            if cursor.kind == cindex.CursorKind.TRANSLATION_UNIT or (
+                self.objc and cursor.kind in (cindex.CursorKind.OBJC_IMPLEMENTATION_DECL, cindex.CursorKind.OBJC_CATEGORY_IMPL_DECL)
+            ):
+                for child in cursor.get_children():
+                    find_callable(child)
+                return
+            if self.objc and cursor.kind == cindex.CursorKind.VAR_DECL and self.in_file(cursor):
+                first, last = cursor.extent.start.offset, cursor.extent.end.offset
+                if (self.source.count(b"\n", 0, first) + 1 <= line <= self.source.count(b"\n", 0, last) + 1
+                    and any(first <= position < last for position in self.macros)):
+                    matches.append((first, last))
+                return
+            if (cursor.kind != cindex.CursorKind.FUNCTION_DECL and not (
+                self.objc and cursor.kind in (cindex.CursorKind.OBJC_INSTANCE_METHOD_DECL, cindex.CursorKind.OBJC_CLASS_METHOD_DECL)
+            )) or not cursor.is_definition() or not self.in_file(cursor):
+                return
             first, last = cursor.extent.start.offset, cursor.extent.end.offset
             if self.source.count(b"\n", 0, first) + 1 <= line <= self.source.count(b"\n", 0, last) + 1:
                 matches.append((first, last))
+        find_callable(root)
         if len(matches) != 1:
             raise TransformError(f"expected one function at {self.path.as_posix()}:{line}")
         first, last = matches[0]
@@ -439,13 +455,15 @@ class Transformer:
     ) -> None:
         kind = cursor.kind
         start = cursor.extent.start.offset
+        if self.objc and kind == cindex.CursorKind.BLOCK_EXPR:
+            return
         if kind == cindex.CursorKind.DO_STMT and start in self.macros:
             if scopes:
                 self.defer_scopes[start] = scopes[-1]
             return
         if kind == cindex.CursorKind.COMPOUND_STMT:
             scopes = (*scopes, start)
-        if kind == cindex.CursorKind.FOR_STMT:
+        if kind == cindex.CursorKind.FOR_STMT or (self.objc and kind == cindex.CursorKind.OBJC_FOR_COLLECTION_STMT):
             limit = min(limit, cursor.extent.end.offset)
         if kind == cindex.CursorKind.LABEL_STMT:
             self.labels[cursor.spelling] = (start, scopes)
@@ -483,14 +501,14 @@ class Transformer:
         start = cursor.extent.start.offset
         end = cursor.extent.end.offset
         if (
-            kind == cindex.CursorKind.FUNCTION_DECL
+            (kind == cindex.CursorKind.FUNCTION_DECL or (self.objc and kind in (cindex.CursorKind.OBJC_INSTANCE_METHOD_DECL, cindex.CursorKind.OBJC_CLASS_METHOD_DECL)))
             and cursor.is_definition()
             and self.in_file(cursor)
         ):
             self.function_void = cursor.result_type.kind == cindex.TypeKind.VOID
             self.function_prelude = b""
             self.return_capture_type = b""
-            if not self.function_void:
+            if not self.function_void and not self.objc:
                 fn_type = f"__ascii_defer_function_{start}"
                 declarations = [f"typedef __typeof__(&{cursor.spelling}) {fn_type};"]
                 call_arguments = []
@@ -540,6 +558,20 @@ class Transformer:
                     self.return_capture_type = f"__typeof__(({result_type}){{0}})".encode()
             for child in cursor.get_children():
                 self.visit(child, kind)
+            return
+        if self.objc and kind == cindex.CursorKind.BLOCK_EXPR:
+            outer = (self.scopes, self.controls, self.labels, self.defer_scopes, self.declarations)
+            self.scopes, self.controls, self.labels, self.defer_scopes, self.declarations = [], [], {}, {}, []
+            def process_block(child: cindex.Cursor) -> None:
+                if child.kind == cindex.CursorKind.COMPOUND_STMT:
+                    self.index_control_flow(child)
+                    self.visit(child, kind)
+                else:
+                    for grandchild in child.get_children():
+                        process_block(grandchild)
+            for child in cursor.get_children():
+                process_block(child)
+            self.scopes, self.controls, self.labels, self.defer_scopes, self.declarations = outer
             return
         if not self.scopes and kind != cindex.CursorKind.COMPOUND_STMT:
             return
@@ -600,7 +632,7 @@ class Transformer:
             self.scopes[-1].defers.append(
                 DeferredAction(start, action_start, flag, action, identifiers, handle)
             )
-            self.edits.append((start, self.after_semicolon(macro_end), flag + b" = 1;"))
+            self.edits.append((start, self.after_semicolon(macro_end), flag + (b" = 1; @try {" if self.objc else b" = 1;")))
             self.seen.add(start)
             return
         if kind == cindex.CursorKind.COMPOUND_STMT:
@@ -622,7 +654,15 @@ class Transformer:
                     b"int " + item.flag + b" = 0;" for item in actions
                 )
                 self.edits.append((start + 1, start + 1, declarations + b" "))
-                self.edits.append((end - 1, end - 1, self.cleanup([scope], end)))
+                cleanup = self.cleanup([scope], end)
+                if self.objc:
+                    finalizers = b"".join(
+                        b"} @finally { if (" + item.flag + b") { " + self.line_directive(item.action_start) + item.action + b"\n; } } "
+                        for item in reversed(actions)
+                    )
+                    self.edits.append((end - 1, end - 1, finalizers))
+                else:
+                    self.edits.append((end - 1, end - 1, cleanup))
             self.scopes.pop()
             return
         if kind in (cindex.CursorKind.ASM_STMT, cindex.CursorKind.MS_ASM_STMT):
@@ -657,7 +697,7 @@ class Transformer:
                     f"backward goto can register defer repeatedly (byte {start})"
                 )
             cleanup = self.cleanup(self.scopes[common:], start)
-            if cleanup:
+            if cleanup and not self.objc:
                 self.require_keyword(start, b"goto")
                 stop = self.after_semicolon(end)
                 self.edits.append(
@@ -666,7 +706,7 @@ class Transformer:
             return
         if kind == cindex.CursorKind.RETURN_STMT:
             cleanup = self.cleanup(self.scopes, start)
-            if cleanup:
+            if cleanup and not self.objc:
                 self.require_keyword(start, b"return")
                 stop = self.after_semicolon(end)
                 raw_expr = self.source[start + 6 : end]
@@ -694,6 +734,9 @@ class Transformer:
                 else:
                     replacement = b"{ " + cleanup + b"return; }"
                 self.edits.append((start, stop, replacement))
+            if self.objc:
+                for child in cursor.get_children():
+                    self.visit(child, kind)
             return
         if kind in (cindex.CursorKind.BREAK_STMT, cindex.CursorKind.CONTINUE_STMT):
             targets = (
@@ -706,7 +749,7 @@ class Transformer:
                     f"cannot determine control-flow target at byte {start}"
                 )
             cleanup = self.cleanup(self.scopes[targets[-1][1] :], start)
-            if cleanup:
+            if cleanup and not self.objc:
                 keyword = (
                     b"break" if kind == cindex.CursorKind.BREAK_STMT else b"continue"
                 )
@@ -721,7 +764,7 @@ class Transformer:
             cindex.CursorKind.FOR_STMT,
             cindex.CursorKind.WHILE_STMT,
             cindex.CursorKind.DO_STMT,
-        ):
+        ) or (self.objc and kind == cindex.CursorKind.OBJC_FOR_COLLECTION_STMT):
             control_kind = "loop"
         elif kind == cindex.CursorKind.SWITCH_STMT:
             control_kind = "switch"
@@ -754,14 +797,37 @@ class Transformer:
                 collect_markers(child)
 
         processed_functions: set[tuple[int, int]] = set()
-        for cursor in root.get_children():
-            if cursor.kind == cindex.CursorKind.FUNCTION_DECL and cursor.is_definition():
+        processed_global_blocks: set[tuple[int, int]] = set()
+        def find_global_blocks(cursor: cindex.Cursor) -> None:
+            if cursor.kind == cindex.CursorKind.BLOCK_EXPR:
                 collect_markers(cursor)
-            if (
-                cursor.kind == cindex.CursorKind.FUNCTION_DECL
-                and cursor.is_definition()
-                and self.in_file(cursor)
-            ):
+                extent = (cursor.extent.start.offset, cursor.extent.end.offset)
+                if not any(extent[0] <= position < extent[1] for position in self.macros):
+                    return
+                if extent in processed_global_blocks:
+                    raise TransformError(self.diagnostic(extent[0], "header block with defer is instantiated multiple times in one translation unit"))
+                processed_global_blocks.add(extent)
+                self.visit(cursor)
+                return
+            for child in cursor.get_children():
+                find_global_blocks(child)
+
+        def process(cursor: cindex.Cursor) -> None:
+            if self.objc and cursor.kind == cindex.CursorKind.VAR_DECL and self.in_file(cursor):
+                find_global_blocks(cursor)
+                return
+            callable_kind = cursor.kind == cindex.CursorKind.FUNCTION_DECL or (
+                self.objc and cursor.kind in (cindex.CursorKind.OBJC_INSTANCE_METHOD_DECL, cindex.CursorKind.OBJC_CLASS_METHOD_DECL)
+            )
+            if not callable_kind or not cursor.is_definition():
+                if cursor.kind == cindex.CursorKind.TRANSLATION_UNIT or (
+                    self.objc and cursor.kind in (cindex.CursorKind.OBJC_IMPLEMENTATION_DECL, cindex.CursorKind.OBJC_CATEGORY_IMPL_DECL)
+                ):
+                    for child in cursor.get_children():
+                        process(child)
+                return
+            collect_markers(cursor)
+            if self.in_file(cursor):
                 start, end = cursor.extent.start.offset, cursor.extent.end.offset
                 if any(start <= offset < end for offset in self.macros):
                     if self.allow_other_files and (start, end) in processed_functions:
@@ -772,6 +838,7 @@ class Transformer:
                     self.declarations.clear()
                     self.index_control_flow(cursor)
                     self.visit(cursor)
+        process(root)
         missed = set(self.macros) - self.seen
         if missed:
             raise TransformError(self.diagnostic(
@@ -787,9 +854,13 @@ class Transformer:
             output = (
                 output[:start] + replacement + self.line_directive(end) + output[end:]
             )
+        runtime_check = (
+            b'\n#if !defined(OBJC_ZEROCOST_EXCEPTIONS) || !OBJC_ZEROCOST_EXCEPTIONS\n'
+            b'#error "defer() requires an Objective-C runtime with zero-cost exceptions"\n#endif\n'
+        ) if self.objc and self.macros else b""
         if output.startswith(b"\xef\xbb\xbf"):
-            return output[:3] + self.line_directive(0) + output[3:]
-        return self.line_directive(0) + output
+            return output[:3] + runtime_check + self.line_directive(0) + output[3:]
+        return runtime_check + self.line_directive(0) + output
 
 
 def compilation_arguments(directory: Path, generated: Path, source: Path) -> list[str]:
@@ -871,6 +942,17 @@ def is_objc_source(source: Path, arguments: list[str]) -> bool:
     return source.suffix == ".m"
 
 
+def require_objc_exceptions(arguments: list[str]) -> None:
+    enabled = False
+    for flag in arguments:
+        if flag == "-fobjc-exceptions":
+            enabled = True
+        elif flag in ("-fno-objc-exceptions", "-fno-exceptions"):
+            enabled = False
+    if not enabled:
+        raise TransformError("Objective-C defer requires -fobjc-exceptions in the actual compilation arguments")
+
+
 def write_bytes_if_changed(path: Path, contents: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and path.read_bytes() == contents:
@@ -882,7 +964,7 @@ def write_bytes_if_changed(path: Path, contents: bytes) -> None:
 
 def transform_with_header_overlay(
     index: cindex.Index, source: Path, output: Path, overlay: Path, arguments: list[str],
-    protected_paths: list[Path],
+    protected_paths: list[Path], objc: bool = False,
 ) -> tuple[cindex.TranslationUnit, bytes]:
     contents = {source: source.read_bytes()}
     header_aliases: dict[Path, set[Path]] = {}
@@ -964,13 +1046,13 @@ def transform_with_header_overlay(
         raise TransformError("output must not overwrite an included file")
     transformed = {
         path: Transformer(path, text, tu, allow_other_files=True,
-                          display_path=str(source) if path == source else header_display_paths[path]).transform()
+                          display_path=str(source) if path == source else header_display_paths[path], objc=objc).transform()
         for path, text in contents.items()
     }
     validation = index.parse(str(source), args=arguments, unsaved_files=[(str(path), text) for path, text in transformed.items()])
     errors = [generated_diagnostic(item) for item in validation.diagnostics if item.severity >= cindex.Diagnostic.Error]
     if errors:
-        raise TransformError(f"generated C is invalid: {errors[0]}")
+        raise TransformError(f"generated {'Objective-C' if objc else 'C'} is invalid: {errors[0]}")
     protected = [output, *dependencies, *protected_paths]
     if any(paths_alias(overlay, path) for path in protected):
         raise TransformError("header overlay must not overwrite an input or output")
@@ -1109,22 +1191,23 @@ def main(protected_paths: list[Path] | None = None) -> int:
             if args.source or args.output or args.depfile or args.compilation_database or args.header_overlay:
                 raise TransformError("inspection accepts only explicit Clang arguments")
             source_path = Path(path).resolve()
-            if is_objc_source(source_path, clang_args):
-                raise TransformError("Objective-C defer inspection is not supported")
+            objc = is_objc_source(source_path, clang_args)
+            if objc:
+                require_objc_exceptions(clang_args)
             if is_cpp_source(source_path, clang_args):
                 raise TransformError("C++ defer inspection is not supported; C++ uses native scope guards")
             source = source_path.read_bytes()
             clang_args.append("-DASCIICHAT_DEFER_PARSING=1")
             index = cindex.Index.create()
             tu, source = parse_wrapped(index, source_path, clang_args, source)
-            transformer = Transformer(source_path, source, tu)
+            transformer = Transformer(source_path, source, tu, objc=objc)
             inspection = transformer.show_transformed(int(line)) if args.show_transformed else transformer.explain(int(line))
-            transformed = Transformer(source_path, source, tu).transform()
+            transformed = Transformer(source_path, source, tu, objc=objc).transform()
             validation = index.parse(str(source_path), args=clang_args, unsaved_files=[(str(source_path), transformed)],
                                      options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD)
             errors = [generated_diagnostic(item) for item in validation.diagnostics if item.severity >= cindex.Diagnostic.Error]
             if errors:
-                raise TransformError(f"generated C is invalid: {errors[0]}")
+                raise TransformError(f"generated {'Objective-C' if objc else 'C'} is invalid: {errors[0]}")
             if isinstance(inspection, bytes):
                 sys.stdout.buffer.write(inspection)
             else:
@@ -1154,8 +1237,9 @@ def main(protected_paths: list[Path] | None = None) -> int:
             clang_args = compilation_arguments(
                 args.compilation_database, args.output, args.source
             )
-        if is_objc_source(args.source, clang_args):
-            raise TransformError("Objective-C defer transformation is not supported; cleanup during exceptions cannot be guaranteed")
+        objc = is_objc_source(args.source, clang_args)
+        if objc:
+            require_objc_exceptions(clang_args)
         source = args.source.read_bytes()
         clang_args.append("-DASCIICHAT_DEFER_PARSING=1")
         version = cindex.conf.get_clang_version()
@@ -1175,17 +1259,17 @@ def main(protected_paths: list[Path] | None = None) -> int:
             output = source[:3] + directive + source[3:] if source.startswith(b"\xef\xbb\xbf") else directive + source
         elif args.header_overlay:
             tu, output = transform_with_header_overlay(index, args.source, args.output, args.header_overlay,
-                                                       clang_args, protected_paths or [])
+                                                       clang_args, protected_paths or [], objc)
         else:
             tu, source = parse_wrapped(index, args.source, clang_args, source)
-            output = Transformer(args.source, source, tu).transform()
+            output = Transformer(args.source, source, tu, objc=objc).transform()
             validation = index.parse(
                 str(args.source), args=clang_args, unsaved_files=[(str(args.source), output)],
                 options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
             )
             errors = [generated_diagnostic(item) for item in validation.diagnostics if item.severity >= cindex.Diagnostic.Error]
             if errors:
-                raise TransformError(f"generated C is invalid: {errors[0]}")
+                raise TransformError(f"generated {'Objective-C' if objc else 'C'} is invalid: {errors[0]}")
         includes = {str(args.source)}
         includes.update(str(inc.include) for inc in tu.get_includes() if inc.include is not None)
         if any(paths_alias(args.output, Path(path)) for path in includes):

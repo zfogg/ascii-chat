@@ -83,12 +83,13 @@ private:
 };
 
 inline void validate_generated(CXIndex index, const std::string &file, const std::vector<const char *> &arguments,
-                               const std::string &content) {
+                               const std::string &content, bool objc = false) {
   CXUnsavedFile generated{file.c_str(), content.data(), static_cast<unsigned long>(content.size())};
   TranslationUnit validation(index, file, arguments, &generated, 1, false);
   const auto diagnostics = validation.errors();
   if (!diagnostics.empty())
-    throw std::runtime_error("generated C is invalid: " + diagnostics.front());
+    throw std::runtime_error(std::string(objc ? "generated Objective-C is invalid: " : "generated C is invalid: ") +
+                             diagnostics.front());
 }
 
 inline std::vector<CXCursor> children(CXCursor parent) {
