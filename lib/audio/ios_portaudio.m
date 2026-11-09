@@ -20,6 +20,7 @@ static int g_ios_device_count;
 static NSLock *g_ios_device_lock;
 static id g_ios_route_observer;
 static int g_ios_selected_device = -1;
+static unsigned g_ios_active_streams;
 
 static BOOL ios_audio_device_supports_input(PaDeviceIndex index) {
   return index >= 0 && index < g_ios_device_count && g_ios_devices[index].info.maxInputChannels > 0;
@@ -112,6 +113,7 @@ struct PaStream {
   float *output_interleaved;
   size_t output_capacity_frames;
   BOOL active;
+  BOOL counted_active;
   unsigned long queued_frames;
   NSLock *queue_lock;
   id interruption_observer;
@@ -332,6 +334,10 @@ PaError Pa_StartStream(PaStream *stream) {
   if (stream->player)
     [stream->player play];
   stream->active = YES;
+  if (!stream->counted_active) {
+    ++g_ios_active_streams;
+    stream->counted_active = YES;
+  }
   return paNoError;
 }
 PaError Pa_StopStream(PaStream *stream) {
@@ -344,6 +350,9 @@ PaError Pa_StopStream(PaStream *stream) {
     stream->interruption_observer = nil;
   }
   stream->active = NO;
+  if (stream->counted_active && g_ios_active_streams > 0)
+    --g_ios_active_streams;
+  stream->counted_active = NO;
   return paNoError;
 }
 PaError Pa_CloseStream(PaStream *stream) {
@@ -356,6 +365,9 @@ PaError Pa_CloseStream(PaStream *stream) {
     stream->interruption_observer = nil;
   }
   stream->active = NO;
+  if (stream->counted_active && g_ios_active_streams > 0)
+    --g_ios_active_streams;
+  stream->counted_active = NO;
   stream->player = nil;
   stream->source = nil;
   stream->engine = nil;
@@ -388,7 +400,7 @@ int asciichat_ios_audio_select_device(int index) {
   // AVAudioSession applies a preferred input to the active route. Re-activate
   // it here so changing the picker while a session is running takes effect
   // without requiring the C audio pipeline to be torn down and rebuilt.
-  if (session.isOtherAudioPlaying || session.isInputAvailable)
+  if (g_ios_active_streams > 0)
     [session setActive:YES error:NULL];
   return 0;
 }
