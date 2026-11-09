@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=notify
-ExecStart=@ASCII_CHAT_EXECUTABLE@ server 0.0.0.0 :: --port=27229 --websocket-port=27230
+ExecStart=@ASCII_CHAT_EXECUTABLE@ server 0.0.0.0 ::
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=yes
