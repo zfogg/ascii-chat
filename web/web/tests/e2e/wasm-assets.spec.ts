@@ -425,6 +425,34 @@ test("browser ABI exposes owned session names without legacy peer bindings", asy
   });
 });
 
+test("browser host owns packet output draining without a module callback", async ({
+  page,
+}) => {
+  await page.goto("/client");
+  const result = await page.evaluate(async () => {
+    const factory = (await import("/src/wasm/dist/client.js")).default;
+    const module = await factory({
+      locateFile: (name: string) => "/src/wasm/dist/" + name,
+      getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
+    });
+    const host = new module.BrowserHostBinding();
+    const methods = {
+      valid: typeof host.valid,
+      drainPackets: typeof host.drainPackets,
+      callback: "hostPacketCallback" in module,
+    };
+    const empty = host.drainPackets();
+    host.close();
+    host.close();
+    host.delete();
+    return { methods, empty: empty.length };
+  });
+  expect(result).toEqual({
+    methods: { valid: "function", drainPackets: "function", callback: false },
+    empty: 0,
+  });
+});
+
 test("client session exposes lifecycle snapshots and transport events", async ({
   page,
 }) => {
