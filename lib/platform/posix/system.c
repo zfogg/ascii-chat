@@ -14,7 +14,7 @@
 #include "terminal.h"
 #include <ascii-chat/otel.h>
 #include <ascii-chat/platform/api.h>
-#ifdef PLATFORM_IOS
+#if defined(PLATFORM_IOS) && defined(__IPHONE_OS_VERSION_MIN_REQUIRED)
 #include <ascii-chat/platform/ios/render_bridge.h>
 #include <ascii-chat/platform/ios/stdin_bridge.h>
 #endif
@@ -514,7 +514,7 @@ FILE *platform_fdopen(const char *name, int fd, const char *mode) {
  * @return Number of bytes read, or -1 on error
  */
 ssize_t platform_read(int fd, void *buf, size_t count) {
-#ifdef PLATFORM_IOS
+#if defined(PLATFORM_IOS) && defined(__IPHONE_OS_VERSION_MIN_REQUIRED)
   if (fd == STDIN_FILENO)
     return ios_stdin_bridge_read(buf, count);
 #endif
@@ -532,7 +532,7 @@ ssize_t platform_write(int fd, const void *buf, size_t count) {
   if (!buf || count == 0) {
     log_warn("Invalid parameters: fd=%d, buf=%p, count=%zu", fd, buf, count);
   }
-#ifdef PLATFORM_IOS
+#if defined(PLATFORM_IOS) && defined(__IPHONE_OS_VERSION_MIN_REQUIRED)
   return ios_render_bridge_write(fd, buf, count);
 #else
   return write(fd, buf, count);
@@ -809,7 +809,7 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
   return ASCIICHAT_OK;
 }
 
-#if !defined(PLATFORM_IOS)
+#if !defined(PLATFORM_IOS) || !defined(__IPHONE_OS_VERSION_MIN_REQUIRED)
 /**
  * Load system CA certificates for TLS/HTTPS (POSIX implementation)
  *
