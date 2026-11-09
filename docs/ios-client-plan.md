@@ -2,13 +2,19 @@
 
 # ascii-chat iOS Client - Implementation Plan (WIP)
 
-> **Status**: Simulator app, shared render bridge, mode selector, live native settings, camera/audio routing, TLS/QUIC dependency wiring, native mirror/client/discovery dispatch, session-string sharing, and device/XCFramework packaging are implemented; physical-device camera/audio validation and successful live host/ACDS sessions remain open
-> **Last Updated**: 2026-11-08
+> **Status**: Simulator app, shared render bridge, mode selector, live native settings, camera/audio routing, bundled CA roots, TLS/QUIC dependency wiring, native mirror/client/discovery dispatch, session-string sharing, FPS-aware display scheduling, and device/XCFramework packaging are implemented; physical-device camera/audio validation and successful live host/ACDS sessions remain open
+> **Last Updated**: 2026-11-09
 > **Goal**: Native iOS app in Swift that uses libasciichat (compiled for iOS) to support server, client, mirror, and discovery modes.
 
 ---
 
 ## Overview
+
+The implementation uses the unified `src/ios/AsciiChatApp.swift` SwiftUI host and
+`src/ios/main.c` dispatcher described below. The earlier proposed split into
+`AsciiChatEngine.swift`, `FrameBufferView.swift`, `ModeView.swift`, and separate
+mode views is intentionally superseded by that shared host so the C mode entry
+points, options API, render bridge, and native controls remain in one lifecycle.
 
 The iOS client runs the **actual C main functions** (`client_main`, `mirror_main`, `server_main`,
 `discovery_main`) natively on iOS. All terminal output is captured into a buffer, rendered through
