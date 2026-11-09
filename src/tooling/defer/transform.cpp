@@ -535,6 +535,8 @@ void Transformer::visit(CXCursor cursor, CXCursorKind parent) {
     }
     return;
   }
+  if (kind == CXCursor_GCCAsmStmt || kind == CXCursor_MSAsmStmt)
+    fail_at(start, "inline assembly in a function with defer is unsupported; move it to another function");
   const bool loop = kind == CXCursor_ForStmt || kind == CXCursor_WhileStmt || kind == CXCursor_DoStmt;
   const bool control = loop || kind == CXCursor_SwitchStmt;
   if (control)
@@ -702,30 +704,36 @@ std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &pat
         relevant = true;
     if (!relevant)
       continue;
+    unsigned line = 0, column = 0;
+    clang_getExpansionLocation(clang_getCursorLocation(cursor), nullptr, &line, &column, nullptr);
+    const auto wrapper_error = [&](const std::string &message) {
+      return std::runtime_error(consume_string(clang_getFileName(file)) + ":" + std::to_string(line) + ":" +
+                                std::to_string(column) + ": " + message);
+    };
     for (std::size_t i = 1; i < invocation.size(); ++i) {
       const auto &token = invocation[i];
       if (token.kind == CXToken_Identifier && definitions.count(token.text) && !reaches(token.text).first)
-        throw std::runtime_error("defer wrapper arguments containing macros cannot be expanded safely; use a local value");
+        throw wrapper_error("defer wrapper arguments containing macros cannot be expanded safely; use a local value");
       if (token.text == "__COUNTER__")
-        throw std::runtime_error("defer wrapper arguments containing __COUNTER__ cannot be expanded safely");
+        throw wrapper_error("defer wrapper arguments containing __COUNTER__ cannot be expanded safely");
     }
     if (std::filesystem::weakly_canonical(
             std::filesystem::absolute(std::filesystem::u8path(consume_string(clang_getFileName(file))))) != canonical)
-      throw std::runtime_error(
+      throw wrapper_error(
           "defer wrapper in included headers is not supported; move the function into a C source file");
     const auto definition = clang_getCursorReferenced(cursor);
     if (clang_Cursor_isNull(definition))
-      throw std::runtime_error("cannot resolve macro containing defer: " + spelling(cursor));
+      throw wrapper_error("cannot resolve macro containing defer: " + spelling(cursor));
     const auto parts = tokens(unit, clang_getCursorExtent(definition));
     if (parts.empty())
-      throw std::runtime_error("cannot read macro containing defer: " + spelling(cursor));
+      throw wrapper_error("cannot read macro containing defer: " + spelling(cursor));
     const bool function = clang_Cursor_isMacroFunctionLike(definition);
     std::size_t body = 1;
     std::vector<std::string> parameters;
     bool variadic = false;
     if (function) {
       if (parts.size() < 3 || parts[1].text != "(")
-        throw std::runtime_error("cannot parse defer wrapper parameters");
+        throw wrapper_error("cannot parse defer wrapper parameters");
       body = 2;
       while (body < parts.size() && parts[body].text != ")") {
         if (parts[body].text != ",") {
@@ -734,28 +742,28 @@ std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &pat
             parameters.push_back("__VA_ARGS__");
           } else {
             if (parts[body].kind != CXToken_Identifier)
-              throw std::runtime_error("complex defer wrapper parameters are unsupported");
+              throw wrapper_error("complex defer wrapper parameters are unsupported");
             parameters.push_back(parts[body].text);
           }
         }
         ++body;
       }
       if (body == parts.size())
-        throw std::runtime_error("unterminated defer wrapper parameters");
+        throw wrapper_error("unterminated defer wrapper parameters");
       ++body;
     }
     if (std::any_of(parts.begin() + static_cast<std::ptrdiff_t>(body), parts.end(), [](const Token &part) {
           return part.text == "#" || part.text == "##" || part.text == "__VA_OPT__" || part.text == "_Pragma" ||
                  part.text == "__COUNTER__";
         }))
-      throw std::runtime_error("defer wrapper uses unsupported stringification, token pasting, __VA_OPT__, _Pragma, or __COUNTER__");
+      throw wrapper_error("defer wrapper uses unsupported stringification, token pasting, __VA_OPT__, _Pragma, or __COUNTER__");
     const auto first = begin(cursor), last = end(cursor);
     if (source.substr(first, last - first).find('\n') != std::string::npos)
-      throw std::runtime_error("multiline defer wrapper invocations are unsupported");
+      throw wrapper_error("multiline defer wrapper invocations are unsupported");
     std::vector<std::string> arguments;
     if (function) {
       if (invocation.size() < 3 || invocation[1].text != "(")
-        throw std::runtime_error("cannot parse defer wrapper invocation");
+        throw wrapper_error("cannot parse defer wrapper invocation");
       unsigned argument_start = invocation[1].finish;
       int depth = 0;
       for (std::size_t i = 2; i < invocation.size(); ++i) {
@@ -776,7 +784,7 @@ std::string expand_defer_wrappers(CXTranslationUnit unit, const std::string &pat
       }
       const auto fixed = parameters.size() - (variadic ? 1U : 0U);
       if ((!variadic && arguments.size() != parameters.size()) || (variadic && arguments.size() < fixed))
-        throw std::runtime_error("defer wrapper argument count does not match its definition");
+        throw wrapper_error("defer wrapper argument count does not match its definition");
       if (variadic) {
         std::string remaining;
         for (std::size_t i = fixed; i < arguments.size(); ++i) {

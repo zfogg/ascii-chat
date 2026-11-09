@@ -300,6 +300,31 @@ def test_spliced_macro_control_transfer_is_rejected(
     assert result.returncode != 0
 
 
+@pytest.mark.parametrize("assembly", [
+    '__asm__ goto ("" : : : : out);',
+    '__asm__ volatile ("");',
+    'JUMP();',
+])
+def test_inline_assembly_in_defer_function_fails_closed(
+    tmp_path: Path, transform_environment: dict[str, str], assembly: str
+) -> None:
+    source = '#define JUMP() __asm__ goto ("" : : : : out)\n'
+    source += f'void f(void) {{ defer((void)0); {assembly} out:; }}\n'
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode != 0
+    assert "inline assembly in a function with defer" in result.stderr
+    assert "input.c:" in result.stderr.replace("\\", "/")
+    assert not (tmp_path / "output.c").exists()
+
+
+def test_inline_assembly_in_unrelated_function_is_allowed(
+    tmp_path: Path, transform_environment: dict[str, str]
+) -> None:
+    source = 'void a(void) { __asm__ volatile (""); }\nvoid b(void) { defer((void)0); }\n'
+    result = transform(tmp_path, transform_environment, source)
+    assert result.returncode == 0, result.stderr
+
+
 @pytest.mark.parametrize("seed", range(12))
 def test_generated_nested_cleanup_semantics(
     tmp_path: Path, transform_environment: dict[str, str], seed: int
@@ -707,6 +732,7 @@ def test_unsafe_defer_wrappers_fail_closed(
     result = transform(tmp_path, transform_environment, source)
     assert result.returncode != 0
     assert "defer wrapper" in result.stderr
+    assert "input.c:" in result.stderr.replace("\\", "/")
     assert not (tmp_path / "output.c").exists()
 
 

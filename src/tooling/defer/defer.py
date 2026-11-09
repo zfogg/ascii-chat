@@ -88,20 +88,26 @@ def parse_wrapped(index: cindex.Index, path: Path, arguments: list[str], source:
             invocation = list(node.get_tokens())
             if not macro_reaches_defer(node.spelling, definitions, memo, visiting, markers)[0] and not any(token.spelling in markers for token in invocation):
                 continue
+            def wrapper_error(
+                message: str,
+                location: str = f"{node.location.file.name}:{node.location.line}:{node.location.column}",
+            ) -> TransformError:
+                return TransformError(f"{location}: {message}")
+
             for token in invocation[1:]:
                 if token.spelling == "__COUNTER__":
-                    raise TransformError("defer wrapper arguments containing __COUNTER__ cannot be expanded safely")
+                    raise wrapper_error("defer wrapper arguments containing __COUNTER__ cannot be expanded safely")
                 if (token.kind == cindex.TokenKind.IDENTIFIER and token.spelling in definitions
                     and not macro_reaches_defer(token.spelling, definitions, memo, visiting, markers)[0]):
-                    raise TransformError("defer wrapper arguments containing macros cannot be expanded safely; use a local value")
+                    raise wrapper_error("defer wrapper arguments containing macros cannot be expanded safely; use a local value")
             if Path(node.location.file.name).resolve() != path:
-                raise TransformError("defer wrapper in included headers is not supported; move the function into a C source file")
+                raise wrapper_error("defer wrapper in included headers is not supported; move the function into a C source file")
             definition = node.referenced
             if definition is None:
-                raise TransformError(f"cannot resolve macro containing defer: {node.spelling}")
+                raise wrapper_error(f"cannot resolve macro containing defer: {node.spelling}")
             parts = list(definition.get_tokens())
             if not parts:
-                raise TransformError(f"cannot read macro containing defer: {node.spelling}")
+                raise wrapper_error(f"cannot read macro containing defer: {node.spelling}")
             function = len(parts) > 1 and parts[1].spelling == "(" and parts[0].extent.end.offset == parts[1].extent.start.offset
             body = 1
             parameters: list[str] = []
@@ -115,21 +121,21 @@ def parse_wrapped(index: cindex.Index, path: Path, arguments: list[str], source:
                             parameters.append("__VA_ARGS__")
                         else:
                             if parts[body].kind != cindex.TokenKind.IDENTIFIER:
-                                raise TransformError("complex defer wrapper parameters are unsupported")
+                                raise wrapper_error("complex defer wrapper parameters are unsupported")
                             parameters.append(parts[body].spelling)
                     body += 1
                 if body == len(parts):
-                    raise TransformError("unterminated defer wrapper parameters")
+                    raise wrapper_error("unterminated defer wrapper parameters")
                 body += 1
             if any(token.spelling in ("#", "##", "__VA_OPT__", "_Pragma", "__COUNTER__") for token in parts[body:]):
-                raise TransformError("defer wrapper uses unsupported stringification, token pasting, __VA_OPT__, _Pragma, or __COUNTER__")
+                raise wrapper_error("defer wrapper uses unsupported stringification, token pasting, __VA_OPT__, _Pragma, or __COUNTER__")
             first, last = node.extent.start.offset, node.extent.end.offset
             if b"\n" in source[first:last]:
-                raise TransformError("multiline defer wrapper invocations are unsupported")
+                raise wrapper_error("multiline defer wrapper invocations are unsupported")
             arguments_list: list[bytes] = []
             if function:
                 if len(invocation) < 3 or invocation[1].spelling != "(":
-                    raise TransformError("cannot parse defer wrapper invocation")
+                    raise wrapper_error("cannot parse defer wrapper invocation")
                 argument_start = invocation[1].extent.end.offset
                 depth = 0
                 for token in invocation[2:]:
@@ -147,7 +153,7 @@ def parse_wrapped(index: cindex.Index, path: Path, arguments: list[str], source:
                         depth -= 1
                 fixed = len(parameters) - int(variadic)
                 if (not variadic and len(arguments_list) != len(parameters)) or (variadic and len(arguments_list) < fixed):
-                    raise TransformError("defer wrapper argument count does not match its definition")
+                    raise wrapper_error("defer wrapper argument count does not match its definition")
                 if variadic:
                     arguments_list = arguments_list[:fixed] + [b", ".join(arguments_list[fixed:])]
             replacements = dict(zip(parameters, arguments_list, strict=True))
@@ -603,6 +609,10 @@ class Transformer:
                 self.edits.append((end - 1, end - 1, self.cleanup([scope], end)))
             self.scopes.pop()
             return
+        if kind in (cindex.CursorKind.ASM_STMT, cindex.CursorKind.MS_ASM_STMT):
+            raise TransformError(self.diagnostic(
+                start, "inline assembly in a function with defer is unsupported; move it to another function"
+            ))
         if kind == cindex.CursorKind.INDIRECT_GOTO_STMT:
             raise TransformError(f"computed goto cannot be transformed (byte {start})")
         if kind == cindex.CursorKind.GOTO_STMT:

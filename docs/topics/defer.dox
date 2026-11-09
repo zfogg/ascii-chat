@@ -64,7 +64,9 @@
  * Defer is supported in project `.c` files, not inline function bodies in headers.
  * Each defer must be a direct statement of a `{ ... }` block. Add braces around
  * an if or loop body before using defer there. Put a defer inside braces under a
- * switch case; a defer directly in a switch body is rejected. Computed goto,
+ * switch case; a defer directly in a switch body is rejected. Inline assembly
+ * in a function containing defer is rejected because its control flow may be
+ * opaque, including `asm goto`. Computed goto,
  * jumps into a block containing defer, backward jumps that can register the same defer repeatedly, and
  * unnamed non-builtin, non-pointer or variably modified parameters in non-void defer functions
  * are rejected. Cleanup actions may not contain return,
