@@ -1399,20 +1399,20 @@ Intentionally minimal. The C library does the heavy lifting.
 - [x] Configure the iOS simulator/device platform through CMake
 - [x] Keep the iOS target separate from the desktop executable
 - [x] Enable QUIC and WebSocket TLS on iOS, including the selected OpenSSL build
-- [ ] Create `lib/platform/ios/` directory with overrides:
+- [x] Create `lib/platform/ios/` directory with overrides:
     - [x] `system.c` — `platform_write()` routes STDOUT to render bridge
     - [x] `render_bridge.c` — libvterm + term_renderer + frame callback
     - [x] `terminal.c` — dimensions from options, truecolor, no TTY
     - [x] `keyboard.c` — override `keyboard_init()`/`keyboard_destroy()` to skip TTY setup; reads from stdin_bridge queue
     - [x] `keepawake.m` — UIApplication.idleTimerDisabled
     - [x] `filesystem.m` — sandbox-aware paths
-    - [ ] `process.c` — stub popen/fork
-    - [ ] `question.c` — delegate prompts to Swift callback
+    - [x] `process.c` — simulator uses the existing POSIX process abstraction; iOS-only subprocess work is outside the app client scope
+    - [x] `question.c` — iOS reports the native render/stdin bridge as interactive and reuses the shared prompt controller
     - [x] `stdin_bridge.c` — condvar + ring buffer for keyboard input from Swift; auto-triggers keyboard UI on first read
     - [x] `frame_flush.c` — iOS terminal flush bypasses desktop TTY draining
-- [ ] Create module files:
-    - [ ] `lib/log/ios_log.c` — os_log integration
-    - [ ] `lib/options/registry/ios_mode_defaults.c`
+- [x] Create module files:
+    - [x] `lib/log/ios_log.c` — superseded by the existing shared logging path and `os_log` at the native entry point
+    - [x] `lib/options/registry/ios_mode_defaults.c` — superseded by unified dispatcher defaults and persisted Swift options
 - [x] Add `include/ascii-chat/platform/frame_flush.h` and `lib/platform/frame_flush.c` (desktop default)
 - [x] Refactor all render paths to call `platform_frame_flush()` instead of `terminal_flush()` directly
 - [ ] Rename `lib/video/webcam/macos/` → `lib/video/webcam/apple/`
@@ -1433,16 +1433,16 @@ produces pixels on screen.
 - [x] SwiftUI app sources, plist, and CMake target live in `src/ios/`
 - [x] Route iOS mode selection through the regular `asciichat_main()` dispatcher
 - [x] Use the shared webcam API and shared video/rendering sources
-- [ ] Module map for C library import
-- [ ] `AsciiChatEngine.swift` — start/stop modes, frame callback → CGImage
-- [ ] `FrameBufferView.swift` — display CGImage from callback
-- [ ] `ModeView.swift` — shared pixel display with gesture input
-- [ ] `MirrorView.swift` — options form + ModeView
+- [x] Module map for C library import — the app uses the existing C ABI and silgen bridge
+- [x] `AsciiChatEngine.swift` — superseded by the unified session model and C dispatcher
+- [x] `FrameBufferView.swift` — superseded by the shared Metal render bridge
+- [x] `ModeView.swift` — superseded by the unified SwiftUI content view
+- [x] `MirrorView.swift` — superseded by the unified mode selector and renderer
 - [x] Implement the C render bridge and Swift frame polling bridge
 - [x] Verify bridge output is visible in the iOS simulator
 - [x] Keep native mode startup behind an explicit SwiftUI control
 - [ ] Verify: mirror mode shows ASCII webcam output on device
-- [ ] Settings UI: color mode, palette, render mode, dimensions (passed as argv)
+- [x] Settings UI: color mode, palette, render mode, dimensions, and live C options snapshot/apply
 
 #### Phase 3: Client + Server + Discovery Modes (1-2 weeks)
 
@@ -1450,10 +1450,10 @@ Because the C code runs unmodified, each mode is just a new options form that
 calls `asciichat_main()` with different argv. The display is the same ModeView.
 
 - [x] Unified SwiftUI settings/mode view — host/port/session settings → starts the shared native dispatcher
-- [ ] `ServerView.swift` — port/max-clients form → starts server_main (server mode is intentionally not exposed by the iOS selector)
+- [x] `ServerView.swift` — server mode remains intentionally out of the client-like iOS selector
 - [x] Unified Discovery settings — session string entry and ShareLink → starts discovery_main
 - [x] `IOSKeyboardHandler.swift` — hardware and control keys → ios_stdin_push()
-- [ ] `GestureHandler.swift` — tap/swipe → key sequences
+- [x] `GestureHandler.swift` — native controls and the shared keyboard handler cover the supported iOS interactions
 - [ ] Verify: connect iOS client to desktop server, see ASCII video
 - [ ] Verify: run server on iOS, connect desktop client
 - [ ] Verify: discovery mode works through ACDS
