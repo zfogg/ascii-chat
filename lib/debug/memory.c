@@ -1345,20 +1345,6 @@ void debug_memory_report(void) {
 // Memory Report Debug Thread (triggered via SIGUSR2)
 // ============================================================================
 
-#include <ascii-chat/platform/cond.h>
-#include <ascii-chat/platform/thread.h>
-
-typedef struct {
-  volatile bool should_run;
-  volatile bool should_exit;
-  volatile bool signal_triggered; // Flag set by SIGUSR2 handler
-  mutex_t mutex;                  // Protects access to flags
-  cond_t cond;                    // Wakes thread when signal arrives
-  bool initialized;               // Tracks if mutex/cond are initialized
-} debug_memory_request_t;
-
-static debug_memory_request_t g_debug_memory_request = {false, false, false, {0}, {0}, false};
-
 /**
  * @brief Trigger memory report from SIGUSR2 handler
  */
