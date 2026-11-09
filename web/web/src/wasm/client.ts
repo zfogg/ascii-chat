@@ -614,6 +614,11 @@ export class BrowserSession {
     return this.binding;
   }
 
+  /** Submit a bounded burst of transport events through one native call. */
+  processBatch(events: readonly Record<string, unknown>[]): Record<string, unknown>[] {
+    return this.getBinding().processBatch(events) as Record<string, unknown>[];
+  }
+
   static async create(
     options: ClientCryptoOptions,
     encryption: boolean | undefined,
