@@ -8,6 +8,7 @@ extern int sd_booted(void) __attribute__((weak));
 extern int sd_notify(int unset_environment, const char *state) __attribute__((weak));
 extern int sd_watchdog_enabled(int unset_environment, uint64_t *usec) __attribute__((weak));
 #endif
+/** @brief Return whether systemd service-manager integration is available. */
 bool platform_systemd_is_managed(void) {
 #ifdef HAVE_LIBSYSTEMD
   return sd_booted != NULL && sd_notify != NULL && (getenv("INVOCATION_ID") != NULL || getenv("NOTIFY_SOCKET") != NULL);
@@ -15,12 +16,14 @@ bool platform_systemd_is_managed(void) {
   return false;
 #endif
 }
+/** @brief Notify systemd that service initialization completed. */
 void platform_systemd_notify_ready(void) {
 #ifdef HAVE_LIBSYSTEMD
   if (platform_systemd_is_managed())
     (void)sd_notify(0, "READY=1");
 #endif
 }
+/** @brief Publish a human-readable service status to systemd. */
 void platform_systemd_notify_status(const char *status) {
 #ifdef HAVE_LIBSYSTEMD
   if (platform_systemd_is_managed() && status) {
@@ -32,12 +35,14 @@ void platform_systemd_notify_status(const char *status) {
   (void)status;
 #endif
 }
+/** @brief Notify systemd that a reload transition has started. */
 void platform_systemd_notify_reloading(void) {
 #ifdef HAVE_LIBSYSTEMD
   if (platform_systemd_is_managed())
     (void)sd_notify(0, "RELOADING=1");
 #endif
 }
+/** @brief Send a watchdog keepalive when systemd configured one. */
 void platform_systemd_notify_watchdog(void) {
 #ifdef HAVE_LIBSYSTEMD
   if (platform_systemd_is_managed() && sd_watchdog_enabled != NULL) {
@@ -47,6 +52,7 @@ void platform_systemd_notify_watchdog(void) {
   }
 #endif
 }
+/** @brief Read the configured watchdog interval in microseconds. */
 bool platform_systemd_watchdog_enabled(unsigned long long *usec) {
 #ifdef HAVE_LIBSYSTEMD
   uint64_t value = 0;

@@ -28,7 +28,7 @@ for unit in "${units[@]}"; do
     rm -f "$target"
   else
     source="$root/share/systemd/$unit.service"
-    if [[ ! -f "$source" ]]; then source="$root/lib/systemd/system/$unit.service"; fi
+    if [[ ! -f "$source" ]]; then source="$root/../lib/systemd/system/$unit.service"; fi
     test -f "$source"
     executable="${ASCII_CHAT_BINARY:-$(command -v ascii-chat || echo /usr/bin/ascii-chat)}"
     temporary="$(mktemp)"
