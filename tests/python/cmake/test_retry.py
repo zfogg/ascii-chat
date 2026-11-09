@@ -63,4 +63,3 @@ def test_openssl_download_retries(tmp_path, failures):
         assert result.returncode != 0
         assert "after 4 attempts" in result.stderr
         assert not destination.exists()
-

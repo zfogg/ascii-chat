@@ -34,4 +34,3 @@ function(asciichat_download_with_retry url destination expected_sha256)
     endforeach()
     message(FATAL_ERROR "Failed to download ${url} after 4 attempts: ${status_message}")
 endfunction()
-
