@@ -206,7 +206,9 @@ static int receive_data(nghttp3_conn *conn, int64_t stream_id, const uint8_t *da
   (void)stream_context;
   acip_http3_server_t *server = context;
   http3_stream_state_t *state = stream_context;
-  if (!server->http_server || !state || stream_id != state->stream_id || (!data && length))
+  if (!server->http_server)
+    return 0;
+  if (!state || stream_id != state->stream_id || (!data && length))
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   size_t limit = http_server_max_request_body(server->http_server);
   if (length > limit || state->request_body_length > limit - length)
@@ -238,7 +240,9 @@ static int end_stream(nghttp3_conn *conn, int64_t stream_id, void *context, void
   (void)stream_context;
   acip_http3_server_t *server = context;
   http3_stream_state_t *state = stream_context;
-  if (!server->http_server || !state || stream_id != state->stream_id || state->request_end_stream)
+  if (!server->http_server)
+    return 0;
+  if (!state || stream_id != state->stream_id || state->request_end_stream)
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   state->request_end_stream = true;
   return dispatch_generic_request(server, state);
