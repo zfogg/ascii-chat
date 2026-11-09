@@ -701,7 +701,7 @@ private struct IOSAllOptionsView: View {
                         Text(key.replacingOccurrences(of: "_", with: " ").capitalized)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(IOSTheme.muted)
-                        Text(String(format: "%.1f", number.doubleValue))
+                        Text(Self.displayValue(number.doubleValue, for: key))
                             .font(.caption.monospacedDigit())
                         Slider(value: Binding(
                             get: { (values[key] as? NSNumber)?.doubleValue ?? number.doubleValue },
@@ -755,10 +755,22 @@ private struct IOSAllOptionsView: View {
         case "microphone_channels": return (1, 2, 1)
         case "microphone_channel": return (-1, 63, 1)
         case "microphone_volume", "speakers_volume", "volume": return (0, 1, 0.05)
+        case "microphone_sensitivity": return (0, 2, 0.05)
         case "compression_level": return (0, 9, 1)
         case "reconnect_attempts", "webrtc_reconnect_attempts": return (0, 20, 1)
         case "webrtc_ice_timeout": return (0, 60, 1)
         default: return nil
+        }
+    }
+
+    private static func displayValue(_ value: Double, for key: String) -> String {
+        switch key {
+        case "fps", "compression_level", "reconnect_attempts", "webrtc_reconnect_attempts":
+            return String(Int(value.rounded()))
+        case "microphone_volume", "speakers_volume", "volume", "microphone_sensitivity":
+            return String(format: "%.2f", value)
+        default:
+            return String(format: "%.1f", value)
         }
     }
 
