@@ -69,6 +69,8 @@ static void client_freed(uv_handle_t *handle) {
   if (c->server->connections)
     c->server->connections--;
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE, c->server->connections);
+  if (c->server->config.on_connection)
+    c->server->config.on_connection("", false, c->server->config.user_data);
   http2_connection_destroy(&c->http2);
   SAFE_FREE(c->buffer);
   SAFE_FREE(c);
@@ -391,6 +393,8 @@ static void connection_cb(uv_stream_t *l, int status) {
     s->clients = c;
     s->connections++;
     stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE, s->connections);
+    if (s->config.on_connection)
+      s->config.on_connection("", true, s->config.user_data);
     uv_read_start((uv_stream_t *)&c->tcp, alloc_buffer, read_cb);
   } else
     client_close(c);
@@ -433,9 +437,19 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
 asciichat_error_t http_server_start(http_server_t *s) {
   if (!s || s->running)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP server is already running");
-  struct sockaddr_in addr;
-  int rc = uv_ip4_addr(s->config.bind_address ? s->config.bind_address : "0.0.0.0", s->config.port, &addr);
-  if (rc || uv_tcp_bind(&s->listener, (const struct sockaddr *)&addr, 0) != 0)
+  const char *bind_address = s->config.bind_address ? s->config.bind_address : "0.0.0.0";
+  struct sockaddr_storage address;
+  int rc;
+  if (strchr(bind_address, ':')) {
+    struct sockaddr_in6 ipv6;
+    rc = uv_ip6_addr(bind_address, s->config.port, &ipv6);
+    memcpy(&address, &ipv6, sizeof(ipv6));
+  } else {
+    struct sockaddr_in ipv4;
+    rc = uv_ip4_addr(bind_address, s->config.port, &ipv4);
+    memcpy(&address, &ipv4, sizeof(ipv4));
+  }
+  if (rc || uv_tcp_bind(&s->listener, (const struct sockaddr *)&address, 0) != 0)
     return SET_ERRNO(ERROR_NETWORK, "Cannot bind HTTP listener");
   if (uv_listen((uv_stream_t *)&s->listener, (int)s->config.max_connections, connection_cb) != 0)
     return SET_ERRNO(ERROR_NETWORK, "Cannot listen for HTTP connections");
