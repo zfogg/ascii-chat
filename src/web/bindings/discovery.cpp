@@ -115,6 +115,7 @@ public:
     member.set("webtransportUrl", std::string(session_->webtransport_url));
     emscripten::val result = emscripten::val::object();
     result.set("state", static_cast<int>(session_->state));
+    result.set("ok", !session_->terminal || session_->error[0] == '\0');
     result.set("terminal", session_->terminal);
     result.set("error", std::string(session_->error));
     result.set("name", std::string(session_->name));
@@ -124,6 +125,7 @@ public:
 
   static emscripten::val result(int code) {
     emscripten::val output = emscripten::val::object();
+    output.set("ok", code == 0);
     output.set("code", code);
     return output;
   }

@@ -55,6 +55,7 @@
           ]);
           assert(batch.length === 2, "batch length");
           assert(batch[0] && batch[1], "batch results");
+          assert(batch[0].ok === true && batch[1].ok === true, "batch status");
         });
         test("invalid name is rejected before transport sends", (p) => {
           assert(enter(p, false, "bad name", "") !== 0, "reject");
