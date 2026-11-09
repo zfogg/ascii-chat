@@ -920,7 +920,7 @@ private struct IOSAllOptionsView: View {
                                 SecureField("Value", text: Binding(
                                     get: { String(describing: values[key] ?? "") },
                                     set: {
-                                        let next = Self.coerce($0, like: currentValue)
+                                        let next = Self.coerce($0, key: key, like: currentValue)
                                         values[key] = next
                                         changed = true
                                         applyJSON([key: next])
@@ -929,7 +929,7 @@ private struct IOSAllOptionsView: View {
                                 TextField("Value", text: Binding(
                                     get: { String(describing: values[key] ?? "") },
                                     set: {
-                                        let next = Self.coerce($0, like: currentValue)
+                                        let next = Self.coerce($0, key: key, like: currentValue)
                                         values[key] = next
                                         changed = true
                                         applyJSON([key: next])
@@ -955,12 +955,23 @@ private struct IOSAllOptionsView: View {
         }
     }
 
-    private static func coerce(_ text: String, like value: Any) -> Any {
+    private static func coerce(_ text: String, key: String, like value: Any) -> Any {
         if value is Int { return Int(text) ?? 0 }
         if value is Double { return Double(text) ?? 0 }
-        if value is NSNumber { return Double(text) ?? 0 }
+        if value is NSNumber {
+            if integerOptionKeys.contains(key) { return Int(text) ?? 0 }
+            return Double(text) ?? 0
+        }
         return text
     }
+
+    private static let integerOptionKeys: Set<String> = [
+        "width", "height", "max_clients", "compression_level", "reconnect_attempts",
+        "microphone_index", "speakers_index", "webcam_index", "microphone_channels",
+        "microphone_channel", "audio_fft_size", "discovery_port", "port", "fps",
+        "color_mode", "color_filter", "render_mode", "zalgo", "log_level", "palette_type",
+        "renderer", "audio_source", "webrtc_ice_timeout_ms", "webrtc_reconnect_attempts"
+    ]
 
     private static func isSensitiveOption(_ key: String) -> Bool {
         ["password", "turn_credential", "turn_secret", "encrypt_key", "encrypt_keyfile",
