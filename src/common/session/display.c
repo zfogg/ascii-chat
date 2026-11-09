@@ -262,6 +262,9 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Presentation follows stdout. Opening a separate controlling terminal can
   // fail under ConPTY even though stdout is an interactive console.
   ctx->has_tty = terminal_is_stdout_tty();
+#if defined(PLATFORM_IOS)
+  ctx->has_tty = true;
+#endif
   const char *stdout_output = GET_OPTION(render_file);
   bool owns_stdout = GET_OPTION(render_kitty) || strcmp(stdout_output, "--kitty") == 0 ||
                      strcmp(stdout_output, "-") == 0 || strcmp(stdout_output, "pipe:") == 0;

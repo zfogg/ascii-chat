@@ -1007,7 +1007,7 @@ struct ContentView: View {
                     }
                     if let value = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--auto-tui=") })?.split(separator: "=", maxSplits: 1).last,
                        let item = TUISwitcherItem(rawValue: String(value)) {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                             selectTUI(item)
                         }
                     }

@@ -160,7 +160,13 @@ bool terminal_is_stderr_tty(void) {
 }
 
 bool terminal_is_interactive(void) {
+#if defined(PLATFORM_IOS)
+  // iOS routes terminal input/output through the native render and stdin
+  // bridges, so POSIX tty descriptors are not the source of interactivity.
+  return true;
+#else
   return terminal_is_stdin_tty() && terminal_is_stdout_tty();
+#endif
 }
 
 /**
