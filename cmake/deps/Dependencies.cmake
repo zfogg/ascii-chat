@@ -168,6 +168,10 @@ if(NOT EMSCRIPTEN)
     endif()
     add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                      ${CMAKE_BINARY_DIR}/gotel)
+    if(USE_MUSL AND TARGET gotel_cxx AND ALPINE_LIBCXX_INCLUDE_DIR)
+        target_include_directories(gotel_cxx SYSTEM PRIVATE
+                                   "${ALPINE_LIBCXX_INCLUDE_DIR}")
+    endif()
     if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
         # These dependencies use the standard C runtime APIs and compile with
         # upstream warning settings; keep their diagnostics scoped to them.
