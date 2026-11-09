@@ -18,7 +18,8 @@ html {
  * at some desktop widths. Let documentation use the whole area to the right
  * of the fixed navigation rail instead of centering a narrow column in it.
  */
-@media screen and (min-width: 1000px) {
+/* Keep the fixed-sidebar layout active at browser zoom levels too. */
+@media screen and (min-width: 600px) {
   /* Give the sidebar header its own vertical stack: search first, then the
    * project logo/name. The sidebar-only theme's 31px header height otherwise
    * lets the search row paint over the project row. */
