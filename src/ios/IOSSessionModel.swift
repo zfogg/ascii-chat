@@ -1,6 +1,22 @@
 import Foundation
 import Combine
 
+enum IOSMode: Int32, CaseIterable, Identifiable {
+    case mirror = 0
+    case client = 1
+    case discovery = 2
+
+    var id: Int32 { rawValue }
+
+    var title: String {
+        switch self {
+        case .mirror: return "Mirror"
+        case .client: return "Client"
+        case .discovery: return "Discovery"
+        }
+    }
+}
+
 @MainActor
 final class IOSSessionModel: ObservableObject {
     enum Status: Equatable {
