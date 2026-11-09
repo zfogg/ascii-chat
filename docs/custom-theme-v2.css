@@ -19,26 +19,36 @@ html {
  * of the fixed navigation rail instead of centering a narrow column in it.
  */
 /* Keep the fixed-sidebar layout active at browser zoom levels too. */
-@media screen and (min-width: 600px) {
+@media screen {
   /* Give the sidebar header its own vertical stack: search first, then the
    * project logo/name. The sidebar-only theme's 31px header height otherwise
    * lets the search row paint over the project row. */
   #top {
-    height: 150px !important;
-    margin-bottom: -150px !important;
+    height: 185px !important;
+    margin-bottom: -185px !important;
     display: block !important;
   }
 
   #titlearea {
-    padding-top: 78px;
+    padding-top: 112px;
     padding-left: calc(var(--spacing-large) + 4px);
     padding-right: calc(var(--spacing-large) + 4px);
   }
 
   #MSearchBox {
     position: absolute;
+    top: 46px;
+    left: var(--spacing-medium);
+  }
+
+  /* The dark-mode script appends its toggle beside #MSearchBox. Keep the
+   * toggle in its own row above the search field instead of letting the two
+   * controls occupy the same coordinates. */
+  doxygen-awesome-dark-mode-toggle {
+    position: absolute;
     top: 10px;
     left: var(--spacing-medium);
+    z-index: 2;
   }
 
   #doc-content > div,
@@ -81,4 +91,3 @@ html {
     margin-right: var(--spacing-medium);
   }
 }
-
