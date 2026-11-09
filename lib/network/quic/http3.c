@@ -90,19 +90,15 @@ static nghttp3_ssize read_response_body(nghttp3_conn *conn, int64_t stream_id, n
   (void)stream_context;
   acip_http3_server_t *server = context;
   size_t remaining = server->response_length - server->response_offset;
-  size_t written = 0;
-  for (size_t i = 0; i < count && written < remaining; ++i) {
-    size_t length = vec[i].len < remaining - written ? vec[i].len : remaining - written;
-    memcpy(vec[i].base, server->response_body + server->response_offset + written, length);
-    vec[i].len = length;
-    written += length;
-  }
-  server->response_offset += written;
-  if (server->response_offset == server->response_length) {
+  if (!count || !remaining)
     *flags |= NGHTTP3_DATA_FLAG_EOF;
-    SAFE_FREE(server->response_body);
-  }
-  return (nghttp3_ssize)written;
+  if (!remaining)
+    return 0;
+  vec[0].base = server->response_body + server->response_offset;
+  vec[0].len = remaining;
+  server->response_offset = server->response_length;
+  *flags |= NGHTTP3_DATA_FLAG_EOF;
+  return 1;
 }
 
 static asciichat_error_t http3_submit_response(void *context, unsigned status, const http_header_t *headers,
