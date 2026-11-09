@@ -8,7 +8,7 @@ import base64
 import socket
 import struct
 
-from ascii_chat_tests.protocol import crc32c
+from ascii_chat_tests.protocol import crc32c, version_packet
 from ascii_chat_tests.process import check_client, free_port, running, server_options
 
 
@@ -54,7 +54,7 @@ def receive_packet(peer):
 
 def legacy_identity_handshake(port):
     with socket.create_connection(("127.0.0.1", port), timeout=5) as peer:
-        send_packet(peer, 1, struct.pack("!HHBBB H7x", 1, 0, 3, 0, 0, 0))
+        send_packet(peer, 1, version_packet(encryption=3))
         assert receive_packet(peer)[0] == 1
         send_packet(peer, 1100, struct.pack("!HHHBBBB", 1, 1, 1, 1, 1, 1, 1))
         assert receive_packet(peer)[0] == 1101

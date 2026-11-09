@@ -8,14 +8,14 @@ import socket
 import struct
 import subprocess
 import time
-from ascii_chat_tests.protocol import crc32c
+from ascii_chat_tests.protocol import crc32c, version_packet
 from ascii_chat_tests.process import free_port
 
 
 pytestmark = [pytest.mark.integration, pytest.mark.network, pytest.mark.terminal]
 HEADER = struct.Struct("!QHIII")
 MAGIC = 0xA5C11C4A1
-VERSION = struct.pack("!HHBBB H7x", 1, 0, 0, 0, 0, 4)
+VERSION = version_packet(feature_flags=4)
 # terminal_capabilities_packet_t: monochrome 40x12 viewer, 1 FPS, no media upload.
 CAPABILITIES = struct.pack("!IIIIHH32s32sBII64sBBBII", 0, 0, 2, 0, 40, 12,
                            b"xterm", b"", 1, 1, 0, b"", 1, 0, 0, 0, 0)

@@ -268,6 +268,7 @@ static asciichat_error_t handle_client_ascii_frame(const void *payload, size_t p
                      MAX_WIDTH, MAX_HEIGHT);
   }
 
+  log_debug_once("Received first ASCII frame");
   callbacks->on_ascii_frame(&header, frame_data, frame_data_len, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
