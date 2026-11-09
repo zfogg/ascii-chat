@@ -291,6 +291,8 @@ export interface ClassHandle {
 }
 export interface SessionUiBinding extends ClassHandle {
   valid(): boolean;
+  error(): number;
+  close(): void;
   resize(_0: number, _1: number): void;
   loading(_0: boolean, _1: EmbindString): void;
   log(_0: EmbindString): void;

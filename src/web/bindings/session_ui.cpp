@@ -30,16 +30,20 @@ public:
     if (session_ && capture_logs)
       ui_session_capture_logs(session_);
   }
-  ~SessionUiBinding() {
-    if (session_)
-      ui_session_destroy(session_);
-  }
+  ~SessionUiBinding() { close(); }
 
   SessionUiBinding(const SessionUiBinding &) = delete;
   SessionUiBinding &operator=(const SessionUiBinding &) = delete;
 
   bool valid() const {
     return session_ != nullptr;
+  }
+  int error() const { return valid() ? 0 : static_cast<int>(ERROR_INVALID_STATE); }
+  void close() {
+    if (!session_)
+      return;
+    ui_session_destroy(session_);
+    session_ = nullptr;
   }
   void resize(int cols, int rows) {
     ui_session_resize(session_, cols, rows);
@@ -87,6 +91,8 @@ EMSCRIPTEN_BINDINGS(ascii_chat_session_ui) {
       .constructor<>()
       .constructor<bool>()
       .function("valid", &SessionUiBinding::valid)
+      .function("error", &SessionUiBinding::error)
+      .function("close", &SessionUiBinding::close)
       .function("resize", &SessionUiBinding::resize)
       .function("loading", &SessionUiBinding::loading)
       .function("log", &SessionUiBinding::log)
