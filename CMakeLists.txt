@@ -408,6 +408,10 @@ ascii_build_tooling_runtime()
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
+# Defer transformation consumes the compile database during the build. Apply
+# project include/link settings before it captures commands for native sources;
+# the deferred pass below still covers targets declared later (notably tests).
+asciichat_finalize_project_settings()
 ascii_defer_prepare()
 enable_testing()
 add_test(NAME ascii-chat-version COMMAND $<TARGET_FILE:ascii-chat> --version)
