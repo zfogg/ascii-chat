@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdatomic.h>
+#include <os/log.h>
 
 extern int asciichat_main(int argc, char **argv);
 
@@ -13,6 +14,7 @@ static _Atomic int g_ios_running;
 static _Atomic int g_ios_last_result;
 
 int asciichat_ios_main(asciichat_ios_mode_t mode) {
+  os_log(OS_LOG_DEFAULT, "iOS native session starting mode=%d", mode);
   if (!asciichat_ios_mode_available(mode)) {
     g_ios_last_result = -1;
     return -1;
@@ -21,12 +23,15 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   static char mirror[] = "mirror";
   static char client[] = "client";
   static char discovery[] = "discovery";
-  static char splash[] = "--splash-screen=true";
+  static char splash[] = "--splash-screen=false";
   static char color[] = "--color-mode=truecolor";
-  static char fps[] = "--fps=60";
+  // Zero lets a real camera keep its negotiated delivery rate. Synthetic
+  // sources select the 60 FPS default in the shared capture pipeline.
+  static char fps[] = "--fps=0";
   int render_cols = 0;
   int render_rows = 0;
   ios_render_bridge_get_dimensions(&render_cols, &render_rows);
+  os_log(OS_LOG_DEFAULT, "iOS native dimensions cols=%d rows=%d", render_cols, render_rows);
   if (render_cols <= 0 || render_rows <= 0) {
     g_ios_last_result = -1;
     return -1;
@@ -36,7 +41,7 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   snprintf(width, sizeof(width), "--width=%d", render_cols);
   snprintf(height, sizeof(height), "--height=%d", render_rows);
 #ifdef ASCIICHAT_IOS_SIMULATOR
-  static char test_pattern[] = "--test-pattern=0";
+  static char test_pattern[] = "--test-pattern=1";
 #else
   static char test_pattern[] = "--test-pattern=false";
 #endif
@@ -48,7 +53,11 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   ios_stdin_bridge_reset();
   atomic_store_explicit(&g_ios_running, 1, memory_order_release);
   atomic_store_explicit(&g_ios_last_result, 0, memory_order_release);
+  os_log(OS_LOG_DEFAULT, "iOS native entering asciichat_main");
+  for (int i = 0; i < 8; i++)
+    os_log(OS_LOG_DEFAULT, "iOS argv[%d]=%{public}s", i, argv[i]);
   int result = asciichat_main(8, argv);
+  os_log(OS_LOG_DEFAULT, "iOS native session finished result=%d", result);
   atomic_store_explicit(&g_ios_last_result, result, memory_order_release);
   atomic_store_explicit(&g_ios_running, 0, memory_order_release);
   ios_stdin_bridge_reset();

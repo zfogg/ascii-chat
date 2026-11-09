@@ -354,6 +354,14 @@ static uint32_t client_like_select_capture_fps(client_like_state_t *state) {
       log_warn("Failed to probe media source FPS, using default 60 FPS");
     }
   }
+  // A webcam's negotiated rate is not known until the source is opened. A
+  // zero target tells session_capture_create to replace its startup fallback
+  // with that negotiated rate before the first render frame. Synthetic and
+  // visualization sources remain on the responsive 60 FPS clock.
+  if (state->capture_config.type == MEDIA_SOURCE_WEBCAM && !GET_OPTION(waveform) && !GET_OPTION(fft)) {
+    log_info("Camera FPS is automatic; waiting for AVFoundation's negotiated delivery rate");
+    return 0;
+  }
   return 60;
 }
 
@@ -598,6 +606,11 @@ static asciichat_error_t client_like_create_local_capture(client_like_state_t *s
     if (!state->capture) {
       return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize mirror capture source");
     }
+    uint32_t capture_fps = session_capture_get_target_fps(state->capture);
+    if (capture_fps == 0)
+      capture_fps = 60;
+    session_display_set_render_fps(state->display, capture_fps);
+    log_info("Render pacing selected at %u FPS after source negotiation", capture_fps);
   }
   return ASCIICHAT_OK;
 }

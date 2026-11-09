@@ -501,6 +501,12 @@ private struct IOSAllOptionsView: View {
                 if let value = values[key] as? Bool {
                     Toggle(key.replacingOccurrences(of: "_", with: " ").capitalized,
                            isOn: Binding(get: { value }, set: { values[key] = $0; changed = true }))
+                } else if let value = values[key] as? String,
+                          let choices = Self.enumValues(for: key) {
+                    Picker(key.replacingOccurrences(of: "_", with: " ").capitalized,
+                           selection: Binding(get: { value }, set: { values[key] = $0; changed = true })) {
+                        ForEach(choices, id: \.self, content: Text.init)
+                    }
                 } else if let number = values[key] as? NSNumber,
                           let range = Self.sliderRange(for: key) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -554,6 +560,21 @@ private struct IOSAllOptionsView: View {
         case "compression_level": return (0, 9, 1)
         case "reconnect_attempts", "webrtc_reconnect_attempts": return (0, 20, 1)
         case "webrtc_ice_timeout": return (0, 60, 1)
+        default: return nil
+        }
+    }
+
+    private static func enumValues(for key: String) -> [String]? {
+        switch key {
+        case "palette": return ["standard", "blocks", "digital", "minimal", "cool", "custom"]
+        case "color_filter": return ["none", "black", "white", "green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow", "rainbow"]
+        case "render_mode": return ["foreground", "background", "half-block"]
+        case "color_mode": return ["none", "16", "256", "truecolor"]
+        case "renderer": return ["luminance", "glyph"]
+        case "audio_source": return ["microphone", "file", "url", "test"]
+        case "audio_capture_source": return ["microphone", "file", "url", "test"]
+        case "log_level": return ["DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"]
+        case "render_theme": return ["none", "dark", "light"]
         default: return nil
         }
     }

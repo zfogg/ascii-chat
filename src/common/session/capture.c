@@ -156,6 +156,19 @@ struct session_capture_ctx {
   bool paused_after_first_frame;
 };
 
+static void capture_log_timing_sample(session_capture_ctx_t *ctx, uint64_t frame_time_ns) {
+  static _Thread_local uint64_t last_log_ns;
+  if (!ctx || ctx->frame_count == 0 || ctx->frame_count % 60 != 0)
+    return;
+  if (last_log_ns != 0 && time_elapsed_ns(last_log_ns, frame_time_ns) < NS_PER_SEC_INT)
+    return;
+  last_log_ns = frame_time_ns;
+  double measured_fps = session_capture_get_current_fps(ctx);
+  log_info("CAPTURE_TIMING source=%s target=%u measured=%.2f fps frames=%llu",
+           media_source_get_type(ctx->source) == MEDIA_SOURCE_WEBCAM ? "camera" : "synthetic-or-media",
+           ctx->target_fps, measured_fps, (unsigned long long)ctx->frame_count);
+}
+
 /* ============================================================================
  * Internal Helper Functions
  * ============================================================================ */
@@ -990,6 +1003,7 @@ static image_t *capture_read_frame(session_capture_ctx_t *ctx) {
     fps_frame_ns(&ctx->fps_tracker, frame_available_time_ns, "frame captured");
     ctx->frame_count++;
     atomic_fetch_add_u64(&ctx->frame_serial, 1);
+    capture_log_timing_sample(ctx, frame_available_time_ns);
 
     // Log frame-to-frame timing
     if (last_frame_time_ns > 0) {

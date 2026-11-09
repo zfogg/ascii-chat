@@ -72,6 +72,7 @@ void ios_render_bridge_configure(int cols, int rows, double font_size_pt) {
     atomic_store_explicit(&g_render_sequence, 0, memory_order_release);
   }
   mutex_unlock(&g_renderer_mutex);
+  log_info("iOS bridge configured cols=%d rows=%d font=%.1f", cols, rows, font_size_pt);
   (void)ios_render_bridge_init();
 }
 
@@ -108,6 +109,7 @@ void ios_render_bridge_flush(void) {
   if (!ios_render_bridge_init())
     return;
   mutex_lock(&g_renderer_mutex);
+  size_t flushed_length = g_pending_frame_length;
   if (g_pending_frame_length > 0) {
     asciichat_error_t result = term_renderer_feed(g_renderer, g_pending_frame, g_pending_frame_length);
     if (result != ASCIICHAT_OK)
@@ -116,6 +118,10 @@ void ios_render_bridge_flush(void) {
     g_pending_frame_length = 0;
   }
   atomic_fetch_add_explicit(&g_render_sequence, 1, memory_order_release);
+  static uint64_t flush_count;
+  flush_count++;
+  if ((flush_count % 60) == 0)
+    log_debug("iOS bridge flush count=%llu bytes=%zu", (unsigned long long)flush_count, flushed_length);
   mutex_unlock(&g_renderer_mutex);
 }
 
