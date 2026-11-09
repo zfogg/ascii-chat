@@ -69,6 +69,7 @@ struct http_client {
   http_client_t *previous;
   http2_connection_t *http2;
   bool http2_mode;
+  bool admitted;
   char peer_address[64];
 };
 static void stop_async_cb(uv_async_t *async);
@@ -86,10 +87,11 @@ static void client_freed(uv_handle_t *handle) {
     c->server->clients = c->next;
   if (c->next)
     c->next->previous = c->previous;
-  if (c->server->connections)
+  if (c->admitted && c->server->connections)
     c->server->connections--;
-  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE, c->server->connections);
-  if (c->server->config.on_connection)
+  if (c->admitted)
+    stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE, c->server->connections);
+  if (c->admitted && c->server->config.on_connection)
     c->server->config.on_connection("", false, c->server->config.user_data);
   http2_connection_destroy(&c->http2);
   SAFE_FREE(c->buffer);
@@ -561,15 +563,29 @@ static void connection_cb(uv_stream_t *l, int status) {
     return;
   http_client_t *c = SAFE_CALLOC(1, sizeof(*c), http_client_t *);
   c->server = s;
-  c->buffer = SAFE_CALLOC(HTTP_READ_CAPACITY, 1, char *);
   uv_tcp_init(&s->loop, &c->tcp);
   c->tcp.data = c;
   if (uv_accept(l, (uv_stream_t *)&c->tcp) == 0) {
+    client_peer_address(c);
+    bool allowed = false;
+    if (rate_limiter_check(s->rate_limiter, c->peer_address, RATE_EVENT_CONNECTION,
+                           &DEFAULT_RATE_LIMITS[RATE_EVENT_CONNECTION], &allowed) != ASCIICHAT_OK ||
+        !allowed) {
+      stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
+      client_close(c);
+      return;
+    }
+    rate_limiter_record(s->rate_limiter, c->peer_address, RATE_EVENT_CONNECTION);
+    c->buffer = SAFE_CALLOC(HTTP_READ_CAPACITY, 1, char *);
+    if (!c->buffer) {
+      client_close(c);
+      return;
+    }
     c->next = s->clients;
     if (s->clients)
       s->clients->previous = c;
     s->clients = c;
-    client_peer_address(c);
+    c->admitted = true;
     s->connections++;
     stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE, s->connections);
     if (s->config.on_connection)
