@@ -2,6 +2,13 @@ import { expect, measure, test } from "./wasm-boundary-fixture";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+declare global {
+  interface Window {
+    __boundary: { renderer: any; wasm: any };
+    __clientModule: any;
+  }
+}
+
 async function setupRenderer(page: import("@playwright/test").Page) {
   await page.evaluate(async () => {
     const moduleUrl = "/src/wasm/client.ts";
@@ -33,7 +40,7 @@ test.describe("WASM browser boundary measurements", () => {
 
   test("renderer dimensions are one coarse call", async ({ rendererPage }) => {
     const result = await rendererPage.evaluate(() =>
-      (window as any).__boundary.renderer.dimensions(),
+      window.__boundary.renderer.dimensions(),
     );
     expect(result).toEqual({
       cols: 40,
@@ -46,7 +53,7 @@ test.describe("WASM browser boundary measurements", () => {
     rendererPage,
   }) => {
     const result = await rendererPage.evaluate(() => {
-      const r = (window as any).__boundary.renderer;
+      const r = window.__boundary.renderer;
       return r.render("hello", 0) === r.render("hello", 0);
     });
     expect(result).toBe(true);
@@ -56,7 +63,7 @@ test.describe("WASM browser boundary measurements", () => {
       (
         await measure(
           rendererPage,
-          '() => (window as any).__boundary.renderer.render("", 0)',
+          '() => window.__boundary.renderer.render("", 0)',
         )
       ).resultBytes,
     ).toBeGreaterThan(0);
@@ -66,7 +73,7 @@ test.describe("WASM browser boundary measurements", () => {
       (
         await measure(
           rendererPage,
-          '() => (window as any).__boundary.renderer.render("ascii", 0)',
+          '() => window.__boundary.renderer.render("ascii", 0)',
         )
       ).elapsedMs,
     ).toBeGreaterThanOrEqual(0);
@@ -76,7 +83,7 @@ test.describe("WASM browser boundary measurements", () => {
       (
         await measure(
           rendererPage,
-          '() => (window as any).__boundary.renderer.render("x".repeat(800), 0)',
+          '() => window.__boundary.renderer.render("x".repeat(800), 0)',
         )
       ).resultBytes,
     ).toBeGreaterThan(0);
@@ -86,7 +93,7 @@ test.describe("WASM browser boundary measurements", () => {
       (
         await measure(
           rendererPage,
-          '() => (window as any).__boundary.renderer.render("ascii", 1)',
+          '() => window.__boundary.renderer.render("ascii", 1)',
         )
       ).stableResultIdentity,
     ).toBe(true);
@@ -97,20 +104,20 @@ test.describe("WASM browser boundary measurements", () => {
     expect(
       await rendererPage.evaluate(
         () =>
-          JSON.stringify((window as any).__boundary.renderer.dimensions()) ===
-          JSON.stringify((window as any).__boundary.renderer.dimensions()),
+          JSON.stringify(window.__boundary.renderer.dimensions()) ===
+          JSON.stringify(window.__boundary.renderer.dimensions()),
       ),
     ).toBe(true);
   });
   test("renderer output byte count is repeatable", async ({ rendererPage }) => {
     const a = await measure(
       rendererPage,
-      '() => (window as any).__boundary.renderer.render("frame", 0)',
+      '() => window.__boundary.renderer.render("frame", 0)',
       8,
     );
     const b = await measure(
       rendererPage,
-      '() => (window as any).__boundary.renderer.render("frame", 0)',
+      '() => window.__boundary.renderer.render("frame", 0)',
       8,
     );
     expect(a.resultBytes).toBe(b.resultBytes);
@@ -138,9 +145,7 @@ test.describe("WASM browser boundary measurements", () => {
     rendererPage,
   }) => {
     expect(
-      await rendererPage.evaluate(
-        () => "feed" in (window as any).__boundary.renderer,
-      ),
+      await rendererPage.evaluate(() => "feed" in window.__boundary.renderer),
     ).toBe(false);
   });
   test("renderer boundary measurement returns a typed array", async ({
@@ -149,7 +154,7 @@ test.describe("WASM browser boundary measurements", () => {
     expect(
       await rendererPage.evaluate(
         () =>
-          (window as any).__boundary.renderer.render("x", 0) instanceof
+          window.__boundary.renderer.render("x", 0) instanceof
           Uint8ClampedArray,
       ),
     ).toBe(true);

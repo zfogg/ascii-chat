@@ -5828,6 +5828,8 @@ async function ClientModule(moduleArg = {}) {
     throw "unwind";
   };
   var getHeapMax = () => 268435456;
+  var _emscripten_get_heap_max = () => getHeapMax();
+  var _emscripten_num_logical_cores = () => navigator["hardwareConcurrency"];
   var growMemory = (size) => {
     var oldHeapSize = wasmMemory.buffer.byteLength;
     var pages = ((size - oldHeapSize + 65535) / 65536) | 0;
@@ -6620,8 +6622,8 @@ async function ClientModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    3031906: () => Module.getRandomValue(),
-    3031942: () => {
+    3033538: () => Module.getRandomValue(),
+    3033574: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -6981,7 +6983,9 @@ async function ClientModule(moduleArg = {}) {
       emscripten_date_now: _emscripten_date_now,
       emscripten_err: _emscripten_err,
       emscripten_exit_with_live_runtime: _emscripten_exit_with_live_runtime,
+      emscripten_get_heap_max: _emscripten_get_heap_max,
       emscripten_get_now: _emscripten_get_now,
+      emscripten_num_logical_cores: _emscripten_num_logical_cores,
       emscripten_resize_heap: _emscripten_resize_heap,
       environ_get: _environ_get,
       environ_sizes_get: _environ_sizes_get,

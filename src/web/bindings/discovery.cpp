@@ -53,9 +53,9 @@ public:
   emscripten::val process(emscripten::val event) {
     const std::string type = event["type"].as<std::string>();
     if (type == "enter")
-      return result(enter(event["create"].as<bool>(), event["name"].as<std::string>(), event["password"]));
+      return result(enter(event["create"].as<bool>(), event["name"].as<std::string>(), ProtocolBytes(event["password"])));
     if (type == "receive")
-      return result(receive(event["packetType"].as<unsigned>(), event["packet"]));
+      return result(receive(event["packetType"].as<unsigned>(), ProtocolBytes(event["packet"])));
     if (type == "leave")
       return result(leave());
     if (type == "snapshot")

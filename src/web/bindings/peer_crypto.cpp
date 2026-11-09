@@ -102,7 +102,7 @@ public:
       auto packet = binding_copy_input(event["packet"]);
       const bool seal = event["seal"].as<bool>();
       auto packet_result = network_quic_packet(peer_security_context(peer_.get()), seal, event["flow"].as<unsigned>(),
-                                               event["delivery"].as<unsigned>(), event["packet"]);
+                                               event["delivery"].as<unsigned>(), PeerBytes(event["packet"]));
       emscripten::val packet_value = packet_result;
       result.set("code", packet_value["code"]);
       result.set("packet", packet_value["packet"]);

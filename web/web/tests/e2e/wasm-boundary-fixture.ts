@@ -18,7 +18,7 @@ export async function measure(page: Page, expression: string, repeats = 32) {
       for (let i = 0; i < repeats; i++) {
         last = fn();
         first ??= last;
-        if (last instanceof Uint8Array) resultBytes += last.byteLength;
+        if (ArrayBuffer.isView(last)) resultBytes += last.byteLength;
       }
       return {
         elapsedMs: performance.now() - start,
