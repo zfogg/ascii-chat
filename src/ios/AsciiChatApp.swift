@@ -656,10 +656,16 @@ private struct IOSSettingsView: View {
                     LabeledContent("Microphone index") {
                         TextField("Index", text: $microphoneIndex).keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
+                            .onChange(of: microphoneIndex) { _, value in
+                                if let index = Int(value) { applyJSON(["microphone_index": index]) }
+                            }
                     }
                     LabeledContent("Speakers index") {
                         TextField("Index", text: $speakersIndex).keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
+                            .onChange(of: speakersIndex) { _, value in
+                                if let index = Int(value) { applyJSON(["speakers_index": index]) }
+                            }
                     }
                     VStack(alignment: .leading) {
                         Text("Microphone volume: \(microphoneVolume, specifier: "%.2f")")
@@ -687,16 +693,29 @@ private struct IOSSettingsView: View {
                     LabeledContent("Webcam index") {
                         TextField("Index", text: $webcamIndex).keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
+                            .onChange(of: webcamIndex) { _, value in
+                                if let index = Int(value) { applyJSON(["webcam_index": index]) }
+                            }
                     }
                 }
                 Section("Connection") {
                     TextField("Server address", text: $address)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .onChange(of: address) { _, value in applyJSON(["address": value]) }
                     TextField("Port", text: $port).keyboardType(.numberPad)
+                        .onChange(of: port) { _, value in
+                            if let port = Int(value), (1...65535).contains(port) {
+                                applyJSON(["port": port])
+                            }
+                        }
                     TextField("Discovery service URL", text: $discoveryServiceURL)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .onChange(of: discoveryServiceURL) { _, value in
+                            applyJSON(["discovery_service_url": value])
+                        }
                     TextField("Discovery session string (optional)", text: $sessionString)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .onChange(of: sessionString) { _, value in applyJSON(["session_string": value]) }
                     if !sessionString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         ShareLink(item: sessionString) {
                             Label("Share session string", systemImage: "square.and.arrow.up")
