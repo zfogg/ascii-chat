@@ -106,7 +106,8 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   } else {
     argv[argc++] = mode_name;
   }
-  argv[argc++] = splash;
+  if (mode == ASCIICHAT_IOS_MODE_MIRROR || mode == ASCIICHAT_IOS_MODE_CLIENT)
+    argv[argc++] = splash;
   argv[argc++] = color;
   argv[argc++] = fps;
   argv[argc++] = width;
