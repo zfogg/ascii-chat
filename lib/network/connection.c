@@ -501,6 +501,7 @@ static void server_tick(void *arg) {
   mutex_unlock(&s->registry_mutex);
   for (size_t i = 0; i < count; ++i)
     platform_event_stream_close(closing[i], ASCIICHAT_OK);
+#if ASCIICHAT_ENABLE_QUIC
   acip_quic_endpoint_t *listeners[] = {s->config.quic_endpoint, s->config.webtransport_endpoint};
   bool *failed[] = {&s->quic_failed, &s->webtransport_failed};
   for (size_t listener = 0; listener < 2 && !atomic_load_bool(&s->stopping); ++listener) {
@@ -535,6 +536,7 @@ static void server_tick(void *arg) {
       errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
     }
   }
+#endif
   if (atomic_load_bool(&s->stopping))
     atomic_store_bool(&s->listener.running, false);
   else if (s->config.tick)

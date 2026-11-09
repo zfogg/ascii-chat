@@ -802,6 +802,7 @@ if(WIN32)
 endif()
 # Exclude main() function from mdns library
 target_compile_definitions(ascii-chat-network PRIVATE MDNS_NO_MAIN)
+target_compile_definitions(ascii-chat-network PRIVATE ASCIICHAT_ENABLE_QUIC=$<BOOL:${ASCIICHAT_ENABLE_QUIC}>)
 target_link_libraries(ascii-chat-network PRIVATE mdns::mdns)
 # yyjson for /health JSON endpoint
 target_include_directories(ascii-chat-network PRIVATE ${YYJSON_INCLUDE_DIRS})
