@@ -204,19 +204,20 @@ test("face tracking and client public keys use the native bindings", async ({
       await import(/* @vite-ignore */ moduleUrl);
     await initClientWasm();
     const module = getClientWasmModule();
-    module.faceReset();
-    const faceStatus = module.faceDetect(
+    const face = new module.FaceFollowBinding();
+    face.reset();
+    const faceStatus = face.detect(
       new Uint8ClampedArray(16 * 16 * 4),
       16,
       16,
       1,
     );
-    const face = Array.from(module.faceTick(1, true));
+    const faceValues = Array.from(face.tick(1, true));
     const key = await generateKeypair();
     module.parseKey(99, false, new Uint8Array());
     module.parseKey(3, true, new Uint8Array());
     const parseError = module.keyParserError();
-    return { faceStatus, face, key, parseError };
+    return { faceStatus, face: faceValues, key, parseError };
   });
   expect(result.faceStatus).toBe(0);
   expect(result.face).toHaveLength(11);

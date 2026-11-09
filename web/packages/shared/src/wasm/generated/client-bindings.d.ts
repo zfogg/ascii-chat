@@ -312,6 +312,12 @@ type FacePixels = Uint8ClampedArray;
 
 type FaceValues = Float32Array;
 
+export interface FaceFollowBinding extends ClassHandle {
+  reset(): void;
+  detect(_0: FacePixels, _1: number, _2: number, _3: number): number;
+  tick(_0: number, _1: boolean): FaceValues;
+}
+
 type PatternPixels = Uint8ClampedArray;
 
 export interface TestPatternBinding extends ClassHandle {
@@ -479,9 +485,9 @@ interface EmbindModule {
       _4: number,
     ): AsciiRendererBinding;
   };
-  faceReset(): void;
-  faceDetect(_0: FacePixels, _1: number, _2: number, _3: number): number;
-  faceTick(_0: number, _1: boolean): FaceValues;
+  FaceFollowBinding: {
+    new (): FaceFollowBinding;
+  };
   TestPatternBinding: {
     new (_0: number, _1: number): TestPatternBinding;
   };

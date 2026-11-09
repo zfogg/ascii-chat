@@ -1,5 +1,5 @@
 import type { MainModule } from "../wasm/generated/mirror-bindings";
-type FaceModule = Pick<MainModule, "faceReset" | "faceDetect" | "faceTick">;
+type FaceModule = Pick<MainModule, "FaceFollowBinding">;
 
 declare const __WASM_ASSET_BASE__: string;
 
@@ -7,6 +7,7 @@ const canvas = new OffscreenCanvas(320, 240);
 const context = canvas.getContext("2d", { willReadFrequently: true })!;
 let enabled = false;
 let module: FaceModule | undefined;
+let detector: InstanceType<FaceModule["FaceFollowBinding"]> | undefined;
 let dimensions = "";
 let lastFrame = 0;
 const ready = (async () => {
@@ -16,7 +17,7 @@ const ready = (async () => {
     locateFile: (file: string) => base + file,
     pthreadPoolSize: 0,
   });
-  module!.faceReset();
+  detector = new module!.FaceFollowBinding();
   return module!;
 })();
 
@@ -24,7 +25,7 @@ const ready = (async () => {
 setInterval(() => {
   if (!module || performance.now() - lastFrame > 2500) return;
   const now = performance.now() / 1000;
-  const values = module.faceTick(now, enabled);
+  const values = detector!.tick(now, enabled);
   self.postMessage({
     type: "state",
     tick: now,
@@ -46,7 +47,7 @@ self.onmessage = async (
     const key = `${bitmap.width}x${bitmap.height}`;
     if (reset || dimensions !== key) {
       dimensions = key;
-      wasm.faceReset();
+      detector!.reset();
     }
     const scale = Math.min(320 / bitmap.width, 240 / bitmap.height);
     const width = Math.max(1, Math.floor(bitmap.width * scale));
@@ -56,7 +57,7 @@ self.onmessage = async (
     context.drawImage(bitmap, 0, 0, width, height);
     const pixels = context.getImageData(0, 0, width, height).data;
     lastFrame = performance.now();
-    if (wasm.faceDetect(pixels, width, height, lastFrame / 1000))
+    if (detector!.detect(pixels, width, height, lastFrame / 1000))
       throw new Error("Invalid face detection frame");
     self.postMessage({ type: "done" });
   } catch (error) {
