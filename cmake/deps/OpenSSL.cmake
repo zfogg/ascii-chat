@@ -209,7 +209,7 @@ if(USE_MUSL)
         if(NOT EXISTS "${OPENSSL_TARBALL}")
             message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
+                "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
                 "${OPENSSL_TARBALL}"
                 EXPECTED_HASH "SHA256=${ASCIICHAT_OPENSSL_SOURCE_SHA256}"
                 STATUS DOWNLOAD_STATUS
@@ -439,7 +439,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
         if(NOT EXISTS "${OPENSSL_TARBALL}")
             message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/${OPENSSL_DOWNLOAD_TAG}/openssl-${OPENSSL_VERSION}.tar.gz"
+                "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
                 "${OPENSSL_TARBALL}"
                 EXPECTED_HASH "${OPENSSL_EXPECTED_HASH}"
                 SHOW_PROGRESS
