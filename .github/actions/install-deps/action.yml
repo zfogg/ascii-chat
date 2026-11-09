@@ -485,7 +485,12 @@ runs:
         if (-not (Test-Path "${LLVM_INSTALL_DIR}\bin\clang.exe") -or -not (Test-Path "${LLVM_INSTALL_DIR}\bin\libclang.dll")) {
           New-Item -ItemType Directory -Force -Path $LLVM_BASE | Out-Null
           $installerPath = Join-Path $env:TEMP $LLVM_INSTALLER
-          Invoke-WebRequest -Uri $LLVM_URL -OutFile $installerPath -UseBasicParsing
+          # Use curl with bounded retries/timeouts. Invoke-WebRequest can remain
+          # stuck indefinitely when GitHub's CDN accepts a connection but does
+          # not deliver the MSI, consuming the entire Windows release runner.
+          curl.exe --fail --location --retry 5 --retry-delay 5 --retry-all-errors `
+            --connect-timeout 30 --max-time 900 --output $installerPath $LLVM_URL
+          if ($LASTEXITCODE -ne 0) { throw "LLVM MSI download failed with exit code $LASTEXITCODE" }
           $process = Start-Process -FilePath msiexec.exe -ArgumentList @('/a', "`"$installerPath`"", '/qn', "TARGETDIR=${LLVM_BASE}\SourceDir") -WindowStyle Hidden -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "LLVM MSI extraction failed with exit code $($process.ExitCode)" }
           Remove-Item -LiteralPath $installerPath -Force
