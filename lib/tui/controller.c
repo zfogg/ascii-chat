@@ -1138,7 +1138,7 @@ static void *presentation_main(void *unused) {
         // make every frame wait on an optional terminal protocol round trip.
         // The mailbox already retains the newest frame when a frontend is
         // temporarily busy, so steady-state video should follow capture FPS.
-        g_probe_frame = ui_controller_should_probe_terminal_ack(context.fresh, context.drew, reply_support);
+        g_probe_frame = context.fresh && context.drew && reply_support == 0;
         asciichat_error_t written = ui_controller_write(screen->fd, output, ui_session_frame_length(g_session));
         uint64_t write_done_ns = time_get_ns();
         if (written == ASCIICHAT_OK && active == UI_SCREEN_NOTICE && context.drew && !covered && !errors)

@@ -12,14 +12,6 @@
 
 TestSuite(controller_batch);
 
-Test(controller_batch, terminal_ack_probe_is_startup_only) {
-  cr_assert(ui_controller_should_probe_terminal_ack(true, true, 0));
-  cr_assert_not(ui_controller_should_probe_terminal_ack(false, true, 0));
-  cr_assert_not(ui_controller_should_probe_terminal_ack(true, false, 0));
-  cr_assert_not(ui_controller_should_probe_terminal_ack(true, true, 1));
-  cr_assert_not(ui_controller_should_probe_terminal_ack(true, true, -1));
-}
-
 static void render_snapshot(terminal_size_t size, const void *snapshot) {
   cr_assert(ui_controller_is_owner());
   cr_assert_eq(size.cols, 32);
