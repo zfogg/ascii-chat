@@ -24,7 +24,20 @@ fi
 mkdir -p "$dest"
 for unit in "${units[@]}"; do
   target="$dest/$unit.service"
-  if [[ "$uninstall" -eq 1 ]]; then rm -f "$target"; else install -m 0644 "$root/share/systemd/$unit.service" "$target"; fi
+  if [[ "$uninstall" -eq 1 ]]; then
+    rm -f "$target"
+  else
+    source="$root/share/systemd/$unit.service"
+    if [[ ! -f "$source" ]]; then source="$root/lib/systemd/system/$unit.service"; fi
+    test -f "$source"
+    executable="${ASCII_CHAT_BINARY:-$(command -v ascii-chat || echo /usr/bin/ascii-chat)}"
+    temporary="$(mktemp)"
+    trap 'rm -f "$temporary"' EXIT
+    sed "s|@ASCII_CHAT_EXECUTABLE@|$executable|g" "$source" > "$temporary"
+    install -m 0644 "$temporary" "$target"
+    rm -f "$temporary"
+    trap - EXIT
+  fi
 done
 "${ctl[@]}" daemon-reload
 echo "$([[ "$uninstall" -eq 1 ]] && echo Removed || echo Installed) ${#units[@]} ascii-chat systemd units in $dest"

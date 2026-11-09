@@ -32,6 +32,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/test/LeakSanitizer.cmake)
 # Enable CTest if any tests are being built (Criterion or lib runtime)
 if(BUILD_TESTS)
     enable_testing()
+    if(UNIX AND NOT APPLE)
+        add_test(NAME systemd-units COMMAND bash ${CMAKE_SOURCE_DIR}/tests/systemd_units.sh)
+        set_tests_properties(systemd-units PROPERTIES LABELS "integration;systemd" TIMEOUT 30)
+    endif()
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
     # Keep every Python CTest harness on one execution path. Coverage builds

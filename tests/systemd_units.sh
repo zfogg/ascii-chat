@@ -9,6 +9,7 @@ for unit in "${units[@]}"; do
   grep -q 'StandardOutput=journal' "$file"
   grep -q '^WatchdogSec=' "$file"
   grep -q "^SyslogIdentifier=ascii-chat-$unit$" "$file"
+  grep -q '^ExecStart=@ASCII_CHAT_EXECUTABLE@ ' "$file"
   ! grep -Eq -- '--(color|splash-screen|no-check-update|otel-endpoint|log-file)' "$file"
   grep -Eq '^ExecStart=/usr/bin/ascii-chat (server|acds|mcp-server)( |$)' "$file"
 done
