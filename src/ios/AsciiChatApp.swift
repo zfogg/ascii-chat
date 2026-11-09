@@ -1013,6 +1013,14 @@ struct ContentView: View {
                     }
                 }
             }
+            if ProcessInfo.processInfo.arguments.contains("--auto-start-client") && !didStart,
+               IOSMode.client.isImplemented {
+                selectedMode = .client
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    guard !didStart else { return }
+                    startSelectedSession()
+                }
+            }
         }
         .task {
             for await status in sessionModel.events() {

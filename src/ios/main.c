@@ -69,7 +69,7 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
 }
 
 int asciichat_ios_mode_available(asciichat_ios_mode_t mode) {
-  return mode == ASCIICHAT_IOS_MODE_MIRROR;
+  return mode == ASCIICHAT_IOS_MODE_MIRROR || mode == ASCIICHAT_IOS_MODE_CLIENT;
 }
 
 const char *asciichat_ios_mode_name(asciichat_ios_mode_t mode) {
