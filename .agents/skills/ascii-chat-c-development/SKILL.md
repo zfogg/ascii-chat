@@ -29,9 +29,16 @@ Keep reusable, platform-independent helpers in the appropriate `lib/` module, es
 
 ### Block-scoped cleanup with defer
 
-- Include `<ascii-chat/tooling/defer/defer.h>` in a project `.c` file. CMake
-  transforms the source before compiling it; generated files under
+- Include `<ascii-chat/tooling/defer/defer.h>` where defer is used. CMake
+  transforms C sources and supported C header function bodies before compilation; generated files under
   `build/defer_transformed/` are build artifacts and must not be edited.
+- C header support uses per-translation-unit overlays. CMake automatically
+  detects defer in project headers; register external header roots with
+  `ASCIICHAT_DEFER_WRAPPER_HEADER_DIRS` or set `ASCIICHAT_DEFER_HEADER_OVERLAYS=ON`.
+  The initial activation processes all eligible C files and disables target
+  precompiled headers. C++11 and later use native scope guards, including in
+  header functions. Objective-C++ requires a zero-cost exception runtime and
+  enabled Objective-C exception handling; plain Objective-C is unsupported.
 - `defer(action);` registers cleanup when execution reaches it. Actions run in
   reverse registration order at block exit, including return, break, continue,
   and supported goto exits; their expressions use values at cleanup time. Return
@@ -44,8 +51,9 @@ Keep reusable, platform-independent helpers in the appropriate `lib/` module, es
   `SAFE_CALLOC_DEFER_FREE(name, count, size, pointer_type)`; set the local
   pointer to `NULL` after transferring ownership. Preserve resource release
   ordering, synchronization lifetimes, and allocator families.
-- Do not use defer in `.c` files included by other source files, in header
-  function bodies, or with inline assembly in a function
+- Do not use defer in `.c` files included by other source files, in multiple
+  active instantiations of the same C header function in a translation unit,
+  or with inline assembly in a function
   with defer. Unsupported control flow and macro forms must fail the build;
   do not work around a diagnostic by silently skipping cleanup. See
   `docs/topics/defer.dox` for restrictions, macro wrappers, `--explain`,
