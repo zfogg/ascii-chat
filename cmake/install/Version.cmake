@@ -492,8 +492,13 @@ configure_file(
             # Loose refs can disappear when Git packs refs, and reappear on
             # the next commit. Have Ninja reconfigure when that happens before
             # it evaluates the version header's file dependencies.
-            file(GLOB _git_loose_ref CONFIGURE_DEPENDS "${_git_ref_path}")
-            list(APPEND VERSION_DEPENDENCIES ${_git_loose_ref})
+            # A loose branch ref can disappear when another worktree deletes
+            # the branch. Do not register a missing path as a configure
+            # dependency: Ninja would then re-run CMake on every build while
+            # reporting that unrelated worktree path as removed.
+            if(EXISTS "${_git_ref_path}")
+                list(APPEND VERSION_DEPENDENCIES "${_git_ref_path}")
+            endif()
             execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --path-format=absolute --git-path packed-refs
                 WORKING_DIRECTORY "${ASCIICHAT_SOURCE_DIR}"
                 OUTPUT_VARIABLE _git_packed_refs_path OUTPUT_STRIP_TRAILING_WHITESPACE)
