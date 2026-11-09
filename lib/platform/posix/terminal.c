@@ -76,7 +76,8 @@ const char *platform_ttyname(int fd) {
 asciichat_error_t terminal_get_size_fd(int fd, terminal_size_t *size) {
 #ifdef PLATFORM_IOS
   (void)fd;
-  if (!size) return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal size output is NULL");
+  if (!size)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal size output is NULL");
   size->cols = GET_OPTION(width) > 0 ? (unsigned short)GET_OPTION(width) : 100;
   size->rows = GET_OPTION(height) > 0 ? (unsigned short)GET_OPTION(height) : 40;
   return ASCIICHAT_OK;
@@ -95,7 +96,8 @@ asciichat_error_t terminal_get_size_fd(int fd, terminal_size_t *size) {
 
 asciichat_error_t terminal_get_size(terminal_size_t *size) {
 #ifdef PLATFORM_IOS
-  if (!size) return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal size output is NULL");
+  if (!size)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Terminal size output is NULL");
   size->cols = GET_OPTION(width) > 0 ? (unsigned short)GET_OPTION(width) : 100;
   size->rows = GET_OPTION(height) > 0 ? (unsigned short)GET_OPTION(height) : 40;
   return ASCIICHAT_OK;

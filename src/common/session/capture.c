@@ -165,8 +165,8 @@ static void capture_log_timing_sample(session_capture_ctx_t *ctx, uint64_t frame
   last_log_ns = frame_time_ns;
   double measured_fps = session_capture_get_current_fps(ctx);
   log_info("CAPTURE_TIMING source=%s target=%u measured=%.2f fps frames=%llu",
-           media_source_get_type(ctx->source) == MEDIA_SOURCE_WEBCAM ? "camera" : "synthetic-or-media",
-           ctx->target_fps, measured_fps, (unsigned long long)ctx->frame_count);
+           media_source_get_type(ctx->source) == MEDIA_SOURCE_WEBCAM ? "camera" : "synthetic-or-media", ctx->target_fps,
+           measured_fps, (unsigned long long)ctx->frame_count);
 }
 
 /* ============================================================================

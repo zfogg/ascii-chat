@@ -8,8 +8,8 @@ asciichat_error_t nat_upnp_open(uint16_t internal_port, const char *description,
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "UPnP port mapping is unavailable on iOS");
 }
 
-asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *description,
-                                         nat_upnp_protocol_t protocol, nat_upnp_context_t **ctx) {
+asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *description, nat_upnp_protocol_t protocol,
+                                         nat_upnp_context_t **ctx) {
   (void)protocol;
   return nat_upnp_open(internal_port, description, ctx);
 }

@@ -515,7 +515,8 @@ FILE *platform_fdopen(const char *name, int fd, const char *mode) {
  */
 ssize_t platform_read(int fd, void *buf, size_t count) {
 #ifdef PLATFORM_IOS
-  if (fd == STDIN_FILENO) return ios_stdin_bridge_read(buf, count);
+  if (fd == STDIN_FILENO)
+    return ios_stdin_bridge_read(buf, count);
 #endif
   return read(fd, buf, count);
 }
@@ -832,7 +833,10 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
       fseek(f, 0, SEEK_SET);
       if (file_size > 0 && file_size <= 10 * 1024 * 1024) {
         char *pem_data = SAFE_MALLOC((size_t)file_size + 1, char *);
-        if (!pem_data) { fclose(f); return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for CA certificates"); }
+        if (!pem_data) {
+          fclose(f);
+          return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for CA certificates");
+        }
         size_t bytes_read = fread(pem_data, 1, (size_t)file_size, f);
         fclose(f);
         if (bytes_read == (size_t)file_size) {

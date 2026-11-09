@@ -6,7 +6,8 @@ int asciichat_ios_camera_authorized(void) {
 }
 
 void asciichat_ios_camera_request_access(void) {
-  [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo completionHandler:^(BOOL granted) {
-    (void)granted;
-  }];
+  [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo
+                           completionHandler:^(BOOL granted) {
+                             (void)granted;
+                           }];
 }
