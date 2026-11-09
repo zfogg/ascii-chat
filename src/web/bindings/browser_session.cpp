@@ -2,7 +2,6 @@
 extern "C" {
 #include <ascii-chat/network/browser/session.h>
 #include "../client.h"
-#include <ascii-chat/network/browser/security.h>
 }
 #include "client_bytes.h"
 #include <sodium.h>
@@ -83,17 +82,16 @@ public:
     } else if (type == "quic-begin") {
       result.set("code", browser_session_quic_begin(session_.get()));
     } else if (type == "quic-init") {
-      result.set("code", static_cast<int>(browser_security_init(browser_session_security_context(session_.get()))));
+      result.set("code", static_cast<int>(browser_session_security_init(session_.get())));
     } else if (type == "quic-tick") {
-      result.set("code", static_cast<int>(browser_security_tick(browser_session_security_context(session_.get()))));
-      result.set("epoch", browser_security_epoch(browser_session_security_context(session_.get())));
+      result.set("code", static_cast<int>(browser_session_security_tick(session_.get())));
+      result.set("epoch", browser_session_security_epoch(session_.get()));
       emscripten::val quic_outputs = emscripten::val::array();
       for (unsigned i = 0; i < 16; ++i) {
         uint8_t data[256];
         size_t length = 0;
         uint32_t flow = 0;
-        const int code = browser_security_output(browser_session_security_context(session_.get()), data,
-                                                 sizeof(data), &length, &flow);
+        const int code = browser_session_security_output(session_.get(), data, sizeof(data), &length, &flow);
         if (code || !length) break;
         emscripten::val output = emscripten::val::object();
         output.set("code", code);
@@ -103,17 +101,16 @@ public:
       }
       result.set("quicOutputs", quic_outputs);
     } else if (type == "quic-epoch") {
-      result.set("epoch", browser_security_epoch(browser_session_security_context(session_.get())));
+      result.set("epoch", browser_session_security_epoch(session_.get()));
     } else if (type == "quic-packet") {
       auto packet = binding_copy_input(event["packet"]);
       const bool seal = event["seal"].as<bool>();
       std::vector<uint8_t> output(packet.size() + (seal ? 94 : 0));
       size_t length = 0;
       uint64_t sequence = 0;
-      const int code = browser_security_packet(browser_session_security_context(session_.get()), seal,
-                                               event["flow"].as<unsigned>(), event["delivery"].as<unsigned>(),
-                                               packet.data(), packet.size(), output.data(), output.size(), &length,
-                                               &sequence);
+      const int code = browser_session_security_packet(session_.get(), seal, event["flow"].as<unsigned>(),
+                                                       event["delivery"].as<unsigned>(), packet.data(), packet.size(),
+                                                       output.data(), output.size(), &length, &sequence);
       result.set("code", code);
       result.set("packet", binding_copy_output(output.data(), code ? 0 : length));
       result.set("sequence", emscripten::val::global("BigInt")(std::to_string(sequence)));

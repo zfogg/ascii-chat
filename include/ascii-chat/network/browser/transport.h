@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/security.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,6 +36,15 @@ void browser_transport_set_client_state(browser_transport_t *browser, void *stat
 const void *browser_transport_output_data(browser_transport_t *browser);
 size_t browser_transport_output_size(browser_transport_t *browser);
 void browser_transport_output_pop(browser_transport_t *browser);
+asciichat_error_t browser_transport_security_init(browser_transport_t *browser);
+asciichat_error_t browser_transport_security_packet(browser_transport_t *browser, bool seal, uint32_t channel,
+                                                     uint32_t delivery, const uint8_t *packet, size_t length,
+                                                     uint8_t *output, size_t capacity, size_t *out_length,
+                                                     uint64_t *sequence);
+asciichat_error_t browser_transport_security_tick(browser_transport_t *browser);
+asciichat_error_t browser_transport_security_output(browser_transport_t *browser, uint8_t *output, size_t capacity,
+                                                    size_t *length, uint32_t *channel);
+double browser_transport_security_epoch(browser_transport_t *browser);
 
 #ifdef __cplusplus
 }

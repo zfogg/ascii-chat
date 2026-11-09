@@ -6,7 +6,6 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/util/endian.h>
-#include <ascii-chat/network/browser/security.h>
 #include <emscripten.h>
 #include <string.h>
 
@@ -221,4 +220,30 @@ asciichat_error_t browser_session_quic_begin(browser_session_t *peer) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid peer QUIC handshake transition");
   peer->quic_handshake = true;
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t browser_session_security_init(browser_session_t *peer) {
+  return peer ? browser_transport_security_init(peer->browser) : SET_ERRNO(ERROR_INVALID_STATE, "Browser session is closed");
+}
+
+asciichat_error_t browser_session_security_packet(browser_session_t *peer, bool seal, uint32_t channel, uint32_t delivery,
+                                                   const uint8_t *packet, size_t length, uint8_t *output, size_t capacity,
+                                                   size_t *out_length, uint64_t *sequence) {
+  return peer ? browser_transport_security_packet(peer->browser, seal, channel, delivery, packet, length, output, capacity,
+                                                  out_length, sequence)
+              : SET_ERRNO(ERROR_INVALID_STATE, "Browser session is closed");
+}
+
+asciichat_error_t browser_session_security_tick(browser_session_t *peer) {
+  return peer ? browser_transport_security_tick(peer->browser) : SET_ERRNO(ERROR_INVALID_STATE, "Browser session is closed");
+}
+
+asciichat_error_t browser_session_security_output(browser_session_t *peer, uint8_t *output, size_t capacity, size_t *length,
+                                                  uint32_t *channel) {
+  return peer ? browser_transport_security_output(peer->browser, output, capacity, length, channel)
+              : SET_ERRNO(ERROR_INVALID_STATE, "Browser session is closed");
+}
+
+double browser_session_security_epoch(browser_session_t *peer) {
+  return peer ? browser_transport_security_epoch(peer->browser) : -1;
 }

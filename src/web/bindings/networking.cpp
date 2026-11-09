@@ -1,7 +1,6 @@
 #include <emscripten/bind.h>
 extern "C" {
 #include "../client.h"
-#include <ascii-chat/network/browser/security.h>
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/browser/transport.h>
 #include <ascii-chat/network/consensus/handoff.h>
@@ -331,14 +330,14 @@ public:
       return result(client_set_server_address(transport_.get(), host.c_str(), port));
     }
     if (type == "quic-init")
-      return result(browser_security_init(client_security_context(transport_.get())));
+      return result(browser_transport_security_init(transport_.get()));
     if (type == "quic-state") {
       emscripten::val response = result(0);
-      response.set("epoch", browser_security_epoch(client_security_context(transport_.get())));
+      response.set("epoch", browser_transport_security_epoch(transport_.get()));
       return response;
     }
     if (type == "quic-tick") {
-      const int code = browser_security_tick(client_security_context(transport_.get()));
+      const int code = browser_transport_security_tick(transport_.get());
       emscripten::val response = drainOutputs();
       if (code && response["code"].as<int>() == 0)
         response.set("code", code);
@@ -350,9 +349,9 @@ public:
       std::vector<uint8_t> output(input.size() + (seal ? 94 : 0));
       size_t length = 0;
       uint64_t sequence = 0;
-      const int code = browser_security_packet(client_security_context(transport_.get()), seal, event["flow"].as<unsigned>(),
-                                               event["delivery"].as<unsigned>(), input.data(), input.size(),
-                                               output.data(), output.size(), &length, &sequence);
+      const int code = browser_transport_security_packet(transport_.get(), seal, event["flow"].as<unsigned>(),
+                                                         event["delivery"].as<unsigned>(), input.data(), input.size(),
+                                                         output.data(), output.size(), &length, &sequence);
       emscripten::val response = result(code);
       response.set("bytes", binding_copy_output(output.data(), code ? 0 : length));
       response.set("sequence", emscripten::val::global("BigInt")(std::to_string(sequence)));
@@ -398,10 +397,10 @@ public:
   emscripten::val drainOutputs() const {
     emscripten::val response = result(0);
     int output_code = 0;
-    response.set("outputs", quic_outputs(client_security_context(transport_.get()), &output_code));
+    response.set("outputs", quic_outputs(&output_code));
     if (!response["code"].as<int>() && output_code)
       response.set("code", output_code);
-    response.set("epoch", browser_security_epoch(client_security_context(transport_.get())));
+    response.set("epoch", browser_transport_security_epoch(transport_.get()));
     response.set("queuedBytes", browser_transport_queued_bytes(transport_.get()));
     response.set("writable", browser_transport_writable(transport_.get(), 0));
     return response;
@@ -440,13 +439,13 @@ private:
     }
     return response;
   }
-  static emscripten::val quic_outputs(crypto_context_t *context, int *output_code) {
+  emscripten::val quic_outputs(int *output_code) const {
     emscripten::val outputs = emscripten::val::array();
     for (unsigned index = 0; index < 32; ++index) {
       uint8_t data[256];
       size_t length = 0;
       uint32_t flow = 0;
-      const int code = browser_security_output(context, data, sizeof(data), &length, &flow);
+      const int code = browser_transport_security_output(transport_.get(), data, sizeof(data), &length, &flow);
       if (code) {
         if (output_code)
           *output_code = code;

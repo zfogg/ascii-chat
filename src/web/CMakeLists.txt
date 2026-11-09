@@ -388,7 +388,6 @@ set(LIB_SRC_CLIENT_NETWORK
     ${LIB_ROOT}/network/acip/prepare.c
     ${LIB_ROOT}/network/acip/security.c
     ${LIB_ROOT}/network/browser/transport.c
-    ${LIB_ROOT}/network/browser/security.c
 )
 
 # Common WASM abstraction layer (shared between mirror and client)

@@ -3,7 +3,6 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE 256
 
-#include <ascii-chat/network/browser/security.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/compression.h>
 #include "session/frame_validation.h"
