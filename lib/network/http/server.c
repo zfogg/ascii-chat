@@ -14,6 +14,7 @@
 #include <string.h>
 
 #define HTTP_READ_CAPACITY (1024u * 1024u)
+#define HTTP_HEADER_MAX_BYTES (64u * 1024u)
 #define HTTP_HEADER_CAPACITY 64u
 
 static const char *http_protocol_name(http_protocol_t protocol) {
@@ -193,31 +194,48 @@ static void alloc_buffer(uv_handle_t *h, size_t n, uv_buf_t *b) {
 }
 static bool decode_chunked_body(http_client_t *c, size_t offset, size_t *body_length) {
   size_t cursor = offset;
-  size_t output = offset;
+  size_t decoded_length = 0;
+  uint8_t *decoded = SAFE_MALLOC(c->server->config.max_request_body_bytes, uint8_t *);
+  if (!decoded)
+    return false;
   while (cursor < c->length) {
     char *line_end = strstr(c->buffer + cursor, "\r\n");
     if (!line_end)
-      return false;
+      goto incomplete;
     char *number_end = NULL;
     unsigned long long chunk = strtoull(c->buffer + cursor, &number_end, 16);
-    if (number_end == c->buffer + cursor || number_end != line_end || chunk > SIZE_MAX)
-      return false;
+    if (number_end == c->buffer + cursor || chunk > SIZE_MAX || (number_end != line_end && *number_end != ';'))
+      goto invalid;
     cursor = (size_t)(line_end - c->buffer) + 2;
     if (chunk == 0) {
-      if (c->length < cursor + sizeof("\r\n") - 1 || memcmp(c->buffer + cursor, "\r\n", sizeof("\r\n") - 1) != 0)
-        return false;
-      *body_length = output - offset;
-      return true;
+      while (true) {
+        char *trailer_end = strstr(c->buffer + cursor, "\r\n");
+        if (!trailer_end)
+          goto incomplete;
+        if (trailer_end == c->buffer + cursor) {
+          *body_length = decoded_length;
+          if (decoded_length)
+            memcpy(c->buffer + offset, decoded, decoded_length);
+          SAFE_FREE(decoded);
+          return true;
+        }
+        cursor = (size_t)(trailer_end - c->buffer) + 2;
+      }
     }
-    if (output - offset > c->server->config.max_request_body_bytes ||
-        chunk > c->server->config.max_request_body_bytes - (output - offset) ||
+    if (chunk > c->server->config.max_request_body_bytes ||
+        decoded_length > c->server->config.max_request_body_bytes - (size_t)chunk ||
         c->length < cursor + (size_t)chunk + sizeof("\r\n") - 1 ||
         memcmp(c->buffer + cursor + (size_t)chunk, "\r\n", sizeof("\r\n") - 1) != 0)
-      return false;
-    memmove(c->buffer + output, c->buffer + cursor, (size_t)chunk);
-    output += (size_t)chunk;
-    cursor += (size_t)chunk + 2;
+      goto invalid;
+    memcpy(decoded + decoded_length, c->buffer + cursor, (size_t)chunk);
+    decoded_length += (size_t)chunk;
+    cursor += (size_t)chunk + sizeof("\r\n") - 1;
   }
+incomplete:
+  SAFE_FREE(decoded);
+  return false;
+invalid:
+  SAFE_FREE(decoded);
   return false;
 }
 static bool parse_request(http_client_t *c, http_request_t *r) {
@@ -599,6 +617,7 @@ asciichat_error_t http_server_dispatch_http3(http_server_t *server, const char *
   }
   stats_duration_record(stats_runtime_scope(), STATS_DURATION_HTTP_REQUEST, time_get_ns() - request_start);
   stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 0);
+  SAFE_FREE(response.body);
   return ASCIICHAT_OK;
 }
 const http_request_info_t *http_request_info(const http_request_t *r) {
@@ -767,6 +786,10 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
       client_close(c);
     return;
   }
+  if (!c->http2_mode && !strstr(c->buffer, "\r\n\r\n") && c->length > HTTP_HEADER_MAX_BYTES) {
+    client_close(c);
+    return;
+  }
   if (c->http2_mode) {
     if (http2_connection_receive(c->http2, c->buffer, c->length) != ASCIICHAT_OK || http2_flush(c) != ASCIICHAT_OK)
       client_close(c);
@@ -833,13 +856,17 @@ static void connection_cb(uv_stream_t *l, int status) {
   if (status < 0)
     return;
   http_server_t *s = l->data;
-  if (s->connections >= s->config.max_connections)
-    return;
   http_client_t *c = SAFE_CALLOC(1, sizeof(*c), http_client_t *);
+  if (!c)
+    return;
   c->server = s;
   uv_tcp_init(&s->loop, &c->tcp);
   c->tcp.data = c;
   if (uv_accept(l, (uv_stream_t *)&c->tcp) == 0) {
+    if (s->connections >= s->config.max_connections) {
+      client_close(c);
+      return;
+    }
     client_peer_address(c);
     bool allowed = false;
     if (rate_limiter_check(s->rate_limiter, c->peer_address, RATE_EVENT_CONNECTION,
