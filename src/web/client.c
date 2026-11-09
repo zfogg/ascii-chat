@@ -8,7 +8,6 @@
 #include "session/frame_validation.h"
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/crypto/policy.h>
-#include <emscripten.h>
 #include <ascii-chat/common.h>
 #include <string.h>
 #include <ascii-chat/network/acip/settings.h>
@@ -22,29 +21,9 @@ static client_state_t *client_state(browser_transport_t *transport);
  * @brief WASM entry point for ascii-chat client mode
  */
 
-#include <emscripten.h>
-#include <emscripten/html5.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-
-// JavaScript callback for sending complete ACIP packets from WASM to WebSocket
-// This will be called by the WASM transport to send complete packets (header + payload)
-// clang-format off
-EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len), {
-  if (!Module.sendPacketCallback) {
-    console.error('[WASM] sendPacketCallback not registered - cannot send packet');
-    return;
-  }
-
-  // Copy complete packet from WASM memory to JavaScript
-  const packetArray = new Uint8Array(HEAPU8.buffer, packet_data, packet_len);
-  const packetCopy = new Uint8Array(packetArray);
-
-  // Send as raw binary packet via WebSocket
-  Module.sendPacketCallback(packetCopy);
-});
-// clang-format on
 
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
@@ -74,11 +53,6 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 // ============================================================================
 // WASM Transport Implementation
 // ============================================================================
-
-static void wasm_transport_output(const void *data, size_t length, void *user_data) {
-  (void)user_data;
-  js_send_raw_packet((const uint8_t *)data, length);
-}
 
 // ============================================================================
 // Global State
@@ -369,7 +343,6 @@ int client_init(browser_transport_t *transport) {
   }
   // The module, renderers, and allocator outlive individual connections.
   if (state->initialized) {
-    browser_transport_set_output_callback(transport, wasm_transport_output, NULL);
     browser_transport_set_state(transport, BROWSER_TRANSPORT_DISCONNECTED);
     return 0;
   }
@@ -397,7 +370,6 @@ int client_init(browser_transport_t *transport) {
   // Initialize ANSI color code generation
   ansi_fast_init();
 
-  browser_transport_set_output_callback(transport, wasm_transport_output, NULL);
   browser_transport_set_state(transport, BROWSER_TRANSPORT_DISCONNECTED);
 
   state->initialized = true;

@@ -6645,8 +6645,8 @@ async function ClientModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    3035602: () => Module.getRandomValue(),
-    3035638: () => {
+    3035260: () => Module.getRandomValue(),
+    3035296: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -6679,21 +6679,6 @@ async function ClientModule(moduleArg = {}) {
       }
     },
   };
-  function js_send_raw_packet(packet_data, packet_len) {
-    if (!Module.sendPacketCallback) {
-      console.error(
-        "[WASM] sendPacketCallback not registered - cannot send packet",
-      );
-      return;
-    }
-    const packetArray = new Uint8Array(
-      (growMemViews(), HEAPU8).buffer,
-      packet_data,
-      packet_len,
-    );
-    const packetCopy = new Uint8Array(packetArray);
-    Module.sendPacketCallback(packetCopy);
-  }
   function discovery_send(p, type, data, length) {
     Module.discoverySend(
       p,
@@ -7023,7 +7008,6 @@ async function ClientModule(moduleArg = {}) {
       invoke_iiiii,
       invoke_v,
       invoke_viiii,
-      js_send_raw_packet,
       memory: wasmMemory,
       proc_exit: _proc_exit,
     };

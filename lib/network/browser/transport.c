@@ -18,8 +18,6 @@ typedef struct browser_output {
 struct browser_transport {
   acip_transport_t transport;
   browser_transport_state_t state;
-  browser_transport_output_callback_t output_callback;
-  void *output_user_data;
   size_t queued_bytes;
   void *client_state;
   browser_output_t *output;
@@ -77,10 +75,6 @@ static asciichat_error_t browser_send(acip_transport_t *transport, const void *d
     browser->output = output;
   browser->tail = output;
   browser->queued_bytes += output->length;
-  if (browser->output_callback) {
-    browser->output_callback(output->data, output->length, browser->output_user_data);
-    browser_transport_output_pop_internal(browser);
-  }
   return ASCIICHAT_OK;
 }
 
@@ -102,14 +96,6 @@ void browser_transport_set_connected(browser_transport_t *browser, bool connecte
 void browser_transport_set_state(browser_transport_t *browser, browser_transport_state_t state) {
   if (browser)
     browser->state = state;
-}
-
-void browser_transport_set_output_callback(browser_transport_t *browser, browser_transport_output_callback_t callback,
-                                            void *user_data) {
-  if (!browser)
-    return;
-  browser->output_callback = callback;
-  browser->output_user_data = user_data;
 }
 
 size_t browser_transport_queued_bytes(const browser_transport_t *browser) {
