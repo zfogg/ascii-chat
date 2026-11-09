@@ -455,6 +455,14 @@ private struct IOSSettingsView: View {
     @State private var webrtcReconnectAttempts = 3.0
     @State private var webrtcIceTimeout = 10.0
     @State private var renderFontSize = 6.0
+    @State private var renderWidth = 0.0
+    @State private var renderHeight = 0.0
+    @State private var zalgo = 0.0
+    @State private var snapshotDelay = 0.0
+    @State private var waveform = false
+    @State private var fft = false
+    @State private var flipX = false
+    @State private var flipY = false
 
     private let palettes = ["standard", "blocks", "digital", "minimal", "cool", "custom"]
     private let filters = ["none", "black", "white", "green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow", "rainbow"]
@@ -491,6 +499,14 @@ private struct IOSSettingsView: View {
         if let value = values["reconnect_attempts"] as? NSNumber { reconnectAttempts = value.doubleValue }
         if let value = values["webrtc_reconnect_attempts"] as? NSNumber { webrtcReconnectAttempts = value.doubleValue }
         if let value = values["webrtc_ice_timeout"] as? NSNumber { webrtcIceTimeout = value.doubleValue / 1000.0 }
+        if let value = values["width"] as? NSNumber { renderWidth = value.doubleValue }
+        if let value = values["height"] as? NSNumber { renderHeight = value.doubleValue }
+        if let value = values["zalgo"] as? NSNumber { zalgo = value.doubleValue }
+        if let value = values["snapshot_delay"] as? NSNumber { snapshotDelay = value.doubleValue }
+        if let value = values["waveform"] as? Bool { waveform = value }
+        if let value = values["fft"] as? Bool { fft = value }
+        if let value = values["flip_x"] as? Bool { flipX = value }
+        if let value = values["flip_y"] as? Bool { flipY = value }
     }
 
     var body: some View {
@@ -531,6 +547,29 @@ private struct IOSSettingsView: View {
                                 NotificationCenter.default.post(name: .iosRenderFontSizeChanged, object: nil)
                             }
                     }
+                    VStack(alignment: .leading) {
+                        Text(renderWidth == 0 ? "Render width: Auto" : "Render width: \(Int(renderWidth)) cells")
+                        Slider(value: $renderWidth, in: 0...400, step: 1)
+                            .onChange(of: renderWidth) { _, value in applyJSON(["width": Int(value)]) }
+                    }
+                    VStack(alignment: .leading) {
+                        Text(renderHeight == 0 ? "Render height: Auto" : "Render height: \(Int(renderHeight)) rows")
+                        Slider(value: $renderHeight, in: 0...240, step: 1)
+                            .onChange(of: renderHeight) { _, value in applyJSON(["height": Int(value)]) }
+                    }
+                    VStack(alignment: .leading) {
+                        Text("Zalgo intensity: \(Int(zalgo))")
+                        Slider(value: $zalgo, in: 0...10, step: 1)
+                            .onChange(of: zalgo) { _, value in applyJSON(["zalgo": Int(value)]) }
+                    }
+                    Toggle("Flip horizontally", isOn: $flipX)
+                        .onChange(of: flipX) { _, value in applyJSON(["flip_x": value]) }
+                    Toggle("Flip vertically", isOn: $flipY)
+                        .onChange(of: flipY) { _, value in applyJSON(["flip_y": value]) }
+                    Toggle("Waveform", isOn: $waveform)
+                        .onChange(of: waveform) { _, value in applyJSON(["waveform": value]) }
+                    Toggle("FFT", isOn: $fft)
+                        .onChange(of: fft) { _, value in applyJSON(["fft": value]) }
                 }
                 Section("Audio") {
                     if !audioDevices.isEmpty {
@@ -644,6 +683,11 @@ private struct IOSSettingsView: View {
                                 applyJSON(["compression_level": Int(value)])
                             }
                     }
+                    VStack(alignment: .leading) {
+                        Text("Snapshot delay: \(snapshotDelay, specifier: "%.1f") seconds")
+                        Slider(value: $snapshotDelay, in: 0...60, step: 0.5)
+                            .onChange(of: snapshotDelay) { _, value in applyJSON(["snapshot_delay": value]) }
+                    }
                 }
                 Section("Advanced") {
                     NavigationLink("All ascii-chat options") {
@@ -670,7 +714,11 @@ private struct IOSSettingsView: View {
                                    "reconnect_attempts": Int(reconnectAttempts),
                                    "webrtc_reconnect_attempts": Int(webrtcReconnectAttempts),
                                    "webrtc_ice_timeout": Int((webrtcIceTimeout * 1000.0).rounded()),
-                                   "render_font_size": renderFontSize])
+                                   "render_font_size": renderFontSize,
+                                   "width": Int(renderWidth), "height": Int(renderHeight),
+                                   "zalgo": Int(zalgo), "snapshot_delay": snapshotDelay,
+                                   "waveform": waveform, "fft": fft, "flip_x": flipX,
+                                   "flip_y": flipY])
                     }
                     .foregroundStyle(IOSTheme.websiteCyan)
                 }
