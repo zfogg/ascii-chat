@@ -1,3 +1,4 @@
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/mutex.h>
@@ -30,19 +31,20 @@ packet_queue_t *packet_queue_create_config(const packet_queue_config_t *config) 
     SET_ERRNO(ERROR_INVALID_PARAM, "Queue needs a byte limit and a valid overflow policy");
     return NULL;
   }
-  packet_queue_t *queue = SAFE_CALLOC(1, sizeof(*queue), packet_queue_t *);
+  SAFE_CALLOC_DEFER_FREE(queue, 1, sizeof(packet_queue_t), packet_queue_t *);
   queue->config = *config;
   if (mutex_init(&queue->mutex, "packet_queue") != 0) {
-    SAFE_FREE(queue);
     return NULL;
   }
+  defer_named(queue_mutex, mutex_destroy(&queue->mutex));
   buffer_domain_config_t memory = {64 * 1024 * 1024, 8 * 1024 * 1024, 5000000000ULL, false};
   if (buffer_domain_create(&memory, &queue->domain) != ASCIICHAT_OK) {
-    mutex_destroy(&queue->mutex);
-    SAFE_FREE(queue);
     return NULL;
   }
-  return queue;
+  defer_cancel(queue_mutex);
+  packet_queue_t *result = queue;
+  queue = NULL;
+  return result;
 }
 
 packet_queue_t *packet_queue_create(size_t max_packets) {

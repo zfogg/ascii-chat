@@ -8,6 +8,7 @@
  * the complexity of the underlying embedded_resources API.
  */
 
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/options/manpage/resources.h>
 #include <ascii-chat/embedded_resources.h>
 #include <ascii-chat/log/log.h>
@@ -54,39 +55,33 @@ static asciichat_error_t load_single_resource(const char **out_content, size_t *
   } else if (file) {
     // Development: filesystem resource
     // Need to read entire file into memory for easy access
-    char *buffer = NULL;
+    defer(release_manpage_resources(file));
 
     // Seek to end to determine file size
     if (fseek(file, 0, SEEK_END) != 0) {
-      release_manpage_resources(file);
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to seek %s file", resource_name);
     }
 
     long file_size = ftell(file);
     if (file_size < 0) {
-      release_manpage_resources(file);
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to get %s file size", resource_name);
     }
 
     if (fseek(file, 0, SEEK_SET) != 0) {
-      release_manpage_resources(file);
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to seek %s file", resource_name);
     }
 
     // Allocate buffer (file_size + 1 for null terminator)
     size_t buffer_size = (size_t)file_size + 1;
-    buffer = SAFE_MALLOC(buffer_size, char *);
+    SAFE_MALLOC_DEFER_FREE(buffer, buffer_size, char *);
     if (!buffer) {
-      release_manpage_resources(file);
       return SET_ERRNO(ERROR_CONFIG, "Failed to allocate memory for %s (%zu bytes)", resource_name, buffer_size);
     }
 
     // Read file content
     size_t bytes_read = fread(buffer, 1, (size_t)file_size, file);
-    release_manpage_resources(file);
 
     if (bytes_read != (size_t)file_size) {
-      SAFE_FREE(buffer);
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to read complete %s file (%zu/%lu bytes read)", resource_name,
                            bytes_read, (unsigned long)file_size);
     }
@@ -95,6 +90,7 @@ static asciichat_error_t load_single_resource(const char **out_content, size_t *
     buffer[(size_t)file_size] = '\0';
 
     *out_content = buffer;
+    buffer = NULL;
     *out_len = (size_t)file_size;
     log_debug("Loaded %s from filesystem (%zu bytes)", resource_name, *out_len);
     return ASCIICHAT_OK;

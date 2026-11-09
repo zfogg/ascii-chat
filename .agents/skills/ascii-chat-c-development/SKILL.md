@@ -27,6 +27,31 @@ Keep reusable, platform-independent helpers in the appropriate `lib/` module, es
 - Do not replace a tracked allocation with an untracked allocation, or mix allocator families. If an external library requires its own allocator, use that library's matching release function and document the boundary.
 - Allocation failure is not a warning to ignore: propagate the `asciichat_error_t`, unwind the object, or use the project's fatal path as appropriate. Keep allocation and leak-report work out of realtime audio/video loops.
 
+### Block-scoped cleanup with defer
+
+- Include `<ascii-chat/tooling/defer/defer.h>` in a project `.c` file. CMake
+  transforms the source before compiling it; generated files under
+  `build/defer_transformed/` are build artifacts and must not be edited.
+- `defer(action);` registers cleanup when execution reaches it. Actions run in
+  reverse registration order at block exit, including return, break, continue,
+  and supported goto exits; their expressions use values at cleanup time. Return
+  expressions are evaluated before cleanup. `longjmp`, process termination, and
+  panic do not run the actions.
+- Place each defer directly in a compound block; brace conditional and loop
+  bodies. Use `defer_named(handle, action)` and `defer_cancel(handle)` for
+  explicit ownership transfer. For tracked allocations, include `common.h` and
+  use `SAFE_MALLOC_DEFER_FREE(name, size, pointer_type)` or
+  `SAFE_CALLOC_DEFER_FREE(name, count, size, pointer_type)`; set the local
+  pointer to `NULL` after transferring ownership. Preserve resource release
+  ordering, synchronization lifetimes, and allocator families.
+- Do not use defer in `.c` files included by other source files, in header
+  function bodies, or with inline assembly in a function
+  with defer. Unsupported control flow and macro forms must fail the build;
+  do not work around a diagnostic by silently skipping cleanup. See
+  `docs/topics/defer.dox` for restrictions, macro wrappers, `--explain`,
+  `--show-transformed`, and LLVM development dependencies. Test success and
+  error/transfer paths for the affected subsystem.
+
 ## Backtraces and synchronization debugging
 
 Use `debug/backtrace.h` APIs (`backtrace_capture`, `backtrace_symbolize`, `backtrace_print`, `backtrace_format`) rather than ad-hoc platform code. Debugging support is build-dependent; line/function quality depends on symbols, frame pointers, dSYM/PDB/debug info, and the platform symbolizer. WASM uses stubs and does not provide native traces.

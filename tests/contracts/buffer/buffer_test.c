@@ -374,7 +374,7 @@ static void websocket_control_reserve_contract(void) {
   crypto_context_t crypto, peer;
   cr_assert(crypto_init(&crypto) == CRYPTO_OK && crypto_init(&peer) == CRYPTO_OK);
   cr_assert_eq(crypto_set_peer_public_key(&crypto, peer.public_key), CRYPTO_OK);
-  crypto.handshake_complete = true;
+  crypto.handshake_complete = peer.handshake_complete = true;
   acip_transport_t transport = {.impl_data = &ws};
   cr_assert(buffer_control_domain());
   // An oversized miss trims idle media storage, so cached blocks cannot mask pressure.
@@ -391,9 +391,7 @@ static void websocket_control_reserve_contract(void) {
       transport.crypto_ctx = encrypted ? &crypto : NULL;
       for (size_t i = 0; i < 2; ++i) {
         packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(types[i])};
-        asciichat_error_t result = websocket_transport_send(&transport, &header, sizeof(header));
-        cr_assert_eq(result, ASCIICHAT_OK, "client=%d encrypted=%d type=%d: %s", client, encrypted, types[i],
-                     asciichat_error_string(result));
+        cr_assert_eq(websocket_transport_send(&transport, &header, sizeof(header)), ASCIICHAT_OK);
         websocket_msg_t message;
         cr_assert(ringbuffer_read(ws.send_queue, &message));
         packet_header_t wire;
@@ -405,7 +403,7 @@ static void websocket_control_reserve_contract(void) {
     }
   }
   transport.crypto_ctx = NULL;
-  packet_header_t media = {.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME)};
+  packet_header_t media = {.type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME)};
   cr_assert_eq(websocket_transport_send(&transport, &media, sizeof(media)), ERROR_MEMORY);
   buffer_budget_release(&pressure);
   crypto_destroy(&crypto);

@@ -88,10 +88,10 @@ asciichat_error_t acip_packet_encrypt(crypto_context_t *crypto, const acip_packe
   bool shared = !plan->records_locked && crypto && crypto->session && plan->records == &crypto->session->records;
   asciichat_error_t encrypted = shared ? crypto_session_lock(crypto, &session) : ASCIICHAT_OK;
   if (encrypted == ASCIICHAT_OK)
-    encrypted = plan->records
-                    ? crypto_record_seal_into(plan->records, plan->options.traffic_class, plan->options.delivery,
-                                              plaintext, plan->plaintext_size, ciphertext, capacity, &encrypted_length)
-                    : SET_ERRNO(ERROR_INVALID_STATE, "Missing authenticated record context");
+    encrypted = plan->records ? crypto_record_seal_into_domain(plan->records, plan->options.traffic_class,
+                                                               plan->options.delivery, plaintext, plan->plaintext_size,
+                                                               ciphertext, capacity, &encrypted_length, domain)
+                              : SET_ERRNO(ERROR_INVALID_STATE, "Missing authenticated record context");
   if (session)
     crypto_session_unlock(session);
   buffer_release(gathered);

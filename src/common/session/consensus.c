@@ -1,6 +1,7 @@
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/network/acip/acds_sizes.h>
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>
@@ -65,7 +66,7 @@ static asciichat_error_t session_consensus_election_bridge(void *context, consen
   }
 
   // Allocate array for metrics
-  participant_metrics_t *metrics = SAFE_MALLOC(num_metrics * sizeof(participant_metrics_t), participant_metrics_t *);
+  SAFE_MALLOC_DEFER_FREE(metrics, num_metrics * sizeof(participant_metrics_t), participant_metrics_t *);
   if (!metrics) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate metrics array");
   }
@@ -74,7 +75,6 @@ static asciichat_error_t session_consensus_election_bridge(void *context, consen
   for (int i = 0; i < num_metrics; i++) {
     asciichat_error_t err = consensus_state_get_metric_at(state, i, &metrics[i]);
     if (err != ASCIICHAT_OK) {
-      SAFE_FREE(metrics);
       return err;
     }
   }
@@ -93,17 +93,14 @@ static asciichat_error_t session_consensus_election_bridge(void *context, consen
   }
 
   if (result != ASCIICHAT_OK) {
-    SAFE_FREE(metrics);
     return result;
   }
 
   if (best_index < 0 || best_index >= num_metrics) {
-    SAFE_FREE(metrics);
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid best host index: %d", best_index);
   }
 
   if (backup_index < -1 || backup_index >= num_metrics) {
-    SAFE_FREE(metrics);
     return SET_ERRNO(ERROR_INVALID_STATE, "Invalid backup host index: %d", backup_index);
   }
 
@@ -111,7 +108,6 @@ static asciichat_error_t session_consensus_election_bridge(void *context, consen
 
   log_info("Session consensus election: best=%d, backup=%d", best_index, backup_index);
 
-  SAFE_FREE(metrics);
   return result;
 }
 

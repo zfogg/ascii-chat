@@ -4,6 +4,7 @@
 #define NETWORK_PACKET_PARSING_HEX_BUFFER_SIZE 256
 
 #include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/util/time.h>
 /**
  * @file network/packet_parsing.c
@@ -49,7 +50,7 @@ static char *decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
   }
 
   // Allocate buffer with extra byte for null terminator
-  char *frame_data = SAFE_MALLOC(original_size + 1, char *);
+  SAFE_MALLOC_DEFER_FREE(frame_data, original_size + 1, char *);
   if (!frame_data) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate %u bytes for frame decode", original_size);
     return NULL;
@@ -60,7 +61,6 @@ static char *decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
     if (frame_data_len != compressed_size) {
       SET_ERRNO(ERROR_NETWORK_SIZE, "Compressed frame size mismatch: expected %u, got %zu", compressed_size,
                 frame_data_len);
-      SAFE_FREE(frame_data);
       return NULL;
     }
 
@@ -71,7 +71,6 @@ static char *decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
     if (decompress_result != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u: %s", original_size,
                 asciichat_error_string(decompress_result));
-      SAFE_FREE(frame_data);
       return NULL;
     }
 
@@ -80,7 +79,6 @@ static char *decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
     // Uncompressed frame - validate size
     if (frame_data_len != original_size) {
       log_error("Uncompressed frame size mismatch: expected %u, got %zu", original_size, frame_data_len);
-      SAFE_FREE(frame_data);
       return NULL;
     }
 
@@ -91,7 +89,9 @@ static char *decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
 
   // Null-terminate the frame data
   frame_data[original_size] = '\0';
-  return frame_data;
+  char *result = frame_data;
+  frame_data = NULL;
+  return result;
 }
 
 char *packet_decode_frame_data_malloc(const char *data, size_t length, bool compressed, uint32_t original_size,

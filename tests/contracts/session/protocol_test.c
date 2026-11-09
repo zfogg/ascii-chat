@@ -184,12 +184,18 @@ static void test_participant_settings(void) {
   cr_assert(participant);
   session_settings_init(&requested);
   cr_assert_eq(requested.color_mode, TERM_COLOR_AUTO);
+  cr_assert_eq(requested.fps, 0);
   terminal_capabilities_t caps = detect_terminal_capabilities();
   int expected_color = caps.detection_reliable ? caps.color_level : TERM_COLOR_NONE;
   memset(&test.host, 0, sizeof(test.host));
   cr_assert_eq(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
-  cr_assert_eq(session_participant_request_settings(participant, &requested), ASCIICHAT_OK);
+  asciichat_error_t request_result = session_participant_request_settings(participant, &requested);
+  cr_assert_eq(request_result, ASCIICHAT_OK, "request result %d width %d height %d fps %u palette %u color %d",
+               request_result, requested.width, requested.height, requested.fps, requested.palette_type,
+               requested.color_mode);
   cr_assert_eq(requested.color_mode, TERM_COLOR_AUTO);
+  cr_assert_eq(requested.fps, 0);
+  cr_assert_eq(test.host.caps.desired_fps, DEFAULT_MAX_FPS);
   cr_assert_eq(test.host.caps.color_level, expected_color);
   cr_assert_eq(session_participant_receive_settings(participant, test.reply, test.reply_length), ASCIICHAT_OK);
   session_settings_t effective;

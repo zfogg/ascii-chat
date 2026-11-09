@@ -275,6 +275,14 @@ an assertion.
 
 ## Quick Start
 
+### C cleanup with defer
+
+In project `.c` files, include `<ascii-chat/tooling/defer/defer.h>` and use
+`defer(action);` for block-scoped cleanup. CMake transforms these files before
+compilation; use the C development skill and `docs/topics/defer.dox` for scope,
+ownership, restrictions, diagnostics, and build requirements. Do not use defer
+in header function bodies or assume it runs on `longjmp` or process termination.
+
 ### Building
 
 ```bash

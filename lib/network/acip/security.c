@@ -1,4 +1,5 @@
 #include <ascii-chat/network/acip/security.h>
+#include <ascii-chat/tooling/defer/defer.h>
 #include <ascii-chat/crypto/session.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/common/protocol_constants.h>
@@ -228,6 +229,7 @@ asciichat_error_t acip_security_next_control(crypto_context_t *crypto, acip_traf
   asciichat_error_t result = crypto_session_lock(crypto, &session);
   if (result != ASCIICHAT_OK)
     return result;
+  defer(crypto_session_unlock(session));
   result = crypto_session_tick(session, time_get_ns());
   if (result == ASCIICHAT_OK && session->count) {
     crypto_session_message_t *message = &session->messages[session->head];
@@ -240,7 +242,6 @@ asciichat_error_t acip_security_next_control(crypto_context_t *crypto, acip_traf
       --session->count;
     }
   }
-  crypto_session_unlock(session);
   return result;
 }
 
@@ -254,6 +255,7 @@ asciichat_error_t acip_security_flush(acip_transport_t *transport) {
     asciichat_error_t result = acip_security_next_control(transport->crypto_ctx, &channel, &wire, &length);
     if (result != ASCIICHAT_OK || !wire)
       return result;
+    defer(buffer_release(wire));
     socket_buffer_t slice = {wire, length};
     acip_send_options_t options = {.traffic_class = channel, .delivery = ACIP_DELIVERY_RELIABLE};
     if (transport->methods->sendv_ex)
@@ -262,7 +264,6 @@ asciichat_error_t acip_security_flush(acip_transport_t *transport) {
       result = transport->methods->sendv(transport, &slice, 1);
     else
       result = transport->methods->send(transport, wire, length);
-    buffer_release(wire);
     if (result != ASCIICHAT_OK)
       return result;
   }
