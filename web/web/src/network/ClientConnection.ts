@@ -14,7 +14,6 @@ import {
   initClientWasm,
   cleanupClientWasm,
   generateKeypair,
-  getClientModule,
   configureClientCrypto,
   ConnectionState,
   PacketType,
@@ -153,8 +152,12 @@ export class ClientConnection {
     }
     configureBrowserCapabilities({
       webtransport: typeof WebTransport !== "undefined",
-      datagrams: typeof WebTransport !== "undefined" && "datagrams" in WebTransport.prototype,
-      hevc: typeof VideoDecoder !== "undefined" && VideoDecoder.isConfigSupported !== undefined,
+      datagrams:
+        typeof WebTransport !== "undefined" &&
+        "datagrams" in WebTransport.prototype,
+      hevc:
+        typeof VideoDecoder !== "undefined" &&
+        VideoDecoder.isConfigSupported !== undefined,
       webrtc: typeof RTCPeerConnection !== "undefined",
     });
     const policy = processClientEvent({
@@ -184,9 +187,6 @@ export class ClientConnection {
     });
     if (serverResult.code)
       throwWasmError(serverResult.code, "Failed to set server address");
-    getClientModule()!.sendPacketCallback = (rawPacket: Uint8Array) => {
-      this.socket?.send(rawPacket);
-    };
     return true;
   }
 
@@ -319,6 +319,8 @@ export class ClientConnection {
       });
       if (handshake.code)
         throw new Error(`Handshake failed (${handshake.code})`);
+      for (const { packet } of handshake.outputs ?? [])
+        this.socket?.send(packet);
     } catch (error) {
       if (isReportedWasmError(error)) forwardJavaScriptError(error);
       else reportJavaScriptError(error);
@@ -384,6 +386,8 @@ export class ClientConnection {
         });
         if (handshake.code)
           throw new Error(`Handshake rejected (${handshake.code})`);
+        for (const { packet } of handshake.outputs ?? [])
+          this.socket?.send(packet);
         const next = handshake.state;
         if (next === ConnectionState.CONNECTED) {
           this.wasEverConnected = true;
@@ -598,7 +602,7 @@ export class ClientConnection {
         // Matching TCP transport protocol: encrypt entire packet, wrap in PACKET_TYPE_ENCRYPTED
         // 1. Build plaintext packet (header + payload)
         const plaintextResult = processClientEvent({
-            type: "encode-packet",
+          type: "encode-packet",
           packetType,
           payload,
           clientId: 0,
@@ -609,7 +613,7 @@ export class ClientConnection {
 
         // 2. Encrypt the entire plaintext packet
         const encryptResult = processClientEvent({
-            type: "secure-packet",
+          type: "secure-packet",
           encrypt: true,
           packet: plaintextPacket,
         });
@@ -619,7 +623,7 @@ export class ClientConnection {
 
         // 3. Wrap ciphertext in PACKET_TYPE_ENCRYPTED header
         const encryptedResult = processClientEvent({
-            type: "encode-packet",
+          type: "encode-packet",
           packetType: PacketType.ENCRYPTED,
           payload: ciphertext,
           clientId: 0,

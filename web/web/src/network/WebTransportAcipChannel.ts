@@ -1,7 +1,6 @@
 import {
   processClientEvent,
   drainClientOutputs,
-  getClientModule,
   ConnectionState,
 } from "../wasm/client";
 import { AcipQuicProtocol } from "./AcipQuicProtocol";
@@ -135,7 +134,6 @@ export class WebTransportAcipChannel {
     if (policy.code)
       throw new Error(`Crypto policy resolution failed (${policy.code})`);
     this.automaticHandshake = true;
-    getClientModule()!.sendPacketCallback = (packet) => this.sendHandshake(packet);
     try {
       await this.bridge.connect();
       const result = processClientEvent({
@@ -144,6 +142,7 @@ export class WebTransportAcipChannel {
         mode: 0,
       });
       if (result.code) throw new Error(`Handshake failed (${result.code})`);
+      for (const { packet } of result.outputs ?? []) this.sendHandshake(packet);
     } catch (error) {
       this.close();
       throw error;
@@ -158,6 +157,8 @@ export class WebTransportAcipChannel {
     });
     if (nextResult.code)
       throw new Error(`Security handshake rejected (${nextResult.code})`);
+    for (const { packet } of nextResult.outputs ?? [])
+      this.sendHandshake(packet);
     const next = nextResult.state;
     if (next === ConnectionState.CONNECTED) this.authenticated();
   }
