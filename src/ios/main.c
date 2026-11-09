@@ -59,7 +59,6 @@ void asciichat_ios_apply_pending_options(void) {
                  asciichat_error_format(NULL, result));
 }
 
-
 int asciichat_ios_main(asciichat_ios_mode_t mode) {
   os_log(OS_LOG_DEFAULT, "iOS native session starting mode=%d", mode);
   if (!asciichat_ios_mode_available(mode)) {
@@ -119,7 +118,7 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
     argv[argc++] = simulator_discovery_port;
     argv[argc++] = simulator_discovery_insecure;
   }
-  if (mode == ASCIICHAT_IOS_MODE_MIRROR || mode == ASCIICHAT_IOS_MODE_CLIENT) {
+  if (mode == ASCIICHAT_IOS_MODE_MIRROR) {
     argv[argc++] = test_pattern;
   }
 #endif
