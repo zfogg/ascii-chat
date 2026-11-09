@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/network/http/server.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -28,4 +29,5 @@ void http2_connection_destroy(http2_connection_t **connection);
 asciichat_error_t http2_connection_receive(http2_connection_t *connection, const void *data, size_t length);
 asciichat_error_t http2_connection_next_output(http2_connection_t *connection, const uint8_t **data, size_t *length);
 asciichat_error_t http2_connection_submit_response(http2_connection_t *connection, int32_t stream_id, unsigned status,
-                                                   const void *body, size_t body_length);
+                                                   const http_header_t *headers, size_t header_count, const void *body,
+                                                   size_t body_length);

@@ -225,9 +225,12 @@ asciichat_error_t http2_connection_next_output(http2_connection_t *connection, c
 }
 
 asciichat_error_t http2_connection_submit_response(http2_connection_t *connection, int32_t stream_id, unsigned status,
-                                                   const void *body, size_t body_length) {
+                                                   const http_header_t *headers, size_t header_count, const void *body,
+                                                   size_t body_length) {
   if (!connection || status < 100 || status > 599 || body_length > HTTP2_MAX_BODY || (!body && body_length))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/2 response");
+  if (header_count > HTTP2_MAX_HEADERS || (header_count && !headers))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/2 response headers");
   char *status_text = SAFE_MALLOC(4, char *);
   if (!status_text)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP/2 response status");
@@ -246,9 +249,29 @@ asciichat_error_t http2_connection_submit_response(http2_connection_t *connectio
     }
     memcpy(response->data, body, body_length);
   }
-  nghttp2_nv headers[] = {{(uint8_t *)":status", (uint8_t *)status_text, 7, strlen(status_text), NGHTTP2_NV_FLAG_NONE}};
+  nghttp2_nv *fields = SAFE_CALLOC(header_count + 1, sizeof(*fields), nghttp2_nv *);
+  if (!fields) {
+    SAFE_FREE(status_text);
+    SAFE_FREE(response->data);
+    SAFE_FREE(response);
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP/2 response headers");
+  }
+  fields[0] = (nghttp2_nv){(uint8_t *)":status", (uint8_t *)status_text, 7, strlen(status_text), NGHTTP2_NV_FLAG_NONE};
+  for (size_t i = 0; i < header_count; ++i) {
+    if (!headers[i].name || !headers[i].value) {
+      SAFE_FREE(fields);
+      SAFE_FREE(status_text);
+      SAFE_FREE(response->data);
+      SAFE_FREE(response);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/2 response header");
+    }
+    fields[i + 1] = (nghttp2_nv){(uint8_t *)headers[i].name, (uint8_t *)headers[i].value, strlen(headers[i].name),
+                                 strlen(headers[i].value), NGHTTP2_NV_FLAG_NONE};
+  }
   nghttp2_data_provider provider = {.source = {.ptr = response}, .read_callback = read_response};
-  int result = nghttp2_submit_response(connection->session, stream_id, headers, 1, body_length ? &provider : NULL);
+  int result =
+      nghttp2_submit_response(connection->session, stream_id, fields, header_count + 1, body_length ? &provider : NULL);
+  SAFE_FREE(fields);
   SAFE_FREE(status_text);
   if (!body_length)
     SAFE_FREE(response);
