@@ -2,6 +2,53 @@
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
+test("native audio visualizations honor palettes and color modes", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const url = "/index.js";
+    const { createRenderer, ColorMode, RenderMode } = await import(url);
+    const renderer = await createRenderer();
+    try {
+      renderer.configure({
+        waveform: true,
+        palette_type: 6,
+        palette_custom: "▓",
+      });
+      renderer.submitAudio(
+        Float32Array.from({ length: 8192 }, (_, i) => Math.sin(i * 0.1)),
+      );
+      const frames: Record<string, string> = {};
+      for (const [name, color_mode] of Object.entries(ColorMode)) {
+        if (name === "Auto") continue;
+        renderer.configure({ color_mode, render_mode: RenderMode.Foreground });
+        frames[name] = renderer.renderAudio(40, 20);
+      }
+      renderer.configure({
+        color_mode: ColorMode.Ansi256,
+        render_mode: RenderMode.HalfBlock,
+      });
+      frames["half"] = renderer.renderAudio(40, 20);
+      renderer.configure({
+        color_mode: ColorMode.Ansi16,
+        render_mode: RenderMode.Background,
+      });
+      frames["background"] = renderer.renderAudio(40, 20);
+      return frames;
+    } finally {
+      renderer.dispose();
+    }
+  });
+  expect(result.None).toContain("▓");
+  expect(result.None).not.toContain("\x1b[");
+  expect(result.Ansi16).toMatch(/\[(3|9)\d+m/);
+  expect(result.Ansi256).toContain("\x1b[38;5;");
+  expect(result.Truecolor).toContain("\x1b[38;2;");
+  expect(result.half).toContain("\x1b[48;5;");
+  expect(result.background).toMatch(/\[(4|10)\d+m/);
+});
+
 test("standalone package renders modes, visualizations and canvas at 60 fps", async ({
   page,
 }) => {

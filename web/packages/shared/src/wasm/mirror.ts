@@ -221,12 +221,6 @@ export function transformCaptureRgba(
 export type AudioVisualizationSource = "microphone" | "media";
 export type AudioVisualizationMode = "waveform" | "fft";
 
-export function formatAudioVisualizationFrame(frame: string): string {
-  if (!wasmModule) throw new Error("WASM module not initialized");
-  renderer ??= AsciiRenderer.fromModule(wasmModule);
-  return renderer.formatAudioFrame(frame);
-}
-
 /**
  * Feed PCM into the active visualization source. Capture, playback, and demo
  * callers share this boundary instead of maintaining separate WASM plumbing.

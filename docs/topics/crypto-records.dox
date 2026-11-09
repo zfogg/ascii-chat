@@ -1,5 +1,5 @@
 /**
- * \page md_docs_2crypto-records Authenticated packet records and rotation
+ * \page crypto_records Authenticated packet records and rotation
  * @ingroup module_crypto
  * @ingroup topics
  *

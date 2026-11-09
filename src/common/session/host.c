@@ -134,7 +134,9 @@ static void host_client_release_transport(session_host_client_t *client) {
  * ============================================================================ */
 
 /**
- * @brief Internal session host structure
+ * @brief Owns the server-side session state, including connected participants, host callbacks, render history, and
+ * shutdown coordination. The session host creates it once, keeps it alive for the session lifetime, and releases its
+ * child resources during teardown.
  *
  * Contains server state, client list, and callback configuration.
  */

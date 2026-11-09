@@ -266,7 +266,6 @@ int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out) 
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid SSH private key input or output");
     return -1;
   }
-  CLEAR_ERRNO_ALL();
 #ifdef EMSCRIPTEN_BUILD
   static const char wasm_key_prefix[] = "/tmp/ascii-chat-key-";
   if (strncmp(key_path, wasm_key_prefix, sizeof(wasm_key_prefix) - 1) != 0) {
@@ -291,7 +290,6 @@ int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid SSH public key input or output");
     return -1;
   }
-  CLEAR_ERRNO_ALL();
   return parse_ssh_ed25519_line(key_line, public_key_out) == ASCIICHAT_OK ? 0 : -1;
 }
 
@@ -301,7 +299,6 @@ int client_parse_gpg_public_key(const char *armored_key, uint8_t *public_key_out
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid OpenPGP public key input or output");
     return -1;
   }
-  CLEAR_ERRNO_ALL();
   return openpgp_parse_armored_pubkey(armored_key, public_key_out) == ASCIICHAT_OK ? 0 : -1;
 }
 
@@ -311,7 +308,6 @@ int client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid binary OpenPGP public key input or output");
     return -1;
   }
-  CLEAR_ERRNO_ALL();
   return openpgp_parse_binary_pubkey(key_data, key_data_len, public_key_out) == ASCIICHAT_OK ? 0 : -1;
 }
 
@@ -321,8 +317,6 @@ int client_parse_gpg_private_key(const char *armored_key, uint8_t *secret_key_ou
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid OpenPGP private key input or output");
     return -1;
   }
-  CLEAR_ERRNO_ALL();
-
   uint8_t public_key[crypto_sign_PUBLICKEYBYTES] = {0};
   uint8_t seed[crypto_sign_SEEDBYTES] = {0};
   uint8_t derived_public_key[crypto_sign_PUBLICKEYBYTES] = {0};
@@ -354,8 +348,6 @@ int client_parse_gpg_private_key_binary(const uint8_t *key_data, size_t key_data
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid binary OpenPGP private key input or output");
     return -1;
   }
-  CLEAR_ERRNO_ALL();
-
   uint8_t public_key[crypto_sign_PUBLICKEYBYTES] = {0};
   uint8_t seed[crypto_sign_SEEDBYTES] = {0};
   uint8_t derived_public_key[crypto_sign_PUBLICKEYBYTES] = {0};

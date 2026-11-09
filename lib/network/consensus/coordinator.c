@@ -22,7 +22,9 @@
 #define CONSENSUS_COLLECTION_DEADLINE_NS (30ULL * NS_PER_SEC_INT) /* 30 seconds */
 
 /**
- * @brief Internal coordinator structure
+ * @brief Coordinates consensus work for a session: it tracks the participant topology, election state, callbacks, and
+ * messages waiting to be processed. The session owns the coordinator and tears down its queues and synchronization
+ * objects with it.
  */
 typedef struct consensus_coordinator {
   uint8_t my_id[SESSION_ID_SIZE];

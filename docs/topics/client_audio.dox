@@ -22,6 +22,8 @@
  * callbacks must not allocate, log, block, or perform network work.
  *
  * @section client_audio_visualization Visualizations
+ * The shared visualization encoder applies the configured palette, color mode,
+ * and foreground, background, or half-block rendering before frames reach the browser.
  *
  * Waveform and FFT visualizations consume the selected audio source and are
  * controlled by TUI shortcuts. They are presentation consumers, not a second

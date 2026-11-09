@@ -5611,6 +5611,7 @@ async function ClientModule(moduleArg = {}) {
   };
   var __emval_invoke = (caller, handle, methodName, destructorsRef, args) =>
     emval_methodCallers[caller](handle, methodName, destructorsRef, args);
+  var __emval_new_array = () => Emval.toHandle([]);
   var __emval_new_cstring = (v) => Emval.toHandle(getStringOrSymbol(v));
   var __emval_new_object = () => Emval.toHandle({});
   var __emval_run_destructors = (handle) => {
@@ -6619,8 +6620,8 @@ async function ClientModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    3031890: () => Module.getRandomValue(),
-    3031926: () => {
+    3031906: () => Module.getRandomValue(),
+    3031942: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -6962,6 +6963,7 @@ async function ClientModule(moduleArg = {}) {
       _emval_get_property: __emval_get_property,
       _emval_incref: __emval_incref,
       _emval_invoke: __emval_invoke,
+      _emval_new_array: __emval_new_array,
       _emval_new_cstring: __emval_new_cstring,
       _emval_new_object: __emval_new_object,
       _emval_run_destructors: __emval_run_destructors,
