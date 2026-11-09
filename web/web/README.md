@@ -140,7 +140,7 @@ The WASM modules (mirror-web and client-web) are built automatically during the 
 vp run wasm:build
 ```
 
-This invokes Emscripten to compile `src/web/mirror.c` and `src/web/client.c` to WebAssembly modules and places them in
+This invokes Emscripten to compile `src/web/mirror.c` and the browser client/network sources to WebAssembly modules and places them in
 `src/wasm/dist/`.
 
 **Prerequisites:** Emscripten must be installed (`brew install emscripten` on macOS, `pacman -S emscripten` on Arch,
