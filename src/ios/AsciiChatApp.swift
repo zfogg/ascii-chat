@@ -1,5 +1,6 @@
 import CoreGraphics
 import CoreImage
+import Darwin
 import Foundation
 import Observation
 import MetalKit
@@ -97,14 +98,16 @@ private func platform_disable_keepawake()
 @_silgen_name("ios_stdin_bridge_push")
 private func ios_stdin_bridge_push(_ data: UnsafeRawPointer, _ length: Int) -> Int
 
-@_silgen_name("asciichat_ios_options_snapshot")
-private func asciichat_ios_options_snapshot(_ buffer: UnsafeMutablePointer<CChar>, _ capacity: Int) -> Int32
+@_silgen_name("options_get")
+private func options_get() -> UnsafeRawPointer
 
-@_silgen_name("asciichat_ios_options_apply_json")
-private func asciichat_ios_options_apply_json(_ json: UnsafePointer<CChar>, _ length: Int) -> Int32
+@_silgen_name("options_values_json")
+private func options_values_json(_ values: UnsafeRawPointer, _ remoteOnly: Bool) -> UnsafeMutablePointer<CChar>?
 
-@_silgen_name("asciichat_ios_options_set_pending_json")
-private func asciichat_ios_options_set_pending_json(_ json: UnsafePointer<CChar>, _ length: Int) -> Int32
+@_silgen_name("options_apply_json")
+private func options_apply_json(_ json: UnsafePointer<CChar>, _ length: Int,
+                                _ expectedRevision: UInt64, _ origin: Int32,
+                                _ result: UnsafeMutableRawPointer?) -> Int32
 
 private struct TestFrameView: View {
     private let image: CGImage?
@@ -162,6 +165,16 @@ private struct TestFrameView: View {
 private final class CRenderView: MTKView {
     private var renderPixels = [UInt8](repeating: 0, count: 4096 * 2048 * 4)
     private var lastSequence: UInt64 = 0
+    private var sourceTexture: MTLTexture?
+    private var sourceTextureReady: MTLTexture?
+    private var sourceWidth = 0
+    private var sourceHeight = 0
+    private var sourceBytesPerRow = 0
+    private var renderPipeline: MTLRenderPipelineState?
+    private var sampler: MTLSamplerState?
+    private var displayTicks = 0
+    private var displayedFrames = 0
+    private var lastFpsLog = CACurrentMediaTime()
     private var displayLink: CADisplayLink?
     private let commandQueue: MTLCommandQueue?
     private let ciContext: CIContext?
@@ -174,6 +187,7 @@ private final class CRenderView: MTKView {
         framebufferOnly = false
         enableSetNeedsDisplay = false
         isPaused = true
+        configureMetalPipeline(device: metalDevice)
     }
 
     required init(coder: NSCoder) {
@@ -185,6 +199,38 @@ private final class CRenderView: MTKView {
         framebufferOnly = false
         enableSetNeedsDisplay = false
         isPaused = true
+        configureMetalPipeline(device: metalDevice)
+    }
+
+    private func configureMetalPipeline(device: MTLDevice?) {
+        guard let device else { return }
+        let shaderSource = """
+        #include <metal_stdlib>
+        using namespace metal;
+        struct VertexOut { float4 position [[position]]; float2 texCoord; };
+        vertex VertexOut asciiChatVertex(uint vertexID [[vertex_id]]) {
+            constexpr float2 positions[4] = { float2(-1,-1), float2(1,-1), float2(-1,1), float2(1,1) };
+            constexpr float2 texCoords[4] = { float2(0,1), float2(1,1), float2(0,0), float2(1,0) };
+            return VertexOut{float4(positions[vertexID], 0, 1), texCoords[vertexID]};
+        }
+        fragment float4 asciiChatFragment(VertexOut in [[stage_in]],
+                                          texture2d<float, access::sample> frame [[texture(0)]],
+                                          sampler frameSampler [[sampler(0)]]) {
+            return frame.sample(frameSampler, in.texCoord);
+        }
+        """
+        let library = try? device.makeLibrary(source: shaderSource, options: nil)
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = library?.makeFunction(name: "asciiChatVertex")
+        descriptor.fragmentFunction = library?.makeFunction(name: "asciiChatFragment")
+        descriptor.colorAttachments[0].pixelFormat = colorPixelFormat
+        renderPipeline = try? device.makeRenderPipelineState(descriptor: descriptor)
+        let samplerDescriptor = MTLSamplerDescriptor()
+        samplerDescriptor.minFilter = .nearest
+        samplerDescriptor.magFilter = .nearest
+        samplerDescriptor.sAddressMode = .clampToEdge
+        samplerDescriptor.tAddressMode = .clampToEdge
+        sampler = device.makeSamplerState(descriptor: samplerDescriptor)
     }
 
     override func didMoveToWindow() {
@@ -193,7 +239,7 @@ private final class CRenderView: MTKView {
         displayLink = nil
         guard window != nil else { return }
         let link = CADisplayLink(target: self, selector: #selector(displayFrame))
-        link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 60, preferred: 60)
+        link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 120, preferred: 120)
         link.add(to: .main, forMode: .common)
         displayLink = link
     }
@@ -202,8 +248,8 @@ private final class CRenderView: MTKView {
         super.layoutSubviews()
         guard let screen = window?.screen ?? window?.windowScene?.screen else { return }
         let scale = screen.nativeScale
-        let pixelWidth = max(1, Int(ceil(bounds.width * scale)))
-        let pixelHeight = max(1, Int(ceil(bounds.height * scale)))
+        let pixelWidth = max(1, Int(ceil(bounds.width)))
+        let pixelHeight = max(1, Int(ceil(bounds.height)))
         // The bundled terminal font is rendered at 96 DPI. Match the OS
         // display scale so the C bitmap is generated at native pixel density.
         let fontSizePt = 6.0
@@ -220,6 +266,7 @@ private final class CRenderView: MTKView {
     }
 
     @objc private func displayFrame() {
+        displayTicks += 1
         let sequence = ios_render_bridge_sequence()
         guard sequence != lastSequence else { return }
         let capacity = renderPixels.count
@@ -230,42 +277,49 @@ private final class CRenderView: MTKView {
             ios_render_bridge_read_frame(buffer.baseAddress!, capacity, &width, &height, &pitch)
         }
         guard emitted != 0, width > 0, height > 0, pitch >= width * 4 else { return }
-        NSLog("iOS render frame width=%d height=%d pitch=%d drawable=%lu×%lu",
-              width, height, pitch, currentDrawable?.texture.width ?? 0,
-              currentDrawable?.texture.height ?? 0)
-        let byteCount = Int(pitch) * Int(height)
-        let data = Data(renderPixels[0 ..< byteCount])
-        guard let provider = CGDataProvider(data: data as CFData),
-              let frame = CGImage(width: Int(width), height: Int(height), bitsPerComponent: 8,
-                                  bitsPerPixel: 32, bytesPerRow: Int(pitch),
-                                  space: CGColorSpaceCreateDeviceRGB(),
-                                  bitmapInfo: [.byteOrder32Little,
-                                               CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)],
-                                  provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
-        else { return }
-
         guard let drawable = currentDrawable,
               let commandBuffer = commandQueue?.makeCommandBuffer(),
-              let ciContext else { return }
-        let image = CIImage(cgImage: frame)
-        let drawableWidth = CGFloat(drawable.texture.width)
-        let drawableHeight = CGFloat(drawable.texture.height)
-        // Map the complete C canvas onto the complete display. Terminal cell
-        // proportions are already accounted for when the grid is generated;
-        // preserving the bitmap's raw aspect ratio here creates unused bars.
-        let fitted = image.transformed(by: CGAffineTransform(
-            a: drawableWidth / image.extent.width,
-            b: 0,
-            c: 0,
-            d: drawableHeight / image.extent.height,
-            tx: -image.extent.minX * drawableWidth / image.extent.width,
-            ty: -image.extent.minY * drawableHeight / image.extent.height))
-        ciContext.render(fitted, to: drawable.texture, commandBuffer: commandBuffer,
-                         bounds: CGRect(x: 0, y: 0, width: drawableWidth, height: drawableHeight),
-                         colorSpace: CGColorSpaceCreateDeviceRGB())
+              let metalDevice = device else { return }
+
+        let source = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm,
+                                                               width: Int(width), height: Int(height), mipmapped: false)
+        source.usage = [.shaderRead]
+        if self.sourceTexture == nil || sourceWidth != Int(width) || sourceHeight != Int(height) {
+            self.sourceTexture = metalDevice.makeTexture(descriptor: source)
+            self.sourceTextureReady = metalDevice.makeTexture(descriptor: source)
+            sourceWidth = Int(width)
+            sourceHeight = Int(height)
+            sourceBytesPerRow = Int(pitch)
+        }
+        guard let sourceTexture = (displayedFrames % 2 == 0 ? sourceTexture : sourceTextureReady) else { return }
+        sourceTexture.replace(region: MTLRegionMake2D(0, 0, Int(width), Int(height)),
+                              mipmapLevel: 0, withBytes: renderPixels, bytesPerRow: Int(pitch))
+
+        guard let renderPipeline, let sampler,
+              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: {
+                  let descriptor = MTLRenderPassDescriptor()
+                  descriptor.colorAttachments[0].texture = drawable.texture
+                  descriptor.colorAttachments[0].loadAction = .clear
+                  descriptor.colorAttachments[0].storeAction = .store
+                  descriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+                  return descriptor
+              }()) else { return }
+        encoder.setRenderPipelineState(renderPipeline)
+        encoder.setFragmentTexture(sourceTexture, index: 0)
+        encoder.setFragmentSamplerState(sampler, index: 0)
+        encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        encoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
         lastSequence = sequence
+        displayedFrames += 1
+        let now = CACurrentMediaTime()
+        if now - lastFpsLog >= 1.0 {
+            NSLog("iOS Metal FPS ticks=%d displayed=%d sequence=%llu", displayTicks, displayedFrames, sequence)
+            displayTicks = 0
+            displayedFrames = 0
+            lastFpsLog = now
+        }
     }
 }
 
@@ -316,19 +370,40 @@ private enum IOSTheme {
 private struct IOSSettingsView: View {
     let onClose: () -> Void
     let applyJSON: ([String: Any]) -> Void
+    let renderFontSizeChanged: (Double) -> Void
     @State private var palette = "standard"
     @State private var colorFilter = "none"
     @State private var renderMode = "foreground"
     @State private var colorMode = "truecolor"
-    @State private var fps = 60.0
+    @State private var fps = 0.0
     @State private var audioEnabled = true
     @State private var stretch = true
     @State private var stabilize = false
+    @State private var address = "localhost"
+    @State private var port = "27224"
+    @State private var discoveryServiceURL = ""
+    @State private var webcamIndex = "0"
+    @State private var microphoneIndex = "0"
+    @State private var speakersIndex = "0"
+    @State private var microphoneVolume = 1.0
+    @State private var renderFontSize = 6.0
 
     private let palettes = ["standard", "blocks", "digital", "minimal", "cool", "custom"]
     private let filters = ["none", "black", "white", "green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow", "rainbow"]
     private let renderModes = ["foreground", "background", "half-block"]
     private let colorModes = ["none", "16", "256", "truecolor"]
+
+    private func loadPersistedValues() {
+        guard let data = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch"),
+              let values = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        if let value = values["render_font_size"] as? NSNumber { renderFontSize = value.doubleValue }
+        if let value = values["fps"] as? NSNumber { fps = value.doubleValue }
+        if let value = values["palette"] as? String { palette = value }
+        if let value = values["color_filter"] as? String { colorFilter = value }
+        if let value = values["render_mode"] as? String { renderMode = value }
+        if let value = values["color_mode"] as? String { colorMode = value }
+        if let value = values["audio_enabled"] as? Bool { audioEnabled = value }
+    }
 
     var body: some View {
         NavigationStack {
@@ -341,18 +416,54 @@ private struct IOSSettingsView: View {
                     Toggle("Stretch to fill", isOn: $stretch)
                     Toggle("Stabilize frames", isOn: $stabilize)
                     VStack(alignment: .leading) {
-                        Text("Frame rate: \(Int(fps)) FPS")
-                        Slider(value: $fps, in: 1...144, step: 1)
+                        Text(fps == 0 ? "Frame rate: Auto (camera)" : "Frame rate: \(Int(fps)) FPS")
+                        Slider(value: $fps, in: 0...144, step: 1)
+                    }
+                    VStack(alignment: .leading) {
+                        Text("Font size: \(renderFontSize, specifier: "%.1f") pt")
+                        Slider(value: $renderFontSize, in: 3...18, step: 0.5)
+                            .onChange(of: renderFontSize) { _, value in
+                                applyJSON(["render_font_size": value])
+                                renderFontSizeChanged(value)
+                            }
                     }
                 }
                 Section("Audio") {
                     Toggle("Audio", isOn: $audioEnabled)
+                    TextField("Microphone index", text: $microphoneIndex).keyboardType(.numberPad)
+                    TextField("Speakers index", text: $speakersIndex).keyboardType(.numberPad)
+                    VStack(alignment: .leading) {
+                        Text("Microphone volume: \(microphoneVolume, specifier: "%.2f")")
+                        Slider(value: $microphoneVolume, in: 0...2, step: 0.05)
+                    }
+                }
+                Section("Camera") {
+                    TextField("Webcam index", text: $webcamIndex).keyboardType(.numberPad)
+                }
+                Section("Connection") {
+                    TextField("Server address", text: $address)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    TextField("Port", text: $port).keyboardType(.numberPad)
+                    TextField("Discovery service URL", text: $discoveryServiceURL)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                }
+                Section("Advanced") {
+                    NavigationLink("All ascii-chat options") {
+                        IOSAllOptionsView(applyJSON: applyJSON)
+                    }
                 }
                 Section {
                     Button("Apply settings") {
                         applyJSON(["palette": palette, "color_filter": colorFilter, "render_mode": renderMode,
                                    "color_mode": colorMode, "fps": Int(fps), "stretch": stretch,
-                                   "stabilize": stabilize, "audio_enabled": audioEnabled])
+                                   "stabilize": stabilize, "audio_enabled": audioEnabled,
+                                   "address": address, "port": Int(port) ?? 27224,
+                                   "discovery_service_url": discoveryServiceURL,
+                                   "webcam_index": Int(webcamIndex) ?? 0,
+                                   "microphone_index": Int(microphoneIndex) ?? 0,
+                                   "speakers_index": Int(speakersIndex) ?? 0,
+                                   "microphone_volume": microphoneVolume,
+                                   "render_font_size": renderFontSize])
                     }
                     .foregroundStyle(IOSTheme.websiteCyan)
                 }
@@ -363,8 +474,88 @@ private struct IOSSettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) { Button("Done", action: onClose).tint(IOSTheme.websiteTeal) }
             }
+            .onAppear { loadPersistedValues() }
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+private struct IOSAllOptionsView: View {
+    let applyJSON: ([String: Any]) -> Void
+    @State private var values: [String: Any] = [:]
+    @State private var changed = false
+
+    private func loadSnapshot() {
+        guard let jsonPointer = options_values_json(options_get(), false) else { return }
+        defer { Darwin.free(jsonPointer) }
+        let data = Data(bytes: jsonPointer, count: strlen(jsonPointer))
+        if let object = try? JSONSerialization.jsonObject(with: data),
+           let dictionary = object as? [String: Any] {
+            values = dictionary
+        }
+    }
+
+    var body: some View {
+        List {
+            ForEach(values.keys.sorted(), id: \.self) { key in
+                if let value = values[key] as? Bool {
+                    Toggle(key.replacingOccurrences(of: "_", with: " ").capitalized,
+                           isOn: Binding(get: { value }, set: { values[key] = $0; changed = true }))
+                } else if let number = values[key] as? NSNumber,
+                          let range = Self.sliderRange(for: key) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(key.replacingOccurrences(of: "_", with: " ").capitalized)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(IOSTheme.muted)
+                        Text(String(format: "%.1f", number.doubleValue))
+                            .font(.caption.monospacedDigit())
+                        Slider(value: Binding(
+                            get: { (values[key] as? NSNumber)?.doubleValue ?? number.doubleValue },
+                            set: { values[key] = $0; changed = true }),
+                               in: range.lowerBound...range.upperBound, step: range.step)
+                    }
+                } else {
+                    let currentValue = values[key] ?? ""
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(key.replacingOccurrences(of: "_", with: " ").capitalized)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(IOSTheme.muted)
+                        TextField("Value", text: Binding(
+                            get: { String(describing: values[key] ?? "") },
+                            set: { values[key] = Self.coerce($0, like: currentValue); changed = true }))
+                        .textFieldStyle(.roundedBorder)
+                    }
+                }
+            }
+            Section {
+                Button("Apply all changes") { applyJSON(values); changed = false }
+                    .disabled(!changed)
+                    .foregroundStyle(IOSTheme.websiteCyan)
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(IOSTheme.background)
+        .navigationTitle("All options")
+        .task { loadSnapshot() }
+    }
+
+    private static func coerce(_ text: String, like value: Any) -> Any {
+        if value is Int { return Int(text) ?? 0 }
+        if value is Double { return Double(text) ?? 0 }
+        if value is NSNumber { return Double(text) ?? 0 }
+        return text
+    }
+
+    private static func sliderRange(for key: String) -> (lowerBound: Double, upperBound: Double, step: Double)? {
+        switch key {
+        case "fps": return (1, 144, 1)
+        case "render_font_size": return (3, 18, 0.5)
+        case "microphone_volume", "speakers_volume", "volume": return (0, 2, 0.05)
+        case "compression_level": return (0, 9, 1)
+        case "reconnect_attempts", "webrtc_reconnect_attempts": return (0, 20, 1)
+        case "webrtc_ice_timeout": return (0, 60, 1)
+        default: return nil
+        }
     }
 }
 
@@ -399,25 +590,37 @@ struct ContentView: View {
     @State private var showSettings = false
 
     private func applySettings(_ values: [String: Any]) {
-        guard JSONSerialization.isValidJSONObject(values),
-              let data = try? JSONSerialization.data(withJSONObject: values),
+        var merged = (UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]) ?? [:]
+        values.forEach { merged[$0.key] = $0.value }
+        guard JSONSerialization.isValidJSONObject(merged),
+              let data = try? JSONSerialization.data(withJSONObject: merged),
               let json = String(data: data, encoding: .utf8) else { return }
         UserDefaults.standard.set(data, forKey: "ascii-chat.ios.options.patch")
         json.withCString { pointer in
-            _ = asciichat_ios_options_set_pending_json(pointer, json.utf8.count)
-            _ = asciichat_ios_options_apply_json(pointer, json.utf8.count)
+            _ = options_apply_json(pointer, json.utf8.count, UInt64.max, 0, nil)
         }
     }
 
-    private func startSelectedSession() {
+    private func configureRenderBridge(fontSize: Double) {
         let screen = UIScreen.main
         let scale = screen.nativeScale
         let width = max(1, Int(ceil(screen.bounds.width * scale)))
         let height = max(1, Int(ceil(screen.bounds.height * scale)))
-        let fontSizePt = 6.0
-        let cols = max(1, Int(ceil(Double(width) / (fontSizePt * 0.8333))))
+        let cols = max(1, Int(ceil(Double(width) / (fontSize * 0.8333))))
         let rows = max(1, Int(ceil(Double(cols) * Double(height) / Double(width) * 0.5)))
-            ios_render_bridge_configure(Int32(cols), Int32(rows), fontSizePt)
+        ios_render_bridge_configure(Int32(cols), Int32(rows), fontSize)
+    }
+
+    private func startSelectedSession() {
+        let fontSizePt = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double ?? 6.0
+        configureRenderBridge(fontSize: fontSizePt)
+        // Apply persisted options before the native entry point reads GET_OPTION.
+        // This keeps the camera's auto-FPS decision stable for the whole session.
+        if let data = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch"),
+           let json = String(data: data, encoding: .utf8) {
+            json.withCString { pointer in _ = options_apply_json(pointer, json.utf8.count, UInt64.max, 0, nil) }
+        }
         sessionModel.start(mode: selectedMode)
         NotificationCenter.default.post(name: .iosSessionStarted, object: nil)
         launchMessage = "Starting \(selectedMode.title.lowercased())…"
@@ -436,6 +639,12 @@ struct ContentView: View {
             }
         }
     }
+
+#if ASCIICHAT_IOS_SIMULATOR
+    private func startSimulatorSessionIfNeeded() {
+        if !sessionStarted { startSelectedSession() }
+    }
+#endif
 
     private func stopSelectedSession() {
         guard sessionStarted, !sessionStopping else { return }
@@ -570,7 +779,10 @@ struct ContentView: View {
         .onAppear {
             if let data = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch"),
                let json = String(data: data, encoding: .utf8) {
-                json.withCString { pointer in _ = asciichat_ios_options_set_pending_json(pointer, json.utf8.count) }
+                json.withCString { pointer in _ = options_apply_json(pointer, json.utf8.count, UInt64.max, 0, nil) }
+            }
+            if ProcessInfo.processInfo.arguments.contains("--auto-open-settings") {
+                showSettings = true
             }
             if ProcessInfo.processInfo.arguments.contains("--auto-start-mirror") && !didStart {
                 selectedMode = .mirror
@@ -637,7 +849,10 @@ struct ContentView: View {
             .padding(.leading, 8)
         }
         .sheet(isPresented: $showSettings) {
-            IOSSettingsView(onClose: { showSettings = false }, applyJSON: applySettings)
+            IOSSettingsView(onClose: { showSettings = false }, applyJSON: applySettings) { fontSize in
+                UserDefaults.standard.set(fontSize, forKey: "ascii-chat.ios.render-font-size")
+                configureRenderBridge(fontSize: fontSize)
+            }
         }
     }
 }
@@ -705,8 +920,16 @@ final class AsciiChatSceneDelegate: UIResponder, UIWindowSceneDelegate {
         hosting.view.translatesAutoresizingMaskIntoConstraints = false
         hosting.edgesForExtendedLayout = [.top, .bottom, .left, .right]
         hosting.additionalSafeAreaInsets = .zero
+        let keyboardHandler = IOSKeyboardHandler(frame: .zero)
+        keyboardHandler.translatesAutoresizingMaskIntoConstraints = false
+        keyboardHandler.isAccessibilityElement = false
+        root.view.addSubview(keyboardHandler)
         root.view.addSubview(hosting.view)
         NSLayoutConstraint.activate([
+            keyboardHandler.leadingAnchor.constraint(equalTo: root.view.leadingAnchor),
+            keyboardHandler.trailingAnchor.constraint(equalTo: root.view.trailingAnchor),
+            keyboardHandler.topAnchor.constraint(equalTo: root.view.topAnchor),
+            keyboardHandler.bottomAnchor.constraint(equalTo: root.view.bottomAnchor),
             hosting.view.leadingAnchor.constraint(equalTo: root.view.leadingAnchor),
             hosting.view.trailingAnchor.constraint(equalTo: root.view.trailingAnchor),
             hosting.view.topAnchor.constraint(equalTo: root.view.topAnchor),
