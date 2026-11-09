@@ -5,23 +5,14 @@ import {
 import type { BrowserErrorFrame } from "../errors/errorBus";
 
 const MAX_OPENPGP_KEY_FILE_BYTES = 1024 * 1024;
-const ASCIICHAT_ERRNO_MAX_DEPTH = 64;
 const BINARY_OPENPGP_KEY_PREFIX = "ascii-chat:openpgp-binary-base64:";
 
-type ParserModule = Pick<
-  ClientWasmBindings,
-  "parseKey" | "keyParserError" | "errorSnapshot" | "errorFrame"
-> & {
+type ParserModule = Pick<ClientWasmBindings, "parseKey"> & {
   FS: {
     writeFile(path: string, contents: string, options: { mode: number }): void;
     unlink(path: string): void;
   };
 };
-
-function getErrorFrames(module: ParserModule): BrowserErrorFrame[] {
-  const count = Math.min(module.errorSnapshot(), ASCIICHAT_ERRNO_MAX_DEPTH);
-  return Array.from({ length: count }, (_, index) => module.errorFrame(index));
-}
 
 let modulePromise: Promise<ParserModule> | null = null;
 const postMessageToWorker = self.postMessage as unknown as (
@@ -44,6 +35,7 @@ self.onmessage = async (
   const { id, kind, contents } = event.data;
   let input: Uint8Array | undefined;
   let path = "";
+  let frames: BrowserErrorFrame[] = [];
   try {
     const module = await getParserModule();
     let binary = false;
@@ -72,17 +64,18 @@ self.onmessage = async (
       "gpg-public": 3,
     } as const;
     const result = module.parseKey(kinds[kind], binary, input);
-    if (result.code !== 0) throw new Error(module.keyParserError());
+    frames = result.frames;
+    if (result.code !== 0)
+      throw new Error(frames[0]?.message ?? "Cannot parse browser key");
     const bytes = result.bytes;
     postMessageToWorker({ id, bytes: bytes.buffer }, [
       bytes.buffer as ArrayBuffer,
     ]);
   } catch (error) {
-    const module = modulePromise ? await modulePromise.catch(() => null) : null;
     postMessageToWorker({
       id,
       error: error instanceof Error ? error.message : String(error),
-      frames: module ? getErrorFrames(module) : [],
+      frames,
     });
   } finally {
     input?.fill(0);
