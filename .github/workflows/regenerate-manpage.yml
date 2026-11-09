@@ -34,6 +34,8 @@ jobs:
           ASCII_CHAT_QUESTION_PROMPT_RESPONSE: y
           ASCIICHAT_RESOURCE_DIR: ${{ github.workspace }}/build
         run: |
+          chmod +x build/bin/ascii-chat
+          mkdir -p share/man/man1
           build/bin/ascii-chat --man-page-create share/man/man1/ascii-chat.1
           test -s share/man/man1/ascii-chat.1
 
