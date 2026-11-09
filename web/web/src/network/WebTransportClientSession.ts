@@ -265,7 +265,7 @@ export class WebTransportClientSession implements ClientSession {
     if (this.state !== ConnectionState.CONNECTED || !this.outbound)
       throw new Error("Security negotiation is not complete");
     const serialized = processClientEvent({
-      type: "serialize",
+      type: "encode-packet",
       packetType: type,
       payload,
       clientId: 0,

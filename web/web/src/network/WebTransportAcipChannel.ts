@@ -89,7 +89,7 @@ export class WebTransportAcipChannel {
           this.bridge.send(flow, delivery, packet, deadline),
         serialize: (type, payload) => {
           const result = processClientEvent({
-            type: "serialize",
+            type: "encode-packet",
             packetType: type,
             payload,
             clientId: 0,

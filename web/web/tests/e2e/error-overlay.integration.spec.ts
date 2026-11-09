@@ -344,7 +344,7 @@ for (const terminalCode of [48, 53]) {
       await initClientWasm();
       const serializePacket = (packetType: number, payload: Uint8Array) => {
         const result = processClientEvent({
-          type: "serialize",
+          type: "encode-packet",
           packetType,
           payload,
           clientId: 0,
@@ -446,7 +446,7 @@ for (const terminalCode of [48, 53]) {
           /* @vite-ignore */ url
         );
         const result = processClientEvent({
-          type: "serialize",
+          type: "encode-packet",
           packetType: PacketType.PING,
           payload: new Uint8Array(8),
           clientId: 0,

@@ -498,7 +498,7 @@ test("Embind owns audio buffers and encrypted peer sessions", async ({
     const module = getClientWasmModule();
     const serializePacket = (packetType: number, payload: Uint8Array) => {
       const result = processClientEvent({
-        type: "serialize",
+        type: "encode-packet",
         packetType,
         payload,
         clientId: 0,

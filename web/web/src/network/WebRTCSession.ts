@@ -633,7 +633,7 @@ export class WebRTCSession implements ClientSession {
         },
       );
     const serialized = processClientEvent({
-      type: "serialize",
+      type: "encode-packet",
       packetType: type,
       payload,
       clientId: 0,

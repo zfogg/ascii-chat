@@ -249,7 +249,7 @@ public:
         sodium_memzero(bytes.data(), bytes.size());
       return result(code);
     }
-    if (type == "serialize") {
+    if (type == "encode-packet") {
       const unsigned packet_type = event["packetType"].as<unsigned>();
       const unsigned client_id = event["clientId"].isUndefined() ? 0 : event["clientId"].as<unsigned>();
       auto input = binding_copy_input(event["payload"]);
@@ -265,7 +265,7 @@ public:
       response.set("bytes", binding_copy_output(output.data(), code ? 0 : length));
       return response;
     }
-    if (type == "crypt") {
+    if (type == "secure-packet") {
       const bool encrypt = event["encrypt"].as<bool>();
       auto input = binding_copy_input(event["packet"]);
       std::vector<uint8_t> output(input.size() + (encrypt ? 72 : 0));

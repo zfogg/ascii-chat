@@ -408,7 +408,7 @@ export class ClientConnection {
         try {
           // Decrypt the payload (ciphertext) to get the inner plaintext packet (header + payload)
           const decryptResult = processClientEvent({
-            type: "crypt",
+            type: "secure-packet",
             encrypt: false,
             packet: payload,
           });
@@ -542,7 +542,7 @@ export class ClientConnection {
         },
       );
     const result = processClientEvent({
-      type: "serialize",
+      type: "encode-packet",
       packetType,
       payload,
       clientId: 0,
@@ -578,7 +578,7 @@ export class ClientConnection {
       if (state === ConnectionState.CONNECTED) {
         if (!this.usesApplicationEncryption) {
           const plainResult = processClientEvent({
-            type: "serialize",
+            type: "encode-packet",
             packetType,
             payload,
             clientId: 0,
@@ -591,7 +591,7 @@ export class ClientConnection {
         // Matching TCP transport protocol: encrypt entire packet, wrap in PACKET_TYPE_ENCRYPTED
         // 1. Build plaintext packet (header + payload)
         const plaintextResult = processClientEvent({
-          type: "serialize",
+            type: "encode-packet",
           packetType,
           payload,
           clientId: 0,
@@ -602,7 +602,7 @@ export class ClientConnection {
 
         // 2. Encrypt the entire plaintext packet
         const encryptResult = processClientEvent({
-          type: "crypt",
+            type: "secure-packet",
           encrypt: true,
           packet: plaintextPacket,
         });
@@ -612,7 +612,7 @@ export class ClientConnection {
 
         // 3. Wrap ciphertext in PACKET_TYPE_ENCRYPTED header
         const encryptedResult = processClientEvent({
-          type: "serialize",
+            type: "encode-packet",
           packetType: PacketType.ENCRYPTED,
           payload: ciphertext,
           clientId: 0,

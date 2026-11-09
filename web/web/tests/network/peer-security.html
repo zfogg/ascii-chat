@@ -17,7 +17,7 @@
         await initClientWasm({ width: 40, height: 12 });
         const serializePacket = (packetType, payload) => {
           const result = processClientEvent({
-            type: "serialize",
+            type: "encode-packet",
             packetType,
             payload,
             clientId: 0,
