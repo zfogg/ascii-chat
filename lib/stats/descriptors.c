@@ -11,6 +11,11 @@ static const stats_descriptor_t counter_descriptors[STATS_COUNTER_COUNT] = {
     [STATS_COUNTER_MCP_OUTPUT_BYTES] = {"mcp_output_bytes", "bytes", "ASCII bytes captured from MCP render workers"},
     [STATS_COUNTER_MCP_SAVED_FILES] = {"mcp_saved_files", "files", "MCP image or video files saved"},
     [STATS_COUNTER_MCP_HTTP_RESPONSES] = {"mcp_http_responses", "responses", "MCP HTTP responses sent"},
+    [STATS_COUNTER_HTTP_REQUESTS] = {"http_requests", "requests", "HTTP requests received"},
+    [STATS_COUNTER_HTTP_REJECTED] = {"http_rejected", "requests", "HTTP requests rejected before dispatch"},
+    [STATS_COUNTER_HTTP_CANCELLED] = {"http_cancelled", "requests", "HTTP requests cancelled"},
+    [STATS_COUNTER_HTTP_BYTES_RECEIVED] = {"http_bytes_received", "bytes", "HTTP request bytes received"},
+    [STATS_COUNTER_HTTP_BYTES_SENT] = {"http_bytes_sent", "bytes", "HTTP response bytes sent"},
 
     [STATS_COUNTER_FRAMES_ENQUEUED] = {"frames_enqueued", "frames",
                                        "Successful frame queue submissions (fanout counted separately)"},
@@ -54,6 +59,8 @@ static const stats_descriptor_t gauge_descriptors[STATS_GAUGE_COUNT] = {
     [STATS_GAUGE_VIDEO_QUEUE_DEPTH] = {"video_queue_depth", "frames", "Frames currently queued for delivery"},
     [STATS_GAUGE_AUDIO_BUFFERED_SAMPLES] = {"audio_buffered_samples", "samples",
                                             "Buffered audio sample frames per channel"},
+    [STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE] = {"http_connections_active", "connections", "Active HTTP connections"},
+    [STATS_GAUGE_HTTP_STREAMS_ACTIVE] = {"http_streams_active", "streams", "Active HTTP request streams"},
 };
 
 static const stats_descriptor_t duration_descriptors[STATS_DURATION_COUNT] = {
@@ -68,6 +75,7 @@ static const stats_descriptor_t duration_descriptors[STATS_DURATION_COUNT] = {
     [STATS_DURATION_CONNECTION_SETUP] = {"connection_setup", "ns", "Connection attempt through readiness or failure"},
     [STATS_DURATION_REQUEST] = {"request", "ns", "Service request handling through response submission or failure"},
     [STATS_DURATION_RTT] = {"rtt", "ns", "Matched probe send-to-response elapsed time; excludes unanswered probes"},
+    [STATS_DURATION_HTTP_REQUEST] = {"http_request", "ns", "HTTP request handling through response submission"},
 };
 
 const stats_descriptor_t *stats_counter_descriptor(stats_counter_id_t id) {

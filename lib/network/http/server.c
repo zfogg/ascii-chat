@@ -1,6 +1,8 @@
 #include <ascii-chat/network/http/server.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/thread.h>
+#include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/util/time.h>
 #include <uv.h>
 #include <string.h>
 
@@ -47,6 +49,7 @@ static void client_freed(uv_handle_t *handle) {
   http_client_t *c = handle->data;
   if (c->server->connections)
     c->server->connections--;
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE, c->server->connections);
   SAFE_FREE(c->buffer);
   SAFE_FREE(c);
 }
@@ -123,6 +126,7 @@ static bool parse_request(http_client_t *c, http_request_t *r) {
 }
 typedef struct {
   char *bytes;
+  size_t length;
   uv_stream_t *stream;
 } http_write_t;
 
@@ -131,6 +135,7 @@ static void write_done(uv_write_t *req, int status) {
   if (!uv_is_closing((uv_handle_t *)write->stream))
     uv_close((uv_handle_t *)write->stream, client_freed);
   SAFE_FREE(write->bytes);
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_BYTES_SENT, write->length);
   SAFE_FREE(write);
   SAFE_FREE(req);
   (void)status;
@@ -203,6 +208,7 @@ asciichat_error_t http_response_finish(http_response_t *r) {
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate HTTP write state");
   }
   write->bytes = out;
+  write->length = (size_t)n;
   write->stream = r->stream;
   w->data = write;
   uv_buf_t b = uv_buf_init(out, n);
@@ -241,15 +247,21 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   }
   memcpy(c->buffer + c->length, base, (size_t)n);
   c->length += (size_t)n;
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_BYTES_RECEIVED, (size_t)n);
   SAFE_FREE(base);
   http_request_t r = {0};
   if (!parse_request(c, &r))
     return;
   http_response_t resp = {.stream = s, .status = 200};
+  uint64_t request_start = time_get_ns();
+  stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 1);
   c->server->config.on_request(&r, &resp, c->server->config.user_data);
   if (!resp.finished)
     http_response_finish(&resp);
   SAFE_FREE(resp.body);
+  stats_duration_record(stats_runtime_scope(), STATS_DURATION_HTTP_REQUEST, time_get_ns() - request_start);
+  stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_STREAMS_ACTIVE, 0);
   uv_read_stop(s);
 }
 static void connection_cb(uv_stream_t *l, int status) {
@@ -265,6 +277,7 @@ static void connection_cb(uv_stream_t *l, int status) {
   c->tcp.data = c;
   if (uv_accept(l, (uv_stream_t *)&c->tcp) == 0) {
     s->connections++;
+    stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE, s->connections);
     uv_read_start((uv_stream_t *)&c->tcp, alloc_buffer, read_cb);
   } else
     client_close(c);
