@@ -3,7 +3,6 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE 256
 
-#include "buffer_sizes.h"
 #include "security.h"
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/compression.h>
@@ -56,8 +55,6 @@ char *client_settings_values(void) {
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-
-#include "common/init.h"
 
 // JavaScript callback for sending complete ACIP packets from WASM to WebSocket
 // This will be called by the WASM transport to send complete packets (header + payload)
@@ -188,8 +185,10 @@ static connection_state_t g_connection_state = CONNECTION_STATE_DISCONNECTED;
 
 static int apply_client_crypto_options(void) {
   crypto_handshake_context_t *ctx = &g_crypto_handshake_ctx;
-  if (ctx->state != CRYPTO_HANDSHAKE_INIT)
+  if (ctx->state != CRYPTO_HANDSHAKE_INIT) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Client handshake is not ready for crypto options");
     return -1;
+  }
 
   if (g_crypto_password[0] != '\0') {
     crypto_result_t result = crypto_derive_password_key(&ctx->crypto_ctx, g_crypto_password);
@@ -220,8 +219,10 @@ static int apply_client_crypto_options(void) {
 /** Configure browser-provided authentication material for the next handshake. */
 int client_configure_crypto_options(const char *password, const uint8_t *identity_secret_key,
                                     const uint8_t *expected_server_public_key) {
-  if (!g_initialized)
+  if (!g_initialized) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Client is not initialized");
     return -1;
+  }
 
   sodium_memzero(g_crypto_password, sizeof(g_crypto_password));
   sodium_memzero(g_client_identity_key, sizeof(g_client_identity_key));
@@ -231,8 +232,10 @@ int client_configure_crypto_options(const char *password, const uint8_t *identit
 
   if (password && password[0] != '\0') {
     size_t length = strnlen(password, sizeof(g_crypto_password));
-    if (length < 8 || length >= sizeof(g_crypto_password))
+    if (length < 8 || length >= sizeof(g_crypto_password)) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Client password must contain 8 to %zu bytes", sizeof(g_crypto_password) - 1);
       return -1;
+    }
     SAFE_STRNCPY(g_crypto_password, password, sizeof(g_crypto_password) - 1);
   }
 
@@ -242,6 +245,7 @@ int client_configure_crypto_options(const char *password, const uint8_t *identit
         sodium_memcmp(derived_public_key, identity_secret_key + crypto_sign_SEEDBYTES, crypto_sign_PUBLICKEYBYTES) !=
             0) {
       sodium_memzero(derived_public_key, sizeof(derived_public_key));
+      SET_ERRNO(ERROR_INVALID_PARAM, "Client identity secret key is invalid");
       return -1;
     }
     memcpy(g_client_identity_key, identity_secret_key, sizeof(g_client_identity_key));
@@ -258,13 +262,17 @@ int client_configure_crypto_options(const char *password, const uint8_t *identit
 
 /** Parse an OpenSSH Ed25519 private-key file through the shared SSH parser. */
 int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out) {
-  if (!key_path || !secret_key_out)
+  if (!key_path || !secret_key_out) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid SSH private key input or output");
     return -1;
+  }
   CLEAR_ERRNO_ALL();
 #ifdef EMSCRIPTEN_BUILD
   static const char wasm_key_prefix[] = "/tmp/ascii-chat-key-";
-  if (strncmp(key_path, wasm_key_prefix, sizeof(wasm_key_prefix) - 1) != 0)
+  if (strncmp(key_path, wasm_key_prefix, sizeof(wasm_key_prefix) - 1) != 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser SSH private key path");
     return -1;
+  }
 #endif
   private_key_t key = {0};
   asciichat_error_t result = parse_ssh_private_key(key_path, &key);
@@ -279,32 +287,40 @@ int client_parse_ssh_private_key(const char *key_path, uint8_t *secret_key_out) 
 
 /** Parse an OpenSSH Ed25519 public-key line through the shared SSH parser. */
 int client_parse_ssh_public_key(const char *key_line, uint8_t *public_key_out) {
-  if (!key_line || !public_key_out)
+  if (!key_line || !public_key_out) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid SSH public key input or output");
     return -1;
+  }
   CLEAR_ERRNO_ALL();
   return parse_ssh_ed25519_line(key_line, public_key_out) == ASCIICHAT_OK ? 0 : -1;
 }
 
 /** Parse an armored OpenPGP Ed25519 public key through the shared C parser. */
 int client_parse_gpg_public_key(const char *armored_key, uint8_t *public_key_out) {
-  if (!armored_key || !public_key_out)
+  if (!armored_key || !public_key_out) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid OpenPGP public key input or output");
     return -1;
+  }
   CLEAR_ERRNO_ALL();
   return openpgp_parse_armored_pubkey(armored_key, public_key_out) == ASCIICHAT_OK ? 0 : -1;
 }
 
 /** Parse a binary OpenPGP Ed25519 public-key packet stream. */
 int client_parse_gpg_public_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *public_key_out) {
-  if (!key_data || key_data_len == 0 || !public_key_out)
+  if (!key_data || key_data_len == 0 || !public_key_out) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid binary OpenPGP public key input or output");
     return -1;
+  }
   CLEAR_ERRNO_ALL();
   return openpgp_parse_binary_pubkey(key_data, key_data_len, public_key_out) == ASCIICHAT_OK ? 0 : -1;
 }
 
 /** Parse an unencrypted armored OpenPGP Ed25519 private key through the shared C parser. */
 int client_parse_gpg_private_key(const char *armored_key, uint8_t *secret_key_out) {
-  if (!armored_key || !secret_key_out)
+  if (!armored_key || !secret_key_out) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid OpenPGP private key input or output");
     return -1;
+  }
   CLEAR_ERRNO_ALL();
 
   uint8_t public_key[crypto_sign_PUBLICKEYBYTES] = {0};
@@ -334,8 +350,10 @@ cleanup:
 
 /** Parse an unencrypted binary OpenPGP Ed25519 secret-key packet stream. */
 int client_parse_gpg_private_key_binary(const uint8_t *key_data, size_t key_data_len, uint8_t *secret_key_out) {
-  if (!key_data || key_data_len == 0 || !secret_key_out)
+  if (!key_data || key_data_len == 0 || !secret_key_out) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid binary OpenPGP private key input or output");
     return -1;
+  }
   CLEAR_ERRNO_ALL();
 
   uint8_t public_key[crypto_sign_PUBLICKEYBYTES] = {0};
@@ -365,8 +383,10 @@ cleanup:
 
 /** Copy the most recent C crypto error into a caller-provided buffer. */
 int client_get_crypto_error_message(char *output, size_t output_size) {
-  if (!output || output_size == 0)
+  if (!output || output_size == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid crypto error output buffer");
     return -1;
+  }
   asciichat_error_context_t context = {0};
   if (!HAS_ERRNO(&context) || !context.context_message[0])
     return -1;
@@ -379,25 +399,17 @@ int client_get_crypto_error_message(char *output, size_t output_size) {
 // ============================================================================
 
 /**
- * Initialize client mode with command-line style arguments
- * @param args_json Space-separated string of argument strings, e.g. "client --width 80 --height 40"
+ * Initialize client mode with native defaults.
  * @return 0 on success, -1 on error
  */
-int client_init_with_args(const char *args_json) {
+int client_init(void) {
   // The module, renderers, and allocator outlive individual connections.
   if (g_initialized)
     return 0;
-  // Parse space-separated arguments
-  char *args_copy = NULL;
-  char *argv[WASM_ARGV_CAPACITY] = {NULL};
-  int argc = browser_parse_args(args_json, argv, WASM_ARGV_CAPACITY, &args_copy);
-  if (argc < 0) {
+  char *argv[] = {"client", NULL};
+  asciichat_error_t err = options_init(1, argv);
+  if (err != ASCIICHAT_OK)
     return -1;
-  }
-
-  // Initialize options (sets up RCU, defaults, etc.)
-  asciichat_error_t err = options_init(argc, argv);
-  free(args_copy);
 
   // Initialize platform layer
   err = platform_init();
@@ -455,6 +467,7 @@ void client_cleanup(void) {
 int client_generate_keypair(void) {
 
   if (!g_initialized) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Client is not initialized");
     return -1;
   }
 
@@ -489,10 +502,12 @@ int client_generate_keypair(void) {
  */
 int client_set_server_address(const char *server_host, int server_port) {
   if (!g_initialized) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Client is not initialized");
     return -1;
   }
 
-  if (!server_host || server_port <= 0 || server_port > 65535) {
+  if (!server_host || !server_host[0] || server_port <= 0 || server_port > 65535) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client server address or port");
     return -1;
   }
 
@@ -540,11 +555,13 @@ int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
   }
 
   if (!packet || packet_len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client handshake packet");
     return -1;
   }
 
   // Extract packet type and payload
   if (packet_len < sizeof(packet_header_t)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Client handshake packet is shorter than its header");
     return -1;
   }
 
@@ -590,6 +607,7 @@ int client_handle_key_exchange_init(const uint8_t *packet, size_t packet_len) {
 int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
 
   if (!packet || packet_len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client crypto parameters packet");
     return -1;
   }
 
@@ -609,6 +627,7 @@ int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
 
   // Extract packet type and payload
   if (packet_len < sizeof(packet_header_t)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Client crypto parameters packet is shorter than its header");
     return -1;
   }
 
@@ -654,11 +673,13 @@ int client_handle_crypto_parameters(const uint8_t *packet, size_t packet_len) {
 int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len) {
 
   if (!packet || packet_len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client authentication challenge packet");
     return -1;
   }
 
   // Extract packet type and payload
   if (packet_len < sizeof(packet_header_t)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Client authentication challenge is shorter than its header");
     return -1;
   }
 
@@ -699,11 +720,13 @@ int client_handle_auth_challenge(const uint8_t *packet, size_t packet_len) {
 int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
 
   if (!packet || packet_len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client handshake completion packet");
     return -1;
   }
 
   // Extract packet type and payload
   if (packet_len < sizeof(packet_header_t)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Client handshake completion is shorter than its header");
     return -1;
   }
 
@@ -757,17 +780,23 @@ int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
 int client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext, size_t ciphertext_size,
                           size_t *out_len) {
   if (!g_handshake_complete) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Client handshake is not complete");
     return -1;
   }
 
   const size_t overhead = 32 + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-  if (!out_len || plaintext_len > SIZE_MAX - overhead || ciphertext_size < plaintext_len + overhead)
+  if (!plaintext || !ciphertext || !out_len || plaintext_len > SIZE_MAX - overhead ||
+      ciphertext_size < plaintext_len + overhead) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client encryption buffers or lengths");
     return -1;
+  }
   uint8_t *wire = NULL;
   size_t length = 0;
   packet_header_t header;
-  if (plaintext_len < sizeof(header))
+  if (plaintext_len < sizeof(header)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Client plaintext packet is shorter than its header");
     return -1;
+  }
   memcpy(&header, plaintext, sizeof(header));
   acip_traffic_class_t channel = acip_packet_traffic_class(NET_TO_HOST_U16(header.type));
   asciichat_error_t result = acip_security_seal(&g_crypto_handshake_ctx.crypto_ctx, channel, ACIP_DELIVERY_RELIABLE,
@@ -792,11 +821,14 @@ int client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_
 int client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext, size_t plaintext_size,
                           size_t *out_len) {
   if (!g_handshake_complete) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Client handshake is not complete");
     return -1;
   }
 
-  if (!out_len || plaintext_size < ciphertext_len)
+  if (!ciphertext || !plaintext || !out_len || plaintext_size < ciphertext_len) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client decryption buffers or lengths");
     return -1;
+  }
   *out_len = 0;
   uint8_t *plain = NULL;
   size_t length = 0;
@@ -846,6 +878,7 @@ int client_opus_encoder_init(int sample_rate, int channels, int bitrate) {
   g_opus_encoder = opus_encoder_create(sample_rate, channels,
                                        bitrate >= 128000 ? OPUS_APPLICATION_AUDIO : OPUS_APPLICATION_VOIP, &error);
   if (error != OPUS_OK || !g_opus_encoder) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Cannot initialize Opus encoder: %s", opus_strerror(error));
     return -1;
   }
 
@@ -853,6 +886,7 @@ int client_opus_encoder_init(int sample_rate, int channels, int bitrate) {
   if (opus_encoder_ctl(g_opus_encoder, OPUS_SET_BITRATE(bitrate)) != OPUS_OK) {
     opus_encoder_destroy(g_opus_encoder);
     g_opus_encoder = NULL;
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Opus encoder bitrate: %d", bitrate);
     return -1;
   }
 
@@ -874,6 +908,7 @@ int client_opus_decoder_init(int sample_rate, int channels) {
   int error;
   g_opus_decoder = opus_decoder_create(sample_rate, channels, &error);
   if (error != OPUS_OK || !g_opus_decoder) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Cannot initialize Opus decoder: %s", opus_strerror(error));
     return -1;
   }
 
@@ -890,11 +925,18 @@ int client_opus_decoder_init(int sample_rate, int channels) {
  */
 int client_opus_encode(const int16_t *pcm_data, int frame_size, uint8_t *opus_data, int max_opus_bytes) {
   if (!g_opus_encoder) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Opus encoder is not initialized");
+    return -1;
+  }
+
+  if (!pcm_data || !opus_data || frame_size <= 0 || max_opus_bytes <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Opus encoder buffers or lengths");
     return -1;
   }
 
   int encoded_bytes = opus_encode(g_opus_encoder, pcm_data, frame_size, opus_data, max_opus_bytes);
   if (encoded_bytes < 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Opus encoding failed: %s", opus_strerror(encoded_bytes));
     return -1;
   }
 
@@ -912,11 +954,18 @@ int client_opus_encode(const int16_t *pcm_data, int frame_size, uint8_t *opus_da
  */
 int client_opus_decode(const uint8_t *opus_data, int opus_bytes, int16_t *pcm_data, int frame_size, int decode_fec) {
   if (!g_opus_decoder) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Opus decoder is not initialized");
+    return -1;
+  }
+
+  if ((!opus_data && opus_bytes > 0) || opus_bytes < 0 || !pcm_data || frame_size <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid Opus decoder buffers or lengths");
     return -1;
   }
 
   int decoded_samples = opus_decode(g_opus_decoder, opus_data, opus_bytes, pcm_data, frame_size, decode_fec);
   if (decoded_samples < 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Opus decoding failed: %s", opus_strerror(decoded_samples));
     return -1;
   }
 

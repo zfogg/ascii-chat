@@ -100,8 +100,10 @@ void peer_crypto_destroy(browser_peer_crypto_t *peer) {
 browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const char *password, const uint8_t *identity,
                                           const uint8_t *expected_key) {
   browser_peer_crypto_t *peer = SAFE_CALLOC(1, sizeof(*peer), browser_peer_crypto_t *);
-  if (!peer)
+  if (!peer) {
+    SET_ERRNO(ERROR_MEMORY, "Cannot allocate peer security state");
     return NULL;
+  }
   crypto_policy_t policy = {.transport_secure = true,
                             .encrypt = encryption == 1,
                             .no_encrypt = encryption == 0,
@@ -132,6 +134,7 @@ browser_peer_crypto_t *peer_crypto_create(bool server, int encryption, const cha
     ctx->client_whitelist = SAFE_CALLOC(1, sizeof(public_key_t), public_key_t *);
     if (!ctx->client_whitelist) {
       peer_crypto_destroy(peer);
+      SET_ERRNO(ERROR_MEMORY, "Cannot allocate peer key whitelist");
       return NULL;
     }
     ctx->client_whitelist[0].type = KEY_TYPE_ED25519;
@@ -173,13 +176,17 @@ size_t peer_crypto_received_size(browser_peer_crypto_t *peer) {
 }
 
 asciichat_error_t peer_crypto_send(browser_peer_crypto_t *peer, const void *data, size_t length) {
-  if (!peer || !peer->security.ready)
+  if (!peer || !data || !length)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer packet or security state");
+  if (!peer->security.ready)
     return SET_ERRNO(ERROR_INVALID_STATE, "Peer security is not ready");
   return peer_send(&peer->transport, data, length);
 }
 
 asciichat_error_t peer_crypto_receive(browser_peer_crypto_t *peer, const void *data, size_t length) {
-  if (!peer || !data || length < sizeof(packet_header_t))
+  if (!peer || !data)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer packet or security state");
+  if (length < sizeof(packet_header_t))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid peer packet");
   buffer_release(peer->received);
   peer->received = NULL;
@@ -239,7 +246,9 @@ crypto_context_t *peer_security_context(browser_peer_crypto_t *peer) {
 }
 
 asciichat_error_t peer_crypto_tick(browser_peer_crypto_t *peer) {
-  if (!peer || !peer->security.ready || peer->quic_handshake || !ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode))
+  if (!peer)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer security state");
+  if (!peer->security.ready || peer->quic_handshake || !ACIP_CRYPTO_HAS_ENCRYPT(peer->security.mode))
     return ASCIICHAT_OK;
   return acip_security_flush(&peer->transport);
 }

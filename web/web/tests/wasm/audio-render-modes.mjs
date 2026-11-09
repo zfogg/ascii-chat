@@ -12,7 +12,7 @@ const m = await createModule({
   printErr() {},
   getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
 });
-assert.equal(m.initMirror("mirror"), 0);
+assert.equal(m.initMirror({}), 0);
 m.patchOptions({ waveform: true }, -1);
 const renderer = new m.MirrorFrameBinding();
 for (let base = 0; base < 49152; base += 4096) {

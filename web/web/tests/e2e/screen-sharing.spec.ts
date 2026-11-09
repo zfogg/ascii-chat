@@ -34,7 +34,7 @@ test("rebuilt client executes full C initialization with matching versioned asse
     hash: string;
   }>[] = [];
   page.on("console", (message) => {
-    if (message.text().includes("_client_init_with_args"))
+    if (message.text().includes("[Client WASM] Session initialized"))
       initLogs.push(message.text());
   });
   page.on("response", (response) => {
@@ -58,9 +58,7 @@ test("rebuilt client executes full C initialization with matching versioned asse
       const { initClientWasm } = await import(path);
       await initClientWasm({ width: 80, height: 24 });
     });
-    expect(initLogs).toContain(
-      "[Client WASM] _client_init_with_args returned: 0",
-    );
+    expect(initLogs).toContain("[Client WASM] Session initialized");
     const served = await Promise.all(assets);
     for (const file of ["client.js", "client.wasm"]) {
       expect(served).toContainEqual(
@@ -749,7 +747,7 @@ for (const mode of ["client", "discovery"]) {
         message.text().includes("track reader stopped")
       )
         console.log(message.text());
-      if (message.text().includes("_client_init_with_args"))
+      if (message.text().includes("[Client WASM] Session initialized"))
         clientInitLogs.push(message.text());
     });
     page.on("request", (request) => {
@@ -864,9 +862,7 @@ for (const mode of ["client", "discovery"]) {
       ).toBeVisible({
         timeout: 45000,
       });
-      expect(clientInitLogs).toContain(
-        "[Client WASM] _client_init_with_args returned: 0",
-      );
+      expect(clientInitLogs).toContain("[Client WASM] Session initialized");
       for (const file of ["client.js", "client.wasm"])
         expect(
           clientAssets.some(

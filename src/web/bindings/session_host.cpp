@@ -65,7 +65,7 @@ static asciichat_error_t browser_host_create(void) {
   config.max_clients = MAX_SESSION_PARTICIPANTS;
   state.host = session_host_create(&config);
   if (!state.host)
-    return ERROR_MEMORY;
+    return SET_ERRNO(ERROR_MEMORY, "Cannot create browser session host");
   return session_host_render_audio(state.host);
 }
 static uint32_t browser_host_add_client(void) {
@@ -91,6 +91,7 @@ static uint32_t browser_host_add_client(void) {
     }
     return id;
   }
+  SET_ERRNO(ERROR_INVALID_STATE, "Browser session host has no available client slots");
   return 0;
 }
 static void browser_host_remove_client(uint32_t id) {

@@ -71,7 +71,7 @@ const path = require("node:path");
         printErr: () => {},
         getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
       });
-      const args = "client --width 40 --height 12 --log-level fatal";
+      const args = { width: 40, height: 12 };
       if (m.initClient(args)) throw new Error("client init failed");
       const selection = { waveform: true };
       if (m.patchOptions(selection, -1))
@@ -558,7 +558,7 @@ const path = require("node:path");
         printErr: () => {},
         getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
       });
-      const mirrorArgs = "mirror --width 40 --height 12 --log-level fatal";
+      const mirrorArgs = { width: 40, height: 12 };
       if (mirror.initMirror(mirrorArgs)) throw new Error("mirror init failed");
       const rgba = new Uint8Array(8 * 4 * 4);
       for (let i = 0; i < rgba.length; i += 4) {

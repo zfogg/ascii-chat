@@ -6619,8 +6619,8 @@ async function ClientModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    3029442: () => Module.getRandomValue(),
-    3029478: () => {
+    3031890: () => Module.getRandomValue(),
+    3031926: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -6686,9 +6686,9 @@ async function ClientModule(moduleArg = {}) {
   var __embind_initialize_bindings = makeInvalidEarlyAccess(
     "__embind_initialize_bindings",
   );
-  var _free = makeInvalidEarlyAccess("_free");
   var _pthread_self = makeInvalidEarlyAccess("_pthread_self");
   var _strerror = makeInvalidEarlyAccess("_strerror");
+  var _free = makeInvalidEarlyAccess("_free");
   var _malloc = makeInvalidEarlyAccess("_malloc");
   var _fflush = makeInvalidEarlyAccess("_fflush");
   var _htons = makeInvalidEarlyAccess("_htons");
@@ -6755,16 +6755,16 @@ async function ClientModule(moduleArg = {}) {
       "missing Wasm export: _embind_initialize_bindings",
     );
     assert(
-      typeof wasmExports["free"] != "undefined",
-      "missing Wasm export: free",
-    );
-    assert(
       typeof wasmExports["pthread_self"] != "undefined",
       "missing Wasm export: pthread_self",
     );
     assert(
       typeof wasmExports["strerror"] != "undefined",
       "missing Wasm export: strerror",
+    );
+    assert(
+      typeof wasmExports["free"] != "undefined",
+      "missing Wasm export: free",
     );
     assert(
       typeof wasmExports["malloc"] != "undefined",
@@ -6864,9 +6864,9 @@ async function ClientModule(moduleArg = {}) {
       "_embind_initialize_bindings",
       0,
     );
-    _free = createExportWrapper("free", 1);
     _pthread_self = createExportWrapper("pthread_self", 0);
     _strerror = createExportWrapper("strerror", 1);
+    _free = createExportWrapper("free", 1);
     _malloc = createExportWrapper("malloc", 1);
     _fflush = createExportWrapper("fflush", 1);
     _htons = createExportWrapper("htons", 1);

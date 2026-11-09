@@ -5,12 +5,10 @@
  * @brief WASM entry point for ascii-chat mirror mode
  */
 
-#include "buffer_sizes.h"
 #include <emscripten.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/init.h"
 #include "session/frame_validation.h"
 #include <ascii-chat/util/utf8.h>
 
@@ -47,28 +45,18 @@ static ascii_stabilizer_t g_stabilizer;
 // ============================================================================
 
 /**
- * Initialize mirror mode with command-line style arguments
- * @param args_json JSON array of argument strings, e.g. ["mirror", "--width", "80", "--height", "40"]
+ * Initialize mirror mode with native defaults.
  * @return 0 on success, -1 on error
  */
-int mirror_init_with_args(const char *args_json) {
+int mirror_init(void) {
   // Initialize platform layer
   asciichat_error_t err = platform_init();
   if (err != ASCIICHAT_OK) {
     return -1;
   }
 
-  // Parse space-separated arguments
-  char *args_copy = NULL;
-  char *argv[WASM_ARGV_CAPACITY] = {NULL};
-  int argc = browser_parse_args(args_json, argv, WASM_ARGV_CAPACITY, &args_copy);
-  if (argc < 0) {
-    return -1;
-  }
-
-  // Initialize options (sets up RCU, defaults, etc.)
-  err = options_init(argc, argv);
-  free(args_copy);
+  char *argv[] = {"mirror", NULL};
+  err = options_init(1, argv);
 
   if (err != ASCIICHAT_OK) {
     return -1;
@@ -80,7 +68,7 @@ int mirror_init_with_args(const char *args_json) {
   log_set_format(OPT_LOG_TEMPLATE_DEFAULT_DEBUG, false);
 
   // Log option values after initialization
-  log_info("After options_init: argc=%d, matrix_rain=%d", argc, GET_OPTION(matrix_rain));
+  log_info("Mirror options initialized");
 
   // Initialize ANSI color code generation (dec3 cache for RGB values)
   ansi_fast_init();
@@ -116,6 +104,7 @@ void mirror_cleanup(void) {
 
 char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, int contain) {
   if (!rgba_data || src_width <= 0 || src_height <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser frame pixels or dimensions");
     return NULL;
   }
 
@@ -165,6 +154,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height, in
   // Convert RGBA to RGB (strip alpha channel) and optionally flip horizontally
   rgb_pixel_t *rgb_pixels = SAFE_MALLOC(src_width * src_height * sizeof(rgb_pixel_t), rgb_pixel_t *);
   if (!rgb_pixels) {
+    SET_ERRNO(ERROR_MEMORY, "Cannot allocate browser frame pixels");
     return NULL;
   }
 

@@ -36,6 +36,9 @@ test("binding failures record actionable C errors", async ({ page }) => {
         snapshot(() => renderer.copyPixels(new Uint8ClampedArray(0))),
         snapshot(() => m.faceDetect(new Uint8ClampedArray(1), 1, 1, 0)),
         snapshot(() => m.handleHandshake(99, new Uint8Array())),
+        ...[0, 1, 2, 3].map((stage) =>
+          snapshot(() => m.handleHandshake(stage, new Uint8Array(1))),
+        ),
         snapshot(() => m.parsePacketJson(new Uint8Array())),
         snapshot(() => m.parseKey(99, false, new Uint8Array())),
         snapshot(() =>
@@ -58,7 +61,7 @@ test("binding failures record actionable C errors", async ({ page }) => {
       frame.delete();
     }
   });
-  expect(errors).toHaveLength(9);
+  expect(errors).toHaveLength(13);
   for (const error of errors) {
     expect(error?.code).toBe(86);
     expect(error?.message).toBeTruthy();
@@ -110,18 +113,19 @@ test("client session ownership rejects overlap and supports reinitialization", a
       locateFile: (name: string) => "/src/wasm/dist/" + name,
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
     });
-    const first = new module.ClientSessionBinding("client");
-    const overlap = new module.ClientSessionBinding("client");
+    const first = new module.ClientSessionBinding({ width: 48, height: 24 });
+    const overlap = new module.ClientSessionBinding({});
     const result = {
       first: first.valid(),
       overlap: overlap.valid(),
+      width: module.readOptions()?.values.width,
       key: -1,
       reinitialized: false,
     };
     overlap.delete();
     result.key = module.client_generate_keypair();
     first.delete();
-    const next = new module.ClientSessionBinding("client");
+    const next = new module.ClientSessionBinding({});
     result.reinitialized = next.valid();
     next.delete();
     return result;
@@ -129,9 +133,43 @@ test("client session ownership rejects overlap and supports reinitialization", a
   expect(result).toEqual({
     first: true,
     overlap: false,
+    width: 48,
     key: 0,
     reinitialized: true,
   });
+});
+
+test("mirror initialization applies and validates an options object", async ({
+  page,
+}) => {
+  await page.goto("/client");
+  const result = await page.evaluate(async () => {
+    const base = "/src/wasm/dist/";
+    const factory = (await import(/* @vite-ignore */ `${base}mirror.js`))
+      .default;
+    const m = await factory({
+      locateFile: (name: string) => base + name,
+      getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
+    });
+    const rejected = m.initMirror({ width: 48, audio_source: 99 });
+    const accepted = m.initMirror({
+      width: 48,
+      audio_source: 3,
+      waveform: true,
+    });
+    const values = m.readOptions()?.values;
+    m.mirror_cleanup();
+    return {
+      rejected,
+      accepted,
+      width: values?.width,
+      waveform: values?.waveform,
+    };
+  });
+  expect(result.rejected).not.toBe(0);
+  expect(result.accepted).toBe(0);
+  expect(result.width).toBe(48);
+  expect(result.waveform).toBe(true);
 });
 
 test("Embind owns audio buffers and encrypted peer sessions", async ({
@@ -443,7 +481,7 @@ test("renderer copies stay valid across WASM memory growth", async ({
       pthreadPoolSize: 0,
       getRandomValue: () => crypto.getRandomValues(new Uint32Array(1))[0],
     });
-    if (m.initMirror("mirror")) throw new Error("mirror initialization failed");
+    if (m.initMirror({})) throw new Error("mirror initialization failed");
     const frame = new m.MirrorFrameBinding();
     const bad = frame.convert(new Uint8Array(4), 2, 2, true);
     const samples = Float32Array.from({ length: 16384 }, (_, i) =>

@@ -54,7 +54,7 @@ G('client','Browser networking','Architecture','Browser','What does Connect actu
  C('boundary','Cross the protocol boundary','Browser adapters own sockets and scheduling while reusable C code owns protocol and crypto operations.',
  P(N+'ClientConnection.ts','ClientConnection','Drive socket events','This class feeds browser transport events into C/WASM client state and must propagate transport failures rather than trust stale module state.',N+'SocketBridge.ts'),
  P(W+'wasm/client.ts',None,'Adapt exported APIs','The module exposes packet helpers, crypto operations, and client state to TypeScript. Socket bytes cross this interface.'),
- P('src/web/client.c','client_init_with_args','Initialize C state','Exports initialize options/state and handle handshakes, packet processing, encryption, and outgoing media.',L+'network/acip/client.c')),
+ P('src/web/client.c','client_init','Initialize C state','Exports initialize options/state and handle handshakes, packet processing, encryption, and outgoing media.',L+'network/acip/client.c')),
  C('ready','Start media','Connected state is followed by capability and stream-control packets.',
  P(W+'hooks/useClientConnection.ts','useClientConnection','Advertise capabilities','CLIENT_CAPABILITIES and STREAM_START use actual renderer dimensions, settings, and codec support.',N+'packetBuilders.ts'),
  P(N+'WebRTCSession.ts','WebRTCSession','Wait for host readiness','The initial SERVER_STATE acknowledges native host registration; a DataChannel open event can precede installation of the host receive callback.'),

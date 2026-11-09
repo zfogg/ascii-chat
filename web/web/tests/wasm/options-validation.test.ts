@@ -24,6 +24,7 @@ describe("shared options validation", () => {
     { palette_type: 7 },
     { color_filter: 100 },
     { renderer: 2 },
+    { audio_source: 4 },
     { palette_custom: "x".repeat(1025) },
     { palette_custom: "x".repeat(256) },
     { palette_custom: "🌈".repeat(64) },

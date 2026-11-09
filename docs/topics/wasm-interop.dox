@@ -47,6 +47,7 @@
  * before reporting them.
  *
  * Embind is the browser-facing API, including options and host control. The browser renderer owns its `SessionUiBinding` directly and deletes it when the renderer is released; browser key conversion stays with the renderer. Options use `patchOptions({ width: 80, height: 40 }, revision)` for one validated atomic update and `readOptions()` for an owned snapshot object. Pass `-1` to accept any revision; stale revisions and invalid fields reject the entire patch. The TypeScript options facade supplies the default revision and returns the committed snapshot. The
+ * client and mirror initialization bindings accept an options object using the same field names and atomic validation; they initialize native mode defaults before applying that object. No shell-style argument parsing is involved.
  * C functions used by adapters are declared in the corresponding web headers,
  * which their implementations include as well. Emscripten's filesystem remains
  * available for temporary key files; the current heap view is used only to detect

@@ -10,6 +10,7 @@ import {
   ColorMode,
   ColorFilter,
   type Palette,
+  type OptionValues,
 } from "@ascii-chat/shared/wasm/options";
 export type MirrorModule = MainModule & {
   HEAPU8: Uint8Array;
@@ -64,7 +65,7 @@ export async function initMirrorWasm(
   options?: {
     locateFile?: (path: string) => string;
     mainScriptUrlOrBlob?: string;
-    initialArgs?: string[];
+    initialOptions?: OptionValues;
     pthreadPoolSize?: number;
   },
 ): Promise<void> {
@@ -103,14 +104,7 @@ export async function initMirrorWasm(
   }
 
   try {
-    // Initialize C options system with basic mirror mode arguments
-    // This must be called before using any getter/setter functions
-    // Build space-separated argument string: "mirror ...initialArgs".
-    const args = ["mirror"];
-    if (options?.initialArgs) {
-      args.push(...options.initialArgs);
-    }
-    const initResult = wasmModule.initMirror(args.join(" "));
+    const initResult = wasmModule.initMirror(options?.initialOptions ?? {});
     if (initResult !== 0) {
       throw new Error(`Failed to initialize mirror C code: ${initResult}`);
     }
@@ -118,6 +112,7 @@ export async function initMirrorWasm(
     resetRuntimeOptions(wasmModule);
   } catch (err) {
     console.error("[WASM] Failed to initialize options:", err);
+    wasmModule = null;
     throw err;
   }
 }

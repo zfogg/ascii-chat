@@ -12,7 +12,7 @@ typedef struct crypto_context_t crypto_context_t;
 extern "C" {
 #endif
 
-int client_init_with_args(const char *args_json);
+int client_init(void);
 int client_opus_encoder_init(int sample_rate, int channels, int bitrate);
 int client_opus_decoder_init(int sample_rate, int channels);
 int client_opus_encode(const int16_t *pcm_data, int frame_size, uint8_t *opus_data, int max_opus_bytes);

@@ -27,6 +27,7 @@ import {
   submitAudioVisualizationSamples,
 } from "@ascii-chat/shared/wasm";
 import type { EmscriptenModuleFactory } from "@ascii-chat/shared/wasm";
+import { AudioSource } from "@ascii-chat/shared/wasm/options";
 import {
   captureVisualizationAudio,
   useCanvasCapture,
@@ -189,22 +190,22 @@ export default function MirrorDemoWidget({
     const wasmBaseUrl = window.location.origin;
     addDebugLog(`Loading WASM from ${wasmBaseUrl}/wasm/`);
 
-    // Build initial args from the first demo option's settings
-    const initialArgs: string[] = [];
+    // Build the initial options from the first demo option's settings.
+    const initialOptions: Record<string, number | boolean> = {};
     const initialOption = selectedOption ?? demoOptions?.[defaultOptionIndex];
     if (initialOption?.settings?.matrixRain) {
-      initialArgs.push("--matrix");
+      initialOptions["matrix_rain"] = true;
     }
     if (initialOption?.settings?.waveform || initialOption?.settings?.fft) {
-      initialArgs.push("--audio-source", "media");
+      initialOptions["audio_source"] = AudioSource.Media;
     }
-    if (initialOption?.settings?.waveform) initialArgs.push("--waveform");
-    if (initialOption?.settings?.fft) initialArgs.push("--fft");
+    if (initialOption?.settings?.waveform) initialOptions["waveform"] = true;
+    if (initialOption?.settings?.fft) initialOptions["fft"] = true;
 
     await initMirrorWasm(factory as EmscriptenModuleFactory, {
       locateFile: (path: string) => `${wasmBaseUrl}/wasm/${path}`,
       mainScriptUrlOrBlob: `${wasmBaseUrl}/wasm/mirror.js`,
-      initialArgs,
+      initialOptions,
       pthreadPoolSize: 0,
     });
 

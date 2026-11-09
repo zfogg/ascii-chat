@@ -394,7 +394,6 @@ set(LIB_SRC_CLIENT_NETWORK
 set(COMMON_WEB_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/common/font.c
     ${CMAKE_CURRENT_SOURCE_DIR}/common/capture.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/init.c
 )
 
 # Compile shared lib sources once for both WASM targets (OBJECT library)

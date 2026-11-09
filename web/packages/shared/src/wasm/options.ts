@@ -31,6 +31,8 @@ export const ColorFilter = {
 export type ColorFilter = (typeof ColorFilter)[keyof typeof ColorFilter];
 export const TextRenderer = { Luminance: 0, Glyph: 1 } as const;
 export type TextRenderer = (typeof TextRenderer)[keyof typeof TextRenderer];
+export const AudioSource = { All: 0, Call: 1, Mic: 2, Media: 3 } as const;
+export type AudioSource = (typeof AudioSource)[keyof typeof AudioSource];
 /** Built-in luminance palettes, ordered from dark to bright, matching palette.h. */
 export const defaultPalettes = {
   standard: "   ...',;:clodxkO0KXNWM",
@@ -120,6 +122,7 @@ export function validateOptions(values: OptionValues): void {
     color_filter: Object.values(ColorFilter),
     renderer: Object.values(TextRenderer),
     palette_type: [0, ...Object.values(paletteTypes)],
+    audio_source: Object.values(AudioSource),
   };
   for (const [name, valid] of Object.entries(enums)) {
     if (Object.hasOwn(values, name) && !valid.includes(values[name] as number))

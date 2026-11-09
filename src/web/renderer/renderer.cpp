@@ -14,7 +14,7 @@ public:
       result_ = SET_ERRNO(ERROR_INVALID_STATE, "Renderer session is already initialized");
       return;
     }
-    result_ = mirror_init_with_args("mirror");
+    result_ = mirror_init();
     if (result_ != 0) {
       result_ = SET_ERRNO(ERROR_INIT, "Failed to initialize renderer session");
       return;

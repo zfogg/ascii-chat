@@ -5,6 +5,7 @@ extern "C" {
 #include <ascii-chat/network/errors.h>
 }
 #include "networking.h"
+#include "../common/opts.h"
 #include "byte_arrays.h"
 #include <sodium.h>
 #include <array>
@@ -14,22 +15,22 @@ extern "C" {
 #include <optional>
 #include <vector>
 
-static int init_client(const std::string &args) {
-  int result = client_init_with_args(args.c_str());
+static int init_client(OptionsPatch options) {
+  int result = client_init();
   if (result)
     SET_ERRNO(ERROR_INIT, "Browser client initialization failed");
-  return result;
+  return result ? result : initial_options(options);
 }
 
 // One JS-owned lifetime controls the module-global client handshake state.
 class ClientSessionBinding {
 public:
-  explicit ClientSessionBinding(const std::string &args) {
+  explicit ClientSessionBinding(OptionsPatch options) {
     if (active_) {
       result_ = SET_ERRNO(ERROR_INVALID_STATE, "Client session is already initialized");
       return;
     }
-    result_ = init_client(args);
+    result_ = init_client(options);
     if (!result_) {
       active_ = true;
       owned_ = true;
@@ -146,7 +147,7 @@ static std::optional<std::string> client_public_key() {
 EMSCRIPTEN_BINDINGS(ascii_chat_network) {
   emscripten::function("initClient", &init_client);
   emscripten::class_<ClientSessionBinding>("ClientSessionBinding")
-      .constructor<std::string>()
+      .constructor<OptionsPatch>()
       .function("valid", &ClientSessionBinding::valid)
       .function("error", &ClientSessionBinding::error);
 

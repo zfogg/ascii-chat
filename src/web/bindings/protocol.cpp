@@ -45,6 +45,11 @@ static ClientPacketResult serialize_packet(unsigned type, ClientBytes payload, u
 }
 static int handle_handshake(int stage, ClientBytes packet) {
   auto bytes = binding_copy_input(packet);
+  if (stage >= 0 && stage <= 3 && bytes.size() < sizeof(packet_header_t)) {
+    if (!bytes.empty())
+      sodium_memzero(bytes.data(), bytes.size());
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Client handshake packet is shorter than its header");
+  }
   int result = -1;
   switch (stage) {
   case 0:

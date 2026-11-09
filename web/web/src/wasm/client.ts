@@ -446,32 +446,19 @@ async function initializeClientWasm(options: ClientInitOptions): Promise<void> {
   }
   console.log("[Client WASM] Module loaded successfully");
 
-  // Build argument string for options_init()
-  const args: string[] = ["client"];
-
-  if (options.width !== undefined) {
-    args.push("--width", options.width.toString());
-  }
-  if (options.height !== undefined) {
-    args.push("--height", options.height.toString());
-  }
+  const initialOptions: Record<string, number | string | boolean> = {};
+  if (options.width !== undefined) initialOptions["width"] = options.width;
+  if (options.height !== undefined) initialOptions["height"] = options.height;
   if (options.stunServers?.length)
-    args.push("--stun-servers", options.stunServers.join(","));
+    initialOptions["stun_servers"] = options.stunServers.join(",");
   if (options.turnServers?.length)
-    args.push("--turn-servers", options.turnServers.join(","));
-  if (options.turnUsername) args.push("--turn-username", options.turnUsername);
+    initialOptions["turn_servers"] = options.turnServers.join(",");
+  if (options.turnUsername)
+    initialOptions["turn_username"] = options.turnUsername;
   if (options.turnCredential)
-    args.push("--turn-credential", options.turnCredential);
-  const argsString = args
-    .map((arg, index) =>
-      index === 0
-        ? arg
-        : `"${arg.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`,
-    )
-    .join(" ");
-  console.log("[Client WASM] Initializing with args:", argsString);
+    initialOptions["turn_credential"] = options.turnCredential;
 
-  const session = new wasmModule.ClientSessionBinding(argsString);
+  const session = new wasmModule.ClientSessionBinding(initialOptions);
   if (!session.valid()) {
     const result = session.error();
     session.delete();
@@ -479,6 +466,7 @@ async function initializeClientWasm(options: ClientInitOptions): Promise<void> {
   }
   clientSession = session;
   clientInitialized = true;
+  console.log("[Client WASM] Session initialized");
 }
 
 /**

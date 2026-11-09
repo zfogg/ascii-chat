@@ -6618,8 +6618,8 @@ async function MirrorModule(moduleArg = {}) {
     ignoredModuleProp("fetchSettings");
   }
   var ASM_CONSTS = {
-    2851152: () => Module.getRandomValue(),
-    2851188: () => {
+    2851536: () => Module.getRandomValue(),
+    2851572: () => {
       if (Module.getRandomValue === undefined) {
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -6656,9 +6656,9 @@ async function MirrorModule(moduleArg = {}) {
   var __embind_initialize_bindings = makeInvalidEarlyAccess(
     "__embind_initialize_bindings",
   );
-  var _free = makeInvalidEarlyAccess("_free");
   var _pthread_self = makeInvalidEarlyAccess("_pthread_self");
   var _strerror = makeInvalidEarlyAccess("_strerror");
+  var _free = makeInvalidEarlyAccess("_free");
   var _malloc = makeInvalidEarlyAccess("_malloc");
   var _fflush = makeInvalidEarlyAccess("_fflush");
   var __emscripten_tls_init = makeInvalidEarlyAccess("__emscripten_tls_init");
@@ -6723,16 +6723,16 @@ async function MirrorModule(moduleArg = {}) {
       "missing Wasm export: _embind_initialize_bindings",
     );
     assert(
-      typeof wasmExports["free"] != "undefined",
-      "missing Wasm export: free",
-    );
-    assert(
       typeof wasmExports["pthread_self"] != "undefined",
       "missing Wasm export: pthread_self",
     );
     assert(
       typeof wasmExports["strerror"] != "undefined",
       "missing Wasm export: strerror",
+    );
+    assert(
+      typeof wasmExports["free"] != "undefined",
+      "missing Wasm export: free",
     );
     assert(
       typeof wasmExports["malloc"] != "undefined",
@@ -6824,9 +6824,9 @@ async function MirrorModule(moduleArg = {}) {
       "_embind_initialize_bindings",
       0,
     );
-    _free = createExportWrapper("free", 1);
     _pthread_self = createExportWrapper("pthread_self", 0);
     _strerror = createExportWrapper("strerror", 1);
+    _free = createExportWrapper("free", 1);
     _malloc = createExportWrapper("malloc", 1);
     _fflush = createExportWrapper("fflush", 1);
     __emscripten_tls_init = createExportWrapper("_emscripten_tls_init", 0);

@@ -1,15 +1,26 @@
 #include <emscripten/bind.h>
+#include "../common/opts.h"
 #include <string>
 extern "C" {
 #include "../mirror.h"
 #include <ascii-chat/asciichat_errno.h>
 }
 
-static int init_mirror(const std::string &args) {
-  int result = mirror_init_with_args(args.c_str());
+static int init_mirror(OptionsPatch options) {
+  int result = mirror_init();
   if (result)
     SET_ERRNO(ERROR_INIT, "Browser mirror initialization failed");
-  return result;
+  if (result)
+    return result;
+  result = initial_options(options);
+  if (result) {
+    asciichat_error_context_t context = {};
+    bool has_context = HAS_ERRNO(&context);
+    mirror_cleanup();
+    return SET_ERRNO(static_cast<asciichat_error_t>(result), "%s",
+                     has_context ? context.context_message : "Invalid initial mirror options");
+  }
+  return 0;
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_mirror_session) {

@@ -1,4 +1,5 @@
 #include "capture.h"
+#include <ascii-chat/common.h>
 #include <emscripten.h>
 #include <stdint.h>
 #include <ascii-chat/options/options.h>
@@ -10,8 +11,10 @@ int browser_capture_transform_required(void) {
 }
 
 int browser_capture_transform_rgba(uint8_t *pixels, int width, int height) {
-  if (!pixels || width <= 0 || height <= 0 || (size_t)width > SIZE_MAX / (size_t)height / 4)
+  if (!pixels || width <= 0 || height <= 0 || (size_t)width > SIZE_MAX / (size_t)height / 4) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser capture pixels or dimensions");
     return -1;
+  }
   bool flip_x = GET_OPTION(flip_x), flip_y = GET_OPTION(flip_y);
   if (!flip_x && !flip_y)
     return 0;

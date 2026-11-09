@@ -503,7 +503,6 @@ interface EmbindModule {
     new (): SessionUiBinding;
     new (_0: boolean): SessionUiBinding;
   };
-  initMirror(_0: EmbindString): number;
   sessionRenderCleanup(): void;
   mirror_cleanup(): void;
   TerminalRendererBinding: {
@@ -543,9 +542,8 @@ interface EmbindModule {
       _4: PeerBytes,
     ): PeerCryptoBinding;
   };
-  initClient(_0: EmbindString): number;
   ClientSessionBinding: {
-    new (_0: EmbindString): ClientSessionBinding;
+    new (_0: OptionsPatch): ClientSessionBinding;
   };
   client_cleanup(): void;
   client_generate_keypair(): number;
@@ -615,6 +613,8 @@ interface EmbindModule {
   clientSettings(): string | undefined;
   clientPublicKey(): string | undefined;
   parsePacketJson(_0: ClientBytes): string | undefined;
+  initMirror(_0: OptionsPatch): number;
+  initClient(_0: OptionsPatch): number;
   patchOptions(_0: OptionsPatch, _1: number): number;
   readOptions(): OptionsSnapshot;
   optionHelp(_0: number, _1: EmbindString): string | undefined;
