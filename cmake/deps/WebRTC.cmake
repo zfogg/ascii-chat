@@ -31,6 +31,7 @@ set(WEBRTC_AEC3_SOURCE_DIR "${asciichat_aec3_SOURCE_DIR}" CACHE INTERNAL "WebRTC
     target_include_directories(AudioProcess PUBLIC
         "${asciichat_aec3_SOURCE_DIR}"
         "${asciichat_aec3_SOURCE_DIR}/base"
+        "${asciichat_aec3_SOURCE_DIR}/base/abseil"
         "${asciichat_aec3_SOURCE_DIR}/api"
         "${asciichat_aec3_SOURCE_DIR}/audio_processing/include")
     if(WIN32)
