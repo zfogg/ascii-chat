@@ -84,6 +84,28 @@ function(apply_patch)
             ERROR_QUIET
         )
 
+        if(NOT PATCH_PRESENT_RESULT EQUAL 0)
+            execute_process(
+                COMMAND git rev-parse --is-inside-work-tree
+                WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
+                RESULT_VARIABLE PATCH_GIT_RESULT
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+            if(NOT PATCH_GIT_RESULT EQUAL 0)
+                find_program(PATCH_EXECUTABLE patch)
+                if(PATCH_EXECUTABLE)
+                    execute_process(
+                        COMMAND "${PATCH_EXECUTABLE}" --dry-run -R -p1 -i "${PATCH_PATCH_FILE}"
+                        WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
+                        RESULT_VARIABLE PATCH_PRESENT_RESULT
+                        OUTPUT_QUIET
+                        ERROR_QUIET
+                    )
+                endif()
+            endif()
+        endif()
+
         if(PATCH_PRESENT_RESULT EQUAL 0)
             if(PATCH_ASSUME_UNCHANGED)
                 foreach(FILE_PATH ${PATCH_ASSUME_UNCHANGED})
@@ -169,13 +191,23 @@ function(apply_patch)
             message(FATAL_ERROR "Failed to apply ${DEP_NAME} patch #${PATCH_PATCH_NUM}: ${PATCH_ERROR}")
         endif()
     else()
-        execute_process(
-            COMMAND git apply --reverse --check "${PATCH_PATCH_FILE}"
-            WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
-            RESULT_VARIABLE PATCH_REVERSE_RESULT
-            OUTPUT_QUIET
-            ERROR_VARIABLE PATCH_REVERSE_ERROR
-        )
+        if(PATCH_USE_GIT)
+            execute_process(
+                COMMAND git apply --reverse --check "${PATCH_PATCH_FILE}"
+                WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
+                RESULT_VARIABLE PATCH_REVERSE_RESULT
+                OUTPUT_QUIET
+                ERROR_VARIABLE PATCH_REVERSE_ERROR
+            )
+        else()
+            execute_process(
+                COMMAND "${PATCH_EXECUTABLE}" --dry-run -R -p1 -i "${PATCH_PATCH_FILE}"
+                WORKING_DIRECTORY "${PATCH_TARGET_DIR}"
+                RESULT_VARIABLE PATCH_REVERSE_RESULT
+                OUTPUT_QUIET
+                ERROR_VARIABLE PATCH_REVERSE_ERROR
+            )
+        endif()
         if(NOT PATCH_REVERSE_RESULT EQUAL 0)
             message(FATAL_ERROR
                 "Cannot apply or verify ${DEP_NAME} patch #${PATCH_PATCH_NUM}: ${PATCH_PATCH_FILE}\n"
