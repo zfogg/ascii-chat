@@ -23,10 +23,7 @@ public:
     owns_session_ = true;
   }
   ~RendererSessionBinding() {
-    if (owns_session_) {
-      mirror_cleanup();
-      active_ = false;
-    }
+    close();
   }
   RendererSessionBinding(const RendererSessionBinding &) = delete;
   RendererSessionBinding &operator=(const RendererSessionBinding &) = delete;
@@ -36,6 +33,13 @@ public:
   }
   int error() const {
     return result_;
+  }
+  void close() {
+    if (!owns_session_)
+      return;
+    mirror_cleanup();
+    owns_session_ = false;
+    active_ = false;
   }
 
 private:
@@ -51,5 +55,6 @@ EMSCRIPTEN_BINDINGS(ascii_chat_renderer_module) {
   emscripten::class_<RendererSessionBinding>("RendererSessionBinding")
       .constructor<>()
       .function("valid", &RendererSessionBinding::valid)
-      .function("error", &RendererSessionBinding::error);
+      .function("error", &RendererSessionBinding::error)
+      .function("close", &RendererSessionBinding::close);
 }
