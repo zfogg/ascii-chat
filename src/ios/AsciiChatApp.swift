@@ -1202,6 +1202,14 @@ struct ContentView: View {
             // inherit a previously persisted device audio setting.
             UserDefaults.standard.removeObject(forKey: "ascii-chat.ios.options.patch")
         }
+#if targetEnvironment(simulator)
+        // Automated simulator sessions cannot interact with the shared terminal
+        // TOFU prompt. Keep this opt-in to the simulator harness; normal device
+        // launches retain host identity verification and the native prompt path.
+        if ProcessInfo.processInfo.arguments.contains("--auto-start-client") {
+            setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1", 1)
+        }
+#endif
         let fontSizePt = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double ?? 6.0
         configureRenderBridge(fontSize: fontSizePt)
         #if targetEnvironment(simulator)
