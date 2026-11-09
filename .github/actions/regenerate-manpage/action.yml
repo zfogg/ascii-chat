@@ -8,6 +8,14 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Install HTML manpage tools
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install --yes mandoc
+        corepack enable
+        pnpm install --frozen-lockfile
+
     - name: Generate manpage
       shell: bash
       env:
@@ -19,16 +27,20 @@ runs:
         build/bin/ascii-chat --man-page-create share/man/man1/ascii-chat.1
         test -s share/man/man1/ascii-chat.1
 
+    - name: Regenerate hosted HTML manpages
+      shell: bash
+      run: bash web/www/scripts/manpage-build.sh
+
     - name: Commit and push manpage
       if: inputs.commit == 'true'
       shell: bash
       run: |
-        if git diff --quiet -- share/man/man1/ascii-chat.1 && git ls-files --error-unmatch share/man/man1/ascii-chat.1 >/dev/null 2>&1; then
+        if git diff --quiet -- share/man/man1/ascii-chat.1 web/www/public && git ls-files --error-unmatch share/man/man1/ascii-chat.1 >/dev/null 2>&1; then
           echo "Manpage is unchanged"
           exit 0
         fi
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git add share/man/man1/ascii-chat.1
+        git add share/man/man1/ascii-chat.1 web/www/public
         git commit -m "docs: regenerate manpage"
         git push origin HEAD:${GITHUB_REF_NAME}
