@@ -1,7 +1,7 @@
 #include <emscripten/bind.h>
 extern "C" {
 #include <ascii-chat/audio/processor.h>
-#include "../client.h"
+#include <ascii-chat/network/browser/client.h>
 }
 
 #include <cstddef>

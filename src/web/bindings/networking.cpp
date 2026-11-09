@@ -1,6 +1,6 @@
 #include <emscripten/bind.h>
 extern "C" {
-#include "../client.h"
+#include <ascii-chat/network/browser/client.h>
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/browser/transport.h>
 #include <ascii-chat/network/consensus/handoff.h>

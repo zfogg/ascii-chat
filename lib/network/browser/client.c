@@ -1,4 +1,4 @@
-#include "client.h"
+#include <ascii-chat/network/browser/client.h>
 
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define WEB_CLIENT_CRYPTO_PASSWORD_BUFFER_SIZE 256

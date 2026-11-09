@@ -513,7 +513,7 @@ set(WEB_SRC_CLIENT
     ${LIB_ROOT}/audio/effects.c
     ${LIB_ROOT}/audio/spectral.c
     ${CMAKE_CURRENT_SOURCE_DIR}/main_wasm.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/client.c
+    ${LIB_ROOT}/network/browser/client.c
     ${LIB_ROOT}/network/browser/session.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/session/host.c
     ${LIB_ROOT}/network/acip/server.c

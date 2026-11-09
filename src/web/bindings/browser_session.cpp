@@ -2,7 +2,7 @@
 extern "C" {
 #include <ascii-chat/network/browser/session.h>
 #include <ascii-chat/network/errors.h>
-#include "../client.h"
+#include <ascii-chat/network/browser/client.h>
 }
 #include "client_bytes.h"
 #include <sodium.h>
