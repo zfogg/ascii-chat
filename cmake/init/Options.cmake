@@ -155,6 +155,7 @@ option(ASCIICHAT_FORMAT_ONLY "Configure only the source-formatting target withou
 #
 option(BUILD_WEB "Build web components (WASM, browser targets)" OFF)
 option(ASCIICHAT_ENABLE_QUIC "Build the native QUIC transport dependencies" ON)
+option(ASCIICHAT_ENABLE_DEFER "Enable deferred source transformation tooling" ON)
 
 # =============================================================================
 # Executable Build Configuration
