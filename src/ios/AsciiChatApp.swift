@@ -502,10 +502,21 @@ private struct IOSSettingsView: View {
     private let palettes = ["standard", "blocks", "digital", "minimal", "cool", "custom"]
     private let filters = ["none", "black", "white", "green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow", "rainbow"]
     private let renderModes = ["foreground", "background", "half-block"]
-    private let colorModes = ["none", "16", "256", "truecolor"]
+    private let colorModes = ["auto", "none", "16", "256", "truecolor"]
 
     private func enumIndex(_ value: String, in values: [String]) -> Int {
         values.firstIndex(of: value) ?? 0
+    }
+
+    private func colorModeValue(_ value: String) -> Int {
+        switch value {
+        case "auto": return -1
+        case "none": return 0
+        case "16": return 1
+        case "256": return 2
+        case "truecolor": return 3
+        default: return 3
+        }
     }
 
     private func loadPersistedValues() {
@@ -519,8 +530,10 @@ private struct IOSSettingsView: View {
            filters.indices.contains(value.intValue) { colorFilter = filters[value.intValue] }
         if let value = values["render_mode"] as? NSNumber,
            renderModes.indices.contains(value.intValue) { renderMode = renderModes[value.intValue] }
-        if let value = values["color_mode"] as? NSNumber,
-           colorModes.indices.contains(value.intValue) { colorMode = colorModes[value.intValue] }
+        if let value = values["color_mode"] as? NSNumber {
+            let index = value.intValue + 1
+            if colorModes.indices.contains(index) { colorMode = colorModes[index] }
+        }
         if let value = values["fps_counter"] as? Bool { fpsCounter = value }
         if let value = values["matrix"] as? Bool { matrix = value }
         if let value = values["face_follow"] as? Bool { faceFollow = value }
@@ -570,7 +583,7 @@ private struct IOSSettingsView: View {
                     Picker("Render mode", selection: $renderMode) { ForEach(renderModes, id: \.self, content: Text.init) }
                         .onChange(of: renderMode) { _, value in applyJSON(["render_mode": enumIndex(value, in: renderModes)]) }
                     Picker("Color mode", selection: $colorMode) { ForEach(colorModes, id: \.self, content: Text.init) }
-                        .onChange(of: colorMode) { _, value in applyJSON(["color_mode": enumIndex(value, in: colorModes)]) }
+                        .onChange(of: colorMode) { _, value in applyJSON(["color_mode": colorModeValue(value)]) }
                     Toggle("Stretch to fill", isOn: $stretch)
                         .onChange(of: stretch) { _, value in applyJSON(["stretch": value]) }
                     Toggle("Stabilize frames", isOn: $stabilize)
@@ -782,7 +795,7 @@ private struct IOSSettingsView: View {
                         applyJSON(["palette_type": enumIndex(palette, in: palettes),
                                    "color_filter": enumIndex(colorFilter, in: filters),
                                    "render_mode": enumIndex(renderMode, in: renderModes),
-                                   "color_mode": enumIndex(colorMode, in: colorModes), "fps": Int(fps), "stretch": stretch,
+                                   "color_mode": colorModeValue(colorMode), "fps": Int(fps), "stretch": stretch,
                                    "stabilize": stabilize, "fps_counter": fpsCounter,
                                    "matrix": matrix, "face_follow": faceFollow,
                                    "audio_enabled": audioEnabled, "audio_fft_size": Int(audioFFTSize) ?? 1024,
