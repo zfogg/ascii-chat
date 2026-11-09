@@ -20,6 +20,15 @@
 #include <ascii-chat/video/ascii/simd/cells.h>
 
 static _Thread_local outbuf_t *g_output_target;
+static _Thread_local uint32_t g_scratch_workspace[IMAGE_MAX_WIDTH * ASCII_SCRATCH_PLANES];
+
+static uint32_t *acquire_scratch(uint32_t *inline_scratch, size_t bytes) {
+  if (bytes <= ASCII_INLINE_SCRATCH_COLUMNS * ASCII_SCRATCH_PLANES * sizeof(uint32_t))
+    return inline_scratch;
+  if (bytes > sizeof(g_scratch_workspace))
+    return NULL;
+  return g_scratch_workspace;
+}
 static _Thread_local ascii_stabilizer_t *g_stabilizer_target;
 
 ascii_stabilizer_t *ascii_stabilizer_set_target(ascii_stabilizer_t *state) {
@@ -297,7 +306,9 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
     frame->stabilizer = g_stabilizer_target;
   for (size_t i = 0; i < 64; ++i)
     memcpy(frame->table + i, cache->cache64[i].utf8_bytes, cache->cache64[i].byte_len);
-  frame->scratch = bytes <= sizeof(frame->inline_scratch) ? frame->inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
+  frame->scratch = acquire_scratch(frame->inline_scratch, bytes);
+  if (!frame->scratch)
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ASCII scratch workspace");
   frame->packed = frame->scratch;
   frame->index = frame->packed + frame->width;
   frame->glyph = frame->index + frame->width;
@@ -375,7 +386,7 @@ void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool backgro
   ++frame->row;
 }
 char *ascii_frame_finish(ascii_frame_t *frame) {
-  if (frame->scratch != frame->inline_scratch)
+  if (frame->scratch != frame->inline_scratch && frame->scratch != g_scratch_workspace)
     SAFE_FREE(frame->scratch);
   ob_term(&frame->output);
   if (frame->output_target)
@@ -406,7 +417,9 @@ asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb
   if (g_stabilizer_target && g_stabilizer_target->cells && g_stabilizer_target->width == (size_t)width &&
       g_stabilizer_target->height == (size_t)height)
     frame->stabilizer = g_stabilizer_target;
-  frame->scratch = bytes <= sizeof(frame->inline_scratch) ? frame->inline_scratch : SAFE_MALLOC(bytes, uint32_t *);
+  frame->scratch = acquire_scratch(frame->inline_scratch, bytes);
+  if (!frame->scratch)
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ASCII scratch workspace");
   frame->packed = frame->scratch;
   frame->index = frame->packed + width;
   frame->glyph = frame->index + width;

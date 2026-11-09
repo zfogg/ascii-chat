@@ -44,6 +44,8 @@
  * ============================================================================
  */
 
+static _Thread_local int g_resize_columns_workspace[IMAGE_MAX_WIDTH];
+
 /*
  * Resize a source image to a terminal viewport while preserving its visual
  * aspect ratio. The source is cropped to the viewport's aspect ratio first,
@@ -78,7 +80,7 @@ static void image_resize_cover(const image_t *source, image_t *dest, ssize_t vie
   }
 
   // Horizontal source coordinates are identical for every destination row.
-  int *source_columns = SAFE_MALLOC((size_t)dest->w * sizeof(*source_columns), int *);
+  int *source_columns = g_resize_columns_workspace;
   for (int x = 0; x < dest->w; ++x)
     source_columns[x] = crop_x + (int)(((int64_t)x * crop_width) / dest->w);
   int previous_source_y = -1;
@@ -95,7 +97,6 @@ static void image_resize_cover(const image_t *source, image_t *dest, ssize_t vie
       dest_row[x] = source_row[source_columns[x]];
     }
   }
-  SAFE_FREE(source_columns);
 }
 
 // Fit the complete source into the physical viewport, leaving black bars.
