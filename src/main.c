@@ -49,6 +49,9 @@
 #include "discovery-service/main.h"
 #include "discovery/main.h"
 #include <ascii-chat/discovery/session.h>
+#ifdef PLATFORM_IOS
+#include "ios/main.h"
+#endif
 
 // Global exit API (exported in main.h)
 #include "main.h"
@@ -836,6 +839,11 @@ int asciichat_main(int argc, char *argv[]) {
     exit(options_result);
 #endif
   }
+
+#ifdef PLATFORM_IOS
+  // Apply persisted runtime settings after the shared options snapshot exists.
+  asciichat_ios_apply_pending_options();
+#endif
 
   // Get parsed options
   const options_t *opts = options_get();

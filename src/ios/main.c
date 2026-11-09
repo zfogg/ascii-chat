@@ -5,6 +5,7 @@
 #include <ascii-chat/platform/ios/stdin_bridge.h>
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/tui/controller.h>
+#include <ascii-chat/options/runtime.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdatomic.h>
@@ -16,6 +17,7 @@ static _Atomic int g_ios_running;
 static _Atomic int g_ios_last_result;
 static char g_ios_session_string[128];
 static char g_ios_server_address[256];
+static char g_ios_options_json[32768];
 
 /* Native controls use the same shared help renderer as the terminal shortcut. */
 void asciichat_ios_toggle_help(void) {
@@ -37,6 +39,24 @@ void asciichat_ios_set_server_address(const char *address) {
     return;
   }
   snprintf(g_ios_server_address, sizeof(g_ios_server_address), "%s", address);
+}
+
+void asciichat_ios_set_options_json(const char *json) {
+  if (!json) {
+    g_ios_options_json[0] = '\0';
+    return;
+  }
+  snprintf(g_ios_options_json, sizeof(g_ios_options_json), "%s", json);
+}
+
+void asciichat_ios_apply_pending_options(void) {
+  if (g_ios_options_json[0] == '\0')
+    return;
+  asciichat_error_t result = options_apply_json(g_ios_options_json, strlen(g_ios_options_json), OPTIONS_REVISION_ANY,
+                                                OPTIONS_ORIGIN_LOCAL, NULL);
+  if (result != ASCIICHAT_OK)
+    os_log_error(OS_LOG_DEFAULT, "iOS persisted options patch was rejected: %{public}s",
+                 asciichat_error_format(NULL, result));
 }
 
 

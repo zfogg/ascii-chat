@@ -31,6 +31,8 @@ private func asciichat_ios_main(_ mode: Int32) -> Int32
 private func asciichat_ios_set_session_string(_ sessionString: UnsafePointer<CChar>?)
 @_silgen_name("asciichat_ios_set_server_address")
 private func asciichat_ios_set_server_address(_ address: UnsafePointer<CChar>?)
+@_silgen_name("asciichat_ios_set_options_json")
+private func asciichat_ios_set_options_json(_ json: UnsafePointer<CChar>?)
 
 @_silgen_name("asciichat_ios_mode_available")
 private func asciichat_ios_mode_available(_ mode: Int32) -> Int32
@@ -1195,18 +1197,24 @@ struct ContentView: View {
            let port = Int(value.dropFirst("--ios-port=".count)) {
             simulatorOverrides["port"] = port
         }
-        if !simulatorOverrides.isEmpty {
-            applySettings(simulatorOverrides)
-        }
         #endif
-        let persistedValues = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
+        var persistedValues = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
             .flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]
+            ?? [:]
+        #if targetEnvironment(simulator)
+        simulatorOverrides.forEach { persistedValues[$0.key] = $0.value }
+        #endif
+        if JSONSerialization.isValidJSONObject(persistedValues),
+           let optionsData = try? JSONSerialization.data(withJSONObject: persistedValues),
+           let optionsJSON = String(data: optionsData, encoding: .utf8) {
+            optionsJSON.withCString { asciichat_ios_set_options_json($0) }
+        }
         let launchAddress = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--ios-address=") })
             .map { String($0.dropFirst("--ios-address=".count)) }
         let launchPort = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--ios-port=") })
             .flatMap { Int($0.dropFirst("--ios-port=".count)) }
-        let serverAddress = launchAddress ?? (persistedValues?["address"] as? String ?? "")
-        let serverPort = launchPort ?? ((persistedValues?["port"] as? NSNumber)?.intValue ?? 27224)
+        let serverAddress = launchAddress ?? (persistedValues["address"] as? String ?? "")
+        let serverPort = launchPort ?? ((persistedValues["port"] as? NSNumber)?.intValue ?? 27224)
         let endpoint = serverAddress.isEmpty ? "" : "\(serverAddress):\(serverPort)"
         endpoint.withCString { asciichat_ios_set_server_address($0) }
         sessionModel.start(mode: selectedMode)
