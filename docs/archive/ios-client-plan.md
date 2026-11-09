@@ -1471,6 +1471,9 @@ calls `asciichat_main()` with different argv. The display is the same ModeView.
 - [x] Battery optimization: display-link polling follows the configured C-side FPS (with a 60 FPS auto cadence)
 - [x] Accessibility labels and hints for startup, settings, TUI, and session controls
 - [x] Handle iOS audio interruptions in AVAudioEngine shim (phone calls, etc.)
+- [x] Validate the current ACIP major/minor/patch version in native media and discovery negotiation
+- [x] Clean up failed AVAudioEngine starts without leaving taps, observers, or an active audio session behind
+- [x] Cover shared options snapshot/apply and persisted `UserDefaults` settings in the simulator startup contract
 
 ---
 
