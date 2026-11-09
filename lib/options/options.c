@@ -1707,7 +1707,8 @@ static void record_explicit_fps(options_t *opts, int mode_argc, char **mode_argv
 }
 
 static void record_explicit_stabilize(options_t *opts, int mode_argc, char **mode_argv) {
-  if (!opts) return;
+  if (!opts)
+    return;
   for (int i = 0; i < mode_argc; ++i) {
     if (mode_argv[i] && (!strcmp(mode_argv[i], "--stabilize") || !strncmp(mode_argv[i], "--stabilize=", 12))) {
       opts->stabilize_explicit = true;
