@@ -105,6 +105,23 @@ static void test_transactions(void) {
                 ASCIICHAT_OK);
   cr_assert_eq(GET_OPTION(width), 120);
   CLEAR_ERRNO();
+  cr_assert_eq(
+      options_apply_json("{\"render_font_size\":8.5,\"audio_fft_size\":2048,\"webcam_index\":1,"
+                         "\"microphone_channels\":2,\"microphone_channel\":0,\"webrtc_ice_timeout\":15000,"
+                         "\"webrtc_reconnect_attempts\":5}",
+                         strlen("{\"render_font_size\":8.5,\"audio_fft_size\":2048,\"webcam_index\":1,"
+                                "\"microphone_channels\":2,\"microphone_channel\":0,\"webrtc_ice_timeout\":15000,"
+                                "\"webrtc_reconnect_attempts\":5}"),
+                         OPTIONS_REVISION_ANY, OPTIONS_ORIGIN_LOCAL, NULL),
+      ASCIICHAT_OK);
+  cr_assert_eq(GET_OPTION(render_font_size), 8.5);
+  cr_assert_eq(GET_OPTION(audio_fft_size), 2048);
+  cr_assert_eq(GET_OPTION(webcam_index), 1);
+  cr_assert_eq(GET_OPTION(microphone_channels), 2);
+  cr_assert_eq(GET_OPTION(microphone_channel), 0);
+  cr_assert_eq(GET_OPTION(webrtc_ice_timeout_ms), 15000);
+  cr_assert_eq(GET_OPTION(webrtc_reconnect_attempts), 5);
+  CLEAR_ERRNO();
   cr_assert_eq(options_set_bool("flip_x", false), ASCIICHAT_OK);
   cr_assert_eq(options_set_bool("flip_y", false), ASCIICHAT_OK);
   before = options_revision();

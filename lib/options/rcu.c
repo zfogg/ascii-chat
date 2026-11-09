@@ -542,6 +542,10 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(reconnect_attempts, OPTIONS_VALUE_INT, "reconnect-attempts"),
     FIELD(microphone_index, OPTIONS_VALUE_INT, "microphone-index"),
     FIELD(speakers_index, OPTIONS_VALUE_INT, "speakers-index"),
+    FIELD(webcam_index, OPTIONS_VALUE_INT, "webcam-index"),
+    FIELD(microphone_channels, OPTIONS_VALUE_INT, "microphone-channels"),
+    FIELD(microphone_channel, OPTIONS_VALUE_INT, "microphone-channel"),
+    FIELD(audio_fft_size, OPTIONS_VALUE_INT, "audio-fft-size"),
     FIELD(discovery_port, OPTIONS_VALUE_INT, "discovery-port"),
     FIELD(port, OPTIONS_VALUE_INT, "port"),
     FIELD(fps, OPTIONS_VALUE_INT, "fps"),
@@ -623,8 +627,11 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(turn_secret, OPTIONS_VALUE_STRING, "turn-secret"),
     FIELD(session_string, OPTIONS_VALUE_STRING, "session-string"),
     FIELD(snapshot_delay, OPTIONS_VALUE_DOUBLE, "snapshot-delay"),
+    FIELD(render_font_size, OPTIONS_VALUE_DOUBLE, "render-font-size"),
     FIELD(microphone_sensitivity, OPTIONS_VALUE_DOUBLE, "microphone-volume"),
     FIELD(speakers_volume, OPTIONS_VALUE_DOUBLE, "speakers-volume"),
+    FIELD(webrtc_ice_timeout_ms, OPTIONS_VALUE_INT, "webrtc-ice-timeout"),
+    FIELD(webrtc_reconnect_attempts, OPTIONS_VALUE_INT, "webrtc-reconnect-attempts"),
 };
 #undef FIELD
 
@@ -635,6 +642,8 @@ static const runtime_field_t *find_field(const char *name) {
     name = "speakers_volume";
   if (!strcmp(name, "ivolume") || !strcmp(name, "microphone-volume"))
     name = "microphone_sensitivity";
+  if (!strcmp(name, "webrtc_ice_timeout"))
+    name = "webrtc_ice_timeout_ms";
   for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i)
     if (!strcmp(name, runtime_fields[i].name) || !strcmp(name, runtime_fields[i].cli))
       return &runtime_fields[i];
