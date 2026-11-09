@@ -241,8 +241,8 @@ asciichat_error_t http_response_finish(http_response_t *r) {
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response already finished");
   r->finished = true;
   if (r->client && r->client->http2_mode) {
-    asciichat_error_t result = http2_connection_submit_response(r->client->http2, r->http2_stream_id, r->status,
-                                                                  r->body, r->body_length);
+    asciichat_error_t result =
+        http2_connection_submit_response(r->client->http2, r->http2_stream_id, r->status, r->body, r->body_length);
     if (result != ASCIICHAT_OK)
       return result;
     return http2_flush(r->client);
@@ -311,10 +311,8 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
   request.body_offset = 0;
   request.body_length = view->body_length;
   request.info.user_data = client->server->config.user_data;
-  http_response_t response = {.stream = (uv_stream_t *)&client->tcp,
-                              .client = client,
-                              .http2_stream_id = view->stream_id,
-                              .status = 200};
+  http_response_t response = {
+      .stream = (uv_stream_t *)&client->tcp, .client = client, .http2_stream_id = view->stream_id, .status = 200};
   client->server->config.on_request(&request, &response, client->server->config.user_data);
   if (!response.finished)
     return http_response_finish(&response);
@@ -344,8 +342,8 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
       memcmp(c->buffer, h2_preface, sizeof(h2_preface) - 1) == 0) {
     c->http2_mode = true;
     if (http2_connection_create(&c->http2, http2_request_cb, c) != ASCIICHAT_OK ||
-        http2_connection_receive(c->http2, c->buffer + sizeof(h2_preface) - 1,
-                                 c->length - (sizeof(h2_preface) - 1)) != ASCIICHAT_OK) {
+        http2_connection_receive(c->http2, c->buffer + sizeof(h2_preface) - 1, c->length - (sizeof(h2_preface) - 1)) !=
+            ASCIICHAT_OK) {
       client_close(c);
       return;
     }
