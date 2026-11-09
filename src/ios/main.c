@@ -40,23 +40,27 @@ int asciichat_ios_main(asciichat_ios_mode_t mode) {
   static char height[32];
   snprintf(width, sizeof(width), "--width=%d", render_cols);
   snprintf(height, sizeof(height), "--height=%d", render_rows);
-#ifdef ASCIICHAT_IOS_SIMULATOR
   static char test_pattern[] = "--test-pattern=1";
-#else
-  static char test_pattern[] = "--test-pattern=false";
-#endif
   char *mode_name = mode == ASCIICHAT_IOS_MODE_CLIENT      ? client
                     : mode == ASCIICHAT_IOS_MODE_DISCOVERY ? discovery
                                                            : mirror;
-  /* Keep only options accepted by mirror; status-screen is server-only. */
-  char *argv[] = {program, mode_name, splash, color, fps, width, height, test_pattern, NULL};
+  /* Synthetic frames are a simulator mirror aid; network clients must use
+   * their negotiated remote media instead. */
+  char *argv[] = {program, mode_name, splash, color, fps, width, height, NULL, NULL};
+  int argc = 7;
+#ifdef ASCIICHAT_IOS_SIMULATOR
+  if (mode == ASCIICHAT_IOS_MODE_MIRROR) {
+    argv[7] = test_pattern;
+    argc = 8;
+  }
+#endif
   ios_stdin_bridge_reset();
   atomic_store_explicit(&g_ios_running, 1, memory_order_release);
   atomic_store_explicit(&g_ios_last_result, 0, memory_order_release);
   os_log(OS_LOG_DEFAULT, "iOS native entering asciichat_main");
-  for (int i = 0; i < 8; i++)
+  for (int i = 0; i < argc; i++)
     os_log(OS_LOG_DEFAULT, "iOS argv[%d]=%{public}s", i, argv[i]);
-  int result = asciichat_main(8, argv);
+  int result = asciichat_main(argc, argv);
   os_log(OS_LOG_DEFAULT, "iOS native session finished result=%d", result);
   atomic_store_explicit(&g_ios_last_result, result, memory_order_release);
   atomic_store_explicit(&g_ios_running, 0, memory_order_release);
