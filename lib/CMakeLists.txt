@@ -571,6 +571,10 @@ create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
 # before external FFmpeg headers are installed; keep this target's include
 # search path explicit instead of relying only on the project interface target.
 target_include_directories(ascii-chat-video BEFORE PRIVATE ${FFMPEG_INCLUDE_DIRS})
+if(USE_MUSL)
+    target_include_directories(ascii-chat-video BEFORE PRIVATE
+        "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include")
+endif()
 include(${CMAKE_SOURCE_DIR}/cmake/deps/FaceDetection.cmake)
 ascii_chat_add_face_detector(ascii-chat-video)
 
