@@ -3,6 +3,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/stats/runtime.h>
+#include <ascii-chat/network/rate_limit/rate_limit.h>
 #include <ascii-chat/util/time.h>
 #include <uv.h>
 #include <string.h>
@@ -26,6 +27,7 @@ struct http_server {
   asciichat_thread_t thread;
   size_t connections;
   http_client_t *clients;
+  rate_limiter_t *rate_limiter;
 };
 struct http_request {
   http_request_info_t info;
@@ -56,6 +58,7 @@ struct http_client {
   http_client_t *previous;
   http2_connection_t *http2;
   bool http2_mode;
+  char peer_address[64];
 };
 static void stop_async_cb(uv_async_t *async);
 static void wake_async_cb(uv_async_t *async) {
@@ -82,6 +85,20 @@ static void client_freed(uv_handle_t *handle) {
 static void client_close(http_client_t *c) {
   if (!uv_is_closing((uv_handle_t *)&c->tcp))
     uv_close((uv_handle_t *)&c->tcp, client_freed);
+}
+static void client_peer_address(http_client_t *c) {
+  struct sockaddr_storage address;
+  int length = sizeof(address);
+  if (uv_tcp_getpeername(&c->tcp, (struct sockaddr *)&address, &length) != 0) {
+    safe_snprintf(c->peer_address, sizeof(c->peer_address), "unknown");
+    return;
+  }
+  if (address.ss_family == AF_INET)
+    uv_ip4_name((const struct sockaddr_in *)&address, c->peer_address, sizeof(c->peer_address));
+  else if (address.ss_family == AF_INET6)
+    uv_ip6_name((const struct sockaddr_in6 *)&address, c->peer_address, sizeof(c->peer_address));
+  else
+    safe_snprintf(c->peer_address, sizeof(c->peer_address), "unknown");
 }
 static void alloc_buffer(uv_handle_t *h, size_t n, uv_buf_t *b) {
   (void)h;
@@ -144,7 +161,7 @@ static bool parse_request(http_client_t *c, http_request_t *r) {
   r->body_offset = head;
   r->body_length = body;
   r->info.headers = r->headers;
-  r->info.peer_address = "";
+  r->info.peer_address = c->peer_address;
   r->info.user_data = c->server->config.user_data;
   r->info.protocol = HTTP_PROTOCOL_11;
   r->info.user_data = c->server->config.user_data;
@@ -212,6 +229,8 @@ static const char *reason(unsigned s) {
     return "Not Found";
   case 413:
     return "Payload Too Large";
+  case 429:
+    return "Too Many Requests";
   case 500:
     return "Internal Server Error";
   default:
@@ -311,12 +330,22 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
   for (size_t i = 0; i < request.info.header_count; ++i)
     request.headers[i] = (http_header_t){view->headers[i].name, view->headers[i].value};
   request.info.headers = request.headers;
-  request.info.peer_address = "";
+  request.info.peer_address = client->peer_address;
   request.info.user_data = client->server->config.user_data;
   request.storage = (char *)view->body;
   request.body_offset = 0;
   request.body_length = view->body_length;
   request.info.user_data = client->server->config.user_data;
+  bool allowed = false;
+  if (rate_limiter_check(client->server->rate_limiter, client->peer_address, RATE_EVENT_HTTP_REQUEST, NULL, &allowed) !=
+          ASCIICHAT_OK ||
+      !allowed) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
+    http_response_t limited = {
+        .stream = (uv_stream_t *)&client->tcp, .client = client, .http2_stream_id = view->stream_id, .status = 429};
+    return http_response_finish(&limited);
+  }
+  rate_limiter_record(client->server->rate_limiter, client->peer_address, RATE_EVENT_HTTP_REQUEST);
   http_response_t response = {
       .stream = (uv_stream_t *)&client->tcp, .client = client, .http2_stream_id = view->stream_id, .status = 200};
   client->server->config.on_request(&request, &response, client->server->config.user_data);
@@ -367,6 +396,17 @@ static void read_cb(uv_stream_t *s, ssize_t n, const uv_buf_t *b) {
   http_request_t r = {0};
   if (!parse_request(c, &r))
     return;
+  bool allowed = false;
+  if (rate_limiter_check(c->server->rate_limiter, c->peer_address, RATE_EVENT_HTTP_REQUEST, NULL, &allowed) !=
+          ASCIICHAT_OK ||
+      !allowed) {
+    stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REJECTED, 1);
+    http_response_t limited = {.stream = s, .status = 429};
+    http_response_finish(&limited);
+    uv_read_stop(s);
+    return;
+  }
+  rate_limiter_record(c->server->rate_limiter, c->peer_address, RATE_EVENT_HTTP_REQUEST);
   http_response_t resp = {.stream = s, .status = 200};
   uint64_t request_start = time_get_ns();
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_REQUESTS, 1);
@@ -395,6 +435,7 @@ static void connection_cb(uv_stream_t *l, int status) {
     if (s->clients)
       s->clients->previous = c;
     s->clients = c;
+    client_peer_address(c);
     s->connections++;
     stats_gauge_set(stats_runtime_scope(), STATS_GAUGE_HTTP_CONNECTIONS_ACTIVE, s->connections);
     if (s->config.on_connection)
@@ -428,8 +469,14 @@ asciichat_error_t http_server_init(http_server_t **out, const http_server_config
   if (cfg->enable_http3 || cfg->tls_certificate || cfg->tls_private_key)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Requested HTTP/3 or TLS backend is not enabled");
   http_server_t *s = SAFE_CALLOC(1, sizeof(*s), http_server_t *);
+  s->rate_limiter = rate_limiter_create_memory();
+  if (!s->rate_limiter) {
+    SAFE_FREE(s);
+    return SET_ERRNO(ERROR_MEMORY, "Cannot initialize HTTP rate limiter");
+  }
   s->config = *cfg;
   if (uv_loop_init(&s->loop) != 0) {
+    rate_limiter_destroy(s->rate_limiter);
     SAFE_FREE(s);
     return SET_ERRNO(ERROR_NETWORK, "Cannot initialize HTTP event loop");
   }
@@ -509,6 +556,7 @@ void http_server_destroy(http_server_t **p) {
   while (uv_run(&s->loop, UV_RUN_NOWAIT) != 0)
     ;
   uv_loop_close(&s->loop);
+  rate_limiter_destroy(s->rate_limiter);
   SAFE_FREE(s);
   *p = NULL;
 }
