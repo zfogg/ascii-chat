@@ -301,6 +301,10 @@ static asciichat_error_t http2_request_cb(http2_connection_t *connection, const 
   request.info.path = view->path;
   request.info.query = view->query;
   request.info.protocol = HTTP_PROTOCOL_2;
+  request.info.header_count = view->header_count < HTTP_HEADER_CAPACITY ? view->header_count : HTTP_HEADER_CAPACITY;
+  for (size_t i = 0; i < request.info.header_count; ++i)
+    request.headers[i] = (http_header_t){view->headers[i].name, view->headers[i].value};
+  request.info.headers = request.headers;
   request.info.peer_address = "";
   request.info.user_data = client->server->config.user_data;
   request.storage = (char *)view->body;

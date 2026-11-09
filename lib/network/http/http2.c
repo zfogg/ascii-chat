@@ -8,6 +8,7 @@
 
 #define HTTP2_MAX_BODY (1024u * 1024u)
 #define HTTP2_MAX_TEXT 8192u
+#define HTTP2_MAX_HEADERS 64u
 
 typedef struct {
   int32_t stream_id;
@@ -16,6 +17,10 @@ typedef struct {
   char *body;
   size_t body_length;
   size_t body_capacity;
+  http2_header_t headers[HTTP2_MAX_HEADERS];
+  char *header_names[HTTP2_MAX_HEADERS];
+  char *header_values[HTTP2_MAX_HEADERS];
+  size_t header_count;
 } request_state_t;
 
 typedef struct {
@@ -72,6 +77,18 @@ static int on_header(nghttp2_session *session, const nghttp2_frame *frame, const
   } else if (name_length == 5 && memcmp(name, ":path", 5) == 0) {
     SAFE_FREE(request->path);
     request->path = copy_text(value, value_length);
+  } else if (request->header_count < HTTP2_MAX_HEADERS) {
+    char *header_name = copy_text(name, name_length);
+    char *header_value = copy_text(value, value_length);
+    if (!header_name || !header_value) {
+      SAFE_FREE(header_name);
+      SAFE_FREE(header_value);
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+    request->header_names[request->header_count] = header_name;
+    request->header_values[request->header_count] = header_value;
+    request->headers[request->header_count] = (http2_header_t){header_name, header_value};
+    request->header_count++;
   }
   return (request->method || request->path) ? 0 : NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
 }
@@ -109,7 +126,9 @@ static int on_frame_recv(nghttp2_session *session, const nghttp2_frame *frame, v
                                .path = request->path,
                                .body = request->body,
                                .body_length = request->body_length,
-                               .stream_id = request->stream_id};
+                               .stream_id = request->stream_id,
+                               .headers = request->headers,
+                               .header_count = request->header_count};
   char *query = strchr(request->path, '?');
   if (query) {
     *query = 0;
@@ -129,6 +148,10 @@ static void on_stream_close(nghttp2_session *session, int32_t stream_id, uint32_
   SAFE_FREE(request->method);
   SAFE_FREE(request->path);
   SAFE_FREE(request->body);
+  for (size_t i = 0; i < request->header_count; ++i) {
+    SAFE_FREE(request->header_names[i]);
+    SAFE_FREE(request->header_values[i]);
+  }
   SAFE_FREE(request);
 }
 

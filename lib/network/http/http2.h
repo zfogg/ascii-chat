@@ -12,7 +12,13 @@ typedef struct {
   const void *body;
   size_t body_length;
   int32_t stream_id;
+  const struct http2_header *headers;
+  size_t header_count;
 } http2_request_view_t;
+typedef struct http2_header {
+  const char *name;
+  const char *value;
+} http2_header_t;
 typedef asciichat_error_t (*http2_request_fn)(http2_connection_t *connection, const http2_request_view_t *request,
                                               void *user_data);
 
