@@ -125,7 +125,7 @@ static int on_frame_recv(nghttp2_session *session, const nghttp2_frame *frame, v
     return 0;
   request_state_t *request = get_request(session, frame->hd.stream_id);
   if (!request || request->dispatched || !request->method || !request->path)
-    return NGHTTP2_ERR_PROTOCOL;
+    return NGHTTP2_ERR_PROTO;
   request->dispatched = true;
   http2_request_view_t view = {.method = request->method,
                                .path = request->path,
@@ -144,12 +144,12 @@ static int on_frame_recv(nghttp2_session *session, const nghttp2_frame *frame, v
              : NGHTTP2_ERR_CALLBACK_FAILURE;
 }
 
-static void on_stream_close(nghttp2_session *session, int32_t stream_id, uint32_t error_code, void *user_data) {
+static int on_stream_close(nghttp2_session *session, int32_t stream_id, uint32_t error_code, void *user_data) {
   (void)error_code;
   (void)user_data;
   request_state_t *request = get_request(session, stream_id);
   if (!request)
-    return;
+    return 0;
   SAFE_FREE(request->method);
   SAFE_FREE(request->path);
   SAFE_FREE(request->body);
@@ -158,11 +158,13 @@ static void on_stream_close(nghttp2_session *session, int32_t stream_id, uint32_
     SAFE_FREE(request->header_values[i]);
   }
   SAFE_FREE(request);
+  return 0;
 }
 
-static ssize_t read_response(nghttp2_session *session, uint8_t *buffer, size_t length, uint32_t *flags,
-                             nghttp2_data_source *source, void *user_data) {
+static ssize_t read_response(nghttp2_session *session, int32_t stream_id, uint8_t *buffer, size_t length,
+                             uint32_t *flags, nghttp2_data_source *source, void *user_data) {
   (void)session;
+  (void)stream_id;
   (void)user_data;
   response_state_t *response = source->ptr;
   size_t remaining = response->length - response->offset;
@@ -225,7 +227,10 @@ asciichat_error_t http2_connection_receive(http2_connection_t *connection, const
 asciichat_error_t http2_connection_next_output(http2_connection_t *connection, const uint8_t **data, size_t *length) {
   if (!connection || !data || !length)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid HTTP/2 output request");
-  connection->output = nghttp2_session_mem_send(connection->session, &connection->output_length);
+  ssize_t output_length = nghttp2_session_mem_send(connection->session, &connection->output);
+  if (output_length < 0)
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Cannot serialize HTTP/2 output");
+  connection->output_length = (size_t)output_length;
   *data = connection->output;
   *length = connection->output_length;
   return ASCIICHAT_OK;

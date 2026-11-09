@@ -62,7 +62,6 @@ struct http_request {
   size_t body_offset;
   size_t body_length;
   bool cancelled;
-  bool inflight_accounted;
 };
 struct http_response {
   uv_stream_t *stream;
@@ -79,6 +78,7 @@ struct http_response {
   bool deferred;
   bool retained;
   bool cancelled;
+  bool inflight_accounted;
   http_server_t *server;
   http_response_t *next_retained;
   http3_submit_response_fn http3_submit;
