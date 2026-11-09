@@ -115,6 +115,7 @@
  * @copybrief module_crypto
  *
  * - @ref topic_crypto "Cryptography" - Encryption architecture and security details
+ * - [Authenticated packet records and rotation](md_docs_2crypto-records.html) - Packet authentication, replay protection, and key rotation
  * - @ref topic_handshake "Handshake Protocol" - Secure connection establishment
  * - @ref topic_keys "Keys Module" - SSH/GPG key parsing and validation
  *
@@ -238,7 +239,6 @@
  * - [Connection security policy](md_docs_2crypto-policy.html)
  * - [Discovery session authentication keys](md_docs_2discovery-key-sets.html)
  * - [Discovery host designation](md_docs_2host-designation.html)
- * - [Authenticated packet records and rotation](md_docs_2crypto-records.html)
  * - [Network copy reduction](md_docs_2network-copy-reduction.html)
  * - [Measured host selection and handoff](md_docs_2measured-host-handoff.html)
  * - [Shared connection ownership](md_docs_2client-connection-lifecycle.html)
