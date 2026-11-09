@@ -406,6 +406,11 @@ private struct IOSSettingsView: View {
     @State private var microphoneIndex = "0"
     @State private var speakersIndex = "0"
     @State private var microphoneVolume = 1.0
+    @State private var speakersVolume = 1.0
+    @State private var compressionLevel = 6.0
+    @State private var reconnectAttempts = 3.0
+    @State private var webrtcReconnectAttempts = 3.0
+    @State private var webrtcIceTimeout = 10.0
     @State private var renderFontSize = 6.0
 
     private let palettes = ["standard", "blocks", "digital", "minimal", "cool", "custom"]
@@ -423,7 +428,21 @@ private struct IOSSettingsView: View {
         if let value = values["render_mode"] as? String { renderMode = value }
         if let value = values["color_mode"] as? String { colorMode = value }
         if let value = values["audio_enabled"] as? Bool { audioEnabled = value }
+        if let value = values["stretch"] as? Bool { stretch = value }
+        if let value = values["stabilize"] as? Bool { stabilize = value }
+        if let value = values["address"] as? String { address = value }
+        if let value = values["port"] as? NSNumber { port = value.stringValue }
+        if let value = values["discovery_service_url"] as? String { discoveryServiceURL = value }
+        if let value = values["webcam_index"] as? NSNumber { webcamIndex = value.stringValue }
+        if let value = values["microphone_index"] as? NSNumber { microphoneIndex = value.stringValue }
+        if let value = values["speakers_index"] as? NSNumber { speakersIndex = value.stringValue }
+        if let value = values["microphone_volume"] as? NSNumber { microphoneVolume = value.doubleValue }
         if let value = values["session_string"] as? String { sessionString = value }
+        if let value = values["speakers_volume"] as? NSNumber { speakersVolume = value.doubleValue }
+        if let value = values["compression_level"] as? NSNumber { compressionLevel = value.doubleValue }
+        if let value = values["reconnect_attempts"] as? NSNumber { reconnectAttempts = value.doubleValue }
+        if let value = values["webrtc_reconnect_attempts"] as? NSNumber { webrtcReconnectAttempts = value.doubleValue }
+        if let value = values["webrtc_ice_timeout"] as? NSNumber { webrtcIceTimeout = value.doubleValue }
     }
 
     var body: some View {
@@ -465,7 +484,17 @@ private struct IOSSettingsView: View {
                     }
                     VStack(alignment: .leading) {
                         Text("Microphone volume: \(microphoneVolume, specifier: "%.2f")")
-                        Slider(value: $microphoneVolume, in: 0...2, step: 0.05)
+                        Slider(value: $microphoneVolume, in: 0...1, step: 0.05)
+                            .onChange(of: microphoneVolume) { _, value in
+                                applyJSON(["microphone_volume": value])
+                            }
+                    }
+                    VStack(alignment: .leading) {
+                        Text("Speaker volume: \(speakersVolume, specifier: "%.2f")")
+                        Slider(value: $speakersVolume, in: 0...1, step: 0.05)
+                            .onChange(of: speakersVolume) { _, value in
+                                applyJSON(["speakers_volume": value])
+                            }
                     }
                 }
                 Section("Camera") {
@@ -482,6 +511,36 @@ private struct IOSSettingsView: View {
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                     TextField("Discovery session string (optional)", text: $sessionString)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    VStack(alignment: .leading) {
+                        Text("Reconnect attempts: \(Int(reconnectAttempts))")
+                        Slider(value: $reconnectAttempts, in: 0...20, step: 1)
+                            .onChange(of: reconnectAttempts) { _, value in
+                                applyJSON(["reconnect_attempts": Int(value)])
+                            }
+                    }
+                    VStack(alignment: .leading) {
+                        Text("WebRTC reconnect attempts: \(Int(webrtcReconnectAttempts))")
+                        Slider(value: $webrtcReconnectAttempts, in: 0...20, step: 1)
+                            .onChange(of: webrtcReconnectAttempts) { _, value in
+                                applyJSON(["webrtc_reconnect_attempts": Int(value)])
+                            }
+                    }
+                    VStack(alignment: .leading) {
+                        Text("WebRTC ICE timeout: \(Int(webrtcIceTimeout)) seconds")
+                        Slider(value: $webrtcIceTimeout, in: 0...60, step: 1)
+                            .onChange(of: webrtcIceTimeout) { _, value in
+                                applyJSON(["webrtc_ice_timeout": Int(value)])
+                            }
+                    }
+                }
+                Section("Performance") {
+                    VStack(alignment: .leading) {
+                        Text("Compression level: \(Int(compressionLevel))")
+                        Slider(value: $compressionLevel, in: 0...9, step: 1)
+                            .onChange(of: compressionLevel) { _, value in
+                                applyJSON(["compression_level": Int(value)])
+                            }
+                    }
                 }
                 Section("Advanced") {
                     NavigationLink("All ascii-chat options") {
@@ -500,6 +559,11 @@ private struct IOSSettingsView: View {
                                    "microphone_index": Int(microphoneIndex) ?? 0,
                                    "speakers_index": Int(speakersIndex) ?? 0,
                                    "microphone_volume": microphoneVolume,
+                                   "speakers_volume": speakersVolume,
+                                   "compression_level": Int(compressionLevel),
+                                   "reconnect_attempts": Int(reconnectAttempts),
+                                   "webrtc_reconnect_attempts": Int(webrtcReconnectAttempts),
+                                   "webrtc_ice_timeout": Int(webrtcIceTimeout),
                                    "render_font_size": renderFontSize])
                     }
                     .foregroundStyle(IOSTheme.websiteCyan)
