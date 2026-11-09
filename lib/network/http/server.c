@@ -314,6 +314,7 @@ typedef struct {
   char *bytes;
   size_t length;
   uv_stream_t *stream;
+  http_client_t *client;
   bool close_on_done;
 } http_write_t;
 
@@ -321,6 +322,8 @@ static void write_done(uv_write_t *req, int status) {
   http_write_t *write = req->data;
   if (write->close_on_done && !uv_is_closing((uv_handle_t *)write->stream))
     uv_close((uv_handle_t *)write->stream, client_freed);
+  if (!status && write->client)
+    (void)http2_flush(write->client);
   SAFE_FREE(write->bytes);
   stats_counter_add(stats_runtime_scope(), STATS_COUNTER_HTTP_BYTES_SENT, write->length);
   SAFE_FREE(write);
@@ -349,6 +352,7 @@ static asciichat_error_t http2_flush(http_client_t *client) {
   memcpy(write->bytes, data, length);
   write->length = length;
   write->stream = (uv_stream_t *)&client->tcp;
+  write->client = client;
   write->close_on_done = false;
   request->data = write;
   uv_buf_t buffer = uv_buf_init(write->bytes, (unsigned)length);
@@ -474,8 +478,13 @@ asciichat_error_t http_response_finish(http_response_t *r) {
   if (!r || r->finished)
     return SET_ERRNO(ERROR_INVALID_STATE, "HTTP response already finished");
   r->finished = true;
-  if (r->cancelled)
+  if (r->cancelled) {
+    if (r->inflight_accounted && !r->deferred) {
+      http_request_release(r->server);
+      r->inflight_accounted = false;
+    }
     return SET_ERRNO(ERROR_CANCELLED, "HTTP response was cancelled");
+  }
   asciichat_error_t result;
   if (r->http3_submit)
     result = r->http3_submit(r->http3_context, r->status, r->headers, r->header_count, r->body, r->body_length);
@@ -914,7 +923,7 @@ static void *http_loop_thread(void *arg) {
   return NULL;
 }
 asciichat_error_t http_server_init(http_server_t **out, const http_server_config_t *cfg) {
-  if (!out || !cfg || !cfg->on_request || (!cfg->enable_http1 && !cfg->enable_http2))
+  if (!out || !cfg || !cfg->on_request || (!cfg->enable_http1 && !cfg->enable_http2 && !cfg->enable_http3))
     return SET_ERRNO(ERROR_INVALID_PARAM, "At least one HTTP protocol and a request handler are required");
   if (cfg->max_connections == 0 || cfg->max_request_body_bytes == 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "HTTP limits must be non-zero");
@@ -974,7 +983,8 @@ asciichat_error_t http_server_start(http_server_t *s) {
   if (s->config.enable_http3 &&
       quic_endpoint_set_http_server((acip_quic_endpoint_t *)s->config.http3_endpoint, s) != ASCIICHAT_OK)
     return SET_ERRNO(ERROR_NETWORK, "Cannot attach shared HTTP/3 handler");
-  if (!s->adopted_socket) {
+  bool tcp_enabled = s->config.enable_http1 || s->config.enable_http2;
+  if (tcp_enabled && !s->adopted_socket) {
     const char *bind_address = s->config.bind_address ? s->config.bind_address : "0.0.0.0";
     struct sockaddr_storage address;
     int rc;
@@ -990,7 +1000,7 @@ asciichat_error_t http_server_start(http_server_t *s) {
     if (rc || uv_tcp_bind(&s->listener, (const struct sockaddr *)&address, 0) != 0)
       return SET_ERRNO(ERROR_NETWORK, "Cannot bind HTTP listener");
   }
-  if (uv_listen((uv_stream_t *)&s->listener, (int)s->config.max_connections, connection_cb) != 0)
+  if (tcp_enabled && uv_listen((uv_stream_t *)&s->listener, (int)s->config.max_connections, connection_cb) != 0)
     return SET_ERRNO(ERROR_NETWORK, "Cannot listen for HTTP connections");
   s->running = true;
   if (acthread_create(&s->thread, "http_io", http_loop_thread, s) != 0) {
